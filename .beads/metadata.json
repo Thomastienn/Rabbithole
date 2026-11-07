@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "TreeTutor",
+  "project_id": "e5df8d20-cab6-4e7b-a02c-ab835f1d2cba"
+}
