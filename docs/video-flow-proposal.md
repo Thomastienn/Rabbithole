@@ -1,8 +1,8 @@
 # Requested video generation and playback
 
-Decision: `TreeTutor-vm4.2`. Status: draft for agreement.
+Decision: `TreeTutor-vm4.2`. Status: selected design.
 
-The user agreed to draft an explicit in-chat request, inline generation status, locally saved playback and no autoplay. The detailed contract below remains proposed. This is a later increment after Mermaid; app implementation is not authorized. PRD.md remains the product authority. No visual theme or screen layout is selected here.
+The user delegated the next Beads task and its recommendations with “Do the next Beads task. Do what you recommends.” On 2026-11-07 (America/Edmonton), that delegation resolves this decision in favor of the recommended finished-file/native-player flow and the contract below, including explicit retry, interrupted jobs after restart, frozen task inputs and local artifact persistence. This is a design decision for a later increment after Mermaid; implementation remains a separate task. PRD.md remains the product authority. No visual theme or screen layout is selected here.
 
 ## Learner flow
 
@@ -46,7 +46,7 @@ Context isolation is separate from execution isolation. The future worker must h
 
 ## Local persistence and restart
 
-Use the proposed local database for job metadata and artifact associations, with completed files in the local app-data directory outside the repository. This follows the architecture proposal if agreed; it does not approve that stack independently.
+Use the existing local SQLite database for job metadata and artifact associations, with completed files in the local app-data directory outside the repository. Reuse the accepted architecture; no additional storage service is needed.
 
 Render into private temporary output. Validate and place the finished file in its final local location before marking its artifact ready. A failed save must not show a playable success. On restart, reconcile pending jobs and files: mark unfinished jobs interrupted, retain ready artifacts, and show unavailable state for missing output. A leftover unpublished file must not imply successful generation.
 
@@ -58,7 +58,7 @@ Persist request input, attempt status, owning conversation and the finished resu
 - **Interactive Remotion Player:** useful for future editable previews; introduces generated composition execution in the UI and a larger persistence contract. Defer until requested.
 - **Separate video page or gallery:** adds navigation and storage UI beyond the requested inline result. Defer.
 
-No new infrastructure is needed for this decision. Implementation remains `TreeTutor-vm4.3`, blocked by this decision and the preceding Mermaid increment. Provider eligibility and architecture approvals remain separate dependencies of the eventual app.
+No new infrastructure is needed for this decision. Implementation remains `TreeTutor-vm4.3`, dependent on the preceding Mermaid increment. This decision does not resolve provider eligibility or prove worker isolation.
 
 ## Implementation acceptance checks
 
@@ -71,4 +71,4 @@ These checks are planned and have not run:
 5. Exercise invalid output paths, unreadable media and failed persistence. Publish no invalid artifact; other chats remain usable. Verify worker permissions separately from transcript isolation.
 6. Verify status announcements, visible focus, native playback controls and text alternative; test captions if speech is included. Confirm generated text descriptions accurately reflect the finished content.
 
-Agreement needed before closing: retry/restart behavior, frozen task/result content and local artifact persistence. No app, rendering worker or live accessibility behavior has been tested.
+Decision review: the state table covers request, pending, failure and playback; the task/result contract separates private generation work from tutor context; the persistence rules cover retry and restart; the alternatives bound implementation scope. These document checks resolve the design task only. No video UI, rendering worker or live accessibility behavior has been tested; the checks above remain required for implementation.
