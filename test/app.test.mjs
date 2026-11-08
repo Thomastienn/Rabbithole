@@ -106,8 +106,8 @@ test('rejects foreign origins, Host rebinding, missing CSRF, malformed JSON and 
 test('concurrent trees remain usable; stop targets only one active tree', async () => {
   const started = new Map();
   const env = await open(join(dir, 'concurrency.sqlite'), async (tree, text, emit, save, signal) => {
-    await new Promise(resolve => { started.set(tree.id, resolve); signal.addEventListener('abort', resolve); });
     emit({ type: 'delta', item: tree.id, text });
+    await new Promise(resolve => { started.set(tree.id, resolve); signal.addEventListener('abort', resolve); });
     emit({ type: 'status', status: signal.aborted ? 'interrupted' : 'completed' });
   });
   try {

@@ -77,11 +77,24 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
           const items = new Map();
-          let text = '', status = 'streaming';
+          let text = '', status = 'streaming', finished = false;
           const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': keepalive\n\n'); }, 15000);
+          const finish = () => {
+            if (finished) return;
+            finished = true;
+            clearInterval(heartbeat);
+            controller.signal.removeEventListener('abort', interrupt);
+            store.update(reply, text, status);
+            if (active.get(id) === controller) active.delete(id);
+            send({ type: 'done', status });
+            res.end();
+          };
+          const interrupt = () => { status = 'interrupted'; finish(); };
+          controller.signal.addEventListener('abort', interrupt, { once: true });
           send({ type: 'saved', id: reply, user: { id: user, role: 'user', text: body.text, status: 'completed' } });
           try {
             await provider.generate(tree, body.text, event => {
+              if (finished) return;
               if (event.type === 'delta' || event.type === 'item') {
                 items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
                 text = [...items.values()].join('\n\n');
@@ -89,17 +102,15 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
                 send({ type: 'text', text });
               }
               if (event.type === 'status') status = event.status;
-            }, (thread, model) => store.thread(id, thread, model), controller.signal);
+            }, (thread, model) => { if (!finished) store.thread(id, thread, model); }, controller.signal);
             if (status === 'streaming') status = controller.signal.aborted ? 'interrupted' : 'completed';
           } catch (error) {
-            status = 'failed';
-            send({ type: 'error', error: error.message });
+            if (!finished) {
+              status = 'failed';
+              send({ type: 'error', error: error.message });
+            }
           } finally {
-            clearInterval(heartbeat);
-            store.update(reply, text, status);
-            active.delete(id);
-            send({ type: 'done', status });
-            res.end();
+            finish();
           }
           return;
         }
