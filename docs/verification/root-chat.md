@@ -11,7 +11,7 @@ Task: TreeTutor-7t3.5. Date: 2026-11-07 America/Edmonton.
 - Browser test on separate temporary data directory at 4318: keyboard tree creation with Tab/Enter; question submission with Enter; visible unauthenticated provider failure; original question and failed response preserved; second tree isolated. Desktop 1440x1000 and mobile 390x844 screenshots inspected. Mobile tree navigation collapses to retain composer space; keyboard focus moves to a newly created chat.
 - Impeccable detector returned no findings. Finish review initially requested mobile composer and tree-load recovery fixes; both fixes subsequently scored resolved with disposition ship. Browser-injected tree-load failure also recovered through Retry; keyboard tree creation focused Your question.
 
-## Pending — do not claim full acceptance
+## Initially pending — resolved by the live checks below
 
 User must complete TreeTutor's official ChatGPT consent flow at http://127.0.0.1:4317. No valid app-owned subscription credential was present during these checks. Real streamed inference, model entitlement and semantic continuation after process restart have not been demonstrated. Fixture tests and initialized threads do not establish live inference success. Keep Beads issue open until those checks pass.
 
@@ -67,3 +67,17 @@ Two new synthetic trees were created through `POST /api/trees`, with questions s
 - For a controlled live transport failure, asked birch: “For this synthetic test, explain binary trees in about 2000 words, with numbered examples.” After receiving its first text event, sent SIGTERM only to the replacement server's isolated stdio Codex child PID 222859. No account, credential, network or unrelated Codex process was modified. SSE reported “Codex disconnected. Partial reply saved; try again.” and `done: failed`. Fetching the saved record confirmed the original two messages remained exact, the new question remained exact, and the failed assistant's 22 characters exactly matched the last streamed partial text. The active-turn list cleared. This is an induced subprocess disconnect, not evidence of a natural provider outage or entitlement failure.
 - Retried in birch with: “Please retry with just one sentence: what is the name of my fictional birch and exactly how many branches does it have? Use our earlier conversation.” The app restarted its provider subprocess and completed: “Your fictional birch is named Vela and has exactly 41 branches.” Assertions checked Vela/41, absence of Orin/23, unchanged provider thread, exact preservation of all four earlier messages including the failed reply, and an unchanged cedar record. Retry appends a new question and reply; it does not replace failed messages.
 - All eleven automated tests passed again. This increment changes verification documentation only; no application or UI code changed. Live reopening was checked through HTTP, not a new browser session. The replacement loopback server remains running with both synthetic trees available.
+
+## Root-chat acceptance reconciled — TreeTutor-7t3.5
+
+Reviewed 2026-11-07 after both live-verification prerequisites closed. The earlier pending observations above are historical; root-chat acceptance is now met by the following evidence:
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Two isolated trees survive restart | TreeTutor-7t3.5.2 compared complete cedar and birch records before and after an actual server restart; real follow-up replies recalled each tree's own facts. |
+| Root chat streams replies and preserves originals | TreeTutor-7t3.5.1 verified real SSE text and completed saved originals; TreeTutor-7t3.5.2 checked original records remain exact during continuation and retry. |
+| Server binds only to loopback | Fresh listener inspection found Node PID 222848 at `127.0.0.1:4317` only. `/api/state` returned HTTP 200, connected authentication, three saved trees and no active turns. |
+| Request failure leaves saved history usable | TreeTutor-7t3.5.2 induced a provider subprocess disconnect, verified saved original/partial messages, then completed a real retry without changing the other tree. |
+| Keyboard tree creation and chat work | The initial browser check above used Tab/Enter to create a tree and Enter to submit a question; composer focus, visible failure and preserved history were checked. This is root-chat keyboard evidence, not the later full branching keyboard journey. |
+
+Fresh quality gates passed: all eleven automated tests, TypeScript/Vite build and Astryx built-output doctor (zero failures). Existing bundle-size and font metadata warnings remain. This reconciliation adds no application changes or new inference requests; live reply/restart results refer to the recorded prerequisite runs. Close the root-chat feature and unblock its dependents. Branching, canvas, imported history, Claude eligibility and full text-release acceptance remain separate work.
