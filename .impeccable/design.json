@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-08T02:44:02.261488+00:00",
+  "title": "Design System: TreeTutor",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Accent",
+        "tonalRamp": [
+          "#1b1b1b",
+          "#303030",
+          "#474747",
+          "#606060",
+          "#7a7a7a",
+          "#9e9e9e",
+          "#d4d4d4",
+          "#f1f1f1"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "tonalRamp": [
+          "#1b1b1b",
+          "#303030",
+          "#474747",
+          "#606060",
+          "#7a7a7a",
+          "#9e9e9e",
+          "#d4d4d4",
+          "#f1f1f1"
+        ]
+      },
+      "body": {
+        "role": "neutral",
+        "displayName": "Body",
+        "tonalRamp": [
+          "#1b1b1b",
+          "#303030",
+          "#474747",
+          "#606060",
+          "#7a7a7a",
+          "#9e9e9e",
+          "#d4d4d4",
+          "#f1f1f1"
+        ]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Text Primary",
+        "tonalRamp": [
+          "#1b1b1b",
+          "#303030",
+          "#474747",
+          "#606060",
+          "#7a7a7a",
+          "#9e9e9e",
+          "#d4d4d4",
+          "#f1f1f1"
+        ]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Text Secondary",
+        "tonalRamp": [
+          "#1b1b1b",
+          "#303030",
+          "#474747",
+          "#606060",
+          "#7a7a7a",
+          "#9e9e9e",
+          "#d4d4d4",
+          "#f1f1f1"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Border",
+        "tonalRamp": [
+          "#1b1b1b",
+          "#303030",
+          "#474747",
+          "#606060",
+          "#7a7a7a",
+          "#9e9e9e",
+          "#d4d4d4",
+          "#f1f1f1"
+        ]
+      },
+      "border-emphasized": {
+        "role": "neutral",
+        "displayName": "Border Emphasized",
+        "tonalRamp": [
+          "#1b1b1b",
+          "#303030",
+          "#474747",
+          "#606060",
+          "#7a7a7a",
+          "#9e9e9e",
+          "#d4d4d4",
+          "#f1f1f1"
+        ]
+      },
+      "neutral": {
+        "role": "neutral",
+        "displayName": "Neutral",
+        "tonalRamp": [
+          "#1b1b1b",
+          "#303030",
+          "#474747",
+          "#606060",
+          "#7a7a7a",
+          "#9e9e9e",
+          "#d4d4d4",
+          "#f1f1f1"
+        ]
+      },
+      "selection": {
+        "role": "neutral",
+        "displayName": "Text selection",
+        "tonalRamp": [
+          "#10243a",
+          "#253c5a",
+          "#3c597d",
+          "#5578a4",
+          "#759bc9",
+          "#a1caff",
+          "#b9d7ff",
+          "#e2edff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Application heading",
+        "purpose": "TreeTutor title."
+      },
+      "title": {
+        "displayName": "Section title",
+        "purpose": "Navigation and selected tree."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Transcript and controls."
+      },
+      "supporting": {
+        "displayName": "Supporting",
+        "purpose": "Status and keyboard instructions."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "mobile-navigation",
+        "value": "48rem"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Illustrative preview; runtime Astryx owns complete metrics and states.",
+      "html": "<button class=\"ds-button ds-primary\">Create tree</button>",
+      "css": ".ds-button { font-family:var(--font-family-body); font-size:var(--text-body-size); border:0; border-radius:var(--radius-element); padding:var(--spacing-2) var(--spacing-3); cursor:pointer; } .ds-button:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; } .ds-button:hover { filter:brightness(.95); } .ds-button:active { filter:brightness(.9); } .ds-primary { background:var(--color-accent); color:var(--color-on-accent); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Illustrative preview; runtime Astryx owns complete metrics and states.",
+      "html": "<button class=\"ds-button ds-secondary\">Continue with ChatGPT</button>",
+      "css": ".ds-button { font-family:var(--font-family-body); font-size:var(--text-body-size); border:0; border-radius:var(--radius-element); padding:var(--spacing-2) var(--spacing-3); cursor:pointer; } .ds-button:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; } .ds-button:hover { filter:brightness(.95); } .ds-button:active { filter:brightness(.9); } .ds-secondary { background:var(--color-neutral); color:var(--color-text-primary); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Illustrative preview; runtime Astryx owns complete metrics and states.",
+      "html": "<button class=\"ds-button ds-ghost\">Show learning trees</button>",
+      "css": ".ds-button { font-family:var(--font-family-body); font-size:var(--text-body-size); border:0; border-radius:var(--radius-element); padding:var(--spacing-2) var(--spacing-3); cursor:pointer; } .ds-button:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; } .ds-button:hover { filter:brightness(.95); } .ds-button:active { filter:brightness(.9); } .ds-ghost { background:transparent; color:var(--color-text-primary); }"
+    },
+    {
+      "name": "New Tree Field",
+      "kind": "input",
+      "description": "Persistent label above a rounded text field.",
+      "html": "<label class=\"ds-field\">New tree name<input aria-label=\"New tree name\"></label>",
+      "css": ".ds-field { display:grid; gap:var(--spacing-2); font-family:var(--font-family-body); color:var(--color-text-secondary); } .ds-field input { background:var(--color-background-surface); color:var(--color-text-primary); border:1px solid var(--color-border-emphasized); border-radius:var(--radius-element); padding:var(--spacing-2); font:inherit; } .ds-field input:hover { border-color:var(--color-text-secondary); } .ds-field input:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }"
+    },
+    {
+      "name": "Saved Tree Navigation",
+      "kind": "nav",
+      "description": "Secondary selected tree and ghost alternatives.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Saved learning trees\"><button class=\"ds-button ds-selected\" aria-current=\"page\">Linear algebra</button><button class=\"ds-button\">Probability</button></nav>",
+      "css": ".ds-button { font-family:var(--font-family-body); font-size:var(--text-body-size); border:0; border-radius:var(--radius-element); padding:var(--spacing-2) var(--spacing-3); cursor:pointer; } .ds-button:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; } .ds-button:hover { filter:brightness(.95); } .ds-button:active { filter:brightness(.9); } .ds-nav { display:grid; gap:var(--spacing-2); } .ds-nav button { color:var(--color-text-primary); background:transparent; white-space:normal; overflow-wrap:anywhere; } .ds-nav .ds-selected { background:var(--color-neutral); }"
+    },
+    {
+      "name": "Question Composer",
+      "kind": "custom",
+      "description": "Flat rounded input with the visible keyboard instruction.",
+      "html": "<form class=\"ds-composer\"><textarea aria-label=\"Your question\" placeholder=\"What would you like to understand?\"></textarea><small>Enter to send \u00b7 Shift+Enter for a new line</small></form>",
+      "css": ".ds-composer { display:grid; gap:var(--spacing-3); padding:var(--spacing-3); border:1px solid var(--color-border-emphasized); border-radius:var(--radius-page); font-family:var(--font-family-body); background:var(--color-background-surface); color:var(--color-text-secondary); } .ds-composer textarea { font:inherit; background:transparent; color:var(--color-text-primary); border:0; resize:vertical; } .ds-composer textarea:hover { background:var(--color-overlay-hover); } .ds-composer textarea:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Room to follow a question",
+    "overview": "TreeTutor uses a quiet light workspace for repeated reading and asking. Restrained neutrals, compact controls and clear heading levels keep attention on the transcript. Saved learning trees sit beside the active conversation on desktop.\n\nThe system is code-led: Astryx supplies primitives and the neutral theme. Preserve its spacing, control states and native keyboard behavior when extending the app. No decorative imagery is needed for the text-focused use scene established in PRODUCT.md.",
+    "keyCharacteristics": [
+      "Quiet neutral surfaces",
+      "Readable text hierarchy",
+      "Compact saved-tree navigation",
+      "Visible composer and explicit reply status"
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Color Rule",
+        "body": "Use Astryx's existing color roles; let the theme own palette values.",
+        "section": "colors"
+      },
+      {
+        "name": "The Composer Rule",
+        "body": "Preserve the flexible-height conversation and collapsible mobile navigation when adding controls.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do use Astryx components and semantic theme tokens.",
+      "Do preserve native keyboard operation and visible focus.",
+      "Do wrap long tree titles and message text.",
+      "Do keep the composer reachable at narrow widths."
+    ],
+    "donts": [
+      "Don't add decorative imagery to this reading workspace.",
+      "Don't replace the flat transcript with card-wrapped messages.",
+      "Don't hide failed or interrupted reply states."
+    ]
+  }
+}

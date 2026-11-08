@@ -1,0 +1,173 @@
+import { useEffect, useRef, useState } from 'react';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { Text, Heading } from '@astryxdesign/core/Text';
+import { Button } from '@astryxdesign/core/Button';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
+
+type Message = { id: string; role: string; text: string; status: string };
+type Tree = { id: string; title: string; messages: Message[] };
+type Summary = Pick<Tree, 'id' | 'title'>;
+type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[] };
+
+export default function ChatPage() {
+  const [state, setState] = useState<State>();
+  const [tree, setTree] = useState<Tree>();
+  const [name, setName] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
+  const composer = useRef<ChatComposerInputHandle>(null);
+  const focusComposer = useRef(false);
+  const selected = useRef<string | undefined>(undefined);
+  const request = useRef(0);
+
+  async function api(path: string, body?: unknown) {
+    const response = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: {
+      'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state?.csrf ?? '' }, body: JSON.stringify(body) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error ?? 'Request failed. Reload and try again.');
+    return data;
+  }
+  async function refresh() {
+    const data: State = await api('/api/state');
+    setState(data);
+    return data;
+  }
+  async function select(id: string) {
+    selected.current = id;
+    const version = ++request.current;
+    setError('');
+    setTree(undefined);
+    setLoading(true);
+    setMobileNav(false);
+    try {
+      const next: Tree = await api(`/api/trees/${id}`);
+      if (request.current === version) setTree(next);
+    } catch (e) { if (request.current === version) setError((e as Error).message); }
+    finally { if (request.current === version) setLoading(false); }
+  }
+  useEffect(() => {
+    refresh().then(data => { if (data.trees.length) void select(data.trees[0].id); else setMobileNav(true); }).catch(e => setError(e.message));
+  }, []);
+  useEffect(() => {
+    if (tree && focusComposer.current) { composer.current?.focus(); focusComposer.current = false; }
+  }, [tree?.id]);
+  // Reopening a page during a turn recovers saved checkpoints without tying work to focus.
+  useEffect(() => {
+    if (!state?.active.length) return;
+    const timer = setInterval(() => {
+      void refresh().then(async () => {
+        const id = selected.current;
+        if (!id) return;
+        const next: Tree = await api(`/api/trees/${id}`);
+        if (selected.current === id) setTree(next);
+      }).catch(e => setError(e.message));
+    }, 1500);
+    return () => clearInterval(timer);
+  }, [state?.active.join(',')]);
+
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy || !name.trim()) return;
+    setBusy(true); setError('');
+    try {
+      const next: Tree = await api('/api/trees', { title: name });
+      await refresh();
+      setName('');
+      focusComposer.current = true;
+      await select(next.id);
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  async function signIn() {
+    try { const result = await api('/api/auth', {}); window.location.assign(result.url); }
+    catch (e) { setError((e as Error).message); }
+  }
+  async function send(text: string) {
+    if (!tree || !text.trim() || state?.active.includes(tree.id)) return;
+    const id = tree.id;
+    setError('');
+    setState(s => s && { ...s, active: [...s.active, id] });
+    try {
+      const response = await fetch(`/api/trees/${id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state?.csrf ?? '' }, body: JSON.stringify({ text }) });
+      if (!response.ok) throw new Error((await response.json()).error);
+      setDrafts(d => ({ ...d, [id]: '' }));
+      const reader = response.body!.getReader(), decoder = new TextDecoder();
+      let buffer = '', reply = '';
+      if (selected.current === id) setTree(t => t && { ...t, messages: [...t.messages, { id: `user-${Date.now()}`, role: 'user', text, status: 'completed' }] });
+      while (true) {
+        const result = await reader.read();
+        buffer += decoder.decode(result.value, { stream: !result.done });
+        let end;
+        while ((end = buffer.indexOf('\n\n')) >= 0) {
+          const frame = buffer.slice(0, end); buffer = buffer.slice(end + 2);
+          if (!frame.startsWith('data: ')) continue;
+          const event = JSON.parse(frame.slice(6));
+          if (event.type === 'error' && selected.current === id) setError(event.error);
+          if (event.type === 'saved') reply = event.id;
+          if (selected.current === id && (event.type === 'saved' || event.type === 'text' || event.type === 'done')) {
+            setTree(t => {
+              if (!t || t.id !== id) return t;
+              const messages = t.messages.filter(m => m.id !== reply);
+              const old = t.messages.find(m => m.id === reply);
+              return { ...t, messages: [...messages, { id: reply, role: 'assistant', text: event.text ?? old?.text ?? '', status: event.status ?? 'streaming' }] };
+            });
+          }
+        }
+        if (result.done) break;
+      }
+    } catch (e) { if (selected.current === id) setError((e as Error).message); }
+    finally {
+      try {
+        await refresh();
+        const saved = await api(`/api/trees/${id}`);
+        if (selected.current === id) setTree(saved);
+      } catch { setError('Connection lost. Reload to recover saved messages.'); }
+    }
+  }
+  const active = !!tree && !!state?.active.includes(tree.id);
+  return <VStack gap={0} style={{ height: '100dvh' }}>
+    <header><HStack padding={5} gap={4} vAlign="center" wrap="wrap">
+      <Heading level={1}>TreeTutor</Heading>
+      <Text color="secondary">Room to follow a question.</Text>
+      <Button label={mobileNav ? 'Hide learning trees' : 'Show learning trees'} className="mobile-nav" variant="ghost" aria-expanded={mobileNav} aria-controls="tree-navigation" onClick={() => setMobileNav(v => !v)} />
+    </HStack></header>
+    <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
+      <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={mobileNav}><VStack padding={5} gap={5}>
+        <Heading level={2}>Your trees</Heading>
+        <form onSubmit={create}><VStack gap={3}>
+          <TextInput label="New tree name" value={name} onChange={setName} />
+          <Button label={busy ? 'Creating…' : 'Create tree'} type="submit" isDisabled={busy || !name.trim()}>{busy ? 'Creating…' : 'Create tree'}</Button>
+        </VStack></form>
+        <nav aria-label="Saved learning trees"><VStack gap={2}>
+          {state?.trees.map(t => <Button label={t.title} key={t.id} variant={tree?.id === t.id ? 'secondary' : 'ghost'} aria-current={tree?.id === t.id ? 'page' : undefined} onClick={() => void select(t.id)}>{t.title}</Button>)}
+          {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
+        </VStack></nav>
+        <VStack gap={3}>
+          <Text type="supporting" color="secondary">Trees save on this computer. Questions go to ChatGPT using your plan.</Text>
+          <Button label={state?.auth.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'} variant="secondary" data-oai-siwc-button="" onClick={() => void signIn()}>{state?.auth.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'}</Button>
+          {state?.auth.connected && <Text type="supporting">Connected {state.auth.email ?? 'to ChatGPT'}</Text>}
+        </VStack>
+      </VStack></aside>
+      <main className="conversation">
+        {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
+        {tree ? <>
+          <header><VStack padding={5} gap={1}><Heading level={2}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text></VStack></header>
+          <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} footerActions={<Text type="supporting" color="secondary">Enter to send · Shift+Enter for a new line</Text>} />}>
+            <ChatMessageList>
+              {!tree.messages.length && <VStack gap={3} padding={6}><Heading level={3}>What are you curious about?</Heading><Text color="secondary">Ask about a concept, work through an example, or pick up a question you have been carrying.</Text></VStack>}
+              {tree.messages.map(message => <ChatMessage key={message.id} sender={message.role === 'user' ? 'user' : 'assistant'}>
+                <Text type="label" weight="semibold">{message.role === 'user' ? 'You' : 'Tutor'}</Text>
+                <ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text || (message.status === 'streaming' ? 'Thinking…' : 'No reply received.')}</Text></ChatMessageBubble>
+                {message.status !== 'completed' && <Text type="supporting" role="status">{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
+              </ChatMessage>)}
+            </ChatMessageList>
+          </ChatLayout>
+        </> : <VStack gap={3} padding={6}><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <Text color="secondary">Give your topic a name, then ask your first question. Come back any time.</Text>}</VStack>}
+      </main>
+    </HStack>
+  </VStack>;
+}

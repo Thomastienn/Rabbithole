@@ -5,3 +5,8 @@
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# Local app build and dependencies
+node_modules/
+dist/
+.impeccable/review/
