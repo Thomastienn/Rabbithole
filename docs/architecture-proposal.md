@@ -1,10 +1,12 @@
-# Local app architecture and keyboard proposal
+# Local app architecture and keyboard decision
 
-Decision: `TreeTutor-7t3.3`. Status: proposed, awaiting user agreement.
+Decision: `TreeTutor-7t3.3`. Status: accepted through delegated choice.
+
+The user instructed: “Do the next Beads task. Do what you recommends.” This delegates the pending architecture and interaction choices. Adopt the recommendations below, including the keyboard contract and recorded tradeoffs. This completes the decision task; implementation remains separate work under the PRD's authorization boundary.
 
 This covers the existing PRD's text release. It does not authorize app implementation or resolve provider eligibility. There is no app code yet. Assumption: a single local user runs the server and opens it in a desktop browser; mobile behavior and visual styling are not decided here.
 
-## Recommended architecture
+## Selected architecture
 
 - **UI:** React + TypeScript, built with Vite. Use React Flow for movable conversation boxes, viewport transforms and branch connections. Keep chat controls in HTML rather than painting text into a bitmap canvas. One shared chat component serves root and child conversations at every depth.
 - **Server:** one Node process bound to `127.0.0.1`, serving the built UI, local HTTP operations and streamed response events. Keep provider processes and credentials on the server. Browser requests use the same origin; validate Host/Origin and state-changing requests so other websites cannot drive the local provider session.
@@ -12,7 +14,7 @@ This covers the existing PRD's text release. It does not authorize app implement
 - **Providers:** isolate Codex protocol handling from chat and storage. Preserve the prior research's SIWC candidate and unresolved eligibility/history-transfer checks. Do not start authentication or choose credential handling through this decision. Add Claude handling only when its route is resolved; do not substitute API keys.
 - **Generation:** track active work by conversation and turn ID, independently of focus. Stream events to their owning conversation. Save user input before requesting inference, checkpoint partial replies and persist terminal status; interrupted work after restart remains visibly incomplete. Commit child conversation, source anchor and inherited snapshot together before its first tutor turn. A failed compaction leaves the parent and source history intact and allows retry.
 
-This is a recommendation, not a claim that these components have been integrated. [Vite guide](https://vite.dev/guide/), [React Flow accessibility](https://reactflow.dev/learn/advanced-use/accessibility), [Node SQLite API](https://nodejs.org/api/sqlite.html).
+These are selected components, not a claim that they have been integrated. [Vite guide](https://vite.dev/guide/), [React Flow accessibility](https://reactflow.dev/learn/advanced-use/accessibility), [Node SQLite API](https://nodejs.org/api/sqlite.html).
 
 ## Passage anchors, recursive trees and focus
 
@@ -24,7 +26,7 @@ Use a flat collection of conversations with parent references, not one nested UI
 
 Save overview position and zoom before focusing a conversation. Show the shared chat view across the canvas area; keep the overview's state and other generations alive. On return, restore the viewport and focus the originating conversation box. Animate the selected box into/out of the focused view; immediately focus the new child's question composer. Skip movement animations when `prefers-reduced-motion: reduce` is set. Exact animation timing is deferred to UI implementation. [Reduced-motion preference](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/prefers-reduced-motion).
 
-## Proposed keyboard contract
+## Selected keyboard contract
 
 Every operation has a visible labeled control; shortcuts are scoped to the relevant control, never global overrides of browser shortcuts. Focus indicators remain visible. Canvas key handlers do not capture typing or text-selection keys inside chats.
 
@@ -66,4 +68,4 @@ These are planned checks, not passing results:
 5. Reopen multiple trees after restart; verify messages, anchors, context and positions. Simulate failed saves/provider requests and interrupted generation without reporting unsaved data as saved.
 6. Verify only loopback listening, same-origin request enforcement and no provider credentials in browser responses. Run the separate provider feasibility checks before claiming subscription support.
 
-User agreement is needed on the proposed stack and interaction contract before closing this decision. Runtime provider feasibility remains separate work.
+The stack and interaction contract are selected under the user's delegated choice. Runtime provider feasibility remains separate work; the implementation checks above have not run.
