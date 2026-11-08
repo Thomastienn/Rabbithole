@@ -22,3 +22,9 @@ Full text release also depends on separate branching, canvas and Claude tasks. N
 - Re-ran all eleven automated tests, TypeScript/Vite build and Astryx built-output doctor: tests/build pass, doctor has zero failures. Existing font metadata warnings and Vite bundle-size warning remain.
 - The previously documented server was no longer running. Started the app again and verified HTTP 200 from `/api/state` and a Node listener bound only to `127.0.0.1:4317`.
 - State reports ChatGPT disconnected, zero saved trees and no active turns. Live inference and restart continuation still require the user's official ChatGPT consent; no shared CLI credentials were used. Task remains open and dependent work remains blocked.
+
+## Consent readiness — TreeTutor-7t3.14
+
+- At 2026-11-07T21:19:34-06:00, started the existing app with `npm start` after confirming port 4317 had no listener. `ss -ltnp` then showed its Node process listening only on `127.0.0.1:4317`.
+- `/api/state` returned HTTP 200 and `auth.connected: false`. Only the HTTP status and connection boolean were reported; no credential files were inspected or copied.
+- User action remains required: open http://127.0.0.1:4317, choose **Continue with ChatGPT**, and review and complete official consent. Consent was not attempted on the user's behalf, and no consent failure was observed. Leave TreeTutor-7t3.14 open until the app reports connected; live inference and restart proof remain separate tasks.
