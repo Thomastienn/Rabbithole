@@ -34,3 +34,9 @@ Full text release also depends on separate branching, canvas and Claude tasks. N
 - At 2026-11-07T21:22:03-06:00, port 4317 had no listener, so restarted the existing app with `npm start`. Verified its Node listener at `127.0.0.1:4317` only; `/api/state` returned HTTP 200 and `auth.connected: false`.
 - The readiness subtask is complete. Parent TreeTutor-7t3.14 remains blocked on official account consent; no credential files were inspected and no account sign-in or inference was attempted.
 - Remaining ready leaf task TreeTutor-7t3.15 requires a concrete Claude resolution route. Blanket task authorization supplies neither an account consent result nor a chosen provider-contact recipient/channel or an explicit revised product scope. Existing provider requirements and downstream verification dependencies remain intact.
+
+## Consent completed — TreeTutor-7t3.14
+
+- At 2026-11-07T21:25:30-06:00, the existing app's `/api/state` reported `auth.connected: true`. This supersedes the earlier disconnected observations. Only the connection boolean was reported; no credential files or private account details were inspected.
+- `ss -ltnp` verified the existing Node process listening only at `127.0.0.1:4317`. The agent did not perform sign-in on the user's behalf. Source review confirms the app persists consent only after its OAuth callback validates state, registration, identity and plan-use scope; the live connection result resolves the consent prerequisite, not model entitlement.
+- All eleven automated tests passed with Node 26.0.0. Live inference and restart continuation remain separate verification tasks; no inference result is claimed by this consent check.
