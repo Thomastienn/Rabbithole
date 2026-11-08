@@ -12,6 +12,10 @@ header { border-bottom: 1px solid var(--color-border); }
 .conversation-box { width: 18rem; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); overflow-wrap: anywhere; }
 .conversation-box button { height: auto; white-space: normal; }
 .conversation-box h3, .source-passage { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.passage-anchor { position: relative; padding-inline-end: var(--spacing-2); border-top: thin solid var(--color-border); }
+.passage-anchor .react-flow__handle { right: calc(-1 * var(--spacing-4)); }
+.react-flow__node.selected .conversation-box { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
+mark { background: var(--color-background-blue); color: var(--color-text-primary); }
 .react-flow__edge-path { stroke: var(--color-text-secondary); }
 .react-flow__handle { background: var(--color-text-secondary); border-color: var(--color-background-surface); }
 .trees button { height: auto; min-height: var(--spacing-8); padding-block: var(--spacing-2); white-space: normal; overflow-wrap: anywhere; text-align: start; }

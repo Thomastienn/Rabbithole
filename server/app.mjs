@@ -37,11 +37,16 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
           if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200) return json(res, 400, { error: 'Enter a tree name (up to 200 characters).' });
           return json(res, 201, store.create(body.title.trim()));
         }
-        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches)$/);
+        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position)$/);
         if (match) {
           const [, id, action] = match;
           const tree = store.tree(id);
           if (!tree) return json(res, 404, { error: 'Learning tree not found.' });
+          if (action === 'position') {
+            if (!Number.isFinite(body.x) || !Number.isFinite(body.y) || Math.abs(body.x) > 1000000 || Math.abs(body.y) > 1000000) return json(res, 400, { error: 'Choose a position within the canvas.' });
+            store.position(id, body.x, body.y);
+            return json(res, 200, {});
+          }
           if (action === 'stop') { active.get(id)?.abort(); return json(res, 200, {}); }
           if (active.has(id)) return json(res, 409, { error: 'This tree is already responding. Stop it or wait.' });
           if (action === 'branches') {

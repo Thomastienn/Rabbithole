@@ -17,8 +17,11 @@ export class Store {
     const columns = this.db.prepare('PRAGMA table_info(trees)').all().map(c => c.name);
     if (!columns.includes('provider')) this.db.exec("ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'");
     if (!columns.includes('model')) this.db.exec('ALTER TABLE trees ADD COLUMN model TEXT');
+    if (!columns.includes('x')) this.db.exec('ALTER TABLE trees ADD COLUMN x REAL');
+    if (!columns.includes('y')) this.db.exec('ALTER TABLE trees ADD COLUMN y REAL');
   }
-  list() { return this.db.prepare('SELECT t.id,t.title,t.created,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all(); }
+  list() { return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all(); }
+  position(id, x, y) { this.db.prepare('UPDATE trees SET x=?,y=? WHERE id=?').run(x, y, id); }
   tree(id) {
     const tree = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id);
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);

@@ -5,7 +5,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
-import TreeOverview, { type Summary } from './TreeOverview';
+import TreeOverview, { type Summary, type Source } from './TreeOverview';
 
 type Message = { id: string; role: string; text: string; status: string };
 type Anchor = { messageId: string; start: number; end: number; text: string };
@@ -13,10 +13,16 @@ type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; messages: Message[]; branch: Branch | null };
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[] };
 
-function Passage({ message, onBranch }: { message: Message; onBranch: (anchor: Anchor) => void }) {
+function Passage({ message, onBranch, reveal }: { message: Message; onBranch: (anchor: Anchor) => void; reveal?: Source }) {
   const [selecting, setSelecting] = useState(false);
   const [anchor, setAnchor] = useState<Anchor>();
   const passage = useRef<HTMLElement>(null);
+  const highlight = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!reveal) return;
+    highlight.current?.scrollIntoView({ block: 'center' });
+    highlight.current?.focus({ preventScroll: true });
+  }, [reveal]);
   function capture(start: number, end: number) {
     setAnchor(end > start ? { messageId: message.id, start, end, text: message.text.slice(start, end) } : undefined);
   }
@@ -29,7 +35,7 @@ function Passage({ message, onBranch }: { message: Message; onBranch: (anchor: A
       const prefix = range.cloneRange(); prefix.selectNodeContents(root); prefix.setEnd(range.startContainer, range.startOffset);
       const start = prefix.toString().length;
       capture(start, start + range.toString().length);
-    }}><ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text></ChatMessageBubble></section>
+    }}><ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{reveal ? <>{message.text.slice(0, reveal.start)}<mark ref={highlight} tabIndex={-1} aria-label="Source passage">{message.text.slice(reveal.start, reveal.end)}</mark>{message.text.slice(reveal.end)}</> : message.text}</Text></ChatMessageBubble></section>
     {selecting && <TextArea label="Select tutor passage" description="Select with your mouse, or hold Shift and use arrow keys. Tab to Ask about selection." value={message.text} isReadOnly rows={4} hasAutoFocus onBlur={e => capture(e.currentTarget.selectionStart, e.currentTarget.selectionEnd)} />}
     <HStack gap={2} wrap="wrap">
       <Button label={selecting ? 'Close passage selection' : 'Select passage'} variant="ghost" onClick={() => setSelecting(v => !v)} />
@@ -49,6 +55,7 @@ export default function ChatPage() {
   const [mobileNav, setMobileNav] = useState(false);
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
+  const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
   const [branch, setBranch] = useState<{ parent: string; anchor: Anchor; question: string }>();
   const [branching, setBranching] = useState(false);
   const composer = useRef<ChatComposerInputHandle>(null);
@@ -59,9 +66,10 @@ export default function ChatPage() {
   function returnToTree() {
     setOverview(true);
   }
-  function openConversation(id: string) {
+  function openConversation(id: string, source?: Source) {
+    setReveal(source ? { tree: id, source } : undefined);
     setOverview(false);
-    focusComposer.current = true;
+    focusComposer.current = !source;
     void select(id);
   }
   function openTree(id: string) {
@@ -75,6 +83,10 @@ export default function ChatPage() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? 'Request failed. Reload and try again.');
     return data;
+  }
+  async function savePosition(id: string, position: { x: number; y: number }) {
+    await api(`/api/trees/${id}/position`, position);
+    setState(s => s && { ...s, trees: s.trees.map(t => t.id === id ? { ...t, ...position } : t) });
   }
   async function refresh() {
     const data: State = await api('/api/state');
@@ -189,6 +201,8 @@ export default function ChatPage() {
     } catch (e) { setError((e as Error).message); }
     finally { setBranching(false); }
   }
+  const source = reveal?.tree === tree?.id ? reveal?.source : undefined;
+  const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text);
   const active = !!tree && !!state?.active.includes(tree.id);
   return <VStack gap={0} style={{ height: '100dvh' }}>
     <header><HStack padding={5} gap={4} vAlign="center" wrap="wrap">
@@ -218,11 +232,12 @@ export default function ChatPage() {
         <section className="tree-workspace">
         {root && state && <section className="overview" style={{ opacity: overview ? 1 : 0 }} inert={!overview} aria-hidden={!overview} aria-label="Learning tree">
           <header><VStack padding={5} gap={1}><Heading level={2}>{state.trees.find(t => t.id === root)?.title}</Heading><Text color="secondary">Follow a connection or open a conversation.</Text></VStack></header>
-          <TreeOverview key={root} root={root} trees={state.trees} active={state.active} open={openConversation} focus={overview ? tree?.id : undefined} />
+          <TreeOverview key={root} root={root} trees={state.trees} active={state.active} open={openConversation} save={savePosition} focus={overview ? tree?.id : undefined} />
         </section>}
         <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header><VStack padding={5} gap={1}><Button label="Return to tree" variant="ghost" onClick={returnToTree} /><Heading level={2}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text>{tree.branch && <Button label="Return to parent conversation" variant="ghost" onClick={() => openConversation(tree.branch!.parent)} />}</VStack></header>
+          {source && !validSource && <Text role="alert">Saved source passage is unavailable. No replacement passage was selected.</Text>}
           <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} footerActions={<Text type="supporting" color="secondary">Enter to send · Shift+Enter for a new line</Text>} />}>
             <ChatMessageList>
               {branch?.parent === tree.id && <form onSubmit={submitBranch}><VStack padding={4} gap={3}>
@@ -235,7 +250,7 @@ export default function ChatPage() {
               {!tree.messages.length && <VStack gap={3} padding={6}><Heading level={3}>What are you curious about?</Heading><Text color="secondary">Ask about a concept, work through an example, or pick up a question you have been carrying.</Text></VStack>}
               {tree.messages.map(message => <ChatMessage key={message.id} sender={message.role === 'user' ? 'user' : 'assistant'}>
                 <Text type="label" weight="semibold">{message.role === 'user' ? 'You' : 'Tutor'}</Text>
-                {message.role === 'assistant' && message.status === 'completed' ? <Passage message={message} onBranch={anchor => { setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text || (message.status === 'streaming' ? 'Thinking…' : 'No reply received.')}</Text></ChatMessageBubble>}
+                {message.role === 'assistant' && message.status === 'completed' ? <Passage message={message} reveal={validSource && source?.messageId === message.id ? source : undefined} onBranch={anchor => { setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text || (message.status === 'streaming' ? 'Thinking…' : 'No reply received.')}</Text></ChatMessageBubble>}
                 {message.status !== 'completed' && <Text type="supporting" role="status">{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
               </ChatMessage>)}
             </ChatMessageList>
