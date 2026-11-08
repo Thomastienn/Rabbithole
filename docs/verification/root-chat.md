@@ -16,3 +16,9 @@ Task: TreeTutor-7t3.5. Date: 2026-11-07 America/Edmonton.
 User must complete TreeTutor's official ChatGPT consent flow at http://127.0.0.1:4317. No valid app-owned subscription credential was present during these checks. Real streamed inference, model entitlement and semantic continuation after process restart have not been demonstrated. Fixture tests and initialized threads do not establish live inference success. Keep Beads issue open until those checks pass.
 
 Full text release also depends on separate branching, canvas and Claude tasks. No claim of full PRD completion.
+
+## Follow-up verification — 2026-11-07
+
+- Re-ran all eleven automated tests, TypeScript/Vite build and Astryx built-output doctor: tests/build pass, doctor has zero failures. Existing font metadata warnings and Vite bundle-size warning remain.
+- The previously documented server was no longer running. Started the app again and verified HTTP 200 from `/api/state` and a Node listener bound only to `127.0.0.1:4317`.
+- State reports ChatGPT disconnected, zero saved trees and no active turns. Live inference and restart continuation still require the user's official ChatGPT consent; no shared CLI credentials were used. Task remains open and dependent work remains blocked.
