@@ -6,6 +6,68 @@ import { join } from 'node:path';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 
+test('sibling branches interleave independent saved turns while another tree submits', async () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-interleaving-')), 'trees.sqlite');
+  const store = new Store(path);
+  const turns = new Map();
+  const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: {
+    generate: (tree, text, emit, save) => new Promise(resolve => {
+      save(`thread-${tree.id}`, 'fixture-model');
+      turns.set(tree.id, { emit, resolve });
+    }),
+  } });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+  const post = (id, text) => fetch(`${origin}/api/trees/${id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify({ text }) });
+  const get = async id => (await fetch(`${origin}/api/trees/${id}`)).json();
+  try {
+    const root = store.create('Root');
+    const source = store.message(root.id, 'assistant', 'Roots exchange nutrients.', 'completed');
+    const anchor = { messageId: source, start: 0, end: 5, text: 'Roots' };
+    const a = store.branch(root, { ...anchor, question: 'Branch A' }, 'Fixed A context');
+    const b = store.branch(root, { ...anchor, question: 'Branch B' }, 'Fixed B context');
+    const other = store.create('Other tree');
+    const owners = [a, b, other];
+    const responses = await Promise.all(owners.map(t => post(t.id, t.title)));
+    assert.equal(app.active.size, 3);
+    assert.equal((await post(a.id, 'Duplicate')).status, 409);
+    const transcripts = responses.map(r => r.text());
+    for (let step = 1; step <= 3; step++) {
+      for (const tree of [b, other, a]) {
+        turns.get(tree.id).emit({ type: 'delta', item: 'same-item-id', text: `${tree.title}:${step} ` });
+        const saved = await get(tree.id);
+        assert.equal(saved.messages.length, 2);
+        assert.equal(saved.messages[0].text, tree.title);
+        assert.equal(saved.messages[1].text, Array.from({ length: step }, (_, i) => `${tree.title}:${i + 1} `).join(''));
+        assert.equal(saved.messages[1].status, 'streaming');
+      }
+    }
+    for (const tree of [b, a, other]) {
+      turns.get(tree.id).emit({ type: 'status', status: 'completed' });
+      turns.get(tree.id).resolve();
+    }
+    const streams = await Promise.all(transcripts);
+    const records = await Promise.all(owners.map(t => get(t.id)));
+    for (let i = 0; i < owners.length; i++) {
+      const events = streams[i].trim().split('\n\n').map(frame => JSON.parse(frame.slice(6)));
+      assert.equal(events[0].id, records[i].messages[1].id);
+      assert.deepEqual(events[0].user, records[i].messages[0]);
+      assert.equal(events.at(-1).status, 'completed');
+      for (const foreign of owners.filter(t => t.id !== owners[i].id)) assert.ok(!streams[i].includes(foreign.title));
+    }
+    assert.equal(app.active.size, 0);
+    assert.equal((await get(root.id)).messages.length, 1);
+    app.stop(); store.close();
+    const reopened = new Store(path);
+    try { for (const record of records) assert.deepEqual(JSON.parse(JSON.stringify(reopened.tree(record.id))), record); }
+    finally { reopened.close(); }
+  } finally {
+    for (const turn of turns.values()) turn.resolve();
+    if (app.server.listening) { app.stop(); store.close(); }
+  }
+});
+
 test('branch validates exact UTF-16 anchors, saves atomically, inherits model and stays isolated after reopen', async () => {
   const path = join(mkdtempSync(join(tmpdir(), 'treetutor-branch-')), 'trees.sqlite');
   const store = new Store(path);

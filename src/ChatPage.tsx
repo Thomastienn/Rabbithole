@@ -7,8 +7,8 @@ import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source } from './TreeOverview';
+import { withTurn, type Message, type Turn } from './turn';
 
-type Message = { id: string; role: string; text: string; status: string };
 type Anchor = { messageId: string; start: number; end: number; text: string };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; messages: Message[]; branch: Branch | null };
@@ -65,6 +65,8 @@ export default function ChatPage() {
   const focusComposer = useRef(false);
   const selected = useRef<string | undefined>(undefined);
   const request = useRef(0);
+  const turns = useRef(new Map<string, Turn>());
+  const checkpoints = useRef(0);
 
   function changeView(showOverview: boolean, id?: string) {
     if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -107,19 +109,21 @@ export default function ChatPage() {
   }
   async function refresh() {
     const data: State = await api('/api/state');
-    setState(data);
+    setState({ ...data, active: [...new Set([...data.active, ...turns.current.keys()])] });
     return data;
   }
   async function select(id: string) {
     selected.current = id;
     const version = ++request.current;
+    const checkpoint = checkpoints.current;
     setError('');
     setTree(undefined);
     setLoading(true);
     setMobileNav(false);
     try {
-      const next: Tree = await api(`/api/trees/${id}`);
-      if (request.current === version) { setTree(next); if (next.branch && !next.messages.length) setDrafts(d => ({ ...d, [id]: d[id] ?? next.branch!.question })); }
+      let next: Tree = await api(`/api/trees/${id}`);
+      if (request.current === version && checkpoints.current !== checkpoint) next = await api(`/api/trees/${id}`);
+      if (request.current === version) { setTree(withTurn(next, turns.current.get(id))); if (next.branch && !next.messages.length) setDrafts(d => ({ ...d, [id]: d[id] ?? next.branch!.question })); }
     } catch (e) { if (request.current === version) setError((e as Error).message); }
     finally { if (request.current === version) setLoading(false); }
   }
@@ -135,9 +139,10 @@ export default function ChatPage() {
     const timer = setInterval(() => {
       void refresh().then(async () => {
         const id = selected.current;
-        if (!id) return;
+        if (!id || turns.current.has(id)) return;
+        const version = request.current, checkpoint = checkpoints.current;
         const next: Tree = await api(`/api/trees/${id}`);
-        if (selected.current === id) setTree(next);
+        if (selected.current === id && request.current === version && checkpoints.current === checkpoint && !turns.current.has(id)) setTree(next);
       }).catch(e => setError(e.message));
     }, 1500);
     return () => clearInterval(timer);
@@ -162,8 +167,11 @@ export default function ChatPage() {
     catch (e) { setError((e as Error).message); }
   }
   async function send(text: string, target = tree) {
-    if (!target || !text.trim() || state?.active.includes(target.id)) return;
+    if (!target || !text.trim() || state?.active.includes(target.id) || turns.current.has(target.id)) return;
     const id = target.id;
+    const turn: Turn = {};
+    turns.current.set(id, turn);
+    ++checkpoints.current;
     setError('');
     setState(s => s && { ...s, active: [...s.active, id] });
     try {
@@ -171,8 +179,7 @@ export default function ChatPage() {
       if (!response.ok) throw new Error((await response.json()).error);
       setDrafts(d => ({ ...d, [id]: '' }));
       const reader = response.body!.getReader(), decoder = new TextDecoder();
-      let buffer = '', reply = '';
-      if (selected.current === id) setTree(t => t && { ...t, messages: [...t.messages, { id: `user-${Date.now()}`, role: 'user', text, status: 'completed' }] });
+      let buffer = '';
       while (true) {
         const result = await reader.read();
         buffer += decoder.decode(result.value, { stream: !result.done });
@@ -182,14 +189,15 @@ export default function ChatPage() {
           if (!frame.startsWith('data: ')) continue;
           const event = JSON.parse(frame.slice(6));
           if (event.type === 'error' && selected.current === id) setError(event.error);
-          if (event.type === 'saved') reply = event.id;
-          if (selected.current === id && (event.type === 'saved' || event.type === 'text' || event.type === 'done')) {
-            setTree(t => {
-              if (!t || t.id !== id) return t;
-              const messages = t.messages.filter(m => m.id !== reply);
-              const old = t.messages.find(m => m.id === reply);
-              return { ...t, messages: [...messages, { id: reply, role: 'assistant', text: event.text ?? old?.text ?? '', status: event.status ?? 'streaming' }] };
-            });
+          if (event.type === 'saved') {
+            turn.user = event.user;
+            turn.reply = { id: event.id, role: 'assistant', text: '', status: 'streaming' };
+          }
+          if (turn.reply && (event.type === 'text' || event.type === 'done')) {
+            turn.reply = { ...turn.reply, text: event.text ?? turn.reply.text, status: event.status ?? turn.reply.status };
+          }
+          if (event.type === 'saved' || event.type === 'text' || event.type === 'done') {
+            setTree(t => t?.id === id ? withTurn(t, turn) : t);
           }
         }
         if (result.done) break;
@@ -197,10 +205,13 @@ export default function ChatPage() {
     } catch (e) { if (selected.current === id) setError((e as Error).message); }
     finally {
       try {
-        await refresh();
         const saved = await api(`/api/trees/${id}`);
-        if (selected.current === id) setTree(saved);
-      } catch { setError('Connection lost. Reload to recover saved messages.'); }
+        if (selected.current === id) { ++checkpoints.current; setTree(saved); }
+      } catch { if (selected.current === id) setError('Connection lost. Reload to recover saved messages.'); }
+      finally {
+        turns.current.delete(id);
+        await refresh().catch(() => { if (selected.current === id) setError('Connection lost. Reload to recover saved messages.'); });
+      }
     }
   }
   async function submitBranch(e: React.FormEvent) {

@@ -72,14 +72,14 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
           if (typeof body.text !== 'string' || !body.text.trim()) return json(res, 400, { error: 'Enter a question.' });
           const controller = new AbortController();
           active.set(id, controller);
-          store.message(id, 'user', body.text, 'completed');
+          const user = store.message(id, 'user', body.text, 'completed');
           const reply = store.message(id, 'assistant', '', 'streaming');
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
           const items = new Map();
           let text = '', status = 'streaming';
           const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': keepalive\n\n'); }, 15000);
-          send({ type: 'saved', id: reply });
+          send({ type: 'saved', id: reply, user: { id: user, role: 'user', text: body.text, status: 'completed' } });
           try {
             await provider.generate(tree, body.text, event => {
               if (event.type === 'delta' || event.type === 'item') {
