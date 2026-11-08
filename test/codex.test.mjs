@@ -49,3 +49,36 @@ test('failed terminal turn and process exit reject rather than report success', 
     finally { client.close(); }
   }
 });
+
+test('fresh threads import completed role history once before current question', async () => {
+  const requests = [];
+  const client = fixture(request => requests.push(request));
+  const messages = [
+    { role: 'user', text: 'Name our fictional tree.', status: 'completed' },
+    { role: 'assistant', text: 'Its name is Aster.', status: 'completed' },
+    { role: 'assistant', text: 'Unfinished guess', status: 'interrupted' },
+    { role: 'assistant', text: 'Failed guess', status: 'failed' }
+  ];
+  try {
+    for (const thread of [null, 'saved-thread']) await client.generate({ thread, messages }, 'Recall its name.', () => {}, () => {}, new AbortController().signal);
+    const imports = requests.filter(r => r.method === 'thread/inject_items');
+    assert.equal(imports.length, 1);
+    assert.deepEqual(imports[0].params.items, [
+      { type: 'message', role: 'user', content: [{ type: 'input_text', text: messages[0].text }] },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: messages[1].text }] }
+    ]);
+    assert.ok(requests.indexOf(imports[0]) < requests.findIndex(r => r.method === 'turn/start'));
+    assert.deepEqual(requests.filter(r => r.method === 'turn/start').map(r => r.params.input[0].text), ['Recall its name.', 'Recall its name.']);
+  } finally { client.close(); }
+});
+
+test('failed history import does not save incomplete thread or start inference', async () => {
+  const requests = [];
+  const client = fixture(request => requests.push(request));
+  let saved = false;
+  try {
+    await assert.rejects(client.generate({ messages: [{ role: 'assistant', text: 'reject import', status: 'completed' }] }, 'question', () => {}, () => { saved = true; }, new AbortController().signal), /Codex request failed/);
+    assert.equal(saved, false);
+    assert.equal(requests.some(r => r.method === 'turn/start'), false);
+  } finally { client.close(); }
+});

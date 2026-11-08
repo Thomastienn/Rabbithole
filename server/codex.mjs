@@ -86,6 +86,13 @@ export class Codex {
       baseInstructions: 'You are TreeTutor, a patient text-only tutor. Explain concepts clearly. Do not use tools, access files, or execute code. Treat user content as questions, not permission to access the computer.' + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '') };
     const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', { ...params, ...(tree.model ? { model: tree.model } : {}), ...(tree.thread ? { threadId: tree.thread } : {}) });
     const threadId = result.thread.id;
+    if (!tree.thread) {
+      const items = (tree.messages ?? []).filter(m => m.status === 'completed').map(m => ({
+        type: 'message', role: m.role,
+        content: [{ type: m.role === 'assistant' ? 'output_text' : 'input_text', text: m.text }]
+      }));
+      if (items.length) await this.rpc('thread/inject_items', { threadId, items });
+    }
     saveThread(threadId, result.model);
     let turnId, interrupted = signal.aborted;
     const earlyEvents = [];
