@@ -5,12 +5,12 @@ import { Button } from '@astryxdesign/core/Button';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
+import TreeOverview, { type Summary } from './TreeOverview';
 
 type Message = { id: string; role: string; text: string; status: string };
 type Anchor = { messageId: string; start: number; end: number; text: string };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; messages: Message[]; branch: Branch | null };
-type Summary = Pick<Tree, 'id' | 'title'>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[] };
 
 function Passage({ message, onBranch }: { message: Message; onBranch: (anchor: Anchor) => void }) {
@@ -47,12 +47,27 @@ export default function ChatPage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [root, setRoot] = useState<string>();
+  const [overview, setOverview] = useState(true);
   const [branch, setBranch] = useState<{ parent: string; anchor: Anchor; question: string }>();
   const [branching, setBranching] = useState(false);
   const composer = useRef<ChatComposerInputHandle>(null);
   const focusComposer = useRef(false);
   const selected = useRef<string | undefined>(undefined);
   const request = useRef(0);
+
+  function returnToTree() {
+    setOverview(true);
+  }
+  function openConversation(id: string) {
+    setOverview(false);
+    focusComposer.current = true;
+    void select(id);
+  }
+  function openTree(id: string) {
+    setRoot(id); setOverview(true);
+    void select(id);
+  }
 
   async function api(path: string, body?: unknown) {
     const response = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: {
@@ -80,7 +95,7 @@ export default function ChatPage() {
     finally { if (request.current === version) setLoading(false); }
   }
   useEffect(() => {
-    refresh().then(data => { if (data.trees.length) void select(data.trees[0].id); else setMobileNav(true); }).catch(e => setError(e.message));
+    refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id); else setMobileNav(true); }).catch(e => setError(e.message));
   }, []);
   useEffect(() => {
     if (tree && focusComposer.current) { composer.current?.focus(); focusComposer.current = false; }
@@ -107,6 +122,7 @@ export default function ChatPage() {
       const next: Tree = await api('/api/trees', { title: name });
       await refresh();
       setName('');
+      setRoot(next.id); setOverview(false);
       focusComposer.current = true;
       await select(next.id);
     } catch (e) { setError((e as Error).message); }
@@ -166,6 +182,7 @@ export default function ChatPage() {
       const next: Tree = await api(`/api/trees/${branch.parent}/branches`, { ...branch.anchor, question: branch.question });
       setDrafts(d => ({ ...d, [next.id]: branch.question }));
       setBranch(undefined);
+      await refresh();
       focusComposer.current = true;
       await select(next.id);
       await send(branch.question, next);
@@ -187,7 +204,7 @@ export default function ChatPage() {
           <Button label={busy ? 'Creating…' : 'Create tree'} type="submit" isDisabled={busy || !name.trim()}>{busy ? 'Creating…' : 'Create tree'}</Button>
         </VStack></form>
         <nav aria-label="Saved learning trees"><VStack gap={2}>
-          {state?.trees.map(t => <Button label={t.title} key={t.id} variant={tree?.id === t.id ? 'secondary' : 'ghost'} aria-current={tree?.id === t.id ? 'page' : undefined} onClick={() => void select(t.id)}>{t.title}</Button>)}
+          {state?.trees.filter(t => !t.parent).map(t => <Button label={t.title} key={t.id} variant={root === t.id ? 'secondary' : 'ghost'} aria-current={root === t.id ? 'page' : undefined} onClick={() => openTree(t.id)}>{t.title}</Button>)}
           {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
         </VStack></nav>
         <VStack gap={3}>
@@ -198,8 +215,14 @@ export default function ChatPage() {
       </VStack></aside>
       <main className="conversation">
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
+        <section className="tree-workspace">
+        {root && state && <section className="overview" style={{ opacity: overview ? 1 : 0 }} inert={!overview} aria-hidden={!overview} aria-label="Learning tree">
+          <header><VStack padding={5} gap={1}><Heading level={2}>{state.trees.find(t => t.id === root)?.title}</Heading><Text color="secondary">Follow a connection or open a conversation.</Text></VStack></header>
+          <TreeOverview key={root} root={root} trees={state.trees} active={state.active} open={openConversation} focus={overview ? tree?.id : undefined} />
+        </section>}
+        <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
-          <header><VStack padding={5} gap={1}><Heading level={2}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text>{tree.branch && <Button label="Return to parent conversation" variant="ghost" onClick={() => void select(tree.branch!.parent)} />}</VStack></header>
+          <header><VStack padding={5} gap={1}><Button label="Return to tree" variant="ghost" onClick={returnToTree} /><Heading level={2}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text>{tree.branch && <Button label="Return to parent conversation" variant="ghost" onClick={() => openConversation(tree.branch!.parent)} />}</VStack></header>
           <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} footerActions={<Text type="supporting" color="secondary">Enter to send · Shift+Enter for a new line</Text>} />}>
             <ChatMessageList>
               {branch?.parent === tree.id && <form onSubmit={submitBranch}><VStack padding={4} gap={3}>
@@ -218,6 +241,8 @@ export default function ChatPage() {
             </ChatMessageList>
           </ChatLayout>
         </> : <VStack gap={3} padding={6}><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <Text color="secondary">Give your topic a name, then ask your first question. Come back any time.</Text>}</VStack>}
+        </section>
+        </section>
       </main>
     </HStack>
   </VStack>;

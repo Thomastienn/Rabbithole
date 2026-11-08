@@ -138,3 +138,33 @@ test('recursive branches compact fixed ancestor context without reading live anc
     assert.equal((await api.get(first.id)).branch.snapshot, 'Luma has 37 branches.');
   } finally { app?.stop(); store.close(); }
 });
+
+test('saved overview metadata preserves nested passage connections without transcripts or inherited context', async () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-overview-')), 'trees.sqlite');
+  let store = new Store(path);
+  try {
+    const root = store.create('Root');
+    const source = store.message(root.id, 'assistant', 'same and same', 'completed');
+    const child = store.branch(root, { messageId: source, start: 9, end: 13, text: 'same', question: 'Child' }, 'Private inherited context');
+    const nestedSource = store.message(child.id, 'assistant', 'Nested passage', 'completed');
+    const nested = store.branch(child, { messageId: nestedSource, start: 0, end: 6, text: 'Nested', question: 'Grandchild' }, 'Other inherited context');
+    const separate = store.create('Separate');
+    const app = createApp({ store, auth: { status: () => ({ connected: false }) }, provider: {} });
+    await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+    let trees;
+    try { ({ trees } = await (await fetch(`http://127.0.0.1:${app.server.address().port}/api/state`)).json()); }
+    finally { app.stop(); }
+    assert.equal(new Set(trees.map(t => t.id)).size, 4);
+    assert.deepEqual(trees.filter(t => !t.parent).map(t => t.id).sort(), [root.id, separate.id].sort());
+    for (const [id, parent, messageId, start, end, passage] of [
+      [child.id, root.id, source, 9, 13, 'same'],
+      [nested.id, child.id, nestedSource, 0, 6, 'Nested'],
+    ]) {
+      const summary = trees.find(t => t.id === id);
+      assert.deepEqual([summary.parent, summary.messageId, summary.start, summary.end, summary.passage], [parent, messageId, start, end, passage]);
+    }
+    assert.doesNotMatch(JSON.stringify(trees), /Private inherited context|Other inherited context|messages|snapshot/);
+    store.close(); store = new Store(path);
+    assert.deepEqual(JSON.parse(JSON.stringify(store.list())), trees);
+  } finally { store.close(); }
+});

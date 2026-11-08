@@ -18,7 +18,7 @@ export class Store {
     if (!columns.includes('provider')) this.db.exec("ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'");
     if (!columns.includes('model')) this.db.exec('ALTER TABLE trees ADD COLUMN model TEXT');
   }
-  list() { return this.db.prepare('SELECT id,title,created FROM trees ORDER BY created DESC,rowid DESC').all(); }
+  list() { return this.db.prepare('SELECT t.id,t.title,t.created,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all(); }
   tree(id) {
     const tree = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id);
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
