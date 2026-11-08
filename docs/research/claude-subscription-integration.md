@@ -1,6 +1,6 @@
 ## Claude Code Subscription Integration
 
-**Decision: Proceed with implementation.**
+**Current scope (2026-11-08): Deferred.** The user selected Codex-only for the current release. Do not implement Claude, request Claude login, or run Claude/cross-provider checks for this release. The route decision below is retained for later work; the former proceed instruction does not override this deferral.
 
 TreeTutor will follow the established DeepTutor integration pattern using the official, unmodified Claude Code binary.
 
@@ -14,4 +14,4 @@ TreeTutor will follow the established DeepTutor integration pattern using the of
 
 **Compliance:** Anthropic explicitly permits users to authenticate with the unmodified Claude Code binary, but third-party product restrictions still apply. DeepTutor's implementation does not establish explicit approval for TreeTutor.
 
-**Task status:** Unblock Claude implementation and runtime testing. Retain provider eligibility clarification as a separate, non-blocking risk.
+**Task status:** Claude implementation, native-login prerequisites, runtime tests, cross-provider switching and eligibility follow-up are deferred in Beads. They do not block the Codex-only release. Resume only when Claude work is requested.
