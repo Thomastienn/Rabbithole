@@ -6,12 +6,31 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Codex } from '../server/codex.mjs';
 
-const fixture = () => new Codex({ token: async () => 'synthetic-token' }, mkdtempSync(join(tmpdir(), 'treetutor-codex-')), (_command, args, options) => {
+const fixture = (inspect = () => {}) => new Codex({ token: async () => 'synthetic-token' }, mkdtempSync(join(tmpdir(), 'treetutor-codex-')), (_command, args, options) => {
   assert.ok(args.includes('model_provider="openai_chatgpt_plan"'));
   assert.equal(options.env.OPENAI_API_KEY, undefined);
   assert.equal(options.env.ACCESS_TOKEN, 'synthetic-token');
   assert.ok(options.env.CODEX_HOME.endsWith('/codex'));
-  return spawn(process.execPath, ['test/protocol-fixture.mjs'], { ...options, cwd: process.cwd() });
+  const child = spawn(process.execPath, ['test/protocol-fixture.mjs'], { ...options, cwd: process.cwd() });
+  const write = child.stdin.write.bind(child.stdin);
+  child.stdin.write = data => { inspect(JSON.parse(data)); return write(data); };
+  return child;
+});
+test('child pins inherited model and supplies fixed context on new and resumed threads', async () => {
+  const requests = [];
+  const client = fixture(request => requests.push(request));
+  const branch = { snapshot: 'Luma has 37 branches.', text: 'same phrase' };
+  try {
+    for (const thread of [null, 'saved-child']) await client.generate({ thread, model: 'fixture-model', branch }, 'Explain this', () => {}, () => {}, new AbortController().signal);
+    const threads = requests.filter(r => r.method === 'thread/start' || r.method === 'thread/resume');
+    assert.equal(threads.length, 2);
+    for (const { params } of threads) {
+      assert.equal(params.model, 'fixture-model');
+      assert.match(params.baseInstructions, /Luma has 37 branches/);
+      assert.match(params.baseInstructions, /same phrase/);
+    }
+    assert.deepEqual(requests.filter(r => r.method === 'turn/start').map(r => r.params.input[0].text), ['Explain this', 'Explain this']);
+  } finally { client.close(); }
 });
 test('stdio stream routes by thread, final item replaces partial, saved thread resumes', async () => {
   const client = fixture();

@@ -1,6 +1,6 @@
 # TreeTutor
 
-Local saved learning trees with a Codex root conversation. Requires Node 24+ and a user-installed `codex` CLI (protocol checked with 0.167.0).
+Local saved learning trees with Codex root and focused child conversations. Requires Node 24+ and a user-installed `codex` CLI (protocol checked with 0.167.0).
 
 ```sh
 npm ci
@@ -16,7 +16,7 @@ Messages save before inference; partial replies checkpoint as text arrives. Rest
 
 The app serves built assets and binds only to `127.0.0.1`; Host, Origin and CSRF validation protect local operations. OAuth callback accepts cross-site navigation only with one-time validated state/PKCE. Credentials never go to browser JavaScript. Font files are bundled locally. Inference sends conversation content to OpenAI. The tutor uses an isolated Codex configuration with shell, patch, JS, code-mode, app and web-search features disabled, read-only sandbox and no tool approval handler. This configuration is not an audited operating-system isolation boundary.
 
-Subscription integration follows official [SIWC sign-in](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [token renewal](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions#refreshing-tokens) and [Codex app-server](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server) guidance. The installed protocol schema is experimental. Claude eligibility remains unresolved; branching, canvas navigation and model/provider switching are later Beads tasks.
+Subscription integration follows official [SIWC sign-in](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [token renewal](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions#refreshing-tokens) and [Codex app-server](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server) guidance. The installed protocol schema is experimental. Claude eligibility remains unresolved; recursive ancestor context, canvas navigation and model/provider switching are later Beads tasks.
 
 ```sh
 npm test
@@ -24,4 +24,6 @@ npm run build
 npx astryx doctor --built dist
 ```
 
-See `docs/verification/root-chat.md` for evidence and remaining live verification.
+Select text in a completed tutor reply and choose **Ask about selection**, or use **Select passage** for native keyboard selection. Review the passage, enter a question, then create a focused chat. The child inherits the parent model and a fixed compact context snapshot. Compaction sends relevant parent history to OpenAI on submission. Failed preparation keeps your edited question available for retry. Saved child chats reopen from the same navigation; **Return to parent conversation** restores the parent.
+
+See `docs/verification/root-chat.md` and `docs/verification/selected-passage.md` for verification evidence.

@@ -5,7 +5,7 @@ header { border-bottom: 1px solid var(--color-border); }
 .trees { flex: 0 0 18rem; min-width: 0; overflow: auto; border-right: 1px solid var(--color-border); background: var(--color-background-body); }
 .conversation { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .conversation > .astryx-chat-layout { flex: 1; min-height: 0; overflow: auto; }
-.trees button { white-space: normal; overflow-wrap: anywhere; text-align: start; }
+.trees button { height: auto; min-height: var(--spacing-8); padding-block: var(--spacing-2); white-space: normal; overflow-wrap: anywhere; text-align: start; }
 section[role=alert] { background: var(--color-background-body); }
 ::selection { background: var(--color-background-blue); color: var(--color-text-primary); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }

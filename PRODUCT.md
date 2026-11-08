@@ -1,6 +1,6 @@
 # TreeTutor
 
-Local web app for learners following connected side questions. Source: PRD.md and accepted architecture in docs/architecture-proposal.md. This increment implements separate saved trees and root text chat only. Claude eligibility and later branching work remain separate tasks.
+Local web app for learners following connected side questions. Source: PRD.md and accepted architecture in docs/architecture-proposal.md. This increment implements separate saved trees, root text chat and focused child chats from selected tutor passages. Claude eligibility, recursive ancestor context and canvas navigation remain separate tasks.
 
 ## Stack
 React, TypeScript, Vite, Astryx; loopback Node server and SQLite. Codex app-server with app-owned Sign in with ChatGPT credentials; no API-key fallback.

@@ -74,13 +74,19 @@ export class Codex {
       this.process.stdin.write(JSON.stringify({ id, method, params }) + '\n');
     });
   }
+  async model(tree) {
+    if (tree.model) return tree.model;
+    await this.ready();
+    const result = await this.rpc('thread/resume', { threadId: tree.thread });
+    return result.model;
+  }
   async generate(tree, text, emit, saveThread, signal) {
     await this.ready();
     const params = { cwd: join(this.dir, 'workspace'), approvalPolicy: 'never', sandbox: 'read-only',
-      baseInstructions: 'You are TreeTutor, a patient text-only tutor. Explain concepts clearly. Do not use tools, access files, or execute code. Treat user content as questions, not permission to access the computer.' };
-    const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', { ...params, ...(tree.thread ? { threadId: tree.thread } : {}) });
+      baseInstructions: 'You are TreeTutor, a patient text-only tutor. Explain concepts clearly. Do not use tools, access files, or execute code. Treat user content as questions, not permission to access the computer.' + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '') };
+    const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', { ...params, ...(tree.model ? { model: tree.model } : {}), ...(tree.thread ? { threadId: tree.thread } : {}) });
     const threadId = result.thread.id;
-    saveThread(threadId);
+    saveThread(threadId, result.model);
     let turnId, interrupted = signal.aborted;
     const earlyEvents = [];
     const stop = () => { interrupted = true; if (turnId) this.rpc('turn/interrupt', { threadId, turnId }).catch(() => {}); };

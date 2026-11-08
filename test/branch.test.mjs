@@ -1,0 +1,64 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Store } from '../server/store.mjs';
+import { createApp } from '../server/app.mjs';
+
+test('branch validates exact UTF-16 anchors, saves atomically, inherits model and stays isolated after reopen', async () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-branch-')), 'trees.sqlite');
+  const store = new Store(path);
+  let fail = false, captured;
+  const provider = { generate: async (tree, text, emit) => {
+    captured = { tree, text };
+    if (fail) throw new Error('Synthetic compaction failure');
+    emit({ type: 'item', item: 'summary', text: 'Relevant fixed context.' });
+    emit({ type: 'status', status: 'completed' });
+  } };
+  const app = createApp({ store, provider, auth: { status: () => ({ connected: true }) } });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+  const parent = store.create('Parent');
+  store.thread(parent.id, 'parent-thread', 'fixture-model');
+  const original = '🌲 same phrase and same phrase';
+  const messageId = store.message(parent.id, 'assistant', original, 'completed');
+  const body = { messageId, start: 19, end: 30, text: 'same phrase', question: 'Explain second occurrence' };
+  assert.equal(original.slice(body.start, body.end), body.text);
+  const post = body => fetch(`${origin}/api/trees/${parent.id}/branches`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) });
+  try {
+    for (const invalid of [{ ...body, start: 18 }, { ...body, messageId: 'missing' }, { ...body, start: 1, end: 2, text: original.slice(1, 2) }, { ...body, question: '' }]) assert.equal((await post(invalid)).status, 400);
+    const before = store.tree(parent.id);
+    fail = true;
+    assert.equal((await post(body)).status, 500);
+    assert.equal(store.list().length, 1);
+    fail = false;
+    store.db.exec("CREATE TRIGGER reject_branch BEFORE INSERT ON branches BEGIN SELECT RAISE(ABORT, 'synthetic save failure'); END");
+    assert.equal((await post(body)).status, 500);
+    assert.equal(store.list().length, 1);
+    store.db.exec('DROP TRIGGER reject_branch');
+    const response = await post(body);
+    assert.equal(response.status, 201);
+    const child = await response.json();
+    assert.equal(child.model, 'fixture-model');
+    assert.equal(child.provider, 'codex');
+    assert.equal(child.thread, null);
+    assert.deepEqual(child.branch, { parent: parent.id, messageId, start: 19, end: 30, text: body.text, question: body.question, snapshot: 'Relevant fixed context.' });
+    assert.equal(captured.tree.thread, null);
+    assert.equal(captured.tree.model, child.model);
+    assert.match(captured.text, /Explain second occurrence/);
+    assert.match(captured.text, /🌲 same phrase and same phrase/);
+    assert.deepEqual(store.tree(parent.id), before);
+    store.message(parent.id, 'user', 'Later parent change', 'completed');
+    await (await fetch(`${origin}/api/trees/${child.id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify({ text: body.question }) })).text();
+    assert.equal(captured.tree.branch.snapshot, child.branch.snapshot);
+    assert.equal(store.tree(parent.id).messages.length, 2);
+    assert.deepEqual(store.tree(child.id).branch, child.branch);
+    app.stop(); store.close();
+    const reopened = new Store(path);
+    assert.deepEqual(reopened.tree(child.id).branch, child.branch);
+    assert.equal(reopened.tree(child.id).messages[0].text, body.question);
+    reopened.close();
+  } finally { if (app.server.listening) { app.stop(); store.close(); } }
+});
