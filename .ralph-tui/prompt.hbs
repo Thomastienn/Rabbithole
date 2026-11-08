@@ -1,0 +1,39 @@
+## Current issue
+ID: {{taskId}}
+Title: {{taskTitle}}
+{{taskDescription}}
+
+## Acceptance criteria
+{{acceptanceCriteria}}
+
+{{#if dependsOn}}Prerequisites: {{dependsOn}}{{/if}}
+
+## Context
+Read PRD.md, AGENTS.md, `bd show {{taskId}} --json`, and relevant existing code.
+For Claude, follow the current decision in
+docs/research/claude-subscription-integration.md: proceed with the unmodified
+user-installed CLI and native user sign-in. Eligibility clarification is a
+non-blocking follow-up, not an implementation prerequisite.
+{{recentProgress}}
+
+## Workflow
+- Work only on this issue. Preserve unrelated changes and existing approval gates.
+- Use the existing implementation; do not rebuild completed behavior.
+- Verify the issue's acceptance criteria. Fixture checks do not prove live provider behavior.
+- For recoverable failures, diagnose and fix the cause before ending the iteration.
+- If more work remains, append exact progress and the next action to
+  .ralph-tui/progress.md. Leave the issue unfinished; Ralph will retry it.
+- If blocked by a user decision, missing permission, or an external prerequisite,
+  record the precise blocker with `bd update {{taskId}} --append-notes "..." --status blocked`.
+  Do not signal completion or repeatedly retry an unavailable prerequisite.
+- Use local Beads commands only. Do not push, pull, or run bd sync.
+{{#if config.autoCommit}}
+- Do not create Git commits; Ralph commits completed work automatically.
+{{else}}
+- Leave changes uncommitted for review. Do not create Git commits or stage
+  unrelated work. Do not push or run remote sync.
+{{/if}}
+- Append verified results to .ralph-tui/progress.md.
+- Only after all acceptance criteria pass, close this issue with
+  `bd close {{taskId}} --reason "Verified result"` and emit exactly:
+  <promise>COMPLETE</promise>

@@ -1,0 +1,19 @@
+configVersion = "2.1"
+maxIterations = 10
+agent = "codex"
+tracker = "treetutor-beads"
+autoCommit = false
+defaultAgent = "codex"
+prompt_template = ".ralph-tui/prompt.hbs"
+
+[errorHandling]
+strategy = "retry"
+maxRetries = 2
+retryDelayMs = 2000
+
+[agentOptions]
+fullAuto = false
+
+[trackerOptions]
+beadsDir = ".beads"
+labels = ""

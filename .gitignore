@@ -10,3 +10,10 @@
 node_modules/
 dist/
 .impeccable/review/
+
+# Ralph run state and logs; keep workflow configuration and checks tracked.
+.ralph-tui/iterations/
+.ralph-tui/reports/
+.ralph-tui/ralph.lock
+.ralph-tui/session*.json
+.ralph-tui/progress.md
