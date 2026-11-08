@@ -5,13 +5,15 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
+import { Selector } from '@astryxdesign/core/Selector';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source } from './TreeOverview';
 import { withTurn, type Message, type Turn } from './turn';
 
 type Anchor = { messageId: string; start: number; end: number; text: string };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
-type Tree = { id: string; title: string; messages: Message[]; branch: Branch | null };
+type Tree = { id: string; title: string; model: string | null; messages: Message[]; branch: Branch | null };
+type Model = { model: string; label: string; isDefault: boolean };
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[] };
 
 function Passage({ message, onBranch, reveal }: { message: Message; onBranch: (anchor: Anchor) => void; reveal?: Source }) {
@@ -53,6 +55,9 @@ export default function ChatPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [models, setModels] = useState<Model[]>();
+  const [modelError, setModelError] = useState('');
+  const [savingModel, setSavingModel] = useState<string>();
   const [mobileNav, setMobileNav] = useState(false);
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
@@ -130,6 +135,23 @@ export default function ChatPage() {
   useEffect(() => {
     refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id); else setMobileNav(true); }).catch(e => setError(e.message));
   }, []);
+  async function loadModels() {
+    setModelError('');
+    try { setModels((await api('/api/models')).models); }
+    catch (e) { setModelError((e as Error).message); }
+  }
+  useEffect(() => { if (state?.auth.connected) void loadModels(); }, [state?.auth.connected]);
+  async function changeModel(model: string) {
+    if (!tree || savingModel) return;
+    const id = tree.id;
+    setSavingModel(id); setError('');
+    try {
+      const saved = await api(`/api/trees/${id}/model`, { model });
+      ++checkpoints.current;
+      setTree(t => t?.id === id ? { ...t, model: saved.model } : t);
+    } catch (e) { if (selected.current === id) setError((e as Error).message); }
+    finally { setSavingModel(undefined); }
+  }
   useEffect(() => {
     if (!overview && tree && focusComposer.current) { composer.current?.focus(); focusComposer.current = false; }
   }, [tree?.id, overview]);
@@ -167,7 +189,7 @@ export default function ChatPage() {
     catch (e) { setError((e as Error).message); }
   }
   async function send(text: string, target = tree) {
-    if (!target || !text.trim() || state?.active.includes(target.id) || turns.current.has(target.id)) return;
+    if (!target || !text.trim() || savingModel === target.id || state?.active.includes(target.id) || turns.current.has(target.id)) return;
     const id = target.id;
     const turn: Turn = {};
     turns.current.set(id, turn);
@@ -216,7 +238,7 @@ export default function ChatPage() {
   }
   async function submitBranch(e: React.FormEvent) {
     e.preventDefault();
-    if (!branch || branching || !branch.question.trim()) return;
+    if (!branch || branching || savingModel === branch.parent || !branch.question.trim()) return;
     setBranching(true); setError('');
     try {
       const next: Tree = await api(`/api/trees/${branch.parent}/branches`, { ...branch.anchor, question: branch.question });
@@ -266,6 +288,14 @@ export default function ChatPage() {
         <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header><VStack padding={5} gap={1}><Button label="Return to tree" variant="ghost" onClick={returnToTree} /><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text>{tree.branch && <Button label="Return to parent conversation" variant="ghost" onClick={() => openConversation(tree.branch!.parent)} />}</VStack></header>
+          <VStack padding={4} gap={2}>
+            <Selector label="Model for next reply" size="sm" variant="secondary" value={tree.model ?? ''} placeholder={tree.model ?? 'Provider default'} options={[
+              ...(tree.model && !models?.some(m => m.model === tree.model) ? [{ value: tree.model, label: `${tree.model} (saved)`, disabled: true }] : []),
+              ...(models ?? []).map(m => ({ value: m.model, label: m.label }))
+            ]} onChange={model => void changeModel(model)} isDisabled={active || !!savingModel || !models?.length} disabledMessage={active ? 'Wait for this reply to finish or stop it before changing models.' : savingModel ? 'Saving model selection.' : !models?.length ? 'Connect ChatGPT and load its model catalog.' : undefined} isLoading={savingModel === tree.id} description="Applies to your next reply. Model access is checked when it responds." />
+            {modelError && <Text role="alert">{modelError}</Text>}
+            {(modelError || (models && !models.length)) && <Button label="Retry loading models" variant="ghost" onClick={() => void loadModels()} />}
+          </VStack>
           {source && !validSource && <Text role="alert">Saved source passage is unavailable. No replacement passage was selected.</Text>}
           <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} footerActions={<Text type="supporting" color="secondary">Enter to send · Shift+Enter for a new line</Text>} />}>
             <ChatMessageList>

@@ -20,6 +20,10 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
     const url = new URL(req.url, origin);
     try {
       if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()] });
+      if (req.method === 'GET' && url.pathname === '/api/models') {
+        try { return json(res, 200, { models: await provider.models() }); }
+        catch { return json(res, 502, { error: 'Could not load models. Reconnect ChatGPT or retry.' }); }
+      }
       if (req.method === 'GET' && url.pathname === '/auth/callback') {
         try { await auth.callback(url); res.writeHead(303, { Location: '/' }); res.end(); }
         catch { res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('ChatGPT sign-in failed or was declined. Return to TreeTutor and continue with ChatGPT to retry. Your saved trees are available.'); }
@@ -37,7 +41,7 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
           if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200) return json(res, 400, { error: 'Enter a tree name (up to 200 characters).' });
           return json(res, 201, store.create(body.title.trim()));
         }
-        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position)$/);
+        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|model)$/);
         if (match) {
           const [, id, action] = match;
           const tree = store.tree(id);
@@ -49,6 +53,18 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
           }
           if (action === 'stop') { active.get(id)?.abort(); return json(res, 200, {}); }
           if (active.has(id)) return json(res, 409, { error: 'This tree is already responding. Stop it or wait.' });
+          if (action === 'model') {
+            const controller = new AbortController();
+            active.set(id, controller);
+            try {
+              const models = await provider.models();
+              if (typeof body.model !== 'string' || !models.some(m => m.model === body.model)) return json(res, 400, { error: 'Choose a model from the current ChatGPT catalog.' });
+              if (controller.signal.aborted) return json(res, 409, { error: 'Model change cancelled. Your previous selection is saved.' });
+              store.model(id, body.model);
+              return json(res, 200, { model: body.model });
+            } catch { return json(res, 502, { error: 'Model change failed. Your previous selection is saved. Reconnect ChatGPT or retry.' }); }
+            finally { active.delete(id); }
+          }
           if (action === 'branches') {
             const source = tree.messages.find(m => m.id === body.messageId && m.role === 'assistant' && m.status === 'completed');
             const boundary = n => !(n > 0 && n < (source?.text.length ?? 0) && /[\uD800-\uDBFF]/.test(source.text[n - 1]) && /[\uDC00-\uDFFF]/.test(source.text[n]));
@@ -85,6 +101,7 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
             clearInterval(heartbeat);
             controller.signal.removeEventListener('abort', interrupt);
             store.update(reply, text, status);
+            if (status === 'completed' || status === 'failed') store.finishModel(id, status === 'completed');
             if (active.get(id) === controller) active.delete(id);
             send({ type: 'done', status });
             res.end();
@@ -107,7 +124,7 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
           } catch (error) {
             if (!finished) {
               status = 'failed';
-              send({ type: 'error', error: error.message });
+              send({ type: 'error', error: error.message + ' The last working model selection will be restored.' });
             }
           } finally {
             finish();

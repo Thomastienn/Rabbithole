@@ -4,11 +4,16 @@ createInterface({ input: process.stdin }).on('line', line => {
   const { id, method, params } = JSON.parse(line);
   if (!id) return;
   if (method === 'initialize') send({ id, result: {} });
+  if (method === 'model/list') send({ id, result: params.cursor ? {
+    data: [{ model: 'fixture-alternate', displayName: 'Alternate', inputModalities: ['text'] }], nextCursor: null
+  } : {
+    data: [{ model: 'fixture-model', displayName: 'Original', isDefault: true }, { model: 'hidden', hidden: true }, { model: 'image-only', inputModalities: ['image'] }], nextCursor: 'page-two'
+  } });
   if (method === 'thread/inject_items') {
     if (params.items.some(item => item.content[0].text === 'reject import')) send({ id, error: { code: -32602, message: 'Import rejected' } });
     else send({ id, result: {} });
   }
-  if (method === 'thread/start' || method === 'thread/resume') send({ id, result: { thread: { id: params.threadId ?? 'thread-fixture' } } });
+  if (method === 'thread/start' || method === 'thread/resume') send({ id, result: { thread: { id: params.threadId ?? 'thread-fixture' }, model: method === 'thread/resume' ? 'fixture-model' : params.model ?? 'fixture-model' } });
   if (method === 'turn/start') {
     const text = params.input[0].text;
     if (text === 'disconnect') return process.exit(1);

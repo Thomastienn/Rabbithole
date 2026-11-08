@@ -80,6 +80,17 @@ export class Codex {
     const result = await this.rpc('thread/resume', { threadId: tree.thread });
     return result.model;
   }
+  async models() {
+    await this.ready();
+    const models = [];
+    let cursor;
+    do {
+      const page = await this.rpc('model/list', { limit: 100, includeHidden: false, ...(cursor ? { cursor } : {}) });
+      models.push(...page.data.filter(m => !m.hidden && (!m.inputModalities || m.inputModalities.includes('text'))).map(m => ({ model: m.model, label: m.displayName, isDefault: m.isDefault })));
+      cursor = page.nextCursor;
+    } while (cursor);
+    return models;
+  }
   async generate(tree, text, emit, saveThread, signal) {
     await this.ready();
     const params = { cwd: join(this.dir, 'workspace'), approvalPolicy: 'never', sandbox: 'read-only',
@@ -93,7 +104,7 @@ export class Codex {
       }));
       if (items.length) await this.rpc('thread/inject_items', { threadId, items });
     }
-    saveThread(threadId, result.model);
+    saveThread(threadId, tree.model ?? result.model);
     let turnId, interrupted = signal.aborted;
     const earlyEvents = [];
     const stop = () => { interrupted = true; if (turnId) this.rpc('turn/interrupt', { threadId, turnId }).catch(() => {}); };
@@ -116,7 +127,7 @@ export class Codex {
           }
         };
         this.listeners.add(listener);
-        this.rpc('turn/start', { threadId, input: [{ type: 'text', text, text_elements: [] }] }).then(result => {
+        this.rpc('turn/start', { threadId, ...(tree.model ? { model: tree.model } : {}), input: [{ type: 'text', text, text_elements: [] }] }).then(result => {
           turnId = result.turn.id;
           for (const event of earlyEvents) listener(event);
           earlyEvents.length = 0;

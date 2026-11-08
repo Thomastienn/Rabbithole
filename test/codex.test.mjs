@@ -16,6 +16,24 @@ const fixture = (inspect = () => {}) => new Codex({ token: async () => 'syntheti
   child.stdin.write = data => { inspect(JSON.parse(data)); return write(data); };
   return child;
 });
+test('model catalog follows pagination, excludes hidden and non-text entries; changed model resumes same history', async () => {
+  const requests = [];
+  const client = fixture(r => requests.push(r));
+  try {
+    assert.deepEqual((await client.models()).map(m => m.model), ['fixture-model', 'fixture-alternate']);
+    assert.deepEqual(requests.filter(r => r.method === 'model/list').map(r => r.params.cursor), [undefined, 'page-two']);
+    const tree = { thread: 'saved-history', model: 'fixture-alternate', branch: { snapshot: 'Exactly 47 trees.', text: 'grove' } };
+    let savedModel;
+    await client.generate(tree, 'Recall our discussion', () => {}, (_thread, model) => { savedModel = model; }, new AbortController().signal);
+    assert.equal(savedModel, tree.model);
+    const resume = requests.find(r => r.method === 'thread/resume');
+    assert.equal(resume.params.threadId, tree.thread);
+    assert.equal(resume.params.model, tree.model);
+    assert.match(resume.params.baseInstructions, /Exactly 47 trees/);
+    assert.equal(requests.some(r => r.method === 'thread/start' || r.method === 'thread/inject_items'), false);
+    assert.equal(requests.find(r => r.method === 'turn/start').params.model, tree.model);
+  } finally { client.close(); }
+});
 test('child pins inherited model and supplies fixed context on new and resumed threads', async () => {
   const requests = [];
   const client = fixture(request => requests.push(request));
