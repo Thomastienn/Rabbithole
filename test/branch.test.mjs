@@ -62,3 +62,79 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
     reopened.close();
   } finally { if (app.server.listening) { app.stop(); store.close(); } }
 });
+
+test('recursive branches compact fixed ancestor context without reading live ancestors or descendants', async () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-nested-')), 'trees.sqlite');
+  let store = new Store(path), app;
+  const calls = [];
+  const provider = { generate: async (tree, text, emit) => {
+    calls.push({ tree, text });
+    emit({ type: 'item', item: 'answer', text: tree.id ? 'A focused answer.' : 'Luma has 37 branches.' });
+    emit({ type: 'status', status: 'completed' });
+  } };
+  const start = async () => {
+    app = createApp({ store, provider, auth: { status: () => ({ connected: true }) } });
+    await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${app.server.address().port}`;
+    const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+    return {
+      get: async id => (await fetch(`${origin}/api/trees/${id}`)).json(),
+      post: (route, body) => fetch(`${origin}/api/trees${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) }),
+    };
+  };
+  try {
+    let api = await start();
+    const root = await (await api.post('', { title: 'Root' })).json();
+    store.thread(root.id, 'root-thread', 'fixture-model');
+    const source = store.message(root.id, 'assistant', 'Luma has 37 branches.', 'completed');
+    const anchor = { messageId: source, start: 0, end: 4, text: 'Luma', question: 'Explain Luma' };
+    const rootBefore = await api.get(root.id);
+    const first = await (await api.post(`/${root.id}/branches`, anchor)).json();
+    assert.deepEqual(await api.get(root.id), rootBefore);
+    const snapshots = [first.branch];
+    store.message(root.id, 'user', 'Later root change: Nova has 99 branches.', 'completed');
+    let parent = first;
+    // Reuse identical branch/chat endpoints beyond grandchild depth.
+    for (let depth = 0; depth < 6; depth++) {
+      await (await api.post(`/${parent.id}/messages`, { text: parent.branch.question })).text();
+      parent = await api.get(parent.id);
+      const message = parent.messages.at(-1);
+      const body = { messageId: message.id, start: 2, end: 9, text: 'focused', question: `Explain focused at depth ${depth + 2}` };
+      const before = await api.get(parent.id);
+      const response = await api.post(`/${parent.id}/branches`, body);
+      assert.equal(response.status, 201);
+      const child = await response.json();
+      const call = calls.at(-1);
+      const context = JSON.parse(call.text.slice(call.text.indexOf('\n') + 1));
+      assert.deepEqual(context.inheritedContext, { snapshot: 'Luma has 37 branches.', selectedPassage: parent.branch.text, question: parent.branch.question });
+      assert.deepEqual(context.messages, parent.messages);
+      assert.equal(context.passage, body.text);
+      assert.equal(context.question, body.question);
+      assert.doesNotMatch(call.text, /Later root change|Nova has 99 branches|root-thread/);
+      assert.equal(call.tree.thread, null);
+      assert.equal(child.model, 'fixture-model');
+      assert.equal(child.branch.snapshot, 'Luma has 37 branches.');
+      assert.deepEqual(await api.get(parent.id), before);
+      snapshots.push(child.branch);
+      parent = child;
+    }
+    // Descendant turns never become input for a root turn.
+    await (await api.post(`/${root.id}/messages`, { text: 'Continue root only' })).text();
+    assert.equal(calls.at(-1).tree.branch, null);
+    assert.doesNotMatch(JSON.stringify(calls.at(-1)), /focused|Explain Luma/);
+    const records = await Promise.all(store.list().map(t => api.get(t.id)));
+    app.stop(); store.close();
+    store = new Store(path);
+    api = await start();
+    for (const record of records) assert.deepEqual(await api.get(record.id), record);
+    assert.deepEqual(records.filter(t => t.branch).map(t => t.branch).reverse(), snapshots);
+    // Continue chatting and nesting after restart using the same endpoints.
+    await (await api.post(`/${parent.id}/messages`, { text: parent.branch.question })).text();
+    assert.deepEqual(calls.at(-1).tree.branch, parent.branch);
+    const saved = await api.get(parent.id);
+    const response = await api.post(`/${saved.id}/branches`, { messageId: saved.messages.at(-1).id, start: 2, end: 9, text: 'focused', question: 'Continue nesting' });
+    assert.equal(response.status, 201);
+    assert.equal((await response.json()).branch.parent, saved.id);
+    assert.equal((await api.get(first.id)).branch.snapshot, 'Luma has 37 branches.');
+  } finally { app?.stop(); store.close(); }
+});
