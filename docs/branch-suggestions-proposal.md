@@ -1,8 +1,8 @@
 # Automatic branch suggestions
 
-Decision: `TreeTutor-vm4.4`. Status: draft for agreement.
+Decision: `TreeTutor-vm4.4`. Status: selected design.
 
-The user agreed to draft up to three optional passage suggestions after a completed tutor reply, opening an editable question before branch submission and retaining manual selection. The details below remain proposed. This is a later increment; PRD.md remains the product authority and app implementation is not authorized. This document defines behavior, not visual styling or a component system.
+The user delegated the next Beads task and its recommendations with “Do the next Beads task. Do what you recommends.” On 2026-11-07 (America/Edmonton), that delegation selects the recommended behavior below: zero to three optional passage suggestions after a saved completed reply, an editable question before branch submission, and retained manual selection. The decision includes the additional inference cost, persistent dismissals, accepted-branch reuse and failure/restart rules. This is a later increment; PRD.md remains the product authority and implementation remains a separate task. This document defines behavior, not visual styling or a component system.
 
 ## Learner flow and trigger
 
@@ -16,7 +16,7 @@ Use the conversation's selected approved provider/model captured at reply comple
 
 Show a compact labeled group, “Explore further,” after its source response. Each suggestion contains a short exact source passage and an editable proposed question. Suggestions are optional reading aids; their presence does not mean the learner has misunderstood something. Do not insert popups, auto-open panels or highlight passages across the whole answer.
 
-| Action or state | Proposed behavior |
+| Action or state | Selected behavior |
 | --- | --- |
 | Suggestions pending | Keep the answer and manual branching usable. Reserve no blocking dialog and announce no repeated progress updates. |
 | Suggestions ready | Show up to three distinct candidates associated with this message. Announce availability once, politely, without reading every question aloud. |
@@ -30,13 +30,13 @@ Show a compact labeled group, “Explore further,” after its source response. 
 | Generation fails or response is invalid | Keep manual branching usable; show a brief nonblocking “Suggestions unavailable” status. Do not automatically retry or publish invalid candidates. |
 | App stops during generation | Do not restart inference automatically on reopening. Retain completed saved suggestions; unfinished work stays unavailable. |
 
-Suggestion controls use normal Tab navigation and Enter/Space activation, visible focus and descriptive accessible names. Escape closes the question form before any return-to-overview action. Canvas handlers must not intercept question editing. Exact shortcut choices follow the architecture decision if agreed; no extra global shortcut is introduced here.
+Suggestion controls use normal Tab navigation and Enter/Space activation, visible focus and descriptive accessible names. Escape closes the question form before any return-to-overview action. Canvas handlers must not intercept question editing. Exact shortcut choices follow the accepted architecture decision; no extra global shortcut is introduced here.
 
 Persist completed candidates, dismissals and accepted child references with their source message. A failed save must not report acceptance or dismissal as saved. Reopening restores those states without new inference. On branch-creation failure, preserve the edited question for retry and avoid marking the candidate accepted until the child is saved. Late events cannot attach results to another message or revive dismissed candidates.
 
 ## Candidate and context rules
 
-Each candidate identifies one contiguous passage in the immutable source answer, with message ID, exact text and start/end offsets. Follow the architecture proposal's canonical-text indexing if agreed. Validate that the offsets match the exact passage; repeated words must resolve to one occurrence, and rendered Markdown must map to the same canonical source used by manual selection. Discard mismatches rather than guess an anchor.
+Each candidate identifies one contiguous passage in the immutable source answer, with message ID, exact text and start/end offsets. Follow the accepted architecture decision's canonical-text indexing. Validate that the offsets match the exact passage; repeated words must resolve to one occurrence, and rendered Markdown must map to the same canonical source used by manual selection. Discard mismatches rather than guess an anchor.
 
 Prefer a concept needed to understand this particular explanation, with a short question that makes sense alongside the passage. Do not claim to know the learner's ability. Skip duplicate or overlapping candidates, tangential topics and questions already answered adequately in the current reply. Return fewer than three when appropriate; filling a quota is not a quality goal.
 
@@ -56,7 +56,7 @@ No branch, summary request, canvas box or edge is created merely because a sugge
 
 | Option | Tradeoff |
 | --- | --- |
-| After completed replies, recommended draft | Makes useful entry points discoverable without interrupting reading; adds inference work and needs strict quality filtering. |
+| After completed replies, selected | Makes useful entry points discoverable without interrupting reading; adds inference work and needs strict quality filtering. |
 | Only on explicit request | Avoids automatic inference cost and visual noise; learners must discover and request suggestions. |
 | Candidates bundled into the tutor's answer-generation request | May avoid a separate round trip, but couples optional suggestions to the main answer format and completion. Evaluate only if it preserves ordinary text and history isolation. |
 | Automatically create branches | Creates unwanted context, boxes and inference work. Excluded: the learner must submit a question. |
@@ -65,7 +65,7 @@ Start with the existing branch form and normal passage anchors. No learner profi
 
 ## Implementation acceptance checks
 
-These are planned checks; no app, inference or accessibility tests have run.
+These are planned checks for the later suggestion implementation; no suggestion inference or accessibility tests have run.
 
 1. Complete replies in two conversations concurrently. Each receives zero to three candidates only after its own saved completion; typing, navigation and focus remain uninterrupted. Failed, partial and canceled replies do not trigger evaluation.
 2. Choose, edit, cancel and submit using only the keyboard. Cancellation creates nothing; successful submission creates exactly one focused child using normal compaction. Re-activating the accepted suggestion opens that child. Manual selection still works before, during and after suggestion work.
@@ -75,4 +75,4 @@ These are planned checks; no app, inference or accessibility tests have run.
 6. Review a small fixed set of learning answers: the tournament-tree example, a self-contained short answer, repeated terminology, unrelated technical vocabulary and an answer in a nested branch. For every displayed candidate, verify exact grounding, relevance, a useful question, no duplication and no adequate existing answer. Omit candidates that fail; record results before enabling automatic suggestions.
 7. Verify descriptive controls, focus recovery after dismiss/cancel, a single polite availability announcement and no focus/scroll changes when results arrive. Simulate failed generation and late events while another conversation remains usable.
 
-Agreement needed before closing: automatic evaluation and its additional inference cost, dismissal persistence, accepted-suggestion reuse and failure/restart behavior. Implementation remains `TreeTutor-vm4.5`, dependent on this decision and the manual branching flow.
+Decision review: the trigger and state table cover presentation, dismissal, acceptance and failure/restart behavior; examples cover useful, empty, repeated-passage and nested results; quality and keyboard checks preserve the manual path. The user's delegated choice resolves the design decision, including automatic evaluation and its additional inference cost. Implementation remains `TreeTutor-vm4.5`, dependent on this decision and the manual branching flow. The checks above remain required before releasing suggestions; this document does not establish runtime behavior or resolve provider eligibility.
