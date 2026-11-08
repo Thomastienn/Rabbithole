@@ -69,11 +69,24 @@ try {
   assert.equal(await view(), saved);
   await click('Reveal source passage for First branch');
   await wait('document.activeElement?.tagName === "MARK"');
+  assert.equal(await evaluate(`(() => {
+    const chat = document.querySelector('.focused-chat').getBoundingClientRect();
+    const workspace = document.querySelector('.tree-workspace').getBoundingClientRect();
+    const overview = document.querySelector('.overview');
+    return ['x', 'y', 'width', 'height'].every(key => Math.abs(chat[key] - workspace[key]) < 1)
+      && overview.inert && overview.getAttribute('aria-hidden') === 'true'
+      && getComputedStyle(overview).opacity === '0';
+  })()`), true, 'Focused chat must fill the workspace and hide the inert overview');
   await click('Return to tree');
   await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
   assert.equal(await view(), saved);
   await wait('window.transitions.length === 2');
   assert.equal(await evaluate('window.transitions.every(groups => groups.some(frames => frames.length >= 2 && frames[0].width !== frames.at(-1).width))'), true);
+  await click('Reveal source passage for First branch');
+  await wait('document.activeElement?.tagName === "MARK"');
+  await browser('press', 'Escape');
+  await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
+  assert.equal(await view(), saved);
   await click('Other saved tree');
   await browser('wait', '--text', 'Open Other saved tree');
   await click('Canvas navigation');
