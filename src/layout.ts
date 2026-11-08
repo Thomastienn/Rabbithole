@@ -1,5 +1,6 @@
 export const layoutCss = `
 html, body, #root { height: 100%; }
+html { view-transition-name: none; }
 .mobile-nav { display: none; }
 header { border-bottom: 1px solid var(--color-border); }
 .trees { flex: 0 0 18rem; min-width: 0; overflow: auto; border-right: 1px solid var(--color-border); background: var(--color-background-body); }
@@ -9,6 +10,12 @@ header { border-bottom: 1px solid var(--color-border); }
 .focused-chat { position: absolute; inset: 0; }
 .focused-chat > .astryx-chat-layout { flex: 1; min-height: 0; overflow: auto; }
 .tree-canvas { flex: 1; min-height: 0; }
+.tree-canvas:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
+::view-transition { pointer-events: none; }
+::view-transition-group(conversation) { animation-duration: 220ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) {
+ ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+}
 .conversation-box { width: 18rem; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); overflow-wrap: anywhere; }
 .conversation-box button { height: auto; white-space: normal; }
 .conversation-box h3, .source-passage { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }

@@ -4,9 +4,14 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { placeBox } from '../src/canvas.ts';
+import { parseViewport, placeBox } from '../src/canvas.ts';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
+
+test('saved viewport accepts exact coordinates and rejects corrupt or unsupported views', () => {
+  assert.deepEqual(parseViewport('{"x":-12.125,"y":810.25,"zoom":0.725}'), { x: -12.125, y: 810.25, zoom: 0.725 });
+  for (const value of [null, '', 'broken', 'null', '{}', '{"x":"1","y":0,"zoom":1}', '{"x":1e999,"y":0,"zoom":1}', '{"x":0,"y":0,"zoom":0.1}', '{"x":0,"y":0,"zoom":2}']) assert.equal(parseViewport(value), undefined);
+});
 
 test('placement skips occupied rectangles without changing existing positions', () => {
   const occupied = [{ x: 360, y: 0, width: 300, height: 250 }, { x: 360, y: 290, width: 300, height: 400 }, { x: 0, y: 0, width: 288, height: 800 }];

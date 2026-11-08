@@ -3,12 +3,12 @@ import { ReactFlow, Handle, Position, useNodesInitialized, useNodesState, useUpd
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
-import { placeBox, type Point } from './canvas';
+import { parseViewport, placeBox, type Point, type Viewport } from './canvas';
 
 export type Summary = { id: string; title: string; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null };
 export type Source = { messageId: string; start: number; end: number; text: string };
 type Open = (id: string, source?: Source) => void;
-type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; open: Open; active: boolean; focus: boolean }, 'conversation'>;
+type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; open: Open; active: boolean; focus: boolean; focusControl?: string; transition: boolean }, 'conversation'>;
 const sourceOf = (t: Summary): Source => ({ messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! });
 
 function Conversation({ data }: NodeProps<ConversationNode>) {
@@ -18,15 +18,15 @@ function Conversation({ data }: NodeProps<ConversationNode>) {
   useEffect(() => { update(t.id); }, [data.sources, t.id, update]);
   useEffect(() => {
     if (!data.focus || !initialized) return;
-    const frame = requestAnimationFrame(() => document.getElementById(`open-${t.id}`)?.focus({ preventScroll: true }));
+    const frame = requestAnimationFrame(() => document.getElementById(data.focusControl ?? `open-${t.id}`)?.focus({ preventScroll: true }));
     return () => cancelAnimationFrame(frame);
-  }, [data.focus, t.id, initialized]);
+  }, [data.focus, data.focusControl, t.id, initialized]);
   return <VStack gap={3} padding={4} className="conversation-box">
     <Handle type="target" position={Position.Left} />
-    <Heading level={3}>{t.title}</Heading>
+    <Heading level={3} style={{ viewTransitionName: data.transition ? 'conversation' : undefined }}>{t.title}</Heading>
     {t.parent && <>
       <Text className="source-passage" type="supporting" color="secondary">From passage: “{t.passage}”</Text>
-      <Button className="nodrag nopan" label={`Reveal source passage for ${t.title}`} variant="ghost" onClick={() => data.open(t.parent!, sourceOf(t))} />
+      <Button id={`reveal-${t.id}`} className="nodrag nopan" label={`Reveal source passage for ${t.title}`} variant="ghost" onClick={() => data.open(t.parent!, sourceOf(t))} />
     </>}
     {data.active && <Text type="supporting" role="status">Responding…</Text>}
     <Button id={`open-${t.id}`} className="nodrag nopan" label={`Open ${t.title}`} onClick={() => data.open(t.id)} />
@@ -38,14 +38,31 @@ function Conversation({ data }: NodeProps<ConversationNode>) {
 }
 const nodeTypes = { conversation: Conversation };
 
-export default function TreeOverview({ root, trees, active, open, focus, save }: { root: string; trees: Summary[]; active: string[]; open: Open; focus?: string; save: (id: string, position: Point) => Promise<void> }) {
+export default function TreeOverview({ root, trees, active, open, focus, focusControl, transition, save }: { root: string; trees: Summary[]; active: string[]; open: Open; focus?: string; focusControl?: string; transition?: string; save: (id: string, position: Point) => Promise<void> }) {
   const flow = useRef<ReactFlowInstance<ConversationNode>>(null);
+  const storageKey = `treetutor.viewport.${root}`;
+  const [savedViewport] = useState(() => {
+    try { return parseViewport(localStorage.getItem(storageKey)); } catch { return undefined; }
+  });
+  const navigated = useRef(!!savedViewport);
   const [nodes, setNodes, onNodesChange] = useNodesState<ConversationNode>([]);
   const placed = useRef(new Set<string>());
   const pending = useRef(new Map<string, Point>());
   const queue = useRef(Promise.resolve());
   const [notice, setNotice] = useState('');
   const [failed, setFailed] = useState(false);
+  const [viewportFailed, setViewportFailed] = useState(false);
+  function saveViewport(viewport: Viewport) {
+    try { localStorage.setItem(storageKey, JSON.stringify(viewport)); setViewportFailed(false); }
+    catch { setViewportFailed(true); }
+  }
+  function pan(x: number, y: number) {
+    const instance = flow.current;
+    if (!instance) return;
+    navigated.current = true;
+    const view = instance.getViewport();
+    void instance.setViewport({ ...view, x: view.x + x, y: view.y + y });
+  }
   function persist(id: string, position: Point) {
     pending.current.set(id, position);
     queue.current = queue.current.then(async () => {
@@ -65,11 +82,11 @@ export default function TreeOverview({ root, trees, active, open, focus, save }:
       if (!conversation || seen.has(id)) continue;
       seen.add(id);
       const sources = trees.filter(t => t.parent === id).reverse();
-      nodes.push({ id, type: 'conversation', position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, open, active: active.includes(id), focus: focus === id } });
+      nodes.push({ id, type: 'conversation', position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, open, active: active.includes(id), focus: focus === id, focusControl, transition: transition === id } });
       queue.push(...sources.map(t => t.id));
     }
     return nodes;
-  }, [root, trees, active, open, focus]);
+  }, [root, trees, active, open, focus, focusControl, transition]);
   useEffect(() => {
     setNodes(previous => desiredNodes.map(node => {
       const old = previous.find(old => old.id === node.id);
@@ -94,7 +111,7 @@ export default function TreeOverview({ root, trees, active, open, focus, save }:
       persist(node.id, node.position);
       changed = true;
     }
-    if (changed) { setNodes(next); void requestAnimationFrame(() => flow.current?.fitView({ padding: 0.2 })); }
+    if (changed) { setNodes(next); if (!navigated.current) void requestAnimationFrame(() => flow.current?.fitView({ padding: 0.2 })); }
   }, [nodes]);
   const edges = desiredNodes.filter(n => n.data.conversation.parent).map(n => {
     const t = n.data.conversation;
@@ -102,17 +119,29 @@ export default function TreeOverview({ root, trees, active, open, focus, save }:
   });
   return <>
     <HStack padding={4} gap={2} wrap="wrap" aria-label="Tree view controls">
-      <Button label="Zoom in" variant="ghost" onClick={() => void flow.current?.zoomIn()} />
-      <Button label="Zoom out" variant="ghost" onClick={() => void flow.current?.zoomOut()} />
-      <Button label="Fit tree" variant="secondary" onClick={() => void flow.current?.fitView({ padding: 0.2 })} />
-      <Text type="supporting" color="secondary">Drag boxes to move. Select a box and use arrows; Shift moves farther.</Text>
+      <Button label="Zoom in" variant="ghost" onClick={() => { navigated.current = true; void flow.current?.zoomIn(); }} />
+      <Button label="Zoom out" variant="ghost" onClick={() => { navigated.current = true; void flow.current?.zoomOut(); }} />
+      <Button label="Fit tree" variant="secondary" onClick={() => { navigated.current = true; void flow.current?.fitView({ padding: 0.2 }); }} />
+      <Button label="Pan left" variant="ghost" onClick={() => pan(100, 0)} />
+      <Button label="Pan right" variant="ghost" onClick={() => pan(-100, 0)} />
+      <Button label="Pan up" variant="ghost" onClick={() => pan(0, 100)} />
+      <Button label="Pan down" variant="ghost" onClick={() => pan(0, -100)} />
+      <Text type="supporting" color="secondary">Focus canvas and use arrows to pan. Focus a box and use arrows to move it; Shift moves farther.</Text>
     </HStack>
     <Text role="status" type="supporting" aria-live="polite">{notice}</Text>
     {failed && <HStack padding={3} gap={2} role="alert"><Text>Box position not saved. Keep this tree open and retry.</Text><Button label="Retry saving positions" onClick={() => { for (const [id, point] of pending.current) persist(id, point); }} /></HStack>}
-    <VStack className="tree-canvas" aria-label="Conversation tree overview" onKeyDown={e => {
-      if (e.target !== (e.target as HTMLElement).closest('.react-flow__node') || e.altKey || e.ctrlKey || e.metaKey) return;
+    {viewportFailed && <Text role="alert">View not saved. Allow browser storage to restore it after reopening.</Text>}
+    <VStack className="tree-canvas" role="region" tabIndex={0} aria-label="Conversation tree overview" onWheelCapture={e => { if (e.ctrlKey || e.metaKey) e.stopPropagation(); }} onTouchStartCapture={e => { if (e.touches.length > 1) e.stopPropagation(); }} onKeyDown={e => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
       const delta: Record<string, Point> = { ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 }, ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 } };
       if (!delta[e.key]) return;
+      if (e.target === e.currentTarget) {
+        e.preventDefault(); e.stopPropagation();
+        const step = e.shiftKey ? 300 : 100;
+        pan(-delta[e.key].x * step, -delta[e.key].y * step);
+        return;
+      }
+      if (e.target !== (e.target as HTMLElement).closest('.react-flow__node')) return;
       e.preventDefault(); e.stopPropagation();
       const id = (e.target as HTMLElement).dataset.id;
       const node = nodes.find(n => n.id === id);
@@ -123,7 +152,7 @@ export default function TreeOverview({ root, trees, active, open, focus, save }:
       persist(node.id, position);
       setNotice(`${node.data.conversation.title} moved to ${Math.round(position.x)}, ${Math.round(position.y)}.`);
     }}>
-      <ReactFlow<ConversationNode> nodes={nodes} onNodesChange={onNodesChange} edges={edges} nodeTypes={nodeTypes} onInit={instance => { flow.current = instance; }} onNodeDragStop={(_, node) => { persist(node.id, node.position); setNotice(`${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`); }} nodesConnectable={false} edgesReconnectable={false} autoPanOnNodeFocus={false} deleteKeyCode={null} disableKeyboardA11y fitView minZoom={0.2} maxZoom={1.5} />
+      <ReactFlow<ConversationNode> nodes={nodes} onNodesChange={onNodesChange} edges={edges} nodeTypes={nodeTypes} onInit={instance => { flow.current = instance; }} onMoveStart={event => { if (event) navigated.current = true; }} onMoveEnd={(_, viewport) => saveViewport(viewport)} defaultViewport={savedViewport} onNodeDragStop={(_, node) => { persist(node.id, node.position); setNotice(`${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`); }} nodesConnectable={false} edgesReconnectable={false} autoPanOnNodeFocus={false} deleteKeyCode={null} disableKeyboardA11y fitView={!savedViewport} minZoom={0.2} maxZoom={1.5} zoomOnScroll={false} zoomOnPinch={false} zoomActivationKeyCode={null} preventScrolling={false} />
     </VStack>
   </>;
 }

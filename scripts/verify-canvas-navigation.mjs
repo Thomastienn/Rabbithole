@@ -1,0 +1,150 @@
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { promisify } from 'node:util';
+import { execFile } from 'node:child_process';
+import { Store } from '../server/store.mjs';
+import { createApp } from '../server/app.mjs';
+
+// Built app, isolated browser/database, synthetic provider only.
+const exec = promisify(execFile);
+const session = `treetutor-navigation-${process.pid}`;
+const browser = async (...args) => (await exec('agent-browser', ['--session', session, ...args])).stdout;
+const evaluate = async expression => JSON.parse(await browser('eval', expression, '--json')).data.result;
+const wait = expression => browser('wait', '--fn', expression);
+const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
+const view = () => evaluate('document.querySelector(".react-flow__viewport").style.transform');
+const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-navigation-')), 'trees.sqlite'));
+store.create('Other saved tree');
+const root = store.create('Canvas navigation');
+const source = store.message(root.id, 'assistant', 'Roots and fungi exchange nutrients.', 'completed');
+const anchor = { messageId: source, start: 0, end: 5, text: 'Roots' };
+const first = store.branch(root, { ...anchor, question: 'First branch' }, 'Fixture context');
+const second = store.branch(root, { ...anchor, question: 'Second branch' }, 'Fixture context');
+const releases = new Map();
+const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: {
+  async generate(tree, prompt, emit) {
+    emit({ type: 'item', item: 'reply', text: `Partial ${tree.title}` });
+    await new Promise(resolve => releases.set(tree.id, resolve));
+    emit({ type: 'item', item: 'reply', text: `Complete ${tree.title}` });
+    emit({ type: 'status', status: 'completed' });
+  },
+} });
+await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+const origin = `http://127.0.0.1:${app.server.address().port}`;
+const key = `treetutor.viewport.${root.id}`;
+try {
+  await browser('set', 'viewport', '1440', '900');
+  await browser('open', origin);
+  await wait('document.querySelectorAll(".react-flow__node").length === 3');
+  await wait(`localStorage.getItem(${JSON.stringify(key)}) !== null`);
+  // Observe actual shared-element animations, including their changing bounds.
+  await evaluate(`window.transitions = []; window.nativeTransition = document.startViewTransition.bind(document); document.startViewTransition = callback => { const t = window.nativeTransition(callback); t.ready.then(() => window.transitions.push(document.getAnimations().filter(a => a.effect?.pseudoElement === '::view-transition-group(conversation)').map(a => a.effect.getKeyframes()))); return t; }; true`);
+  const initial = await view();
+  await click('Pan right');
+  assert.notEqual(await view(), initial);
+  await browser('focus', '.tree-canvas');
+  const beforeKeys = await view();
+  await browser('press', 'ArrowDown');
+  assert.notEqual(await view(), beforeKeys);
+  const afterKeys = await view();
+  await browser('press', 'Control+ArrowLeft');
+  assert.equal(await view(), afterKeys);
+  const beforeZoom = JSON.parse(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`));
+  await click('Zoom in');
+  await wait(`JSON.parse(localStorage.getItem(${JSON.stringify(key)})).zoom > ${beforeZoom.zoom}`);
+  const zoomed = JSON.parse(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`));
+  await click('Zoom out');
+  await wait(`JSON.parse(localStorage.getItem(${JSON.stringify(key)})).zoom < ${zoomed.zoom}`);
+  const unzoomed = JSON.parse(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`));
+  assert.ok(zoomed.zoom > unzoomed.zoom);
+  await click('Fit tree');
+  await click('Pan left');
+  const saved = await view();
+  await wait(`(() => { const v=JSON.parse(localStorage.getItem(${JSON.stringify(key)})); const p=document.querySelector('.react-flow__viewport').style.transform.match(/-?\\d*\\.?\\d+/g).map(Number); return Math.abs(v.x-p[0])<0.001 && Math.abs(v.y-p[1])<0.001 && Math.abs(v.zoom-p[2])<0.000001; })()`);
+  const savedStorage = await evaluate(`localStorage.getItem(${JSON.stringify(key)})`);
+  // Browser-zoom wheel events must remain uncancelled and leave the canvas view alone.
+  assert.equal(await evaluate(`document.querySelector('.react-flow__pane').dispatchEvent(new WheelEvent('wheel', {deltaY:-100,ctrlKey:true,bubbles:true,cancelable:true}))`), true);
+  assert.equal(await view(), saved);
+  await click('Reveal source passage for First branch');
+  await wait('document.activeElement?.tagName === "MARK"');
+  await click('Return to tree');
+  await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
+  assert.equal(await view(), saved);
+  await wait('window.transitions.length === 2');
+  assert.equal(await evaluate('window.transitions.every(groups => groups.some(frames => frames.length >= 2 && frames[0].width !== frames.at(-1).width))'), true);
+  await click('Other saved tree');
+  await browser('wait', '--text', 'Open Other saved tree');
+  await click('Canvas navigation');
+  await browser('wait', '--text', 'Open First branch');
+  assert.equal(await view(), saved);
+  await browser('reload');
+  await browser('wait', '--text', 'Open First branch');
+  assert.equal(await view(), saved);
+  assert.equal(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`), savedStorage);
+  // Reduced motion bypasses View Transitions entirely.
+  await browser('set', 'media', 'light', 'reduced-motion');
+  assert.equal(await evaluate('matchMedia("(prefers-reduced-motion: reduce)").matches'), true);
+  await evaluate('window.transitionCalls = 0; const original=document.startViewTransition.bind(document); document.startViewTransition=callback=>{window.transitionCalls++;return original(callback)}; true');
+  for (const branch of [first, second]) {
+    await click(`Open ${branch.title}`);
+    await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(branch.title)} && !!document.querySelector('.focused-chat [role=textbox]')`);
+    await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', `Explain ${branch.title}`);
+    await click('Send');
+    await browser('wait', '--text', `Partial ${branch.title}`);
+    await click('Return to tree');
+    await wait(`document.activeElement?.id === 'open-${branch.id}'`);
+    assert.equal(await view(), saved);
+  }
+  assert.equal(app.active.size, 2);
+  await click('Open Canvas navigation');
+  await wait('document.querySelector(".focused-chat h2")?.textContent === "Canvas navigation" && !!document.querySelector(".focused-chat [role=textbox]")');
+  await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Unsent draft');
+  await browser('press', 'ArrowLeft');
+  assert.equal(await view(), saved);
+  // Wait for a background checkpoint refresh; it must not take focus or the draft.
+  await evaluate('window.checkpointReads=0; window.checkpointFetch=window.fetch; window.fetch=(url,options)=>{if(url==="/api/state")window.checkpointReads++;return window.checkpointFetch(url,options)}; true');
+  await wait('window.checkpointReads > 0');
+  await wait(`(async()=>{ const s=await(await fetch('/api/state')).json(); return s.active.length===2 })()`);
+  releases.get(first.id)(); releases.get(second.id)();
+  await wait('!document.querySelector(".focused-chat [role=textbox]").hasAttribute("disabled")');
+  await wait(`(async()=>!(await(await fetch('/api/state')).json()).active.length)()`);
+  assert.equal(await evaluate('document.activeElement?.getAttribute("aria-label")'), 'Your question');
+  assert.equal(await evaluate('document.querySelector(".focused-chat [role=textbox]").textContent'), 'Unsent draft');
+  for (const branch of [first, second]) {
+    await click('Return to tree');
+    await click(`Open ${branch.title}`);
+    await browser('wait', '--text', `Complete ${branch.title}`);
+    assert.equal(store.tree(branch.id).messages.filter(m => m.role === 'user').length, 1);
+  }
+  assert.equal(await evaluate('window.transitionCalls'), 0);
+  await click('Return to tree');
+  mkdirSync('.impeccable/review', { recursive: true });
+  await browser('screenshot', resolve('.impeccable/review/navigation-desktop.png'));
+  await browser('set', 'viewport', '390', '844');
+  await click('Fit tree');
+  assert.equal(await evaluate('document.documentElement.scrollWidth === innerWidth && document.querySelector(".tree-canvas").getBoundingClientRect().height > 0'), true);
+  await browser('screenshot', resolve('.impeccable/review/navigation-mobile.png'));
+  await click('Open Canvas navigation');
+  await wait('document.querySelector(".focused-chat h2")?.textContent === "Canvas navigation" && !!document.querySelector(".focused-chat [role=textbox]")');
+  assert.equal(await evaluate('document.querySelector(".focused-chat [role=textbox]").getBoundingClientRect().bottom <= innerHeight'), true);
+  // Corrupt storage falls back to a usable view; denied writes remain visible.
+  await evaluate(`localStorage.setItem(${JSON.stringify(key)}, 'broken'); true`);
+  await browser('reload');
+  await browser('wait', '--text', 'Open First branch');
+  await click('Pan down');
+  assert.equal(await evaluate(`Number.isFinite(JSON.parse(localStorage.getItem(${JSON.stringify(key)})).zoom)`), true);
+  await evaluate('Storage.prototype.setItem = () => { throw new DOMException("Fixture storage denied", "SecurityError"); }; true');
+  await click('Pan up');
+  await browser('wait', '--text', 'View not saved');
+  console.log('PASS: pan/zoom/fit; keyboard and browser zoom isolation; exact viewport and originating focus return; tree switch/reload; shared-element animation; reduced motion; two simultaneous replies without lost output/focus/draft; mobile controls/composer; invalid/denied storage.');
+} catch (error) {
+  console.error(await browser('eval', 'JSON.stringify({active:document.activeElement?.id,hidden:document.querySelector(".overview").getAttribute("aria-hidden"), transitions:window.transitions})'));
+  throw error;
+} finally {
+  for (const release of releases.values()) release();
+  await browser('close').catch(() => {});
+  while (app.active.size) await new Promise(resolve => setTimeout(resolve, 20));
+  app.stop(); store.close();
+}

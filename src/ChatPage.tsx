@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -55,6 +56,8 @@ export default function ChatPage() {
   const [mobileNav, setMobileNav] = useState(false);
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
+  const [transitionBox, setTransitionBox] = useState<string>();
+  const overviewOrigin = useRef<{ id: string; control: string }>(undefined);
   const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
   const [branch, setBranch] = useState<{ parent: string; anchor: Anchor; question: string }>();
   const [branching, setBranching] = useState(false);
@@ -63,16 +66,30 @@ export default function ChatPage() {
   const selected = useRef<string | undefined>(undefined);
   const request = useRef(0);
 
-  function returnToTree() {
-    setOverview(true);
+  function changeView(showOverview: boolean, id?: string) {
+    if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setOverview(showOverview);
+      return;
+    }
+    flushSync(() => setTransitionBox(id));
+    document.startViewTransition(() => flushSync(() => setOverview(showOverview)));
   }
-  function openConversation(id: string, source?: Source) {
+  function returnToTree() {
+    changeView(true, overviewOrigin.current?.id ?? tree?.id);
+  }
+  async function openConversation(id: string, source?: Source) {
+    if (overview) {
+      const control = document.activeElement as HTMLElement | null;
+      const box = control?.closest<HTMLElement>('.react-flow__node')?.dataset.id;
+      overviewOrigin.current = box ? { id: box, control: control!.id || `open-${box}` } : undefined;
+    }
     setReveal(source ? { tree: id, source } : undefined);
-    setOverview(false);
     focusComposer.current = !source;
-    void select(id);
+    await select(id);
+    if (selected.current === id) changeView(false, overviewOrigin.current?.id ?? id);
   }
   function openTree(id: string) {
+    overviewOrigin.current = undefined;
     setRoot(id); setOverview(true);
     void select(id);
   }
@@ -110,8 +127,8 @@ export default function ChatPage() {
     refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id); else setMobileNav(true); }).catch(e => setError(e.message));
   }, []);
   useEffect(() => {
-    if (tree && focusComposer.current) { composer.current?.focus(); focusComposer.current = false; }
-  }, [tree?.id]);
+    if (!overview && tree && focusComposer.current) { composer.current?.focus(); focusComposer.current = false; }
+  }, [tree?.id, overview]);
   // Reopening a page during a turn recovers saved checkpoints without tying work to focus.
   useEffect(() => {
     if (!state?.active.length) return;
@@ -193,6 +210,7 @@ export default function ChatPage() {
     try {
       const next: Tree = await api(`/api/trees/${branch.parent}/branches`, { ...branch.anchor, question: branch.question });
       setDrafts(d => ({ ...d, [next.id]: branch.question }));
+      overviewOrigin.current = undefined;
       setBranch(undefined);
       await refresh();
       focusComposer.current = true;
@@ -201,7 +219,7 @@ export default function ChatPage() {
     } catch (e) { setError((e as Error).message); }
     finally { setBranching(false); }
   }
-  const source = reveal?.tree === tree?.id ? reveal?.source : undefined;
+  const source = !overview && reveal?.tree === tree?.id ? reveal?.source : undefined;
   const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text);
   const active = !!tree && !!state?.active.includes(tree.id);
   return <VStack gap={0} style={{ height: '100dvh' }}>
@@ -232,11 +250,11 @@ export default function ChatPage() {
         <section className="tree-workspace">
         {root && state && <section className="overview" style={{ opacity: overview ? 1 : 0 }} inert={!overview} aria-hidden={!overview} aria-label="Learning tree">
           <header><VStack padding={5} gap={1}><Heading level={2}>{state.trees.find(t => t.id === root)?.title}</Heading><Text color="secondary">Follow a connection or open a conversation.</Text></VStack></header>
-          <TreeOverview key={root} root={root} trees={state.trees} active={state.active} open={openConversation} save={savePosition} focus={overview ? tree?.id : undefined} />
+          <TreeOverview key={root} root={root} trees={state.trees} active={state.active} open={openConversation} save={savePosition} focus={overview ? overviewOrigin.current?.id ?? tree?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} />
         </section>}
         <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
-          <header><VStack padding={5} gap={1}><Button label="Return to tree" variant="ghost" onClick={returnToTree} /><Heading level={2}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text>{tree.branch && <Button label="Return to parent conversation" variant="ghost" onClick={() => openConversation(tree.branch!.parent)} />}</VStack></header>
+          <header><VStack padding={5} gap={1}><Button label="Return to tree" variant="ghost" onClick={returnToTree} /><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text>{tree.branch && <Button label="Return to parent conversation" variant="ghost" onClick={() => openConversation(tree.branch!.parent)} />}</VStack></header>
           {source && !validSource && <Text role="alert">Saved source passage is unavailable. No replacement passage was selected.</Text>}
           <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} footerActions={<Text type="supporting" color="secondary">Enter to send · Shift+Enter for a new line</Text>} />}>
             <ChatMessageList>
