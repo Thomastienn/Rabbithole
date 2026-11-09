@@ -1,11 +1,11 @@
 configVersion = "2.1"
 autoCommit = true
-tracker = "beads-bv"
-defaultAgent = "claude"
-defaultTracker = "beads-bv"
+tracker = "beads-resume"
+defaultAgent = "codex"
+defaultTracker = "beads-resume"
 maxIterations = 20
-agent = "claude"
-model = "opus"
+agent = "codex"
+model = "gpt-6.1-sol"
 prompt_template = ".ralph-tui/prompt.hbs"
 subagentTracingDetail = "full"
 

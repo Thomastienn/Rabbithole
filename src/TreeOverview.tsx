@@ -92,8 +92,13 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   const placed = useRef(new Set<string>());
   const [zoom, setZoom] = useState(savedViewport?.zoom ?? 1);
   const [notice, setNotice] = useState('');
+  // A restored viewport wins for the restored selection; later selections are still revealed.
+  const restored = trees.find(t => t.id === root)?.layout;
+  const restoredSelection = useRef(savedViewport && restored?.panel === 'beside' ? restored.selected ?? undefined : undefined);
   useEffect(() => {
     if (!selected) return;
+    if (restoredSelection.current === selected) return;
+    restoredSelection.current = undefined;
     const frame = requestAnimationFrame(() => {
       const canvas = document.querySelector<HTMLElement>('.tree-canvas');
       const box = Array.from(document.querySelectorAll<HTMLElement>('.react-flow__node')).find(node => node.dataset.id === selected);
