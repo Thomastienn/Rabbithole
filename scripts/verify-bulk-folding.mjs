@@ -43,7 +43,7 @@ try {
   await wait(`!!document.querySelector(${JSON.stringify(node(bnode.id))}) && !!document.querySelector(${JSON.stringify(node(descendant.id))})`);
   await action('Expand all'); await wait(`document.querySelectorAll('.react-flow__node').length === 7`);
   const singleStore = new Store(join(mkdtempSync(join(tmpdir(), 'single-fold-')), 'trees.sqlite'));
-  singleStore.create('Single');
+  singleStore.message(singleStore.create('Single').id, 'user', 'Earlier question', 'completed');
   const singleApp = createApp({ store: singleStore, auth: { status: () => ({ connected: false }) }, provider: {} });
   await new Promise(resolve => singleApp.server.listen(0, '127.0.0.1', resolve));
   try {

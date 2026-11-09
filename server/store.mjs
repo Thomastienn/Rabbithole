@@ -21,8 +21,12 @@ export class Store {
     if (!columns.includes('working_model')) this.db.exec('ALTER TABLE trees ADD COLUMN working_model TEXT; UPDATE trees SET working_model=model');
     if (!columns.includes('x')) this.db.exec('ALTER TABLE trees ADD COLUMN x REAL');
     if (!columns.includes('y')) this.db.exec('ALTER TABLE trees ADD COLUMN y REAL');
+    if (!columns.includes('layout')) this.db.exec('ALTER TABLE trees ADD COLUMN layout TEXT');
   }
-  list() { return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all(); }
+  list() {
+    return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,EXISTS(SELECT 1 FROM messages m WHERE m.tree=t.id) AS started,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
+      .map(t => { try { return { ...t, layout: JSON.parse(t.layout) }; } catch { return { ...t, layout: null }; } });
+  }
   previews(ids) {
     const question = this.db.prepare("SELECT seq, substr(text,1,512) AS text, length(text)>512 AS truncated FROM messages WHERE tree=? AND role='user' ORDER BY seq DESC LIMIT 1");
     const answer = this.db.prepare("SELECT substr(text,1,512) AS text, length(text)>512 AS truncated, status FROM messages WHERE tree=? AND role='assistant' AND seq>? ORDER BY seq LIMIT 1");
@@ -33,11 +37,19 @@ export class Store {
       return [id, { question: text(q), answer: text(a), status: a?.status ?? null }];
     }));
   }
+  layout(id, layout, positions = {}) {
+    this.db.exec('BEGIN');
+    try {
+      this.db.prepare('UPDATE trees SET layout=? WHERE id=?').run(JSON.stringify(layout), id);
+      for (const [p, at] of Object.entries(positions)) this.position(p, at.x, at.y);
+      this.db.exec('COMMIT');
+    } catch (e) { this.db.exec('ROLLBACK'); throw e; }
+  }
   position(id, x, y) { this.db.prepare('UPDATE trees SET x=?,y=? WHERE id=?').run(x, y, id); }
   tree(id) {
-    const tree = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id);
+    const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
-    return tree && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status FROM messages WHERE tree=? ORDER BY seq').all(id) };
+    return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status FROM messages WHERE tree=? ORDER BY seq').all(id) };
   }
   create(title) {
     const id = randomUUID();

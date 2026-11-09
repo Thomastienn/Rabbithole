@@ -11,7 +11,10 @@ header { border-bottom: 1px solid var(--color-border); }
 .focused-chat > .astryx-chat-layout { flex: 1; min-height: 0; overflow: auto; }
 .tree-canvas { flex: 1; min-height: 0; }
 .tree-canvas:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
+.tree-workspace[data-expanded=true] .overview { display: none; }
+.tree-workspace[data-expanded=true] .focused-chat { flex: 1; border-left: 0; }
 ::view-transition { pointer-events: none; }
+::view-transition-group(chat-panel) { animation-duration: 220ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
 ::view-transition-group(conversation) { animation-duration: 220ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
 @media (prefers-reduced-motion: reduce) {
  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
@@ -37,5 +40,6 @@ section[role=alert] { background: var(--color-background-body); }
  .conversation { min-height: 0; flex: 1; }
  .overview[data-chat-open=true] { display: none; }
  .focused-chat { flex: 1; border-left: 0; }
+ .expand-chat { display: none; }
 }
 `;

@@ -16,7 +16,7 @@ const wait = expression => browser('wait', '--fn', expression);
 const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
 const view = () => evaluate('document.querySelector(".react-flow__viewport").style.transform');
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-navigation-')), 'trees.sqlite'));
-store.create('Other saved tree');
+store.message(store.create('Other saved tree').id, 'user', 'Earlier question', 'completed');
 const root = store.create('Canvas navigation');
 const source = store.message(root.id, 'assistant', 'Roots and fungi exchange nutrients.', 'completed');
 const anchor = { messageId: source, start: 0, end: 5, text: 'Roots' };

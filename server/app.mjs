@@ -46,7 +46,7 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
           if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200) return json(res, 400, { error: 'Enter a tree name (up to 200 characters).' });
           return json(res, 201, store.create(body.title.trim()));
         }
-        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|model)$/);
+        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|layout|model)$/);
         if (match) {
           const [, id, action] = match;
           const tree = store.tree(id);
@@ -54,6 +54,17 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
           if (action === 'position') {
             if (!Number.isFinite(body.x) || !Number.isFinite(body.y) || Math.abs(body.x) > 1000000 || Math.abs(body.y) > 1000000) return json(res, 400, { error: 'Choose a position within the canvas.' });
             store.position(id, body.x, body.y);
+            return json(res, 200, {});
+          }
+          if (action === 'layout') {
+            const { folded, selected, panel, viewport, positions = {} } = body;
+            const coordinate = n => Number.isFinite(n) && Math.abs(n) <= 1000000;
+            const owned = new Set(); // positions may only move conversations inside this root's tree
+            for (let grew = true, trees = store.list(); grew;) { grew = false; for (const t of trees) if (!owned.has(t.id) && (t.id === id || owned.has(t.parent))) { owned.add(t.id); grew = true; } }
+            if (tree.branch || !Array.isArray(folded) || folded.length > 10000 || !folded.every(f => typeof f === 'string' && f.length <= 100) || !(selected === null || (typeof selected === 'string' && selected.length <= 100)) || !['collapsed', 'beside'].includes(panel)
+              || !(viewport === undefined || (viewport && coordinate(viewport.x) && coordinate(viewport.y) && viewport.zoom >= 0.2 && viewport.zoom <= 1.5))
+              || !positions || typeof positions !== 'object' || Array.isArray(positions) || !Object.entries(positions).every(([p, at]) => owned.has(p) && at && coordinate(at.x) && coordinate(at.y))) return json(res, 400, { error: 'Layout not saved. Reload and try again.' });
+            store.layout(id, { folded, selected, panel, ...(viewport && { viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom } }) }, positions);
             return json(res, 200, {});
           }
           if (action === 'stop') { active.get(id)?.abort(); return json(res, 200, {}); }

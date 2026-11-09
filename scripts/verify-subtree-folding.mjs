@@ -12,6 +12,8 @@ const b = async (...args) => (await exec('agent-browser', ['--session', session,
 const ev = async s => JSON.parse(await b('eval', s, '--json')).data.result;
 const wait = s => b('wait', '--fn', s);
 const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
+// Folding re-lays the canvas a frame later; click map boxes only once the viewport and nodes are still.
+const settled = () => wait("new Promise(r => { const v = () => document.querySelector('.react-flow__viewport')?.innerHTML.length + document.querySelector('.react-flow__viewport')?.style.transform, a = v(); requestAnimationFrame(() => requestAnimationFrame(() => r(a === v()))); })");
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'fold-')), 'trees.sqlite'));
 const root = store.create('Fold root');
 const source = store.message(root.id, 'assistant', 'Root passage.', 'completed');
@@ -58,7 +60,7 @@ try {
   await wait(`document.querySelector(${JSON.stringify(node(grand.id))})?.textContent.includes('Finished while hidden')`);
   // Create a child from a folded parent through the normal keyboard selection flow.
   await click('Collapse descendants of Fold child');
-  await click('Open Fold child'); await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold child'`); await click('Select tutor passage');
+  await settled(); await click('Open Fold child'); await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold child' && !document.documentElement.matches(':active-view-transition')`); await click('Select tutor passage');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Tutor reply 1: Child passage.', '--exact');
   await b('press', 'Home'); for (let i = 0; i < 5; i++) await b('press', 'Shift+ArrowRight');
   await b('press', 'Tab'); await b('press', 'Enter');

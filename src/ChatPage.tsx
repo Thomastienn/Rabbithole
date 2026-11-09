@@ -9,7 +9,7 @@ import { AdjustmentsHorizontalIcon, EllipsisHorizontalIcon } from '@heroicons/re
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
-import TreeOverview, { type Summary, type Source, type Preview, type MapActions } from './TreeOverview';
+import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
 import { withTurn, type Message, type Turn } from './turn';
 
 type Anchor = { messageId: string; start: number; end: number; text: string };
@@ -70,6 +70,8 @@ export default function ChatPage() {
   const [help, setHelp] = useState(false);
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [folds, setFolds] = useState<{ root: string; ids: string[] }>();
   const [transitionBox, setTransitionBox] = useState<string>();
   const overviewOrigin = useRef<{ id: string; control: string }>(undefined);
   const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
@@ -79,6 +81,7 @@ export default function ChatPage() {
   const branchOrigin = useRef<HTMLElement | null>(null);
   const composer = useRef<ChatComposerInputHandle>(null);
   const focusComposer = useRef(false);
+  const startButton = useRef<HTMLButtonElement>(null);
   const selected = useRef<string | undefined>(undefined);
   const request = useRef(0);
   const turns = useRef(new Map<string, Turn>());
@@ -92,7 +95,15 @@ export default function ChatPage() {
     flushSync(() => setTransitionBox(id));
     document.startViewTransition(() => flushSync(() => setOverview(showOverview)));
   }
+  // Map stays mounted while hidden, so its pan and zoom are intact when it returns.
+  function toggleExpanded() {
+    const panel = document.querySelector<HTMLElement>('.focused-chat');
+    if (!document.startViewTransition || !panel || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setExpanded(e => !e); return; }
+    panel.style.viewTransitionName = 'chat-panel';
+    document.startViewTransition(() => flushSync(() => setExpanded(e => !e))).finished.finally(() => { panel.style.viewTransitionName = ''; });
+  }
   function returnToTree() {
+    setExpanded(false);
     changeView(true, overviewOrigin.current?.id ?? tree?.id);
   }
   async function openConversation(id: string, source?: Source) {
@@ -106,11 +117,24 @@ export default function ChatPage() {
     await select(id);
     if (selected.current === id) changeView(false, overviewOrigin.current?.id ?? id);
   }
-  function openTree(id: string) {
+  function openTree(id: string, trees = state?.trees ?? []) {
     overviewOrigin.current = undefined;
-    setRoot(id); setOverview(true);
-    void select(id);
+    const layout = trees.find(t => t.id === id)?.layout;
+    const saved = layout?.selected && rootOf(layout.selected, trees) === id ? layout.selected : id;
+    setRoot(id); setOverview(layout?.panel !== 'beside');
+    void select(saved);
   }
+  function rootOf(id: string, trees: Summary[]) {
+    const seen = new Set<string>();
+    for (let t = trees.find(t => t.id === id); t && !seen.has(t.id); t = trees.find(p => p.id === t!.parent)) { seen.add(t.id); if (!t.parent) return t.id; }
+  }
+  // One current snapshot per root: fold IDs, selected conversation and panel mode only.
+  useEffect(() => {
+    if (!root || !state || !tree || folds?.root !== root || rootOf(tree.id, state.trees) !== root) return;
+    const layout: Layout = { folded: folds.ids, selected: tree.id, panel: overview ? 'collapsed' : 'beside' };
+    if (JSON.stringify(layout) === JSON.stringify(state.trees.find(t => t.id === root)?.layout)) return;
+    api(`/api/trees/${root}/layout`, layout).then(() => setState(s => s && { ...s, trees: s.trees.map(t => t.id === root ? { ...t, layout } : t) })).catch(e => setError(e.message));
+  }, [root, tree?.id, overview, folds, state?.trees]);
 
   async function api(path: string, body?: unknown) {
     const response = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: {
@@ -174,7 +198,7 @@ export default function ChatPage() {
     finally { if (request.current === version) setLoading(false); }
   }
   useEffect(() => {
-    refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id); }).catch(e => setError(e.message));
+    refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id, data.trees); }).catch(e => setError(e.message));
   }, []);
   async function loadModels() {
     setModelError('');
@@ -219,8 +243,7 @@ export default function ChatPage() {
       const next: Tree = await api('/api/trees', { title: name });
       await refresh();
       setName('');
-      setRoot(next.id); setOverview(false);
-      focusComposer.current = true;
+      setRoot(next.id); setOverview(true);
       await select(next.id);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
@@ -266,7 +289,11 @@ export default function ChatPage() {
         }
         if (result.done) break;
       }
-    } catch (e) { if (selected.current === id) setError((e as Error).message); }
+    } catch (e) {
+      // The composer clears itself on submit; give back a question the server never saved.
+      if (!turn.user) setDrafts(d => ({ ...d, [id]: d[id] || text }));
+      if (selected.current === id) setError((e as Error).message);
+    }
     finally {
       const version = request.current;
       try {
@@ -297,6 +324,9 @@ export default function ChatPage() {
   const source = !overview && reveal?.tree === tree?.id ? reveal?.source : undefined;
   const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text);
   const active = !!tree && !!state?.active.includes(tree.id);
+  // A root joins the map only once its first question is saved; until then the map is empty.
+  const starter = !!root && !!state && !state.trees.find(t => t.id === root)?.started && !previews[root]?.question;
+  useEffect(() => { if (starter && overview) startButton.current?.focus(); }, [starter, overview, root]);
   const menu = (actions?: MapActions) => <DropdownMenu presentation="popover" renderTrigger={props => <IconButton {...props} label="Map menu" tooltip="Map menu" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />} items={[
     { label: 'Learning trees', onClick: () => { setHelp(false); setMobileNav(true); } },
     { label: 'Settings', onClick: () => { setHelp(false); setMobileNav(true); } },
@@ -326,15 +356,22 @@ export default function ChatPage() {
       </VStack></aside>
       <main className="conversation">
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
-        <section className="tree-workspace">
+        <section className="tree-workspace" data-expanded={expanded && !overview}>
         {root && state && <section className="overview" data-chat-open={!overview} aria-label="Learning tree">
+          {starter ? <VStack padding={6} gap={3} hAlign="start">
+            {overview && menu()}
+            <Heading level={2}>Empty map</Heading>
+            <Text color="secondary">Your first question becomes the first conversation on this map.</Text>
+            {overview && <Button ref={startButton} label="Start conversation" variant="primary" onClick={() => { focusComposer.current = true; changeView(false); }} />}
+          </VStack> : <>
           {overview && tree && <HStack padding={2}><Button label="Reopen chat" variant="ghost" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} /></HStack>}
-          <TreeOverview menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePosition} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} />
+          <TreeOverview menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePosition} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
+          </>}
         </section>}
         <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch) { e.preventDefault(); returnToTree(); } }}>
         <HStack padding={2}>{menu()}{tree && <DropdownMenu presentation="popover" renderTrigger={props => <Button {...props} label="Select tutor passage" variant="ghost" isDisabled={!tree.messages.some(m => m.role === 'assistant' && m.status === 'completed')} />} items={tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').map((m, i) => ({ label: `Tutor reply ${i + 1}: ${m.text.slice(0, 60)}`, onClick: () => setSelectingMessage(m.id) }))} />}</HStack>
         {tree ? <>
-          <header><VStack padding={5} gap={1}><Button label="Return to tree" variant="ghost" onClick={returnToTree} /><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text>{tree.branch && <Button label="Return to parent conversation" variant="ghost" onClick={() => openConversation(tree.branch!.parent)} />}</VStack></header>
+          <header><VStack padding={5} gap={1}><HStack gap={1} wrap="wrap"><Button label="Return to tree" variant="ghost" onClick={returnToTree} /><Button className="expand-chat" label={expanded ? 'Show map beside chat' : 'Expand chat'} variant="ghost" onClick={toggleExpanded} /></HStack><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading><Text type="supporting" color="secondary">Codex · saved automatically</Text>{tree.branch && <Button label="Return to parent conversation" variant="ghost" onClick={() => openConversation(tree.branch!.parent)} />}</VStack></header>
           <VStack padding={4} gap={2}>
             <HStack vAlign="center" gap={2}>
               <DropdownMenu presentation="popover" renderTrigger={props => <IconButton {...props} label="Model for next reply" tooltip="Model for next reply" icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || !models?.length} isLoading={savingModel === tree.id} />}>

@@ -13,7 +13,7 @@ const browser = async (...args) => (await exec('agent-browser', ['--session', se
 const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
 const check = expression => browser('eval', `if (!(${expression})) throw new Error('Overview check failed: ' + ${JSON.stringify(expression)}); true`);
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-overview-')), 'trees.sqlite'));
-store.create('Separate ocean tree');
+store.message(store.create('Separate ocean tree').id, 'user', 'Earlier question', 'completed');
 const root = store.create('Forest ecology');
 const source = store.message(root.id, 'assistant', 'Roots share nutrients through fungi.', 'completed');
 const child = store.branch(root, { messageId: source, start: 0, end: 5, text: 'Roots', question: 'How do roots share nutrients?' }, 'Synthetic context');

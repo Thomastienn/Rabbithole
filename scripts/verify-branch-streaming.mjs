@@ -15,7 +15,7 @@ const evaluate = async expression => JSON.parse(await browser('eval', expression
 const wait = expression => browser('wait', '--fn', expression);
 const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-streaming-')), 'trees.sqlite'));
-const other = store.create('Other tree');
+const other = store.create('Other tree'); store.message(other.id, 'user', 'Earlier question', 'completed');
 const root = store.create('Concurrent branches');
 const source = store.message(root.id, 'assistant', 'Roots exchange nutrients.', 'completed');
 const anchor = { messageId: source, start: 0, end: 5, text: 'Roots' };

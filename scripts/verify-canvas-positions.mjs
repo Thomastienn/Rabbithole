@@ -74,6 +74,8 @@ try {
   await browser('press', 'ArrowLeft');
   assert.deepEqual(position(), moved);
   await click('Return to tree');
+  // The collapsed panel is part of the saved layout; let it land before reloading.
+  await browser('wait', '--fn', `(async () => (await (await fetch('/api/state')).json()).trees.find(t=>t.id===${JSON.stringify(root.id)}).layout?.panel === 'collapsed')()`);
   await browser('reload');
   await browser('wait', '--text', 'Open Second emoji passage');
   const reloaded = await evaluate(`(() => { const n=document.querySelector(${JSON.stringify(selector)}); const p=n.style.transform.match(/translate\\(([-.\\d]+)px, ([-.\\d]+)px\\)/); return {x:Number(p[1]),y:Number(p[2])}; })()`);

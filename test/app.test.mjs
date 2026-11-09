@@ -147,3 +147,22 @@ test('UTF-8 split across HTTP chunks preserves original text; malformed JSON rej
     assert.equal(bad.status, 400);
   } finally { env.close(); }
 });
+
+test('empty tree is not started until its first question is saved; rejected and concurrent sends add nothing', async () => {
+  let release;
+  const env = await open(join(dir, 'starter.sqlite'), (tree, text, emit) => new Promise(resolve => { release = () => { emit({ type: 'item', item: 'a', text: 'Answer' }); emit({ type: 'status', status: 'completed' }); resolve(); }; }));
+  try {
+    const tree = await (await env.post('/api/trees', { title: 'Empty' })).json();
+    const started = () => env.store.list().find(t => t.id === tree.id).started;
+    assert.equal(started(), 0);
+    assert.equal((await env.post(`/api/trees/${tree.id}/messages`, { text: '  ' })).status, 400);
+    assert.equal(started(), 0);
+    const stream = env.post(`/api/trees/${tree.id}/messages`, { text: 'First question' });
+    while (!release) await new Promise(r => setTimeout(r, 5));
+    assert.equal((await env.post(`/api/trees/${tree.id}/messages`, { text: 'First question' })).status, 409);
+    release(); await (await stream).text();
+    assert.equal(started(), 1);
+    assert.equal(env.store.list().length, 1);
+    assert.deepEqual(env.store.tree(tree.id).messages.map(m => [m.role, m.text]), [['user', 'First question'], ['assistant', 'Answer']]);
+  } finally { env.close(); }
+});

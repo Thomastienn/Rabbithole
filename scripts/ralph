@@ -11,4 +11,4 @@ fi
 
 epic="${1:-TreeTutor-7t3}"
 if (( $# )); then shift; fi
-exec ralph-tui run --epic "$epic" "$@"
+exec ralph-tui run --headless --epic "$epic" "$@"

@@ -8,7 +8,8 @@ import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRig
 import type { ReactNode } from 'react';
 import { parseViewport, placeBox, type Point, type Viewport } from './canvas';
 
-export type Summary = { id: string; title: string; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null };
+export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside' };
+export type Summary = { id: string; title: string; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null; layout?: Layout | null; started?: number };
 export type Source = { messageId: string; start: number; end: number; text: string };
 export type Preview = { question: string | null; answer: string | null; status: string | null };
 type Open = (id: string, source?: Source) => void;
@@ -45,7 +46,7 @@ function Conversation({ data }: NodeProps<ConversationNode>) {
 }
 const nodeTypes = { conversation: Conversation };
 
-export default function TreeOverview({ root, trees, previews, active, open, focus, focusControl, transition, save, menu, selected, current }: { menu: (actions: MapActions) => ReactNode; root: string; trees: Summary[]; previews: Record<string, Preview>; active: string[]; open: Open; focus?: string; focusControl?: string; transition?: string; selected?: string; current?: string; save: (id: string, position: Point) => Promise<void> }) {
+export default function TreeOverview({ root, trees, previews, active, open, focus, focusControl, transition, save, menu, selected, current, initialFolded, onFold }: { initialFolded?: string[]; onFold: (folded: string[]) => void; menu: (actions: MapActions) => ReactNode; root: string; trees: Summary[]; previews: Record<string, Preview>; active: string[]; open: Open; focus?: string; focusControl?: string; transition?: string; selected?: string; current?: string; save: (id: string, position: Point) => Promise<void> }) {
   const flow = useRef<ReactFlowInstance<ConversationNode>>(null);
   const storageKey = `treetutor.viewport.${root}`;
   const [savedViewport] = useState(() => {
@@ -53,7 +54,8 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   });
   const navigated = useRef(!!savedViewport);
   const [nodes, setNodes, onNodesChange] = useNodesState<ConversationNode>([]);
-  const [folded, setFolded] = useState<Set<string>>(() => new Set());
+  const [folded, setFolded] = useState<Set<string>>(() => new Set(initialFolded));
+  useEffect(() => onFold([...folded]), [folded]);
   const known = useRef(new Set(trees.map(t => t.id)));
   useEffect(() => {
     const added = trees.filter(t => !known.current.has(t.id));
