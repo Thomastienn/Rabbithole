@@ -23,9 +23,6 @@ writeFileSync(join(cwd, '.gitignore'), '.beads/\n.beads.gate.lock\n.ralph-tui/\n
 writeFileSync(join(cwd, 'unrelated.txt'), 'original\n');
 git('add', '.gitignore', 'unrelated.txt');
 git('commit', '-qm', 'Fixture baseline');
-const baseline = git('rev-parse', 'HEAD');
-writeFileSync(join(cwd, 'unrelated.txt'), 'pre-existing staged edit\n');
-git('add', 'unrelated.txt');
 const create = (title, extra = []) => JSON.parse(bd('create', '--title', title, '--description', 'Synthetic workflow regression fixture.', '--json', ...extra)).id;
 const epic = create('Fixture epic', ['--type', 'epic']);
 const first = create('Incomplete first pass', ['--parent', epic]);
@@ -33,6 +30,12 @@ const second = create('Next task', ['--parent', epic]);
 const blocked = create('Human decision', ['--parent', epic]);
 bd('dep', 'add', second, first);
 bd('update', blocked, '--status', 'blocked');
+bd('export', '-o', '.beads/issues.jsonl');
+git('add', '-f', '.beads/issues.jsonl');
+git('commit', '-qm', 'Fixture open issues');
+const baseline = git('rev-parse', 'HEAD');
+writeFileSync(join(cwd, 'unrelated.txt'), 'pre-existing staged edit\n');
+git('add', 'unrelated.txt');
 mkdirSync(join(cwd, '.ralph-tui'));
 const fakeAgent = join(cwd, 'fake-codex');
 writeFileSync(fakeAgent, `#!/usr/bin/env node
@@ -50,11 +53,16 @@ process.stdin.on('end', () => {
   fs.writeFileSync('.ralph-tui/rendered-prompt.txt', prompt);
   // The engine runs outside this real Codex sandbox; agent Git writes stay denied.
   execFileSync('codex', ['sandbox', '-c', 'sandbox_mode="workspace-write"', '--',
-    'python', '-c', 'from pathlib import Path; Path("task-result.txt").write_text(' + JSON.stringify(String(count)) + ')']);
+    'python', '-c', 'from pathlib import Path; Path("task-result.js").write_text(' + JSON.stringify(String(count)) + ')']);
   // Follow the rendered commit instruction instead of assuming the engine commits.
-  if (count > 1 && prompt.includes('git commit --only')) {
-    execFileSync('git', ['add', '--', 'task-result.txt']);
-    execFileSync('git', ['commit', '--only', '-m', 'chore: fixture task ' + count, '--', 'task-result.txt']);
+  if (count > 1 && !${autoCommit}) {
+    execFileSync('git', ['add', '--', 'task-result.js']);
+    execFileSync('git', ['commit', '--only', '-m', 'chore: fixture task ' + count, '--', 'task-result.js']);
+  }
+  if (count > 1 && prompt.includes('bd export -o .beads/issues.jsonl')) {
+    const id = prompt.match(/^ID: (.+)$/m)[1];
+    execFileSync('bd', ['close', id, '--reason', 'Synthetic verified result']);
+    execFileSync('bd', ['export', '-o', '.beads/issues.jsonl']);
   }
   console.log(JSON.stringify({ type: 'item.completed', item: {
     type: 'agent_message', text: count === 1 ? 'Partial progress; task unfinished.' : '<promise>COMPLETE</promise>'
@@ -93,8 +101,8 @@ assert.equal(JSON.parse(bd('show', blocked, '--json'))[0].status, 'blocked');
 assert.equal(git('rev-list', '--count', `${baseline}..HEAD`), '2', 'Each completed task must have a commit');
 for (const sha of git('rev-list', `${baseline}..HEAD`).split('\n')) {
   const files = git('show', '--pretty=', '--name-only', sha).split('\n');
-  assert.ok(files.includes('task-result.txt'), 'Each completion must commit its sandboxed task change');
-  if (!autoCommit) assert.deepEqual(files, ['task-result.txt'], 'Agent commits must exclude unrelated edits');
+  assert.ok(files.includes('task-result.js'), 'Each completion must commit its sandboxed task change');
+  if (!autoCommit) assert.deepEqual(files, ['task-result.js'], 'Agent commits must exclude unrelated edits');
 }
 if (autoCommit) {
   assert.equal(git('status', '--porcelain'), '', 'Engine auto-commit stages all pending edits');
@@ -105,6 +113,16 @@ if (autoCommit) {
 const rendered = readFileSync(join(cwd, '.ralph-tui', 'rendered-prompt.txt'), 'utf8');
 assert.ok(rendered.includes(second), 'Ralph must render the selected task ID');
 assert.ok(!rendered.includes('{{'), 'No unresolved template variables');
+if (autoCommit) {
+  const history = JSON.parse(execFileSync('bv', ['--robot-history'], { cwd, encoding: 'utf8' }));
+  for (const id of [first, second]) {
+    const item = history.histories[id];
+    assert.equal(item?.status, 'closed', 'BV must see the closed exported issue');
+    assert.ok(item.commits?.some(commit => commit.methods?.includes('co_committed') &&
+      commit.files?.some(file => file.path === 'task-result.js')),
+    `BV must correlate ${id} with its real Ralph code commit`);
+  }
+}
 
 // A real blocker added during an iteration must prevent another attempt.
 const { createBeadsTracker } = await import(join(dirname(cli), 'index.js'));

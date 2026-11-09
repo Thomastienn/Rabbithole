@@ -105,6 +105,22 @@ agent's exit status. Its
 runs after completion, stages all changes and reports commit failures separately;
 task completion alone does not establish a successful commit.
 
+For BV history links, the agent closes the issue and then runs
+`bd export -o .beads/issues.jsonl` before emitting the completion signal. BV
+loads that JSONL snapshot and correlates commits containing the closed-state
+transition alongside implementation files. Merely closing the live Dolt issue
+does not establish that a code commit exists. Commit-message IDs are useful,
+but BV's default explicit matcher does not cover this project's hash-style
+IDs, so the committed snapshot supplies the reliable association.
+
+Check a completed task with:
+
+```bash
+bv --robot-history --bead-history TreeTutor-b1z.14
+```
+
+Inspect `histories[ID].commits` and compare its SHA with `git show <sha>`.
+
 Restart a running Ralph session after changing this setup. The engine keeps its
 resolved configuration and caches compiled templates; disk edits alone do not
 update that running process. Beads operations remain local-only; do not run `bd sync`.
@@ -124,7 +140,9 @@ then the next dependent issue. It first starts the actual project sandbox using
 the project config loader, catching invalid mounts before any agent work. The
 synthetic agent edits files through the real Codex sandbox; Ralph then creates
 two automatic commits outside it, including all pending changes. This checks the runner contract,
-not how reliably a real model follows instructions. It also verifies that a
+including real BV history assertions that each completed fixture issue links to
+its implementation commit after the closed snapshot is exported. It does not
+establish how reliably a real model follows instructions. It also verifies that a
 blocker introduced between attempts prevents a retry. To reproduce the original failure, pass
 `beads` as the final argument; the assertion fails after one iteration.
 
