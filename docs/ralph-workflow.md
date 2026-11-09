@@ -21,10 +21,16 @@ limit in `.ralph-tui/config.toml`. To choose another epic or change the limit:
 ./scripts/ralph TreeTutor-7t3 --iterations 10
 ```
 
-The launcher registers the repository's tracker using a symlink under
+The launcher checks that the shared `beads-resume` tracker plugin exists in
 `~/.config/ralph-tui/plugins/trackers/` and makes Bun available on PATH.
-Ralph must be installed already. The tracker uses Ralph's exported Beads
-implementation; no installed Ralph files are patched. Verified with Ralph
+Ralph must be installed already. The plugin lives outside this repository so
+other projects can use it; it wraps Ralph's exported `beads-bv` tracker and no
+installed Ralph files are patched. Global defaults for new projects
+(`tracker = "beads-resume"`, `autoCommit = true`, `fullAuto = false`, because
+Codex CLI 0.167 rejects `--full-auto`) are in `~/.config/ralph-tui/config.toml`. The
+default bd prompt for projects without `prompt_template` is
+`~/.config/ralph-tui/templates/beads.hbs`; Ralph's built-in beads-bv prompt
+uses `br` commands. Verified with Ralph
 0.12.0 and Codex CLI 0.167.0.
 
 ## What an iteration means
@@ -33,17 +39,17 @@ One iteration is one agent invocation. An invocation can exit normally while
 the issue is still unfinished. `maxIterations` is a ceiling, not a promise to
 perform that many attempts or finish that many issues.
 
-The configured `beads-bv` tracker uses `bv --robot-next` and falls back to
-`bd ready` when needed. Beads excludes
-`in_progress` issues from that command, so an incomplete iteration could leave
-its own issue invisible to the next selection. The prompt tells the agent to
-checkpoint and return only its own unfinished issue to `open` with guarded
-updates. The optional `treetutor-beads` tracker also returns only
-the issue it just selected to `open` before selecting again, provided it is
-still `in_progress` and unassigned or assigned to the current actor. Guarded
-updates prevent overwriting a concurrent ownership/status change. Beads then
-rechecks dependencies, deferrals, and epic scope. A blocked or completed issue
-is never reopened. Other workers' unfinished issues are not recovered.
+The `beads-resume` tracker selects with `bv --robot-next` and falls back to
+`bd ready`. Beads excludes `in_progress` issues from both, and Ralph resets
+them only on Ctrl+C/SIGTERM, so an incomplete iteration, or a run that ends at
+its iteration limit or crashes, used to leave its issue stuck. The tracker
+returns the issue it just selected to `open` and retries it before other work,
+so its leftover edits are committed with it. At the start of each run it also
+reopens issues left `in_progress` by earlier runs. Only unassigned issues or
+issues assigned to the current actor are touched, with guarded updates that do
+not overwrite a concurrent ownership/status change. Beads then rechecks
+dependencies, deferrals, and epic scope. A blocked or completed issue is never
+reopened. Other workers' unfinished issues are not recovered.
 
 Agent-process failures get up to two retries. A recoverable incomplete issue
 can continue until the iteration limit. For a real external or user blocker,
@@ -89,7 +95,10 @@ Ralph's engine commits outside it after the completion signal. `autoCommit = tru
 is enabled at the user's request. The agent must not attempt staging/committing
 or treat read-only Git metadata as an implementation blocker. Ralph's automatic
 commit uses `git add -A`, including pre-existing pending edits; the user chose
-this mode after that behavior was explained.
+this mode after that behavior was explained. To keep BV history correct, the
+tracker refuses to start a run on uncommitted changes (outside `.beads/` and
+`.ralph-tui/`) unless exactly one unfinished issue is being resumed, which then
+owns them. Commit or stash other work first.
 
 Do not add `writable_roots = [".git"]` to `.codex/config.toml`: relative paths
 there resolve against `.codex`, targeting the protected `.codex/.git` path and
@@ -135,8 +144,9 @@ credentials are used:
 PATH="$HOME/.bun/bin:$PATH" bun .ralph-tui/workflow.test.mjs
 ```
 
-It verifies three iterations: incomplete work, completion of the same issue,
-then the next dependent issue. It first starts the actual project sandbox using
+It verifies that a dirty start is refused, then three iterations: incomplete
+work, completion of the same issue, then the next dependent issue, and that a
+new run resumes an issue left `in_progress` with leftover edits. It first starts the actual project sandbox using
 the project config loader, catching invalid mounts before any agent work. The
 synthetic agent edits files through the real Codex sandbox; Ralph then creates
 two automatic commits outside it, including all pending changes. This checks the runner contract,

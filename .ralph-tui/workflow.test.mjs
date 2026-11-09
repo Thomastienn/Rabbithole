@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-const tracker = process.argv[2] || 'treetutor-beads';
+const tracker = process.argv[2] || 'beads-resume';
+const pluginPath = join(homedir(), '.config', 'ralph-tui', 'plugins', 'trackers', 'beads-resume.js');
 const autoCommit = /^autoCommit\s*=\s*true\s*$/m.test(readFileSync(join(import.meta.dir, 'config.toml'), 'utf8'));
 const projectSandbox = spawnSync('codex', ['sandbox', '-c', 'sandbox_mode="workspace-write"', '--', 'true'], {
   cwd: join(import.meta.dir, '..'), encoding: 'utf8',
@@ -80,9 +81,19 @@ autoCommit = ${autoCommit}
 [agentOptions]
 fullAuto = false
 `);
-const run = spawnSync(process.execPath, [cli, 'run', '--headless', '--no-setup', '--epic', epic, '--iterations', '3', '--no-notify'], {
+const ralph = () => spawnSync(process.execPath, [cli, 'run', '--headless', '--no-setup', '--epic', epic, '--iterations', '3', '--no-notify'], {
   cwd, encoding: 'utf8', timeout: 60000,
 });
+if (tracker === 'beads-resume') {
+  // autoCommit uses `git add -A`; a dirty start would credit old work to the first finished task.
+  const dirtyRun = ralph();
+  assert.match(`${dirtyRun.stdout}\n${dirtyRun.stderr}`, /Uncommitted changes/, 'Dirty worktree must stop the run');
+  assert.equal(git('rev-parse', 'HEAD'), baseline, 'Dirty run must not commit');
+  assert.ok(!readdirSync(join(cwd, '.ralph-tui')).includes('iterations'), 'Dirty run must not start an agent');
+}
+git('commit', '-qm', 'Fixture unrelated edit');
+const runBase = git('rev-parse', 'HEAD');
+const run = ralph();
 assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
 const logsDir = join(cwd, '.ralph-tui', 'iterations');
 const iterations = readdirSync(logsDir).map(file => {
@@ -98,18 +109,13 @@ assert.equal(iterations.length, 3, 'Unfinished first pass must continue to a sec
 assert.deepEqual(iterations.map(i => i.task), [first, first, second]);
 assert.deepEqual(iterations.map(i => i.complete), [false, true, true]);
 assert.equal(JSON.parse(bd('show', blocked, '--json'))[0].status, 'blocked');
-assert.equal(git('rev-list', '--count', `${baseline}..HEAD`), '2', 'Each completed task must have a commit');
-for (const sha of git('rev-list', `${baseline}..HEAD`).split('\n')) {
+assert.equal(git('rev-list', '--count', `${runBase}..HEAD`), '2', 'Each completed task must have a commit');
+for (const sha of git('rev-list', `${runBase}..HEAD`).split('\n')) {
   const files = git('show', '--pretty=', '--name-only', sha).split('\n');
   assert.ok(files.includes('task-result.js'), 'Each completion must commit its sandboxed task change');
   if (!autoCommit) assert.deepEqual(files, ['task-result.js'], 'Agent commits must exclude unrelated edits');
 }
-if (autoCommit) {
-  assert.equal(git('status', '--porcelain'), '', 'Engine auto-commit stages all pending edits');
-  assert.equal(git('show', 'HEAD~1:unrelated.txt'), 'pre-existing staged edit');
-} else {
-  assert.equal(git('diff', '--cached', '--name-only'), 'unrelated.txt', 'Pre-existing staged edits must stay staged and uncommitted');
-}
+if (autoCommit) assert.equal(git('status', '--porcelain'), '', 'Engine auto-commit stages all pending edits');
 const rendered = readFileSync(join(cwd, '.ralph-tui', 'rendered-prompt.txt'), 'utf8');
 assert.ok(rendered.includes(second), 'Ralph must render the selected task ID');
 assert.ok(!rendered.includes('{{'), 'No unresolved template variables');
@@ -126,7 +132,7 @@ if (autoCommit) {
 
 // A real blocker added during an iteration must prevent another attempt.
 const { createBeadsTracker } = await import(join(dirname(cli), 'index.js'));
-const makeTracker = tracker === 'beads' ? createBeadsTracker : (await import('./treetutor-beads.js')).default;
+const makeTracker = tracker === 'beads' ? createBeadsTracker : (await import(pluginPath)).default;
 const t = makeTracker();
 await t.initialize({ workingDir: cwd, epicId: epic });
 const gated = create('Becomes blocked', ['--parent', epic]);
@@ -145,4 +151,15 @@ bd('update', handedOff, '--status', 'in_progress', '--assignee', 'another-worker
 assert.equal(await t.getNextTask(), undefined, 'Other workers must not lose their claims');
 assert.equal(JSON.parse(bd('show', handedOff, '--json'))[0].status, 'in_progress');
 await t.dispose();
-console.log(`PASS: actual project sandbox starts; sandboxed agent edits produce two ${autoCommit ? 'engine auto-commits (all pending edits)' : 'scoped agent commits'}; continuation, blockers and ownership stay enforced.`);
+if (tracker === 'beads-resume') {
+  // A run that ends at its iteration limit leaves its task in_progress with uncommitted edits.
+  const left = create('Left in progress by an ended run', ['--parent', epic]);
+  bd('update', left, '--status', 'in_progress');
+  writeFileSync(join(cwd, 'left.txt'), 'leftover\n');
+  const t2 = makeTracker();
+  await t2.initialize({ workingDir: cwd, epicId: epic });
+  assert.equal((await t2.getNextTask())?.id, left, 'A new run must resume the unfinished task owning leftover edits');
+  assert.equal(JSON.parse(bd('show', handedOff, '--json'))[0].status, 'in_progress', 'Other workers keep their claims');
+  await t2.dispose();
+}
+console.log(`PASS: actual project sandbox starts; dirty start refused; sandboxed agent edits produce two ${autoCommit ? 'engine auto-commits' : 'scoped agent commits'}; continuation, blockers and ownership stay enforced.`);

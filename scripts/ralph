@@ -3,13 +3,9 @@ set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 export PATH="$HOME/.bun/bin:$PATH"
 
-plugin="$HOME/.config/ralph-tui/plugins/trackers/treetutor-beads.js"
-source_plugin="$PWD/.ralph-tui/treetutor-beads.js"
-mkdir -p -- "$(dirname -- "$plugin")"
-if [[ ! -e "$plugin" && ! -L "$plugin" ]]; then
-  ln -s -- "$source_plugin" "$plugin"
-elif [[ "$(readlink -f -- "$plugin")" != "$source_plugin" ]]; then
-  echo "Tracker registration already points elsewhere: $plugin" >&2
+plugin="$HOME/.config/ralph-tui/plugins/trackers/beads-resume.js"
+if [[ ! -f "$plugin" ]]; then
+  echo "Missing Ralph tracker plugin: $plugin (see docs/ralph-workflow.md)" >&2
   exit 1
 fi
 

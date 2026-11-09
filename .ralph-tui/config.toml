@@ -1,10 +1,10 @@
 configVersion = "2.1"
 defaultAgent = "codex"
-defaultTracker = "beads-bv"
+defaultTracker = "beads-resume"
 maxIterations = 20
 agent = "codex"
 model = "gpt-6.1-terra"
-tracker = "beads-bv"
+tracker = "beads-resume"
 prompt_template = ".ralph-tui/prompt.hbs"
 autoCommit = true
 subagentTracingDetail = "full"
