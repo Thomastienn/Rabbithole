@@ -2,7 +2,7 @@ configVersion = "2.1"
 maxIterations = 10
 agent = "codex"
 tracker = "treetutor-beads"
-autoCommit = false
+autoCommit = true
 defaultAgent = "codex"
 prompt_template = ".ralph-tui/prompt.hbs"
 

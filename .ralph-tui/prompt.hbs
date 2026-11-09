@@ -51,16 +51,20 @@ Read `.ralph-tui/progress.md` for prior work and learnings.
    does not finish an implementation task.
 
 ## Commit and completion
-The project Codex configuration explicitly permits writes to `.git` inside the
-workspace sandbox. A read-only `.git` or `index.lock` error indicates a sandbox
-configuration problem, not missing user consent or a Beads implementation gate.
-Record the exact command/error and restart requirement instead of asking for
-implementation authorization or repeatedly retrying the same denied operation.
 {{#if config.autoCommit}}
-Configuration conflict: this repository requires `autoCommit = false` so the
-agent can create scoped commits. Ralph's engine auto-commit stages every change.
-Record this conflict and request a Ralph restart with the project configuration;
-leave the issue unfinished and do not emit the completion marker.
+Ralph owns the Git commit and runs it outside the agent sandbox after completion.
+Do not run Git staging or commit commands inside the agent sandbox. Read-only
+`.git` is expected here and does not block implementation, checks or Beads updates.
+1. Finish the acceptance checks and review the diff. Preserve unrelated work;
+   Ralph's automatic commit stages all pending changes, as authorized by the owner.
+2. Append acceptance evidence, changed files and useful learnings to
+   `.ralph-tui/progress.md`, then close the issue with
+   `bd close {{taskId}} --reason "Verified result; Ralph will auto-commit"`.
+3. End the final response with this signal on its own line so Ralph performs
+   its completion and auto-commit steps:
+   <promise>COMPLETE</promise>
+The commit happens after your response; report it as pending, not as an already
+verified commit. Real failing acceptance checks still leave the issue unfinished.
 {{else}}
 You own the local commit. Ralph's engine will not create it for you.
 1. Review your diff and stage only the task-owned files or hunks. Preserve

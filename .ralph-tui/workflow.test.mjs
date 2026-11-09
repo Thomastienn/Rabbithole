@@ -5,6 +5,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 const tracker = process.argv[2] || 'treetutor-beads';
+const autoCommit = /^autoCommit\s*=\s*true\s*$/m.test(readFileSync(join(import.meta.dir, 'config.toml'), 'utf8'));
+const projectSandbox = spawnSync('codex', ['sandbox', '-c', 'sandbox_mode="workspace-write"', '--', 'true'], {
+  cwd: join(import.meta.dir, '..'), encoding: 'utf8',
+});
+assert.equal(projectSandbox.status, 0, `Actual project sandbox must start: ${projectSandbox.stderr}`);
 const cwd = mkdtempSync(join(tmpdir(), 'treetutor-ralph-test-'));
 const cli = realpathSync(Bun.which('ralph-tui'));
 const bd = (...args) => execFileSync('bd', args, { cwd, encoding: 'utf8' }).trim();
@@ -43,7 +48,9 @@ process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { prompt += chunk; });
 process.stdin.on('end', () => {
   fs.writeFileSync('.ralph-tui/rendered-prompt.txt', prompt);
-  fs.writeFileSync('task-result.txt', String(count));
+  // The engine runs outside this real Codex sandbox; agent Git writes stay denied.
+  execFileSync('codex', ['sandbox', '-c', 'sandbox_mode="workspace-write"', '--',
+    'python', '-c', 'from pathlib import Path; Path("task-result.txt").write_text(' + JSON.stringify(String(count)) + ')']);
   // Follow the rendered commit instruction instead of assuming the engine commits.
   if (count > 1 && prompt.includes('git commit --only')) {
     execFileSync('git', ['add', '--', 'task-result.txt']);
@@ -61,7 +68,7 @@ command = ${JSON.stringify(fakeAgent)}
 prompt_template = ${JSON.stringify(join(import.meta.dir, 'prompt.hbs'))}
 maxIterations = 3
 iterationDelay = 0
-autoCommit = false
+autoCommit = ${autoCommit}
 [agentOptions]
 fullAuto = false
 `);
@@ -83,15 +90,21 @@ assert.equal(iterations.length, 3, 'Unfinished first pass must continue to a sec
 assert.deepEqual(iterations.map(i => i.task), [first, first, second]);
 assert.deepEqual(iterations.map(i => i.complete), [false, true, true]);
 assert.equal(JSON.parse(bd('show', blocked, '--json'))[0].status, 'blocked');
-assert.equal(git('rev-list', '--count', `${baseline}..HEAD`), '2', 'Each completed task must have a verified agent commit');
+assert.equal(git('rev-list', '--count', `${baseline}..HEAD`), '2', 'Each completed task must have a commit');
 for (const sha of git('rev-list', `${baseline}..HEAD`).split('\n')) {
-  assert.equal(git('show', '--pretty=', '--name-only', sha), 'task-result.txt', 'Task commits must exclude unrelated edits');
+  const files = git('show', '--pretty=', '--name-only', sha).split('\n');
+  assert.ok(files.includes('task-result.txt'), 'Each completion must commit its sandboxed task change');
+  if (!autoCommit) assert.deepEqual(files, ['task-result.txt'], 'Agent commits must exclude unrelated edits');
 }
-assert.equal(git('diff', '--cached', '--name-only'), 'unrelated.txt', 'Pre-existing staged edits must stay staged and uncommitted');
+if (autoCommit) {
+  assert.equal(git('status', '--porcelain'), '', 'Engine auto-commit stages all pending edits');
+  assert.equal(git('show', 'HEAD~1:unrelated.txt'), 'pre-existing staged edit');
+} else {
+  assert.equal(git('diff', '--cached', '--name-only'), 'unrelated.txt', 'Pre-existing staged edits must stay staged and uncommitted');
+}
 const rendered = readFileSync(join(cwd, '.ralph-tui', 'rendered-prompt.txt'), 'utf8');
 assert.ok(rendered.includes(second), 'Ralph must render the selected task ID');
 assert.ok(!rendered.includes('{{'), 'No unresolved template variables');
-assert.match(readFileSync(join(import.meta.dir, 'config.toml'), 'utf8'), /^autoCommit\s*=\s*false\s*$/m, 'Engine-wide staging must be disabled for scoped agent commits');
 
 // A real blocker added during an iteration must prevent another attempt.
 const { createBeadsTracker } = await import(join(dirname(cli), 'index.js'));
@@ -114,4 +127,4 @@ bd('update', handedOff, '--status', 'in_progress', '--assignee', 'another-worker
 assert.equal(await t.getNextTask(), undefined, 'Other workers must not lose their claims');
 assert.equal(JSON.parse(bd('show', handedOff, '--json'))[0].status, 'in_progress');
 await t.dispose();
-console.log('PASS: rendered prompt creates scoped task commits; unfinished work continues; blockers, ownership and unrelated staged edits stay enforced.');
+console.log(`PASS: actual project sandbox starts; sandboxed agent edits produce two ${autoCommit ? 'engine auto-commits (all pending edits)' : 'scoped agent commits'}; continuation, blockers and ownership stay enforced.`);

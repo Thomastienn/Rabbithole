@@ -84,21 +84,16 @@ outbound command networking; it is not a localhost-only policy. See OpenAI's
 [sandbox network documentation](https://learn.chatgpt.com/docs/agent-approvals-security).
 
 Workspace-write normally protects `.git` even inside the workspace.
-`.codex/config.toml` explicitly adds `.git` to `writable_roots`, allowing scoped
-agent commits while preserving the workspace sandbox. Read-only `index.lock`
-errors are sandbox failures, not Beads or missing implementation consent.
-Verify this boundary without any model/provider call:
+The agent performs implementation, checks and Beads updates inside this sandbox;
+Ralph's engine commits outside it after the completion signal. `autoCommit = true`
+is enabled at the user's request. The agent must not attempt staging/committing
+or treat read-only Git metadata as an implementation blocker. Ralph's automatic
+commit uses `git add -A`, including pre-existing pending edits; the user chose
+this mode after that behavior was explained.
 
-```bash
-node .ralph-tui/git-sandbox.test.mjs
-```
-
-Ralph's own automatic commit stages all changes with `git add -A`. It is
-disabled here because unrelated work may already be present. Agent changes
-are reviewed and committed by the agent, using only task-owned files or hunks,
-before it closes the issue and emits the completion signal. A failed commit
-leaves the issue unfinished. Already-completed work records its existing commit
-instead of creating an empty one. Unrelated staged changes remain intact.
+Do not add `writable_roots = [".git"]` to `.codex/config.toml`: relative paths
+there resolve against `.codex`, targeting the protected `.codex/.git` path and
+preventing sandbox startup. No writable Git override is needed for engine commits.
 
 This is an intentional customization of the upstream
 [v0.12.0 template contract](https://github.com/subsy/ralph-tui/blob/v0.12.0/src/templates/engine.ts).
@@ -112,8 +107,7 @@ task completion alone does not establish a successful commit.
 
 Restart a running Ralph session after changing this setup. The engine keeps its
 resolved configuration and caches compiled templates; disk edits alone do not
-update that running process. The prompt leaves an issue unfinished if engine
-auto-commit is re-enabled. Beads operations remain local-only; do not run `bd sync`.
+update that running process. Beads operations remain local-only; do not run `bd sync`.
 
 ## Verification
 
@@ -126,9 +120,10 @@ PATH="$HOME/.bun/bin:$PATH" bun .ralph-tui/workflow.test.mjs
 ```
 
 It verifies three iterations: incomplete work, completion of the same issue,
-then the next dependent issue. The synthetic agent reads the rendered prompt
-and follows its scoped-commit instruction; assertions verify two task commits
-and preservation of a pre-existing staged edit. This checks the runner contract,
+then the next dependent issue. It first starts the actual project sandbox using
+the project config loader, catching invalid mounts before any agent work. The
+synthetic agent edits files through the real Codex sandbox; Ralph then creates
+two automatic commits outside it, including all pending changes. This checks the runner contract,
 not how reliably a real model follows instructions. It also verifies that a
 blocker introduced between attempts prevents a retry. To reproduce the original failure, pass
 `beads` as the final argument; the assertion fails after one iteration.
