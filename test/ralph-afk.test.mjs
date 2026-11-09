@@ -5,8 +5,8 @@ import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// Fake CLIs only: no model calls. `work` holds the number of ready issues; each Ralph run finishes one.
-function fixture(work = 1) {
+// Fake CLIs only: no model calls. `work` holds the number of ready issues per epic; each Ralph run finishes one.
+function fixture(work = { 'TreeTutor-7t3': 1 }) {
   const cwd = mkdtempSync(join(tmpdir(), 'treetutor-afk-'));
   for (const dir of ['scripts', '.ralph-tui', 'bin', '.config/ralph-tui/plugins/trackers']) mkdirSync(join(cwd, dir), { recursive: true });
   for (const file of ['ralph', 'ralph-codex', 'ralph-takeover.mjs', 'ralph-afk']) {
@@ -14,15 +14,16 @@ function fixture(work = 1) {
     chmodSync(join(cwd, 'scripts', file), 0o755);
   }
   writeFileSync(join(cwd, '.config/ralph-tui/plugins/trackers/beads-resume.js'), '');
-  writeFileSync(join(cwd, 'work'), String(work));
+  for (const [epic, n] of Object.entries(work)) writeFileSync(join(cwd, `work-${epic}`), String(n));
+  const epicWork = flag => `"${cwd}/work-$(sed -n 's/.*${flag} \\([^ ]*\\).*/\\1/p' <<< "$*")"`;
   const bin = (name, body) => writeFileSync(join(cwd, 'bin', name), `#!/usr/bin/env bash\n${body}\n`, { mode: 0o755 });
-  bin('bd', `if [[ $1 == ready ]]; then jq -n --argjson n "$(cat "${cwd}/work")" '[range($n)]'; else echo '[]'; fi`);
-  bin('ralph-tui', `echo "$*" >> "${cwd}/runs"; echo $(( $(cat "${cwd}/work") - 1 )) > "${cwd}/work"`);
+  bin('bd', `if [[ $1 == ready ]]; then jq -n --argjson n "$(cat ${epicWork('--parent')} 2>/dev/null || echo 0)" '[range($n)]'; else echo '[]'; fi`);
+  bin('ralph-tui', `echo "$*" >> "${cwd}/runs"; f=${epicWork('--epic')}; echo $(( $(cat "$f") - 1 )) > "$f"`);
   // Limited until the first wait has passed, like a usage window that resets.
   const agent = name => bin(name, `if [[ " $FIXTURE_LIMITED " == *" ${name} "* && ! -e "${cwd}/sleeps" ]]; then echo "You've hit your usage limit" >&2; exit 1; fi; echo pong`);
   agent('claude');
   agent('codex');
-  bin('sleep', `echo "$1" >> "${cwd}/sleeps"; [[ -z $FIXTURE_WAIT_ENDS_WORK ]] || echo 0 > "${cwd}/work"`);
+  bin('sleep', `echo "$1" >> "${cwd}/sleeps"; [[ -z $FIXTURE_WAIT_ENDS_WORK ]] || rm -f "${cwd}"/work-*`);
   bin('date', `if [[ $1 == +%H ]]; then echo "\${FIXTURE_HOUR:-12}"; else exec /usr/bin/date "$@"; fi`);
   const read = name => existsSync(join(cwd, name)) ? readFileSync(join(cwd, name), 'utf8').trim().split('\n') : [];
   const run = (env = {}) => spawnSync('bash', [join(cwd, 'scripts/ralph-afk')], {
@@ -33,7 +34,7 @@ function fixture(work = 1) {
 }
 
 test('a limited Claude hands the task to Codex, which keeps the next task after Claude resets', () => {
-  const f = fixture(2);
+  const f = fixture({ 'TreeTutor-7t3': 2 });
   const result = f.run({ FIXTURE_LIMITED: 'claude', RALPH_AFK_WAIT: '7' });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   // The second cycle follows a wait, by which time the fixture's Claude limit has reset:
@@ -63,4 +64,11 @@ test('the schedule picks the agent for the hour and runs nothing outside its win
   assert.equal(gap.run({ ...schedule, FIXTURE_HOUR: '07', FIXTURE_WAIT_ENDS_WORK: '1' }).status, 0);
   assert.deepEqual(gap.runs(), []);
   assert.equal(gap.sleeps().length, 1);
+});
+
+test('when an epic runs out of work it moves to the next one that has some', () => {
+  const f = fixture({ 'TreeTutor-7t3': 1, 'TreeTutor-sh8': 1 });
+  const result = f.run();
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(f.runs().map(run => run.split(' ')[3]), ['TreeTutor-7t3', 'TreeTutor-sh8']);
 });

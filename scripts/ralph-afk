@@ -4,7 +4,9 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
-epic="${1:-TreeTutor-7t3}"
+# Epics are worked in the order given; the default is the release order.
+epics=("$@")
+(( $# )) || epics=(TreeTutor-7t3 TreeTutor-vm4 TreeTutor-sh8)
 # Space-separated FROM-TO=agents windows in local hours; agents are tried in order.
 # An hour outside every window runs nothing.
 schedule="${RALPH_AFK_SCHEDULE:-00-24=claude,codex}"
@@ -44,8 +46,15 @@ count() { bd "$@" --parent "$epic" --json --limit 0 | jq length; }
 
 last=''
 while :; do
-  if (( $(count ready) + $(count list --status in_progress) == 0 )); then
-    log "No ready work under $epic. Stopping."
+  # First epic that still has ready or unfinished work: a later phase starts when the earlier ones are out of work.
+  epic=''
+  for e in "${epics[@]}"; do
+    epic="$e"
+    (( $(count ready) + $(count list --status in_progress) == 0 )) || break
+    epic=''
+  done
+  if [[ -z "$epic" ]]; then
+    log "No ready work under ${epics[*]}. Stopping."
     exit 0
   fi
   agent=''
@@ -61,7 +70,7 @@ while :; do
     sleep "$wait_s"
     continue
   fi
-  log "Starting one task on $agent."
+  log "Starting one task of $epic on $agent."
   last="$agent"
   started=$SECONDS
   # 9>&-: a Ralph that outlives this script must not keep the supervisor lock.

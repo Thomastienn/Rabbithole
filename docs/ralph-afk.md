@@ -5,7 +5,8 @@ once, in tmux or with `nohup`:
 
 ```bash
 ./scripts/ralph-afk                      # whichever of Claude or Codex has usage
-RALPH_AFK_SCHEDULE='00-07=codex 07-24=claude,codex' ./scripts/ralph-afk TreeTutor-7t3
+RALPH_AFK_SCHEDULE='00-07=codex 07-24=claude,codex' ./scripts/ralph-afk
+./scripts/ralph-afk TreeTutor-vm4 TreeTutor-sh8   # only these epics, in this order
 ```
 
 It is the only launcher, so Ralph's single-session lock never blocks it. Each
@@ -22,8 +23,12 @@ iteration limit. If no scheduled agent answers, or a run ends within two
 minutes (limit reached at once, dirty-start guard, crash), it waits
 `RALPH_AFK_WAIT` seconds (default 600) and checks again, which also covers a
 limit that resets while you sleep. A limit reached mid-task ends that run; the
-next agent resumes the same task through `beads-resume`. It stops when the epic
-has no ready or in-progress issue.
+next agent resumes the same task through `beads-resume`. 
+
+With no arguments it works the release epics in order (`TreeTutor-7t3`,
+`TreeTutor-vm4`, `TreeTutor-sh8`): each cycle takes the first epic that has a
+ready or in-progress issue, so it moves to the next phase by itself. It stops
+when none of them has one; blocked issues that need you do not count.
 
 `RALPH_AFK_SCHEDULE` is a space-separated list of `FROM-TO=agents` windows in
 local hours, with agents tried in order. An hour outside every window runs
