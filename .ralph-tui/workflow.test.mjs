@@ -11,6 +11,16 @@ const bd = (...args) => execFileSync('bd', args, { cwd, encoding: 'utf8' }).trim
 console.log(`Fixture directory: ${cwd}`);
 execFileSync('git', ['init', '-q'], { cwd });
 bd('init', '--prefix', 'workflowtest', '--quiet');
+const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+git('config', 'user.name', 'Workflow fixture');
+git('config', 'user.email', 'workflow@example.invalid');
+writeFileSync(join(cwd, '.gitignore'), '.beads/\n.beads.gate.lock\n.ralph-tui/\nfake-codex\nagent-count\n');
+writeFileSync(join(cwd, 'unrelated.txt'), 'original\n');
+git('add', '.gitignore', 'unrelated.txt');
+git('commit', '-qm', 'Fixture baseline');
+const baseline = git('rev-parse', 'HEAD');
+writeFileSync(join(cwd, 'unrelated.txt'), 'pre-existing staged edit\n');
+git('add', 'unrelated.txt');
 const create = (title, extra = []) => JSON.parse(bd('create', '--title', title, '--description', 'Synthetic workflow regression fixture.', '--json', ...extra)).id;
 const epic = create('Fixture epic', ['--type', 'epic']);
 const first = create('Incomplete first pass', ['--parent', epic]);
@@ -22,15 +32,27 @@ mkdirSync(join(cwd, '.ralph-tui'));
 const fakeAgent = join(cwd, 'fake-codex');
 writeFileSync(fakeAgent, `#!/usr/bin/env node
 const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
 if (process.argv.includes('--version')) { console.log('codex-cli 0.167.0'); process.exit(0); }
 if (!process.argv.includes('exec')) process.exit(91);
 const countFile = ${JSON.stringify(join(cwd, 'agent-count'))};
 const count = fs.existsSync(countFile) ? Number(fs.readFileSync(countFile, 'utf8')) + 1 : 1;
 fs.writeFileSync(countFile, String(count));
-process.stdin.resume();
-process.stdin.on('end', () => console.log(JSON.stringify({ type: 'item.completed', item: {
-  type: 'agent_message', text: count === 1 ? 'Partial progress; task unfinished.' : '<promise>COMPLETE</promise>'
-}})));
+let prompt = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', chunk => { prompt += chunk; });
+process.stdin.on('end', () => {
+  fs.writeFileSync('.ralph-tui/rendered-prompt.txt', prompt);
+  fs.writeFileSync('task-result.txt', String(count));
+  // Follow the rendered commit instruction instead of assuming the engine commits.
+  if (count > 1 && prompt.includes('git commit --only')) {
+    execFileSync('git', ['add', '--', 'task-result.txt']);
+    execFileSync('git', ['commit', '--only', '-m', 'chore: fixture task ' + count, '--', 'task-result.txt']);
+  }
+  console.log(JSON.stringify({ type: 'item.completed', item: {
+    type: 'agent_message', text: count === 1 ? 'Partial progress; task unfinished.' : '<promise>COMPLETE</promise>'
+  }}));
+});
 `, { mode: 0o755 });
 writeFileSync(join(cwd, '.ralph-tui', 'config.toml'), `configVersion = "2.1"
 agent = "codex"
@@ -61,6 +83,15 @@ assert.equal(iterations.length, 3, 'Unfinished first pass must continue to a sec
 assert.deepEqual(iterations.map(i => i.task), [first, first, second]);
 assert.deepEqual(iterations.map(i => i.complete), [false, true, true]);
 assert.equal(JSON.parse(bd('show', blocked, '--json'))[0].status, 'blocked');
+assert.equal(git('rev-list', '--count', `${baseline}..HEAD`), '2', 'Each completed task must have a verified agent commit');
+for (const sha of git('rev-list', `${baseline}..HEAD`).split('\n')) {
+  assert.equal(git('show', '--pretty=', '--name-only', sha), 'task-result.txt', 'Task commits must exclude unrelated edits');
+}
+assert.equal(git('diff', '--cached', '--name-only'), 'unrelated.txt', 'Pre-existing staged edits must stay staged and uncommitted');
+const rendered = readFileSync(join(cwd, '.ralph-tui', 'rendered-prompt.txt'), 'utf8');
+assert.ok(rendered.includes(second), 'Ralph must render the selected task ID');
+assert.ok(!rendered.includes('{{'), 'No unresolved template variables');
+assert.match(readFileSync(join(import.meta.dir, 'config.toml'), 'utf8'), /^autoCommit\s*=\s*false\s*$/m, 'Engine-wide staging must be disabled for scoped agent commits');
 
 // A real blocker added during an iteration must prevent another attempt.
 const { createBeadsTracker } = await import(join(dirname(cli), 'index.js'));
@@ -83,4 +114,4 @@ bd('update', handedOff, '--status', 'in_progress', '--assignee', 'another-worker
 assert.equal(await t.getNextTask(), undefined, 'Other workers must not lose their claims');
 assert.equal(JSON.parse(bd('show', handedOff, '--json'))[0].status, 'in_progress');
 await t.dispose();
-console.log('PASS: unfinished work continues, next task runs, blockers and ownership stay enforced.');
+console.log('PASS: rendered prompt creates scoped task commits; unfinished work continues; blockers, ownership and unrelated staged edits stay enforced.');

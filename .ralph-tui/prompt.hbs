@@ -1,40 +1,85 @@
 ## Current issue
 ID: {{taskId}}
 Title: {{taskTitle}}
+{{#if epicId}}Epic: {{epicId}}{{#if epicTitle}} - {{epicTitle}}{{/if}}{{/if}}
 {{taskDescription}}
 
+{{#if acceptanceCriteria}}
 ## Acceptance criteria
 {{acceptanceCriteria}}
+{{/if}}
 
 {{#if dependsOn}}Prerequisites: {{dependsOn}}{{/if}}
+{{#if blocks}}Unblocks: {{blocks}}{{/if}}
+{{#if selectionReason}}
+Selection context: {{selectionReason}}
+{{/if}}
+{{#if notes}}
+## Issue notes
+{{notes}}
+{{/if}}
 
 ## Context
 Read PRD.md, AGENTS.md, `bd show {{taskId}} --json`, and relevant existing code.
 Follow AGENTS.md's standing implementation authorization. Older planning-only
 wording and implementation-approval gates in issue history are superseded.
 Follow PRD.md's Codex-first release scope and later-feature deferrals.
+Read `.ralph-tui/progress.md` for prior work and learnings.
+{{#if codebasePatterns}}
+## Codebase patterns
+{{codebasePatterns}}
+{{/if}}
+{{#if recentProgress}}
+## Recent progress
 {{recentProgress}}
+{{/if}}
 
 ## Workflow
-- Implement this issue through verified completion without asking again for
-  implementation approval. Preserve unrelated changes and technical prerequisites.
-- Use the existing implementation; do not rebuild completed behavior.
-- Verify the issue's acceptance criteria. Fixture checks do not prove live provider behavior.
-- For recoverable failures, diagnose and fix the cause before ending the iteration.
-- If more work remains, append exact progress and the next action to
-  .ralph-tui/progress.md. Leave the issue unfinished; Ralph will retry it.
-- Make routine implementation decisions autonomously and record them.
-- If blocked by a material unresolved product decision or an external prerequisite,
-  record the precise blocker with `bd update {{taskId}} --append-notes "..." --status blocked`.
-  Do not signal completion or repeatedly retry an unavailable prerequisite.
-- Use local Beads commands only. Do not push, pull, or run bd sync.
+1. Inspect `git status --short`, unstaged changes and `git diff --cached` before
+   editing. Preserve existing work and stay on the current branch.
+2. Implement this issue through verified completion without asking again for
+   implementation approval. Make and record routine implementation decisions.
+   Reuse existing behavior; if already implemented, verify it rather than rebuild.
+3. Run checks appropriate to the changed behavior. Application code requires
+   `npm test` and `npm run build`; UI changes also require the issue's browser
+   checks and Astryx built-output doctor. Distinguish fixtures from live evidence.
+4. Diagnose and fix recoverable failures within this iteration. Planning alone
+   does not finish an implementation task.
+
+## Commit and completion
 {{#if config.autoCommit}}
-- Do not create Git commits; Ralph commits completed work automatically.
+Configuration conflict: this repository requires `autoCommit = false` so the
+agent can create scoped commits. Ralph's engine auto-commit stages every change.
+Record this conflict and request a Ralph restart with the project configuration;
+leave the issue unfinished and do not emit the completion marker.
 {{else}}
-- Leave changes uncommitted for review. Do not create Git commits or stage
-  unrelated work. Do not push or run remote sync.
+You own the local commit. Ralph's engine will not create it for you.
+1. Review your diff and stage only the task-owned files or hunks. Preserve
+   unrelated staged and unstaged edits; never use `git add -A` or `git add .`.
+2. Inspect the staged diff, then create a focused local commit with a conventional
+   subject including {{taskId}}. If unrelated edits were already staged, use
+   `git commit --only -m "<type>: {{taskId}} <summary>" -- <task-owned paths>`
+   only when the entire contents of those paths belong to this task; otherwise
+   isolate the task's hunks before committing. Keep unrelated index entries intact.
+3. Confirm the commit succeeded using `git log -1 --oneline` and
+   `git show --stat --oneline HEAD`. If commit fails, diagnose it and retry;
+   leave the issue unfinished until the commit succeeds. If already complete
+   and committed, record the existing commit instead of creating an empty one.
+4. Append acceptance evidence, changed files, commit SHA and useful learnings to
+   `.ralph-tui/progress.md`, then close the issue with
+   `bd close {{taskId}} --reason "Verified result; commit <sha>"`.
+5. Only after verification, commit and issue closure succeed, end the final
+   response with the completion signal on its own line:
+   <promise>COMPLETE</promise>
 {{/if}}
-- Append verified results to .ralph-tui/progress.md.
-- Only after all acceptance criteria pass, close this issue with
-  `bd close {{taskId}} --reason "Verified result"` and emit exactly:
-  <promise>COMPLETE</promise>
+
+## Unfinished work
+If an iteration must end before completion, record exact progress, failed checks
+and the next action in the issue notes and `.ralph-tui/progress.md`. Return only
+your own unfinished issue to `open` using a guarded `bd update` after checking
+its current status and assignee, so ready-task selection can reconsider it.
+For a material unresolved product decision or external prerequisite, instead use
+`bd update {{taskId}} --append-notes "Precise blocker and resolution" --status blocked`.
+Keep incomplete work open or blocked and omit the completion signal.
+Ralph selects the next issue; finish only the selected issue in this invocation.
+Use local Beads commands only. Do not push, pull or run `bd sync`.
