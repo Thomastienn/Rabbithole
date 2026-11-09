@@ -15,5 +15,6 @@ dist/
 .ralph-tui/iterations/
 .ralph-tui/reports/
 .ralph-tui/ralph.lock
+.ralph-tui/afk.lock
 .ralph-tui/session*.json
 .ralph-tui/progress.md

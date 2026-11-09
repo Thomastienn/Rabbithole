@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Unattended Ralph: one task per run, on the first scheduled agent that still has usage.
+# Being the only launcher, it never meets Ralph's lock. See docs/ralph-workflow.md.
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+
+epic="${1:-TreeTutor-7t3}"
+# Space-separated FROM-TO=agents windows in local hours; agents are tried in order.
+# An hour outside every window runs nothing.
+schedule="${RALPH_AFK_SCHEDULE:-00-24=claude,codex}"
+wait_s="${RALPH_AFK_WAIT:-600}"
+claude_model="${RALPH_CLAUDE_MODEL:-opus}"
+codex_model="${RALPH_CODEX_MODEL:-gpt-6.1-sol}"
+log() { echo "[ralph-afk $(date '+%F %T')] $*"; }
+
+# Two supervisors would take over each other's Ralph forever.
+exec 9>.ralph-tui/afk.lock
+flock -n 9 || { echo 'ralph-afk is already running in this checkout.' >&2; exit 1; }
+
+agents_now() {
+  local hour=$((10#$(date +%H))) window hours
+  for window in $schedule; do
+    hours="${window%%=*}"
+    if (( hour >= 10#${hours%-*} && hour < 10#${hours#*-} )); then
+      echo "${window#*=}" | tr ',' ' '
+      return
+    fi
+  done
+}
+
+# Ask the real CLI with the run's model. Ralph 0.12.0 does not recognise subscription
+# usage-limit errors, and matching its log would also match text the agent prints.
+usable() {
+  local reply
+  case "$1" in
+    claude) reply="$(cd /tmp && timeout 180 claude -p 'Reply with exactly: pong' --model "$claude_model" 2>/dev/null)" ;;
+    codex) reply="$(timeout 180 codex exec --skip-git-repo-check --ephemeral -s read-only -C /tmp -m "$codex_model" 'Reply with exactly: pong' 2>/dev/null)" ;;
+    *) echo "Unknown agent in RALPH_AFK_SCHEDULE: $1" >&2; return 1 ;;
+  esac || return 1
+  [[ "${reply,,}" == *pong* ]]
+}
+
+count() { bd "$@" --parent "$epic" --json --limit 0 | jq length; }
+
+while :; do
+  if (( $(count ready) + $(count list --status in_progress) == 0 )); then
+    log "No ready work under $epic. Stopping."
+    exit 0
+  fi
+  agent=''
+  for candidate in $(agents_now); do
+    if usable "$candidate"; then agent="$candidate"; break; fi
+    log "$candidate is not usable now (usage limit, auth or network)."
+  done
+  if [[ -z "$agent" ]]; then
+    log "No agent available. Checking again in ${wait_s}s."
+    sleep "$wait_s"
+    continue
+  fi
+  log "Starting one task on $agent."
+  started=$SECONDS
+  # 9>&-: a Ralph that outlives this script must not keep the supervisor lock.
+  case "$agent" in
+    claude) scripts/ralph "$epic" --takeover --iterations 1 --agent claude --model "$claude_model" 9>&- ;;
+    codex) RALPH_CODEX_MODEL="$codex_model" scripts/ralph-codex "$epic" --takeover --iterations 1 9>&- ;;
+  esac || log "Ralph exited with status $?."
+  # A run this short did no work (limit hit at once, dirty-start guard, crash): do not spin.
+  if (( SECONDS - started < 120 )); then
+    log "Run ended within 2 minutes. Checking again in ${wait_s}s."
+    sleep "$wait_s"
+  fi
+done
