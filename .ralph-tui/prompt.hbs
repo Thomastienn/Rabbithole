@@ -40,7 +40,9 @@ Only after these steps succeed, end the response with:
 The commit is pending until Ralph performs it after your response.
 {{/if}}
 
-If unfinished, record the exact remaining work and leave this issue open.
+If unfinished, record the exact remaining work, confirm this is still your task,
+and run `bd update {{taskId}} --status open --if-status in_progress` before exiting
+so Ralph can select it again.
 For a real external blocker, record the resolution needed and mark it blocked.
 Do not emit the completion signal for unfinished work. Ralph selects the next
 issue; do not start another task. Keep all operations local; no push or bd sync.
