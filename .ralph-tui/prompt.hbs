@@ -20,6 +20,14 @@ Prerequisites: {{dependsOn}}
   planning targets, not enforced limits. Read source/evidence on demand.
 - Implementation, debugging, required checks and local Beads updates are already
   authorized. Older planning-only notes do not require renewed approval.
+- Finish autonomously. Do not ask for implementation permission or make routine
+  design choices into user-approval gates. Choose the simplest reasonable default
+  consistent with PRD.md and record the decision and tradeoff in the issue notes.
+  Older issue/proposal wording asking for agreement on routine choices is
+  superseded by this authorization; it is not a reason to stop or mark blocked.
+  Honor current explicit user constraints, release order and acceptance checks.
+  Owner authorization does not grant third-party approval or authorize unrelated
+  destructive actions, credential relocation or bypassing runtime restrictions.
 - Implement the acceptance criteria and run the checks relevant to this issue.
   If already implemented, verify the existing behavior. Fix recoverable failures
   within this task; record actual evidence and distinguish fixtures from live checks.
@@ -50,7 +58,20 @@ The commit is pending until Ralph performs it after your response.
 
 If unfinished, record the exact remaining work in the issue notes and end without
 the completion signal; Ralph reopens and retries the issue.
-For a real external blocker, record the resolution needed and mark it blocked.
+Before declaring a blocker, diagnose the cause and try reasonable permitted
+recovery paths: inspect relevant code/configuration, repair task-owned defects,
+check runtime/storage access, and use another already-authorized provider for
+shared checks when available. A failed first attempt, routine uncertainty,
+missing implementation, or a request for renewed permission is not a blocker.
+Continue all independent work within this issue. Do not wait indefinitely or
+repeat quota/auth failures without new evidence, and never substitute fixtures
+for required native evidence or weaken acceptance to claim completion.
+Mark blocked only when a concrete external prerequisite still prevents required
+work after these attempts. Record the exact failure, attempted remedies and
+results, remaining acceptance, and actionable resolution/retry condition. Link
+an existing resolution issue or create one if none exists. Keep umbrella epics
+open while children carry blockers; a blocked parent can hide its own recovery
+tasks from the ready queue. Preserve real technical dependency edges.
 Do not emit the completion signal for unfinished work. Ralph selects the next
 issue; do not start another task. Keep all operations local; no push or bd sync.
 
