@@ -1,10 +1,10 @@
 # TreeTutor — Product Requirements
 
-Status: Map-first requirements agreed on 2026-11-08. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
+Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
 
 ## Relationship to the original idea
 
-IDEA.md remains the original vision: connected subproblem conversations that branch recursively, with Codex and Claude, optional automatic branch suggestions, Mermaid diagrams, Remotion videos, and potentially a custom OpenAI-compatible endpoint. This PRD makes the initial release Codex-only and text-first with manual passage selection. Claude, cross-provider switching, suggestions, media, and custom endpoints remain deferred. Parent and child conversations can both continue chatting and branching; conversations are not limited to leaf nodes.
+IDEA.md remains the original vision: connected subproblem conversations that branch recursively, with Codex and Claude, optional automatic branch suggestions, Mermaid diagrams, Remotion videos, and potentially a custom OpenAI-compatible endpoint. This PRD makes the initial release text-first with manual passage selection, supporting Claude (default) and Codex through the learner's existing subscriptions, including cross-provider switching. Suggestions, media, and custom endpoints remain deferred. Parent and child conversations can both continue chatting and branching; conversations are not limited to leaf nodes.
 
 ## Audience
 
@@ -16,11 +16,11 @@ TreeTutor is a local web app only. Hosted deployment and an installed desktop ap
 
 ## Providers
 
-The current release supports Codex through the learner's existing ChatGPT subscription. Claude implementation, Claude authentication/testing, cross-provider switching, API-key access, and custom OpenAI-compatible endpoints are deferred and must not block this release. Do not show a Claude setup requirement or a nonfunctional provider picker in the Codex-only interface.
+The current release supports Claude through the learner's existing Claude subscription, using the official user-installed Claude Code CLI with its native sign-in, and Codex through the learner's existing ChatGPT subscription. Claude is the default provider for new learning trees; Codex remains available. API-key access and custom OpenAI-compatible endpoints are deferred; do not silently substitute API-key access.
 
-Child conversations default to their parent's Codex model. Learners can change Codex model within an existing conversation while preserving visible messages and inherited context.
+Provider and model selection share the compact model menu. A signed-out provider shows an actionable sign-in message rather than a nonfunctional choice.
 
-Later, adding Claude and provider switching must preserve visible messages and the conversation's existing context, including inherited branch context. The new provider must be able to continue the discussion using that history. This future continuity requirement and the previously selected native Claude Code route remain recorded; they do not require Claude work now.
+Child conversations default to their parent's provider and model. Learners can change model or provider within an existing conversation while preserving visible messages and the conversation's existing context, including inherited branch context. The new provider must be able to continue the discussion using that history.
 
 ## Local persistence and learning trees
 
@@ -112,7 +112,7 @@ Automatic suggestions for concepts or passages worth branching into are an expli
 
 ## Initial text release
 
-The initial release targets the complete text learning journey: multiple saved trees, a movable branching canvas, focused chat, keyboard access, lazy context compaction, concurrent conversations, and subscription-backed Codex with Codex model switching. Verify Codex authentication, context continuity and independent sessions; Claude integration and cross-provider checks are outside this release. Do not silently substitute API-key access.
+The initial release targets the complete text learning journey: multiple saved trees, a movable branching canvas, focused chat, keyboard access, lazy context compaction, concurrent conversations, and subscription-backed Claude (default) and Codex with model and provider switching. Verify Claude and Codex authentication, context continuity, cross-provider switching and independent sessions. Do not silently substitute API-key access.
 
 Build incrementally within this scope; Beads records implementation order and dependencies. Mermaid, Remotion, automatic branch suggestions, and Vim bindings are later increments rather than requirements for the first text release.
 
@@ -123,13 +123,13 @@ These are future implementation checks, not claims that the app has been built o
 1. **Branching:** Highlight a passage and ask a question. A connected child appears to the right, near the source passage where space permits, and immediately receives focus. Repeat within the child to demonstrate recursive branching.
 2. **Context:** Verify the child receives a compact snapshot of relevant ancestor/parent context, the exact selected passage, and the question. Creating later parent messages does not change that snapshot. Child discussion does not enter parent context.
 3. **Navigation:** Drag empty map space to pan, use the wheel to zoom around the cursor, drag nodes without opening them, and click nodes to open or switch the single chat side panel. Verify the map remains interactive beside chat; expanded chat returns to the previous map position/zoom; narrow windows support returning from full-workspace chat. Transitions are smooth, and connections still identify their source passages.
-4. **Keyboard:** Complete tree creation, text selection, branching, box movement, navigation, zooming, folding, all bulk branch actions, chat panel collapse/expand/return, chatting, and Codex model menu selection using only the keyboard.
+4. **Keyboard:** Complete tree creation, text selection, branching, box movement, navigation, zooming, folding, all bulk branch actions, chat panel collapse/expand/return, chatting, and provider/model menu selection using only the keyboard.
 5. **Persistence:** Create multiple trees, add messages and nested branches, reposition boxes and change fold/panel state, allow the layout save interval to pass, then reopen the app. Verify trees, messages, connections, context snapshots, positions, viewport, selected conversation, and panel/fold state remain available. Changed layout is saved at most once per minute; idle layouts produce no writes. Layout persistence stores a current compact state rather than message copies or interaction history; message persistence remains unchanged.
 6. **Concurrency:** Generate responses in two separate conversations at the same time. Navigation and interaction with other conversations remain available; responses reach their respective boxes.
-7. **Codex continuity:** Change Codex model within a conversation and verify visible history remains intact and continuation uses prior discussion and inherited context. Repeat after saving and reopening and within a nested child. Verify independent Codex conversations do not share or reroute session state. No Claude login, inference or cross-provider check is required.
+7. **Provider continuity:** New trees default to Claude. Change model within a conversation, and switch a conversation between Claude and Codex in both directions; verify visible history remains intact and continuation uses prior discussion and inherited context. Repeat after saving and reopening and within a nested child. Verify independent conversations, on either provider, do not share or reroute session state.
 8. **Local delivery:** Run through localhost and verify the app server listens only on loopback. Saved learning trees remain on the local machine; selected model providers still receive inference requests.
 9. **Compact map:** Verify collapsed-by-default tree navigation and compact minus/percentage/plus/fit controls with remaining actions in a menu. Nodes show a title, tiny activity dot, fold chevron, and latest question/answer preview capped at two lines each with ellipses for truncation. Fold/unfold one subtree, expand all, collapse all, and keep the current branch; the latter preserves root-to-current path and current descendants while folding side branches along the path. Folding changes visibility without deleting conversations or interrupting replies.
-10. **Compact chat and empty start:** A new tree shows an empty map and Start conversation; its first sent question creates the root node. Model selection uses a small icon-triggered menu; passage actions appear only with selected text and remain keyboard-accessible. A new child is made visible and opens in chat even when its parent branch was folded.
+10. **Compact chat and empty start:** A new tree shows an empty map and Start conversation; its first sent question creates the root node. Provider/model selection uses a small icon-triggered menu; passage actions appear only with selected text and remain keyboard-accessible. A new child is made visible and opens in chat even when its parent branch was folded.
 
 For the later media increments, verify that both Mermaid and Remotion generation use subagents, their working context stays separate, and the finished artifacts appear in the originating chat without injecting generation transcripts into the tutor conversation.
 
@@ -137,9 +137,9 @@ For the later media increments, verify that both Mermaid and Remotion generation
 
 The provider research below began on 2026-11-07. Current decisions and task-specific verification are recorded in the linked local documents and Beads; the original research snapshot is not a current runtime status report.
 
-- **Codex:** The selected route uses Codex app-server with ChatGPT-managed authentication. See the [architecture decision](docs/architecture-proposal.md) and current provider/verification tasks for implementation and runtime evidence. Codex model continuity and session isolation remain release checks.
-- **Claude (deferred):** The previously selected route invokes the official, user-installed Claude Code CLI with native user authentication. See the [subscription integration decision](docs/research/claude-subscription-integration.md). Claude implementation, authentication, session isolation, history transfer and eligibility follow-up are postponed; no Claude prerequisite gates the current release. Preserve the route decision for later without substituting API-key access.
-- **History transfer (later):** When provider switching is resumed, verify preservation of prior discussion and inherited context. Continuity does not require identical answers from different models.
+- **Codex:** The selected route uses Codex app-server with ChatGPT-managed authentication. See the [architecture decision](docs/architecture-proposal.md) and current provider/verification tasks for implementation and runtime evidence. Codex model continuity, cross-provider switching and session isolation are release checks.
+- **Claude:** The selected route invokes the official, user-installed Claude Code CLI with native user authentication. See the [subscription integration decision](docs/research/claude-subscription-integration.md). Claude authentication, history transfer, session isolation and switching are release checks; the eligibility clarification follow-up remains optional and non-blocking. Do not substitute API-key access.
+- **History transfer:** For provider switching, verify preservation of prior discussion and inherited context. Continuity does not require identical answers from different models.
 - **Compaction:** Verify summary quality and branch startup latency with a real learning conversation. A summary must not replace the saved source history.
 - **Implementation choices:** React/TypeScript/Vite, React Flow, a loopback Node server, SQLite, and the initial keyboard contract were selected in the [architecture decision](docs/architecture-proposal.md). This PRD's revised compact controls, selection-only branch actions, chat side panel and layout-saving cadence supersede conflicting older interaction details there. Exact dimensions, breakpoints and animation timing remain implementation details; clarify changes that materially affect the agreed experience.
 - **Later increments:** Suggestion and video designs are selected in the linked documents above. Their implementation and validation remain later work; optional Vim bindings still require agreement.

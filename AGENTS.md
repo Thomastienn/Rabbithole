@@ -10,7 +10,8 @@ commits without asking for implementation approval again. This supersedes older
 planning-only and needs-implementation-approval wording in issues and notes.
 Continue to the next ready issue in dependency order within the same run; choose
 and record sensible defaults for routine implementation decisions. Preserve
-technical prerequisites, acceptance checks and the Codex-first release scope;
+technical prerequisites, acceptance checks and the PRD release scope (Claude
+default plus Codex);
 later/deferred work keeps its release order. Record concrete external blockers
 and continue independent ready work. Preserve unrelated edits. Keep Git local:
 no push, pull or remote sync. Authorization comes from the project owner and
