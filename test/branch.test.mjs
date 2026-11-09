@@ -146,7 +146,7 @@ test('recursive branches compact fixed ancestor context without reading live anc
   };
   try {
     let api = await start();
-    const root = await (await api.post('', { title: 'Root' })).json();
+    const root = await (await api.post('', {})).json();
     store.thread(root.id, 'root-thread', 'fixture-model');
     const source = store.message(root.id, 'assistant', 'Luma has 37 branches.', 'completed');
     const anchor = { messageId: source, start: 0, end: 4, text: 'Luma', question: 'Explain Luma' };

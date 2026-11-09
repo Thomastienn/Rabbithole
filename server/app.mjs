@@ -52,8 +52,10 @@ export function createApp({ store, auth, provider, providers = { codex: provider
         try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return json(res, 400, { error: 'Invalid request.' }); }
         if (url.pathname === '/api/auth') return json(res, 200, { url: auth.start(origin) });
         if (url.pathname === '/api/trees') {
-          if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200) return json(res, 400, { error: 'Enter a tree name (up to 200 characters).' });
-          return json(res, 201, store.create(body.title.trim(), providers[defaultProvider] ? defaultProvider : Object.keys(providers)[0]));
+          // One unstarted chat at a time: New chat reopens it instead of creating another.
+          const unstarted = store.unstarted();
+          if (unstarted) return json(res, 200, store.tree(unstarted));
+          return json(res, 201, store.create(undefined, providers[defaultProvider] ? defaultProvider : Object.keys(providers)[0]));
         }
         const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|layout|model)$/);
         if (match) {
@@ -137,7 +139,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           };
           const interrupt = () => { status = 'interrupted'; finish(); };
           controller.signal.addEventListener('abort', interrupt, { once: true });
-          send({ type: 'saved', id: reply, user: { id: user, role: 'user', text: body.text, status: 'completed' } });
+          send({ type: 'saved', id: reply, title: store.tree(id).title, user: { id: user, role: 'user', text: body.text, status: 'completed' } });
           try {
             await pick(tree).generate(tree, body.text, event => {
               if (finished) return;

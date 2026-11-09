@@ -9,9 +9,9 @@ import type { ReactNode } from 'react';
 import { parseViewport, placeBox, type Point, type Viewport } from './canvas';
 
 export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside' | 'expanded'; viewport?: Viewport };
-export type Summary = { id: string; title: string; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null; layout?: Layout | null; started?: number };
+export type Summary = { id: string; title: string; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null; layout?: Layout | null };
 export type Source = { messageId: string; start: number; end: number; text: string };
-export type Preview = { question: string | null; answer: string | null; status: string | null };
+export type Preview = { id: string; role: string; text: string; status: string }[];
 type Open = (id: string, source?: Source) => void;
 export type MapActions = { expand: () => void; collapse: () => void; keep: () => void; canKeep: boolean };
 type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; active: boolean; focus: boolean; focusControl?: string; transition: boolean; childCount: number; hiddenCount: number; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
@@ -38,11 +38,13 @@ function Conversation({ data }: NodeProps<ConversationNode>) {
       {data.active && <Text className="activity-dot" role="status"><Text className="sr-only">Responding</Text></Text>}
       {t.parent && <IconButton id={`reveal-${t.id}`} className="node-extra nodrag nopan" label={`Reveal source passage for ${t.title}`} tooltip={`From “${t.passage}”`} icon={<LinkIcon />} variant="ghost" size="sm" onClick={() => data.open(t.parent!, sourceOf(t))} />}
     </HStack>
-    {preview?.question && <VStack gap={1} className="node-preview">
-      <Text type="supporting" color="primary" maxLines={2}><Text type="inherit" className="sr-only">Question: </Text>{preview.question}</Text>
-      <Text type="supporting" color="secondary" maxLines={2}><Text type="inherit" className="sr-only">Answer: </Text>{preview.answer || (preview.status === 'streaming' ? 'Thinking…' : 'No reply yet.')}</Text>
+    {!!preview?.length && <VStack gap={1} className="node-preview">
+      {preview.map(m => <VStack key={m.id} gap={0} className="node-message" data-message={m.id} data-role={m.role}>
+        <Text type="supporting" color={m.role === 'user' ? 'primary' : 'secondary'} weight={m.role === 'user' ? 'medium' : undefined} maxLines={3}><Text type="inherit" className="sr-only">{m.role === 'user' ? 'Question: ' : 'Answer: '}</Text>{m.text || (m.status === 'streaming' ? 'Thinking…' : 'No text.')}</Text>
+        {m.role === 'assistant' && m.status !== 'completed' && <Text type="supporting" color="secondary">{m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}</Text>}
+      </VStack>)}
+      {preview.at(-1)?.role === 'user' && <Text type="supporting" color="secondary"><Text type="inherit" className="sr-only">Answer: </Text>No reply yet.</Text>}
     </VStack>}
-    {preview?.status && !['completed', 'streaming'].includes(preview.status) && <Text type="supporting" color="secondary">Reply {preview.status}.</Text>}
     {data.folded && <Text type="supporting" color="secondary">{data.hiddenCount} hidden {data.hiddenCount === 1 ? 'branch' : 'branches'}</Text>}
     {data.sources.map(child => <HStack key={child.id} gap={1} className="passage-anchor" data-source={child.id}>
       <Text type="supporting" color="secondary" maxLines={1}>“{child.passage}”</Text>

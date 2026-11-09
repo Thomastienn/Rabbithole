@@ -43,6 +43,8 @@ html { view-transition-name: none; }
 @keyframes pulse { 50% { opacity: 0.3; } }
 @media (prefers-reduced-motion: reduce) { .activity-dot, .selection-action { animation: none; } }
 .conversation-box button { height: auto; white-space: normal; }
+.node-message[data-role=user] { padding-inline-start: var(--spacing-2); border-inline-start: medium solid var(--color-border-emphasized); }
+.node-message[data-role=assistant] { padding-inline-start: var(--spacing-2); }
 .passage-anchor { position: relative; padding-block-start: var(--spacing-2); padding-inline-end: var(--spacing-2); border-top: thin solid var(--color-border); }
 .passage-anchor .react-flow__handle { right: calc(-1 * var(--spacing-3)); }
 .react-flow__node.selected .conversation-box { border-color: var(--color-text-primary); box-shadow: var(--shadow-med); }

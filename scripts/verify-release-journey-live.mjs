@@ -47,6 +47,8 @@ const data = mkdtempSync(join(tmpdir(), 'treetutor-release-'));
 const report = { date: new Date().toISOString(), data, provider, route: provider === 'claude' ? 'native Claude Code login' : 'existing app-owned ChatGPT consent; isolated Codex app-server', checks: [] };
 const ok = (name, detail) => { report.checks.push({ name, result: 'PASS', ...(detail && { detail }) }); console.error(`ok - ${name}`); };
 const CODE = 'AMBER-HERON-42';
+// The root titles itself from this first question.
+const ROOT = `My bracket codename is ${CODE}; remember it. In three short sentences, explain how a tournament tree finds the minimum of eight numbers.`;
 
 let server, origin, csrf;
 async function start(port = 0) {
@@ -126,13 +128,10 @@ try {
   await wait(`[...document.querySelectorAll('button')].some(e => e.getAttribute('aria-label') === 'Map menu')`);
   await click('Map menu');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
-  await b('find', 'role', 'textbox', 'fill', '--name', 'New tree name', 'Tournament trees');
-  await click('Create tree');
-  await wait(`document.activeElement?.textContent.trim() === 'Start conversation'`);
-  assert.equal(await ev(`document.querySelectorAll('.react-flow__node').length`), 0);
-  ok('new tree shows an empty map and Start conversation');
-  await click('Start conversation');
-  await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') !== null`);
+  await click('New chat');
+  await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') !== null && document.querySelector('.focused-chat h2')?.textContent === 'New chat'`);
+  assert.equal(await ev(`document.querySelectorAll('.react-flow__node').length`), 1);
+  ok('New chat shows one root box titled New chat with its chat open and the composer focused');
   const catalog = await get('/api/models');
   assert.equal(catalog.defaultProvider, 'claude', 'product default remains Claude in both scenarios');
   if (provider === 'codex') {
@@ -143,9 +142,9 @@ try {
     await wait(`document.querySelector('.focused-chat')?.textContent.includes(${JSON.stringify(model.label + ' · saved automatically')}) && !document.querySelector('[aria-label="Model for next reply"]')?.hasAttribute('aria-busy')`);
     await b('focus', '.focused-chat [role=textbox]');
   }
-  await b('keyboard', 'type', `My bracket codename is ${CODE}; remember it. In three short sentences, explain how a tournament tree finds the minimum of eight numbers.`);
+  await b('keyboard', 'type', ROOT);
   await click('Send');
-  let root = (await get('/api/state')).trees.find(t => t.title === 'Tournament trees');
+  let root = (await get('/api/state')).trees.find(t => t.title === ROOT);
   for (let i = 0; i < 480; i++) {
     root = await get(`/api/trees/${root.id}`);
     const reply = root.messages.at(-1);
@@ -166,9 +165,9 @@ try {
   ok('nested branches from exact passages (root → child → grandchild) with live replies');
 
   // Concurrency: two separate conversations generate at once while the browser keeps navigating.
-  const second = await (await post('/api/trees', { title: 'Heap comparison' })).json();
+  const second = await (await post('/api/trees', {})).json();
   if (provider === 'codex') assert.equal((await post(`/api/trees/${second.id}/model`, { provider, model: root.model })).status, 200);
-  await b('reload'); await wait(`!!document.querySelector('[aria-label="Map menu"]')`); await openTree('Tournament trees'); await wait(node(child.id));
+  await b('reload'); await wait(`!!document.querySelector('[aria-label="Map menu"]')`); await openTree(ROOT); await wait(node(child.id));
   const t0 = Date.now();
   const both = Promise.all([ask(root.id, 'Explain the tournament minimum algorithm in eight short numbered steps.'), ask(second.id, 'Explain how a binary heap differs from a tournament tree in eight short numbered points.')]);
   both.catch(() => {}); // surfaced by the await below
@@ -187,7 +186,7 @@ try {
   ok('two conversations generated simultaneously; navigation stayed available; each reply saved to its own conversation', { ms: Date.now() - t0 });
 
   // Layout: fold, move, zoom, select conversation, beside panel; one batched write on the controlled minute.
-  await b('reload'); await wait(`!!document.querySelector('[aria-label="Map menu"]')`); await openTree('Tournament trees');
+  await b('reload'); await wait(`!!document.querySelector('[aria-label="Map menu"]')`); await openTree(ROOT);
   await wait(node(grand.id)); // selection is unsaved until the minute batch, so reopen the child after reload
   await b('focus', `#open-${child.id}`); await b('press', 'Enter');
   await wait(`${h2} === ${JSON.stringify(child.title)} && ${chatShown}`);
@@ -214,9 +213,9 @@ try {
 
   const before = await snapshot();
   assert.equal(Object.keys(before).length, 4);
-  assert.deepEqual(before['Tournament trees'].list.layout.folded, [child.id]);
-  assert.equal(before['Tournament trees'].list.layout.panel, 'expanded');
-  assert.ok(Number.isFinite(before['Tournament trees'].tree.x) && Number.isFinite(before['Tournament trees'].tree.y), 'dragged box position was saved');
+  assert.deepEqual(before[ROOT].list.layout.folded, [child.id]);
+  assert.equal(before[ROOT].list.layout.panel, 'expanded');
+  assert.ok(Number.isFinite(before[ROOT].tree.x) && Number.isFinite(before[ROOT].tree.y), 'dragged box position was saved');
   assert.deepEqual(before[child.title].tree.branch, child.branch, 'later parent messages leave child context frozen');
   assert.deepEqual(before[grand.title].tree.branch, grand.branch, 'grandchild context stays frozen');
   report.saveLocation = { path: join(data, 'trees.sqlite'), exists: existsSync(join(data, 'trees.sqlite')), fileMode: (statSync(join(data, 'trees.sqlite')).mode & 0o777).toString(8), sessions: provider === 'claude' ? 'Claude Code sessions under the native ~/.claude config; app workspace <data>/claude-workspace' : 'Codex sessions <data>/codex; workspace <data>/workspace; credentials remain in original app-owned directory' };
@@ -234,11 +233,11 @@ try {
     trees: Object.keys(after).length, messages: Object.values(after).reduce((n, t) => n + t.tree.messages.length, 0),
     digest: hash(JSON.stringify(after)),
   });
-  await b('reload'); await wait(`!!document.querySelector('[aria-label="Map menu"]')`); await openTree('Tournament trees');
+  await b('reload'); await wait(`!!document.querySelector('[aria-label="Map menu"]')`); await openTree(ROOT);
   await wait(`${node(root.id)} && ${h2} === ${JSON.stringify(ui.selected)}`);
   assert.equal(await ev(chatShown), ui.chat); assert.equal(await ev(node(grand.id)), ui.grandVisible);
   assert.equal(await ev(`document.querySelector('.tree-workspace').dataset.expanded === 'true'`), ui.expanded);
-  assert.equal(await settledView(), ui.view, JSON.stringify(after['Tournament trees'].list.layout));
+  assert.equal(await settledView(), ui.view, JSON.stringify(after[ROOT].list.layout));
   ok('browser after restart restores selected conversation, panel mode, fold and viewport', ui);
 
   if (provider === 'codex') {
@@ -265,7 +264,7 @@ try {
   if (provider === 'codex') {
     assert.equal(final[grand.title].tree.thread, before[grand.title].tree.thread);
     assert.equal(final[grand.title].tree.model, report.modelChange.to);
-    assert.equal(final['Tournament trees'].tree.model, before['Tournament trees'].tree.model);
+    assert.equal(final[ROOT].tree.model, before[ROOT].tree.model);
     ok('saved nested Codex model change resumes the same session and recalls inherited passage without changing the parent model', report.modelChange);
   }
   for (const [title, t] of Object.entries(before)) assert.deepEqual(final[title].tree.messages.slice(0, t.tree.messages.length), t.tree.messages, `${title} history unchanged`);

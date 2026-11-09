@@ -1,5 +1,30 @@
 # Running Ralph for TreeTutor
 
+## Quick reference: what to run next
+
+Work is split into three phases. Each phase is a Beads epic; a task's ID prefix
+names its phase.
+
+| Run in this order | Phase | Task prefix |
+| --- | --- | --- |
+| `./scripts/ralph` | 1 · Text release | `TreeTutor-7t3.*` |
+| `./scripts/ralph TreeTutor-vm4` | 2 · Learning aids: diagrams, videos, suggestions, Vim | `TreeTutor-vm4.*` |
+| `./scripts/ralph TreeTutor-sh8` | 3 · Product 1.0: rich replies, rename/delete, custom endpoint, release | `TreeTutor-sh8.*` |
+
+Start the next phase when the current one has no open tasks. A run stops at its
+iteration limit, so repeat the same command until the phase is done. To check:
+
+```bash
+bd list --type epic --status open     # the phases still open
+bd list --parent TreeTutor-7t3        # tasks of one phase and their status
+bd ready                              # what an agent can start now
+bd blocked                            # what is waiting, and on what
+```
+
+If a task is marked blocked for a provider limit or sign-in, fix that, then
+`bd update <id> -s open` and run the phase again. The task table for each phase
+is under [Issue structure](#issue-structure).
+
 From this repository:
 
 AGENTS.md records standing user authorization to implement the existing backlog,
@@ -103,21 +128,28 @@ provider-specific checks retain their own live evidence requirements.
 
 ## Issue structure
 
-Executable tasks are direct children of their release epic. The backlog is
-grouped into seven complete tasks, each intended for one agent invocation in a
-200k context window. Aim for roughly 140k working context with 60k reserved for
-startup, tools, verification and repair. These are scope estimates; no model
-context setting is changed, and naturally smaller work should finish early.
+Executable tasks are direct children of their phase epic. Since 2026-11-09 each
+task is intended for one agent invocation in a 100k–150k context window: plan
+about 100k of working context and keep the rest for startup, tools, verification
+and repair. These are scope estimates; no model context setting is changed, and
+naturally smaller work should finish early. Run the phases in order, one epic
+per launch: `./scripts/ralph`, then `./scripts/ralph TreeTutor-vm4`, then
+`./scripts/ralph TreeTutor-sh8`.
 
-| Epic | Task | Complete scope |
+| Phase epic | Tasks in order | Scope |
 | --- | --- | --- |
-| `TreeTutor-7t3` | `TreeTutor-b1z.4` | Compact workspace, keyboard journey and regression fixes |
-| `TreeTutor-7t3` | `TreeTutor-7t3.9` | Claude default, saved chats and provider continuity |
-| `TreeTutor-7t3` | `TreeTutor-7t3.12` | Text release, restart and local-delivery verification |
-| `TreeTutor-vm4` | `TreeTutor-vm4.1` | Isolated Mermaid artifacts, persistence and recovery |
-| `TreeTutor-vm4` | `TreeTutor-vm4.3` | Requested video generation, playback and recovery |
-| `TreeTutor-vm4` | `TreeTutor-vm4.5` | Grounded suggestions and durable decisions |
-| `TreeTutor-vm4` | `TreeTutor-vm4.6` | Agreed optional Vim navigation |
+| 1 `TreeTutor-7t3` Text release | `7t3.18`, `7t3.19`, `7t3.20`, `7t3.21` | New chat as a visible self-titling root; whole conversation in each map node; branch lines beside their source message; node growth and large maps |
+| | `7t3.22`, `7t3.12` | Fixture re-verification, then the live provider journey and final ten-criterion matrix |
+| 2 `TreeTutor-vm4` Learning aids | `vm4.7`, `vm4.8`, `vm4.1` | Mermaid: isolated worker and artifacts, inline rendering, recovery and acceptance |
+| | `vm4.9`, `vm4.10`, `vm4.3` | Video: generation, status and player, retry/cancel/restart and acceptance |
+| | `vm4.11`, `vm4.5` | Suggestions: grounded offers, then durable decisions, quality review and acceptance |
+| | `vm4.6` | Optional Vim navigation, mapping agreed 2026-11-09 |
+| 3 `TreeTutor-sh8` Product 1.0 | `sh8.2`, `sh8.3`, `sh8.4`, `sh8.5` | Rich replies, rename/delete, custom OpenAI-compatible endpoint (accepted 2026-11-09) |
+| | `sh8.6`, `sh8.7`, `sh8.8` | First-run packaging and user guide, whole-product polish, final acceptance record |
+
+The retained grouped tasks (`7t3.12`, `vm4.1`, `vm4.3`, `vm4.5`) now own the
+second half of their feature plus its inherited acceptance; their notes name the
+slices that took the first half.
 
 Each task carries its work order, starting points and inherited acceptance.
 Former implementation slices and acceptance-only rollups are closed through
@@ -130,7 +162,8 @@ context pressure. Resume an unfinished grouped task from a concrete checkpoint.
 
 External actions remain explicit: `TreeTutor-kf5` resolves the last observed
 native Claude quota gate; `TreeTutor-vm4.6.1` records the user's exact Vim mapping
-agreement. Optional eligibility clarification `TreeTutor-7t3.13` stays deferred
+agreement, given on 2026-11-09; `TreeTutor-sh8.1` records the owner's acceptance of
+the three additions the same day. Optional eligibility clarification `TreeTutor-7t3.13` stays deferred
 and non-blocking. All later implementation tasks wait for the text release;
 video also waits for Mermaid, and Vim waits for the mapping agreement.
 

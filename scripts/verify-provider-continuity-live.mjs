@@ -86,8 +86,10 @@ try {
 
   if (phase === 'before') {
     // Second root first, so the map opens the main root (newest) for the browser step.
-    const other = await (await post('/api/trees', { title: 'Comet notes' })).json();
-    const root = await (await post('/api/trees', { title: 'Robot notes' })).json();
+    // Only one unstarted chat exists at a time, so the other root asks its first question before the main root is created.
+    const other = await (await post('/api/trees', {})).json();
+    await ask(other.id, 'Remember this fictional fact: our comet is named Zircon-555. Confirm in one short sentence.', { expect: ['Zircon-555'] });
+    const root = await (await post('/api/trees', {})).json();
     assert.deepEqual([root.provider, other.provider], ['claude', 'claude'], 'new trees default to Claude');
     await ask(root.id, 'For this study session remember these fictional facts: our robot is named Quill-482 and it sorts pebbles by weight. In two sentences, explain what sorting pebbles by weight means for Quill-482.', { expect: ['Quill-482'] });
     const rootThread = store.tree(root.id).thread;
@@ -96,7 +98,6 @@ try {
     assert.equal(store.tree(root.id).thread, rootThread, 'Claude resumed the same session');
 
     // Two independent Claude sessions at once; cancel the root mid-stream while the other completes.
-    await ask(other.id, 'Remember this fictional fact: our comet is named Zircon-555. Confirm in one short sentence.', { expect: ['Zircon-555'] });
     let stopped = false;
     const [cancelled, peer] = await Promise.all([
       ask(root.id, 'Write a detailed 600-word explanation of comparison sorting algorithms, using our robot as the running example.', { status: 'interrupted', onText: async () => { if (!stopped) { stopped = true; await post(`/api/trees/${root.id}/stop`, {}); } } }),

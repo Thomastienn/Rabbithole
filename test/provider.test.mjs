@@ -95,7 +95,7 @@ test('switching providers keeps history, starts a fresh session, children inheri
   const { csrf } = await (await fetch(`${origin}/api/state`)).json();
   const post = (path, body) => fetch(origin + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) });
   try {
-    const root = await (await post('/api/trees', { title: 'Root' })).json();
+    const root = await (await post('/api/trees', {})).json();
     assert.equal(root.provider, 'claude', 'new trees default to Claude');
     await (await post(`/api/trees/${root.id}/messages`, { text: 'One' })).text();
     assert.equal(store.tree(root.id).thread, 'claude-thread');

@@ -28,9 +28,10 @@ const complete = async (tree, question, emit, saveThread) => {
 test('two trees stream independent replies, preserve originals, resume saved thread after restart', async () => {
   const path = join(dir, 'isolation.sqlite');
   let env = await open(path, complete);
-  const a = await (await env.post('/api/trees', { title: 'Alpha' })).json();
-  const b = await (await env.post('/api/trees', { title: 'Beta' })).json();
-  for (const [tree, text] of [[a, 'Alpha original\nline two'], [b, 'Beta original']]) {
+  const trees = [];
+  for (const text of ['Alpha original\nline two', 'Beta original']) {
+    const tree = await (await env.post('/api/trees', {})).json();
+    trees.push(tree);
     const stream = await env.post(`/api/trees/${tree.id}/messages`, { text });
     assert.match(stream.headers.get('content-type'), /event-stream/);
     const events = await stream.text();
@@ -38,6 +39,7 @@ test('two trees stream independent replies, preserve originals, resume saved thr
     assert.match(events, /"status":"completed"/);
   }
   assert.equal(env.app.server.address().address, '127.0.0.1');
+  const [a, b] = trees;
   env.close();
   let resumed;
   env = await open(path, async (...args) => { resumed = args[0].thread; return complete(...args); });
@@ -60,7 +62,7 @@ test('provider failure preserves partial text and history, allows next request',
     throw new Error('Synthetic provider failure');
   });
   try {
-    const tree = await (await env.post('/api/trees', { title: 'Failure' })).json();
+    const tree = await (await env.post('/api/trees', {})).json();
     const events = await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Original' })).text();
     assert.match(events, /Synthetic provider failure/);
     let saved = env.store.tree(tree.id);
@@ -95,7 +97,6 @@ test('rejects foreign origins, Host rebinding, missing CSRF, malformed JSON and 
     assert.equal((await fetch(`${env.origin}/api/trees`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
     const rebound = await new Promise(resolve => { http.get(`${env.origin}/api/state`, { headers: { Host: 'foreign.example' } }, response => { response.resume(); resolve(response.statusCode); }); });
     assert.equal(rebound, 403);
-    assert.equal((await env.post('/api/trees', { title: '' })).status, 400);
     assert.equal((await env.post('/api/trees/missing/messages', { text: 'Question' })).status, 404);
     assert.equal((await fetch(`${env.origin}/api/trees/missing`)).status, 404);
     assert.equal((await fetch(`${env.origin}/auth/callback?state=fake`, { headers: { 'Sec-Fetch-Site': 'cross-site' } })).status, 400);
@@ -111,9 +112,9 @@ test('concurrent trees remain usable; stop targets only one active tree', async 
     emit({ type: 'status', status: signal.aborted ? 'interrupted' : 'completed' });
   });
   try {
-    const a = await (await env.post('/api/trees', { title: 'A' })).json();
-    const b = await (await env.post('/api/trees', { title: 'B' })).json();
+    const a = await (await env.post('/api/trees', {})).json();
     const ar = await env.post(`/api/trees/${a.id}/messages`, { text: 'A only' });
+    const b = await (await env.post('/api/trees', {})).json();
     const br = await env.post(`/api/trees/${b.id}/messages`, { text: 'B only' });
     assert.equal((await env.post(`/api/trees/${a.id}/messages`, { text: 'Duplicate' })).status, 409);
     assert.equal((await fetch(`${env.origin}/api/state`)).status, 200);
@@ -131,7 +132,7 @@ test('concurrent trees remain usable; stop targets only one active tree', async 
 test('UTF-8 split across HTTP chunks preserves original text; malformed JSON rejects', async () => {
   const env = await open(join(dir, 'utf8.sqlite'), complete);
   try {
-    const tree = await (await env.post('/api/trees', { title: 'Unicode' })).json();
+    const tree = await (await env.post('/api/trees', {})).json();
     const state = await (await fetch(`${env.origin}/api/state`)).json();
     const body = Buffer.from(JSON.stringify({text: 'Learn 🌲 trees'}));
     const split = body.indexOf(Buffer.from('🌲')) + 2;
@@ -148,21 +149,36 @@ test('UTF-8 split across HTTP chunks preserves original text; malformed JSON rej
   } finally { env.close(); }
 });
 
-test('empty tree is not started until its first question is saved; rejected and concurrent sends add nothing', async () => {
+test('New chat opens one unstarted root that titles itself from its first question; rejected and concurrent sends add nothing', async () => {
   let release;
   const env = await open(join(dir, 'starter.sqlite'), (tree, text, emit) => new Promise(resolve => { release = () => { emit({ type: 'item', item: 'a', text: 'Answer' }); emit({ type: 'status', status: 'completed' }); resolve(); }; }));
   try {
-    const tree = await (await env.post('/api/trees', { title: 'Empty' })).json();
-    const started = () => env.store.list().find(t => t.id === tree.id).started;
-    assert.equal(started(), 0);
+    const created = await env.post('/api/trees', {});
+    assert.equal(created.status, 201);
+    const tree = await created.json();
+    assert.equal(tree.title, 'New chat');
+    const again = await env.post('/api/trees', {});
+    assert.equal(again.status, 200);
+    assert.equal((await again.json()).id, tree.id, 'New chat reopens the unstarted chat');
+    const title = () => env.store.list().find(t => t.id === tree.id).title;
     assert.equal((await env.post(`/api/trees/${tree.id}/messages`, { text: '  ' })).status, 400);
-    assert.equal(started(), 0);
-    const stream = env.post(`/api/trees/${tree.id}/messages`, { text: 'First question' });
+    assert.equal(title(), 'New chat');
+    const question = '  What is a heap? ' + 'x'.repeat(300);
+    const stream = env.post(`/api/trees/${tree.id}/messages`, { text: question });
     while (!release) await new Promise(r => setTimeout(r, 5));
+    assert.equal(title(), question.trim().slice(0, 200));
     assert.equal((await env.post(`/api/trees/${tree.id}/messages`, { text: 'First question' })).status, 409);
-    release(); await (await stream).text();
-    assert.equal(started(), 1);
+    release(); const events = await (await stream).text();
+    assert.ok(events.includes(`"title":${JSON.stringify(question.trim().slice(0, 200))}`), 'saved event carries the new title');
+    release = undefined;
+    const second = env.post(`/api/trees/${tree.id}/messages`, { text: 'Second question' });
+    while (!release) await new Promise(r => setTimeout(r, 5));
+    release(); await (await second).text();
+    assert.equal(title(), question.trim().slice(0, 200), 'later questions keep the title');
     assert.equal(env.store.list().length, 1);
-    assert.deepEqual(env.store.tree(tree.id).messages.map(m => [m.role, m.text]), [['user', 'First question'], ['assistant', 'Answer']]);
+    assert.deepEqual(env.store.tree(tree.id).messages.map(m => [m.role, m.text]), [['user', question], ['assistant', 'Answer'], ['user', 'Second question'], ['assistant', 'Answer']]);
+    const next = await env.post('/api/trees', {});
+    assert.equal(next.status, 201, 'a started chat no longer blocks New chat');
+    assert.notEqual((await next.json()).id, tree.id);
   } finally { env.close(); }
 });

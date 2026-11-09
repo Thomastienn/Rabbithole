@@ -1,10 +1,10 @@
 # TreeTutor — Product Requirements
 
-Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The owner clarified on 2026-11-09 that New chat opens a map with one visible root conversation, map nodes show the whole conversation, and branch lines attach beside their source message. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
+Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The owner clarified on 2026-11-09 that New chat opens a map with one visible root conversation, map nodes show the whole conversation, and branch lines attach beside their source message. On the same day the owner accepted three additions for after the text release (rich reply rendering, rename and delete, and a custom OpenAI-compatible endpoint) and the optional Vim canvas mapping in docs/vim-bindings-proposal.md. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
 
 ## Relationship to the original idea
 
-IDEA.md remains the original vision: connected subproblem conversations that branch recursively, with Codex and Claude, optional automatic branch suggestions, Mermaid diagrams, Remotion videos, and potentially a custom OpenAI-compatible endpoint. This PRD makes the initial release text-first with manual passage selection, supporting Claude (default) and Codex through the learner's existing subscriptions, including cross-provider switching. Suggestions, media, and custom endpoints remain deferred. Parent and child conversations can both continue chatting and branching; conversations are not limited to leaf nodes.
+IDEA.md remains the original vision: connected subproblem conversations that branch recursively, with Codex and Claude, optional automatic branch suggestions, Mermaid diagrams, Remotion videos, and potentially a custom OpenAI-compatible endpoint. This PRD makes the initial release text-first with manual passage selection, supporting Claude (default) and Codex through the learner's existing subscriptions, including cross-provider switching. Suggestions, media, rich reply rendering, rename and delete, Vim bindings, and the custom endpoint are later increments. Parent and child conversations can both continue chatting and branching; conversations are not limited to leaf nodes.
 
 ## Audience
 
@@ -16,7 +16,9 @@ TreeTutor is a local web app only. Hosted deployment and an installed desktop ap
 
 ## Providers
 
-The current release supports Claude through the learner's existing Claude subscription, using the official user-installed Claude Code CLI with its native sign-in, and Codex through the learner's existing ChatGPT subscription. Claude is the default provider for new learning trees; Codex remains available. API-key access and custom OpenAI-compatible endpoints are deferred; do not silently substitute API-key access.
+The current release supports Claude through the learner's existing Claude subscription, using the official user-installed Claude Code CLI with its native sign-in, and Codex through the learner's existing ChatGPT subscription. Claude is the default provider for new learning trees; Codex remains available. Do not silently substitute API-key access for either subscription provider.
+
+As a later increment, the learner can add one custom OpenAI-compatible endpoint by entering its base URL and API key in settings. It is an explicit choice that appears as a third provider in the model menu, never a fallback for Claude or Codex. The key stays in a local owner-only file; it is never returned to the browser, logged, or stored with learning trees. Conversations can switch between the custom endpoint, Claude and Codex with the same continuity rule.
 
 Provider and model selection share the compact model menu. A signed-out provider shows an actionable sign-in message rather than a nonfunctional choice.
 
@@ -65,6 +67,7 @@ Let learners ask connected side questions inside a conversation, similar to a `/
 - Animate transitions smoothly between the map, side-panel chat, and expanded chat so navigation feels continuous rather than abrupt.
 - Keep chat controls compact: a model icon opens a small model-selection menu rather than a full-width selector. Show passage-branching actions only when text is selected, while retaining keyboard access to text selection and branching.
 - Conversations remain available to revisit and continue later.
+- As a later increment, learners can rename any conversation, delete a whole chat, and delete a branch together with its descendants. Each delete asks for confirmation, names what will be removed and states that it cannot be undone. Deleting a branch leaves its parent conversation unchanged.
 - Any child conversation can create further child branches, with no product-imposed nesting depth limit. Every depth uses the same chat controls and compact inherited-context rule.
 - Place new child boxes automatically to the right of their parent, level with the message the branch was created from. Offset placement when necessary to keep boxes readable and unobscured, including when a box grows as its conversation continues.
 - Learners can reposition boxes manually. Branch connections retain their association with the source passage after movement.
@@ -74,7 +77,7 @@ Let learners ask connected side questions inside a conversation, similar to a `/
 
 Every action must be available through keyboard bindings, including canvas navigation, conversation selection, zooming, branching, and chatting. Specific bindings remain to be decided.
 
-Use standard keyboard interactions initially. Add Vim-style navigation later.
+Use standard keyboard interactions initially. As a later increment, add the opt-in Vim canvas aliases agreed in [vim-bindings-proposal.md](docs/vim-bindings-proposal.md): default off, active only while the map or a conversation box itself has focus, and never intercepting text entry, selection, menus, dialogs or media controls.
 
 ## Child conversation context
 
@@ -91,6 +94,7 @@ Automatic suggestions for concepts or passages worth branching into are an expli
 ## Content rollout
 
 - Start with text conversations and build incrementally.
+- After the text release, render tutor replies as formatted text: Markdown structure, code blocks and math. The saved raw message text stays the canonical source, so passage selection, branch anchors and source reveal remain exact. Raw HTML in replies is not rendered.
 - Add Mermaid diagrams later, rendered inside the chat. The model may choose to generate a diagram as part of its explanation without a separate user request.
 - Add Remotion video generation after that, available when the learner requests a video in the conversation. The selected later generation/playback design is recorded in [video-flow-proposal.md](docs/video-flow-proposal.md); implementation remains separate.
 
@@ -143,7 +147,7 @@ The provider research below began on 2026-11-07. Current decisions and task-spec
 - **History transfer:** For provider switching, verify preservation of prior discussion and inherited context. Continuity does not require identical answers from different models.
 - **Compaction:** Verify summary quality and branch startup latency with a real learning conversation. A summary must not replace the saved source history.
 - **Implementation choices:** React/TypeScript/Vite, React Flow, a loopback Node server, SQLite, and the initial keyboard contract were selected in the [architecture decision](docs/architecture-proposal.md). This PRD's revised compact controls, selection-only branch actions, chat side panel and layout-saving cadence supersede conflicting older interaction details there. Exact dimensions, breakpoints and animation timing remain implementation details; clarify changes that materially affect the agreed experience.
-- **Later increments:** Suggestion and video designs are selected in the linked documents above. Their implementation and validation remain later work; optional Vim bindings still require agreement.
+- **Later increments:** Suggestion and video designs are selected in the linked documents above. Their implementation and validation remain later work; the optional Vim mapping was agreed on 2026-11-09. Rich reply rendering, rename and delete, and the custom OpenAI-compatible endpoint were accepted on 2026-11-09 and are tracked in Beads epic TreeTutor-sh8.
 
 ## Change boundary
 

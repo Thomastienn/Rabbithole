@@ -88,7 +88,7 @@ async function branch(label, parent, start, end, question, cancel = false) {
 }
 try {
   await start();
-  const root = await (await post('', { title: 'Synthetic compaction evaluation' })).json();
+  const root = await (await post('', {})).json();
   const initial = await ask(root.id, 'Explain a tournament-tree mutual exclusion lock built from Peterson two-participant locks. Explain the role of flags and turn at each internal node, and how it differs from a winner-selection tournament tree. Use the exact phrase "tournament tree" in both explanations. Also note this unrelated fact: my fictional notebook is purple. Keep the answer under 450 words.');
   report.root = { model: initial.tree.model, question: initial.tree.messages[0].text, answer: initial.tree.messages.at(-1).text, elapsedMs: initial.elapsedMs };
   const text = report.root.answer;

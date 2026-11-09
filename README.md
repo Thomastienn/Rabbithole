@@ -29,3 +29,5 @@ npx astryx doctor --built dist
 Select text in a completed tutor reply and choose **Ask about selection**, or Tab to **Select passage in tutor reply N** for native keyboard selection. Review the passage, enter a question, then create a focused chat. The child inherits the parent model and a fixed compact context snapshot. The same controls work in nested children. Compaction sends the parent’s fixed inherited context and current conversation history to the conversation's provider on submission, producing one compact snapshot rather than appending ancestor histories. Later ancestor messages do not change saved snapshots. Failed preparation keeps your edited question available for retry. Saved child chats reopen from the same navigation; **Return to parent conversation** restores the parent.
 
 See `docs/verification/root-chat.md` and `docs/verification/selected-passage.md` and `docs/verification/nested-branches.md` for verification evidence.
+
+Building the rest of the product: the phases and the command for each are in [docs/ralph-workflow.md](docs/ralph-workflow.md#quick-reference-what-to-run-next).

@@ -1,11 +1,11 @@
 # Optional Vim canvas bindings
 
-Decision gate: `TreeTutor-vm4.6.1`. Status: **pending explicit user agreement**.
-Prepared 2026-11-09. Implementation belongs to `TreeTutor-vm4.6`, after the
-initial text release. Standing implementation authorization does not select this
-mapping. No Vim bindings or preference control are implemented by this document.
+Decision gate: `TreeTutor-vm4.6.1`. Status: **agreed by the project owner on
+2026-11-09**, exactly as proposed below. Prepared 2026-11-09. Implementation
+belongs to `TreeTutor-vm4.6`, after the initial text release. No Vim bindings or
+preference control are implemented by this document.
 
-## Proposed mapping
+## Agreed mapping
 
 Reuse the standard controls documented in
 [keyboard-journey.md](verification/keyboard-journey.md). Each alias invokes the
@@ -56,7 +56,7 @@ direction and repeat behavior, rather than defining a separate pan convention.
   Keep the checkbox keyboard accessible, with visible focus and an exposed
   checked state. The choice does not depend on provider or conversation data.
 
-## Alternatives and rationale to confirm
+## Alternatives and rationale
 
 Standard controls alone need no extra preference or letter shortcuts. The
 proposed opt-in aliases support familiar Vim directions while retaining one
@@ -66,10 +66,9 @@ selection, assistive-technology and media interaction. The tradeoff is that
 `h`/`j`/`k`/`l` move a focused box rather than choosing a neighboring conversation;
 learners still use Tab to reach another control.
 
-The user may accept this exact proposal, retain standard controls alone, or
-request a different mapping or activation rule. Record their explicit choice
-and rationale here before implementing. Silence, elapsed time, and automated
-backlog execution are not agreement.
+The owner accepted this exact proposal on 2026-11-09, answering "yes" when asked
+whether to accept the mapping in this document. Standard controls alone and a
+different mapping were the alternatives not chosen.
 
 ## Evidence and remaining checks
 
@@ -82,8 +81,7 @@ backlog execution are not agreement.
   entry points, text-selection controls, model menu and Escape handling. This is
   static evidence of existing standard controls, not a test of future aliases.
 - The exact table, activation rules, boundaries, alternatives and rationale were
-  presented through the structured question tool on 2026-11-09. **No explicit
-  user response has been recorded.** Acceptance requiring agreement is pending.
+  presented on 2026-11-09 and **accepted by the owner the same day**.
 - Implementation checks remain in `TreeTutor-vm4.6`: compare aliases with their
   standard actions in both allowed focus contexts; verify off/on and reload/tree
   switching; exercise editable and read-only controls, IME, nested controls,

@@ -69,7 +69,7 @@ try {
     const status = await new Promise((resolve, reject) => { const req = http.get(origin + '/api/state', { headers }, res => { res.resume(); resolve(res.statusCode); }); req.on('error', reject); });
     assert.equal(status, 403);
   }
-  for (const headers of [{ 'X-TreeTutor-CSRF': '' }, { 'X-TreeTutor-CSRF': 'wrong' }, { 'Content-Type': 'text/plain' }, { Origin: 'https://foreign.example' }]) assert.equal((await post('/api/trees', { title: 'Denied' }, headers)).status, 403);
+  for (const headers of [{ 'X-TreeTutor-CSRF': '' }, { 'X-TreeTutor-CSRF': 'wrong' }, { 'Content-Type': 'text/plain' }, { Origin: 'https://foreign.example' }]) assert.equal((await post('/api/trees', {}, headers)).status, 403);
   assert.equal((await fetch(origin + '/auth/callback?state=invalid&code=fake', { headers: { Origin: 'https://foreign.example' } })).status, 400);
   ok('Host, Origin, cross-site, CSRF and content-type boundary rejects; invalid OAuth callback cannot exchange', { rejectedRequests: 8 });
   await stop();
@@ -78,7 +78,7 @@ try {
   assert.notEqual(report.before.pid, report.after.pid);
   assert.deepEqual(await snapshot(), before);
   ok('actual server stop/restart preserves every saved field exactly', { digest: createHash('sha256').update(JSON.stringify(before)).digest('hex'), conversations: before.conversations.length });
-  assert.equal((await post('/api/trees', { title: 'stale' }, { 'X-TreeTutor-CSRF': 'old' })).status, 403);
+  assert.equal((await post('/api/trees', {}, { 'X-TreeTutor-CSRF': 'old' })).status, 403);
 
   await get('/api/previews?' + [root, child, grand, other].map(t => `id=${t.id}`).join('&'));
   await get('/api/models'); // isolated signed-out native providers; no inference or real account credentials

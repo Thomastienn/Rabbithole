@@ -50,21 +50,18 @@ try {
   await b('set', 'viewport', '1440', '900');
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
   await b('set', 'media', 'light', 'reduced-motion');
-  await wait(`[...document.querySelectorAll('button')].some(e => e.textContent.trim() === 'New tree')`);
+  await wait(`[...document.querySelectorAll('button')].some(e => e.textContent.trim() === 'New chat')`);
 
-  // 1. Create and open a tree.
-  await tabTo(named('New tree')); assert.equal(await ev(visibleFocus), true); await press('Enter');
-  await wait(`document.activeElement?.closest('#tree-navigation') && document.activeElement.tagName === 'INPUT'`);
-  await type('Keyboard forest'); await press('Enter');
-  await wait(`${focusName} === 'Start conversation'`);
-  step('New tree (Tab, Enter) → name field; Enter creates the tree; focus moves to Start conversation on the empty map');
-  await press('Enter');
-  await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') && ${idle}`);
+  // 1. Create and open a chat.
+  await tabTo(named('New chat')); assert.equal(await ev(visibleFocus), true); await press('Enter');
+  await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') && document.querySelector('.focused-chat h2')?.textContent === 'New chat' && document.querySelectorAll('.react-flow__node').length === 1 && ${idle}`);
+  step('New chat (Tab, Enter) creates a root box titled New chat, opens its chat and focuses the composer');
   await type('How do fungi trade?'); await press('Enter');
   await wait(`document.querySelector('.focused-chat')?.innerText.includes(${JSON.stringify(text)}) && !document.querySelector('.focused-chat [role=textbox]').hasAttribute('disabled')`);
-  const root = store.list().find(t => t.title === 'Keyboard forest');
+  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'How do fungi trade?'`);
+  const root = store.list().find(t => t.title === 'How do fungi trade?');
   assert.equal(store.tree(root.id).messages.length, 2);
-  step('Start conversation (Enter) focuses the composer; Enter sends; the first reply creates the root node');
+  step('Enter sends; the first question titles the root');
 
   // 2. Select the second, repeated passage and branch from it.
   async function branchFrom(question, start, end) {

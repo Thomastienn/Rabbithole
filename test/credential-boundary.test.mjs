@@ -35,7 +35,7 @@ test('credential-bearing auth keeps tokens out of browser state, catalog, replie
     const state = JSON.parse(await request('/api/state')); csrf = state.csrf;
     assert.deepEqual(state.auth, { connected: true, email: 'learner@example.test' });
     await request('/api/models');
-    const tree = JSON.parse(await request('/api/trees', { title: 'Credential boundary' }));
+    const tree = JSON.parse(await request('/api/trees', {}));
     await request(`/api/trees/${tree.id}/messages`, { text: 'A synthetic question.' });
     await request(`/api/trees/${tree.id}`);
     await request(`/api/previews?id=${tree.id}`);

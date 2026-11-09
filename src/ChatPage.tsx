@@ -7,7 +7,6 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
 import { AdjustmentsHorizontalIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
-import { TextInput } from '@astryxdesign/core/TextInput';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
 import { withTurn, type Message, type Turn } from './turn';
@@ -21,6 +20,8 @@ type Model = { provider: string; model: string; label: string; isDefault: boolea
 type Providers = Record<string, { label: string; connected: boolean }>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[] };
 const previewText = (text: string) => { const chars = Array.from(text); return chars.slice(0, 512).join('') + (chars.length > 512 ? '…' : ''); };
+// The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
+const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview => withTurn({ messages: preview }, turn && { user: turn.user && { ...turn.user, text: previewText(turn.user.text) }, reply: turn.reply && { ...turn.reply, text: previewText(turn.reply.text) } }).messages;
 
 function Passage({ message, index, onBranch, reveal, selecting, openSelection, closeSelection, formOpen }: { message: Message; index: number; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; formOpen: boolean }) {
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
@@ -66,7 +67,6 @@ export default function ChatPage() {
   const [state, setState] = useState<State>();
   const [tree, setTree] = useState<Tree>();
   const [previews, setPreviews] = useState<Record<string, Preview>>({});
-  const [name, setName] = useState('');
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -91,7 +91,6 @@ export default function ChatPage() {
   const branchOrigin = useRef<React.RefObject<HTMLElement | null>>(undefined);
   const composer = useRef<ChatComposerInputHandle>(null);
   const focusComposer = useRef(false);
-  const startButton = useRef<HTMLButtonElement>(null);
   const selected = useRef<string | undefined>(undefined);
   const request = useRef(0);
   const turns = useRef(new Map<string, Turn>());
@@ -192,29 +191,32 @@ export default function ChatPage() {
     return ids;
   })();
   const previewKey = JSON.stringify(visibleIds);
+  const activeKey = state?.active.join(',') ?? '';
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function load(ids: string[]) {
       try {
-        const ids: string[] = JSON.parse(previewKey);
         const batches = [];
         for (let i = 0; i < ids.length; i += 500) {
           const params = new URLSearchParams();
           ids.slice(i, i + 500).forEach(id => params.append('id', id));
           batches.push(api(`/api/previews?${params}`));
         }
-        const results = await Promise.all(batches);
+        const results: Record<string, Preview>[] = await Promise.all(batches);
         if (!cancelled) {
           const next: Record<string, Preview> = Object.assign({}, ...results);
-          for (const [id, turn] of turns.current) if (turn.user && ids.includes(id)) next[id] = { question: previewText(turn.user.text), answer: turn.reply ? previewText(turn.reply.text) : null, status: turn.reply?.status ?? null };
-          setPreviews(next);
+          for (const id of ids) if (turns.current.has(id)) next[id] = withLiveTurn(next[id], turns.current.get(id));
+          setPreviews(p => ({ ...p, ...next }));
         }
       } catch (e) { if (!cancelled) setError((e as Error).message); }
     }
-    void load();
-    const timer = state?.active.length ? setInterval(load, 1500) : undefined;
+    const visible: string[] = JSON.parse(previewKey);
+    void load(visible);
+    // While replies run, refetch only the conversations that are replying.
+    const replying = visible.filter(id => activeKey.split(',').includes(id));
+    const timer = replying.length ? setInterval(() => load(replying), 1500) : undefined;
     return () => { cancelled = true; if (timer) clearInterval(timer); };
-  }, [previewKey, state?.active.join(',')]);
+  }, [previewKey, activeKey]);
   async function select(id: string) {
     selected.current = id;
     const version = ++request.current;
@@ -268,15 +270,15 @@ export default function ChatPage() {
     return () => clearInterval(timer);
   }, [state?.active.join(',')]);
 
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    if (busy || !name.trim()) return;
+  // The server reopens an existing unstarted chat rather than creating a second one.
+  async function create() {
+    if (busy) return;
     setBusy(true); setError('');
     try {
-      const next: Tree = await api('/api/trees', { title: name });
+      const next: Tree = await api('/api/trees', {});
       await refresh();
-      setName('');
-      setRoot(next.id); setOverview(true);
+      overviewOrigin.current = undefined; focusComposer.current = true;
+      setRoot(next.id); setOverview(false); setExpanded(false); setMobileNav(false);
       await select(next.id);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
@@ -310,6 +312,9 @@ export default function ChatPage() {
           if (event.type === 'error' && selected.current === id) setError(event.error);
           if (event.type === 'saved') {
             turn.user = event.user;
+            const title: string = event.title;
+            setTree(t => t?.id === id ? { ...t, title } : t);
+            setState(s => s && { ...s, trees: s.trees.map(t => t.id === id ? { ...t, title } : t) });
             turn.reply = { id: event.id, role: 'assistant', text: '', status: 'streaming' };
           }
           if (turn.reply && (event.type === 'text' || event.type === 'done')) {
@@ -317,7 +322,7 @@ export default function ChatPage() {
           }
           if (event.type === 'saved' || event.type === 'text' || event.type === 'done') {
             setTree(t => t?.id === id ? withTurn(t, turn) : t);
-            if (turn.user) setPreviews(p => ({ ...p, [id]: { question: previewText(turn.user!.text), answer: turn.reply ? previewText(turn.reply.text) : null, status: turn.reply?.status ?? null } }));
+            setPreviews(p => ({ ...p, [id]: withLiveTurn(p[id], turn) }));
           }
         }
         if (result.done) break;
@@ -362,9 +367,6 @@ export default function ChatPage() {
   const source = !overview && reveal?.tree === tree?.id ? reveal?.source : undefined;
   const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text);
   const active = !!tree && !!state?.active.includes(tree.id);
-  // A root joins the map only once its first question is saved; until then the map is empty.
-  const starter = !!root && !!state && !state.trees.find(t => t.id === root)?.started && !previews[root]?.question;
-  useEffect(() => { if (starter && overview) startButton.current?.focus(); }, [starter, overview, root]);
   const menu = (actions?: MapActions) => <DropdownMenu presentation="popover" renderTrigger={props => <IconButton {...props} label="Map menu" tooltip="Map menu" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />} items={[
     { label: 'Learning trees', onClick: () => { setHelp(false); setMobileNav(true); } },
     { label: 'Settings', onClick: () => { setHelp(false); setMobileNav(true); } },
@@ -378,10 +380,7 @@ export default function ChatPage() {
       <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={mobileNav}><VStack padding={5} gap={5}>
         <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Your trees</Heading><IconButton label="Close learning trees" tooltip="Close" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => { setMobileNav(false); document.querySelector<HTMLButtonElement>('[aria-label="Map menu"]:not([aria-hidden])')?.focus(); }} /></HStack>
         {help && <VStack gap={2}><Heading level={2}>Map help</Heading><Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text><Button label="Close help" variant="ghost" onClick={() => setHelp(false)} /></VStack>}
-        <form onSubmit={create}><VStack gap={3}>
-          <TextInput label="New tree name" value={name} onChange={setName} />
-          <Button label={busy ? 'Creating…' : 'Create tree'} type="submit" isDisabled={busy || !name.trim()}>{busy ? 'Creating…' : 'Create tree'}</Button>
-        </VStack></form>
+        <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()}>{busy ? 'Opening…' : 'New chat'}</Button>
         <nav aria-label="Saved learning trees"><VStack gap={2}>
           {state?.trees.filter(t => !t.parent).map(t => <Button label={t.title} key={t.id} variant={root === t.id ? 'secondary' : 'ghost'} aria-current={root === t.id ? 'page' : undefined} onClick={() => openTree(t.id)}>{t.title}</Button>)}
           {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
@@ -399,17 +398,8 @@ export default function ChatPage() {
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
         <section className="tree-workspace" data-expanded={expanded && !overview}>
         {root && state && <section className="overview" data-chat-open={!overview} aria-label="Learning tree">
-          {starter ? <>
-            <HStack padding={1} className="map-toolbar" aria-label="Tree view controls">{menu()}</HStack>
-            <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map">
-              <Heading level={2}>{state.trees.find(t => t.id === root)?.title ?? 'Empty map'}</Heading>
-              <Text color="secondary">Your first question becomes the first conversation on this map. Branch from any passage of a reply to explore it on its own.</Text>
-              {overview && <Button ref={startButton} label="Start conversation" variant="primary" icon={<ChatBubbleLeftRightIcon />} onClick={() => { focusComposer.current = true; changeView(false); }} />}
-            </VStack>
-          </> : <>
           {layoutFailed && <HStack padding={3} gap={2} role="alert"><Text>Map layout not saved. It retries every minute while this tree stays open.</Text><Button label="Retry saving layout" variant="secondary" onClick={() => void saver.current?.flush()} /></HStack>}
           <TreeOverview toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePosition} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
-          </>}
         </section>}
         <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu]')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
@@ -459,7 +449,7 @@ export default function ChatPage() {
           </ChatLayout>
         </> : <VStack gap={0} className="overview">
           <HStack padding={1} className="map-toolbar" aria-label="Tree view controls">{menu()}</HStack>
-          <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map"><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <><Text color="secondary">Give your topic a name, then ask your first question. Come back any time.</Text><Button label="New tree" variant="primary" icon={<PlusIcon />} onClick={() => { setMobileNav(true); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#tree-navigation input')?.focus()); }} /></>}</VStack>
+          <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map"><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <><Text color="secondary">Ask your first question; it becomes the chat's title. Come back any time.</Text><Button label="New chat" variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} /></>}</VStack>
         </VStack>}
         </section>
         </section>

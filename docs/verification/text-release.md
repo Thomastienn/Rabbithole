@@ -212,3 +212,45 @@ native runs; no unexecuted assertions or product edits were added by this resume
 invocation. No running owner app or other worker was killed to bypass a lock.
 All ten matrix results above remain supported, with the same explicitly retained
 named-provider evidence and limitations.
+
+## Final closing rerun, 2026-11-09T22:45–22:55Z
+
+Re-ran on HEAD `b87f54f` with no product changes:
+
+- `npm test` 52/52 PASS; `npm run build` PASS (existing chunk-size advisory);
+  `npx astryx doctor --built dist` 20 pass / 2 existing font warnings / 0 fail.
+- `node scripts/verify-local-delivery.mjs` 6/6 PASS (loopback-only, exact
+  restart preservation, Host/Origin/cross-site/CSRF rejection, credential-clean
+  bodies, private SQLite).
+- Native Codex shared journey **FAIL** at the first reply: the ChatGPT plan hit its
+  usage limit ("Subscription Sharing usage limit"). That's an external quota.
+  The report is kept: [release-journey-native-codex-quota-fail.json](release-journey-native-codex-quota-fail.json).
+  The earlier Codex 12/12 pass still stands as Codex evidence.
+- Native **Claude** shared journey (product default, `claude-opus-5-5`) **12/12 PASS**:
+  [release-journey-native-claude-pass.json](release-journey-native-claude-pass.json).
+  It ran root → child → grandchild from exact passages with two trees and four
+  conversations. Replies overlapped while navigation was active. Layout used one
+  controlled-minute write. A real restart moved PID 2761785 → 2767401 on
+  loopback-only `127.0.0.1:43303`, and all 10 messages, anchors, snapshots,
+  positions, viewport, folds, selection, expanded panel and provider/model/session
+  were identical (digest `6ff3db1d6168`). After restart the root recalled the
+  codename and the grandchild recalled its passage, both at once. 55 browser-visible
+  responses were credential-pattern clean. SQLite was at `/tmp/treetutor-release-CEqGWe/trees.sqlite`, mode 0600.
+  I reviewed both native summaries against their source and ancestors: they keep
+  the seven-comparison / three-round facts and the elimination argument, with
+  nothing contradictory.
+
+Both providers now have native passes for the shared journey (Codex earlier,
+Claude now). TreeTutor-7t3.9 supplies the both-direction switching evidence.
+
+**Not release-ready yet.** PRD.md was revised on 2026-11-09 (commit `b87f54f`).
+New chat now opens one visible, self-titling root. Nodes show the whole
+conversation, and branch lines attach beside the source message. Rows 1, 9 and 10
+above (and the keyboard journey's empty-map start in row 4) were verified against
+the earlier wording: an empty map with Start conversation and two-line latest
+previews. The native journey script still asserts that old empty-map start. These
+rows need re-verification after TreeTutor-7t3.18 and TreeTutor-7t3.21, then the
+TreeTutor-7t3.22 fixture recheck. Beads keeps TreeTutor-7t3.12 blocked by
+TreeTutor-7t3.22. Limits that still apply: returning ChatGPT sign-in after the
+id_token_hint removal was not exercised interactively, and inference uses remote
+providers.

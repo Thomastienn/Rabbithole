@@ -11,6 +11,8 @@ const session = `treetutor-previews-${process.pid}`;
 const browser = async (...args) => (await exec('agent-browser', ['--session', session, ...args])).stdout;
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-previews-')), 'trees.sqlite'));
 const root = store.create('Root previews');
+const first = store.message(root.id, 'user', 'First root question', 'completed');
+store.message(root.id, 'assistant', 'First root answer', 'completed');
 store.message(root.id, 'user', 'Long question '.repeat(60), 'completed');
 const source = store.message(root.id, 'assistant', 'Long answer '.repeat(60), 'completed');
 const child = store.branch(root, { messageId: source, start: 0, end: 4, text: 'Long', question: 'Child' }, 'context');
@@ -31,7 +33,11 @@ try {
   const check = async expression => browser('wait', '--fn', expression);
   await check(`${node(root.id)}?.textContent.includes('Long question') && ${node(child.id)}?.textContent.includes('Reply failed')`);
   await check(`${node(unanswered.id)}?.textContent.includes('Answer: No reply yet.')`);
-  await check(`Array.from(${node(root.id)}.querySelectorAll('[data-type="supporting"]')).filter(e => /^(Question|Answer):/.test(e.textContent)).every(e => getComputedStyle(e).webkitLineClamp === '2')`);
+  const rows = `Array.from(${node(root.id)}.querySelectorAll('[data-message]'))`;
+  await check(`${rows}.map(e => e.dataset.message).join() === ${JSON.stringify([first])}.concat(${JSON.stringify(store.tree(root.id).messages.slice(1).map(m => m.id))}).join()`);
+  await check(`${rows}.map(e => e.textContent.slice(0, 12)).join('|') === 'Question: Fi|Answer: Firs|Question: Lo|Answer: Long'`);
+  await check(`${rows}.every(e => getComputedStyle(e.firstElementChild).webkitLineClamp === '3') && ${rows}[0].dataset.role === 'user' && parseFloat(getComputedStyle(${rows}[0]).borderInlineStartWidth) > 0 && parseFloat(getComputedStyle(${rows}[1]).borderInlineStartWidth) === 0`);
+  await check(`!Array.from(${node(root.id)}.querySelectorAll('*')).some(e => ['auto', 'scroll'].includes(getComputedStyle(e).overflowY))`);
   await browser('find', 'role', 'button', 'click', '--name', 'Reveal source passage for Child', '--exact');
   await check(`document.activeElement?.tagName === 'MARK' && document.activeElement.textContent === 'Long'`);
   await browser('find', 'role', 'button', 'click', '--name', 'Return to tree', '--exact');
@@ -44,15 +50,20 @@ try {
   await browser('find', 'role', 'button', 'click', '--name', 'Send', '--exact');
   await check(`document.body.textContent.includes('Streaming fixture reply')`);
   await browser('find', 'role', 'button', 'click', '--name', 'Return to tree', '--exact');
-  await check(`${node(root.id)}?.textContent.includes('Live question') && ${node(root.id)}?.textContent.includes('Streaming fixture reply') && ${node(root.id)}?.textContent.includes('Responding')`);
+  await check(`${rows}.length === 6 && ${rows}[4].textContent.includes('Live question') && ${rows}[5].textContent.includes('Streaming fixture reply') && ${rows}[5].textContent.includes('Replying…') && ${node(root.id)}?.textContent.includes('Responding') && ${rows}[0].textContent.includes('First root question')`);
+  // While the root replies, previews poll only the replying conversation.
+  await browser('eval', `window.__previewRequests = []; new PerformanceObserver(list => list.getEntries().forEach(e => e.name.includes('/api/previews') && window.__previewRequests.push(e.name))).observe({ type: 'resource' })`);
+  await check(`window.__previewRequests.length >= 2 && window.__previewRequests.every(u => new URL(u).searchParams.getAll('id').join() === ${JSON.stringify(root.id)})`);
   await check(`document.activeElement?.id === 'open-${root.id}'`);
   await browser('find', 'role', 'button', 'click', '--name', 'Open Root previews', '--exact');
   await check(`getComputedStyle(document.querySelector('.focused-chat')).display !== 'none'`);
   await browser('find', 'role', 'button', 'click', '--name', 'Stop', '--exact');
   await check(`document.body.textContent.includes('Reply interrupted')`);
   await browser('find', 'role', 'button', 'click', '--name', 'Return to tree', '--exact');
-  await check(`${node(root.id)}?.textContent.includes('Reply interrupted') && ${node(child.id)}?.textContent.includes('Reply failed')`);
-  console.log('PASS: long, short, unanswered, streaming, failed and interrupted previews; two-line clamp, exact source, navigation and reload.');
+  await check(`${rows}.length === 6 && ${rows}[5].textContent.includes('Reply interrupted') && ${node(child.id)}?.querySelector('[data-role=assistant]')?.textContent.includes('Reply failed')`);
+  await browser('reload');
+  await check(`${rows}.length === 6 && ${rows}[5].textContent.includes('Reply interrupted')`);
+  console.log('PASS: every message in order with data-message ids, distinct question/answer rows, three-line clamp, no inner scroll; long, short, unanswered, streaming, failed and interrupted rows; active-only polling; exact source, navigation and reload.');
 } catch (error) {
   console.error(await browser('snapshot').catch(() => 'snapshot unavailable'));
   throw error;
