@@ -29,7 +29,7 @@ try {
   await browser('set', 'viewport', '1440', '900');
   await browser('open', `http://127.0.0.1:${app.server.address().port}`);
   await browser('set', 'media', 'light', 'reduced-motion');
-  await browser('wait', '--text', 'Open Branch A');
+  await browser('wait', '[aria-label="Open Branch A"]');
   await evalBrowser('window.transitions=0; const s=document.startViewTransition?.bind(document); if (s) document.startViewTransition = cb => { window.transitions++; return s(cb); }; true');
   await settled(); await click('Open Branch A');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Branch A'`);

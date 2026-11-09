@@ -21,7 +21,7 @@ const app = createApp({ store, auth: { status: () => ({ connected: true }) }, pr
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 try {
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
-  await b('wait', '--text', 'Open Selection fixture');
+  await b('wait', '[aria-label="Open Selection fixture"]');
   await click('Open Selection fixture');
   await b('wait', '--text', text);
   assert.equal(await ev(`[...document.querySelectorAll('button')].filter(b=>b.textContent.trim()==='Ask about selection').length`), 0);
@@ -50,15 +50,13 @@ try {
   await click('Return to parent conversation');
   await b('wait', '--text', text);
 
-  await click('Select tutor passage');
-  await b('find', 'role', 'menuitem', 'click', '--name', 'Tutor reply 1: repeat 😀 repeat 😀 end', '--exact');
+  await b('focus', '[aria-label="Select passage in tutor reply 1"]'); await b('press', 'Enter');
   await wait(`document.activeElement?.tagName === 'TEXTAREA' && document.activeElement.value === 'repeat 😀 repeat 😀 end'`);
   await b('press', 'Home');
   await b('press', 'Shift+ArrowRight');
   await b('press', 'Escape');
   assert.equal(store.list().length, 2);
-  await click('Select tutor passage');
-  await b('find', 'role', 'menuitem', 'click', '--name', 'Tutor reply 1: repeat 😀 repeat 😀 end', '--exact');
+  await b('focus', '[aria-label="Select passage in tutor reply 1"]'); await b('press', 'Enter');
   await wait(`document.activeElement?.tagName === 'TEXTAREA' && document.activeElement.value === 'repeat 😀 repeat 😀 end'`);
   await b('press', 'Home');
   for (let i = 0; i < 17; i++) await b('press', 'Shift+ArrowRight');

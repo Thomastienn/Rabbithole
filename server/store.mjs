@@ -22,6 +22,7 @@ export class Store {
     if (!columns.includes('x')) this.db.exec('ALTER TABLE trees ADD COLUMN x REAL');
     if (!columns.includes('y')) this.db.exec('ALTER TABLE trees ADD COLUMN y REAL');
     if (!columns.includes('layout')) this.db.exec('ALTER TABLE trees ADD COLUMN layout TEXT');
+    if (!columns.includes('working_provider')) this.db.exec('ALTER TABLE trees ADD COLUMN working_provider TEXT; UPDATE trees SET working_provider=provider');
   }
   list() {
     return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,EXISTS(SELECT 1 FROM messages m WHERE m.tree=t.id) AS started,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
@@ -51,16 +52,16 @@ export class Store {
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
     return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status FROM messages WHERE tree=? ORDER BY seq').all(id) };
   }
-  create(title) {
+  create(title, provider = 'codex') {
     const id = randomUUID();
-    this.db.prepare('INSERT INTO trees(id,title,created) VALUES(?,?,?)').run(id, title, Date.now());
+    this.db.prepare('INSERT INTO trees(id,title,created,provider,working_provider) VALUES(?,?,?,?,?)').run(id, title, Date.now(), provider, provider);
     return this.tree(id);
   }
   branch(parent, anchor, snapshot) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const child = this.create(anchor.question.trim().slice(0, 200));
-      this.db.prepare('UPDATE trees SET provider=?,model=?,working_model=? WHERE id=?').run(parent.provider, parent.model, parent.working_model ?? parent.model, child.id);
+      this.db.prepare('UPDATE trees SET provider=?,model=?,working_model=?,working_provider=? WHERE id=?').run(parent.provider, parent.model, parent.working_model ?? parent.model, parent.working_provider ?? parent.provider, child.id);
       this.db.prepare('INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot) VALUES(?,?,?,?,?,?,?,?)').run(child.id, parent.id, anchor.messageId, anchor.start, anchor.end, anchor.text, anchor.question, snapshot);
       this.db.exec('COMMIT');
       return this.tree(child.id);
@@ -68,7 +69,12 @@ export class Store {
   }
   thread(id, thread, model) { this.db.prepare('UPDATE trees SET thread=?,model=COALESCE(?,model) WHERE id=?').run(thread, model ?? null, id); }
   model(id, model) { this.db.prepare('UPDATE trees SET model=? WHERE id=?').run(model, id); }
-  finishModel(id, completed) { this.db.prepare(completed ? 'UPDATE trees SET working_model=model WHERE id=?' : 'UPDATE trees SET model=working_model WHERE id=?').run(id); }
+  // Provider sessions are not portable: switching drops the thread so the next provider receives saved history.
+  switchProvider(id, provider, model) { this.db.prepare('UPDATE trees SET provider=?,model=?,thread=NULL WHERE id=?').run(provider, model, id); }
+  finishModel(id, completed) {
+    this.db.prepare(completed ? 'UPDATE trees SET working_model=model,working_provider=provider WHERE id=?'
+      : 'UPDATE trees SET model=working_model,thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE NULL END,provider=COALESCE(working_provider,provider) WHERE id=?').run(id);
+  }
   message(tree, role, text, status) {
     const id = randomUUID();
     this.db.prepare('INSERT INTO messages(id,tree,role,text,status) VALUES(?,?,?,?,?)').run(id, tree, role, text, status);

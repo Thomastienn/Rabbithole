@@ -60,8 +60,7 @@ try {
   await wait(`document.querySelector(${JSON.stringify(node(grand.id))})?.textContent.includes('Finished while hidden')`);
   // Create a child from a folded parent through the normal keyboard selection flow.
   await click('Collapse descendants of Fold child');
-  await settled(); await click('Open Fold child'); await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold child' && !document.documentElement.matches(':active-view-transition')`); await click('Select tutor passage');
-  await b('find', 'role', 'menuitem', 'click', '--name', 'Tutor reply 1: Child passage.', '--exact');
+  await settled(); await click('Open Fold child'); await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold child' && !document.documentElement.matches(':active-view-transition')`); await b('focus', '[aria-label="Select passage in tutor reply 1"]'); await b('press', 'Enter');
   await b('press', 'Home'); for (let i = 0; i < 5; i++) await b('press', 'Shift+ArrowRight');
   await b('press', 'Tab'); await b('press', 'Enter');
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'New branch');

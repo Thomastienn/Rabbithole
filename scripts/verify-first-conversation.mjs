@@ -25,7 +25,7 @@ try {
   await b('set', 'viewport', '1440', '900');
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
   await b('set', 'media', 'light', 'reduced-motion');
-  await b('wait', '--text', 'Open Saved tree');
+  await b('wait', '[aria-label="Open Saved tree"]');
   await click('Map menu');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await b('find', 'role', 'textbox', 'fill', '--name', 'New tree name', 'Leaves');
@@ -67,8 +67,7 @@ try {
   assert.deepEqual(store.tree(fresh.id).messages.map(m => [m.role, m.text, m.status]), [['user', 'Why are leaves green?', 'completed'], ['assistant', 'Fixture response 21', 'completed']]);
 
   // A child created from the first answer stays visible and opens in the panel.
-  await click('Select tutor passage');
-  await b('find', 'role', 'menuitem', 'click', '--name', 'Tutor reply 1: Fixture response 21', '--exact');
+  await b('focus', '[aria-label="Select passage in tutor reply 1"]'); await b('press', 'Enter');
   await wait(`document.activeElement?.tagName === 'TEXTAREA' && document.activeElement.value === 'Fixture response 21'`);
   await b('press', 'Home');
   for (let i = 0; i < 7; i++) await b('press', 'Shift+ArrowRight');
@@ -88,7 +87,7 @@ try {
   await click('Map menu');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click('Saved tree');
-  await b('wait', '--text', 'Open Saved tree');
+  await b('wait', '[aria-label="Open Saved tree"]');
   assert.deepEqual(await nodes(), [saved.id]);
   assert.deepEqual(store.tree(saved.id).messages, savedMessages);
   assert.equal(store.list().filter(t => !t.parent).length, 2);

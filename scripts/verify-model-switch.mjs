@@ -86,7 +86,7 @@ try {
   assert.equal(before.model, first.model);
   await browser('open', origin);
   await browser('set', 'media', 'light', 'reduced-motion');
-  await browser('wait', '--text', 'Open Recall the tree');
+  await browser('wait', '[aria-label="Open Recall the tree"]');
   await click('Fit tree');
   await click('Open Recall the tree');
   await wait("!!document.querySelector('[aria-label=\"Model for next reply\"]')");
@@ -99,7 +99,7 @@ try {
   assert.equal(await evaluate('document.activeElement?.textContent.trim()'), second.label);
   await browser('press', 'Enter');
   await waitForModel(child.id, second.model);
-  await wait(`document.querySelector('.focused-chat').textContent.includes(${JSON.stringify('Model for next reply: ' + second.label)}) && !document.querySelector('[aria-label="Model for next reply"]')?.hasAttribute('aria-busy')`);
+  await wait(`document.querySelector('.focused-chat').textContent.includes(${JSON.stringify(second.label + ' · saved automatically')}) && !document.querySelector('[aria-label="Model for next reply"]')?.hasAttribute('aria-busy')`);
   assert.equal(store.tree(child.id).model, second.model);
   assert.equal(store.tree(parent.id).model, first.model);
   assert.deepEqual(store.tree(child.id).messages, before.messages);
@@ -110,16 +110,16 @@ try {
   assert.deepEqual(after.branch, before.branch);
   client?.close();
   await browser('reload');
-  await browser('wait', '--text', 'Open Recall the tree');
+  await browser('wait', '[aria-label="Open Recall the tree"]');
   await click('Fit tree');
   await click('Open Recall the tree');
-  await wait(`document.querySelector('.focused-chat').textContent.includes(${JSON.stringify('Model for next reply: ' + second.label)})`);
+  await wait(`document.querySelector('.focused-chat').textContent.includes(${JSON.stringify(second.label + ' · saved automatically')})`);
   const restarted = await ask('after transport restart');
   assert.equal(restarted.thread, before.thread);
   if (!live) {
     const stream = await post(`/api/trees/${child.id}/messages`, { text: 'Hold this turn' });
     await browser('reload');
-    await browser('wait', '--text', 'Open Recall the tree');
+    await browser('wait', '[aria-label="Open Recall the tree"]');
     await click('Fit tree');
     await click('Open Recall the tree');
     await wait("document.querySelector('[aria-label=\"Model for next reply\"]')?.getAttribute('aria-disabled') === 'true'");
@@ -128,29 +128,29 @@ try {
     await wait("document.querySelector('[aria-label=\"Model for next reply\"]')?.getAttribute('aria-disabled') !== 'true'");
     await click('Model for next reply');
     await browser('find', 'role', 'menuitemradio', 'click', '--name', 'Denied', '--exact');
-    await wait("document.querySelector('.focused-chat').textContent.includes('Model for next reply: Denied')");
+    await wait("document.querySelector('.focused-chat').textContent.includes('Denied · saved automatically')");
     await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Try denied model');
     await click('Send');
     await browser('wait', '--text', 'Synthetic model access denied.');
-    await wait("document.querySelector('.focused-chat').textContent.includes('Model for next reply: Alternate')");
+    await wait("document.querySelector('.focused-chat').textContent.includes('Alternate · saved automatically')");
     assert.equal(store.tree(child.id).model, second.model);
     failCatalog = true;
     await click('Model for next reply');
     await browser('find', 'role', 'menuitemradio', 'click', '--name', 'Original', '--exact');
     await browser('wait', '--text', 'Model change failed. Your previous selection is saved.');
     assert.equal(store.tree(child.id).model, second.model);
-    assert.ok(await evaluate("document.querySelector('.focused-chat').textContent.includes('Model for next reply: Alternate')"));
+    assert.ok(await evaluate("document.querySelector('.focused-chat').textContent.includes('Alternate · saved automatically')"));
     failCatalog = false;
     store.model(child.id, 'fixture-missing');
     await browser('reload');
-    await browser('wait', '--text', 'Open Recall the tree');
+    await browser('wait', '[aria-label="Open Recall the tree"]');
     await click('Fit tree');
     await click('Open Recall the tree');
-    await wait("document.querySelector('.focused-chat').textContent.includes('Model for next reply: fixture-missing')");
+    await wait("document.querySelector('.focused-chat').textContent.includes('fixture-missing · saved automatically')");
     await click('Model for next reply');
     assert.equal(await evaluate("document.querySelector('[role=menuitemradio][aria-disabled=true]')?.textContent.includes('fixture-missing (saved)')"), true);
     await browser('find', 'role', 'menuitemradio', 'click', '--name', 'Alternate', '--exact');
-    await wait("document.querySelector('.focused-chat').textContent.includes('Model for next reply: Alternate')");
+    await wait("document.querySelector('.focused-chat').textContent.includes('Alternate · saved automatically')");
   }
   for (const [width, height] of [[1280, 900], [390, 844]]) {
     await browser('set', 'viewport', String(width), String(height));

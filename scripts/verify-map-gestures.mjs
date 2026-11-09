@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
@@ -10,7 +10,7 @@ import { createApp } from '../server/app.mjs';
 // Synthetic local fixture; no provider or account is contacted.
 const exec = promisify(execFile);
 const session = `treetutor-gestures-${process.pid}`;
-const browser = async (...args) => (await exec('agent-browser', ['--session', session, ...args])).stdout;
+const browser = async (...args) => (await exec('agent-browser', ['--session', session, ...args], { env: { ...process.env, AGENT_BROWSER_INIT_SCRIPTS: resolve('scripts/layout-clock.js') } })).stdout;
 const evaluate = async expression => JSON.parse(await browser('eval', expression, '--json')).data.result;
 const wait = expression => browser('wait', '--fn', expression);
 const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
@@ -49,12 +49,13 @@ try {
   await click('Fit tree');
   await wait(`document.querySelector(${JSON.stringify(childNode + ' h3')}).getBoundingClientRect().width > 0`);
   const beforePosition = store.tree(child.id);
-  const p = await center(childNode + ' h3');
+  const p = await center(childNode + ' .conversation-box'); p.y += 40; // title is a click target (nodrag); drag from the preview area
   await move(p); await browser('mouse', 'down', 'left');
   await browser('mouse', 'move', String(p.x+60), String(p.y+30), '--duration', '200', '--steps', '10');
   await browser('mouse', 'up', 'left');
   await wait(`document.body.innerText.includes('Gesture branch moved to')`);
   assert.equal(await evaluate(`getComputedStyle(document.querySelector('.focused-chat')).display`), 'none');
+  await evaluate('__layoutMinute()'); await wait('window.__layoutInFlight === 0'); // controlled one-minute layout batch
   assert.notEqual(store.tree(child.id).x, beforePosition.x);
   assert.deepEqual(store.tree(child.id).branch, child.branch);
   assert.equal(await evaluate(`document.querySelector('.react-flow__edge').dataset.id`), child.id);

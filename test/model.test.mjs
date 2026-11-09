@@ -32,7 +32,7 @@ test('saved model changes preserve thread, transcript, fixed context and indepen
   const original = env.store.tree(root.id);
   const anchor = { messageId: original.messages[1].id, start: 0, end: 8, text: 'Original', question: 'Why?' };
   try {
-    assert.deepEqual((await (await fetch(`${env.origin}/api/models`)).json()).models, catalog);
+    assert.deepEqual((await (await fetch(`${env.origin}/api/models`)).json()).models, catalog.map(m => ({ provider: 'codex', ...m })));
     assert.equal((await env.post(`/api/trees/${root.id}/model`, { model: 'alternate' })).status, 200);
     const child = await (await env.post(`/api/trees/${root.id}/branches`, anchor)).json();
     assert.equal(child.model, 'alternate');

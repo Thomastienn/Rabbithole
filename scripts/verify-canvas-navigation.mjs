@@ -10,11 +10,17 @@ import { createApp } from '../server/app.mjs';
 // Built app, isolated browser/database, synthetic provider only.
 const exec = promisify(execFile);
 const session = `treetutor-navigation-${process.pid}`;
-const browser = async (...args) => (await exec('agent-browser', ['--session', session, ...args])).stdout;
+const browser = async (...args) => (await exec('agent-browser', ['--session', session, ...args], { env: { ...process.env, AGENT_BROWSER_INIT_SCRIPTS: resolve('scripts/layout-clock.js') } })).stdout;
 const evaluate = async expression => JSON.parse(await browser('eval', expression, '--json')).data.result;
 const wait = expression => browser('wait', '--fn', expression);
 const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
 const view = () => evaluate('document.querySelector(".react-flow__viewport").style.transform');
+// Fire the controlled one-minute layout clock, then read the batched viewport from the database.
+const flush = async () => { await evaluate('__layoutMinute()'); await wait('window.__layoutInFlight === 0'); };
+async function savedView(accept) {
+  for (let i = 0; i < 50; i++) { await flush(); const v = store.list().find(t => t.id === root.id).layout?.viewport; if (v && accept(v)) return v; await new Promise(r => setTimeout(r, 100)); }
+  assert.fail('Viewport not saved: ' + JSON.stringify(store.list().find(t => t.id === root.id).layout) + ' shown ' + await view());
+}
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-navigation-')), 'trees.sqlite'));
 store.message(store.create('Other saved tree').id, 'user', 'Earlier question', 'completed');
 const root = store.create('Canvas navigation');
@@ -33,12 +39,10 @@ const app = createApp({ store, auth: { status: () => ({ connected: true }) }, pr
 } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-const key = `treetutor.viewport.${root.id}`;
 try {
   await browser('set', 'viewport', '1440', '900');
   await browser('open', origin);
   await wait('document.querySelectorAll(".react-flow__node").length === 3');
-  await wait(`localStorage.getItem(${JSON.stringify(key)}) !== null`);
   // Observe actual shared-element animations, including their changing bounds.
   await evaluate(`window.transitions = []; window.nativeTransition = document.startViewTransition.bind(document); document.startViewTransition = callback => { const t = window.nativeTransition(callback); t.ready.then(() => window.transitions.push(document.getAnimations().filter(a => a.effect?.pseudoElement === '::view-transition-group(conversation)').map(a => a.effect.getKeyframes()))); return t; }; true`);
   const initial = await view();
@@ -52,20 +56,18 @@ try {
   const afterKeys = await view();
   await browser('press', 'Control+ArrowLeft');
   assert.equal(await view(), afterKeys);
-  const beforeZoom = JSON.parse(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`));
+  const beforeZoom = await savedView(() => true);
   await click('Zoom in');
-  await wait(`JSON.parse(localStorage.getItem(${JSON.stringify(key)})).zoom > ${beforeZoom.zoom}`);
-  const zoomed = JSON.parse(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`));
+  const zoomed = await savedView(v => v.zoom > beforeZoom.zoom);
   await click('Zoom out');
-  await wait(`JSON.parse(localStorage.getItem(${JSON.stringify(key)})).zoom < ${zoomed.zoom}`);
-  const unzoomed = JSON.parse(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`));
+  const unzoomed = await savedView(v => v.zoom < zoomed.zoom);
   assert.ok(zoomed.zoom > unzoomed.zoom);
   await click('Fit tree');
   await browser('focus', '.tree-canvas');
   await browser('press', 'ArrowLeft');
   const saved = await view();
-  await wait(`(() => { const v=JSON.parse(localStorage.getItem(${JSON.stringify(key)})); const p=document.querySelector('.react-flow__viewport').style.transform.match(/-?\\d*\\.?\\d+/g).map(Number); return Math.abs(v.x-p[0])<0.001 && Math.abs(v.y-p[1])<0.001 && Math.abs(v.zoom-p[2])<0.000001; })()`);
-  const savedStorage = await evaluate(`localStorage.getItem(${JSON.stringify(key)})`);
+  const p = saved.match(/-?\d*\.?\d+/g).map(Number);
+  const savedLayout = await savedView(v => Math.abs(v.x - p[0]) < 0.001 && Math.abs(v.y - p[1]) < 0.001 && Math.abs(v.zoom - p[2]) < 0.00001); // transform string rounds scale to 5 decimals
   // Browser-zoom wheel events must remain uncancelled and leave the canvas view alone.
   assert.equal(await evaluate(`document.querySelector('.react-flow__pane').dispatchEvent(new WheelEvent('wheel', {deltaY:-100,ctrlKey:true,bubbles:true,cancelable:true}))`), true);
   assert.equal(await view(), saved);
@@ -75,10 +77,9 @@ try {
     const chat = document.querySelector('.focused-chat').getBoundingClientRect();
     const workspace = document.querySelector('.tree-workspace').getBoundingClientRect();
     const overview = document.querySelector('.overview');
-    return ['x', 'y', 'width', 'height'].every(key => Math.abs(chat[key] - workspace[key]) < 1)
-      && overview.inert && overview.getAttribute('aria-hidden') === 'true'
-      && getComputedStyle(overview).opacity === '0';
-  })()`), true, 'Focused chat must fill the workspace and hide the inert overview');
+    const map = overview.getBoundingClientRect();
+    return chat.width > 0 && chat.width < workspace.width && map.width > 0 && Math.abs(map.right - chat.left) < 1;
+  })()`), true, 'Revealed source opens the chat side panel beside the map');
   await click('Return to tree');
   await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
   assert.equal(await view(), saved);
@@ -92,16 +93,16 @@ try {
   await click('Map menu');
   await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click('Other saved tree');
-  await browser('wait', '--text', 'Open Other saved tree');
+  await browser('wait', '[aria-label="Open Other saved tree"]');
   await click('Map menu');
   await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click('Canvas navigation');
-  await browser('wait', '--text', 'Open First branch');
+  await browser('wait', '[aria-label="Open First branch"]');
   assert.equal(await view(), saved);
   await browser('reload');
-  await browser('wait', '--text', 'Open First branch');
+  await browser('wait', '[aria-label="Open First branch"]');
   assert.equal(await view(), saved);
-  assert.equal(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`), savedStorage);
+  assert.deepEqual(store.list().find(t => t.id === root.id).layout.viewport, savedLayout, 'viewport restored from the batched layout');
   // Reduced motion bypasses View Transitions entirely.
   await browser('set', 'media', 'light', 'reduced-motion');
   assert.equal(await evaluate('matchMedia("(prefers-reduced-motion: reduce)").matches'), true);
@@ -148,17 +149,7 @@ try {
   await click('Open Canvas navigation');
   await wait('document.querySelector(".focused-chat h2")?.textContent === "Canvas navigation" && !!document.querySelector(".focused-chat [role=textbox]")');
   assert.equal(await evaluate('document.querySelector(".focused-chat [role=textbox]").getBoundingClientRect().bottom <= innerHeight'), true);
-  // Corrupt storage falls back to a usable view; denied writes remain visible.
-  await evaluate(`localStorage.setItem(${JSON.stringify(key)}, 'broken'); true`);
-  await browser('reload');
-  await browser('wait', '--text', 'Open First branch');
-  await browser('focus', '.tree-canvas');
-  await browser('press', 'ArrowDown');
-  assert.equal(await evaluate(`Number.isFinite(JSON.parse(localStorage.getItem(${JSON.stringify(key)})).zoom)`), true);
-  await evaluate('Storage.prototype.setItem = () => { throw new DOMException("Fixture storage denied", "SecurityError"); }; true');
-  await browser('press', 'ArrowUp');
-  await browser('wait', '--text', 'View not saved');
-  console.log('PASS: pan/zoom/fit; keyboard and browser zoom isolation; exact viewport and originating focus return; tree switch/reload; shared-element animation; reduced motion; two simultaneous replies without lost output/focus/draft; mobile controls/composer; invalid/denied storage.');
+  console.log('PASS: pan/zoom/fit; keyboard and browser zoom isolation; exact viewport and originating focus return; tree switch/reload; shared-element animation; reduced motion; two simultaneous replies without lost output/focus/draft; mobile controls/composer; viewport saved in the batched layout.');
 } catch (error) {
   console.error(await browser('eval', 'JSON.stringify({active:document.activeElement?.id,hidden:document.querySelector(".overview").getAttribute("aria-hidden"), transitions:window.transitions})'));
   throw error;

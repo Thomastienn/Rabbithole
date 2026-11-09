@@ -35,6 +35,12 @@ test('layout snapshots stay per tree, hold only IDs and survive restart; legacy 
     assert.deepEqual(trees.find(t => t.id === second.id).layout, secondLayout);
     assert.equal(trees.find(t => t.id === 'old').layout, null);
     assert.equal((await fetch(`${origin}/api/trees/old`)).status, 200);
+    const batch = { folded: [], selected: first.id, panel: 'collapsed', viewport: { x: 5, y: -6, zoom: 0.5 }, positions: { [first.id]: { x: 10, y: 20 }, [child.id]: { x: 30, y: 40 } } };
+    assert.equal((await post(first.id, { ...batch, positions: { [second.id]: { x: 1, y: 1 } } })).status, 400, 'positions belong to the batch owner tree');
+    assert.equal((await post(first.id, batch)).status, 200);
+    assert.deepEqual(store.list().find(t => t.id === first.id).layout, { folded: [], selected: first.id, panel: 'collapsed', viewport: { x: 5, y: -6, zoom: 0.5 } });
+    assert.deepEqual([first.id, child.id, second.id].map(id => { const t = store.list().find(t => t.id === id); return [t.x, t.y]; }), [[10, 20], [30, 40], [null, null]]);
+    assert.equal((await post(first.id, firstLayout)).status, 200);
     app.stop(); store.close();
     store = new Store(path);
     const raw = store.db.prepare('SELECT id,layout FROM trees').all();

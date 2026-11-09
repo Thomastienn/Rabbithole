@@ -104,7 +104,7 @@ At the application breakpoint (48rem), navigation becomes a toggleable region ab
 
 ## Elevation & Depth
 
-The reviewed workspace is flat. Thin dividers and subtle selected fills establish structure. The composer explicitly uses no elevation; ghost message bubbles preserve the plain transcript. Astryx offers shadow tokens, but the page does not apply a separate shadow vocabulary.
+The workspace is flat. Thin dividers and subtle selected fills establish structure. The composer explicitly uses no elevation; ghost message bubbles preserve the plain transcript. Only floating controls lift: the map toolbar uses `--shadow-low`, the selected map node and the **Ask about selection** action use the medium shadow.
 
 ## Shapes
 
@@ -119,6 +119,9 @@ Use the Astryx components already imported by [ChatPage.tsx](src/ChatPage.tsx). 
 - **Navigation:** saved trees form a compact button list. The selected tree has a secondary fill and `aria-current`; mobile navigation exposes its expanded state.
 - **Transcript:** explicit You/Tutor labels, preserved line breaks, wrapped long content, and visible responding or failed status.
 - **Composer:** labelled input, subdued prompt, send/stop action and visible Enter/Shift+Enter instructions. New tree creation focuses the composer.
+- **Map:** the tree map fills the workspace on the body background. Conversation nodes are 16rem boxes: title button, two-line question and answer previews, a pulsing activity dot while replying, a fold chevron and a hover/focus-revealed source link. Fit never zooms past 100%. Zoom, fit, the map menu and **Reopen chat** float as one toolbar at the top left. A tree without a first question shows a centered empty map with **Start conversation**.
+- **Chat panel:** a compact header holds the title, a `model · saved automatically` subtitle and three icon buttons: model menu (grouped by provider, with sign-in actions for signed-out providers), expand/collapse, and **Return to tree** (Esc). Branches add a **Return to parent conversation** row with the source passage.
+- **Passage actions:** no persistent controls. Selecting reply text floats **Ask about selection** above the selection; a focus-revealed **Select passage in tutor reply N** button opens keyboard selection. The branch form opens inline under its source reply.
 - **Feedback:** request failures appear in an alert region; loading and empty states explain the next available action in plain text.
 
 ## Do's and Don'ts

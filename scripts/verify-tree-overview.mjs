@@ -35,7 +35,7 @@ await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 try {
   await browser('set', 'viewport', '1440', '900');
   await browser('open', `http://127.0.0.1:${app.server.address().port}`);
-  await browser('wait', '--text', 'Open Forest ecology');
+  await browser('wait', '[aria-label="Open Forest ecology"]');
   await browser('wait', '--fn', 'document.querySelectorAll(".react-flow__node").length === 3 && document.querySelectorAll(".react-flow__edge").length === 2');
   await click('Zoom in');
   await browser('eval', 'window.savedViewport = document.querySelector(".react-flow__viewport").getAttribute("style")');
@@ -52,10 +52,10 @@ try {
   if (generations !== 1 || store.tree(root.id).messages.filter(m => m.role === 'user').length !== 1) throw new Error('Navigation restarted generation');
   await browser('set', 'viewport', '390', '844');
   await check('document.querySelector(".focused-chat [role=textbox]").getBoundingClientRect().bottom <= innerHeight && document.documentElement.scrollWidth === innerWidth');
-  await browser('click', '.focused-chat article:first-of-type button:first-of-type');
+  await browser('focus', '[aria-label="Select passage in tutor reply 1"]'); await browser('press', 'Enter');
   await browser('find', 'role', 'textbox', 'click', '--name', 'Select tutor passage');
   await browser('eval', 'document.querySelector("textarea").setSelectionRange(0,5)');
-  await browser('click', '.focused-chat article:first-of-type button:nth-of-type(2)');
+  await browser('find', 'role', 'button', 'click', '--name', 'Ask about selection', '--exact');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Why do roots share?');
   await browser('press', 'Tab');
   await browser('press', 'Enter');
@@ -66,7 +66,7 @@ try {
   await browser('wait', '--fn', 'document.querySelectorAll(".react-flow__node").length === 4');
   await click('Show learning trees');
   await click('Separate ocean tree');
-  await browser('wait', '--text', 'Open Separate ocean tree');
+  await browser('wait', '[aria-label="Open Separate ocean tree"]');
   await check('document.querySelectorAll(".react-flow__node").length === 1 && document.querySelectorAll(".react-flow__edge").length === 0');
   console.log('PASS: nested overview, viewport/focus return, generation continuity, mobile composer, new branch focus, separate-tree isolation.');
 } finally {

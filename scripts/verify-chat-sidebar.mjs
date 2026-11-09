@@ -27,7 +27,7 @@ try {
   await browser('set', 'viewport', '1440', '900');
   await browser('open', `http://127.0.0.1:${app.server.address().port}`);
   await browser('set', 'media', 'light', 'reduced-motion');
-  await browser('wait', '--text', 'Open Branch A');
+  await browser('wait', '[aria-label="Open Branch A"]');
   assert.equal(await evalBrowser('getComputedStyle(document.querySelector(".trees")).display'), 'none');
   await open('Branch A');
   assert.equal(await evalBrowser('(() => { const a=document.querySelector(".overview").getBoundingClientRect(), b=document.querySelector(".focused-chat").getBoundingClientRect(); return a.width>0 && b.width>0 && a.right<=b.left+1 })()'), true);

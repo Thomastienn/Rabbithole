@@ -27,5 +27,5 @@ export function layoutSaver<L>(write: (root: string, batch: Batch<L>) => Promise
     if (batches.length) report(results.some(r => r.status === 'rejected'));
     schedule();
   }
-  return { mark, flush, dispose: () => { if (timer !== undefined) timers.clear(timer); timer = undefined; } };
+  return { mark, flush, pending: (): ReadonlyMap<string, Batch<L>> => dirty, dispose: () => { if (timer !== undefined) timers.clear(timer); timer = undefined; } };
 }

@@ -32,7 +32,7 @@ await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
 const chatText = () => evaluate('document.querySelector(".focused-chat").innerText');
 async function open(title) {
-  await browser('wait', '--text', `Open ${title}`);
+  await browser('wait', `[aria-label="Open ${title}"]`);
   await click(`Open ${title}`);
   await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(title)} && !!document.querySelector('.focused-chat [role=textbox]')`);
 }
@@ -44,7 +44,7 @@ async function send(title) {
 try {
   await browser('open', origin);
   await browser('set', 'media', 'light', 'reduced-motion');
-  await browser('wait', '--text', 'Open Branch A');
+  await browser('wait', '[aria-label="Open Branch A"]');
   for (const tree of [a, b]) {
     await open(tree.title);
     await send(tree.title);
@@ -62,6 +62,8 @@ try {
   await browser('wait', '--text', 'New checkpoint Branch A latest');
   assert.ok(!(await chatText()).includes('Branch B'));
   assert.equal((await chatText()).split('Question Branch A').length - 1, 1);
+  await click('Map menu');
+  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click('Other tree');
   await open(other.title);
   await send(other.title);
@@ -95,7 +97,7 @@ try {
     assert.equal(store.tree(tree.id).messages.length, 2);
   }
   await browser('reload');
-  await browser('wait', '--text', 'Open Branch A');
+  await browser('wait', '[aria-label="Open Branch A"]');
   await open(a.title);
   await browser('wait', '--text', 'Complete Branch A');
   assert.equal((await chatText()).split('Question Branch A').length - 1, 1);
