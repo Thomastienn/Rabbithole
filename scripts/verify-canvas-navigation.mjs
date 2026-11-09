@@ -42,7 +42,8 @@ try {
   // Observe actual shared-element animations, including their changing bounds.
   await evaluate(`window.transitions = []; window.nativeTransition = document.startViewTransition.bind(document); document.startViewTransition = callback => { const t = window.nativeTransition(callback); t.ready.then(() => window.transitions.push(document.getAnimations().filter(a => a.effect?.pseudoElement === '::view-transition-group(conversation)').map(a => a.effect.getKeyframes()))); return t; }; true`);
   const initial = await view();
-  await click('Pan right');
+  await browser('focus', '.tree-canvas');
+  await browser('press', 'ArrowRight');
   assert.notEqual(await view(), initial);
   await browser('focus', '.tree-canvas');
   const beforeKeys = await view();
@@ -60,7 +61,8 @@ try {
   const unzoomed = JSON.parse(await evaluate(`localStorage.getItem(${JSON.stringify(key)})`));
   assert.ok(zoomed.zoom > unzoomed.zoom);
   await click('Fit tree');
-  await click('Pan left');
+  await browser('focus', '.tree-canvas');
+  await browser('press', 'ArrowLeft');
   const saved = await view();
   await wait(`(() => { const v=JSON.parse(localStorage.getItem(${JSON.stringify(key)})); const p=document.querySelector('.react-flow__viewport').style.transform.match(/-?\\d*\\.?\\d+/g).map(Number); return Math.abs(v.x-p[0])<0.001 && Math.abs(v.y-p[1])<0.001 && Math.abs(v.zoom-p[2])<0.000001; })()`);
   const savedStorage = await evaluate(`localStorage.getItem(${JSON.stringify(key)})`);
@@ -87,8 +89,12 @@ try {
   await browser('press', 'Escape');
   await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
   assert.equal(await view(), saved);
+  await click('Map menu');
+  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click('Other saved tree');
   await browser('wait', '--text', 'Open Other saved tree');
+  await click('Map menu');
+  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click('Canvas navigation');
   await browser('wait', '--text', 'Open First branch');
   assert.equal(await view(), saved);
@@ -146,10 +152,11 @@ try {
   await evaluate(`localStorage.setItem(${JSON.stringify(key)}, 'broken'); true`);
   await browser('reload');
   await browser('wait', '--text', 'Open First branch');
-  await click('Pan down');
+  await browser('focus', '.tree-canvas');
+  await browser('press', 'ArrowDown');
   assert.equal(await evaluate(`Number.isFinite(JSON.parse(localStorage.getItem(${JSON.stringify(key)})).zoom)`), true);
   await evaluate('Storage.prototype.setItem = () => { throw new DOMException("Fixture storage denied", "SecurityError"); }; true');
-  await click('Pan up');
+  await browser('press', 'ArrowUp');
   await browser('wait', '--text', 'View not saved');
   console.log('PASS: pan/zoom/fit; keyboard and browser zoom isolation; exact viewport and originating focus return; tree switch/reload; shared-element animation; reduced motion; two simultaneous replies without lost output/focus/draft; mobile controls/composer; invalid/denied storage.');
 } catch (error) {

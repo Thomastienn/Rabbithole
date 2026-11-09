@@ -18,9 +18,20 @@ const exec = promisify(execFile);
 const session = `treetutor-model-${process.pid}`;
 const browser = async (...args) => (await exec('agent-browser', ['--session', session, ...args])).stdout;
 const evaluate = async expression => JSON.parse(await browser('eval', expression, '--json')).data.result;
-const wait = expression => browser('wait', '--fn', expression);
+const wait = async expression => {
+  const caller = new Error().stack;
+  try { return await browser('wait', '--fn', expression); }
+  catch (error) { console.error('Wait failed at', caller, 'UI:', await evaluate("document.querySelector('.focused-chat')?.textContent")); throw error; }
+};
 const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
-let release, client, app, store, completeTurn;
+const waitForModel = async (id, model) => {
+  for (let i = 0; i < 100; i++) {
+    if (store.tree(id).model === model) return;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.equal(store.tree(id).model, model);
+};
+let release, client, app, store, completeTurn, failCatalog = false;
 const report = { mode: live ? 'live' : 'fixture', date: new Date().toISOString(), turns: [] };
 try {
   let provider;
@@ -30,7 +41,7 @@ try {
     client = new Codex(new Auth(authDir), dir);
     provider = client;
   } else provider = {
-    models: async () => [{ model: 'fixture-original', label: 'Original', isDefault: true }, { model: 'fixture-alternate', label: 'Alternate' }, { model: 'fixture-denied', label: 'Denied' }],
+    models: async () => { if (failCatalog) throw new Error('Synthetic catalog failure.'); return [{ model: 'fixture-original', label: 'Original', isDefault: true }, { model: 'fixture-alternate', label: 'Alternate' }, { model: 'fixture-denied', label: 'Denied' }]; },
     generate: (tree, text, emit, save) => {
       save(tree.thread ?? `thread-${tree.id}`, tree.model ?? 'fixture-original');
       if (tree.model === 'fixture-denied') throw new Error('Synthetic model access denied.');
@@ -76,15 +87,19 @@ try {
   await browser('open', origin);
   await browser('set', 'media', 'light', 'reduced-motion');
   await browser('wait', '--text', 'Open Recall the tree');
+  await click('Fit tree');
   await click('Open Recall the tree');
-  await wait("!!document.querySelector('[role=combobox]')");
+  await wait("!!document.querySelector('[aria-label=\"Model for next reply\"]')");
   // Keyboard-only selection; labels and ordering come from the provider.
-  await browser('focus', '[role=combobox]');
+  await browser('focus', '[aria-label="Model for next reply"]');
   await browser('press', 'Space');
+  await wait("document.activeElement?.getAttribute('role') === 'menuitemradio'");
   await browser('press', 'Home');
   for (let i = 0; i < catalog.indexOf(second); i++) await browser('press', 'ArrowDown');
+  assert.equal(await evaluate('document.activeElement?.textContent.trim()'), second.label);
   await browser('press', 'Enter');
-  await wait(`document.querySelector('[role=combobox]')?.textContent.includes(${JSON.stringify(second.label)}) && !document.querySelector('[role=combobox]')?.hasAttribute('aria-busy')`);
+  await waitForModel(child.id, second.model);
+  await wait(`document.querySelector('.focused-chat').textContent.includes(${JSON.stringify('Model for next reply: ' + second.label)}) && !document.querySelector('[aria-label="Model for next reply"]')?.hasAttribute('aria-busy')`);
   assert.equal(store.tree(child.id).model, second.model);
   assert.equal(store.tree(parent.id).model, first.model);
   assert.deepEqual(store.tree(child.id).messages, before.messages);
@@ -96,27 +111,46 @@ try {
   client?.close();
   await browser('reload');
   await browser('wait', '--text', 'Open Recall the tree');
+  await click('Fit tree');
   await click('Open Recall the tree');
-  await wait(`document.querySelector('[role=combobox]')?.textContent.includes(${JSON.stringify(second.label)})`);
+  await wait(`document.querySelector('.focused-chat').textContent.includes(${JSON.stringify('Model for next reply: ' + second.label)})`);
   const restarted = await ask('after transport restart');
   assert.equal(restarted.thread, before.thread);
   if (!live) {
     const stream = await post(`/api/trees/${child.id}/messages`, { text: 'Hold this turn' });
     await browser('reload');
     await browser('wait', '--text', 'Open Recall the tree');
+    await click('Fit tree');
     await click('Open Recall the tree');
-    await wait("document.querySelector('[role=combobox]')?.getAttribute('aria-disabled') === 'true'");
+    await wait("document.querySelector('[aria-label=\"Model for next reply\"]')?.getAttribute('aria-disabled') === 'true'");
     assert.equal((await post(`/api/trees/${child.id}/model`, { model: first.model })).status, 409);
     completeTurn(); await stream.text();
-    await wait("document.querySelector('[role=combobox]')?.getAttribute('aria-disabled') !== 'true'");
-    await browser('find', 'role', 'combobox', 'click', '--name', 'Model for next reply');
-    await browser('find', 'role', 'option', 'click', '--name', 'Denied', '--exact');
-    await wait("document.querySelector('[role=combobox]')?.textContent.includes('Denied')");
+    await wait("document.querySelector('[aria-label=\"Model for next reply\"]')?.getAttribute('aria-disabled') !== 'true'");
+    await click('Model for next reply');
+    await browser('find', 'role', 'menuitemradio', 'click', '--name', 'Denied', '--exact');
+    await wait("document.querySelector('.focused-chat').textContent.includes('Model for next reply: Denied')");
     await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Try denied model');
     await click('Send');
     await browser('wait', '--text', 'Synthetic model access denied.');
-    await wait("document.querySelector('[role=combobox]')?.textContent.includes('Alternate')");
+    await wait("document.querySelector('.focused-chat').textContent.includes('Model for next reply: Alternate')");
     assert.equal(store.tree(child.id).model, second.model);
+    failCatalog = true;
+    await click('Model for next reply');
+    await browser('find', 'role', 'menuitemradio', 'click', '--name', 'Original', '--exact');
+    await browser('wait', '--text', 'Model change failed. Your previous selection is saved.');
+    assert.equal(store.tree(child.id).model, second.model);
+    assert.ok(await evaluate("document.querySelector('.focused-chat').textContent.includes('Model for next reply: Alternate')"));
+    failCatalog = false;
+    store.model(child.id, 'fixture-missing');
+    await browser('reload');
+    await browser('wait', '--text', 'Open Recall the tree');
+    await click('Fit tree');
+    await click('Open Recall the tree');
+    await wait("document.querySelector('.focused-chat').textContent.includes('Model for next reply: fixture-missing')");
+    await click('Model for next reply');
+    assert.equal(await evaluate("document.querySelector('[role=menuitemradio][aria-disabled=true]')?.textContent.includes('fixture-missing (saved)')"), true);
+    await browser('find', 'role', 'menuitemradio', 'click', '--name', 'Alternate', '--exact');
+    await wait("document.querySelector('.focused-chat').textContent.includes('Model for next reply: Alternate')");
   }
   for (const [width, height] of [[1280, 900], [390, 844]]) {
     await browser('set', 'viewport', String(width), String(height));

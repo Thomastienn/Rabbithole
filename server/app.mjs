@@ -20,6 +20,11 @@ export function createApp({ store, auth, provider, assets = resolve('dist') }) {
     const url = new URL(req.url, origin);
     try {
       if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()] });
+      if (req.method === 'GET' && url.pathname === '/api/previews') {
+        const ids = [...new Set(url.searchParams.getAll('id'))];
+        if (ids.length > 500) return json(res, 400, { error: 'Too many conversations requested.' });
+        return json(res, 200, store.previews(ids));
+      }
       if (req.method === 'GET' && url.pathname === '/api/models') {
         try { return json(res, 200, { models: await provider.models() }); }
         catch { return json(res, 502, { error: 'Could not load models. Reconnect ChatGPT or retry.' }); }

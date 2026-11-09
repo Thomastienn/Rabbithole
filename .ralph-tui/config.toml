@@ -1,15 +1,13 @@
 configVersion = "2.1"
-maxIterations = 10
-agent = "codex"
-tracker = "treetutor-beads"
-autoCommit = true
 defaultAgent = "codex"
+defaultTracker = "beads-bv"
+maxIterations = 20
+agent = "codex"
+model = "gpt-6.1-terra"
+tracker = "beads-bv"
 prompt_template = ".ralph-tui/prompt.hbs"
-
-[errorHandling]
-strategy = "retry"
-maxRetries = 2
-retryDelayMs = 2000
+autoCommit = true
+subagentTracingDetail = "full"
 
 [agentOptions]
 fullAuto = false
@@ -17,3 +15,8 @@ fullAuto = false
 [trackerOptions]
 beadsDir = ".beads"
 labels = ""
+
+[errorHandling]
+strategy = "retry"
+maxRetries = 2
+retryDelayMs = 2000

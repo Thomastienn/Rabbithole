@@ -12,6 +12,7 @@ export class Store {
       PRAGMA foreign_keys=ON;
       CREATE TABLE IF NOT EXISTS trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS messages_tree_seq ON messages(tree, seq);
       CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL);
       UPDATE messages SET status='interrupted' WHERE status='streaming';`);
     const columns = this.db.prepare('PRAGMA table_info(trees)').all().map(c => c.name);
@@ -22,6 +23,16 @@ export class Store {
     if (!columns.includes('y')) this.db.exec('ALTER TABLE trees ADD COLUMN y REAL');
   }
   list() { return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all(); }
+  previews(ids) {
+    const question = this.db.prepare("SELECT seq, substr(text,1,512) AS text, length(text)>512 AS truncated FROM messages WHERE tree=? AND role='user' ORDER BY seq DESC LIMIT 1");
+    const answer = this.db.prepare("SELECT substr(text,1,512) AS text, length(text)>512 AS truncated, status FROM messages WHERE tree=? AND role='assistant' AND seq>? ORDER BY seq LIMIT 1");
+    return Object.fromEntries(ids.map(id => {
+      const q = question.get(id);
+      const a = q && answer.get(id, q.seq);
+      const text = m => m ? m.text + (m.truncated ? '…' : '') : null;
+      return [id, { question: text(q), answer: text(a), status: a?.status ?? null }];
+    }));
+  }
   position(id, x, y) { this.db.prepare('UPDATE trees SET x=?,y=? WHERE id=?').run(x, y, id); }
   tree(id) {
     const tree = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id);
