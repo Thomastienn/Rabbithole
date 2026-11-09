@@ -12,13 +12,21 @@ Prerequisites: {{dependsOn}}
 {{/if}}
 
 ## Instructions
-- Work only on this issue. Read AGENTS.md, PRD.md, `bd show {{taskId}} --json`
-  and the relevant code. Preserve unrelated work and stay on the current branch.
+- Work through this whole grouped issue in one invocation. Read AGENTS.md,
+  PRD.md and relevant code; use `bd show {{taskId}} --json` for evidence notes
+  when needed. Preserve unrelated work and stay on the current branch.
+- Size work for a 200k context window: aim for about 140k working context,
+  reserving about 60k for startup, tools, verification and repair. These are
+  planning targets, not enforced limits. Read source/evidence on demand.
 - Implementation, debugging, required checks and local Beads updates are already
   authorized. Older planning-only notes do not require renewed approval.
 - Implement the acceptance criteria and run the checks relevant to this issue.
   If already implemented, verify the existing behavior. Fix recoverable failures
   within this task; record actual evidence and distinguish fixtures from live checks.
+- Prefer integration checks. Use browser/E2E checks where acceptance requires
+  them. Keep internal steps and acceptance review in this same issue. Split only
+  for a separate deliverable, external/user gate or demonstrated context limit;
+  record a precise checkpoint before a retry instead of creating microtasks.
 {{#if config.autoCommit}}
 - Ralph creates the Git commit after completion, outside the agent sandbox.
   Do not stage or commit from the agent. Read-only `.git` is expected.
@@ -46,7 +54,5 @@ For a real external blocker, record the resolution needed and mark it blocked.
 Do not emit the completion signal for unfinished work. Ralph selects the next
 issue; do not start another task. Keep all operations local; no push or bd sync.
 
-Follow your best judgment. You have all author consent.
-Try to finish the task as much as possible.
-If not use beads to break it down even smaller and add deps so the next iteration someone can do it.
-for the agent in there, u can prove that its either works for codex or claude is enough.
+Shared checks may use either working provider. Provider-specific acceptance and
+the full text release require the explicit Claude/Codex evidence in the issue.

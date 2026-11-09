@@ -97,19 +97,47 @@ When an external blocker is resolved, update only that issue to `open` after
 recording the evidence. Do not bulk-reopen completed issues or remove real
 technical prerequisites to keep the loop running.
 
-PRD.md keeps the current release Codex-only. Claude work remains deferred and
-must not block the current release. Its native CLI route is preserved in
-`docs/research/claude-subscription-integration.md` for later work.
+PRD.md requires Claude (default) plus Codex and both-direction provider switching
+for the text release. Shared interaction checks can use either working provider;
+provider-specific checks retain their own live evidence requirements.
 
 ## Issue structure
 
-Executable tasks are direct children of the relevant release epic so Ralph
-can display and select them. Feature acceptance issues retain their IDs and
-have a `rollup` label; they depend on their component tasks. Each moved task
-records its former feature in `metadata.workflow_rollup`. This avoids both
-selecting an entire unfinished feature repeatedly and accidentally inheriting
-an unrelated provider blocker from a broad feature parent. Existing explicit
-prerequisites and completed issue statuses are preserved.
+Executable tasks are direct children of their release epic. The backlog is
+grouped into seven complete tasks, each intended for one agent invocation in a
+200k context window. Aim for roughly 140k working context with 60k reserved for
+startup, tools, verification and repair. These are scope estimates; no model
+context setting is changed, and naturally smaller work should finish early.
+
+| Epic | Task | Complete scope |
+| --- | --- | --- |
+| `TreeTutor-7t3` | `TreeTutor-b1z.4` | Compact workspace, keyboard journey and regression fixes |
+| `TreeTutor-7t3` | `TreeTutor-7t3.9` | Claude default, saved chats and provider continuity |
+| `TreeTutor-7t3` | `TreeTutor-7t3.12` | Text release, restart and local-delivery verification |
+| `TreeTutor-vm4` | `TreeTutor-vm4.1` | Isolated Mermaid artifacts, persistence and recovery |
+| `TreeTutor-vm4` | `TreeTutor-vm4.3` | Requested video generation, playback and recovery |
+| `TreeTutor-vm4` | `TreeTutor-vm4.5` | Grounded suggestions and durable decisions |
+| `TreeTutor-vm4` | `TreeTutor-vm4.6` | Agreed optional Vim navigation |
+
+Each task carries its work order, starting points and inherited acceptance.
+Former implementation slices and acceptance-only rollups are closed through
+Beads supersede links to the retained task; their original bodies and history
+remain readable. Supersession moves unfinished work rather than asserting it
+passed. The old workspace epic `TreeTutor-b1z` is consolidated into `TreeTutor-7t3`.
+Keep internal implementation, repair and acceptance steps in one invocation;
+split only for an independent deliverable, an external/user gate or demonstrated
+context pressure. Resume an unfinished grouped task from a concrete checkpoint.
+
+External actions remain explicit: `TreeTutor-kf5` resolves the last observed
+native Claude quota gate; `TreeTutor-vm4.6.1` records the user's exact Vim mapping
+agreement. Optional eligibility clarification `TreeTutor-7t3.13` stays deferred
+and non-blocking. All later implementation tasks wait for the text release;
+video also waits for Mermaid, and Vim waits for the mapping agreement.
+
+Restart an existing Ralph session before using the grouped backlog and prompt;
+a paused session retains its compiled prompt and task display. Preserve pending
+application edits: the existing dirty-start guard still applies. Ralph is
+already initialized in this checkout; `ralph-tui init` is for a fresh setup.
 
 ## Local testing and commits
 
