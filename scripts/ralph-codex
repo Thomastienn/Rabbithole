@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Run one Ralph session on Codex without changing .ralph-tui/config.toml.
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+
+epic="${1:-TreeTutor-7t3}"
+if (( $# )); then shift; fi
+# config.toml sets model = "opus", so Codex needs an explicit model.
+exec scripts/ralph "$epic" --agent codex --model "${RALPH_CODEX_MODEL:-gpt-6.1-sol}" "$@"
