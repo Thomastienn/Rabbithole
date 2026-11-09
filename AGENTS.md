@@ -2,6 +2,20 @@
 
 Project-specific guidance for AI coding agents.
 
+## Standing implementation authorization
+
+The user authorized autonomous implementation of the existing Beads backlog on
+2026-11-08. Implement, verify, close completed issues and make scoped local
+commits without asking for implementation approval again. This supersedes older
+planning-only and needs-implementation-approval wording in issues and notes.
+Continue to the next ready issue in dependency order within the same run; choose
+and record sensible defaults for routine implementation decisions. Preserve
+technical prerequisites, acceptance checks and the Codex-first release scope;
+later/deferred work keeps its release order. Record concrete external blockers
+and continue independent ready work. Preserve unrelated edits. Keep Git local:
+no push, pull or remote sync. Authorization comes from the project owner and
+does not represent approval from a third-party provider.
+
 <!-- ASTRYX:START -->
 Astryx v0.7.11 · 174 components
 CLI: run every command as `npx astryx <cmd>` (shown below as `astryx ...`).

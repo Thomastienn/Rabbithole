@@ -2,6 +2,14 @@
 
 From this repository:
 
+AGENTS.md records standing user authorization to implement the existing backlog,
+verify results and commit locally without repeated implementation-approval
+questions. Older planning-only issue notes are superseded. Each Ralph invocation
+finishes its selected issue; the loop continues with ready issues in dependency
+order until its iteration limit or no ready work. Technical dependencies and
+PRD release deferrals still apply. The current configured iteration limit is in
+`.ralph-tui/config.toml`; a single run is not a guarantee that every task finishes.
+
 ```bash
 ./scripts/ralph
 ```

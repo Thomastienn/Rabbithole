@@ -1,6 +1,6 @@
 # TreeTutor — Product Requirements
 
-Status: Map-first requirements agreed on 2026-11-08. This revision authorizes requirements and backlog updates; app implementation requires a separate explicit request. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
+Status: Map-first requirements agreed on 2026-11-08. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
 
 ## Relationship to the original idea
 
@@ -146,4 +146,4 @@ The provider research below began on 2026-11-07. Current decisions and task-spec
 
 ## Change boundary
 
-Continue requirements work only until the user explicitly requests implementation. Ask about material ambiguities; do not silently expand scope or convert an unresolved proposal into a confirmed requirement.
+Implement the existing backlog under the standing authorization in AGENTS.md. Preserve the agreed release order and scope; clarify material product changes while continuing independent ready work.
