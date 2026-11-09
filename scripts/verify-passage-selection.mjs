@@ -43,6 +43,7 @@ try {
   await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Create focused chat').focus()`);
   await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Mouse question'`);
+  await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') !== null`);
   const mouseChild = store.list().find(t => t.parent === root.id);
   const mouseBranch = store.tree(mouseChild.id).branch;
   assert.deepEqual([mouseBranch.messageId, mouseBranch.start, mouseBranch.end, mouseBranch.text], [messageId, 10, 19, 'repeat 😀']);

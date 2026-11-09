@@ -20,7 +20,9 @@ const turns = new Map();
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { generate: (tree, text, emit) => new Promise(resolve => { turns.set(tree.id, { emit, resolve }); emit({ type: 'item', item: 'reply', text: `Partial ${tree.title}` }); }) } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 let openCount = 0;
-const open = async title => { const attempt = ++openCount; await click(`Open ${title}`); try { await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(title)}`); } catch (error) { console.error(`Open attempt ${attempt}: ${title}`); throw error; } };
+// Fit tree and chat collapse move the canvas a frame later; click only once the viewport is still.
+const settled = () => wait("new Promise(r => { const v = () => document.querySelector('.react-flow__viewport')?.style.transform, a = v(); requestAnimationFrame(() => requestAnimationFrame(() => r(a === v()))); })");
+const open = async title => { const attempt = ++openCount; await settled(); await click(`Open ${title}`); try { await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(title)}`); } catch (error) { console.error(`Open attempt ${attempt}: ${title}`); throw error; } };
 try {
   await browser('set', 'viewport', '1440', '900');
   await browser('open', `http://127.0.0.1:${app.server.address().port}`);
