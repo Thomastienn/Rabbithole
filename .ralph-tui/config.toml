@@ -11,6 +11,7 @@ subagentTracingDetail = "full"
 
 [agentOptions]
 fullAuto = false
+sandbox = "danger-full-access"
 
 [trackerOptions]
 beadsDir = ".beads"

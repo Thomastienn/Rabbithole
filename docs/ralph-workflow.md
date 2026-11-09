@@ -141,16 +141,16 @@ already initialized in this checkout; `ralph-tui init` is for a fresh setup.
 
 ## Local testing and commits
 
-Ralph's Codex adapter explicitly selects the workspace-write sandbox even when
-the user's global Codex default is full access. `.codex/config.toml` enables
-command network access in that sandbox, including localhost listeners used by
-HTTP tests. Workspace filesystem restrictions remain enabled. This also allows
-outbound command networking; it is not a localhost-only policy. See OpenAI's
-[sandbox network documentation](https://learn.chatgpt.com/docs/agent-approvals-security).
+Ralph's Codex adapter defaults to workspace-write independently of the global
+Codex default. The owner authorized `agentOptions.sandbox = "danger-full-access"`
+with `fullAuto = false` in `.ralph-tui/config.toml` so native verification can
+write the existing app-owned data directory and its sibling lock directory.
+Commands have the user's normal filesystem access; this does not restrict
+outbound networking. No credentials need to be moved. Restart Ralph after
+changing this setting; an existing session retains its resolved configuration.
 
-Workspace-write normally protects `.git` even inside the workspace.
-The agent performs implementation, checks and Beads updates inside this sandbox;
-Ralph's engine commits outside it after the completion signal. `autoCommit = true`
+The agent performs implementation, checks and Beads updates;
+Ralph's engine commits after the completion signal. `autoCommit = true`
 is enabled at the user's request. The agent must not attempt staging/committing
 or treat read-only Git metadata as an implementation blocker. Ralph's automatic
 commit uses `git add -A`, including pre-existing pending edits; the user chose
