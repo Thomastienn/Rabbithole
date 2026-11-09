@@ -27,7 +27,6 @@ export class Auth {
       scope: 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct', resource, state, nonce,
       code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url') });
     if (client === 'dynamic_agent_client') params.set('agent_name_hint', 'TreeTutor');
-    else params.set('id_token_hint', this.saved.id_token);
     return `${issuer}/api/accounts/authorize?${params}`;
   }
   async exchange(fields) {

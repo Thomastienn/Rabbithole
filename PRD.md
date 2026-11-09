@@ -1,6 +1,6 @@
 # TreeTutor — Product Requirements
 
-Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
+Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The owner clarified on 2026-11-09 that New chat opens a map with one visible root conversation, map nodes show the whole conversation, and branch lines attach beside their source message. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
 
 ## Relationship to the original idea
 
@@ -50,22 +50,23 @@ Let learners ask connected side questions inside a conversation, similar to a `/
 - Learners can navigate the canvas to explore different branches.
 - Mouse navigation: drag empty canvas space to pan, use the mouse wheel to zoom around the cursor, drag a conversation box to reposition it, and click a conversation box to open its focused chat. A drag must not also open the conversation.
 - Keep a compact map control strip: minus, current zoom percentage, plus, a small fit icon, and a menu for tree selection/creation, expand-all, collapse-all, keep-current-branch, settings, and help. Retain full keyboard access. Remove the large persistent brand/tagline header and always-visible navigation instructions to give space back to the map.
-- The map is the primary workspace: opening a tree shows the map filling the available workspace with the tree sidebar collapsed by default and a compact toolbar visible. Tree selection, tree creation, and connection settings are available on demand rather than permanently occupying the main view.
-- Default conversation boxes show their title, a small activity indicator, and a compact preview of the latest question and answer. Derive previews from existing messages rather than persisting duplicate text. Source passage text and extra actions are revealed on demand; branch connections remain visible.
-- Cap the preview at two lines for the question and two lines for the answer, ending truncated text with an ellipsis (…). Opening the conversation shows the full messages.
+- The map is the primary workspace: opening a tree shows the map filling the available workspace with the tree sidebar collapsed by default and a compact toolbar visible. Tree selection, tree creation, and connection settings are available on demand rather than permanently occupying the main view. The sidebar lists saved chats under a single New chat action; creating a tree asks for no name.
+- Conversation boxes show their title, a small activity indicator, and the whole conversation: every question and answer, in order, as compact previews. Derive previews from existing messages rather than persisting duplicate text. Source passage text and extra actions are revealed on demand; branch connections remain visible.
+- Truncate a long message in its preview, ending the truncated text with an ellipsis (…), but never omit a message: every message of the conversation stays visible in its box. Opening the conversation shows the full messages.
+- Each branch connection leaves its parent box beside the message the branch was created from, and stays beside that message as the box grows, folds or moves.
 - Learners can collapse or expand a node's descendants while keeping that node visible, with a small indicator when descendants are hidden. Provide expand-all and collapse-all actions without permanently expanding the compact toolbar.
 - A small chevron beside the node title folds or unfolds descendants; clicking the rest of the node opens its conversation. Keep the chevron action distinct from opening or dragging the node, and show a tiny activity dot beside the title.
 - Provide a keep-current-branch action: preserve the path from the root to the current conversation and its descendants, while collapsing side branches along that path.
 - Selecting a conversation opens its chat in a side panel alongside the map. Learners can expand the chat to fill the workspace or collapse it to the side to give the map more room.
 - Use one chat side panel: selecting another node switches that panel to the selected conversation. The panel takes space beside the map rather than covering it; the map remains available for panning, zooming, and selecting nodes. Smoothly bring the selected node into view when needed so it remains visible beside the panel.
 - When the window cannot comfortably fit both map and chat, chat fills the workspace; a back/collapse control returns to the map.
-- A brand-new tree starts with an empty map and a Start conversation action. That action opens the chat side panel; sending the first question creates the root conversation node. Before that first question, show no empty conversation box. Creating a child makes it visible and opens it immediately in the chat side panel.
+- New chat creates a learning tree immediately and opens its map showing a single root conversation box, with that conversation open in the chat side panel. The root shows a placeholder title until the first question is sent, then takes its title from that question. Creating a child makes it visible and opens it immediately in the chat side panel.
 - Returning from expanded chat restores the map's previous position and zoom.
 - Animate transitions smoothly between the map, side-panel chat, and expanded chat so navigation feels continuous rather than abrupt.
 - Keep chat controls compact: a model icon opens a small model-selection menu rather than a full-width selector. Show passage-branching actions only when text is selected, while retaining keyboard access to text selection and branching.
 - Conversations remain available to revisit and continue later.
 - Any child conversation can create further child branches, with no product-imposed nesting depth limit. Every depth uses the same chat controls and compact inherited-context rule.
-- Place new child boxes automatically to the right of their parent, near the highlighted passage's position. Offset placement when necessary to keep boxes readable and unobscured.
+- Place new child boxes automatically to the right of their parent, level with the message the branch was created from. Offset placement when necessary to keep boxes readable and unobscured, including when a box grows as its conversation continues.
 - Learners can reposition boxes manually. Branch connections retain their association with the source passage after movement.
 - Different conversation boxes can generate responses concurrently. A response in progress must not prevent navigating to or chatting in another branch.
 
@@ -102,7 +103,7 @@ Automatic suggestions for concepts or passages worth branching into are an expli
 
 ## Core learning journey
 
-1. Create a learning tree, see its empty map, and use Start conversation to open the chat side panel. Ask about a topic, such as tournament trees, to create the root node.
+1. Choose New chat and see its map with a single root conversation open in the chat side panel. Ask about a topic, such as tournament trees; the root takes its title from that first question.
 2. Read the answer and highlight an unfamiliar concept, such as Peterson.
 3. Ask a question about the selection to create a connected child conversation.
 4. Generate compact inherited context on demand, make the child visible on the map, and immediately open it in the chat side panel (or full workspace on a narrow window).
@@ -120,7 +121,7 @@ Build incrementally within this scope; Beads records implementation order and de
 
 These are future implementation checks, not claims that the app has been built or tested.
 
-1. **Branching:** Highlight a passage and ask a question. A connected child appears to the right, near the source passage where space permits, and immediately receives focus. Repeat within the child to demonstrate recursive branching.
+1. **Branching:** Highlight a passage and ask a question. A connected child appears to the right, level with the source message where space permits, its connection leaves the parent beside that message, and it immediately receives focus. Repeat within the child to demonstrate recursive branching.
 2. **Context:** Verify the child receives a compact snapshot of relevant ancestor/parent context, the exact selected passage, and the question. Creating later parent messages does not change that snapshot. Child discussion does not enter parent context.
 3. **Navigation:** Drag empty map space to pan, use the wheel to zoom around the cursor, drag nodes without opening them, and click nodes to open or switch the single chat side panel. Verify the map remains interactive beside chat; expanded chat returns to the previous map position/zoom; narrow windows support returning from full-workspace chat. Transitions are smooth, and connections still identify their source passages.
 4. **Keyboard:** Complete tree creation, text selection, branching, box movement, navigation, zooming, folding, all bulk branch actions, chat panel collapse/expand/return, chatting, and provider/model menu selection using only the keyboard.
@@ -128,8 +129,8 @@ These are future implementation checks, not claims that the app has been built o
 6. **Concurrency:** Generate responses in two separate conversations at the same time. Navigation and interaction with other conversations remain available; responses reach their respective boxes.
 7. **Provider continuity:** New trees default to Claude. Change model within a conversation, and switch a conversation between Claude and Codex in both directions; verify visible history remains intact and continuation uses prior discussion and inherited context. Repeat after saving and reopening and within a nested child. Verify independent conversations, on either provider, do not share or reroute session state.
 8. **Local delivery:** Run through localhost and verify the app server listens only on loopback. Saved learning trees remain on the local machine; selected model providers still receive inference requests.
-9. **Compact map:** Verify collapsed-by-default tree navigation and compact minus/percentage/plus/fit controls with remaining actions in a menu. Nodes show a title, tiny activity dot, fold chevron, and latest question/answer preview capped at two lines each with ellipses for truncation. Fold/unfold one subtree, expand all, collapse all, and keep the current branch; the latter preserves root-to-current path and current descendants while folding side branches along the path. Folding changes visibility without deleting conversations or interrupting replies.
-10. **Compact chat and empty start:** A new tree shows an empty map and Start conversation; its first sent question creates the root node. Provider/model selection uses a small icon-triggered menu; passage actions appear only with selected text and remain keyboard-accessible. A new child is made visible and opens in chat even when its parent branch was folded.
+9. **Compact map:** Verify collapsed-by-default tree navigation and compact minus/percentage/plus/fit controls with remaining actions in a menu. Nodes show a title, tiny activity dot, fold chevron, and every message of the conversation as a compact preview; long messages are truncated with ellipses and no message is omitted. Branch lines leave the parent beside their source message. Fold/unfold one subtree, expand all, collapse all, and keep the current branch; the latter preserves root-to-current path and current descendants while folding side branches along the path. Folding changes visibility without deleting conversations or interrupting replies.
+10. **Compact chat and new chat:** New chat asks for no name and opens a map with one root conversation box and its chat panel; the first sent question gives the root its title. Provider/model selection uses a small icon-triggered menu; passage actions appear only with selected text and remain keyboard-accessible. A new child is made visible and opens in chat even when its parent branch was folded.
 
 For the later media increments, verify that both Mermaid and Remotion generation use subagents, their working context stays separate, and the finished artifacts appear in the originating chat without injecting generation transcripts into the tutor conversation.
 

@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-09T19:37:23.476Z",
+  "data": "<tmp>/treetutor-release-*",
+  "provider": "claude (native Claude Code login)",
+  "checks": [
+    {
+      "name": "real server process listens on loopback only",
+      "result": "PASS",
+      "detail": {
+        "pid": 12,
+        "addresses": [
+          "127.0.0.1:37725"
+        ]
+      }
+    },
+    {
+      "name": "new tree shows an empty map and Start conversation",
+      "result": "PASS"
+    }
+  ],
+  "listener": {
+    "before": {
+      "pid": 12,
+      "addresses": [
+        "127.0.0.1:37725"
+      ]
+    }
+  },
+  "result": "FAIL",
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    [\n      'user',\n      'completed'\n    ],\n    [\n      'assistant',\n+     'failed'\n-     'completed'\n    ]\n  ]\n\n    at file:///home/thomas/CodeBase/TreeTutor/scripts/verify-release-journey-live.mjs:97:49",
+  "snapshot": "- generic [ref=e7] clickable [onclick]\n  - main\n    - alert\n      - StaticText \"Claude: You've hit your 5-hour limit · resets 4:40pm (America/Edmonton) The last working model selection will be restored.\"\n    - generic\n      - region \"Learning tree\" [ref=e8]\n        - generic \"Tree view controls\"\n          - button \"Zoom out\" [ref=e10]\n            - status\n          - generic \"Current zoom\"\n            - StaticText \"100%\"\n          - button \"Zoom in\" [ref=e11]\n            - status\n          - button \"Fit tree\" [ref=e12]\n            - status\n          - button \"Map menu\" [expanded=false, ref=e13]\n            - status\n        - status\n        - region \"Conversation tree overview\" [ref=e9] focusable [tabindex]\n          - application\n            - generic [ref=e21] clickable [onclick]\n              - generic\n                - group \"Tournament trees. Use arrow keys to move; Shift moves farther.\" [ref=e25] clickable [onclick, tabindex]\n                  - button \"Open Tournament trees\" [ref=e27]\n                    - heading \"Tournament trees\" [level=3, ref=e28]\n                    - status\n                  - generic\n                    - StaticText \"Question:\"\n                    - StaticText \"My bracket codename is AMBER-HERON-42; remember it. In three short sentences, explain how a tournament tree finds the minimum of eight numbers.\"\n                  - StaticText \"Answer:\"\n                  - StaticText \"No reply yet.\"\n                  - StaticText \"Reply \"\n                  - StaticText \"failed\"\n                  - StaticText \".\"\n            - link \"React Flow attribution\" [ref=e22]\n              - StaticText \"React Flow\"\n      - generic\n        - sectionheader\n          - heading \"Tournament trees\" [level=2, ref=e14]\n          - StaticText \"Claude Sonnet\"\n          - StaticText \" · saved automatically\"\n          - button \"Model for next reply\" [expanded=false, ref=e15]\n            - status\n          - button \"Expand chat\" [ref=e16]\n            - status\n          - button \"Return to tree\" [ref=e17]\n            - status\n        - generic\n          - log [ref=e18] focusable [tabindex]\n            - article \"Message from user\" [ref=e19]\n              - StaticText \"You\"\n              - StaticText \"My bracket codename is AMBER-HERON-42; remember it. In three short sentences, explain how a tournament tree finds the minimum of eight numbers.\"\n            - article \"Message from assistant\" [ref=e20]\n              - StaticText \"Tutor\"\n              - StaticText \"No reply received.\"\n              - status\n                - StaticText \"Reply failed. You can send another question.\"\n          - generic\n            - generic [ref=e23] clickable [onclick]\n              - textbox \"Your question\" [ref=e26]\n              - StaticText \"Enter to send · Shift+Enter for a new line\"\n              - button \"Send\" [disabled, ref=e24]\n                - status\n"
+}

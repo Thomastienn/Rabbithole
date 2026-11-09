@@ -1,0 +1,146 @@
+{
+  "date": "2026-11-09T20:40:48.223Z",
+  "data": "/tmp/treetutor-release-7TY6SG",
+  "provider": "codex",
+  "route": "existing app-owned ChatGPT consent; isolated Codex app-server",
+  "checks": [
+    {
+      "name": "real server process listens on loopback only",
+      "result": "PASS",
+      "detail": {
+        "pid": 2571771,
+        "addresses": [
+          "127.0.0.1:41467"
+        ]
+      }
+    },
+    {
+      "name": "new tree shows an empty map and Start conversation",
+      "result": "PASS"
+    },
+    {
+      "name": "first question creates the root node; native reply streamed in chat",
+      "result": "PASS",
+      "detail": {
+        "provider": "codex",
+        "model": "gpt-6.1-sol",
+        "productDefault": "claude"
+      }
+    },
+    {
+      "name": "nested branches from exact passages (root → child → grandchild) with live replies",
+      "result": "PASS"
+    },
+    {
+      "name": "two conversations generated simultaneously; navigation stayed available; each reply saved to its own conversation",
+      "result": "PASS",
+      "detail": {
+        "ms": 6503
+      }
+    },
+    {
+      "name": "layout changes coalesce into one controlled-minute write; idle produces none",
+      "result": "PASS",
+      "detail": {
+        "posts": 2
+      }
+    },
+    {
+      "name": "server process actually restarted on the same loopback port",
+      "result": "PASS",
+      "detail": {
+        "pid1": 2571771,
+        "pid2": 2574536
+      }
+    },
+    {
+      "name": "after restart: messages, exact anchors, frozen snapshots, positions, viewport, folds, selection, panel mode, provider/model/session identical",
+      "result": "PASS",
+      "detail": {
+        "trees": 4,
+        "messages": 10,
+        "digest": "0d8471c6e56a"
+      }
+    },
+    {
+      "name": "browser after restart restores selected conversation, panel mode, fold and viewport",
+      "result": "PASS",
+      "detail": {
+        "selected": "Why does each match keep only the smaller value?",
+        "chat": true,
+        "expanded": true,
+        "grandVisible": false,
+        "view": "translate(113.6px, 298.087px) scale(1.2)"
+      }
+    },
+    {
+      "name": "after restart: root continues prior discussion (codename recalled) and grandchild recalls its exact selected passage, concurrently",
+      "result": "PASS",
+      "detail": {
+        "root": "AMBER-HERON-42"
+      }
+    },
+    {
+      "name": "later messages append without changing earlier history or frozen branch snapshots",
+      "result": "PASS"
+    },
+    {
+      "name": "no provider credential patterns in any browser-visible response",
+      "result": "PASS",
+      "detail": {
+        "responses": 51
+      }
+    }
+  ],
+  "listener": {
+    "before": {
+      "pid": 2571771,
+      "addresses": [
+        "127.0.0.1:41467"
+      ]
+    },
+    "after": {
+      "pid": 2574536,
+      "addresses": [
+        "127.0.0.1:41467"
+      ]
+    }
+  },
+  "branches": [
+    {
+      "title": "Why does each match keep only the smaller value?",
+      "source": "Your bracket codename is AMBER-HERON-42.\nPair the eight numbers, compare each pair, and advance the smaller number.\nCompare the four winners in pairs, then compare the final two to find the minimum in seven comparisons.",
+      "anchor": {
+        "parent": "f37b2c0f-5ff6-47e1-9951-4fd8be35e2e6",
+        "messageId": "3dd8f3af-65db-46a0-84be-e71e1cf76808",
+        "start": 0,
+        "end": 45,
+        "text": "Your bracket codename is AMBER-HERON-42.\nPair",
+        "question": "Why does each match keep only the smaller value?",
+        "snapshot": "The learner asked how a tournament tree finds the minimum of eight numbers. The explanation pairs numbers, advances the smaller of each pair, then repeats until one minimum remains, using seven comparisons. The learner now asks why each match keeps only the smaller value. Relevant principle: the larger value cannot be the overall minimum because a smaller value is already known. Their bracket codename is AMBER-HERON-42."
+      },
+      "compaction": "native; inspect summary against source and ancestor context"
+    },
+    {
+      "title": "How many comparisons does that take?",
+      "source": "Each match keeps only the smaller value because the larger one cannot be the overall minimum—we already know a value smaller than it. Repeating this process keeps the overall minimum in the tournament until it is the last value remaining.",
+      "anchor": {
+        "parent": "fa44a9a0-de4a-4925-9dda-3c3fd0eaf5db",
+        "messageId": "98fe3176-f07f-4503-82af-6133346a0aca",
+        "start": 0,
+        "end": 47,
+        "text": "Each match keeps only the smaller value because",
+        "question": "How many comparisons does that take?",
+        "snapshot": "The learner is discussing a tournament tree that finds the minimum of eight numbers by comparing pairs and advancing the smaller value until one remains. A larger value is eliminated because a smaller value is already known, so it cannot be the overall minimum. Finding the minimum takes seven comparisons: four in the first round, two in the second, and one in the final. The learner now asks how many comparisons the process takes."
+      },
+      "compaction": "native; inspect summary against source and ancestor context"
+    }
+  ],
+  "saveLocation": {
+    "path": "/tmp/treetutor-release-7TY6SG/trees.sqlite",
+    "exists": true,
+    "fileMode": "600",
+    "sessions": "Codex sessions <data>/codex; workspace <data>/workspace; credentials remain in original app-owned directory"
+  },
+  "result": "PASS"
+}

@@ -27,7 +27,7 @@ test('layout snapshots stay per tree, hold only IDs and survive restart; legacy 
     for (const body of [{}, { folded: 'x', selected: null, panel: 'beside' }, { folded: [1], selected: null, panel: 'beside' }, { folded: [], selected: 3, panel: 'beside' }, { folded: [], selected: null, panel: 'wide' }]) assert.equal((await post(first.id, body)).status, 400);
     assert.equal((await post(child.id, { folded: [], selected: null, panel: 'beside' })).status, 400, 'only roots own a snapshot');
     assert.equal((await post('missing', { folded: [], selected: null, panel: 'beside' })).status, 404);
-    const firstLayout = { folded: [first.id], selected: child.id, panel: 'beside' }, secondLayout = { folded: [], selected: second.id, panel: 'collapsed' };
+    const firstLayout = { folded: [first.id], selected: child.id, panel: 'expanded' }, secondLayout = { folded: [], selected: second.id, panel: 'collapsed' };
     assert.equal((await post(first.id, { ...firstLayout, messages: [text], history: ['fold'] })).status, 200);
     assert.equal((await post(second.id, secondLayout)).status, 200);
     const { trees } = await (await fetch(`${origin}/api/state`)).json();

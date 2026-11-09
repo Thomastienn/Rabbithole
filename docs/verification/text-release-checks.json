@@ -1,0 +1,128 @@
+{
+  "date": "2026-11-09T19:47:24.227110+00:00",
+  "issue": "TreeTutor-7t3.12",
+  "scope": "Fresh checks. Fixtures do not establish live provider semantics. Native journey failed separately.",
+  "runtime": "Node 26.0.0; agent-browser 0.41.2; Chrome for Testing 157.0.8103.38",
+  "gates": [
+    {
+      "command": "npm test",
+      "result": "PASS",
+      "tests": 52,
+      "failed": 0
+    },
+    {
+      "command": "npm run build",
+      "result": "PASS",
+      "limitation": "Existing main JS chunk over 500 kB."
+    },
+    {
+      "command": "npx astryx doctor --built dist",
+      "result": "PASS",
+      "pass": 20,
+      "warn": 2,
+      "fail": 0,
+      "info": 10,
+      "limitation": "Existing theme font proof advisories; built-only scan does not inspect JSX conventions."
+    }
+  ],
+  "checks": [
+    {
+      "command": "node scripts/verify-keyboard-journey.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:45:03.671788+00:00",
+      "detail": {
+        "steps": [
+          "New tree (Tab, Enter) \u2192 name field; Enter creates the tree; focus moves to Start conversation on the empty map",
+          "Start conversation (Enter) focuses the composer; Enter sends; the first reply creates the root node",
+          "Select passage in tutor reply 1 (Enter) \u2192 read-only text; Home/Arrow/Shift+Arrow select the repeated passage; Tab \u2192 Ask about selection; edited question; Create focused chat saves exact offsets 19\u201330",
+          "The same keys create a nested child from the child reply; composer focused in the new chat",
+          "IME composition, committed CJK text and Arrow/Home/End/Space/Backspace in the composer never move the map",
+          "Model for next reply (Space/Enter) opens the menu; Escape closes only the menu and restores focus to its trigger; Home/ArrowDown/Enter saves Keyboard B for this conversation only",
+          "During a reply the model menu is disabled and the turn uses its captured model; Shift+Tab \u2192 Stop, Enter interrupts the reply",
+          "Expand chat / Show map beside chat toggle by Enter and keep focus on the toggle",
+          "Escape returns from chat to the map; focus lands on \"Open What is sugar?\" in the map",
+          "Tree canvas region: Arrow pans 100px, Shift+Arrow 300px",
+          "A focused conversation box moves with Arrow (10px) and Shift+Arrow (100px); the move is announced",
+          "Zoom in, Zoom out and Fit tree are toolbar buttons operated with Enter",
+          "Collapse/Expand descendants toggle with Enter/Space and keep focus on the toggle",
+          "Map menu (Enter, ArrowDown, Enter): Collapse all, Expand all and Keep current branch",
+          "Enter on a box title opens its chat with the composer focused; Escape returns focus to that title",
+          "Reveal source passage (Enter) focuses the exact highlighted passage; Escape returns to the reveal control",
+          "No keyboard trap: 60 Tabs from \"Reveal source passage for Why trade water?\" visited 20 distinct controls; Shift+Tab returns to the start"
+        ],
+        "count": 17
+      }
+    },
+    {
+      "command": "node scripts/verify-layout-restore.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:45:12.129088+00:00",
+      "detail": "PASS: controlled-clock single coalesced write, no idle writes, per-tree fold/selection/panel snapshots, beside and expanded viewport restore after reload, narrow expanded chat, independent trees, legacy/corrupt layout fallback, IDs-only persisted shape, messages unchanged."
+    },
+    {
+      "command": "node scripts/verify-map-gestures.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:37:37.109455+00:00",
+      "detail": "PASS: cursor-anchored wheel zoom, Ctrl-wheel isolation, background pan, menu isolation, drag without opening, edge/source association, body click, keyboard open and exact source reveal (synthetic fixture)."
+    },
+    {
+      "command": "node scripts/verify-compact-controls.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:37:35.963417+00:00",
+      "detail": "PASS: zoom percentage, fit nodes, collapsed navigation, pointer and keyboard menu, Escape focus restoration, tree navigation."
+    },
+    {
+      "command": "node scripts/verify-node-previews.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:37:38.397497+00:00",
+      "detail": "PASS: long, short, unanswered, streaming, failed and interrupted previews; two-line clamp, exact source, navigation and reload."
+    },
+    {
+      "command": "node scripts/verify-subtree-folding.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:37:53.512994+00:00",
+      "detail": "PASS: nested folds, keyboard and focus, visible edges/fit, saved position, ongoing fixture turn, and new child path reveal."
+    },
+    {
+      "command": "node scripts/verify-bulk-folding.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:37:56.298086+00:00",
+      "detail": "PASS: bulk folds, keyboard action, collapsed-panel selection, path and descendants, sibling fold, saved content."
+    },
+    {
+      "command": "node scripts/verify-chat-sidebar.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:37:37.252460+00:00",
+      "detail": "PASS: desktop sidebar geometry, default navigation, drafts, map pan during reply, late reply isolation, collapse and reopen."
+    },
+    {
+      "command": "node scripts/verify-chat-expand.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:45:06.840900+00:00",
+      "detail": "PASS: expand/collapse/back at 1440 and 390, resize with draft and live reply, exact map view restored, focus restored, reduced motion skips transitions (view transitions supported: true)."
+    },
+    {
+      "command": "node scripts/verify-passage-selection.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:37:53.231985+00:00",
+      "detail": "PASS: selection-only actions, repeated emoji mouse selection, question editing/cancel/focus, keyboard selection and saved anchor."
+    },
+    {
+      "command": "node scripts/verify-first-conversation.mjs",
+      "result": "PASS",
+      "kind": "synthetic-provider browser check",
+      "finishedUtc": "2026-11-09T19:37:55.896073+00:00",
+      "detail": "PASS: empty map start, starter panel close/reopen without node, failed send keeps draft and saves nothing, retry creates exactly one root, child visible and opens, saved tree unchanged."
+    }
+  ]
+}

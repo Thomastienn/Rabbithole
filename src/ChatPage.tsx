@@ -142,7 +142,7 @@ export default function ChatPage() {
     overviewOrigin.current = undefined;
     const layout = trees.find(t => t.id === id)?.layout;
     const saved = layout?.selected && rootOf(layout.selected, trees) === id ? layout.selected : id;
-    setRoot(id); setOverview(layout?.panel !== 'beside');
+    setRoot(id); setOverview(layout?.panel !== 'beside' && layout?.panel !== 'expanded'); setExpanded(layout?.panel === 'expanded');
     void select(saved);
   }
   function rootOf(id: string, trees: Summary[]) {
@@ -164,9 +164,9 @@ export default function ChatPage() {
   useEffect(() => {
     if (!root || !state || !tree || folds?.root !== root || rootOf(tree.id, state.trees) !== root) return;
     const current = state.trees.find(t => t.id === root)?.layout;
-    const layout: Layout = { folded: folds.ids, selected: tree.id, panel: overview ? 'collapsed' : 'beside', ...(current?.viewport && { viewport: current.viewport }) };
+    const layout: Layout = { folded: folds.ids, selected: tree.id, panel: overview ? 'collapsed' : expanded ? 'expanded' : 'beside', ...(current?.viewport && { viewport: current.viewport }) };
     if (JSON.stringify(layout) !== JSON.stringify(current)) markLayout(root, layout);
-  }, [root, tree?.id, overview, folds, state?.trees]);
+  }, [root, tree?.id, overview, expanded, folds, state?.trees]);
 
   async function api(path: string, body?: unknown) {
     const response = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: {

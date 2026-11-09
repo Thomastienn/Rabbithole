@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-09T20:19:15.847Z",
+  "runner": "workspace-write; repo and /tmp writable",
+  "checks": {
+    "codexDataLock": {
+      "result": "FAIL",
+      "code": "EROFS",
+      "syscall": "mkdir",
+      "path": "/home/thomas/.local/share/treetutor.lock"
+    },
+    "claudeAuth": {
+      "connected": true
+    },
+    "claudeTurn": {
+      "result": "FAIL",
+      "status": "failed",
+      "error": "Claude: You've hit your 5-hour limit · resets 4:40pm (America/Edmonton)"
+    }
+  },
+  "result": "BLOCKED",
+  "resolutionIssue": "TreeTutor-7t3.17",
+  "resolution": "Run the native journey in an authorized runtime writable to the existing app-owned auth directory and sibling lock, or restore Claude capacity and native session/runtime writes. Do not copy credentials or substitute API keys."
+}

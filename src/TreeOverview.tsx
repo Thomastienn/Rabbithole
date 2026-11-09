@@ -8,7 +8,7 @@ import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRig
 import type { ReactNode } from 'react';
 import { parseViewport, placeBox, type Point, type Viewport } from './canvas';
 
-export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside'; viewport?: Viewport };
+export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside' | 'expanded'; viewport?: Viewport };
 export type Summary = { id: string; title: string; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null; layout?: Layout | null; started?: number };
 export type Source = { messageId: string; start: number; end: number; text: string };
 export type Preview = { question: string | null; answer: string | null; status: string | null };
@@ -94,7 +94,7 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   const [notice, setNotice] = useState('');
   // A restored viewport wins for the restored selection; later selections are still revealed.
   const restored = trees.find(t => t.id === root)?.layout;
-  const restoredSelection = useRef(savedViewport && restored?.panel === 'beside' ? restored.selected ?? undefined : undefined);
+  const restoredSelection = useRef(savedViewport && restored?.panel !== 'collapsed' ? restored?.selected ?? undefined : undefined);
   useEffect(() => {
     if (!selected) return;
     if (restoredSelection.current === selected) return;

@@ -69,6 +69,21 @@ try {
   assert.equal(await ev(node(f2.id)), false, 'fold restored');
   assert.equal(await ev(chatShown), true, 'panel mode restored');
   assert.equal(await settledView(), savedView, 'viewport restored from the batched layout');
+  await click('Expand chat');
+  await wait(`document.querySelector('.tree-workspace').dataset.expanded === 'true'`);
+  await flush();
+  assert.equal(layout(first.id).panel, 'expanded', 'expanded mode joins the minute batch');
+  await b('reload');
+  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'F1' && document.querySelector('.tree-workspace').dataset.expanded === 'true'`);
+  assert.equal(await view(), savedView, 'expanded reload preserves the map viewport');
+  await b('screenshot', '/tmp/treetutor-release-expanded-desktop.png');
+  await b('set', 'viewport', '390', '844');
+  assert.equal(await ev(`getComputedStyle(document.querySelector('.overview')).display`), 'none');
+  await b('screenshot', '/tmp/treetutor-release-expanded-mobile.png');
+  await b('set', 'viewport', '1440', '900');
+  await click('Show map beside chat');
+  await wait(`document.querySelector('.tree-workspace').dataset.expanded === 'false'`);
+  assert.equal(await settledView(), savedView, 'leaving restored expanded mode returns to the saved map');
   await click('Expand descendants of F1'); await wait(node(f2.id));
   await openTree('Second');
   await wait(`${node(s1.id)} && document.querySelector('.focused-chat h2')?.textContent === 'Second'`);
@@ -80,6 +95,6 @@ try {
   for (const t of [first, second]) assert.deepEqual(Object.keys(layout(t.id)).filter(k => k !== 'viewport'), ['folded', 'selected', 'panel']);
   assert.deepEqual([first, f1, f2, second, s1, old].map(t => store.tree(t.id).messages), before);
   assert.ok(store.db.prepare('SELECT layout FROM trees WHERE layout IS NOT NULL').all().every(r => !r.layout.includes('Tutor reply')));
-  console.log('PASS: controlled-clock single coalesced write, no idle writes, per-tree fold/selection/panel snapshots, viewport restore after reload, independent trees, legacy/corrupt layout fallback, IDs-only persisted shape, messages unchanged.');
+  console.log('PASS: controlled-clock single coalesced write, no idle writes, per-tree fold/selection/panel snapshots, beside and expanded viewport restore after reload, narrow expanded chat, independent trees, legacy/corrupt layout fallback, IDs-only persisted shape, messages unchanged.');
 } catch (error) { console.error(await b('snapshot')); throw error; }
 finally { await b('close').catch(() => {}); app.stop(); store.close(); }

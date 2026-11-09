@@ -70,7 +70,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             const coordinate = n => Number.isFinite(n) && Math.abs(n) <= 1000000;
             const owned = new Set(); // positions may only move conversations inside this root's tree
             for (let grew = true, trees = store.list(); grew;) { grew = false; for (const t of trees) if (!owned.has(t.id) && (t.id === id || owned.has(t.parent))) { owned.add(t.id); grew = true; } }
-            if (tree.branch || !Array.isArray(folded) || folded.length > 10000 || !folded.every(f => typeof f === 'string' && f.length <= 100) || !(selected === null || (typeof selected === 'string' && selected.length <= 100)) || !['collapsed', 'beside'].includes(panel)
+            if (tree.branch || !Array.isArray(folded) || folded.length > 10000 || !folded.every(f => typeof f === 'string' && f.length <= 100) || !(selected === null || (typeof selected === 'string' && selected.length <= 100)) || !['collapsed', 'beside', 'expanded'].includes(panel)
               || !(viewport === undefined || (viewport && coordinate(viewport.x) && coordinate(viewport.y) && viewport.zoom >= 0.2 && viewport.zoom <= 1.5))
               || !positions || typeof positions !== 'object' || Array.isArray(positions) || !Object.entries(positions).every(([p, at]) => owned.has(p) && at && coordinate(at.x) && coordinate(at.y))) return json(res, 400, { error: 'Layout not saved. Reload and try again.' });
             store.layout(id, { folded, selected, panel, ...(viewport && { viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom } }) }, positions);
