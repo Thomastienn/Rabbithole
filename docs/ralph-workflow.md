@@ -58,7 +58,7 @@ keep their existing behavior.
 once, in tmux or with `nohup`:
 
 ```bash
-./scripts/ralph-afk                      # Claude first, Codex when Claude is limited
+./scripts/ralph-afk                      # whichever of Claude or Codex has usage
 RALPH_AFK_SCHEDULE='00-07=codex 07-24=claude,codex' ./scripts/ralph-afk TreeTutor-7t3
 ```
 
@@ -68,7 +68,8 @@ to end. A Ralph already running in this checkout, including an interactive one,
 is stopped by that first takeover. A second `ralph-afk` is refused.
 
 Before each run it sends a one-word prompt to the real CLI with the run's model
-and uses the first scheduled agent that answers. Ralph 0.12.0's own
+and uses the first scheduled agent that answers. It stays on the agent that ran
+last and switches only when that agent stops answering. Ralph 0.12.0's own
 `fallbackAgents` handling is not used: it does not recognise the subscription
 "usage limit" errors, so a limited agent fails every few seconds until the
 iteration limit. If no scheduled agent answers, or a run ends within two

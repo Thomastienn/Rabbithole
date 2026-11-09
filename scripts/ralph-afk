@@ -42,13 +42,17 @@ usable() {
 
 count() { bd "$@" --parent "$epic" --json --limit 0 | jq length; }
 
+last=''
 while :; do
   if (( $(count ready) + $(count list --status in_progress) == 0 )); then
     log "No ready work under $epic. Stopping."
     exit 0
   fi
   agent=''
-  for candidate in $(agents_now); do
+  candidates=" $(agents_now) "
+  # No favourite: stay on the agent that ran last and switch only when it stops answering.
+  if [[ -n "$last" && "$candidates" == *" $last "* ]]; then candidates="$last ${candidates/ $last / }"; fi
+  for candidate in $candidates; do
     if usable "$candidate"; then agent="$candidate"; break; fi
     log "$candidate is not usable now (usage limit, auth or network)."
   done
@@ -58,6 +62,7 @@ while :; do
     continue
   fi
   log "Starting one task on $agent."
+  last="$agent"
   started=$SECONDS
   # 9>&-: a Ralph that outlives this script must not keep the supervisor lock.
   case "$agent" in

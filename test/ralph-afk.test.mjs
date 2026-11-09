@@ -32,15 +32,14 @@ function fixture(work = 1) {
   return { run, runs: () => read('runs'), sleeps: () => read('sleeps') };
 }
 
-test('a limited Claude hands the task to Codex, one task per run, then the loop stops', () => {
+test('a limited Claude hands the task to Codex, which keeps the next task after Claude resets', () => {
   const f = fixture(2);
   const result = f.run({ FIXTURE_LIMITED: 'claude', RALPH_AFK_WAIT: '7' });
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  // The second cycle follows a wait, by which time the fixture's Claude limit has reset.
-  assert.deepEqual(f.runs(), [
-    'run --headless --epic TreeTutor-7t3 --agent codex --model gpt-6.1-sol --iterations 1',
-    'run --headless --epic TreeTutor-7t3 --iterations 1 --agent claude --model opus',
-  ]);
+  // The second cycle follows a wait, by which time the fixture's Claude limit has reset:
+  // one task per run, and no switch back while Codex still answers.
+  const codex = 'run --headless --epic TreeTutor-7t3 --agent codex --model gpt-6.1-sol --iterations 1';
+  assert.deepEqual(f.runs(), [codex, codex]);
   assert.match(result.stdout, /No ready work/);
 });
 
