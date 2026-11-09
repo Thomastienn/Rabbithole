@@ -165,3 +165,19 @@ Quota recovery alone does not complete those checks. Other issues were left
 unchanged; the prerequisite's premature closed status needs reconciliation when
 its work resumes. No API-key fallback, token copying, or alternate account is
 part of the resolution. Do not close this rollup until that evidence exists.
+
+### 2026-11-09 rollup closure (Codex-only scope)
+
+The current acceptance criteria state that Claude transfer and isolation belong
+to TreeTutor-7t3.4.2 and do not gate this Codex-only review. The "Unresolved
+prerequisite: Claude evidence" section above is therefore superseded for this
+issue; it stays as the record of the Claude gap, which TreeTutor-7t3.4.2 and
+TreeTutor-kf5 still track.
+
+Re-run with installed `codex-cli 0.167.0`: focused Codex/branch/lifecycle/model
+tests 19/19, full `npm test` 44/44, `npm run build` (existing bundle-size warning)
+and `git diff --check` all pass. These are fixture checks. The live semantic proof
+is still the 2026-11-08T21:34Z run recorded above, covering supplied history plus
+separate snapshot recall, overlapping independent sessions, stop isolation and
+transport-restart continuity. That run was not repeated. Request-failure isolation
+and process-crash recovery remain fixture-only.
