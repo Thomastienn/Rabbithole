@@ -21,6 +21,37 @@ limit in `.ralph-tui/config.toml`. To choose another epic or change the limit:
 ./scripts/ralph TreeTutor-7t3 --iterations 10
 ```
 
+### Unattended handoff
+
+Use `--takeover` when a scheduled launch must stop the previous Ralph and start
+the requested agent without someone present:
+
+```bash
+# At 03:55 today, stop the existing runner and start configured Claude.
+sleep "$(( $(date -d '03:55' +%s) - $(date +%s) ))" && ./scripts/ralph --takeover
+# To start Codex instead:
+./scripts/ralph-codex --takeover
+```
+
+Choose a future time for the sleep command and keep only one timer per handoff.
+The Linux helper validates `.ralph-tui/ralph.lock` against the live process,
+hostname and checkout before signalling anything. It gives Ralph 30 seconds to
+stop gracefully, then terminates remaining child agents and escalates to KILL
+after 5 seconds if necessary. It waits for the old process tree to stop before
+launching the replacement. An interrupted task's own claim is preserved for
+`beads-resume` to recover pending edits; closed/blocked tasks and changed owners
+are left alone. Unrelated dirty work still triggers the tracker's startup guard.
+
+The replacement starts a fresh session with the requested agent/model. Old
+session metadata and progress are archived under `.ralph-tui/reports/takeover-*`
+so startup needs no interactive confirmation. This also avoids Ralph 0.12.0's
+`run --resume` double lock acquisition failure. Task recovery comes from the
+tracker. A stale lock is handled noninteractively by Ralph. Do not combine
+`--takeover` with `--force` or `--resume`: takeover keeps Ralph's normal lock
+check so another newly started session cannot be overwritten. Plain `--force`
+only bypasses the lock and does not stop its owner. Ordinary wrapper launches
+keep their existing behavior.
+
 The launcher checks that the shared `beads-resume` tracker plugin exists in
 `~/.config/ralph-tui/plugins/trackers/` and makes Bun available on PATH.
 Ralph must be installed already. The plugin lives outside this repository so

@@ -3,7 +3,7 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
-epic="${1:-TreeTutor-7t3}"
-if (( $# )); then shift; fi
+epic="TreeTutor-7t3"
+if (( $# )) && [[ "$1" != -* ]]; then epic="$1"; shift; fi
 # config.toml sets model = "opus", so Codex needs an explicit model.
 exec scripts/ralph "$epic" --agent codex --model "${RALPH_CODEX_MODEL:-gpt-6.1-sol}" "$@"
