@@ -23,6 +23,7 @@ export class Store {
     if (!columns.includes('y')) this.db.exec('ALTER TABLE trees ADD COLUMN y REAL');
     if (!columns.includes('layout')) this.db.exec('ALTER TABLE trees ADD COLUMN layout TEXT');
     if (!columns.includes('working_provider')) this.db.exec('ALTER TABLE trees ADD COLUMN working_provider TEXT; UPDATE trees SET working_provider=provider');
+    if (!columns.includes('working_thread')) this.db.exec('ALTER TABLE trees ADD COLUMN working_thread TEXT');
   }
   list() {
     return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,EXISTS(SELECT 1 FROM messages m WHERE m.tree=t.id) AS started,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
@@ -70,10 +71,15 @@ export class Store {
   thread(id, thread, model) { this.db.prepare('UPDATE trees SET thread=?,model=COALESCE(?,model) WHERE id=?').run(thread, model ?? null, id); }
   model(id, model) { this.db.prepare('UPDATE trees SET model=? WHERE id=?').run(model, id); }
   // Provider sessions are not portable: switching drops the thread so the next provider receives saved history.
-  switchProvider(id, provider, model) { this.db.prepare('UPDATE trees SET provider=?,model=?,thread=NULL WHERE id=?').run(provider, model, id); }
+  // The working provider's session is kept so a failed switch, or switching straight back, resumes it.
+  switchProvider(id, provider, model) {
+    this.db.prepare(`UPDATE trees SET working_thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END,
+      thread=CASE WHEN ? IS COALESCE(working_provider,provider) THEN CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END END,
+      provider=?,model=? WHERE id=?`).run(provider, provider, model, id);
+  }
   finishModel(id, completed) {
     this.db.prepare(completed ? 'UPDATE trees SET working_model=model,working_provider=provider WHERE id=?'
-      : 'UPDATE trees SET model=working_model,thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE NULL END,provider=COALESCE(working_provider,provider) WHERE id=?').run(id);
+      : 'UPDATE trees SET model=working_model,thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END,provider=COALESCE(working_provider,provider) WHERE id=?').run(id);
   }
   message(tree, role, text, status) {
     const id = randomUUID();

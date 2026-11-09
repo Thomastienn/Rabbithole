@@ -83,3 +83,21 @@ checked with deterministic fixtures/tests rather than deliberately disrupting
 the live account. Temporary screenshots and synthetic sessions remain in the OS
 temp directory; credentials, account identifiers and provider thread IDs are not
 included in this evidence.
+
+## Intermittent keyboard selection and live recheck — TreeTutor-b1z.19 / 7t3.10, 2026-11-09
+
+Root cause: fixture timing, not activation or persistence. The UI changes the
+model label only after `POST /model` succeeds, and the store already had the
+saved model. The old check read the store as soon as the header text matched.
+The fixture now polls the store (`waitForModel`) before comparing. A second
+intermittent failure clicked **Open Recall the tree** in the frame before
+*Fit tree* repainted, while the box sat under the toolbar's zoom text. The
+fixture now waits until the title is the hit target (`openTree`). No product
+change was needed for model selection.
+
+Results: the fixture passed 5 consecutive runs. `--live` with Codex passed
+(`gpt-6.1-sol` → `gpt-6-astra` by keyboard; same thread and branch; parent
+unchanged; the model held after a transport restart). Active-turn lock (409,
+disabled menu), denied-model recovery and the missing saved model run only in
+fixture mode. They passed in all 5 runs. The keyboard journey also checks the
+captured model for an active turn ([keyboard-journey.md](keyboard-journey.md)).

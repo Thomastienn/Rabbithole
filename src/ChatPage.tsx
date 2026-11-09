@@ -22,7 +22,7 @@ type Providers = Record<string, { label: string; connected: boolean }>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[] };
 const previewText = (text: string) => { const chars = Array.from(text); return chars.slice(0, 512).join('') + (chars.length > 512 ? '…' : ''); };
 
-function Passage({ message, index, onBranch, reveal, selecting, openSelection, closeSelection, formOpen }: { message: Message; index: number; onBranch: (anchor: Anchor, origin: HTMLElement | null) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; formOpen: boolean }) {
+function Passage({ message, index, onBranch, reveal, selecting, openSelection, closeSelection, formOpen }: { message: Message; index: number; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; formOpen: boolean }) {
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
   const wrapper = useRef<HTMLElement>(null);
   const passage = useRef<HTMLElement>(null);
@@ -52,7 +52,7 @@ function Passage({ message, index, onBranch, reveal, selecting, openSelection, c
     document.addEventListener('pointerdown', dismiss);
     return () => document.removeEventListener('pointerdown', dismiss);
   }, [selecting, formOpen]);
-  const ask = anchor && !formOpen && <Button ref={action} label="Ask about selection" variant="primary" size="sm" elevation="med" icon={<ChatBubbleBottomCenterTextIcon />} onClick={() => onBranch(anchor, action.current)} />;
+  const ask = anchor && !formOpen && <Button ref={action} label="Ask about selection" variant="primary" size="sm" elevation="med" icon={<ChatBubbleBottomCenterTextIcon />} onClick={() => onBranch(anchor, action)} />;
   return <VStack ref={wrapper} gap={2} className="passage" onKeyDown={e => { if (e.key === 'Escape' && (anchor || selecting)) { e.preventDefault(); e.stopPropagation(); setAnchor(undefined); closeSelection(); passage.current?.focus(); } }}>
     <section ref={passage} tabIndex={-1} onMouseUp={captureSelection} onKeyUp={captureSelection}><ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{reveal ? <>{message.text.slice(0, reveal.start)}<mark ref={highlight} tabIndex={-1} aria-label="Source passage">{message.text.slice(reveal.start, reveal.end)}</mark>{message.text.slice(reveal.end)}</> : message.text}</Text></ChatMessageBubble></section>
     {!selecting && <Button className="focus-reveal" label={`Select passage in tutor reply ${index}`} variant="ghost" size="sm" onClick={openSelection} />}
@@ -87,7 +87,8 @@ export default function ChatPage() {
   const [branch, setBranch] = useState<{ parent: string; anchor: Anchor; question: string }>();
   const [branching, setBranching] = useState(false);
   const [selectingMessage, setSelectingMessage] = useState<string>();
-  const branchOrigin = useRef<HTMLElement | null>(null);
+  // The ask button remounts after the branch form closes, so keep its ref, not the element.
+  const branchOrigin = useRef<React.RefObject<HTMLElement | null>>(undefined);
   const composer = useRef<ChatComposerInputHandle>(null);
   const focusComposer = useRef(false);
   const startButton = useRef<HTMLButtonElement>(null);
@@ -122,7 +123,9 @@ export default function ChatPage() {
   }
   function returnToTree() {
     setExpanded(false);
-    changeView(true, overviewOrigin.current?.id ?? tree?.id);
+    // Chats reached by branching have no map origin; return focus to their own box.
+    if (!overviewOrigin.current && tree) overviewOrigin.current = { id: tree.id, control: `open-${tree.id}` };
+    changeView(true, overviewOrigin.current?.id);
   }
   async function openConversation(id: string, source?: Source) {
     {
@@ -408,7 +411,7 @@ export default function ChatPage() {
           <TreeOverview toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePosition} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
           </>}
         </section>}
-        <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch) { e.preventDefault(); returnToTree(); } }}>
+        <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu]')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header className="chat-header"><VStack padding={3} gap={1}>
             <HStack gap={1} vAlign="center">
@@ -443,11 +446,11 @@ export default function ChatPage() {
               {tree.messages.map(message => <ChatMessage key={message.id} sender={message.role === 'user' ? 'user' : 'assistant'}>
                 <Text type="label" weight="semibold">{message.role === 'user' ? 'You' : 'Tutor'}</Text>
                 {message.role === 'assistant' && message.status === 'completed' ? <Passage message={message} index={tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1} reveal={validSource && source?.messageId === message.id ? source : undefined} formOpen={branch?.anchor.messageId === message.id} selecting={selectingMessage === message.id} openSelection={() => setSelectingMessage(message.id)} closeSelection={() => setSelectingMessage(undefined)} onBranch={(anchor, origin) => { branchOrigin.current = origin; setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text || (message.status === 'streaming' ? 'Thinking…' : 'No reply received.')}</Text></ChatMessageBubble>}
-                {branch?.parent === tree.id && branch.anchor.messageId === message.id && <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.focus()); } }}><VStack padding={3} gap={3}>
+                {branch?.parent === tree.id && branch.anchor.messageId === message.id && <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); } }}><VStack padding={3} gap={3}>
                   <Heading level={3}>Follow this passage</Heading>
                   <Text className="branch-quote" maxLines={4} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{branch.anchor.text}</Text>
                   <TextArea label="Question about this passage" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus />
-                  <HStack gap={2} wrap="wrap"><Button label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" size="sm" isDisabled={branching || !branch.question.trim() || active} /><Button label="Cancel branch" variant="ghost" size="sm" isDisabled={branching} onClick={() => { setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.focus()); }} /></HStack>
+                  <HStack gap={2} wrap="wrap"><Button label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" size="sm" isDisabled={branching || !branch.question.trim() || active} /><Button label="Cancel branch" variant="ghost" size="sm" isDisabled={branching} onClick={() => { setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); }} /></HStack>
                   <Text type="supporting" color="secondary">Creates a saved chat with fixed context from this conversation.</Text>
                 </VStack></form>}
                 {message.status !== 'completed' && <Text type="supporting" role="status">{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}

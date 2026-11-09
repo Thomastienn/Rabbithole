@@ -52,9 +52,10 @@ try {
   if (generations !== 1 || store.tree(root.id).messages.filter(m => m.role === 'user').length !== 1) throw new Error('Navigation restarted generation');
   await browser('set', 'viewport', '390', '844');
   await check('document.querySelector(".focused-chat [role=textbox]").getBoundingClientRect().bottom <= innerHeight && document.documentElement.scrollWidth === innerWidth');
-  await browser('focus', '[aria-label="Select passage in tutor reply 1"]'); await browser('press', 'Enter');
-  await browser('find', 'role', 'textbox', 'click', '--name', 'Select tutor passage');
-  await browser('eval', 'document.querySelector("textarea").setSelectionRange(0,5)');
+  await browser('eval', '[...document.querySelectorAll("button")].find(e => e.textContent.trim() === "Select passage in tutor reply 1").focus(); true'); await browser('press', 'Enter');
+  await browser('wait', '--fn', 'document.activeElement?.tagName === "TEXTAREA"');
+  await browser('press', 'Home');
+  for (let i = 0; i < 5; i++) await browser('press', 'Shift+ArrowRight');
   await browser('find', 'role', 'button', 'click', '--name', 'Ask about selection', '--exact');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Why do roots share?');
   await browser('press', 'Tab');
@@ -64,7 +65,8 @@ try {
   await browser('wait', '--text', 'Synthetic response complete');
   await click('Return to tree');
   await browser('wait', '--fn', 'document.querySelectorAll(".react-flow__node").length === 4');
-  await click('Show learning trees');
+  await click('Map menu');
+  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click('Separate ocean tree');
   await browser('wait', '[aria-label="Open Separate ocean tree"]');
   await check('document.querySelectorAll(".react-flow__node").length === 1 && document.querySelectorAll(".react-flow__edge").length === 0');

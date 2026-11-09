@@ -50,17 +50,18 @@ export class Claude {
     child.stderr.resume();
     const kill = () => child.kill();
     signal.addEventListener('abort', kill, { once: true });
-    let item, saved = false, result;
+    let item, model = null, started = session, result;
     try {
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => { kill(); reject(new Error('Response timed out. Partial reply saved; try again.')); }, 300000);
         createInterface({ input: child.stdout }).on('line', line => {
           let m;
           try { m = JSON.parse(line); } catch { return; }
-          if (m.type === 'system' && m.subtype === 'init' && !saved) { saved = true; saveThread(m.session_id ?? session, tree.model ?? m.model ?? null); }
+          if (m.type === 'system' && m.subtype === 'init') { model = m.model ?? null; started = m.session_id ?? session; }
           if (m.type === 'stream_event' && m.event?.type === 'message_start') item = m.event.message?.id;
           if (m.type === 'stream_event' && m.event?.delta?.type === 'text_delta') emit({ type: 'delta', item: item ?? 'reply', text: m.event.delta.text });
-          if (m.type === 'assistant') {
+          // Signed-out runs emit a '<synthetic>' notice, not a tutor reply.
+          if (m.type === 'assistant' && m.message?.model !== '<synthetic>') {
             const full = (m.message?.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('');
             if (full) emit({ type: 'item', item: m.message.id ?? item ?? 'reply', text: full });
           }
@@ -73,9 +74,14 @@ export class Claude {
     if (signal.aborted) { emit({ type: 'status', status: 'interrupted' }); return; }
     if (!result || result.is_error) {
       emit({ type: 'status', status: 'failed' });
+      // A missing resumed session (num_turns 0) is dropped so the retry starts fresh with saved history.
+      if (tree.thread && result?.subtype === 'error_during_execution' && !result.num_turns) saveThread(null, tree.model ?? null);
+      if (/not logged in|log ?in|authenticat/i.test(result?.result ?? '')) throw new Error('Claude Code is signed out. Run claude in a terminal and sign in, then retry.');
       // The CLI's result text names the reason (usage limit, sign-in) without account identifiers.
       throw new Error(typeof result?.result === 'string' && result.result.length < 300 ? `Claude: ${result.result}` : 'Claude could not complete this reply. Check that Claude Code is signed in, then try again.');
     }
+    // Only a completed reply proves the CLI session exists; failed fresh sessions retry with history instead of --resume.
+    saveThread(started, tree.model ?? model);
     emit({ type: 'status', status: 'completed' });
   }
   close() { for (const child of this.children) child.kill(); this.children.clear(); }

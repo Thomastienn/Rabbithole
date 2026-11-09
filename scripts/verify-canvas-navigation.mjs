@@ -17,6 +17,12 @@ const click = name => browser('find', 'role', 'button', 'click', '--name', name,
 const view = () => evaluate('document.querySelector(".react-flow__viewport").style.transform');
 // Fire the controlled one-minute layout clock, then read the batched viewport from the database.
 const flush = async () => { await evaluate('__layoutMinute()'); await wait('window.__layoutInFlight === 0'); };
+// Fit and keyboard pans paint a frame later; read the view only once it stops changing.
+async function stableView() {
+  let last = await view();
+  for (let i = 0; i < 25; i++) { await new Promise(r => setTimeout(r, 200)); const next = await view(); if (next === last) return next; last = next; }
+  assert.fail('Viewport kept changing: ' + last);
+}
 async function savedView(accept) {
   for (let i = 0; i < 50; i++) { await flush(); const v = store.list().find(t => t.id === root.id).layout?.viewport; if (v && accept(v)) return v; await new Promise(r => setTimeout(r, 100)); }
   assert.fail('Viewport not saved: ' + JSON.stringify(store.list().find(t => t.id === root.id).layout) + ' shown ' + await view());
@@ -65,7 +71,7 @@ try {
   await click('Fit tree');
   await browser('focus', '.tree-canvas');
   await browser('press', 'ArrowLeft');
-  const saved = await view();
+  const saved = await stableView();
   const p = saved.match(/-?\d*\.?\d+/g).map(Number);
   const savedLayout = await savedView(v => Math.abs(v.x - p[0]) < 0.001 && Math.abs(v.y - p[1]) < 0.001 && Math.abs(v.zoom - p[2]) < 0.00001); // transform string rounds scale to 5 decimals
   // Browser-zoom wheel events must remain uncancelled and leave the canvas view alone.
@@ -113,16 +119,20 @@ try {
     await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', `Explain ${branch.title}`);
     await click('Send');
     await browser('wait', '--text', `Partial ${branch.title}`);
+    // Beside chat, the selected box is brought into view (PRD); returning keeps that view.
+    await wait(`(() => { const c = document.querySelector('.tree-canvas').getBoundingClientRect(), b = document.querySelector('.react-flow__node[data-id="${branch.id}"]').getBoundingClientRect(); return b.width > 0 && b.left >= c.left - 1 && b.right <= c.right + 1 && b.top >= c.top - 1 && b.bottom <= c.bottom + 1; })()`);
+    const beside = await view();
     await click('Return to tree');
     await wait(`document.activeElement?.id === 'open-${branch.id}'`);
-    assert.equal(await view(), saved);
+    assert.equal(await view(), beside);
   }
   assert.equal(app.active.size, 2);
   await click('Open Canvas navigation');
   await wait('document.querySelector(".focused-chat h2")?.textContent === "Canvas navigation" && !!document.querySelector(".focused-chat [role=textbox]")');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Unsent draft');
+  const composing = await view();
   await browser('press', 'ArrowLeft');
-  assert.equal(await view(), saved);
+  assert.equal(await view(), composing);
   // Wait for a background checkpoint refresh; it must not take focus or the draft.
   await evaluate('window.checkpointReads=0; window.checkpointFetch=window.fetch; window.fetch=(url,options)=>{if(url==="/api/state")window.checkpointReads++;return window.checkpointFetch(url,options)}; true');
   await wait('window.checkpointReads > 0');
@@ -135,7 +145,7 @@ try {
   for (const branch of [first, second]) {
     await click('Return to tree');
     await click(`Open ${branch.title}`);
-    await browser('wait', '--text', `Complete ${branch.title}`);
+    await wait(`document.querySelector('.focused-chat')?.innerText.includes(${JSON.stringify('Complete ' + branch.title)}) && document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(branch.title)}`);
     assert.equal(store.tree(branch.id).messages.filter(m => m.role === 'user').length, 1);
   }
   assert.equal(await evaluate('window.transitionCalls'), 0);

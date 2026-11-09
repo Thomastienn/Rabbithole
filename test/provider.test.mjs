@@ -59,6 +59,22 @@ test('Claude CLI: error result fails visibly with the CLI reason', async () => {
   assert.deepEqual(events, [{ type: 'status', status: 'failed' }]);
 });
 
+test('Claude CLI: signed-out run saves no session or notice; lost resumed session is dropped for a fresh retry', async () => {
+  const calls = [], events = [], saved = [];
+  const signedOut = [
+    { type: 'system', subtype: 'init', session_id: 'never-created', model: 'claude-sonnet' },
+    { type: 'assistant', message: { id: 'x', model: '<synthetic>', content: [{ type: 'text', text: 'Not logged in · Please run /login' }] } },
+    { type: 'result', subtype: 'success', is_error: true, result: 'Not logged in · Please run /login' },
+  ];
+  const claude = new Claude(mkdtempSync(join(tmpdir(), 'tt-claude-')), fakeLaunch(signedOut, calls));
+  await assert.rejects(claude.generate({ thread: null, messages: [] }, 'Q', e => events.push(e), (...a) => saved.push(a), new AbortController().signal), /signed out\. Run claude in a terminal/);
+  assert.deepEqual(events, [{ type: 'status', status: 'failed' }], 'synthetic notice is not a tutor reply');
+  assert.deepEqual(saved, [], 'retry after sign-in must not --resume a session that never ran');
+  const lost = new Claude(mkdtempSync(join(tmpdir(), 'tt-claude-')), fakeLaunch([{ type: 'result', subtype: 'error_during_execution', is_error: true, num_turns: 0 }], calls));
+  await assert.rejects(lost.generate({ thread: 'gone', model: 'opus', messages: [] }, 'Q', () => {}, (...a) => saved.push(a), new AbortController().signal));
+  assert.deepEqual(saved, [[null, 'opus']]);
+});
+
 test('switching providers keeps history, starts a fresh session, children inherit, failure rolls back', async () => {
   const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-switch-')), 'trees.sqlite'));
   const seen = [];
@@ -102,7 +118,11 @@ test('switching providers keeps history, starts a fresh session, children inheri
     assert.match(await (await post(`/api/trees/${root.id}/messages`, { text: 'Three' })).text(), /down/);
     assert.deepEqual(seen.at(-1), { name: 'claude', thread: null, messages: 4, text: 'Three' });
     const after = store.tree(root.id);
-    assert.deepEqual([after.provider, after.model, after.thread], ['codex', 'codex-m', null]);
+    assert.deepEqual([after.provider, after.model, after.thread], ['codex', 'codex-m', 'codex-thread'], 'working Codex session restored');
+    assert.equal((await post(`/api/trees/${root.id}/model`, { provider: 'claude', model: 'claude-m' })).status, 200);
+    assert.equal(store.tree(root.id).thread, null, 'switch away still starts fresh');
+    assert.equal((await post(`/api/trees/${root.id}/model`, { provider: 'codex', model: 'codex-m' })).status, 200);
+    assert.equal(store.tree(root.id).thread, 'codex-thread', 'switching straight back resumes the working session');
     claudeDown = false;
     assert.equal((await post(`/api/trees/${root.id}/model`, { provider: 'claude', model: 'claude-m' })).status, 200);
     await (await post(`/api/trees/${root.id}/messages`, { text: 'Four' })).text();

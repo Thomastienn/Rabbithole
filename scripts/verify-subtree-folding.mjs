@@ -48,7 +48,7 @@ try {
   assert.deepEqual([store.tree(grand.id).x, store.tree(grand.id).y], [850, 350]);
   assert.equal(await ev(`getComputedStyle(document.querySelector('.focused-chat')).display`), 'none');
   await click('Fit tree');
-  await click('Open Fold grandchild');
+  await settled(); await click('Open Fold grandchild');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold grandchild' && !!document.querySelector('.focused-chat [role=textbox]')`);
   await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Keep generating'); await click('Send');
   await b('wait', '--text', 'Streaming fixture'); await click('Return to tree'); await wait(`getComputedStyle(document.querySelector('.focused-chat')).display === 'none'`); await click('Fit tree');
@@ -60,7 +60,7 @@ try {
   await wait(`document.querySelector(${JSON.stringify(node(grand.id))})?.textContent.includes('Finished while hidden')`);
   // Create a child from a folded parent through the normal keyboard selection flow.
   await click('Collapse descendants of Fold child');
-  await settled(); await click('Open Fold child'); await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold child' && !document.documentElement.matches(':active-view-transition')`); await b('focus', '[aria-label="Select passage in tutor reply 1"]'); await b('press', 'Enter');
+  await settled(); await click('Open Fold child'); await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold child' && !document.documentElement.matches(':active-view-transition')`); await b('eval', '[...document.querySelectorAll("button")].find(e => e.textContent.trim() === "Select passage in tutor reply 1").focus(); true'); await b('press', 'Enter');
   await b('press', 'Home'); for (let i = 0; i < 5; i++) await b('press', 'Shift+ArrowRight');
   await b('press', 'Tab'); await b('press', 'Enter');
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'New branch');

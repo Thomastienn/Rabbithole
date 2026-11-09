@@ -49,7 +49,7 @@ try {
   await click('Fit tree');
   await wait(`document.querySelector(${JSON.stringify(childNode + ' h3')}).getBoundingClientRect().width > 0`);
   const beforePosition = store.tree(child.id);
-  const p = await center(childNode + ' .conversation-box'); p.y += 40; // title is a click target (nodrag); drag from the preview area
+  const p = await center(childNode + ' .conversation-box'); p.y = await evaluate(`document.querySelector(${JSON.stringify(childNode + ' .conversation-box')}).getBoundingClientRect().bottom - 5`).then(Math.round); // title is a click target (nodrag); drag from the box's bottom padding
   await move(p); await browser('mouse', 'down', 'left');
   await browser('mouse', 'move', String(p.x+60), String(p.y+30), '--duration', '200', '--steps', '10');
   await browser('mouse', 'up', 'left');

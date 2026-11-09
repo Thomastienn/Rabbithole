@@ -1,8 +1,8 @@
 configVersion = "2.1"
 autoCommit = true
-tracker = "beads-resume"
+tracker = "beads-bv"
 defaultAgent = "claude"
-defaultTracker = "beads-resume"
+defaultTracker = "beads-bv"
 maxIterations = 20
 agent = "claude"
 model = "opus"

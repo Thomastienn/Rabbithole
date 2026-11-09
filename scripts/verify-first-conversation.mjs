@@ -67,7 +67,7 @@ try {
   assert.deepEqual(store.tree(fresh.id).messages.map(m => [m.role, m.text, m.status]), [['user', 'Why are leaves green?', 'completed'], ['assistant', 'Fixture response 21', 'completed']]);
 
   // A child created from the first answer stays visible and opens in the panel.
-  await b('focus', '[aria-label="Select passage in tutor reply 1"]'); await b('press', 'Enter');
+  await b('eval', '[...document.querySelectorAll("button")].find(e => e.textContent.trim() === "Select passage in tutor reply 1").focus(); true'); await b('press', 'Enter');
   await wait(`document.activeElement?.tagName === 'TEXTAREA' && document.activeElement.value === 'Fixture response 21'`);
   await b('press', 'Home');
   for (let i = 0; i < 7; i++) await b('press', 'Shift+ArrowRight');

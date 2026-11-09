@@ -24,6 +24,11 @@ const wait = async expression => {
   catch (error) { console.error('Wait failed at', caller, 'UI:', await evaluate("document.querySelector('.focused-chat')?.textContent")); throw error; }
 };
 const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
+// The map fits a frame after mounting; click the box only once its title is the hit target.
+const openTree = async () => {
+  await wait(`(() => { const e = document.querySelector('[aria-label="Open Recall the tree"]'), r = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })()`);
+  await click('Open Recall the tree');
+};
 const waitForModel = async (id, model) => {
   for (let i = 0; i < 100; i++) {
     if (store.tree(id).model === model) return;
@@ -88,7 +93,7 @@ try {
   await browser('set', 'media', 'light', 'reduced-motion');
   await browser('wait', '[aria-label="Open Recall the tree"]');
   await click('Fit tree');
-  await click('Open Recall the tree');
+  await openTree();
   await wait("!!document.querySelector('[aria-label=\"Model for next reply\"]')");
   // Keyboard-only selection; labels and ordering come from the provider.
   await browser('focus', '[aria-label="Model for next reply"]');
@@ -112,7 +117,7 @@ try {
   await browser('reload');
   await browser('wait', '[aria-label="Open Recall the tree"]');
   await click('Fit tree');
-  await click('Open Recall the tree');
+  await openTree();
   await wait(`document.querySelector('.focused-chat').textContent.includes(${JSON.stringify(second.label + ' · saved automatically')})`);
   const restarted = await ask('after transport restart');
   assert.equal(restarted.thread, before.thread);
@@ -121,7 +126,7 @@ try {
     await browser('reload');
     await browser('wait', '[aria-label="Open Recall the tree"]');
     await click('Fit tree');
-    await click('Open Recall the tree');
+    await openTree();
     await wait("document.querySelector('[aria-label=\"Model for next reply\"]')?.getAttribute('aria-disabled') === 'true'");
     assert.equal((await post(`/api/trees/${child.id}/model`, { model: first.model })).status, 409);
     completeTurn(); await stream.text();
@@ -145,7 +150,7 @@ try {
     await browser('reload');
     await browser('wait', '[aria-label="Open Recall the tree"]');
     await click('Fit tree');
-    await click('Open Recall the tree');
+    await openTree();
     await wait("document.querySelector('.focused-chat').textContent.includes('fixture-missing · saved automatically')");
     await click('Model for next reply');
     assert.equal(await evaluate("document.querySelector('[role=menuitemradio][aria-disabled=true]')?.textContent.includes('fixture-missing (saved)')"), true);

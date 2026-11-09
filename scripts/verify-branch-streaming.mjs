@@ -33,6 +33,8 @@ const origin = `http://127.0.0.1:${app.server.address().port}`;
 const chatText = () => evaluate('document.querySelector(".focused-chat").innerText');
 async function open(title) {
   await browser('wait', `[aria-label="Open ${title}"]`);
+  // A new map fits a frame after mounting; click only once the title is the hit target.
+  await wait(`(() => { const e = document.querySelector('[aria-label="Open ${title}"]'), r = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })()`);
   await click(`Open ${title}`);
   await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(title)} && !!document.querySelector('.focused-chat [role=textbox]')`);
 }
@@ -71,6 +73,8 @@ try {
   for (const tree of [a, other, b]) turns.get(tree.id).emit({ type: 'item', item: 'same-item', text: `Interleaved ${tree.title}` });
   await browser('wait', '--text', 'Interleaved Other tree');
   assert.ok(!(await chatText()).includes('Interleaved Branch'));
+  await click('Map menu');
+  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click(root.title);
   await open(b.title);
   await browser('wait', '--text', 'Interleaved Branch B');

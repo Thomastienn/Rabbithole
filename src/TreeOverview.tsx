@@ -25,7 +25,8 @@ function Conversation({ data }: NodeProps<ConversationNode>) {
   useEffect(() => { update(t.id); }, [data.sources, t.id, update]);
   useEffect(() => {
     if (!data.focus || !initialized) return;
-    const frame = requestAnimationFrame(() => document.getElementById(data.focusControl ?? `open-${t.id}`)?.focus({ preventScroll: true }));
+    // Only restore focus lost by leaving chat; a box remounting after a fold must not steal it.
+    const frame = requestAnimationFrame(() => { if (!document.activeElement?.closest('.overview')) document.getElementById(data.focusControl ?? `open-${t.id}`)?.focus({ preventScroll: true }); });
     return () => cancelAnimationFrame(frame);
   }, [data.focus, data.focusControl, t.id, initialized]);
   const preview = data.preview;

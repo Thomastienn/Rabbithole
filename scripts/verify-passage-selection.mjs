@@ -50,13 +50,13 @@ try {
   await click('Return to parent conversation');
   await b('wait', '--text', text);
 
-  await b('focus', '[aria-label="Select passage in tutor reply 1"]'); await b('press', 'Enter');
+  await b('eval', '[...document.querySelectorAll("button")].find(e => e.textContent.trim() === "Select passage in tutor reply 1").focus(); true'); await b('press', 'Enter');
   await wait(`document.activeElement?.tagName === 'TEXTAREA' && document.activeElement.value === 'repeat 😀 repeat 😀 end'`);
   await b('press', 'Home');
   await b('press', 'Shift+ArrowRight');
   await b('press', 'Escape');
   assert.equal(store.list().length, 2);
-  await b('focus', '[aria-label="Select passage in tutor reply 1"]'); await b('press', 'Enter');
+  await b('eval', '[...document.querySelectorAll("button")].find(e => e.textContent.trim() === "Select passage in tutor reply 1").focus(); true'); await b('press', 'Enter');
   await wait(`document.activeElement?.tagName === 'TEXTAREA' && document.activeElement.value === 'repeat 😀 repeat 😀 end'`);
   await b('press', 'Home');
   for (let i = 0; i < 17; i++) await b('press', 'Shift+ArrowRight');
