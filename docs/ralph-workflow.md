@@ -83,6 +83,16 @@ HTTP tests. Workspace filesystem restrictions remain enabled. This also allows
 outbound command networking; it is not a localhost-only policy. See OpenAI's
 [sandbox network documentation](https://learn.chatgpt.com/docs/agent-approvals-security).
 
+Workspace-write normally protects `.git` even inside the workspace.
+`.codex/config.toml` explicitly adds `.git` to `writable_roots`, allowing scoped
+agent commits while preserving the workspace sandbox. Read-only `index.lock`
+errors are sandbox failures, not Beads or missing implementation consent.
+Verify this boundary without any model/provider call:
+
+```bash
+node .ralph-tui/git-sandbox.test.mjs
+```
+
 Ralph's own automatic commit stages all changes with `git add -A`. It is
 disabled here because unrelated work may already be present. Agent changes
 are reviewed and committed by the agent, using only task-owned files or hunks,

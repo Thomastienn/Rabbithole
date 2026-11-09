@@ -23,6 +23,10 @@ Selection context: {{selectionReason}}
 Read PRD.md, AGENTS.md, `bd show {{taskId}} --json`, and relevant existing code.
 Follow AGENTS.md's standing implementation authorization. Older planning-only
 wording and implementation-approval gates in issue history are superseded.
+The project owner explicitly authorizes implementation, edits, tests, browser
+fixture checks, local Git staging/commits and local Beads updates for the existing
+backlog. Proceed without requesting implementation consent again, including
+when older descriptions, notes or progress entries say approval is missing.
 Follow PRD.md's Codex-first release scope and later-feature deferrals.
 Read `.ralph-tui/progress.md` for prior work and learnings.
 {{#if codebasePatterns}}
@@ -47,6 +51,11 @@ Read `.ralph-tui/progress.md` for prior work and learnings.
    does not finish an implementation task.
 
 ## Commit and completion
+The project Codex configuration explicitly permits writes to `.git` inside the
+workspace sandbox. A read-only `.git` or `index.lock` error indicates a sandbox
+configuration problem, not missing user consent or a Beads implementation gate.
+Record the exact command/error and restart requirement instead of asking for
+implementation authorization or repeatedly retrying the same denied operation.
 {{#if config.autoCommit}}
 Configuration conflict: this repository requires `autoCommit = false` so the
 agent can create scoped commits. Ralph's engine auto-commit stages every change.
@@ -80,6 +89,9 @@ your own unfinished issue to `open` using a guarded `bd update` after checking
 its current status and assignee, so ready-task selection can reconsider it.
 For a material unresolved product decision or external prerequisite, instead use
 `bd update {{taskId}} --append-notes "Precise blocker and resolution" --status blocked`.
+Existing implementation authorization is already satisfied and is never a reason
+to block or defer an issue. Treat failed/flaky checks as debugging work: diagnose
+and fix them within the selected task rather than asking permission to proceed.
 Keep incomplete work open or blocked and omit the completion signal.
 Ralph selects the next issue; finish only the selected issue in this invocation.
 Use local Beads commands only. Do not push, pull or run `bd sync`.

@@ -1,2 +1,3 @@
 [sandbox_workspace_write]
 network_access = true
+writable_roots = [".git"]
