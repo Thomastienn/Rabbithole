@@ -108,3 +108,60 @@ arbitrary histories, token limits, or future protocol versions. Restart means
 provider subprocess restart with persisted synthetic sessions, not browser or
 SQLite restart. Claude transfer, provider/model switching UI, and full release
 verification remain separate Beads tasks. No API-key fallback was used.
+
+## Rollup review: TreeTutor-7t3.4, 2026-11-09
+
+Reviewed the completed TreeTutor-7t3.4.1 experiment against the current PRD,
+`server/codex.mjs`, `server/app.mjs`, `server/store.mjs`, and their focused tests.
+The installed CLI is still **0.167.0**. The current
+[official app-server API overview](https://developers.openai.com/codex/app-server/#api-overview)
+confirms the injection, resume, interruption and catalog methods used here.
+Documentation describes the protocol; the historical live experiment above
+provides semantic evidence. No new provider requests were made in this review.
+
+| Requirement | Evidence reviewed | Result and boundary |
+| --- | --- | --- |
+| Supplied role history and separate inherited context | Live A/B recall above; current fresh-thread import and branch-instruction fixtures | Verified by the 2026-11-08 live run. Import is still one-time, ordered, and limited to completed messages; rejected injection saves no thread or starts inference. |
+| Fixed snapshots and parent/child isolation | Branch and recursive-branch tests; Codex new/resumed-thread fixtures | Current checks pass for later parent edits, unchanged stored snapshots, exact selection, and exclusion of child discussion from parent history. These mutation checks use synthetic providers. |
+| Independent overlapping inference and stop | Distinct live A/B threads with overlapping turn events; A interrupted while B completed | Verified by the prior live run, including own-fact recall and absence of the other session's name. Current lifecycle checks also pass for stale callbacks and retry. |
+| One conversation's failure leaves its sibling intact | Branch lifecycle test with a rejected request, late callbacks, sibling completion and retry | Current deterministic check passes. No deliberate live provider failure was induced; cancellation is the live isolation case. Loss of the shared app-server process is a shared transport failure. |
+| Restart continuity | Prior live A/B transport restart; current store, model and branch lifecycle tests | Live recall survives a provider subprocess restart. SQLite reopen and process-crash recovery pass with fixture providers; these do not establish a full live browser/database restart journey. |
+| Supported models | Nine catalog entries and successful `gpt-6.1-sol` requests above | Historical catalog, not a fresh entitlement claim. The separate [model-switch evidence](model-switch.md) also records successful requested `gpt-6-astra` inference and retained context after transport restart/browser reload. |
+
+Checks run for this review:
+
+```sh
+rtk test node --test test/codex.test.mjs test/branch.test.mjs test/branch-lifecycle.test.mjs test/model.test.mjs
+rtk test npm test
+rtk npm run build
+rtk git diff --check
+```
+
+All passed. Build retains the existing Vite bundle-size warning. No product code,
+UI, authentication, or live verification scripts changed. Repeating the same
+five-turn live experiment would add no evidence for the remaining prerequisite.
+
+### Unresolved prerequisite: Claude evidence
+
+**The Codex evidence is sufficient for its part of this issue; the complete
+rollup remains blocked.** Current PRD release scope includes Claude, and this
+issue explicitly requires TreeTutor-7t3.4.2. Its tracker status is `closed`, but
+its notes and [Claude verification record](claude-history.md) explicitly report
+unverified semantic transfer, resume and session isolation after a native
+subscription quota failure. Closure alone does not establish acceptance. The
+older rollup note saying Claude is deferred is superseded by the current PRD
+and task instructions. TreeTutor-7t3.1 is completed documentation research, not
+additional live proof.
+
+Existing external prerequisite **TreeTutor-kf5** records the provider's reported
+quota reset at **2026-11-09T10:50Z**. At review time (08:44Z), that reset was still
+in the future. Resolution requires recovered native subscription quota and a
+successful bounded preflight, then completing TreeTutor-7t3.4.2: Codex-to-Claude
+history plus separate fixed-context recall, exact-session resume, independent
+Claude sessions with cancellation/failure isolation, and the resulting Claude
+discussion supplied back to a fresh Codex thread. The final Codex leg requires
+normal authorized app-data write access and the existing Auth lock/lifecycle.
+Quota recovery alone does not complete those checks. Other issues were left
+unchanged; the prerequisite's premature closed status needs reconciliation when
+its work resumes. No API-key fallback, token copying, or alternate account is
+part of the resolution. Do not close this rollup until that evidence exists.
