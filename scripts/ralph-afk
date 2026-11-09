@@ -4,9 +4,9 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
-# Epics are worked in the order given; the default is the release order.
+# Epics are worked in the order given; the default is the release order in .ralph-tui/epics.
 epics=("$@")
-(( $# )) || epics=(TreeTutor-7t3 TreeTutor-vm4 TreeTutor-sh8)
+(( $# )) || mapfile -t epics < <(grep -vE '^[[:space:]]*(#|$)' .ralph-tui/epics)
 # Space-separated FROM-TO=agents windows in local hours; agents are tried in order.
 # An hour outside every window runs nothing.
 schedule="${RALPH_AFK_SCHEDULE:-00-24=claude,codex}"

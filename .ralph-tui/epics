@@ -1,0 +1,6 @@
+# Epics Ralph works on, one per line, in release order.
+# ./scripts/ralph and ./scripts/ralph-codex default to the first one;
+# ./scripts/ralph-afk works through all of them from top to bottom.
+TreeTutor-7t3
+TreeTutor-vm4
+TreeTutor-sh8

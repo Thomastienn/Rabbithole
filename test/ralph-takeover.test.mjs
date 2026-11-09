@@ -24,6 +24,7 @@ function fixture(t) {
   }
   const env = { ...process.env, HOME: cwd, PATH: `${cwd}/bin:${process.env.PATH}`, BEADS_ACTOR: 'fixture', RALPH_CODEX_MODEL: 'gpt-6.1-sol' };
   writeFileSync(join(cwd, '.config/ralph-tui/plugins/trackers/beads-resume.js'), '');
+  writeFileSync(join(cwd, '.ralph-tui/epics'), '# fixture order\nTreeTutor-7t3\nTreeTutor-vm4\n');
   writeFileSync(join(cwd, 'issue.json'), JSON.stringify({ id: 'task-1', status: 'in_progress', assignee: 'fixture' }));
   writeFileSync(join(cwd, 'bin/bd'), `#!${process.execPath}
 const fs = require('node:fs');

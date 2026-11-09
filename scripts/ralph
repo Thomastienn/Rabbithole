@@ -9,7 +9,7 @@ if [[ ! -f "$plugin" ]]; then
   exit 1
 fi
 
-epic="TreeTutor-7t3"
+epic="$(grep -m1 -vE '^[[:space:]]*(#|$)' .ralph-tui/epics)"
 if (( $# )) && [[ "$1" != -* ]]; then epic="$1"; shift; fi
 takeover=false
 args=()

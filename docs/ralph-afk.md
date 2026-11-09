@@ -25,10 +25,14 @@ minutes (limit reached at once, dirty-start guard, crash), it waits
 limit that resets while you sleep. A limit reached mid-task ends that run; the
 next agent resumes the same task through `beads-resume`. 
 
-With no arguments it works the release epics in order (`TreeTutor-7t3`,
-`TreeTutor-vm4`, `TreeTutor-sh8`): each cycle takes the first epic that has a
+With no arguments it works the epics listed in `.ralph-tui/epics`, top to
+bottom: each cycle takes the first epic that has a
 ready or in-progress issue, so it moves to the next phase by itself. It stops
 when none of them has one; blocked issues that need you do not count.
+
+`.ralph-tui/epics` is the only place the runner scripts read epic IDs from: one
+per line, `#` for comments. `./scripts/ralph` and `./scripts/ralph-codex` use
+its first line when no epic is given.
 
 `RALPH_AFK_SCHEDULE` is a space-separated list of `FROM-TO=agents` windows in
 local hours, with agents tried in order. An hour outside every window runs

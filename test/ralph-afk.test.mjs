@@ -14,6 +14,7 @@ function fixture(work = { 'TreeTutor-7t3': 1 }) {
     chmodSync(join(cwd, 'scripts', file), 0o755);
   }
   writeFileSync(join(cwd, '.config/ralph-tui/plugins/trackers/beads-resume.js'), '');
+  writeFileSync(join(cwd, '.ralph-tui/epics'), '# fixture order\nTreeTutor-7t3\n\nTreeTutor-vm4\nTreeTutor-sh8\n');
   for (const [epic, n] of Object.entries(work)) writeFileSync(join(cwd, `work-${epic}`), String(n));
   const epicWork = flag => `"${cwd}/work-$(sed -n 's/.*${flag} \\([^ ]*\\).*/\\1/p' <<< "$*")"`;
   const bin = (name, body) => writeFileSync(join(cwd, 'bin', name), `#!/usr/bin/env bash\n${body}\n`, { mode: 0o755 });
