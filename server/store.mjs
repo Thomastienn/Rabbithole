@@ -3,6 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')),
+        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL,
+        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
+      CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
+
 export class Store {
   constructor(path) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
@@ -14,14 +20,17 @@ export class Store {
       CREATE TABLE IF NOT EXISTS messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS messages_tree_seq ON messages(tree, seq);
       CREATE UNIQUE INDEX IF NOT EXISTS messages_id_tree ON messages(id, tree);
-      CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK(kind='mermaid'), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')),
-        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL,
-        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
-      CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);
+      ${ARTIFACTS}
       CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL);
       UPDATE messages SET status='interrupted' WHERE status='streaming';
-      UPDATE artifacts SET status='failed',source=NULL,error='Diagram generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
+      UPDATE artifacts SET status='failed',source=NULL,error=CASE kind WHEN 'video' THEN 'Video' ELSE 'Diagram' END || ' generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
+    // Mermaid-only databases gain the video kind and job columns; SQLite cannot alter a CHECK in place.
+    if (this.db.prepare("SELECT sql FROM sqlite_master WHERE name='artifacts'").get().sql.includes("CHECK(kind='mermaid')")) this.db.exec(`BEGIN;
+      ALTER TABLE artifacts RENAME TO artifacts_mermaid;
+      ${ARTIFACTS.replace('CREATE INDEX', 'DROP INDEX artifacts_conversation; CREATE INDEX')}
+      INSERT INTO artifacts(id,conversation,message,kind,status,title,description,source,error,created) SELECT id,conversation,message,kind,status,title,description,source,error,created FROM artifacts_mermaid;
+      DROP TABLE artifacts_mermaid;
+      COMMIT;`);
     const columns = this.db.prepare('PRAGMA table_info(trees)').all().map(c => c.name);
     if (!columns.includes('provider')) this.db.exec("ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'");
     if (!columns.includes('model')) this.db.exec('ALTER TABLE trees ADD COLUMN model TEXT');
@@ -64,14 +73,19 @@ export class Store {
     return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status FROM messages WHERE tree=? ORDER BY seq').all(id), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id) };
   }
   artifact(conversation, id) { return this.db.prepare('SELECT * FROM artifacts WHERE conversation=? AND id=?').get(conversation, id); }
-  pendingArtifact(conversation, message, title, description) {
+  // Videos keep their frozen task input and a server-issued attempt; their composition source stays in the job workspace.
+  pendingArtifact(conversation, message, title, description, kind = 'mermaid', input = null) {
     const id = randomUUID();
-    const result = this.db.prepare("INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created) SELECT ?,?,?,'mermaid','pending',?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')").run(id, conversation, message, title, description, Date.now(), message, conversation);
+    const result = this.db.prepare("INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created,input,attempt) SELECT ?,?,?,?,'pending',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')").run(id, conversation, message, kind, title, description, Date.now(), input, kind === 'video' ? randomUUID() : null, message, conversation);
     if (!result.changes) throw new Error('Artifact message does not belong to this conversation.');
     return this.artifact(conversation, id);
   }
   finishArtifact(conversation, id, source, error = null) {
-    this.db.prepare("UPDATE artifacts SET status=?,source=?,error=? WHERE conversation=? AND id=? AND status='pending'").run(error ? 'failed' : 'ready', error ? null : source, error, conversation, id);
+    this.db.prepare("UPDATE artifacts SET status=?,source=?,error=? WHERE conversation=? AND id=? AND kind='mermaid' AND status='pending'").run(error ? 'failed' : 'ready', error ? null : source, error, conversation, id);
+    return this.artifact(conversation, id);
+  }
+  finishVideo(conversation, id, attempt, { description, duration } = {}, error = null) {
+    this.db.prepare("UPDATE artifacts SET status=?,description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'").run(error ? 'failed' : 'ready', error ? null : description, error ? null : duration, error, conversation, id, attempt);
     return this.artifact(conversation, id);
   }
   forgetThread(id) { this.db.prepare('UPDATE trees SET thread=NULL,working_thread=NULL WHERE id=?').run(id); }

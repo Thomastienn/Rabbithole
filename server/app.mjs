@@ -1,14 +1,17 @@
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { resolve, extname } from 'node:path';
+import { readFile, stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve, extname, join } from 'node:path';
 import { diagramReply, generateDiagram, tutorContext } from './diagrams.mjs';
+import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
 
 const LABELS = { claude: 'Claude', codex: 'Codex' };
 
-export function createApp({ store, auth, provider, providers = { codex: provider }, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000 }) {
+export function createApp({ store, auth, provider, providers = { codex: provider }, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender }) {
   const pick = tree => providers[tree.provider] ?? providers[defaultProvider];
-  const active = new Map();
+  const active = new Map(), videos = new Set();
   const csrf = randomBytes(32).toString('hex');
   const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
@@ -38,6 +41,16 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           providers: Object.fromEntries(ids.map((id, i) => [id, { label: LABELS[id] ?? id, connected: results[i].status === 'fulfilled' }])),
           defaultProvider,
         });
+      }
+      // Media is located only from the server-issued artifact id, never from a generated path or URL.
+      const mediaMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/media$/);
+      if (req.method === 'GET' && mediaMatch) {
+        const artifact = store.artifact(mediaMatch[1], mediaMatch[2]);
+        const info = artifact?.kind === 'video' && artifact.status === 'ready' && await stat(mediaPath(dir, artifact.id)).catch(() => null) || null;
+        if (!info?.isFile()) return json(res, 404, { error: 'Video not available in this conversation.' });
+        // shortcut: whole-file responses without Range; add byte ranges with the inline player if seeking needs it.
+        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': info.size });
+        return createReadStream(mediaPath(dir, artifact.id)).on('error', () => res.destroy()).pipe(res);
       }
       const artifactMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)$/);
       if (req.method === 'GET' && artifactMatch) {
@@ -165,7 +178,24 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             if (status === 'streaming') status = controller.signal.aborted ? 'interrupted' : 'completed';
             if (!finished) {
               const output = diagramReply([...items.values()].join('\n\n'), true);
-              if (output.requested) {
+              if (output.requested && output.kind === 'video') {
+                text = output.text;
+                store.update(reply, text, status);
+                store.forgetThread(id);
+                // Only a learner's explicit video request starts a job; it runs on after the reply, independent of this stream.
+                if (!output.error && status === 'completed' && asksForVideo(body.text)) {
+                  const input = JSON.stringify({ request: body.text, intent: output.task.intent, excerpt: output.task.excerpt,
+                    inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null,
+                    sources: { conversation: id, requestMessage: user, replyMessage: reply, ...(tree.branch && { parentConversation: tree.branch.parent, parentMessage: tree.branch.messageId }) } });
+                  const job = store.pendingArtifact(id, reply, output.task.title, output.task.description, 'video', input);
+                  send({ type: 'artifact', artifact: job });
+                  const jobController = new AbortController();
+                  videos.add(jobController);
+                  generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: store.tree(id).model }, store, dir, artifact: job, signal: jobController.signal, timeout: videoTimeout, render: videoRender })
+                    .catch(error => store.finishVideo(id, job.id, job.attempt, {}, error.message))
+                    .finally(() => videos.delete(jobController));
+                }
+              } else if (output.requested) {
                 text = output.text;
                 store.update(reply, text, status);
                 store.forgetThread(id);
@@ -212,5 +242,5 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       else res.end();
     }
   });
-  return { server, active, stop: () => { for (const controller of active.values()) controller.abort(); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
+  return { server, active, stop: () => { for (const controller of [...active.values(), ...videos]) controller.abort(); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
 }
