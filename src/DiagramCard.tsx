@@ -32,7 +32,7 @@ export default function DiagramCard({ artifact }: { artifact: Artifact }) {
       {drawing.status === 'pending' && <Text type="supporting" color="secondary" role="status">{artifact.status === 'pending' ? 'Creating diagram…' : 'Rendering diagram…'}</Text>}
       {failed && <Text type="supporting" role="status">{artifact.status === 'failed' ? `Diagram unavailable. ${artifact.error ?? ''}` : 'Diagram could not be rendered. Read the description and Mermaid source below.'}</Text>}
       {drawing.status === 'ready' && <section className="diagram-viewport" tabIndex={0} aria-label={`Diagram drawing: ${artifact.title}`}><img src={drawing.url} alt={artifact.description} onError={() => setDrawing({ status: 'failed' })} /></section>}
-      {artifact.source && <Collapsible key={failed ? 'fallback' : 'source'} trigger="Mermaid source" defaultIsOpen={failed}><pre className="diagram-source" tabIndex={0}>{artifact.source}</pre></Collapsible>}
+      {artifact.source && <Collapsible key={failed ? 'fallback' : 'source'} trigger={<Text weight="medium">Mermaid source</Text>} defaultIsOpen={failed}><pre className="diagram-source" tabIndex={0}>{artifact.source}</pre></Collapsible>}
     </VStack>
   </section>;
 }

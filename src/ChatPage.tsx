@@ -552,6 +552,7 @@ export default function ChatPage() {
         </VStack>
       </VStack></aside>
       <main className="conversation">
+        <Heading level={1} className="sr-only">TreeTutor</Heading>
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
         <section className="tree-workspace" data-expanded={expanded && !overview}>
         {root && state && <section className="overview" data-chat-open={!overview} aria-label="Learning tree">
@@ -607,7 +608,7 @@ export default function ChatPage() {
             </ChatMessageList>
           </ChatLayout>
         </> : <VStack gap={0} className="overview">
-          <HStack padding={1} className="map-toolbar" aria-label="Tree view controls">{menu()}</HStack>
+          <HStack padding={1} className="map-toolbar" role="group" aria-label="Tree view controls">{menu()}</HStack>
           <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map"><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <><Text color="secondary">Ask your first question; it becomes the chat's title. Come back any time.</Text><Button label="New chat" variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} /></>}</VStack>
         </VStack>}
         </section>

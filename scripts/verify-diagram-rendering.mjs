@@ -174,11 +174,15 @@ if (process.argv[2] === '--serve') {
     await ready(tall.id); await ready(wide.id);
 
     await ev(`document.querySelector('.passage section').scrollIntoView({block:'center'})`);
-    const points = await ev(`(()=>{const n=document.querySelector('.passage section .astryx-text').firstChild,a=document.createRange(),z=document.createRange();a.setStart(n,10);a.setEnd(n,11);z.setStart(n,17);z.setEnd(n,19);const first=a.getBoundingClientRect(),last=z.getBoundingClientRect();return [first.left+1,first.top+first.height/2,last.right-1,last.top+last.height/2]})()`);
-    await b('mouse', 'move', String(Math.round(points[0])), String(Math.round(points[1])));
-    await b('mouse', 'down', 'left');
-    await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
-    await b('mouse', 'up', 'left');
+    // Diagrams settling can re-scroll the chat log under the pointer; re-measure and retry the drag.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const points = await ev(`(()=>{document.querySelector('.passage section').scrollIntoView({block:'center'});const n=document.createTreeWalker(document.querySelector('.passage section .reply-md'),NodeFilter.SHOW_TEXT).nextNode(),a=document.createRange(),z=document.createRange();a.setStart(n,10);a.setEnd(n,11);z.setStart(n,17);z.setEnd(n,19);const first=a.getBoundingClientRect(),last=z.getBoundingClientRect();return [first.left+1,first.top+first.height/2,last.right-1,last.top+last.height/2]})()`);
+      await b('mouse', 'move', String(Math.round(points[0])), String(Math.round(points[1])));
+      await b('mouse', 'down', 'left');
+      await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
+      await b('mouse', 'up', 'left');
+      if (await ev(`getSelection().toString()`) === 'repeat 😀') break;
+    }
     assert.equal(await ev(`getSelection().toString()`), 'repeat 😀', 'mouse drag must select the visible reply');
     await wait(`[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Ask about selection')`);
     await click('Ask about selection');
@@ -209,10 +213,11 @@ if (process.argv[2] === '--serve') {
     await click('Return to tree'); await openRoot('Diagram states');
     await wait(`[...document.querySelectorAll('.diagram-card')].some(c=>c.textContent.includes('Render error') && c.dataset.state==='failed')`);
     for (const id of familyIds) await ready(id);
-    assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="failed"]').length`), 6);
-    assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="pending"]').length`), 1);
+    // A diagram left pending when the server started is recovered as interrupted (see diagram-recovery.md).
+    assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="failed"]').length`), 7);
+    assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="pending"]').length`), 0);
     const failures = await ev(`[...document.querySelectorAll('.diagram-card[data-state="failed"]')].map(c=>({title:c.querySelector('h3').textContent,description:!!c.querySelector('[id$="-description"]')?.textContent,source:c.querySelector('pre')?.textContent,expanded:c.querySelector('button')?.getAttribute('aria-expanded')}))`);
-    assert.ok(failures.every(f => f.description && (f.title === 'Failed example' || (f.source && f.expanded === 'true'))));
+    assert.ok(failures.every(f => f.description && (f.title === 'Failed example' || f.title === 'Pending example' || (f.source && f.expanded === 'true'))));
     assert.equal(await ev(`document.querySelectorAll('.diagram-card a,.diagram-card script,.diagram-card iframe,.diagram-card foreignObject').length`), 0);
     assert.equal(await ev(`window.__diagramAttacked`), 0);
     assert.equal(await ev(`performance.getEntriesByType('resource').filter(e=>e.name.includes('example.test')).length`), 0);

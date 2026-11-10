@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T07:02:26.227Z",
+  "checkedAt": "2026-11-10T09:41:21.165Z",
   "evidence": "Synthetic provider fixture; real production build, browser layout/focus, loopback HTTP, SQLite, and process restart. No native provider inference or learner data.",
   "checks": [
     {
@@ -26,8 +26,8 @@
       "name": "all renamed titles survive a real fixture server/SQLite restart",
       "pass": true,
       "details": {
-        "beforePid": 3829425,
-        "afterPid": 3829772
+        "beforePid": 4077523,
+        "afterPid": 4077873
       }
     },
     {
@@ -54,7 +54,7 @@
           "dx": 0.000091552734375,
           "dy": 0.000030517578125,
           "edges": 1,
-          "message": "94949dc2-138c-4dc6-ab99-7040eec29cc6"
+          "message": "844a4db1-eba3-4ae2-bea4-1b2d51097943"
         }
       }
     },
@@ -85,11 +85,11 @@
     }
   ],
   "sourceHashes": {
-    "server/store.mjs": "8f0ec2c5b5dd080df367714f0bc9e028e49caccb979c407bfb37424669b04aad",
-    "server/app.mjs": "6c6fe671e5f7b8be8b4d59bb4494568190554535db94e0795f04d2ee61e52e61",
+    "server/store.mjs": "8793d4cdcec764550ea3730023c154b7a5597695f3635b85982560db2d2e4c3c",
+    "server/app.mjs": "f148dac53e49eb01b1fd55efd393b76e364dbc2bea96710e846e09906e44e478",
     "server/videos.mjs": "33f03cd83ff071b572cfb257137e3a0d7ecadd243bc3166aeecb005b0af08962",
-    "src/ChatPage.tsx": "551600f050825fd614988b446cf812681311ec9a35fb8f8c6b6435c092fb97f5",
-    "src/layout.ts": "11dc1d77e5b429350c9f7673e3975e1258046276adbd700d1f9f332a75d9c909",
+    "src/ChatPage.tsx": "8629080af68527004e2b57be0fb0d7dd94e0520faf603cb22ee7f6f088b9145c",
+    "src/layout.ts": "5592fff878a9360d457b4efbc35107722aa3a854c55675e1b28fd45e3422f9c9",
     "src/layoutSave.ts": "8930bfc45f9b29388adde2900a23945f41afa0a1ed41aa41182aa891966f9cc3"
   }
 }

@@ -160,7 +160,8 @@ try {
   await attached('parent fold and unfold');
   await click('Reveal source passage for Second emoji passage');
   await browser('wait', '--fn', 'document.activeElement?.tagName === "MARK"');
-  assert.deepEqual(await evaluate(`(() => { const m=document.querySelector('mark'); return {text:m.textContent, prefix:m.previousSibling?.textContent.length, visible:m.getBoundingClientRect().top >= 0 && m.getBoundingClientRect().bottom <= innerHeight}; })()`), { text: text.slice(start), prefix: start, visible: true });
+  // Markdown rendering drops the paragraph's trailing space from the highlighted text.
+  assert.deepEqual(await evaluate(`(() => { const m=document.querySelector('mark'); return {text:m.textContent, prefix:m.previousSibling?.textContent.length, visible:m.getBoundingClientRect().top >= 0 && m.getBoundingClientRect().bottom <= innerHeight}; })()`), { text: text.slice(start).trimEnd(), prefix: start, visible: true });
   await browser('find', 'role', 'textbox', 'click', '--name', 'Your question');
   await browser('press', 'ArrowLeft');
   assert.deepEqual(position(), moved);

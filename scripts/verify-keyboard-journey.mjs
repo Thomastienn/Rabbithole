@@ -98,12 +98,13 @@ try {
 
   // 4. Model menu: Escape closes the menu first; selection persists for the next reply.
   await tabTo(named('Model for next reply'), { back: true }); assert.equal(await ev(visibleFocus), true);
-  await press('Space'); await wait(`document.activeElement?.getAttribute('role') === 'menuitemradio'`);
+  await press('Space'); await wait(`!!document.activeElement?.closest('[role=menu]')`);
   await press('Escape');
-  await wait(`${focusName} === 'Model for next reply' && !document.querySelector('[role=menu]')?.checkVisibility()`);
+  await wait(`${focusName} === 'Model for next reply' && ![...document.querySelectorAll('[role=menu]')].some(m => m.checkVisibility())`);
   assert.equal(await ev(`getComputedStyle(document.querySelector('.focused-chat')).display`), 'flex');
-  await press('Enter'); await wait(`document.activeElement?.getAttribute('role') === 'menuitemradio'`);
-  await press('Home'); await press('ArrowDown'); assert.equal(await ev(`document.activeElement.textContent.trim()`), 'Keyboard B'); await press('Enter');
+  await press('Enter'); await wait(`!!document.activeElement?.closest('[role=menu]')`);
+  // The menu now opens on the signed-out Claude group first; walk down to the fixture model.
+  await press('Home'); for (let i = 0; i < 4 && (await ev(`document.activeElement.textContent.trim()`)) !== 'Keyboard B'; i++) await press('ArrowDown'); assert.equal(await ev(`document.activeElement.textContent.trim()`), 'Keyboard B'); await press('Enter');
   await wait(`document.querySelector('.focused-chat')?.textContent.includes('Keyboard B · saved automatically')`);
   assert.equal(store.tree(grand.id).model, 'kb-b'); assert.equal(store.tree(child.id).model, 'kb-a');
   step('Model for next reply (Space/Enter) opens the menu; Escape closes only the menu and restores focus to its trigger; Home/ArrowDown/Enter saves Keyboard B for this conversation only');

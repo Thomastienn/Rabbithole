@@ -134,7 +134,7 @@ try {
   report.fit = await evaluate(`(() => {
     const c=document.querySelector('.tree-canvas').getBoundingClientRect();
     const rects=[...document.querySelectorAll('.react-flow__node')].map(n=>n.getBoundingClientRect());
-    return { zoom:document.querySelector('[aria-label="Current zoom"]').textContent, allInside:rects.every(r=>r.left>=c.left-1 && r.right<=c.right+1 && r.top>=c.top-1 && r.bottom<=c.bottom+1) };
+    return { zoom:document.querySelector('[data-zoom]').textContent, allInside:rects.every(r=>r.left>=c.left-1 && r.right<=c.right+1 && r.top>=c.top-1 && r.bottom<=c.bottom+1) };
   })()`);
   assert.ok(report.fit.allInside, 'Fit tree contains all 200 full transcripts');
   await evaluate(`window.__selectionTiming = new Promise(resolve => {
@@ -151,7 +151,7 @@ try {
   await click('Reopen chat');
   report.selectClickMs = performance.now() - selectStart;
   await wait(`document.activeElement?.getAttribute('aria-label') === 'Your question'`);
-  await wait(`parseFloat(document.querySelector('[aria-label="Current zoom"]').textContent) >= 20 && !document.documentElement.matches(':active-view-transition')`);
+  await wait(`parseFloat(document.querySelector('[data-zoom]').textContent) >= 20 && !document.documentElement.matches(':active-view-transition')`);
   report.selectMs = performance.now() - selectStart;
   report.selectUiMs = await evaluate('window.__selectionTiming');
   report.selectedBounds = await evaluate(`(() => { const n=document.querySelector('.react-flow__node[data-id="${root.id}"]').getBoundingClientRect(), c=document.querySelector('.tree-canvas').getBoundingClientRect(); return {left:n.left-c.left,top:n.top-c.top,right:n.right-c.left,bottom:n.bottom-c.top,canvasWidth:c.width,canvasHeight:c.height}; })()`);

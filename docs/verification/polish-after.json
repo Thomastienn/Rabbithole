@@ -1,0 +1,55 @@
+{
+  "label": "after",
+  "checkedAt": "2026-11-10T09:47:24.521Z",
+  "evidence": "Synthetic fixture providers, seeded SQLite tree with markdown, ready diagram, failed video and branch; production build in agent-browser Chromium. 200% zoom is emulated as a half-size CSS viewport.",
+  "checks": {
+    "contrast-light": {
+      "map": [],
+      "chat": [],
+      "menu": [],
+      "sidebar": []
+    },
+    "contrast-dark": {
+      "map": [],
+      "chat": [],
+      "menu": [],
+      "sidebar": []
+    },
+    "reduced-motion": {
+      "map": [],
+      "chat": [
+        "x1n2onr6 xhtitgo x78zum5 xdt5ytf x1txdalj x1xunbrq x1prclbq x1ed109x x16khyan xrg7dcy x1litavf x1y0btm7 xvy26l8 x6q1khz x1b50gpf x1gnnqk1 x1xqjsvb xuihb5h box-shadow, border-color/none"
+      ]
+    },
+    "chat-open-shift": {
+      "stable": true,
+      "first": "{\"x\":953,\"y\":813.5,\"width\":463,\"height\":22,\"top\":813.5,\"right\":1416,\"bottom\":835.5,\"left\":953}",
+      "later": "{\"x\":953,\"y\":813.5,\"width\":463,\"height\":22,\"top\":813.5,\"right\":1416,\"bottom\":835.5,\"left\":953}"
+    },
+    "unnamed-controls": [],
+    "focus-visible": {
+      "stops": 75,
+      "missing": []
+    },
+    "viewport-narrow": {
+      "mapOverflow": false,
+      "chatOverflow": false,
+      "composerVisible": true
+    },
+    "viewport-zoom200": {
+      "mapOverflow": false,
+      "chatOverflow": false,
+      "composerVisible": true
+    },
+    "viewport-wide": {
+      "mapOverflow": false,
+      "chatOverflow": false,
+      "composerVisible": true
+    },
+    "viewport-breakpoint": {
+      "mapOverflow": false,
+      "chatOverflow": false,
+      "composerVisible": true
+    }
+  }
+}

@@ -241,9 +241,9 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
     return { id: t.id, source: t.parent!, sourceHandle: t.id, target: t.id, ariaLabel: `Passage “${t.passage}” to ${t.title}`, data: { messageId: t.messageId, start: t.start, end: t.end } };
   }), [hierarchy, folded]);
   return <>
-    <HStack padding={1} gap={1} vAlign="center" className="map-toolbar" aria-label="Tree view controls">
+    <HStack padding={1} gap={1} vAlign="center" className="map-toolbar" role="group" aria-label="Tree view controls">
       <IconButton label="Zoom out" tooltip="Zoom out" icon={<MinusIcon />} variant="ghost" size="sm" onClick={zoomOut} />
-      <Text aria-label="Current zoom">{zoom < 0.01 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%</Text>
+      <Text className="sr-only">Current zoom</Text><Text data-zoom="">{zoom < 0.01 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%</Text>
       <IconButton label="Zoom in" tooltip="Zoom in" icon={<PlusIcon />} variant="ghost" size="sm" onClick={zoomIn} />
       <IconButton label="Fit tree" tooltip="Fit tree" icon={<ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={fitTree} />
       {menu({ expand: () => setFolded(new Set()), collapse: () => setFolded(new Set([root])), keep: keepCurrent, canKeep: !!current && trees.some(t => t.id === current) })}
@@ -254,8 +254,8 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       const nodeTarget = e.target === (e.target as HTMLElement).closest('.react-flow__node') ? (e.target as HTMLElement).dataset.id : undefined;
       if (nodeTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(nodeTarget); return; }
-      // Aliases only on the map or a box wrapper itself, and never while a dialog or menu is open.
-      const alias = vim && (nodeTarget || e.target === e.currentTarget) && !document.querySelector('[aria-haspopup][aria-expanded="true"], dialog[open], [aria-modal="true"]') ? vimAction(e.nativeEvent) : undefined;
+      // Aliases only on the map or a box wrapper itself, and never while a dialog or menu is open (closed dialogs stay mounted).
+      const alias = vim && (nodeTarget || e.target === e.currentTarget) && ![...document.querySelectorAll<HTMLElement>('[aria-haspopup][aria-expanded="true"], dialog[open], [aria-modal="true"]')].some(open => open.checkVisibility()) ? vimAction(e.nativeEvent) : undefined;
       if (alias === 'zoomIn' || alias === 'zoomOut' || alias === 'fit') { e.preventDefault(); e.stopPropagation(); ({ zoomIn, zoomOut, fit: fitTree })[alias](); return; }
       const key = alias ?? e.key;
       const delta: Record<string, Point> = { ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 }, ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 } };
@@ -277,7 +277,7 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
       save({ [node.id]: position });
       setNotice(`${node.data.conversation.title} moved to ${Math.round(position.x)}, ${Math.round(position.y)}.`);
     }}>
-      <ConversationTransition.Provider value={transition}><ReactFlow<ConversationNode> nodes={nodes} onlyRenderVisibleElements={canCull && nodes.length > 50} onNodesChange={onNodesChange} edges={edges} nodeTypes={nodeTypes} onInit={instance => { flow.current = instance; }} onMoveStart={event => { if (event) navigated.current = true; }} onMove={(_, viewport) => setZoom(viewport.zoom)} onMoveEnd={(_, viewport) => saveViewport(viewport)} defaultViewport={savedViewport} onNodeClick={(event, node) => { if (!(event.target as HTMLElement).closest('button, a, input, select, textarea, [role="button"], [role="menuitem"], .nodrag')) open(node.id); }} onNodeDragStop={(_, node) => { save({ [node.id]: node.position }); setNotice(`${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`); }} nodesConnectable={false} edgesReconnectable={false} autoPanOnNodeFocus={false} deleteKeyCode={null} disableKeyboardA11y fitView={!savedViewport} fitViewOptions={fit} minZoom={MIN_ZOOM} maxZoom={1.5} zoomOnScroll zoomOnPinch={false} zoomActivationKeyCode={null}><MeasureHandles nodes={nodes} /></ReactFlow></ConversationTransition.Provider>
+      <ConversationTransition.Provider value={transition}><ReactFlow<ConversationNode> nodes={nodes} onlyRenderVisibleElements={canCull && nodes.length > 50} onNodesChange={onNodesChange} edges={edges} nodeTypes={nodeTypes} onInit={instance => { flow.current = instance; }} onMoveStart={event => { if (event) navigated.current = true; }} onMove={(_, viewport) => setZoom(viewport.zoom)} onMoveEnd={(_, viewport) => saveViewport(viewport)} defaultViewport={savedViewport} onNodeClick={(event, node) => { if (!(event.target as HTMLElement).closest('button, a, input, select, textarea, [role="button"], [role="menuitem"], .nodrag')) open(node.id); }} onNodeDragStop={(_, node) => { save({ [node.id]: node.position }); setNotice(`${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`); }} nodesConnectable={false} edgesReconnectable={false} autoPanOnNodeFocus={false} deleteKeyCode={null} disableKeyboardA11y colorMode="system" fitView={!savedViewport} fitViewOptions={fit} minZoom={MIN_ZOOM} maxZoom={1.5} zoomOnScroll zoomOnPinch={false} zoomActivationKeyCode={null}><MeasureHandles nodes={nodes} /></ReactFlow></ConversationTransition.Provider>
     </VStack>
   </>;
 }

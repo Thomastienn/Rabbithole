@@ -1,7 +1,7 @@
 export const layoutCss = `
 html, body, #root { height: 100%; }
 html { view-transition-name: none; }
-.trees { display: none; flex: 0 0 18rem; min-width: 0; overflow: auto; border-right: 1px solid var(--color-border); background: var(--color-background-body); }
+.trees { display: none; flex: 0 0 18rem; min-width: 0; overflow: auto; border-right: thin solid var(--color-border); background: var(--color-background-body); }
 .trees[data-open=true] { display: block; }
 .conversation { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .tree-workspace { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; flex-direction: row; }
@@ -16,7 +16,7 @@ html { view-transition-name: none; }
 .chat-title .rename-title { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: 0; }
 .saved-chat-title { flex: 1; min-width: 0; }
 .chat-title h2 { font-size: var(--font-size-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.passage { position: relative; }
+.passage { position: relative; align-self: stretch; }
 .reply-md { display: block; min-width: 0; overflow-wrap: anywhere; }
 .reply-md > * + * { margin-block-start: var(--spacing-3); }
 .reply-md p, .reply-md figure { margin-inline: 0; }
@@ -38,7 +38,7 @@ html { view-transition-name: none; }
 .reply-md math[display=block] { padding-block: var(--spacing-2); max-width: 100%; overflow-x: auto; }
 .reply-md [data-reveal] { background: var(--color-background-blue); color: var(--color-text-primary); }
 .reply-md .md-source-syntax { white-space: pre-wrap; font-family: monospace; }
-.diagram-card { min-width: 0; max-width: 100%; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.diagram-card { align-self: stretch; min-width: 0; max-width: 100%; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
 .diagram-card h3 { font-size: var(--font-size-base); }
 .diagram-viewport { max-width: 100%; max-height: 24rem; overflow: auto; overscroll-behavior: contain; }
 .diagram-viewport img { display: block; max-width: none; }
@@ -50,7 +50,7 @@ html { view-transition-name: none; }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, var(--spacing-1)); } }
 .branch-form { margin-top: var(--spacing-2); border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); }
 .branch-quote { padding: var(--spacing-2) var(--spacing-3); border-radius: var(--radius-element); background: var(--color-background-blue); }
-.focused-chat { flex: 0 1 32rem; min-width: 0; border-left: 1px solid var(--color-border); }
+.focused-chat { flex: 0 1 32rem; min-width: 0; border-left: thin solid var(--color-border); }
 .focused-chat > .astryx-chat-layout { flex: 1; min-height: 0; overflow: auto; }
 .tree-canvas { flex: 1; min-height: 0; background: var(--color-background-body); }
 .tree-canvas:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
@@ -72,7 +72,11 @@ html { view-transition-name: none; }
 @media (hover: none) { .node-extra { opacity: 1; } }
 .activity-dot { display: inline-block; flex: none; width: var(--spacing-2); height: var(--spacing-2); border-radius: 50%; background: var(--color-text-primary); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.3; } }
-@media (prefers-reduced-motion: reduce) { .activity-dot, .selection-action { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .activity-dot, .selection-action { animation: none; } .conversation-box, .node-extra, .diagram-card .astryx-icon { transition: none; } }
+.react-flow__node:focus-visible { outline: none; }
+.react-flow__node:focus-visible .conversation-box { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
+.react-flow__edge:focus-visible { outline: none; }
+.react-flow__edge:focus-visible .react-flow__edge-path { stroke: var(--color-text-primary); stroke-width: var(--spacing-1); }
 .conversation-box button { height: auto; white-space: normal; }
 .node-message[data-role=user] { padding-inline-start: var(--spacing-2); border-inline-start: medium solid var(--color-border-emphasized); }
 .node-message[data-role=assistant] { padding-inline-start: var(--spacing-2); }
@@ -88,7 +92,7 @@ section[role=alert] { background: var(--color-background-body); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }
 @media (max-width: 48rem) {
  .workspace { flex-direction: column; overflow: hidden; }
- .trees { display: none; flex: 0 0 auto; max-height: 45dvh; border-right: none; border-bottom: 1px solid var(--color-border); }
+ .trees { display: none; flex: 0 0 auto; max-height: 45dvh; border-right: none; border-bottom: thin solid var(--color-border); }
  .trees[data-open=true] { display: block; }
  .conversation { min-height: 0; flex: 1; }
  .overview[data-chat-open=true] { display: none; }
