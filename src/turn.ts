@@ -6,7 +6,7 @@ export const usageLine = (u: Usage) => `${u.input.toLocaleString()} input · ${u
 export type Suggestions = { message: string; status: 'pending' | 'ready' | 'failed'; passages: { start: number; end: number; text: string; child?: string; concept?: string }[]; usage: Usage | null };
 // A reply's token line includes its suggestion call, so background cost is never hidden.
 export function replyUsageLine(reply: Usage | null, suggestion?: Usage | null) {
-  if (!suggestion) return reply ? usageLine(reply) : 'Token usage unavailable';
+  if (!suggestion) return reply ? `${usageLine(reply)}${suggestion === null ? ' · suggestion usage unavailable' : ''}` : 'Token usage unavailable';
   if (!reply) return `Reply usage unavailable · suggestions: ${usageLine(suggestion)}`;
   return `${usageLine({ input: reply.input + suggestion.input, output: reply.output + suggestion.output, cacheRead: reply.cacheRead + suggestion.cacheRead })}, including suggestions`;
 }

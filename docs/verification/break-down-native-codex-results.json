@@ -1,0 +1,570 @@
+{
+  "issue": "TreeTutor-5ut.10",
+  "date": "2026-11-10T12:02:11.817Z",
+  "data": "/tmp/tt-break-down-NaHdUu",
+  "route": "Native Claude CLI and Codex app-server over existing app-owned subscription sign-ins; isolated SQLite; no API-key fallback",
+  "checks": [
+    {
+      "name": "codex: native tutor reply completes with reported usage",
+      "pass": true
+    },
+    {
+      "name": "codex: one isolated default suggestion call completes with usage and passages",
+      "pass": true
+    },
+    {
+      "name": "codex: cheap default model",
+      "pass": true,
+      "detail": "gpt-6-luna"
+    },
+    {
+      "name": "codex: same native call updates global concepts, topics and evidence",
+      "pass": true
+    },
+    {
+      "name": "codex: native compaction creates child with exact passage and fixed inherited context",
+      "pass": true
+    },
+    {
+      "name": "codex: suggestion explored only after save; parent messages unchanged",
+      "pass": true
+    },
+    {
+      "name": "codex: child continues natively and gets its own suggestions",
+      "pass": true
+    },
+    {
+      "name": "codex: branch records asked evidence",
+      "pass": true
+    },
+    {
+      "name": "codex: suggestion instructions and structured outputs stay out of tutor/compaction history",
+      "pass": true
+    },
+    {
+      "name": "codex: app/provider/store reopen restores replies, usage, suggestions and graph with no inference",
+      "pass": true
+    }
+  ],
+  "providers": {
+    "codex": {
+      "tutorModel": "gpt-6.1-sol",
+      "root": {
+        "id": "d894b260-d42a-45b2-a17b-f066fc5edab6",
+        "status": "completed",
+        "error": null,
+        "reply": {
+          "id": "c76543e5-2e71-4ab9-b7ce-a6a8d9c2e53e",
+          "role": "assistant",
+          "text": "1. **Frontend**  \n   The frontend is the part of a website you see and interact with in your browser. **HTML** organizes its content, such as headings, text, and buttons. **CSS** controls how it looks, including colors, fonts, and layout.\n\n2. **Backend**  \n   The backend runs on a server, handling requests and processing information. A **database** stores information, such as accounts or products. **HTTP** is the set of rules browsers and servers use to exchange requests and responses, connecting the frontend and backend.",
+          "status": "completed",
+          "usage": {
+            "input": 3985,
+            "output": 117,
+            "cacheRead": 4224,
+            "at": 1794312137545
+          }
+        },
+        "suggestions": [
+          {
+            "message": "c76543e5-2e71-4ab9-b7ce-a6a8d9c2e53e",
+            "status": "ready",
+            "passages": [
+              {
+                "start": 3,
+                "end": 15,
+                "text": "**Frontend**",
+                "concept": "Frontend"
+              },
+              {
+                "start": 102,
+                "end": 110,
+                "text": "**HTML**",
+                "concept": "HTML"
+              },
+              {
+                "start": 171,
+                "end": 178,
+                "text": "**CSS**",
+                "concept": "CSS"
+              },
+              {
+                "start": 243,
+                "end": 254,
+                "text": "**Backend**",
+                "concept": "Backend"
+              },
+              {
+                "start": 282,
+                "end": 335,
+                "text": "server, handling requests and processing information.",
+                "concept": "Server request processing"
+              },
+              {
+                "start": 338,
+                "end": 400,
+                "text": "**database** stores information, such as accounts or products.",
+                "concept": "Database"
+              },
+              {
+                "start": 401,
+                "end": 527,
+                "text": "**HTTP** is the set of rules browsers and servers use to exchange requests and responses, connecting the frontend and backend.",
+                "concept": "HTTP"
+              }
+            ],
+            "usage": {
+              "input": 6206,
+              "output": 333,
+              "cacheRead": 3328,
+              "at": 1794312147030
+            }
+          }
+        ]
+      },
+      "suggestionModel": "gpt-6-luna",
+      "suggestionError": null,
+      "suggestionOutput": "{\"suggestions\":[{\"text\":\"**Frontend**\",\"start\":3,\"end\":15,\"concept\":\"Frontend\"},{\"text\":\"**HTML**\",\"start\":102,\"end\":110,\"concept\":\"HTML\"},{\"text\":\"**CSS**\",\"start\":171,\"end\":178,\"concept\":\"CSS\"},{\"text\":\"**Backend**\",\"start\":243,\"end\":254,\"concept\":\"Backend\"},{\"text\":\"server, handling requests and processing information.\",\"start\":282,\"end\":335,\"concept\":\"Server request processing\"},{\"text\":\"**database** stores information, such as accounts or products.\",\"start\":338,\"end\":400,\"concept\":\"Database\"},{\"text\":\"**HTTP** is the set of rules browsers and servers use to exchange requests and responses, connecting the frontend and backend.\",\"start\":401,\"end\":527,\"concept\":\"HTTP\"}],\"concepts\":[{\"name\":\"Frontend\",\"topics\":[\"Web development\"]},{\"name\":\"HTML\",\"topics\":[\"Web development\"]},{\"name\":\"CSS\",\"topics\":[\"Web development\"]},{\"name\":\"Backend\",\"topics\":[\"Web development\"]},{\"name\":\"Server request processing\",\"topics\":[\"Web development\"]},{\"name\":\"Database\",\"topics\":[\"Data storage\"]},{\"name\":\"HTTP\",\"topics\":[\"Web communication\"]}],\"links\":[{\"from\":\"HTML\",\"to\":\"Frontend\",\"kind\":\"builds on\"},{\"from\":\"CSS\",\"to\":\"Frontend\",\"kind\":\"builds on\"},{\"from\":\"Server request processing\",\"to\":\"Backend\",\"kind\":\"builds on\"},{\"from\":\"Database\",\"to\":\"Backend\",\"kind\":\"builds on\"},{\"from\":\"HTTP\",\"to\":\"Frontend\",\"kind\":\"related\"},{\"from\":\"HTTP\",\"to\":\"Backend\",\"kind\":\"related\"}]}",
+      "graphAfterReply": {
+        "topics": [
+          "Data storage",
+          "Web communication",
+          "Web development"
+        ],
+        "concepts": [
+          {
+            "name": "Backend",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "CSS",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "Database",
+            "topics": [
+              "Data storage"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "Frontend",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "HTML",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "HTTP",
+            "topics": [
+              "Web communication"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "Server request processing",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          }
+        ],
+        "links": [
+          {
+            "from": "CSS",
+            "to": "Frontend",
+            "kind": "builds on"
+          },
+          {
+            "from": "Database",
+            "to": "Backend",
+            "kind": "builds on"
+          },
+          {
+            "from": "HTML",
+            "to": "Frontend",
+            "kind": "builds on"
+          },
+          {
+            "from": "HTTP",
+            "to": "Backend",
+            "kind": "related"
+          },
+          {
+            "from": "HTTP",
+            "to": "Frontend",
+            "kind": "related"
+          },
+          {
+            "from": "Server request processing",
+            "to": "Backend",
+            "kind": "builds on"
+          }
+        ]
+      },
+      "branchStatus": 201,
+      "child": {
+        "id": "6c3b1c8c-6eba-464d-ae91-a9c934e2b014",
+        "branch": {
+          "parent": "d894b260-d42a-45b2-a17b-f066fc5edab6",
+          "messageId": "c76543e5-2e71-4ab9-b7ce-a6a8d9c2e53e",
+          "start": 3,
+          "end": 15,
+          "text": "**Frontend**",
+          "question": "explain",
+          "snapshot": "The learner is a beginner who does not know how websites work and wants “Frontend” explained. The prior answer described the frontend as the part of a website seen and interacted with in a browser. HTML organizes content such as headings, text, and buttons; CSS controls appearance, including colors, fonts, and layout. The learner originally requested a short explanation."
+        }
+      },
+      "childTurn": {
+        "status": "completed",
+        "error": null,
+        "reply": {
+          "id": "e7f386d0-6e9a-4eec-8752-34f15961bdb2",
+          "role": "assistant",
+          "text": "The **frontend** is the part of a website you see and interact with in your browser, such as text, pictures, menus, and buttons. HTML organizes that content, while CSS controls how it looks.",
+          "status": "completed",
+          "usage": {
+            "input": 8274,
+            "output": 46,
+            "cacheRead": 0,
+            "at": 1794312155821
+          }
+        },
+        "suggestions": [
+          {
+            "message": "e7f386d0-6e9a-4eec-8752-34f15961bdb2",
+            "status": "ready",
+            "passages": [
+              {
+                "start": 129,
+                "end": 133,
+                "text": "HTML",
+                "concept": "HTML"
+              },
+              {
+                "start": 164,
+                "end": 167,
+                "text": "CSS",
+                "concept": "CSS"
+              }
+            ],
+            "usage": {
+              "input": 5651,
+              "output": 127,
+              "cacheRead": 3328,
+              "at": 1794312160583
+            }
+          }
+        ]
+      },
+      "graphAfterBranch": {
+        "topics": [
+          "Data storage",
+          "Web communication",
+          "Web development"
+        ],
+        "concepts": [
+          {
+            "name": "Backend",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "CSS",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.2,
+            "evidence": {
+              "met": 2,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "Database",
+            "topics": [
+              "Data storage"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "Frontend",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.4,
+            "evidence": {
+              "met": 2,
+              "asked": 1,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "HTML",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.2,
+            "evidence": {
+              "met": 2,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "HTTP",
+            "topics": [
+              "Web communication"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          },
+          {
+            "name": "Server request processing",
+            "topics": [
+              "Web development"
+            ],
+            "familiarity": 0.1,
+            "evidence": {
+              "met": 1,
+              "asked": 0,
+              "used": 0,
+              "ignored": 0
+            },
+            "correction": null
+          }
+        ],
+        "links": [
+          {
+            "from": "CSS",
+            "to": "Frontend",
+            "kind": "builds on"
+          },
+          {
+            "from": "Database",
+            "to": "Backend",
+            "kind": "builds on"
+          },
+          {
+            "from": "HTML",
+            "to": "Frontend",
+            "kind": "builds on"
+          },
+          {
+            "from": "HTTP",
+            "to": "Backend",
+            "kind": "related"
+          },
+          {
+            "from": "HTTP",
+            "to": "Frontend",
+            "kind": "related"
+          },
+          {
+            "from": "Server request processing",
+            "to": "Backend",
+            "kind": "builds on"
+          }
+        ]
+      },
+      "pass": true
+    }
+  },
+  "catalog": [
+    {
+      "provider": "claude",
+      "model": "opus",
+      "isDefault": false
+    },
+    {
+      "provider": "claude",
+      "model": "sonnet",
+      "isDefault": true
+    },
+    {
+      "provider": "claude",
+      "model": "haiku",
+      "isDefault": false
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6.1-sol",
+      "isDefault": true
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6-astra",
+      "isDefault": false
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6-sol",
+      "isDefault": false
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6-luna",
+      "isDefault": false
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "isDefault": false
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6.1-terra",
+      "isDefault": false
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-5.6-terra",
+      "isDefault": false
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-5.6-luna",
+      "isDefault": false
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-5.5",
+      "isDefault": false
+    }
+  ],
+  "dailyUsage": {
+    "input": 24116,
+    "output": 623,
+    "cacheRead": 10880,
+    "replies": 2
+  },
+  "calls": [
+    {
+      "provider": "codex",
+      "model": "gpt-6.1-sol",
+      "suggestion": false,
+      "fresh": true,
+      "status": "completed"
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6-luna",
+      "suggestion": true,
+      "fresh": true,
+      "status": "completed"
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6.1-sol",
+      "suggestion": false,
+      "fresh": true,
+      "status": "completed"
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6.1-sol",
+      "suggestion": false,
+      "fresh": true,
+      "status": "completed"
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6-luna",
+      "suggestion": true,
+      "fresh": true,
+      "status": "completed"
+    }
+  ],
+  "pass": true
+}

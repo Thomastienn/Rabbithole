@@ -41,6 +41,21 @@ async function start(dir, suggestions = true, connected = { claude: true, codex:
 const shape = g => ({ ...g, concepts: g.concepts.map(({ name, topics }) => ({ name, topics })) });
 const strip = s => s.map(({ message, status, passages, usage }) => ({ message, status, passages, usage: usage && { input: usage.input, output: usage.output, cacheRead: usage.cacheRead } }));
 
+test('suggestion requests supply exact raw UTF-16 word offsets for terms and sections; mismatched output is still discarded', async t => {
+  const env = await start(mkdtempSync(join(tmpdir(), 'tt-offsets-')));
+  t.after(() => env.close());
+  for (const provider of ['claude', 'codex']) {
+    const tree = JSON.parse(await env.post('/api/trees'));
+    await env.post(`/api/trees/${tree.id}/model`, { provider, model: provider === 'claude' ? 'haiku' : 'fixture-model' });
+    await env.post(`/api/trees/${tree.id}/messages`, { text: 'Check passage offsets' });
+    await env.settled();
+    const saved = await env.get(`/api/trees/${tree.id}`), reply = saved.messages.at(-1);
+    assert.equal(saved.suggestions[0].status, 'ready');
+    assert.deepEqual(saved.suggestions[0].passages, [{ text: '**mutex**', start: 5, end: 14 }, { text: '1. Frontend', start: 38, end: 49 }]);
+    for (const passage of saved.suggestions[0].passages) assert.equal(reply.text.slice(passage.start, passage.end), passage.text);
+  }
+});
+
 test('a saved suggestion model applies across conversations and restart; unpinning restores each provider’s cheap model', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-suggest-settings-'));
   let env = await start(dir);
@@ -169,7 +184,7 @@ test('a completed reply gets one cheap-model suggestion call whose exact passage
   assert.equal(env.suggestionCalls().length, 1);
   assert.equal(env.suggestionCalls()[0].model, 'haiku');
   const input = JSON.parse(env.suggestionCalls()[0].input.slice(env.suggestionCalls()[0].input.indexOf('\n') + 1));
-  assert.deepEqual(input, { inheritedContext: null, question: 'Explain brackets', answer: 'Authoritative original', knownConcepts: {}, familiarity: {} });
+  assert.deepEqual(input, { inheritedContext: null, question: 'Explain brackets', answer: 'Authoritative original', knownConcepts: {}, familiarity: {}, answerWords: [{ text: 'Authoritative', start: 0, end: 13 }, { text: 'original', start: 14, end: 22 }] });
   assert.deepEqual(strip(saved.suggestions), [{ message: reply.id, status: 'ready', passages: SAVED, usage: { input: 103, output: 7, cacheRead: 40 } }]);
   for (const p of saved.suggestions[0].passages) assert.equal(reply.text.slice(p.start, p.end), p.text);
   // The suggestion call's usage counts in today's total but not as a reply.

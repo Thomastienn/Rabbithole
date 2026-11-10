@@ -18,6 +18,7 @@ test('navigation reconciles stale saved checkpoints with latest owning turn with
 test('the token line adds suggestion usage and never invents missing counts', () => {
   const reply = { input: 1000, output: 7, cacheRead: 40 }, suggestion = { input: 30, output: 9, cacheRead: 20 };
   assert.equal(replyUsageLine(reply), `${(1000).toLocaleString()} input · 7 output · 40 cache-read tokens`);
+  assert.equal(replyUsageLine(reply, null), `${(1000).toLocaleString()} input · 7 output · 40 cache-read tokens · suggestion usage unavailable`);
   assert.equal(replyUsageLine(reply, suggestion), `${(1030).toLocaleString()} input · 16 output · 60 cache-read tokens, including suggestions`);
   assert.equal(replyUsageLine(null, suggestion), 'Reply usage unavailable · suggestions: 30 input · 9 output · 20 cache-read tokens');
   assert.equal(replyUsageLine(null, null), 'Token usage unavailable');
