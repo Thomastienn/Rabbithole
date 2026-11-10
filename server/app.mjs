@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
-import { createReadStream, accessSync, constants } from 'node:fs';
+import { createReadStream, accessSync, constants, existsSync, renameSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, extname, join } from 'node:path';
 import { diagramReply, generateDiagram, tutorContext } from './diagrams.mjs';
@@ -12,7 +12,19 @@ const STOPPED = new Error('TreeTutor stopped.');
 
 export function createApp({ store, auth, provider, providers = { codex: provider }, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender }) {
   const pick = tree => providers[tree.provider] ?? providers[defaultProvider];
-  const active = new Map(), videos = new Map();
+  const active = new Map(), videos = new Map(), videoJobs = new Set();
+  let stopping = false;
+  // A crash before commit restores staged files; a crash after commit finishes removing them.
+  // The suffix records the owning artifact, including legacy workspaces named only by attempt.
+  for (const folder of [join(dir, 'videos'), join(dir, 'video-work')]) {
+    for (const name of existsSync(folder) ? readdirSync(folder) : []) {
+      const match = /^(.*)\.deleting-([0-9a-f-]{36})$/.exec(name);
+      if (!match) continue;
+      const path = join(folder, name);
+      if (store.hasArtifact(match[2])) renameSync(path, join(folder, match[1]));
+      else rmSync(path, { recursive: true, force: true });
+    }
+  }
   // Running jobs report their phase and renderer progress in memory only; restart fails pending jobs anyway.
   // Ready videos whose file is missing or unreadable are reported unavailable, so the learner can regenerate them.
   const readable = path => { try { accessSync(path, constants.R_OK); return true; } catch { return false; } };
@@ -20,12 +32,13 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     : a.kind === 'video' && a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
   // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
   const startVideo = (tree, job) => {
-    const running = { controller: new AbortController(), conversation: tree.id, phase: 'preparing', progress: null };
+    const running = { controller: new AbortController(), conversation: tree.id, artifact: job.id, phase: 'preparing', progress: null };
     videos.set(job.id, running);
-    generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: tree.model }, store, dir, artifact: job, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) })
+    videoJobs.add(running);
+    running.done = generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: tree.model }, store, dir, artifact: job, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) })
       // A job stopped with the app stays pending, so the next start marks it interrupted.
-      .catch(error => { if (running.controller.signal.reason !== STOPPED) store.finishVideo(tree.id, job.id, job.attempt, {}, error.message); })
-      .finally(() => { if (videos.get(job.id) === running) videos.delete(job.id); });
+      .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishVideo(tree.id, job.id, job.attempt, {}, error.message); })
+      .finally(() => { videoJobs.delete(running); if (videos.get(job.id) === running) videos.delete(job.id); });
   };
   const csrf = randomBytes(32).toString('hex');
   const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
@@ -111,11 +124,48 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           startVideo(tree, job);
           return json(res, 200, live(job));
         }
-        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|layout|model)$/);
+        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|layout|model|rename|delete)$/);
         if (match) {
           const [, id, action] = match;
           const tree = store.tree(id);
           if (!tree) return json(res, 404, { error: 'Learning tree not found.' });
+          if (action === 'rename') {
+            if (typeof body.title !== 'string' || !body.title.trim() || body.title.trim().length > 200) return json(res, 400, { error: 'Enter a title between 1 and 200 characters.' });
+            store.rename(id, body.title.trim());
+            return json(res, 200, { title: body.title.trim() });
+          }
+          if (action === 'delete') {
+            if (tree.branch || typeof body.conversation !== 'string' || !store.descendants(id).includes(body.conversation)) return json(res, 404, { error: 'Conversation not found in this chat.' });
+            if ((body.count !== undefined && body.count !== store.descendants(body.conversation).length) || (body.title !== undefined && body.title !== store.tree(body.conversation).title)) return json(res, 409, { error: 'This chat changed since confirmation. Cancel and try again to review the current conversations.' });
+            const staged = [], files = [];
+            let result;
+            try {
+              result = store.remove(id, body.conversation, artifacts => {
+                // Move files reversibly before commit; an SQL or filesystem failure restores their original names.
+                for (const a of artifacts.filter(a => a.kind === 'video')) {
+                  for (const path of [mediaPath(dir, a.id), join(dir, 'video-work', a.id), ...(a.attempt ? [join(dir, 'video-work', a.attempt)] : [])]) {
+                    files.push(path);
+                    // Live jobs can have filesystem operations in flight; stop and remove those after commit.
+                    if ([...videoJobs].some(job => job.artifact === a.id) || !existsSync(path)) continue;
+                    const moved = path + '.deleting-' + a.id;
+                    renameSync(path, moved);
+                    staged.push([path, moved]);
+                  }
+                }
+              });
+            } catch (error) {
+              for (const [path, moved] of staged.reverse()) renameSync(moved, path);
+              throw error;
+            }
+            for (const conversation of result.deleted) { active.get(conversation)?.abort(); active.delete(conversation); }
+            const jobs = [...videoJobs].filter(v => result.deleted.includes(v.conversation));
+            for (const job of jobs) job.controller.abort(new Error('Conversation deleted.'));
+            await Promise.all(jobs.map(job => job.done));
+            // A job may have been finishing a filesystem operation while its directory was moved.
+            for (const path of files) rmSync(path, { recursive: true, force: true });
+            for (const [, moved] of staged) rmSync(moved, { recursive: true, force: true });
+            return json(res, 200, result);
+          }
           if (action === 'position') {
             if (!Number.isFinite(body.x) || !Number.isFinite(body.y) || Math.abs(body.x) > 1000000 || Math.abs(body.y) > 1000000) return json(res, 400, { error: 'Choose a position within the canvas.' });
             store.position(id, body.x, body.y);
@@ -126,7 +176,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             const coordinate = n => Number.isFinite(n) && Math.abs(n) <= 1000000;
             const owned = new Set(); // positions may only move conversations inside this root's tree
             for (let grew = true, trees = store.list(); grew;) { grew = false; for (const t of trees) if (!owned.has(t.id) && (t.id === id || owned.has(t.parent))) { owned.add(t.id); grew = true; } }
-            if (tree.branch || !Array.isArray(folded) || folded.length > 10000 || !folded.every(f => typeof f === 'string' && f.length <= 100) || !(selected === null || (typeof selected === 'string' && selected.length <= 100)) || !['collapsed', 'beside', 'expanded'].includes(panel)
+            if (tree.branch || !Array.isArray(folded) || folded.length > 10000 || !folded.every(f => typeof f === 'string' && f.length <= 100 && owned.has(f)) || !(selected === null || (typeof selected === 'string' && selected.length <= 100 && owned.has(selected))) || !['collapsed', 'beside', 'expanded'].includes(panel)
               || !(viewport === undefined || (viewport && coordinate(viewport.x) && coordinate(viewport.y) && viewport.zoom >= 0.001 && viewport.zoom <= 1.5))
               || !positions || typeof positions !== 'object' || Array.isArray(positions) || !Object.entries(positions).every(([p, at]) => owned.has(p) && at && coordinate(at.x) && coordinate(at.y))) return json(res, 400, { error: 'Layout not saved. Reload and try again.' });
             store.layout(id, { folded, selected, panel, ...(viewport && { viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom } }) }, positions);
@@ -273,5 +323,5 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       else res.end();
     }
   });
-  return { server, active, stop: () => { for (const controller of active.values()) controller.abort(); for (const v of videos.values()) v.controller.abort(STOPPED); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
+  return { server, active, stop: () => { stopping = true; for (const controller of active.values()) controller.abort(); for (const v of videoJobs) v.controller.abort(STOPPED); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
 }

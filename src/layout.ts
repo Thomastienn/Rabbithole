@@ -13,6 +13,8 @@ html { view-transition-name: none; }
 .focus-reveal:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .chat-header { border-bottom: thin solid var(--color-border); }
 .chat-title { flex: 1; min-width: 0; }
+.chat-title .rename-title { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: 0; }
+.saved-chat-title { flex: 1; min-width: 0; }
 .chat-title h2 { font-size: var(--font-size-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .passage { position: relative; }
 .reply-md { display: block; min-width: 0; overflow-wrap: anywhere; }

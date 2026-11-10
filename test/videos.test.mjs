@@ -90,8 +90,8 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.equal(media.headers.get('content-type'), 'video/mp4');
     assert.deepEqual(Buffer.from(await media.arrayBuffer()), mp4);
     assert.equal((await env.get(`/api/trees/${parent.id}/artifacts/${ready.id}/media`)).status, 404);
-    assert.deepEqual(readdirSync(join(env.dir, 'video-work', ready.attempt)).sort(), ['Video.tsx', 'index.tsx']);
-    assert.ok(readFileSync(join(env.dir, 'video-work', ready.attempt, 'Video.tsx'), 'utf8').includes('PRIVATE_SOURCE_MARKER'));
+    assert.deepEqual(readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt)).sort(), ['Video.tsx', 'index.tsx']);
+    assert.ok(readFileSync(join(env.dir, 'video-work', ready.id, ready.attempt, 'Video.tsx'), 'utf8').includes('PRIVATE_SOURCE_MARKER'));
 
     // Tutor history, provider-switch history and branch snapshots carry only id, kind, title and description.
     await (await env.post(`/api/trees/${child.id}/messages`, { text: 'Thanks, continue.' })).text();
@@ -117,7 +117,7 @@ async function job(render, mutate) {
   const provider = { generate: async (t, text, emit) => complete(emit, composition) };
   const phases = [];
   const result = await generateVideo({ provider, selection: {}, store, dir, artifact, signal: new AbortController().signal, render, onPhase: (...p) => phases.push(p) }).then(() => null, error => error.message);
-  assert.ok(!existsSync(join(dir, 'video-work', artifact.attempt, 'out'))); // no leftover unpublished output
+  assert.ok(!existsSync(join(dir, 'video-work', artifact.id, artifact.attempt, 'out'))); // no leftover unpublished output
   return { result, row: store.artifact(tree.id, artifact.id), published: existsSync(mediaPath(dir, artifact.id)), dir, phases };
 }
 
@@ -222,7 +222,7 @@ const sandboxed = spawnSync('bwrap', ['--version']).status === 0 && existsSync(b
 
 test('render sandbox hides home and app data, blocks network and confines writes to the workspace', { skip: !sandboxed && 'bwrap or Remotion browser missing' }, () => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-sandbox-'));
-  const workspace = join(dir, 'video-work', 'attempt');
+  const workspace = join(dir, 'video-work', 'artifact', 'attempt');
   mkdirSync(workspace, { recursive: true });
   writeFileSync(join(dir, 'trees.sqlite'), 'LEARNING DATA');
   const probe = `const fs = require('fs'); const r = {};

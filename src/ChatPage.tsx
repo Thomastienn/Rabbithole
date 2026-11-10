@@ -8,6 +8,8 @@ import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGro
 import { AdjustmentsHorizontalIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
 import { withTurn, type Message, type Turn } from './turn';
@@ -28,6 +30,17 @@ type Providers = Record<string, { label: string; connected: boolean }>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[] };
 // The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
 const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview => withTurn({ messages: preview }, turn && { user: turn.user && { ...turn.user, text: previewText(turn.user.text, 'user') }, reply: turn.reply && { ...turn.reply, text: previewText(turn.reply.text, 'assistant'), ...(turn.artifacts && { artifacts: turn.artifacts.filter(a => a.message === turn.reply!.id).map(({ id, kind, title, status }) => ({ id, kind, title, status })) }) } }).messages;
+
+function TitleEditor({ title, save, cancel }: { title: string; save: (title: string) => Promise<void>; cancel: () => void }) {
+  const [value, setValue] = useState(title), [saving, setSaving] = useState(false), [error, setError] = useState('');
+  const valid = !!value.trim() && value.trim().length <= 200;
+  function submit() { if (!valid || saving) return; setSaving(true); void save(value.trim()).catch(e => { setError(e.message); setSaving(false); }); }
+  return <VStack gap={2} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (!saving) cancel(); } }}>
+    <TextInput label="Conversation title" value={value} onChange={setValue} size="sm" hasAutoFocus isDisabled={saving} description="Up to 200 characters." onEnter={submit} status={value.trim().length > 200 ? { type: 'error', message: 'Use 200 characters or fewer.' } : undefined} />
+    {error && <Text role="alert">{error}</Text>}
+    <HStack gap={1} wrap="wrap"><Button label={saving ? 'Saving…' : 'Save title'} size="sm" isDisabled={saving || !valid} onClick={submit} /><Button label="Cancel rename" variant="ghost" size="sm" isDisabled={saving} onClick={cancel} /></HStack>
+  </VStack>;
+}
 
 // Parsing is memoised so streaming chunks and selection state changes reuse the rendered tree.
 const Reply = memo(function Reply({ text, reveal }: { text: string; reveal?: Source }) {
@@ -90,6 +103,13 @@ export default function ChatPage() {
   const [savingModel, setSavingModel] = useState<string>();
   const [mobileNav, setMobileNav] = useState(false);
   const [help, setHelp] = useState(false);
+  const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'sidebar' }>();
+  const [deletion, setDeletion] = useState<{ id: string; root: string; title: string; count: number; parent: string | null }>();
+  const [deleting, setDeleting] = useState(false), [deleteError, setDeleteError] = useState('');
+  const deleteOrigin = useRef<HTMLElement | null>(null);
+  const removed = useRef(new Set<string>());
+  const renamed = useRef(new Map<string, string>());
+  const streams = useRef(new Map<string, AbortController>());
   // Only this boolean is stored, per browser and app origin; unreadable storage means off.
   const [vim, setVim] = useState(() => { try { return localStorage.getItem('treetutor.vim') === 'on'; } catch { return false; } });
   const [root, setRoot] = useState<string>();
@@ -199,12 +219,13 @@ export default function ChatPage() {
     const data: State = await api('/api/state');
     setState(previous => {
       const known = new Map(previous?.trees.map(t => [t.id, t]));
-      const trees = withUnsaved(data.trees).map(t => {
+      const trees = withUnsaved(data.trees.filter(t => !removed.current.has(t.id))).map(t => {
+        if (renamed.current.has(t.id)) t = { ...t, title: renamed.current.get(t.id)! };
         const old = known.get(t.id);
         // A status poll must not replace every unchanged node's data during a stream.
         return old && (Object.keys(t) as (keyof Summary)[]).every(key => key === 'layout' ? JSON.stringify(t.layout) === JSON.stringify(old.layout) : t[key] === old[key]) ? old : t;
       });
-      return { ...data, trees, active: [...new Set([...data.active, ...turns.current.keys()])] };
+      return { ...data, trees, active: [...new Set([...data.active, ...turns.current.keys()])].filter(id => !removed.current.has(id)), videos: data.videos.filter(id => !removed.current.has(id)) };
     });
     return data;
   }
@@ -321,16 +342,82 @@ export default function ChatPage() {
     try { const result = await api('/api/auth', {}); window.location.assign(result.url); }
     catch (e) { setError((e as Error).message); }
   }
+  function finishRename() {
+    const target = renaming;
+    setRenaming(undefined);
+    requestAnimationFrame(() => document.getElementById(target?.place === 'sidebar' ? `chat-actions-${target.id}` : 'rename-conversation')?.focus());
+  }
+  async function rename(id: string, title: string) {
+    const saved = await api(`/api/trees/${id}/rename`, { title });
+    renamed.current.set(id, saved.title);
+    ++checkpoints.current;
+    setTree(t => t?.id === id ? { ...t, title: saved.title } : t);
+    setState(s => s && { ...s, trees: s.trees.map(t => t.id === id ? { ...t, title: saved.title } : t) });
+    finishRename();
+  }
+  function askDelete(id: string, origin: HTMLElement | null) {
+    const target = state?.trees.find(t => t.id === id), owner = state && rootOf(id, state.trees);
+    if (!target || !owner) return;
+    const ids = [id];
+    for (let i = 0; i < ids.length; i++) for (const t of state!.trees) if (t.parent === ids[i] && !ids.includes(t.id)) ids.push(t.id);
+    deleteOrigin.current = origin;
+    setDeleteError('');
+    setDeletion({ id, root: owner, title: target.title, count: ids.length, parent: target.parent });
+  }
+  function cancelDelete() {
+    if (deleting) return;
+    setDeletion(undefined);
+    requestAnimationFrame(() => deleteOrigin.current?.focus());
+  }
+  async function deleteConversation() {
+    if (!deletion || deleting) return;
+    setDeleting(true); setDeleteError('');
+    try {
+      const result: { deleted: string[]; parent: string | null } = await api(`/api/trees/${deletion.root}/delete`, { conversation: deletion.id, count: deletion.count, title: deletion.title });
+      const ids = new Set(result.deleted), pending = saver.current?.pending().get(deletion.root);
+      for (const id of ids) { removed.current.add(id); streams.current.get(id)?.abort(); turns.current.delete(id); renamed.current.delete(id); }
+      ++checkpoints.current;
+      saver.current?.discard(deletion.root);
+      const cleanLayout = (layout: Layout): Layout => ({ ...layout, folded: layout.folded.filter(id => !ids.has(id)), selected: layout.selected && ids.has(layout.selected) ? result.parent : layout.selected });
+      if (result.parent && pending) saver.current?.mark(deletion.root, cleanLayout(pending.layout), Object.fromEntries(Object.entries(pending.positions).filter(([id]) => !ids.has(id))));
+      const trees = (state?.trees ?? []).filter(t => !ids.has(t.id)).map(t => t.id === deletion.root && t.layout ? { ...t, layout: cleanLayout(t.layout) } : t);
+      setState(s => s && { ...s, trees, active: s.active.filter(id => !ids.has(id)), videos: s.videos.filter(id => !ids.has(id)) });
+      setFolds(f => f && { ...f, ids: f.ids.filter(id => !ids.has(id)) });
+      setDrafts(d => Object.fromEntries(Object.entries(d).filter(([id]) => !ids.has(id))));
+      setPreviews(p => Object.fromEntries(Object.entries(p).filter(([id]) => !ids.has(id))));
+      setRenaming(r => r && ids.has(r.id) ? undefined : r);
+      setBranch(b => b && ids.has(b.parent) ? undefined : b);
+      setReveal(r => r && ids.has(r.tree) ? undefined : r);
+      if (selected.current && ids.has(selected.current)) setSelectingMessage(undefined);
+      setError(''); setLayoutFailed(false);
+      setDeletion(undefined);
+      if (result.parent && root === deletion.root) {
+        overviewOrigin.current = undefined; focusComposer.current = true; setOverview(false);
+        await select(result.parent);
+      } else if (root === deletion.root) {
+        const roots = trees.filter(t => !t.parent), index = state!.trees.filter(t => !t.parent).findIndex(t => t.id === deletion.root);
+        const next = roots[Math.min(index, roots.length - 1)];
+        if (next) { focusComposer.current = true; openTree(next.id, trees); }
+        else { ++request.current; selected.current = undefined; setTree(undefined); setRoot(undefined); setOverview(true); setExpanded(false); setLoading(false); }
+        if (!next || (next.layout?.panel !== 'beside' && next.layout?.panel !== 'expanded')) requestAnimationFrame(() => document.querySelector<HTMLElement>(next ? '.map-toolbar button' : '.empty-map button')?.focus());
+      } else requestAnimationFrame(() => document.querySelector<HTMLElement>(`#chat-actions-${root}`)?.focus());
+      await refresh();
+    } catch (e) { setDeleteError((e as Error).message); }
+    finally { setDeleting(false); }
+  }
   async function send(text: string, target = tree) {
     if (!target || !text.trim() || savingModel === target.id || state?.active.includes(target.id) || turns.current.has(target.id)) return;
     const id = target.id;
+    const controller = new AbortController();
+    streams.current.set(id, controller);
     const turn: Turn = {};
     turns.current.set(id, turn);
     ++checkpoints.current;
     setError('');
     setState(s => s && { ...s, active: [...s.active, id] });
     try {
-      const response = await fetch(`/api/trees/${id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state?.csrf ?? '' }, body: JSON.stringify({ text }) });
+      const response = await fetch(`/api/trees/${id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state?.csrf ?? '' }, body: JSON.stringify({ text }), signal: controller.signal });
+      if (removed.current.has(id)) return;
       if (!response.ok) throw new Error((await response.json()).error);
       setDrafts(d => ({ ...d, [id]: '' }));
       const reader = response.body!.getReader(), decoder = new TextDecoder();
@@ -343,10 +430,11 @@ export default function ChatPage() {
           const frame = buffer.slice(0, end); buffer = buffer.slice(end + 2);
           if (!frame.startsWith('data: ')) continue;
           const event = JSON.parse(frame.slice(6));
+          if (removed.current.has(id)) continue;
           if (event.type === 'error' && selected.current === id) setError(event.error);
           if (event.type === 'saved') {
             turn.user = event.user;
-            const title: string = event.title;
+            const title: string = renamed.current.get(id) ?? event.title;
             setTree(t => t?.id === id ? { ...t, title } : t);
             setState(s => s && { ...s, trees: s.trees.map(t => t.id === id ? { ...t, title } : t) });
             turn.reply = { id: event.id, role: 'assistant', text: '', status: 'streaming' };
@@ -363,16 +451,19 @@ export default function ChatPage() {
         if (result.done) break;
       }
     } catch (e) {
+      if (removed.current.has(id)) return;
       // The composer clears itself on submit; give back a question the server never saved.
       if (!turn.user) setDrafts(d => ({ ...d, [id]: d[id] || text }));
       if (selected.current === id) setError((e as Error).message);
     }
     finally {
+      streams.current.delete(id);
+      if (removed.current.has(id)) return;
       const version = request.current;
       try {
         const saved = await api(`/api/trees/${id}`);
         if (selected.current === id && request.current === version) { ++checkpoints.current; setTree(saved); }
-      } catch { if (selected.current === id) setError('Connection lost. Reload to recover saved messages.'); }
+      } catch { if (selected.current === id && !removed.current.has(id)) setError('Connection lost. Reload to recover saved messages.'); }
       finally {
         turns.current.delete(id);
         await refresh().catch(() => { if (selected.current === id) setError('Connection lost. Reload to recover saved messages.'); });
@@ -408,6 +499,7 @@ export default function ChatPage() {
     { label: 'Expand all', isDisabled: !actions, onClick: actions?.expand },
     { label: 'Collapse all', isDisabled: !actions, onClick: actions?.collapse },
     { label: 'Keep current branch', isDisabled: !actions?.canKeep, onClick: actions?.keep },
+    { label: tree?.branch ? 'Delete branch…' : 'Delete chat…', isDisabled: !tree, onClick: () => tree && askDelete(tree.id, document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]')) },
     { label: 'Help', onClick: () => { setMobileNav(true); setHelp(true); } },
   ]} />;
   return <VStack gap={0} style={{ height: '100dvh' }}>
@@ -417,7 +509,15 @@ export default function ChatPage() {
         {help && <VStack gap={2}><Heading level={2}>Map help</Heading><Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text><Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them in Settings below. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text><Button label="Close help" variant="ghost" onClick={() => setHelp(false)} /></VStack>}
         <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()}>{busy ? 'Opening…' : 'New chat'}</Button>
         <nav aria-label="Saved learning trees"><VStack gap={2}>
-          {state?.trees.filter(t => !t.parent).map(t => <Button label={t.title} key={t.id} variant={root === t.id ? 'secondary' : 'ghost'} aria-current={root === t.id ? 'page' : undefined} onClick={() => openTree(t.id)}>{t.title}</Button>)}
+          {state?.trees.filter(t => !t.parent).map(t => <VStack key={t.id} gap={1}>
+            {renaming?.id === t.id && renaming.place === 'sidebar' ? <TitleEditor title={t.title} save={title => rename(t.id, title)} cancel={finishRename} /> : <HStack gap={1} vAlign="center">
+              <Button className="saved-chat-title" label={t.title} variant={root === t.id ? 'secondary' : 'ghost'} aria-current={root === t.id ? 'page' : undefined} onClick={() => openTree(t.id)}>{t.title}</Button>
+              <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} id={`chat-actions-${t.id}`} label={`Actions for ${t.title}`} icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />} items={[
+                { label: 'Rename chat', onClick: () => setRenaming({ id: t.id, place: 'sidebar' }) },
+                { label: 'Delete chat…', onClick: () => askDelete(t.id, document.getElementById(`chat-actions-${t.id}`)) },
+              ]} />
+            </HStack>}
+          </VStack>)}
           {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
         </VStack></nav>
         <VStack gap={3}>
@@ -445,7 +545,7 @@ export default function ChatPage() {
           <header className="chat-header"><VStack padding={3} gap={1}>
             <HStack gap={1} vAlign="center">
               <VStack gap={0} className="chat-title">
-                <Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading>
+                {renaming?.id === tree.id && renaming.place === 'header' ? <TitleEditor key={tree.id} title={tree.title} save={title => rename(tree.id, title)} cancel={finishRename} /> : <Button id="rename-conversation" className="rename-title" label="Rename conversation" tooltip={`Rename ${tree.title}`} variant="ghost" size="sm" onClick={() => setRenaming({ id: tree.id, place: 'header' })}><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading></Button>}
                 <Text type="supporting" color="secondary">{modelLabel(tree)} · saved automatically</Text>
               </VStack>
               <DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" renderTrigger={props => <IconButton {...props} label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(tree)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel} isLoading={savingModel === tree.id} />}>
@@ -495,5 +595,6 @@ export default function ChatPage() {
         </section>
       </main>
     </HStack>
+    <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
 }

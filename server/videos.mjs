@@ -29,8 +29,8 @@ registerRoot(() => <Composition id="Video" component={Video} width={640} height=
 `;
 
 // Bundling and Chromium run generated code: no network, an empty home, read-only system, and only this workspace writable.
-// The learner's home and app-data directory are hidden; the workspace lives at <app data>/video-work/<attempt>.
-export const SANDBOX = workspace => ['--ro-bind', '/', '/', '--tmpfs', homedir(), '--tmpfs', resolve(workspace, '../..'), '--tmpfs', '/tmp', '--tmpfs', '/run/user',
+// The learner's home and app-data directory are hidden; attempts are grouped by their owning artifact.
+export const SANDBOX = workspace => ['--ro-bind', '/', '/', '--tmpfs', homedir(), '--tmpfs', resolve(workspace, '../../..'), '--tmpfs', '/tmp', '--tmpfs', '/run/user',
   '--ro-bind', join(REPO, 'node_modules'), join(REPO, 'node_modules'), '--ro-bind', join(REPO, 'server', 'video-render.mjs'), join(REPO, 'server', 'video-render.mjs'),
   '--bind', workspace, workspace, '--chdir', workspace, '--unshare-all', '--die-with-parent', '--new-session', '--dev', '/dev', '--proc', '/proc', '--clearenv',
   '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'HOME', workspace, '--setenv', 'TMPDIR', join(workspace, 'tmp')];
@@ -77,27 +77,38 @@ export async function validateOutput(workspace, output) {
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
 
 export async function generateVideo({ provider, selection, store, dir, artifact, signal, timeout, render = sandboxRender, onPhase = () => {} }) {
-  const workspace = join(dir, 'video-work', artifact.attempt);
+  const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
   const controller = new AbortController(), items = new Map();
   const timer = setTimeout(() => controller.abort(new Error('Video composition timed out.')), timeout ?? 120000);
   const cancel = () => controller.abort(signal.reason);
   signal.addEventListener('abort', cancel, { once: true });
+  let rejectAbort;
+  const aborted = new Promise((_, reject) => {
+    rejectAbort = () => reject(controller.signal.reason);
+    controller.signal.addEventListener('abort', rejectAbort, { once: true });
+  });
+  // Observe rejection even when cancellation arrives during filesystem work or rendering.
+  aborted.catch(() => {});
+  if (signal.aborted) cancel();
   let status;
   try {
+    if (controller.signal.aborted) throw controller.signal.reason;
     await mkdir(join(workspace, 'out'), { recursive: true, mode: 0o700 });
     await mkdir(join(workspace, 'tmp'), { recursive: true, mode: 0o700 });
     try {
-      await provider.generate({ provider: selection.provider, model: selection.model, thread: null, instructions: WORKER_INSTRUCTIONS }, artifact.input, event => {
+      await Promise.race([aborted, provider.generate({ provider: selection.provider, model: selection.model, thread: null, instructions: WORKER_INSTRUCTIONS }, artifact.input, event => {
+        if (controller.signal.aborted) return;
         if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
         if (event.type === 'status') status = event.status;
         if ([...items.values()].reduce((n, v) => n + v.length, 0) > MAX_SOURCE * 2) controller.abort(new Error('Video composition exceeds 64 KiB.'));
-      }, () => {}, controller.signal);
+      }, () => {}, controller.signal)]);
     } catch { if (!controller.signal.aborted) throw new Error('Video provider failed to generate a composition.'); }
     if (controller.signal.aborted) throw controller.signal.reason;
     if (status !== 'completed') throw new Error('Video composition did not complete.');
     const { source, description } = videoSource([...items.values()].join('\n\n'));
     await writeFile(join(workspace, 'Video.tsx'), source);
     await writeFile(join(workspace, 'index.tsx'), ENTRY);
+    if (controller.signal.aborted) throw controller.signal.reason;
     const output = join(workspace, 'out', `${randomUUID()}.mp4`);
     clearTimeout(timer);
     onPhase('rendering');
@@ -119,6 +130,7 @@ export async function generateVideo({ provider, selection, store, dir, artifact,
   finally {
     clearTimeout(timer);
     signal.removeEventListener('abort', cancel);
+    controller.signal.removeEventListener('abort', rejectAbort);
     // Keep the composition as private work; drop the large bundle and any unpublished output.
     await Promise.all(['bundle', 'tmp', 'out', '.remotion'].map(name => rm(join(workspace, name), { recursive: true, force: true })));
   }

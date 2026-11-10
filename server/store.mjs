@@ -46,6 +46,7 @@ export class Store {
     if (!columns.includes('layout')) this.db.exec('ALTER TABLE trees ADD COLUMN layout TEXT');
     if (!columns.includes('working_provider')) this.db.exec('ALTER TABLE trees ADD COLUMN working_provider TEXT; UPDATE trees SET working_provider=provider');
     if (!columns.includes('working_thread')) this.db.exec('ALTER TABLE trees ADD COLUMN working_thread TEXT');
+    if (!columns.includes('title_renamed')) this.db.exec('ALTER TABLE trees ADD COLUMN title_renamed INTEGER NOT NULL DEFAULT 0');
   }
   list() {
     return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
@@ -73,12 +74,36 @@ export class Store {
     } catch (e) { this.db.exec('ROLLBACK'); throw e; }
   }
   position(id, x, y) { this.db.prepare('UPDATE trees SET x=?,y=? WHERE id=?').run(x, y, id); }
+  rename(id, title) { this.db.prepare('UPDATE trees SET title=?,title_renamed=1 WHERE id=?').run(title, id); }
+  descendants(id) {
+    return this.db.prepare(`WITH RECURSIVE subtree(id) AS (SELECT id FROM trees WHERE id=? UNION SELECT child FROM branches JOIN subtree ON parent=subtree.id) SELECT id FROM subtree`).all(id).map(t => t.id);
+  }
+  remove(root, id, stageFiles) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      if (this.tree(root)?.branch || !this.descendants(root).includes(id)) throw new Error('Conversation does not belong to this chat.');
+      const parent = this.tree(id).branch?.parent ?? null, deleted = this.descendants(id);
+      const artifacts = deleted.flatMap(conversation => this.tree(conversation).artifacts);
+      for (const conversation of deleted) this.db.prepare('DELETE FROM artifacts WHERE conversation=?').run(conversation);
+      for (const conversation of deleted) this.db.prepare('DELETE FROM branches WHERE child=?').run(conversation);
+      for (const conversation of deleted) this.db.prepare('DELETE FROM messages WHERE tree=?').run(conversation);
+      for (const conversation of deleted) this.db.prepare('DELETE FROM trees WHERE id=?').run(conversation);
+      if (parent) {
+        const layout = this.list().find(t => t.id === root)?.layout;
+        if (layout) this.db.prepare('UPDATE trees SET layout=? WHERE id=?').run(JSON.stringify({ ...layout, folded: layout.folded.filter(f => !deleted.includes(f)), selected: deleted.includes(layout.selected) ? parent : layout.selected }), root);
+      }
+      stageFiles(artifacts);
+      this.db.exec('COMMIT');
+      return { deleted, parent };
+    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
+  }
   tree(id) {
     const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
     return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status FROM messages WHERE tree=? ORDER BY seq').all(id), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id) };
   }
   artifact(conversation, id) { return this.db.prepare('SELECT * FROM artifacts WHERE conversation=? AND id=?').get(conversation, id); }
+  hasArtifact(id) { return !!this.db.prepare('SELECT 1 FROM artifacts WHERE id=?').get(id); }
   // Videos keep their frozen task input and a server-issued attempt; their composition source stays in the job workspace.
   pendingArtifact(conversation, message, title, description, kind = 'mermaid', input = null) {
     const id = randomUUID();
@@ -133,10 +158,10 @@ export class Store {
       : 'UPDATE trees SET model=working_model,thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END,provider=COALESCE(working_provider,provider) WHERE id=?').run(id);
   }
   // The first question of an unstarted root replaces its placeholder title, using the branch-title rule.
-  unstarted() { return this.db.prepare("SELECT t.id FROM trees t WHERE t.title='New chat' AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=t.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=t.id) ORDER BY t.created DESC LIMIT 1").get()?.id; }
+  unstarted() { return this.db.prepare("SELECT t.id FROM trees t WHERE t.title='New chat' AND t.title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=t.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=t.id) ORDER BY t.created DESC LIMIT 1").get()?.id; }
   message(tree, role, text, status) {
     const id = randomUUID();
-    if (role === 'user') this.db.prepare("UPDATE trees SET title=? WHERE id=? AND title='New chat' AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=trees.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=trees.id)").run(text.trim().slice(0, 200), tree);
+    if (role === 'user') this.db.prepare("UPDATE trees SET title=? WHERE id=? AND title='New chat' AND title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=trees.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=trees.id)").run(text.trim().slice(0, 200), tree);
     this.db.prepare('INSERT INTO messages(id,tree,role,text,status) VALUES(?,?,?,?,?)').run(id, tree, role, text, status);
     return id;
   }
