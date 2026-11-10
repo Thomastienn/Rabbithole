@@ -139,19 +139,33 @@ if (process.argv[2] === '--serve') {
     assert.equal(await ev(`document.activeElement?.dataset.artifact`), tall.id);
     assert.equal(await ev(`getComputedStyle(document.activeElement).outlineStyle`), 'solid');
     await b('press', 'Tab');
-    assert.ok(await ev(`document.activeElement?.classList.contains('diagram-viewport')`));
-    await b('press', 'ArrowDown');
-    await wait(`document.querySelector(${JSON.stringify(card(tall.id) + ' .diagram-viewport')}).scrollTop>0`);
+    assert.ok(await ev(`document.activeElement?.classList.contains('diagram-open')`));
+    for (const key of ['Enter', 'Space']) {
+      await b('press', key);
+      await wait(`!!document.querySelector('dialog[open] [aria-pressed]')`);
+      await b('press', 'Escape');
+      await wait(`!document.querySelector('dialog[open]') && document.activeElement?.classList.contains('diagram-open')`);
+    }
+    await ev(`document.querySelector(${JSON.stringify(card(wide.id) + ' .diagram-open')}).click()`);
+    await wait(`!!document.querySelector('dialog[open] [aria-pressed="false"]')`);
+    await ev(`document.querySelector('dialog[open] [aria-pressed]').focus()`);
+    await b('press', 'Enter');
+    await wait(`!!document.querySelector('dialog[open] [aria-pressed="true"]')`);
+    await b('press', 'ArrowRight');
+    assert.ok(await ev(`[...document.querySelectorAll('.focused-chat .diagram-open img')].every(i=>i.width<=i.naturalWidth+0.5)`), 'desktop: small drawings stay at natural size');
+    mkdirSync('.impeccable/review', { recursive: true });
+    await b('screenshot', resolve('.impeccable/review/diagram-enlarged.png'));
+    await b('press', 'Escape');
+    if (await ev(`!!document.querySelector('dialog[open]')`)) await b('press', 'Escape');
+    await wait(`!document.querySelector('dialog[open]')`);
+    await ev(`document.querySelector(${JSON.stringify(card(tall.id) + ' .diagram-open')}).focus()`);
     await b('press', 'Tab');
     assert.equal(await ev(`document.activeElement.textContent.trim()`), 'Mermaid source');
     await b('press', 'Enter');
     assert.equal(await ev(`document.activeElement.getAttribute('aria-expanded')`), 'true');
     await b('press', 'Space');
     assert.equal(await ev(`document.activeElement.getAttribute('aria-expanded')`), 'false');
-    await ev(`document.querySelector(${JSON.stringify(card(wide.id) + ' .diagram-viewport')}).focus()`);
-    await b('press', 'ArrowRight');
-    await wait(`document.querySelector(${JSON.stringify(card(wide.id) + ' .diagram-viewport')}).scrollLeft>0`);
-    pass('keyboard reaches card, visible focus, both scroll axes and source disclosure');
+    pass('keyboard reaches card, visible focus, enlarge by Enter/Space/click with zoom and pan, Esc returns focus, source disclosure');
 
     mkdirSync('.impeccable/review', { recursive: true });
     await ev(`document.querySelector(${JSON.stringify(card(tall.id))}).scrollIntoView({block:'start'})`);
@@ -166,7 +180,11 @@ if (process.argv[2] === '--serve') {
     await b('set', 'viewport', '390', '844');
     await ready(wide.id);
     assert.ok(await ev(`document.documentElement.scrollWidth<=innerWidth`));
-    assert.ok(await ev(`document.querySelector(${JSON.stringify(card(wide.id) + ' .diagram-viewport')}).scrollWidth > document.querySelector(${JSON.stringify(card(wide.id) + ' .diagram-viewport')}).clientWidth`));
+    // Fit: no card scrolls sideways and no drawing renders wider than its natural size.
+    assert.ok(await ev(`[...document.querySelectorAll('.focused-chat .diagram-card')].every(c=>c.scrollWidth<=c.clientWidth+1)`));
+    assert.ok(await ev(`[...document.querySelectorAll('.focused-chat .diagram-open img')].every(i=>i.width<=i.naturalWidth+0.5)`));
+    const [w, h, nw, nh] = await ev(`(i=>[i.width,i.height,i.naturalWidth,i.naturalHeight])(document.querySelector(${JSON.stringify(card(wide.id) + ' img')}))`);
+    assert.ok(w < nw && Math.abs(w * nh / nw - h) <= 1, `wide drawing scales down keeping aspect ratio: ${[w, h, nw, nh]}`);
     await ev(`document.querySelector(${JSON.stringify(card(wide.id))}).scrollIntoView({block:'center'})`);
     await b('screenshot', resolve('.impeccable/review/diagram-narrow.png'));
     pass('light/dark tokens rerender drawings; narrow layouts contain wide drawings', { light: { background: light.background, text: light.text }, dark });

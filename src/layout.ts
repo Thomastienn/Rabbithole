@@ -73,16 +73,18 @@ html { view-transition-name: none; }
 .reply-md .md-source-syntax { white-space: pre-wrap; font-family: monospace; }
 .diagram-card { align-self: stretch; min-width: 0; max-width: 100%; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
 .diagram-card h3 { font-size: var(--font-size-base); }
-.diagram-viewport { max-width: 100%; max-height: 24rem; overflow: auto; overscroll-behavior: contain; }
-.diagram-viewport img { display: block; max-width: none; }
+.diagram-open { display: block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.diagram-open img { display: block; max-width: 100%; height: auto; }
 .video-frame { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-element); background: var(--color-background-body); }
+/* Lightbox caps media at natural size; generated videos are small, so fill the viewer (contain keeps 16:9). */
+.astryx-lightbox video { width: 92vw; height: calc(100dvh - 8rem); }
 .video-frame:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
 .inherited-context { border: thin solid var(--color-border); border-radius: var(--radius-element); padding: var(--spacing-2) var(--spacing-3); }
 .inherited-body { margin: 0; display: grid; gap: var(--spacing-1); font-size: var(--font-size-sm); }
 .inherited-body dt { color: var(--color-text-secondary); font-weight: 500; margin-block-start: var(--spacing-2); }
 .inherited-body dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .diagram-source { max-height: 12rem; overflow: auto; margin: 0; padding: var(--spacing-2); background: var(--color-background-body); color: var(--color-text-primary); font-size: var(--font-size-sm); }
-.diagram-card:focus-visible, .diagram-viewport:focus-visible, .diagram-source:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
+.diagram-card:focus-visible, .diagram-open:focus-visible, .diagram-source:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
 .selection-action { position: absolute; z-index: 3; margin-top: var(--spacing-1); transform: translateX(-50%); animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, var(--spacing-1)); } }
 .passage-box { position: absolute; z-index: 3; width: min(100%, 28rem); transform: translateY(-100%); margin-top: calc(-1 * var(--spacing-1)); box-shadow: var(--shadow-low); }

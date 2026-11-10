@@ -1,9 +1,9 @@
 // Browser fixture for TreeTutor-vm4.10: video status sequence, keyboard playback, no stolen focus or scroll, reload.
 // Synthetic tutor/worker providers; the composition is rendered for real in the bubblewrap sandbox. Needs `npm run build`.
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile, fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -161,6 +161,20 @@ if (process.argv[2] === '--serve') {
     assert.ok([' ', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Escape'].every(key => keys.keys.some(k => k.key === key)) && keys.keys.every(k => !k.prevented), JSON.stringify(keys.keys));
     assert.equal(keys.chatOpen, true);
     pass('keyboard: Tab reaches player; Space play/pause, ArrowRight seek, ArrowUp/Down volume, fullscreen button by Tab+Enter; app handlers never intercept', keys);
+
+    // Open large: a near full-screen viewer plays the same media; Esc closes it and focus returns to the button.
+    await ev(`${video}.pause()`);
+    await ev(`[...document.querySelectorAll(${JSON.stringify(card + ' button')})].find(b=>b.textContent.trim()==='Open large').focus()`);
+    await b('press', 'Enter');
+    await wait(`(v=>!!v && !v.paused && v.currentTime>0)(document.querySelector('dialog[open] video'))`);
+    const large = await ev(`(v=>({src:v.src===${video}.src,width:v.getBoundingClientRect().width>innerWidth*0.8,controls:v.controls}))(document.querySelector('dialog[open] video'))`);
+    assert.deepEqual(large, { src: true, width: true, controls: true });
+    mkdirSync('.impeccable/review', { recursive: true });
+    await b('screenshot', resolve('.impeccable/review/video-large.png'));
+    await b('press', 'Escape');
+    await wait(`!document.querySelector('dialog[open]') && document.activeElement?.textContent.trim()==='Open large'`);
+    assert.equal(await ev(`getComputedStyle(document.querySelector('.focused-chat')).display!=='none'`), true);
+    pass('Open large plays the video in a near full-screen viewer; Esc closes and returns focus', large);
 
     await openFromMap('Mutual exclusion');
     assert.equal(await ev(`document.querySelectorAll(${JSON.stringify(card)}).length`), 0);

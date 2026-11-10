@@ -690,7 +690,7 @@ export default function ChatPage() {
           onPointerMove={e => { if (!e.currentTarget.hasPointerCapture(e.pointerId)) return; const box = workspace.current!.getBoundingClientRect(); setChatWidth(clampChatWidth((box.right - e.clientX) / remPx(), box.width / remPx())); }}
           onDoubleClick={() => setChatWidth(resetChatWidth(workspaceWidth))}
           onKeyDown={e => { const next = keyChatWidth(shownChatWidth, e.key, workspaceWidth, e.shiftKey); if (next === undefined) return; e.preventDefault(); setChatWidth(next); }} />}
-        <section id="focused-chat" className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video')) { e.preventDefault(); returnToTree(); } }}>
+        <section id="focused-chat" className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video, dialog')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header className="chat-header"><VStack padding={3} gap={1}>
             <HStack gap={1} vAlign="center">
