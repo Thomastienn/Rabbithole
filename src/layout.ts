@@ -4,6 +4,11 @@ html { view-transition-name: none; }
 .trees { display: none; flex: 0 0 18rem; min-width: 0; overflow: auto; border-right: thin solid var(--color-border); background: var(--color-background-body); }
 .trees[data-open=true] { display: block; }
 .conversation { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.workspace[hidden], .knowledge-panel[hidden] { display: none; }
+.knowledge-panel { flex: 1; min-height: 0; overflow: auto; }
+.knowledge-content { max-width: 70rem; margin-inline: auto; overflow-wrap: anywhere; }
+.knowledge-content .astryx-list-item { min-width: 0; }
+.knowledge-content :focus-visible { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
 .tree-workspace { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; flex-direction: row; }
 .focused-chat, .overview { display: flex; flex: 1; min-width: 0; min-height: 0; flex-direction: column; }
 .overview { position: relative; background: var(--color-background-body); }

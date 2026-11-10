@@ -19,10 +19,11 @@ const graph = (question, known) => {
   if (question.includes('many concepts')) return { concepts: Array.from({ length: 300 }, (_, i) => ({ name: `Fixture concept number ${i} with a long name`, topics: ['Bulk'] })) };
   if (!question.includes('locks')) return {};
   // Without the known list, a second wording ('Peterson lock') would duplicate the concept.
-  const peterson = Object.values(known).flat().find(n => /peterson/i.test(n)) ?? (question.includes('again') ? 'Peterson lock' : "Peterson's algorithm");
+  const duplicate = question.includes('duplicate locks');
+  const peterson = duplicate ? 'Peterson lock' : Object.values(known).flat().find(n => /peterson/i.test(n)) ?? (question.includes('again') ? 'Peterson lock' : "Peterson's algorithm");
   const mutex = question.includes('again') ? 'MUTUAL EXCLUSION' : 'Mutual exclusion';
-  return { concepts: [{ name: peterson, topics: ['Concurrency'] }, { name: mutex, topics: ['Concurrency', 'operating systems'] }, { name: 'Orphan', topics: [] }, { name: '', topics: ['X'] }],
-    links: [{ from: peterson, to: mutex, kind: 'builds on' }, { from: mutex, to: 'Turn variable', kind: 'related' }, { from: mutex, to: mutex, kind: 'related' }, { from: peterson, to: mutex, kind: 'needs' }, ...(question.includes('again') ? [{ from: mutex, to: peterson, kind: 'related' }] : [])] };
+  return { concepts: [{ name: peterson, topics: duplicate ? ['Algorithms'] : ['Concurrency'] }, { name: mutex, topics: ['Concurrency', 'operating systems'] }, { name: 'Orphan', topics: [] }, { name: '', topics: ['X'] }],
+    links: [{ from: peterson, to: mutex, kind: 'builds on' }, { from: mutex, to: 'Turn variable', kind: 'related' }, { from: mutex, to: mutex, kind: 'related' }, { from: peterson, to: mutex, kind: 'needs' }, ...(question.includes('again') || duplicate ? [{ from: mutex, to: peterson, kind: 'related' }] : []), ...(duplicate ? [{ from: peterson, to: "Peterson's algorithm", kind: 'related' }] : [])] };
 };
 const delay = text => suggesting(text) && text.includes('slow suggestions') ? 1000 : 0;
 if (process.argv.includes('--output-format')) {

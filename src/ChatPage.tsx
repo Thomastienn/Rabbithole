@@ -10,6 +10,7 @@ import { TextArea } from '@astryxdesign/core/TextArea';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { Tab, TabList } from '@astryxdesign/core/TabList';
 import { Banner } from '@astryxdesign/core/Banner';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
@@ -19,6 +20,7 @@ import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
 import EndpointSettings from './EndpointSettings';
+import KnowledgePage from './KnowledgePage';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
 import { previewText } from './markdownText';
@@ -130,6 +132,7 @@ export default function ChatPage() {
   const [savingModel, setSavingModel] = useState<string>();
   const [modelMenuOpen, setModelMenuOpen] = useState(false), [openingModels, setOpeningModels] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [tab, setTab] = useState('learning');
   const [help, setHelp] = useState(false);
   const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'sidebar' }>();
   const [deletion, setDeletion] = useState<{ id: string; root: string; title: string; count: number; parent: string | null }>();
@@ -547,7 +550,11 @@ export default function ChatPage() {
     { label: 'Help', onClick: () => { setMobileNav(true); setHelp(true); } },
   ]} />;
   return <VStack gap={0} style={{ height: '100dvh' }}>
-    <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
+    <VStack gap={0} padding={2}><TabList value={tab} onChange={setTab} role="tablist" aria-label="Workspace" size="sm" hasDivider>
+      <Tab value="learning" label="Learning" panelId="learning-panel" id="learning-tab" />
+      <Tab value="knowledge" label="Knowledge" panelId="knowledge-panel" id="knowledge-tab" />
+    </TabList></VStack>
+    <HStack id="learning-panel" role="tabpanel" aria-labelledby="learning-tab" hidden={tab !== 'learning'} gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
       <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={mobileNav}><VStack padding={5} gap={5}>
         <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Your trees</Heading><IconButton label="Close learning trees" tooltip="Close" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => { setMobileNav(false); document.querySelector<HTMLButtonElement>(overview ? '[aria-label="Map menu"]' : '[aria-label="Model for next reply"]')?.focus(); }} /></HStack>
         {help && <VStack gap={2}><Heading level={2}>Map help</Heading><Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text><Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them in Settings below. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text><Text>In Settings → Connections, save one custom endpoint’s base URL and API key, test its model listing, or remove it. Its owner bills requests sent there. The saved key is never shown. In chat, open Model for next reply and use arrows and Enter to choose Claude, Codex or a custom endpoint model. Switching preserves the discussion and inherited context; children start with their parent’s choice. New chats default to Claude.</Text><Button label="Close help" variant="ghost" onClick={() => setHelp(false)} /></VStack>}
@@ -649,6 +656,9 @@ export default function ChatPage() {
         </section>
       </main>
     </HStack>
+    <main id="knowledge-panel" role="tabpanel" aria-labelledby="knowledge-tab" hidden={tab !== 'knowledge'} className="knowledge-panel">
+      {tab === 'knowledge' && <KnowledgePage api={api} activity={activeKey} />}
+    </main>
     <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
 }

@@ -124,6 +124,16 @@ export function createApp({ store, auth, provider, providers = { codex: provider
         for await (const chunk of req) { chunks.push(chunk); bytes += chunk.length; if (bytes > 100000) return json(res, 413, { error: 'Message too long. Shorten it and try again.' }); }
         let body;
         try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return json(res, 400, { error: 'Invalid request.' }); }
+        if (url.pathname === '/api/graph/correct' || url.pathname === '/api/graph/merge') {
+          const merging = url.pathname.endsWith('/merge');
+          const names = merging ? [body?.from, body?.into] : [body?.name];
+          if (names.some(n => typeof n !== 'string' || !n.trim()) || (!merging && !['known', 'unknown'].includes(body?.kind))) return json(res, 400, { error: merging ? 'Choose two different concepts to merge.' : 'Choose a concept and a familiarity correction.' });
+          const [name, into] = names.map(n => n.trim());
+          if (!store.concept(name) || (merging && !store.concept(into))) return json(res, 404, { error: 'Concept not found. Refresh Knowledge and try again.' });
+          if (merging && !store.mergeConcepts(name, into)) return json(res, 400, { error: 'Choose two different concepts to merge.' });
+          if (!merging) store.correct(name, body.kind);
+          return json(res, 200, store.graph());
+        }
         if (endpoint && ['/api/settings/endpoint', '/api/settings/endpoint/test', '/api/settings/endpoint/clear'].includes(url.pathname)) {
           if (url.pathname.endsWith('/test')) {
             try { await endpoint.models(); return json(res, 200, endpoint.status()); }
@@ -262,8 +272,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           if (typeof body.text !== 'string' || !body.text.trim()) return json(res, 400, { error: 'Enter a question.' });
           const controller = new AbortController();
           active.set(id, controller);
-          store.questionEvidence(id, body.text);
           const user = store.message(id, 'user', body.text, 'completed');
+          store.questionEvidence(id, body.text, user);
           const reply = store.message(id, 'assistant', '', 'streaming');
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };

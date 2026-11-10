@@ -1,0 +1,128 @@
+// Built-app keyboard and responsive checks over a seeded local graph and in-process provider fixture; no live model calls.
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { promisify } from 'node:util';
+import { execFile } from 'node:child_process';
+import { Store } from '../server/store.mjs';
+import { createApp } from '../server/app.mjs';
+
+const run = promisify(execFile), session = `knowledge-${process.pid}`;
+const b = async (...args) => (await run('agent-browser', ['--session', session, ...args])).stdout;
+const ev = async expression => JSON.parse(await b('eval', expression, '--json')).data.result;
+const wait = expression => b('wait', '--fn', `!!(${expression})`);
+const key = name => b('press', name);
+const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-knowledge-')), 'data.sqlite'));
+const root = store.create('Concurrency fixture');
+const message = store.message(root.id, 'assistant', 'A mutex guards shared state.', 'completed');
+const other = store.create('Other learning tree');
+const second = store.message(other.id, 'assistant', 'Mutual exclusion protects shared state.', 'completed');
+const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }] } });
+await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+const origin = `http://127.0.0.1:${app.server.address().port}`;
+const tab = name => `[role=tab][aria-controls=${name}-panel]`;
+async function reach(selector) {
+  for (let i = 0; i < 60; i++) {
+    if (await ev(`document.activeElement?.matches(${JSON.stringify(selector)})`)) return;
+    await key('Tab');
+  }
+  throw new Error(`Tab did not reach ${selector}`);
+}
+const group = name => `[role=group][aria-label="Corrections for ${name}"]`;
+const know = `${group('Mutex')} button:nth-of-type(1)`;
+const unknown = `${group('Mutex')} button:nth-of-type(2)`;
+const merge = `${group('Mutex')} button:nth-of-type(3)`;
+const steps = [], shots = resolve('.impeccable/review');
+mkdirSync(shots, { recursive: true });
+try {
+  await b('set', 'viewport', '1440', '1000');
+  await b('open', origin);
+  await b('set', 'media', 'light', 'reduced-motion');
+  await b('wait', tab('learning'));
+  await reach(tab('learning'));
+  await key('ArrowRight'); await key('Enter');
+  await wait(`document.querySelector('${tab('knowledge')}')?.getAttribute('aria-selected') === 'true'`);
+  await b('wait', '--text', 'No concepts yet');
+  assert.equal(await ev(`getComputedStyle(document.getElementById('learning-panel')).display`), 'none');
+  steps.push('Keyboard reaches Knowledge with ArrowRight/Enter; empty state explains how concepts appear; learning workspace is hidden');
+
+  store.addGraph({ concepts: [{ name: 'Mutex', topics: ['Concurrency'] }, { name: 'Mutual exclusion', topics: ['Concurrency', 'Operating systems'] }], links: [{ from: 'Mutex', to: 'Mutual exclusion', kind: 'related' }] }, message);
+  store.addGraph({ concepts: [{ name: 'Mutex', topics: ['Concurrency'] }], links: [] }, second);
+  await key('Tab');
+  await wait(`document.activeElement?.textContent === 'Refresh Knowledge'`);
+  await key('Enter');
+  await wait(`document.querySelectorAll('[data-concept]').length === 3`);
+  assert.equal(await ev(`document.querySelector('#knowledge-panel').innerText.includes('met in 2 replies')`), true);
+  await reach(know);
+  assert.equal(await ev(`document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), true);
+  await key('Enter');
+  await wait(`document.querySelector('${know}')?.getAttribute('aria-pressed') === 'true'`);
+  await key('Tab');
+  assert.equal(await ev(`document.activeElement.matches(${JSON.stringify(unknown)})`), true);
+  await key('Space');
+  await wait(`document.querySelector('${unknown}')?.getAttribute('aria-pressed') === 'true'`);
+  assert.equal(store.graph().concepts.find(c => c.name === 'Mutex').familiarity, 0);
+  steps.push('Rows show multi-topic concepts and evidence across two learning trees; both corrections activate with Enter/Space and have visible focus');
+
+  await key('Tab');
+  await key('Enter');
+  await b('wait', 'dialog[open]');
+  await key('Escape');
+  await wait(`!document.querySelector('dialog[open]') && document.activeElement.matches(${JSON.stringify(merge)})`);
+  await key('Enter');
+  await b('wait', 'dialog[open]');
+  await reach('dialog[open] button[aria-expanded]');
+  await key('Enter');
+  await b('keyboard', 'type', 'Mutual exclusion');
+  await key('ArrowDown');
+  await key('Enter');
+  await wait(`document.querySelector('dialog[open] button[aria-expanded]')?.textContent.includes('Mutual exclusion') && document.querySelector('dialog[open] button[aria-expanded]')?.getAttribute('aria-expanded') === 'false'`);
+  await b('screenshot', join(shots, 'knowledge-merge.png'));
+  await reach('dialog[open] button[type=submit]');
+  // A failed storage write leaves the dialog and selected target available for retry.
+  store.db.exec('CREATE TRIGGER reject_merge BEFORE DELETE ON concepts BEGIN SELECT RAISE(ABORT, \'fixture failure\'); END;');
+  await key('Enter');
+  await wait(`document.querySelector('dialog[open] [role=alert]')`);
+  assert.equal(store.graph().concepts.length, 2);
+  store.db.exec('DROP TRIGGER reject_merge');
+  await reach('dialog[open] button[type=submit]');
+  await key('Enter');
+  await wait(`!document.querySelector('dialog[open]') && document.activeElement?.dataset.concept === 'Mutual exclusion'`);
+  assert.equal(store.graph().concepts.length, 1);
+  assert.equal(store.graph().concepts[0].evidence.met, 2);
+  steps.push('Merge dialog opens/selects/submits entirely by keyboard; Escape restores trigger focus; a failed write retains the target for retry; successful merge focuses the kept concept');
+
+  // Return to the learning workspace without losing the selected conversation, draft or map transform.
+  await reach(tab('knowledge'));
+  await key('ArrowLeft'); await key('Enter');
+  await wait(`document.querySelector('${tab('learning')}')?.getAttribute('aria-selected') === 'true'`);
+  await b('find', 'role', 'button', 'click', '--name', 'Open Other learning tree', '--exact');
+  await b('wait', '[aria-label="Your question"]');
+  await b('find', 'label', 'Your question', 'fill', 'Keep this draft');
+  const transform = await ev(`document.querySelector('.react-flow__viewport').getAttribute('style')`);
+  await reach(tab('learning'));
+  await key('End'); await key('Enter');
+  await wait(`document.getElementById('learning-panel').hidden`);
+  await key('Home'); await key('Enter');
+  await wait(`!document.getElementById('learning-panel').hidden`);
+  assert.equal(await ev(`document.querySelector('.focused-chat [role=textbox]').textContent`), 'Keep this draft');
+  assert.equal(await ev(`document.querySelector('.react-flow__viewport').getAttribute('style')`), transform);
+  steps.push('Home/End + Enter switches tabs; returning preserves the open conversation, composer draft and map transform');
+
+  await key('End'); await key('Enter');
+  await b('wait', '[data-concept="Mutual exclusion"]');
+  await b('set', 'viewport', '1440', '1000');
+  await b('screenshot', join(shots, 'knowledge-desktop.png'));
+  await b('set', 'viewport', '390', '844');
+  await b('screenshot', join(shots, 'knowledge-mobile.png'));
+  const widths = await ev(`({ viewport: innerWidth, document: document.documentElement.scrollWidth, panel: document.getElementById('knowledge-panel').scrollWidth, outside: [...document.querySelectorAll('body *')].map(e => ({tag: e.tagName, cls: e.className, left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right})).filter(r => r.left < -1 || r.right > innerWidth + 1).slice(0, 12) })`);
+  assert.ok(widths.document <= widths.viewport && widths.panel <= widths.viewport, 'no horizontal overflow at phone width: ' + JSON.stringify(widths));
+  await b('reload');
+  await b('wait', tab('learning'));
+  await reach(tab('learning')); await key('ArrowRight'); await key('Enter');
+  await b('wait', '--text', 'You marked this as not understood');
+  steps.push('Desktop/phone layouts fit; merged evidence and correction survive page reload');
+  console.log(JSON.stringify({ pass: true, steps, screenshots: ['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)) }, null, 2));
+} catch (error) { console.error({ steps, snapshot: await b('snapshot', '-i').catch(() => '') }); throw error; }
+finally { await b('close').catch(() => {}); await app.stop(); store.close(); }
