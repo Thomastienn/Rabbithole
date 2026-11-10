@@ -175,3 +175,27 @@ test('untrusted HTML, link and math input stays inert and readable', () => {
   assert.match(doc.body.textContent, /<img src=x onerror=alert\(1\)>/);
   assert.deepEqual([...doc.querySelectorAll('a')].map(a => [a.href, a.target, a.rel]), [['https://example.com/', '_blank', 'noopener noreferrer']]);
 });
+
+test('suggestion underlines cover exactly their raw passages, one Tab stop each, and keep selection offsets', () => {
+  const passages = ['😀', 'x = 1', 'first item\n- second **item', 'nst a = 1;\nlet'];
+  const first = raw.indexOf('same'), second = raw.indexOf('same', first + 1);
+  const spans = [{ start: second, end: second + 4 }, ...passages.map(p => ({ start: raw.indexOf(p), end: raw.indexOf(p) + p.length }))];
+  const body = dom(renderToStaticMarkup(h('div', null, renderMarkdown(raw, undefined, spans)))).getElementById('r');
+  const pieces = [...body.querySelectorAll('u.suggestion')];
+  for (const span of spans) {
+    const inside = pieces.filter(u => +u.dataset.o >= span.start && +u.dataset.e <= span.end);
+    // Pieces join back to the passage, minus only hidden syntax such as list markers and delimiters.
+    assert.equal(Math.min(...inside.map(u => +u.dataset.o)), span.start);
+    assert.equal(Math.max(...inside.map(u => +u.dataset.e)), span.end);
+    for (const u of inside) assert.equal(u.textContent, raw.slice(+u.dataset.o, +u.dataset.e));
+    assert.equal(inside.filter(u => u.tabIndex === 0).length, 1, 'one Tab stop per underline');
+    assert.match(inside.find(u => u.tabIndex === 0).getAttribute('aria-label'), /^Suggested passage: /);
+  }
+  assert.equal(pieces.filter(u => u.tabIndex === 0).length, spans.length);
+  // The repeated phrase underlines its second occurrence only.
+  assert.deepEqual(pieces.filter(u => u.textContent === 'same').map(u => +u.dataset.o), [second]);
+  assert.equal(body.querySelector('[aria-label="Suggested passage: first item second **item"]')?.textContent, 'first item');
+  // Manual selection over underlined text still maps to the same raw slice.
+  assert.equal(raw.slice(...Object.values(select(body.ownerDocument, ['x = 1', 0, 0], ['x = 1', 0, 5]))), 'x = 1');
+  assert.equal(raw.slice(...Object.values(select(body.ownerDocument, ['😀', 0, 0], ['😀', 0, 2]))), '😀');
+});

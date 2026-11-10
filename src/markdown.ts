@@ -5,8 +5,8 @@ import katex from 'katex';
 import { tokenize } from '@astryxdesign/core/CodeBlock';
 import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
-import { parse, type MarkdownNode } from './markdownText.ts';
-export { plainText } from './markdownText.ts';
+import { parse, plainText, type MarkdownNode } from './markdownText.ts';
+export { plainText };
 
 type Span = { start: number; end: number };
 type Run = Span & { value: string; atomic?: boolean };
@@ -54,14 +54,24 @@ function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
   });
 }
 
-export function renderMarkdown(raw: string, reveal?: Span): ReactNode {
+// Underlines are drawn on text leaves; the first piece of each is its single Tab stop.
+// shortcut: a passage covering only hidden syntax or math draws nothing; extend if suggestions target those.
+export function renderMarkdown(raw: string, reveal?: Span, underlines: Span[] = []): ReactNode {
   let revealed = 0;
+  const stops = new Set<number>();
   const hit = (s: number, e: number) => !!reveal && s < reveal.end && e > reveal.start;
+  const split = (attrs: object, s: number, e: number, cuts: number[], className?: string) => h(Text, { ...attrs, type: 'inherit', children: [s, ...cuts, e].flatMap((a, i, all) => all[i + 1] > a ? [leaf({ start: a, end: all[i + 1], value: raw.slice(a, all[i + 1]) }, className)] : []) });
   const leaf = (run: Run, className?: string): ReactNode => {
     const { start: s, end: e, value, atomic } = run;
     const attrs = { key: s, 'data-o': String(s), 'data-e': String(e), ...(atomic && { 'data-x': '' }), className };
     if (hit(s, e) && (atomic || reveal!.start <= s && reveal!.end >= e)) { revealed++; return h('mark', { ...attrs, tabIndex: -1, 'aria-label': 'Source passage' }, value); }
-    if (hit(s, e)) return h(Text, { ...attrs, type: 'inherit', children: [s, Math.max(s, reveal!.start), Math.min(e, reveal!.end), e].flatMap((a, i, cuts) => cuts[i + 1] > a ? [leaf({ start: a, end: cuts[i + 1], value: raw.slice(a, cuts[i + 1]) }, className)] : []) });
+    if (hit(s, e)) return split(attrs, s, e, [Math.max(s, reveal!.start), Math.min(e, reveal!.end)], className);
+    const u = underlines.find(u => s < u.end && e > u.start);
+    if (u && !atomic && (u.start > s || u.end < e)) return split(attrs, s, e, [Math.max(s, u.start), Math.min(e, u.end)], className);
+    if (u) {
+      const stop = !stops.has(u.start) && stops.add(u.start);
+      return h('u', { ...attrs, className: className ? `suggestion ${className}` : 'suggestion', ...(stop && { tabIndex: 0, role: 'button', 'aria-label': `Suggested passage: ${plainText(raw.slice(u.start, u.end)) || raw.slice(u.start, u.end)}` }) }, value);
+    }
     return h(Text, { ...attrs, type: 'inherit', children: value });
   };
   const tree = parse(raw), definitions = new Map<string, MarkdownNode>();

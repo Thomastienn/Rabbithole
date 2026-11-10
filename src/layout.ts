@@ -37,6 +37,8 @@ html { view-transition-name: none; }
 .reply-md th { background: var(--color-background-body); font-weight: 600; }
 .reply-md math[display=block] { padding-block: var(--spacing-2); max-width: 100%; overflow-x: auto; }
 .reply-md [data-reveal] { background: var(--color-background-blue); color: var(--color-text-primary); }
+.reply-md u.suggestion { text-decoration: underline dotted var(--color-text-secondary); text-decoration-thickness: from-font; text-underline-offset: var(--spacing-1); }
+.reply-md u.suggestion:focus-visible { outline: thin solid var(--color-text-primary); outline-offset: var(--spacing-1); border-radius: var(--radius-element); }
 .reply-md .md-source-syntax { white-space: pre-wrap; font-family: monospace; }
 .diagram-card { align-self: stretch; min-width: 0; max-width: 100%; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
 .diagram-card h3 { font-size: var(--font-size-base); }

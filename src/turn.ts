@@ -10,6 +10,16 @@ export function replyUsageLine(reply: Usage | null, suggestion?: Usage | null) {
   if (!reply) return `Reply usage unavailable · suggestions: ${usageLine(suggestion)}`;
   return `${usageLine({ input: reply.input + suggestion.input, output: reply.output + suggestion.output, cacheRead: reply.cacheRead + suggestion.cacheRead })}, including suggestions`;
 }
+// Underline ranges use the same raw UTF-16 offsets as manual selection; only exact, non-overlapping slices draw.
+export function underlineRanges(text: string, suggestions?: Suggestions) {
+  if (suggestions?.status !== 'ready') return [];
+  let end = 0;
+  return [...suggestions.passages].sort((a, b) => a.start - b.start).filter(p => {
+    const ok = p.start >= end && p.end > p.start && p.end <= text.length && text.slice(p.start, p.end) === p.text;
+    if (ok) end = p.end;
+    return ok;
+  }).map(({ start, end }) => ({ start, end }));
+}
 export type Turn = { user?: Message; reply?: Message; artifacts?: Artifact[] };
 
 // Reconcile saved checkpoints with the latest events for this conversation only.
