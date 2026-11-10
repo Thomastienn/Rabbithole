@@ -46,6 +46,12 @@ In TreeTutor, open **Map menu → Settings → Continue with ChatGPT** and appro
 
 Use the compact model button in the chat header to select a provider and model for that conversation. Switching keeps the saved discussion and passes it to the new provider in a fresh session. A failed reply restores the last working selection. Children start with their parent's provider and model.
 
+**Custom endpoint (optional):** Open **Map menu → Settings → Connections**. Enter one OpenAI-compatible **Base URL** (the API root including its path prefix, such as `http://127.0.0.1:8080/v1`) and **API key**, then **Save**. Use HTTPS for remote endpoints. Saving refreshes the model catalogue without changing the conversation's provider. **Test connection** checks the saved endpoint's model listing without sending a chat message; it does not prove every model can answer. Save URL/key changes before testing. Enter a key each time you save; the password field clears after the action and when settings close, and never displays a saved key.
+
+Choose a model from the third **Custom endpoint** group in **Model for next reply**. An unconfigured or failing endpoint offers **Custom endpoint settings** so you can add it, correct the URL/key or test again. Switching among the endpoint, Claude and Codex keeps visible history and fixed inherited context, including in nested branches and after restart. New chats still default to Claude. **Remove** clears the saved URL/key; saved discussions remain, and you must configure the endpoint again or choose another provider to continue those chats.
+
+Requests, including discussion and inherited context, go to the selected endpoint and are billed by its owner. Its operator controls remote retention and billing. The key stays in the local owner-only `openai-endpoint.json`, separate from learning trees, and is never returned by the server or used for Claude/Codex. See [the endpoint contract](docs/custom-endpoint.md) and [fixture verification](docs/verification/custom-endpoint-settings.md).
+
 ## Your learning journey
 
 1. Choose **New chat**. Its map opens with one root conversation and a chat panel. Ask about a topic; the first question becomes its title.
@@ -69,6 +75,7 @@ Replies support formatted text, code, math and Mermaid diagrams. Requested video
 | Open a focused box | Enter / Space |
 | Zoom and fit | Tab to minus, plus or **Fit tree**, then Enter |
 | Fold branches, select a model, expand/collapse chat | Tab to the labeled control, then Enter |
+| Configure or repair a custom endpoint | **Map menu → Settings**, Tab to Base URL/API key, then Save, Test connection or Remove; the model menu's **Custom endpoint settings** focuses Base URL directly |
 | Select an exact passage | Tab to **Select passage in tutor reply N**, activate it, then hold Shift and use arrows in **Select tutor passage**; Tab to **Ask about selection** |
 | Cancel passage selection / return from chat to map | Escape (close the current selection or form first) |
 | Stop the selected conversation's reply | Tab to **Stop**, then Enter |
@@ -79,7 +86,7 @@ Optional **Settings → Vim canvas bindings** is off by default. With the map or
 
 Startup prints the absolute **Data directory**. By default it is `$XDG_DATA_HOME/treetutor`, or `~/.local/share/treetutor` when XDG_DATA_HOME is unset. Set `TREETUTOR_DATA_DIR` before starting to use another directory. Only one TreeTutor process may use a data directory at a time.
 
-`trees.sqlite` holds trees, original messages, fixed inherited context, positions, layouts and artifact metadata. Videos and workspaces live alongside it. Files are unencrypted; new directories and database/credential files are owner-only. TreeTutor stores its ChatGPT OAuth connection here in `chatgpt.json`; its isolated Codex home and sessions also live here. Claude manages its own sign-in and sessions outside this directory. Keep backups private too.
+`trees.sqlite` holds trees, original messages, fixed inherited context, positions, layouts and artifact metadata. Videos and workspaces live alongside it. Files are unencrypted; new directories and database/credential files are owner-only. TreeTutor stores its ChatGPT OAuth connection here in `chatgpt.json`; its isolated Codex home and sessions also live here. An optional endpoint's URL/key live in `openai-endpoint.json` (mode `0600`), never in SQLite. Claude manages its own sign-in and sessions outside this directory. Keep backups private too.
 
 Before upgrading the source, stop TreeTutor and make a full directory backup. After replacing the source, run `npm ci --include=dev` to refresh dependencies, then `npm start`. Do not upgrade a running instance. There is no auto-update.
 
@@ -106,9 +113,9 @@ To restore only an automatic migration backup, stop the server, move the current
 
 TreeTutor serves the browser from loopback and bundles its fonts locally. It adds no telemetry or hosted storage. Opening saved trees does not require inference; startup runs local CLI/version/sign-in checks. The provider CLIs can perform their own authentication or other network activity, so this is not an enforced offline mode.
 
-A question sends the conversation's content, inherited branch snapshot and selected passage to the selected provider (Anthropic or OpenAI). Branch preparation sends relevant parent history for summarization. Switching providers shares the saved discussion with the new provider. Diagram/video generation sends a separate bounded task and relevant excerpts to that provider; generation working messages and source stay out of the tutor's conversation. Videos render locally with network disabled in the sandbox. Dependency installation and provider sign-in also use the network. Provider retention and plan policies apply to what you send.
+A question sends the conversation's content, inherited branch snapshot and selected passage to the selected provider (Claude, Codex or your custom endpoint). Branch preparation sends relevant parent history for summarization. Switching providers shares the saved discussion with the new provider. Diagram/video generation sends a separate bounded task and relevant excerpts to that provider; generation working messages and source stay out of the tutor's conversation. Videos render locally with network disabled in the sandbox. Dependency installation and provider sign-in also use the network. Provider retention and plan policies apply to what you send.
 
-Credentials never go to browser JavaScript. Host, Origin and CSRF checks protect local operations. Claude runs with tools, MCP servers, settings sources and slash commands disabled in a dedicated workspace. Codex uses an isolated configuration with tools and web search disabled, a read-only sandbox and no tool approval handler. These settings are not an audited operating-system isolation boundary. Local saved data remains accessible to your account and other software with permission to read it.
+Saved credentials are never returned to browser JavaScript. A custom key you type is sent to the local settings route, cleared from the form, and sent upstream only to that endpoint for model listing and inference. Host, Origin and CSRF checks protect local operations. Claude runs with tools, MCP servers, settings sources and slash commands disabled in a dedicated workspace. Codex uses an isolated configuration with tools and web search disabled, a read-only sandbox and no tool approval handler. These settings are not an audited operating-system isolation boundary. Local saved data remains accessible to your account and other software with permission to read it.
 
 ## Troubleshooting
 
@@ -119,6 +126,7 @@ Credentials never go to browser JavaScript. Host, Origin and CSRF checks protect
 - **Wrong address or forbidden request:** Open the exact printed `http://127.0.0.1:PORT` address. A `localhost` alias, proxy or different port will fail the local boundary checks. Reload after a restart to refresh the browser's request token.
 - **Claude missing or signed out:** Install Claude Code, ensure `claude --version` works in the terminal that starts TreeTutor, run `claude` to sign in, then reload TreeTutor (or choose **Check Claude sign-in** where shown).
 - **Codex missing, consent declined or session expired:** Ensure `codex --version` works, then choose **Continue with ChatGPT** or **Reconnect ChatGPT**. Confirm your account/workspace permits plan sharing. Terminal sign-in and API keys do not replace TreeTutor consent.
+- **Custom endpoint unavailable:** Use **Custom endpoint settings**, check the API root/path prefix and key, Save and Test connection. Listing success does not prove chat capability or quota. If you removed it, configure it again or choose Claude/Codex; TreeTutor never silently falls back.
 - **Usage limit, unavailable model or failed reply:** The partial text and original question remain saved. Wait for quota, choose an available provider/model, then ask again. Sign-in success alone does not prove inference access.
 - **No saved trees:** Check the printed data directory and the account/environment used to launch the app. A different `TREETUTOR_DATA_DIR` or XDG_DATA_HOME opens a different store.
 - **Backup/migration error or newer schema:** Stop other instances, check ownership and free disk space, and use the backup/restore steps above or the matching newer app. Keep the original files.

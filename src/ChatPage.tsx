@@ -17,6 +17,7 @@ import { layoutSaver, type Batch } from './layoutSave';
 import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
+import EndpointSettings from './EndpointSettings';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
 import { previewText } from './markdownText';
@@ -101,6 +102,7 @@ export default function ChatPage() {
   const [providers, setProviders] = useState<Providers>();
   const [modelError, setModelError] = useState('');
   const [savingModel, setSavingModel] = useState<string>();
+  const [modelMenuOpen, setModelMenuOpen] = useState(false), [openingModels, setOpeningModels] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [help, setHelp] = useState(false);
   const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'sidebar' }>();
@@ -128,6 +130,7 @@ export default function ChatPage() {
   const focusComposer = useRef(false);
   const selected = useRef<string | undefined>(undefined);
   const request = useRef(0);
+  const modelRequest = useRef(0);
   const turns = useRef(new Map<string, Turn>());
   const checkpoints = useRef(0);
   const [layoutFailed, setLayoutFailed] = useState(false);
@@ -282,11 +285,21 @@ export default function ChatPage() {
     refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id, data.trees); }).catch(e => setError(e.message));
   }, []);
   async function loadModels() {
+    const version = ++modelRequest.current;
     setModelError('');
-    try { const data = await api('/api/models'); setModels(data.models); setProviders(data.providers); }
-    catch (e) { setModelError((e as Error).message); setProviders(undefined); }
+    try { const data = await api('/api/models'); if (version === modelRequest.current) { setModels(data.models); setProviders(data.providers); } }
+    catch (e) { if (version === modelRequest.current) { setModelError((e as Error).message); setProviders(undefined); } }
   }
   useEffect(() => { if (state) void loadModels(); }, [!!state, state?.auth.connected]);
+  async function openModels(open: boolean) {
+    if (!open) { setModelMenuOpen(false); return; }
+    if (openingModels) return;
+    const id = selected.current;
+    setOpeningModels(true);
+    await loadModels();
+    setOpeningModels(false);
+    if (selected.current === id) setModelMenuOpen(true);
+  }
   async function changeModel(provider: string, model: string) {
     if (!tree || savingModel) return;
     const id = tree.id;
@@ -485,7 +498,7 @@ export default function ChatPage() {
     } catch (e) { if (selected.current === branch.parent) setError((e as Error).message); }
     finally { setBranching(false); }
   }
-  const providerLabel = (id: string) => providers?.[id]?.label ?? ({ claude: 'Claude', codex: 'Codex' } as Record<string, string>)[id] ?? id;
+  const providerLabel = (id: string) => providers?.[id]?.label ?? ({ claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' } as Record<string, string>)[id] ?? id;
   const modelLabel = (t: Tree) => {
     const label = models?.find(m => m.provider === t.provider && m.model === t.model)?.label ?? t.model ?? models?.find(m => m.provider === t.provider && m.isDefault)?.label ?? 'default model';
     return label.startsWith(providerLabel(t.provider)) ? label : `${providerLabel(t.provider)} · ${label}`;
@@ -493,9 +506,13 @@ export default function ChatPage() {
   const source = !overview && reveal?.tree === tree?.id ? reveal?.source : undefined;
   const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text);
   const active = !!tree && !!state?.active.includes(tree.id);
+  function openSettings(endpoint = false) {
+    setHelp(false); setMobileNav(true);
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(endpoint ? '.endpoint-settings input' : '#settings-heading')?.focus());
+  }
   const menu = (actions?: MapActions) => <DropdownMenu presentation="popover" renderTrigger={props => <IconButton {...props} label="Map menu" tooltip="Map menu" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />} items={[
     { label: 'Learning trees', onClick: () => { setHelp(false); setMobileNav(true); } },
-    { label: 'Settings', onClick: () => { setHelp(false); setMobileNav(true); } },
+    { label: 'Settings', onClick: () => openSettings() },
     { label: 'Expand all', isDisabled: !actions, onClick: actions?.expand },
     { label: 'Collapse all', isDisabled: !actions, onClick: actions?.collapse },
     { label: 'Keep current branch', isDisabled: !actions?.canKeep, onClick: actions?.keep },
@@ -505,8 +522,8 @@ export default function ChatPage() {
   return <VStack gap={0} style={{ height: '100dvh' }}>
     <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
       <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={mobileNav}><VStack padding={5} gap={5}>
-        <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Your trees</Heading><IconButton label="Close learning trees" tooltip="Close" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => { setMobileNav(false); document.querySelector<HTMLButtonElement>('[aria-label="Map menu"]:not([aria-hidden])')?.focus(); }} /></HStack>
-        {help && <VStack gap={2}><Heading level={2}>Map help</Heading><Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text><Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them in Settings below. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text><Button label="Close help" variant="ghost" onClick={() => setHelp(false)} /></VStack>}
+        <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Your trees</Heading><IconButton label="Close learning trees" tooltip="Close" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => { setMobileNav(false); document.querySelector<HTMLButtonElement>(overview ? '[aria-label="Map menu"]' : '[aria-label="Model for next reply"]')?.focus(); }} /></HStack>
+        {help && <VStack gap={2}><Heading level={2}>Map help</Heading><Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text><Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them in Settings below. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text><Text>In Settings → Connections, save one custom endpoint’s base URL and API key, test its model listing, or remove it. Its owner bills requests sent there. The saved key is never shown. In chat, open Model for next reply and use arrows and Enter to choose Claude, Codex or a custom endpoint model. Switching preserves the discussion and inherited context; children start with their parent’s choice. New chats default to Claude.</Text><Button label="Close help" variant="ghost" onClick={() => setHelp(false)} /></VStack>}
         <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()}>{busy ? 'Opening…' : 'New chat'}</Button>
         <nav aria-label="Saved learning trees"><VStack gap={2}>
           {state?.trees.filter(t => !t.parent).map(t => <VStack key={t.id} gap={1}>
@@ -521,16 +538,17 @@ export default function ChatPage() {
           {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
         </VStack></nav>
         <VStack gap={3}>
-          <Heading level={3}>Settings</Heading>
+          <Heading level={3} id="settings-heading" tabIndex={-1}>Settings</Heading>
           <CheckboxInput label="Vim canvas bindings" description="With the map or a conversation box focused, h j k l act as arrows; = + - zoom; f fits the tree." value={vim} onChange={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} />
         </VStack>
         <VStack gap={3}>
           <Heading level={3}>Connections</Heading>
-          <Text type="supporting" color="secondary">Trees save on this computer. Questions go to the provider you pick for each conversation, using your own plan.</Text>
+          <Text type="supporting" color="secondary">Trees save on this computer. Questions go to the provider you pick for each conversation. Claude and Codex use your own plan.</Text>
           <Text type="supporting">Claude: {providers?.claude?.connected ? 'signed in through Claude Code' : 'run claude in a terminal and sign in'}</Text>
           {providers && !providers.claude?.connected && <Button label="Check Claude sign-in" variant="ghost" size="sm" onClick={() => void loadModels()} />}
           <Text type="supporting">Codex: {state?.auth.connected ? `connected ${state.auth.email ?? 'to ChatGPT'}` : 'not connected'}</Text>
           <Button label={state?.auth.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'} variant="secondary" data-oai-siwc-button="" onClick={() => void signIn()}>{state?.auth.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'}</Button>
+          {mobileNav && <EndpointSettings api={api} changed={() => void loadModels()} />}
         </VStack>
       </VStack></aside>
       <main className="conversation">
@@ -548,15 +566,16 @@ export default function ChatPage() {
                 {renaming?.id === tree.id && renaming.place === 'header' ? <TitleEditor key={tree.id} title={tree.title} save={title => rename(tree.id, title)} cancel={finishRename} /> : <Button id="rename-conversation" className="rename-title" label="Rename conversation" tooltip={`Rename ${tree.title}`} variant="ghost" size="sm" onClick={() => setRenaming({ id: tree.id, place: 'header' })}><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading></Button>}
                 <Text type="supporting" color="secondary">{modelLabel(tree)} · saved automatically</Text>
               </VStack>
-              <DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" renderTrigger={props => <IconButton {...props} label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(tree)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel} isLoading={savingModel === tree.id} />}>
-                {Object.entries(providers ?? { [tree.provider]: { label: providerLabel(tree.provider), connected: false } }).map(([id, p]) => <DropdownMenuGroup key={id} title={p.label}>
-                  {p.connected ? <DropdownMenuRadioGroup label={`${p.label} models`} value={tree.provider === id ? tree.model ?? models?.find(m => m.provider === id && m.isDefault)?.model : undefined} onChange={model => void changeModel(id, model)}>
+              <DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" isMenuOpen={modelMenuOpen} onOpenChange={open => void openModels(open)} renderTrigger={props => <IconButton {...props} label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : openingModels ? 'Loading models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(tree)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || openingModels} isLoading={openingModels || savingModel === tree.id} />}>
+                {['claude', 'codex', 'openai'].map(id => { const p = providers?.[id] ?? { label: providerLabel(id), connected: false }; return <DropdownMenuGroup key={id} title={p.label}>
+                  {p.connected && models?.some(m => m.provider === id) ? <DropdownMenuRadioGroup label={`${p.label} models`} value={tree.provider === id ? tree.model ?? models?.find(m => m.provider === id && m.isDefault)?.model : undefined} onChange={model => void changeModel(id, model)}>
                     {tree.provider === id && tree.model && !models?.some(m => m.provider === id && m.model === tree.model) && <DropdownMenuRadioItem value={tree.model} label={`${tree.model} (saved)`} isDisabled />}
                     {(models ?? []).filter(m => m.provider === id).map(m => <DropdownMenuRadioItem key={m.model} value={m.model} label={m.label} />)}
                   </DropdownMenuRadioGroup>
+                  : id === 'openai' ? <DropdownMenuItem label="Custom endpoint settings" description="Add an endpoint or check its URL, API key and connection" onClick={() => openSettings(true)} />
                   : id === 'codex' ? <DropdownMenuItem label="Continue with ChatGPT" description="Sign in to use Codex with your ChatGPT plan" onClick={() => void signIn()} />
                   : <DropdownMenuItem label={`Check ${p.label} sign-in`} description={id === 'claude' ? 'Run claude in a terminal and sign in, then check again' : 'Sign in, then check again'} onClick={() => void loadModels()} />}
-                </DropdownMenuGroup>)}
+                </DropdownMenuGroup>; })}
               </DropdownMenu>
               <IconButton className="expand-chat" label={expanded ? 'Show map beside chat' : 'Expand chat'} tooltip={expanded ? 'Show map beside chat' : 'Expand chat'} icon={expanded ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={toggleExpanded} />
               <IconButton label="Return to tree" tooltip="Back to map (Esc)" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={returnToTree} />

@@ -73,4 +73,9 @@ boundary, not detection of arbitrary encodings or deliberately transformed
 secrets. The configured endpoint necessarily receives the key and inference
 history; its operator controls remote retention and billing.
 
-The settings form and model menu integration belong to TreeTutor-sh8.5.
+The learner-facing controls are in Map menu → Settings → Connections. Save
+requires re-entering the key and refreshes the model catalogue. Test connection
+uses only saved settings; unsaved edits must be saved first. Remove clears
+credentials without changing a conversation's provider. The compact model menu
+always includes a Custom endpoint group, with a settings action when unavailable.
+See [settings and menu verification](verification/custom-endpoint-settings.md).

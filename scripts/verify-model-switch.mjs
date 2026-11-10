@@ -23,7 +23,10 @@ const wait = async expression => {
   try { return await browser('wait', '--fn', expression); }
   catch (error) { console.error('Wait failed at', caller, 'UI:', await evaluate("document.querySelector('.focused-chat')?.textContent")); throw error; }
 };
-const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
+const click = async name => {
+  await browser('find', 'role', 'button', 'click', '--name', name, '--exact');
+  if (name === 'Model for next reply') await wait("document.querySelector('[aria-label=\"Model for next reply\"]')?.getAttribute('aria-expanded') === 'true' && [...document.querySelectorAll('[role=menu]')].some(e=>e.getClientRects().length)");
+};
 // The map fits a frame after mounting; click the box only once its title is the hit target.
 const openTree = async () => {
   await wait(`(() => { const e = document.querySelector('[aria-label="Open Recall the tree"]'), r = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })()`);
@@ -98,9 +101,12 @@ try {
   // Keyboard-only selection; labels and ordering come from the provider.
   await browser('focus', '[aria-label="Model for next reply"]');
   await browser('press', 'Space');
-  await wait("document.activeElement?.getAttribute('role') === 'menuitemradio'");
+  await wait("document.activeElement?.getAttribute('role')?.startsWith('menuitem')");
   await browser('press', 'Home');
-  for (let i = 0; i < catalog.indexOf(second); i++) await browser('press', 'ArrowDown');
+  for (let i = 0; i < catalog.length + 3; i++) {
+    if (await evaluate(`document.activeElement?.getAttribute('role') === 'menuitemradio' && document.activeElement.textContent.trim() === ${JSON.stringify(second.label)}`)) break;
+    await browser('press', 'ArrowDown');
+  }
   assert.equal(await evaluate('document.activeElement?.textContent.trim()'), second.label);
   await browser('press', 'Enter');
   await waitForModel(child.id, second.model);
@@ -141,8 +147,11 @@ try {
     assert.equal(store.tree(child.id).model, second.model);
     failCatalog = true;
     await click('Model for next reply');
-    await browser('find', 'role', 'menuitemradio', 'click', '--name', 'Original', '--exact');
-    await browser('wait', '--text', 'Model change failed. Your previous selection is saved.');
+    await browser('wait', '--text', 'Could not load models.');
+    assert.equal(await evaluate("document.querySelectorAll('[role=menuitemradio]').length"), 0);
+    assert.ok(await evaluate("[...document.querySelectorAll('[role=menuitem]')].some(e=>e.textContent.includes('Continue with ChatGPT'))"));
+    await browser('press', 'Escape');
+    assert.equal((await post(`/api/trees/${child.id}/model`, { model: first.model })).status, 502);
     assert.equal(store.tree(child.id).model, second.model);
     assert.ok(await evaluate("document.querySelector('.focused-chat').textContent.includes('Alternate · saved automatically')"));
     failCatalog = false;
@@ -164,6 +173,9 @@ try {
     await browser('screenshot', join(dir, `model-${width}.png`));
   }
   console.log(JSON.stringify({ result: 'PASS', ...report, screenshots: dir }, null, 2));
+} catch (error) {
+  console.error('Model-switch checkpoint:', dir, await evaluate("({menus:[...document.querySelectorAll('[role=menu]')].map(e=>({text:e.textContent,visible:!!e.getClientRects().length})),trigger:document.querySelector('[aria-label=\"Model for next reply\"]')?.outerHTML,focus:document.activeElement?.outerHTML})").catch(() => 'browser unavailable'));
+  throw error;
 } finally {
   completeTurn?.();
   await browser('close').catch(() => {});
