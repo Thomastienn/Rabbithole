@@ -83,7 +83,11 @@ html { view-transition-name: none; }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, var(--spacing-1)); } }
 .passage-box { position: absolute; z-index: 3; width: min(100%, 28rem); transform: translateY(-100%); margin-top: calc(-1 * var(--spacing-1)); box-shadow: var(--shadow-low); }
 .branch-form { margin-top: var(--spacing-2); border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); }
-.focused-chat { flex: 0 1 32rem; min-width: 0; border-left: thin solid var(--color-border); }
+.focused-chat { flex: 0 0 var(--chat-width, 26rem); min-width: 0; border-left: thin solid var(--color-border); }
+.chat-divider { flex: none; position: relative; z-index: 5; width: var(--spacing-2); margin-inline: calc(-1 * var(--spacing-1)); cursor: col-resize; touch-action: none; }
+.chat-divider::after { content: ''; position: absolute; inset-block: 0; left: 50%; width: 2px; transform: translateX(-50%); background: transparent; transition: background-color 120ms ease-out; }
+.chat-divider:hover::after, .chat-divider:active::after, .chat-divider:focus-visible::after { background: var(--color-text-secondary); }
+.chat-divider:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: 0; }
 .focused-chat > .astryx-chat-layout { flex: 1; min-height: 0; overflow: auto; }
 .tree-canvas { flex: 1; min-height: 0; background: var(--color-background-body); }
 .tree-canvas:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
@@ -105,7 +109,7 @@ html { view-transition-name: none; }
 @media (hover: none) { .node-extra { opacity: 1; } }
 .activity-dot { display: inline-block; flex: none; width: var(--spacing-2); height: var(--spacing-2); border-radius: 50%; background: var(--color-text-primary); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.3; } }
-@media (prefers-reduced-motion: reduce) { .activity-dot, .selection-action { animation: none; } .conversation-box, .node-extra, .diagram-card .astryx-icon, .reply-usage { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .activity-dot, .selection-action { animation: none; } .chat-divider::after, .conversation-box, .node-extra, .diagram-card .astryx-icon, .reply-usage { transition: none; } }
 .react-flow__node:focus-visible { outline: none; }
 .react-flow__node:focus-visible .conversation-box { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
 .react-flow__edge:focus-visible { outline: none; }

@@ -19,6 +19,7 @@ import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from './SettingsWindow';
 import { bubbleTints, type BubbleTint } from './bubbleTint';
+import { DEFAULT_CHAT_WIDTH, MIN_CHAT_WIDTH, clampChatWidth, keyChatWidth, maxChatWidth, resetChatWidth, savedChatWidth } from './chatWidth';
 import KnowledgePage, { type Graph } from './KnowledgePage';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
@@ -148,6 +149,8 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
   </VStack>;
 }
 
+const remPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+
 export default function ChatPage() {
   const [state, setState] = useState<State>();
   const [tree, setTree] = useState<Tree>();
@@ -183,6 +186,15 @@ export default function ChatPage() {
     try { const saved = localStorage.getItem('treetutor.bubble-tint'); return bubbleTints.find(t => t.id === saved)?.id ?? 'accent'; }
     catch { return 'accent'; }
   });
+  const [chatWidth, setChatWidth] = useState(() => { try { return savedChatWidth(localStorage.getItem('treetutor.chat-width')); } catch { return DEFAULT_CHAT_WIDTH; } });
+  const [workspaceWidth, setWorkspaceWidth] = useState(() => window.innerWidth / remPx());
+  useEffect(() => { try { localStorage.setItem('treetutor.chat-width', String(chatWidth)); } catch {} }, [chatWidth]);
+  const workspace = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = workspace.current!, observer = new ResizeObserver(() => setWorkspaceWidth(el.clientWidth / remPx()));
+    observer.observe(el); return () => observer.disconnect();
+  }, []);
+  const shownChatWidth = clampChatWidth(chatWidth, workspaceWidth);
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -667,12 +679,17 @@ export default function ChatPage() {
       <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
         <Heading level={1} className="sr-only">TreeTutor</Heading>
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
-        <section className="tree-workspace" data-expanded={expanded && !overview}>
+        <section ref={workspace} className="tree-workspace" data-expanded={expanded && !overview} style={{ '--chat-width': `${shownChatWidth}rem` } as CSSProperties}>
         {root && state && <section className="overview" data-chat-open={!overview} aria-label="Learning tree">
           {layoutFailed && <HStack padding={3} gap={2} role="alert"><Text>Map layout not saved. It retries every minute while this tree stays open.</Text><Button label="Retry saving layout" variant="secondary" onClick={() => void saver.current?.flush()} /></HStack>}
           <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
         </section>}
-        <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video')) { e.preventDefault(); returnToTree(); } }}>
+        {root && state && !overview && !expanded && !mobile && <div className="chat-divider" role="separator" tabIndex={0} aria-label="Resize chat" aria-controls="focused-chat" aria-orientation="vertical" aria-valuemin={MIN_CHAT_WIDTH} aria-valuemax={Math.round(maxChatWidth(workspaceWidth))} aria-valuenow={Math.round(shownChatWidth)} aria-valuetext={`Chat width ${Math.round(shownChatWidth)} rem`} title="Drag to resize the chat. Double-click to reset."
+          onPointerDown={e => { if (e.button) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); }}
+          onPointerMove={e => { if (!e.currentTarget.hasPointerCapture(e.pointerId)) return; const box = workspace.current!.getBoundingClientRect(); setChatWidth(clampChatWidth((box.right - e.clientX) / remPx(), box.width / remPx())); }}
+          onDoubleClick={() => setChatWidth(resetChatWidth(workspaceWidth))}
+          onKeyDown={e => { const next = keyChatWidth(shownChatWidth, e.key, workspaceWidth, e.shiftKey); if (next === undefined) return; e.preventDefault(); setChatWidth(next); }} />}
+        <section id="focused-chat" className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header className="chat-header"><VStack padding={3} gap={1}>
             <HStack gap={1} vAlign="center">
