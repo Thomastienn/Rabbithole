@@ -33,6 +33,8 @@ async function start(dir, suggestions = true) {
   const suggestionCalls = () => calls.filter(c => c.system.startsWith('You mark'));
   return { store, get, post, settled, calls, suggestionCalls, close: async () => { await app.stop(); store.close(); } };
 }
+// Graph shape without the derived familiarity fields.
+const shape = g => ({ ...g, concepts: g.concepts.map(({ name, topics }) => ({ name, topics })) });
 const strip = s => s.map(({ message, status, passages, usage }) => ({ message, status, passages, usage: usage && { input: usage.input, output: usage.output, cacheRead: usage.cacheRead } }));
 
 test('a completed reply gets one cheap-model suggestion call whose exact passages and usage are saved; reopening, switching and old replies never run it', async t => {
@@ -53,7 +55,7 @@ test('a completed reply gets one cheap-model suggestion call whose exact passage
   assert.equal(env.suggestionCalls().length, 1);
   assert.equal(env.suggestionCalls()[0].model, 'haiku');
   const input = JSON.parse(env.suggestionCalls()[0].input.slice(env.suggestionCalls()[0].input.indexOf('\n') + 1));
-  assert.deepEqual(input, { inheritedContext: null, question: 'Explain brackets', answer: 'Authoritative original', knownConcepts: {} });
+  assert.deepEqual(input, { inheritedContext: null, question: 'Explain brackets', answer: 'Authoritative original', knownConcepts: {}, familiarity: {} });
   assert.deepEqual(strip(saved.suggestions), [{ message: reply.id, status: 'ready', passages: SAVED, usage: { input: 103, output: 7, cacheRead: 40 } }]);
   for (const p of saved.suggestions[0].passages) assert.equal(reply.text.slice(p.start, p.end), p.text);
   // The suggestion call's usage counts in today's total but not as a reply.
@@ -162,12 +164,12 @@ test('the same suggestion call fills one global knowledge graph that survives re
   // One tutor call and one suggestion call: graph data adds no model call.
   assert.equal(env.calls.length, 2);
   assert.equal(env.suggestionCalls().length, 1);
-  assert.deepEqual(await env.get('/api/graph'), GRAPH, 'invalid concepts and links are dropped');
+  assert.deepEqual(shape(await env.get('/api/graph')), GRAPH, 'invalid concepts and links are dropped');
   assert.equal((await env.get(`/api/trees/${a.id}`)).suggestions[0].passages.length, 2);
   await env.close();
 
   env = await start(dir);
-  assert.deepEqual(await env.get('/api/graph'), GRAPH);
+  assert.deepEqual(shape(await env.get('/api/graph')), GRAPH);
   // Another learning tree on another provider: the known names are sent, and the model reuses "Peterson's algorithm" instead of "Peterson lock".
   const b = JSON.parse(await env.post('/api/trees'));
   await env.post(`/api/trees/${b.id}/model`, { provider: 'codex', model: 'fixture-model' });
@@ -175,7 +177,7 @@ test('the same suggestion call fills one global knowledge graph that survives re
   await env.settled();
   assert.equal((await env.get(`/api/trees/${b.id}`)).suggestions[0].status, 'ready');
   // A differently cased name reuses its concept; the new link joins the existing concepts.
-  assert.deepEqual(await env.get('/api/graph'), { ...GRAPH, links: [{ from: 'Mutual exclusion', to: "Peterson's algorithm", kind: 'related' }, ...GRAPH.links] });
+  assert.deepEqual(shape(await env.get('/api/graph')), { ...GRAPH, links: [{ from: 'Mutual exclusion', to: "Peterson's algorithm", kind: 'related' }, ...GRAPH.links] });
   // Graph data never enters tutor history.
   env.store.forgetThread(a.id);
   await env.post(`/api/trees/${a.id}/messages`, { text: 'Continue' });
@@ -233,4 +235,59 @@ test('branching from a suggestion marks it explored with its child at every dept
   await env.post(`/api/trees/${tree.id}/delete`, { conversation: child.id });
   assert.deepEqual(await passages(tree.id), SAVED);
   assert.ok([manual, extra].every(Boolean));
+});
+
+test('meeting, asking about, using and ignoring a concept add evidence; familiarity follows it, corrections outrank it and the suggestion call receives it', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-evidence-'));
+  let env = await start(dir);
+  t.after(async () => { await env.close(); });
+  const concept = async name => (await env.get('/api/graph')).concepts.find(c => c.name === name);
+  const sent = () => JSON.parse(env.suggestionCalls().at(-1).input.slice(env.suggestionCalls().at(-1).input.indexOf('\n') + 1)).familiarity;
+  const P = "Peterson's algorithm", M = 'Mutual exclusion';
+
+  // Met: every concept of a saved reply, once per reply.
+  const a = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${a.id}/messages`, { text: 'Explain locks' });
+  await env.settled();
+  assert.deepEqual(await concept(M), { name: M, topics: ['Concurrency', 'operating systems'], familiarity: 0.1, evidence: { met: 1, asked: 0, used: 0, ignored: 0 }, correction: null });
+  assert.equal((await concept(P)).familiarity, 0.1);
+
+  // Asked: branching from the passage the call tagged with the concept.
+  const reply = (await env.get(`/api/trees/${a.id}`)).messages.at(-1);
+  await env.post(`/api/trees/${a.id}/branches`, { messageId: reply.id, ...SAVED[0], suggestion: true, question: 'explain' });
+  assert.deepEqual([(await concept(M)).evidence.asked, (await concept(M)).familiarity], [1, 0.3]);
+  // A highlight with no concept in it adds nothing.
+  await env.post(`/api/trees/${a.id}/branches`, { messageId: reply.id, ...SAVED[1], question: 'explain' });
+  assert.equal((await concept(P)).evidence.asked, 0);
+
+  // Met again in another tree under another wording; its tagged underline is left unexplored.
+  const b = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${b.id}/messages`, { text: 'Explain locks again' });
+  await env.settled();
+  assert.deepEqual([(await concept(M)).evidence.met, (await concept(P)).familiarity], [2, 0.2]);
+
+  // Used: the learner names a concept; ignored: asking on moves past the unexplored underline. The call gets the relevant familiarity.
+  await env.post(`/api/trees/${b.id}/messages`, { text: `What about ${P.toLowerCase()}?` });
+  await env.settled();
+  assert.deepEqual((await concept(P)).evidence, { met: 2, asked: 0, used: 1, ignored: 0 });
+  assert.equal((await concept(P)).familiarity, 0.5);
+  assert.deepEqual((await concept(M)).evidence, { met: 2, asked: 1, used: 0, ignored: 1 });
+  assert.equal((await concept(M)).familiarity, 0.45, 'an ignored underline moves familiarity only slightly');
+  assert.deepEqual(sent(), { [P]: 0.5 });
+  // The same ignored underline never counts twice.
+  await env.post(`/api/trees/${b.id}/messages`, { text: 'Thanks' });
+  await env.settled();
+  assert.equal((await concept(M)).evidence.ignored, 1);
+
+  // A correction outranks inference, including later evidence, and survives restart; the latest correction wins.
+  assert.equal(env.store.correct(M, 'known'), true);
+  await env.post(`/api/trees/${a.id}/messages`, { text: `Explain ${M} once more` });
+  await env.settled();
+  assert.deepEqual(sent(), { [M]: 1 });
+  assert.deepEqual([(await concept(M)).evidence.used, (await concept(M)).familiarity, (await concept(M)).correction], [1, 1, 'known']);
+  await env.close();
+  env = await start(dir);
+  assert.equal((await concept(M)).familiarity, 1);
+  env.store.correct(M, 'unknown');
+  assert.deepEqual([(await concept(M)).familiarity, (await concept(M)).correction], [0, 'unknown']);
 });

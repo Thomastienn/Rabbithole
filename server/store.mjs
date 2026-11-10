@@ -10,6 +10,10 @@ const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, co
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 
+const WEIGHTS = { met: 0.1, asked: 0.2, used: 0.3, ignored: 0.05 };
+// Whole-word, case-insensitive name match.
+const mentions = (text, name) => new RegExp(`(^|[^\\p{L}\\p{N}])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`, 'iu').test(text);
+
 export class Store {
   constructor(path) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
@@ -42,7 +46,8 @@ export class Store {
       this.db.exec(`CREATE TABLE IF NOT EXISTS concepts (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
         CREATE TABLE IF NOT EXISTS topics (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
         CREATE TABLE IF NOT EXISTS concept_topics (concept INTEGER NOT NULL REFERENCES concepts(id), topic INTEGER NOT NULL REFERENCES topics(id), PRIMARY KEY(concept, topic));
-        CREATE TABLE IF NOT EXISTS concept_links (concept INTEGER NOT NULL REFERENCES concepts(id), target INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('related','builds on')), PRIMARY KEY(concept, target, kind), CHECK(concept <> target));`);
+        CREATE TABLE IF NOT EXISTS concept_links (concept INTEGER NOT NULL REFERENCES concepts(id), target INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('related','builds on')), PRIMARY KEY(concept, target, kind), CHECK(concept <> target));
+        CREATE TABLE IF NOT EXISTS evidence (concept INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('met','asked','used','ignored','known','unknown')), source TEXT, at INTEGER NOT NULL, UNIQUE(concept, kind, source));`);
       this.interrupt();
     } catch (error) { error.backupPath = this.backupPath; this.db.close(); throw error; }
   }
@@ -142,16 +147,52 @@ export class Store {
   // The latest suggestion call's concept-name list size, for the Settings cost warning.
   nameTokens() { return this.db.prepare('SELECT nameTokens FROM suggestions WHERE nameTokens IS NOT NULL ORDER BY rowid DESC LIMIT 1').get()?.nameTokens ?? 0; }
   graph() {
-    const concepts = this.db.prepare("SELECT c.name, COALESCE((SELECT json_group_array(t.name) FROM (SELECT t.name FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id ORDER BY t.name) t),'[]') AS topics FROM concepts c ORDER BY c.name").all();
+    const concepts = this.db.prepare("SELECT c.id, c.name, COALESCE((SELECT json_group_array(t.name) FROM (SELECT t.name FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id ORDER BY t.name) t),'[]') AS topics FROM concepts c ORDER BY c.name").all();
     const links = this.db.prepare('SELECT a.name AS "from", b.name AS "to", l.kind FROM concept_links l JOIN concepts a ON a.id=l.concept JOIN concepts b ON b.id=l.target ORDER BY a.name,b.name,l.kind').all();
-    return { topics: this.db.prepare('SELECT name FROM topics ORDER BY name').all().map(t => t.name), concepts: concepts.map(c => ({ name: c.name, topics: JSON.parse(c.topics) })), links: links.map(l => ({ ...l })) };
+    return { topics: this.db.prepare('SELECT name FROM topics ORDER BY name').all().map(t => t.name), concepts: concepts.map(c => ({ name: c.name, topics: JSON.parse(c.topics), ...this.familiarity(c.id) })), links: links.map(l => ({ ...l })) };
+  }
+  // Familiarity is derived, never stored: the latest correction outranks all inference; otherwise weighted evidence, capped at 1.
+  familiarity(concept) {
+    const evidence = { met: 0, asked: 0, used: 0, ignored: 0 };
+    for (const r of this.db.prepare("SELECT kind, COUNT(*) AS n FROM evidence WHERE concept=? AND kind IN ('met','asked','used','ignored') GROUP BY kind").all(concept)) evidence[r.kind] = r.n;
+    const correction = this.db.prepare("SELECT kind FROM evidence WHERE concept=? AND kind IN ('known','unknown') ORDER BY rowid DESC LIMIT 1").get(concept)?.kind ?? null;
+    const inferred = Math.min(1, Object.entries(evidence).reduce((sum, [kind, n]) => sum + WEIGHTS[kind] * n, 0));
+    return { familiarity: Math.round((correction ? +(correction === 'known') : inferred) * 100) / 100, evidence, correction };
+  }
+  // Familiarity for concepts named in the given text: the relevant concepts sent to the suggestion call.
+  // shortcut: whole-name mentions only, so a reworded concept is missed; upgrade with the embedding pre-filter (TreeTutor-5ut.11).
+  mentioned(text) {
+    return Object.fromEntries(this.db.prepare('SELECT id, name FROM concepts ORDER BY name').all().filter(c => mentions(text, c.name)).map(c => [c.name, this.familiarity(c.id).familiarity]));
+  }
+  evidence(concept, kind, source) { this.db.prepare('INSERT OR IGNORE INTO evidence(concept,kind,source,at) VALUES (?,?,?,?)').run(concept, kind, source, Date.now()); }
+  // A learner correction (5ut.9 adds the controls); repeated corrections are all kept and the latest wins.
+  correct(name, kind) {
+    const concept = this.db.prepare('SELECT id FROM concepts WHERE name=?').get(name)?.id;
+    if (concept) this.db.prepare('INSERT INTO evidence(concept,kind,source,at) VALUES (?,?,NULL,?)').run(concept, kind, Date.now());
+    return !!concept;
+  }
+  // A passage's concepts: the one the suggestion call tagged, plus concepts met in that reply whose name the passage contains.
+  passageConcepts(conversation, message, passage) {
+    const row = this.db.prepare("SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'").get(conversation, message);
+    const tagged = JSON.parse(row?.passages ?? '[]').find(p => p.start === passage.start && p.end === passage.end)?.concept;
+    const ids = this.db.prepare("SELECT c.id, c.name FROM evidence e JOIN concepts c ON c.id=e.concept WHERE e.kind='met' AND e.source=?").all(message).filter(c => mentions(passage.text, c.name)).map(c => c.id);
+    const own = tagged && this.db.prepare('SELECT id FROM concepts WHERE name=?').get(tagged)?.id;
+    return [...new Set(own ? [own, ...ids] : ids)];
+  }
+  // Before a learner question is saved: concepts it names were used, and the previous reply's unexplored underlines were ignored.
+  questionEvidence(conversation, text) {
+    for (const c of this.db.prepare('SELECT id, name FROM concepts').all()) if (mentions(text, c.name)) this.evidence(c.id, 'used', null);
+    const last = this.db.prepare("SELECT id FROM messages WHERE tree=? AND role='assistant' ORDER BY seq DESC LIMIT 1").get(conversation)?.id;
+    const row = last && this.db.prepare("SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'").get(conversation, last);
+    for (const p of JSON.parse(row?.passages ?? '[]')) if (!this.live(p.child)) for (const c of this.passageConcepts(conversation, last, p)) this.evidence(c, 'ignored', last);
   }
   // Names resolve case-insensitively to existing rows; a link needs both ends in the graph after this reply's concepts are added.
-  addGraph({ concepts, links }) {
+  // Every concept in the reply was met there; the message id makes it count once per reply.
+  addGraph({ concepts, links }, message = null) {
     const id = (table, name) => { this.db.prepare(`INSERT OR IGNORE INTO ${table}(name) VALUES (?)`).run(name); return this.db.prepare(`SELECT id FROM ${table} WHERE name=?`).get(name).id; };
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      for (const c of concepts) { const concept = id('concepts', c.name); for (const t of c.topics) this.db.prepare('INSERT OR IGNORE INTO concept_topics VALUES (?,?)').run(concept, id('topics', t)); }
+      for (const c of concepts) { const concept = id('concepts', c.name); if (message) this.evidence(concept, 'met', message); for (const t of c.topics) this.db.prepare('INSERT OR IGNORE INTO concept_topics VALUES (?,?)').run(concept, id('topics', t)); }
       const find = name => this.db.prepare('SELECT id FROM concepts WHERE name=?').get(name)?.id;
       for (const l of links) { const a = find(l.from), b = find(l.to); if (a && b && a !== b) this.db.prepare('INSERT OR IGNORE INTO concept_links VALUES (?,?,?)').run(a, b, l.kind); }
       this.db.exec('COMMIT');
@@ -200,6 +241,8 @@ export class Store {
       const row = anchor.suggestion === true && this.db.prepare("SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'").get(parent.id, anchor.messageId);
       const passages = row ? JSON.parse(row.passages) : [], hit = passages.find(p => p.start === anchor.start && p.end === anchor.end && !this.live(p.child));
       if (hit) { hit.child = child.id; this.db.prepare('UPDATE suggestions SET passages=? WHERE conversation=? AND message=?').run(JSON.stringify(passages), parent.id, anchor.messageId); }
+      // Any branch, suggested or highlighted, asks about the passage's concepts.
+      for (const c of this.passageConcepts(parent.id, anchor.messageId, anchor)) this.evidence(c, 'asked', child.id);
       this.db.exec('COMMIT');
       return this.tree(child.id);
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }

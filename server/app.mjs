@@ -54,8 +54,9 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     suggesting.set(message, running);
     running.done = (async () => {
       const inheritedContext = tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null;
-      const result = await suggest(pick(tree), tree, { inheritedContext, question, answer, knownConcepts: known }, running.controller.signal, suggestionTimeout);
-      store.addGraph(result.graph);
+      const familiarity = store.mentioned([tree.branch?.text, question, answer].filter(Boolean).join('\n'));
+      const result = await suggest(pick(tree), tree, { inheritedContext, question, answer, knownConcepts: known, familiarity }, running.controller.signal, suggestionTimeout);
+      store.addGraph(result.graph, message);
       store.finishSuggestions(conversation, message, result.passages, result.usage);
     })().catch(error => { if (!stopping) store.finishSuggestions(conversation, message, null, error.usage ?? null); })
       .catch(() => {}).finally(() => suggesting.delete(message));
@@ -261,6 +262,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           if (typeof body.text !== 'string' || !body.text.trim()) return json(res, 400, { error: 'Enter a question.' });
           const controller = new AbortController();
           active.set(id, controller);
+          store.questionEvidence(id, body.text);
           const user = store.message(id, 'user', body.text, 'completed');
           const reply = store.message(id, 'assistant', '', 'streaming');
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });

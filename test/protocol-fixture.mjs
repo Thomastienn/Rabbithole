@@ -10,10 +10,10 @@ const suggesting = text => text.startsWith('Mark every term');
 const suggestion = (text, model, cheap) => {
   const { question, answer, knownConcepts } = JSON.parse(text.slice(text.indexOf('\n') + 1));
   if (question.endsWith('suggestions fail') || model !== cheap) return 'not json';
-  return JSON.stringify({ ...graph(question, knownConcepts), suggestions: [{ text: answer.slice(0, 13), start: 0, end: 13 }, { text: answer.slice(0, 18), start: 0, end: 18 }, { text: 'original', start: 0, end: 8 },
+  return JSON.stringify({ ...graph(question, knownConcepts), suggestions: [{ text: answer.slice(0, 13), start: 0, end: 13, ...(question.includes('locks') && { concept: question.includes('again') ? 'MUTUAL EXCLUSION' : 'Mutual exclusion' }) }, { text: answer.slice(0, 18), start: 0, end: 18 }, { text: 'original', start: 0, end: 8 },
     { text: answer.slice(14, 22), start: 14, end: 22 }, { text: 'x', start: -1, end: 0 }, { text: answer.slice(14, 22), start: 14, end: 22 }] });
 };
-// 'locks' questions return concepts: a known Peterson name is reused as the model would; other names vary in case only.
+// 'locks' questions return concepts and tag the first passage with the mutex concept: a known Peterson name is reused as the model would; other names vary in case only.
 // Invalid concepts and links (no topic, unknown kind, unknown or self target) must be dropped. 'many concepts' grows the name list.
 const graph = (question, known) => {
   if (question.includes('many concepts')) return { concepts: Array.from({ length: 300 }, (_, i) => ({ name: `Fixture concept number ${i} with a long name`, topics: ['Bulk'] })) };
