@@ -2,8 +2,8 @@
 
 Decision gate: `TreeTutor-vm4.6.1`. Status: **agreed by the project owner on
 2026-11-09**, exactly as proposed below. Prepared 2026-11-09. Implementation
-belongs to `TreeTutor-vm4.6`, after the initial text release. No Vim bindings or
-preference control are implemented by this document.
+belongs to `TreeTutor-vm4.6`, after the initial text release. Implemented and
+verified in [verification/vim-bindings.md](verification/vim-bindings.md).
 
 ## Agreed mapping
 

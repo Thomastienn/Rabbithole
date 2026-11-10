@@ -69,3 +69,12 @@ export function offsetCoveredBoxes(boxes: PlacedBox[], growing: string[], reveal
     if (!shifted) return moved;
   }
 }
+
+export type VimAction = 'ArrowLeft' | 'ArrowDown' | 'ArrowUp' | 'ArrowRight' | 'zoomIn' | 'zoomOut' | 'fit';
+const vimKeys: Record<string, VimAction> = { h: 'ArrowLeft', j: 'ArrowDown', k: 'ArrowUp', l: 'ArrowRight', H: 'ArrowLeft', J: 'ArrowDown', K: 'ArrowUp', L: 'ArrowRight', '=': 'zoomIn', '+': 'zoomIn', '-': 'zoomOut', f: 'fit' };
+
+// Agreed opt-in aliases (docs/vim-bindings-proposal.md); the caller checks focus scope and open dialogs/menus.
+export function vimAction(e: { key: string; altKey: boolean; ctrlKey: boolean; metaKey: boolean; defaultPrevented: boolean; isComposing?: boolean; keyCode?: number }): VimAction | undefined {
+  if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+  return Object.hasOwn(vimKeys, e.key) ? vimKeys[e.key] : undefined;
+}

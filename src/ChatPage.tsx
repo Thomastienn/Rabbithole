@@ -7,6 +7,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
 import { AdjustmentsHorizontalIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
+import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
 import { withTurn, type Message, type Turn } from './turn';
@@ -79,6 +80,8 @@ export default function ChatPage() {
   const [savingModel, setSavingModel] = useState<string>();
   const [mobileNav, setMobileNav] = useState(false);
   const [help, setHelp] = useState(false);
+  // Only this boolean is stored, per browser and app origin; unreadable storage means off.
+  const [vim, setVim] = useState(() => { try { return localStorage.getItem('treetutor.vim') === 'on'; } catch { return false; } });
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -391,12 +394,16 @@ export default function ChatPage() {
     <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
       <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={mobileNav}><VStack padding={5} gap={5}>
         <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Your trees</Heading><IconButton label="Close learning trees" tooltip="Close" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => { setMobileNav(false); document.querySelector<HTMLButtonElement>('[aria-label="Map menu"]:not([aria-hidden])')?.focus(); }} /></HStack>
-        {help && <VStack gap={2}><Heading level={2}>Map help</Heading><Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text><Button label="Close help" variant="ghost" onClick={() => setHelp(false)} /></VStack>}
+        {help && <VStack gap={2}><Heading level={2}>Map help</Heading><Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text><Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them in Settings below. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text><Button label="Close help" variant="ghost" onClick={() => setHelp(false)} /></VStack>}
         <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()}>{busy ? 'Opening…' : 'New chat'}</Button>
         <nav aria-label="Saved learning trees"><VStack gap={2}>
           {state?.trees.filter(t => !t.parent).map(t => <Button label={t.title} key={t.id} variant={root === t.id ? 'secondary' : 'ghost'} aria-current={root === t.id ? 'page' : undefined} onClick={() => openTree(t.id)}>{t.title}</Button>)}
           {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
         </VStack></nav>
+        <VStack gap={3}>
+          <Heading level={3}>Settings</Heading>
+          <CheckboxInput label="Vim canvas bindings" description="With the map or a conversation box focused, h j k l act as arrows; = + - zoom; f fits the tree." value={vim} onChange={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} />
+        </VStack>
         <VStack gap={3}>
           <Heading level={3}>Connections</Heading>
           <Text type="supporting" color="secondary">Trees save on this computer. Questions go to the provider you pick for each conversation, using your own plan.</Text>
@@ -411,7 +418,7 @@ export default function ChatPage() {
         <section className="tree-workspace" data-expanded={expanded && !overview}>
         {root && state && <section className="overview" data-chat-open={!overview} aria-label="Learning tree">
           {layoutFailed && <HStack padding={3} gap={2} role="alert"><Text>Map layout not saved. It retries every minute while this tree stays open.</Text><Button label="Retry saving layout" variant="secondary" onClick={() => void saver.current?.flush()} /></HStack>}
-          <TreeOverview toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
+          <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
         </section>}
         <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu]')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>

@@ -4,7 +4,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { parseViewport, placeBox, offsetCoveredBoxes } from '../src/canvas.ts';
+import { parseViewport, placeBox, offsetCoveredBoxes, vimAction } from '../src/canvas.ts';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { layoutSaver, LAYOUT_SAVE_MS } from '../src/layoutSave.ts';
@@ -138,4 +138,11 @@ test('positions migrate, save during streaming, reject invalid coordinates and s
     assert.deepEqual([store.tree(child.id).x, store.tree(child.id).y], [-125.5, 802.25]);
     assert.deepEqual(store.tree(child.id).branch, child.branch);
   } finally { if (app.server.listening) app.stop(); store.close(); }
+});
+
+test('Vim aliases map only the agreed plain keys to existing canvas actions', () => {
+  const key = (k, extra = {}) => vimAction({ key: k, altKey: false, ctrlKey: false, metaKey: false, defaultPrevented: false, ...extra });
+  assert.deepEqual(['h', 'j', 'k', 'l', 'H', 'J', 'K', 'L', '=', '+', '-', 'f'].map(k => key(k)), ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight', 'zoomIn', 'zoomIn', 'zoomOut', 'fit']);
+  for (const k of ['F', '_', 'a', 'g', 'Escape', 'Enter', ' ', 'Tab', 'ArrowLeft', 'toString', 'constructor']) assert.equal(key(k), undefined, k);
+  for (const extra of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }, { defaultPrevented: true }, { isComposing: true }, { keyCode: 229 }]) assert.equal(key('f', extra), undefined, JSON.stringify(extra));
 });

@@ -6,7 +6,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRightIcon, LinkIcon } from '@heroicons/react/24/outline';
 import type { ReactNode } from 'react';
-import { MIN_ZOOM, offsetCoveredBoxes, parseViewport, placeBox, type Point, type Viewport } from './canvas';
+import { MIN_ZOOM, offsetCoveredBoxes, parseViewport, placeBox, vimAction, type Point, type Viewport } from './canvas';
 import type { ArtifactSummary } from './artifacts';
 
 export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside' | 'expanded'; viewport?: Viewport };
@@ -73,7 +73,7 @@ function MeasureHandles({ nodes }: { nodes: ConversationNode[] }) {
   return null;
 }
 
-export default function TreeOverview({ root, trees, previews, active, open, focus, focusControl, transition, save, saveViewport, menu, toolbar, selected, current, initialFolded, onFold }: { toolbar?: ReactNode; saveViewport: (viewport: Viewport) => void; initialFolded?: string[]; onFold: (folded: string[]) => void; menu: (actions: MapActions) => ReactNode; root: string; trees: Summary[]; previews: Record<string, Preview>; active: string[]; open: Open; focus?: string; focusControl?: string; transition?: string; selected?: string; current?: string; save: (positions: Record<string, Point>) => void }) {
+export default function TreeOverview({ root, trees, previews, active, open, focus, focusControl, transition, save, saveViewport, menu, toolbar, selected, current, initialFolded, onFold, vim }: { vim?: boolean; toolbar?: ReactNode; saveViewport: (viewport: Viewport) => void; initialFolded?: string[]; onFold: (folded: string[]) => void; menu: (actions: MapActions) => ReactNode; root: string; trees: Summary[]; previews: Record<string, Preview>; active: string[]; open: Open; focus?: string; focusControl?: string; transition?: string; selected?: string; current?: string; save: (positions: Record<string, Point>) => void }) {
   const flow = useRef<ReactFlowInstance<ConversationNode>>(null);
   const callbacks = useRef({ open, save });
   callbacks.current = { open, save };
@@ -151,6 +151,9 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
     const view = instance.getViewport();
     void instance.setViewport({ ...view, x: view.x + x, y: view.y + y });
   }
+  const zoomOut = () => { navigated.current = true; void flow.current?.zoomOut(); };
+  const zoomIn = () => { navigated.current = true; void flow.current?.zoomIn(); };
+  const fitTree = () => { navigated.current = true; void flow.current?.fitView(fit); };
   const hierarchy = useMemo(() => {
     const byId = new Map(trees.map(t => [t.id, t]));
     const children = new Map<string, Summary[]>();
@@ -239,10 +242,10 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   }), [hierarchy, folded]);
   return <>
     <HStack padding={1} gap={1} vAlign="center" className="map-toolbar" aria-label="Tree view controls">
-      <IconButton label="Zoom out" tooltip="Zoom out" icon={<MinusIcon />} variant="ghost" size="sm" onClick={() => { navigated.current = true; void flow.current?.zoomOut(); }} />
+      <IconButton label="Zoom out" tooltip="Zoom out" icon={<MinusIcon />} variant="ghost" size="sm" onClick={zoomOut} />
       <Text aria-label="Current zoom">{zoom < 0.01 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%</Text>
-      <IconButton label="Zoom in" tooltip="Zoom in" icon={<PlusIcon />} variant="ghost" size="sm" onClick={() => { navigated.current = true; void flow.current?.zoomIn(); }} />
-      <IconButton label="Fit tree" tooltip="Fit tree" icon={<ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={() => { navigated.current = true; void flow.current?.fitView(fit); }} />
+      <IconButton label="Zoom in" tooltip="Zoom in" icon={<PlusIcon />} variant="ghost" size="sm" onClick={zoomIn} />
+      <IconButton label="Fit tree" tooltip="Fit tree" icon={<ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={fitTree} />
       {menu({ expand: () => setFolded(new Set()), collapse: () => setFolded(new Set([root])), keep: keepCurrent, canKeep: !!current && trees.some(t => t.id === current) })}
       {toolbar}
     </HStack>
@@ -251,12 +254,16 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       const nodeTarget = e.target === (e.target as HTMLElement).closest('.react-flow__node') ? (e.target as HTMLElement).dataset.id : undefined;
       if (nodeTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(nodeTarget); return; }
+      // Aliases only on the map or a box wrapper itself, and never while a dialog or menu is open.
+      const alias = vim && (nodeTarget || e.target === e.currentTarget) && !document.querySelector('[aria-haspopup][aria-expanded="true"], dialog[open], [aria-modal="true"]') ? vimAction(e.nativeEvent) : undefined;
+      if (alias === 'zoomIn' || alias === 'zoomOut' || alias === 'fit') { e.preventDefault(); e.stopPropagation(); ({ zoomIn, zoomOut, fit: fitTree })[alias](); return; }
+      const key = alias ?? e.key;
       const delta: Record<string, Point> = { ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 }, ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 } };
-      if (!delta[e.key]) return;
+      if (!delta[key]) return;
       if (e.target === e.currentTarget) {
         e.preventDefault(); e.stopPropagation();
         const step = e.shiftKey ? 300 : 100;
-        pan(-delta[e.key].x * step, -delta[e.key].y * step);
+        pan(-delta[key].x * step, -delta[key].y * step);
         return;
       }
       if (e.target !== (e.target as HTMLElement).closest('.react-flow__node')) return;
@@ -265,7 +272,7 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
       const node = nodes.find(n => n.id === id);
       if (!node) return;
       const step = e.shiftKey ? 100 : 10;
-      const position = { x: node.position.x + delta[e.key].x * step, y: node.position.y + delta[e.key].y * step };
+      const position = { x: node.position.x + delta[key].x * step, y: node.position.y + delta[key].y * step };
       setNodes(current => current.map(n => n.id === id ? { ...n, position, selected: true } : n));
       save({ [node.id]: position });
       setNotice(`${node.data.conversation.title} moved to ${Math.round(position.x)}, ${Math.round(position.y)}.`);
