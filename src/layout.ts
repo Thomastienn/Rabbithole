@@ -106,8 +106,8 @@ html { view-transition-name: none; }
 .react-flow__edge:focus-visible { outline: none; }
 .react-flow__edge:focus-visible .react-flow__edge-path { stroke: var(--color-text-primary); stroke-width: var(--spacing-1); }
 .conversation-box button { height: auto; white-space: normal; }
-.node-message[data-role=user] { padding-inline-start: var(--spacing-2); border-inline-start: medium solid var(--color-border-emphasized); }
-.node-message[data-role=assistant] { padding-inline-start: var(--spacing-2); }
+.node-message[data-role=user] { align-items: flex-end; }
+.node-message[data-role=user] .question-bubble { max-width: 85%; padding: var(--spacing-1) var(--spacing-2); }
 .node-message { position: relative; }
 .node-message .react-flow__handle { right: calc(-1 * var(--spacing-3)); }
 .react-flow__node.selected .conversation-box { border-color: var(--color-text-primary); box-shadow: var(--shadow-med); }
