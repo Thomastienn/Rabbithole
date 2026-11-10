@@ -115,9 +115,10 @@ async function job(render, mutate) {
   const artifact = store.pendingArtifact(tree.id, message, 'Title', 'Planned.', 'video', '{"request":"Make a video."}');
   mutate?.(store, artifact);
   const provider = { generate: async (t, text, emit) => complete(emit, composition) };
-  const result = await generateVideo({ provider, selection: {}, store, dir, artifact, signal: new AbortController().signal, render }).then(() => null, error => error.message);
+  const phases = [];
+  const result = await generateVideo({ provider, selection: {}, store, dir, artifact, signal: new AbortController().signal, render, onPhase: (...p) => phases.push(p) }).then(() => null, error => error.message);
   assert.ok(!existsSync(join(dir, 'video-work', artifact.attempt, 'out'))); // no leftover unpublished output
-  return { result, row: store.artifact(tree.id, artifact.id), published: existsSync(mediaPath(dir, artifact.id)), dir };
+  return { result, row: store.artifact(tree.id, artifact.id), published: existsSync(mediaPath(dir, artifact.id)), dir, phases };
 }
 
 test('out-of-workspace output, unreadable media, lost ownership and a failed save publish nothing', async () => {
@@ -161,6 +162,60 @@ test('app marks a failed job failed without a playable result', async () => {
   } finally { env.close(); }
 });
 
+test('running job exposes phase and reported progress to its own conversation, then serves seekable media', async () => {
+  let gate, renderStarted;
+  const started = new Promise(r => { renderStarted = r; });
+  const videoRender = async (workspace, output, signal, onProgress) => {
+    renderStarted();
+    onProgress(0.4);
+    await new Promise(r => { gate = r; });
+    return fakeRender(workspace, output);
+  };
+  let release;
+  const composing = new Promise(r => { release = r; });
+  const provider = { generate: async (tree, text, emit) => {
+    if (tree.instructions?.includes('Remotion')) { await composing; return complete(emit, composition); }
+    complete(emit, 'Sure.' + directive);
+  } };
+  const env = await open(provider, { videoRender });
+  try {
+    const tree = env.store.create('Video'), other = env.store.create('Other');
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of this.' })).text();
+    const state = async () => (await env.get('/api/state')).json();
+    const artifact = async id => (await (await env.get(`/api/trees/${id}`)).json()).artifacts[0];
+    assert.deepEqual((await state()).videos, [tree.id]);
+    assert.deepEqual((await state()).active, []);
+    assert.equal((await artifact(tree.id)).phase, 'preparing');
+    assert.equal((await artifact(tree.id)).progress, null);
+    assert.equal(await artifact(other.id), undefined);
+    release();
+    await started;
+    const rendering = await artifact(tree.id);
+    assert.equal(rendering.phase, 'rendering');
+    assert.equal(rendering.progress, 0.4);
+    const previews = await (await env.get(`/api/previews?id=${tree.id}&id=${other.id}`)).json();
+    assert.deepEqual(previews[tree.id].at(-1).artifacts, [{ id: rendering.id, kind: 'video', title: task.title, status: 'pending', phase: 'rendering', progress: 0.4 }]);
+    assert.ok(!previews[other.id].some(m => m.artifacts));
+    gate();
+    await until(() => env.store.artifact(tree.id, rendering.id).status === 'ready');
+    assert.deepEqual((await state()).videos, []);
+    const ready = await artifact(tree.id);
+    assert.equal(ready.status, 'ready');
+    assert.equal(ready.phase, undefined);
+    const media = `/api/trees/${tree.id}/artifacts/${ready.id}/media`;
+    const whole = await env.get(media);
+    assert.equal(whole.headers.get('accept-ranges'), 'bytes');
+    assert.equal(Buffer.from(await whole.arrayBuffer()).length, mp4.length);
+    const part = await fetch(whole.url, { headers: { Range: 'bytes=4-11' } });
+    assert.equal(part.status, 206);
+    assert.equal(part.headers.get('content-range'), `bytes 4-11/${mp4.length}`);
+    assert.equal(Buffer.from(await part.arrayBuffer()).toString('latin1'), 'ftypisom');
+    const tail = await fetch(whole.url, { headers: { Range: 'bytes=-10' } });
+    assert.equal(Buffer.from(await tail.arrayBuffer()).length, 10);
+    assert.equal((await fetch(whole.url, { headers: { Range: `bytes=${mp4.length}-` } })).status, 416);
+  } finally { env.close(); }
+});
+
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const browser = join(repo, 'node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell');
 const sandboxed = spawnSync('bwrap', ['--version']).status === 0 && existsSync(browser);
@@ -185,8 +240,12 @@ test('render sandbox hides home and app data, blocks network and confines writes
 });
 
 test('one real short sandboxed Remotion render publishes a ready MP4', { skip: !sandboxed && 'bwrap or Remotion browser missing', timeout: 240000 }, async () => {
-  const { result, row, published, dir } = await job(undefined);
+  const { result, row, published, dir, phases } = await job(undefined);
   assert.equal(result, null);
+  // The real renderer reports progress in 5% steps, ending at 100%.
+  assert.deepEqual(phases[0], ['rendering']);
+  assert.ok(phases.length > 2 && phases.every(([phase]) => phase === 'rendering'));
+  assert.deepEqual(phases.at(-1), ['rendering', 1]);
   assert.equal(row.status, 'ready');
   assert.equal(row.duration, 1);
   assert.equal(published, true);

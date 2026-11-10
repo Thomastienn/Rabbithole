@@ -19,6 +19,8 @@ html { view-transition-name: none; }
 .diagram-card h3 { font-size: var(--font-size-base); }
 .diagram-viewport { max-width: 100%; max-height: 24rem; overflow: auto; overscroll-behavior: contain; }
 .diagram-viewport img { display: block; max-width: none; }
+.video-frame { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-element); background: var(--color-background-body); }
+.video-frame:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
 .diagram-source { max-height: 12rem; overflow: auto; margin: 0; padding: var(--spacing-2); background: var(--color-background-body); color: var(--color-text-primary); font-size: var(--font-size-sm); }
 .diagram-card:focus-visible, .diagram-viewport:focus-visible, .diagram-source:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
 .selection-action { position: absolute; z-index: 3; margin-top: var(--spacing-1); transform: translateX(-50%); animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1); }

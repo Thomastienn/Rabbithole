@@ -11,7 +11,9 @@ const LABELS = { claude: 'Claude', codex: 'Codex' };
 
 export function createApp({ store, auth, provider, providers = { codex: provider }, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender }) {
   const pick = tree => providers[tree.provider] ?? providers[defaultProvider];
-  const active = new Map(), videos = new Set();
+  const active = new Map(), videos = new Map();
+  // Running jobs report their phase and renderer progress in memory only; restart fails pending jobs anyway.
+  const live = a => a.status === 'pending' && videos.has(a.id) ? { ...a, phase: videos.get(a.id).phase, progress: videos.get(a.id).progress } : a;
   const csrf = randomBytes(32).toString('hex');
   const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
@@ -26,11 +28,11 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     }
     const url = new URL(req.url, origin);
     try {
-      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()] });
+      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], videos: [...new Set([...videos.values()].map(v => v.conversation))] });
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
         if (ids.length > 500) return json(res, 400, { error: 'Too many conversations requested.' });
-        return json(res, 200, store.previews(ids));
+        return json(res, 200, Object.fromEntries(Object.entries(store.previews(ids)).map(([id, rows]) => [id, rows.map(m => m.artifacts ? { ...m, artifacts: m.artifacts.map(live) } : m)])));
       }
       if (req.method === 'GET' && url.pathname === '/api/models') {
         const ids = Object.keys(providers);
@@ -48,9 +50,12 @@ export function createApp({ store, auth, provider, providers = { codex: provider
         const artifact = store.artifact(mediaMatch[1], mediaMatch[2]);
         const info = artifact?.kind === 'video' && artifact.status === 'ready' && await stat(mediaPath(dir, artifact.id)).catch(() => null) || null;
         if (!info?.isFile()) return json(res, 404, { error: 'Video not available in this conversation.' });
-        // shortcut: whole-file responses without Range; add byte ranges with the inline player if seeking needs it.
-        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': info.size });
-        return createReadStream(mediaPath(dir, artifact.id)).on('error', () => res.destroy()).pipe(res);
+        // Single byte ranges let the native player seek; anything else gets the whole file.
+        const [, from, to] = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '') ?? [];
+        const start = from ? Number(from) : to ? Math.max(0, info.size - Number(to)) : 0, end = from && to ? Math.min(Number(to), info.size - 1) : info.size - 1;
+        if (req.headers.range && (from === undefined || start > end)) { res.writeHead(416, { 'Content-Range': `bytes */${info.size}` }); return res.end(); }
+        res.writeHead(req.headers.range ? 206 : 200, { 'Content-Type': 'video/mp4', 'Content-Length': end - start + 1, 'Accept-Ranges': 'bytes', ...(req.headers.range && { 'Content-Range': `bytes ${start}-${end}/${info.size}` }) });
+        return createReadStream(mediaPath(dir, artifact.id), { start, end }).on('error', () => res.destroy()).pipe(res);
       }
       const artifactMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)$/);
       if (req.method === 'GET' && artifactMatch) {
@@ -190,10 +195,11 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                   const job = store.pendingArtifact(id, reply, output.task.title, output.task.description, 'video', input);
                   send({ type: 'artifact', artifact: job });
                   const jobController = new AbortController();
-                  videos.add(jobController);
-                  generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: store.tree(id).model }, store, dir, artifact: job, signal: jobController.signal, timeout: videoTimeout, render: videoRender })
+                  const running = { controller: jobController, conversation: id, phase: 'preparing', progress: null };
+                  videos.set(job.id, running);
+                  generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: store.tree(id).model }, store, dir, artifact: job, signal: jobController.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) })
                     .catch(error => store.finishVideo(id, job.id, job.attempt, {}, error.message))
-                    .finally(() => videos.delete(jobController));
+                    .finally(() => videos.delete(job.id));
                 }
               } else if (output.requested) {
                 text = output.text;
@@ -227,7 +233,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       const treeMatch = url.pathname.match(/^\/api\/trees\/([^/]+)$/);
       if (req.method === 'GET' && treeMatch) {
         const tree = store.tree(treeMatch[1]);
-        return json(res, tree ? 200 : 404, tree ?? { error: 'Learning tree not found.' });
+        return json(res, tree ? 200 : 404, tree ? { ...tree, artifacts: tree.artifacts.map(live) } : { error: 'Learning tree not found.' });
       }
       if (url.pathname.startsWith('/api/')) return json(res, 404, { error: 'Not found.' });
       if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed.' });
@@ -242,5 +248,5 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       else res.end();
     }
   });
-  return { server, active, stop: () => { for (const controller of [...active.values(), ...videos]) controller.abort(); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
+  return { server, active, stop: () => { for (const controller of [...active.values(), ...[...videos.values()].map(v => v.controller)]) controller.abort(); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
 }

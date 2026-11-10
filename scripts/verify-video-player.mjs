@@ -1,0 +1,186 @@
+// Browser fixture for TreeTutor-vm4.10: video status sequence, keyboard playback, no stolen focus or scroll, reload.
+// Synthetic tutor/worker providers; the composition is rendered for real in the bubblewrap sandbox. Needs `npm run build`.
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
+import { execFile, fork } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { Store } from '../server/store.mjs';
+import { createApp } from '../server/app.mjs';
+import { sandboxRender } from '../server/videos.mjs';
+
+const filename = fileURLToPath(import.meta.url);
+const task = { title: 'Peterson in the tournament tree', description: 'Two threads meet at each tree level.', intent: 'Animate two winners advancing.', excerpt: 'Peterson locks guard each node.' };
+const composition = `// Description: Two labelled boxes slide together into a final box over three seconds.
+import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
+export const durationInFrames = 90;
+export default function Video() {
+  const frame = useCurrentFrame();
+  return <AbsoluteFill style={{ background: 'white', alignItems: 'center', justifyContent: 'center', fontSize: 40, opacity: interpolate(frame, [0, 30], [0, 1]) }}>A + B → Final</AbsoluteFill>;
+}`;
+
+if (process.argv[2] === '--serve') {
+  const dir = process.argv[3], store = new Store(join(dir, 'trees.sqlite'));
+  const gates = {};
+  const gate = name => new Promise(resolve => { gates[name] = resolve; });
+  const log = kind => appendFileSync(join(dir, 'calls.jsonl'), JSON.stringify({ kind }) + '\n');
+  const done = (emit, text) => { emit({ type: 'item', item: 'answer', text }); emit({ type: 'status', status: 'completed' }); };
+  const provider = {
+    models: async () => [{ model: 'fixture-model', label: 'Fixture model', isDefault: true }],
+    generate: async (tree, text, emit) => {
+      if (tree.instructions?.includes('Remotion')) { log('worker'); await gate('compose'); return done(emit, composition); }
+      log('tutor');
+      done(emit, /video/i.test(text) ? 'Here is how Peterson fits.\n```treetutor-video\n' + JSON.stringify(task) + '\n```' : 'Continuing elsewhere.');
+    },
+  };
+  const videoRender = async (workspace, output, signal, onProgress) => { await gate('render'); return sandboxRender(workspace, output, signal, onProgress); };
+  const app = createApp({ store, provider, dir, videoRender, auth: { status: () => ({ connected: true }) } });
+  process.on('message', message => {
+    if (gates[message]) gates[message]();
+    if (message === 'stop') { app.stop(); store.close(); process.exit(0); }
+  });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  process.send({ origin: `http://127.0.0.1:${app.server.address().port}` });
+} else {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-video-browser-'));
+  const store = new Store(join(dir, 'trees.sqlite'));
+  const root = store.create('Mutual exclusion');
+  store.message(root.id, 'user', 'How do locks scale?', 'completed');
+  const rootReply = store.message(root.id, 'assistant', 'Peterson locks combine into a tournament tree.', 'completed');
+  const child = store.branch(store.tree(root.id), { messageId: rootReply, start: 0, end: 8, text: 'Peterson', question: 'Peterson details' }, 'Root snapshot.');
+  store.message(child.id, 'user', 'Peterson details', 'completed');
+  const childReply = store.message(child.id, 'assistant', 'Each node is a two-thread Peterson lock.', 'completed');
+  const nested = store.branch(store.tree(child.id), { messageId: childReply, start: 0, end: 9, text: 'Each node', question: 'Tree levels' }, 'Child snapshot.');
+  const long = 'A thread climbs one level each time it wins its two-thread lock. '.repeat(12);
+  for (let i = 0; i < 6; i++) { store.message(nested.id, 'user', `Level question ${i + 1}`, 'completed'); store.message(nested.id, 'assistant', long, 'completed'); }
+  store.close();
+
+  const run = promisify(execFile);
+  const session = (await run('agent-browser', ['session', 'id', '--scope', 'worktree', '--prefix', 'video-player'])).stdout.trim();
+  const b = async (...args) => (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 * 1024 * 1024 })).stdout;
+  const ev = async expression => JSON.parse(await b('eval', expression, '--json')).data.result;
+  const wait = (expression, timeout = '30000') => b('wait', '--fn', expression, '--timeout', timeout);
+  const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
+  const calls = () => readFileSync(join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line).kind);
+  const checks = [];
+  const pass = (name, details = true) => { checks.push({ name, pass: true, details }); console.log('PASS:', name); };
+  const chatTitle = title => wait(`document.querySelector('.focused-chat h2')?.textContent===${JSON.stringify(title)} && getComputedStyle(document.querySelector('.focused-chat')).display!=='none'`);
+  async function openFromMap(title) {
+    if (await ev(`getComputedStyle(document.querySelector('.focused-chat')).display!=='none'`)) await b('press', 'Escape');
+    await b('wait', `[aria-label="Open ${title}"]`);
+    await click(`Open ${title}`);
+    await chatTitle(title);
+  }
+  const ask = async text => { await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', text); await b('press', 'Enter'); };
+  const card = '.focused-chat .diagram-card[data-artifact]';
+  const scroller = `[...document.querySelectorAll('.focused-chat *')].find(e=>e.scrollHeight>e.clientHeight+1&&/auto|scroll/.test(getComputedStyle(e).overflowY))`;
+  const child_ = fork(filename, ['--serve', dir], { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });
+  const { origin } = await new Promise((resolve, reject) => { child_.once('message', resolve); child_.once('exit', code => reject(new Error(`server exited ${code}`))); });
+  try {
+    await b('open', origin);
+    await b('set', 'viewport', '1280', '800');
+    await b('set', 'media', 'light', 'reduced-motion');
+    await b('wait', '[aria-label="Open Mutual exclusion"]');
+    await openFromMap('Tree levels');
+
+    await ask('Make a video explaining how Peterson fits into this tournament tree.');
+    await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='preparing'`);
+    const placement = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),msgs=[...document.querySelectorAll('.focused-chat .astryx-chat-message')],own=c.closest('.astryx-chat-message');return {status:c.querySelector('[role=status]').textContent,title:c.querySelector('h3').textContent,lastReply:own===msgs.at(-1),replyText:own.textContent.includes('Here is how Peterson fits.'),fence:document.querySelector('.focused-chat').textContent.includes('treetutor-video')}})()`);
+    assert.deepEqual(placement, { status: `${task.title}: Preparing video…`, title: task.title, lastReply: true, replyText: true, fence: false });
+    pass('request inserts a titled Preparing entry under its own reply in the nested child', placement);
+
+    // Navigate elsewhere and keep chatting while the job runs.
+    await openFromMap('Mutual exclusion');
+    await ask('Another question meanwhile');
+    await wait(`document.querySelector('.focused-chat').textContent.includes('Continuing elsewhere.')`);
+    child_.send('compose');
+    await wait(`document.querySelector('.overview').textContent.includes('Video: ${task.title} · rendering…')`);
+    assert.equal(await ev(`document.querySelectorAll(${JSON.stringify(card)}).length`), 0);
+    pass('learner chats in another conversation; map row reports rendering; no card appears there');
+
+    await openFromMap('Tree levels');
+    await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='rendering'`);
+    assert.equal(await ev(`document.querySelector(${JSON.stringify(card)}).querySelector('[role=status]').textContent`), `${task.title}: Rendering video…`);
+    assert.equal(await ev(`!!document.querySelector(${JSON.stringify(card + ' [role=progressbar]')})`), false);
+    pass('Rendering without reported progress shows no progress bar');
+
+    // Observe announcements and progress; park the reader mid-conversation with focus in the composer.
+    await ev(`(()=>{window.__statuses=[];window.__progress=[];let s,p;new MutationObserver(()=>{const c=document.querySelector(${JSON.stringify(card)});const t=c?.querySelector('[role=status]')?.textContent;if(t&&t!==s){s=t;__statuses.push(t)}const v=c?.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow');if(v&&v!==p){p=v;__progress.push(v)}}).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});return true})()`);
+    await ev(`(()=>{const s=${scroller};s.scrollTop=Math.round((s.scrollHeight-s.clientHeight)/2);s.dispatchEvent(new Event('scroll'));return s.scrollTop})()`);
+    await new Promise(r => setTimeout(r, 300));
+    await ev(`document.querySelector('.focused-chat [contenteditable=true]').focus()`);
+    const before = await ev(`({top:(${scroller}).scrollTop,focus:document.activeElement===document.querySelector('.focused-chat [contenteditable=true]'),messages:document.querySelectorAll('.focused-chat .astryx-chat-message').length})`);
+    child_.send('render');
+    await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='ready'`, '120000');
+    await wait(`document.querySelector(${JSON.stringify(card + ' video')})?.readyState>=1`);
+    await new Promise(r => setTimeout(r, 2000));
+    const after = await ev(`({top:(${scroller}).scrollTop,focus:document.activeElement===document.querySelector('.focused-chat [contenteditable=true]'),messages:document.querySelectorAll('.focused-chat .astryx-chat-message').length})`);
+    assert.ok(before.focus && after.focus);
+    assert.ok(Math.abs(after.top - before.top) <= 1, `scroll moved ${before.top} → ${after.top}`);
+    assert.equal(after.messages, before.messages);
+    pass('completion keeps focus, scroll position and message count', { before, after });
+
+    const announced = await ev(`({statuses:__statuses,progress:__progress,progressLive:false})`);
+    assert.deepEqual(announced.statuses, [`${task.title}: Rendering video…`, `${task.title}: Video ready.`]);
+    assert.ok(announced.progress.length >= 1, 'renderer progress was shown');
+    pass('one status per state change; progress ticks change no status text', announced);
+
+    const player = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),v=c.querySelector('video'),list=c.closest('.astryx-chat-message');return {paused:v.paused,autoplay:v.autoplay,controls:v.controls,label:v.getAttribute('aria-label'),description:document.getElementById(v.getAttribute('aria-describedby')).textContent,ratio:Math.round(v.clientWidth/v.clientHeight*100)/100,fits:v.getBoundingClientRect().right<=list.getBoundingClientRect().right+1,duration:Math.round(v.duration),cardLive:c.getAttribute('aria-live'),status:c.querySelector('[role=status]').textContent}})()`);
+    assert.deepEqual(player, { paused: true, autoplay: false, controls: true, label: `Video: ${task.title}`, description: 'Two labelled boxes slide together into a final box over three seconds.', ratio: 1.78, fits: true, duration: 3, cardLive: 'off', status: `${task.title}: Video ready.` });
+    pass('ready card: paused native player within chat width, 16:9, with text explanation', player);
+
+    // Tab reaches the player; native controls own its keys.
+    await ev(`(()=>{window.__keys=[];document.addEventListener('keydown',e=>{if(e.target.tagName==='VIDEO')__keys.push({key:e.key,prevented:e.defaultPrevented})});return true})()`);
+    for (let i = 0; i < 12 && !(await ev(`document.activeElement?.tagName==='VIDEO'`)); i++) await b('press', 'Shift+Tab');
+    assert.equal(await ev(`document.activeElement?.tagName`), 'VIDEO');
+    // Reverse Tab enters the native controls from their end; step out before the player and Tab forward onto it.
+    for (let i = 0; i < 12 && (await ev(`document.activeElement?.tagName==='VIDEO'`)); i++) await b('press', 'Shift+Tab');
+    await b('press', 'Tab');
+    assert.equal(await ev(`document.activeElement?.tagName`), 'VIDEO');
+    const video = `document.querySelector(${JSON.stringify(card + ' video')})`;
+    await b('press', 'Space'); await wait(`!${video}.paused`);
+    await b('press', 'Space'); await wait(`${video}.paused`);
+    const t0 = await ev(`${video}.currentTime`);
+    await b('press', 'ArrowRight'); await wait(`${video}.currentTime>${t0}`);
+    const v0 = await ev(`${video}.volume`);
+    await b('press', 'ArrowDown'); await wait(`${video}.volume<${v0}`);
+    await b('press', 'ArrowUp'); await wait(`${video}.volume>=${v0}`);
+    // Chrome has no fullscreen key; reverse Tab into the native controls reaches its fullscreen button third (Chrome 157 layout).
+    await ev(`document.querySelector('.focused-chat [contenteditable=true]').focus()`);
+    for (let i = 0; i < 12 && !(await ev(`document.activeElement?.tagName==='VIDEO'`)); i++) await b('press', 'Shift+Tab');
+    await b('press', 'Shift+Tab'); await b('press', 'Shift+Tab'); await b('press', 'Enter');
+    await wait(`document.fullscreenElement===${video}`);
+    await ev(`document.exitFullscreen().then(()=>true)`);
+    await wait(`!document.fullscreenElement`);
+    await ev(`${video}.focus()`);
+    await b('press', 'Escape');
+    const keys = await ev(`({keys:__keys,chatOpen:getComputedStyle(document.querySelector('.focused-chat')).display!=='none',focus:document.activeElement?.tagName})`);
+    // Recorded after page handlers, before the native default action: the app prevents none of the player's keys.
+    assert.ok([' ', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Escape'].every(key => keys.keys.some(k => k.key === key)) && keys.keys.every(k => !k.prevented), JSON.stringify(keys.keys));
+    assert.equal(keys.chatOpen, true);
+    pass('keyboard: Tab reaches player; Space play/pause, ArrowRight seek, ArrowUp/Down volume, fullscreen button by Tab+Enter; app handlers never intercept', keys);
+
+    await openFromMap('Mutual exclusion');
+    assert.equal(await ev(`document.querySelectorAll(${JSON.stringify(card)}).length`), 0);
+    const rows = await ev(`[...document.querySelectorAll('.overview .node-message')].map(m=>m.textContent).filter(t=>t.includes('Video:'))`);
+    assert.deepEqual(rows, [`Answer: Here is how Peterson fits.Video: ${task.title} · ready`]);
+    pass('finished video only in its original conversation; map row shows compact status', rows);
+
+    const callsBefore = calls();
+    await b('reload');
+    await b('wait', '[aria-label="Open Mutual exclusion"]');
+    await openFromMap('Tree levels');
+    await wait(`document.querySelector(${JSON.stringify(card + ' video')})?.readyState>=1`);
+    const reloaded = await ev(`(()=>{const v=document.querySelector(${JSON.stringify(card + ' video')});return {paused:v.paused,duration:Math.round(v.duration),media:performance.getEntriesByType('resource').filter(e=>e.name.endsWith('/media')).map(e=>e.responseStatus)}})()`);
+    assert.deepEqual(calls(), callsBefore);
+    assert.equal(reloaded.paused, true);
+    assert.equal(reloaded.duration, 3);
+    pass('reload restores the ready video from the local file with no provider request', { ...reloaded, providerCalls: callsBefore });
+    await ev(`document.querySelector(${JSON.stringify(card)}).scrollIntoView({block:'center'})`);
+    await b('screenshot', join(process.cwd(), '.impeccable/review/video-ready.png'));
+
+    writeFileSync('docs/verification/video-player-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.', checks }, null, 2) + '\n');
+  } finally { await b('close').catch(() => {}); child_.send('stop'); }
+}

@@ -1,0 +1,135 @@
+{
+  "checkedAt": "2026-11-10T05:16:06.859Z",
+  "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
+  "checks": [
+    {
+      "name": "request inserts a titled Preparing entry under its own reply in the nested child",
+      "pass": true,
+      "details": {
+        "fence": false,
+        "lastReply": true,
+        "replyText": true,
+        "status": "Peterson in the tournament tree: Preparing video…",
+        "title": "Peterson in the tournament tree"
+      }
+    },
+    {
+      "name": "learner chats in another conversation; map row reports rendering; no card appears there",
+      "pass": true,
+      "details": true
+    },
+    {
+      "name": "Rendering without reported progress shows no progress bar",
+      "pass": true,
+      "details": true
+    },
+    {
+      "name": "completion keeps focus, scroll position and message count",
+      "pass": true,
+      "details": {
+        "before": {
+          "focus": true,
+          "messages": 14,
+          "top": 1086
+        },
+        "after": {
+          "focus": true,
+          "messages": 14,
+          "top": 1086
+        }
+      }
+    },
+    {
+      "name": "one status per state change; progress ticks change no status text",
+      "pass": true,
+      "details": {
+        "progress": [
+          "20",
+          "50"
+        ],
+        "progressLive": false,
+        "statuses": [
+          "Peterson in the tournament tree: Rendering video…",
+          "Peterson in the tournament tree: Video ready."
+        ]
+      }
+    },
+    {
+      "name": "ready card: paused native player within chat width, 16:9, with text explanation",
+      "pass": true,
+      "details": {
+        "autoplay": false,
+        "cardLive": "off",
+        "controls": true,
+        "description": "Two labelled boxes slide together into a final box over three seconds.",
+        "duration": 3,
+        "fits": true,
+        "label": "Video: Peterson in the tournament tree",
+        "paused": true,
+        "ratio": 1.78,
+        "status": "Peterson in the tournament tree: Video ready."
+      }
+    },
+    {
+      "name": "keyboard: Tab reaches player; Space play/pause, ArrowRight seek, ArrowUp/Down volume, fullscreen button by Tab+Enter; app handlers never intercept",
+      "pass": true,
+      "details": {
+        "chatOpen": true,
+        "focus": "VIDEO",
+        "keys": [
+          {
+            "key": "Tab",
+            "prevented": false
+          },
+          {
+            "key": " ",
+            "prevented": false
+          },
+          {
+            "key": " ",
+            "prevented": false
+          },
+          {
+            "key": "ArrowRight",
+            "prevented": false
+          },
+          {
+            "key": "ArrowDown",
+            "prevented": false
+          },
+          {
+            "key": "ArrowUp",
+            "prevented": false
+          },
+          {
+            "key": "Escape",
+            "prevented": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "finished video only in its original conversation; map row shows compact status",
+      "pass": true,
+      "details": [
+        "Answer: Here is how Peterson fits.Video: Peterson in the tournament tree · ready"
+      ]
+    },
+    {
+      "name": "reload restores the ready video from the local file with no provider request",
+      "pass": true,
+      "details": {
+        "duration": 3,
+        "media": [
+          206
+        ],
+        "paused": true,
+        "providerCalls": [
+          "tutor",
+          "worker",
+          "tutor"
+        ]
+      }
+    }
+  ]
+}

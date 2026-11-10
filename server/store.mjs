@@ -48,7 +48,7 @@ export class Store {
   // SQLite substr/length count code points, so the 512 cut matches the client's live-turn cut.
   previews(ids) {
     const messages = this.db.prepare("SELECT id, role, substr(text,1,512) || CASE WHEN length(text)>512 THEN '…' ELSE '' END AS text, status FROM messages WHERE tree=? ORDER BY seq");
-    const artifacts = this.db.prepare('SELECT id,message,title,status FROM artifacts WHERE conversation=? ORDER BY created,rowid');
+    const artifacts = this.db.prepare('SELECT id,message,kind,title,status FROM artifacts WHERE conversation=? ORDER BY created,rowid');
     return Object.fromEntries(ids.map(id => {
       const byMessage = new Map();
       for (const { message, ...artifact } of artifacts.all(id)) {

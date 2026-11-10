@@ -35,11 +35,15 @@ export const SANDBOX = workspace => ['--ro-bind', '/', '/', '--tmpfs', homedir()
   '--bind', workspace, workspace, '--chdir', workspace, '--unshare-all', '--die-with-parent', '--new-session', '--dev', '/dev', '--proc', '/proc', '--clearenv',
   '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'HOME', workspace, '--setenv', 'TMPDIR', join(workspace, 'tmp')];
 
-export function sandboxRender(workspace, output, signal, timeout = 180000) {
+export function sandboxRender(workspace, output, signal, onProgress = () => {}, timeout = 180000) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn('bwrap', [...SANDBOX(workspace), process.execPath, join(REPO, 'server', 'video-render.mjs'), workspace, output, join(REPO, 'node_modules')], { stdio: ['ignore', 'pipe', 'pipe'], env: {} });
     let out = '';
-    child.stdout.on('data', chunk => { out = (out + chunk).slice(-4096); });
+    child.stdout.on('data', chunk => {
+      out = (out + chunk).slice(-4096);
+      // Progress lines are {"progress":0..1}; the last line is the result.
+      for (const line of out.split('\n').slice(-3, -1)) { const value = /^\{"progress":([\d.]+)\}$/.exec(line)?.[1]; if (value) onProgress(Math.min(1, Number(value))); }
+    });
     // Diagnostics stay in the job workspace process; never forwarded to chat or tutor.
     child.stderr.resume();
     const kill = () => child.kill('SIGKILL');
@@ -72,7 +76,7 @@ export async function validateOutput(workspace, output) {
 
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
 
-export async function generateVideo({ provider, selection, store, dir, artifact, signal, timeout, render = sandboxRender }) {
+export async function generateVideo({ provider, selection, store, dir, artifact, signal, timeout, render = sandboxRender, onPhase = () => {} }) {
   const workspace = join(dir, 'video-work', artifact.attempt);
   const controller = new AbortController(), items = new Map();
   const timer = setTimeout(() => controller.abort(new Error('Video composition timed out.')), timeout ?? 120000);
@@ -96,7 +100,8 @@ export async function generateVideo({ provider, selection, store, dir, artifact,
     await writeFile(join(workspace, 'index.tsx'), ENTRY);
     const output = join(workspace, 'out', `${randomUUID()}.mp4`);
     clearTimeout(timer);
-    const result = await render(workspace, output, controller.signal);
+    onPhase('rendering');
+    const result = await render(workspace, output, controller.signal, progress => onPhase('rendering', progress));
     await validateOutput(workspace, output);
     const duration = Number(result?.durationInFrames) / Number(result?.fps);
     if (!(duration > 0 && duration <= 60)) throw new Error('Rendered video is unreadable.');

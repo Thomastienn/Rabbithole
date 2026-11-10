@@ -8,6 +8,8 @@ const serveUrl = await bundle({ entryPoint: join(workspace, 'index.tsx'), outDir
   webpackOverride: config => ({ ...config, resolve: { ...config.resolve, modules: [modules] } }) });
 // The sandbox has no network, so use the browser installed beside the dependencies instead of downloading one.
 const browserExecutable = join(modules, '.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell');
+let reported = 0;
 const composition = await selectComposition({ serveUrl, id: 'Video', browserExecutable, logLevel: 'error' });
-await renderMedia({ serveUrl, composition, browserExecutable, codec: 'h264', outputLocation: output, concurrency: 1, logLevel: 'error' });
+await renderMedia({ serveUrl, composition, browserExecutable, codec: 'h264', outputLocation: output, concurrency: 1, logLevel: 'error',
+  onProgress: ({ progress }) => { const step = Math.floor(progress * 20) / 20; if (step > reported) console.log(JSON.stringify({ progress: reported = step })); } });
 console.log(JSON.stringify({ durationInFrames: composition.durationInFrames, fps: composition.fps }));

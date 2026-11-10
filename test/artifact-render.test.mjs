@@ -75,7 +75,7 @@ test('HTTP/SSE artifacts drive client states, owned map metadata and exact ancho
     }
     assert.deepEqual(withTurn({ ...saved, id: other.id, artifacts: [] }, turn).artifacts, []);
     const previews = await (await fetch(origin + `/api/previews?id=${root.id}&id=${other.id}`)).json();
-    assert.deepEqual(previews[root.id].at(-1).artifacts, [{ id: ready.id, title: task.title, status: 'ready' }]);
+    assert.deepEqual(previews[root.id].at(-1).artifacts, [{ id: ready.id, kind: 'mermaid', title: task.title, status: 'ready' }]);
     assert.doesNotMatch(JSON.stringify(previews), /flowchart|description|intent|excerpt/);
     assert.deepEqual(previews[other.id], []);
     const branch = await (await post(`/api/trees/${root.id}/branches`, { messageId: ready.message, start: 10, end: 19, text: 'repeat 😀', question: 'Why?' })).json();

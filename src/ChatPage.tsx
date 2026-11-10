@@ -14,6 +14,7 @@ import { withTurn, type Message, type Turn } from './turn';
 import { layoutSaver, type Batch } from './layoutSave';
 import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
+import VideoCard from './VideoCard';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 
 type Anchor = { messageId: string; start: number; end: number; text: string };
@@ -21,10 +22,10 @@ type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[] };
 type Model = { provider: string; model: string; label: string; isDefault: boolean };
 type Providers = Record<string, { label: string; connected: boolean }>;
-type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[] };
+type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[] };
 const previewText = (text: string) => { const chars = Array.from(text.slice(0, 1026)); return chars.slice(0, 512).join('') + (chars.length > 512 ? '…' : ''); };
 // The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
-const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview => withTurn({ messages: preview }, turn && { user: turn.user && { ...turn.user, text: previewText(turn.user.text) }, reply: turn.reply && { ...turn.reply, text: previewText(turn.reply.text), ...(turn.artifacts && { artifacts: turn.artifacts.filter(a => a.message === turn.reply!.id).map(({ id, title, status }) => ({ id, title, status })) }) } }).messages;
+const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview => withTurn({ messages: preview }, turn && { user: turn.user && { ...turn.user, text: previewText(turn.user.text) }, reply: turn.reply && { ...turn.reply, text: previewText(turn.reply.text), ...(turn.artifacts && { artifacts: turn.artifacts.filter(a => a.message === turn.reply!.id).map(({ id, kind, title, status }) => ({ id, kind, title, status })) }) } }).messages;
 
 function Passage({ message, index, onBranch, reveal, selecting, openSelection, closeSelection, formOpen }: { message: Message; index: number; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; formOpen: boolean }) {
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
@@ -205,7 +206,8 @@ export default function ChatPage() {
     return ids;
   })();
   const previewKey = JSON.stringify(visibleIds);
-  const activeKey = state?.active.join(',') ?? '';
+  // Running video jobs poll like replies until their card settles.
+  const activeKey = [...(state?.active ?? []), ...(state?.videos ?? [])].join(',');
   useEffect(() => {
     let cancelled = false;
     async function load(ids: string[]) {
@@ -271,7 +273,7 @@ export default function ChatPage() {
   }, [tree?.id, overview]);
   // Reopening a page during a turn recovers saved checkpoints without tying work to focus.
   useEffect(() => {
-    if (!state?.active.length) return;
+    if (!activeKey) return;
     const timer = setInterval(() => {
       void refresh().then(async () => {
         const id = selected.current;
@@ -282,7 +284,7 @@ export default function ChatPage() {
       }).catch(e => setError(e.message));
     }, 1500);
     return () => clearInterval(timer);
-  }, [state?.active.join(',')]);
+  }, [activeKey]);
 
   // The server reopens an existing unstarted chat rather than creating a second one.
   async function create() {
@@ -420,7 +422,7 @@ export default function ChatPage() {
           {layoutFailed && <HStack padding={3} gap={2} role="alert"><Text>Map layout not saved. It retries every minute while this tree stays open.</Text><Button label="Retry saving layout" variant="secondary" onClick={() => void saver.current?.flush()} /></HStack>}
           <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
         </section>}
-        <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu]')) { e.preventDefault(); returnToTree(); } }}>
+        <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header className="chat-header"><VStack padding={3} gap={1}>
             <HStack gap={1} vAlign="center">
@@ -462,7 +464,7 @@ export default function ChatPage() {
                   <HStack gap={2} wrap="wrap"><Button label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" size="sm" isDisabled={branching || !branch.question.trim() || active} /><Button label="Cancel branch" variant="ghost" size="sm" isDisabled={branching} onClick={() => { setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); }} /></HStack>
                   <Text type="supporting" color="secondary">Creates a saved chat with fixed context from this conversation.</Text>
                 </VStack></form>}
-                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => <DiagramCard key={artifact.id} artifact={artifact} />)}
+                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} /> : <DiagramCard key={artifact.id} artifact={artifact} />)}
                 {message.status !== 'completed' && <Text type="supporting" role="status">{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
               </ChatMessage>)}
             </ChatMessageList>
