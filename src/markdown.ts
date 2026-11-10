@@ -56,7 +56,7 @@ function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
 
 // Underlines are drawn on text leaves; the first piece of each is its single Tab stop.
 // shortcut: a passage covering only hidden syntax or math draws nothing; extend if suggestions target those.
-export function renderMarkdown(raw: string, reveal?: Span, underlines: Span[] = []): ReactNode {
+export function renderMarkdown(raw: string, reveal?: Span, underlines: (Span & { child?: string })[] = []): ReactNode {
   let revealed = 0;
   const stops = new Set<number>();
   const hit = (s: number, e: number) => !!reveal && s < reveal.end && e > reveal.start;
@@ -70,7 +70,8 @@ export function renderMarkdown(raw: string, reveal?: Span, underlines: Span[] = 
     if (u && !atomic && (u.start > s || u.end < e)) return split(attrs, s, e, [Math.max(s, u.start), Math.min(e, u.end)], className);
     if (u) {
       const stop = !stops.has(u.start) && stops.add(u.start);
-      return h('u', { ...attrs, className: className ? `suggestion ${className}` : 'suggestion', ...(stop && { tabIndex: 0, role: 'button', 'aria-label': `Suggested passage: ${plainText(raw.slice(u.start, u.end)) || raw.slice(u.start, u.end)}` }) }, value);
+      const name = plainText(raw.slice(u.start, u.end)) || raw.slice(u.start, u.end);
+      return h('u', { ...attrs, className: [u.child ? 'suggestion explored' : 'suggestion', className].filter(Boolean).join(' '), ...(stop && { tabIndex: 0, role: 'button', 'aria-label': u.child ? `Explored passage: ${name}. Opens its chat` : `Suggested passage: ${name}` }) }, value);
     }
     return h(Text, { ...attrs, type: 'inherit', children: value });
   };

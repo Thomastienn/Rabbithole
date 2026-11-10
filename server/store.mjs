@@ -133,8 +133,10 @@ export class Store {
     const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
     return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status,usage FROM messages WHERE tree=? ORDER BY seq').all(id).map(({ usage, ...m }) => m.role === 'assistant' ? { ...m, usage: JSON.parse(usage) } : m), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id),
-      suggestions: this.db.prepare('SELECT message,status,passages,usage FROM suggestions WHERE conversation=? ORDER BY rowid').all(id).map(s => ({ ...s, passages: JSON.parse(s.passages ?? '[]'), usage: JSON.parse(s.usage) })) };
+      suggestions: this.db.prepare('SELECT message,status,passages,usage FROM suggestions WHERE conversation=? ORDER BY rowid').all(id).map(s => ({ ...s, passages: JSON.parse(s.passages ?? '[]').map(({ child, ...p }) => this.live(child) ? { ...p, child } : p), usage: JSON.parse(s.usage) })) };
   }
+  // An explored suggestion whose child was deleted reads as unexplored again.
+  live(child) { return !!child && !!this.db.prepare('SELECT 1 FROM trees WHERE id=?').get(child); }
   // INSERT OR IGNORE makes the run once-only per saved reply: reopening or switching providers never reruns it.
   pendingSuggestions(conversation, message, nameTokens = null) { return this.db.prepare("INSERT OR IGNORE INTO suggestions(message,conversation,status,nameTokens) SELECT ?,?,'pending',? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant' AND status='completed')").run(message, conversation, nameTokens, message, conversation).changes > 0; }
   // The latest suggestion call's concept-name list size, for the Settings cost warning.
@@ -194,6 +196,10 @@ export class Store {
       const child = this.create(anchor.question.trim().slice(0, 200));
       this.db.prepare('UPDATE trees SET provider=?,model=?,working_model=?,working_provider=? WHERE id=?').run(parent.provider, parent.model, parent.working_model ?? parent.model, parent.working_provider ?? parent.provider, child.id);
       this.db.prepare('INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot) VALUES(?,?,?,?,?,?,?,?)').run(child.id, parent.id, anchor.messageId, anchor.start, anchor.end, anchor.text, anchor.question, snapshot);
+      // Branching from a suggestion marks it explored, in the same transaction as the saved child.
+      const row = anchor.suggestion === true && this.db.prepare("SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'").get(parent.id, anchor.messageId);
+      const passages = row ? JSON.parse(row.passages) : [], hit = passages.find(p => p.start === anchor.start && p.end === anchor.end && !this.live(p.child));
+      if (hit) { hit.child = child.id; this.db.prepare('UPDATE suggestions SET passages=? WHERE conversation=? AND message=?').run(JSON.stringify(passages), parent.id, anchor.messageId); }
       this.db.exec('COMMIT');
       return this.tree(child.id);
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }

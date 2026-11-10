@@ -38,6 +38,8 @@ html { view-transition-name: none; }
 .reply-md math[display=block] { padding-block: var(--spacing-2); max-width: 100%; overflow-x: auto; }
 .reply-md [data-reveal] { background: var(--color-background-blue); color: var(--color-text-primary); }
 .reply-md u.suggestion { text-decoration: underline dotted var(--color-text-secondary); text-decoration-thickness: from-font; text-underline-offset: var(--spacing-1); }
+.reply-md u.suggestion { cursor: pointer; }
+.reply-md u.suggestion.explored { text-decoration-style: solid; }
 .reply-md u.suggestion:focus-visible { outline: thin solid var(--color-text-primary); outline-offset: var(--spacing-1); border-radius: var(--radius-element); }
 .reply-md .md-source-syntax { white-space: pre-wrap; font-family: monospace; }
 .diagram-card { align-self: stretch; min-width: 0; max-width: 100%; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
@@ -50,8 +52,8 @@ html { view-transition-name: none; }
 .diagram-card:focus-visible, .diagram-viewport:focus-visible, .diagram-source:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
 .selection-action { position: absolute; z-index: 3; margin-top: var(--spacing-1); transform: translateX(-50%); animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, var(--spacing-1)); } }
+.passage-box { position: absolute; z-index: 3; width: min(100%, 28rem); transform: translateY(-100%); margin-top: calc(-1 * var(--spacing-1)); box-shadow: var(--shadow-low); }
 .branch-form { margin-top: var(--spacing-2); border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); }
-.branch-quote { padding: var(--spacing-2) var(--spacing-3); border-radius: var(--radius-element); background: var(--color-background-blue); }
 .focused-chat { flex: 0 1 32rem; min-width: 0; border-left: thin solid var(--color-border); }
 .focused-chat > .astryx-chat-layout { flex: 1; min-height: 0; overflow: auto; }
 .tree-canvas { flex: 1; min-height: 0; background: var(--color-background-body); }

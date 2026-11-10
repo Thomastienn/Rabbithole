@@ -201,3 +201,36 @@ test('state reports the concept-name list size so Settings can warn past about 2
   env = await start(dir);
   assert.equal((await env.get('/api/state')).conceptNameTokens, tokens);
 });
+
+test('branching from a suggestion marks it explored with its child at every depth; manual branches and deleted children leave it unexplored', async t => {
+  const env = await start(mkdtempSync(join(tmpdir(), 'tt-suggest-explore-')));
+  t.after(async () => { await env.close(); });
+  const tree = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain brackets' });
+  await env.settled();
+  const reply = (await env.get(`/api/trees/${tree.id}`)).messages.at(-1);
+  const passages = async id => (await env.get(`/api/trees/${id}`)).suggestions[0].passages;
+
+  // A manual highlight of the same text is a branch but does not explore the suggestion.
+  const manual = JSON.parse(await env.post(`/api/trees/${tree.id}/branches`, { messageId: reply.id, ...SAVED[0], question: 'Manual' }));
+  assert.deepEqual(await passages(tree.id), SAVED);
+  const child = JSON.parse(await env.post(`/api/trees/${tree.id}/branches`, { messageId: reply.id, ...SAVED[0], suggestion: true, question: 'explain' }));
+  assert.deepEqual([child.branch.text, child.branch.question], ['Authoritative', 'explain']);
+  assert.deepEqual(await passages(tree.id), [{ ...SAVED[0], child: child.id }, SAVED[1]]);
+  // A stale second suggestion branch never steals the live child reference.
+  const extra = JSON.parse(await env.post(`/api/trees/${tree.id}/branches`, { messageId: reply.id, ...SAVED[0], suggestion: true, question: 'again' }));
+  assert.equal((await passages(tree.id))[0].child, child.id);
+
+  // Grandchild: the child's own reply gets suggestions and branching from one explores it there.
+  await env.post(`/api/trees/${child.id}/messages`, { text: 'explain' });
+  await env.settled();
+  const childReply = (await env.get(`/api/trees/${child.id}`)).messages.at(-1);
+  const grandchild = JSON.parse(await env.post(`/api/trees/${child.id}/branches`, { messageId: childReply.id, ...SAVED[1], suggestion: true, question: 'explain' }));
+  assert.equal((await passages(child.id))[1].child, grandchild.id);
+  assert.equal(grandchild.branch.parent, child.id);
+
+  // Deleting the explored child makes the underline unexplored again.
+  await env.post(`/api/trees/${tree.id}/delete`, { conversation: child.id });
+  assert.deepEqual(await passages(tree.id), SAVED);
+  assert.ok([manual, extra].every(Boolean));
+});

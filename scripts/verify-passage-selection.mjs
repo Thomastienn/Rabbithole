@@ -38,16 +38,27 @@ try {
   await b('mouse', 'move', String(Math.round(points[0])), String(Math.round(points[1])));
   await b('mouse', 'down', 'left');
   await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
+  const drag = async () => {
+    await b('mouse', 'move', String(Math.round(points[0])), String(Math.round(points[1])));
+    await b('mouse', 'down', 'left');
+    await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
+    await b('mouse', 'up', 'left');
+    // A pointer highlight opens the passage textbox above it directly, focused and empty.
+    await wait(`document.activeElement?.closest('.passage-box .branch-form') && document.activeElement.value === ''`);
+  };
   await b('mouse', 'up', 'left');
-  await wait(`[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Ask about selection')`);
-  await click('Ask about selection');
+  await wait(`document.activeElement?.closest('.passage-box .branch-form') && document.activeElement.value === ''`);
+  assert.equal(await ev(`[...document.querySelectorAll('button')].filter(b=>b.textContent.trim()==='Ask about selection').length`), 0);
+  // An empty box cannot be sent: Enter does nothing.
+  await b('press', 'Enter');
+  assert.equal(store.list().length, 1);
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'First draft');
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Edited question');
   await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Cancel branch').focus()`);
   await b('press', 'Enter');
-  await wait(`document.activeElement?.textContent.trim() === 'Ask about selection'`);
+  await wait(`!document.querySelector('.branch-form') && document.activeElement?.matches('.focused-chat .passage > section')`);
   assert.equal(store.list().length, 1);
-  await b('press', 'Enter');
+  await drag();
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Mouse question');
   await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Create focused chat').focus()`);
   await b('press', 'Enter');
@@ -110,8 +121,7 @@ try {
       await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
       await b('mouse', 'up', 'left');
     }
-    await wait(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Ask about selection')`);
-    await click('Ask about selection');
+    await wait(`!!document.activeElement?.closest('.passage-box .branch-form')`);
   };
   const cases = [
     [['same', 1, 0], ['same', 1, 4], 'same', true],
@@ -125,7 +135,7 @@ try {
   const saved = [];
   for (const [from, to, selected, mouse] of cases) {
     await selectRich(from, to, mouse);
-    assert.equal(await ev(`document.querySelector('.branch-quote').textContent`), selected);
+    assert.equal(await ev(`document.getElementById(document.querySelector('.branch-form input').getAttribute('aria-describedby')).textContent`), selected);
     const title = `Rich branch ${saved.length}`;
     await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', title);
     await click('Create focused chat');

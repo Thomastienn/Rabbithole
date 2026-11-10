@@ -24,7 +24,7 @@ import { renderMarkdown, rawOffsets } from './markdown';
 import { previewText } from './markdownText';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 
-type Anchor = { messageId: string; start: number; end: number; text: string };
+type Anchor = { messageId: string; start: number; end: number; text: string; at?: Point; suggestion?: boolean };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
 type Model = { provider: string; model: string; label: string; isDefault: boolean };
@@ -45,13 +45,15 @@ function TitleEditor({ title, save, cancel }: { title: string; save: (title: str
 }
 
 // Parsing is memoised so streaming chunks and selection state changes reuse the rendered tree.
-const Reply = memo(function Reply({ text, reveal, underlines }: { text: string; reveal?: Source; underlines: { start: number; end: number }[] }) {
+const Reply = memo(function Reply({ text, reveal, underlines }: { text: string; reveal?: Source; underlines: { start: number; end: number; child?: string }[] }) {
   useEffect(ensureHighlightStyles, []);
   const key = JSON.stringify(underlines);
   return <Text as="div" type="body" className="reply-md">{useMemo(() => renderMarkdown(text, reveal, underlines), [text, reveal?.start, reveal?.end, key])}</Text>;
 });
 
-function Passage({ message, index, onBranch, reveal, selecting, openSelection, closeSelection, formOpen, suggestions }: { message: Message; index: number; suggestions?: Suggestions; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; formOpen: boolean }) {
+function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, openSelection, closeSelection, form, suggestions }: { message: Message; index: number; suggestions?: Suggestions; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; onOpenChild: (id: string) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; form?: { node: React.ReactNode; at?: Point } }) {
+  const formOpen = !!form;
+  const highlighted = useRef(false);
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
   const wrapper = useRef<HTMLElement>(null);
   const passage = useRef<HTMLElement>(null);
@@ -66,7 +68,8 @@ function Passage({ message, index, onBranch, reveal, selecting, openSelection, c
   function capture(start: number, end: number, at?: Point) {
     setAnchor(end > start ? { messageId: message.id, start, end, text: message.text.slice(start, end), at } : undefined);
   }
-  function captureSelection() {
+  function captureSelection(e: React.MouseEvent | React.KeyboardEvent) {
+      highlighted.current = false;
       if (!completed) return;
       const selection = window.getSelection();
       if (!selection?.rangeCount || selection.isCollapsed) { setAnchor(undefined); return; }
@@ -76,21 +79,39 @@ function Passage({ message, index, onBranch, reveal, selecting, openSelection, c
       if (!span) { setAnchor(undefined); return; }
       // Float the action just under the end of the selection, inside this reply.
       const rects = range.getClientRects(), last = rects[rects.length - 1], box = wrapper.current!.getBoundingClientRect();
+      // A pointer highlight opens the passage textbox above it and wins over any underline it covers; keyboard selection keeps the Ask button.
+      if (e.type === 'mouseup' && span.end > span.start) {
+        highlighted.current = true; setAnchor(undefined);
+        onBranch({ messageId: message.id, start: span.start, end: span.end, text: message.text.slice(span.start, span.end), at: { x: 0, y: rects[0].top - box.top } }, passage);
+        return;
+      }
       capture(span.start, span.end, last && { x: Math.min(last.right - box.left, box.width), y: last.bottom - box.top });
+  }
+  // An unexplored underline opens the passage textbox; an explored one opens its existing child.
+  function activate(target: EventTarget) {
+    const piece = (target as Element).closest?.('u.suggestion') as HTMLElement | null;
+    const u = piece && underlines.find(u => +piece.dataset.o! >= u.start && +piece.dataset.o! < u.end);
+    if (!u || !completed) return false;
+    if (u.child) { onOpenChild(u.child); return true; }
+    const stop = [...passage.current!.querySelectorAll<HTMLElement>('u.suggestion[tabindex]')].find(e => +e.dataset.o! >= u.start && +e.dataset.o! < u.end) ?? piece;
+    setAnchor(undefined);
+    onBranch({ messageId: message.id, start: u.start, end: u.end, text: message.text.slice(u.start, u.end), suggestion: true, at: { x: 0, y: stop.getBoundingClientRect().top - wrapper.current!.getBoundingClientRect().top } }, { current: stop });
+    return true;
   }
   useEffect(() => {
     function dismiss(e: PointerEvent) { if (!passage.current?.contains(e.target as Node) && !action.current?.contains(e.target as Node) && !selecting && !formOpen) setAnchor(undefined); }
     document.addEventListener('pointerdown', dismiss);
     return () => document.removeEventListener('pointerdown', dismiss);
   }, [selecting, formOpen]);
-  const ask = anchor && !formOpen && <Button ref={action} label="Ask about selection" variant="primary" size="sm" elevation="med" icon={<ChatBubbleBottomCenterTextIcon />} onClick={() => onBranch(anchor, action)} />;
+  const ask = anchor && !formOpen && <Button ref={action} label="Ask about selection" variant="primary" size="sm" elevation="med" icon={<ChatBubbleBottomCenterTextIcon />} onClick={() => onBranch({ ...anchor, at: undefined }, action)} />;
   return <VStack ref={wrapper} gap={2} className="passage" onKeyDown={e => { if (e.key === 'Escape' && (anchor || selecting)) { e.preventDefault(); e.stopPropagation(); setAnchor(undefined); closeSelection(); passage.current?.focus(); } }}>
-    <section ref={passage} tabIndex={-1} onMouseUp={captureSelection} onKeyUp={captureSelection}><ChatMessageBubble variant="ghost"><Reply text={message.text || (message.status === 'streaming' ? 'Thinking…' : 'No reply received.')} reveal={reveal} underlines={underlines} /></ChatMessageBubble></section>
+    <section ref={passage} tabIndex={-1} onMouseUp={captureSelection} onKeyUp={captureSelection} onClick={e => { if (!highlighted.current) activate(e.target); }} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && activate(e.target)) e.preventDefault(); }}><ChatMessageBubble variant="ghost"><Reply text={message.text || (message.status === 'streaming' ? 'Thinking…' : 'No reply received.')} reveal={reveal} underlines={underlines} /></ChatMessageBubble></section>
     {/* Mounted before suggestions arrive so their arrival is announced once; reopened replies are not re-announced. */}
     <Text role="status" className="sr-only">{underlines.length ? `${underlines.length} suggested ${underlines.length === 1 ? 'passage' : 'passages'} in tutor reply ${index}` : ''}</Text>
     {completed && !selecting && <Button className="focus-reveal" label={`Select passage in tutor reply ${index}`} variant="ghost" size="sm" onClick={openSelection} />}
     {selecting && <><TextArea label="Select tutor passage" description="Hold Shift and use arrow keys to select. Tab to Ask about selection." value={message.text} isReadOnly rows={4} hasAutoFocus onSelect={e => { const input = e.target as HTMLTextAreaElement; capture(input.selectionStart, input.selectionEnd); }} /></>}
     {ask && (anchor.at ? <HStack className="selection-action" style={{ left: anchor.at.x, top: anchor.at.y }}>{ask}</HStack> : ask)}
+    {form && (form.at ? <VStack className="passage-box" style={{ top: form.at.y }}>{form.node}</VStack> : form.node)}
     {selecting && <Button label="Close passage selection" variant="ghost" size="sm" onClick={() => { setAnchor(undefined); closeSelection(); passage.current?.focus(); }} />}
   </VStack>;
 }
@@ -493,7 +514,8 @@ export default function ChatPage() {
     if (!branch || branching || savingModel === branch.parent || !branch.question.trim()) return;
     setBranching(true); setError('');
     try {
-      const next: Tree = await api(`/api/trees/${branch.parent}/branches`, { ...branch.anchor, question: branch.question });
+      const { at: _at, ...anchor } = branch.anchor;
+      const next: Tree = await api(`/api/trees/${branch.parent}/branches`, { ...anchor, question: branch.question });
       setDrafts(d => ({ ...d, [next.id]: branch.question }));
       overviewOrigin.current = undefined;
       setBranch(undefined);
@@ -601,14 +623,12 @@ export default function ChatPage() {
               {!tree.messages.length && <VStack gap={3} padding={6}><Heading level={3}>What are you curious about?</Heading><Text color="secondary">Ask about a concept, work through an example, or pick up a question you have been carrying.</Text></VStack>}
               {tree.messages.map(message => <ChatMessage key={message.id} sender={message.role === 'user' ? 'user' : 'assistant'}>
                 <Text type="label" weight="semibold">{message.role === 'user' ? 'You' : 'Tutor'}</Text>
-                {message.role === 'assistant' ? <Passage message={message} suggestions={tree.suggestions?.find(s => s.message === message.id)} index={tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1} reveal={validSource && source?.messageId === message.id ? source : undefined} formOpen={branch?.anchor.messageId === message.id} selecting={selectingMessage === message.id} openSelection={() => setSelectingMessage(message.id)} closeSelection={() => setSelectingMessage(undefined)} onBranch={(anchor, origin) => { branchOrigin.current = origin; setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text></ChatMessageBubble>}
-                {branch?.parent === tree.id && branch.anchor.messageId === message.id && <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); } }}><VStack padding={3} gap={3}>
-                  <Heading level={3}>Follow this passage</Heading>
-                  <Text className="branch-quote" maxLines={4} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{branch.anchor.text}</Text>
-                  <TextArea label="Question about this passage" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus />
+                {message.role === 'assistant' ? <Passage message={message} suggestions={tree.suggestions?.find(s => s.message === message.id)} index={tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1} reveal={validSource && source?.messageId === message.id ? source : undefined} form={branch?.parent === tree.id && branch.anchor.messageId === message.id ? { at: branch.anchor.at, node: <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); } }}><VStack padding={3} gap={2}>
+                  {/* Small empty box: Enter submits through the form; a disabled submit button blocks sending an empty prompt. */}
+                  <TextInput label="Question about this passage" description={branch.anchor.text.length > 80 ? branch.anchor.text.slice(0, 80) + '…' : branch.anchor.text} size="sm" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus />
                   <HStack gap={2} wrap="wrap"><Button label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" size="sm" isDisabled={branching || !branch.question.trim() || active} /><Button label="Cancel branch" variant="ghost" size="sm" isDisabled={branching} onClick={() => { setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); }} /></HStack>
-                  <Text type="supporting" color="secondary">Creates a saved chat with fixed context from this conversation.</Text>
-                </VStack></form>}
+                </VStack></form> } : undefined} onOpenChild={id => void openConversation(id)} selecting={selectingMessage === message.id} openSelection={() => setSelectingMessage(message.id)} closeSelection={() => setSelectingMessage(undefined)} onBranch={(anchor, origin) => { branchOrigin.current = origin; setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text></ChatMessageBubble>}
+                
                 {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} />)}
                 {!overview && message.role === 'assistant' && message.status === 'completed' && message.usage !== undefined && (() => {
                   const suggestions = tree.suggestions?.find(s => s.message === message.id);

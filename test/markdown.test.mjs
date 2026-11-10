@@ -199,3 +199,11 @@ test('suggestion underlines cover exactly their raw passages, one Tab stop each,
   assert.equal(raw.slice(...Object.values(select(body.ownerDocument, ['x = 1', 0, 0], ['x = 1', 0, 5]))), 'x = 1');
   assert.equal(raw.slice(...Object.values(select(body.ownerDocument, ['😀', 0, 0], ['😀', 0, 2]))), '😀');
 });
+
+test('an explored suggestion draws solid and names its existing chat', () => {
+  const start = raw.indexOf('x = 1');
+  const body = dom(renderToStaticMarkup(h('div', null, renderMarkdown(raw, undefined, [{ start, end: start + 5, child: 'c1' }])))).getElementById('r');
+  const u = body.querySelector('u.suggestion');
+  assert.ok(u.classList.contains('explored'));
+  assert.equal(u.getAttribute('aria-label'), 'Explored passage: x = 1. Opens its chat');
+});

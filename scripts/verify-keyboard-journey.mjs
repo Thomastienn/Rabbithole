@@ -70,7 +70,7 @@ try {
     await press('Home'); for (let i = 0; i < start; i++) await press('ArrowRight');
     for (let i = start; i < end; i++) await press('Shift+ArrowRight');
     await press('Tab'); assert.equal(await ev(focusName), 'Ask about selection'); await press('Enter');
-    await wait(`${focusName} === 'Question about this passage' || document.activeElement?.closest('.branch-form') && document.activeElement.tagName === 'TEXTAREA'`);
+    await wait(`${focusName} === 'Question about this passage' || document.activeElement?.closest('.branch-form') && document.activeElement.tagName === 'INPUT'`);
     await type('draft'); await press('Control+a'); await type(question); // edit the question before submitting
     await tabTo(named('Create focused chat')); await press('Enter');
     await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(question)} && document.querySelector('.focused-chat')?.innerText.includes(${JSON.stringify(text)}) && document.activeElement?.closest('.focused-chat [role=textbox]')`);
