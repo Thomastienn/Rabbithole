@@ -17,6 +17,8 @@ html { view-transition-name: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .focus-reveal:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .chat-header { border-bottom: thin solid var(--color-border); }
+.bubble-tint-swatch { width: var(--spacing-5); aspect-ratio: 1; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); }
+.question-bubble { background: var(--question-bubble-tint); color: var(--color-text-primary); border-radius: var(--radius-element); padding: var(--spacing-3); overflow-wrap: anywhere; }
 .chat-title { flex: 1; min-width: 0; }
 .chat-title .rename-title { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: 0; }
 .saved-chat-title { flex: 1; min-width: 0; }

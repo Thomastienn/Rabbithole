@@ -7,12 +7,14 @@ import { Dialog } from '@astryxdesign/core/Dialog';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Banner } from '@astryxdesign/core/Banner';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
+import { RadioList, RadioListItem } from '@astryxdesign/core/RadioList';
 import { SideNav, SideNavItem } from '@astryxdesign/core/SideNav';
 import { Icon } from '@astryxdesign/core/Icon';
 import { useMediaQuery } from '@astryxdesign/core/hooks';
 import { ArrowLeftIcon, ChartBarIcon, CpuChipIcon, LinkIcon, SwatchIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import EndpointSettings from './EndpointSettings';
 import SuggestionSettings from './SuggestionSettings';
+import { bubbleTints, type BubbleTint } from './bubbleTint';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
 // tab: undefined opens the default tab on desktop and the tab list on mobile; focus is a selector to focus once open.
@@ -22,7 +24,7 @@ type Model = { provider: string; model: string; label: string };
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
   { id: 'models', label: 'Models', description: 'Which model picks suggestion underlines, and what concept matching costs.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
-  { id: 'interface', label: 'Interface', description: 'Keyboard controls for the map and how to move around it.', icon: SwatchIcon },
+  { id: 'interface', label: 'Interface', description: 'Question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
   { id: 'usage', label: 'Usage', description: 'What today’s replies and suggestions have used so far.', icon: ChartBarIcon },
 ];
 
@@ -33,7 +35,7 @@ function Section({ title, description, children }: { title: string; description?
   </VStack>;
 }
 
-export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, usage, conceptNameTokens, auth, signIn, vim, setVim }: {
+export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, usage, conceptNameTokens, auth, signIn, vim, setVim, bubbleTint, setBubbleTint }: {
   request?: SettingsRequest;
   close: () => void;
   api: (path: string, body?: unknown) => Promise<any>;
@@ -47,6 +49,8 @@ export default function SettingsWindow({ request, close, api, models, providers,
   signIn: () => Promise<void>;
   vim: boolean;
   setVim: (on: boolean) => void;
+  bubbleTint: BubbleTint;
+  setBubbleTint: (tint: BubbleTint) => void;
 }) {
   const narrow = useMediaQuery('(max-width: 48rem)');
   const [tab, setTab] = useState<SettingsTab>();
@@ -101,6 +105,16 @@ export default function SettingsWindow({ request, close, api, models, providers,
       <EndpointSettings api={api} changed={() => void loadModels()} />
     </>}
     {current.id === 'interface' && <>
+      <Section title="Question bubbles" description="Choose a tint for your questions. Saved in this browser; follows your light or dark theme.">
+        <RadioList label="Bubble tint" value={bubbleTint} onChange={value => setBubbleTint(value as BubbleTint)}>
+          {bubbleTints.map(tint => <RadioListItem key={tint.id} value={tint.id} label={tint.label} endContent={<HStack aria-hidden="true" className="bubble-tint-swatch" style={{ background: tint.color }} />} />)}
+        </RadioList>
+        <VStack gap={2} role="group" aria-label="Question bubble preview">
+          <Text type="supporting" color="secondary">Preview</Text>
+          <HStack hAlign="end"><Text className="question-bubble">How does this connect to what I already know?</Text></HStack>
+        </VStack>
+      </Section>
+      <Divider />
       <Section title="Vim canvas bindings" description="Optional letter keys for moving around the map.">
         <CheckboxInput label="Vim canvas bindings" description="With the map or a conversation box focused, h j k l act as arrows; = + - zoom; f fits the tree." value={vim} onChange={setVim} />
       </Section>

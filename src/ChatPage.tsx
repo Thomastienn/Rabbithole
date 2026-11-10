@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
@@ -18,6 +18,7 @@ import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from './SettingsWindow';
+import { bubbleTints, type BubbleTint } from './bubbleTint';
 import KnowledgePage, { type Graph } from './KnowledgePage';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
@@ -172,6 +173,10 @@ export default function ChatPage() {
   const streams = useRef(new Map<string, AbortController>());
   // Only this boolean is stored, per browser and app origin; unreadable storage means off.
   const [vim, setVim] = useState(() => { try { return localStorage.getItem('treetutor.vim') === 'on'; } catch { return false; } });
+  const [bubbleTint, setBubbleTint] = useState<BubbleTint>(() => {
+    try { const saved = localStorage.getItem('treetutor.bubble-tint'); return bubbleTints.find(t => t.id === saved)?.id ?? 'accent'; }
+    catch { return 'accent'; }
+  });
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -584,7 +589,7 @@ export default function ChatPage() {
     { label: tree?.branch ? 'Delete branch…' : 'Delete chat…', isDisabled: !tree, onClick: () => tree && askDelete(tree.id, document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]')) },
     { label: 'Help', onClick: () => openSettings('interface', undefined, mapMenuTrigger()) },
   ]} />;
-  return <VStack gap={0} style={{ height: '100dvh' }}>
+  return <VStack gap={0} style={{ height: '100dvh', '--question-bubble-tint': bubbleTints.find(t => t.id === bubbleTint)!.color } as CSSProperties}>
     <VStack gap={0} padding={2}><TabList value={tab} onChange={setTab} role="tablist" aria-label="Workspace" size="sm" hasDivider>
       <Tab value="learning" label="Learning" panelId="learning-panel" id="learning-tab" />
       <Tab value="knowledge" label="Knowledge" panelId="knowledge-panel" id="knowledge-tab" />
@@ -679,7 +684,7 @@ export default function ChatPage() {
     <main id="knowledge-panel" role="tabpanel" aria-labelledby="knowledge-tab" hidden={tab !== 'knowledge'} className="knowledge-panel">
       {tab === 'knowledge' && <KnowledgePage api={api} activity={activeKey} />}
     </main>
-    <SettingsWindow request={settings} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} usage={state?.usage?.replies ? usageLine(state.usage) : undefined} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} />
+    <SettingsWindow request={settings} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} usage={state?.usage?.replies ? usageLine(state.usage) : undefined} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
     <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
 }
