@@ -286,6 +286,15 @@ export default function ChatPage() {
     return () => clearInterval(timer);
   }, [activeKey]);
 
+  // Cancel and Retry update only their own card; refreshing state resumes polling for a retried job.
+  async function videoAction(id: string, artifactId: string, action: 'cancel' | 'retry') {
+    setError('');
+    try {
+      const next: Artifact = await api(`/api/trees/${id}/artifacts/${artifactId}/${action}`, {});
+      setTree(t => t?.id === id ? { ...t, artifacts: t.artifacts.map(a => a.id === next.id ? next : a) } : t);
+      await refresh();
+    } catch (e) { setError((e as Error).message); }
+  }
   // The server reopens an existing unstarted chat rather than creating a second one.
   async function create() {
     if (busy) return;
@@ -464,7 +473,7 @@ export default function ChatPage() {
                   <HStack gap={2} wrap="wrap"><Button label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" size="sm" isDisabled={branching || !branch.question.trim() || active} /><Button label="Cancel branch" variant="ghost" size="sm" isDisabled={branching} onClick={() => { setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); }} /></HStack>
                   <Text type="supporting" color="secondary">Creates a saved chat with fixed context from this conversation.</Text>
                 </VStack></form>}
-                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} /> : <DiagramCard key={artifact.id} artifact={artifact} />)}
+                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} />)}
                 {message.status !== 'completed' && <Text type="supporting" role="status">{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
               </ChatMessage>)}
             </ChatMessageList>

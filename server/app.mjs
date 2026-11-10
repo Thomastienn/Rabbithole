@@ -1,19 +1,32 @@
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
+import { createReadStream, accessSync, constants } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, extname, join } from 'node:path';
 import { diagramReply, generateDiagram, tutorContext } from './diagrams.mjs';
 import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
 
 const LABELS = { claude: 'Claude', codex: 'Codex' };
+const STOPPED = new Error('TreeTutor stopped.');
 
 export function createApp({ store, auth, provider, providers = { codex: provider }, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender }) {
   const pick = tree => providers[tree.provider] ?? providers[defaultProvider];
   const active = new Map(), videos = new Map();
   // Running jobs report their phase and renderer progress in memory only; restart fails pending jobs anyway.
-  const live = a => a.status === 'pending' && videos.has(a.id) ? { ...a, phase: videos.get(a.id).phase, progress: videos.get(a.id).progress } : a;
+  // Ready videos whose file is missing or unreadable are reported unavailable, so the learner can regenerate them.
+  const readable = path => { try { accessSync(path, constants.R_OK); return true; } catch { return false; } };
+  const live = a => a.status === 'pending' && videos.has(a.id) ? { ...a, phase: videos.get(a.id).phase, progress: videos.get(a.id).progress }
+    : a.kind === 'video' && a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
+  // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
+  const startVideo = (tree, job) => {
+    const running = { controller: new AbortController(), conversation: tree.id, phase: 'preparing', progress: null };
+    videos.set(job.id, running);
+    generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: tree.model }, store, dir, artifact: job, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) })
+      // A job stopped with the app stays pending, so the next start marks it interrupted.
+      .catch(error => { if (running.controller.signal.reason !== STOPPED) store.finishVideo(tree.id, job.id, job.attempt, {}, error.message); })
+      .finally(() => { if (videos.get(job.id) === running) videos.delete(job.id); });
+  };
   const csrf = randomBytes(32).toString('hex');
   const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
@@ -80,6 +93,23 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           const unstarted = store.unstarted();
           if (unstarted) return json(res, 200, store.tree(unstarted));
           return json(res, 201, store.create(undefined, providers[defaultProvider] ? defaultProvider : Object.keys(providers)[0]));
+        }
+        const jobMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry)$/);
+        if (jobMatch) {
+          const [, id, artifactId, action] = jobMatch, tree = store.tree(id), artifact = store.artifact(id, artifactId);
+          if (!tree || artifact?.kind !== 'video') return json(res, 404, { error: 'Video not found in this conversation.' });
+          if (action === 'cancel') {
+            if (artifact.status !== 'pending') return json(res, 409, { error: 'This video is no longer generating.' });
+            const canceled = store.cancelVideo(id, artifactId);
+            videos.get(artifactId)?.controller.abort(new Error('Video generation canceled.'));
+            return json(res, 200, canceled);
+          }
+          // Retry reuses the saved request and frozen input; no learner message is added.
+          if (artifact.status === 'pending' || (artifact.status === 'ready' && live(artifact).available !== false)) return json(res, 409, { error: 'This video does not need to be regenerated.' });
+          const job = store.retryVideo(id, artifactId);
+          if (!job) return json(res, 409, { error: 'This video does not need to be regenerated.' });
+          startVideo(tree, job);
+          return json(res, 200, live(job));
         }
         const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|layout|model)$/);
         if (match) {
@@ -194,12 +224,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                     sources: { conversation: id, requestMessage: user, replyMessage: reply, ...(tree.branch && { parentConversation: tree.branch.parent, parentMessage: tree.branch.messageId }) } });
                   const job = store.pendingArtifact(id, reply, output.task.title, output.task.description, 'video', input);
                   send({ type: 'artifact', artifact: job });
-                  const jobController = new AbortController();
-                  const running = { controller: jobController, conversation: id, phase: 'preparing', progress: null };
-                  videos.set(job.id, running);
-                  generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: store.tree(id).model }, store, dir, artifact: job, signal: jobController.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) })
-                    .catch(error => store.finishVideo(id, job.id, job.attempt, {}, error.message))
-                    .finally(() => videos.delete(job.id));
+                  startVideo(store.tree(id), job);
                 }
               } else if (output.requested) {
                 text = output.text;
@@ -248,5 +273,5 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       else res.end();
     }
   });
-  return { server, active, stop: () => { for (const controller of [...active.values(), ...[...videos.values()].map(v => v.controller)]) controller.abort(); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
+  return { server, active, stop: () => { for (const controller of active.values()) controller.abort(); for (const v of videos.values()) v.controller.abort(STOPPED); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
 }

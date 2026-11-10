@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T05:16:06.859Z",
+  "checkedAt": "2026-11-10T05:24:36.173Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
@@ -30,12 +30,12 @@
         "before": {
           "focus": true,
           "messages": 14,
-          "top": 1086
+          "top": 1106
         },
         "after": {
           "focus": true,
           "messages": 14,
-          "top": 1086
+          "top": 1106
         }
       }
     },
@@ -44,8 +44,9 @@
       "pass": true,
       "details": {
         "progress": [
-          "20",
-          "50"
+          "5",
+          "25",
+          "55"
         ],
         "progressLive": false,
         "statuses": [

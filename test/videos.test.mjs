@@ -251,3 +251,156 @@ test('one real short sandboxed Remotion render publishes a ready MP4', { skip: !
   assert.equal(published, true);
   assert.equal(readFileSync(mediaPath(dir, row.id)).toString('latin1', 4, 8), 'ftyp');
 });
+
+test('cancel stops only its own job, late output cannot publish, and retry reuses the frozen input without a new message', async () => {
+  const renders = [], workers = [];
+  // Each render waits until the test releases it and ignores cancellation, like output arriving late.
+  const videoRender = (workspace, output) => new Promise(done => renders.push(() => { writeFileSync(output, mp4); done({ durationInFrames: 30, fps: 30 }); }));
+  const provider = { generate: async (tree, text, emit) => {
+    if (!tree.id) { workers.push(text); return complete(emit, composition); }
+    complete(emit, /video/.test(text) ? 'Sure.' + directive : 'Answer in another chat.');
+  } };
+  const env = await open(provider, { videoRender });
+  try {
+    const a = env.store.create('A'), b = env.store.create('B');
+    await (await env.post(`/api/trees/${a.id}/messages`, { text: 'Make a video of A.' })).text();
+    await (await env.post(`/api/trees/${b.id}/messages`, { text: 'Make a video of B.' })).text();
+    await until(() => renders.length === 2);
+    const jobA = env.store.tree(a.id).artifacts[0], jobB = env.store.tree(b.id).artifacts[0];
+    const messages = env.store.tree(a.id).messages.length;
+
+    // Cancel is scoped to the owning conversation; another chat stays usable while B runs.
+    assert.equal((await env.post(`/api/trees/${b.id}/artifacts/${jobA.id}/cancel`)).status, 404);
+    const canceled = await (await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/cancel`)).json();
+    assert.equal(canceled.status, 'canceled');
+    assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/cancel`)).status, 409);
+    const other = env.store.create('Other');
+    assert.match(await (await env.post(`/api/trees/${other.id}/messages`, { text: 'Hello' })).text(), /Answer in another chat/);
+    assert.equal(env.store.artifact(b.id, jobB.id).status, 'pending');
+
+    // Retry: same row, new attempt, same frozen input, no learner message added.
+    const retried = await (await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).json();
+    assert.equal(retried.status, 'pending');
+    assert.notEqual(retried.attempt, jobA.attempt);
+    assert.equal(retried.input, jobA.input);
+    assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).status, 409); // already running
+    await until(() => renders.length === 3);
+    assert.deepEqual(workers.slice(-1), [jobA.input]);
+
+    // The canceled attempt's late output arrives first and is ignored; the retry publishes.
+    renders[0]();
+    await new Promise(r => setTimeout(r, 100));
+    assert.equal(env.store.artifact(a.id, jobA.id).status, 'pending');
+    assert.equal(existsSync(mediaPath(env.dir, jobA.id)), false);
+    renders[2]();
+    const ready = await until(() => env.store.artifact(a.id, jobA.id).status === 'ready' && env.store.artifact(a.id, jobA.id));
+    assert.equal(ready.attempt, retried.attempt);
+    assert.equal(env.store.tree(a.id).messages.length, messages);
+    assert.equal(env.store.tree(a.id).artifacts.length, 1);
+    assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).status, 409); // ready media needs no retry
+    renders[1]();
+    await until(() => env.store.artifact(b.id, jobB.id).status === 'ready');
+
+    // A changed request is a new job.
+    await (await env.post(`/api/trees/${a.id}/messages`, { text: 'Make a video of something else.' })).text();
+    assert.equal(env.store.tree(a.id).artifacts.length, 2);
+  } finally { env.close(); }
+});
+
+test('render, composition and save failures stay honest and retry the same request', async () => {
+  let fail = true;
+  const videoRender = async (ws, output) => { if (fail) throw new Error('Video rendering failed.'); return fakeRender(ws, output); };
+  let compose = 0;
+  const provider = { generate: async (tree, text, emit) => {
+    if (tree.id) return complete(emit, 'Sure.' + directive);
+    compose++;
+    complete(emit, compose === 2 ? 'not a composition' : composition);
+  } };
+  const env = await open(provider, { videoRender });
+  try {
+    const tree = env.store.create('Video');
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
+    const { id } = await until(() => env.store.tree(tree.id).artifacts.find(a => a.status === 'failed'));
+    assert.equal(env.store.artifact(tree.id, id).error, 'Video rendering failed.');
+    fail = false;
+    await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
+    await until(() => env.store.artifact(tree.id, id).status === 'failed');
+    assert.equal(env.store.artifact(tree.id, id).error, 'Video composition is missing its description.');
+    const finish = env.store.finishVideo.bind(env.store);
+    env.store.finishVideo = (c, i, at, result, error) => { if (!error) throw new Error('disk full'); return finish(c, i, at, result, error); };
+    await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
+    await until(() => env.store.artifact(tree.id, id).status === 'failed');
+    assert.equal(env.store.artifact(tree.id, id).error, 'Video could not be saved.');
+    assert.equal(existsSync(mediaPath(env.dir, id)), false);
+    env.store.finishVideo = finish;
+    await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
+    await until(() => env.store.artifact(tree.id, id).status === 'ready');
+    assert.deepEqual(env.store.tree(tree.id).messages.map(m => m.role), ['user', 'assistant']);
+    // Generation errors and work never enter tutor history.
+    const history = JSON.stringify(tutorContext(env.store.tree(tree.id)));
+    for (const secret of ['rendering failed', 'could not be saved', 'PRIVATE_SOURCE_MARKER', 'not a composition']) assert.ok(!history.includes(secret), secret);
+  } finally { env.close(); }
+});
+
+test('restart marks unfinished videos interrupted, keeps ready media and offers regeneration for missing files without inference', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-video-restart-'));
+  const path = join(dir, 'trees.sqlite');
+  // A database written before the job statuses existed is rebuilt in place.
+  const old = new Store(path);
+  old.db.exec(`PRAGMA foreign_keys=OFF; DROP TABLE artifacts; CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL);`);
+  const tree = old.create('Video');
+  const reply = old.message(tree.id, 'assistant', 'Reply.', 'completed');
+  const running = old.pendingArtifact(tree.id, reply, 'Running', 'Planned.', 'video', '{"request":"Make a video."}');
+  const kept = old.pendingArtifact(tree.id, reply, 'Kept', 'Planned.', 'video', '{}');
+  const lost = old.pendingArtifact(tree.id, reply, 'Lost', 'Planned.', 'video', '{}');
+  for (const a of [kept, lost]) old.finishVideo(tree.id, a.id, a.attempt, { description: 'Shows boxes.', duration: 1 });
+  mkdirSync(join(dir, 'videos'));
+  writeFileSync(mediaPath(dir, kept.id), mp4);
+  old.close();
+
+  const calls = [];
+  const store = new Store(path);
+  const app = createApp({ store, provider: { generate: async (...args) => { calls.push(args); complete(args[2], composition); } }, auth: { status: () => ({ connected: true }) }, dir, videoRender: fakeRender });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  try {
+    const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+    const saved = await (await fetch(`${origin}/api/trees/${tree.id}`)).json();
+    const by = Object.fromEntries(saved.artifacts.map(a => [a.title, a]));
+    assert.equal(by.Running.status, 'interrupted');
+    assert.equal(by.Kept.status, 'ready');
+    assert.equal(by.Kept.available, undefined);
+    assert.equal((await fetch(`${origin}/api/trees/${tree.id}/artifacts/${kept.id}/media`)).status, 200);
+    assert.equal(by.Lost.status, 'ready');
+    assert.equal(by.Lost.available, false);
+    const rows = (await (await fetch(`${origin}/api/previews?id=${tree.id}`)).json())[tree.id].at(-1).artifacts;
+    assert.deepEqual(rows.map(a => [a.title, a.status, a.available]), [['Running', 'interrupted', undefined], ['Kept', 'ready', undefined], ['Lost', 'ready', false]]);
+    assert.equal(calls.length, 0); // reopening never replays inference
+    const post = id => fetch(`${origin}/api/trees/${tree.id}/artifacts/${id}/retry`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: '{}' });
+    assert.equal((await post(kept.id)).status, 409);
+    assert.equal((await post(lost.id)).status, 200);
+    assert.equal((await post(running.id)).status, 200);
+    await until(() => store.tree(tree.id).artifacts.every(a => a.status === 'ready'));
+    assert.equal(calls.length, 2);
+    assert.equal(calls.find(c => c[1].includes('Make a video.'))?.[1], running.input);
+    assert.ok(existsSync(mediaPath(dir, lost.id)));
+  } finally { app.stop(); store.close(); }
+});
+
+test('stopping the app during a job leaves it interrupted on the next start', async () => {
+  let started;
+  const rendering = new Promise(r => { started = r; });
+  const videoRender = (ws, output, signal) => new Promise((_, reject) => { started(); signal.addEventListener('abort', () => reject(signal.reason)); });
+  const env = await open({ generate: async (tree, text, emit) => complete(emit, tree.id ? 'Sure.' + directive : composition) }, { videoRender });
+  const tree = env.store.create('Video');
+  await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
+  await rendering;
+  env.app.stop();
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(env.store.tree(tree.id).artifacts[0].status, 'pending');
+  env.store.close();
+  const reopened = new Store(join(env.dir, 'trees.sqlite'));
+  assert.equal(reopened.tree(tree.id).artifacts[0].status, 'interrupted');
+  reopened.close();
+});

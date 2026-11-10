@@ -4,7 +4,7 @@ import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')),
+        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
         title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
@@ -22,15 +22,20 @@ export class Store {
       CREATE UNIQUE INDEX IF NOT EXISTS messages_id_tree ON messages(id, tree);
       ${ARTIFACTS}
       CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL);
-      UPDATE messages SET status='interrupted' WHERE status='streaming';
-      UPDATE artifacts SET status='failed',source=NULL,error=CASE kind WHEN 'video' THEN 'Video' ELSE 'Diagram' END || ' generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
-    // Mermaid-only databases gain the video kind and job columns; SQLite cannot alter a CHECK in place.
-    if (this.db.prepare("SELECT sql FROM sqlite_master WHERE name='artifacts'").get().sql.includes("CHECK(kind='mermaid')")) this.db.exec(`BEGIN;
-      ALTER TABLE artifacts RENAME TO artifacts_mermaid;
+      UPDATE messages SET status='interrupted' WHERE status='streaming';`);
+    // Older databases gain the video kind, job columns and job statuses; SQLite cannot alter a CHECK in place.
+    if (!this.db.prepare("SELECT sql FROM sqlite_master WHERE name='artifacts'").get().sql.includes("'interrupted'")) {
+      const kept = this.db.prepare('PRAGMA table_info(artifacts)').all().map(c => c.name).join(',');
+      this.db.exec(`BEGIN;
+      ALTER TABLE artifacts RENAME TO artifacts_old;
       ${ARTIFACTS.replace('CREATE INDEX', 'DROP INDEX artifacts_conversation; CREATE INDEX')}
-      INSERT INTO artifacts(id,conversation,message,kind,status,title,description,source,error,created) SELECT id,conversation,message,kind,status,title,description,source,error,created FROM artifacts_mermaid;
-      DROP TABLE artifacts_mermaid;
+      INSERT INTO artifacts(${kept}) SELECT ${kept} FROM artifacts_old;
+      DROP TABLE artifacts_old;
       COMMIT;`);
+    }
+    // Restart never resumes paid inference: unfinished videos wait for an explicit retry.
+    this.db.exec(`UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when TreeTutor stopped.' WHERE status='pending' AND kind='video';
+      UPDATE artifacts SET status='failed',source=NULL,error='Diagram generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
     const columns = this.db.prepare('PRAGMA table_info(trees)').all().map(c => c.name);
     if (!columns.includes('provider')) this.db.exec("ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'");
     if (!columns.includes('model')) this.db.exec('ALTER TABLE trees ADD COLUMN model TEXT');
@@ -87,6 +92,15 @@ export class Store {
   finishVideo(conversation, id, attempt, { description, duration } = {}, error = null) {
     this.db.prepare("UPDATE artifacts SET status=?,description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'").run(error ? 'failed' : 'ready', error ? null : description, error ? null : duration, error, conversation, id, attempt);
     return this.artifact(conversation, id);
+  }
+  cancelVideo(conversation, id) {
+    this.db.prepare("UPDATE artifacts SET status='canceled',error=NULL WHERE conversation=? AND id=? AND kind='video' AND status='pending'").run(conversation, id);
+    return this.artifact(conversation, id);
+  }
+  // A retry is a new attempt on the same row and frozen input, so late events from the old attempt cannot publish.
+  retryVideo(conversation, id) {
+    const result = this.db.prepare("UPDATE artifacts SET status='pending',attempt=?,error=NULL,duration=NULL WHERE conversation=? AND id=? AND kind='video' AND status!='pending'").run(randomUUID(), conversation, id);
+    return result.changes ? this.artifact(conversation, id) : null;
   }
   forgetThread(id) { this.db.prepare('UPDATE trees SET thread=NULL,working_thread=NULL WHERE id=?').run(id); }
   create(title = 'New chat', provider = 'codex') {

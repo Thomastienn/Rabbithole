@@ -40,6 +40,10 @@ _Avoid_: Term, skill, node
 A named group of related concepts, such as "Concurrency". A concept can belong to several topics.
 _Avoid_: Section, category, area
 
+**Concept link**:
+A connection between two concepts: either "related", or "builds on" when one concept needs the other first.
+_Avoid_: Edge, dependency
+
 **Familiarity**:
 The app's estimate of how well the learner knows a concept, derived from evidence such as meeting it, asking about it and using it. An estimate, never a measured mastery.
 _Avoid_: Mastery, score, level
