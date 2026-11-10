@@ -47,7 +47,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
   // Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
   const suggesting = new Map();
   const startSuggestions = (conversation, message, question, answer) => {
-    if (!suggestions) return;
+    const settings = store.suggestionSettings();
+    if (!suggestions || !settings.enabled) return;
     const known = knownConcepts(store.graph());
     if (!store.pendingSuggestions(conversation, message, nameTokens(known))) return;
     const tree = store.tree(conversation), running = { controller: new AbortController(), conversation };
@@ -55,7 +56,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     running.done = (async () => {
       const inheritedContext = tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null;
       const familiarity = store.mentioned([tree.branch?.text, question, answer].filter(Boolean).join('\n'));
-      const result = await suggest(pick(tree), tree, { inheritedContext, question, answer, knownConcepts: known, familiarity }, running.controller.signal, suggestionTimeout);
+      const selection = settings.model ?? tree;
+      const result = await suggest(pick(selection), selection, { inheritedContext, question, answer, knownConcepts: known, familiarity }, running.controller.signal, suggestionTimeout, settings.model?.model);
       store.addGraph(result.graph, message);
       store.finishSuggestions(conversation, message, result.passages, result.usage);
     })().catch(error => { if (!stopping) store.finishSuggestions(conversation, message, null, error.usage ?? null); })
@@ -79,6 +81,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))], suggesting: [...new Set([...suggesting.values()].map(s => s.conversation))], conceptNameTokens: store.nameTokens() });
       if (req.method === 'GET' && url.pathname === '/api/graph') return json(res, 200, store.graph());
       if (req.method === 'GET' && url.pathname === '/api/settings/endpoint' && endpoint) return json(res, 200, endpoint.status());
+      if (req.method === 'GET' && url.pathname === '/api/settings/suggestions') return json(res, 200, store.suggestionSettings());
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
         if (ids.length > 500) return json(res, 400, { error: 'Too many conversations requested.' });
@@ -124,6 +127,20 @@ export function createApp({ store, auth, provider, providers = { codex: provider
         for await (const chunk of req) { chunks.push(chunk); bytes += chunk.length; if (bytes > 100000) return json(res, 413, { error: 'Message too long. Shorten it and try again.' }); }
         let body;
         try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return json(res, 400, { error: 'Invalid request.' }); }
+        if (url.pathname === '/api/settings/suggestions') {
+          const hasEnabled = Object.hasOwn(body ?? {}, 'enabled'), hasModel = Object.hasOwn(body ?? {}, 'model');
+          if ((!hasEnabled && !hasModel) || (hasEnabled && typeof body.enabled !== 'boolean')) return json(res, 400, { error: 'Choose whether automatic suggestions are on or off.' });
+          if (hasModel && body.model !== null) {
+            const model = body.model;
+            if (!['claude', 'codex'].includes(model?.provider) || typeof model.model !== 'string' || !providers[model.provider]) return json(res, 400, { error: 'Choose a signed-in subscription model for suggestions.' });
+            try {
+              const models = await providers[model.provider].models();
+              if (!models.some(m => m.model === model.model)) return json(res, 400, { error: 'Suggestion model is unavailable. Refresh models and choose again.' });
+            } catch { return json(res, 400, { error: 'Sign in to the suggestion provider in Connections, then refresh models and choose again.' }); }
+          }
+          const settings = store.suggestionSettings();
+          return json(res, 200, store.saveSuggestionSettings({ enabled: hasEnabled ? body.enabled : settings.enabled, model: hasModel ? body.model && { provider: body.model.provider, model: body.model.model } : settings.model }));
+        }
         if (url.pathname === '/api/graph/correct' || url.pathname === '/api/graph/merge') {
           const merging = url.pathname.endsWith('/merge');
           const names = merging ? [body?.from, body?.into] : [body?.name];

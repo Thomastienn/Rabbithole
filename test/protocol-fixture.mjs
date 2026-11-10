@@ -9,7 +9,8 @@ const reply = text => text.endsWith('diagram fixture request') ? 'A bracket show
 const suggesting = text => text.startsWith('Mark every term');
 const suggestion = (text, model, cheap) => {
   const { question, answer, knownConcepts } = JSON.parse(text.slice(text.indexOf('\n') + 1));
-  if (question.endsWith('suggestions fail') || model !== cheap) return 'not json';
+  const expected = /suggestion model: ([\w.-]+)/.exec(question)?.[1] ?? cheap;
+  if (question.endsWith('suggestions fail') || model !== expected) return 'not json';
   return JSON.stringify({ ...graph(question, knownConcepts), suggestions: [{ text: answer.slice(0, 13), start: 0, end: 13, ...(question.includes('locks') && { concept: question.includes('again') ? 'MUTUAL EXCLUSION' : 'Mutual exclusion' }) }, { text: answer.slice(0, 18), start: 0, end: 18 }, { text: 'original', start: 0, end: 8 },
     { text: answer.slice(14, 22), start: 14, end: 22 }, { text: 'x', start: -1, end: 0 }, { text: answer.slice(14, 22), start: 14, end: 22 }] });
 };

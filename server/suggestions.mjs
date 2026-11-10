@@ -35,18 +35,14 @@ export function knownConcepts(graph) {
 // shortcut: ~4 characters per token, upgrade to a provider tokenizer if the warning needs to be exact.
 export const nameTokens = known => Math.ceil(JSON.stringify(known).length / 4);
 
-// The conversation provider's cheap model; a custom endpoint has no known cheap model, so it keeps the conversation's.
-async function cheapModel(provider, tree) {
-  if (tree.provider === 'claude') return 'haiku';
-  if (tree.provider === 'codex') return (await provider.models()).find(m => /luna/i.test(m.model))?.model ?? tree.model ?? null;
-  return tree.model ?? await provider.model?.(tree) ?? null;
-}
-
 // A separate thread-less request: nothing here enters tutor history.
-export async function suggest(provider, tree, input, signal, timeout = 120000) {
+export async function suggest(provider, tree, input, signal, timeout = 120000, pinnedModel = null) {
   const items = new Map(), bounded = AbortSignal.any([signal, AbortSignal.timeout(timeout)]);
   let status, usage = null;
-  const model = await cheapModel(provider, tree);
+  if (!['claude', 'codex'].includes(tree.provider)) throw new Error('Suggestions require a signed-in subscription provider.');
+  const models = await provider.models();
+  if (pinnedModel && !models.some(m => m.model === pinnedModel)) throw new Error('Suggestion model is unavailable.');
+  const model = pinnedModel ?? (tree.provider === 'claude' ? 'haiku' : models.find(m => /luna/i.test(m.model))?.model ?? tree.model ?? null);
   await provider.generate({ provider: tree.provider, model, thread: null, instructions: INSTRUCTIONS }, PROMPT + JSON.stringify(input), event => {
     if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
     if (event.type === 'status') status = event.status;

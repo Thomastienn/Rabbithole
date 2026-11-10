@@ -42,6 +42,7 @@ export class Store {
       this.db.exec(`CREATE TABLE IF NOT EXISTS suggestions (message TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), passages TEXT, usage TEXT,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))`);
       if (!this.db.prepare('PRAGMA table_info(suggestions)').all().some(c => c.name === 'nameTokens')) this.db.exec('ALTER TABLE suggestions ADD COLUMN nameTokens INTEGER');
+      this.db.exec(`CREATE TABLE IF NOT EXISTS suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT)`);
       // Additive global tables: one knowledge graph across all learning trees; NOCASE names make a matching concept or topic reuse its row.
       this.db.exec(`CREATE TABLE IF NOT EXISTS concepts (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
         CREATE TABLE IF NOT EXISTS topics (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
@@ -88,6 +89,14 @@ export class Store {
   list() {
     return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
       .map(t => { try { return { ...t, layout: JSON.parse(t.layout) }; } catch { return { ...t, layout: null }; } });
+  }
+  suggestionSettings() {
+    const row = this.db.prepare('SELECT enabled,provider,model FROM suggestion_settings WHERE id=1').get();
+    return { enabled: row ? !!row.enabled : true, model: row?.model ? { provider: row.provider, model: row.model } : null };
+  }
+  saveSuggestionSettings({ enabled, model }) {
+    this.db.prepare('INSERT INTO suggestion_settings(id,enabled,provider,model) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,provider=excluded.provider,model=excluded.model').run(+enabled, model?.provider ?? null, model?.model ?? null);
+    return this.suggestionSettings();
   }
   // Strip reply syntax before truncation; the stored messages remain the canonical source.
   previews(ids) {

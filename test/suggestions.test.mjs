@@ -8,12 +8,14 @@ import { spawn } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { Claude } from '../server/claude.mjs';
 import { Codex } from '../server/codex.mjs';
+import { OpenAI } from '../server/openai.mjs';
 import { createApp } from '../server/app.mjs';
+import { fakeOpenAI } from './fake-openai.mjs';
 
 const fixture = fileURLToPath(new URL('./protocol-fixture.mjs', import.meta.url));
 const SAVED = [{ start: 0, end: 13, text: 'Authoritative' }, { start: 14, end: 22, text: 'original' }];
 
-async function start(dir, suggestions = true) {
+async function start(dir, suggestions = true, connected = { claude: true, codex: true }) {
   const calls = [];
   const launch = (command, args, options) => {
     const child = spawn(process.execPath, [fixture, ...(command === 'claude' ? args : [])], options);
@@ -21,9 +23,10 @@ async function start(dir, suggestions = true) {
     return child;
   };
   const store = new Store(join(dir, 'trees.sqlite'));
-  const claude = new Claude(dir, launch, (_c, _a, _o, cb) => cb(null, '{"loggedIn":true}'));
-  const codex = new Codex({ token: async () => 'fixture-token' }, dir, launch);
-  const app = createApp({ store, dir, providers: { claude, codex }, defaultProvider: 'claude', auth: { status: () => ({ connected: true }) }, suggestions });
+  const claude = new Claude(dir, launch, (_c, _a, _o, cb) => cb(null, JSON.stringify({ loggedIn: connected.claude })));
+  const codex = new Codex({ token: async () => { if (!connected.codex) throw new Error('Signed out.'); return 'fixture-token'; } }, dir, launch);
+  const endpoint = new OpenAI(dir);
+  const app = createApp({ store, dir, endpoint, providers: { claude, codex, ...(endpoint.status().configured && { openai: endpoint }) }, defaultProvider: 'claude', auth: { status: () => ({ connected: connected.codex }) }, suggestions });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`;
   const get = async path => (await fetch(origin + path)).json();
@@ -37,6 +40,116 @@ async function start(dir, suggestions = true) {
 // Graph shape without the derived familiarity fields.
 const shape = g => ({ ...g, concepts: g.concepts.map(({ name, topics }) => ({ name, topics })) });
 const strip = s => s.map(({ message, status, passages, usage }) => ({ message, status, passages, usage: usage && { input: usage.input, output: usage.output, cacheRead: usage.cacheRead } }));
+
+test('a saved suggestion model applies across conversations and restart; unpinning restores each provider’s cheap model', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-suggest-settings-'));
+  let env = await start(dir);
+  t.after(async () => { await env.close(); });
+  assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model: null });
+  const model = { provider: 'claude', model: 'sonnet' };
+  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { model })), { enabled: true, model });
+  const a = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${a.id}/messages`, { text: 'Explain, suggestion model: sonnet' });
+  await env.settled();
+  const b = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${b.id}/model`, { provider: 'codex', model: 'fixture-model' });
+  await env.post(`/api/trees/${b.id}/messages`, { text: 'Explain, suggestion model: sonnet' });
+  await env.settled();
+  assert.deepEqual(env.suggestionCalls().map(c => c.model), ['sonnet', 'sonnet']);
+  for (const id of [a.id, b.id]) assert.equal((await env.get(`/api/trees/${id}`)).suggestions[0].status, 'ready');
+  const tutor = await env.get(`/api/trees/${b.id}`);
+  assert.equal(tutor.provider, 'codex');
+  assert.equal(tutor.model, 'fixture-model');
+  await env.close();
+
+  env = await start(dir);
+  assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model });
+  await env.post(`/api/trees/${b.id}/messages`, { text: 'Continue, suggestion model: sonnet' });
+  await env.settled();
+  assert.equal(env.suggestionCalls()[0].model, 'sonnet');
+  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { model: null })), { enabled: true, model: null });
+  await env.post(`/api/trees/${a.id}/messages`, { text: 'Default Claude suggestions' });
+  await env.post(`/api/trees/${b.id}/messages`, { text: 'Default Codex suggestions' });
+  await env.settled();
+  assert.equal(env.suggestionCalls().at(-1).model, 'haiku');
+  for (const id of [a.id, b.id]) assert.equal((await env.get(`/api/trees/${id}`)).suggestions.at(-1).status, 'ready');
+
+  // A Codex pin also overrides a Claude conversation, with no fallback to Luna.
+  await env.post('/api/settings/suggestions', { model: { provider: 'codex', model: 'fixture-alternate' } });
+  await env.post(`/api/trees/${a.id}/messages`, { text: 'Continue, suggestion model: fixture-alternate' });
+  await env.settled();
+  assert.equal((await env.get(`/api/trees/${a.id}`)).suggestions.at(-1).status, 'ready');
+});
+
+test('off prevents new suggestion calls, persists after restart and keeps saved suggestions; re-enabling never backfills', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-suggest-off-'));
+  let env = await start(dir);
+  t.after(async () => { await env.close(); });
+  const tree = JSON.parse(await env.post('/api/trees'));
+  await env.post('/api/settings/suggestions', { model: { provider: 'claude', model: 'haiku' } });
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain, slow suggestions' });
+  assert.ok((await env.get('/api/state')).suggesting.includes(tree.id));
+  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { enabled: false })), { enabled: false, model: { provider: 'claude', model: 'haiku' } });
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'No suggestions for this reply' });
+  await env.settled();
+  const saved = (await env.get(`/api/trees/${tree.id}`)).suggestions;
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].status, 'ready', 'a call already started can finish and save its usage');
+  assert.equal(env.suggestionCalls().length, 1);
+  const usage = (await env.get('/api/state')).usage;
+  assert.deepEqual(usage, { input: 309, output: 21, cacheRead: 120, replies: 2 });
+  await env.close();
+
+  env = await start(dir);
+  assert.equal((await env.get('/api/settings/suggestions')).enabled, false);
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Still off after restart' });
+  await env.settled();
+  assert.equal(env.suggestionCalls().length, 0);
+  assert.deepEqual((await env.get(`/api/trees/${tree.id}`)).suggestions, saved);
+  await env.post('/api/settings/suggestions', { enabled: true });
+  await env.settled();
+  assert.equal(env.suggestionCalls().length, 0);
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Suggestions again' });
+  await env.settled();
+  assert.equal(env.suggestionCalls().length, 1);
+  assert.equal((await env.get(`/api/trees/${tree.id}`)).suggestions.length, 2);
+});
+
+test('only signed-in subscription models can be pinned; stale pins fail without a provider or API-key fallback', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-suggest-auth-'));
+  const connected = { claude: false, codex: true }, env = await start(dir, true, connected), fake = await fakeOpenAI(t);
+  t.after(async () => { await env.close(); });
+  await env.post('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey: 'suggestions-key-fixture' });
+  const offered = await env.get('/api/models');
+  assert.equal(offered.providers.claude.connected, false);
+  assert.ok(!offered.models.some(m => m.provider === 'claude'));
+  for (const body of [{ model: { provider: 'claude', model: 'haiku' } }, { model: { provider: 'openai', model: 'local-tutor' } }, { model: { provider: 'codex', model: 'missing' } }, { model: {} }, { model: 'haiku' }, { model: 1 }, { enabled: 'off' }, null]) {
+    assert.equal((await env.request('/api/settings/suggestions', body)).status, 400);
+    assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model: null });
+  }
+  assert.equal((await env.request('/api/settings/suggestions', { enabled: false }, { 'X-TreeTutor-CSRF': '' })).status, 403);
+  connected.claude = true;
+  await env.post('/api/settings/suggestions', { model: { provider: 'claude', model: 'sonnet' } });
+  connected.claude = false;
+  const tree = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${tree.id}/model`, { provider: 'codex', model: 'fixture-model' });
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Stale Claude pin' });
+  await env.settled();
+  assert.equal((await env.get(`/api/trees/${tree.id}`)).suggestions[0].status, 'failed');
+  assert.equal(env.suggestionCalls().length, 0, 'signed-out Claude is never invoked');
+  assert.equal(fake.calls.filter(c => c.body).length, 0, 'custom endpoint is never a fallback');
+  // Off and unpin remain usable when the pinned provider is signed out.
+  assert.equal((await env.request('/api/settings/suggestions', { enabled: false })).status, 200);
+  assert.equal((await env.request('/api/settings/suggestions', { model: null })).status, 200);
+  await env.post('/api/settings/suggestions', { enabled: true });
+  await env.post(`/api/trees/${tree.id}/model`, { provider: 'openai', model: 'local-tutor' });
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Custom endpoint conversation' });
+  await env.settled();
+  assert.equal((await env.get(`/api/trees/${tree.id}`)).suggestions.at(-1).status, 'failed');
+  assert.equal(fake.calls.filter(c => c.body).length, 1, 'only the explicit tutor call uses the API key');
+  connected.codex = false;
+  assert.equal((await env.request('/api/settings/suggestions', { model: { provider: 'codex', model: 'fixture-luna' } })).status, 400);
+});
 
 test('a completed reply gets one cheap-model suggestion call whose exact passages and usage are saved; reopening, switching and old replies never run it', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-suggest-'));

@@ -20,6 +20,7 @@ import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
 import EndpointSettings from './EndpointSettings';
+import SuggestionSettings from './SuggestionSettings';
 import KnowledgePage, { type Graph } from './KnowledgePage';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
@@ -606,6 +607,7 @@ export default function ChatPage() {
           <Heading level={3} id="settings-heading" tabIndex={-1}>Settings</Heading>
           {state?.usage && <Text type="supporting">Today's usage: {state.usage.replies ? usageLine(state.usage) : 'no reported usage yet'}</Text>}
           {(state?.conceptNameTokens ?? 0) > 2000 && <Banner status="warning" title="Warning: concept matching is getting expensive" description={`The last suggestion call sent about ${state!.conceptNameTokens!.toLocaleString()} tokens of concept names.`} />}
+          {mobileNav && <SuggestionSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} />}
           <CheckboxInput label="Vim canvas bindings" description="With the map or a conversation box focused, h j k l act as arrows; = + - zoom; f fits the tree." value={vim} onChange={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} />
         </VStack>
         <VStack gap={3}>
