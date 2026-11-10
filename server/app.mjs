@@ -7,11 +7,14 @@ import { resolve, extname, join } from 'node:path';
 import { diagramReply, generateDiagram, tutorContext } from './diagrams.mjs';
 import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
 
-const LABELS = { claude: 'Claude', codex: 'Codex' };
+const LABELS = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
 const STOPPED = new Error('TreeTutor stopped.');
 
-export function createApp({ store, auth, provider, providers = { codex: provider }, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender }) {
-  const pick = tree => providers[tree.provider] ?? providers[defaultProvider];
+export function createApp({ store, auth, provider, providers = { codex: provider }, endpoint, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender }) {
+  const pick = tree => {
+    if (!Object.hasOwn(providers, tree.provider)) throw new Error('Selected provider is unavailable. Configure it in settings or choose another provider.');
+    return providers[tree.provider];
+  };
   const active = new Map(), videos = new Map(), videoJobs = new Set();
   let stopping = false, stopped;
   // A crash before commit restores staged files; a crash after commit finishes removing them.
@@ -35,7 +38,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     const running = { controller: new AbortController(), conversation: tree.id, artifact: job.id, phase: 'preparing', progress: null };
     videos.set(job.id, running);
     videoJobs.add(running);
-    running.done = generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: tree.model }, store, dir, artifact: job, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) })
+    running.done = Promise.resolve().then(() => generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: tree.model }, store, dir, artifact: job, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) }))
       // A job stopped with the app stays pending, so the next start marks it interrupted.
       .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishVideo(tree.id, job.id, job.attempt, {}, error.message); })
       .finally(() => { videoJobs.delete(running); if (videos.get(job.id) === running) videos.delete(job.id); });
@@ -56,6 +59,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     try {
       if (stopping) return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
       if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], videos: [...new Set([...videos.values()].map(v => v.conversation))] });
+      if (req.method === 'GET' && url.pathname === '/api/settings/endpoint' && endpoint) return json(res, 200, endpoint.status());
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
         if (ids.length > 500) return json(res, 400, { error: 'Too many conversations requested.' });
@@ -64,7 +68,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       if (req.method === 'GET' && url.pathname === '/api/models') {
         const ids = Object.keys(providers);
         const results = await Promise.allSettled(ids.map(id => providers[id].models()));
-        if (results.every(r => r.status === 'rejected')) return json(res, 502, { error: 'Could not load models. Sign in to Claude or ChatGPT, then retry.' });
+        if (results.every(r => r.status === 'rejected')) return json(res, 502, { error: providers.openai ? 'Could not load models. Check provider sign-in or custom endpoint settings, then retry.' : 'Could not load models. Sign in to Claude or ChatGPT, then retry.' });
         return json(res, 200, {
           models: results.flatMap((r, i) => r.status === 'fulfilled' ? r.value.map(m => ({ provider: ids[i], ...m })) : []),
           providers: Object.fromEntries(ids.map((id, i) => [id, { label: LABELS[id] ?? id, connected: results[i].status === 'fulfilled' }])),
@@ -101,6 +105,18 @@ export function createApp({ store, auth, provider, providers = { codex: provider
         for await (const chunk of req) { chunks.push(chunk); bytes += chunk.length; if (bytes > 100000) return json(res, 413, { error: 'Message too long. Shorten it and try again.' }); }
         let body;
         try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return json(res, 400, { error: 'Invalid request.' }); }
+        if (endpoint && ['/api/settings/endpoint', '/api/settings/endpoint/test', '/api/settings/endpoint/clear'].includes(url.pathname)) {
+          if (url.pathname.endsWith('/test')) {
+            try { await endpoint.models(); return json(res, 200, endpoint.status()); }
+            catch (error) { return json(res, 502, { error: error.message }); }
+          }
+          try {
+            const status = url.pathname.endsWith('/clear') ? endpoint.clear() : endpoint.save(body);
+            if (status.configured) providers.openai = endpoint;
+            else delete providers.openai;
+            return json(res, 200, status);
+          } catch { return json(res, 400, { error: 'Endpoint settings could not be saved. Check the HTTP(S) base URL, API key and local data-directory write access.' }); }
+        }
         if (url.pathname === '/api/auth') return json(res, 200, { url: auth.start(origin) });
         if (url.pathname === '/api/trees') {
           // One unstarted chat at a time: New chat reopens it instead of creating another.
@@ -190,7 +206,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             active.set(id, controller);
             try {
               const target = body.provider ?? tree.provider;
-              if (!Object.hasOwn(providers, target)) return json(res, 400, { error: 'Choose Claude or Codex.' });
+              if (!Object.hasOwn(providers, target)) return json(res, 400, { error: 'Choose an available provider from the model menu.' });
               const models = await providers[target].models();
               if (typeof body.model !== 'string' || !models.some(m => m.model === body.model)) return json(res, 400, { error: 'Choose a model from the current catalog.' });
               if (controller.signal.aborted) return json(res, 409, { error: 'Model change cancelled. Your previous selection is saved.' });
@@ -198,7 +214,10 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               if (target !== tree.provider) store.switchProvider(id, target, body.model);
               else store.model(id, body.model);
               return json(res, 200, { provider: target, model: body.model });
-            } catch { return json(res, 502, { error: `Model change failed. Your previous selection is saved. Sign in to ${LABELS[body.provider ?? tree.provider] ?? 'the provider'} or retry.` }); }
+            } catch {
+              const next = (body.provider ?? tree.provider) === 'openai' ? 'Check custom endpoint settings or retry.' : `Sign in to ${LABELS[body.provider ?? tree.provider] ?? 'the provider'} or retry.`;
+              return json(res, 502, { error: `Model change failed. Your previous selection is saved. ${next}` });
+            }
             finally { active.delete(id); }
           }
           if (action === 'branches') {

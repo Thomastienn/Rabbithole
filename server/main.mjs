@@ -7,6 +7,7 @@ import { Store } from './store.mjs';
 import { Auth } from './auth.mjs';
 import { Codex } from './codex.mjs';
 import { Claude } from './claude.mjs';
+import { OpenAI } from './openai.mjs';
 import { createApp } from './app.mjs';
 
 process.umask(0o077);
@@ -36,8 +37,8 @@ try {
   release = await lockfile.lock(dir, { realpath: true, stale: 10000 });
   store = new Store(join(dir, 'trees.sqlite'));
   if (store.backupPath) console.log(`Saved pre-upgrade backup: ${store.backupPath}`);
-  const auth = new Auth(dir), claude = new Claude(dir);
-  app = createApp({ store, auth, providers: { claude, codex: new Codex(auth, dir) }, defaultProvider: 'claude', dir });
+  const auth = new Auth(dir), claude = new Claude(dir), endpoint = new OpenAI(dir);
+  app = createApp({ store, auth, endpoint, providers: { claude, codex: new Codex(auth, dir), ...(endpoint.status().configured && { openai: endpoint }) }, defaultProvider: 'claude', dir });
   await new Promise((resolve, reject) => { app.server.once('error', reject); app.server.listen(port, '127.0.0.1', resolve); });
   console.log(`TreeTutor: http://127.0.0.1:${app.server.address().port}`);
   // Local diagnostics only. Start listening first so a missing or slow CLI cannot prevent reading saved trees.
