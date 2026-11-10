@@ -29,7 +29,7 @@ export default function EndpointSettings({ api, changed }: { api: (path: string,
   }
   const dirty = baseUrl !== (saved?.baseUrl ?? '') || !!apiKey;
   return <form className="endpoint-settings" aria-label="Custom endpoint settings" onSubmit={e => { e.preventDefault(); if (saved && baseUrl.trim() && apiKey.trim()) void act('save'); }}><VStack gap={3}>
-    <Heading level={4}>Custom endpoint</Heading>
+    <Heading level={3}>Custom endpoint</Heading>
     <Text type="supporting">Requests, including discussion and inherited context, go to this endpoint and are billed by its owner. It is used only when you select its model.</Text>
     <Text type="supporting" role="status">{pending === 'loading' ? 'Loading endpoint settings…' : !saved ? 'Endpoint settings unavailable. Retry below.' : saved.configured ? 'An endpoint is saved. The saved key is never shown.' : 'No endpoint configured.'}</Text>
     <TextInput label="Base URL" type="url" description="API root including its path prefix, for example http://127.0.0.1:8080/v1. Use HTTPS for remote endpoints." value={baseUrl} onChange={setBaseUrl} isReadOnly={!!pending} autoComplete="off" isRequired />

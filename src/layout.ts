@@ -97,6 +97,9 @@ mark { background: var(--color-background-blue); color: var(--color-text-primary
 .react-flow__handle { background: var(--color-text-secondary); border-color: var(--color-background-surface); }
 .trees nav button { height: auto; min-height: var(--spacing-8); padding-block: var(--spacing-2); white-space: normal; overflow-wrap: anywhere; text-align: start; justify-content: flex-start; }
 section[role=alert] { background: var(--color-background-body); }
+/* One frame height for every settings tab, so switching tabs never resizes the window. */
+.settings-shell { height: min(50rem, calc(100dvh - 2rem)); min-height: 0; }
+.settings-shell .astryx-side-nav { flex-shrink: 0; }
 ::selection { background: var(--color-background-blue); color: var(--color-text-primary); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }
 @media (max-width: 48rem) {
@@ -107,5 +110,7 @@ section[role=alert] { background: var(--color-background-body); }
  .overview[data-chat-open=true] { display: none; }
  .focused-chat { flex: 1; border-left: 0; }
  .expand-chat { display: none; }
+ .settings-shell { height: 100dvh; }
+ .settings-shell .astryx-side-nav { width: 100%; }
 }
 `;

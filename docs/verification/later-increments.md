@@ -84,3 +84,20 @@ native inference, media rendering and worker-permission checks were not rerun
 for this documentation/tracker review. The existing reports remain prior
 evidence, with fixture versus native limits preserved. Acceptance is unfinished;
 the umbrella stays blocked and is not closed on planning evidence.
+
+## Reconciliation 2026-11-10 (umbrella close)
+
+The text release `TreeTutor-7t3.12` and native gate `TreeTutor-7t3.17` are
+closed. Each later increment shipped after it under its own grouped issue:
+
+| Increment | Issue | Agreed scope | Evidence (type) |
+| --- | --- | --- | --- |
+| Mermaid | `TreeTutor-vm4.1` (with vm4.7, vm4.8) closed | PRD Content rollout | [diagram-recovery.md](diagram-recovery.md), [diagram-rendering.md](diagram-rendering.md), `diagram-live-results.json` (live Claude 15/15; Codex permissions fixture only) |
+| Video | `TreeTutor-vm4.3` (with vm4.9, vm4.10) closed | design `TreeTutor-vm4.2` | [video-recovery.md](video-recovery.md), [video-player.md](video-player.md) (fixture providers with real sandboxed renders; live Claude render in vm4.9; Codex video not live) |
+| Suggestions | `TreeTutor-vm4.5` closed as superseded | owner replaced it 2026-11-09 with the Break down design | delivered and verified in Phase 4 `TreeTutor-5ut` (5ut.10, [break-down.md](break-down.md)); not counted as a vm4 pass |
+| Vim | `TreeTutor-vm4.6` closed | owner agreement `TreeTutor-vm4.6.1`, [vim-bindings-proposal](../vim-bindings-proposal.md) | [vim-bindings.md](vim-bindings.md) (synthetic fixture, default off) |
+
+None changed the initial text release: each landed after `TreeTutor-7t3.12`
+closed, and Vim is off by default. Fresh checks today: `npm test` 149/149,
+`npm run build` PASS, `astryx doctor --built dist` 0 fail. Optional
+`TreeTutor-7t3.13` stays deferred and non-blocking.

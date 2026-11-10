@@ -1,0 +1,162 @@
+{
+  "date": "2026-11-10T17:47:58.106Z",
+  "data": "/tmp/tt-media-nested-Q1JoKF",
+  "route": "native Claude Code CLI sign-in (product default Claude model); existing app-owned ChatGPT consent for the Codex switch",
+  "checks": [
+    {
+      "name": "nested: child reply completed (native Claude)",
+      "pass": true
+    },
+    {
+      "name": "nested: grandchild branches from child",
+      "pass": true
+    },
+    {
+      "name": "diagram: tutor-chosen Mermaid artifact ready in the grandchild under its reply",
+      "pass": true,
+      "detail": "ready"
+    },
+    {
+      "name": "diagram: branch snapshots and parent histories unchanged after generation",
+      "pass": true
+    },
+    {
+      "name": "video: requested video rendered and saved locally in the grandchild",
+      "pass": true,
+      "detail": "ready"
+    },
+    {
+      "name": "video: branch snapshots and parent histories unchanged after generation",
+      "pass": true
+    },
+    {
+      "name": "workers: one diagram and one video worker, each a fresh thread with its own instructions",
+      "pass": true,
+      "detail": [
+        "claude",
+        "claude"
+      ]
+    },
+    {
+      "name": "workers: inputs are only the frozen task fields, no tutor transcript or canary",
+      "pass": true,
+      "detail": [
+        "description,excerpt,intent,title",
+        "excerpt,inheritedContext,intent,request,sources"
+      ]
+    },
+    {
+      "name": "Claude follow-up: tutor history carries artifact id/title metadata only",
+      "pass": true
+    },
+    {
+      "name": "Claude: no tutor submission or Claude CLI stdin contains generation context",
+      "pass": true
+    },
+    {
+      "name": "switch: Codex receives full saved history with artifact metadata and no generation context",
+      "pass": true
+    },
+    {
+      "name": "switch: native Codex reply completed",
+      "pass": true
+    },
+    {
+      "name": "switch: snapshots and parent histories unchanged",
+      "pass": true
+    },
+    {
+      "name": "reopen: trees, artifacts and snapshots identical; video file kept; no inference",
+      "pass": true
+    },
+    {
+      "name": "reopen: Claude follow-up completes without generation context in tutor history",
+      "pass": true
+    },
+    {
+      "name": "reopen: snapshots and parent histories unchanged",
+      "pass": true
+    }
+  ],
+  "codexTurn": {
+    "model": "gpt-6.1-sol",
+    "status": "completed",
+    "error": null
+  },
+  "artifacts": [
+    {
+      "id": "715d1f66-b03b-47f6-948e-16aa212c928d",
+      "kind": "mermaid",
+      "status": "ready",
+      "title": "Eight-number tournament tree finding the minimum",
+      "description": "A bracket showing 8 numbers narrowing to 4, then 2, then 1 across three rounds, with the comparison count for each round.",
+      "duration": null
+    },
+    {
+      "id": "5b68ff14-bcbe-4ab6-b007-641e1cd05877",
+      "kind": "video",
+      "status": "ready",
+      "title": "Eight values narrowing to the minimum",
+      "description": "A tournament tree finds the minimum of eight numbers: three rounds pair values, the larger of each pair fades out, a comparison counter climbs to 7, and candidates drop 8 → 4 → 2 → 1 with the minimum highlighted.",
+      "duration": 15
+    }
+  ],
+  "calls": [
+    {
+      "provider": "claude",
+      "worker": false,
+      "resumed": false
+    },
+    {
+      "provider": "claude",
+      "worker": false,
+      "resumed": false
+    },
+    {
+      "provider": "claude",
+      "worker": false,
+      "resumed": false
+    },
+    {
+      "provider": "claude",
+      "worker": false,
+      "resumed": false
+    },
+    {
+      "provider": "claude",
+      "worker": true,
+      "resumed": false
+    },
+    {
+      "provider": "claude",
+      "worker": false,
+      "resumed": false
+    },
+    {
+      "provider": "claude",
+      "worker": true,
+      "resumed": false
+    },
+    {
+      "provider": "claude",
+      "worker": false,
+      "resumed": false
+    },
+    {
+      "provider": "codex",
+      "worker": false,
+      "resumed": false
+    },
+    {
+      "provider": "codex",
+      "worker": false,
+      "resumed": true
+    }
+  ],
+  "models": [
+    null,
+    "sonnet",
+    "gpt-6.1-sol"
+  ],
+  "pass": true
+}

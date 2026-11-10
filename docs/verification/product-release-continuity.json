@@ -1,0 +1,253 @@
+{
+  "result": "PASS",
+  "before": {
+    "phase": "before",
+    "pid": 600558,
+    "date": "2026-11-10T17:46:13.316Z",
+    "turns": [
+      {
+        "tree": "Remember this fictional fact: our comet is named Zircon-555. Confirm in one short sentence.",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": false,
+        "textEvents": 4,
+        "status": "completed",
+        "elapsedMs": 4289,
+        "reply": "Got it — our fictional comet is named Zircon-555."
+      },
+      {
+        "tree": "For this study session remember these fictional facts: our robot is named Quill-482 and it sorts pebbles by weight. In two sentences, explain what sorting pebbles by weight means for Quill-482.",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": false,
+        "textEvents": 22,
+        "status": "completed",
+        "elapsedMs": 4676,
+        "reply": "Sorting pebbles by weight means Quill-482 measures how heavy each pebble is and then arranges them in order, such as from lightest to heaviest. To do this, it compares the pebbles' weights against one another and places each one in the position where everything before it is lighter and everything af"
+      },
+      {
+        "tree": "For this study session remember these fictional facts: our robot is named Quill-482 and it sorts pebbles by weight. In two sentences, explain what sorting pebbles by weight means for Quill-482.",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": true,
+        "textEvents": 2,
+        "status": "completed",
+        "elapsedMs": 3411,
+        "reply": "Quill-482"
+      },
+      {
+        "tree": "For this study session remember these fictional facts: our robot is named Quill-482 and it sorts pebbles by weight. In two sentences, explain what sorting pebbles by weight means for Quill-482.",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": true,
+        "textEvents": 1,
+        "status": "interrupted",
+        "elapsedMs": 3728,
+        "reply": "#"
+      },
+      {
+        "tree": "Remember this fictional fact: our comet is named Zircon-555. Confirm in one short sentence.",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": true,
+        "textEvents": 4,
+        "status": "completed",
+        "elapsedMs": 4452,
+        "reply": "Our comet is named Zircon-555, and no robot."
+      },
+      {
+        "tree": "For this study session remember these fictional facts: our robot is named Quill-482 and it sorts pebbles by weight. In two sentences, explain what sorting pebbles by weight means for Quill-482.",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": true,
+        "textEvents": 2,
+        "status": "completed",
+        "elapsedMs": 4128,
+        "reply": "Quill-482"
+      },
+      {
+        "tree": "What would our robot do with two pebbles of equal weight?",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": false,
+        "textEvents": 7,
+        "status": "completed",
+        "elapsedMs": 4574,
+        "reply": "Quill-482. And noted: its battery is called Ember-77."
+      },
+      {
+        "tree": "Where does our robot work?",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": false,
+        "textEvents": 8,
+        "status": "completed",
+        "elapsedMs": 4409,
+        "reply": "From earlier context, the robot is named Quill-482 and its battery is called Ember-77, and I've noted that it works in a lab named Kestrel-19."
+      },
+      {
+        "tree": "For this study session remember these fictional facts: our robot is named Quill-482 and it sorts pebbles by weight. In two sentences, explain what sorting pebbles by weight means for Quill-482.",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": true,
+        "textEvents": 80,
+        "status": "completed",
+        "elapsedMs": 7558,
+        "reply": "Imagine Quill-482 is sorting a row of pebbles by weight, and two of them weigh exactly the same: a red pebble and a blue pebble, each 12 grams. Before sorting, the red one sits to the left of the blue one. The question stable sorting answers is: after Quill-482 finishes, which of those two comes fir"
+      },
+      {
+        "tree": "Where does our robot work?",
+        "provider": "codex",
+        "model": "gpt-6.1-sol",
+        "resumed": false,
+        "textEvents": 26,
+        "status": "completed",
+        "elapsedMs": 3905,
+        "reply": "Our robot is Quill-482, its battery is Ember-77, and its lab is Kestrel-19."
+      },
+      {
+        "tree": "Where does our robot work?",
+        "provider": "codex",
+        "model": "gpt-6.1-sol",
+        "resumed": true,
+        "textEvents": 13,
+        "status": "completed",
+        "elapsedMs": 2839,
+        "reply": "The robot’s favorite pebble is Onyx-303."
+      },
+      {
+        "tree": "Where does our robot work?",
+        "provider": "claude",
+        "model": "gpt-6.1-sol",
+        "resumed": false,
+        "textEvents": 0,
+        "status": "failed",
+        "error": "Claude Code is signed out. Run claude in a terminal and sign in, then retry. The last working model selection will be restored.",
+        "elapsedMs": 550,
+        "reply": ""
+      }
+    ],
+    "models": {
+      "claude": [
+        "opus",
+        "sonnet",
+        "haiku"
+      ],
+      "codex": [
+        "gpt-6.1-sol",
+        "gpt-6-astra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-6.1-terra",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5"
+      ],
+      "defaultProvider": "claude"
+    },
+    "isolation": {
+      "cancelledRoot": "interrupted",
+      "peerCompleted": "completed",
+      "distinctSessions": true,
+      "rootRetryResumed": true
+    },
+    "authFailure": {
+      "refusedSwitch": "Model change failed. Your previous selection is saved. Sign in to Claude or retry.",
+      "lostDuringReply": "Claude Code is signed out. Run claude in a terminal and sign in, then retry. The last working model selection will be restored.",
+      "rolledBackTo": [
+        "codex",
+        "gpt-6.1-sol"
+      ]
+    }
+  },
+  "after": {
+    "phase": "after",
+    "pid": 603491,
+    "date": "2026-11-10T17:47:33.882Z",
+    "turns": [
+      {
+        "tree": "Where does our robot work?",
+        "provider": "codex",
+        "model": "gpt-6-astra",
+        "resumed": true,
+        "textEvents": 21,
+        "status": "completed",
+        "elapsedMs": 3231,
+        "reply": "The favorite pebble is Onyx-303, and the lab is Kestrel-19."
+      },
+      {
+        "tree": "Where does our robot work?",
+        "provider": "claude",
+        "model": "opus",
+        "resumed": false,
+        "textEvents": 10,
+        "status": "completed",
+        "elapsedMs": 2783,
+        "reply": "Our robot is Quill-482, its battery is Ember-77, its lab is Kestrel-19, and its favorite pebble is Onyx-303. I'll also remember that its charger is called Flint-64."
+      },
+      {
+        "tree": "Where does our robot work?",
+        "provider": "claude",
+        "model": "opus",
+        "resumed": true,
+        "textEvents": 2,
+        "status": "completed",
+        "elapsedMs": 2736,
+        "reply": "Onyx-303"
+      },
+      {
+        "tree": "Where does our robot work?",
+        "provider": "codex",
+        "model": "gpt-6-astra",
+        "resumed": false,
+        "textEvents": 5,
+        "status": "completed",
+        "elapsedMs": 3229,
+        "reply": "Flint-64"
+      },
+      {
+        "tree": "For this study session remember these fictional facts: our robot is named Quill-482 and it sorts pebbles by weight. In two sentences, explain what sorting pebbles by weight means for Quill-482.",
+        "provider": "claude",
+        "model": "claude-fable-5-2",
+        "resumed": true,
+        "textEvents": 2,
+        "status": "completed",
+        "elapsedMs": 4163,
+        "reply": "Quill-482"
+      }
+    ],
+    "models": {
+      "claude": [
+        "opus",
+        "sonnet",
+        "haiku"
+      ],
+      "codex": [
+        "gpt-6.1-sol",
+        "gpt-6-astra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-6.1-terra",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5"
+      ],
+      "defaultProvider": "claude"
+    },
+    "history": {
+      "grandchildMessages": 16,
+      "statuses": [
+        "completed",
+        "completed",
+        "completed",
+        "failed",
+        "completed",
+        "completed",
+        "completed",
+        "completed"
+      ]
+    }
+  }
+}

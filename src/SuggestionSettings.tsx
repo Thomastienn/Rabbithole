@@ -41,7 +41,7 @@ export default function SuggestionSettings({ api, models, providers, modelError,
   const available = (models ?? []).filter(m => ['claude', 'codex'].includes(m.provider) && providers?.[m.provider]?.connected);
   const unavailable = !!saved?.model && !available.some(m => key(m) === key(saved.model));
   return <VStack gap={3}>
-    <Heading level={4}>Suggestions</Heading>
+    <Heading level={3}>Suggestions</Heading>
     <Switch label="Automatic suggestions" value={saved?.enabled ?? false} onChange={enabled => void save({ enabled })} isDisabled={!saved || !!pending} isLoading={pending === 'saving'} description="New saved replies only. Saved suggestions stay visible; calls already running finish." />
     <Selector label="Suggestion model" value={key(saved?.model ?? null)} size="sm" width="100%" hasSearch isDisabled={!saved || !!pending || refreshing} isLoading={refreshing} description="Default follows each conversation: Haiku for Claude, Luna for Codex. A pinned model applies across conversations." options={[
       { value: 'default', label: 'Default for each provider' },

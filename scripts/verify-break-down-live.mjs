@@ -1,6 +1,7 @@
 // Explicit native-provider check. Synthetic learning data; existing sign-ins stay in place.
 // Stop the app first so its ChatGPT refresh token is not used concurrently.
-// Usage: node scripts/verify-break-down-live.mjs [out.json]
+// Usage: node scripts/verify-break-down-live.mjs [out.json] [--codex-only|--claude-only]
+// --claude-only needs no ChatGPT token, so TREETUTOR_DATA_DIR may point at an empty dir while the app runs.
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -18,7 +19,7 @@ const authDir = process.env.TREETUTOR_DATA_DIR ?? join(process.env.XDG_DATA_HOME
 const release = await lockfile.lock(authDir, { realpath: true, stale: 10000 });
 const auth = new Auth(authDir), calls = [], checks = [];
 const report = { issue: 'TreeTutor-5ut.10', date: new Date().toISOString(), data: dir, route: 'Native Claude CLI and Codex app-server over existing app-owned subscription sign-ins; isolated SQLite; no API-key fallback', checks, providers: {} };
-const providers = process.argv.includes('--codex-only') ? ['codex'] : ['claude', 'codex'];
+const providers = process.argv.includes('--codex-only') ? ['codex'] : process.argv.includes('--claude-only') ? ['claude'] : ['claude', 'codex'];
 const check = (name, pass, detail) => {
   checks.push({ name, pass: !!pass, ...(detail !== undefined && { detail }) });
   console.error(`${pass ? 'ok' : 'FAIL'} - ${name}`);

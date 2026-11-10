@@ -10,7 +10,15 @@ _Avoid_: Tree (alone), map, chat (outside UI copy)
 
 **Conversation**:
 One question-and-answer thread with the tutor inside a learning tree. Never a whole learning tree.
-_Avoid_: Node, box, chat
+_Avoid_: Node (alone), box, chat
+
+**Conversation node**:
+A conversation as drawn on the learning tree map: a chat-style preview of its questions and replies, linked to its parent and children by branches.
+_Avoid_: Node (alone), preview node, box, card
+
+**Focused chat**:
+The full view of one conversation, where the learner reads replies, asks questions and creates branches.
+_Avoid_: Chat page, conversation view
 
 **Branch**:
 The parent-to-child link created when the learner asks about a passage of a conversation.
@@ -21,7 +29,7 @@ The exact contiguous text of a tutor reply that a branch was created from.
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
-A passage in a tutor reply that the suggestion model marked as worth breaking down into a branch. It carries no proposed question.
+A term or short phrase in a tutor reply that the suggestion model marked as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
 
 **Suggestion model**:
@@ -33,7 +41,7 @@ The single record, across all learning trees, of concepts the learner has met an
 _Avoid_: Learner profile, skill map
 
 **Concept**:
-One thing the learner can know, such as "Peterson's algorithm"; a node of the knowledge graph.
+One thing the learner can know, such as "Peterson's algorithm"; shown as a point in the knowledge graph.
 _Avoid_: Term, skill, node
 
 **Topic**:

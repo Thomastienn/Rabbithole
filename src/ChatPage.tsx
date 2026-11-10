@@ -5,13 +5,11 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
-import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { Tab, TabList } from '@astryxdesign/core/TabList';
-import { Banner } from '@astryxdesign/core/Banner';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
 import { replyUsageLine, underlineRanges, usageLine, withTurn, type Message, type Suggestions, type Turn, type Usage } from './turn';
@@ -19,8 +17,7 @@ import { layoutSaver, type Batch } from './layoutSave';
 import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
-import EndpointSettings from './EndpointSettings';
-import SuggestionSettings from './SuggestionSettings';
+import SettingsWindow, { type SettingsRequest, type SettingsTab } from './SettingsWindow';
 import KnowledgePage, { type Graph } from './KnowledgePage';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
@@ -164,7 +161,8 @@ export default function ChatPage() {
   const [modelMenuOpen, setModelMenuOpen] = useState(false), [openingModels, setOpeningModels] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [tab, setTab] = useState('learning');
-  const [help, setHelp] = useState(false);
+  const [settings, setSettings] = useState<SettingsRequest>();
+  const settingsOpener = useRef<HTMLElement | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'sidebar' }>();
   const [deletion, setDeletion] = useState<{ id: string; root: string; title: string; count: number; parent: string | null }>();
   const [deleting, setDeleting] = useState(false), [deleteError, setDeleteError] = useState('');
@@ -412,8 +410,7 @@ export default function ChatPage() {
     finally { setBusy(false); }
   }
   async function signIn() {
-    try { const result = await api('/api/auth', {}); window.location.assign(result.url); }
-    catch (e) { setError((e as Error).message); }
+    const result = await api('/api/auth', {}); window.location.assign(result.url);
   }
   function finishRename() {
     const target = renaming;
@@ -568,18 +565,24 @@ export default function ChatPage() {
   const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text);
   const active = !!tree && !!state?.active.includes(tree.id);
   const branchConcept = branch?.anchor.suggestion ? tree?.suggestions?.find(s => s.message === branch.anchor.messageId)?.passages.find(p => p.start === branch.anchor.start && p.end === branch.anchor.end)?.concept : undefined;
-  function openSettings(endpoint = false) {
-    setHelp(false); setMobileNav(true);
-    requestAnimationFrame(() => document.querySelector<HTMLElement>(endpoint ? '.endpoint-settings input' : '#settings-heading')?.focus());
+  function openSettings(tab?: SettingsTab, focus?: string, opener = document.activeElement as HTMLElement | null) {
+    settingsOpener.current = opener; setSettings({ tab, focus });
   }
+  function closeSettings() {
+    setSettings(undefined);
+    // Menu items that opened the window are gone by now; fall back to the menu trigger that held them.
+    const opener = settingsOpener.current;
+    requestAnimationFrame(() => (opener?.isConnected ? opener : document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]'))?.focus());
+  }
+  const mapMenuTrigger = () => document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]');
   const menu = (actions?: MapActions) => <DropdownMenu presentation="popover" renderTrigger={props => <IconButton {...props} label="Map menu" tooltip="Map menu" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />} items={[
-    { label: 'Learning trees', onClick: () => { setHelp(false); setMobileNav(true); } },
-    { label: 'Settings', onClick: () => openSettings() },
+    { label: 'Learning trees', onClick: () => setMobileNav(true) },
+    { label: 'Settings', onClick: () => openSettings(undefined, undefined, mapMenuTrigger()) },
     { label: 'Expand all', isDisabled: !actions, onClick: actions?.expand },
     { label: 'Collapse all', isDisabled: !actions, onClick: actions?.collapse },
     { label: 'Keep current branch', isDisabled: !actions?.canKeep, onClick: actions?.keep },
     { label: tree?.branch ? 'Delete branch…' : 'Delete chat…', isDisabled: !tree, onClick: () => tree && askDelete(tree.id, document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]')) },
-    { label: 'Help', onClick: () => { setMobileNav(true); setHelp(true); } },
+    { label: 'Help', onClick: () => openSettings('interface', undefined, mapMenuTrigger()) },
   ]} />;
   return <VStack gap={0} style={{ height: '100dvh' }}>
     <VStack gap={0} padding={2}><TabList value={tab} onChange={setTab} role="tablist" aria-label="Workspace" size="sm" hasDivider>
@@ -588,8 +591,7 @@ export default function ChatPage() {
     </TabList></VStack>
     <HStack id="learning-panel" role="tabpanel" aria-labelledby="learning-tab" hidden={tab !== 'learning'} gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
       <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={mobileNav}><VStack padding={5} gap={5}>
-        <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Your trees</Heading><IconButton label="Close learning trees" tooltip="Close" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => { setMobileNav(false); document.querySelector<HTMLButtonElement>(overview ? '[aria-label="Map menu"]' : '[aria-label="Model for next reply"]')?.focus(); }} /></HStack>
-        {help && <VStack gap={2}><Heading level={2}>Map help</Heading><Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text><Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them in Settings below. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text><Text>In Settings → Connections, save one custom endpoint’s base URL and API key, test its model listing, or remove it. Its owner bills requests sent there. The saved key is never shown. In chat, open Model for next reply and use arrows and Enter to choose Claude, Codex or a custom endpoint model. Switching preserves the discussion and inherited context; children start with their parent’s choice. New chats default to Claude.</Text><Button label="Close help" variant="ghost" onClick={() => setHelp(false)} /></VStack>}
+        <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Your trees</Heading><HStack gap={1}><IconButton label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" onClick={e => openSettings(undefined, undefined, e.currentTarget)} /><IconButton label="Close learning trees" tooltip="Close" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => { setMobileNav(false); document.querySelector<HTMLButtonElement>(overview ? '[aria-label="Map menu"]' : '[aria-label="Model for next reply"]')?.focus(); }} /></HStack></HStack>
         <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()}>{busy ? 'Opening…' : 'New chat'}</Button>
         <nav aria-label="Saved learning trees"><VStack gap={2}>
           {state?.trees.filter(t => !t.parent).map(t => <VStack key={t.id} gap={1}>
@@ -603,22 +605,6 @@ export default function ChatPage() {
           </VStack>)}
           {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
         </VStack></nav>
-        <VStack gap={3}>
-          <Heading level={3} id="settings-heading" tabIndex={-1}>Settings</Heading>
-          {state?.usage && <Text type="supporting">Today's usage: {state.usage.replies ? usageLine(state.usage) : 'no reported usage yet'}</Text>}
-          {(state?.conceptNameTokens ?? 0) > 2000 && <Banner status="warning" title="Warning: concept matching is getting expensive" description={`The last suggestion call sent about ${state!.conceptNameTokens!.toLocaleString()} tokens of concept names.`} />}
-          {mobileNav && <SuggestionSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} />}
-          <CheckboxInput label="Vim canvas bindings" description="With the map or a conversation box focused, h j k l act as arrows; = + - zoom; f fits the tree." value={vim} onChange={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} />
-        </VStack>
-        <VStack gap={3}>
-          <Heading level={3}>Connections</Heading>
-          <Text type="supporting" color="secondary">Trees save on this computer. Questions go to the provider you pick for each conversation. Claude and Codex use your own plan.</Text>
-          <Text type="supporting">Claude: {providers?.claude?.connected ? 'signed in through Claude Code' : 'run claude in a terminal and sign in'}</Text>
-          {providers && !providers.claude?.connected && <Button label="Check Claude sign-in" variant="ghost" size="sm" onClick={() => void loadModels()} />}
-          <Text type="supporting">Codex: {state?.auth.connected ? `connected ${state.auth.email ?? 'to ChatGPT'}` : 'not connected'}</Text>
-          <Button label={state?.auth.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'} variant="secondary" data-oai-siwc-button="" onClick={() => void signIn()}>{state?.auth.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'}</Button>
-          {mobileNav && <EndpointSettings api={api} changed={() => void loadModels()} />}
-        </VStack>
       </VStack></aside>
       <main className="conversation">
         <Heading level={1} className="sr-only">TreeTutor</Heading>
@@ -642,8 +628,8 @@ export default function ChatPage() {
                     {tree.provider === id && tree.model && !models?.some(m => m.provider === id && m.model === tree.model) && <DropdownMenuRadioItem value={tree.model} label={`${tree.model} (saved)`} isDisabled />}
                     {(models ?? []).filter(m => m.provider === id).map(m => <DropdownMenuRadioItem key={m.model} value={m.model} label={m.label} />)}
                   </DropdownMenuRadioGroup>
-                  : id === 'openai' ? <DropdownMenuItem label="Custom endpoint settings" description="Add an endpoint or check its URL, API key and connection" onClick={() => openSettings(true)} />
-                  : id === 'codex' ? <DropdownMenuItem label="Continue with ChatGPT" description="Sign in to use Codex with your ChatGPT plan" onClick={() => void signIn()} />
+                  : id === 'openai' ? <DropdownMenuItem label="Custom endpoint settings" description="Add an endpoint or check its URL, API key and connection" onClick={() => openSettings('connections', '.endpoint-settings input', document.querySelector<HTMLElement>('[aria-label="Model for next reply"]'))} />
+                  : id === 'codex' ? <DropdownMenuItem label="Continue with ChatGPT" description="Sign in to use Codex with your ChatGPT plan" onClick={() => void signIn().catch(e => setError(e.message))} />
                   : <DropdownMenuItem label={`Check ${p.label} sign-in`} description={id === 'claude' ? 'Run claude in a terminal and sign in, then check again' : 'Sign in, then check again'} onClick={() => void loadModels()} />}
                 </DropdownMenuGroup>; })}
               </DropdownMenu>
@@ -693,6 +679,7 @@ export default function ChatPage() {
     <main id="knowledge-panel" role="tabpanel" aria-labelledby="knowledge-tab" hidden={tab !== 'knowledge'} className="knowledge-panel">
       {tab === 'knowledge' && <KnowledgePage api={api} activity={activeKey} />}
     </main>
+    <SettingsWindow request={settings} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} usage={state?.usage?.replies ? usageLine(state.usage) : undefined} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} />
     <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
 }
