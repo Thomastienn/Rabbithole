@@ -1,5 +1,7 @@
 # Automatic branch suggestions
 
+> Superseded on 2026-11-09 by [break-down-spec.md](break-down-spec.md). Kept for history; do not implement.
+
 Decision: `TreeTutor-vm4.4`. Status: selected design.
 
 The user delegated the next Beads task and its recommendations with “Do the next Beads task. Do what you recommends.” On 2026-11-07 (America/Edmonton), that delegation selects the recommended behavior below: zero to three optional passage suggestions after a saved completed reply, an editable question before branch submission, and retained manual selection. The decision includes the additional inference cost, persistent dismissals, accepted-branch reuse and failure/restart rules. This is a later increment; PRD.md remains the product authority and implementation remains a separate task. This document defines behavior, not visual styling or a component system.

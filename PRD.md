@@ -1,6 +1,6 @@
 # TreeTutor — Product Requirements
 
-Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The owner clarified on 2026-11-09 that New chat opens a map with one visible root conversation, map nodes show the whole conversation, and branch lines attach beside their source message. On the same day the owner accepted three additions for after the text release (rich reply rendering, rename and delete, and a custom OpenAI-compatible endpoint) and the optional Vim canvas mapping in docs/vim-bindings-proposal.md. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
+Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The owner clarified on 2026-11-09 that New chat opens a map with one visible root conversation, map nodes show the whole conversation, and branch lines attach beside their source message. On the same day the owner accepted three additions for after the text release (rich reply rendering, rename and delete, and a custom OpenAI-compatible endpoint) and the optional Vim canvas mapping in docs/vim-bindings-proposal.md. Later on 2026-11-09 the owner replaced the branch-suggestion design with Break down, token stats and a knowledge graph, specified in docs/break-down-spec.md for a new epic after Product 1.0. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
 
 ## Relationship to the original idea
 
@@ -89,7 +89,7 @@ Use standard keyboard interactions initially. As a later increment, add the opt-
 
 ## Future direction
 
-Automatic suggestions for concepts or passages worth branching into are an explicit long-term product goal. The initial version uses manual text selection. The selected later design is recorded in [branch-suggestions-proposal.md](docs/branch-suggestions-proposal.md); its implementation remains separate from the initial text release.
+Automatic suggestions for concepts or passages worth branching into are an explicit long-term product goal. The initial version uses manual text selection. The selected later design is recorded in [break-down-spec.md](docs/break-down-spec.md), which supersedes the earlier suggestions proposal: a suggestion model underlines likely-confusing terms and sections, both underlines and highlighted text open a small prompt box that branches, a knowledge graph across learning trees informs the underlines, and every final response shows its token usage. It ships in a new epic after Product 1.0 (TreeTutor-sh8).
 
 ## Content rollout
 
@@ -119,7 +119,7 @@ Automatic suggestions for concepts or passages worth branching into are an expli
 
 The initial release targets the complete text learning journey: multiple saved trees, a movable branching canvas, focused chat, keyboard access, lazy context compaction, concurrent conversations, and subscription-backed Claude (default) and Codex with model and provider switching. Verify Claude and Codex authentication, context continuity, cross-provider switching and independent sessions. Do not silently substitute API-key access.
 
-Build incrementally within this scope; Beads records implementation order and dependencies. Mermaid, Remotion, automatic branch suggestions, and Vim bindings are later increments rather than requirements for the first text release.
+Build incrementally within this scope; Beads records implementation order and dependencies. Mermaid, Remotion, automatic branch suggestions (Break down), token stats, the knowledge graph, and Vim bindings are later increments rather than requirements for the first text release.
 
 ## Acceptance criteria
 
@@ -147,7 +147,7 @@ The provider research below began on 2026-11-07. Current decisions and task-spec
 - **History transfer:** For provider switching, verify preservation of prior discussion and inherited context. Continuity does not require identical answers from different models.
 - **Compaction:** Verify summary quality and branch startup latency with a real learning conversation. A summary must not replace the saved source history.
 - **Implementation choices:** React/TypeScript/Vite, React Flow, a loopback Node server, SQLite, and the initial keyboard contract were selected in the [architecture decision](docs/architecture-proposal.md). This PRD's revised compact controls, selection-only branch actions, chat side panel and layout-saving cadence supersede conflicting older interaction details there. Exact dimensions, breakpoints and animation timing remain implementation details; clarify changes that materially affect the agreed experience.
-- **Later increments:** Suggestion and video designs are selected in the linked documents above. Their implementation and validation remain later work; the optional Vim mapping was agreed on 2026-11-09. Rich reply rendering, rename and delete, and the custom OpenAI-compatible endpoint were accepted on 2026-11-09 and are tracked in Beads epic TreeTutor-sh8.
+- **Later increments:** Suggestion (Break down) and video designs are selected in the linked documents above; Break down, token stats and the knowledge graph form a new epic after TreeTutor-sh8. Their implementation and validation remain later work; the optional Vim mapping was agreed on 2026-11-09. Rich reply rendering, rename and delete, and the custom OpenAI-compatible endpoint were accepted on 2026-11-09 and are tracked in Beads epic TreeTutor-sh8.
 
 ## Change boundary
 
