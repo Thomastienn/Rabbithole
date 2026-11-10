@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, chmodSync } from 'node:fs';
+import { mkdirSync, chmodSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { previewText } from '../src/markdownText.ts';
 
@@ -14,29 +14,42 @@ export class Store {
   constructor(path) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
-    chmodSync(path, 0o600);
-    this.db.exec(`PRAGMA journal_mode=WAL;
-      PRAGMA foreign_keys=ON;
-      CREATE TABLE IF NOT EXISTS trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL);
+    try {
+      const version = this.db.prepare('PRAGMA user_version').get().user_version;
+      if (version > 1) throw new Error(`Database schema ${version} is newer than this TreeTutor supports (1). Use the newer TreeTutor version; your database was not changed.`);
+      chmodSync(path, 0o600);
+      if (version < 1 && this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table'").get()) {
+        const backupPath = `${path}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
+        // SQLite copies a consistent snapshot, including committed WAL pages, before any upgrade writes.
+        writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
+        this.db.prepare('VACUUM INTO ?').run(backupPath + '.tmp');
+        renameSync(backupPath + '.tmp', backupPath);
+        this.backupPath = backupPath;
+      }
+      this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
+      if (version < 1) {
+        this.db.exec('BEGIN IMMEDIATE');
+        try { this.migrate(); this.db.exec('PRAGMA user_version=1; COMMIT'); }
+        catch (error) { this.db.exec('ROLLBACK'); throw error; }
+      }
+      this.interrupt();
+    } catch (error) { error.backupPath = this.backupPath; this.db.close(); throw error; }
+  }
+  migrate() {
+    this.db.exec(`CREATE TABLE IF NOT EXISTS trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS messages_tree_seq ON messages(tree, seq);
       CREATE UNIQUE INDEX IF NOT EXISTS messages_id_tree ON messages(id, tree);
       ${ARTIFACTS}
-      CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL);
-      UPDATE messages SET status='interrupted' WHERE status='streaming';`);
+      CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL);`);
     // Older databases gain the video kind, job columns and job statuses; SQLite cannot alter a CHECK in place.
     if (!this.db.prepare("SELECT sql FROM sqlite_master WHERE name='artifacts'").get().sql.includes("'interrupted'")) {
       const kept = this.db.prepare('PRAGMA table_info(artifacts)').all().map(c => c.name).join(',');
-      this.db.exec(`BEGIN;
-      ALTER TABLE artifacts RENAME TO artifacts_old;
+      this.db.exec(`ALTER TABLE artifacts RENAME TO artifacts_old;
       ${ARTIFACTS.replace('CREATE INDEX', 'DROP INDEX artifacts_conversation; CREATE INDEX')}
       INSERT INTO artifacts(${kept}) SELECT ${kept} FROM artifacts_old;
-      DROP TABLE artifacts_old;
-      COMMIT;`);
+      DROP TABLE artifacts_old;`);
     }
-    // Restart never resumes paid inference: unfinished videos wait for an explicit retry.
-    this.db.exec(`UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when TreeTutor stopped.' WHERE status='pending' AND kind='video';
-      UPDATE artifacts SET status='failed',source=NULL,error='Diagram generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
     const columns = this.db.prepare('PRAGMA table_info(trees)').all().map(c => c.name);
     if (!columns.includes('provider')) this.db.exec("ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'");
     if (!columns.includes('model')) this.db.exec('ALTER TABLE trees ADD COLUMN model TEXT');
@@ -47,6 +60,12 @@ export class Store {
     if (!columns.includes('working_provider')) this.db.exec('ALTER TABLE trees ADD COLUMN working_provider TEXT; UPDATE trees SET working_provider=provider');
     if (!columns.includes('working_thread')) this.db.exec('ALTER TABLE trees ADD COLUMN working_thread TEXT');
     if (!columns.includes('title_renamed')) this.db.exec('ALTER TABLE trees ADD COLUMN title_renamed INTEGER NOT NULL DEFAULT 0');
+  }
+  // Starting or stopping never resumes paid inference; saved partial text stays available.
+  interrupt() {
+    this.db.exec(`UPDATE messages SET status='interrupted' WHERE status='streaming';
+      UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when TreeTutor stopped.' WHERE status='pending' AND kind='video';
+      UPDATE artifacts SET status='failed',source=NULL,error='Diagram generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
   }
   list() {
     return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()

@@ -347,7 +347,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
   const path = join(dir, 'trees.sqlite');
   // A database written before the job statuses existed is rebuilt in place.
   const old = new Store(path);
-  old.db.exec(`PRAGMA foreign_keys=OFF; DROP TABLE artifacts; CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
+  old.db.exec(`PRAGMA user_version=0; PRAGMA foreign_keys=OFF; DROP TABLE artifacts; CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
     kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL);`);
   const tree = old.create('Video');
   const reply = old.message(tree.id, 'assistant', 'Reply.', 'completed');
@@ -388,7 +388,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
   } finally { app.stop(); store.close(); }
 });
 
-test('stopping the app during a job leaves it interrupted on the next start', async () => {
+test('stopping the app during a job marks it interrupted before exit and keeps it interrupted on restart', async () => {
   let started;
   const rendering = new Promise(r => { started = r; });
   const videoRender = (ws, output, signal) => new Promise((_, reject) => { started(); signal.addEventListener('abort', () => reject(signal.reason)); });
@@ -396,9 +396,8 @@ test('stopping the app during a job leaves it interrupted on the next start', as
   const tree = env.store.create('Video');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
   await rendering;
-  env.app.stop();
-  await new Promise(r => setTimeout(r, 50));
-  assert.equal(env.store.tree(tree.id).artifacts[0].status, 'pending');
+  await env.app.stop();
+  assert.equal(env.store.tree(tree.id).artifacts[0].status, 'interrupted');
   env.store.close();
   const reopened = new Store(join(env.dir, 'trees.sqlite'));
   assert.equal(reopened.tree(tree.id).artifacts[0].status, 'interrupted');

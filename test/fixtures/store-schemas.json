@@ -1,0 +1,145 @@
+[
+  {
+    "commits": [
+      "d33bc77"
+    ],
+    "sql": [
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL)"
+    ]
+  },
+  {
+    "commits": [
+      "fe640dc",
+      "b4700d3"
+    ],
+    "sql": [
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT)"
+    ]
+  },
+  {
+    "commits": [
+      "323646b"
+    ],
+    "sql": [
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, x REAL, y REAL)"
+    ]
+  },
+  {
+    "commits": [
+      "c6ad609"
+    ],
+    "sql": [
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL)"
+    ]
+  },
+  {
+    "commits": [
+      "ab7c3e8"
+    ],
+    "sql": [
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL)",
+      "CREATE INDEX messages_tree_seq ON messages(tree, seq)"
+    ]
+  },
+  {
+    "commits": [
+      "507be75"
+    ],
+    "sql": [
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL, layout TEXT)",
+      "CREATE INDEX messages_tree_seq ON messages(tree, seq)"
+    ]
+  },
+  {
+    "commits": [
+      "dddd757"
+    ],
+    "sql": [
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL, layout TEXT, working_provider TEXT)",
+      "CREATE INDEX messages_tree_seq ON messages(tree, seq)"
+    ]
+  },
+  {
+    "commits": [
+      "59fe6e6",
+      "716f29c"
+    ],
+    "sql": [
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL, layout TEXT, working_provider TEXT, working_thread TEXT)",
+      "CREATE INDEX messages_tree_seq ON messages(tree, seq)"
+    ]
+  },
+  {
+    "commits": [
+      "48b0da6"
+    ],
+    "sql": [
+      "CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,\n        kind TEXT NOT NULL CHECK(kind='mermaid'), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')),\n        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL,\n        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))",
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL, layout TEXT, working_provider TEXT, working_thread TEXT)",
+      "CREATE INDEX artifacts_conversation ON artifacts(conversation, created)",
+      "CREATE UNIQUE INDEX messages_id_tree ON messages(id, tree)",
+      "CREATE INDEX messages_tree_seq ON messages(tree, seq)"
+    ]
+  },
+  {
+    "commits": [
+      "d46cc7a",
+      "061b70c"
+    ],
+    "sql": [
+      "CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,\n        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')),\n        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL,\n        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))",
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL, layout TEXT, working_provider TEXT, working_thread TEXT)",
+      "CREATE INDEX artifacts_conversation ON artifacts(conversation, created)",
+      "CREATE UNIQUE INDEX messages_id_tree ON messages(id, tree)",
+      "CREATE INDEX messages_tree_seq ON messages(tree, seq)"
+    ]
+  },
+  {
+    "commits": [
+      "726550b",
+      "33da174"
+    ],
+    "sql": [
+      "CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,\n        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),\n        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL,\n        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))",
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL, layout TEXT, working_provider TEXT, working_thread TEXT)",
+      "CREATE INDEX artifacts_conversation ON artifacts(conversation, created)",
+      "CREATE UNIQUE INDEX messages_id_tree ON messages(id, tree)",
+      "CREATE INDEX messages_tree_seq ON messages(tree, seq)"
+    ]
+  },
+  {
+    "commits": [
+      "abbf3ee"
+    ],
+    "sql": [
+      "CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,\n        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),\n        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL,\n        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))",
+      "CREATE TABLE branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL)",
+      "CREATE TABLE messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL)",
+      "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, provider TEXT NOT NULL DEFAULT 'codex', model TEXT, working_model TEXT, x REAL, y REAL, layout TEXT, working_provider TEXT, working_thread TEXT, title_renamed INTEGER NOT NULL DEFAULT 0)",
+      "CREATE INDEX artifacts_conversation ON artifacts(conversation, created)",
+      "CREATE UNIQUE INDEX messages_id_tree ON messages(id, tree)",
+      "CREATE INDEX messages_tree_seq ON messages(tree, seq)"
+    ]
+  }
+]

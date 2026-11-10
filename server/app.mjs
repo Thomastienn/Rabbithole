@@ -13,7 +13,7 @@ const STOPPED = new Error('TreeTutor stopped.');
 export function createApp({ store, auth, provider, providers = { codex: provider }, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender }) {
   const pick = tree => providers[tree.provider] ?? providers[defaultProvider];
   const active = new Map(), videos = new Map(), videoJobs = new Set();
-  let stopping = false;
+  let stopping = false, stopped;
   // A crash before commit restores staged files; a crash after commit finishes removing them.
   // The suffix records the owning artifact, including legacy workspaces named only by attempt.
   for (const folder of [join(dir, 'videos'), join(dir, 'video-work')]) {
@@ -54,6 +54,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     }
     const url = new URL(req.url, origin);
     try {
+      if (stopping) return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
       if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], videos: [...new Set([...videos.values()].map(v => v.conversation))] });
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
@@ -323,5 +324,20 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       else res.end();
     }
   });
-  return { server, active, stop: () => { stopping = true; for (const controller of active.values()) controller.abort(); for (const v of videoJobs) v.controller.abort(STOPPED); for (const p of new Set(Object.values(providers))) p?.close?.(); server.closeAllConnections(); server.close(); } };
+  return { server, active, stop: () => {
+    if (stopped) return stopped;
+    stopping = true;
+    for (const controller of active.values()) controller.abort();
+    for (const v of videoJobs) v.controller.abort(STOPPED);
+    store.interrupt();
+    for (const p of new Set(Object.values(providers))) p?.close?.();
+    // Let final interrupted events drain before closing sockets; bound shutdown for a stuck client or job.
+    stopped = new Promise(resolve => {
+      const timer = setTimeout(() => { server.closeAllConnections(); resolve(); }, 5000).unref();
+      const closed = new Promise(done => server.close(done));
+      server.closeIdleConnections();
+      Promise.allSettled([closed, ...[...videoJobs].map(v => v.done)]).then(() => { clearTimeout(timer); resolve(); });
+    });
+    return stopped;
+  } };
 }

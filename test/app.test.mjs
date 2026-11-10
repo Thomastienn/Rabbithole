@@ -25,6 +25,34 @@ const complete = async (tree, question, emit, saveThread) => {
   emit({ type: 'status', status: 'completed' });
 };
 
+test('server shutdown ends concurrent reply streams as interrupted and saves pending-job recovery before restart', async () => {
+  const path = join(dir, 'shutdown.sqlite');
+  const env = await open(path, async (tree, text, emit, saveThread, signal) => {
+    emit({ type: 'delta', item: 'reply', text: `Partial ${text}` });
+    await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
+  });
+  try {
+    const a = await (await env.post('/api/trees', {})).json();
+    const ar = await env.post(`/api/trees/${a.id}/messages`, { text: 'first' });
+    const b = await (await env.post('/api/trees', {})).json();
+    const br = await env.post(`/api/trees/${b.id}/messages`, { text: 'second' });
+    const message = env.store.tree(a.id).messages.at(-1).id;
+    const job = env.store.pendingArtifact(a.id, message, 'Video', 'Saved job', 'video', '{}');
+    await env.app.stop();
+    for (const response of [ar, br]) assert.match(await response.text(), /"type":"done","status":"interrupted"/);
+    assert.equal(env.app.active.size, 0);
+    assert.equal(env.store.artifact(a.id, job.id).status, 'interrupted');
+    for (const [tree, partial] of [[a, 'first'], [b, 'second']]) {
+      const reply = env.store.tree(tree.id).messages.at(-1);
+      assert.equal(reply.status, 'interrupted');
+      assert.equal(reply.text, `Partial ${partial}`);
+    }
+    const reopened = new Store(path);
+    try { assert.deepEqual(reopened.tree(a.id), env.store.tree(a.id)); }
+    finally { reopened.close(); }
+  } finally { env.close(); }
+});
+
 test('two trees stream independent replies, preserve originals, resume saved thread after restart', async () => {
   const path = join(dir, 'isolation.sqlite');
   let env = await open(path, complete);

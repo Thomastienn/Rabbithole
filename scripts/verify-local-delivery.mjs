@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import http from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -9,7 +10,7 @@ import { Store } from '../server/store.mjs';
 
 // Delivery/restart integration check. Real main process and HTTP boundary, seeded synthetic content;
 // no inference, account credential access or claim of native-provider semantic continuity.
-// Requires npm run build. Usage: node scripts/verify-local-delivery.mjs [report.json]
+// Uses the documented start launcher (including automatic builds). Usage: node scripts/verify-local-delivery.mjs [report.json]
 process.umask(0o077);
 const out = process.argv[2] ?? 'docs/verification/local-delivery-results.json';
 const data = mkdtempSync(join(tmpdir(), 'treetutor-delivery-'));
@@ -27,25 +28,33 @@ seed.message(other.id, 'user', 'How does a heap differ?', 'completed');
 seed.message(other.id, 'assistant', 'A fixture heap answer.', 'completed');
 seed.message(root.id, 'user', 'A later parent question.', 'completed');
 seed.message(root.id, 'assistant', 'A later parent answer.', 'completed');
+// The final pre-versioning schema is a real legacy shape; startup must snapshot it before upgrading.
+seed.db.exec('PRAGMA user_version=0');
 seed.close();
 
-let server, origin, csrf;
+let server, origin, csrf, output;
 const responses = [];
 const get = async path => { const r = await fetch(origin + path); const body = await r.text(); responses.push([path, body]); return { status: r.status, body: JSON.parse(body) }; };
 const post = (path, body, headers = {}) => fetch(origin + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf, ...headers }, body: JSON.stringify(body) });
 async function start(port = 0) {
-  server = spawn(process.execPath, ['server/main.mjs'], { env: { ...process.env, TREETUTOR_DATA_DIR: data, TREETUTOR_PORT: String(port), CLAUDE_CONFIG_DIR: join(data, 'signed-out-claude') }, stdio: ['ignore', 'pipe', 'pipe'] });
+  output = '';
+  server = spawn(process.execPath, ['scripts/start.mjs', '--port', String(port)], { env: { ...process.env, TREETUTOR_DATA_DIR: data, CLAUDE_CONFIG_DIR: join(data, 'signed-out-claude') }, stdio: ['ignore', 'pipe', 'pipe'] });
   origin = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { server.kill(); reject(new Error('Server startup timed out')); }, 15000);
-    server.stdout.on('data', d => { const m = String(d).match(/http:\/\/[^\s]+/); if (m) { clearTimeout(timer); resolve(m[0]); } });
+    const timer = setTimeout(() => { server.kill(); reject(new Error('Server startup timed out: ' + output)); }, 120000);
+    server.stdout.on('data', d => { output += d; const m = output.match(/TreeTutor: (http:\/\/127\.0\.0\.1:\d+)\r?\n/); if (m) { clearTimeout(timer); resolve(m[1]); } });
+    server.stderr.on('data', d => { output += d; });
     server.once('error', error => { clearTimeout(timer); reject(error); });
-    server.once('exit', code => { clearTimeout(timer); reject(new Error(`Server exited during startup: ${code}`)); });
+    server.once('exit', code => { clearTimeout(timer); reject(new Error(`Server exited during startup: ${code}: ${output}`)); });
   });
   csrf = (await get('/api/state')).body.csrf;
-  const rows = execFileSync('ss', ['-Hltnp'], { encoding: 'utf8' }).split('\n').filter(l => l.includes(`pid=${server.pid},`));
+  const listeners = execFileSync('ss', ['-Hltnp'], { encoding: 'utf8' }).split('\n');
+  const listener = listeners.find(l => l.trim().split(/\s+/)[3] === new URL(origin).host);
+  const pid = Number(listener?.match(/pid=(\d+),/)?.[1]);
+  assert.match(readFileSync(`/proc/${pid}/status`, 'utf8'), new RegExp(`PPid:\\s+${server.pid}\\n`));
+  const rows = listeners.filter(l => l.includes(`pid=${pid},`));
   const addresses = rows.map(l => l.trim().split(/\s+/)[3]);
   assert.ok(addresses.length && addresses.every(a => a === new URL(origin).host));
-  return { pid: server.pid, command: 'node server/main.mjs', addresses };
+  return { pid, launcherPid: server.pid, command: 'npm start (scripts/start.mjs -> server/main.mjs)', addresses };
 }
 async function stop() { const exit = new Promise(resolve => server.once('exit', resolve)); server.kill('SIGTERM'); await exit; }
 async function snapshot() {
@@ -55,7 +64,30 @@ async function snapshot() {
 try {
   report.before = await start();
   ok('actual main-process listener is loopback only', report.before);
+  const preflightDeadline = Date.now() + 20000;
+  while (!output.includes('Saved trees remain available') && Date.now() < preflightDeadline) await new Promise(resolve => setTimeout(resolve, 20));
+  assert.match(output, /Node.*24/); assert.match(output, /Claude Code:/); assert.match(output, /Codex:/); assert.match(output, /Next:/);
+  assert.ok(output.includes(`Data directory: ${data}`));
+  report.preflight = output.trim().split('\n').filter(l => /^(Node|Data directory|Saved pre-upgrade|TreeTutor:|Claude Code:|Codex:|Saved trees)/.test(l));
+  ok('launcher prints data location and nonblocking native CLI preflight without inference', report.preflight);
+  const backups = readdirSync(data).filter(f => /backup-.*\.sqlite$/.test(f));
+  assert.equal(backups.length, 1);
+  const backup = new DatabaseSync(join(data, backups[0]), { readOnly: true });
+  try {
+    assert.equal(backup.prepare('PRAGMA user_version').get().user_version, 0);
+    assert.equal(backup.prepare('SELECT count(*) AS n FROM trees').get().n, 4);
+    assert.equal(backup.prepare('SELECT count(*) AS n FROM branches').get().n, 2);
+  } finally { backup.close(); }
+  ok('legacy schema start creates a dated standalone pre-upgrade SQLite backup', { path: join(data, backups[0]), schema: 0, trees: 4, branches: 2 });
   const port = new URL(origin).port;
+  const busyData = mkdtempSync(join(tmpdir(), 'treetutor-busy-'));
+  const busy = spawn(process.execPath, ['scripts/start.mjs', '--port', port], { env: { ...process.env, TREETUTOR_DATA_DIR: busyData }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let busyOutput = '';
+  busy.stdout.on('data', d => { busyOutput += d; }); busy.stderr.on('data', d => { busyOutput += d; });
+  const busyTimer = setTimeout(() => busy.kill('SIGKILL'), 20000);
+  const busyCode = await new Promise((resolve, reject) => { busy.once('error', reject); busy.once('exit', resolve); }).finally(() => clearTimeout(busyTimer));
+  assert.equal(busyCode, 1); assert.match(busyOutput, /already in use/); assert.match(busyOutput, /npm start -- --port/);
+  ok('busy loopback port gives an actionable alternate-port command', { port, diagnostic: busyOutput.trim().split('\n').at(-1) });
   const layouts = [
     [root.id, { folded: [child.id], selected: child.id, panel: 'expanded', viewport: { x: -120, y: 45, zoom: 0.8 }, positions: { [root.id]: { x: 12, y: 34 }, [child.id]: { x: 480, y: 200 }, [grand.id]: { x: 960, y: 360 } } }],
     [other.id, { folded: [], selected: other.id, panel: 'collapsed', viewport: { x: 75, y: -60, zoom: 1.2 }, positions: { [other.id]: { x: -40, y: 80 } } }],
