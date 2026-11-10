@@ -77,6 +77,10 @@ html { view-transition-name: none; }
 .diagram-viewport img { display: block; max-width: none; }
 .video-frame { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-element); background: var(--color-background-body); }
 .video-frame:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
+.inherited-context { border: thin solid var(--color-border); border-radius: var(--radius-element); padding: var(--spacing-2) var(--spacing-3); }
+.inherited-body { margin: 0; display: grid; gap: var(--spacing-1); font-size: var(--font-size-sm); }
+.inherited-body dt { color: var(--color-text-secondary); font-weight: 500; margin-block-start: var(--spacing-2); }
+.inherited-body dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .diagram-source { max-height: 12rem; overflow: auto; margin: 0; padding: var(--spacing-2); background: var(--color-background-body); color: var(--color-text-primary); font-size: var(--font-size-sm); }
 .diagram-card:focus-visible, .diagram-viewport:focus-visible, .diagram-source:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
 .selection-action { position: absolute; z-index: 3; margin-top: var(--spacing-1); transform: translateX(-50%); animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1); }

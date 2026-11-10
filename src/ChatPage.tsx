@@ -25,6 +25,7 @@ import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
 import { previewText } from './markdownText';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
+import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { treeGroups } from './treeList';
 
 type Anchor = { messageId: string; start: number; end: number; text: string; at?: Point; suggestion?: boolean };
@@ -722,6 +723,13 @@ export default function ChatPage() {
           {source && !validSource && <Text role="alert">Saved source passage is unavailable. No replacement passage was selected.</Text>}
           <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} footerActions={<Text type="supporting" color="secondary">Enter to send · Shift+Enter for a new line</Text>} />}>
             <ChatMessageList gap={2}>
+              {tree.branch && <Collapsible className="inherited-context" defaultIsOpen={false} trigger={<Text weight="medium">Inherited from {state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'parent conversation'}</Text>}>
+                <dl className="inherited-body">
+                  <dt>Passage</dt><dd>{tree.branch.text}</dd>
+                  <dt>Your question</dt><dd>{tree.branch.question}</dd>
+                  <dt>Context the tutor received</dt><dd>{tree.branch.snapshot}</dd>
+                </dl>
+              </Collapsible>}
               {!tree.messages.length && <VStack gap={3} padding={6}><Heading level={3}>What are you curious about?</Heading><Text color="secondary">Ask about a concept, work through an example, or pick up a question you have been carrying.</Text></VStack>}
               {tree.messages.map(message => { const suggestions = tree.suggestions?.find(s => s.message === message.id); return <ChatMessage key={message.id} sender={message.role === 'user' ? 'user' : 'assistant'} className={message.role === 'user' ? 'chat-question' : 'chat-reply'} name={message.role === 'assistant' && <Text type="supporting" color="secondary">Tutor · {modelLabel(tree)}</Text>} metadata={!overview && message.role === 'assistant' && message.status === 'completed' && message.usage !== undefined && <Text type="supporting" color="secondary" className="reply-usage">{replyUsageLine(message.usage, suggestions?.usage)}</Text>}>
                 {message.role === 'assistant' ? <Passage message={message} suggestions={suggestions} index={tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1} reveal={validSource && source?.messageId === message.id ? source : undefined} form={branch?.parent === tree.id && branch.anchor.messageId === message.id ? { at: branch.anchor.at, node: <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); } }}><VStack padding={3} gap={2}>

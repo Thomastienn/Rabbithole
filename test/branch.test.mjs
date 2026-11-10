@@ -115,6 +115,10 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
     store.message(parent.id, 'user', 'Later parent change', 'completed');
     await (await fetch(`${origin}/api/trees/${child.id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify({ text: body.question }) })).text();
     assert.equal(captured.tree.branch.snapshot, child.branch.snapshot);
+    // The focused chat's inherited section reads passage, question and snapshot straight from GET; roots carry none.
+    const get = async id => (await fetch(`${origin}/api/trees/${id}`)).json();
+    assert.deepEqual(((await get(child.id)).branch), child.branch);
+    assert.equal((await get(parent.id)).branch, null);
     assert.equal(store.tree(parent.id).messages.length, 2);
     assert.deepEqual(store.tree(child.id).branch, child.branch);
     app.stop(); store.close();
