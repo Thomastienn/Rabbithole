@@ -3,21 +3,23 @@ const send = obj => process.stdout.write(JSON.stringify(obj) + '\n');
 let threads = 0;
 const threadModels = new Map();
 const reply = text => text.endsWith('diagram fixture request') ? 'A bracket shows each round.\n```treetutor-diagram\n' + JSON.stringify({ title: 'Rounds', description: 'The round winners meet in the final.', intent: 'Show each round.', excerpt: 'Frozen round excerpt.' }) + '\n```'
-  : text.startsWith('{') && JSON.parse(text).intent === 'Show each round.' ? 'flowchart TD\n  W1[Round one] --> W2[Final]' : text === 'Check passage offsets' ? 'A 🪴 **mutex** protects shared state.\n1. Frontend' : 'Authoritative original';
-// Suggestion calls get valid, overlapping, mismatched, out-of-range and duplicate passages; only the first and fourth survive.
+  : text.startsWith('{') && JSON.parse(text).intent === 'Show each round.' ? 'flowchart TD\n  W1[Round one] --> W2[Final]' : text === 'Check phrase anchors' ? '🪴 early | middle | early | late | shared \n\tstate | shared state | C++ (x.y) [z]? | a a a' : 'Authoritative original';
+// Suggestion calls get phrase-only picks, including overlaps, unmatched and exhausted repeats.
 // The question decides failure ('suggestions fail') and delay ('slow suggestions'); a wrong cheap model yields invalid output.
 const suggesting = text => text.startsWith('Mark every term');
 const suggestion = (text, model, cheap) => {
-  const { question, answer, knownConcepts, answerWords } = JSON.parse(text.slice(text.indexOf('\n') + 1));
-  if (question === 'Check passage offsets') {
-    if (!answerWords?.length || answerWords.some(w => answer.slice(w.start, w.end) !== w.text)) return 'missing exact word offsets';
-    const mutex = answerWords.find(w => w.text === '**mutex**'), first = answerWords.find(w => w.text === '1.'), last = answerWords.at(-1);
-    return JSON.stringify({ suggestions: [{ ...mutex }, { text: answer.slice(first.start, last.end), start: first.start, end: last.end }, { text: 'shared', start: 0, end: 6 }] });
+  const { question, answer, knownConcepts } = JSON.parse(text.slice(text.indexOf('\n') + 1));
+  if (question === 'Check phrase anchors') {
+    return JSON.stringify({ suggestions: [
+      { text: 'middle', start: -1, end: 999 },
+      ...['early', 'late', 'early', 'early', 'shared state', 'shared state', 'shared state', 'shared', 'state | C++', 'C++ (x.y) [z]?', 'a', 'a a', 'absent', '\uD83E', '\uDEB4', '🪴', ' ', ''].map(text => ({ text })),
+      null, { text: 1 }
+    ] });
   }
   const expected = /suggestion model: ([\w.-]+)/.exec(question)?.[1] ?? cheap;
   if (question.endsWith('suggestions fail') || model !== expected) return 'not json';
-  return JSON.stringify({ ...graph(question, knownConcepts), suggestions: [{ text: answer.slice(0, 13), start: 0, end: 13, ...(question.includes('locks') && { concept: question.includes('again') ? 'MUTUAL EXCLUSION' : 'Mutual exclusion' }) }, { text: answer.slice(0, 18), start: 0, end: 18 }, { text: 'original', start: 0, end: 8 },
-    { text: answer.slice(14, 22), start: 14, end: 22 }, { text: 'x', start: -1, end: 0 }, { text: answer.slice(14, 22), start: 14, end: 22 }] });
+  return JSON.stringify({ ...graph(question, knownConcepts), suggestions: [{ text: answer.slice(0, 13), ...(question.includes('locks') && { concept: question.includes('again') ? 'MUTUAL EXCLUSION' : 'Mutual exclusion' }) }, { text: answer.slice(0, 18) }, { text: 'original' },
+    { text: 'x' }, { text: 'original' }] });
 };
 // 'locks' questions return concepts and tag the first passage with the mutex concept: a known Peterson name is reused as the model would; other names vary in case only.
 // Invalid concepts and links (no topic, unknown kind, unknown or self target) must be dropped. 'many concepts' grows the name list.

@@ -16,10 +16,11 @@ const fixture = fileURLToPath(new URL('./protocol-fixture.mjs', import.meta.url)
 const SAVED = [{ start: 0, end: 13, text: 'Authoritative' }, { start: 14, end: 22, text: 'original' }];
 
 async function start(dir, suggestions = true, connected = { claude: true, codex: true }) {
-  const calls = [];
+  const calls = [], requests = [];
   const launch = (command, args, options) => {
     const child = spawn(process.execPath, [fixture, ...(command === 'claude' ? args : [])], options);
-    if (command === 'claude') { const end = child.stdin.end.bind(child.stdin); child.stdin.end = input => { calls.push({ system: args[args.indexOf('--system-prompt') + 1], model: args.includes('--model') ? args[args.indexOf('--model') + 1] : null, input }); return end(input); }; }
+    if (command === 'claude') { const end = child.stdin.end.bind(child.stdin); child.stdin.end = input => { requests.push(input); calls.push({ system: args[args.indexOf('--system-prompt') + 1], model: args.includes('--model') ? args[args.indexOf('--model') + 1] : null, input }); return end(input); }; }
+    else { const write = child.stdin.write.bind(child.stdin); child.stdin.write = line => { const m = JSON.parse(line); if (m.method === 'turn/start') requests.push(m.params.input[0].text); return write(line); }; }
     return child;
   };
   const store = new Store(join(dir, 'trees.sqlite'));
@@ -35,24 +36,38 @@ async function start(dir, suggestions = true, connected = { claude: true, codex:
   const post = async (path, data = {}) => (await request(path, data)).text();
   const settled = async () => { while ((await get('/api/state')).suggesting.length) await new Promise(r => setTimeout(r, 20)); };
   const suggestionCalls = () => calls.filter(c => c.system.startsWith('You mark'));
-  return { store, get, post, request, settled, calls, suggestionCalls, close: async () => { await app.stop(); store.close(); } };
+  return { store, get, post, request, settled, calls, requests, suggestionCalls, close: async () => { await app.stop(); store.close(); } };
 }
 // Graph shape without the derived familiarity fields.
 const shape = g => ({ ...g, concepts: g.concepts.map(({ name, topics }) => ({ name, topics })) });
 const strip = s => s.map(({ message, status, passages, usage }) => ({ message, status, passages, usage: usage && { input: usage.input, output: usage.output, cacheRead: usage.cacheRead } }));
 
-test('suggestion requests supply exact raw UTF-16 word offsets for terms and sections; mismatched output is still discarded', async t => {
-  const env = await start(mkdtempSync(join(tmpdir(), 'tt-offsets-')));
+test('phrase-only suggestions anchor in order, then anywhere, then across whitespace; overlaps, missing phrases and split surrogates drop', async t => {
+  const env = await start(mkdtempSync(join(tmpdir(), 'tt-phrases-')));
   t.after(() => env.close());
   for (const provider of ['claude', 'codex']) {
     const tree = JSON.parse(await env.post('/api/trees'));
     await env.post(`/api/trees/${tree.id}/model`, { provider, model: provider === 'claude' ? 'haiku' : 'fixture-model' });
-    await env.post(`/api/trees/${tree.id}/messages`, { text: 'Check passage offsets' });
+    await env.post(`/api/trees/${tree.id}/messages`, { text: 'Check phrase anchors' });
     await env.settled();
     const saved = await env.get(`/api/trees/${tree.id}`), reply = saved.messages.at(-1);
     assert.equal(saved.suggestions[0].status, 'ready');
-    assert.deepEqual(saved.suggestions[0].passages, [{ text: '**mutex**', start: 5, end: 14 }, { text: '1. Frontend', start: 38, end: 49 }]);
+    assert.deepEqual(saved.suggestions[0].passages, [
+      { start: 0, end: 2, text: '🪴' },
+      { start: 3, end: 8, text: 'early' },
+      { start: 11, end: 17, text: 'middle' },
+      { start: 20, end: 25, text: 'early' },
+      { start: 28, end: 32, text: 'late' },
+      { start: 35, end: 49, text: 'shared \n\tstate' },
+      { start: 52, end: 64, text: 'shared state' },
+      { start: 67, end: 81, text: 'C++ (x.y) [z]?' },
+      { start: 84, end: 85, text: 'a' },
+      { start: 86, end: 89, text: 'a a' }
+    ]);
     for (const passage of saved.suggestions[0].passages) assert.equal(reply.text.slice(passage.start, passage.end), passage.text);
+    const request = env.requests.at(-1), input = JSON.parse(request.slice(request.indexOf('\n') + 1));
+    assert.deepEqual(input, { inheritedContext: null, question: 'Check phrase anchors', answer: reply.text, knownConcepts: {}, familiarity: {} });
+    assert.equal(request.split(JSON.stringify(reply.text)).length - 1, 1, 'reply sent once with no offset table on either provider');
   }
 });
 
@@ -184,7 +199,7 @@ test('a completed reply gets one cheap-model suggestion call whose exact passage
   assert.equal(env.suggestionCalls().length, 1);
   assert.equal(env.suggestionCalls()[0].model, 'haiku');
   const input = JSON.parse(env.suggestionCalls()[0].input.slice(env.suggestionCalls()[0].input.indexOf('\n') + 1));
-  assert.deepEqual(input, { inheritedContext: null, question: 'Explain brackets', answer: 'Authoritative original', knownConcepts: {}, familiarity: {}, answerWords: [{ text: 'Authoritative', start: 0, end: 13 }, { text: 'original', start: 14, end: 22 }] });
+  assert.deepEqual(input, { inheritedContext: null, question: 'Explain brackets', answer: 'Authoritative original', knownConcepts: {}, familiarity: {} });
   assert.deepEqual(strip(saved.suggestions), [{ message: reply.id, status: 'ready', passages: SAVED, usage: { input: 103, output: 7, cacheRead: 40 } }]);
   for (const p of saved.suggestions[0].passages) assert.equal(reply.text.slice(p.start, p.end), p.text);
   // The suggestion call's usage counts in today's total but not as a reply.
