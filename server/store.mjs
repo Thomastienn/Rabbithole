@@ -265,9 +265,9 @@ export class Store {
     return result.changes ? this.artifact(conversation, id) : null;
   }
   forgetThread(id) { this.db.prepare('UPDATE trees SET thread=NULL,working_thread=NULL WHERE id=?').run(id); }
-  create(title = 'New chat', provider = 'codex') {
+  create(title = 'New chat', provider = 'codex', model = null) {
     const id = randomUUID();
-    this.db.prepare('INSERT INTO trees(id,title,created,provider,working_provider) VALUES(?,?,?,?,?)').run(id, title, Date.now(), provider, provider);
+    this.db.prepare('INSERT INTO trees(id,title,created,provider,working_provider,model,working_model) VALUES(?,?,?,?,?,?,?)').run(id, title, Date.now(), provider, provider, model, model);
     return this.tree(id);
   }
   branch(parent, anchor, snapshot) {

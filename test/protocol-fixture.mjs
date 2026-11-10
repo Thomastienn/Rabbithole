@@ -49,7 +49,7 @@ if (process.argv.includes('--output-format')) {
   if (!id) return;
   if (method === 'initialize') send({ id, result: {} });
   if (method === 'model/list') send({ id, result: params.cursor ? {
-    data: [{ model: 'fixture-alternate', displayName: 'Alternate', inputModalities: ['text'] }, { model: 'fixture-luna', displayName: 'Luna' }], nextCursor: null
+    data: [{ model: 'fixture-alternate', displayName: 'Alternate', inputModalities: ['text'] }, { model: 'fixture-luna', displayName: 'Luna' }, ...(process.argv.includes('--terra') ? [{ model: 'gpt-6.1-terra', displayName: 'GPT-6.1 Terra', isDefault: false, inputModalities: ['text'] }] : [])], nextCursor: null
   } : {
     data: [{ model: 'fixture-model', displayName: 'Original', isDefault: true }, { model: 'hidden', hidden: true }, { model: 'image-only', inputModalities: ['image'] }], nextCursor: 'page-two'
   } });

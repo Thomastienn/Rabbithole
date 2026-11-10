@@ -168,7 +168,12 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           // One unstarted chat at a time: New chat reopens it instead of creating another.
           const unstarted = store.unstarted();
           if (unstarted) return json(res, 200, store.tree(unstarted));
-          return json(res, 201, store.create(undefined, providers[defaultProvider] ? defaultProvider : Object.keys(providers)[0]));
+          const provider = providers[defaultProvider] ? defaultProvider : Object.keys(providers)[0];
+          let model;
+          try { model = await providers[provider].model?.({ model: null, thread: null }) ?? null; }
+          catch { return json(res, 502, { error: 'Could not choose a default model. Check provider sign-in and retry.' }); }
+          const opened = store.unstarted();
+          return opened ? json(res, 200, store.tree(opened)) : json(res, 201, store.create(undefined, provider, model));
         }
         const jobMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry)$/);
         if (jobMatch) {
@@ -319,6 +324,11 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           controller.signal.addEventListener('abort', interrupt, { once: true });
           send({ type: 'saved', id: reply, title: store.tree(id).title, user: { id: user, role: 'user', text: body.text, status: 'completed' } });
           try {
+            if (!tree.model) {
+              tree.model = await pick(tree).model?.(tree) ?? null;
+              if (finished) return;
+              if (tree.model) store.model(id, tree.model);
+            }
             await pick(tree).generate(tutorContext(tree), body.text, event => {
               if (finished) return;
               if (event.type === 'delta' || event.type === 'item') {

@@ -28,7 +28,7 @@ import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 type Anchor = { messageId: string; start: number; end: number; text: string; at?: Point; suggestion?: boolean };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
-type Model = { provider: string; model: string; label: string; isDefault: boolean };
+type Model = { provider: string; model: string; label: string; isDefault: boolean; defaultFallback?: boolean };
 type Providers = Record<string, { label: string; connected: boolean }>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[]; suggesting?: string[]; usage?: Usage & { replies: number }; conceptNameTokens?: number };
 // The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
@@ -562,6 +562,7 @@ export default function ChatPage() {
     finally { setBranching(false); }
   }
   const providerLabel = (id: string) => providers?.[id]?.label ?? ({ claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' } as Record<string, string>)[id] ?? id;
+  const codexFallback = models?.find(m => m.provider === 'codex' && m.defaultFallback);
   const modelLabel = (t: Tree) => {
     const label = models?.find(m => m.provider === t.provider && m.model === t.model)?.label ?? t.model ?? models?.find(m => m.provider === t.provider && m.isDefault)?.label ?? 'default model';
     return label.startsWith(providerLabel(t.provider)) ? label : `${providerLabel(t.provider)} · ${label}`;
@@ -641,6 +642,7 @@ export default function ChatPage() {
               <IconButton className="expand-chat" label={expanded ? 'Show map beside chat' : 'Expand chat'} tooltip={expanded ? 'Show map beside chat' : 'Expand chat'} icon={expanded ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={toggleExpanded} />
               <IconButton label="Return to tree" tooltip="Back to map (Esc)" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={returnToTree} />
             </HStack>
+            {tree.provider === 'codex' && codexFallback && <Text type="supporting" color="secondary" role="note">GPT-6.1 Terra isn’t listed for this account. New conversations use {codexFallback.label}, the account default.</Text>}
             {tree.branch && <HStack gap={1} vAlign="center" wrap="wrap">
               <Button label="Return to parent conversation" variant="ghost" size="sm" icon={<ArrowUturnLeftIcon />} onClick={() => openConversation(tree.branch!.parent)}>{state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'Parent conversation'}</Button>
               <Text type="supporting" color="secondary" maxLines={1}>from “{tree.branch.text}”</Text>

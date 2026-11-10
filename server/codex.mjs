@@ -77,9 +77,9 @@ export class Codex {
   }
   async model(tree) {
     if (tree.model) return tree.model;
-    await this.ready();
-    const result = await this.rpc('thread/resume', { threadId: tree.thread });
-    return result.model;
+    const model = (await this.models()).find(m => m.isDefault)?.model;
+    if (!model) throw new Error('Codex did not list a default text model. Refresh models and choose one.');
+    return model;
   }
   async models() {
     await this.ready();
@@ -90,16 +90,20 @@ export class Codex {
       models.push(...page.data.filter(m => !m.hidden && (!m.inputModalities || m.inputModalities.includes('text'))).map(m => ({ model: m.model, label: m.displayName, isDefault: m.isDefault })));
       cursor = page.nextCursor;
     } while (cursor);
-    return models;
+    const terra = models.find(m => m.model === 'gpt-6.1-terra');
+    const selected = terra ?? models.find(m => m.isDefault);
+    return models.map(m => ({ ...m, isDefault: m === selected, defaultFallback: !terra && m === selected }));
   }
   async generate(tree, text, emit, saveThread, signal) {
     const cancelled = () => { if (!signal.aborted) return false; emit({ type: 'status', status: 'interrupted' }); return true; };
     if (cancelled()) return;
     await this.ready();
     if (cancelled()) return;
+    const model = await this.model(tree);
+    if (cancelled()) return;
     const params = { cwd: join(this.dir, 'workspace'), approvalPolicy: 'never', sandbox: 'read-only',
       baseInstructions: (tree.instructions ?? TUTOR_INSTRUCTIONS) + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '') };
-    const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', { ...params, ...(tree.model ? { model: tree.model } : {}), ...(tree.thread ? { threadId: tree.thread } : {}) });
+    const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', { ...params, model, ...(tree.thread ? { threadId: tree.thread } : {}) });
     if (cancelled()) return;
     const threadId = result.thread.id;
     if (!tree.thread) {
@@ -110,7 +114,7 @@ export class Codex {
       if (items.length) await this.rpc('thread/inject_items', { threadId, items });
     }
     if (cancelled()) return;
-    saveThread(threadId, tree.model ?? result.model);
+    saveThread(threadId, model);
     let turnId, interrupted = false, finishTurn, usage;
     const earlyEvents = [];
     const interrupt = () => { interrupted = true; if (turnId) this.rpc('turn/interrupt', { threadId, turnId }).catch(() => {}); };
@@ -140,7 +144,7 @@ export class Codex {
           }
         };
         this.listeners.add(listener);
-        this.rpc('turn/start', { threadId, ...(tree.model ? { model: tree.model } : {}), input: [{ type: 'text', text, text_elements: [] }] }).then(result => {
+        this.rpc('turn/start', { threadId, model, input: [{ type: 'text', text, text_elements: [] }] }).then(result => {
           turnId = result.turn.id;
           if (interrupted) { interrupt(); return; }
           for (const event of earlyEvents) listener(event);
