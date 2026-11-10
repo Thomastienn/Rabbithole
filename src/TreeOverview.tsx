@@ -10,7 +10,7 @@ import { MIN_ZOOM, offsetCoveredBoxes, parseViewport, placeBox, vimAction, type 
 import type { ArtifactSummary } from './artifacts';
 
 export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside' | 'expanded'; viewport?: Viewport };
-export type Summary = { id: string; title: string; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null; layout?: Layout | null };
+export type Summary = { id: string; title: string; created: number; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null; layout?: Layout | null };
 export type Source = { messageId: string; start: number; end: number; text: string };
 export type Preview = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] }[];
 type Open = (id: string, source?: Source) => void;

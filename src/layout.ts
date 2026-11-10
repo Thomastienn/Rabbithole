@@ -1,10 +1,26 @@
 export const layoutCss = `
 html, body, #root { height: 100%; }
 html { view-transition-name: none; }
-.trees { display: none; flex: 0 0 18rem; min-width: 0; overflow: auto; border-right: thin solid var(--color-border); background: var(--color-background-body); }
-.trees[data-open=true] { display: block; }
+.workspace { position: relative; }
+.trees { display: none; flex: 0 0 18rem; min-width: 0; min-height: 0; border-right: thin solid var(--color-border); background: var(--color-background-body); }
+.trees[data-open=true] { display: flex; }
+.tree-navigation-content { flex: 1; height: 100%; min-height: 0; min-width: 0; }
+.tree-navigation-content h2 { font-size: var(--font-size-lg); }
+.tree-list { flex: 1; min-height: 0; overflow: auto; }
+.tree-date-heading { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.saved-tree-row { border-radius: var(--radius-element); }
+.saved-tree-row[data-current=true] { background: var(--color-neutral); }
+.tree-row-actions { flex-shrink: 0; opacity: 0; pointer-events: none; }
+.saved-tree-row:hover .tree-row-actions, .saved-tree-row:focus-within .tree-row-actions { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .tree-row-actions { opacity: 1; pointer-events: auto; } }
+.tree-navigation-footer { border-top: thin solid var(--color-border); }
+.tree-navigation-footer > button:first-child { justify-content: flex-start; }
+.tree-drawer { height: 100%; background: var(--color-background-body); }
+.sidebar-expand { position: absolute; z-index: 6; top: var(--spacing-3); left: var(--spacing-3); background: var(--color-background-surface); border: thin solid var(--color-border); }
+.workspace[data-sidebar-open=false] .map-toolbar { left: calc(var(--spacing-3) + var(--spacing-10) + var(--spacing-2)); }
+.workspace[data-sidebar-open=false] .tree-workspace[data-expanded=true] .chat-header, .workspace[data-sidebar-open=false] .knowledge-header { padding-inline-start: calc(var(--spacing-3) + var(--spacing-10) + var(--spacing-2)); }
 .conversation { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.workspace[hidden], .knowledge-panel[hidden] { display: none; }
+.conversation[hidden], .knowledge-panel[hidden] { display: none; }
 .knowledge-panel { flex: 1; min-height: 0; overflow: auto; }
 .knowledge-content { max-width: 70rem; margin-inline: auto; overflow-wrap: anywhere; }
 .knowledge-content .astryx-list-item { min-width: 0; }
@@ -22,6 +38,7 @@ html { view-transition-name: none; }
 .chat-title { flex: 1; min-width: 0; }
 .chat-title .rename-title { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: 0; }
 .saved-chat-title { flex: 1; min-width: 0; }
+.saved-chat-title > * { min-width: 0; }
 .chat-title h2 { font-size: var(--font-size-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .passage { position: relative; align-self: stretch; }
 .reply-md { display: block; min-width: 0; overflow-wrap: anywhere; }
@@ -97,7 +114,7 @@ html { view-transition-name: none; }
 mark { background: var(--color-background-blue); color: var(--color-text-primary); }
 .react-flow__edge-path { stroke: var(--color-text-secondary); }
 .react-flow__handle { background: var(--color-text-secondary); border-color: var(--color-background-surface); }
-.trees nav button { height: auto; min-height: var(--spacing-8); padding-block: var(--spacing-2); white-space: normal; overflow-wrap: anywhere; text-align: start; justify-content: flex-start; }
+.tree-list .saved-chat-title { height: auto; min-height: var(--spacing-8); padding-block: var(--spacing-2); white-space: normal; overflow-wrap: anywhere; text-align: start; justify-content: flex-start; }
 section[role=alert] { background: var(--color-background-body); }
 /* One frame height for every settings tab, so switching tabs never resizes the window. */
 .settings-shell { height: min(50rem, calc(100dvh - 2rem)); min-height: 0; }
@@ -106,9 +123,9 @@ section[role=alert] { background: var(--color-background-body); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }
 @media (max-width: 48rem) {
  .workspace { flex-direction: column; overflow: hidden; }
- .trees { display: none; flex: 0 0 auto; max-height: 45dvh; border-right: none; border-bottom: thin solid var(--color-border); }
- .trees[data-open=true] { display: block; }
  .conversation { min-height: 0; flex: 1; }
+ .map-toolbar { left: calc(var(--spacing-3) + var(--spacing-10) + var(--spacing-2)); }
+ .chat-header { padding-inline-start: calc(var(--spacing-3) + var(--spacing-10) + var(--spacing-2)); }
  .overview[data-chat-open=true] { display: none; }
  .focused-chat { flex: 1; border-left: 0; }
  .expand-chat { display: none; }

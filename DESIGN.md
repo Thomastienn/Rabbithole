@@ -96,11 +96,11 @@ Font delivery is self-hosted: [vite.config.ts](vite.config.ts) aliases the theme
 
 ## Layout
 
-The viewport shell uses dynamic viewport height. Desktop places a fixed-width saved-tree sidebar (18rem) beside a flexible conversation. Headers and sidebar sections use the spacing-5 inset; small relationships use spacing-1 through spacing-4. The transcript uses Astryx's balanced chat density and fills available width; no additional reading-column maximum is implemented.
+The viewport shell uses dynamic viewport height. Desktop places a fixed-width saved-tree sidebar (18rem) beside the flexible learning workspace. It opens by default and preserves its collapse preference in browser storage. When collapsed, an expand button stays pinned at the workspace's top left; the map toolbar shifts right to leave it clear. Sidebar sections use the spacing-3 inset. History scrolls independently above a pinned footer containing Knowledge and the settings gear. The transcript uses Astryx's balanced chat density and fills available width; no additional reading-column maximum is implemented.
 
-At the application breakpoint (48rem), navigation becomes a toggleable region above the conversation, capped at 45dvh. Selecting a tree closes it. The conversation retains flexible height so the composer remains visible in the reviewed mobile layout. Long labels and transcripts wrap.
+At the application breakpoint (48rem and below), navigation opens as a left modal Astryx Drawer. It starts closed, closes after tree selection, Knowledge or New chat, and keeps its transient state separate from the desktop preference. The conversation retains flexible height so the composer remains visible. Long labels and transcripts wrap.
 
-**The Composer Rule.** Preserve the flexible-height conversation and collapsible mobile navigation when adding controls.
+**The Composer Rule.** Preserve the flexible-height conversation and dismissible mobile drawer when adding controls.
 
 ## Elevation & Depth
 
@@ -114,9 +114,10 @@ Controls use Astryx's gently rounded element corners. The larger composer has th
 
 Use the Astryx components already imported by [ChatPage.tsx](src/ChatPage.tsx). The sidecar contains framework-free illustrative previews of these primitives; runtime Astryx remains authoritative for their full states and metrics.
 
-- **Buttons:** primary create action, secondary account and selected-tree actions, ghost unselected-tree and mobile navigation actions. Empty names disable creation; active generation exposes Stop.
-- **Text field:** persistently labelled new-tree input, followed by the create action. Native form submission supports keyboard use.
-- **Navigation:** saved trees form a compact button list. The selected tree has a secondary fill and `aria-current`; mobile navigation exposes its expanded state.
+- **Buttons:** primary **New chat** starts a chat without a name prompt and focuses the composer after the mobile drawer closes. Ghost row actions provide Rename and Delete on hover or keyboard focus; they stay visible on touch devices. Collapse and expand controls expose navigation's expanded state; active generation exposes Stop.
+- **Text field:** inline title editing uses the existing labelled field with Save title and Cancel rename actions; New chat needs no name field.
+- **Navigation:** root learning trees form a compact history grouped by local creation day: Today, Yesterday, Previous 7 days (ages 2–7 days), and Older. Empty groups are omitted. Each row counts all descendants as branches. The current learning root has a neutral selected fill and `aria-current`.
+- **Knowledge navigation:** the pinned footer opens a full Knowledge workspace in place of the former Learning/Knowledge tab row. **Return to learning tree** restores the previous root, focused conversation and map viewport; the learning workspace remains mounted while Knowledge is open.
 - **Transcript:** tutor replies and their diagram and video cards span the message column; explicit You/Tutor labels, preserved line breaks, wrapped long content, and visible responding or failed status.
 - **Composer:** labelled input, subdued prompt, send/stop action and visible Enter/Shift+Enter instructions. New tree creation focuses the composer.
 - **Map:** the tree map fills the workspace on the body background. Conversation nodes are 16rem boxes: title button, two-line question and answer previews, a pulsing activity dot while replying, a fold chevron and a hover/focus-revealed source link. Fit never zooms past 100%. Zoom, fit, the map menu and **Reopen chat** float as one toolbar at the top left. A tree without a first question shows a centered empty map with **Start conversation**. A keyboard-focused box shows a primary-text outline; a focused edge thickens. Box hover and source-link fades stop under reduced motion.

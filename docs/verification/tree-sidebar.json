@@ -1,0 +1,62 @@
+{
+  "issue": "TreeTutor-u7v.4",
+  "checkedAt": "2026-11-10T20:21:08.426066+00:00",
+  "evidence": "Production build with real app HTTP and isolated SQLite. Agent Browser Chromium headed in isolated Xvfb for native hover/fine-pointer capability; mobile viewport check at 390x844. Synthetic learning trees, messages and knowledge concepts; provider model discovery is fixture data. No native subscription authentication or inference claimed or required.",
+  "steps": [
+    "1440x900 desktop defaults open, four creation-date headings, current root highlighted, 3 nested branches, no tab row/overflow; actions hidden at rest and revealed by mouse hover",
+    "Tab reaches Rename then Delete and reveals actions; keyboard rename saves through app HTTP and restores focus; delete names data, warns irreversible, supports cancel/focus return, and removes only fixture tree after confirmation",
+    "Collapse/expand both survive reload; pinned top-left expand does not overlap map toolbar; map menu Learning trees toggles both ways",
+    "Knowledge is full workspace view, loads graph, focuses Return; returning restores previous learning tree, focused child and exact map transform. Bottom settings gear opens existing modal and restores focus; footer remains pinned while history scrolls",
+    "390x844 mobile starts closed without overwriting desktop preference; same expand button opens left modal drawer with page reveal, trapped Tab focus and Escape/trigger return. Tree selection, Knowledge and New chat close drawer; Knowledge returns to previous tree; New chat and composer fit viewport",
+    "Mobile scrim dismisses drawer; resizing back to desktop restores the saved open preference",
+    "Additional 390x844 touch emulation: coarse pointer, no hover and 16px theme text verified; row actions remain visible without hover, drawer content and Knowledge fit, tree/Knowledge/New chat navigation works. Native hover capability is checked separately in desktop Xvfb.",
+    "After the mobile drawer closes, Knowledge focuses Return to learning tree and New chat focuses the contenteditable Your question textbox; both asserted against the rebuilt app after repairing native drawer focus restoration."
+  ],
+  "screenshots": [
+    ".impeccable/review/tree-sidebar-desktop.png",
+    ".impeccable/review/tree-sidebar-collapsed.png",
+    ".impeccable/review/tree-sidebar-knowledge.png",
+    ".impeccable/review/tree-sidebar-mobile.png",
+    ".impeccable/review/tree-sidebar-mobile-drawer.png",
+    ".impeccable/review/tree-sidebar-mobile-chat.png",
+    ".impeccable/review/tree-sidebar-mobile-knowledge.png"
+  ],
+  "qualityGates": {
+    "npm test": {
+      "passed": 156,
+      "failed": 0,
+      "skipped": 0
+    },
+    "npm run build": "passed: TypeScript and production Vite build",
+    "npx astryx doctor --built dist": {
+      "passed": 19,
+      "failed": 0,
+      "warnings": [
+        "Theme font-proof advisory; Figtree is served locally through the Vite alias.",
+        "Concurrent owner edits removed Astryx markers from AGENTS.md; preserved, no init/regeneration."
+      ]
+    },
+    "npx astryx doctor --built .": "passed, no failures; existing source conventions advisories",
+    "git diff --check": "passed",
+    "impeccable detector": "No findings (one run on changed UI targets; subsequent repair only restores focus after native drawer close)."
+  },
+  "build": {
+    "inputs": "6fe58500066f36a676f6468c375dd62e99e8709692bd32f1ac63b56870aa5b33",
+    "outputs": "f405d364feff35c43a2da93fdbe97d5a7822cf64c9c7dc7ddfa397de7ba00931"
+  },
+  "decisions": [
+    "Desktop sidebar preference is stored per browser origin; mobile drawer state is transient and never overwrites desktop preference.",
+    "Date groups use local calendar creation days, not elapsed 24-hour windows or last activity. Previous 7 days includes ages 2 through 7. Empty groups are omitted.",
+    "All loaded descendants contribute to the root branch count. No schema or provider changes.",
+    "Learning view remains mounted under Knowledge so its selected conversation and map viewport survive returning.",
+    "Reuse the native Astryx drawer, modal settings and existing rename/delete flows. Focus is restored after the drawer closes for New chat and Knowledge.",
+    "Astryx tooltips consume Escape before the containing drawer; dismissing the tooltip then the drawer preserves the design system layer order."
+  ],
+  "worktreeBoundary": "On master. Initial .beads/issues.jsonl changes preserved. Concurrent owner edits to AGENTS.md and an empty CLAUDE.md appeared during verification and were not modified by this issue. No staging, commit, push, pull or remote sync.",
+  "review": {
+    "initial": "Fresh Impeccable reviewer opened all seven captures: no material visual/interaction issues; only required fix was outdated DESIGN.md navigation prose.",
+    "fix": "Documenter updated only the navigation/layout prose to match this issue, preserving theme tokens and unrelated documentation.",
+    "verdict": "Documentation fix independently scored resolved; disposition ship at that fix scope.",
+    "preExistingDrift": "DESIGN.md was already newer than .impeccable/design.json. Old sidecar previews remain untouched; no theme regeneration was needed."
+  }
+}

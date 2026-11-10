@@ -5,11 +5,11 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, PencilSquareIcon, TrashIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
-import { Tab, TabList } from '@astryxdesign/core/TabList';
+import { Drawer } from '@astryxdesign/core/Drawer';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
 import { replyUsageLine, underlineRanges, usageLine, withTurn, type Message, type Suggestions, type Turn, type Usage } from './turn';
@@ -24,6 +24,7 @@ import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
 import { previewText } from './markdownText';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
+import { treeGroups } from './treeList';
 
 type Anchor = { messageId: string; start: number; end: number; text: string; at?: Point; suggestion?: boolean };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
@@ -161,6 +162,11 @@ export default function ChatPage() {
   const [savingModel, setSavingModel] = useState<string>();
   const [modelMenuOpen, setModelMenuOpen] = useState(false), [openingModels, setOpeningModels] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 48rem)').matches);
+  const [sidebarOpen, setSidebarOpen] = useState(() => { try { return localStorage.getItem('treetutor.sidebar') !== 'closed'; } catch { return true; } });
+  const navigationFocus = useRef<(() => void) | undefined>(undefined);
+  const navigationOpen = mobile ? mobileNav : sidebarOpen;
+  const [today, setToday] = useState(() => new Date());
   const [tab, setTab] = useState('learning');
   const [settings, setSettings] = useState<SettingsRequest>();
   const settingsOpener = useRef<HTMLElement | null>(null);
@@ -198,6 +204,42 @@ export default function ChatPage() {
   const checkpoints = useRef(0);
   const [layoutFailed, setLayoutFailed] = useState(false);
   const saver = useRef<ReturnType<typeof layoutSaver<Layout>>>(undefined);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 48rem)');
+    const resize = () => { setMobile(media.matches); setMobileNav(false); };
+    media.addEventListener('change', resize);
+    return () => media.removeEventListener('change', resize);
+  }, []);
+  useEffect(() => {
+    const midnight = new Date(); midnight.setHours(24, 0, 0, 0);
+    const timer = setTimeout(() => setToday(new Date()), midnight.getTime() - Date.now());
+    return () => clearTimeout(timer);
+  }, [today]);
+  useEffect(() => {
+    function restore(e: Event) {
+      if (!(e.target as Element).querySelector?.('.tree-drawer')) return;
+      const focus = navigationFocus.current;
+      navigationFocus.current = undefined;
+      if (focus) requestAnimationFrame(focus);
+    }
+    document.addEventListener('close', restore, true);
+    return () => document.removeEventListener('close', restore, true);
+  }, []);
+  function changeNavigation(open: boolean) {
+    if (mobile) setMobileNav(open);
+    else {
+      setSidebarOpen(open);
+      try { localStorage.setItem('treetutor.sidebar', open ? 'open' : 'closed'); } catch { /* Preference stays for this session only. */ }
+    }
+  }
+  function collapseNavigation() {
+    changeNavigation(false);
+    requestAnimationFrame(() => document.getElementById('expand-learning-trees')?.focus());
+  }
+  function focusAfterNavigation(focus: () => void) {
+    if (mobile && document.querySelector('dialog[open] .tree-drawer')) navigationFocus.current = focus;
+    else requestAnimationFrame(focus);
+  }
   const writeLayout = useRef<(root: string, batch: Batch<Layout>) => Promise<unknown>>(undefined);
   writeLayout.current = (id, batch) => api(`/api/trees/${id}/layout`, { ...batch.layout, positions: batch.positions });
   useEffect(() => {
@@ -240,6 +282,7 @@ export default function ChatPage() {
     if (selected.current === id) changeView(false, overviewOrigin.current?.id ?? id);
   }
   function openTree(id: string, trees = state?.trees ?? []) {
+    setTab('learning');
     overviewOrigin.current = undefined;
     const layout = trees.find(t => t.id === id)?.layout;
     const saved = layout?.selected && rootOf(layout.selected, trees) === id ? layout.selected : id;
@@ -409,8 +452,9 @@ export default function ChatPage() {
       const next: Tree = await api('/api/trees', {});
       await refresh();
       overviewOrigin.current = undefined; focusComposer.current = true;
-      setRoot(next.id); setOverview(false); setExpanded(false); setMobileNav(false);
+      setRoot(next.id); setTab('learning'); setOverview(false); setExpanded(false); setMobileNav(false);
       await select(next.id);
+      focusAfterNavigation(() => { if (selected.current === next.id) composer.current?.focus(); });
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -420,7 +464,7 @@ export default function ChatPage() {
   function finishRename() {
     const target = renaming;
     setRenaming(undefined);
-    requestAnimationFrame(() => document.getElementById(target?.place === 'sidebar' ? `chat-actions-${target.id}` : 'rename-conversation')?.focus());
+    requestAnimationFrame(() => document.getElementById(target?.place === 'sidebar' ? `rename-chat-${target.id}` : 'rename-conversation')?.focus());
   }
   async function rename(id: string, title: string) {
     const saved = await api(`/api/trees/${id}/rename`, { title });
@@ -475,7 +519,7 @@ export default function ChatPage() {
         if (next) { focusComposer.current = true; openTree(next.id, trees); }
         else { ++request.current; selected.current = undefined; setTree(undefined); setRoot(undefined); setOverview(true); setExpanded(false); setLoading(false); }
         if (!next || (next.layout?.panel !== 'beside' && next.layout?.panel !== 'expanded')) requestAnimationFrame(() => document.querySelector<HTMLElement>(next ? '.map-toolbar button' : '.empty-map button')?.focus());
-      } else requestAnimationFrame(() => document.querySelector<HTMLElement>(`#chat-actions-${root}`)?.focus());
+      } else requestAnimationFrame(() => deleteOrigin.current?.isConnected ? deleteOrigin.current.focus() : document.getElementById(`rename-chat-${root}`)?.focus());
       await refresh();
     } catch (e) { setDeleteError((e as Error).message); }
     finally { setDeleting(false); }
@@ -582,7 +626,7 @@ export default function ChatPage() {
   }
   const mapMenuTrigger = () => document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]');
   const menu = (actions?: MapActions) => <DropdownMenu presentation="popover" renderTrigger={props => <IconButton {...props} label="Map menu" tooltip="Map menu" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />} items={[
-    { label: 'Learning trees', onClick: () => setMobileNav(true) },
+    { label: 'Learning trees', onClick: () => { changeNavigation(!navigationOpen); if (!navigationOpen && !mobile) requestAnimationFrame(() => document.getElementById('collapse-learning-trees')?.focus()); } },
     { label: 'Settings', onClick: () => openSettings(undefined, undefined, mapMenuTrigger()) },
     { label: 'Expand all', isDisabled: !actions, onClick: actions?.expand },
     { label: 'Collapse all', isDisabled: !actions, onClick: actions?.collapse },
@@ -590,29 +634,37 @@ export default function ChatPage() {
     { label: tree?.branch ? 'Delete branch…' : 'Delete chat…', isDisabled: !tree, onClick: () => tree && askDelete(tree.id, document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]')) },
     { label: 'Help', onClick: () => openSettings('interface', undefined, mapMenuTrigger()) },
   ]} />;
+  const sidebar = <VStack gap={0} className="tree-navigation-content">
+    <VStack padding={3} gap={3}>
+      <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Learning trees</Heading><IconButton id="collapse-learning-trees" label="Collapse learning trees" tooltip="Collapse learning trees" icon={<ChevronDoubleLeftIcon />} variant="ghost" size="sm" aria-expanded={navigationOpen} aria-controls="tree-navigation" onClick={collapseNavigation} /></HStack>
+      <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
+    </VStack>
+    <nav aria-label="Saved learning trees" className="tree-list"><VStack padding={3} gap={5}>
+      {treeGroups(state?.trees ?? [], today).map(group => <section key={group.label} aria-label={group.label}><VStack gap={2}>
+        <Heading level={3} className="tree-date-heading">{group.label}</Heading>
+        <VStack gap={1}>{group.trees.map(({ tree: t, branches }) => <VStack key={t.id} gap={1}>
+          {renaming?.id === t.id && renaming.place === 'sidebar' ? <TitleEditor title={t.title} save={title => rename(t.id, title)} cancel={finishRename} /> : <HStack gap={0} vAlign="center" className="saved-tree-row" data-current={tab === 'learning' && root === t.id}>
+            <Button className="saved-chat-title" label={t.title} variant="ghost" aria-current={tab === 'learning' && root === t.id ? 'page' : undefined} aria-describedby={`branch-count-${t.id}`} onClick={() => openTree(t.id)}><VStack gap={0}><Text maxLines={2}>{t.title}</Text><Text id={`branch-count-${t.id}`} type="supporting" color="secondary">{branches} {branches === 1 ? 'branch' : 'branches'}</Text></VStack></Button>
+            <HStack gap={0} className="tree-row-actions">
+              <IconButton id={`rename-chat-${t.id}`} label={`Rename ${t.title}`} tooltip="Rename chat" icon={<PencilSquareIcon />} variant="ghost" size="sm" onClick={() => setRenaming({ id: t.id, place: 'sidebar' })} />
+              <IconButton label={`Delete ${t.title}`} tooltip="Delete chat" icon={<TrashIcon />} variant="ghost" size="sm" onClick={e => askDelete(t.id, e.currentTarget)} />
+            </HStack>
+          </HStack>}
+        </VStack>)}</VStack>
+      </VStack></section>)}
+      {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
+    </VStack></nav>
+    <VStack padding={3} gap={2} className="tree-navigation-footer">
+      <Button label="Knowledge" icon={<ShareIcon />} variant={tab === 'knowledge' ? 'secondary' : 'ghost'} aria-current={tab === 'knowledge' ? 'page' : undefined} onClick={() => { setTab('knowledge'); setMobileNav(false); focusAfterNavigation(() => document.getElementById('return-to-learning')?.focus()); }} />
+      <IconButton label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
+    </VStack>
+  </VStack>;
   return <VStack gap={0} style={{ height: '100dvh', '--question-bubble-tint': bubbleTints.find(t => t.id === bubbleTint)!.color } as CSSProperties}>
-    <VStack gap={0} padding={2}><TabList value={tab} onChange={setTab} role="tablist" aria-label="Workspace" size="sm" hasDivider>
-      <Tab value="learning" label="Learning" panelId="learning-panel" id="learning-tab" />
-      <Tab value="knowledge" label="Knowledge" panelId="knowledge-panel" id="knowledge-tab" />
-    </TabList></VStack>
-    <HStack id="learning-panel" role="tabpanel" aria-labelledby="learning-tab" hidden={tab !== 'learning'} gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
-      <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={mobileNav}><VStack padding={5} gap={5}>
-        <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Your trees</Heading><HStack gap={1}><IconButton label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" onClick={e => openSettings(undefined, undefined, e.currentTarget)} /><IconButton label="Close learning trees" tooltip="Close" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => { setMobileNav(false); document.querySelector<HTMLButtonElement>(overview ? '[aria-label="Map menu"]' : '[aria-label="Model for next reply"]')?.focus(); }} /></HStack></HStack>
-        <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()}>{busy ? 'Opening…' : 'New chat'}</Button>
-        <nav aria-label="Saved learning trees"><VStack gap={2}>
-          {state?.trees.filter(t => !t.parent).map(t => <VStack key={t.id} gap={1}>
-            {renaming?.id === t.id && renaming.place === 'sidebar' ? <TitleEditor title={t.title} save={title => rename(t.id, title)} cancel={finishRename} /> : <HStack gap={1} vAlign="center">
-              <Button className="saved-chat-title" label={t.title} variant={root === t.id ? 'secondary' : 'ghost'} aria-current={root === t.id ? 'page' : undefined} onClick={() => openTree(t.id)}>{t.title}</Button>
-              <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} id={`chat-actions-${t.id}`} label={`Actions for ${t.title}`} icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />} items={[
-                { label: 'Rename chat', onClick: () => setRenaming({ id: t.id, place: 'sidebar' }) },
-                { label: 'Delete chat…', onClick: () => askDelete(t.id, document.getElementById(`chat-actions-${t.id}`)) },
-              ]} />
-            </HStack>}
-          </VStack>)}
-          {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
-        </VStack></nav>
-      </VStack></aside>
-      <main className="conversation">
+    <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace" data-sidebar-open={navigationOpen}>
+      {!mobile && <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={sidebarOpen}>{sidebar}</aside>}
+      {mobile && <Drawer isOpen={mobileNav} onOpenChange={setMobileNav} label="Learning trees" side="start" width="18rem" padding={0}><section id="tree-navigation" className="tree-drawer">{sidebar}</section></Drawer>}
+      {(!navigationOpen || mobile) && <IconButton id="expand-learning-trees" className="sidebar-expand" label="Expand learning trees" tooltip="Expand learning trees" icon={<ChevronDoubleRightIcon />} variant="secondary" aria-expanded={navigationOpen} aria-controls="tree-navigation" onClick={() => { changeNavigation(true); if (!mobile) requestAnimationFrame(() => document.getElementById('collapse-learning-trees')?.focus()); }} />}
+      <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
         <Heading level={1} className="sr-only">TreeTutor</Heading>
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
         <section className="tree-workspace" data-expanded={expanded && !overview}>
@@ -682,10 +734,10 @@ export default function ChatPage() {
         </section>
         </section>
       </main>
+      <main hidden={tab !== 'knowledge'} className="knowledge-panel" aria-label="Knowledge">
+        {tab === 'knowledge' && <><HStack padding={3} className="knowledge-header"><Button id="return-to-learning" label="Return to learning tree" variant="ghost" icon={<ArrowUturnLeftIcon />} onClick={() => { setTab('learning'); requestAnimationFrame(() => document.querySelector<HTMLElement>(overview ? '.map-toolbar button' : '#rename-conversation')?.focus()); }} /></HStack><KnowledgePage api={api} activity={activeKey} /></>}
+      </main>
     </HStack>
-    <main id="knowledge-panel" role="tabpanel" aria-labelledby="knowledge-tab" hidden={tab !== 'knowledge'} className="knowledge-panel">
-      {tab === 'knowledge' && <KnowledgePage api={api} activity={activeKey} />}
-    </main>
     <SettingsWindow request={settings} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} usage={state?.usage?.replies ? usageLine(state.usage) : undefined} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
     <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
