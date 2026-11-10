@@ -15,6 +15,27 @@ html { view-transition-name: none; }
 .chat-title { flex: 1; min-width: 0; }
 .chat-title h2 { font-size: var(--font-size-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .passage { position: relative; }
+.reply-md { display: block; min-width: 0; overflow-wrap: anywhere; }
+.reply-md > * + * { margin-block-start: var(--spacing-3); }
+.reply-md p, .reply-md figure { margin-inline: 0; }
+.reply-md :is(h3, h4, h5, h6) { margin-block-start: var(--spacing-5); margin-block-end: var(--spacing-2); }
+.reply-md > :first-child { margin-block-start: 0; }
+.reply-md :is(ul, ol) { padding-inline-start: var(--spacing-5); list-style-position: outside; }
+.reply-md ul { list-style-type: disc; }
+.reply-md ol { list-style-type: decimal; }
+.reply-md li + li { margin-block-start: var(--spacing-1); }
+.reply-md blockquote { margin-inline: 0; padding-inline-start: var(--spacing-3); border-inline-start: thin solid var(--color-border-emphasized); color: var(--color-text-secondary); }
+.reply-md pre { margin-inline: 0; padding: var(--spacing-3); background: var(--color-background-body); border-radius: var(--radius-element); white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply-md pre > code { display: block; padding: 0; background: transparent; white-space: inherit; font-size: var(--font-size-sm); }
+.reply-md code .astryx-text { font-family: inherit; white-space: inherit; }
+.reply-md a { color: var(--color-text-primary); text-decoration: underline; text-underline-offset: var(--spacing-1); }
+.reply-md .md-table { max-width: 100%; overflow-x: auto; }
+.reply-md table { width: 100%; border-collapse: collapse; }
+.reply-md :is(th, td) { padding: var(--spacing-2); border: thin solid var(--color-border); text-align: start; }
+.reply-md th { background: var(--color-background-body); font-weight: 600; }
+.reply-md math[display=block] { padding-block: var(--spacing-2); max-width: 100%; overflow-x: auto; }
+.reply-md [data-reveal] { background: var(--color-background-blue); color: var(--color-text-primary); }
+.reply-md .md-source-syntax { white-space: pre-wrap; font-family: monospace; }
 .diagram-card { min-width: 0; max-width: 100%; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
 .diagram-card h3 { font-size: var(--font-size-base); }
 .diagram-viewport { max-width: 100%; max-height: 24rem; overflow: auto; overscroll-behavior: contain; }

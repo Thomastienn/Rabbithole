@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { previewText } from '../src/markdownText.ts';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
         kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
@@ -50,9 +51,9 @@ export class Store {
     return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
       .map(t => { try { return { ...t, layout: JSON.parse(t.layout) }; } catch { return { ...t, layout: null }; } });
   }
-  // SQLite substr/length count code points, so the 512 cut matches the client's live-turn cut.
+  // Strip reply syntax before truncation; the stored messages remain the canonical source.
   previews(ids) {
-    const messages = this.db.prepare("SELECT id, role, substr(text,1,512) || CASE WHEN length(text)>512 THEN '…' ELSE '' END AS text, status FROM messages WHERE tree=? ORDER BY seq");
+    const messages = this.db.prepare('SELECT id, role, text, status FROM messages WHERE tree=? ORDER BY seq');
     const artifacts = this.db.prepare('SELECT id,message,kind,title,status FROM artifacts WHERE conversation=? ORDER BY created,rowid');
     return Object.fromEntries(ids.map(id => {
       const byMessage = new Map();
@@ -60,7 +61,7 @@ export class Store {
         if (!byMessage.has(message)) byMessage.set(message, []);
         byMessage.get(message).push(artifact);
       }
-      return [id, messages.all(id).map(m => ({ ...m, ...(byMessage.has(m.id) && { artifacts: byMessage.get(m.id) }) }))];
+      return [id, messages.all(id).map(m => ({ ...m, text: previewText(m.text, m.role), ...(byMessage.has(m.id) && { artifacts: byMessage.get(m.id) }) }))];
     }));
   }
   layout(id, layout, positions = {}) {

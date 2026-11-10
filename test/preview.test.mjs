@@ -32,3 +32,17 @@ test('previews list every message in order, bound each text and survive reload w
   assert.deepEqual(store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(row => row.name), ['artifacts', 'branches', 'messages', 'trees']);
   store.close();
 });
+
+test('reply previews strip syntax before truncation without changing raw questions or replies', () => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-markdown-preview-')), 'trees.sqlite'));
+  try {
+    const tree = store.create('Markdown');
+    const raw = '## Topic\n\n- **bold** item\n- `code` [link](https://example.com)\n\n' + '*'.repeat(600) + '\n\nend';
+    store.message(tree.id, 'user', '**literal question**', 'completed');
+    store.message(tree.id, 'assistant', raw, 'completed');
+    const preview = store.previews([tree.id])[tree.id];
+    assert.equal(preview[0].text, '**literal question**');
+    assert.equal(preview[1].text, 'Topic bold item code link end');
+    assert.equal(store.tree(tree.id).messages[1].text, raw);
+  } finally { store.close(); }
+});
