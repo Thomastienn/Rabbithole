@@ -8,10 +8,21 @@ const reply = text => text.endsWith('diagram fixture request') ? 'A bracket show
 // The question decides failure ('suggestions fail') and delay ('slow suggestions'); a wrong cheap model yields invalid output.
 const suggesting = text => text.startsWith('Mark every term');
 const suggestion = (text, model, cheap) => {
-  const { question, answer } = JSON.parse(text.slice(text.indexOf('\n') + 1));
+  const { question, answer, knownConcepts } = JSON.parse(text.slice(text.indexOf('\n') + 1));
   if (question.endsWith('suggestions fail') || model !== cheap) return 'not json';
-  return JSON.stringify({ suggestions: [{ text: answer.slice(0, 13), start: 0, end: 13 }, { text: answer.slice(0, 18), start: 0, end: 18 }, { text: 'original', start: 0, end: 8 },
+  return JSON.stringify({ ...graph(question, knownConcepts), suggestions: [{ text: answer.slice(0, 13), start: 0, end: 13 }, { text: answer.slice(0, 18), start: 0, end: 18 }, { text: 'original', start: 0, end: 8 },
     { text: answer.slice(14, 22), start: 14, end: 22 }, { text: 'x', start: -1, end: 0 }, { text: answer.slice(14, 22), start: 14, end: 22 }] });
+};
+// 'locks' questions return concepts: a known Peterson name is reused as the model would; other names vary in case only.
+// Invalid concepts and links (no topic, unknown kind, unknown or self target) must be dropped. 'many concepts' grows the name list.
+const graph = (question, known) => {
+  if (question.includes('many concepts')) return { concepts: Array.from({ length: 300 }, (_, i) => ({ name: `Fixture concept number ${i} with a long name`, topics: ['Bulk'] })) };
+  if (!question.includes('locks')) return {};
+  // Without the known list, a second wording ('Peterson lock') would duplicate the concept.
+  const peterson = Object.values(known).flat().find(n => /peterson/i.test(n)) ?? (question.includes('again') ? 'Peterson lock' : "Peterson's algorithm");
+  const mutex = question.includes('again') ? 'MUTUAL EXCLUSION' : 'Mutual exclusion';
+  return { concepts: [{ name: peterson, topics: ['Concurrency'] }, { name: mutex, topics: ['Concurrency', 'operating systems'] }, { name: 'Orphan', topics: [] }, { name: '', topics: ['X'] }],
+    links: [{ from: peterson, to: mutex, kind: 'builds on' }, { from: mutex, to: 'Turn variable', kind: 'related' }, { from: mutex, to: mutex, kind: 'related' }, { from: peterson, to: mutex, kind: 'needs' }, ...(question.includes('again') ? [{ from: mutex, to: peterson, kind: 'related' }] : [])] };
 };
 const delay = text => suggesting(text) && text.includes('slow suggestions') ? 1000 : 0;
 if (process.argv.includes('--output-format')) {

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { resolve, extname, join } from 'node:path';
 import { diagramReply, generateDiagram, tutorContext } from './diagrams.mjs';
 import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
-import { anchored, suggest } from './suggestions.mjs';
+import { anchored, knownConcepts, nameTokens, suggest } from './suggestions.mjs';
 
 const LABELS = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
 const STOPPED = new Error('TreeTutor stopped.');
@@ -47,12 +47,15 @@ export function createApp({ store, auth, provider, providers = { codex: provider
   // Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
   const suggesting = new Map();
   const startSuggestions = (conversation, message, question, answer) => {
-    if (!suggestions || !store.pendingSuggestions(conversation, message)) return;
+    if (!suggestions) return;
+    const known = knownConcepts(store.graph());
+    if (!store.pendingSuggestions(conversation, message, nameTokens(known))) return;
     const tree = store.tree(conversation), running = { controller: new AbortController(), conversation };
     suggesting.set(message, running);
     running.done = (async () => {
       const inheritedContext = tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null;
-      const result = await suggest(pick(tree), tree, { inheritedContext, question, answer }, running.controller.signal, suggestionTimeout);
+      const result = await suggest(pick(tree), tree, { inheritedContext, question, answer, knownConcepts: known }, running.controller.signal, suggestionTimeout);
+      store.addGraph(result.graph);
       store.finishSuggestions(conversation, message, result.passages, result.usage);
     })().catch(error => { if (!stopping) store.finishSuggestions(conversation, message, null, error.usage ?? null); })
       .catch(() => {}).finally(() => suggesting.delete(message));
@@ -72,7 +75,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     const url = new URL(req.url, origin);
     try {
       if (stopping) return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
-      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))], suggesting: [...new Set([...suggesting.values()].map(s => s.conversation))] });
+      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))], suggesting: [...new Set([...suggesting.values()].map(s => s.conversation))], conceptNameTokens: store.nameTokens() });
+      if (req.method === 'GET' && url.pathname === '/api/graph') return json(res, 200, store.graph());
       if (req.method === 'GET' && url.pathname === '/api/settings/endpoint' && endpoint) return json(res, 200, endpoint.status());
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];

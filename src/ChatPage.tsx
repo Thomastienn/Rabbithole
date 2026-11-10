@@ -10,6 +10,7 @@ import { TextArea } from '@astryxdesign/core/TextArea';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { Banner } from '@astryxdesign/core/Banner';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
 import { replyUsageLine, underlineRanges, usageLine, withTurn, type Message, type Suggestions, type Turn, type Usage } from './turn';
@@ -28,7 +29,7 @@ type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
 type Model = { provider: string; model: string; label: string; isDefault: boolean };
 type Providers = Record<string, { label: string; connected: boolean }>;
-type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[]; suggesting?: string[]; usage?: Usage & { replies: number } };
+type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[]; suggesting?: string[]; usage?: Usage & { replies: number }; conceptNameTokens?: number };
 // The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
 const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview => withTurn({ messages: preview }, turn && { user: turn.user && { ...turn.user, text: previewText(turn.user.text, 'user') }, reply: turn.reply && { ...turn.reply, text: previewText(turn.reply.text, 'assistant'), ...(turn.artifacts && { artifacts: turn.artifacts.filter(a => a.message === turn.reply!.id).map(({ id, kind, title, status }) => ({ id, kind, title, status })) }) } }).messages;
 
@@ -544,6 +545,7 @@ export default function ChatPage() {
         <VStack gap={3}>
           <Heading level={3} id="settings-heading" tabIndex={-1}>Settings</Heading>
           {state?.usage && <Text type="supporting">Today's usage: {state.usage.replies ? usageLine(state.usage) : 'no reported usage yet'}</Text>}
+          {(state?.conceptNameTokens ?? 0) > 2000 && <Banner status="warning" title="Warning: concept matching is getting expensive" description={`The last suggestion call sent about ${state!.conceptNameTokens!.toLocaleString()} tokens of concept names.`} />}
           <CheckboxInput label="Vim canvas bindings" description="With the map or a conversation box focused, h j k l act as arrows; = + - zoom; f fits the tree." value={vim} onChange={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} />
         </VStack>
         <VStack gap={3}>

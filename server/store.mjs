@@ -37,6 +37,12 @@ export class Store {
       // Additive table: suggestions live beside, never inside, tutor messages; one row per saved reply.
       this.db.exec(`CREATE TABLE IF NOT EXISTS suggestions (message TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), passages TEXT, usage TEXT,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))`);
+      if (!this.db.prepare('PRAGMA table_info(suggestions)').all().some(c => c.name === 'nameTokens')) this.db.exec('ALTER TABLE suggestions ADD COLUMN nameTokens INTEGER');
+      // Additive global tables: one knowledge graph across all learning trees; NOCASE names make a matching concept or topic reuse its row.
+      this.db.exec(`CREATE TABLE IF NOT EXISTS concepts (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
+        CREATE TABLE IF NOT EXISTS topics (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
+        CREATE TABLE IF NOT EXISTS concept_topics (concept INTEGER NOT NULL REFERENCES concepts(id), topic INTEGER NOT NULL REFERENCES topics(id), PRIMARY KEY(concept, topic));
+        CREATE TABLE IF NOT EXISTS concept_links (concept INTEGER NOT NULL REFERENCES concepts(id), target INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('related','builds on')), PRIMARY KEY(concept, target, kind), CHECK(concept <> target));`);
       this.interrupt();
     } catch (error) { error.backupPath = this.backupPath; this.db.close(); throw error; }
   }
@@ -130,7 +136,25 @@ export class Store {
       suggestions: this.db.prepare('SELECT message,status,passages,usage FROM suggestions WHERE conversation=? ORDER BY rowid').all(id).map(s => ({ ...s, passages: JSON.parse(s.passages ?? '[]'), usage: JSON.parse(s.usage) })) };
   }
   // INSERT OR IGNORE makes the run once-only per saved reply: reopening or switching providers never reruns it.
-  pendingSuggestions(conversation, message) { return this.db.prepare("INSERT OR IGNORE INTO suggestions(message,conversation,status) SELECT ?,?,'pending' WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant' AND status='completed')").run(message, conversation, message, conversation).changes > 0; }
+  pendingSuggestions(conversation, message, nameTokens = null) { return this.db.prepare("INSERT OR IGNORE INTO suggestions(message,conversation,status,nameTokens) SELECT ?,?,'pending',? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant' AND status='completed')").run(message, conversation, nameTokens, message, conversation).changes > 0; }
+  // The latest suggestion call's concept-name list size, for the Settings cost warning.
+  nameTokens() { return this.db.prepare('SELECT nameTokens FROM suggestions WHERE nameTokens IS NOT NULL ORDER BY rowid DESC LIMIT 1').get()?.nameTokens ?? 0; }
+  graph() {
+    const concepts = this.db.prepare("SELECT c.name, COALESCE((SELECT json_group_array(t.name) FROM (SELECT t.name FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id ORDER BY t.name) t),'[]') AS topics FROM concepts c ORDER BY c.name").all();
+    const links = this.db.prepare('SELECT a.name AS "from", b.name AS "to", l.kind FROM concept_links l JOIN concepts a ON a.id=l.concept JOIN concepts b ON b.id=l.target ORDER BY a.name,b.name,l.kind').all();
+    return { topics: this.db.prepare('SELECT name FROM topics ORDER BY name').all().map(t => t.name), concepts: concepts.map(c => ({ name: c.name, topics: JSON.parse(c.topics) })), links: links.map(l => ({ ...l })) };
+  }
+  // Names resolve case-insensitively to existing rows; a link needs both ends in the graph after this reply's concepts are added.
+  addGraph({ concepts, links }) {
+    const id = (table, name) => { this.db.prepare(`INSERT OR IGNORE INTO ${table}(name) VALUES (?)`).run(name); return this.db.prepare(`SELECT id FROM ${table} WHERE name=?`).get(name).id; };
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const c of concepts) { const concept = id('concepts', c.name); for (const t of c.topics) this.db.prepare('INSERT OR IGNORE INTO concept_topics VALUES (?,?)').run(concept, id('topics', t)); }
+      const find = name => this.db.prepare('SELECT id FROM concepts WHERE name=?').get(name)?.id;
+      for (const l of links) { const a = find(l.from), b = find(l.to); if (a && b && a !== b) this.db.prepare('INSERT OR IGNORE INTO concept_links VALUES (?,?,?)').run(a, b, l.kind); }
+      this.db.exec('COMMIT');
+    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
+  }
   finishSuggestions(conversation, message, passages, usage) { this.db.prepare("UPDATE suggestions SET status=?,passages=?,usage=? WHERE conversation=? AND message=? AND status='pending'").run(passages ? 'ready' : 'failed', passages && JSON.stringify(passages), usage && JSON.stringify({ ...usage, at: Date.now() }), conversation, message); }
   artifact(conversation, id) { return this.db.prepare('SELECT * FROM artifacts WHERE conversation=? AND id=?').get(conversation, id); }
   hasArtifact(id) { return !!this.db.prepare('SELECT 1 FROM artifacts WHERE id=?').get(id); }

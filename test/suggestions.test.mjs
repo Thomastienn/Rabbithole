@@ -53,7 +53,7 @@ test('a completed reply gets one cheap-model suggestion call whose exact passage
   assert.equal(env.suggestionCalls().length, 1);
   assert.equal(env.suggestionCalls()[0].model, 'haiku');
   const input = JSON.parse(env.suggestionCalls()[0].input.slice(env.suggestionCalls()[0].input.indexOf('\n') + 1));
-  assert.deepEqual(input, { inheritedContext: null, question: 'Explain brackets', answer: 'Authoritative original' });
+  assert.deepEqual(input, { inheritedContext: null, question: 'Explain brackets', answer: 'Authoritative original', knownConcepts: {} });
   assert.deepEqual(strip(saved.suggestions), [{ message: reply.id, status: 'ready', passages: SAVED, usage: { input: 103, output: 7, cacheRead: 40 } }]);
   for (const p of saved.suggestions[0].passages) assert.equal(reply.text.slice(p.start, p.end), p.text);
   // The suggestion call's usage counts in today's total but not as a reply.
@@ -64,7 +64,7 @@ test('a completed reply gets one cheap-model suggestion call whose exact passage
   await env.post(`/api/trees/${tree.id}/messages`, { text: 'Continue, no usage' });
   await env.post(`/api/trees/${tree.id}/branches`, { messageId: reply.id, ...SAVED[0], question: 'What is that?' });
   for (const call of env.calls.filter(c => !c.system.startsWith('You mark'))) {
-    assert.doesNotMatch(call.system + call.input, /You mark passages|Mark every term|"suggestions"|"passages"/);
+    assert.doesNotMatch(call.system + call.input, /You mark passages|Mark every term|"suggestions"|"passages"|knownConcepts|"concepts"/);
   }
   await env.settled();
   const calls = env.suggestionCalls().length;
@@ -144,4 +144,60 @@ test('stopping during a suggestion call marks it failed on restart and does not 
   await env.settled();
   assert.deepEqual((await env.get(`/api/trees/${tree.id}`)).suggestions.map(s => s.status), ['failed']);
   assert.equal(env.suggestionCalls().length, 0);
+});
+
+const GRAPH = {
+  topics: ['Concurrency', 'operating systems'],
+  concepts: [{ name: 'Mutual exclusion', topics: ['Concurrency', 'operating systems'] }, { name: "Peterson's algorithm", topics: ['Concurrency'] }],
+  links: [{ from: "Peterson's algorithm", to: 'Mutual exclusion', kind: 'builds on' }]
+};
+
+test('the same suggestion call fills one global knowledge graph that survives restart and reuses concepts across learning trees', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-graph-'));
+  let env = await start(dir);
+  t.after(async () => { await env.close(); });
+  const a = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${a.id}/messages`, { text: 'Explain locks' });
+  await env.settled();
+  // One tutor call and one suggestion call: graph data adds no model call.
+  assert.equal(env.calls.length, 2);
+  assert.equal(env.suggestionCalls().length, 1);
+  assert.deepEqual(await env.get('/api/graph'), GRAPH, 'invalid concepts and links are dropped');
+  assert.equal((await env.get(`/api/trees/${a.id}`)).suggestions[0].passages.length, 2);
+  await env.close();
+
+  env = await start(dir);
+  assert.deepEqual(await env.get('/api/graph'), GRAPH);
+  // Another learning tree on another provider: the known names are sent, and the model reuses "Peterson's algorithm" instead of "Peterson lock".
+  const b = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${b.id}/model`, { provider: 'codex', model: 'fixture-model' });
+  await env.post(`/api/trees/${b.id}/messages`, { text: 'Explain locks again' });
+  await env.settled();
+  assert.equal((await env.get(`/api/trees/${b.id}`)).suggestions[0].status, 'ready');
+  // A differently cased name reuses its concept; the new link joins the existing concepts.
+  assert.deepEqual(await env.get('/api/graph'), { ...GRAPH, links: [{ from: 'Mutual exclusion', to: "Peterson's algorithm", kind: 'related' }, ...GRAPH.links] });
+  // Graph data never enters tutor history.
+  env.store.forgetThread(a.id);
+  await env.post(`/api/trees/${a.id}/messages`, { text: 'Continue' });
+  await env.settled();
+  for (const call of env.calls.filter(c => !c.system.startsWith('You mark'))) assert.doesNotMatch(call.system + call.input, /Peterson|knownConcepts|"concepts"/);
+  const sent = JSON.parse(env.suggestionCalls().at(-1).input.slice(env.suggestionCalls().at(-1).input.indexOf('\n') + 1)).knownConcepts;
+  assert.deepEqual(sent, { Concurrency: ['Mutual exclusion', "Peterson's algorithm"], 'operating systems': ['Mutual exclusion'] });
+});
+
+test('state reports the concept-name list size so Settings can warn past about 2k tokens', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-graph-warn-'));
+  let env = await start(dir);
+  t.after(async () => { await env.close(); });
+  const tree = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain many concepts' });
+  await env.settled();
+  assert.ok((await env.get('/api/state')).conceptNameTokens < 2000);
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain more' });
+  await env.settled();
+  const tokens = (await env.get('/api/state')).conceptNameTokens;
+  assert.ok(tokens > 2000, `${tokens} tokens`);
+  await env.close();
+  env = await start(dir);
+  assert.equal((await env.get('/api/state')).conceptNameTokens, tokens);
 });
