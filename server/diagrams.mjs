@@ -35,7 +35,7 @@ export function diagramReply(raw, final = false) {
 }
 
 export function tutorContext(tree) {
-  const { artifacts = [], ...context } = tree;
+  const { artifacts = [], suggestions, ...context } = tree; // suggestions never reach the tutor
   return { ...context, messages: tree.messages.map(message => {
     const ready = artifacts.filter(a => a.message === message.id && a.conversation === tree.id && a.status === 'ready');
     return ready.length ? { ...message, text: message.text + '\nReady ' + (ready.every(a => a.kind === 'mermaid') ? 'diagrams' : 'artifacts') + ' (artifact metadata): ' + JSON.stringify(ready.map(({ id, kind, title, description }) => kind === 'video' ? { id, kind, title, description } : { id, title, description })) } : message;

@@ -3,6 +3,13 @@ import { mergeArtifact, type Artifact, type ArtifactSummary } from './artifacts.
 export type Usage = { input: number; output: number; cacheRead: number };
 export type Message = { id: string; role: string; text: string; status: string; usage?: Usage | null; artifacts?: ArtifactSummary[] };
 export const usageLine = (u: Usage) => `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;
+export type Suggestions = { message: string; status: 'pending' | 'ready' | 'failed'; passages: { start: number; end: number; text: string }[]; usage: Usage | null };
+// A reply's token line includes its suggestion call, so background cost is never hidden.
+export function replyUsageLine(reply: Usage | null, suggestion?: Usage | null) {
+  if (!suggestion) return reply ? usageLine(reply) : 'Token usage unavailable';
+  if (!reply) return `Reply usage unavailable · suggestions: ${usageLine(suggestion)}`;
+  return `${usageLine({ input: reply.input + suggestion.input, output: reply.output + suggestion.output, cacheRead: reply.cacheRead + suggestion.cacheRead })}, including suggestions`;
+}
 export type Turn = { user?: Message; reply?: Message; artifacts?: Artifact[] };
 
 // Reconcile saved checkpoints with the latest events for this conversation only.

@@ -6,11 +6,12 @@ import { tmpdir } from 'node:os';
 import { resolve, extname, join } from 'node:path';
 import { diagramReply, generateDiagram, tutorContext } from './diagrams.mjs';
 import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
+import { anchored, suggest } from './suggestions.mjs';
 
 const LABELS = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
 const STOPPED = new Error('TreeTutor stopped.');
 
-export function createApp({ store, auth, provider, providers = { codex: provider }, endpoint, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender }) {
+export function createApp({ store, auth, provider, providers = { codex: provider }, endpoint, defaultProvider = 'codex', assets = resolve('dist'), diagramTimeout = 60000, dir = join(tmpdir(), 'treetutor'), videoTimeout, videoRender, suggestions = false, suggestionTimeout }) {
   const pick = tree => {
     if (!Object.hasOwn(providers, tree.provider)) throw new Error('Selected provider is unavailable. Configure it in settings or choose another provider.');
     return providers[tree.provider];
@@ -43,6 +44,19 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishVideo(tree.id, job.id, job.attempt, {}, error.message); })
       .finally(() => { videoJobs.delete(running); if (videos.get(job.id) === running) videos.delete(job.id); });
   };
+  // Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
+  const suggesting = new Map();
+  const startSuggestions = (conversation, message, question, answer) => {
+    if (!suggestions || !store.pendingSuggestions(conversation, message)) return;
+    const tree = store.tree(conversation), running = { controller: new AbortController(), conversation };
+    suggesting.set(message, running);
+    running.done = (async () => {
+      const inheritedContext = tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null;
+      const result = await suggest(pick(tree), tree, { inheritedContext, question, answer }, running.controller.signal, suggestionTimeout);
+      store.finishSuggestions(conversation, message, result.passages, result.usage);
+    })().catch(error => { if (!stopping) store.finishSuggestions(conversation, message, null, error.usage ?? null); })
+      .catch(() => {}).finally(() => suggesting.delete(message));
+  };
   const csrf = randomBytes(32).toString('hex');
   const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
@@ -58,7 +72,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     const url = new URL(req.url, origin);
     try {
       if (stopping) return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
-      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))] });
+      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))], suggesting: [...new Set([...suggesting.values()].map(s => s.conversation))] });
       if (req.method === 'GET' && url.pathname === '/api/settings/endpoint' && endpoint) return json(res, 200, endpoint.status());
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
@@ -222,8 +236,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           }
           if (action === 'branches') {
             const source = tree.messages.find(m => m.id === body.messageId && m.role === 'assistant' && m.status === 'completed');
-            const boundary = n => !(n > 0 && n < (source?.text.length ?? 0) && /[\uD800-\uDBFF]/.test(source.text[n - 1]) && /[\uDC00-\uDFFF]/.test(source.text[n]));
-            if (!source || !Number.isInteger(body.start) || !Number.isInteger(body.end) || body.start < 0 || body.end <= body.start || body.end > source.text.length || !boundary(body.start) || !boundary(body.end) || source.text.slice(body.start, body.end) !== body.text || typeof body.question !== 'string' || !body.question.trim()) return json(res, 400, { error: 'Select a completed tutor passage and enter a question.' });
+            if (!source || !anchored(source.text, body) || typeof body.question !== 'string' || !body.question.trim()) return json(res, 400, { error: 'Select a completed tutor passage and enter a question.' });
             const controller = new AbortController();
             active.set(id, controller);
             try {
@@ -263,6 +276,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             // Provider-reported counts only; failed, partial and canceled replies keep no usage.
             if (status === 'completed' && usage && ['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) store.usage(reply, usage);
             if (status === 'completed' || status === 'failed') store.finishModel(id, status === 'completed');
+            if (status === 'completed' && text.trim()) startSuggestions(id, reply, body.text, text);
             if (output.requested || output.hidden) store.forgetThread(id);
             if (active.get(id) === controller) active.delete(id);
             send({ type: 'done', status });
@@ -351,6 +365,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     stopping = true;
     for (const controller of active.values()) controller.abort();
     for (const v of videoJobs) v.controller.abort(STOPPED);
+    for (const s of suggesting.values()) s.controller.abort();
     store.interrupt();
     for (const p of new Set(Object.values(providers))) p?.close?.();
     // Let final interrupted events drain before closing sockets; bound shutdown for a stuck client or job.

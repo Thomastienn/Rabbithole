@@ -20,7 +20,7 @@ test('model catalog follows pagination, excludes hidden and non-text entries; ch
   const requests = [];
   const client = fixture(r => requests.push(r));
   try {
-    assert.deepEqual((await client.models()).map(m => m.model), ['fixture-model', 'fixture-alternate']);
+    assert.deepEqual((await client.models()).map(m => m.model), ['fixture-model', 'fixture-alternate', 'fixture-luna']);
     assert.deepEqual(requests.filter(r => r.method === 'model/list').map(r => r.params.cursor), [undefined, 'page-two']);
     const tree = { thread: 'saved-history', model: 'fixture-alternate', branch: { snapshot: 'Exactly 47 trees.', text: 'grove' } };
     let savedModel;

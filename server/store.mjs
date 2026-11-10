@@ -34,6 +34,9 @@ export class Store {
       }
       // Additive nullable column: older TreeTutor builds still open the database.
       if (!this.db.prepare('PRAGMA table_info(messages)').all().some(c => c.name === 'usage')) this.db.exec('ALTER TABLE messages ADD COLUMN usage TEXT');
+      // Additive table: suggestions live beside, never inside, tutor messages; one row per saved reply.
+      this.db.exec(`CREATE TABLE IF NOT EXISTS suggestions (message TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), passages TEXT, usage TEXT,
+        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))`);
       this.interrupt();
     } catch (error) { error.backupPath = this.backupPath; this.db.close(); throw error; }
   }
@@ -66,6 +69,7 @@ export class Store {
   // Starting or stopping never resumes paid inference; saved partial text stays available.
   interrupt() {
     this.db.exec(`UPDATE messages SET status='interrupted' WHERE status='streaming';
+      UPDATE suggestions SET status='failed' WHERE status='pending';
       UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when TreeTutor stopped.' WHERE status='pending' AND kind='video';
       UPDATE artifacts SET status='failed',source=NULL,error='Diagram generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
   }
@@ -106,6 +110,7 @@ export class Store {
       const parent = this.tree(id).branch?.parent ?? null, deleted = this.descendants(id);
       const artifacts = deleted.flatMap(conversation => this.tree(conversation).artifacts);
       for (const conversation of deleted) this.db.prepare('DELETE FROM artifacts WHERE conversation=?').run(conversation);
+      for (const conversation of deleted) this.db.prepare('DELETE FROM suggestions WHERE conversation=?').run(conversation);
       for (const conversation of deleted) this.db.prepare('DELETE FROM branches WHERE child=?').run(conversation);
       for (const conversation of deleted) this.db.prepare('DELETE FROM messages WHERE tree=?').run(conversation);
       for (const conversation of deleted) this.db.prepare('DELETE FROM trees WHERE id=?').run(conversation);
@@ -121,8 +126,12 @@ export class Store {
   tree(id) {
     const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
-    return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status,usage FROM messages WHERE tree=? ORDER BY seq').all(id).map(({ usage, ...m }) => m.role === 'assistant' ? { ...m, usage: JSON.parse(usage) } : m), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id) };
+    return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status,usage FROM messages WHERE tree=? ORDER BY seq').all(id).map(({ usage, ...m }) => m.role === 'assistant' ? { ...m, usage: JSON.parse(usage) } : m), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id),
+      suggestions: this.db.prepare('SELECT message,status,passages,usage FROM suggestions WHERE conversation=? ORDER BY rowid').all(id).map(s => ({ ...s, passages: JSON.parse(s.passages ?? '[]'), usage: JSON.parse(s.usage) })) };
   }
+  // INSERT OR IGNORE makes the run once-only per saved reply: reopening or switching providers never reruns it.
+  pendingSuggestions(conversation, message) { return this.db.prepare("INSERT OR IGNORE INTO suggestions(message,conversation,status) SELECT ?,?,'pending' WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant' AND status='completed')").run(message, conversation, message, conversation).changes > 0; }
+  finishSuggestions(conversation, message, passages, usage) { this.db.prepare("UPDATE suggestions SET status=?,passages=?,usage=? WHERE conversation=? AND message=? AND status='pending'").run(passages ? 'ready' : 'failed', passages && JSON.stringify(passages), usage && JSON.stringify({ ...usage, at: Date.now() }), conversation, message); }
   artifact(conversation, id) { return this.db.prepare('SELECT * FROM artifacts WHERE conversation=? AND id=?').get(conversation, id); }
   hasArtifact(id) { return !!this.db.prepare('SELECT 1 FROM artifacts WHERE id=?').get(id); }
   // Videos keep their frozen task input and a server-issued attempt; their composition source stays in the job workspace.
@@ -189,7 +198,8 @@ export class Store {
   // Only reported usage is saved; NULL means the provider did not report it.
   usage(id, usage) { this.db.prepare('UPDATE messages SET usage=? WHERE id=?').run(usage && JSON.stringify({ ...usage, at: Date.now() }), id); }
   usageSince(since) {
-    return this.db.prepare("SELECT COALESCE(SUM(usage->>'input'),0) AS input,COALESCE(SUM(usage->>'output'),0) AS output,COALESCE(SUM(usage->>'cacheRead'),0) AS cacheRead,COUNT(usage) AS replies FROM messages WHERE usage->>'at'>=?").get(since);
+    // Suggestion calls count toward the total but not toward the reply count.
+    return this.db.prepare("SELECT COALESCE(SUM(usage->>'input'),0) AS input,COALESCE(SUM(usage->>'output'),0) AS output,COALESCE(SUM(usage->>'cacheRead'),0) AS cacheRead,COALESCE(SUM(reply),0) AS replies FROM (SELECT usage,1 AS reply FROM messages UNION ALL SELECT usage,0 FROM suggestions) WHERE usage->>'at'>=?").get(since);
   }
   update(id, text, status) { this.db.prepare('UPDATE messages SET text=?,status=? WHERE id=?').run(text, status, id); }
   close() { this.db.close(); }

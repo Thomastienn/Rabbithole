@@ -12,7 +12,7 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
-import { usageLine, withTurn, type Message, type Turn, type Usage } from './turn';
+import { replyUsageLine, usageLine, withTurn, type Message, type Suggestions, type Turn, type Usage } from './turn';
 import { layoutSaver, type Batch } from './layoutSave';
 import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
@@ -25,10 +25,10 @@ import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 
 type Anchor = { messageId: string; start: number; end: number; text: string };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
-type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[] };
+type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
 type Model = { provider: string; model: string; label: string; isDefault: boolean };
 type Providers = Record<string, { label: string; connected: boolean }>;
-type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[]; usage?: Usage & { replies: number } };
+type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[]; suggesting?: string[]; usage?: Usage & { replies: number } };
 // The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
 const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview => withTurn({ messages: preview }, turn && { user: turn.user && { ...turn.user, text: previewText(turn.user.text, 'user') }, reply: turn.reply && { ...turn.reply, text: previewText(turn.reply.text, 'assistant'), ...(turn.artifacts && { artifacts: turn.artifacts.filter(a => a.message === turn.reply!.id).map(({ id, kind, title, status }) => ({ id, kind, title, status })) }) } }).messages;
 
@@ -239,8 +239,8 @@ export default function ChatPage() {
     return ids;
   })();
   const previewKey = JSON.stringify(visibleIds);
-  // Running video jobs poll like replies until their card settles.
-  const activeKey = [...(state?.active ?? []), ...(state?.videos ?? [])].join(',');
+  // Running video jobs and suggestion calls poll like replies until they settle.
+  const activeKey = [...(state?.active ?? []), ...(state?.videos ?? []), ...(state?.suggesting ?? [])].join(',');
   useEffect(() => {
     let cancelled = false;
     async function load(ids: string[]) {
@@ -604,7 +604,13 @@ export default function ChatPage() {
                   <Text type="supporting" color="secondary">Creates a saved chat with fixed context from this conversation.</Text>
                 </VStack></form>}
                 {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} />)}
-                {!overview && message.role === 'assistant' && message.status === 'completed' && message.usage !== undefined && <Text type="supporting" color="secondary">{message.usage ? usageLine(message.usage) : 'Token usage unavailable'}</Text>}
+                {!overview && message.role === 'assistant' && message.status === 'completed' && message.usage !== undefined && (() => {
+                  const suggestions = tree.suggestions?.find(s => s.message === message.id);
+                  return <>
+                    <Text type="supporting" color="secondary">{replyUsageLine(message.usage, suggestions?.usage)}</Text>
+                    {suggestions?.status === 'failed' && <Text type="supporting" color="secondary">Suggestions unavailable</Text>}
+                  </>;
+                })()}
                 {message.status !== 'completed' && <Text type="supporting" role="status">{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
               </ChatMessage>)}
             </ChatMessageList>
