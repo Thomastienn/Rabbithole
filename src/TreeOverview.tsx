@@ -4,9 +4,9 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRightIcon, LinkIcon } from '@heroicons/react/24/outline';
-import type { ReactNode } from 'react';
-import { MIN_ZOOM, offsetCoveredBoxes, parseViewport, placeBox, vimAction, type Point, type Viewport } from './canvas';
+import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRightIcon, EyeSlashIcon, LinkIcon } from '@heroicons/react/24/outline';
+import type { CSSProperties, ReactNode } from 'react';
+import { MIN_ZOOM, foldHierarchy, offsetCoveredBoxes, parseViewport, placeBox, vimAction, type Point, type Viewport } from './canvas';
 import type { ArtifactSummary } from './artifacts';
 
 export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside' | 'expanded'; viewport?: Viewport };
@@ -15,9 +15,9 @@ export type Source = { messageId: string; start: number; end: number; text: stri
 export type Preview = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] }[];
 type Open = (id: string, source?: Source) => void;
 export type MapActions = { expand: () => void; collapse: () => void; keep: () => void; canKeep: boolean };
-type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; active: boolean; focus: boolean; focusControl?: string; childCount: number; hiddenCount: number; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
+type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; active: boolean; focus: boolean; focusControl?: string; childCount: number; stubs: { child: Summary; beneath: number }[]; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
 const fit = { padding: 0.2, maxZoom: 1 };
-const noSources: Summary[] = [];
+const noStubs: ConversationNode['data']['stubs'] = [];
 const ConversationTransition = createContext<string | undefined>(undefined);
 const sourceOf = (t: Summary): Source => ({ messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! });
 
@@ -32,6 +32,14 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
     return () => cancelAnimationFrame(frame);
   }, [data.focus, data.focusControl, t.id, initialized]);
   const preview = data.preview;
+  const handle = (child: Summary, style?: CSSProperties) => {
+    const stub = data.stubs.find(s => s.child === child);
+    const name = `Show hidden branch ${child.title}${stub?.beneath ? `, ${stub.beneath} more ${stub.beneath === 1 ? 'conversation' : 'conversations'} hidden beneath` : ''}`;
+    // Focus the fold toggle first; the stub unmounts once the fold expands.
+    return <Handle key={child.id} id={child.id} data-source={child.id} type="source" position={Position.Right} style={style}>
+      {stub && <span className="fold-stub nodrag nopan"><IconButton label={name} tooltip={name} icon={<EyeSlashIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true }); data.toggle(t.id); }} /></span>}
+    </Handle>;
+  };
   return <VStack gap={2} padding={3} className="conversation-box" data-active={data.active}>
     {t.parent && <Handle type="target" position={Position.Left} />}
     <HStack gap={1} vAlign="center">
@@ -47,13 +55,12 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
           <Text type="supporting" color={m.role === 'user' ? 'primary' : 'secondary'} className={m.role === 'user' ? 'question-bubble' : undefined} maxLines={3}><Text type="inherit" className="sr-only">{m.role === 'user' ? 'Question: ' : 'Answer: '}</Text>{m.text || (m.status === 'streaming' ? 'Thinking…' : 'No text.')}</Text>
           {m.role === 'assistant' && m.status !== 'completed' && <Text type="supporting" color="secondary">{m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}</Text>}
           {m.role === 'assistant' && m.artifacts?.map(a => <Text key={a.id} type="supporting" color="secondary">{a.kind === 'video' ? `Video: ${a.title} · ${a.status === 'pending' ? (a.phase === 'rendering' ? 'rendering…' : 'preparing…') : a.status === 'ready' ? (a.available === false ? 'unavailable' : 'ready') : a.status}` : <>Diagram: {a.title}{a.status === 'pending' ? ' · creating…' : a.status === 'failed' ? ' · unavailable' : ''}</>}</Text>)}
-          {sources.map((child, index) => <Handle key={child.id} id={child.id} data-source={child.id} type="source" position={Position.Right} style={{ top: `${100 * (index + 1) / (sources.length + 1)}%` }} />)}
+          {sources.map((child, index) => handle(child, { top: `${100 * (index + 1) / (sources.length + 1)}%` }))}
         </VStack>;
       })}
       {preview.at(-1)?.role === 'user' && <Text type="supporting" color="secondary"><Text type="inherit" className="sr-only">Answer: </Text>No reply yet.</Text>}
     </VStack>}
-    {data.folded && <Text type="supporting" color="secondary">{data.hiddenCount} hidden {data.hiddenCount === 1 ? 'branch' : 'branches'}</Text>}
-    {data.sources.filter(child => !preview?.some(m => m.id === child.messageId)).map(child => <Handle key={child.id} id={child.id} data-source={child.id} type="source" position={Position.Right} />)}
+    {data.sources.filter(child => !preview?.some(m => m.id === child.messageId)).map(child => handle(child))}
   </VStack>;
 });
 const nodeTypes = { conversation: Conversation };
@@ -154,32 +161,10 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   const zoomOut = () => { navigated.current = true; void flow.current?.zoomOut(); };
   const zoomIn = () => { navigated.current = true; void flow.current?.zoomIn(); };
   const fitTree = () => { navigated.current = true; void flow.current?.fitView(fit); };
-  const hierarchy = useMemo(() => {
-    const byId = new Map(trees.map(t => [t.id, t]));
-    const children = new Map<string, Summary[]>();
-    for (const t of trees) if (t.parent) children.set(t.parent, [...(children.get(t.parent) ?? []), t]);
-    for (const list of children.values()) list.reverse();
-    const queue = [root], seen = new Set<string>(), hidden = new Set<string>();
-    const result: { conversation: Summary; sources: Summary[]; hidden: boolean; hiddenCount: number }[] = [];
-    for (let i = 0; i < queue.length; i++) {
-      const id = queue[i], conversation = byId.get(id);
-      if (!conversation || seen.has(id)) continue;
-      seen.add(id);
-      const sources = children.get(id) ?? [];
-      if (hidden.has(id) || folded.has(id)) for (const child of sources) hidden.add(child.id);
-      result.push({ conversation, sources, hidden: hidden.has(id), hiddenCount: 0 });
-      queue.push(...sources.map(t => t.id));
-    }
-    const counts = new Map<string, number>();
-    for (const item of [...result].reverse()) {
-      const count = item.sources.reduce((sum, t) => sum + 1 + (counts.get(t.id) ?? 0), 0);
-      counts.set(item.conversation.id, count); item.hiddenCount = count;
-    }
-    return result;
-  }, [root, trees, folded]);
-  const desiredNodes = useMemo(() => hierarchy.map(({ conversation, sources, hidden, hiddenCount }): ConversationNode => {
+  const hierarchy = useMemo(() => foldHierarchy(root, trees, folded), [root, trees, folded]);
+  const desiredNodes = useMemo(() => hierarchy.map(({ conversation, sources, hidden, stubs }): ConversationNode => {
     const id = conversation.id;
-    return { id, type: 'conversation', hidden, position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources: folded.has(id) ? noSources : sources, preview: previews[id], open: openNode, active: active.includes(id), focus: focus === id && !hidden, focusControl: focus === id ? focusControl : undefined, childCount: sources.length, hiddenCount, folded: folded.has(id), toggle } };
+    return { id, type: 'conversation', hidden, position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, preview: previews[id], open: openNode, active: active.includes(id), focus: focus === id && !hidden, focusControl: focus === id ? focusControl : undefined, childCount: sources.length, stubs: stubs.length ? stubs : noStubs, folded: folded.has(id), toggle } };
   }), [hierarchy, previews, active, openNode, focus, focusControl, folded, toggle]);
   useEffect(() => {
     setNodes(previous => {

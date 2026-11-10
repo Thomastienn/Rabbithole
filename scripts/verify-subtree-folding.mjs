@@ -35,15 +35,20 @@ try {
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
   await wait(`!!document.querySelector(${JSON.stringify(node(grand.id))})`);
   await click('Collapse descendants of Fold child');
-  await wait(`!document.querySelector(${JSON.stringify(node(grand.id))}) && document.querySelector(${JSON.stringify(node(child.id))}).textContent.includes('1 hidden')`);
+  await wait(`!document.querySelector(${JSON.stringify(node(grand.id))}) && !!document.querySelector(${JSON.stringify(node(child.id))} + ' [aria-label="Show hidden branch Fold grandchild"]')`);
   await b('focus', `#fold-${root.id}`); await b('press', 'Enter');
-  await wait(`!document.querySelector(${JSON.stringify(node(child.id))}) && document.querySelector(${JSON.stringify(node(root.id))}).textContent.includes('2 hidden')`);
+  await wait(`!document.querySelector(${JSON.stringify(node(child.id))}) && !!document.querySelector(${JSON.stringify(node(root.id))} + ' [aria-label="Show hidden branch Fold child, 1 more conversation hidden beneath"]')`);
   assert.equal(await ev(`document.activeElement.id`), `fold-${root.id}`);
+  assert.equal(await ev(`/\\d+ hidden branch/.test(document.querySelector('.react-flow__node').textContent)`), false, 'no hidden-branch text line');
+  // The stub leaves from its child's passage row.
+  assert.equal(await ev(`!!document.querySelector('.node-message [data-source="${child.id}"] .fold-stub')`), true);
   assert.equal(await ev(`document.querySelectorAll('.react-flow__edge').length`), 0);
-  await click('Fit tree');
-  await b('focus', `#fold-${root.id}`); await b('press', 'Enter');
+  await click('Fit tree'); await settled();
+  if (process.env.SCREENSHOT) await b('screenshot', process.env.SCREENSHOT);
+  await click('Show hidden branch Fold child, 1 more conversation hidden beneath');
   await wait(`!!document.querySelector(${JSON.stringify(node(child.id))}) && !document.querySelector(${JSON.stringify(node(grand.id))})`);
-  await b('focus', `#fold-${child.id}`); await b('press', 'Space');
+  assert.equal(await ev(`document.activeElement.id`), `fold-${root.id}`, 'focus moves to the fold toggle');
+  await b('focus', '[aria-label="Show hidden branch Fold grandchild"]'); await b('press', 'Space');
   await wait(`!!document.querySelector(${JSON.stringify(node(grand.id))}) && document.querySelectorAll('.react-flow__edge').length === 2`);
   assert.deepEqual([store.tree(grand.id).x, store.tree(grand.id).y], [850, 350]);
   assert.equal(await ev(`getComputedStyle(document.querySelector('.focused-chat')).display`), 'none');
@@ -55,7 +60,7 @@ try {
   await b('focus', `#fold-${root.id}`); await b('press', 'Enter');
   assert.equal(app.active.has(grand.id), true);
   turn.emit({ type: 'item', item: 'reply', text: 'Finished while hidden' }); turn.emit({ type: 'status', status: 'completed' }); turn.resolve();
-  await wait(`document.querySelector(${JSON.stringify(node(root.id))}).textContent.includes('2 hidden')`);
+  await wait(`!!document.querySelector('[aria-label="Show hidden branch Fold child, 1 more conversation hidden beneath"]')`);
   await b('focus', `#fold-${root.id}`); await b('press', 'Enter');
   await wait(`document.querySelector(${JSON.stringify(node(grand.id))})?.textContent.includes('Finished while hidden')`);
   // Create a child from a folded parent through the normal keyboard selection flow.
@@ -69,5 +74,5 @@ try {
   const added = store.list().find(t => t.title === 'New branch');
   await wait(`!!document.querySelector(${JSON.stringify(node(grand.id))}) && !!document.querySelector(${JSON.stringify(node(added.id))})`);
   assert.deepEqual(store.tree(child.id).branch, child.branch);
-  console.log('PASS: nested folds, keyboard and focus, visible edges/fit, saved position, ongoing fixture turn, and new child path reveal.');
+  console.log('PASS: nested folds, hidden-branch stubs (click and Space), keyboard and focus, visible edges/fit, saved position, ongoing fixture turn, and new child path reveal.');
 } catch (error) { console.error(await b('snapshot')); throw error; } finally { if (turn) turn.resolve(); await b('close').catch(() => {}); app.stop(); store.close(); }

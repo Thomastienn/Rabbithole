@@ -78,3 +78,29 @@ export function vimAction(e: { key: string; altKey: boolean; ctrlKey: boolean; m
   if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
   return Object.hasOwn(vimKeys, e.key) ? vimKeys[e.key] : undefined;
 }
+
+// Breadth-first from root; a fold hides every descendant and leaves one stub per direct child.
+export function foldHierarchy<T extends { id: string; parent: string | null }>(root: string, trees: readonly T[], folded: ReadonlySet<string>) {
+  const byId = new Map(trees.map(t => [t.id, t]));
+  const children = new Map<string, T[]>();
+  for (const t of trees) if (t.parent) children.set(t.parent, [...(children.get(t.parent) ?? []), t]);
+  for (const list of children.values()) list.reverse();
+  const queue = [root], seen = new Set<string>(), hidden = new Set<string>();
+  const result: { conversation: T; sources: T[]; hidden: boolean; stubs: { child: T; beneath: number }[] }[] = [];
+  for (let i = 0; i < queue.length; i++) {
+    const id = queue[i], conversation = byId.get(id);
+    if (!conversation || seen.has(id)) continue;
+    seen.add(id);
+    const sources = children.get(id) ?? [];
+    if (hidden.has(id) || folded.has(id)) for (const child of sources) hidden.add(child.id);
+    result.push({ conversation, sources, hidden: hidden.has(id), stubs: [] });
+    queue.push(...sources.map(t => t.id));
+  }
+  const counts = new Map<string, number>();
+  for (const item of [...result].reverse()) {
+    const count = item.sources.reduce((sum, t) => sum + 1 + (counts.get(t.id) ?? 0), 0);
+    counts.set(item.conversation.id, count);
+    if (!item.hidden && folded.has(item.conversation.id)) item.stubs = item.sources.map(child => ({ child, beneath: counts.get(child.id) ?? 0 }));
+  }
+  return result;
+}
