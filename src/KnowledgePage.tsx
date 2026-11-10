@@ -7,7 +7,7 @@ import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { Selector } from '@astryxdesign/core/Selector';
 
 type Concept = { name: string; topics: string[]; familiarity: number; correction: 'known' | 'unknown' | null; evidence: { met: number; asked: number; used: number; ignored: number } };
-type Graph = { topics: string[]; concepts: Concept[]; links: { from: string; to: string; kind: 'related' | 'builds on' }[] };
+export type Graph = { topics: string[]; concepts: Concept[]; links: { from: string; to: string; kind: 'related' | 'builds on' }[] };
 type Api = (path: string, body?: unknown) => Promise<Graph>;
 const familiarity = (c: Concept) => c.correction === 'known' ? 'You marked this as known' : c.correction === 'unknown' ? 'You marked this as not understood' : `Estimated familiarity: ${c.familiarity >= 0.8 ? 'familiar' : c.familiarity >= 0.35 ? 'some familiarity' : 'unfamiliar'}`;
 

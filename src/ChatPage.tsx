@@ -20,7 +20,7 @@ import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
 import EndpointSettings from './EndpointSettings';
-import KnowledgePage from './KnowledgePage';
+import KnowledgePage, { type Graph } from './KnowledgePage';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
 import { previewText } from './markdownText';
@@ -43,6 +43,36 @@ function TitleEditor({ title, save, cancel }: { title: string; save: (title: str
     <TextInput label="Conversation title" value={value} onChange={setValue} size="sm" hasAutoFocus isDisabled={saving} description="Up to 200 characters." onEnter={submit} status={value.trim().length > 200 ? { type: 'error', message: 'Use 200 characters or fewer.' } : undefined} />
     {error && <Text role="alert">{error}</Text>}
     <HStack gap={1} wrap="wrap"><Button label={saving ? 'Saving…' : 'Save title'} size="sm" isDisabled={saving || !valid} onClick={submit} /><Button label="Cancel rename" variant="ghost" size="sm" isDisabled={saving} onClick={cancel} /></HStack>
+  </VStack>;
+}
+
+function PassageCorrection({ name, api, disabled }: { name: string; api: (path: string, body?: unknown) => Promise<Graph>; disabled: boolean }) {
+  const [correction, setCorrection] = useState<'known' | 'unknown' | null>(null);
+  const [saving, setSaving] = useState<'known' | 'unknown'>();
+  const [error, setError] = useState(''), [status, setStatus] = useState('');
+  const version = useRef(0);
+  useEffect(() => {
+    const current = ++version.current;
+    void api('/api/graph').then(graph => { if (current === version.current) setCorrection(graph.concepts.find(c => c.name.toLowerCase() === name.toLowerCase())?.correction ?? null); }).catch(e => { if (current === version.current) setError(e.message); });
+    return () => { version.current++; };
+  }, [name]);
+  async function correct(kind: 'known' | 'unknown') {
+    if (saving || disabled) return;
+    version.current++; setSaving(kind); setError(''); setStatus('');
+    try {
+      await api('/api/graph/correct', { name, kind });
+      setCorrection(kind); setStatus(`${name}: ${kind === 'known' ? 'marked as known' : 'marked as not understood'}. Your correction overrides the estimate.`);
+    } catch (e) { setError((e as Error).message); }
+    finally { setSaving(undefined); }
+  }
+  return <VStack gap={1}>
+    <Text type="supporting" color="secondary">{name}</Text>
+    <HStack gap={2} wrap="wrap" role="group" aria-label={`Corrections for ${name}`}>
+      <Button label="I know this" size="sm" variant={correction === 'known' ? 'secondary' : 'ghost'} aria-pressed={correction === 'known'} isLoading={saving === 'known'} isDisabled={disabled || saving === 'unknown'} onClick={() => void correct('known')} />
+      <Button label="I don't get this" size="sm" variant={correction === 'unknown' ? 'secondary' : 'ghost'} aria-pressed={correction === 'unknown'} isLoading={saving === 'unknown'} isDisabled={disabled || saving === 'known'} onClick={() => void correct('unknown')} />
+    </HStack>
+    <Text type="supporting" role="status">{status}</Text>
+    {error && <Text type="supporting" role="alert">{error}</Text>}
   </VStack>;
 }
 
@@ -536,6 +566,7 @@ export default function ChatPage() {
   const source = !overview && reveal?.tree === tree?.id ? reveal?.source : undefined;
   const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text);
   const active = !!tree && !!state?.active.includes(tree.id);
+  const branchConcept = branch?.anchor.suggestion ? tree?.suggestions?.find(s => s.message === branch.anchor.messageId)?.passages.find(p => p.start === branch.anchor.start && p.end === branch.anchor.end)?.concept : undefined;
   function openSettings(endpoint = false) {
     setHelp(false); setMobileNav(true);
     requestAnimationFrame(() => document.querySelector<HTMLElement>(endpoint ? '.endpoint-settings input' : '#settings-heading')?.focus());
@@ -633,6 +664,7 @@ export default function ChatPage() {
                 {message.role === 'assistant' ? <Passage message={message} suggestions={tree.suggestions?.find(s => s.message === message.id)} index={tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1} reveal={validSource && source?.messageId === message.id ? source : undefined} form={branch?.parent === tree.id && branch.anchor.messageId === message.id ? { at: branch.anchor.at, node: <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); } }}><VStack padding={3} gap={2}>
                   {/* Small empty box: Enter submits through the form; a disabled submit button blocks sending an empty prompt. */}
                   <TextInput label="Question about this passage" description={branch.anchor.text.length > 80 ? branch.anchor.text.slice(0, 80) + '…' : branch.anchor.text} size="sm" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus />
+                  {branchConcept && <PassageCorrection key={`${branch.parent}:${branch.anchor.messageId}:${branch.anchor.start}:${branch.anchor.end}`} name={branchConcept} api={api} disabled={branching} />}
                   <HStack gap={2} wrap="wrap"><Button label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" size="sm" isDisabled={branching || !branch.question.trim() || active} /><Button label="Cancel branch" variant="ghost" size="sm" isDisabled={branching} onClick={() => { setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); }} /></HStack>
                 </VStack></form> } : undefined} onOpenChild={id => void openConversation(id)} selecting={selectingMessage === message.id} openSelection={() => setSelectingMessage(message.id)} closeSelection={() => setSelectingMessage(undefined)} onBranch={(anchor, origin) => { branchOrigin.current = origin; setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text></ChatMessageBubble>}
                 

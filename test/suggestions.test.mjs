@@ -293,21 +293,27 @@ test('meeting, asking about, using and ignoring a concept add evidence; familiar
   assert.deepEqual([(await concept(M)).familiarity, (await concept(M)).correction], [0, 'unknown']);
 });
 
-test('Knowledge corrections validate over HTTP, persist, and override later inference in suggestion inputs', async t => {
+test('Knowledge and tagged passage corrections validate over HTTP, persist, and override later inference in suggestion inputs', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-corrections-'));
   let env = await start(dir);
   t.after(async () => env.close());
   const tree = JSON.parse(await env.post('/api/trees'));
   await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain locks' });
   await env.settled();
-  const name = 'Mutual exclusion';
+  const saved = await env.get(`/api/trees/${tree.id}`);
+  const { concept: name, text } = saved.suggestions[0].passages[0];
+  assert.equal(name, 'Mutual exclusion');
+  assert.notEqual(text, name, 'passage wording need not be the concept name');
   for (const body of [null, {}, { name, kind: 'met' }, { name: '', kind: 'known' }, { name: 1, kind: 'unknown' }]) assert.equal((await env.request('/api/graph/correct', body)).status, 400);
   assert.equal((await env.request('/api/graph/correct', { name: 'missing', kind: 'known' })).status, 404);
   assert.equal((await env.request('/api/graph/correct', { name, kind: 'known' }, { 'X-TreeTutor-CSRF': '' })).status, 403);
   const concept = async () => (await env.get('/api/graph')).concepts.find(c => c.name === name);
   const sent = () => JSON.parse(env.suggestionCalls().at(-1).input.split('\n').slice(1).join('\n')).familiarity[name];
   for (const [kind, value] of [['known', 1], ['unknown', 0]]) {
+    const calls = env.suggestionCalls().length;
     assert.equal((await env.request('/api/graph/correct', { name, kind })).status, 200);
+    assert.equal(env.suggestionCalls().length, calls, 'correcting adds no model call');
+    assert.deepEqual((await env.get(`/api/trees/${tree.id}`)).suggestions[0], saved.suggestions[0], 'correcting leaves saved underlines intact');
     await env.close(); env = await start(dir);
     assert.deepEqual([(await concept()).correction, (await concept()).familiarity], [kind, value]);
     await env.post(`/api/trees/${tree.id}/messages`, { text: 'Mutual exclusion locks' });
