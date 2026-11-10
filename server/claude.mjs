@@ -82,6 +82,9 @@ export class Claude {
     }
     // Only a completed reply proves the CLI session exists; failed fresh sessions retry with history instead of --resume.
     saveThread(started, tree.model ?? model);
+    // Cache writes are billed input, so they count as input; cache reads are shown separately.
+    const u = result.usage;
+    if (u) emit({ type: 'usage', usage: { input: u.input_tokens + (u.cache_creation_input_tokens ?? 0), output: u.output_tokens, cacheRead: u.cache_read_input_tokens ?? 0 } });
     emit({ type: 'status', status: 'completed' });
   }
   close() { for (const child of this.children) child.kill(); this.children.clear(); }

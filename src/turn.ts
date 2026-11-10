@@ -1,6 +1,8 @@
 import { mergeArtifact, type Artifact, type ArtifactSummary } from './artifacts.ts';
 
-export type Message = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] };
+export type Usage = { input: number; output: number; cacheRead: number };
+export type Message = { id: string; role: string; text: string; status: string; usage?: Usage | null; artifacts?: ArtifactSummary[] };
+export const usageLine = (u: Usage) => `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;
 export type Turn = { user?: Message; reply?: Message; artifacts?: Artifact[] };
 
 // Reconcile saved checkpoints with the latest events for this conversation only.

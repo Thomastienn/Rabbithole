@@ -111,7 +111,7 @@ export class Codex {
     }
     if (cancelled()) return;
     saveThread(threadId, tree.model ?? result.model);
-    let turnId, interrupted = false, finishTurn;
+    let turnId, interrupted = false, finishTurn, usage;
     const earlyEvents = [];
     const interrupt = () => { interrupted = true; if (turnId) this.rpc('turn/interrupt', { threadId, turnId }).catch(() => {}); };
     const stop = () => { interrupt(); finishTurn?.(); };
@@ -129,9 +129,14 @@ export class Codex {
           if ((p.turnId && p.turnId !== turnId) || (p.turn?.id && p.turn.id !== turnId)) return;
           if (message.method === 'item/agentMessage/delta') emit({ type: 'delta', item: p.itemId, text: p.delta });
           if (message.method === 'item/completed' && p.item?.type === 'agentMessage') emit({ type: 'item', item: p.item.id, text: p.item.text });
+          // shortcut: keeps the turn's last model call (tools are off, so one call per turn); sum calls if tools are enabled.
+          if (message.method === 'thread/tokenUsage/updated') usage = p.tokenUsage?.last;
           if (message.method === 'turn/completed') {
+            // inputTokens includes cached reads; report them apart like Claude.
+            if (usage && p.turn.status === 'completed') emit({ type: 'usage', usage: { input: usage.inputTokens - usage.cachedInputTokens, output: usage.outputTokens, cacheRead: usage.cachedInputTokens } });
             emit({ type: 'status', status: p.turn.status });
-            finish(p.turn.status === 'failed' ? new Error('Codex could not complete this reply. Partial reply saved; try again.') : undefined);
+            const reason = p.turn.error?.message; // e.g. usage limits; shown like Claude's short results so the learner knows why
+            finish(p.turn.status === 'failed' ? new Error(typeof reason === 'string' && reason.length < 300 ? `Codex: ${reason} Partial reply saved; try again.` : 'Codex could not complete this reply. Partial reply saved; try again.') : undefined);
           }
         };
         this.listeners.add(listener);

@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T09:41:21.165Z",
+  "checkedAt": "2026-11-10T09:51:04.760Z",
   "evidence": "Synthetic provider fixture; real production build, browser layout/focus, loopback HTTP, SQLite, and process restart. No native provider inference or learner data.",
   "checks": [
     {
@@ -26,8 +26,8 @@
       "name": "all renamed titles survive a real fixture server/SQLite restart",
       "pass": true,
       "details": {
-        "beforePid": 4077523,
-        "afterPid": 4077873
+        "beforePid": 4119245,
+        "afterPid": 4119567
       }
     },
     {
@@ -54,7 +54,7 @@
           "dx": 0.000091552734375,
           "dy": 0.000030517578125,
           "edges": 1,
-          "message": "844a4db1-eba3-4ae2-bea4-1b2d51097943"
+          "message": "362a9848-16b2-41a2-a919-399649819f27"
         }
       }
     },

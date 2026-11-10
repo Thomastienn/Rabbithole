@@ -32,6 +32,8 @@ export class Store {
         try { this.migrate(); this.db.exec('PRAGMA user_version=1; COMMIT'); }
         catch (error) { this.db.exec('ROLLBACK'); throw error; }
       }
+      // Additive nullable column: older TreeTutor builds still open the database.
+      if (!this.db.prepare('PRAGMA table_info(messages)').all().some(c => c.name === 'usage')) this.db.exec('ALTER TABLE messages ADD COLUMN usage TEXT');
       this.interrupt();
     } catch (error) { error.backupPath = this.backupPath; this.db.close(); throw error; }
   }
@@ -119,7 +121,7 @@ export class Store {
   tree(id) {
     const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
-    return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status FROM messages WHERE tree=? ORDER BY seq').all(id), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id) };
+    return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status,usage FROM messages WHERE tree=? ORDER BY seq').all(id).map(({ usage, ...m }) => m.role === 'assistant' ? { ...m, usage: JSON.parse(usage) } : m), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id) };
   }
   artifact(conversation, id) { return this.db.prepare('SELECT * FROM artifacts WHERE conversation=? AND id=?').get(conversation, id); }
   hasArtifact(id) { return !!this.db.prepare('SELECT 1 FROM artifacts WHERE id=?').get(id); }
@@ -183,6 +185,11 @@ export class Store {
     if (role === 'user') this.db.prepare("UPDATE trees SET title=? WHERE id=? AND title='New chat' AND title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=trees.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=trees.id)").run(text.trim().slice(0, 200), tree);
     this.db.prepare('INSERT INTO messages(id,tree,role,text,status) VALUES(?,?,?,?,?)').run(id, tree, role, text, status);
     return id;
+  }
+  // Only reported usage is saved; NULL means the provider did not report it.
+  usage(id, usage) { this.db.prepare('UPDATE messages SET usage=? WHERE id=?').run(usage && JSON.stringify({ ...usage, at: Date.now() }), id); }
+  usageSince(since) {
+    return this.db.prepare("SELECT COALESCE(SUM(usage->>'input'),0) AS input,COALESCE(SUM(usage->>'output'),0) AS output,COALESCE(SUM(usage->>'cacheRead'),0) AS cacheRead,COUNT(usage) AS replies FROM messages WHERE usage->>'at'>=?").get(since);
   }
   update(id, text, status) { this.db.prepare('UPDATE messages SET text=?,status=? WHERE id=?').run(text, status, id); }
   close() { this.db.close(); }

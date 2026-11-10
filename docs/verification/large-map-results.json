@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-10T09:42:53.912Z",
+  "date": "2026-11-10T09:52:18.028Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,10 +12,10 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 1004.8425499999994,
-  "previewQueryMs": 694.8584229999997,
+  "seedMs": 940.7231869999996,
+  "previewQueryMs": 706.566433,
   "previewBytes": 4876201,
-  "openMs": 3009.0511879999976,
+  "openMs": 2921.932907999999,
   "dom": {
     "elements": 2309,
     "nodes": 5,
@@ -23,25 +23,25 @@
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1974.9000000059605,
+    "elapsedMs": 1982.5999999940395,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
     "maxMs": 16.800000000000182,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.799999999999727,
+    "p95Ms": 16.700000000000728,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 335.78114800000185,
-  "unfoldMs": 189.47082800000135,
+  "foldMs": 316.4503900000018,
+  "unfoldMs": 186.34417799999937,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 3475.064802000001,
-  "selectMs": 3636.3367120000003,
-  "selectUiMs": 196.30000001192093,
+  "selectClickMs": 3530.438290000002,
+  "selectMs": 3686.3891570000014,
+  "selectUiMs": 193.7000000178814,
   "selectedBounds": {
     "bottom": 599.8375244140625,
     "canvasHeight": 900,
@@ -50,12 +50,12 @@
     "right": 769.4136352539062,
     "top": 75
   },
-  "streamingMs": 534.6964140000018,
+  "streamingMs": 529.3910380000016,
   "chunkRenders": {
-    "45b27533-d3b9-437f-bfcc-7ef1b5b9f1dc": 14
+    "ba1f2e33-b2b7-48e2-8323-b9c9dc313e06": 14
   },
   "chunkRenderReasons": {
-    "45b27533-d3b9-437f-bfcc-7ef1b5b9f1dc": [
+    "ba1f2e33-b2b7-48e2-8323-b9c9dc313e06": [
       "preview"
     ]
   }

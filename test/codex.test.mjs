@@ -57,15 +57,18 @@ test('stdio stream routes by thread, final item replaces partial, saved thread r
     let saved;
     await client.generate({ thread: 'saved-thread' }, 'question', e => events.push(e), id => { saved = id; }, new AbortController().signal);
     assert.equal(saved, 'saved-thread');
-    assert.deepEqual(events, [{ type: 'delta', item: 'answer', text: 'Partial' }, { type: 'item', item: 'answer', text: 'Authoritative original' }, { type: 'status', status: 'completed' }]);
+    assert.deepEqual(events, [{ type: 'delta', item: 'answer', text: 'Partial' }, { type: 'item', item: 'answer', text: 'Authoritative original' }, { type: 'usage', usage: { input: 30, output: 9, cacheRead: 20 } }, { type: 'status', status: 'completed' }]);
   } finally { client.close(); }
 });
 test('failed terminal turn and process exit reject rather than report success', async () => {
   for (const prompt of ['fail', 'disconnect']) {
     const client = fixture();
-    try { await assert.rejects(client.generate({}, prompt, () => {}, () => {}, new AbortController().signal), /could not complete|disconnected/); }
+    try { await assert.rejects(client.generate({}, prompt, () => {}, () => {}, new AbortController().signal), /Partial reply saved|disconnected/); }
     finally { client.close(); }
   }
+  const client = fixture();
+  try { await assert.rejects(client.generate({}, 'fail', () => {}, () => {}, new AbortController().signal), { message: 'Codex: Fixture usage limit reached. Partial reply saved; try again.' }); }
+  finally { client.close(); }
 });
 
 test('fresh threads import completed role history once before current question', async () => {

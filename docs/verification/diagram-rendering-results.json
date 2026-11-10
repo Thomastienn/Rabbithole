@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-10T09:42:27.786Z",
+  "checkedAt": "2026-11-10T09:51:52.225Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-EHAEqn",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-6YcPd8",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "64061839-141c-41a5-b5e4-7d1c8edfcc89",
-        "messageId": "97da10fa-6ac0-4432-ac7e-0013dca15967",
+        "parent": "83f3c092-6e9b-4614-99fc-7215b99b4afc",
+        "messageId": "9fc9fc54-b832-49c4-a866-306933201f8e",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -104,8 +104,8 @@
       "pass": true,
       "details": {
         "processes": [
-          4085766,
-          4086723
+          4126995,
+          4127997
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3
@@ -128,7 +128,7 @@
     "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
     "src/mermaid.ts": "da5018862328648b407515046e8e26641936a5c86f35758fd143cbaf379f4598",
     "src/ChatPage.tsx": "8629080af68527004e2b57be0fb0d7dd94e0520faf603cb22ee7f6f088b9145c",
-    "src/TreeOverview.tsx": "3283089ec044baeb97643a95d551e26c0a6ed55ef30f021d80cc697ebe47685c",
+    "src/TreeOverview.tsx": "e0ddbd30d36e31e3692a68ebb72e08ec119f250e5ae02641cc26a08e0becfb11",
     "src/turn.ts": "01e364d6f86fd747881bfe65fe4326f8dc3757c390e8cda537e06f86511fe690",
     "src/layout.ts": "5592fff878a9360d457b4efbc35107722aa3a854c55675e1b28fd45e3422f9c9",
     "server/store.mjs": "8793d4cdcec764550ea3730023c154b7a5597695f3635b85982560db2d2e4c3c",
@@ -140,6 +140,6 @@
     "package.json": "1c74d871a2fab26e4aba3d3d4e1393f94408a782c3c37ffa5d1f3868d05b625a",
     "package-lock.json": "e5aa89f9d2fc43574d412f8cc3fea53bcd733c531da3b009c59de974cfc23664",
     "docs/diagram-artifacts.md": "82d1b252b58357bf8d32a59fec278e908a5f92e1c3dc655216e2276092f4af8c",
-    "dist/index.html": "6590d28a9b2c13bfdf04724c1f1be3dad81948a1be6ef6905cdcd17a328c6806"
+    "dist/index.html": "c850c6f4563b718e8fa9abd10926a936bc396ed5b094db66bc7722fdb86e86df"
   }
 }

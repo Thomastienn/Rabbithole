@@ -58,7 +58,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     const url = new URL(req.url, origin);
     try {
       if (stopping) return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
-      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], videos: [...new Set([...videos.values()].map(v => v.conversation))] });
+      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))] });
       if (req.method === 'GET' && url.pathname === '/api/settings/endpoint' && endpoint) return json(res, 200, endpoint.status());
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
@@ -249,7 +249,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
           const items = new Map();
-          let text = '', status = 'streaming', finished = false, artifact;
+          let text = '', status = 'streaming', finished = false, artifact, usage = null;
           const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': keepalive\n\n'); }, 15000);
           const finish = () => {
             if (finished) return;
@@ -260,6 +260,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             if (output.text !== text) { text = output.text; send({ type: 'text', text }); }
             if (artifact?.status === 'pending') artifact = store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
             store.update(reply, text, status);
+            // Provider-reported counts only; failed, partial and canceled replies keep no usage.
+            if (status === 'completed' && usage && ['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) store.usage(reply, usage);
             if (status === 'completed' || status === 'failed') store.finishModel(id, status === 'completed');
             if (output.requested || output.hidden) store.forgetThread(id);
             if (active.get(id) === controller) active.delete(id);
@@ -279,6 +281,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 send({ type: 'text', text });
               }
               if (event.type === 'status') status = event.status;
+              if (event.type === 'usage') usage = { input: event.usage.input, output: event.usage.output, cacheRead: event.usage.cacheRead };
             }, (thread, model) => { if (!finished) store.thread(id, thread, model); }, controller.signal);
             if (status === 'streaming') status = controller.signal.aborted ? 'interrupted' : 'completed';
             if (!finished) {

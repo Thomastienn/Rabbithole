@@ -138,7 +138,8 @@ try {
     const model = catalog.models.find(m => m.provider === provider && m.isDefault) ?? catalog.models.find(m => m.provider === provider);
     assert.ok(model, 'App-owned Codex login and available model required');
     await click('Model for next reply');
-    await b('find', 'role', 'menuitemradio', 'click', '--name', model.label, '--exact');
+    await wait(`[...document.querySelectorAll('[role=menuitemradio]')].some(e => e.textContent.trim() === ${JSON.stringify(model.label)})`); // live catalogs load before the menu opens
+    for (let i = 0; ; i++) { try { await b('find', 'role', 'menuitemradio', 'click', '--name', model.label, '--exact'); break; } catch (e) { if (i === 4) throw e; await new Promise(r => setTimeout(r, 1000)); } } // popover may still be positioning
     await wait(`document.querySelector('.focused-chat')?.textContent.includes(${JSON.stringify(model.label + ' · saved automatically')}) && !document.querySelector('[aria-label="Model for next reply"]')?.hasAttribute('aria-busy')`);
     await b('focus', '.focused-chat [role=textbox]');
   }
@@ -148,7 +149,8 @@ try {
   for (let i = 0; i < 480; i++) {
     root = await get(`/api/trees/${root.id}`);
     const reply = root.messages.at(-1);
-    if (reply?.role === 'assistant' && reply.status !== 'streaming') break;
+    // A tutor-chosen diagram keeps the conversation active after the reply text completes.
+    if (reply?.role === 'assistant' && reply.status !== 'streaming' && !(await get('/api/state')).active.includes(root.id)) break;
     await new Promise(r => setTimeout(r, 500));
   }
   assert.equal(root.messages.at(-1)?.status, 'completed', await ev(`document.querySelector('[role=alert]')?.textContent || 'First reply did not complete'`));

@@ -1,0 +1,191 @@
+{
+  "date": "2026-11-10",
+  "evidence": "Provider-free fixtures: synthetic providers and seeded data; real built app (dist), headless Chromium via agent-browser, HTTP/SSE, SQLite, process restarts and sandboxed Remotion renders where the script does so. Not native inference.",
+  "head": "adb6517",
+  "workspace": "HEAD plus this issue's uncommitted changes (codex.mjs reason pass-through was applied after these runs; the fixtures do not exercise native Codex turn errors)",
+  "scripts": [
+    {
+      "script": "scripts/verify-branch-streaming.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:50:31Z",
+      "end": "2026-11-10T09:50:34Z"
+    },
+    {
+      "script": "scripts/verify-bulk-folding.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:50:34Z",
+      "end": "2026-11-10T09:50:37Z"
+    },
+    {
+      "script": "scripts/verify-canvas-navigation.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:50:37Z",
+      "end": "2026-11-10T09:50:44Z"
+    },
+    {
+      "script": "scripts/verify-canvas-positions.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:50:44Z",
+      "end": "2026-11-10T09:50:54Z"
+    },
+    {
+      "script": "scripts/verify-chat-expand.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:50:54Z",
+      "end": "2026-11-10T09:50:57Z"
+    },
+    {
+      "script": "scripts/verify-chat-management.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:50:57Z",
+      "end": "2026-11-10T09:51:04Z"
+    },
+    {
+      "script": "scripts/verify-chat-sidebar.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:51:04Z",
+      "end": "2026-11-10T09:51:07Z"
+    },
+    {
+      "script": "scripts/verify-compact-controls.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:51:07Z",
+      "end": "2026-11-10T09:51:09Z"
+    },
+    {
+      "script": "scripts/verify-custom-endpoint.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:51:09Z",
+      "end": "2026-11-10T09:51:45Z"
+    },
+    {
+      "script": "scripts/verify-diagram-rendering.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:51:45Z",
+      "end": "2026-11-10T09:51:52Z"
+    },
+    {
+      "script": "scripts/verify-first-conversation.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:51:52Z",
+      "end": "2026-11-10T09:51:55Z"
+    },
+    {
+      "script": "scripts/verify-keyboard-journey.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:51:55Z",
+      "end": "2026-11-10T09:52:02Z"
+    },
+    {
+      "script": "scripts/verify-large-map.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:52:02Z",
+      "end": "2026-11-10T09:52:33Z"
+    },
+    {
+      "script": "scripts/verify-layout-restore.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:52:33Z",
+      "end": "2026-11-10T09:52:39Z"
+    },
+    {
+      "script": "scripts/verify-map-gestures.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:52:39Z",
+      "end": "2026-11-10T09:52:41Z"
+    },
+    {
+      "script": "scripts/verify-model-switch.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:52:41Z",
+      "end": "2026-11-10T09:52:46Z"
+    },
+    {
+      "script": "scripts/verify-node-growth.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:52:46Z",
+      "end": "2026-11-10T09:52:50Z"
+    },
+    {
+      "script": "scripts/verify-node-previews.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:52:50Z",
+      "end": "2026-11-10T09:52:56Z"
+    },
+    {
+      "script": "scripts/verify-passage-selection.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:52:56Z",
+      "end": "2026-11-10T09:53:03Z"
+    },
+    {
+      "script": "scripts/verify-subtree-folding.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:53:03Z",
+      "end": "2026-11-10T09:53:06Z"
+    },
+    {
+      "script": "scripts/verify-tree-overview.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:53:06Z",
+      "end": "2026-11-10T09:53:19Z"
+    },
+    {
+      "script": "scripts/verify-video-player.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:53:19Z",
+      "end": "2026-11-10T09:53:37Z"
+    },
+    {
+      "script": "scripts/verify-video-recovery.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:53:37Z",
+      "end": "2026-11-10T09:54:04Z"
+    },
+    {
+      "script": "scripts/verify-vim-bindings.mjs",
+      "exit": 0,
+      "result": "PASS",
+      "start": "2026-11-10T09:54:04Z",
+      "end": "2026-11-10T09:54:25Z"
+    },
+    {
+      "script": "scripts/verify-local-delivery.mjs",
+      "exit": 0,
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-polish.mjs",
+      "exit": 0,
+      "result": "PASS"
+    }
+  ],
+  "gates": {
+    "npm test": "127/127 pass (rerun 127/127 after the Codex error change)",
+    "npm run build": "pass (existing >500 kB chunk advisory)",
+    "npx astryx doctor --built dist": "20 pass, 2 warn (existing font warnings), 0 fail"
+  }
+}
