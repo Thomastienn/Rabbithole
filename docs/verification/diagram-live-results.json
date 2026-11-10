@@ -1,0 +1,78 @@
+{
+  "date": "2026-11-10T04:29:41.984Z",
+  "provider": "claude (native CLI subscription sign-in)",
+  "model": "haiku",
+  "launches": 3,
+  "artifact": {
+    "status": "ready",
+    "title": "4-player single-elimination bracket",
+    "description": "Four players are paired in two semifinal matches, and the two winners meet in the final to decide the champion.",
+    "sourceSha256": "a54c2e25fee1705206a56260e23d8e4590d986843f1a56174355c2c1abe580a8",
+    "sourceFirstLine": "flowchart TD"
+  },
+  "checks": [
+    {
+      "name": "tutor reply completed",
+      "pass": true,
+      "detail": "completed"
+    },
+    {
+      "name": "one artifact linked to originating reply",
+      "pass": true
+    },
+    {
+      "name": "artifact ready with validated source",
+      "pass": true
+    },
+    {
+      "name": "visible reply and SSE contain no directive",
+      "pass": true
+    },
+    {
+      "name": "worker launched once with fresh session",
+      "pass": true
+    },
+    {
+      "name": "worker input is exactly the four-field task",
+      "pass": true
+    },
+    {
+      "name": "worker input excludes unrelated transcript, learner message and tutor ids",
+      "pass": true
+    },
+    {
+      "name": "worker permissions: no tools, empty strict MCP, no settings or slash commands, one turn",
+      "pass": true
+    },
+    {
+      "name": "worker uses native subscription sign-in, no API key environment",
+      "pass": true
+    },
+    {
+      "name": "worker native transcript has no tool use and no tutor transcript",
+      "pass": true
+    },
+    {
+      "name": "follow-up imports artifact id/title/description",
+      "pass": true
+    },
+    {
+      "name": "follow-up excludes Mermaid source, intent, excerpt and worker prompt",
+      "pass": true
+    },
+    {
+      "name": "follow-up reply completed",
+      "pass": true,
+      "detail": "completed"
+    },
+    {
+      "name": "tutor native transcripts never contain Mermaid source",
+      "pass": true
+    },
+    {
+      "name": "restart reopens the same artifacts and messages without inference",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

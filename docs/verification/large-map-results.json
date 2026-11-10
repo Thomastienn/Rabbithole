@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-10T00:29:09.575Z",
+  "seed": 721,
+  "conversations": 200,
+  "turnsPerConversation": 20,
+  "messages": 8000,
+  "baseline": false,
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "logicalCpus": 20,
+    "ramGiB": 15.2,
+    "os": "linux 7.0.0-42-generic x64",
+    "node": "v26.0.0"
+  },
+  "seedMs": 799.2177839999999,
+  "previewQueryMs": 47.423401999999896,
+  "previewBytes": 4876201,
+  "openMs": 2424.0047289999993,
+  "dom": {
+    "elements": 2188,
+    "nodes": 5,
+    "rows": 200,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
+  },
+  "panZoom": {
+    "elapsedMs": 1987.9000000059605,
+    "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
+    "frames": 119,
+    "initialTransform": "translate(80px, 100px) scale(0.35)",
+    "maxMs": 16.800000000000182,
+    "over33Ms": 0,
+    "p50Ms": 16.699999999999818,
+    "p95Ms": 16.800000000000182,
+    "pannedTransform": "translate(-38px, 41px) scale(0.35)"
+  },
+  "foldMs": 350.14629199999945,
+  "unfoldMs": 178.4686980000006,
+  "fit": {
+    "allInside": true,
+    "zoom": "0.2%"
+  },
+  "selectClickMs": 3451.710350000001,
+  "selectMs": 3740.204138000001,
+  "selectUiMs": 194,
+  "selectedBounds": {
+    "bottom": 599.8375244140625,
+    "canvasHeight": 900,
+    "canvasWidth": 928,
+    "left": 718.213623046875,
+    "right": 769.4136352539062,
+    "top": 75
+  },
+  "streamingMs": 523.5057400000005,
+  "chunkRenders": {
+    "ddff17b7-2512-4f89-a500-0e23d5e7e7e9": 13
+  },
+  "chunkRenderReasons": {
+    "ddff17b7-2512-4f89-a500-0e23d5e7e7e9": [
+      "preview"
+    ]
+  }
+}

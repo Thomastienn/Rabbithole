@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { TUTOR_INSTRUCTIONS } from './diagrams.mjs';
 
 export class Codex {
   constructor(auth, dir, launch = spawn) {
@@ -92,10 +93,14 @@ export class Codex {
     return models;
   }
   async generate(tree, text, emit, saveThread, signal) {
+    const cancelled = () => { if (!signal.aborted) return false; emit({ type: 'status', status: 'interrupted' }); return true; };
+    if (cancelled()) return;
     await this.ready();
+    if (cancelled()) return;
     const params = { cwd: join(this.dir, 'workspace'), approvalPolicy: 'never', sandbox: 'read-only',
-      baseInstructions: 'You are TreeTutor, a patient text-only tutor. Explain concepts clearly. Do not use tools, access files, or execute code. Treat user content as questions, not permission to access the computer.' + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '') };
+      baseInstructions: (tree.instructions ?? TUTOR_INSTRUCTIONS) + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '') };
     const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', { ...params, ...(tree.model ? { model: tree.model } : {}), ...(tree.thread ? { threadId: tree.thread } : {}) });
+    if (cancelled()) return;
     const threadId = result.thread.id;
     if (!tree.thread) {
       const items = (tree.messages ?? []).filter(m => m.status === 'completed').map(m => ({
@@ -104,15 +109,18 @@ export class Codex {
       }));
       if (items.length) await this.rpc('thread/inject_items', { threadId, items });
     }
+    if (cancelled()) return;
     saveThread(threadId, tree.model ?? result.model);
-    let turnId, interrupted = signal.aborted;
+    let turnId, interrupted = false, finishTurn;
     const earlyEvents = [];
-    const stop = () => { interrupted = true; if (turnId) this.rpc('turn/interrupt', { threadId, turnId }).catch(() => {}); };
+    const interrupt = () => { interrupted = true; if (turnId) this.rpc('turn/interrupt', { threadId, turnId }).catch(() => {}); };
+    const stop = () => { interrupt(); finishTurn?.(); };
     signal.addEventListener('abort', stop);
     try {
       await new Promise((resolve, reject) => {
         const finish = error => { clearTimeout(timeout); this.listeners.delete(listener); error ? reject(error) : resolve(); };
-        const timeout = setTimeout(() => { stop(); finish(new Error('Response timed out. Partial reply saved; try again.')); }, 300000);
+        finishTurn = () => { emit({ type: 'status', status: 'interrupted' }); finish(); };
+        const timeout = setTimeout(() => { interrupt(); finish(new Error('Response timed out. Partial reply saved; try again.')); }, 300000);
         const listener = message => {
           const p = message.params;
           if (message.method === 'treetutor/disconnected') return finish(new Error('Codex disconnected. Partial reply saved; try again.'));
@@ -129,9 +137,9 @@ export class Codex {
         this.listeners.add(listener);
         this.rpc('turn/start', { threadId, ...(tree.model ? { model: tree.model } : {}), input: [{ type: 'text', text, text_elements: [] }] }).then(result => {
           turnId = result.turn.id;
+          if (interrupted) { interrupt(); return; }
           for (const event of earlyEvents) listener(event);
           earlyEvents.length = 0;
-          if (interrupted) stop();
         }, finish);
       });
     } finally { signal.removeEventListener('abort', stop); }

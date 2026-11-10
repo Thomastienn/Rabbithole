@@ -15,6 +15,12 @@ html { view-transition-name: none; }
 .chat-title { flex: 1; min-width: 0; }
 .chat-title h2 { font-size: var(--font-size-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .passage { position: relative; }
+.diagram-card { min-width: 0; max-width: 100%; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.diagram-card h3 { font-size: var(--font-size-base); }
+.diagram-viewport { max-width: 100%; max-height: 24rem; overflow: auto; overscroll-behavior: contain; }
+.diagram-viewport img { display: block; max-width: none; }
+.diagram-source { max-height: 12rem; overflow: auto; margin: 0; padding: var(--spacing-2); background: var(--color-background-body); color: var(--color-text-primary); font-size: var(--font-size-sm); }
+.diagram-card:focus-visible, .diagram-viewport:focus-visible, .diagram-source:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
 .selection-action { position: absolute; z-index: 3; margin-top: var(--spacing-1); transform: translateX(-50%); animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, var(--spacing-1)); } }
 .branch-form { margin-top: var(--spacing-2); border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); }
@@ -45,8 +51,8 @@ html { view-transition-name: none; }
 .conversation-box button { height: auto; white-space: normal; }
 .node-message[data-role=user] { padding-inline-start: var(--spacing-2); border-inline-start: medium solid var(--color-border-emphasized); }
 .node-message[data-role=assistant] { padding-inline-start: var(--spacing-2); }
-.passage-anchor { position: relative; padding-block-start: var(--spacing-2); padding-inline-end: var(--spacing-2); border-top: thin solid var(--color-border); }
-.passage-anchor .react-flow__handle { right: calc(-1 * var(--spacing-3)); }
+.node-message { position: relative; }
+.node-message .react-flow__handle { right: calc(-1 * var(--spacing-3)); }
 .react-flow__node.selected .conversation-box { border-color: var(--color-text-primary); box-shadow: var(--shadow-med); }
 mark { background: var(--color-background-blue); color: var(--color-text-primary); }
 .react-flow__edge-path { stroke: var(--color-text-secondary); }

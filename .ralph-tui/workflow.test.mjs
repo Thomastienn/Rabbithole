@@ -37,6 +37,7 @@ git('commit', '-qm', 'Fixture open issues');
 const baseline = git('rev-parse', 'HEAD');
 writeFileSync(join(cwd, 'unrelated.txt'), 'pre-existing staged edit\n');
 git('add', 'unrelated.txt');
+writeFileSync(join(cwd, 'unrelated.txt'), 'pre-existing unstaged edit\n');
 mkdirSync(join(cwd, '.ralph-tui'));
 const fakeAgent = join(cwd, 'fake-codex');
 writeFileSync(fakeAgent, `#!/usr/bin/env node
@@ -52,6 +53,12 @@ process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { prompt += chunk; });
 process.stdin.on('end', () => {
   fs.writeFileSync('.ralph-tui/rendered-prompt.txt', prompt);
+  if (count <= 2) {
+    const assert = require('node:assert/strict');
+    assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), ${JSON.stringify(baseline)}, 'Pending edits must not be committed before task completion');
+    assert.equal(execFileSync('git', ['show', ':unrelated.txt'], { encoding: 'utf8' }), 'pre-existing staged edit\\n');
+    assert.equal(fs.readFileSync('unrelated.txt', 'utf8'), 'pre-existing unstaged edit\\n');
+  }
   // The engine runs outside this real Codex sandbox; agent Git writes stay denied.
   execFileSync('codex', ['sandbox', '-c', 'sandbox_mode="workspace-write"', '--',
     'python', '-c', 'from pathlib import Path; Path("task-result.js").write_text(' + JSON.stringify(String(count)) + ')']);
@@ -84,17 +91,11 @@ fullAuto = false
 const ralph = () => spawnSync(process.execPath, [cli, 'run', '--headless', '--no-setup', '--epic', epic, '--iterations', '3', '--no-notify'], {
   cwd, encoding: 'utf8', timeout: 60000,
 });
-if (tracker === 'beads-resume') {
-  // autoCommit uses `git add -A`; a dirty start would credit old work to the first finished task.
-  const dirtyRun = ralph();
-  assert.match(`${dirtyRun.stdout}\n${dirtyRun.stderr}`, /Uncommitted changes/, 'Dirty worktree must stop the run');
-  assert.equal(git('rev-parse', 'HEAD'), baseline, 'Dirty run must not commit');
-  assert.ok(!readdirSync(join(cwd, '.ralph-tui')).includes('iterations'), 'Dirty run must not start an agent');
-}
-git('commit', '-qm', 'Fixture unrelated edit');
 const runBase = git('rev-parse', 'HEAD');
 const run = ralph();
 assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+assert.ok(readdirSync(join(cwd, '.ralph-tui')).includes('iterations'),
+  `Dirty staged/unstaged edits must allow agent work: ${run.stdout}\n${run.stderr}`);
 const logsDir = join(cwd, '.ralph-tui', 'iterations');
 const iterations = readdirSync(logsDir).map(file => {
   const log = readFileSync(join(logsDir, file), 'utf8');
@@ -162,4 +163,4 @@ if (tracker === 'beads-resume') {
   assert.equal(JSON.parse(bd('show', handedOff, '--json'))[0].status, 'in_progress', 'Other workers keep their claims');
   await t2.dispose();
 }
-console.log(`PASS: actual project sandbox starts; dirty start refused; sandboxed agent edits produce two ${autoCommit ? 'engine auto-commits' : 'scoped agent commits'}; continuation, blockers and ownership stay enforced.`);
+console.log(`PASS: actual project sandbox starts; dirty start continues without an early commit; sandboxed agent edits produce two ${autoCommit ? 'engine auto-commits' : 'scoped agent commits'}; continuation, blockers and ownership stay enforced.`);

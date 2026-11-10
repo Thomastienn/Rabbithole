@@ -126,7 +126,12 @@ try {
   step('Expand chat / Show map beside chat toggle by Enter and keep focus on the toggle');
   await press('Escape');
   await wait(`getComputedStyle(document.querySelector('.focused-chat')).display === 'none' && document.activeElement?.closest('.overview') && ${idle}`);
-  step(`Escape returns from chat to the map; focus lands on "${await ev(focusName)}" in the map`);
+  const returnedTo = await ev(focusName);
+  await tabTo(named('Reopen chat'), { back: true }); await press('Enter');
+  await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') && document.querySelector('.tree-workspace').dataset.expanded === 'false' && ${idle}`);
+  await press('Escape');
+  await wait(`getComputedStyle(document.querySelector('.focused-chat')).display === 'none' && ${focusName} === ${JSON.stringify(returnedTo)} && ${idle}`);
+  step(`Escape returns to "${returnedTo}" on the map; Tab/Enter on Reopen chat restores beside mode and composer focus; Escape restores the same box focus`);
 
   // 7. Map: pan, move a box, zoom, fit, fold and bulk actions.
   await tabTo(`e.classList.contains('tree-canvas')`, { back: true });

@@ -20,7 +20,7 @@ last and switches only when that agent stops answering. Ralph 0.12.0's own
 `fallbackAgents` handling is not used: it does not recognise the subscription
 "usage limit" errors, so a limited agent fails every few seconds until the
 iteration limit. If no scheduled agent answers, or a run ends within two
-minutes (limit reached at once, dirty-start guard, crash), it waits
+minutes (limit reached at once, startup failure, crash), it waits
 `RALPH_AFK_WAIT` seconds (default 600) and checks again, which also covers a
 limit that resets while you sleep. A limit reached mid-task ends that run; the
 next agent resumes the same task through `beads-resume`. 

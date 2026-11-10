@@ -18,9 +18,10 @@ const root = store.create('Forest ecology');
 const source = store.message(root.id, 'assistant', 'Roots share nutrients through fungi.', 'completed');
 const child = store.branch(root, { messageId: source, start: 0, end: 5, text: 'Roots', question: 'How do roots share nutrients?' }, 'Synthetic context');
 const nestedSource = store.message(child.id, 'assistant', 'Fungi carry nutrients.', 'completed');
-store.branch(child, { messageId: nestedSource, start: 0, end: 5, text: 'Fungi', question: 'How do fungi help?' }, 'Synthetic nested context');
+const grandchild = store.branch(child, { messageId: nestedSource, start: 0, end: 5, text: 'Fungi', question: 'How do fungi help?' }, 'Synthetic nested context');
 let generations = 0;
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: {
+  models: async () => [{ model: 'fixture', label: 'Fixture', isDefault: true }],
   async generate(tree, text, emit) {
     if (!text.startsWith('Compact only')) {
       generations++;
@@ -37,10 +38,19 @@ try {
   await browser('open', `http://127.0.0.1:${app.server.address().port}`);
   await browser('wait', '[aria-label="Open Forest ecology"]');
   await browser('wait', '--fn', 'document.querySelectorAll(".react-flow__node").length === 3 && document.querySelectorAll(".react-flow__edge").length === 2');
+  await browser('wait', `[data-message="${nestedSource}"] .react-flow__handle`);
+  await check(`document.querySelector('.react-flow__handle[data-source="${child.id}"]').closest('.node-message').dataset.message === '${source}'`);
+  await check(`document.querySelector('.react-flow__handle[data-source="${grandchild.id}"]').closest('.node-message').dataset.message === '${nestedSource}'`);
+  await check('document.querySelectorAll(".passage-anchor").length === 0');
+  await browser('focus', `#reveal-${grandchild.id}`);
+  await browser('press', 'Enter');
+  await browser('wait', '--fn', 'document.activeElement?.tagName === "MARK" && document.activeElement.textContent === "Fungi"');
+  await click('Return to tree');
+  await browser('wait', '--fn', '!document.documentElement.matches(":active-view-transition")');
   await click('Zoom in');
   await browser('eval', 'window.savedViewport = document.querySelector(".react-flow__viewport").getAttribute("style")');
   await click('Open Forest ecology');
-  await browser('wait', '--text', 'Roots share nutrients');
+  await browser('wait', '.focused-chat [aria-label="Your question"]');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Explain nutrient sharing');
   await click('Send');
   await browser('wait', '--text', 'Responding…');
@@ -65,12 +75,13 @@ try {
   await browser('wait', '--text', 'Synthetic response complete');
   await click('Return to tree');
   await browser('wait', '--fn', 'document.querySelectorAll(".react-flow__node").length === 4');
+  await browser('wait', '[aria-label="Map menu"]');
   await click('Map menu');
   await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
   await click('Separate ocean tree');
   await browser('wait', '[aria-label="Open Separate ocean tree"]');
   await check('document.querySelectorAll(".react-flow__node").length === 1 && document.querySelectorAll(".react-flow__edge").length === 0');
-  console.log('PASS: nested overview, viewport/focus return, generation continuity, mobile composer, new branch focus, separate-tree isolation.');
+  console.log('PASS: source-message handles including grandchild, keyboard exact-passage reveal, no bottom passage list, nested overview, viewport/focus return, generation continuity, mobile composer, new branch focus, separate-tree isolation.');
 } finally {
   await browser('close').catch(() => {});
   while (app.active.size) await new Promise(resolve => setTimeout(resolve, 20));

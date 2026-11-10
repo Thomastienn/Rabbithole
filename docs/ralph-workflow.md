@@ -65,7 +65,7 @@ stop gracefully, then terminates remaining child agents and escalates to KILL
 after 5 seconds if necessary. It waits for the old process tree to stop before
 launching the replacement. An interrupted task's own claim is preserved for
 `beads-resume` to recover pending edits; closed/blocked tasks and changed owners
-are left alone. Unrelated dirty work still triggers the tracker's startup guard.
+are left alone. Pending edits do not block the replacement runner.
 
 The replacement starts a fresh session with the requested agent/model. Old
 session metadata and progress are archived under `.ralph-tui/reports/takeover-*`
@@ -169,7 +169,7 @@ video also waits for Mermaid, and Vim waits for the mapping agreement.
 
 Restart an existing Ralph session before using the grouped backlog and prompt;
 a paused session retains its compiled prompt and task display. Preserve pending
-application edits: the existing dirty-start guard still applies. Ralph is
+application edits: pending changes are allowed when the next run starts. Ralph is
 already initialized in this checkout; `ralph-tui init` is for a fresh setup.
 
 ## Local testing and commits
@@ -187,10 +187,10 @@ Ralph's engine commits after the completion signal. `autoCommit = true`
 is enabled at the user's request. The agent must not attempt staging/committing
 or treat read-only Git metadata as an implementation blocker. Ralph's automatic
 commit uses `git add -A`, including pre-existing pending edits; the user chose
-this mode after that behavior was explained. To keep BV history correct, the
-tracker refuses to start a run on uncommitted changes (outside `.beads/` and
-`.ralph-tui/`) unless exactly one unfinished issue is being resumed, which then
-owns them. Commit or stash other work first.
+this mode after that behavior was explained. Pending edits do not block startup
+or trigger a separate commit. When exactly one unfinished issue is ready to
+resume, the tracker selects it first; otherwise normal ready-task selection
+continues. Ralph commits all pending edits after the selected task completes.
 
 Do not add `writable_roots = [".git"]` to `.codex/config.toml`: relative paths
 there resolve against `.codex`, targeting the protected `.codex/.git` path and
@@ -236,9 +236,10 @@ credentials are used:
 PATH="$HOME/.bun/bin:$PATH" bun .ralph-tui/workflow.test.mjs
 ```
 
-It verifies that a dirty start is refused, then three iterations: incomplete
-work, completion of the same issue, then the next dependent issue, and that a
-new run resumes an issue left `in_progress` with leftover edits. It first starts the actual project sandbox using
+It verifies that staged and unstaged edits allow startup without an early commit,
+then three iterations: incomplete work, completion of the same issue, then the
+next dependent issue, and that a new run resumes an issue left `in_progress`
+with leftover edits. It first starts the actual project sandbox using
 the project config loader, catching invalid mounts before any agent work. The
 synthetic agent edits files through the real Codex sandbox; Ralph then creates
 two automatic commits outside it, including all pending changes. This checks the runner contract,

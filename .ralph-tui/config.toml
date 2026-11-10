@@ -7,7 +7,7 @@ maxIterations = 20
 agent = "codex"
 model = "gpt-6.1-sol"
 prompt_template = ".ralph-tui/prompt.hbs"
-subagentTracingDetail = "full"
+subagentTracingDetail = "off"
 
 [agentOptions]
 fullAuto = false

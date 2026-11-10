@@ -78,7 +78,7 @@ while :; do
     claude) scripts/ralph "$epic" --takeover --iterations 1 --agent claude --model "$claude_model" 9>&- ;;
     codex) RALPH_CODEX_MODEL="$codex_model" scripts/ralph-codex "$epic" --takeover --iterations 1 9>&- ;;
   esac || log "Ralph exited with status $?."
-  # A run this short did no work (limit hit at once, dirty-start guard, crash): do not spin.
+  # A run this short did no work (limit hit at once, startup failure, crash): do not spin.
   if (( SECONDS - started < 120 )); then
     log "Run ended within 2 minutes. Checking again in ${wait_s}s."
     sleep "$wait_s"

@@ -12,16 +12,18 @@ import TreeOverview, { type Summary, type Source, type Preview, type MapActions,
 import { withTurn, type Message, type Turn } from './turn';
 import { layoutSaver, type Batch } from './layoutSave';
 import type { Point, Viewport } from './canvas';
+import DiagramCard from './DiagramCard';
+import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 
 type Anchor = { messageId: string; start: number; end: number; text: string };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
-type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null };
+type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[] };
 type Model = { provider: string; model: string; label: string; isDefault: boolean };
 type Providers = Record<string, { label: string; connected: boolean }>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[] };
-const previewText = (text: string) => { const chars = Array.from(text); return chars.slice(0, 512).join('') + (chars.length > 512 ? '…' : ''); };
+const previewText = (text: string) => { const chars = Array.from(text.slice(0, 1026)); return chars.slice(0, 512).join('') + (chars.length > 512 ? '…' : ''); };
 // The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
-const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview => withTurn({ messages: preview }, turn && { user: turn.user && { ...turn.user, text: previewText(turn.user.text) }, reply: turn.reply && { ...turn.reply, text: previewText(turn.reply.text) } }).messages;
+const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview => withTurn({ messages: preview }, turn && { user: turn.user && { ...turn.user, text: previewText(turn.user.text) }, reply: turn.reply && { ...turn.reply, text: previewText(turn.reply.text), ...(turn.artifacts && { artifacts: turn.artifacts.filter(a => a.message === turn.reply!.id).map(({ id, title, status }) => ({ id, title, status })) }) } }).messages;
 
 function Passage({ message, index, onBranch, reveal, selecting, openSelection, closeSelection, formOpen }: { message: Message; index: number; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; formOpen: boolean }) {
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
@@ -106,7 +108,8 @@ export default function ChatPage() {
   }, []);
 
   function changeView(showOverview: boolean, id?: string) {
-    if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // Snapshotting thousands of preview rows stalls large maps; their viewport still animates.
+    if (visibleIds.length > 50 || !document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setOverview(showOverview);
       return;
     }
@@ -174,14 +177,22 @@ export default function ChatPage() {
     if (!response.ok) throw new Error(data.error ?? 'Request failed. Reload and try again.');
     return data;
   }
-  function savePosition(id: string, position: Point) { if (root) markLayout(root, layoutOf(root), { [id]: position }); }
+  function savePositions(positions: Record<string, Point>) { if (root) markLayout(root, layoutOf(root), positions); }
   function saveViewport(viewport: Viewport) {
     const layout = root ? layoutOf(root) : undefined;
     if (layout && JSON.stringify(layout.viewport) !== JSON.stringify(viewport)) markLayout(root!, { ...layout, viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom } });
   }
   async function refresh() {
     const data: State = await api('/api/state');
-    setState({ ...data, trees: withUnsaved(data.trees), active: [...new Set([...data.active, ...turns.current.keys()])] });
+    setState(previous => {
+      const known = new Map(previous?.trees.map(t => [t.id, t]));
+      const trees = withUnsaved(data.trees).map(t => {
+        const old = known.get(t.id);
+        // A status poll must not replace every unchanged node's data during a stream.
+        return old && (Object.keys(t) as (keyof Summary)[]).every(key => key === 'layout' ? JSON.stringify(t.layout) === JSON.stringify(old.layout) : t[key] === old[key]) ? old : t;
+      });
+      return { ...data, trees, active: [...new Set([...data.active, ...turns.current.keys()])] };
+    });
     return data;
   }
   const visibleIds = (() => {
@@ -320,7 +331,8 @@ export default function ChatPage() {
           if (turn.reply && (event.type === 'text' || event.type === 'done')) {
             turn.reply = { ...turn.reply, text: event.text ?? turn.reply.text, status: event.status ?? turn.reply.status };
           }
-          if (event.type === 'saved' || event.type === 'text' || event.type === 'done') {
+          if (event.type === 'artifact' && turn.reply) turn.artifacts = mergeArtifact(turn.artifacts ?? [], event.artifact, id, [turn.reply]);
+          if (event.type === 'saved' || event.type === 'text' || event.type === 'done' || event.type === 'artifact') {
             setTree(t => t?.id === id ? withTurn(t, turn) : t);
             setPreviews(p => ({ ...p, [id]: withLiveTurn(p[id], turn) }));
           }
@@ -399,7 +411,7 @@ export default function ChatPage() {
         <section className="tree-workspace" data-expanded={expanded && !overview}>
         {root && state && <section className="overview" data-chat-open={!overview} aria-label="Learning tree">
           {layoutFailed && <HStack padding={3} gap={2} role="alert"><Text>Map layout not saved. It retries every minute while this tree stays open.</Text><Button label="Retry saving layout" variant="secondary" onClick={() => void saver.current?.flush()} /></HStack>}
-          <TreeOverview toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePosition} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
+          <TreeOverview toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
         </section>}
         <section className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu]')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
@@ -443,6 +455,7 @@ export default function ChatPage() {
                   <HStack gap={2} wrap="wrap"><Button label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" size="sm" isDisabled={branching || !branch.question.trim() || active} /><Button label="Cancel branch" variant="ghost" size="sm" isDisabled={branching} onClick={() => { setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); }} /></HStack>
                   <Text type="supporting" color="secondary">Creates a saved chat with fixed context from this conversation.</Text>
                 </VStack></form>}
+                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => <DiagramCard key={artifact.id} artifact={artifact} />)}
                 {message.status !== 'completed' && <Text type="supporting" role="status">{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
               </ChatMessage>)}
             </ChatMessageList>

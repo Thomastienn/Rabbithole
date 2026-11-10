@@ -1,0 +1,627 @@
+{
+  "issue": "TreeTutor-7t3.22",
+  "createdAt": "2026-11-10T00:42:41.143065+00:00",
+  "result": "PASS",
+  "evidence": "Synthetic providers/content/catalogs; real browser input/layout/focus, HTTP/SSE, SQLite and local process restarts. No native provider inference or switching. All semantic and native acceptance remains TreeTutor-7t3.12.",
+  "branch": "master",
+  "head": "42a12735df2737dc303ff4f3ff688c6fccfe023c",
+  "sourceHashes": {
+    "AGENTS.md": "d2eda6aba047d1691c26d09f5d940a9c8b570bdb1a91f29f599b5b78000b0a3f",
+    "PRD.md": "fe2848f52193d49359295e903b1d6d7b3149ae5733947fd2b631c49fcea9e292",
+    "index.html": "a117be3444d968676ad2c125d4c54d51702abcac919c2e576d55bde1f8974d0a",
+    "package-lock.json": "1b8bf4f20143d6eaefc41290a0b569bee001de847596e8112c03b0b3f40c9bf5",
+    "package.json": "b319a031c91a8abc9e216b4118997d7f9badfeecebea610ab88bafbffbc4d2d9",
+    "scripts/layout-clock.js": "b6e1f1924c83c3c553f8764b7480b28a6328d6671eb7c4c8829922620fba84a2",
+    "scripts/verify-branch-compaction.mjs": "31467850f90714bc510b429036d09ba56a890c5757b0c7de62ab5b7c0bb13bae",
+    "scripts/verify-branch-streaming-live.mjs": "9ba58bfa7bab6e058b457d99b9015a2a447a526a4db29423b4b936817c6e8a7b",
+    "scripts/verify-branch-streaming.mjs": "82ad5c8490f5b881efc624e7b0c385c6bd42befd81f0ebdf9adeba2904989783",
+    "scripts/verify-bulk-folding.mjs": "edd9247bcc5d29613d6a9ad91b7dca77418eab308d470becf1cb00340c1814e8",
+    "scripts/verify-canvas-navigation.mjs": "5db24a251a415a688e4827dd651b9652dde61b72603b4f22249574f8b02b3ded",
+    "scripts/verify-canvas-positions.mjs": "a778676b4afb2393eeb90249fb6c55753e8be098c1b8a41685d8f7df713f10c8",
+    "scripts/verify-chat-expand.mjs": "8d87c6c31617312fb0adc1b640baa5679fb130bdb6d73e3426a641616628f5f1",
+    "scripts/verify-chat-sidebar.mjs": "a91432b18649276165e45741fe67b5f086f109a3c5077723dc1d61455ae244ab",
+    "scripts/verify-codex-history.mjs": "fd8e6ee26f88c172537520e75a4493ac98362d18c304f4eb77758efe11527f5a",
+    "scripts/verify-compact-controls.mjs": "9b7c008e5733fc08a193890c05591145260e64e0b45fb46943d116595335828e",
+    "scripts/verify-first-conversation.mjs": "bada2c6bc2c0e55e65029cbc1f4d9e3754fb62b513ffce30885b0462a3896773",
+    "scripts/verify-keyboard-journey.mjs": "9b8c1bc3d983020f1b146e30634bd3f53dd07d3983c6f70f23a6b93c6cab1fd2",
+    "scripts/verify-large-map.mjs": "28398443f4cfee8509b7ec323e1c5e811390e9152b62365f0f54daf63f59032d",
+    "scripts/verify-layout-restore.mjs": "977912908f1af2c21c3b808d249a4fd6650538102935ea9e671020b60c8e33a6",
+    "scripts/verify-local-delivery.mjs": "dde72266b5ebc4c15b1d382337df88961475ebc75ef64f65af7a1b5d293415cd",
+    "scripts/verify-map-gestures.mjs": "2564eb6d99185598f6b385db389cc2a5db1c094be50c97d1345b01cc58660ea6",
+    "scripts/verify-model-switch.mjs": "3acc7517944e8ee7da37981b214525a9e145bc9cd9a44e1525384757e34969e0",
+    "scripts/verify-node-growth.mjs": "993165e66c367cf358048a3be80766f7d8403a398d17eb4529fcf787826101ed",
+    "scripts/verify-node-previews.mjs": "1e9addc6eb78b0a1de6f528b46af342a88f37ad57bd22a9f8a812ad0de8bfa21",
+    "scripts/verify-passage-selection.mjs": "4e9ca5eeabfb81398bff6f7dae4a72c21abcdf3cc1013ca97f54a4b5e61fc367",
+    "scripts/verify-provider-continuity-live.mjs": "daee93cccafd39e622a585d88995a3172a252fa27ce674e85c89ad70dc5b3057",
+    "scripts/verify-release-journey-live.mjs": "9b024a94dfadd813d674601bb68c5f42cc9897c0abb051d12d1b5e4f4e65bfd7",
+    "scripts/verify-subtree-folding.mjs": "44497755dc8b74b7fb933e66a0d171586f535216e7e802c75d076caac1153bae",
+    "scripts/verify-tree-overview.mjs": "5cf6a40830ca60670f0cd5845ab7fea1b3462760e0bccf12bd0790e03a5bff84",
+    "server/app.mjs": "1d9127f030cd4fe487eddfd96053f6a7d319a614d898642c5485702174bf30a3",
+    "server/auth.mjs": "106e60641fc56a54b390e0a5124cdf9e85a637b3c6225491645b6918c5d8088b",
+    "server/claude.mjs": "7bf6b86c4a99c71c945a88a454afa45bdeaeb035227ee8cdc8b5ae03d1b88591",
+    "server/codex.mjs": "08c25bed538846397447d3e9c999401963ed86930e31010aa7f199d48ced0e02",
+    "server/main.mjs": "b364e50295d23c828f7da44bcd29d4b44554136c270e18f92104afdce0962ff2",
+    "server/store.mjs": "d61af65ff17f4ff26a274e627fcf46f0b1f332c595b32789db1fd2551e37a18a",
+    "src/ChatPage.tsx": "e1eb934f650ad85ace3e19dd7b05507796bb7bf5ba9740c9a57925e6be9f491c",
+    "src/TreeOverview.tsx": "a633f1b2478ccad025261af3798171d8b8803f6ee0185114f240ac47bbe62058",
+    "src/astryx-themes.ts": "f128da7ab71feda23a906f0ce94cee547530395ee12e2cdf5172f68f7a8387e2",
+    "src/canvas.ts": "8eaef4eccf784c4b2935b391d0e3e67d5d6e979c16a5ea21a592d2a97776e57f",
+    "src/layout.ts": "a3de7035dd7d7ee67e623d4f59b6a9edbdf6086e0b9ea64860fa15fe7c6309db",
+    "src/layoutSave.ts": "0cd1b9b52de9c965357603771373ee41b907fb0912b8aa11ceecc8d0f18359f4",
+    "src/main.tsx": "a04f64f89ea4ea856d8e02cc22108b6fcd7082ffec1ff991db9abdab41ce8ddc",
+    "src/turn.ts": "15168b2c1ba32c8642c27a44210f1edcae248201eecf7abaa6509e0a5b6ae250",
+    "src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "test/app.test.mjs": "f31fd78d8254f5c426e2fb26bd1ee2e6c6918d2ee76847090cf9bd01497a99b2",
+    "test/auth.test.mjs": "7a5fb3814a507a5b845f0f3c4a78f427cfa6373bcc108934303c815ca0de853f",
+    "test/branch-lifecycle.test.mjs": "78edc3a4763238304e2f9f140490141f4d654af8db36281d2e63d3428783358e",
+    "test/branch.test.mjs": "d515900e5bc417bd9d91ed1879f49e0be408390be97dc0f09d90924d96d93b71",
+    "test/canvas.test.mjs": "c2f84bd34d65da2688acf12dcac9b04611165d69a60825add79baf26a6ff3ce6",
+    "test/codex.test.mjs": "51a74d90b8ea935544e90de2682ae1ad1b880d2816033429d29c846088a09172",
+    "test/credential-boundary.test.mjs": "8c93a1c5c12fb43c04631502e5147137aeb99988556924eab6a30f1a668100ab",
+    "test/layout-save.test.mjs": "31eb01fa2fb88870314cc6592686e3133281aebdfd95a4731d5fc8ea47fbaddd",
+    "test/layout.test.mjs": "2d626f510af6a06488b332858303768cd0211d0845d7ffeeaa210fa3f8761ee4",
+    "test/model.test.mjs": "f8daccfde1557154de8e0bdfef5d191f8ea72845cb1da1e3463da28ddaca7bdd",
+    "test/preview.test.mjs": "b287df5eb4916821c39d19a0e4062e287b6d269143f1f93b8b814e6b0db45a9d",
+    "test/protocol-fixture.mjs": "83854055b70760c80489e52f029c78110bba0739951ded4497973e02ced2afd0",
+    "test/provider.test.mjs": "2edebb8ea378c7edf9c32063b433f975ab5f57b423e0043c9b7e53d8351e17e2",
+    "test/ralph-afk.test.mjs": "36a99c4b2f1295a2946b7421bd06ea1eb6a1da459733a9906d65ebb7a5f02548",
+    "test/ralph-takeover.test.mjs": "897b3e0db9b2e8ddd8c7e3481df53f5099057e3cc4bdce0b0394c2b43dc79920",
+    "test/turn.test.mjs": "5cbd890a8b4d45f32ed91bba6bca54e2c6bfd2126938e257c160bf965481d6d6",
+    "tsconfig.json": "4e92eb5505482b55b46f1e7c2b075e0b1a620c7483a91d1d48ee86a5acf5c347",
+    "vite.config.ts": "cfd8b63a3b3b4a49a7d7718f36d2c61a709e8b2b4b7383b5fcec77b8f3c635ad"
+  },
+  "fixtureSuiteCompletedAt": "2026-11-10T00:37:24.113836+00:00",
+  "passedFixtures": 18,
+  "fixtures": [
+    {
+      "script": "scripts/verify-branch-streaming.mjs",
+      "code": 0,
+      "seconds": 3.73,
+      "output": "PASS: sibling streams, held stale navigation read, three concurrent conversations across trees, partial/final isolation, no duplicate users, reload.\n",
+      "command": "node scripts/verify-branch-streaming.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-bulk-folding.mjs",
+      "code": 0,
+      "seconds": 2.64,
+      "output": "PASS: bulk folds, keyboard action, collapsed-panel selection, path and descendants, sibling fold, saved content.\n",
+      "command": "node scripts/verify-bulk-folding.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-canvas-navigation.mjs",
+      "code": 0,
+      "seconds": 6.42,
+      "output": "PASS: pan/zoom/fit; keyboard and browser zoom isolation; exact viewport and originating focus return; tree switch/reload; shared-element animation; reduced motion; two simultaneous replies without lost output/focus/draft; mobile controls/composer; viewport saved in the batched layout.\n",
+      "command": "node scripts/verify-canvas-navigation.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-canvas-positions.mjs",
+      "code": 0,
+      "seconds": 9.85,
+      "output": "✓ Screenshot saved to /home/thomas/CodeBase/TreeTutor/.impeccable/review/message-row-initial-desktop.png\n\n✓ Screenshot saved to /home/thomas/CodeBase/TreeTutor/.impeccable/review/canvas-mobile.png\n\n✓ Screenshot saved to /home/thomas/CodeBase/TreeTutor/.impeccable/review/canvas-desktop.png\n\nPASS: five-turn source rows; distinct same-row fan-out; level child placement; grandchild; missing-message midpoint; edge endpoints after keyboard/pointer movement, folding, streaming, reload, SQLite/app restart and resize; exact repeated/emoji passage reveal; collision avoidance; retry; stale anchors rejected.\n",
+      "command": "node scripts/verify-canvas-positions.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-chat-expand.mjs",
+      "code": 0,
+      "seconds": 2.96,
+      "output": "PASS: expand/collapse/back at 1440 and 390, resize with draft and live reply, exact map view restored, focus restored, reduced motion skips transitions (view transitions supported: true).\n",
+      "command": "node scripts/verify-chat-expand.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-chat-sidebar.mjs",
+      "code": 0,
+      "seconds": 2.95,
+      "output": "PASS: desktop sidebar geometry, default navigation, drafts, map pan during reply, late reply isolation, collapse and reopen.\n",
+      "command": "node scripts/verify-chat-sidebar.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-compact-controls.mjs",
+      "code": 0,
+      "seconds": 1.84,
+      "output": "PASS: zoom percentage, fit nodes, collapsed navigation, pointer and keyboard menu, Escape focus restoration, tree navigation.\n",
+      "command": "node scripts/verify-compact-controls.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-first-conversation.mjs",
+      "code": 0,
+      "seconds": 3.04,
+      "output": "PASS: New chat shows one root box with chat open and composer focused, close/reopen and repeat New chat reuse it, reload restores it, failed send keeps draft and saves nothing, retry saves once and titles header, box and sidebar, child visible and opens, saved tree unchanged.\n",
+      "command": "node scripts/verify-first-conversation.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-keyboard-journey.mjs",
+      "code": 0,
+      "output": "ok - New chat (Tab, Enter) creates a root box titled New chat, opens its chat and focuses the composer\nok - Enter sends; the first question titles the root\nok - Select passage in tutor reply 1 (Enter) → read-only text; Home/Arrow/Shift+Arrow select the repeated passage; Tab → Ask about selection; edited question; Create focused chat saves exact offsets 19–30\nok - The same keys create a nested child from the child reply; composer focused in the new chat\nok - IME composition, committed CJK text and Arrow/Home/End/Space/Backspace in the composer never move the map\nok - Model for next reply (Space/Enter) opens the menu; Escape closes only the menu and restores focus to its trigger; Home/ArrowDown/Enter saves Keyboard B for this conversation only\nok - During a reply the model menu is disabled and the turn uses its captured model; Shift+Tab → Stop, Enter interrupts the reply\nok - Expand chat / Show map beside chat toggle by Enter and keep focus on the toggle\nok - Escape returns to \"Open What is sugar?\" on the map; Tab/Enter on Reopen chat restores beside mode and composer focus; Escape restores the same box focus\nok - Tree canvas region: Arrow pans 100px, Shift+Arrow 300px\nok - A focused conversation box moves with Arrow (10px) and Shift+Arrow (100px); the move is announced\nok - Zoom in, Zoom out and Fit tree are toolbar buttons operated with Enter\nok - Collapse/Expand descendants toggle with Enter/Space and keep focus on the toggle\nok - Map menu (Enter, ArrowDown, Enter): Collapse all, Expand all and Keep current branch\nok - Enter on a box title opens its chat with the composer focused; Escape returns focus to that title\nok - Reveal source passage (Enter) focuses the exact highlighted passage; Escape returns to the reveal control\nok - No keyboard trap: 60 Tabs from \"Reveal source passage for Why trade water?\" visited 20 distinct controls; Shift+Tab returns to the start\n{\n  \"result\": \"PASS\",\n  \"provider\": \"synthetic fixture (no live provider)\",\n  \"steps\": [\n    \"New chat (Tab, Enter) creates a root box titled New chat, opens its chat and focuses the composer\",\n    \"Enter sends; the first question titles the root\",\n    \"Select passage in tutor reply 1 (Enter) → read-only text; Home/Arrow/Shift+Arrow select the repeated passage; Tab → Ask about selection; edited question; Create focused chat saves exact offsets 19–30\",\n    \"The same keys create a nested child from the child reply; composer focused in the new chat\",\n    \"IME composition, committed CJK text and Arrow/Home/End/Space/Backspace in the composer never move the map\",\n    \"Model for next reply (Space/Enter) opens the menu; Escape closes only the menu and restores focus to its trigger; Home/ArrowDown/Enter saves Keyboard B for this conversation only\",\n    \"During a reply the model menu is disabled and the turn uses its captured model; Shift+Tab → Stop, Enter interrupts the reply\",\n    \"Expand chat / Show map beside chat toggle by Enter and keep focus on the toggle\",\n    \"Escape returns to \\\"Open What is sugar?\\\" on the map; Tab/Enter on Reopen chat restores beside mode and composer focus; Escape restores the same box focus\",\n    \"Tree canvas region: Arrow pans 100px, Shift+Arrow 300px\",\n    \"A focused conversation box moves with Arrow (10px) and Shift+Arrow (100px); the move is announced\",\n    \"Zoom in, Zoom out and Fit tree are toolbar buttons operated with Enter\",\n    \"Collapse/Expand descendants toggle with Enter/Space and keep focus on the toggle\",\n    \"Map menu (Enter, ArrowDown, Enter): Collapse all, Expand all and Keep current branch\",\n    \"Enter on a box title opens its chat with the composer focused; Escape returns focus to that title\",\n    \"Reveal source passage (Enter) focuses the exact highlighted passage; Escape returns to the reveal control\",\n    \"No keyboard trap: 60 Tabs from \\\"Reveal source passage for Why trade water?\\\" visited 20 distinct controls; Shift+Tab returns to the start\"\n  ]\n}\n",
+      "command": "node scripts/verify-keyboard-journey.mjs",
+      "rerunCompletedAt": "2026-11-10T00:41:36.463097+00:00",
+      "rerunReason": "Added keyboard-only Reopen chat and following Escape focus-return coverage; app code unchanged.",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-large-map.mjs",
+      "code": 0,
+      "seconds": 17.77,
+      "output": "Loaded: {\"openMs\":2715.3369519999997,\"dom\":{\"elements\":2188,\"nodes\":5,\"rows\":200,\"userAgent\":\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36\"}}\n{\n  \"date\": \"2026-11-10T00:36:33.932Z\",\n  \"seed\": 721,\n  \"conversations\": 200,\n  \"turnsPerConversation\": 20,\n  \"messages\": 8000,\n  \"baseline\": false,\n  \"machine\": {\n    \"cpu\": \"12th Gen Intel(R) Core(TM) i7-12700H\",\n    \"logicalCpus\": 20,\n    \"ramGiB\": 15.2,\n    \"os\": \"linux 7.0.0-42-generic x64\",\n    \"node\": \"v26.0.0\"\n  },\n  \"seedMs\": 935.3550700000001,\n  \"previewQueryMs\": 53.84936099999959,\n  \"previewBytes\": 4876201,\n  \"openMs\": 2715.3369519999997,\n  \"dom\": {\n    \"elements\": 2188,\n    \"nodes\": 5,\n    \"rows\": 200,\n    \"userAgent\": \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36\"\n  },\n  \"panZoom\": {\n    \"elapsedMs\": 1976.0999999940395,\n    \"finalTransform\": \"translate(-81.0763px, -5.8771px) scale(0.413347)\",\n    \"frames\": 119,\n    \"initialTransform\": \"translate(80px, 100px) scale(0.35)\",\n    \"maxMs\": 16.800000000000182,\n    \"over33Ms\": 0,\n    \"p50Ms\": 16.699999999999818,\n    \"p95Ms\": 16.799999999999727,\n    \"pannedTransform\": \"translate(-38px, 41px) scale(0.35)\"\n  },\n  \"foldMs\": 356.80916400000024,\n  \"unfoldMs\": 190.21434200000112,\n  \"fit\": {\n    \"allInside\": true,\n    \"zoom\": \"0.2%\"\n  },\n  \"selectClickMs\": 4035.86377,\n  \"selectMs\": 4236.3917,\n  \"selectUiMs\": 246,\n  \"selectedBounds\": {\n    \"bottom\": 599.8375244140625,\n    \"canvasHeight\": 900,\n    \"canvasWidth\": 928,\n    \"left\": 718.213623046875,\n    \"right\": 769.4136352539062,\n    \"top\": 75\n  },\n  \"streamingMs\": 529.348022000002,\n  \"chunkRenders\": {\n    \"e7a16f59-69ee-4364-b7d9-ad862fd227a7\": 13\n  },\n  \"chunkRenderReasons\": {\n    \"e7a16f59-69ee-4364-b7d9-ad862fd227a7\": [\n      \"preview\"\n    ]\n  }\n}\n",
+      "command": "node scripts/verify-large-map.mjs",
+      "details": {
+        "date": "2026-11-10T00:36:33.932Z",
+        "seed": 721,
+        "conversations": 200,
+        "turnsPerConversation": 20,
+        "messages": 8000,
+        "baseline": false,
+        "machine": {
+          "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+          "logicalCpus": 20,
+          "ramGiB": 15.2,
+          "os": "linux 7.0.0-42-generic x64",
+          "node": "v26.0.0"
+        },
+        "seedMs": 935.3550700000001,
+        "previewQueryMs": 53.84936099999959,
+        "previewBytes": 4876201,
+        "openMs": 2715.3369519999997,
+        "dom": {
+          "elements": 2188,
+          "nodes": 5,
+          "rows": 200,
+          "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
+        },
+        "panZoom": {
+          "elapsedMs": 1976.0999999940395,
+          "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
+          "frames": 119,
+          "initialTransform": "translate(80px, 100px) scale(0.35)",
+          "maxMs": 16.800000000000182,
+          "over33Ms": 0,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 16.799999999999727,
+          "pannedTransform": "translate(-38px, 41px) scale(0.35)"
+        },
+        "foldMs": 356.80916400000024,
+        "unfoldMs": 190.21434200000112,
+        "fit": {
+          "allInside": true,
+          "zoom": "0.2%"
+        },
+        "selectClickMs": 4035.86377,
+        "selectMs": 4236.3917,
+        "selectUiMs": 246,
+        "selectedBounds": {
+          "bottom": 599.8375244140625,
+          "canvasHeight": 900,
+          "canvasWidth": 928,
+          "left": 718.213623046875,
+          "right": 769.4136352539062,
+          "top": 75
+        },
+        "streamingMs": 529.348022000002,
+        "chunkRenders": {
+          "e7a16f59-69ee-4364-b7d9-ad862fd227a7": 13
+        },
+        "chunkRenderReasons": {
+          "e7a16f59-69ee-4364-b7d9-ad862fd227a7": [
+            "preview"
+          ]
+        }
+      },
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-layout-restore.mjs",
+      "code": 0,
+      "seconds": 4.96,
+      "output": "PASS: controlled-clock single coalesced write, no idle writes, per-tree fold/selection/panel snapshots, beside and expanded viewport restore after reload, narrow expanded chat, independent trees, legacy/corrupt layout fallback, IDs-only persisted shape, messages unchanged.\n",
+      "command": "node scripts/verify-layout-restore.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-local-delivery.mjs",
+      "code": 0,
+      "seconds": 0.8,
+      "output": "ok - actual main-process listener is loopback only\nok - multiple trees and nested exact anchors, fixed snapshots, positions, folds, selection and expanded/collapsed modes saved\nok - Host, Origin, cross-site, CSRF and content-type boundary rejects; invalid OAuth callback cannot exchange\nok - actual server stop/restart preserves every saved field exactly\nok - HTTP state, conversations, previews, catalog/errors and every built JS/CSS body contain no provider credential patterns\nok - actual local SQLite save exists with private file/directory permissions\n{\"result\":\"PASS\",\"checks\":6}\n",
+      "command": "node scripts/verify-local-delivery.mjs /tmp/treetutor-7t3-22-delivery-baseline.json",
+      "details": {
+        "date": "2026-11-10T00:36:53.108Z",
+        "content": "seeded synthetic fixture; no inference",
+        "checks": [
+          {
+            "name": "actual main-process listener is loopback only",
+            "result": "PASS",
+            "detail": {
+              "pid": 3089008,
+              "command": "node server/main.mjs",
+              "addresses": [
+                "127.0.0.1:36405"
+              ]
+            }
+          },
+          {
+            "name": "multiple trees and nested exact anchors, fixed snapshots, positions, folds, selection and expanded/collapsed modes saved",
+            "result": "PASS",
+            "detail": {
+              "roots": 2,
+              "conversations": 4
+            }
+          },
+          {
+            "name": "Host, Origin, cross-site, CSRF and content-type boundary rejects; invalid OAuth callback cannot exchange",
+            "result": "PASS",
+            "detail": {
+              "rejectedRequests": 8
+            }
+          },
+          {
+            "name": "actual server stop/restart preserves every saved field exactly",
+            "result": "PASS",
+            "detail": {
+              "digest": "d3eaa420f7a6412155bfbda534ba5d13faba0b884fef0cca30a9f3758e943f36",
+              "conversations": 4
+            }
+          },
+          {
+            "name": "HTTP state, conversations, previews, catalog/errors and every built JS/CSS body contain no provider credential patterns",
+            "result": "PASS",
+            "detail": {
+              "responseBodies": 23,
+              "limitation": "Pattern scan of synthetic, signed-out delivery run; live response scan remains in native journey."
+            }
+          },
+          {
+            "name": "actual local SQLite save exists with private file/directory permissions",
+            "result": "PASS",
+            "detail": {
+              "path": "/tmp/treetutor-delivery-a2xVJy/trees.sqlite",
+              "directoryMode": "700",
+              "fileMode": "600",
+              "bytes": 36864
+            }
+          }
+        ],
+        "before": {
+          "pid": 3089008,
+          "command": "node server/main.mjs",
+          "addresses": [
+            "127.0.0.1:36405"
+          ]
+        },
+        "after": {
+          "pid": 3089027,
+          "command": "node server/main.mjs",
+          "addresses": [
+            "127.0.0.1:36405"
+          ]
+        },
+        "saveLocation": {
+          "path": "/tmp/treetutor-delivery-a2xVJy/trees.sqlite",
+          "directoryMode": "700",
+          "fileMode": "600",
+          "bytes": 36864
+        },
+        "result": "PASS"
+      },
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-map-gestures.mjs",
+      "code": 0,
+      "seconds": 3.47,
+      "output": "PASS: cursor-anchored wheel zoom, Ctrl-wheel isolation, background pan, menu isolation, drag without opening, edge/source association, body click, keyboard open and exact source reveal (synthetic fixture).\n",
+      "command": "node scripts/verify-map-gestures.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-node-growth.mjs",
+      "code": 0,
+      "seconds": 3.54,
+      "output": "PASS: growing node pinned; covered subtree shifts; clear neighbours stay; drag defers then resolves; hidden boxes take no space; unfold clears overlaps; one-minute batch and idle; Fit; exact positions after SQLite/HTTP restart; mobile.\n",
+      "command": "node scripts/verify-node-growth.mjs",
+      "details": {
+        "date": "2026-11-10T00:36:57.438Z",
+        "evidence": "Seeded data, synthetic provider, real browser and HTTP/SSE; controlled one-minute timer; SQLite/HTTP app restored in a fresh Node process. No native provider inference.",
+        "stages": {
+          "initial": {
+            "50f6a5b0-4e3a-45ba-bd3b-93d95e1b9877": {
+              "height": 124,
+              "width": 256,
+              "x": 0,
+              "y": 0
+            },
+            "807044c4-01bc-4bb0-b036-77a8bb41e611": {
+              "height": 60,
+              "width": 256,
+              "x": 360,
+              "y": 600
+            },
+            "85c6d137-34b9-4584-aab8-84d67c3b2d96": {
+              "height": 60,
+              "width": 256,
+              "x": 720,
+              "y": 220
+            },
+            "aacb922a-2e6b-4074-86ac-08edf3bdc952": {
+              "height": 60,
+              "width": 256,
+              "x": 270,
+              "y": 100
+            },
+            "f0a47860-327d-4b4a-9404-5b98d6f38147": {
+              "height": 88,
+              "width": 256,
+              "x": 0,
+              "y": 220
+            }
+          },
+          "grown": {
+            "50f6a5b0-4e3a-45ba-bd3b-93d95e1b9877": {
+              "height": 232,
+              "width": 256,
+              "x": 0,
+              "y": 0
+            },
+            "807044c4-01bc-4bb0-b036-77a8bb41e611": {
+              "height": 60,
+              "width": 256,
+              "x": 360,
+              "y": 660
+            },
+            "85c6d137-34b9-4584-aab8-84d67c3b2d96": {
+              "height": 60,
+              "width": 256,
+              "x": 720,
+              "y": 220
+            },
+            "aacb922a-2e6b-4074-86ac-08edf3bdc952": {
+              "height": 60,
+              "width": 256,
+              "x": 270,
+              "y": 100
+            },
+            "f0a47860-327d-4b4a-9404-5b98d6f38147": {
+              "height": 88,
+              "width": 256,
+              "x": 0,
+              "y": 280
+            }
+          },
+          "dragHeld": {
+            "50f6a5b0-4e3a-45ba-bd3b-93d95e1b9877": {
+              "height": 272,
+              "width": 256,
+              "x": 0,
+              "y": 0
+            },
+            "807044c4-01bc-4bb0-b036-77a8bb41e611": {
+              "height": 60,
+              "width": 256,
+              "x": 360,
+              "y": 660
+            },
+            "85c6d137-34b9-4584-aab8-84d67c3b2d96": {
+              "height": 60,
+              "width": 256,
+              "x": 720,
+              "y": 220
+            },
+            "aacb922a-2e6b-4074-86ac-08edf3bdc952": {
+              "height": 60,
+              "width": 256,
+              "x": 270,
+              "y": 100
+            },
+            "f0a47860-327d-4b4a-9404-5b98d6f38147": {
+              "height": 88,
+              "width": 256,
+              "x": 0,
+              "y": 238.75
+            }
+          },
+          "dragReleased": {
+            "50f6a5b0-4e3a-45ba-bd3b-93d95e1b9877": {
+              "height": 272,
+              "width": 256,
+              "x": 0,
+              "y": 0
+            },
+            "807044c4-01bc-4bb0-b036-77a8bb41e611": {
+              "height": 60,
+              "width": 256,
+              "x": 360,
+              "y": 741.25
+            },
+            "85c6d137-34b9-4584-aab8-84d67c3b2d96": {
+              "height": 60,
+              "width": 256,
+              "x": 720,
+              "y": 220
+            },
+            "aacb922a-2e6b-4074-86ac-08edf3bdc952": {
+              "height": 60,
+              "width": 256,
+              "x": 270,
+              "y": 100
+            },
+            "f0a47860-327d-4b4a-9404-5b98d6f38147": {
+              "height": 88,
+              "width": 256,
+              "x": 0,
+              "y": 320
+            }
+          },
+          "unfolded": {
+            "50f6a5b0-4e3a-45ba-bd3b-93d95e1b9877": {
+              "height": 340,
+              "width": 256,
+              "x": 0,
+              "y": 0
+            },
+            "807044c4-01bc-4bb0-b036-77a8bb41e611": {
+              "height": 60,
+              "width": 256,
+              "x": 360,
+              "y": 809.25
+            },
+            "85c6d137-34b9-4584-aab8-84d67c3b2d96": {
+              "height": 60,
+              "width": 256,
+              "x": 720,
+              "y": 220
+            },
+            "aacb922a-2e6b-4074-86ac-08edf3bdc952": {
+              "height": 60,
+              "width": 256,
+              "x": 270,
+              "y": 100
+            },
+            "f0a47860-327d-4b4a-9404-5b98d6f38147": {
+              "height": 88,
+              "width": 256,
+              "x": 0,
+              "y": 388
+            }
+          }
+        },
+        "hiddenPositionsUnchanged": true,
+        "layoutPostsBeforeRestart": 3,
+        "restartPositionsExact": true,
+        "freshServerProcess": true
+      },
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-node-previews.mjs",
+      "code": 0,
+      "seconds": 5.52,
+      "output": "PASS: every message in order with data-message ids, distinct question/answer rows, three-line clamp, no inner scroll; long, short, unanswered, streaming, failed and interrupted rows; active-only polling; exact source, navigation and reload.\n",
+      "command": "node scripts/verify-node-previews.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-passage-selection.mjs",
+      "code": 0,
+      "seconds": 2.35,
+      "output": "PASS: selection-only actions, repeated emoji mouse selection, question editing/cancel/focus, keyboard selection and saved anchor.\n",
+      "command": "node scripts/verify-passage-selection.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-subtree-folding.mjs",
+      "code": 0,
+      "seconds": 2.75,
+      "output": "PASS: nested folds, keyboard and focus, visible edges/fit, saved position, ongoing fixture turn, and new child path reveal.\n",
+      "command": "node scripts/verify-subtree-folding.mjs",
+      "result": "PASS"
+    },
+    {
+      "script": "scripts/verify-tree-overview.mjs",
+      "code": 0,
+      "seconds": 12.67,
+      "output": "PASS: source-message handles including grandchild, keyboard exact-passage reveal, no bottom passage list, nested overview, viewport/focus return, generation continuity, mobile composer, new branch focus, separate-tree isolation.\n",
+      "command": "node scripts/verify-tree-overview.mjs",
+      "result": "PASS"
+    }
+  ],
+  "nativeScriptsExcluded": [
+    {
+      "script": "scripts/verify-branch-compaction.mjs",
+      "owner": "TreeTutor-7t3.12",
+      "reason": "Requires native provider inference/authentication, compaction or provider/model continuity; explicitly outside fixture issue."
+    },
+    {
+      "script": "scripts/verify-branch-streaming-live.mjs",
+      "owner": "TreeTutor-7t3.12",
+      "reason": "Requires native provider inference/authentication, compaction or provider/model continuity; explicitly outside fixture issue."
+    },
+    {
+      "script": "scripts/verify-codex-history.mjs",
+      "owner": "TreeTutor-7t3.12",
+      "reason": "Requires native provider inference/authentication, compaction or provider/model continuity; explicitly outside fixture issue."
+    },
+    {
+      "script": "scripts/verify-model-switch.mjs",
+      "owner": "TreeTutor-7t3.12",
+      "reason": "Requires native provider inference/authentication, compaction or provider/model continuity; explicitly outside fixture issue."
+    },
+    {
+      "script": "scripts/verify-provider-continuity-live.mjs",
+      "owner": "TreeTutor-7t3.12",
+      "reason": "Requires native provider inference/authentication, compaction or provider/model continuity; explicitly outside fixture issue."
+    },
+    {
+      "script": "scripts/verify-release-journey-live.mjs",
+      "owner": "TreeTutor-7t3.12",
+      "reason": "Requires native provider inference/authentication, compaction or provider/model continuity; explicitly outside fixture issue."
+    }
+  ],
+  "qualityGates": [
+    {
+      "command": "npm test",
+      "result": "PASS",
+      "code": 0,
+      "completedAt": "2026-11-10T00:39:17.489107+00:00",
+      "output": "\n> treetutor@0.1.0 test\n> node --test test/*.test.mjs\n\n✔ two trees stream independent replies, preserve originals, resume saved thread after restart (228.077148ms)\n✔ provider failure preserves partial text and history, allows next request (121.150594ms)\n✔ restart marks persisted unfinished replies interrupted (64.517484ms)\n✔ rejects foreign origins, Host rebinding, missing CSRF, malformed JSON and unknown trees (63.960296ms)\n✔ concurrent trees remain usable; stop targets only one active tree (100.964682ms)\n✔ UTF-8 split across HTTP chunks preserves original text; malformed JSON rejects (79.927756ms)\n✔ New chat opens one unstarted root that titles itself from its first question; rejected and concurrent sends add nothing (86.948542ms)\n✔ OAuth uses fresh state/PKCE/nonce, stable host, issued client and protected storage (8.528747ms)\n✔ rejects missing/reused/expired/declined/mismatched-client callbacks before exchange (3.820243ms)\n✔ serializes token refresh, persists rotating tokens, never enables inference without plan scope (2.514579ms)\n✔ stop freezes only its branch; stale callbacks cannot alter a stopped or newer turn (187.837382ms)\n✔ one failed branch preserves partial history while sibling completes and both retry (175.681ms)\n✔ shutdown freezes two active branch checkpoints before storage closes; restart never replays (135.073953ms)\n✔ process crash during two branch turns recovers persisted partials without inference replay (283.744181ms)\n✔ sibling branches interleave independent saved turns while another tree submits (276.117858ms)\n✔ branch validates exact UTF-16 anchors, saves atomically, inherits model and stays isolated after reopen (110.888132ms)\n✔ recursive branches compact fixed ancestor context without reading live ancestors or descendants (280.922687ms)\n✔ saved overview metadata preserves nested passage connections without transcripts or inherited context (54.425859ms)\n✔ saved viewport accepts exact coordinates and rejects corrupt or unsupported views (4.24669ms)\n✔ placement skips occupied rectangles without changing existing positions (0.609241ms)\n✔ message-row placement keeps the source height when free and clears branches already beside that row (0.291458ms)\n✔ growth shifts covered subtrees by the overlap and clearance, cascading only where covered (1.082724ms)\n✔ hidden boxes take no space; revealing reconciles overlaps with boxes above or below (0.597432ms)\n✔ a descendant colliding after a shift carries its already-moving subtree with it (0.2824ms)\n✔ interleaved moving subtrees settle in a stable order without chasing each other (0.337624ms)\n✔ growing boxes and dragged boxes never move, including inside a covered subtree (0.412238ms)\n✔ clear neighbours keep their manual spacing and equal-height collisions keep the growing node pinned (0.37103ms)\n✔ growth positions use the coalesced layout route, persist across SQLite restart, and leave idle layout clean (163.360385ms)\n✔ positions migrate, save during streaming, reject invalid coordinates and survive restart with anchors intact (95.548006ms)\n✔ model catalog follows pagination, excludes hidden and non-text entries; changed model resumes same history (165.154482ms)\n✔ child pins inherited model and supplies fixed context on new and resumed threads (127.312826ms)\n✔ stdio stream routes by thread, final item replaces partial, saved thread resumes (122.808048ms)\n✔ failed terminal turn and process exit reject rather than report success (200.883526ms)\n✔ fresh threads import completed role history once before current question (114.422017ms)\n✔ failed history import does not save incomplete thread or start inference (117.998251ms)\n✔ credential-bearing auth keeps tokens out of browser state, catalog, replies and reconnect URL (205.550091ms)\n✔ many interactions within a minute coalesce into one batch per root; idle writes nothing (5.850032ms)\n✔ storage failure stays visible, keeps changes and retries next minute without a tight loop (2.594613ms)\n✔ remount disposes the old timer, so a new saver never doubles writes (0.346713ms)\n✔ layout snapshots stay per tree, hold only IDs and survive restart; legacy trees still open (225.496465ms)\n✔ saved model changes preserve thread, transcript, fixed context and independent parent/child choices after restart (262.2319ms)\n✔ unsupported selections and catalog failures keep prior model and all saved content (89.219154ms)\n✔ active turn keeps captured model; selection validation serializes with messages and competing changes (80.094116ms)\n✔ catalog entry without access fails visibly, restores working selection after restart and permits retry (120.875228ms)\n✔ existing saved models survive working-model migration (61.203898ms)\n✔ previews list every message in order, bound each text and survive reload without copies (94.822245ms)\n✔ Claude CLI: fresh session receives saved history once, resume does not, no API key leaks (12.59379ms)\n✔ Claude CLI: error result fails visibly with the CLI reason (5.421467ms)\n✔ Claude CLI: signed-out run saves no session or notice; lost resumed session is dropped for a fresh retry (12.004945ms)\n✔ switching providers keeps history, starts a fresh session, children inherit, failure rolls back (284.029484ms)\n✔ a limited Claude hands the task to Codex, which keeps the next task after Claude resets (496.381871ms)\n✔ with every agent limited it waits, then starts once usage is back (279.768389ms)\n✔ the schedule picks the agent for the hour and runs nothing outside its windows (307.08553ms)\n✔ when an epic runs out of work it moves to the next one that has some (366.808399ms)\n✔ scheduled takeover stops the old Ralph and orphan agent before launching Claude (915.706335ms)\n✔ Codex wrapper accepts takeover before the optional epic and keeps model override (196.559851ms)\n✔ stale locks do not prevent an unattended takeover (188.150777ms)\n✔ a lock pointing to an unrelated process is refused without starting or killing it (112.683158ms)\n✔ takeover preserves a task completed during shutdown (656.153156ms)\n✔ ordinary launches keep existing arguments (102.890294ms)\n✔ shutdown ownership changes are preserved (671.717719ms)\n✔ help and an unsafe force combination do not stop a running session (194.550177ms)\n✔ a hung Ralph is killed automatically before replacement starts (35552.630508ms)\n✔ navigation reconciles stale saved checkpoints with latest owning turn without duplicates (2.736395ms)\nℹ tests 64\nℹ suites 0\nℹ pass 64\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 38851.723654\n"
+    },
+    {
+      "command": "npm run build",
+      "result": "PASS",
+      "code": 0,
+      "completedAt": "2026-11-10T00:38:43.324610+00:00",
+      "output": "\n> treetutor@0.1.0 build\n> tsc --noEmit && vite build\n\nvite v7.3.7 building client environment for production...\ntransforming...\n✓ 2860 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                                            0.35 kB │ gzip:   0.26 kB\ndist/assets/figtree-latin-ext-400-normal-CXAzuTZb.woff2    6.19 kB\ndist/assets/figtree-latin-ext-400-normal-Gbh-3PTk.woff     8.34 kB\ndist/assets/figtree-latin-400-normal-g7Dtegnw.woff2       11.38 kB\ndist/assets/figtree-latin-400-normal-BD4aNku5.woff        15.04 kB\ndist/assets/index-B0p7c9OV.css                           285.06 kB │ gzip:  46.55 kB\ndist/assets/Tooltip-yN96cxd6.js                            2.01 kB │ gzip:   0.92 kB\ndist/assets/ItemSwipeLayer-z2u2pUDl.js                     9.01 kB │ gzip:   3.57 kB\ndist/assets/MenuBottomSheetActionList-DWyDDqpw.js         12.46 kB │ gzip:   5.69 kB\ndist/assets/MenuBottomSheet-jAP4piP8.js                  139.58 kB │ gzip:  46.49 kB\ndist/assets/index-CwH_VWSf.js                            899.33 kB │ gzip: 285.99 kB\n\n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n✓ built in 2.87s\n"
+    },
+    {
+      "command": "npx astryx doctor --built dist",
+      "result": "PASS",
+      "code": 0,
+      "completedAt": "2026-11-10T00:41:07.394685+00:00",
+      "output": "astryx doctor - diagnosing your setup\n\nid:      node-version\nstatus:  [ok]\nlabel:   Node.js version\nmessage: Node v26.0.0 meets the minimum (>=22.13.0).\n\nid:      core-installed\nstatus:  [ok]\nlabel:   @astryxdesign/core installed\nmessage: @astryxdesign/core resolved (v0.7.11).\n\nid:      version-alignment\nstatus:  [ok]\nlabel:   @astryxdesign/core <-> @astryxdesign/cli alignment\nmessage: @astryxdesign/core v0.7.11 is in step with @astryxdesign/cli v0.7.11.\n\nid:      themes\nstatus:  [warn]\nlabel:   Theme packages\nmessage: One theme check needs attention: theme-fonts.\nfix:     Follow the fix on the theme-fonts check.\n\nid:      theme-owners\nstatus:  [ok]\nlabel:   Theme owners and built imports\nmessage: 1 added theme resolve to built modules and stylesheets, and every built module loads.\n\nid:      theme-module\nstatus:  [ok]\nlabel:   Generated theme module\nmessage: src/astryx-themes.ts has the generated marker and exactly matches its record.\n\nid:      theme-module-import\nstatus:  [ok]\nlabel:   App imports the theme module\nmessage: Project source imports src/astryx-themes.ts.\n\nid:      theme-stylesheet-imports\nstatus:  [ok]\nlabel:   Built theme stylesheet imports\nmessage: Every added built module import is paired with its stylesheet import.\n\nid:      theme-local-builds\nstatus:  [ok]\nlabel:   Local theme build freshness\nmessage: No added local themes need a freshness check.\n\nid:      theme-private-variables\nstatus:  [ok]\nlabel:   Private theme variables\nmessage: No added theme input sets a private --_* variable directly.\n\nid:      theme-core-peers\nstatus:  [ok]\nlabel:   Theme Core peer compatibility\nmessage: Every added package theme accepts the installed @astryxdesign/core version.\n\nid:      theme-default\nstatus:  [ok]\nlabel:   Default added theme\nmessage: Default theme \"neutral\" is added.\n\nid:      theme-fonts\nstatus:  [warn]\nlabel:   Theme font loading\nmessage: External font imports prevent proof for neutral: Figtree.\nfix:     Confirm the font service stylesheet loads each named family.\n\nid:      theme-global-rules\nstatus:  [ok]\nlabel:   Cross-theme global CSS rules\nmessage: No added themes write different rules for the same selector outside their own scope.\n\nid:      config\nstatus:  [info]\nlabel:   astryx.config.mjs\nmessage: No astryx.config.mjs found - using defaults.\n\nid:      implicit-integrations\nstatus:  [info]\nlabel:   Implicitly linked integrations\nmessage: None - no installed dependency ships an astryx.integration.* manifest.\n\nid:      configured-integrations\nstatus:  [info]\nlabel:   Configured integrations\nmessage: No integration is named in astryx.config.\n\nid:      provider-identity\nstatus:  [info]\nlabel:   Integration provider identity\nmessage: None - no loaded integration has a provider identity.\n\nid:      integration-issues\nstatus:  [info]\nlabel:   Integration contributions\nmessage: No integration is loaded, so there are no integration contributions to check.\n\nid:      agent-docs\nstatus:  [ok]\nlabel:   AI agent docs\nmessage: Astryx agent docs section present in AGENTS.md.\n\nid:      peer-deps\nstatus:  [ok]\nlabel:   @astryxdesign/core peer dependencies\nmessage: All peer dependencies satisfied (@stylexjs/stylex, react, react-dom).\n\nid:      package-manager\nstatus:  [info]\nlabel:   Package manager\nmessage: Detected package manager: npm.\n\nid:      cli-command\nstatus:  [info]\nlabel:   CLI command\nmessage: No loaded integration declares a cliCommand, so printed commands start with `npx astryx`.\n\nid:      newest-release\nstatus:  [info]\nlabel:   Newest release\nmessage: No newer release is known: the newest is 0.7.11. Last update notice skipped 2026-11-09T23:52:28.564Z (project): no newer release was known.\n\nid:      cli-on-path\nstatus:  [ok]\nlabel:   `astryx` on the search path\nmessage: `astryx` runs /home/thomas/CodeBase/TreeTutor/node_modules/.bin/astryx (CLI 0.7.11). Later on the search path: /home/linuxbrew/.linuxbrew/bin/astryx (CLI 0.7.11).\n\nid:      computer-integrations\nstatus:  [info]\nlabel:   Integrations installed for this computer\nmessage: No integration installed for this computer is missing from this project.\n\nid:      authoring-docs\nstatus:  [ok]\nlabel:   Authoring docs\nmessage: All 19 authoring schemas are readable in `npx astryx docs authoring/field-reference`.\n\nid:      cli-docs\nstatus:  [ok]\nlabel:   CLI docs\nmessage: All 101 CLI docs are readable: 82 in the `npx astryx docs cli` tree and 19 in `npx astryx docs authoring/field-reference`.\n\nid:      docs-tree\nstatus:  [ok]\nlabel:   Docs tree\nmessage: The docs tree has 201 docs in 32 sections (13 at the top), each at one route.\n\nid:      docs-progressive-disclosure\nstatus:  [ok]\nlabel:   Documentation navigation and size\nmessage: 119 topics: every section index and section fits in one 32 KB read.\n\nid:      built-astryx-usage\nstatus:  [ok]\nlabel:   Built output uses Astryx\nmessage: Read 0 source files and 7 built files: Astryx styles in assets/index-B0p7c9OV.css, assets/index-CwH_VWSf.js, assets/MenuBottomSheet-jAP4piP8.js.\n\nid:      built-astryx-purity\nstatus:  [info]\nlabel:   Source uses Astryx well\nmessage: Not inspected: 0 source files under dist and no JSX read among them, so components, icons and styles were not checked. A bundle or other build output is not source.\nfix:     Run `npx astryx doctor --built <project folder>` on the folder that holds the page's source.\n\nsummary\n\npass: 20\nwarn: 2\nfail: 0\ninfo: 10\n\nNo failures - but review the [warn] warnings above when you can.\n"
+    },
+    {
+      "command": "node --test test/credential-boundary.test.mjs",
+      "result": "PASS",
+      "code": 0,
+      "completedAt": "2026-11-10T00:38:38.897545+00:00",
+      "output": "✔ credential-bearing auth keeps tokens out of browser state, catalog, replies and reconnect URL (196.821099ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 394.282249\n"
+    },
+    {
+      "command": "git diff --check (via rtk)",
+      "result": "PASS",
+      "code": 0,
+      "output": ""
+    }
+  ],
+  "visualReview": {
+    "captures": [
+      ".impeccable/review/node-growth-desktop.png",
+      ".impeccable/review/node-growth-mobile.png"
+    ],
+    "observation": "Full transcript rows, source-message branch lines, separated growth-shifted boxes and compact controls inspected at desktop and narrow viewports.",
+    "limit": "Headless Chromium viewport emulation; no physical touch or real IME."
+  },
+  "workspacePreservation": {
+    "preexistingFiles": 23,
+    "unchangedPreexistingFiles": 22,
+    "intentionallyRefreshedEvidence": [
+      "docs/verification/message-row-branches-results.json"
+    ],
+    "productEditsThisIssue": false,
+    "staged": false,
+    "committed": false,
+    "remoteOperations": false,
+    "checkpoint": "Hashes checked before the required issue-close/export; .beads/issues.jsonl will then receive the authorized tracker update."
+  },
+  "limitations": [
+    "Criteria 2/7, all semantic evaluation, real authentication, native concurrency/session isolation, switching, session recall and authenticated/native response scanning are TreeTutor-7t3.12 work.",
+    "Only the one-minute layout callbacks are controlled in browser checks; elapsed 59,999/60,000ms boundary is separately tested by test/layout-save.test.mjs.",
+    "Astryx has two existing font-proof warnings; built Figtree assets are self-hosted. Existing bundle-size advisory remains.",
+    "Large-map normal/culling path ran; optional unculling control was retained from prerequisite evidence, not rerun."
+  ]
+}

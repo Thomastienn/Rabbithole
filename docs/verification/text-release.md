@@ -1,256 +1,232 @@
 # Text release acceptance matrix
 
-Issue: **TreeTutor-7t3.12**. Date: **2026-11-09**. **PASS: all ten current PRD criteria.**
+Release issues: **TreeTutor-7t3 / TreeTutor-7t3.12**. Final verification:
+**2026-11-09 America/Edmonton (2026-11-10 UTC)** on `master`, HEAD `42a1273`
+plus the existing workspace changes. **All ten current PRD criteria PASS.**
+Ralph owns the pending local commit; the agent has not staged or committed.
 
-Verified on `master`, HEAD `b2f952b` plus the pending release fixes and verification
-artifacts. Ralph owns staging and the local commit. No remote operations.
-Claude remains the default; Codex and switching in both directions remain supported.
-Media, automatic suggestions and Vim remain later increments.
+The clarified workspace is covered by a fresh **13/13 native Codex journey**,
+the matching-source **18/18 provider-free scenarios**, and the reviewed native
+Claude/Codex continuity evidence from TreeTutor-7t3.9. The
+[final verification record](text-release-current-checks.json) identifies every
+source, its date and its limits. The latest Claude attempt hit the five-hour
+quota at its first reply; it remains a **FAIL**, not a new Claude acceptance pass.
+Shared checks used working Codex, as the release verification order permits.
 
 ## Evidence boundaries
 
-- **Fresh native shared journey:** [12 passing checks](release-journey-final-results.json),
-  starting 20:40:48Z, using app-owned ChatGPT consent and the real Codex app-server,
-  `gpt-6.1-sol`. Browser interactions plus real HTTP requests; no provider fixtures.
-- **Fresh browser interactions:** [11 passing scenarios](text-release-final-checks.json),
-  including the 17-step keyboard path. These use synthetic providers so interaction
-  checks are deterministic; they do not prove model semantics or authentication.
-- **Named-provider acceptance:** [TreeTutor-7t3.9 native results](provider-continuity-results.json)
-  and [review](claude-history.md#live-provider-continuity-treetutor-7t39-2026-11-09t18521854z),
-  observed 18:52–18:54Z. This is retained live evidence for Claude default, native
-  authentication, history, independent sessions and nested switching in both directions.
-  It was reconciled here, not rerun or replaced with the single-provider journey.
-- **Fresh main-entry delivery:** [six passing checks](local-delivery-final-results.json),
-  real `node server/main.mjs`, seeded synthetic content without inference.
+- **Fresh native Codex:** [13 checks](text-release-current-native-codex.json),
+  started 2026-11-10T00:48:03Z. App-owned ChatGPT consent through the real Codex
+  app-server, isolated synthetic learning trees and native sessions. Covers the
+  current New chat flow, native recursive compaction/replies, overlap with active
+  navigation, actual server restart, every saved field, concurrent semantic
+  recall, nested model change and 54 collected HTTP/asset response bodies.
+- **Matching-source fixtures:** [18 scenarios](text-release-fixture-checks.json),
+  completed 00:37Z; the strengthened keyboard scenario passed again at 00:41Z.
+  All **63 recorded source hashes match** this release workspace. Synthetic
+  content/providers/catalogs; real browser input, layout, focus, HTTP/SSE, SQLite
+  and process restarts. These are interaction and transport evidence, not native
+  inference. The fixture report is preserved unchanged.
+- **Reviewed native provider-specific evidence:** the
+  [both-provider report](provider-continuity-results.json), 2026-11-09 18:52–18:54Z,
+  and [its review](claude-history.md#live-provider-continuity-treetutor-7t39-2026-11-09t18521854z)
+  supply Claude-default/native-login/history/resume/session isolation and nested
+  Claude→Codex→Claude→Codex continuation after restart. Both provider adapters
+  are byte-identical to their successful `59fe6e6` version. Model-switch,
+  compaction, history-import and branch-generation routes are also unchanged;
+  subsequent app/store changes concern New chat, previews and layout. The
+  current Codex run verifies those revised shared behaviors. This reconciliation
+  does not assert a fresh successful Claude turn or switch today.
+- **Fresh local delivery:** [6 checks](text-release-current-delivery.json) against
+  actual `node server/main.mjs` processes, isolated seeded storage and signed-out
+  providers. Includes loopback ownership, exact restart, storage permissions,
+  boundary rejections and 23 collected response bodies.
+- **Fresh quality gates:** full `npm test` PASS (same 64-test suite), TypeScript/
+  Vite build PASS, Astryx doctor **20 pass / 2 existing font warnings / 0 fail**,
+  Impeccable detector `[]` and `git diff --check` PASS. Integration includes
+  credential canaries, lifecycle/error isolation and one-minute save scheduling.
 
-## All ten current PRD criteria
+## Current PRD criteria
 
-| PRD criterion | Result | Actions, observations and evidence |
+| PRD criterion | Result | Evidence and observed behavior |
 | --- | --- | --- |
-| 1. Branching | PASS | Fresh native tournament root → child → grandchild produced real replies and exact source anchors without changing parent history. [Native results](release-journey-final-results.json). Mouse highlighting of repeated/emoji text, question editing, connected placement, immediate child focus and recursive keyboard branching passed in the [browser scenarios](text-release-final-checks.json): passage-selection, keyboard-journey, subtree-folding. |
-| 2. Context | PASS | Both fresh native summaries were reviewed against original source, learner question and ancestor context. Child retained the eight-input tournament, smaller-winner rule and seven comparisons; nested summary retained the elimination argument and ancestor's 4+2+1 comparisons. No unsupported or contradictory facts found. Later root messages left child/grandchild anchors and snapshots identical; child messages never entered root history. After restart the grandchild recalled its entire exact selected passage. [Native results](release-journey-final-results.json); [earlier Peterson/ancestor evaluation](branch-compaction-live.md). |
-| 3. Navigation | PASS | Cursor-centered wheel zoom, empty-space pan, node drag without opening, source/edge association and click-to-switch one panel passed. Map remained interactive beside chat; expanded return restored exact viewport/focus; narrow chat returned to map. Motion-enabled transitions and reduced motion both passed at 1440×900 and 390×844. [Browser results](text-release-final-checks.json): map-gestures, chat-sidebar, chat-expand. Fresh native run also navigated while replies were active and restored the expanded workspace after restart. |
-| 4. Keyboard | PASS | Fresh 17-step keyboard-only journey covered tree creation, first send, exact repeated selection, recursion, question editing, model menu, stop, expand/return, canvas pan, box movement, zoom/fit, individual/bulk folds and source reveal. Focus rings and a 60-Tab cycle passed. [Results](text-release-final-checks.json), [bindings](keyboard-journey.md). Actual keyboard Claude→Codex selection during another native reply is retained in [provider evidence](claude-history.md#live-provider-continuity-treetutor-7t39-2026-11-09t18521854z). |
-| 5. Persistence | PASS | Two roots/four conversations and ten original messages compared exactly across two real native HTTP server processes. Messages, exact anchors, frozen context, positions, viewport, folds, selection, expanded panel, provider/model/session all matched; digest `0d8471c6e56a`. Browser restored selection/fold/panel/viewport; resumed root recalled AMBER-HERON-42 and nested child recalled its source. [Native results](release-journey-final-results.json). Controlled-clock checks proved no pre-minute write, one batch per changed root, no idle writes, independent trees and compact ID-only layout without message copies. [Browser results](text-release-final-checks.json): layout-restore. |
-| 6. Concurrency | PASS | Tournament and heap requests overlapped; browser opened another conversation while a native reply was still active; replies saved to distinct owners. Root and grandchild also recalled their own context concurrently after restart. [Native results](release-journey-final-results.json). Fixtures cover held replies, folding without cancellation, failure/stop isolation and crash recovery. Retained [both-provider evidence](provider-continuity-results.json) includes two distinct Claude sessions, one cancelled while its peer completed. |
-| 7. Provider continuity | PASS, retained native named-provider evidence | TreeTutor-7t3.9 proved Claude-default roots; Claude child/grandchild inheritance, authentication/resume, independent sessions and cancellation/retry; nested Claude→Codex and Codex→Claude switches; saved history and inherited facts after real process restart; Codex model change `gpt-6.1-sol`→`gpt-6-astra`; a fresh Codex thread recalled a Claude-only fact. An active root rejected a switch with 409 and stayed on its own provider/session. Auth-loss failure preserved history and restored the working provider/model/session. [Actual results](provider-continuity-results.json), [review](claude-history.md#live-provider-continuity-treetutor-7t39-2026-11-09t18521854z). Fresh shared journey separately confirmed catalog default `claude`, Codex native authentication and saved-session recall. |
-| 8. Local delivery | PASS | Both native processes owned only `127.0.0.1:41467`; main-entry processes separately owned only `127.0.0.1:43033`. Old ports refused connections between stop and restart. Local SQLite paths and private modes were observed. [Native results](release-journey-final-results.json), [delivery results](local-delivery-final-results.json). The native scan checked 51 collected bodies, including authenticated conversation streams/state/previews/catalog/reconnect and served assets; no credential patterns found. Credential-canary HTTP integration passed. Host/Origin/cross-site/CSRF/content-type and invalid callback rejection passed. Inference still uses remote providers. |
-| 9. Compact map | PASS | Collapsed navigation, minus/percentage/plus/fit and menu, title/activity/fold controls, two-line question/answer previews with ellipses, individual folds and expand/collapse all passed. Keep-current preserved root path and current descendants while folding side branches, including with chat collapsed. Folding preserved content and ongoing replies. [Browser results](text-release-final-checks.json): compact-controls, node-previews, subtree-folding, bulk-folding. |
-| 10. Compact chat and empty start | PASS | Fresh native tree began with zero boxes and Start conversation; its first sent question created the root. Fixtures verified close/reopen before sending, rejected send retaining draft, exactly one root on retry, compact icon model menu, selection-only passage actions and keyboard access, and new child reveal/open under a folded parent. [Native results](release-journey-final-results.json), [browser results](text-release-final-checks.json): first-conversation, passage-selection, subtree-folding. |
+| 1. Branching | **PASS** | Mouse and keyboard exact UTF-16 passage selection, recursive creation and immediate composer focus pass in the [fixtures](text-release-fixture-checks.json). [70 geometry samples](message-row-branches-results.json) prove right-side, source-row attachment through growth, movement, folding and reopen. The [current Codex journey](text-release-current-native-codex.json) creates root → child → grandchild from exact saved passages with native compaction and replies. |
+| 2. Context | **PASS** | Both new Codex summaries were reviewed against full parent/source and inherited context (review below). Exact passage/question and original histories are retained; later parent messages leave both snapshots byte-identical, including after restart. Root recalls its codename while the saved grandchild recalls its full selected passage concurrently. [Current native results](text-release-current-native-codex.json), [native compaction review](branch-compaction-live.md), [native parent/session isolation](provider-continuity-results.json). |
+| 3. Navigation | **PASS** | Real pointer pan, cursor-centered wheel zoom, safe node drag/click and single beside-map panel pass; map remains interactive during a reply. Expanded return restores viewport/focus, narrow chat returns to map, actual View Transitions and reduced motion pass. [Fixtures](text-release-fixture-checks.json): map-gestures, canvas-navigation, canvas-positions, chat-sidebar, chat-expand. The [native journey](text-release-current-native-codex.json) also navigates during overlapping responses and restores browser layout after actual restart. |
+| 4. Keyboard | **PASS** | The [17-step keyboard journey](keyboard-journey.md) covers New chat, self-title, text selection, recursive branches, editing, model menu, stop, three panel modes, pan, node moves, zoom/fit, subtree/bulk folds and exact-source reveal; visible focus and a 60-Tab cycle pass. Those fixtures prove interaction. The [native continuity report](provider-continuity-results.json) separately verifies Space/arrows/Enter provider-menu switching of a grandchild while another native conversation responds. |
+| 5. Persistence | **PASS** | [Current native restart](text-release-current-native-codex.json): two roots/four conversations, ten original messages and all anchors, frozen snapshots, positions, viewport, folds, selection, expanded panel, provider/model/session compare exactly across actual HTTP process restart; browser state also matches. [Controlled-clock fixtures](text-release-fixture-checks.json) prove one write per dirty root/minute, zero idle writes, compact current layout and exact manual/growth-shifted positions. Both saved native sessions recall context after restart. |
+| 6. Concurrency | **PASS** | Two native Codex conversations are active simultaneously while the browser opens a child; replies save to their owners. Post-restart root/grandchild recall also runs concurrently. [Current native results](text-release-current-native-codex.json). [Codex isolation](codex-history.md) and [both-provider results](provider-continuity-results.json) record distinct native sessions, own-fact recall, stop with a peer still active and resume; current integration/fixtures cover failure, stale callbacks and crash recovery. |
+| 7. Provider continuity | **PASS** | The product still defaults new trees to Claude; today’s Claude attempt reaches that default flow but fails quota. Required native Claude authentication, same-session resume, independent/cancelled sessions, nested Claude→Codex transfer and post-restart Codex→Claude→Codex transfer with prior/inherited facts are explicit in the [retained native report](provider-continuity-results.json) and [review](claude-history.md#live-provider-continuity-treetutor-7t39-2026-11-09t18521854z). The [current Codex run](text-release-current-native-codex.json) additionally changes saved grandchild gpt-6.1-sol → gpt-6-astra, resumes the same session and recalls the exact inherited passage without changing the parent model. No API-key fallback. |
+| 8. Local delivery | **PASS** | Actual native PIDs 3115215 → 3116512 own only 127.0.0.1:35765; SQLite is local mode 0600. The [native report](text-release-current-native-codex.json) scans 54 collected authenticated/native/asset bodies. Main-entry PIDs 3117523 → 3118011 independently own only 127.0.0.1:39569, compare every seeded field exactly after restart, and pass eight boundary rejections plus a 23-body signed-out scan. [Delivery report](text-release-current-delivery.json). Credential-canary integration also passes. |
+| 9. Compact map | **PASS** | Default-collapsed navigation and compact zoom/fit/menu controls, activity/fold indicators, every message preview in order, bounded long-message ellipses, source-row branch lines, individual/bulk folds and Keep current branch pass. Fold actions retain content and active replies. [18-scenario evidence](text-release-fixture-checks.json), [source-row geometry](message-row-branches-results.json), [growth/200-conversation/8,000-message results](node-growth-and-large-maps.md). |
+| 10. Compact chat and New chat | **PASS** | New chat asks for no name, immediately saves/displays one root and focuses its chat; first send titles it. [Current native run](text-release-current-native-codex.json) verifies that flow and a successful streamed first reply. [Fixtures](text-release-fixture-checks.json) add unstarted-root reuse, retry/draft retention, model-icon menu, selection-only accessible branching and revealing/opening a child of a folded parent. |
 
-## Release repairs verified here
+## Native summary and continuity review
 
-Two repairs from earlier attempts remain in this task's pending diff:
+Reviewed the complete two sources, exact passages, questions and generated
+snapshots in [the new Codex report](text-release-current-native-codex.json),
+plus the saved synthetic messages in its SQLite database. The first summary
+retains eight inputs, seven comparisons, smaller-winner rounds and the reason a
+larger value cannot be the overall minimum. The second carries that ancestor
+context into the child question and correctly distinguishes the 4 + 2 + 1
+comparisons. Neither contradicts the saved explanation. The irrelevant bracket
+codename is omitted from compaction; it remains in the original root history
+and is recalled after restart. Native answers explain smaller-winner elimination
+and seven comparisons correctly. The grandchild’s later gpt-6-astra reply quotes
+the complete original selected passage. Both summaries are compact; no
+summarization replaces source history.
 
-1. Expanded chat was persisted/restored as beside. The existing minute batch now
-   stores all three panel modes and preserves the saved viewport. Layout HTTP/reopen
-   integration and browser reload/desktop/mobile checks pass. No extra persistence
-   cadence, message copies or layout history were added.
-2. Returning ChatGPT authorization exposed the saved ID token through optional
-   `id_token_hint` in `/api/auth`. That parameter was removed. The issued client,
-   stable host, fresh PKCE/state/nonce and returning-identity checks remain. The
-   [credential-bearing HTTP integration](../../test/credential-boundary.test.mjs)
-   verifies access/refresh/ID canaries stay out of state, catalog, reply streams,
-   transcripts, previews and reconnect URLs. Real returning sign-in after this
-   small URL change was not repeated; this part has integration evidence.
+The retained provider-specific experiment supplies distinguishing fictional
+facts: Quill-482 (root), Ember-77 (child), Kestrel-19 (grandchild), Onyx-303
+(Codex segment), and Flint-64 (later Claude segment). A fresh Codex continuation
+recalls Claude’s Flint-64 after the actual restart and both switch directions.
+Independent Claude sessions retain their own robot/comet facts, stop does not
+cancel the peer, and the root resumes without child facts. The deliberate
+signed-out failure rolls back to the last working Codex provider/model/session
+while retaining ordered history. These are observed native results from the
+dated report, not fixture responses or assumptions from closed issue status.
 
-No further product defects were found in this invocation. The repeatable native
-scenario also supports either provider without moving credentials, fails promptly
-on a failed/interrupted first reply, compares all saved fields and waits for zoom
-animation to settle before testing an idle minute.
+## Current quota failure and remaining limits
 
-## Local listeners, storage and credential boundary
+The [current Claude attempt](text-release-current-native-claude.json),
+2026-11-10T00:47:44Z, reaches New chat and fails its first inference with
+`You've hit your 5-hour limit · resets 9:40pm (America/Edmonton)`.
+The indicated reset is 2026-11-10T04:40Z; it is not a success guarantee. No quota
+retry loop, alternative account, credential relocation or API-key substitution
+was used. Codex completed the current shared checks. This quota failure does not
+replace or erase the separately reviewed successful native Claude/switching
+experiment and is not reported as a fresh Claude pass.
 
-Native scenario PIDs **2571771 → 2574536** owned **127.0.0.1:41467**.
-Main-entry delivery PIDs **2574466 → 2574523** owned **127.0.0.1:43033**.
-`ss -Hltnp` identified each actual owner; both scenarios stopped their final server.
+Returning ChatGPT sign-in after removal of optional `id_token_hint` has not been
+interactively repeated. Current reconnect URLs are scanned, credential canaries
+pass, and the existing app-owned consent completes real inference and resume;
+this does not prove a fresh returning account-selector interaction. Response
+scans detect specified credential patterns in collected bodies; they are not an
+exhaustive security/egress audit. Physical touch and real IME remain untested;
+keyboard IME events are synthetic. The existing Vite bundle advisory and Astryx
+font-proof warnings remain. No later-increment media, suggestions, Vim, custom
+endpoint, rename or delete feature is part of this text-release acceptance.
 
-Native synthetic trees: `/tmp/treetutor-release-7TY6SG/trees.sqlite` (0600).
-Main-entry seeded trees: `/tmp/treetutor-delivery-qfFmkf/trees.sqlite`
-(0600 inside a 0700 directory). Temporary synthetic databases/sessions are retained
-locally for inspection. Native Codex sessions/workspace are under the native
-scenario's temporary directory; existing app-owned credentials stayed under their
-original directory and lock, using the normal Auth lifecycle. Claude credentials
-remain owned by its native CLI; its session-store limitation is documented in the
-[provider review](claude-history.md).
+## Layout cadence and restore
 
-Default learner saves remain `$XDG_DATA_HOME/treetutor/trees.sqlite`, falling back
-to `~/.local/share/treetutor/trees.sqlite`. No learner messages were used as model
-input. Initial normal server on port 4317 had no active replies; the first scenario
-attempt reported ELOCKED. That instance exited before the planned SIGTERM, so no
-signal was sent to it. The retry acquired the original lock without bypass or
-credential relocation. Normal app was restored afterward as PID **2594044** on
-**127.0.0.1:4317**, with its nine saved conversations and no active turns. The
-unrelated server on port 4391 was left alone.
+`test/layout-save.test.mjs` uses an elapsed controlled clock: zero writes through
+59,999 ms after marking, one batch per dirty root at 60,000 ms, and none over ten
+idle minutes. Forty rapid interactions and changes across two trees coalesce.
+Storage failures retain newer state, wait for the next minute and support manual
+retry; remounting disposes the old timer. [Integration/test output](text-release-fixture-checks.json).
 
-Credential evidence is a pattern scan of collected bodies plus an exact canary
-integration and code review, not an exhaustive egress/security audit. The native
-scanner includes real successful SSE replies and returning authorization response;
-the main-entry scanner separately includes all built JS/CSS assets and signed-out
-error bodies. Neither output includes real tokens, account identifiers, CSRF values
-or provider session IDs. Published branch IDs reference synthetic local content.
+Browser fixtures control only the real scheduler's 60,000 ms callbacks through
+`scripts/layout-clock.js`; animation, polling, input and HTTP still run normally.
+`layout-restore` observes zero early POSTs, one pending timer, one batched write,
+no idle writes, separate tree snapshots, folds/selection/beside viewport restored
+on reload, expanded mode restored on desktop/narrow viewports, and legacy/corrupt
+layout fallback. `canvas-positions` covers manual keyboard/pointer positions,
+minute batching, failed-write retry and exact source rows after SQLite/HTTP reopen.
 
-## Quality gates and repeat commands
+`node-growth` observes three dirty minute batches, no idle write, and exact
+shifted positions after a fresh Node process loads SQLite. The covered branch
+moves from y=220 to 280 on initial growth and to 388 after further growth/unfold;
+its descendant shifts with it while clear neighbours stay fixed. A held pointer
+drag defers automatic movement until release. Snapshot/message bytes remain
+unchanged across restart. [Fresh growth stages](text-release-fixture-checks.json)
+are embedded in the `verify-node-growth.mjs` entry. Unexpected close can still
+lose the latest unsaved layout within the minute, as the PRD allows.
 
-[Fresh results and full browser outputs](text-release-final-checks.json):
-**npm test 52/52**, **build PASS**, **Astryx doctor 20 pass / 2 warn / 0 fail**,
-**Impeccable detector zero findings**, **git diff --check PASS**.
-The two existing doctor warnings concern font proof; the Vite alias and built
-woff/woff2 assets confirm self-hosted Figtree. Existing >500 kB bundle advisory
-remains. Built-only doctor does not inspect JSX conventions. Current desktop and
-narrow expanded-restore captures were visually inspected; their synthetic fixture
-intentionally lacks a model catalog, so its retry alert is expected.
+## Local listener, storage and credentials
 
-Use Node 24+, installed dependencies, agent-browser and existing native provider
-sign-in. Stop the owner app before native checks so its original Auth lock is free.
-Do not copy authentication or substitute API keys. Claude is still the product
-default when this shared verification explicitly selects Codex.
+The final delivery check uses `/tmp/treetutor-delivery-Qv7CgL/trees.sqlite`
+(**0600**, directory **0700**), with synthetic data only. Both processes terminate
+at the end of the check. No running learner app is stopped and no real credentials
+are moved. Default learner saves, verified in [server/main.mjs](../../server/main.mjs),
+are `$XDG_DATA_HOME/treetutor/trees.sqlite`, falling back to
+`~/.local/share/treetutor/trees.sqlite`; `TREETUTOR_DATA_DIR` explicitly overrides
+the directory. Local storage does not make inference offline: native model
+requests still use the selected remote provider.
+
+The delivery scan covers state, conversations, previews, catalog/errors,
+reconnect response and every built JS/CSS asset. Its signed-out response-pattern
+scan and the credential-canary integration are bounded local checks, not an
+exhaustive security or egress audit. The current native Codex report separately scans 54 collected authenticated
+bodies, including reconnect and assets, and proves app-owned authenticated
+inference. Returning ChatGPT sign-in after removal of optional `id_token_hint`
+retains the interactive-testing limitation described above.
+
+## Scenario inventory and quality gates
+
+[Fresh outputs](text-release-fixture-checks.json) contain **18/18 PASS**:
+branch-streaming, bulk-folding, canvas-navigation, canvas-positions, chat-expand,
+chat-sidebar, compact-controls, first-conversation, keyboard-journey, large-map,
+layout-restore, local-delivery, map-gestures, node-growth, node-previews,
+passage-selection, subtree-folding and tree-overview. No provider-free scenario
+was skipped. Large-map's optional unculling performance control was already
+recorded by TreeTutor-7t3.21; this issue ran the normal shipped/culling path.
+
+**Separate from provider-free fixtures:** verify-branch-compaction.mjs,
+verify-branch-streaming-live.mjs, verify-codex-history.mjs, verify-model-switch.mjs,
+verify-provider-continuity-live.mjs and verify-release-journey-live.mjs have
+explicit native modes. This final run executed the release journey through
+native Claude (quota FAIL) and Codex (13/13 PASS); prior named-provider,
+compaction, isolation and switching results are reconciled above. They were not
+all rerun today. Synthetic results never substitute for their native claims.
+
+Quality gates: **npm test 64/64**, **build PASS**, **Astryx built-output doctor
+20 pass / 2 existing font warnings / 0 fail**, separate credential-boundary
+integration **1/1 PASS**, and **git diff --check PASS**. Self-hosted Figtree assets
+remain in the build; the existing Vite >500 kB bundle advisory remains. Built-output
+doctor does not check every JSX convention. No product code or fixture
+expectations needed repair on this workspace: the prerequisite work already
+updated them. TreeTutor-7t3.22 strengthened the keyboard fixture with Reopen chat
+via Tab/Enter, beside-mode composer focus and the following Escape return. The
+final grouped pass adds native evidence and reconciles the matrix;
+TreeTutor-7t3.22 supplied the fixture and measured branch-line reports.
+
+Repeat with Node 24+, installed dependencies and agent-browser:
 
 ```sh
 npm test
 npm run build
 npx astryx doctor --built dist
-node scripts/verify-release-journey-live.mjs --provider=codex /tmp/treetutor-native-recheck.json
-node scripts/verify-local-delivery.mjs /tmp/treetutor-delivery-recheck.json
+node --test test/credential-boundary.test.mjs
 node scripts/verify-keyboard-journey.mjs
 node scripts/verify-layout-restore.mjs
-node scripts/verify-map-gestures.mjs
-node scripts/verify-compact-controls.mjs
-node scripts/verify-node-previews.mjs
-node scripts/verify-subtree-folding.mjs
-node scripts/verify-bulk-folding.mjs
-node scripts/verify-chat-sidebar.mjs
-node scripts/verify-chat-expand.mjs
-node scripts/verify-passage-selection.mjs
-node scripts/verify-first-conversation.mjs
+node scripts/verify-node-growth.mjs
+node scripts/verify-local-delivery.mjs /tmp/treetutor-delivery-recheck.json
+node scripts/verify-release-journey-live.mjs --provider=codex /tmp/treetutor-native-recheck.json
 ```
 
-Run browser scenarios sequentially. Use `--provider=claude` for the shared native
-journey when native Claude capacity is available. The separate two-provider
-scenario is `node scripts/verify-provider-continuity-live.mjs`; it requires working
-native capacity on both routes and must not be replaced with fixtures.
+The native journey requires the existing app-owned ChatGPT consent and its
+normal data-directory lock; run when the learner app is stopped. Claude mode
+uses the official CLI's native sign-in. Each run uses separate synthetic trees
+and native sessions, keeps credentials in their original location, restarts its
+own server and closes its browser/processes. It does not stop a learner app.
 
-## Historical failures and remaining limits
+Run every provider-free script in the inventory sequentially against the build.
+`large-map` creates a temporary instrumented build to count renders; other browser
+checks use `dist`. The report records actual commands and outputs. Desktop/narrow
+captures were inspected. Browser evidence is headless Chromium with emulated
+viewports; no physical touch device or real IME was tested. IME events in the
+keyboard scenario are explicitly synthetic.
 
-The earlier [Claude quota failure](release-journey-results.json),
-[Codex EROFS attempt](release-journey-codex-results.json),
-[restricted-runtime checkpoint](text-release-native-preflight.json) and
-[explicit fake-protocol rehearsal](release-journey-protocol-results.json) remain
-unchanged. They were not passes. TreeTutor-7t3.17's permitted-runtime recovery and
-the successful native journey above resolve the shared release gate. No acceptance
-was weakened to bypass quota or runtime restrictions.
+## Retained live evidence reconciled for TreeTutor-7t3.12
 
-The shared journey ran Codex 0.167.0 / Node 26.0.0. Retained Claude live evidence
-used Claude Code 2.1.319; installed version is now 2.1.321. No fresh Claude inference,
-quota-availability claim or returning OAuth account-selector interaction is made.
-Named-provider model lists are catalogs/aliases, not entitlement guarantees.
+Earlier native runs are preserved, with their original dates and limits. Only
+the provider/semantic portions are retained; obsolete workspace claims are not:
 
-Keyboard and responsive evidence uses Chromium browser automation, emulated
-viewports and a controlled layout clock; no physical touch device or real IME
-was tested. The one-minute assertions exercise the real scheduler with only its
-60000 ms timer controlled. Unexpected close can still lose the latest unsaved
-layout, as the PRD allows. No release acceptance remains unresolved. Later media
-and Vim deliverables were left untouched. Ponytail was found in the Claude plugin cache and applied during the resumed
-verification. Matt Pocock skills were not available in the checked skill/cache
-locations; no use is claimed.
+- [Claude shared journey, 12 checks](release-journey-native-claude-pass.json),
+  [Codex shared journey](release-journey-native-codex-pass.json) and
+  [parallel Codex verification](release-journey-final-results.json).
+- [Both-provider continuity results](provider-continuity-results.json) and
+  [native review](claude-history.md#live-provider-continuity-treetutor-7t39-2026-11-09t18521854z).
+- [Native compaction review](branch-compaction-live.md).
+- Historical failures remain failures: [Claude quota](release-journey-results.json),
+  [Codex restricted runtime](release-journey-codex-results.json),
+  [runner preflight](text-release-native-preflight.json),
+  [Codex quota rerun](release-journey-native-codex-quota-fail.json) and the
+  [explicitly fake protocol rehearsal](release-journey-protocol-results.json).
 
-
-## Independent resumed-run verification, 2026-11-09
-
-The concurrently resumed Ralph invocation independently repeated the complete
-shared journey using **native Codex**, with all **12 checks PASS**:
-[redacted native report](release-journey-native-codex-pass.json), started
-**20:42:05Z**. This corroborates the primary native report above; it is not
-additional two-provider evidence. The original working app remains running.
-
-- Real HTTP server PIDs **2577713 → 2584389**, both owning only
-  **127.0.0.1:34547**; the old port refused connections between processes.
-- **Two roots, four conversations, ten original messages** matched across the
-  actual restart, including every anchor, frozen snapshot, position, viewport,
-  fold, selection, expanded panel, provider/model and native session field.
-  Comparison digest: `35a0b9ce2de0`. Browser layout also matched exactly.
-- Tournament/heap requests overlapped while browser navigation stayed available.
-  Concurrent resumed root/grandchild requests recalled `AMBER-HERON-42` and the
-  whole exact grandchild passage, respectively. The **51 collected native
-  response bodies** contained no provider credential patterns.
-- Native data is retained at `/tmp/treetutor-release-Aymy2u/trees.sqlite`, mode
-  **0600**. Original app-owned authentication stayed under its original lock;
-  no API key or credential relocation was used.
-
-Both native compactions were reviewed against their recorded sources. The child
-snapshot preserves the codename, eight-number tournament, smaller-winner rule,
-seven comparisons and learner question. The grandchild compact snapshot keeps
-relevant ancestor tournament context and the elimination argument, answering its
-comparison question with `4 + 2 + 1 = 7`; it appropriately omits the unrelated
-codename. Both exact passages remain stored separately. Later parent replies did
-not change either snapshot, and branch replies did not change parent history.
-No unsupported or contradictory facts were found in these short examples.
-
-[Independent browser and quality gates](text-release-resumed-checks.json) also
-passed: **all eleven fixture scenarios**, including the **17-step keyboard
-journey**, controlled-minute/idle checks, **52/52 tests**, build, Astryx
-**20 pass / 2 existing warnings / 0 fail**, Impeccable detector and whitespace.
-Current desktop/mobile expanded-restore fixture captures were inspected; their
-missing-catalog retry notice is intentional in that fixture.
-
-[Independent main-entry delivery](local-delivery-resumed-results.json) passed
-all **six checks**: actual `node server/main.mjs` PIDs **2585693 → 2585714** on
-**127.0.0.1:37143**, exact seeded restart comparison, Host/Origin/cross-site/CSRF
-rejections, **23 signed-out synthetic response bodies** without credential
-patterns, and private local storage at
-`/tmp/treetutor-delivery-Bu0ck2/trees.sqlite` (**0600**, directory **0700**).
-This complements the authenticated native response scan above.
-
-Two attempted starts hit the normal exclusive Auth lock and made **no inference**:
-[initial lock attempt](release-journey-native-codex-results.json) and
-[duplicate supplementary attempt](release-journey-native-codex-model-results.json).
-The successful full retry is retained separately. The second attempt proposed
-repeating saved nested model switching, then was removed from the scenario
-because TreeTutor-7t3.9 already directly proves that required behavior after
-restart. The shipped scenario remains the exact version that passed both full
-native runs; no unexecuted assertions or product edits were added by this resumed
-invocation. No running owner app or other worker was killed to bypass a lock.
-All ten matrix results above remain supported, with the same explicitly retained
-named-provider evidence and limitations.
-
-## Final closing rerun, 2026-11-09T22:45–22:55Z
-
-Re-ran on HEAD `b87f54f` with no product changes:
-
-- `npm test` 52/52 PASS; `npm run build` PASS (existing chunk-size advisory);
-  `npx astryx doctor --built dist` 20 pass / 2 existing font warnings / 0 fail.
-- `node scripts/verify-local-delivery.mjs` 6/6 PASS (loopback-only, exact
-  restart preservation, Host/Origin/cross-site/CSRF rejection, credential-clean
-  bodies, private SQLite).
-- Native Codex shared journey **FAIL** at the first reply: the ChatGPT plan hit its
-  usage limit ("Subscription Sharing usage limit"). That's an external quota.
-  The report is kept: [release-journey-native-codex-quota-fail.json](release-journey-native-codex-quota-fail.json).
-  The earlier Codex 12/12 pass still stands as Codex evidence.
-- Native **Claude** shared journey (product default, `claude-opus-5-5`) **12/12 PASS**:
-  [release-journey-native-claude-pass.json](release-journey-native-claude-pass.json).
-  It ran root → child → grandchild from exact passages with two trees and four
-  conversations. Replies overlapped while navigation was active. Layout used one
-  controlled-minute write. A real restart moved PID 2761785 → 2767401 on
-  loopback-only `127.0.0.1:43303`, and all 10 messages, anchors, snapshots,
-  positions, viewport, folds, selection, expanded panel and provider/model/session
-  were identical (digest `6ff3db1d6168`). After restart the root recalled the
-  codename and the grandchild recalled its passage, both at once. 55 browser-visible
-  responses were credential-pattern clean. SQLite was at `/tmp/treetutor-release-CEqGWe/trees.sqlite`, mode 0600.
-  I reviewed both native summaries against their source and ancestors: they keep
-  the seven-comparison / three-round facts and the elimination argument, with
-  nothing contradictory.
-
-Both providers now have native passes for the shared journey (Codex earlier,
-Claude now). TreeTutor-7t3.9 supplies the both-direction switching evidence.
-
-**Not release-ready yet.** PRD.md was revised on 2026-11-09 (commit `b87f54f`).
-New chat now opens one visible, self-titling root. Nodes show the whole
-conversation, and branch lines attach beside the source message. Rows 1, 9 and 10
-above (and the keyboard journey's empty-map start in row 4) were verified against
-the earlier wording: an empty map with Start conversation and two-line latest
-previews. The native journey script still asserts that old empty-map start. These
-rows need re-verification after TreeTutor-7t3.18 and TreeTutor-7t3.21, then the
-TreeTutor-7t3.22 fixture recheck. Beads keeps TreeTutor-7t3.12 blocked by
-TreeTutor-7t3.22. Limits that still apply: returning ChatGPT sign-in after the
-id_token_hint removal was not exercised interactively, and inference uses remote
-providers.
+The current 13/13 Codex run now supplies the native journey on the clarified
+workspace. Earlier empty-map and latest-two-line-preview interaction claims are
+superseded by the matching-source fixture evidence and this new journey. The
+reviewed native provider-specific results retain their stated dates and limits;
+older failures remain failures. All ten text-release criteria are now reconciled
+above. Media, suggestions, Vim and other later features remain outside this issue.

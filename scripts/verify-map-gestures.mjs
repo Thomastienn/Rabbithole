@@ -59,7 +59,7 @@ try {
   assert.notEqual(store.tree(child.id).x, beforePosition.x);
   assert.deepEqual(store.tree(child.id).branch, child.branch);
   assert.equal(await evaluate(`document.querySelector('.react-flow__edge').dataset.id`), child.id);
-  const gap = await evaluate(`(() => { const h=document.querySelector('[data-source="${child.id}"] .react-flow__handle').getBoundingClientRect(); const path=document.querySelector('.react-flow__edge path'); const p=path.getPointAtLength(0); const q=new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM()); return Math.hypot(q.x-h.x-h.width/2,q.y-h.y-h.height/2); })()`);
+  const gap = await evaluate(`(() => { const h=document.querySelector('.react-flow__handle[data-source="${child.id}"]').getBoundingClientRect(); const path=document.querySelector('.react-flow__edge path'); const p=path.getPointAtLength(0); const q=new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM()); return Math.hypot(q.x-h.x-h.width/2,q.y-h.y-h.height/2); })()`);
   assert.ok(gap < 5, `Edge detached from source: ${gap}`);
   await browser('click', childNode + ' h3');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Gesture branch' && getComputedStyle(document.querySelector('.focused-chat')).display !== 'none'`);

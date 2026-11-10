@@ -29,6 +29,6 @@ test('previews list every message in order, bound each text and survive reload w
   store = new Store(path);
   assert.deepEqual(store.previews([a.id])[a.id].map(m => m.status), ['completed', 'completed', 'completed', 'interrupted']);
   assert.equal(store.tree(a.id).messages[2].text.length, 1200);
-  assert.deepEqual(store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(row => row.name), ['branches', 'messages', 'trees']);
+  assert.deepEqual(store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(row => row.name), ['artifacts', 'branches', 'messages', 'trees']);
   store.close();
 });

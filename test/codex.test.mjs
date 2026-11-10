@@ -100,3 +100,27 @@ test('failed history import does not save incomplete thread or start inference',
     assert.equal(requests.some(r => r.method === 'turn/start'), false);
   } finally { client.close(); }
 });
+
+test('aborted generation starts no inference; interrupt releases a stalled turn without waiting for terminal output', async () => {
+  const requests = [];
+  let started;
+  const turn = new Promise(resolve => { started = resolve; });
+  const client = fixture(request => { requests.push(request); if (request.method === 'turn/start') started(); });
+  try {
+    const cancelled = new AbortController(); cancelled.abort();
+    const events = [];
+    await client.generate({}, 'Never send this', event => events.push(event), () => {}, cancelled.signal);
+    assert.deepEqual(events, [{ type: 'status', status: 'interrupted' }]);
+    assert.equal(requests.length, 0);
+    const controller = new AbortController();
+    const running = client.generate({}, 'hold', event => events.push(event), () => {}, controller.signal);
+    await turn;
+    controller.abort();
+    let timeout;
+    try {
+      await Promise.race([running, new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Abort did not release generation.')), 1000); })]);
+    } finally { clearTimeout(timeout); }
+    assert.equal(client.listeners.size, 0);
+    assert.equal(events.at(-1).status, 'interrupted');
+  } finally { client.close(); }
+});

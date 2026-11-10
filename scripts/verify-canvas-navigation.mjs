@@ -50,7 +50,7 @@ try {
   await browser('open', origin);
   await wait('document.querySelectorAll(".react-flow__node").length === 3');
   // Observe actual shared-element animations, including their changing bounds.
-  await evaluate(`window.transitions = []; window.nativeTransition = document.startViewTransition.bind(document); document.startViewTransition = callback => { const t = window.nativeTransition(callback); t.ready.then(() => window.transitions.push(document.getAnimations().filter(a => a.effect?.pseudoElement === '::view-transition-group(conversation)').map(a => a.effect.getKeyframes()))); return t; }; true`);
+  await evaluate(`window.transitions = []; window.transitionErrors = []; window.nativeTransition = document.startViewTransition.bind(document); document.startViewTransition = callback => { const t = window.nativeTransition(callback); t.ready.then(() => window.transitions.push(document.getAnimations().filter(a => a.effect?.pseudoElement === '::view-transition-group(conversation)').map(a => a.effect.getKeyframes())), error => window.transitionErrors.push(error.message)); return t; }; true`);
   const initial = await view();
   await browser('focus', '.tree-canvas');
   await browser('press', 'ArrowRight');
@@ -86,13 +86,18 @@ try {
     const map = overview.getBoundingClientRect();
     return chat.width > 0 && chat.width < workspace.width && map.width > 0 && Math.abs(map.right - chat.left) < 1;
   })()`), true, 'Revealed source opens the chat side panel beside the map');
+  // Focus can arrive before the shared-element snapshot is ready. Let this animation
+  // finish so the return action does not intentionally skip the transition being measured.
+  await wait('(window.transitions.length === 1 || window.transitionErrors.length > 0) && !document.documentElement.matches(":active-view-transition")');
+  assert.deepEqual(await evaluate('window.transitionErrors'), [], 'opening transition must be ready without duplicate shared names');
   await click('Return to tree');
   await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
   assert.equal(await view(), saved);
-  await wait('window.transitions.length === 2');
+  await wait('window.transitions.length === 2 && !document.documentElement.matches(":active-view-transition")');
   assert.equal(await evaluate('window.transitions.every(groups => groups.some(frames => frames.length >= 2 && frames[0].width !== frames.at(-1).width))'), true);
   await click('Reveal source passage for First branch');
   await wait('document.activeElement?.tagName === "MARK"');
+  await wait('!document.documentElement.matches(":active-view-transition")');
   await browser('press', 'Escape');
   await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
   assert.equal(await view(), saved);

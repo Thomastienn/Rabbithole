@@ -1,8 +1,10 @@
-export type Message = { id: string; role: string; text: string; status: string };
-export type Turn = { user?: Message; reply?: Message };
+import { mergeArtifact, type Artifact, type ArtifactSummary } from './artifacts.ts';
+
+export type Message = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] };
+export type Turn = { user?: Message; reply?: Message; artifacts?: Artifact[] };
 
 // Reconcile saved checkpoints with the latest events for this conversation only.
-export function withTurn<T extends { messages: Message[] }>(conversation: T, turn?: Turn): T {
+export function withTurn<T extends { id?: string; messages: Message[]; artifacts?: Artifact[] }>(conversation: T, turn?: Turn): T {
   if (!turn) return conversation;
   const messages = [...conversation.messages];
   for (const message of [turn.user, turn.reply]) {
@@ -11,5 +13,7 @@ export function withTurn<T extends { messages: Message[] }>(conversation: T, tur
     if (index < 0) messages.push(message);
     else messages[index] = message;
   }
-  return { ...conversation, messages };
+  let artifacts = conversation.artifacts ?? [];
+  if (conversation.id) for (const artifact of turn.artifacts ?? []) artifacts = mergeArtifact(artifacts, artifact, conversation.id, messages);
+  return { ...conversation, messages, ...(turn.artifacts && { artifacts }) };
 }

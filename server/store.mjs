@@ -13,8 +13,15 @@ export class Store {
       CREATE TABLE IF NOT EXISTS trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS messages_tree_seq ON messages(tree, seq);
+      CREATE UNIQUE INDEX IF NOT EXISTS messages_id_tree ON messages(id, tree);
+      CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK(kind='mermaid'), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')),
+        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL,
+        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
+      CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);
       CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL);
-      UPDATE messages SET status='interrupted' WHERE status='streaming';`);
+      UPDATE messages SET status='interrupted' WHERE status='streaming';
+      UPDATE artifacts SET status='failed',source=NULL,error='Diagram generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
     const columns = this.db.prepare('PRAGMA table_info(trees)').all().map(c => c.name);
     if (!columns.includes('provider')) this.db.exec("ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'");
     if (!columns.includes('model')) this.db.exec('ALTER TABLE trees ADD COLUMN model TEXT');
@@ -32,7 +39,15 @@ export class Store {
   // SQLite substr/length count code points, so the 512 cut matches the client's live-turn cut.
   previews(ids) {
     const messages = this.db.prepare("SELECT id, role, substr(text,1,512) || CASE WHEN length(text)>512 THEN '…' ELSE '' END AS text, status FROM messages WHERE tree=? ORDER BY seq");
-    return Object.fromEntries(ids.map(id => [id, messages.all(id).map(m => ({ ...m }))]));
+    const artifacts = this.db.prepare('SELECT id,message,title,status FROM artifacts WHERE conversation=? ORDER BY created,rowid');
+    return Object.fromEntries(ids.map(id => {
+      const byMessage = new Map();
+      for (const { message, ...artifact } of artifacts.all(id)) {
+        if (!byMessage.has(message)) byMessage.set(message, []);
+        byMessage.get(message).push(artifact);
+      }
+      return [id, messages.all(id).map(m => ({ ...m, ...(byMessage.has(m.id) && { artifacts: byMessage.get(m.id) }) }))];
+    }));
   }
   layout(id, layout, positions = {}) {
     this.db.exec('BEGIN');
@@ -46,8 +61,20 @@ export class Store {
   tree(id) {
     const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
     const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
-    return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status FROM messages WHERE tree=? ORDER BY seq').all(id) };
+    return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status FROM messages WHERE tree=? ORDER BY seq').all(id), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id) };
   }
+  artifact(conversation, id) { return this.db.prepare('SELECT * FROM artifacts WHERE conversation=? AND id=?').get(conversation, id); }
+  pendingArtifact(conversation, message, title, description) {
+    const id = randomUUID();
+    const result = this.db.prepare("INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created) SELECT ?,?,?,'mermaid','pending',?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')").run(id, conversation, message, title, description, Date.now(), message, conversation);
+    if (!result.changes) throw new Error('Artifact message does not belong to this conversation.');
+    return this.artifact(conversation, id);
+  }
+  finishArtifact(conversation, id, source, error = null) {
+    this.db.prepare("UPDATE artifacts SET status=?,source=?,error=? WHERE conversation=? AND id=? AND status='pending'").run(error ? 'failed' : 'ready', error ? null : source, error, conversation, id);
+    return this.artifact(conversation, id);
+  }
+  forgetThread(id) { this.db.prepare('UPDATE trees SET thread=NULL,working_thread=NULL WHERE id=?').run(id); }
   create(title = 'New chat', provider = 'codex') {
     const id = randomUUID();
     this.db.prepare('INSERT INTO trees(id,title,created,provider,working_provider) VALUES(?,?,?,?,?)').run(id, title, Date.now(), provider, provider);
