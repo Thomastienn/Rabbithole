@@ -47,6 +47,10 @@ export class Store {
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))`);
       if (!this.db.prepare('PRAGMA table_info(suggestions)').all().some(c => c.name === 'nameTokens')) this.db.exec('ALTER TABLE suggestions ADD COLUMN nameTokens INTEGER');
       this.db.exec(`CREATE TABLE IF NOT EXISTS suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT)`);
+      // The suggestion row is the quick thinking role; its pinned model migrates in place and effort is additive.
+      if (!this.db.prepare('PRAGMA table_info(suggestion_settings)').all().some(c => c.name === 'effort')) this.db.exec('ALTER TABLE suggestion_settings ADD COLUMN effort TEXT');
+      // Smart role: a NULL model follows the chat default model; follow_effort=1 follows the chat default effort.
+      this.db.exec('CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)');
       // Additive global tables: one knowledge graph across all learning trees; NOCASE names make a matching concept or topic reuse its row.
       this.db.exec(`CREATE TABLE IF NOT EXISTS concepts (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
         CREATE TABLE IF NOT EXISTS topics (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
@@ -112,16 +116,24 @@ export class Store {
     });
   }
   suggestionSettings() {
-    const row = this.db.prepare('SELECT enabled,provider,model FROM suggestion_settings WHERE id=1').get();
-    return { enabled: row ? !!row.enabled : true, model: row?.model ? { provider: row.provider, model: row.model } : null };
+    const row = this.db.prepare('SELECT enabled,provider,model,effort FROM suggestion_settings WHERE id=1').get();
+    return { enabled: row ? !!row.enabled : true, model: row?.model ? { provider: row.provider, model: row.model } : null, effort: row?.model ? row.effort ?? null : null };
+  }
+  smartSettings() {
+    const row = this.db.prepare('SELECT provider,model,follow_effort,effort FROM smart_settings WHERE id=1').get();
+    return { model: row?.model ? { provider: row.provider, model: row.model } : null, followEffort: row ? !!row.follow_effort : true, effort: row && !row.follow_effort ? row.effort ?? null : null };
+  }
+  saveSmartSettings({ model, followEffort, effort }) {
+    this.db.prepare('INSERT INTO smart_settings(id,provider,model,follow_effort,effort) VALUES(1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,follow_effort=excluded.follow_effort,effort=excluded.effort').run(model?.provider ?? null, model?.model ?? null, +followEffort, followEffort ? null : effort);
+    return this.smartSettings();
   }
   chatSettings() { return this.db.prepare('SELECT provider,model,effort FROM chat_settings WHERE id=1').get() ?? null; }
   saveChatSettings({ provider, model, effort }) {
     this.db.prepare('INSERT INTO chat_settings(id,provider,model,effort) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,effort=excluded.effort').run(provider, model, effort);
     return this.chatSettings();
   }
-  saveSuggestionSettings({ enabled, model }) {
-    this.db.prepare('INSERT INTO suggestion_settings(id,enabled,provider,model) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,provider=excluded.provider,model=excluded.model').run(+enabled, model?.provider ?? null, model?.model ?? null);
+  saveSuggestionSettings({ enabled, model, effort }) {
+    this.db.prepare('INSERT INTO suggestion_settings(id,enabled,provider,model,effort) VALUES(1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,provider=excluded.provider,model=excluded.model,effort=excluded.effort').run(+enabled, model?.provider ?? null, model?.model ?? null, model ? effort ?? null : null);
     return this.suggestionSettings();
   }
   // Strip reply syntax before truncation; the stored messages remain the canonical source.

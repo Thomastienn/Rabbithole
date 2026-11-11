@@ -10,17 +10,17 @@ import { Claude } from '../server/claude.mjs';
 import { Codex } from '../server/codex.mjs';
 import { OpenAI } from '../server/openai.mjs';
 import { createApp } from '../server/app.mjs';
-import { fakeOpenAI } from './fake-openai.mjs';
+import { fakeOpenAI, streamReply } from './fake-openai.mjs';
 
 const fixture = fileURLToPath(new URL('./protocol-fixture.mjs', import.meta.url));
 const SAVED = [{ start: 0, end: 13, text: 'Authoritative' }, { start: 14, end: 22, text: 'original' }];
 
 async function start(dir, suggestions = true, connected = { claude: true, codex: true }) {
-  const calls = [], requests = [];
+  const calls = [], requests = [], turns = [];
   const launch = (command, args, options) => {
     const child = spawn(process.execPath, [fixture, ...(command === 'claude' ? args : [])], options);
-    if (command === 'claude') { const end = child.stdin.end.bind(child.stdin); child.stdin.end = input => { requests.push(input); calls.push({ system: args[args.indexOf('--system-prompt') + 1], model: args.includes('--model') ? args[args.indexOf('--model') + 1] : null, input }); return end(input); }; }
-    else { const write = child.stdin.write.bind(child.stdin); child.stdin.write = line => { const m = JSON.parse(line); if (m.method === 'turn/start') requests.push(m.params.input[0].text); return write(line); }; }
+    if (command === 'claude') { const end = child.stdin.end.bind(child.stdin); child.stdin.end = input => { requests.push(input); calls.push({ system: args[args.indexOf('--system-prompt') + 1], model: args.includes('--model') ? args[args.indexOf('--model') + 1] : null, effort: args.includes('--effort') ? args[args.indexOf('--effort') + 1] : null, input }); return end(input); }; }
+    else { const write = child.stdin.write.bind(child.stdin); child.stdin.write = line => { const m = JSON.parse(line); if (m.method === 'turn/start') { requests.push(m.params.input[0].text); turns.push(m.params); } return write(line); }; }
     return child;
   };
   const store = new Store(join(dir, 'trees.sqlite'));
@@ -36,7 +36,7 @@ async function start(dir, suggestions = true, connected = { claude: true, codex:
   const post = async (path, data = {}) => (await request(path, data)).text();
   const settled = async () => { while ((await get('/api/state')).suggesting.length) await new Promise(r => setTimeout(r, 20)); };
   const suggestionCalls = () => calls.filter(c => c.system.startsWith('You mark'));
-  return { store, get, post, request, settled, calls, requests, suggestionCalls, close: async () => { await app.stop(); store.close(); } };
+  return { store, get, post, request, settled, calls, requests, turns, suggestionCalls, close: async () => { await app.stop(); store.close(); } };
 }
 // Graph shape without the derived familiarity fields.
 const shape = g => ({ ...g, concepts: g.concepts.map(({ name, topics }) => ({ name, topics })) });
@@ -75,9 +75,9 @@ test('a saved suggestion model applies across conversations and restart; unpinni
   const dir = mkdtempSync(join(tmpdir(), 'tt-suggest-settings-'));
   let env = await start(dir);
   t.after(async () => { await env.close(); });
-  assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model: null });
+  assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model: null, effort: null });
   const model = { provider: 'claude', model: 'sonnet' };
-  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { model })), { enabled: true, model });
+  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { model })), { enabled: true, model, effort: null });
   const a = JSON.parse(await env.post('/api/trees'));
   await env.post(`/api/trees/${a.id}/messages`, { text: 'Explain, suggestion model: sonnet' });
   await env.settled();
@@ -93,11 +93,11 @@ test('a saved suggestion model applies across conversations and restart; unpinni
   await env.close();
 
   env = await start(dir);
-  assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model });
+  assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model, effort: null });
   await env.post(`/api/trees/${b.id}/messages`, { text: 'Continue, suggestion model: sonnet' });
   await env.settled();
   assert.equal(env.suggestionCalls()[0].model, 'sonnet');
-  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { model: null })), { enabled: true, model: null });
+  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { model: null })), { enabled: true, model: null, effort: null });
   await env.post(`/api/trees/${a.id}/messages`, { text: 'Default Claude suggestions' });
   await env.post(`/api/trees/${b.id}/messages`, { text: 'Default Codex suggestions' });
   await env.settled();
@@ -119,7 +119,7 @@ test('off prevents new suggestion calls, persists after restart and keeps saved 
   await env.post('/api/settings/suggestions', { model: { provider: 'claude', model: 'haiku' } });
   await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain, slow suggestions' });
   assert.ok((await env.get('/api/state')).suggesting.includes(tree.id));
-  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { enabled: false })), { enabled: false, model: { provider: 'claude', model: 'haiku' } });
+  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { enabled: false })), { enabled: false, model: { provider: 'claude', model: 'haiku' }, effort: null });
   await env.post(`/api/trees/${tree.id}/messages`, { text: 'No suggestions for this reply' });
   await env.settled();
   const saved = (await env.get(`/api/trees/${tree.id}`)).suggestions;
@@ -153,9 +153,9 @@ test('only signed-in subscription models can be pinned; stale pins fail without 
   const offered = await env.get('/api/models');
   assert.equal(offered.providers.claude.connected, false);
   assert.ok(!offered.models.some(m => m.provider === 'claude'));
-  for (const body of [{ model: { provider: 'claude', model: 'haiku' } }, { model: { provider: 'openai', model: 'local-tutor' } }, { model: { provider: 'codex', model: 'missing' } }, { model: {} }, { model: 'haiku' }, { model: 1 }, { enabled: 'off' }, null]) {
-    assert.equal((await env.request('/api/settings/suggestions', body)).status, 400);
-    assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model: null });
+  for (const [body, status] of [[{ model: { provider: 'claude', model: 'haiku' } }, 502], [{ model: { provider: 'codex', model: 'missing' } }, 400], [{ model: { provider: 'codex', model: 'fixture-model' }, effort: 'ultra' }, 400], [{ effort: 'low' }, 400], [{ model: {} }, 400], [{ model: 'haiku' }, 400], [{ model: 1 }, 400], [{ enabled: 'off' }, 400], [null, 400]]) {
+    assert.equal((await env.request('/api/settings/suggestions', body)).status, status, JSON.stringify(body));
+    assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model: null, effort: null });
   }
   assert.equal((await env.request('/api/settings/suggestions', { enabled: false }, { 'X-TreeTutor-CSRF': '' })).status, 403);
   connected.claude = true;
@@ -178,7 +178,7 @@ test('only signed-in subscription models can be pinned; stale pins fail without 
   assert.equal((await env.get(`/api/trees/${tree.id}`)).suggestions.at(-1).status, 'failed');
   assert.equal(fake.calls.filter(c => c.body).length, 1, 'only the explicit tutor call uses the API key');
   connected.codex = false;
-  assert.equal((await env.request('/api/settings/suggestions', { model: { provider: 'codex', model: 'fixture-luna' } })).status, 400);
+  assert.equal((await env.request('/api/settings/suggestions', { model: { provider: 'codex', model: 'fixture-luna' } })).status, 502);
 });
 
 test('a completed reply gets one cheap-model suggestion call whose exact passages and usage are saved; reopening, switching and old replies never run it', async t => {
@@ -529,4 +529,64 @@ test('a failed Knowledge merge rolls back evidence, topics, links, aliases and s
   assert.deepEqual(env.store.db.prepare('PRAGMA foreign_key_check').all(), []);
   env.store.db.exec('DROP TRIGGER reject_concept_delete');
   assert.equal((await env.request('/api/graph/merge', { from: "Peterson's algorithm", into: 'Mutual exclusion' })).status, 200);
+});
+
+test('quick thinking routes suggestions to its own provider, model and effort, including the custom endpoint, without borrowing chat effort', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-quick-thinking-')), fake = await fakeOpenAI(t);
+  fake.models[0].supported_reasoning_efforts = ['low', 'high'];
+  const quick = [];
+  fake.reply = (req, res, body) => {
+    if (!body.messages[0].content.startsWith('You mark')) return streamReply(res, ['Peterson ', 'uses two flags.']);
+    quick.push(body);
+    streamReply(res, [JSON.stringify({ suggestions: [{ text: 'two flags' }] })]);
+  };
+  let env = await start(dir);
+  t.after(async () => { await env.close(); });
+  await env.post('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey: 'quick-key-fixture' });
+  const tree = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${tree.id}/model`, { provider: 'claude', model: 'sonnet', effort: 'max' });
+  // Unset quick thinking keeps the cheap provider default and leaves effort to the provider.
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain, suggestion model: haiku' });
+  await env.settled();
+  assert.deepEqual(env.suggestionCalls().map(c => [c.model, c.effort]), [['haiku', null]]);
+  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { model: { provider: 'claude', model: 'sonnet' }, effort: 'low' })), { enabled: true, model: { provider: 'claude', model: 'sonnet' }, effort: 'low' });
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain, suggestion model: sonnet' });
+  await env.settled();
+  assert.deepEqual(env.suggestionCalls().at(-1).effort, 'low');
+  assert.equal(env.calls.at(-2).effort, 'max', 'the tutor keeps its own effort');
+
+  await env.post('/api/settings/suggestions', { model: { provider: 'codex', model: 'fixture-model' }, effort: 'high' });
+  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain, suggestion model: fixture-model' });
+  await env.settled();
+  assert.equal(env.turns.at(-1).model, 'fixture-model');
+  assert.equal(env.turns.at(-1).effort, 'high');
+
+  assert.deepEqual(JSON.parse(await env.post('/api/settings/suggestions', { model: { provider: 'openai', model: 'local-tutor' }, effort: 'high' })), { enabled: true, model: { provider: 'openai', model: 'local-tutor' }, effort: 'high' });
+  assert.equal((await env.request('/api/settings/suggestions', { effort: 'max' })).status, 400, 'no invented effort');
+  assert.equal(quick.length, 0, 'saving quick thinking starts no model call');
+  await env.close();
+
+  env = await start(dir);
+  assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: true, model: { provider: 'openai', model: 'local-tutor' }, effort: 'high' });
+  const custom = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${custom.id}/model`, { provider: 'openai', model: 'second-model' });
+  await env.post(`/api/trees/${custom.id}/messages`, { text: 'Custom endpoint conversation' });
+  await env.settled();
+  assert.deepEqual(quick.map(b => [b.model, b.reasoning_effort]), [['local-tutor', 'high']]);
+  const saved = await env.get(`/api/trees/${custom.id}`);
+  assert.equal(saved.suggestions[0].status, 'ready');
+  assert.deepEqual(saved.suggestions[0].passages.map(p => p.text), ['two flags']);
+  assert.equal(saved.messages.length, 2, 'the suggestion call stays out of tutor history');
+});
+
+test('a pre-role suggestion pin migrates to quick thinking with provider-default effort', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-quick-migrate-'));
+  const { DatabaseSync } = await import('node:sqlite');
+  new Store(join(dir, 'trees.sqlite')).close();
+  const db = new DatabaseSync(join(dir, 'trees.sqlite'));
+  db.exec("CREATE TABLE suggestion_settings_old AS SELECT * FROM suggestion_settings; DROP TABLE suggestion_settings; CREATE TABLE suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT); INSERT INTO suggestion_settings VALUES (1, 0, 'codex', 'fixture-luna'); DROP TABLE suggestion_settings_old");
+  db.close();
+  const env = await start(dir);
+  t.after(async () => { await env.close(); });
+  assert.deepEqual(await env.get('/api/settings/suggestions'), { enabled: false, model: { provider: 'codex', model: 'fixture-luna' }, effort: null });
 });

@@ -15,6 +15,7 @@ import { ArrowLeftIcon, ChartBarIcon, CpuChipIcon, LinkIcon, SwatchIcon, XMarkIc
 import EndpointSettings from './EndpointSettings';
 import SuggestionSettings from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
+import SmartSettings from './SmartSettings';
 import type { Model } from './models';
 import { bubbleTints, type BubbleTint } from './bubbleTint';
 import { appearances, type Appearance } from './appearance';
@@ -25,7 +26,7 @@ export type SettingsRequest = { tab?: SettingsTab; focus?: string };
 
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
   { id: 'interface', label: 'Interface', description: 'Appearance, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
-  { id: 'models', label: 'Models', description: 'Chat defaults for new learning trees, suggestion models and concept matching.', icon: CpuChipIcon },
+  { id: 'models', label: 'Models', description: 'Chat default, smart and quick thinking roles, and concept matching.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
   { id: 'usage', label: 'Usage', description: 'What today’s replies and suggestions have used so far.', icon: ChartBarIcon },
 ];
@@ -59,6 +60,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
   const narrow = useMediaQuery('(max-width: 48rem)');
   const [tab, setTab] = useState<SettingsTab>();
   const [authError, setAuthError] = useState('');
+  const [chatVersion, setChatVersion] = useState(0);
   useEffect(() => {
     if (!request) return;
     setTab(request.tab); setAuthError('');
@@ -85,7 +87,9 @@ export default function SettingsWindow({ request, close, api, models, providers,
       {!narrow && closeButton}
     </HStack>
     {current.id === 'models' && <>
-      <ChatSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} connections={() => showTab('connections')} />
+      <ChatSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} connections={() => showTab('connections')} onSaved={() => setChatVersion(v => v + 1)} />
+      <Divider />
+      <SmartSettings api={api} models={models} providers={providers} chatVersion={chatVersion} />
       <Divider />
       <SuggestionSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} />
       <Divider />

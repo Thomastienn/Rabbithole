@@ -53,11 +53,15 @@ export const nameTokens = known => Math.ceil(JSON.stringify(known).length / 4);
 export async function suggest(provider, tree, input, signal, timeout = 120000, pinnedModel = null) {
   const items = new Map(), bounded = AbortSignal.any([signal, AbortSignal.timeout(timeout)]);
   let status, usage = null;
-  if (!['claude', 'codex'].includes(tree.provider)) throw new Error('Suggestions require a signed-in subscription provider.');
+  // Without a quick thinking model the cheap default needs a subscription conversation; a pinned model may be any connected provider.
+  if (!pinnedModel && !['claude', 'codex'].includes(tree.provider)) throw new Error('Suggestions require a signed-in subscription provider.');
   const models = await provider.models();
-  if (pinnedModel && !models.some(m => m.model === pinnedModel)) throw new Error('Suggestion model is unavailable.');
+  const pinned = pinnedModel && models.find(m => m.model === pinnedModel);
+  if (pinnedModel && !pinned) throw new Error('Suggestion model is unavailable.');
+  if (pinned && tree.effort != null && !(pinned.efforts ?? []).includes(tree.effort)) throw new Error('Quick thinking effort is no longer supported by its model.');
   const model = pinnedModel ?? (tree.provider === 'claude' ? 'haiku' : models.find(m => /luna/i.test(m.model))?.model ?? tree.model ?? null);
-  await provider.generate({ provider: tree.provider, model, thread: null, instructions: INSTRUCTIONS }, PROMPT + JSON.stringify(input), event => {
+  // The unset default never borrows the conversation's effort, which belongs to the chat model.
+  await provider.generate({ provider: tree.provider, model, effort: pinnedModel ? tree.effort ?? null : null, thread: null, instructions: INSTRUCTIONS }, PROMPT + JSON.stringify(input), event => {
     if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
     if (event.type === 'status') status = event.status;
     if (event.type === 'usage' && ['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(event.usage[k]) && event.usage[k] >= 0)) usage = { input: event.usage.input, output: event.usage.output, cacheRead: event.usage.cacheRead };

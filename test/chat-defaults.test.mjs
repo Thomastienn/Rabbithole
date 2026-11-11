@@ -208,3 +208,49 @@ test('HTTP settings and conversation effort reach real Claude/Codex adapters and
     await app.stop(); store.close();
   }
 });
+
+test('smart model and effort follow global chat defaults independently, survive restart and ignore conversation overrides', async () => {
+  let env = await start();
+  try {
+    const follow = { model: null, followEffort: true, effort: null };
+    assert.deepEqual(await env.get('/api/settings/smart'), { ...follow, resolved: { provider: 'claude', model: null, effort: null } });
+    await env.post('/api/settings/chat', { provider: 'codex', model: 'chat', effort: 'high' });
+    assert.deepEqual((await env.get('/api/settings/smart')).resolved, { provider: 'codex', model: 'chat', effort: 'high' }, 'following is dynamic');
+    // A conversation override never moves what smart follows.
+    const root = await (await env.post('/api/trees')).json();
+    await env.post(`/api/trees/${root.id}/model`, { provider: 'openai', model: 'plain', effort: null });
+    assert.deepEqual((await env.get('/api/settings/smart')).resolved, { provider: 'codex', model: 'chat', effort: 'high' });
+
+    // Pinning effort alone keeps following the chat model.
+    let saved = await (await env.post('/api/settings/smart', { followEffort: false, effort: 'low' })).json();
+    assert.deepEqual(saved, { model: null, followEffort: false, effort: 'low', resolved: { provider: 'codex', model: 'chat', effort: 'low' } });
+    await env.post('/api/settings/chat', { provider: 'claude', model: 'chat', effort: 'high' });
+    assert.deepEqual((await env.get('/api/settings/smart')).resolved, { provider: 'claude', model: 'chat', effort: 'low' });
+
+    // Pinning the model alone keeps following chat effort once effort is followed again.
+    await env.post('/api/settings/smart', { followEffort: true });
+    saved = await (await env.post('/api/settings/smart', { model: { provider: 'openai', model: 'chat' } })).json();
+    assert.deepEqual(saved, { model: { provider: 'openai', model: 'chat' }, followEffort: true, effort: null, resolved: { provider: 'openai', model: 'chat', effort: 'high' } });
+    await env.post('/api/settings/chat', { provider: 'codex', model: 'plain', effort: null });
+    assert.deepEqual((await env.get('/api/settings/smart')).resolved, { provider: 'openai', model: 'chat', effort: null });
+
+    // Same model as chat with a different pinned effort, including Provider default.
+    saved = await (await env.post('/api/settings/smart', { model: { provider: 'codex', model: 'chat' }, followEffort: false, effort: null })).json();
+    assert.deepEqual(saved.resolved, { provider: 'codex', model: 'chat', effort: null });
+    for (const body of [{ followEffort: false, effort: 'max' }, { model: { provider: 'codex', model: 'plain' }, followEffort: false, effort: 'low' }, { model: { provider: 'missing', model: 'chat' } }, { model: { provider: 'codex', model: 'gone' } }, { followEffort: 'no' }, {}]) {
+      assert.equal((await env.post('/api/settings/smart', body)).status, 400, JSON.stringify(body));
+    }
+    assert.equal(env.calls.length, 0, 'configuring roles starts no model call');
+    const chat = await env.get('/api/settings/chat');
+    await env.close();
+
+    env = await start(env.dir);
+    assert.deepEqual(await env.get('/api/settings/smart'), { model: { provider: 'codex', model: 'chat' }, followEffort: false, effort: null, resolved: { provider: 'codex', model: 'chat', effort: null } });
+    assert.deepEqual(await env.get('/api/settings/chat'), chat, 'smart never rewrites chat defaults');
+    // A signed-out provider is reported, never substituted.
+    env.providers.openai.models = async () => { throw new Error('offline'); };
+    const offline = await env.post('/api/settings/smart', { model: { provider: 'openai', model: 'chat' } });
+    assert.equal(offline.status, 502);
+    assert.deepEqual((await env.get('/api/settings/smart')).model, { provider: 'codex', model: 'chat' });
+  } finally { await env.close(); }
+});

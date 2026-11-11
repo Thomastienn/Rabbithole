@@ -123,12 +123,12 @@ try {
   assert.equal(store.suggestionSettings().enabled, false);
   await reach('[role=switch]'); await key('Space');
   await wait(`document.querySelector('[role=switch]')?.checked === true && !document.querySelector('[role=switch]').disabled`);
-  await b('find', 'label', 'Suggestion model', 'click');
+  await b('find', 'label', 'Quick thinking model', 'click');
   await wait(`document.activeElement?.matches('[role=combobox]')`);
   await b('keyboard', 'type', 'Fixture alternate');
   await wait(`[...document.querySelectorAll('[role=option]')].filter(e => e.checkVisibility()).length === 1 && [...document.querySelectorAll('[role=option]')].some(e => e.textContent === 'Fixture alternate')`);
   await key('ArrowDown'); await key('Enter');
-  await wait(`[...document.querySelectorAll('button[aria-expanded=false]')].some(e => e.textContent.includes('Fixture alternate') && !e.disabled) && [...document.querySelectorAll('[role=status]')].some(e => e.textContent === 'Suggestion settings saved.')`);
+  await wait(`[...document.querySelectorAll('button[aria-expanded=false]')].some(e => e.textContent.includes('Fixture alternate') && !e.disabled) && [...document.querySelectorAll('[role=status]')].some(e => e.textContent === 'Quick thinking settings saved.')`);
   assert.deepEqual(store.suggestionSettings().model, { provider: 'codex', model: 'fixture-alternate' });
   steps.push('Settings shows daily total and >2k concept warning; keyboard toggles automatic suggestions and selects a pinned model');
   for (const [width, height] of [[1440, 1000], [390, 844]]) {

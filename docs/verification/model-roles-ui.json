@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-11T09:02:46.819Z",
+  "boundary": "built UI + real HTTP/store + controlled providers, no native inference",
+  "checks": [
+    "All three roles are visible; smart follows the changed chat default model and effort dynamically",
+    "Smart effort pin keeps following the chat model; smart model pin keeps its own effort and never changes chat defaults",
+    "Quick thinking accepts the custom endpoint, offers only advertised efforts and saves effort by keyboard without any model call",
+    "Restarting the server restores every role selection in Settings",
+    "Dark/light narrow Settings fit without horizontal overflow; screenshots captured"
+  ],
+  "result": "PASS"
+}

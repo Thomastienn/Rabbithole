@@ -55,7 +55,7 @@ test('HTTP Claude defaults are saved before inference and override the learner e
     await (await env.post(`/api/trees/${root.id}/messages`, { text: 'Use my choice' })).text();
     assert.equal(calls.at(-1).args[calls.at(-1).args.indexOf('--model') + 1], 'haiku');
     assert.equal(env.store.tree(root.id).model, 'haiku');
-    assert.deepEqual(env.store.suggestionSettings(), { enabled: true, model: null });
+    assert.deepEqual(env.store.suggestionSettings(), { enabled: true, model: null, effort: null });
   } finally {
     await env.close();
     if (previous === undefined) delete process.env.CLAUDE_MODEL; else process.env.CLAUDE_MODEL = previous;
@@ -98,7 +98,7 @@ for (const terra of [true, false]) test(`HTTP Codex saves and explicitly sends $
     assert.equal(env.store.tree(child.id).model, 'fixture-alternate');
     assert.equal(requests.filter(r => r.method === 'turn/start').at(-1).params.model, 'fixture-alternate');
     assert.equal(env.store.tree(root.id).model, expected);
-    assert.deepEqual(env.store.suggestionSettings(), { enabled: true, model: null });
+    assert.deepEqual(env.store.suggestionSettings(), { enabled: true, model: null, effort: null });
   } finally { await env.close(); }
 });
 

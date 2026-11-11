@@ -8,13 +8,14 @@ import { effortLabel, type Model, type ChatSelection } from './models';
 const key = (selection: Pick<Model, 'provider' | 'model'>) => JSON.stringify({ provider: selection.provider, model: selection.model });
 const labels: Record<string, string> = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
 
-export default function ChatSettings({ api, models, providers, modelError, reloadModels, connections }: {
+export default function ChatSettings({ api, models, providers, modelError, reloadModels, connections, onSaved }: {
   api: (path: string, body?: unknown) => Promise<ChatSelection>;
   models?: Model[];
   providers?: Record<string, { connected: boolean }>;
   modelError: string;
   reloadModels: () => Promise<void>;
   connections: () => void;
+  onSaved?: () => void;
 }) {
   const [saved, setSaved] = useState<ChatSelection>();
   const [pending, setPending] = useState('loading'), [error, setError] = useState(''), [message, setMessage] = useState('');
@@ -34,6 +35,7 @@ export default function ChatSettings({ api, models, providers, modelError, reloa
     setPending('saving'); setError(''); setMessage('');
     try {
       setSaved(await api('/api/settings/chat', selection));
+      onSaved?.();
       setMessage(`Chat defaults saved. Existing conversations keep their choices.${saved.effort && selection.effort === null && selection.model !== saved.model ? ' Effort changed to Provider default for this model.' : ''}`);
     } catch (e) { setError((e as Error).message); }
     finally { setPending(''); }

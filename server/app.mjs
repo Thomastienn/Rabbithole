@@ -27,6 +27,12 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       return { status: 502, error: `Could not check the selected model. ${next} Then refresh models and retry. Your previous selection is saved.` };
     }
   };
+  const chatDefault = () => store.chatSettings() ?? { provider: defaultProvider, model: null, effort: null };
+  // Smart follows the global chat default per field, never a conversation override.
+  const smart = () => {
+    const saved = store.smartSettings(), chat = chatDefault();
+    return { ...saved, resolved: { provider: saved.model?.provider ?? chat.provider, model: saved.model ? saved.model.model : chat.model, effort: saved.followEffort ? chat.effort : saved.effort } };
+  };
   const active = new Map(), videos = new Map(), videoJobs = new Set();
   let stopping = false, stopped;
   // A crash before commit restores staged files; a crash after commit finishes removing them.
@@ -67,7 +73,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     running.done = (async () => {
       const inheritedContext = tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null;
       const familiarity = store.mentioned([tree.branch?.text, question, answer].filter(Boolean).join('\n'));
-      const selection = settings.model ?? tree;
+      const selection = settings.model ? { ...settings.model, effort: settings.effort } : tree;
       const result = await suggest(pick(selection), selection, { inheritedContext, question, answer, knownConcepts: known, familiarity }, running.controller.signal, suggestionTimeout, settings.model?.model);
       store.addGraph(result.graph, message);
       store.finishSuggestions(conversation, message, result.passages, result.usage);
@@ -94,7 +100,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       if (req.method === 'GET' && url.pathname === '/api/graph') return json(res, 200, store.graph());
       if (req.method === 'GET' && url.pathname === '/api/settings/endpoint' && endpoint) return json(res, 200, endpoint.status());
       if (req.method === 'GET' && url.pathname === '/api/settings/suggestions') return json(res, 200, store.suggestionSettings());
-      if (req.method === 'GET' && url.pathname === '/api/settings/chat') return json(res, 200, store.chatSettings() ?? { provider: defaultProvider, model: null, effort: null });
+      if (req.method === 'GET' && url.pathname === '/api/settings/chat') return json(res, 200, chatDefault());
+      if (req.method === 'GET' && url.pathname === '/api/settings/smart') return json(res, 200, smart());
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
         if (ids.length > 500) return json(res, 400, { error: 'Too many conversations requested.' });
@@ -146,19 +153,33 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           if (invalid) return json(res, invalid.status, { error: invalid.error });
           return json(res, 200, store.saveChatSettings(selection));
         }
-        if (url.pathname === '/api/settings/suggestions') {
-          const hasEnabled = Object.hasOwn(body ?? {}, 'enabled'), hasModel = Object.hasOwn(body ?? {}, 'model');
-          if ((!hasEnabled && !hasModel) || (hasEnabled && typeof body.enabled !== 'boolean')) return json(res, 400, { error: 'Choose whether automatic suggestions are on or off.' });
-          if (hasModel && body.model !== null) {
-            const model = body.model;
-            if (!['claude', 'codex'].includes(model?.provider) || typeof model.model !== 'string' || !providers[model.provider]) return json(res, 400, { error: 'Choose a signed-in subscription model for suggestions.' });
-            try {
-              const models = await providers[model.provider].models();
-              if (!models.some(m => m.model === model.model)) return json(res, 400, { error: 'Suggestion model is unavailable. Refresh models and choose again.' });
-            } catch { return json(res, 400, { error: 'Sign in to the suggestion provider in Connections, then refresh models and choose again.' }); }
+        if (url.pathname === '/api/settings/smart') {
+          const has = key => Object.hasOwn(body ?? {}, key), saved = store.smartSettings();
+          if ((!has('model') && !has('followEffort')) || (has('followEffort') && typeof body.followEffort !== 'boolean') || (body.followEffort === false && body.effort !== null && typeof body.effort !== 'string')) return json(res, 400, { error: 'Choose a smart model or effort.' });
+          const next = { model: has('model') ? body.model && { provider: body.model.provider, model: body.model.model } : saved.model, followEffort: has('followEffort') ? body.followEffort : saved.followEffort, effort: has('followEffort') ? body.effort ?? null : saved.effort };
+          // Only the pinned fields being saved are checked; followed chat values are validated where chat saves them.
+          if ((has('model') && next.model) || (has('followEffort') && !next.followEffort && next.effort !== null)) {
+            const chat = chatDefault(), provider = next.model?.provider ?? chat.provider;
+            let model = next.model?.model ?? chat.model;
+            try { model ??= await providers[provider]?.model?.({ model: null, thread: null }); } catch {}
+            const invalid = await selectionError({ provider, model, effort: next.followEffort ? null : next.effort });
+            if (invalid) return json(res, invalid.status, { error: invalid.error });
           }
-          const settings = store.suggestionSettings();
-          return json(res, 200, store.saveSuggestionSettings({ enabled: hasEnabled ? body.enabled : settings.enabled, model: hasModel ? body.model && { provider: body.model.provider, model: body.model.model } : settings.model }));
+          store.saveSmartSettings(next);
+          return json(res, 200, smart());
+        }
+        if (url.pathname === '/api/settings/suggestions') {
+          const has = key => Object.hasOwn(body ?? {}, key), settings = store.suggestionSettings();
+          if ((!has('enabled') && !has('model') && !has('effort')) || (has('enabled') && typeof body.enabled !== 'boolean')) return json(res, 400, { error: 'Choose whether automatic suggestions are on or off.' });
+          const model = has('model') ? body.model && { provider: body.model.provider, model: body.model.model } : settings.model;
+          // A new model drops the old effort unless one is sent; the unset default model has no effort to choose.
+          const effort = has('effort') ? body.effort : has('model') ? null : settings.effort;
+          if (!model && effort !== null) return json(res, 400, { error: 'Choose a quick thinking model before choosing its effort.' });
+          if (model && (has('model') || has('effort'))) {
+            const invalid = await selectionError({ ...model, effort });
+            if (invalid) return json(res, invalid.status, { error: invalid.error });
+          }
+          return json(res, 200, store.saveSuggestionSettings({ enabled: has('enabled') ? body.enabled : settings.enabled, model, effort }));
         }
         if (url.pathname === '/api/graph/correct' || url.pathname === '/api/graph/merge') {
           const merging = url.pathname.endsWith('/merge');
@@ -187,7 +208,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           // One unstarted chat at a time: New chat reopens it instead of creating another.
           const unstarted = store.unstarted();
           if (unstarted) return json(res, 200, store.tree(unstarted));
-          const selection = store.chatSettings() ?? { provider: defaultProvider, model: null, effort: null };
+          const selection = chatDefault();
           if (!Object.hasOwn(providers, selection.provider)) return json(res, 400, { error: 'Chat default provider is unavailable. Configure it in Connections or change the chat default in Models.' });
           if (selection.model) {
             const invalid = await selectionError(selection);

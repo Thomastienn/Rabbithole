@@ -29,7 +29,7 @@ test('previews list every message in order, bound each text and survive reload w
   store = new Store(path);
   assert.deepEqual(store.previews([a.id])[a.id].map(m => m.status), ['completed', 'completed', 'completed', 'interrupted']);
   assert.equal(store.tree(a.id).messages[2].text.length, 1200);
-  assert.deepEqual(store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(row => row.name), ['artifacts', 'branches', 'chat_settings', 'concept_aliases', 'concept_links', 'concept_topics', 'concepts', 'evidence', 'messages', 'suggestion_settings', 'suggestions', 'topics', 'trees']);
+  assert.deepEqual(store.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(row => row.name), ['artifacts', 'branches', 'chat_settings', 'concept_aliases', 'concept_links', 'concept_topics', 'concepts', 'evidence', 'messages', 'smart_settings', 'suggestion_settings', 'suggestions', 'topics', 'trees']);
   store.close();
 });
 
