@@ -57,5 +57,5 @@ The app's estimate of how well the learner knows a concept, derived from evidenc
 _Avoid_: Mastery, score, level
 
 **Inherited context**:
-The fixed snapshot of relevant ancestor discussion, the passage and the learner's question that a child conversation receives at branch creation.
+The fixed background a child conversation receives at branch creation: the exact passage and one short paragraph summarizing relevant prior discussion. It supplies context without answering the child's question; that question is a separate learner message.
 _Avoid_: Summary, compacted context

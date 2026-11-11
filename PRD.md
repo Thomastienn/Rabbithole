@@ -84,7 +84,7 @@ Use standard keyboard interactions initially. As a later increment, add the opt-
 ## Child conversation context
 
 - Generate compact context on demand when the learner creates a child branch.
-- Include relevant parent history and ancestor context in the summary, alongside the exact selected passage and the learner's question.
+- Summarize relevant prior parent and ancestor discussion in one short paragraph. Preserve the exact selected passage separately. Context preparation must not answer the new question or introduce a new explanation; the child's first learner message carries that question separately.
 - Fix inherited context at branch creation; later parent messages do not automatically change it.
 - Preserve original conversation messages so summarization does not replace the source history.
 - Child discussions remain side context. Do not inject their messages or summaries into the parent conversation; returning to the parent leaves its model context unchanged.
@@ -154,3 +154,8 @@ The provider research below began on 2026-11-07. Current decisions and task-spec
 ## Change boundary
 
 Implement the existing backlog under the standing authorization in AGENTS.md. Preserve the agreed release order and scope; clarify material product changes while continuing independent ready work.
+
+The owner's 2026-11-11 workspace and media requests are captured in
+[workspace and media refinement](docs/workspace-media-refinement.md).
+That new scope is under a grill-with-docs interview (TreeTutor-cnr); detailed
+design choices remain pending shared understanding with the owner.
