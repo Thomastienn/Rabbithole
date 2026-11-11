@@ -30,19 +30,31 @@ agents_now() {
   done
 }
 
-# Ask the real CLI with the run's model. Ralph 0.12.0 does not recognise subscription
+# Ask the real CLI with a cheap model. Ralph 0.12.0 does not recognise subscription
 # usage-limit errors, and matching its log would also match text the agent prints.
 usable() {
   local reply
   case "$1" in
-    claude) reply="$(cd /tmp && timeout 180 claude -p 'Reply with exactly: pong' --model "$claude_model" 2>/dev/null)" ;;
-    codex) reply="$(timeout 180 codex exec --skip-git-repo-check --ephemeral -s read-only -C /tmp -m "$codex_model" 'Reply with exactly: pong' 2>/dev/null)" ;;
+    claude) reply="$(cd /tmp && timeout --kill-after=5 180 claude -p 'Reply with exactly: pong' --model haiku --effort low 2>/dev/null)" ;;
+    codex) reply="$(timeout --kill-after=5 180 codex exec --skip-git-repo-check --ephemeral -s read-only -C /tmp -m gpt-6-luna -c 'model_reasoning_effort="low"' 'Reply with exactly: pong' 2>/dev/null)" ;;
     *) echo "Unknown agent in RALPH_AFK_SCHEDULE: $1" >&2; return 1 ;;
   esac || return 1
   [[ "${reply,,}" == *pong* ]]
 }
 
 count() { bd "$@" --parent "$epic" --json --limit 0 | jq length; }
+
+run_pid=''
+timer_pid=''
+cleanup() {
+  [[ -z "$timer_pid" ]] || kill "$timer_pid" 2>/dev/null || :
+  if [[ -n "$run_pid" ]] && kill -0 "$run_pid" 2>/dev/null; then
+    node scripts/ralph-takeover.mjs "$run_pid" 9>&-
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 last=''
 while :; do
@@ -75,9 +87,32 @@ while :; do
   started=$SECONDS
   # 9>&-: a Ralph that outlives this script must not keep the supervisor lock.
   case "$agent" in
-    claude) scripts/ralph "$epic" --takeover --iterations 1 --agent claude --model "$claude_model" 9>&- ;;
-    codex) RALPH_CODEX_MODEL="$codex_model" scripts/ralph-codex "$epic" --takeover --iterations 1 9>&- ;;
-  esac || log "Ralph exited with status $?."
+    claude) scripts/ralph "$epic" --takeover --iterations 1 --agent claude --model "$claude_model" 9>&- & ;;
+    codex) RALPH_CODEX_MODEL="$codex_model" scripts/ralph-codex "$epic" --takeover --iterations 1 9>&- & ;;
+  esac
+  run_pid=$!
+  interrupted=false
+  while kill -0 "$run_pid" 2>/dev/null; do
+    sleep "$wait_s" 9>&- &
+    timer_pid=$!
+    # Wake on completion as well as the timer; healthy short runs need no extra probe.
+    wait -n "$run_pid" "$timer_pid" 2>/dev/null || :
+    kill "$timer_pid" 2>/dev/null || :
+    wait "$timer_pid" 2>/dev/null || :
+    timer_pid=''
+    kill -0 "$run_pid" 2>/dev/null || break
+    if ! usable "$agent"; then
+      kill -0 "$run_pid" 2>/dev/null || break
+      log "$agent stopped answering mid-task. Stopping Ralph before checking other agents."
+      node scripts/ralph-takeover.mjs "$run_pid" 9>&-
+      interrupted=true
+      last=''
+      break
+    fi
+  done
+  wait "$run_pid" || log "Ralph exited with status $?."
+  run_pid=''
+  "$interrupted" && continue
   # A run this short did no work (limit hit at once, startup failure, crash): do not spin.
   if (( SECONDS - started < 120 )); then
     log "Run ended within 2 minutes. Checking again in ${wait_s}s."

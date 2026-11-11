@@ -33,6 +33,9 @@ function signal(proc, name) {
 
 async function takeover() {
   const lock = json(lockFile);
+  if (process.argv[2] !== undefined && lock && lock.pid !== Number(process.argv[2])) {
+    throw new Error('Refusing takeover: the supervised Ralph no longer owns the lock.');
+  }
   if (!lock) return;
   if (!Number.isInteger(lock.pid) || lock.pid <= 1 || lock.hostname !== hostname() || realpathSync(lock.cwd) !== cwd) {
     throw new Error('Refusing takeover: lock does not identify a Ralph session on this host and checkout.');

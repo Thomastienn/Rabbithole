@@ -14,7 +14,8 @@ cycle it starts one `--takeover --iterations 1` run (one task) and waits for it
 to end. A Ralph already running in this checkout, including an interactive one,
 is stopped by that first takeover. A second `ralph-afk` is refused.
 
-Before each run it sends a one-word prompt to the real CLI with the run's model
+Before each run it sends a one-word prompt to the real CLI using Claude Haiku
+or Codex `gpt-6-luna`, with effort explicitly set to `low` for both probes,
 and uses the first scheduled agent that answers. It stays on the agent that ran
 last and switches only when that agent stops answering. Ralph 0.12.0's own
 `fallbackAgents` handling is not used: it does not recognise the subscription
@@ -22,8 +23,19 @@ last and switches only when that agent stops answering. Ralph 0.12.0's own
 iteration limit. If no scheduled agent answers, or a run ends within two
 minutes (limit reached at once, startup failure, crash), it waits
 `RALPH_AFK_WAIT` seconds (default 600) and checks again, which also covers a
-limit that resets while you sleep. A limit reached mid-task ends that run; the
-next agent resumes the same task through `beads-resume`. 
+limit that resets while you sleep.
+
+During a run it repeats the same one-word availability probe every
+`RALPH_AFK_WAIT` seconds (default 600, ten minutes). If
+the CLI stops answering (usage limit, auth or network), it stops that Ralph and
+its child agents through the takeover helper, then checks the scheduled agents
+again immediately. The next available agent resumes the unfinished task and
+pending edits through `beads-resume`. This also works when Ralph stays alive
+after a mid-task limit. Task output mentioning limits does not trigger a switch.
+Each probe uses the provider; it times out after 180 seconds and forces termination
+5 seconds later if needed. Shutdown waits up to another 40 seconds before
+refusing an overlapping run.
+Cheap-model probes can miss a limit specific to the working model.
 
 With no arguments it works the epics listed in `.ralph-tui/epics`, top to
 bottom: each cycle takes the first epic that has a

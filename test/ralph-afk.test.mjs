@@ -18,20 +18,63 @@ function fixture(work = { 'TreeTutor-7t3': 1 }) {
   for (const [epic, n] of Object.entries(work)) writeFileSync(join(cwd, `work-${epic}`), String(n));
   const epicWork = flag => `"${cwd}/work-$(sed -n 's/.*${flag} \\([^ ]*\\).*/\\1/p' <<< "$*")"`;
   const bin = (name, body) => writeFileSync(join(cwd, 'bin', name), `#!/usr/bin/env bash\n${body}\n`, { mode: 0o755 });
-  bin('bd', `if [[ $1 == ready ]]; then jq -n --argjson n "$(cat ${epicWork('--parent')} 2>/dev/null || echo 0)" '[range($n)]'; else echo '[]'; fi`);
-  bin('ralph-tui', `echo "$*" >> "${cwd}/runs"; f=${epicWork('--epic')}; echo $(( $(cat "$f") - 1 )) > "$f"`);
+  bin('bd', `case "$1" in
+    ready) jq -n --argjson n "$(cat ${epicWork('--parent')} 2>/dev/null || echo 0)" '[range($n)]' ;;
+    show) cat "${cwd}/issue.json" ;;
+    update) echo '[{"id":"task-1","status":"in_progress","assignee":"fixture"}]' > "${cwd}/issue.json" ;;
+    *) echo '[]' ;;
+  esac`);
+  bin('ralph-tui', `if [[ -n $FIXTURE_RUNNING ]]; then exec "${process.execPath}" "${cwd}/running.cjs" "$0" "$@"; fi
+echo "$*" >> "${cwd}/runs"; f=${epicWork('--epic')}; echo $(( $(cat "$f") - 1 )) > "$f"`);
+  writeFileSync(join(cwd, 'running.cjs'), `
+const fs = require('node:fs');
+const { spawn } = require('node:child_process');
+const args = process.argv.slice(3);
+const agent = args[args.indexOf('--agent') + 1];
+const work = 'work-' + args[args.indexOf('--epic') + 1];
+fs.appendFileSync('runs', args.join(' ') + '\\n');
+if (fs.existsSync('partial.txt')) {
+  require('node:assert/strict').equal(JSON.parse(fs.readFileSync('issue.json'))[0].status, 'in_progress');
+  require('node:assert/strict').equal(fs.readFileSync('partial.txt', 'utf8'), 'unfinished edit');
+  fs.writeFileSync('resumed', 'yes');
+  fs.writeFileSync(work, String(Number(fs.readFileSync(work)) - 1));
+} else {
+  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+  fs.writeFileSync('child.pid', String(child.pid));
+  fs.writeFileSync('partial.txt', 'unfinished edit');
+  fs.writeFileSync('issue.json', JSON.stringify([{ id: 'task-1', status: 'in_progress', assignee: 'fixture' }]));
+  fs.writeFileSync('.ralph-tui/ralph.lock', JSON.stringify({ pid: process.pid, cwd: process.cwd(), hostname: require('node:os').hostname() }));
+  fs.writeFileSync('.ralph-tui/session.json', JSON.stringify({ activeTaskIds: ['task-1'] }));
+  process.on('SIGTERM', () => {
+    fs.writeFileSync('issue.json', JSON.stringify([{ id: 'task-1', status: 'open', assignee: 'fixture' }]));
+    fs.writeFileSync('stopped', 'yes');
+    process.exit(0);
+  });
+  console.log('Working on usage limit handling; ordinary task output must not trigger a handoff.');
+  if (process.env.FIXTURE_RUNNING !== 'healthy') fs.writeFileSync('limited-agent', agent);
+  setTimeout(() => {
+    child.kill();
+    if (process.env.FIXTURE_RUNNING === 'healthy') fs.writeFileSync(work, String(Number(fs.readFileSync(work)) - 1));
+    else fs.writeFileSync('timed-out', 'yes');
+    process.exit(0);
+  }, process.env.FIXTURE_RUNNING === 'healthy' ? 300 : 1500);
+}
+`);
   // Limited until the first wait has passed, like a usage window that resets.
-  const agent = name => bin(name, `if [[ " $FIXTURE_LIMITED " == *" ${name} "* && ! -e "${cwd}/sleeps" ]]; then echo "You've hit your usage limit" >&2; exit 1; fi; echo pong`);
+  const agent = name => bin(name, `echo '${name}' >> "${cwd}/probes"
+echo "$*" >> "${cwd}/probe-${name}-args"
+if [[ $(cat "${cwd}/limited-agent" 2>/dev/null) == '${name}' || ( " $FIXTURE_LIMITED " == *" ${name} "* && ! -e "${cwd}/sleeps" ) ]]; then echo "You've hit your usage limit" >&2; exit 1; fi; echo pong`);
   agent('claude');
   agent('codex');
-  bin('sleep', `echo "$1" >> "${cwd}/sleeps"; [[ -z $FIXTURE_WAIT_ENDS_WORK ]] || rm -f "${cwd}"/work-*`);
+  bin('sleep', `if [[ ! -e /proc/$$/fd/9 ]]; then echo "$1" >> "${cwd}/checks"; exec /usr/bin/sleep 0.05; fi
+echo "$1" >> "${cwd}/sleeps"; [[ -z $FIXTURE_WAIT_ENDS_WORK ]] || rm -f "${cwd}"/work-*`);
   bin('date', `if [[ $1 == +%H ]]; then echo "\${FIXTURE_HOUR:-12}"; else exec /usr/bin/date "$@"; fi`);
   const read = name => existsSync(join(cwd, name)) ? readFileSync(join(cwd, name), 'utf8').trim().split('\n') : [];
   const run = (env = {}) => spawnSync('bash', [join(cwd, 'scripts/ralph-afk')], {
     cwd, encoding: 'utf8', timeout: 20000,
-    env: { ...process.env, HOME: cwd, PATH: `${cwd}/bin:${process.env.PATH}`, RALPH_CODEX_MODEL: 'gpt-6.1-sol', ...env },
+    env: { ...process.env, HOME: cwd, PATH: `${cwd}/bin:${process.env.PATH}`, BEADS_ACTOR: 'fixture', RALPH_CODEX_MODEL: 'gpt-6.1-sol', ...env },
   });
-  return { run, runs: () => read('runs'), sleeps: () => read('sleeps') };
+  return { run, read, cwd, runs: () => read('runs'), sleeps: () => read('sleeps') };
 }
 
 test('a limited Claude hands the task to Codex, which keeps the next task after Claude resets', () => {
@@ -72,4 +115,34 @@ test('when an epic runs out of work it moves to the next one that has some', () 
   const result = f.run();
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.deepEqual(f.runs().map(run => run.split(' ')[3]), ['TreeTutor-7t3', 'TreeTutor-sh8']);
+});
+
+for (const agent of ['claude', 'codex']) test(`a ${agent} limit mid-task stops Ralph and its agent, then resumes pending edits on the other provider`, () => {
+  const f = fixture();
+  const result = f.run({ FIXTURE_RUNNING: 'limited', RALPH_AFK_SCHEDULE: `00-24=${agent},${agent === 'claude' ? 'codex' : 'claude'}`, RALPH_AFK_WAIT: '7' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(f.read('stopped'), ['yes'], 'Supervisor must stop the stalled run instead of waiting for it to end');
+  assert.deepEqual(f.read('timed-out'), []);
+  assert.deepEqual(f.read('resumed'), ['yes']);
+  assert.deepEqual(f.sleeps(), ['7'], 'Mid-task interruption must skip the short-run delay before fallback');
+  assert.equal(f.runs().length, 2);
+  assert.match(f.runs()[0], new RegExp(`--agent ${agent}`));
+  assert.match(f.runs()[1], new RegExp(`--agent ${agent === 'claude' ? 'codex' : 'claude'}`));
+  assert.ok(f.read('probe-claude-args').every(args => args.includes('--model haiku')));
+  assert.ok(f.read('probe-codex-args').every(args => args.includes('-m gpt-6-luna')));
+  assert.ok(f.read('probe-claude-args').every(args => args.includes('--effort low')));
+  assert.ok(f.read('probe-codex-args').every(args => args.includes('-c model_reasoning_effort="low"')));
+  assert.ok(f.read('checks').every(seconds => seconds === '7'));
+  const child = f.read('child.pid')[0];
+  assert.ok(!existsSync(`/proc/${child}/stat`) || readFileSync(`/proc/${child}/stat`, 'utf8').split(') ')[1][0] === 'Z');
+});
+
+test('a healthy task keeps running even when its output mentions usage limits', () => {
+  const f = fixture();
+  const result = f.run({ FIXTURE_RUNNING: 'healthy' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.equal(f.runs().length, 1);
+  assert.deepEqual(f.read('stopped'), []);
+  assert.ok(f.read('probes').length > 1, 'Healthy provider must remain available during mid-task probes');
+  assert.ok(f.read('checks').every(seconds => seconds === '600'), 'Checks default to ten minutes');
 });

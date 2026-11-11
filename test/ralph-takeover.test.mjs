@@ -118,6 +118,19 @@ test('a lock pointing to an unrelated process is refused without starting or kil
   assert.ok(!existsSync(join(f.cwd, 'started.json')));
 });
 
+test('a supervisor cannot stop a replacement Ralph that acquired the lock', async t => {
+  const f = fixture(t);
+  const { p } = await f.start();
+  const helper = spawn(process.execPath, [join(f.cwd, 'scripts/ralph-takeover.mjs'), String(process.pid)], { cwd: f.cwd, env: f.env });
+  let output = '';
+  helper.stderr.on('data', data => { output += data; });
+  const [code] = await once(helper, 'exit');
+  assert.notEqual(code, 0);
+  assert.match(output, /supervised Ralph no longer owns the lock/);
+  assert.equal(p.exitCode, null);
+  assert.ok(!existsSync(join(f.cwd, 'stopped')));
+});
+
 test('takeover preserves a task completed during shutdown', async t => {
   const f = fixture(t);
   await f.start({ FIXTURE_FINAL_STATUS: 'closed' });
