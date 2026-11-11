@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-11T09:21:14.272Z",
+  "date": "2026-11-11T19:37:07.198Z",
   "evidence": "built UI, real HTTP/SQLite, fixture providers; no native inference",
   "checks": [
     "dark side panel: 37px header holds title, model/effort, expand, close and overflow; circular send beside rounded composer clears the latest reply",

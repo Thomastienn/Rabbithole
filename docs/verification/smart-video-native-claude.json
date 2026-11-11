@@ -1,14 +1,43 @@
 {
-  "checkedAt": "2026-11-11T11:24:30.747Z",
-  "evidence": "Native Claude Code sign-in for smart inference; controlled chat handoff; actual sandboxed short 2D render. No narration, subtitle, long-duration or 3D claim.",
+  "checkedAt": "2026-11-11T19:43:30.350Z",
+  "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual sandboxed short 2D render. No narration, subtitle, long-duration or 3D claim.",
   "provider": "claude",
-  "model": "sonnet",
   "effort": "low",
   "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
   "memoryBytes": 16368893952,
-  "data": "/tmp/tt-smart-video-live-GBW7Zh",
-  "providerError": "Claude: You've hit your 5-hour limit · resets 7:40am (America/Edmonton)",
-  "elapsedMs": 2020,
-  "pass": false,
-  "error": "Video provider failed to generate a composition.\n\n'failed' !== 'ready'\n"
+  "data": "/tmp/tt-smart-video-live-hAX0Wr",
+  "model": "sonnet",
+  "renderMs": 16368,
+  "elapsedMs": 27041,
+  "media": {
+    "id": "6310d821-97b0-4aa6-a28a-dfe1a61ffb72",
+    "duration": 5.666666666666667,
+    "bytes": 284939,
+    "probe": [
+      {
+        "codec": "h264",
+        "type": "video",
+        "width": 640,
+        "height": 360,
+        "duration": "5.666667"
+      },
+      {
+        "codec": "aac",
+        "type": "audio",
+        "duration": "5.675000"
+      }
+    ]
+  },
+  "usage": [
+    {
+      "at": 1794426219298,
+      "provider": "claude",
+      "model": "sonnet",
+      "task": "video",
+      "input": 756,
+      "output": 1228,
+      "cacheRead": 963
+    }
+  ],
+  "pass": true
 }

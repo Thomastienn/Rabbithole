@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-11T14:41:00.879Z",
+  "checkedAt": "2026-11-11T19:44:34.602Z",
   "media": "24fdc9cb-49e0-4472-83f8-a6d4946381cc",
   "evidence": "Copy of native pre-library database and generated MP4 in the production build and actual Chromium player",
   "checks": [
@@ -10,8 +10,10 @@
       "heading": "Videos"
     },
     {
-      "name": "missing file shows unavailable, no player and no regenerate action",
-      "buttons": [],
+      "name": "missing file shows unavailable, no player, no regenerate action; only Remove from Videos",
+      "buttons": [
+        "Remove from Videos"
+      ],
       "state": "unavailable",
       "status": "Missing file video: Video unavailable: its saved file is missing or unreadable.",
       "video": false

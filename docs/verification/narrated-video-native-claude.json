@@ -1,0 +1,67 @@
+{
+  "checkedAt": "2026-11-11T19:39:54.484Z",
+  "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual Edge TTS with timing metadata, actual sandboxed target-length render; embedded subtitles.",
+  "mode": "2d",
+  "provider": "claude",
+  "effort": "low",
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+  "memoryBytes": 16368893952,
+  "data": "/tmp/tt-narrated-video-live-uEj4Rs",
+  "model": "sonnet",
+  "ttsCalls": 1,
+  "ttsMs": 1853,
+  "renderMs": 120014,
+  "elapsedMs": 139161,
+  "dimension": "2d",
+  "timing": {
+    "sentences": 22,
+    "words": 193,
+    "captions": 31,
+    "first": {
+      "text": "Imagine looking for a name in a phonebook",
+      "startMs": 50,
+      "endMs": 2300,
+      "startFrame": 1,
+      "endFrame": 69
+    },
+    "last": {
+      "text": "search is so powerful",
+      "startMs": 78075,
+      "endMs": 79500,
+      "startFrame": 2342,
+      "endFrame": 2385
+    },
+    "durationInFrames": 2412
+  },
+  "media": {
+    "id": "3b13f5a5-2c3e-4b96-98b6-e876824c5963",
+    "duration": 80.4,
+    "bytes": 3840714,
+    "probe": [
+      {
+        "codec": "h264",
+        "type": "video",
+        "width": 640,
+        "height": 360,
+        "duration": "80.400000"
+      },
+      {
+        "codec": "aac",
+        "type": "audio",
+        "duration": "80.405000"
+      }
+    ]
+  },
+  "usage": [
+    {
+      "at": 1794426011948,
+      "provider": "claude",
+      "model": "sonnet",
+      "task": "video",
+      "input": 888,
+      "output": 2626,
+      "cacheRead": 963
+    }
+  ],
+  "pass": true
+}

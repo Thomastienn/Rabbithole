@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-nwx.7",
-  "checkedAt": "2026-11-11T05:47:33.673Z",
+  "checkedAt": "2026-11-11T19:43:21.911Z",
   "evidence": "Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.",
   "appearances": {
     "dark": {
@@ -12,6 +12,7 @@
       "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
       "footer": [
         "Knowledge",
+        "Videos",
         "Settings"
       ],
       "muted": "rgb(22, 32, 29)",
@@ -30,6 +31,7 @@
       "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
       "footer": [
         "Knowledge",
+        "Videos",
         "Settings"
       ],
       "muted": "rgb(220, 226, 220)",

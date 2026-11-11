@@ -1,11 +1,11 @@
 {
   "result": "PASS",
   "mode": "fixture",
-  "date": "2026-11-11T05:47:03.765Z",
+  "date": "2026-11-11T19:37:56.615Z",
   "liveEndpointTested": false,
   "serverPids": [
-    1494717,
-    1499052
+    3104218,
+    3106193
   ],
   "checks": [
     "keyboard-only menu -> focused configuration -> Save -> Test -> Remove; key cleared and never returned",
@@ -41,5 +41,5 @@
     "desktop/mobile form scroll and menu bounds; Escape returns focus to the model button",
     "removed endpoint stays explicit in saved chat; actionable menu repairs it or switches to Claude"
   ],
-  "screenshots": "/tmp/tt-endpoint-ui-gk1rl1"
+  "screenshots": "/tmp/tt-endpoint-ui-wtqG8w"
 }

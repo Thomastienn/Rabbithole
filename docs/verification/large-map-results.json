@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-11T05:47:36.561Z",
+  "date": "2026-11-11T19:39:02.622Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,36 +12,36 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 1071.7600719999991,
-  "previewQueryMs": 786.6856479999988,
+  "seedMs": 937.7812190000004,
+  "previewQueryMs": 828.166498999999,
   "previewBytes": 4876201,
-  "openMs": 3345.4539890000015,
+  "openMs": 3443.920102,
   "dom": {
-    "elements": 2527,
+    "elements": 2572,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1988.5,
+    "elapsedMs": 1980.9000000059605,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
     "maxMs": 16.800000000000182,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.700000000000728,
+    "p95Ms": 16.700000000000273,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 414.54532200000176,
-  "unfoldMs": 227.6928310000003,
+  "foldMs": 431.5167959999999,
+  "unfoldMs": 223.20368900000176,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 4452.244160999999,
-  "selectMs": 5192.182503,
-  "selectUiMs": 786.4000000022352,
+  "selectClickMs": 4661.140378000004,
+  "selectMs": 5463.686287000004,
+  "selectUiMs": 879.8999999910593,
   "selectedBounds": {
     "bottom": 631.8375244140625,
     "canvasHeight": 900,
@@ -51,12 +51,12 @@
     "toolbarTop": 850,
     "top": 75
   },
-  "streamingMs": 528.156597000001,
+  "streamingMs": 529.9424650000001,
   "chunkRenders": {
-    "6c55addb-a3ce-4b6a-bb8b-3b2e651d9bbe": 14
+    "deff6963-24bd-4f0c-a0f5-2b0d5ce11984": 14
   },
   "chunkRenderReasons": {
-    "6c55addb-a3ce-4b6a-bb8b-3b2e651d9bbe": [
+    "deff6963-24bd-4f0c-a0f5-2b0d5ce11984": [
       "preview"
     ]
   }
