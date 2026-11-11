@@ -38,7 +38,7 @@ let held;
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: {
   models: async () => [{ model: 'kb-a', label: 'Keyboard A', isDefault: true }, { model: 'kb-b', label: 'Keyboard B' }],
   async generate(tree, prompt, emit, save, signal) {
-    if (prompt.startsWith('Compact only')) { emit({ type: 'item', item: 'summary', text: 'Fixture context' }); emit({ type: 'status', status: 'completed' }); return; }
+    if (prompt.startsWith('Compact "inheritedContext"')) { emit({ type: 'item', item: 'summary', text: 'Fixture context' }); emit({ type: 'status', status: 'completed' }); return; }
     save(tree.thread ?? `thread-${tree.id}`, tree.model ?? 'kb-a');
     emit({ type: 'item', item: 'reply', text });
     if (prompt === 'Hold this reply') { held = tree.model; await new Promise(resolve => signal.aborted ? resolve() : signal.addEventListener('abort', resolve, { once: true })); return; }

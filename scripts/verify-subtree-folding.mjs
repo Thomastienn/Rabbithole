@@ -24,7 +24,7 @@ store.position(grand.id, 850, 350);
 let turn;
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: {
   async generate(tree, text, emit) {
-    if (text.startsWith('Compact only')) { emit({ type: 'item', item: 'summary', text: 'Fixture context' }); emit({ type: 'status', status: 'completed' }); return; }
+    if (text.startsWith('Compact "inheritedContext"')) { emit({ type: 'item', item: 'summary', text: 'Fixture context' }); emit({ type: 'status', status: 'completed' }); return; }
     if (tree.id !== grand.id) { emit({ type: 'item', item: 'reply', text: 'Fixture response' }); emit({ type: 'status', status: 'completed' }); return; }
     await new Promise(resolve => { turn = { emit, resolve }; emit({ type: 'item', item: 'reply', text: 'Streaming fixture' }); });
   },

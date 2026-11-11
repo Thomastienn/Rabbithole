@@ -119,8 +119,15 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
   }, [formOpen, form?.at?.y, form?.at?.below]);
   useEffect(() => {
     const highlight = reveal && passage.current?.querySelector<HTMLElement>('mark, [data-reveal]');
-    highlight?.scrollIntoView({ block: 'center' });
-    highlight?.focus?.({ preventScroll: true });
+    if (!highlight) return;
+    highlight.scrollIntoView({ block: 'center' });
+    highlight.focus?.({ preventScroll: true });
+    // ChatLayout jumps to the bottom on the frame after mount; reveal again if that jump hid the passage.
+    let frame = requestAnimationFrame(() => { frame = requestAnimationFrame(() => {
+      const box = highlight.getBoundingClientRect();
+      if (box.bottom < 0 || box.top > innerHeight) highlight.scrollIntoView({ block: 'center' });
+    }); });
+    return () => cancelAnimationFrame(frame);
   }, [reveal]);
   function capture(start: number, end: number, at?: Point) {
     setAnchor(end > start ? { messageId: message.id, start, end, text: message.text.slice(start, end), at } : undefined);

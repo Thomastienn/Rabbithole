@@ -23,7 +23,7 @@ let generations = 0;
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: {
   models: async () => [{ model: 'fixture', label: 'Fixture', isDefault: true }],
   async generate(tree, text, emit) {
-    if (!text.startsWith('Compact only')) {
+    if (!text.startsWith('Compact "inheritedContext"')) {
       generations++;
       emit({ type: 'item', item: 'reply', text: 'Synthetic response' });
       await new Promise(resolve => setTimeout(resolve, 5000));
@@ -48,12 +48,13 @@ try {
   await click('Return to tree');
   await browser('wait', '--fn', '!document.documentElement.matches(":active-view-transition")');
   await click('Zoom in');
-  await browser('eval', 'window.savedViewport = document.querySelector(".react-flow__viewport").getAttribute("style")');
   await click('Open Forest ecology');
   await browser('wait', '.focused-chat [aria-label="Your question"]');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Explain nutrient sharing');
   await click('Send');
   await browser('wait', '--text', 'Responding…');
+  // Opening chat may move the map to reveal its box; returning keeps that view (verify-canvas-navigation).
+  await browser('eval', 'window.savedViewport = document.querySelector(".react-flow__viewport").getAttribute("style")');
   await click('Return to tree');
   await browser('wait', '--fn', 'document.activeElement?.id.startsWith("open-")');
   await check('window.savedViewport === document.querySelector(".react-flow__viewport").getAttribute("style")');
@@ -78,6 +79,8 @@ try {
   await browser('wait', '[aria-label="Map menu"]');
   await click('Map menu');
   await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
+  // The mobile drawer slides in; a click mid-slide lands off-screen.
+  await browser('wait', '--fn', 'document.querySelector("[aria-label=\'Separate ocean tree\']")?.getBoundingClientRect().x >= 0');
   await click('Separate ocean tree');
   await browser('wait', '[aria-label="Open Separate ocean tree"]');
   await check('document.querySelectorAll(".react-flow__node").length === 1 && document.querySelectorAll(".react-flow__edge").length === 0');

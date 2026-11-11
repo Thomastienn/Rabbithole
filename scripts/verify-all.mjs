@@ -10,7 +10,7 @@ const live = new Set(['verify-branch-compaction.mjs', 'verify-branch-streaming-l
   'verify-codex-history.mjs', 'verify-diagram-live.mjs', 'verify-diagram-steps-live.mjs', 'verify-media-nested-live.mjs',
   'verify-provider-continuity-live.mjs', 'verify-release-journey-live.mjs', 'verify-suggestion-phrases.mjs']);
 // Failures already recorded in a bug; drop an entry when its bug is fixed.
-const known = { 'verify-tree-overview.mjs': 'TreeTutor-wpc', 'verify-canvas-positions.mjs': 'TreeTutor-wpc' };
+const known = {};
 const args = { 'verify-local-delivery.mjs': out => [join(out, 'local-delivery-results.json')] };
 
 const only = process.argv.slice(2);

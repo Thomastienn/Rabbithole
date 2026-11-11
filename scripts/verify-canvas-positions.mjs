@@ -48,7 +48,7 @@ const grandchild = store.branch(child, { messageId: nestedSource, start: 0, end:
 const missing = store.branch(root, { messageId: nestedSource, start: 0, end: 6, text: 'Nested', question: 'Missing message branch' }, 'Synthetic context');
 let releaseReply;
 const makeApp = () => createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture', isDefault: true }], async generate(tree, prompt, emit) {
-  if (prompt.startsWith('Compact only')) emit({type:'item',item:'summary',text:'Synthetic context'});
+  if (prompt.startsWith('Compact "inheritedContext"')) emit({type:'item',item:'summary',text:'Synthetic context'});
   else {
     emit({type:'item',item:'reply',text:'Short streaming reply.'});
     await new Promise(resolve => { releaseReply = resolve; });
