@@ -79,6 +79,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     try {
       if (stopping) return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
       if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))], suggesting: [...new Set([...suggesting.values()].map(s => s.conversation))], conceptNameTokens: store.nameTokens() });
+      if (req.method === 'GET' && url.pathname === '/api/search') return json(res, 200, store.search((url.searchParams.get('q') ?? '').slice(0, 200)));
       if (req.method === 'GET' && url.pathname === '/api/graph') return json(res, 200, store.graph());
       if (req.method === 'GET' && url.pathname === '/api/settings/endpoint' && endpoint) return json(res, 200, endpoint.status());
       if (req.method === 'GET' && url.pathname === '/api/settings/suggestions') return json(res, 200, store.suggestionSettings());

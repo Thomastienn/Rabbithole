@@ -1,6 +1,6 @@
 {
   "label": "after",
-  "checkedAt": "2026-11-11T05:11:25.418Z",
+  "checkedAt": "2026-11-11T05:24:07.624Z",
   "evidence": "Synthetic fixture providers, seeded SQLite tree with markdown, ready diagram, failed video and branch; production build in agent-browser Chromium. 200% zoom is emulated as a half-size CSS viewport.",
   "checks": {
     "contrast-light": {
@@ -30,7 +30,23 @@
     "unnamed-controls": [],
     "focus-visible": {
       "stops": 75,
-      "missing": []
+      "missing": [
+        {
+          "name": "INPUT",
+          "onScreen": true,
+          "visible": false
+        },
+        {
+          "name": "INPUT",
+          "onScreen": true,
+          "visible": false
+        },
+        {
+          "name": "INPUT",
+          "onScreen": true,
+          "visible": false
+        }
+      ]
     },
     "viewport-narrow": {
       "mapOverflow": false,

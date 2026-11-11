@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-11T05:10:11.886Z",
+  "date": "2026-11-11T05:22:57.660Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,36 +12,36 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 1133.598167,
-  "previewQueryMs": 759.9261029999998,
+  "seedMs": 920.5172600000005,
+  "previewQueryMs": 723.5320090000005,
   "previewBytes": 4876201,
-  "openMs": 3192.2203800000025,
+  "openMs": 2922.7781460000006,
   "dom": {
-    "elements": 2525,
+    "elements": 2533,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1996.5999999977648,
+    "elapsedMs": 2000.199999999255,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
     "maxMs": 16.800000000000182,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.800000000000182,
+    "p95Ms": 16.700000000000728,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 377.46204899999793,
-  "unfoldMs": 196.17661999999837,
+  "foldMs": 369.4909310000003,
+  "unfoldMs": 198.43804499999897,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 3940.6573739999985,
-  "selectMs": 4487.172607999997,
-  "selectUiMs": 663,
+  "selectClickMs": 4255.531615,
+  "selectMs": 5230.844846,
+  "selectUiMs": 1008.5999999977648,
   "selectedBounds": {
     "bottom": 631.8375244140625,
     "canvasHeight": 900,
@@ -51,12 +51,12 @@
     "toolbarTop": 850,
     "top": 75
   },
-  "streamingMs": 524.3927999999978,
+  "streamingMs": 534.6300249999986,
   "chunkRenders": {
-    "f202a378-1aa0-444a-93b4-7a8ce038fee3": 14
+    "c3129763-96c3-4df0-a10f-fd193c8bec99": 14
   },
   "chunkRenderReasons": {
-    "f202a378-1aa0-444a-93b4-7a8ce038fee3": [
+    "c3129763-96c3-4df0-a10f-fd193c8bec99": [
       "preview"
     ]
   }
