@@ -1,17 +1,22 @@
 {
-  "checkedAt": "2026-11-11T19:45:42.966Z",
+  "checkedAt": "2026-11-11T21:29:01.781Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion renders, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
-      "name": "failure is simple with explicit Retry and no production error details",
+      "name": "failure shows its safe reason and Retry; unknown private output gets the generic recovery message",
       "pass": true,
       "details": {
         "button": "Retry video",
         "focused": false,
         "state": "failed",
-        "status": "Failed video: Video could not be generated. Retry, or check Smart in Settings.",
+        "status": "Failed video: Video rendering failed.",
         "video": false
       }
+    },
+    {
+      "name": "failure holds its recorded position without chrome in both appearances and widths; legacy videos remain after the reply",
+      "pass": true,
+      "details": true
     },
     {
       "name": "after restart: unfinished job shows Interrupted with Retry, missing file shows Unavailable with Regenerate, no inference replayed",

@@ -81,7 +81,7 @@ try {
   await b('eval', "localStorage.setItem('treetutor.appearance', 'system'); true");
   await b('reload');
   await b('wait', '[aria-label="Open Visual fixture"]');
-  assert.ok(await ev(`document.querySelector('.overview').textContent.includes('Visual: Bar heights')`));
+  await wait(`document.querySelector('.overview').textContent.includes('Visual: Bar heights')`);
   assert.equal(await ev(`document.querySelectorAll('iframe').length`), 0);
   assert.equal(await ev(`performance.getEntriesByType('resource').some(e=>e.name.includes('sandbox'))`), false);
   pass('map preview lists the visual by title and never loads the sandbox');

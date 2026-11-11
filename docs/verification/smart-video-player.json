@@ -1,49 +1,90 @@
 {
-  "checkedAt": "2026-11-11T19:45:02.563Z",
+  "checkedAt": "2026-11-11T21:28:42.621Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
-      "name": "request inserts a titled loading rectangle under its own reply in the nested child",
+      "name": "request inserts an inline status line between the recorded paragraphs in the nested child",
       "pass": true,
       "details": {
+        "after": "Then the winners advance.",
+        "before": "Here is how Peterson fits.",
         "fence": false,
+        "inline": true,
         "lastReply": true,
-        "replyText": true,
-        "status": "Peterson in the tournament tree: Creating video…",
-        "title": "Peterson in the tournament tree"
+        "status": "Peterson in the tournament tree: Creating video…"
       }
     },
     {
-      "name": "loading rectangle fits wide/narrow in both appearances with reduced motion",
+      "name": "borderless slim pending line fits wide/narrow in both appearances with reduced motion",
       "pass": true,
       "details": [
         {
           "mode": "dark",
-          "width": 501,
+          "width": 527,
           "animations": 0,
-          "height": 281.8125,
-          "overflow": false
+          "background": "rgba(0, 0, 0, 0)",
+          "border": "0px",
+          "color": "rgb(159, 176, 168)",
+          "column": 527,
+          "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "ground": "rgb(36, 49, 45)",
+          "height": 28,
+          "overflow": false,
+          "size": "12px",
+          "skeleton": false,
+          "titleHidden": true,
+          "contrast": 5.9590034173824815
         },
         {
           "mode": "light",
-          "width": 501,
+          "width": 527,
           "animations": 0,
-          "height": 281.8125,
-          "overflow": false
+          "background": "rgba(0, 0, 0, 0)",
+          "border": "0px",
+          "color": "rgb(74, 90, 83)",
+          "column": 527,
+          "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "ground": "rgb(243, 245, 241)",
+          "height": 28,
+          "overflow": false,
+          "size": "12px",
+          "skeleton": false,
+          "titleHidden": true,
+          "contrast": 6.649921327228525
         },
         {
           "mode": "dark",
-          "width": 332,
+          "width": 358,
           "animations": 0,
-          "height": 186.75,
-          "overflow": false
+          "background": "rgba(0, 0, 0, 0)",
+          "border": "0px",
+          "color": "rgb(159, 176, 168)",
+          "column": 358,
+          "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "ground": "rgb(36, 49, 45)",
+          "height": 28,
+          "overflow": false,
+          "size": "12px",
+          "skeleton": false,
+          "titleHidden": true,
+          "contrast": 5.9590034173824815
         },
         {
           "mode": "light",
-          "width": 332,
+          "width": 358,
           "animations": 0,
-          "height": 186.75,
-          "overflow": false
+          "background": "rgba(0, 0, 0, 0)",
+          "border": "0px",
+          "color": "rgb(74, 90, 83)",
+          "column": 358,
+          "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "ground": "rgb(243, 245, 241)",
+          "height": 28,
+          "overflow": false,
+          "size": "12px",
+          "skeleton": false,
+          "titleHidden": true,
+          "contrast": 6.649921327228525
         }
       ]
     },
@@ -53,7 +94,7 @@
       "details": true
     },
     {
-      "name": "production stages stay hidden; only one loading state and no progress bar",
+      "name": "inline status shows the existing rendering phase and progress fraction",
       "pass": true,
       "details": true
     },
@@ -64,37 +105,39 @@
         "before": {
           "focus": true,
           "messages": 14,
-          "top": 1354
+          "top": 1206
         },
         "after": {
           "focus": true,
           "messages": 14,
-          "top": 1354
+          "top": 1206
         }
       }
     },
     {
-      "name": "player replaces the same video-sized rectangle",
+      "name": "player replaces the slim status line at full column width and 16:9",
       "pass": true,
       "details": {
         "frameBefore": {
-          "height": 281.8125,
-          "width": 501
+          "height": 28,
+          "width": 527
         },
         "frameAfter": {
-          "height": 281.8125,
-          "width": 501
+          "height": 296.4375,
+          "width": 527
         }
       }
     },
     {
-      "name": "only loading and ready are announced; production progress stays private",
+      "name": "status announces rendering progress and completion without exposing production output",
       "pass": true,
       "details": {
         "progress": [],
         "progressLive": false,
         "statuses": [
-          "Peterson in the tournament tree: Creating video…",
+          "Peterson in the tournament tree: Rendering video… 40%",
+          "Peterson in the tournament tree: Rendering video… 10%",
+          "Peterson in the tournament tree: Rendering video… 50%",
           "Peterson in the tournament tree: Video ready."
         ]
       }
@@ -166,7 +209,7 @@
       "name": "finished video only in its original conversation; map row shows compact status",
       "pass": true,
       "details": [
-        "Answer: Here is how Peterson fits.Video: Peterson in the tournament tree · ready"
+        "Answer: Here is how Peterson fits. Then the winners advance.Video: Peterson in the tournament tree · ready"
       ]
     },
     {
@@ -187,44 +230,60 @@
       }
     },
     {
-      "name": "dark and light: raised slate video card, 4px corners, ghost actions and paused decoded frame; no new inference",
+      "name": "dark and light: borderless inline player at its saved position, ghost actions and paused decoded frame; no new inference",
       "pass": true,
       "details": [
         {
           "mode": "dark",
           "width": 1280,
+          "after": "Then the winners advance.",
+          "before": "Here is how Peterson fits.",
+          "border": "0px",
           "chat": "rgb(36, 49, 45)",
           "ghost": true,
+          "inline": true,
+          "padding": "0px",
           "paused": true,
-          "radius": "4px",
-          "surface": "rgb(36, 49, 45)"
+          "surface": "rgba(0, 0, 0, 0)"
         },
         {
           "mode": "light",
           "width": 1280,
+          "after": "Then the winners advance.",
+          "before": "Here is how Peterson fits.",
+          "border": "0px",
           "chat": "rgb(243, 245, 241)",
           "ghost": true,
+          "inline": true,
+          "padding": "0px",
           "paused": true,
-          "radius": "4px",
-          "surface": "rgb(243, 245, 241)"
+          "surface": "rgba(0, 0, 0, 0)"
         },
         {
           "mode": "dark",
           "width": 390,
+          "after": "Then the winners advance.",
+          "before": "Here is how Peterson fits.",
+          "border": "0px",
           "chat": "rgb(36, 49, 45)",
           "ghost": true,
+          "inline": true,
+          "padding": "0px",
           "paused": true,
-          "radius": "4px",
-          "surface": "rgb(36, 49, 45)"
+          "surface": "rgba(0, 0, 0, 0)"
         },
         {
           "mode": "light",
           "width": 390,
+          "after": "Then the winners advance.",
+          "before": "Here is how Peterson fits.",
+          "border": "0px",
           "chat": "rgb(243, 245, 241)",
           "ghost": true,
+          "inline": true,
+          "padding": "0px",
           "paused": true,
-          "radius": "4px",
-          "surface": "rgb(243, 245, 241)"
+          "surface": "rgba(0, 0, 0, 0)"
         }
       ]
     }

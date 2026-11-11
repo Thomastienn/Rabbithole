@@ -64,8 +64,10 @@ if (process.argv[2] === '--serve') {
   const stopped = store.pendingArtifact(tree.id, reply, 'Winner rising', 'Planned.', 'video', input);
   const lost = store.pendingArtifact(tree.id, reply, 'Lost video', 'Planned.', 'video', input);
   store.finishVideo(tree.id, lost.id, lost.attempt, { description: 'A saved video whose file was deleted.', duration: 1 });
-  const failed = store.pendingArtifact(tree.id, reply, 'Failed video', 'A winner advances.', 'video', input);
-  store.finishVideo(tree.id, failed.id, failed.attempt, {}, 'PRIVATE_SCRIPT /private/video-work/attempt');
+  const failed = store.pendingArtifact(tree.id, reply, 'Failed video', 'A winner advances.', 'video', input, 0);
+  store.finishVideo(tree.id, failed.id, failed.attempt, {}, 'Video rendering failed.');
+  const privateFailure = store.pendingArtifact(tree.id, reply, 'Private error', 'A worker failed.', 'video', input);
+  store.finishVideo(tree.id, privateFailure.id, privateFailure.attempt, {}, 'PRIVATE_SCRIPT /private/video-work/attempt');
   store.close();
   writeFileSync(join(dir, 'calls.jsonl'), '');
 
@@ -93,11 +95,23 @@ if (process.argv[2] === '--serve') {
     assert.deepEqual(restarted.providerCalls, []);
     const failure = await view(failed.id);
     assert.equal(failure.state, 'failed'); assert.equal(failure.video, false); assert.equal(failure.button, 'Retry video');
-    assert.equal(failure.status, 'Failed video: Video could not be generated. Retry, or check Smart in Settings.');
+    assert.equal(failure.status, 'Failed video: Video rendering failed.');
+    assert.equal((await view(privateFailure.id)).status, 'Private error: Video could not be generated. Retry, or check Smart in Settings.');
     assert.equal(await ev(`document.querySelector('.focused-chat').textContent.includes('PRIVATE_SCRIPT')`), false);
-    pass('failure is simple with explicit Retry and no production error details', failure);
-    await ev(`${card(failed.id)}.scrollIntoView({block:'center'}); true`);
-    await b('screenshot', join(process.cwd(), '.impeccable/review/smart-video-failure.png'));
+    pass('failure shows its safe reason and Retry; unknown private output gets the generic recovery message', failure);
+    for (const [mode, width] of [['dark', 1280], ['light', 1280], ['dark', 390], ['light', 390]]) {
+      await b('set', 'viewport', String(width), '800');
+      await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); location.reload(); true`);
+      await b('wait', '[aria-label="Open Tournament locks"]');
+      await b('find', 'role', 'button', 'click', '--name', 'Open Tournament locks', '--exact');
+      await wait(`!!${card(failed.id)}`);
+      const inline = await ev(`(c=>({inline:!!c.closest('.reply-md'),first:c.closest('.reply-md')?.firstElementChild===c,after:c.nextElementSibling?.textContent,border:getComputedStyle(c).borderTopWidth,background:getComputedStyle(c).backgroundColor,legacy:!${card(stopped.id)}.closest('.reply-md'),overflow:document.documentElement.scrollWidth>innerWidth} ))(${card(failed.id)})`);
+      assert.deepEqual(inline, { inline: true, first: true, after: 'Here is the idea.', border: '0px', background: 'rgba(0, 0, 0, 0)', legacy: true, overflow: false });
+      await ev(`${card(failed.id)}.scrollIntoView({block:'center'}); true`);
+      await b('screenshot', join(process.cwd(), `.impeccable/review/inline-video-failure-${mode}-${width}.png`));
+    }
+    pass('failure holds its recorded position without chrome in both appearances and widths; legacy videos remain after the reply');
+    await b('set', 'viewport', '1280', '800');
     pass('after restart: unfinished job shows Interrupted with Retry, missing file shows Unavailable with Regenerate, no inference replayed', restarted);
 
     // Keyboard: Tab onto Retry, Enter retries, the same button becomes Cancel and keeps focus.
@@ -105,7 +119,8 @@ if (process.argv[2] === '--serve') {
     await b('press', 'Enter');
     await wait(`${card(stopped.id)}.querySelector('button')?.textContent==='Cancel video'`);
     const retrying = await view(stopped.id);
-    assert.deepEqual(retrying, { state: 'pending', status: 'Winner rising: Creating video…', button: 'Cancel video', video: false, focused: true });
+    assert.match(retrying.status, /^Winner rising: (?:Creating|Rendering) video…$/);
+    assert.deepEqual({ ...retrying, status: undefined }, { state: 'pending', status: undefined, button: 'Cancel video', video: false, focused: true });
     await wait(`${card(stopped.id)}.dataset.state==='pending'`);
     pass('Retry by keyboard starts a new attempt; focus stays on the action, now Cancel', retrying);
 

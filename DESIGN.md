@@ -220,7 +220,9 @@ On creation, the new path draws from its source-message anchor to the child node
 
 ### Settings, media and Mermaid
 
-Settings use Public Sans, seams and functional small-cap section labels rather than card stacks; Appearance leads and chalk swatches preview bubble tints. Knowledge concept cards repeat map corners and focus, with serif explanatory details. Diagram/video cards use raised slate and fine seams and enlarge against the dimmed slate overlay.
+Settings use Public Sans, seams and functional small-cap section labels rather than card stacks; Appearance leads and chalk swatches preview bubble tints. Knowledge concept cards repeat map corners and focus, with serif explanatory details. Diagram cards and video library cards use raised slate and fine seams and enlarge against the dimmed slate overlay.
+
+Focused-chat videos follow the [inline visuals spec](docs/inline-visuals-spec.md): full column width at the stored reply position, transparent and borderless, with title and description available to assistive technology. Pending uses a slim Public Sans status line with the existing phase, rendering percentage and Cancel; failure shows its safe reason and Retry at the same position. The paused native player and Open large action keep their existing behavior. Older videos without a position remain after the reply. See the [inline video review](docs/verification/inline-video-review.md) for current evidence.
 
 Mermaid resolves colours from the rendered card and current app appearance: raised surface fills, primary text and edges, border seams, and yellow/blue/pink/green series. Diagram labels use Public Sans. Generated SVG image content carries an inline self-hosted Latin-400 Public Sans font face because an SVG image cannot inherit page fonts; bold may be synthesized. Enlarged diagrams preserve this delivery. No claim of every Mermaid family is derived from the flowchart captures.
 

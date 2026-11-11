@@ -149,6 +149,12 @@ html { view-transition-name: none; }
 .video-stage { position: relative; }
 .video-stage > .astryx-skeleton, .video-controls { position: absolute; inset: 0; }
 .video-card[data-state=ready] .video-controls { inset: var(--spacing-2) var(--spacing-2) auto auto; padding: 0; background: var(--color-background-surface); border-radius: var(--radius-element); }
+.video-inline { min-width: 0; width: 100%; overflow-wrap: anywhere; }
+.video-inline .astryx-text { font-family: var(--font-family-body); font-size: var(--text-supporting-size); line-height: var(--text-supporting-leading); }
+.video-inline .astryx-button, .video-inline .astryx-button .astryx-text { font-family: var(--font-family-body); font-size: var(--text-label-size); line-height: var(--text-label-leading); }
+.video-inline:not([data-state=ready]) .video-controls { position: static; flex-direction: row; justify-content: space-between; padding: 0; }
+.video-inline .video-controls > [role=status] { min-width: 0; }
+.video-inline .video-controls > button { flex: none; }
 @media (prefers-reduced-motion: reduce) { .video-stage .astryx-skeleton, .video-stage .astryx-skeleton::after { animation: none; } }
 /* Lightbox caps media at natural size; generated videos are small, so fill the viewer (contain keeps 16:9). */
 .astryx-lightbox video { width: 92vw; height: calc(100dvh - 8rem); }

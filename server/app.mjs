@@ -63,11 +63,15 @@ export function createApp({ store, auth, provider, providers = { codex: provider
   const live = artifact => {
     const { input, attempt, ...a } = artifact;
     if (a.kind !== 'video') return a;
+    if (a.status === 'pending' && a.conversation) {
+      const job = videos.get(a.id);
+      return { ...a, phase: job?.phase ?? 'creating', ...(job?.progress !== undefined && { progress: job.progress }) };
+    }
     return a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
   };
   // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
   const startVideo = job => {
-    const running = { controller: new AbortController(), conversation: job.conversation, artifact: job.id };
+    const running = { controller: new AbortController(), conversation: job.conversation, artifact: job.id, phase: 'creating', progress: undefined };
     const input = JSON.parse(job.input), selection = input.selection ?? smart().resolved;
     videos.set(job.id, running);
     videoJobs.add(running);
@@ -80,7 +84,12 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       const frozen = JSON.stringify({ ...input, selection });
       const owned = store.videoInput(job.conversation, job.id, job.attempt, frozen);
       if (!owned || running.controller.signal.aborted) return;
-      await generateVideo({ provider: metered(provider, 'video', job.attempt, selection), selection, store, dir, artifact: { ...job, input: frozen }, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, narrate: videoNarrate });
+      await generateVideo({ provider: metered(provider, 'video', job.attempt, selection), selection, store, dir, artifact: { ...job, input: frozen }, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, narrate: videoNarrate,
+        onPhase: (phase, progress) => {
+          if (videos.get(job.id) !== running || running.controller.signal.aborted) return;
+          running.phase = phase;
+          running.progress = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : undefined;
+        } });
     })
       // A job stopped with the app stays pending, so the next start marks it interrupted.
       .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishVideo(job.conversation, job.id, job.attempt, {}, error.message); })

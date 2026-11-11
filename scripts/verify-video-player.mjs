@@ -34,10 +34,10 @@ if (process.argv[2] === '--serve') {
     generate: async (tree, text, emit) => {
       if (tree.instructions?.includes('Remotion')) { log('worker'); await gate('compose'); return done(emit, composition); }
       log('tutor');
-      done(emit, /video/i.test(text) ? 'Here is how Peterson fits.\n```treetutor-video\n' + JSON.stringify(task) + '\n```' : 'Continuing elsewhere.');
+      done(emit, /video/i.test(text) ? 'Here is how Peterson fits.\n\n```treetutor-video\n' + JSON.stringify(task) + '\n```\n\nThen the winners advance.' : 'Continuing elsewhere.');
     },
   };
-  const videoRender = async (workspace, output, signal, onProgress) => { await gate('render'); return sandboxRender(workspace, output, signal, onProgress); };
+  const videoRender = async (workspace, output, signal, onProgress) => { onProgress(0.4); await gate('render'); return sandboxRender(workspace, output, signal, onProgress); };
   const app = createApp({ store, provider, dir, videoRender, videoNarrate: fakeNarration, auth: { status: () => ({ connected: true }) } });
   process.on('message', message => {
     if (gates[message]) gates[message]();
@@ -78,7 +78,7 @@ if (process.argv[2] === '--serve') {
     await chatTitle(title);
   }
   const ask = async text => { await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', text); await b('press', 'Enter'); };
-  const card = '.focused-chat .diagram-card[data-artifact]';
+  const card = '.focused-chat .video-inline[data-artifact]';
   const scroller = `[...document.querySelectorAll('.focused-chat *')].find(e=>e.scrollHeight>e.clientHeight+1&&/auto|scroll/.test(getComputedStyle(e).overflowY))`;
   const child_ = fork(filename, ['--serve', dir], { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });
   const { origin } = await new Promise((resolve, reject) => { child_.once('message', resolve); child_.once('exit', code => reject(new Error(`server exited ${code}`))); });
@@ -91,9 +91,9 @@ if (process.argv[2] === '--serve') {
 
     await ask('Make a video explaining how Peterson fits into this tournament tree.');
     await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='pending'`);
-    const placement = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),msgs=[...document.querySelectorAll('.focused-chat .astryx-chat-message')],own=c.closest('.astryx-chat-message');return {status:c.querySelector('[role=status]').textContent,title:c.querySelector('h3').textContent,lastReply:own===msgs.at(-1),replyText:own.textContent.includes('Here is how Peterson fits.'),fence:document.querySelector('.focused-chat').textContent.includes('treetutor-video')}})()`);
-    assert.deepEqual(placement, { status: `${task.title}: Creating video…`, title: task.title, lastReply: true, replyText: true, fence: false });
-    pass('request inserts a titled loading rectangle under its own reply in the nested child', placement);
+    const placement = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),msgs=[...document.querySelectorAll('.focused-chat .astryx-chat-message')],own=c.closest('.astryx-chat-message');return {status:c.querySelector('[role=status]').textContent,before:c.previousElementSibling?.textContent,after:c.nextElementSibling?.textContent,inline:!!c.closest('.reply-md'),lastReply:own===msgs.at(-1),fence:document.querySelector('.focused-chat').textContent.includes('treetutor-video')}})()`);
+    assert.deepEqual(placement, { status: `${task.title}: Creating video…`, before: 'Here is how Peterson fits.', after: 'Then the winners advance.', inline: true, lastReply: true, fence: false });
+    pass('request inserts an inline status line between the recorded paragraphs in the nested child', placement);
 
     const loading = [];
     mkdirSync('.impeccable/review', { recursive: true });
@@ -104,13 +104,21 @@ if (process.argv[2] === '--serve') {
       await openFromMap('Tree levels');
       await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='pending'`);
       await ev(`document.querySelector(${JSON.stringify(card)}).scrollIntoView({block:'center'}); true`);
-      const frame = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),r=c.querySelector('.video-stage').getBoundingClientRect();return {width:r.width,height:r.height,overflow:document.documentElement.scrollWidth>innerWidth,animations:c.getAnimations({subtree:true}).filter(a=>a.playState==='running').length}})()`);
-      assert.ok(Math.abs(frame.width/frame.height-16/9)<0.01);
+      const frame = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),r=c.querySelector('.video-stage').getBoundingClientRect(),s=getComputedStyle(c),t=getComputedStyle(c.querySelector('[role=status]'));return {width:r.width,height:r.height,column:c.closest('.reply-md').getBoundingClientRect().width,border:s.borderTopWidth,background:s.backgroundColor,font:t.fontFamily,buttonFont:getComputedStyle(c.querySelector('button')).fontFamily,size:t.fontSize,color:t.color,ground:getComputedStyle(document.querySelector('.focused-chat')).backgroundColor,skeleton:!!c.querySelector('.astryx-skeleton'),titleHidden:c.querySelector('h3').classList.contains('sr-only'),overflow:document.documentElement.scrollWidth>innerWidth,animations:c.getAnimations({subtree:true}).filter(a=>a.playState==='running').length}})()`);
+      assert.ok(frame.height <= 48, `slim status line: ${frame.height}`);
+      assert.equal(frame.width, frame.column);
+      assert.equal(frame.border, '0px'); assert.equal(frame.background, 'rgba(0, 0, 0, 0)');
+      assert.equal(frame.skeleton, false); assert.equal(frame.titleHidden, true);
+      assert.match(frame.font, /Public Sans/); assert.match(frame.buttonFont, /Public Sans/); assert.ok(parseFloat(frame.size) <= 14);
+      const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(v => Number(v) / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const ink = luminance(frame.color), ground = luminance(frame.ground);
+      frame.contrast = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05);
+      assert.ok(frame.contrast >= 4.5);
       assert.equal(frame.overflow, false); assert.equal(frame.animations, 0);
       loading.push({mode,width,...frame});
       await b('screenshot', resolve(`.impeccable/review/smart-video-loading-${mode}-${width}.png`));
     }
-    pass('loading rectangle fits wide/narrow in both appearances with reduced motion', loading);
+    pass('borderless slim pending line fits wide/narrow in both appearances with reduced motion', loading);
     await b('set', 'viewport', '1280', '800');
 
     // Navigate elsewhere and keep chatting while the job runs.
@@ -124,11 +132,10 @@ if (process.argv[2] === '--serve') {
 
     await openFromMap('Tree levels');
     await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='pending'`);
-    assert.equal(await ev(`document.querySelector(${JSON.stringify(card)}).querySelector('[role=status]').textContent`), `${task.title}: Creating video…`);
-    assert.equal(await ev(`!!document.querySelector(${JSON.stringify(card + ' [role=progressbar]')})`), false);
-    pass('production stages stay hidden; only one loading state and no progress bar');
+    await wait(`document.querySelector(${JSON.stringify(card)}).querySelector('[role=status]').textContent===${JSON.stringify(`${task.title}: Rendering video… 40%`)}`);
+    pass('inline status shows the existing rendering phase and progress fraction');
     const frameBefore = await ev(`(()=>{const r=document.querySelector(${JSON.stringify(card + ' .video-stage')}).getBoundingClientRect();return {width:r.width,height:r.height}})()`);
-    assert.ok(Math.abs(frameBefore.width/frameBefore.height-16/9)<0.01);
+    assert.ok(frameBefore.height <= 48);
     assert.equal(await ev(`document.querySelector(${JSON.stringify(card + ' .video-stage')}).contains(document.querySelector(${JSON.stringify(card + ' button')}))`), true);
 
     // Observe announcements and progress; park the reader mid-conversation with focus in the composer.
@@ -149,12 +156,12 @@ if (process.argv[2] === '--serve') {
 
     const announced = await ev(`({statuses:__statuses,progress:__progress,progressLive:false})`);
     assert.ok(announced.statuses.includes(`${task.title}: Video ready.`));
-    assert.ok(announced.statuses.every(s => [`${task.title}: Creating video…`, `${task.title}: Video ready.`].includes(s)));
+    assert.ok(announced.statuses.every(s => s === `${task.title}: Video ready.` || s.startsWith(`${task.title}: Rendering video…`)));
     const frameAfter = await ev(`(()=>{const r=document.querySelector(${JSON.stringify(card + ' video')}).getBoundingClientRect();return {width:r.width,height:r.height}})()`);
-    assert.deepEqual(frameAfter, frameBefore);
-    pass('player replaces the same video-sized rectangle', {frameBefore,frameAfter});
-    assert.equal(announced.progress.length, 0, 'renderer progress stays private');
-    pass('only loading and ready are announced; production progress stays private', announced);
+    assert.equal(frameAfter.width, frameBefore.width);
+    assert.ok(Math.abs(frameAfter.width/frameAfter.height-16/9)<0.01);
+    pass('player replaces the slim status line at full column width and 16:9', {frameBefore,frameAfter});
+    pass('status announces rendering progress and completion without exposing production output', announced);
 
     const player = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),v=c.querySelector('video'),list=c.closest('.astryx-chat-message');return {paused:v.paused,autoplay:v.autoplay,controls:v.controls,label:v.getAttribute('aria-label'),description:document.getElementById(v.getAttribute('aria-describedby')).textContent,ratio:Math.round(v.clientWidth/v.clientHeight*100)/100,fits:v.getBoundingClientRect().right<=list.getBoundingClientRect().right+1,duration:Math.round(v.duration),cardLive:c.getAttribute('aria-live'),status:c.querySelector('[role=status]').textContent}})()`);
     assert.deepEqual(player, { paused: true, autoplay: false, controls: true, label: `Video: ${task.title}`, description: 'Two labelled boxes slide together into a final box over two seconds.', ratio: 1.78, fits: true, duration: 2, cardLive: 'off', status: `${task.title}: Video ready.` });
@@ -208,7 +215,7 @@ if (process.argv[2] === '--serve') {
     await openFromMap('Mutual exclusion');
     assert.equal(await ev(`document.querySelectorAll(${JSON.stringify(card)}).length`), 0);
     const rows = await ev(`[...document.querySelectorAll('.overview .node-message')].map(m=>m.textContent).filter(t=>t.includes('Video:'))`);
-    assert.deepEqual(rows, [`Answer: Here is how Peterson fits.Video: ${task.title} · ready`]);
+    assert.deepEqual(rows, [`Answer: Here is how Peterson fits. Then the winners advance.Video: ${task.title} · ready`]);
     pass('finished video only in its original conversation; map row shows compact status', rows);
 
     const callsBefore = calls();
@@ -237,15 +244,16 @@ if (process.argv[2] === '--serve') {
       await ev(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))))`);
       await ev(`document.querySelector(${JSON.stringify(card)}).scrollIntoView({block:'center'}); document.activeElement?.blur(); true`);
       await b('mouse', 'move', '5', '5');
-      const style = await ev(`(() => { const c=document.querySelector(${JSON.stringify(card)}),s=getComputedStyle(c),a=[...c.querySelectorAll('button')]; return { surface:s.backgroundColor,chat:getComputedStyle(document.querySelector('.focused-chat')).backgroundColor,radius:s.borderRadius,ghost:a.every(n=>n.dataset.variant==='ghost'),paused:c.querySelector('video').paused }; })()`);
-      assert.equal(style.surface, style.chat); assert.equal(style.radius, '4px'); assert.ok(style.ghost && style.paused);
+      const style = await ev(`(() => { const c=document.querySelector(${JSON.stringify(card)}),s=getComputedStyle(c),a=[...c.querySelectorAll('button')]; return { surface:s.backgroundColor,chat:getComputedStyle(document.querySelector('.focused-chat')).backgroundColor,border:s.borderTopWidth,padding:getComputedStyle(c.firstElementChild).padding,inline:!!c.closest('.reply-md'),before:c.previousElementSibling?.textContent,after:c.nextElementSibling?.textContent,ghost:a.every(n=>n.dataset.variant==='ghost'),paused:c.querySelector('video').paused }; })()`);
+      assert.equal(style.surface, 'rgba(0, 0, 0, 0)'); assert.equal(style.border, '0px'); assert.equal(style.padding, '0px'); assert.ok(style.inline && style.ghost && style.paused);
+      assert.equal(style.before, 'Here is how Peterson fits.'); assert.equal(style.after, 'Then the winners advance.');
       assert.equal(await ev(`document.documentElement.scrollWidth<=innerWidth`), true);
       appearances.push({ mode, width, ...style });
       await b('screenshot', join(process.cwd(), `.impeccable/review/smart-video-ready-${mode}-${width}.png`));
     }
-    assert.notEqual(appearances[0].surface, appearances[1].surface);
+    assert.notEqual(appearances[0].chat, appearances[1].chat);
     assert.deepEqual(calls(), callsBefore);
-    pass('dark and light: raised slate video card, 4px corners, ghost actions and paused decoded frame; no new inference', appearances);
+    pass('dark and light: borderless inline player at its saved position, ghost actions and paused decoded frame; no new inference', appearances);
 
     writeFileSync('docs/verification/smart-video-player.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.', checks }, null, 2) + '\n');
   } finally { await b('close').catch(() => {}); child_.send('stop'); }

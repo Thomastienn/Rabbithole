@@ -373,10 +373,12 @@ test('cancel during smart capability lookup prevents inference, including a late
   } finally { env.close(); }
 });
 
-test('running job hides production stages and frozen inputs, then serves seekable media', async () => {
+test('inline video exposes bounded live progress and its position, keeps inputs private, then serves seekable media', async () => {
   let gate, renderStarted;
   const started = new Promise(r => { renderStarted = r; });
+  let progress;
   const videoRender = async (workspace, output, signal, onProgress) => {
+    progress = onProgress;
     renderStarted();
     onProgress(0.4);
     await new Promise(r => { gate = r; });
@@ -386,7 +388,7 @@ test('running job hides production stages and frozen inputs, then serves seekabl
   const composing = new Promise(r => { release = r; });
   const provider = { generate: async (tree, text, emit) => {
     if (tree.instructions?.includes('Remotion')) { await composing; return complete(emit, composition); }
-    complete(emit, 'Sure.' + directive);
+    complete(emit, 'Before.\n' + directive + '\n\nAfter.');
   } };
   const env = await open(provider, { videoRender });
   try {
@@ -396,14 +398,31 @@ test('running job hides production stages and frozen inputs, then serves seekabl
     const artifact = async id => (await (await env.get(`/api/trees/${id}`)).json()).artifacts[0];
     assert.deepEqual((await state()).videos, [tree.id]);
     assert.deepEqual((await state()).active, []);
-    assert.equal((await artifact(tree.id)).status, 'pending');
-    for (const key of ['phase', 'progress', 'input', 'attempt']) assert.equal((await artifact(tree.id))[key], undefined);
+    const pending = await artifact(tree.id);
+    assert.equal(pending.status, 'pending');
+    assert.equal(pending.position, 8);
+    assert.equal(pending.phase, 'creating');
+    for (const key of ['progress', 'input', 'attempt']) assert.equal(pending[key], undefined);
+    const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
+    assert.equal(saved.messages.at(-1).text, 'Before.\n\n\nAfter.');
     assert.equal(await artifact(other.id), undefined);
     release();
     await started;
     const rendering = await artifact(tree.id);
     assert.equal(rendering.status, 'pending');
-    for (const key of ['phase', 'progress', 'input', 'attempt']) assert.equal(rendering[key], undefined);
+    assert.equal(rendering.phase, 'rendering');
+    assert.equal(rendering.progress, 0.4);
+    assert.equal(rendering.position, pending.position);
+    for (const key of ['input', 'attempt']) assert.equal(rendering[key], undefined);
+    const own = `/api/trees/${tree.id}/artifacts/${rendering.id}`;
+    assert.equal((await (await env.get(own)).json()).progress, 0.4);
+    assert.equal((await env.get(`/api/trees/${other.id}/artifacts/${rendering.id}`)).status, 404);
+    progress(3);
+    assert.equal((await artifact(tree.id)).progress, 1);
+    progress(-1);
+    assert.equal((await artifact(tree.id)).progress, 0);
+    progress(NaN);
+    assert.equal((await artifact(tree.id)).progress, undefined);
     const previews = await (await env.get(`/api/previews?id=${tree.id}&id=${other.id}`)).json();
     assert.deepEqual(previews[tree.id].at(-1).artifacts, [{ id: rendering.id, kind: 'video', title: task.title, status: 'pending' }]);
     assert.ok(!previews[other.id].some(m => m.artifacts));
@@ -414,6 +433,8 @@ test('running job hides production stages and frozen inputs, then serves seekabl
     const ready = await artifact(tree.id);
     assert.equal(ready.status, 'ready');
     assert.equal(ready.phase, undefined);
+    assert.equal(ready.progress, undefined);
+    assert.equal(ready.position, pending.position);
     const media = `/api/trees/${tree.id}/artifacts/${ready.id}/media`;
     const whole = await env.get(media);
     assert.equal(whole.headers.get('accept-ranges'), 'bytes');
@@ -482,9 +503,12 @@ test('one real short sandboxed Three.js scene renders through the same isolated 
 });
 
 test('cancel stops only its own job, late output cannot publish, and retry reuses the frozen input without a new message', async () => {
-  const renders = [], workers = [];
+  const renders = [], workers = [], progress = [];
   // Each render waits until the test releases it and ignores cancellation, like output arriving late.
-  const videoRender = (workspace, output) => new Promise(done => renders.push(() => { writeFileSync(output, mp4); done({ durationInFrames: 60, fps: 30 }); }));
+  const videoRender = (workspace, output, signal, onProgress) => {
+    progress.push(onProgress);
+    return new Promise(done => renders.push(() => { writeFileSync(output, mp4); done({ durationInFrames: 60, fps: 30 }); }));
+  };
   const provider = { generate: async (tree, text, emit) => {
     if (!tree.id) { workers.push(text); return complete(emit, composition); }
     complete(emit, /video/.test(text) ? 'Sure.' + directive : 'Answer in another chat.');
@@ -502,6 +526,9 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     assert.equal((await env.post(`/api/trees/${b.id}/artifacts/${jobA.id}/cancel`)).status, 404);
     const canceled = await (await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/cancel`)).json();
     assert.equal(canceled.status, 'canceled');
+    assert.equal(canceled.position, jobA.position);
+    assert.equal(canceled.phase, undefined);
+    assert.equal(canceled.progress, undefined);
     assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/cancel`)).status, 409);
     const other = env.store.create('Other');
     assert.match(await (await env.post(`/api/trees/${other.id}/messages`, { text: 'Hello' })).text(), /Answer in another chat/);
@@ -511,6 +538,9 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     const response = await (await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).json();
     assert.equal(response.input, undefined);
     assert.equal(response.attempt, undefined);
+    assert.equal(response.position, jobA.position);
+    assert.equal(response.phase, 'creating');
+    assert.equal(response.progress, undefined);
     const retried = env.store.artifact(a.id, jobA.id);
     assert.equal(retried.status, 'pending');
     assert.notEqual(retried.attempt, jobA.attempt);
@@ -518,6 +548,10 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).status, 409); // already running
     await until(() => renders.length === 3);
     assert.deepEqual(workers.slice(-1), [jobA.input]);
+    progress[2](0.5);
+    progress[0](0.9); // The canceled attempt cannot overwrite the new attempt's progress.
+    assert.equal((await (await env.get(`/api/trees/${a.id}/artifacts/${jobA.id}`)).json()).progress, 0.5);
+    assert.equal((await (await env.get(`/api/trees/${b.id}/artifacts/${jobB.id}`)).json()).progress, undefined);
 
     // The canceled attempt's late output arrives first and is ignored; the retry publishes.
     renders[0]();
@@ -527,6 +561,7 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     renders[2]();
     const ready = await until(() => env.store.artifact(a.id, jobA.id).status === 'ready' && env.store.artifact(a.id, jobA.id));
     assert.equal(ready.attempt, retried.attempt);
+    assert.equal(ready.position, jobA.position);
     assert.equal(env.store.tree(a.id).messages.length, messages);
     assert.equal(env.store.tree(a.id).artifacts.length, 1);
     assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).status, 409); // ready media needs no retry
@@ -583,7 +618,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
     kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER);`);
   const tree = old.create('Video');
   const reply = old.message(tree.id, 'assistant', 'Reply.', 'completed');
-  const running = old.pendingArtifact(tree.id, reply, 'Running', 'Planned.', 'video', '{"request":"Make a video."}');
+  const running = old.pendingArtifact(tree.id, reply, 'Running', 'Planned.', 'video', '{"request":"Make a video."}', 3);
   const kept = old.pendingArtifact(tree.id, reply, 'Kept', 'Planned.', 'video', '{}');
   const lost = old.pendingArtifact(tree.id, reply, 'Lost', 'Planned.', 'video', '{}');
   for (const a of [kept, lost]) old.finishVideo(tree.id, a.id, a.attempt, { description: 'Shows boxes.', duration: 1 });
@@ -601,7 +636,11 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
     const saved = await (await fetch(`${origin}/api/trees/${tree.id}`)).json();
     const by = Object.fromEntries(saved.artifacts.map(a => [a.title, a]));
     assert.equal(by.Running.status, 'interrupted');
+    assert.equal(by.Running.position, 3);
+    assert.equal(by.Running.phase, undefined);
+    assert.equal(by.Running.progress, undefined);
     assert.equal(by.Kept.status, 'ready');
+    assert.equal(by.Kept.position, null);
     assert.equal(by.Kept.available, undefined);
     assert.equal((await fetch(`${origin}/api/trees/${tree.id}/artifacts/${kept.id}/media`)).status, 200);
     assert.equal(by.Lost.status, 'ready');
@@ -617,6 +656,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
     assert.equal(calls.length, 2);
     assert.equal(JSON.parse(calls.find(c => c[1].includes('Make a video.'))?.[1]).request, JSON.parse(running.input).request);
     assert.ok(existsSync(mediaPath(dir, lost.id)));
+    assert.equal(store.artifact(tree.id, running.id).position, 3);
   } finally { app.stop(); store.close(); }
 });
 

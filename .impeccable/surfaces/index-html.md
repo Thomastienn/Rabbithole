@@ -60,3 +60,9 @@ FIRST VIEWPORT: The existing title sits above a full-column rectangle. Loading t
 FORM: A narrow extension of the existing focused-chat media card, code-led; the established direction and seed above remain authoritative. No new visual system or page scaffold.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+### Inline video extension (TreeTutor-zhf.6)
+
+The later [inline visuals spec](../../docs/inline-visuals-spec.md) supersedes the loading rectangle and chat-card rules above for videos in the focused chat. Videos occupy their stored reply position without a border, surface fill, visible title or description. Title and description remain accessible. Pending uses a slim status line with the existing phase and rendering percentage plus Cancel; failure shows a known safe reason and Retry. Native playback, enlargement, library cards and restart recovery retain their existing behavior. Unpositioned legacy videos remain after the reply.
+
+Preserve Lecture-hall Slate, semantic theme tokens and Public Sans for status/actions alongside the serif reply. No new world, template, dependency or generation behavior. Desktop/narrow, light/dark, keyboard and renderer evidence is recorded in [the inline video review](../../docs/verification/inline-video-review.md).
