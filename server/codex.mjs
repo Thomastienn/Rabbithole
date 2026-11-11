@@ -140,8 +140,8 @@ export class Codex {
           // shortcut: keeps the turn's last model call (tools are off, so one call per turn); sum calls if tools are enabled.
           if (message.method === 'thread/tokenUsage/updated') usage = p.tokenUsage?.last;
           if (message.method === 'turn/completed') {
-            // inputTokens includes cached reads; report them apart like Claude.
-            if (usage && p.turn.status === 'completed') emit({ type: 'usage', usage: { input: usage.inputTokens - usage.cachedInputTokens, output: usage.outputTokens, cacheRead: usage.cachedInputTokens } });
+            // inputTokens includes cached reads; report them apart like Claude. Failed turns still consumed what they report.
+            if (usage) emit({ type: 'usage', usage: { input: usage.inputTokens - usage.cachedInputTokens, output: usage.outputTokens, cacheRead: usage.cachedInputTokens } });
             emit({ type: 'status', status: p.turn.status });
             const reason = p.turn.error?.message; // e.g. usage limits; shown like Claude's short results so the learner knows why
             finish(p.turn.status === 'failed' ? new Error(typeof reason === 'string' && reason.length < 300 ? `Codex: ${reason} Partial reply saved; try again.` : 'Codex could not complete this reply. Partial reply saved; try again.') : undefined);

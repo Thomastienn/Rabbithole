@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,7 +26,7 @@ async function start(dir) {
 }
 const replies = tree => tree.messages.filter(m => m.role === 'assistant').map(m => ({ status: m.status, usage: m.usage }));
 
-test('provider-reported usage is saved per reply, survives restart and totals today; missing or failed usage is never invented', async t => {
+test('provider-reported usage is saved per reply, survives restart and totals today; missing usage is never invented and failed calls count only what they reported', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-usage-'));
   let env = await start(dir);
   t.after(async () => { await env.close(); });
@@ -44,7 +44,8 @@ test('provider-reported usage is saved per reply, survives restart and totals to
   const check = async () => {
     assert.deepEqual(strip(replies(await env.get(`/api/trees/${claude.id}`))), [{ status: 'completed', usage: claudeUsage }, { status: 'completed', usage: null }]);
     assert.deepEqual(strip(replies(await env.get(`/api/trees/${codex.id}`))), [{ status: 'completed', usage: codexUsage }, { status: 'completed', usage: null }, { status: 'failed', usage: null }]);
-    assert.deepEqual((await env.get('/api/state')).usage, { input: 133, output: 16, cacheRead: 60, replies: 2 });
+    // The failed Codex turn keeps no per-reply usage, but its reported consumption counts in today's total.
+    assert.deepEqual((await env.get('/api/state')).usage, { input: 163, output: 25, cacheRead: 80, replies: 3 });
   };
   await check();
   await env.close();
@@ -121,4 +122,92 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
   await env.close();
   env = await start(dir);
   assert.deepEqual((await env.get('/api/usage')).events, events);
+});
+
+test('background compaction and diagram calls record actual provider/model per logical call; failed calls keep reported counts and unreported stay unavailable', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-usage-background-'));
+  let env = await start(dir);
+  t.after(async () => { await env.close(); });
+  const claude = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${claude.id}/messages`, { text: 'Show a diagram fixture request' });
+  const reply = (await env.get(`/api/trees/${claude.id}`)).messages.at(-1);
+  assert.equal((await env.get(`/api/trees/${claude.id}`)).artifacts[0].status, 'ready');
+  // Two explicit branch attempts are two logical compaction calls.
+  for (let i = 0; i < 2; i++) JSON.parse(await env.post(`/api/trees/${claude.id}/branches`, { messageId: reply.id, start: 2, end: 9, text: 'bracket', question: 'Why brackets?' }));
+  await env.post(`/api/trees/${claude.id}/messages`, { text: 'Now claude fails' });
+  const codex = JSON.parse(await env.post('/api/trees'));
+  await env.post(`/api/trees/${codex.id}/model`, { provider: 'codex', model: 'fixture-model' });
+  await env.post(`/api/trees/${codex.id}/messages`, { text: 'Explain, no usage' });
+  await env.post(`/api/trees/${codex.id}/messages`, { text: 'fail' });
+
+  const claudeUsage = { input: 103, output: 7, cacheRead: 40 }, codexUsage = { input: 30, output: 9, cacheRead: 20 }, none = { input: null, output: null, cacheRead: null };
+  const events = (await env.get('/api/usage')).events;
+  assert.deepEqual(events.map(({ at, ...e }) => e), [
+    { provider: 'claude', model: 'sonnet', task: 'diagram', ...claudeUsage },
+    { provider: 'claude', model: 'sonnet', task: 'chat', ...claudeUsage },
+    { provider: 'claude', model: 'haiku', task: 'compaction', ...claudeUsage },
+    { provider: 'claude', model: 'haiku', task: 'compaction', ...claudeUsage },
+    { provider: 'claude', model: 'sonnet', task: 'chat', ...claudeUsage }, // failed run still reported its usage
+    { provider: 'codex', model: 'fixture-model', task: 'chat', ...none },
+    { provider: 'codex', model: 'fixture-model', task: 'chat', ...codexUsage }, // failed turn, Codex cache counted once
+  ]);
+  assert.equal((await env.get(`/api/trees/${claude.id}`)).messages.at(-1).status, 'failed');
+  // Restart and deletion keep the same history; no rows hold content.
+  await env.close();
+  env = await start(dir);
+  assert.deepEqual((await env.get('/api/usage')).events, events);
+  for (const id of [claude.id, codex.id]) await fetch(env.origin + `/api/trees/${id}/delete`, { method: 'POST', headers: env.headers, body: JSON.stringify({ conversation: id }) });
+  assert.deepEqual((await env.get('/api/usage')).events, events);
+  assert.ok(!JSON.stringify(env.store.db.prepare('SELECT * FROM usage_events').all()).match(/bracket|round|Authoritative|flowchart/i));
+});
+
+test('video worker attempts record their own reported usage, including failed and canceled attempts; rendering adds none', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-usage-video-'));
+  const store = new Store(join(dir, 'trees.sqlite'));
+  const task = { title: 'Winners', description: 'Two winners meet.', intent: 'Animate winners.', excerpt: 'A and B advance.' };
+  const source = "// Description: Two boxes meet.\nimport { AbsoluteFill } from 'remotion';\nexport const durationInFrames = 30;\nexport default () => <AbsoluteFill>A + B</AbsoluteFill>;";
+  const done = (emit, text) => { emit({ type: 'item', item: 'a', text }); emit({ type: 'status', status: 'completed' }); };
+  let attempt = 0, renders = 0, holding;
+  const held = new Promise(r => { holding = r; });
+  const provider = { models: async () => [{ model: 'worker-model', isDefault: true }], generate: async (tree, text, emit, saveThread, signal) => {
+    if (!tree.instructions?.includes('Remotion')) return done(emit, 'Here.\n```treetutor-video\n' + JSON.stringify(task) + '\n```');
+    if (text.includes('silent')) return emit({ type: 'status', status: 'failed' }); // no usage reported: never estimated
+    emit({ type: 'usage', usage: { input: 10 + attempt, output: 5, cacheRead: 2 } });
+    if (attempt++ === 0) return emit({ type: 'status', status: 'failed' });
+    if (text.includes('hold')) { holding(); await new Promise(r => signal.addEventListener('abort', r, { once: true })); return emit({ type: 'status', status: 'interrupted' }); }
+    done(emit, source);
+  } };
+  const render = async (workspace, output) => { renders++; writeFileSync(output, Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(4096, 1)])); return { durationInFrames: 30, fps: 30 }; };
+  const app = createApp({ store, provider, dir, videoRender: render, auth: { status: () => ({ connected: true }) } });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  t.after(() => { app.stop(); store.close(); });
+  const origin = `http://127.0.0.1:${app.server.address().port}`, { csrf } = await (await fetch(origin + '/api/state')).json();
+  const post = (path, body = {}) => fetch(origin + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) });
+  const tree = store.create('Video', 'codex', 'worker-model');
+  const settle = async (id, status) => { for (let i = 0; i < 200 && store.artifact(tree.id, id).status !== status; i++) await new Promise(r => setTimeout(r, 25)); assert.equal(store.artifact(tree.id, id).status, status); };
+  const video = async text => { await (await post(`/api/trees/${tree.id}/messages`, { text })).text(); return store.tree(tree.id).artifacts.at(-1).id; };
+
+  const first = await video('Make a video of winners');
+  await settle(first, 'failed');
+  await post(`/api/trees/${tree.id}/artifacts/${first}/retry`);
+  await settle(first, 'ready');
+  const hold = await video('Make a video, hold');
+  await held; // cancel once the worker call is in flight
+  await post(`/api/trees/${tree.id}/artifacts/${hold}/cancel`);
+  await settle(hold, 'canceled');
+  const silent = await video('Make a video, silent');
+  await settle(silent, 'failed');
+  for (let i = 0; i < 200 && store.usageEvents().events.filter(e => e.task === 'video').length < 4; i++) await new Promise(r => setTimeout(r, 25));
+
+  const videos = store.usageEvents().events.filter(e => e.task === 'video').map(({ at, ...e }) => e);
+  const by = { provider: 'codex', model: 'worker-model', task: 'video' };
+  assert.deepEqual(videos, [
+    { ...by, input: 10, output: 5, cacheRead: 2 }, // failed attempt
+    { ...by, input: 11, output: 5, cacheRead: 2 }, // explicit retry: its own attempt
+    { ...by, input: 12, output: 5, cacheRead: 2 }, // canceled attempt keeps what it reported
+    { ...by, input: null, output: null, cacheRead: null },
+  ]);
+  assert.equal(renders, 1);
+  // The chat provider here reports nothing, so its rows stay unavailable rather than borrowing worker counts.
+  assert.ok(store.usageEvents().events.filter(e => e.task === 'chat').every(e => e.input === null));
 });

@@ -44,8 +44,8 @@ if (process.argv.includes('--output-format')) {
   await new Promise(r => setTimeout(r, delay(input)));
   send({ type: 'system', subtype: 'init', session_id: session, model: 'sonnet' });
   send({ type: 'assistant', message: { id: 'answer', content: [{ type: 'text', text }] } });
-  // A learner text ending 'no usage' simulates a provider that reports none.
-  send({ type: 'result', is_error: false, ...(!input.endsWith('no usage') && { usage: { input_tokens: 3, cache_creation_input_tokens: 100, cache_read_input_tokens: 40, output_tokens: 7 } }) });
+  // A learner text ending 'no usage' simulates a provider that reports none; 'claude fails' a failed run that still reports usage.
+  send({ type: 'result', is_error: input.endsWith('claude fails'), ...(input.endsWith('claude fails') && { result: 'Fixture failure.' }), ...(!input.endsWith('no usage') && { usage: { input_tokens: 3, cache_creation_input_tokens: 100, cache_read_input_tokens: 40, output_tokens: 7 } }) });
 } else createInterface({ input: process.stdin }).on('line', line => {
   const { id, method, params } = JSON.parse(line);
   if (!id) return;

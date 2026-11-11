@@ -19,6 +19,10 @@ store.record('chat:a', 'chat', { provider: 'claude', model: 'sonnet' }, { input:
 store.record('suggestions:a', 'suggestions', { provider: 'claude', model: 'haiku' }, { input: 200, output: 50, cacheRead: 0 }, +now - 900);
 store.record('chat:b', 'chat', { provider: 'codex', model: 'gpt-5' }, null, +now - 800);
 store.record('chat:old', 'chat', null, { input: 5000, output: 1000, cacheRead: 2000 }, +new Date(lastYear, 11, 31, 23, 30));
+// Background work last June: reported compaction/diagram counts and an unreported video attempt.
+store.record('compaction:a', 'compaction', { provider: 'claude', model: 'haiku' }, { input: 100, output: 20, cacheRead: 0 }, +new Date(lastYear, 5, 1));
+store.record('diagram:a', 'diagram', { provider: 'claude', model: 'sonnet' }, { input: 300, output: 80, cacheRead: 50 }, +new Date(lastYear, 5, 1));
+store.record('video:a', 'video', { provider: 'codex', model: 'gpt-5' }, null, +new Date(lastYear, 5, 1));
 let calls = 0;
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }], generate: async () => { calls++; } } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
@@ -63,19 +67,22 @@ try {
   await range('Today');
   assert.equal(await ev(`${dialog}.querySelectorAll('.usage-bar').length`), 24);
   await range('All time');
-  assert.equal(await total(), '6,400 input, 1,350 output, 2,800 cache-read tokens (10,550 total)');
+  assert.equal(await total(), '6,800 input, 1,450 output, 2,850 cache-read tokens (11,100 total)');
+  const tasks = await ev(`[...${dialog}.querySelectorAll('table')].at(-1).innerText`);
+  for (const s of ['Chat replies', 'Suggestions', 'Context preparation', 'Diagrams', 'Videos']) assert.ok(tasks.includes(s), s);
+  assert.match(tasks, /Videos\t—\t—\t—\t—\t0\t1/, 'unreported video attempt is listed, not estimated');
   assert.ok((await ev(`${dialog}.textContent`)).includes('Unknown model (saved before attribution)'));
   await b('find', 'role', 'radio', 'click', '--name', 'Cumulative', '--exact');
   await ev(`${dialog}.querySelector('.usage-bar:last-of-type').focus(); true`);
-  assert.match(await ev(`${dialog}.querySelector('.usage-readout').textContent`), /\(cumulative\): 6,400 input/);
-  steps.push('Hover readout; Today = 24 hourly bars; All time includes last New Year’s Eve call with unknown model; cumulative last bar = all-time totals');
+  assert.match(await ev(`${dialog}.querySelector('.usage-readout').textContent`), /\(cumulative\): 6,800 input/);
+  steps.push('Hover readout; Today = 24 hourly bars; All time includes last New Year’s Eve call with unknown model; cumulative last bar = all-time totals; task table lists chat, suggestions, context preparation, diagrams and videos (video unreported)');
 
   await range('Year');
   await b('find', 'role', 'combobox', 'click', '--name', 'Year');
   await b('find', 'role', 'option', 'click', '--name', String(lastYear), '--exact');
-  await wait(`${dialog}.querySelector('.usage-total')?.textContent.startsWith('5,000 input')`);
+  await wait(`${dialog}.querySelector('.usage-total')?.textContent.startsWith('5,400 input')`);
   assert.equal(await ev(`${dialog}.querySelectorAll('.usage-bar').length`), 12);
-  steps.push(`Year ${lastYear}: only the 31 Dec 23:30 call, 12 monthly bars`);
+  steps.push(`Year ${lastYear}: June background work and the 31 Dec 23:30 call, 12 monthly bars`);
   await b('find', 'role', 'radio', 'click', '--name', 'Per period', '--exact');
   await b('find', 'text', 'Values for each month', 'click');
   await wait(`[...${dialog}.querySelectorAll('table')].some(t => t.innerText.includes('Dec ${lastYear}'))`);
@@ -96,6 +103,6 @@ try {
   await ev(`localStorage.removeItem('treetutor.appearance'); true`);
   assert.equal(calls, 0, 'viewing usage made no model calls');
   steps.push('No provider calls while viewing');
-  writeFileSync('docs/verification/usage-dashboard.json', JSON.stringify({ issue: 'TreeTutor-000.1', checkedAt: new Date().toISOString(), evidence: 'Production build, real app HTTP/SQLite with seeded usage records, agent-browser Chromium. No live provider inference.', steps, screenshots: shots }, null, 2) + '\n');
+  writeFileSync('docs/verification/usage-dashboard.json', JSON.stringify({ issue: 'TreeTutor-000.2', checkedAt: new Date().toISOString(), evidence: 'Production build, real app HTTP/SQLite with seeded usage records, agent-browser Chromium. No live provider inference.', steps, screenshots: shots }, null, 2) + '\n');
   console.log(JSON.stringify({ pass: true, steps }, null, 2));
 } catch (e) { console.error(steps); throw e; } finally { await b('close').catch(() => {}); app.stop(); store.close(); }

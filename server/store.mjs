@@ -349,6 +349,7 @@ export class Store {
   usage(id, usage) { this.db.prepare('UPDATE messages SET usage=? WHERE id=?').run(usage && JSON.stringify({ ...usage, at: Date.now() }), id); }
   // One row per logical call id, so repeated finish events cannot double count; usage=null records an unreported measurement.
   record(id, task, selection, usage, at = Date.now()) {
+    if (usage && !['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) usage = null;
     this.db.prepare('INSERT OR IGNORE INTO usage_events(id,at,provider,model,task,input,output,cacheRead) VALUES(?,?,?,?,?,?,?,?)').run(id, at, selection?.provider ?? null, selection?.model ?? null, task, usage?.input ?? null, usage?.output ?? null, usage?.cacheRead ?? null);
   }
   usageEvents(from = 0, to = Number.MAX_SAFE_INTEGER) {

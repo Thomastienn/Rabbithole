@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { createReadStream, accessSync, constants, existsSync, renameSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -34,6 +34,14 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     const saved = store.smartSettings(), chat = chatDefault();
     return { ...saved, resolved: { provider: saved.model?.provider ?? chat.provider, model: saved.model ? saved.model.model : chat.model, effort: saved.followEffort ? chat.effort : saved.effort } };
   };
+  // Accounting boundary for background work: each logical call records once under its own id, with any reported
+  // counts even when it fails or stops; an unreported call stays unavailable. Rendering and TTS never pass through here.
+  const metered = (provider, task, id, selection) => ({ generate: async (tree, text, emit, saveThread, signal) => {
+    let usage = null, model = selection.model;
+    try {
+      return await provider.generate(tree, text, event => { if (event.type === 'usage') usage = event.usage; emit(event); }, (thread, actual) => { model = actual ?? model; saveThread(thread, actual); }, signal);
+    } finally { store.record(`${task}:${id}`, task, { provider: selection.provider, model }, usage); }
+  } });
   const active = new Map(), videos = new Map(), videoJobs = new Set();
   let stopping = false, stopped;
   // A crash before commit restores staged files; a crash after commit finishes removing them.
@@ -57,7 +65,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     const running = { controller: new AbortController(), conversation: tree.id, artifact: job.id, phase: 'preparing', progress: null };
     videos.set(job.id, running);
     videoJobs.add(running);
-    running.done = Promise.resolve().then(() => generateVideo({ provider: pick(tree), selection: { provider: tree.provider, model: tree.model }, store, dir, artifact: job, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) }))
+    running.done = Promise.resolve().then(() => generateVideo({ provider: metered(pick(tree), 'video', job.attempt, tree), selection: { provider: tree.provider, model: tree.model }, store, dir, artifact: job, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) }))
       // A job stopped with the app stays pending, so the next start marks it interrupted.
       .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishVideo(tree.id, job.id, job.attempt, {}, error.message); })
       .finally(() => { videoJobs.delete(running); if (videos.get(job.id) === running) videos.delete(job.id); });
@@ -342,7 +350,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 const items = new Map();
                 let status;
                 const prompt = COMPACT + JSON.stringify({ inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null, messages: tutorContext(tree).messages.filter(m => m.status === 'completed'), passage: body.text });
-                await pick(quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
+                await metered(pick(quick), 'compaction', randomUUID(), quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
                   if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
                   if (event.type === 'status') status = event.status;
                 }, () => {}, controller.signal);
@@ -440,7 +448,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                   if (output.error) throw new Error(output.error);
                   if (status !== 'completed') throw new Error('Tutor reply did not complete.');
                   const selection = { provider: tree.provider, model: store.tree(id).model };
-                  const source = await generateDiagram(pick(tree), selection, output.task, controller.signal, diagramTimeout);
+                  const source = await generateDiagram(metered(pick(tree), 'diagram', artifact.id, selection), selection, output.task, controller.signal, diagramTimeout);
                   if (!finished) artifact = store.finishArtifact(id, artifact.id, source);
                 } catch (error) {
                   if (!finished) artifact = store.finishArtifact(id, artifact.id, null, error.message);
