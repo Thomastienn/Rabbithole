@@ -1,0 +1,19 @@
+{
+  "issue": "TreeTutor-000.1",
+  "checkedAt": "2026-11-11T10:01:07.018Z",
+  "evidence": "Production build, real app HTTP/SQLite with seeded usage records, agent-browser Chromium. No live provider inference.",
+  "steps": [
+    "Month (dark): exact totals 2,550 with 1 unreported call; one bar per day; model and task tables",
+    "Focus + Home/End/ArrowRight read today’s exact values in the polite live readout",
+    "Hover readout; Today = 24 hourly bars; All time includes last New Year’s Eve call with unknown model; cumulative last bar = all-time totals",
+    "Year 2025: only the 31 Dec 23:30 call, 12 monthly bars",
+    "Textual equivalent: \"Values for each month\" table lists Dec with exact counts",
+    "Light: chart rendered with distinct series colors; empty range shows the no-usage message",
+    "No provider calls while viewing"
+  ],
+  "screenshots": [
+    "docs/verification/usage-dashboard-month-dark.png",
+    "docs/verification/usage-dashboard-month-light.png",
+    "docs/verification/usage-dashboard-empty-light.png"
+  ]
+}

@@ -77,8 +77,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       const selection = settings.model ? { ...settings.model, effort: settings.effort } : tree;
       const result = await suggest(pick(selection), selection, { inheritedContext, question, answer, knownConcepts: known, familiarity }, running.controller.signal, suggestionTimeout, settings.model?.model);
       store.addGraph(result.graph, message);
-      store.finishSuggestions(conversation, message, result.passages, result.usage);
-    })().catch(error => { if (!stopping) store.finishSuggestions(conversation, message, null, error.usage ?? null); })
+      store.finishSuggestions(conversation, message, result.passages, result.usage, selection);
+    })().catch(error => { if (!stopping) store.finishSuggestions(conversation, message, null, error.usage ?? null, settings.model ?? tree); })
       .catch(() => {}).finally(() => suggesting.delete(message));
   };
   const csrf = randomBytes(32).toString('hex');
@@ -97,6 +97,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     try {
       if (stopping) return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
       if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))], suggesting: [...new Set([...suggesting.values()].map(s => s.conversation))], conceptNameTokens: store.nameTokens() });
+      if (req.method === 'GET' && url.pathname === '/api/usage') return json(res, 200, store.usageEvents(...['from', 'to'].map(k => url.searchParams.has(k) ? Number(url.searchParams.get(k)) || 0 : undefined)));
       if (req.method === 'GET' && url.pathname === '/api/search') return json(res, 200, store.search((url.searchParams.get('q') ?? '').slice(0, 200)));
       if (req.method === 'GET' && url.pathname === '/api/graph') return json(res, 200, store.graph());
       if (req.method === 'GET' && url.pathname === '/api/settings/endpoint' && endpoint) return json(res, 200, endpoint.status());
@@ -365,7 +366,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
           const items = new Map();
-          let text = '', status = 'streaming', finished = false, artifact, usage = null;
+          let text = '', status = 'streaming', finished = false, artifact, usage = null, called = false;
           const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': keepalive\n\n'); }, 15000);
           const finish = () => {
             if (finished) return;
@@ -377,7 +378,10 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             if (artifact?.status === 'pending') artifact = store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
             store.update(reply, text, status);
             // Provider-reported counts only; failed, partial and canceled replies keep no usage.
-            if (status === 'completed' && usage && ['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) store.usage(reply, usage);
+            if (usage && !['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) usage = null;
+            if (status === 'completed' && usage) store.usage(reply, usage);
+            // History keeps any reported measurement, including failed or stopped calls; unreported ones stay unavailable.
+            if (called) store.record(`chat:${reply}`, 'chat', { provider: tree.provider, model: store.tree(id)?.model ?? tree.model }, usage);
             if (status === 'completed' || status === 'failed') store.finishModel(id, status === 'completed');
             if (status === 'completed' && text.trim()) startSuggestions(id, reply, body.text, text);
             if (output.requested || output.hidden) store.forgetThread(id);
@@ -398,6 +402,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               const invalid = await selectionError(tree);
               if (invalid) throw new Error(invalid.error);
             }
+            called = true;
             await pick(tree).generate(tutorContext(tree), body.text, event => {
               if (finished) return;
               if (event.type === 'delta' || event.type === 'item') {

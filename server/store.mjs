@@ -46,6 +46,14 @@ export class Store {
       this.db.exec(`CREATE TABLE IF NOT EXISTS suggestions (message TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), passages TEXT, usage TEXT,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))`);
       if (!this.db.prepare('PRAGMA table_info(suggestions)').all().some(c => c.name === 'nameTokens')) this.db.exec('ALTER TABLE suggestions ADD COLUMN nameTokens INTEGER');
+      // Durable usage: counts, time and attribution only, so deleting content never shrinks history. NULL counts = not reported.
+      if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='usage_events'").get()) {
+        this.db.exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video')),
+          input INTEGER, output INTEGER, cacheRead INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
+          CREATE INDEX usage_events_at ON usage_events(at);
+          INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'chat:'||id,usage->>'at','chat',usage->>'input',usage->>'output',usage->>'cacheRead' FROM messages WHERE usage IS NOT NULL;
+          INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'suggestions:'||message,usage->>'at','suggestions',usage->>'input',usage->>'output',usage->>'cacheRead' FROM suggestions WHERE usage IS NOT NULL;`);
+      }
       this.db.exec(`CREATE TABLE IF NOT EXISTS suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT)`);
       // The suggestion row is the quick thinking role; its pinned model migrates in place and effort is additive.
       if (!this.db.prepare('PRAGMA table_info(suggestion_settings)').all().some(c => c.name === 'effort')) this.db.exec('ALTER TABLE suggestion_settings ADD COLUMN effort TEXT');
@@ -265,7 +273,10 @@ export class Store {
       this.db.exec('COMMIT');
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
-  finishSuggestions(conversation, message, passages, usage) { this.db.prepare("UPDATE suggestions SET status=?,passages=?,usage=? WHERE conversation=? AND message=? AND status='pending'").run(passages ? 'ready' : 'failed', passages && JSON.stringify(passages), usage && JSON.stringify({ ...usage, at: Date.now() }), conversation, message); }
+  finishSuggestions(conversation, message, passages, usage, selection) {
+    const at = Date.now();
+    if (this.db.prepare("UPDATE suggestions SET status=?,passages=?,usage=? WHERE conversation=? AND message=? AND status='pending'").run(passages ? 'ready' : 'failed', passages && JSON.stringify(passages), usage && JSON.stringify({ ...usage, at }), conversation, message).changes) this.record(`suggestions:${message}`, 'suggestions', selection, usage, at);
+  }
   artifact(conversation, id) { return this.db.prepare('SELECT * FROM artifacts WHERE conversation=? AND id=?').get(conversation, id); }
   hasArtifact(id) { return !!this.db.prepare('SELECT 1 FROM artifacts WHERE id=?').get(id); }
   // Videos keep their frozen task input and a server-issued attempt; their composition source stays in the job workspace.
@@ -336,9 +347,16 @@ export class Store {
   }
   // Only reported usage is saved; NULL means the provider did not report it.
   usage(id, usage) { this.db.prepare('UPDATE messages SET usage=? WHERE id=?').run(usage && JSON.stringify({ ...usage, at: Date.now() }), id); }
+  // One row per logical call id, so repeated finish events cannot double count; usage=null records an unreported measurement.
+  record(id, task, selection, usage, at = Date.now()) {
+    this.db.prepare('INSERT OR IGNORE INTO usage_events(id,at,provider,model,task,input,output,cacheRead) VALUES(?,?,?,?,?,?,?,?)').run(id, at, selection?.provider ?? null, selection?.model ?? null, task, usage?.input ?? null, usage?.output ?? null, usage?.cacheRead ?? null);
+  }
+  usageEvents(from = 0, to = Number.MAX_SAFE_INTEGER) {
+    return { first: this.db.prepare('SELECT MIN(at) AS at FROM usage_events').get().at, events: this.db.prepare('SELECT at,provider,model,task,input,output,cacheRead FROM usage_events WHERE at>=? AND at<? ORDER BY at,rowid').all(from, to) };
+  }
   usageSince(since) {
     // Suggestion calls count toward the total but not toward the reply count.
-    return this.db.prepare("SELECT COALESCE(SUM(usage->>'input'),0) AS input,COALESCE(SUM(usage->>'output'),0) AS output,COALESCE(SUM(usage->>'cacheRead'),0) AS cacheRead,COALESCE(SUM(reply),0) AS replies FROM (SELECT usage,1 AS reply FROM messages UNION ALL SELECT usage,0 FROM suggestions) WHERE usage->>'at'>=?").get(since);
+    return this.db.prepare("SELECT COALESCE(SUM(input),0) AS input,COALESCE(SUM(output),0) AS output,COALESCE(SUM(cacheRead),0) AS cacheRead,COUNT(CASE WHEN task='chat' THEN input END) AS replies FROM usage_events WHERE at>=?").get(since);
   }
   update(id, text, status) { this.db.prepare('UPDATE messages SET text=?,status=? WHERE id=?').run(text, status, id); }
   close() { this.db.close(); }

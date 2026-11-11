@@ -80,6 +80,19 @@ html { view-transition-name: none; }
 .reply-usage, .reply-copy { opacity: 0; transition: opacity 120ms ease; }
 .chat-reply:is(:hover, :focus-within) :is(.reply-usage, .reply-copy) { opacity: 1; }
 @media (hover: none) { .reply-usage, .reply-copy { opacity: 1; } }
+.usage-chart { position: relative; display: grid; gap: var(--spacing-1); }
+.usage-chart svg { width: 100%; height: 12rem; display: block; overflow: visible; border-block-end: 1px solid var(--color-border); }
+.usage-max { position: absolute; inset-block-start: 0; inset-inline-end: 0; transform: translateY(-100%); font-variant-numeric: tabular-nums; }
+.usage-bar { outline: none; cursor: default; }
+.usage-hit { fill: transparent; }
+.usage-bar[data-active=true] .usage-hit { fill: var(--color-background-muted); }
+.usage-bar:focus-visible .usage-hit { stroke: var(--color-accent); stroke-width: var(--focus-outline-width); vector-effect: non-scaling-stroke; }
+[data-series=input] { fill: var(--color-icon-blue); background: var(--color-icon-blue); }
+[data-series=output] { fill: var(--color-icon-green); background: var(--color-icon-green); }
+[data-series=cacheRead] { fill: var(--color-icon-yellow); background: var(--color-icon-yellow); }
+.usage-swatch { inline-size: 0.75rem; block-size: 0.75rem; border-radius: var(--radius-inner); display: inline-block; }
+.usage-total, .usage-readout, .usage-chart td { font-variant-numeric: tabular-nums; }
+.usage-readout { min-block-size: 1.5em; }
 .code-copy { position: absolute; inset-block-start: var(--spacing-1); inset-inline-end: var(--spacing-1); opacity: 0; transition: opacity 120ms ease; }
 .reply-md pre:is(:hover, :focus-within) .code-copy { opacity: 1; }
 @media (hover: none) { .code-copy { opacity: 1; } }

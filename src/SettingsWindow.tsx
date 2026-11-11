@@ -16,6 +16,7 @@ import EndpointSettings from './EndpointSettings';
 import SuggestionSettings from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
 import SmartSettings from './SmartSettings';
+import UsageDashboard from './UsageDashboard';
 import type { Model } from './models';
 import { bubbleTints, type BubbleTint } from './bubbleTint';
 import { appearances, type Appearance } from './appearance';
@@ -28,7 +29,7 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
   { id: 'interface', label: 'Interface', description: 'Appearance, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
   { id: 'models', label: 'Models', description: 'Chat default, smart and quick thinking roles, and concept matching.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
-  { id: 'usage', label: 'Usage', description: 'What today’s replies and suggestions have used so far.', icon: ChartBarIcon },
+  { id: 'usage', label: 'Usage', description: 'Tokens providers reported for replies and suggestions, kept even after content is deleted.', icon: ChartBarIcon },
 ];
 
 function Section({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
@@ -38,7 +39,7 @@ function Section({ title, description, children }: { title: string; description?
   </VStack>;
 }
 
-export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, usage, conceptNameTokens, auth, signIn, vim, setVim, appearance, setAppearance, bubbleTint, setBubbleTint }: {
+export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, conceptNameTokens, auth, signIn, vim, setVim, appearance, setAppearance, bubbleTint, setBubbleTint }: {
   request?: SettingsRequest;
   close: () => void;
   api: (path: string, body?: unknown) => Promise<any>;
@@ -46,7 +47,6 @@ export default function SettingsWindow({ request, close, api, models, providers,
   providers?: Record<string, { connected: boolean }>;
   modelError: string;
   loadModels: () => Promise<void>;
-  usage?: string;
   conceptNameTokens?: number;
   auth?: { connected: boolean; email: string | null };
   signIn: () => Promise<void>;
@@ -141,9 +141,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
         <Text>In Settings → Connections, save one custom endpoint’s base URL and API key, test its model listing, or remove it. Its owner bills requests sent there. The saved key is never shown. In chat, open Model for next reply and use arrows and Enter to choose Claude, Codex or a custom endpoint model and supported effort. Switching preserves the discussion and inherited context; children start with their parent’s choice. Set the starting model and effort for new learning trees in Settings → Models.</Text>
       </Section>
     </>}
-    {current.id === 'usage' && <Section title="Today" description="Tokens and cost reported by providers for replies and suggestions since midnight.">
-      <Text type="supporting">Today's usage: {usage ?? 'no reported usage yet'}</Text>
-    </Section>}
+    {current.id === 'usage' && <Section title="Usage history"><UsageDashboard api={api} /></Section>}
   </VStack>;
 
   const nav = <SideNav aria-label="Settings sections" header={<HStack padding={2} vAlign="center" hAlign="between">
