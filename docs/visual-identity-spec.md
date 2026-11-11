@@ -1,5 +1,7 @@
 # Visual identity redesign
 
+**Scoped refinement, 2026-11-11:** The [workspace and media refinement spec](workspace-media-refinement-spec.md) supersedes conflicting focused-chat header/composer, passage-popup, rail/search, scrollbar, usage and media rules below. Search becomes title-only in a floating window. The general Slate direction, tokens and unrelated layouts remain authoritative. This completed redesign is historical evidence, not evidence that the new refinement is implemented.
+
 Agreed with the owner on 2026-11-10 in a grilling session. This spec owns TreeTutor's look and layout from the moment the direction contract below is recorded; PRD.md keeps authority over behavior and acceptance criteria.
 
 Status: **Complete**, 2026-11-11 (TreeTutor-nwx; finish ticket TreeTutor-nwx.12). All seven screens and both adopted optional features are implemented. The Impeccable finish reviewer returned `ship` after reviewing 46 dark/light desktop/narrow captures; no material fix round was required. The documenter replaced DESIGN.md and its sidecar with the built Lecture-hall Slate world. [Finish evidence and validation](verification/visual-finish/README.md) records fixture coverage, the existing TreeTutor-wpc failures, and native-provider checks outside this visual redesign's scope.

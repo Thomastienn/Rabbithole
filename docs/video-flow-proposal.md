@@ -1,5 +1,7 @@
 # Requested video generation and playback
 
+**Superseding refinement, 2026-11-11:** Use the [workspace and media refinement spec](workspace-media-refinement-spec.md) for smart-model/effort routing, freeform 2D/3D compositions, 1–2-minute-or-longer duration, Edge TTS narration/subtitles, video-sized loading with Cancel, no automatic repair/retry, and a library that survives source-conversation deletion. This earlier proposal remains background only where compatible; its exclusions of narration, duration guidance and a library no longer apply.
+
 Decision: `TreeTutor-vm4.2`. Status: selected design.
 
 The user delegated the next Beads task and its recommendations with “Do the next Beads task. Do what you recommends.” On 2026-11-07 (America/Edmonton), that delegation resolves this decision in favor of the recommended finished-file/native-player flow and the contract below, including explicit retry, interrupted jobs after restart, frozen task inputs and local artifact persistence. This is a design decision for a later increment after Mermaid; implementation remains a separate task. PRD.md remains the product authority. No visual theme or screen layout is selected here.

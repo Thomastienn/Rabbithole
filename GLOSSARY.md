@@ -29,15 +29,24 @@ The exact contiguous text of a tutor reply that a branch was created from.
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
-A term or short phrase in a tutor reply that the suggestion model marked as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. It carries no proposed question.
+A term or short phrase in a tutor reply that the quick thinking model marked as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
 
 **Quick thinking model**:
-The learner-chosen model for picking suggestions and compacting prior discussion into inherited context for child conversations.
+The learner-chosen model for picking suggestions and compacting prior discussion into inherited context for child conversations, with its own configurable effort.
 _Avoid_: Helper model, cheap model
 
 **Suggestion model**:
 The previous name for the quick thinking model, describing its suggestion-picking role. Existing specifications use this name.
+
+**Chat model**:
+The model that answers learner messages in a conversation. Its Settings default starts new learning trees; children inherit their parent's current model and effort.
+
+**Smart model**:
+The learner-chosen model for private video scripting, scene planning and animation code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
+
+**Effort**:
+The supported reasoning setting chosen for a model role or conversation. It is independent of model selection; it does not promise a particular response quality or measured amount of computation.
 
 **Knowledge graph**:
 The single record, across all learning trees, of concepts the learner has met and how they relate.
@@ -65,3 +74,6 @@ _Avoid_: Summary, compacted context
 
 **Usage history**:
 The record of reported model usage across learning trees and tasks, retained independently of deleted conversations and media. It contains usage measurements and attribution, not deleted learning content.
+
+**Video library**:
+The local collection of generated videos, available independently of their originating learning trees. A saved video remains until the learner explicitly trashes it, even when its source discussion is deleted.

@@ -1,5 +1,7 @@
 # Break down, token stats and the knowledge graph
 
+**Scoped refinement, 2026-11-11:** The [workspace and media refinement spec](workspace-media-refinement-spec.md) supersedes conflicting rules below: suggestion model is now the quick thinking role, with independent effort and custom endpoint support; the passage popup is compact with outside-click/Escape dismissal and familiarity controls in overflow; usage becomes durable historical charts rather than only today's totals. Unrelated suggestion and knowledge-graph behavior remains binding.
+
 Status: agreed with the owner in a design session on 2026-11-09. Planned as a new
 epic after TreeTutor-sh8 (Product 1.0); Beads issues are not created yet. This spec
 supersedes [branch-suggestions-proposal.md](branch-suggestions-proposal.md).

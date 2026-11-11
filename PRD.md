@@ -2,7 +2,7 @@
 
 Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The owner clarified on 2026-11-09 that New chat opens a map with one visible root conversation, map nodes show the whole conversation, and branch lines attach beside their source message. On the same day the owner accepted three additions for after the text release (rich reply rendering, rename and delete, and a custom OpenAI-compatible endpoint) and the optional Vim canvas mapping in docs/vim-bindings-proposal.md. Later on 2026-11-09 the owner replaced the branch-suggestion design with Break down, token stats and a knowledge graph, specified in docs/break-down-spec.md for a new epic after Product 1.0. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
 
-Design authority: from 2026-11-10, docs/visual-identity-spec.md owns look and layout (its Direction contract and per-screen rules). Behavior and acceptance criteria in this PRD stay binding; where a layout change in the spec touches a flow, the PRD behavior wins.
+Design authority: the [visual identity spec](docs/visual-identity-spec.md) owns the general visual direction. The owner's 2026-11-11 [workspace and media refinement spec](docs/workspace-media-refinement-spec.md) supersedes its conflicting focused-chat, passage-popup, rail/search, usage and media rules within that scope. Behavior and acceptance criteria in this PRD stay binding.
 
 ## Relationship to the original idea
 
@@ -24,9 +24,9 @@ As a later increment, the learner can add one custom OpenAI-compatible endpoint 
 
 Provider and model selection share the compact model menu. A signed-out provider shows an actionable sign-in message rather than a nonfunctional choice.
 
-The agreed workspace refinement exposes quick thinking, chat default and smart model roles in Settings. Quick thinking handles suggestions and branch compaction. The smart model initially follows the Settings chat default through a "Same as chat default" choice, or can be pinned independently to a specific provider/model. Conversation overrides do not change that global default. Configuring the smart model starts no calls; its runtime use is reserved for a future feature.
+The agreed workspace refinement exposes quick thinking, chat default and smart model roles in Settings, each with independently configurable model and supported effort choices from any connected provider, including the custom endpoint. Quick thinking handles suggestions and branch compaction, preserving the existing suggestion choice and inexpensive provider defaults. Smart handles private video scripts, scenes and animation code. Its model and effort initially follow the corresponding Settings chat defaults through "Same as chat default" choices; each can be overridden independently. Conversation overrides do not change global defaults. Merely configuring a role starts no calls.
 
-Child conversations default to their parent's provider and model. Learners can change model or provider within an existing conversation while preserving visible messages and the conversation's existing context, including inherited branch context. The new provider must be able to continue the discussion using that history.
+Child conversations inherit their parent's current provider, model and effort. Learners can change model, provider and supported effort within an existing conversation while preserving visible messages and the conversation's existing context, including inherited branch context. New learning trees resolve the Settings chat defaults; later changes to those defaults do not alter existing conversations. The new provider must be able to continue the discussion using that history.
 
 ## Local persistence and learning trees
 
@@ -107,7 +107,7 @@ Automatic suggestions for concepts or passages worth branching into are an expli
 - Start with text conversations and build incrementally.
 - After the text release, render tutor replies as formatted text: Markdown structure, code blocks and math. The saved raw message text stays the canonical source, so passage selection, branch anchors and source reveal remain exact. Raw HTML in replies is not rendered.
 - Add Mermaid diagrams later, rendered inside the chat. The model may choose to generate a diagram as part of its explanation without a separate user request.
-- Add Remotion video generation after that, available when the learner requests a video in the conversation. The selected later generation/playback design is recorded in [video-flow-proposal.md](docs/video-flow-proposal.md); implementation remains separate.
+- Add on-demand narrated Remotion videos with optional Three.js scenes after diagrams. The final [workspace and media refinement spec](docs/workspace-media-refinement-spec.md) supersedes conflicting portions of the earlier [video proposal](docs/video-flow-proposal.md): smart generates freely creative 2D/3D scenes and a private script, Edge TTS supplies online narration/subtitles, and videos aim for 1–2 minutes or longer when needed. Show a video-sized loading rectangle with Cancel, then the finished player. No automatic repair/retry. Retain videos in a global local library with playback, Show in folder and trash actions, independently of conversation/tree deletion.
 
 ### Isolated media generation
 
@@ -164,7 +164,10 @@ The provider research below began on 2026-11-07. Current decisions and task-spec
 
 Implement the existing backlog under the standing authorization in AGENTS.md. Preserve the agreed release order and scope; clarify material product changes while continuing independent ready work.
 
-The owner's 2026-11-11 workspace and media requests are captured in
-[workspace and media refinement](docs/workspace-media-refinement.md).
-That new scope is under a grill-with-docs interview (TreeTutor-cnr); detailed
-design choices remain pending shared understanding with the owner.
+The owner's 2026-11-11 interview is synthesized in the final
+[workspace and media refinement spec](docs/workspace-media-refinement-spec.md).
+It defines compact focused-chat and passage controls, a floating composer,
+title-only floating search and a quiet restyled scrollbar, historical usage
+visualizations and simplified colorful diagrams, alongside the model and video
+rules above. The owner authorized specification writing and tracker publication;
+that documentation task does not itself execute the new implementation backlog.

@@ -1,5 +1,7 @@
 # Diagram artifact contract
 
+**Scoped refinement, 2026-11-11:** The [workspace and media refinement spec](workspace-media-refinement-spec.md) requires simpler, colorful diagrams presented as small visual steps while preserving safe artifact handling. This document describes the existing contract; any extension for multiple diagrams must preserve its validation and isolation guarantees.
+
 The tutor requests one diagram by appending this block to an explanation:
 
 ````text
