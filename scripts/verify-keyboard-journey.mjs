@@ -105,7 +105,7 @@ try {
   await press('Enter'); await wait(`!!document.activeElement?.closest('[role=menu]')`);
   // The menu now opens on the signed-out Claude group first; walk down to the fixture model.
   await press('Home'); for (let i = 0; i < 4 && (await ev(`document.activeElement.textContent.trim()`)) !== 'Keyboard B'; i++) await press('ArrowDown'); assert.equal(await ev(`document.activeElement.textContent.trim()`), 'Keyboard B'); await press('Enter');
-  await wait(`document.querySelector('.focused-chat')?.textContent.includes('Keyboard B · saved automatically')`);
+  await wait(`document.querySelector('.focused-chat')?.textContent.includes('Keyboard B · ')`);
   assert.equal(store.tree(grand.id).model, 'kb-b'); assert.equal(store.tree(child.id).model, 'kb-a');
   step('Model for next reply (Space/Enter) opens the menu; Escape closes only the menu and restores focus to its trigger; Home/ArrowDown/Enter saves Keyboard B for this conversation only');
 

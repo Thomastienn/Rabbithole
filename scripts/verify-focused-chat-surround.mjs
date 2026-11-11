@@ -61,7 +61,7 @@ const look = () => ev(`(() => {
     seam: tone('--color-border', 'borderTopColor'), surface: css(chat).backgroundColor,
     gapBelow: log.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom,
     gapAbove: log.querySelector('.inherited-context').getBoundingClientRect().top - log.getBoundingClientRect().top,
-    statsOpen: chat.querySelector('.chat-stats [aria-expanded]').getAttribute('aria-expanded'),
+    statsOpen: String(!!chat.querySelector('[aria-label="Token stats"]')),
     blur: [...chat.querySelector('.astryx-chat-layout').lastElementChild.children].some(n => css(n).backdropFilter !== 'none' && css(n).display !== 'none'),
   };
   probe.remove(); return out;
@@ -100,13 +100,14 @@ try {
     await wait(`document.querySelector('.inherited-context').getBoundingClientRect().top >= document.querySelector('.chat-header').getBoundingClientRect().bottom`);
     await b('screenshot', file);
     await click('Inherited from Mutex basics');
-    await b('focus', '.chat-stats button[aria-expanded]');
-    await b('press', 'Enter');
+    await click('More conversation options');
+    await b('find', 'role', 'menuitem', 'click', '--name', 'Show token stats', '--exact');
     await wait(`document.querySelector('.chat-stats-body')?.checkVisibility()`);
     assert.match(await ev(`document.querySelector('.chat-stats-body').textContent`), /Reply 1: 900 input · 60 output · 0 cache-read tokens/);
-    await b('press', 'Space');
-    await wait(`document.querySelector('.chat-stats [aria-expanded]').getAttribute('aria-expanded') === 'false'`);
-    steps.push(`${mode}: inherited passage, question and snapshot remain exact in muted reading type; Token stats starts collapsed, Enter opens the per-reply usage and Space closes it`);
+    await click('More conversation options');
+    await b('find', 'role', 'menuitem', 'click', '--name', 'Hide token stats', '--exact');
+    await wait(`!document.querySelector('.chat-stats-body')`);
+    steps.push(`${mode}: inherited passage, question and snapshot remain exact in muted reading type; Token stats start hidden; the overflow menu shows and hides the per-reply usage`);
     steps.push(`${mode}: title Public Sans 600, muted model, inherited context 2px yellow rule, Send the only filled button, diagram card seam + 4px, transcript starts at top (${Math.round(t.gapAbove)}px) with ${Math.round(t.gapBelow)}px empty below; ${file}`);
     return t;
   };
@@ -163,12 +164,15 @@ try {
   await b('wait', '[aria-label="Open Long source example"]');
   await click('Open Long source example');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Long source example'`);
-  const parent = await ev(`(() => { const row = document.querySelector('.chat-parent'), title = row.querySelector('button'), passage = row.querySelector(':scope > .astryx-text'), css = getComputedStyle(passage), range = document.createRange(); range.selectNodeContents(title); return { title: title.textContent, passage: passage.textContent, height: passage.getBoundingClientRect().height, line: parseFloat(css.lineHeight), titleHeight: range.getBoundingClientRect().height, fits: row.scrollWidth <= row.clientWidth && document.documentElement.scrollWidth <= innerWidth }; })()`);
-  assert.equal(parent.title, longTitle);
-  assert.equal(parent.passage, `from “${sourceText}”`);
-  assert.ok(parent.fits && parent.height > parent.line * 2 && parent.titleHeight > parent.line * 2, JSON.stringify(parent));
+  // The header keeps one row; the long parent title and exact source passage live in the inherited context.
+  await b('find', 'text', 'Inherited from', 'click');
+  await wait(`document.querySelector('.inherited-body')?.checkVisibility()`);
+  const parent = await ev(`(() => { const box = document.querySelector('.inherited-context'), passage = box.querySelector('.inherited-body dd'), css = getComputedStyle(passage); return { trigger: box.querySelector('[aria-expanded]').textContent, passage: passage.textContent, height: passage.getBoundingClientRect().height, line: parseFloat(css.lineHeight), fits: box.scrollWidth <= box.clientWidth && document.documentElement.scrollWidth <= innerWidth, back: document.querySelector('.chat-header [aria-label="Return to parent conversation"]')?.checkVisibility() }; })()`);
+  assert.equal(parent.trigger, `Inherited from ${longTitle}`);
+  assert.equal(parent.passage, sourceText);
+  assert.ok(parent.fits && parent.back && parent.height > parent.line * 2, JSON.stringify(parent));
   await b('screenshot', join('docs', 'verification', 'focused-chat-long-parent-light.png'));
-  steps.push('narrow 320×568: long parent title and exact source passage wrap across multiple lines without horizontal overflow; header scrolls within its cap');
+  steps.push('narrow 320×568: long parent title and exact source passage wrap in the inherited context without horizontal overflow; return-to-parent stays in the one-row header');
   writeFileSync('docs/verification/focused-chat-surround-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Built app, SQLite, HTTP and Chromium; synthetic provider, not live inference.', pass: true, steps }, null, 2) + '\n');
   console.log(JSON.stringify({ pass: true, steps }, null, 2));
 } catch (e) { console.error(steps); await b('screenshot', '/tmp/surround-fail.png').catch(() => {}); throw e; }

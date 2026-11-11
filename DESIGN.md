@@ -182,7 +182,7 @@ The viewport shell fills available height. Desktop puts the saved-tree rail (14.
 
 The rail scrolls its history above a labelled footer. It places the split-colour wordmark, yellow New chat text action, search and current-tree fill above saved items. Main spacing follows Astryx's quarter-rem rhythm: 1–6 for insets and related gaps, 8–12 for larger separation. The map's small control strip sits at the lower left. The field has no grid, watermark or minimap. Knowledge uses the same field language with a sticky detail column; content caps at 70rem.
 
-At 48rem and below, chat takes the width when open, the map yields, and the rail becomes a drawer. Knowledge detail follows the field. The settings shell changes from a bounded dialog (`min(50rem, 100dvh - 2rem)`) to viewport height; narrow navigation and selected section are separate views. Header metadata wraps, long content scrolls within its region, and the composer remains reachable. Replies cap each content block at 62ch; media and tables fit the column or scroll locally.
+At 48rem and below, chat takes the width when open, the map yields, and the rail becomes a drawer. Knowledge detail follows the field. The settings shell changes from a bounded dialog (`min(50rem, 100dvh - 2rem)`) to viewport height; narrow navigation and selected section are separate views. The focused chat header stays one row (title and model/effort shorten; Expand hides because chat already fills the width), long content scrolls within its region, and the floating composer remains reachable. Replies cap each content block at 62ch; media and tables fit the column or scroll locally.
 
 ## Elevation & Depth
 

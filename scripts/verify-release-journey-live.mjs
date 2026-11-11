@@ -140,7 +140,7 @@ try {
     await click('Model for next reply');
     await wait(`[...document.querySelectorAll('[role=menuitemradio]')].some(e => e.textContent.trim() === ${JSON.stringify(model.label)})`); // live catalogs load before the menu opens
     for (let i = 0; ; i++) { try { await b('find', 'role', 'menuitemradio', 'click', '--name', model.label, '--exact'); break; } catch (e) { if (i === 4) throw e; await new Promise(r => setTimeout(r, 1000)); } } // popover may still be positioning
-    await wait(`document.querySelector('.focused-chat')?.textContent.includes(${JSON.stringify(model.label + ' · saved automatically')}) && !document.querySelector('[aria-label="Model for next reply"]')?.hasAttribute('aria-busy')`);
+    await wait(`document.querySelector('.focused-chat')?.textContent.includes(${JSON.stringify(model.label + ' · ')}) && !document.querySelector('[aria-label="Model for next reply"]')?.hasAttribute('aria-busy')`);
     await b('focus', '.focused-chat [role=textbox]');
   }
   await b('keyboard', 'type', ROOT);

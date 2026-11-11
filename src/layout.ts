@@ -54,13 +54,8 @@ html { view-transition-name: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .focus-reveal:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .chat-header { flex: none; max-height: 40dvh; overflow: auto; border-bottom: thin solid var(--color-border); }
-.chat-heading-row > button { flex-shrink: 0; }
-.chat-model { overflow-wrap: anywhere; }
-.chat-parent { color: var(--color-text-secondary); }
-.chat-parent > button { min-width: 0; height: auto; white-space: normal; text-align: start; }
-.chat-parent > .astryx-text { min-width: 0; overflow-wrap: anywhere; }
-.chat-stats .astryx-collapsible-trigger { padding: 0; min-height: var(--spacing-6); color: var(--color-text-secondary); }
-.chat-stats-body { max-height: 20dvh; overflow: auto; padding-block: var(--spacing-2); overflow-wrap: anywhere; }
+.chat-heading-row > button:not(.model-picker) { flex-shrink: 0; }
+.chat-stats-body { max-height: 20dvh; overflow: auto; padding-block: var(--spacing-1) var(--spacing-2); padding-inline: var(--spacing-2); overflow-wrap: anywhere; }
 .bubble-tint-swatch { width: var(--spacing-5); aspect-ratio: 1; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); }
 .question-bubble { background: var(--question-bubble-tint); color: var(--color-text-primary); border-radius: var(--radius-element); padding: var(--spacing-2) var(--spacing-3); overflow-wrap: anywhere; }
 .chat-title { flex: 1; min-width: 0; }
@@ -82,7 +77,9 @@ html { view-transition-name: none; }
 .chat-title .rename-title { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: 0; }
 .saved-chat-title { flex: 1; min-width: 0; }
 .saved-chat-title > * { min-width: 0; }
-.chat-title h2 { font-size: var(--font-size-lg); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-title h2 { font-size: var(--font-size-base); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-heading-row .model-picker { flex-shrink: 1; min-width: 0; max-width: 45%; color: var(--color-text-secondary); }
+.chat-heading-row .model-picker .chat-model { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .passage { position: relative; align-self: stretch; }
 .reply-md { display: block; min-width: 0; overflow-wrap: anywhere; }
 .reply-md > * + * { margin-block-start: var(--spacing-3); }
@@ -151,9 +148,15 @@ html { view-transition-name: none; }
 .focused-chat > .astryx-chat-layout { flex: 1; min-height: 0; overflow: auto; }
 /* Astryx's leading flex spacer bottom-aligns short logs; this world reads from the top. */
 .focused-chat .astryx-chat-message-list > :first-child > [aria-hidden=true]:first-child { flex: none; }
-.focused-chat .astryx-chat-layout > :last-child { background: var(--color-background-surface); }
+/* Floating composer: the dock fades in rather than drawing a band; it ignores pointers so passages above stay selectable. */
+.focused-chat .astryx-chat-layout > :last-child { background: linear-gradient(to bottom, transparent, var(--color-background-surface) var(--spacing-8)); pointer-events: none; }
+.focused-chat .astryx-chat-layout > :last-child > * { pointer-events: auto; }
+.focused-chat .astryx-chat-layout > :last-child > :first-child { pointer-events: none; }
+.focused-chat .astryx-chat-layout > :last-child > :first-child button { pointer-events: auto; }
 .focused-chat .astryx-chat-layout > :last-child > :nth-child(2) { display: none; }
-.focused-chat .astryx-chat-send-button { border-radius: var(--radius-element); }
+.focused-chat .astryx-chat-composer > :first-child { flex-direction: row; align-items: flex-end; gap: var(--spacing-2); border-radius: var(--radius-container); background: var(--color-background-popover); padding-block: var(--spacing-2); }
+.focused-chat .astryx-chat-composer > :first-child > :first-child { flex: 1; min-width: 0; align-self: center; }
+.focused-chat .astryx-chat-send-button { border-radius: 50%; }
 .tree-canvas { flex: 1; min-height: 0; background: var(--color-background-body); }
 .tree-canvas:focus-visible { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: calc(-1 * var(--spacing-1)); }
 .tree-workspace[data-expanded=true] .overview { display: none; }

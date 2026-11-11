@@ -97,7 +97,7 @@ if (process.argv[2] === '--serve') {
       const visible = await evaluate("[...document.querySelectorAll('.focused-chat article')].map(e=>e.querySelector('.reply-md, .question-bubble').textContent)");
       assert.equal(visible.length, before.messages.length);
       await modelMenu(); await menuItem(labels[provider]);
-      await wait(`document.querySelector('.chat-title')?.textContent.includes(${JSON.stringify(labels[provider] + ' · saved automatically')})`);
+      await wait(`document.querySelector('.chat-model')?.textContent.includes(${JSON.stringify(labels[provider] + ' · ')})`);
       const after = await saved(id);
       assert.equal(after.provider, provider); assert.equal(after.model, models[provider]);
       assert.deepEqual(after.messages, before.messages); assert.deepEqual(after.branch, before.branch);
@@ -159,7 +159,7 @@ if (process.argv[2] === '--serve') {
     fake.models = [{ id: 'local-tutor' }, { id: 'second-model' }];
     await click('Test connection'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Connection works:")');
     await closeSettings(); await modelMenu(); await menuItem('second-model');
-    await wait('document.querySelector(".chat-title").textContent.includes("second-model · saved automatically")');
+    await wait('document.querySelector(".chat-model").textContent.includes("second-model · ")');
     await connectionSettings();
     await wait(`document.querySelector('${field}').value !== ''`);
     for (const [width, height] of [[1280, 900], [390, 844]]) {
@@ -178,7 +178,7 @@ if (process.argv[2] === '--serve') {
     await closeSettings(); await modelMenu(); await menuItem('Custom endpoint settings'); await wait(`document.activeElement?.matches('${field}')`);
     assert.equal(await evaluate(`document.querySelector('${key}').value`), '');
     await closeSettings(); await modelMenu(); await menuItem('Sonnet');
-    await wait('document.querySelector(".chat-title").textContent.includes("Sonnet · saved automatically")');
+    await wait('document.querySelector(".chat-model").textContent.includes("Sonnet · ")');
     pass('removed endpoint stays explicit in saved chat; actionable menu repairs it or switches to Claude');
     await mapMenu(); await menuItem('Help');
     assert.ok((await evaluate('document.querySelector("dialog[open]").textContent')).includes('New chats default to Claude.'));
