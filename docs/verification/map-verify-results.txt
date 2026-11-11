@@ -1,0 +1,49 @@
+script                               status  detail
+verify-appearance.mjs                PASS    5s
+verify-branch-compaction.mjs         SKIP    needs a live provider
+verify-branch-streaming-live.mjs     SKIP    needs a live provider
+verify-branch-streaming.mjs          KNOWN   TreeTutor-yms; 2s; log /tmp/treetutor-verify-ZdTD0Y/verify-branch-streaming.log
+verify-break-down-live.mjs           SKIP    needs a live provider
+verify-break-down-ui.mjs             KNOWN   TreeTutor-yms; 30s; log /tmp/treetutor-verify-ZdTD0Y/verify-break-down-ui.log
+verify-bulk-folding.mjs              PASS    3s
+verify-canvas-navigation.mjs         PASS    7s
+verify-canvas-positions.mjs          PASS (known fixed?)  10s; TreeTutor-wpc may be closable
+verify-chat-divider.mjs              PASS    3s
+verify-chat-expand.mjs               PASS    3s
+verify-chat-management.mjs           KNOWN   TreeTutor-yms; 2s; log /tmp/treetutor-verify-ZdTD0Y/verify-chat-management.log
+verify-chat-sidebar.mjs              KNOWN   TreeTutor-yms; 2s; log /tmp/treetutor-verify-ZdTD0Y/verify-chat-sidebar.log
+verify-codex-history.mjs             SKIP    needs a live provider
+verify-compact-controls.mjs          KNOWN   TreeTutor-yms; 1s; log /tmp/treetutor-verify-ZdTD0Y/verify-compact-controls.log
+verify-custom-endpoint.mjs           KNOWN   TreeTutor-yms; 5s; log /tmp/treetutor-verify-ZdTD0Y/verify-custom-endpoint.log
+verify-diagram-live.mjs              SKIP    needs a live provider
+verify-diagram-rendering.mjs         PASS    7s
+verify-first-conversation.mjs        KNOWN   TreeTutor-yms; 2s; log /tmp/treetutor-verify-ZdTD0Y/verify-first-conversation.log
+verify-focused-chat-layout.mjs       PASS    3s
+verify-focused-chat-surround.mjs     PASS    4s
+verify-inherited-context.mjs         PASS    2s
+verify-keyboard-journey.mjs          PASS    8s
+verify-knowledge.mjs                 KNOWN   TreeTutor-yms; 27s; log /tmp/treetutor-verify-ZdTD0Y/verify-knowledge.log
+verify-large-map.mjs                 PASS    33s
+verify-layout-restore.mjs            KNOWN   TreeTutor-yms; 2s; log /tmp/treetutor-verify-ZdTD0Y/verify-layout-restore.log
+verify-local-delivery.mjs            PASS    19s
+verify-map-gestures.mjs              PASS    3s
+verify-map-identity.mjs              PASS    4s
+verify-media-nested-live.mjs         SKIP    needs a live provider
+verify-model-switch.mjs              PASS    5s
+verify-node-growth.mjs               PASS    4s
+verify-node-previews.mjs             PASS    6s
+verify-passage-corrections.mjs       KNOWN   TreeTutor-yms; 2s; log /tmp/treetutor-verify-ZdTD0Y/verify-passage-corrections.log
+verify-passage-selection.mjs         PASS    8s
+verify-polish.mjs                    KNOWN   TreeTutor-yms; 23s; log /tmp/treetutor-verify-ZdTD0Y/verify-polish.log
+verify-provider-continuity-live.mjs  SKIP    needs a live provider
+verify-release-journey-live.mjs      SKIP    needs a live provider
+verify-settings-window.mjs           KNOWN   TreeTutor-yms; 7s; log /tmp/treetutor-verify-ZdTD0Y/verify-settings-window.log
+verify-subtree-folding.mjs           PASS    3s
+verify-suggestion-branching.mjs      PASS    3s
+verify-suggestion-phrases.mjs        SKIP    needs a live provider
+verify-tree-overview.mjs             KNOWN   TreeTutor-wpc; 2s; log /tmp/treetutor-verify-ZdTD0Y/verify-tree-overview.log
+verify-video-player.mjs              PASS    21s
+verify-video-recovery.mjs            PASS    26s
+verify-vim-bindings.mjs              PASS    22s
+
+24 passed, 0 flaky, 0 new failures, 13 known failures, 9 skipped (live)

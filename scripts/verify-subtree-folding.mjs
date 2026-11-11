@@ -54,7 +54,7 @@ try {
   assert.equal(await ev(`getComputedStyle(document.querySelector('.focused-chat')).display`), 'none');
   await click('Fit tree');
   await settled(); await click('Open Fold grandchild');
-  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold grandchild' && !!document.querySelector('.focused-chat [role=textbox]')`);
+  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Fold grandchild' && !!document.querySelector('.focused-chat [role=textbox]') && !document.documentElement.matches(':active-view-transition')`);
   await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Keep generating'); await click('Send');
   await b('wait', '--text', 'Streaming fixture'); await click('Return to tree'); await wait(`getComputedStyle(document.querySelector('.focused-chat')).display === 'none'`); await click('Fit tree');
   await b('focus', `#fold-${root.id}`); await b('press', 'Enter');

@@ -9,8 +9,8 @@ test('chat width clamps between 22rem and 70% of the workspace', () => {
   assert.equal(maxChatWidth(20), 22, 'a tiny workspace keeps the readable minimum');
 });
 
-test('reset returns the 26rem default, clamped to a narrow workspace', () => {
-  assert.equal(resetChatWidth(100), 26);
+test('reset returns the 35rem default, clamped to a narrow workspace', () => {
+  assert.equal(resetChatWidth(100), 35);
   assert.equal(resetChatWidth(35), 24.5);
 });
 
@@ -26,8 +26,8 @@ test('arrow keys step 1rem (Shift 4rem); Home and End jump to the bounds', () =>
 });
 
 test('saved width falls back to the default when missing or invalid', () => {
-  assert.equal(savedChatWidth(null), 26);
-  assert.equal(savedChatWidth('junk'), 26);
-  assert.equal(savedChatWidth('5'), 26);
+  assert.equal(savedChatWidth(null), 35);
+  assert.equal(savedChatWidth('junk'), 35);
+  assert.equal(savedChatWidth('5'), 35);
   assert.equal(savedChatWidth('40'), 40);
 });

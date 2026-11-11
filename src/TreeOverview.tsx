@@ -1,6 +1,6 @@
 import { useTheme } from '@astryxdesign/core/theme';
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ReactFlow, Handle, Position, useNodesInitialized, useNodesState, useUpdateNodeInternals, type NodeProps, type Node, type ReactFlowInstance } from '@xyflow/react';
+import { ReactFlow, BaseEdge, getBezierPath, Handle, Position, useNodesInitialized, useNodesState, useUpdateNodeInternals, type EdgeProps, type NodeProps, type Node, type ReactFlowInstance } from '@xyflow/react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -16,7 +16,7 @@ export type Source = { messageId: string; start: number; end: number; text: stri
 export type Preview = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] }[];
 type Open = (id: string, source?: Source) => void;
 export type MapActions = { expand: () => void; collapse: () => void; keep: () => void; canKeep: boolean };
-type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; active: boolean; focus: boolean; focusControl?: string; childCount: number; stubs: { child: Summary; beneath: number }[]; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
+type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; active: boolean; focused: boolean; focus: boolean; focusControl?: string; childCount: number; stubs: { child: Summary; beneath: number }[]; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
 const fit = { padding: 0.2, maxZoom: 1 };
 const noStubs: ConversationNode['data']['stubs'] = [];
 const ConversationTransition = createContext<string | undefined>(undefined);
@@ -38,15 +38,15 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
     const name = `Show hidden branch ${child.title}${stub?.beneath ? `, ${stub.beneath} more ${stub.beneath === 1 ? 'conversation' : 'conversations'} hidden beneath` : ''}`;
     // Focus the fold toggle first; the stub unmounts once the fold expands.
     return <Handle key={child.id} id={child.id} data-source={child.id} type="source" position={Position.Right} style={style}>
-      {stub && <span className="fold-stub nodrag nopan"><IconButton label={name} tooltip={name} icon={<EyeSlashIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true }); data.toggle(t.id); }} /></span>}
+      {stub && <HStack gap={0} className="fold-stub nodrag nopan"><Button label={name} tooltip={name} icon={<EyeSlashIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true }); data.toggle(t.id); }}><Text type="supporting" hasTabularNumbers>{1 + stub.beneath}</Text></Button></HStack>}
     </Handle>;
   };
-  return <VStack gap={2} padding={3} className="conversation-box" data-active={data.active}>
+  return <VStack gap={2} padding={3} className="conversation-box" data-active={data.active} data-focused={data.focused}>
     {t.parent && <Handle type="target" position={Position.Left} />}
     <HStack gap={1} vAlign="center">
       {data.childCount > 0 && <IconButton id={`fold-${t.id}`} className="nodrag nopan" label={`${data.folded ? 'Expand' : 'Collapse'} descendants of ${t.title}`} tooltip={`${data.folded ? 'Expand' : 'Collapse'} descendants`} aria-expanded={!data.folded} icon={data.folded ? <ChevronRightIcon /> : <ChevronDownIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); data.toggle(t.id); }} />}
-      <Button id={`open-${t.id}`} className="node-title nodrag nopan" label={`Open ${t.title}`} variant="ghost" size="sm" onClick={() => data.open(t.id)}><Heading level={3} style={{ viewTransitionName: transition === t.id ? 'conversation' : undefined }}>{t.title}</Heading></Button>
-      {data.active && <Text className="activity-dot" role="status"><Text className="sr-only">Responding</Text></Text>}
+      <Text className="activity-dot" role={data.active ? 'status' : undefined} aria-hidden={!data.active || undefined}>{data.active && <Text className="sr-only">Responding</Text>}</Text>
+      <Button id={`open-${t.id}`} className="node-title nodrag nopan" label={`Open ${t.title}`} variant="ghost" size="sm" onClick={() => data.open(t.id)}><Heading level={2} style={{ viewTransitionName: transition === t.id ? 'conversation' : undefined }}>{t.title}</Heading></Button>
       {t.parent && <IconButton id={`reveal-${t.id}`} className="node-extra nodrag nopan" label={`Reveal source passage for ${t.title}`} tooltip={`From “${t.passage}”`} icon={<LinkIcon />} variant="ghost" size="sm" onClick={() => data.open(t.parent!, sourceOf(t))} />}
     </HStack>
     {!!preview?.length && <VStack gap={1} className="node-preview">
@@ -65,6 +65,15 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
   </VStack>;
 });
 const nodeTypes = { conversation: Conversation };
+
+function Branch(props: EdgeProps) {
+  const [path] = getBezierPath(props);
+  // Negative delay keeps culling/remounts from replaying an already drawn branch.
+  const created = props.data?.created as number | undefined;
+  const [delay] = useState(() => created ? Math.min(0, created - performance.now()) : 0);
+  return <BaseEdge id={props.id} path={path} pathLength={1} className={created ? 'branch-new' : undefined} style={created ? { animationDelay: `${delay}ms` } : undefined} />;
+}
+const edgeTypes = { branch: Branch };
 
 // Batch handle measurements so loading 200 transcripts schedules one React Flow update.
 function MeasureHandles({ nodes }: { nodes: ConversationNode[] }) {
@@ -97,10 +106,12 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   const [folded, setFolded] = useState<Set<string>>(() => new Set(initialFolded));
   useEffect(() => onFold([...folded]), [folded]);
   const known = useRef(new Set(trees.map(t => t.id)));
+  const createdBranches = useRef(new Map<string, number>());
   useEffect(() => {
     const added = trees.filter(t => !known.current.has(t.id));
     known.current = new Set(trees.map(t => t.id));
     if (!added.length) return;
+    for (const child of added) createdBranches.current.set(child.id, performance.now());
     setFolded(previous => {
       const next = new Set(previous);
       for (const child of added) {
@@ -141,13 +152,16 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
       if (!bounds.width || !bounds.height) return;
       const view = instance.getViewport();
       const toolbar = document.querySelector('.map-toolbar')?.getBoundingClientRect();
-      const top = toolbar ? toolbar.bottom - bounds.top + toolbar.height / 2 : 0;
+      const top = toolbar ? toolbar.height / 2 : 0;
+      const rightLimit = bounds.width - top;
+      const bottomLimit = toolbar ? toolbar.top - bounds.top - top : bounds.height;
+      const availableHeight = bottomLimit - top;
       // Scale a tall transcript to the available map; keep its title reachable at 20%.
-      const zoom = Math.max(0.2, Math.min(view.zoom, bounds.width / node.measured.width, (bounds.height - top) / node.measured.height));
+      const zoom = Math.max(0.2, Math.min(view.zoom, (rightLimit - top) / node.measured.width, availableHeight / node.measured.height));
       const left = node.position.x * zoom + view.x, y = node.position.y * zoom + view.y;
       const right = left + node.measured.width * zoom, bottom = y + node.measured.height * zoom;
-      const dx = left < 0 ? -left : right > bounds.width ? bounds.width - right : 0;
-      const dy = y < top || node.measured.height * zoom > bounds.height - top ? top - y : bottom > bounds.height ? bounds.height - bottom : 0;
+      const dx = left < top ? top - left : right > rightLimit ? rightLimit - right : 0;
+      const dy = y < top || node.measured.height * zoom > availableHeight ? top - y : bottom > bottomLimit ? bottomLimit - bottom : 0;
       const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches || (nodes.length > 50 && zoom > view.zoom * 2) ? 0 : 200;
       if (dx || dy || zoom !== view.zoom) void instance.setViewport({ x: view.x + dx, y: view.y + dy, zoom }, { duration });
     });
@@ -164,16 +178,23 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   const zoomIn = () => { navigated.current = true; void flow.current?.zoomIn(); };
   const fitTree = () => { navigated.current = true; void flow.current?.fitView(fit); };
   const hierarchy = useMemo(() => foldHierarchy(root, trees, folded), [root, trees, folded]);
+  const focusedPath = useMemo(() => {
+    const path = new Set<string>();
+    let id = current;
+    while (id && !path.has(id)) { path.add(id); id = trees.find(t => t.id === id)?.parent ?? undefined; }
+    return path;
+  }, [current, trees]);
   const desiredNodes = useMemo(() => hierarchy.map(({ conversation, sources, hidden, stubs }): ConversationNode => {
     const id = conversation.id;
-    return { id, type: 'conversation', hidden, position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, preview: previews[id], open: openNode, active: active.includes(id), focus: focus === id && !hidden, focusControl: focus === id ? focusControl : undefined, childCount: sources.length, stubs: stubs.length ? stubs : noStubs, folded: folded.has(id), toggle } };
-  }), [hierarchy, previews, active, openNode, focus, focusControl, folded, toggle]);
+    return { id, type: 'conversation', hidden, position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, preview: previews[id], open: openNode, active: active.includes(id), focused: current === id, focus: focus === id && !hidden, focusControl: focus === id ? focusControl : undefined, childCount: sources.length, stubs: stubs.length ? stubs : noStubs, folded: folded.has(id), toggle } };
+  }), [hierarchy, previews, active, openNode, focus, focusControl, current, folded, toggle]);
   useEffect(() => {
     setNodes(previous => {
       const byId = new Map(previous.map(node => [node.id, node]));
       return desiredNodes.map(node => {
         const old = byId.get(node.id);
         if (old && old.data.sources.length === node.data.sources.length && node.data.sources.every((source, i) => source === old.data.sources[i])) node.data.sources = old.data.sources;
+        if (old && old.data.stubs.length === node.data.stubs.length && node.data.stubs.every((stub, i) => stub.child === old.data.stubs[i].child && stub.beneath === old.data.stubs[i].beneath)) node.data.stubs = old.data.stubs;
         if (old && old.hidden === node.hidden && (Object.keys(node.data) as (keyof ConversationNode['data'])[]).every(key => old.data[key] === node.data[key])) return old;
         return { ...old, ...node, position: old?.position ?? node.position };
       });
@@ -225,12 +246,12 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   }, [nodes]);
   const edges = useMemo(() => hierarchy.filter(n => !n.hidden && n.conversation.parent && !folded.has(n.conversation.parent)).map(n => {
     const t = n.conversation;
-    return { id: t.id, source: t.parent!, sourceHandle: t.id, target: t.id, ariaLabel: `Passage “${t.passage}” to ${t.title}`, data: { messageId: t.messageId, start: t.start, end: t.end } };
-  }), [hierarchy, folded]);
+    return { id: t.id, type: 'branch', className: focusedPath.has(t.id) ? 'branch-focused' : undefined, source: t.parent!, sourceHandle: t.id, target: t.id, ariaLabel: `Passage “${t.passage}” to ${t.title}`, data: { messageId: t.messageId, start: t.start, end: t.end, created: createdBranches.current.get(t.id) } };
+  }), [hierarchy, folded, focusedPath]);
   return <>
     <HStack padding={1} gap={1} vAlign="center" className="map-toolbar" role="group" aria-label="Tree view controls">
       <IconButton label="Zoom out" tooltip="Zoom out" icon={<MinusIcon />} variant="ghost" size="sm" onClick={zoomOut} />
-      <Text className="sr-only">Current zoom</Text><Text data-zoom="">{zoom < 0.01 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%</Text>
+      <Text className="sr-only">Current zoom</Text><Text data-zoom="" type="supporting" hasTabularNumbers>{zoom < 0.01 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%</Text>
       <IconButton label="Zoom in" tooltip="Zoom in" icon={<PlusIcon />} variant="ghost" size="sm" onClick={zoomIn} />
       <IconButton label="Fit tree" tooltip="Fit tree" icon={<ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={fitTree} />
       {menu({ expand: () => setFolded(new Set()), collapse: () => setFolded(new Set([root])), keep: keepCurrent, canKeep: !!current && trees.some(t => t.id === current) })}
@@ -264,7 +285,7 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
       save({ [node.id]: position });
       setNotice(`${node.data.conversation.title} moved to ${Math.round(position.x)}, ${Math.round(position.y)}.`);
     }}>
-      <ConversationTransition.Provider value={transition}><ReactFlow<ConversationNode> nodes={nodes} onlyRenderVisibleElements={canCull && nodes.length > 50} onNodesChange={onNodesChange} edges={edges} nodeTypes={nodeTypes} onInit={instance => { flow.current = instance; }} onMoveStart={event => { if (event) navigated.current = true; }} onMove={(_, viewport) => setZoom(viewport.zoom)} onMoveEnd={(_, viewport) => saveViewport(viewport)} defaultViewport={savedViewport} onNodeClick={(event, node) => { if (!(event.target as HTMLElement).closest('button, a, input, select, textarea, [role="button"], [role="menuitem"], .nodrag')) open(node.id); }} onNodeDragStop={(_, node) => { save({ [node.id]: node.position }); setNotice(`${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`); }} nodesConnectable={false} edgesReconnectable={false} autoPanOnNodeFocus={false} deleteKeyCode={null} disableKeyboardA11y colorMode={mode} proOptions={{ hideAttribution: true }} fitView={!savedViewport} fitViewOptions={fit} minZoom={MIN_ZOOM} maxZoom={1.5} zoomOnScroll zoomOnPinch={false} zoomActivationKeyCode={null}><MeasureHandles nodes={nodes} /></ReactFlow></ConversationTransition.Provider>
+      <ConversationTransition.Provider value={transition}><ReactFlow<ConversationNode> nodes={nodes} onlyRenderVisibleElements={canCull && nodes.length > 50} onNodesChange={onNodesChange} edges={edges} edgeTypes={edgeTypes} nodeTypes={nodeTypes} onInit={instance => { flow.current = instance; }} onMoveStart={event => { if (event) navigated.current = true; }} onMove={(_, viewport) => setZoom(viewport.zoom)} onMoveEnd={(_, viewport) => saveViewport(viewport)} defaultViewport={savedViewport} onNodeClick={(event, node) => { if (!(event.target as HTMLElement).closest('button, a, input, select, textarea, [role="button"], [role="menuitem"], .nodrag')) open(node.id); }} onNodeDragStop={(_, node) => { save({ [node.id]: node.position }); setNotice(`${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`); }} nodesConnectable={false} edgesReconnectable={false} autoPanOnNodeFocus={false} deleteKeyCode={null} disableKeyboardA11y colorMode={mode} proOptions={{ hideAttribution: true }} fitView={!savedViewport} fitViewOptions={fit} minZoom={MIN_ZOOM} maxZoom={1.5} zoomOnScroll zoomOnPinch={false} zoomActivationKeyCode={null}><MeasureHandles nodes={nodes} /></ReactFlow></ConversationTransition.Provider>
     </VStack>
   </>;
 }

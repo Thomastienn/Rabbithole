@@ -23,6 +23,11 @@ export const slateTheme = defineTheme({
     '--treetutor-font-reading': '"Source Serif 4", Georgia, "Times New Roman", serif',
     // Chalk-yellow text selection; text keeps its colour and passes AA on it in both appearances.
     '--treetutor-selection': ['#e8d27a', '#e8d27a4d'],
+    '--treetutor-map-node-width': '16rem',
+    '--treetutor-branch-color': ['#1c2724bf', '#ebe7dcbf'],
+    '--treetutor-branch-width': '2px',
+    '--treetutor-branch-focus-width': '2.5px',
+    '--treetutor-branch-draw-duration': '350ms',
   },
   tokens: {
     '--radius-element': '4px',

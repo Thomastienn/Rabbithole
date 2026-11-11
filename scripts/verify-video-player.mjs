@@ -69,7 +69,9 @@ if (process.argv[2] === '--serve') {
   const chatTitle = title => wait(`document.querySelector('.focused-chat h2')?.textContent===${JSON.stringify(title)} && getComputedStyle(document.querySelector('.focused-chat')).display!=='none'`);
   async function openFromMap(title) {
     if (await ev(`getComputedStyle(document.querySelector('.focused-chat')).display!=='none'`)) await b('press', 'Escape');
+    await click('Fit tree');
     await b('wait', `[aria-label="Open ${title}"]`);
+    await wait(`(() => { const n = document.querySelector('[aria-label=${JSON.stringify(`Open ${title}`)}]').getBoundingClientRect(), map = document.querySelector('.tree-canvas').getBoundingClientRect(); return n.left >= map.left && n.right <= map.right && n.top >= map.top && n.bottom <= map.bottom; })()`);
     await click(`Open ${title}`);
     await chatTitle(title);
   }
@@ -192,8 +194,29 @@ if (process.argv[2] === '--serve') {
     assert.equal(reloaded.paused, true);
     assert.equal(reloaded.duration, 3);
     pass('reload restores the ready video from the local file with no provider request', { ...reloaded, providerCalls: callsBefore });
-    await ev(`document.querySelector(${JSON.stringify(card)}).scrollIntoView({block:'center'})`);
-    await b('screenshot', join(process.cwd(), '.impeccable/review/video-ready.png'));
+    const appearances = [];
+    for (const mode of ['dark', 'light']) {
+      await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); location.reload(); true`);
+      await b('wait', '[aria-label="Open Mutual exclusion"]');
+      await openFromMap('Tree levels');
+      await wait(`${video}?.readyState>=1`);
+      // Capture a decoded frame, rather than the metadata-only player's loading spinner.
+      await ev(`${video}.currentTime=1; true`);
+      await wait(`${video}.readyState===4 && !${video}.seeking && ${video}.currentTime===1`);
+      await b('focus', card + ' video'); await b('press', 'Space');
+      await wait(`!${video}.paused && ${video}.currentTime>=1.3`);
+      await b('press', 'Space'); await wait(`${video}.paused`);
+      await ev(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))))`);
+      await ev(`document.querySelector(${JSON.stringify(card)}).scrollIntoView({block:'center'}); document.activeElement?.blur(); true`);
+      await b('mouse', 'move', '5', '5');
+      const style = await ev(`(() => { const c=document.querySelector(${JSON.stringify(card)}),s=getComputedStyle(c),a=[...c.querySelectorAll('button')]; return { surface:s.backgroundColor,chat:getComputedStyle(document.querySelector('.focused-chat')).backgroundColor,radius:s.borderRadius,ghost:a.every(n=>n.dataset.variant==='ghost'),paused:c.querySelector('video').paused }; })()`);
+      assert.equal(style.surface, style.chat); assert.equal(style.radius, '4px'); assert.ok(style.ghost && style.paused);
+      appearances.push({ mode, ...style });
+      await b('screenshot', join(process.cwd(), `docs/verification/focused-chat-video-${mode}.png`));
+    }
+    assert.notEqual(appearances[0].surface, appearances[1].surface);
+    assert.deepEqual(calls(), callsBefore);
+    pass('dark and light: raised slate video card, 4px corners, ghost actions and paused decoded frame; no new inference', appearances);
 
     writeFileSync('docs/verification/video-player-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.', checks }, null, 2) + '\n');
   } finally { await b('close').catch(() => {}); child_.send('stop'); }

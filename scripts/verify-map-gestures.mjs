@@ -47,7 +47,7 @@ try {
   const afterPan = await viewport();
   assert.ok(Math.abs(afterPan.x-beforePan.x) > 30 && Math.abs(afterPan.y-beforePan.y) > 15);
   await click('Fit tree');
-  await wait(`document.querySelector(${JSON.stringify(childNode + ' h3')}).getBoundingClientRect().width > 0`);
+  await wait(`document.querySelector(${JSON.stringify(childNode + ' h2')}).getBoundingClientRect().width > 0`);
   const beforePosition = store.tree(child.id);
   const p = await center(childNode + ' .conversation-box'); p.y = await evaluate(`document.querySelector(${JSON.stringify(childNode + ' .conversation-box')}).getBoundingClientRect().bottom - 5`).then(Math.round); // title is a click target (nodrag); drag from the box's bottom padding
   await move(p); await browser('mouse', 'down', 'left');
@@ -61,7 +61,7 @@ try {
   assert.equal(await evaluate(`document.querySelector('.react-flow__edge').dataset.id`), child.id);
   const gap = await evaluate(`(() => { const h=document.querySelector('.react-flow__handle[data-source="${child.id}"]').getBoundingClientRect(); const path=document.querySelector('.react-flow__edge path'); const p=path.getPointAtLength(0); const q=new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM()); return Math.hypot(q.x-h.x-h.width/2,q.y-h.y-h.height/2); })()`);
   assert.ok(gap < 5, `Edge detached from source: ${gap}`);
-  await browser('click', childNode + ' h3');
+  await browser('click', childNode + ' h2');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Gesture branch' && getComputedStyle(document.querySelector('.focused-chat')).display !== 'none'`);
   await click('Return to tree');
   await browser('focus', `#open-${root.id}`); await browser('press', 'Enter');

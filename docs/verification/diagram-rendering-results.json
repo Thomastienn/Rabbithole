@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-10T09:51:52.225Z",
+  "checkedAt": "2026-11-11T01:36:55.119Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-6YcPd8",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-pHBR6T",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -14,7 +14,7 @@
       "details": true
     },
     {
-      "name": "keyboard reaches card, visible focus, both scroll axes and source disclosure",
+      "name": "keyboard reaches card, visible focus, enlarge by Enter/Space/click with zoom and pan, Esc returns focus, source disclosure",
       "pass": true,
       "details": true
     },
@@ -23,12 +23,12 @@
       "pass": true,
       "details": {
         "light": {
-          "background": "rgb(255, 255, 255)",
-          "text": "rgb(0, 0, 0)"
+          "background": "rgb(243, 245, 241)",
+          "text": "rgb(28, 39, 36)"
         },
         "dark": {
-          "background": "rgb(38, 38, 38)",
-          "text": "rgb(255, 255, 255)"
+          "background": "rgb(36, 49, 45)",
+          "text": "rgb(235, 231, 220)"
         }
       }
     },
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "83f3c092-6e9b-4614-99fc-7215b99b4afc",
-        "messageId": "9fc9fc54-b832-49c4-a866-306933201f8e",
+        "parent": "9fdd3800-200d-4966-b284-0c4b4df282b1",
+        "messageId": "27fa940c-2715-4009-90da-6fc4bd5d16bf",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -104,8 +104,8 @@
       "pass": true,
       "details": {
         "processes": [
-          4126995,
-          4127997
+          641909,
+          642378
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3
@@ -123,23 +123,23 @@
     ".impeccable/review/diagram-narrow.png"
   ],
   "sourceHashes": {
-    "src/DiagramCard.tsx": "eaae82c8208b9a2a721c0b8de598e88d74ab4a359e3a0b2d3724e70bc4ada12c",
+    "src/DiagramCard.tsx": "027b7816f961c5d5467ea9c4c0e85e7afb8661e9e52d76241b96113d56cb5f3f",
     "src/artifacts.ts": "239ed145eb9bdc0409a3eda2aa19747e7d2db41b96f8593ce93f1f17ea7b6d7c",
     "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
-    "src/mermaid.ts": "da5018862328648b407515046e8e26641936a5c86f35758fd143cbaf379f4598",
-    "src/ChatPage.tsx": "8629080af68527004e2b57be0fb0d7dd94e0520faf603cb22ee7f6f088b9145c",
-    "src/TreeOverview.tsx": "e0ddbd30d36e31e3692a68ebb72e08ec119f250e5ae02641cc26a08e0becfb11",
-    "src/turn.ts": "01e364d6f86fd747881bfe65fe4326f8dc3757c390e8cda537e06f86511fe690",
-    "src/layout.ts": "5592fff878a9360d457b4efbc35107722aa3a854c55675e1b28fd45e3422f9c9",
-    "server/store.mjs": "8793d4cdcec764550ea3730023c154b7a5597695f3635b85982560db2d2e4c3c",
-    "server/diagrams.mjs": "ebfc5d2b06d12e9d690731e27ebca28c0208b7b42ee60aebc2f16ebb353a92dd",
-    "server/app.mjs": "f148dac53e49eb01b1fd55efd393b76e364dbc2bea96710e846e09906e44e478",
-    "scripts/verify-diagram-rendering.mjs": "487fd6b4f840496e2fe76fb6140c4cb343db323fce315cfb363c6d611c78ce03",
+    "src/mermaid.ts": "76e478bfea77764299a24efc27cc0f9e27bcce64a736434f57f57ecf86d8e2c1",
+    "src/ChatPage.tsx": "372fcc2692abf480e71da5d1809c6ebbc2f0be523c615bb57bb7e254e33c71c9",
+    "src/TreeOverview.tsx": "85374dc0e3f417707bd98ee2c4cf3e38f3e085027f809fd5d5f829d8163eaab5",
+    "src/turn.ts": "a0016c1b917618b6e7720a913a74a247c8a9d8b4f5e4c258c4e8c129f9b61136",
+    "src/layout.ts": "f177e11d0a731314183f4664d4e79479fa1d4f134af5a80b7f87cd9d85731ef2",
+    "server/store.mjs": "4c60162681a33075b385f094cf00b68f164d80b89b8e2002f959e6627f579f8d",
+    "server/diagrams.mjs": "7d49dea6b7ac2414f5b69898a8da4c29e5715e979b3fc4d005f2dd7259491a60",
+    "server/app.mjs": "d2a322bf72352ddb8bd63d6f47de56dcc512718f7ed0223d00b0e50d032aa7fd",
+    "scripts/verify-diagram-rendering.mjs": "d57fcb30b37652f564cd1077ac3a22b2b169810d4ccae30ab8869dc116a900f9",
     "test/artifact-render.test.mjs": "b0115d63840c80ee037d4889c832b0a6e21d65f65d32d3d0ef8f907b91f9db3b",
     "tsconfig.json": "4b1a7d176738768f8df927b020f1470c6f22cc3696aa79a53d427f2865780e05",
-    "package.json": "1c74d871a2fab26e4aba3d3d4e1393f94408a782c3c37ffa5d1f3868d05b625a",
-    "package-lock.json": "e5aa89f9d2fc43574d412f8cc3fea53bcd733c531da3b009c59de974cfc23664",
+    "package.json": "77b9672f43ed972430e2d8ab07600f052d49d3bdcc065077cc3261e33dfb85b7",
+    "package-lock.json": "8b2a7486e7ac6b6b15eaf11822a53843932adb6ab60d6aa77838c94c14f326fe",
     "docs/diagram-artifacts.md": "82d1b252b58357bf8d32a59fec278e908a5f92e1c3dc655216e2276092f4af8c",
-    "dist/index.html": "c850c6f4563b718e8fa9abd10926a936bc396ed5b094db66bc7722fdb86e86df"
+    "dist/index.html": "48a3884fd28107cd24946382584c7f937e9589b19cab6cadccf54d8abba2971f"
   }
 }

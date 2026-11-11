@@ -142,7 +142,7 @@ try {
       const start = performance.now();
       function ready() {
         const n=document.querySelector('.react-flow__node[data-id="${root.id}"]')?.getBoundingClientRect(), c=document.querySelector('.tree-canvas').getBoundingClientRect();
-        if (document.activeElement?.getAttribute('aria-label') === 'Your question' && n?.width >= 50 && n.left >= c.left-1 && n.right <= c.right+1 && n.top >= c.top+35 && n.bottom <= c.bottom+1) resolve(performance.now()-start);
+        if (document.activeElement?.getAttribute('aria-label') === 'Your question' && n?.width >= 50 && n.left >= c.left-1 && n.right <= c.right+1 && n.top >= c.top && n.bottom <= c.bottom+1) resolve(performance.now()-start);
         else requestAnimationFrame(ready);
       } requestAnimationFrame(ready);
     }, {once:true});
@@ -154,12 +154,17 @@ try {
   await wait(`parseFloat(document.querySelector('[data-zoom]').textContent) >= 20 && !document.documentElement.matches(':active-view-transition')`);
   report.selectMs = performance.now() - selectStart;
   report.selectUiMs = await evaluate('window.__selectionTiming');
-  report.selectedBounds = await evaluate(`(() => { const n=document.querySelector('.react-flow__node[data-id="${root.id}"]').getBoundingClientRect(), c=document.querySelector('.tree-canvas').getBoundingClientRect(); return {left:n.left-c.left,top:n.top-c.top,right:n.right-c.left,bottom:n.bottom-c.top,canvasWidth:c.width,canvasHeight:c.height}; })()`);
-  assert.ok(report.selectedBounds.left >= -1 && report.selectedBounds.top >= 35 && report.selectedBounds.right <= report.selectedBounds.canvasWidth + 1 && report.selectedBounds.bottom <= report.selectedBounds.canvasHeight + 1, 'selected tall node fits beside the chat panel');
+  report.selectedBounds = await evaluate(`(() => { const n=document.querySelector('.react-flow__node[data-id="${root.id}"]').getBoundingClientRect(), c=document.querySelector('.tree-canvas').getBoundingClientRect(); return {left:n.left-c.left,top:n.top-c.top,right:n.right-c.left,bottom:n.bottom-c.top,canvasWidth:c.width,canvasHeight:c.height,toolbarTop:document.querySelector('.map-toolbar').getBoundingClientRect().top-c.top}; })()`);
+  assert.ok(report.selectedBounds.left >= -1 && report.selectedBounds.top >= 0 && report.selectedBounds.right <= report.selectedBounds.canvasWidth + 1 && report.selectedBounds.bottom <= report.selectedBounds.toolbarTop + 1, 'selected tall node fits beside the chat panel');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Continue the forest lesson');
   await click('Send');
   await wait(`document.querySelector('.node-message:last-child') && document.body.textContent.includes('Short reply.')`);
   // A visible folded neighbour must also keep its data reference on each chunk.
+  // Opening the wider chat column reveals the root against the right map edge;
+  // pan so both it and its neighbour are visible before profiling their renders.
+  await browser('focus', '.tree-canvas');
+  await browser('press', 'ArrowRight');
+  await wait(`!!document.querySelector('[aria-label="Collapse descendants of Conversation 1"]')`);
   await click('Collapse descendants of Conversation 1');
   await wait('window.__previewInFlight === 0');
   await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');

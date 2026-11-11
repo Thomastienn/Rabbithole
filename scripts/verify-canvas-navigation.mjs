@@ -14,6 +14,7 @@ const browser = async (...args) => (await exec('agent-browser', ['--session', se
 const evaluate = async expression => JSON.parse(await browser('eval', expression, '--json')).data.result;
 const wait = expression => browser('wait', '--fn', expression);
 const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
+const openNode = async id => { await browser('focus', `#open-${id}`); await browser('press', 'Enter'); };
 const view = () => evaluate('document.querySelector(".react-flow__viewport").style.transform');
 // Fire the controlled one-minute layout clock, then read the batched viewport from the database.
 const flush = async () => { await evaluate('__layoutMinute()'); await wait('window.__layoutInFlight === 0'); };
@@ -36,6 +37,7 @@ const first = store.branch(root, { ...anchor, question: 'First branch' }, 'Fixtu
 const second = store.branch(root, { ...anchor, question: 'Second branch' }, 'Fixture context');
 const releases = new Map();
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: {
+  models: async () => [{ model: 'fixture', label: 'Fixture', isDefault: true }],
   async generate(tree, prompt, emit) {
     emit({ type: 'item', item: 'reply', text: `Partial ${tree.title}` });
     await new Promise(resolve => releases.set(tree.id, resolve));
@@ -71,9 +73,9 @@ try {
   await click('Fit tree');
   await browser('focus', '.tree-canvas');
   await browser('press', 'ArrowLeft');
-  const saved = await stableView();
+  let saved = await stableView();
   const p = saved.match(/-?\d*\.?\d+/g).map(Number);
-  const savedLayout = await savedView(v => Math.abs(v.x - p[0]) < 0.001 && Math.abs(v.y - p[1]) < 0.001 && Math.abs(v.zoom - p[2]) < 0.00001); // transform string rounds scale to 5 decimals
+  let savedLayout = await savedView(v => Math.abs(v.x - p[0]) < 0.001 && Math.abs(v.y - p[1]) < 0.001 && Math.abs(v.zoom - p[2]) < 0.00001); // transform string rounds scale to 5 decimals
   // Browser-zoom wheel events must remain uncancelled and leave the canvas view alone.
   assert.equal(await evaluate(`document.querySelector('.react-flow__pane').dispatchEvent(new WheelEvent('wheel', {deltaY:-100,ctrlKey:true,bubbles:true,cancelable:true}))`), true);
   assert.equal(await view(), saved);
@@ -90,6 +92,11 @@ try {
   // finish so the return action does not intentionally skip the transition being measured.
   await wait('(window.transitions.length === 1 || window.transitionErrors.length > 0) && !document.documentElement.matches(":active-view-transition")');
   assert.deepEqual(await evaluate('window.transitionErrors'), [], 'opening transition must be ready without duplicate shared names');
+  // A wider chat column may reveal its selected conversation by moving the map.
+  // Closing chat, switching learning trees and reloading must all retain that revealed view.
+  saved = await stableView();
+  const revealed = saved.match(/-?\d*\.?\d+/g).map(Number);
+  savedLayout = await savedView(v => Math.abs(v.x - revealed[0]) < 0.001 && Math.abs(v.y - revealed[1]) < 0.001 && Math.abs(v.zoom - revealed[2]) < 0.00001);
   await click('Return to tree');
   await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
   assert.equal(await view(), saved);
@@ -101,12 +108,10 @@ try {
   await browser('press', 'Escape');
   await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
   assert.equal(await view(), saved);
-  await click('Map menu');
-  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
+  if (await evaluate("!!document.getElementById('expand-learning-trees')")) await click('Expand learning trees');
   await click('Other saved tree');
   await browser('wait', '[aria-label="Open Other saved tree"]');
-  await click('Map menu');
-  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
+  if (await evaluate("!!document.getElementById('expand-learning-trees')")) await click('Expand learning trees');
   await click('Canvas navigation');
   await browser('wait', '[aria-label="Open First branch"]');
   assert.equal(await view(), saved);
@@ -119,7 +124,7 @@ try {
   assert.equal(await evaluate('matchMedia("(prefers-reduced-motion: reduce)").matches'), true);
   await evaluate('window.transitionCalls = 0; const original=document.startViewTransition.bind(document); document.startViewTransition=callback=>{window.transitionCalls++;return original(callback)}; true');
   for (const branch of [first, second]) {
-    await click(`Open ${branch.title}`);
+    await openNode(branch.id);
     await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(branch.title)} && !!document.querySelector('.focused-chat [role=textbox]')`);
     await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', `Explain ${branch.title}`);
     await click('Send');
@@ -132,7 +137,7 @@ try {
     assert.equal(await view(), beside);
   }
   assert.equal(app.active.size, 2);
-  await click('Open Canvas navigation');
+  await openNode(root.id);
   await wait('document.querySelector(".focused-chat h2")?.textContent === "Canvas navigation" && !!document.querySelector(".focused-chat [role=textbox]")');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Unsent draft');
   const composing = await view();
@@ -149,7 +154,7 @@ try {
   assert.equal(await evaluate('document.querySelector(".focused-chat [role=textbox]").textContent'), 'Unsent draft');
   for (const branch of [first, second]) {
     await click('Return to tree');
-    await click(`Open ${branch.title}`);
+    await openNode(branch.id);
     await wait(`document.querySelector('.focused-chat')?.innerText.includes(${JSON.stringify('Complete ' + branch.title)}) && document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(branch.title)}`);
     assert.equal(store.tree(branch.id).messages.filter(m => m.role === 'user').length, 1);
   }
@@ -161,12 +166,14 @@ try {
   await click('Fit tree');
   assert.equal(await evaluate('document.documentElement.scrollWidth === innerWidth && document.querySelector(".tree-canvas").getBoundingClientRect().height > 0'), true);
   await browser('screenshot', resolve('.impeccable/review/navigation-mobile.png'));
-  await click('Open Canvas navigation');
+  await openNode(root.id);
   await wait('document.querySelector(".focused-chat h2")?.textContent === "Canvas navigation" && !!document.querySelector(".focused-chat [role=textbox]")');
   assert.equal(await evaluate('document.querySelector(".focused-chat [role=textbox]").getBoundingClientRect().bottom <= innerHeight'), true);
   console.log('PASS: pan/zoom/fit; keyboard and browser zoom isolation; exact viewport and originating focus return; tree switch/reload; shared-element animation; reduced motion; two simultaneous replies without lost output/focus/draft; mobile controls/composer; viewport saved in the batched layout.');
 } catch (error) {
   console.error(await browser('eval', 'JSON.stringify({active:document.activeElement?.id,hidden:document.querySelector(".overview").getAttribute("aria-hidden"), transitions:window.transitions})'));
+  console.error(await browser('snapshot'));
+  await browser('screenshot', '/tmp/treetutor-navigation-failure.png');
   throw error;
 } finally {
   for (const release of releases.values()) release();

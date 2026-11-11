@@ -24,11 +24,11 @@ export default function VideoCard({ artifact, onAction }: { artifact: Artifact; 
       <Text type="supporting" color="secondary" role="status" className={state === 'ready' ? 'sr-only' : undefined}><Text type="inherit" className="sr-only">{artifact.title}: </Text>{STATUS[state]}{state === 'failed' && artifact.error ? ` ${artifact.error}` : ''}</Text>
       {progress !== undefined && <ProgressBar label="Render progress" value={progress} hasValueLabel />}
       {/* One button element switches Cancel to Retry in place, so keyboard focus survives the state change. */}
-      {action && <Button key="action" label={action === 'cancel' ? 'Cancel video' : state === 'unavailable' ? 'Regenerate video' : 'Retry video'} size="sm" clickAction={() => onAction(action)} />}
+      {action && <Button key="action" label={action === 'cancel' ? 'Cancel video' : state === 'unavailable' ? 'Regenerate video' : 'Retry video'} variant="ghost" size="sm" clickAction={() => onAction(action)} />}
       {/* The frame keeps the player's size while pending, so completion does not shift the conversation. */}
       {state === 'ready' ? <>
         <video className="video-frame" src={media} controls preload="metadata" aria-label={`Video: ${artifact.title}`} aria-describedby={`${id}-description`} />
-        <Button label="Open large" size="sm" clickAction={() => setEnlarged(true)} />
+        <Button label="Open large" variant="ghost" size="sm" clickAction={() => setEnlarged(true)} />
         <Lightbox isOpen={enlarged} onOpenChange={setEnlarged} hasAutoPlay media={{ src: media, alt: `Video: ${artifact.title}`, caption: artifact.title, type: 'video' }} />
       </>
         : artifact.status === 'pending' && <section className="video-frame" aria-hidden="true" />}

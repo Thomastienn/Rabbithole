@@ -1,0 +1,73 @@
+{
+  "issue": "TreeTutor-nwx.4",
+  "date": "2026-11-11T02:02:51.108Z",
+  "evidence": "Built app; agent-browser Chromium; synthetic transcripts and providers; no live inference",
+  "references": [
+    "map-reference-dark.png",
+    "map-reference-light.png"
+  ],
+  "referenceViewport": [
+    1440,
+    900
+  ],
+  "appearances": {
+    "dark": {
+      "accent": "rgb(232, 210, 122)",
+      "cap": "round",
+      "ground": "rgb(28, 39, 36)",
+      "offset": "3px",
+      "outline": "rgb(232, 210, 122)",
+      "plainAnimated": 0,
+      "plainWidth": "2px",
+      "radius": "4px",
+      "stroke": "rgb(232, 210, 122)",
+      "titleWeight": "600",
+      "width": "2.5px",
+      "controls": {
+        "bottom": 12,
+        "clear": true,
+        "left": 12,
+        "within": true
+      }
+    },
+    "light": {
+      "accent": "rgb(122, 101, 16)",
+      "cap": "round",
+      "ground": "rgb(231, 235, 230)",
+      "offset": "3px",
+      "outline": "rgb(122, 101, 16)",
+      "plainAnimated": 0,
+      "plainWidth": "2px",
+      "radius": "4px",
+      "stroke": "rgb(122, 101, 16)",
+      "titleWeight": "600",
+      "width": "2.5px",
+      "controls": {
+        "bottom": 12,
+        "clear": true,
+        "left": 12,
+        "within": true
+      }
+    }
+  },
+  "checks": [
+    "Both appearances: bare field, no watermark/grid, 4px cards, 600 titles, focused path/node, 2px round branches, bottom-left controls, every message and counted stubs; opening/unfolding does not animate.",
+    "Keyboard open/return retains focused conversation; branch leaves its source message; new branch draws 350ms from source to child; replying dot pulses, both stop under reduced motion.",
+    "A newly created branch does not replay its draw-on when folded and unfolded later.",
+    "390px map has no horizontal overflow; controls remain visible bottom-left and separate from the sidebar toggle."
+  ],
+  "draw": [
+    {
+      "duration": 350,
+      "frames": [
+        "1px",
+        "0px"
+      ],
+      "length": "1"
+    }
+  ],
+  "attachment": {
+    "gap": 0.000022493876909292196,
+    "message": "cac894b2-4ca2-427f-9a4c-6800dbbcbebe"
+  }
+}

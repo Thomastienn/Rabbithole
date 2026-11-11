@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-11-11T02:01:17.576Z",
+  "evidence": "Built app, SQLite, HTTP and Chromium; synthetic provider, not live inference.",
+  "pass": true,
+  "steps": [
+    "dark: inherited passage, question and snapshot remain exact in muted reading type; Token stats starts collapsed, Enter opens the per-reply usage and Space closes it",
+    "dark: title Public Sans 600, muted model, inherited context 2px yellow rule, Send the only filled button, diagram card seam + 4px, transcript starts at top (24px) with 165px empty below; docs/verification/focused-chat-reference-dark.png",
+    "divider seam highlights chalk yellow on hover",
+    "return-to-parent row opens the parent conversation",
+    "light: inherited passage, question and snapshot remain exact in muted reading type; Token stats starts collapsed, Enter opens the per-reply usage and Space closes it",
+    "light: title Public Sans 600, muted model, inherited context 2px yellow rule, Send the only filled button, diagram card seam + 4px, transcript starts at top (24px) with 165px empty below; docs/verification/focused-chat-reference-light.png",
+    "narrow 390px: chat fills the workspace, composer visible; Shift+Enter newline, Enter sends, Stop ends the reply",
+    "narrow 320×568: long draft scrolls; input and Send stay reachable without horizontal overflow",
+    "narrow 320×568: long parent title and exact source passage wrap across multiple lines without horizontal overflow; header scrolls within its cap"
+  ]
+}

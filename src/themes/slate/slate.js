@@ -222,12 +222,22 @@ export const slateTheme = {
   localTokens: {
     "--astryx-theme-neutral-color-status-fill-accent": "light-dark(#0074e2, #6d9cfe)",
     "--treetutor-font-reading": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif",
-    "--treetutor-selection": "light-dark(#e8d27a, #e8d27a4d)"
+    "--treetutor-selection": "light-dark(#e8d27a, #e8d27a4d)",
+    "--treetutor-map-node-width": "16rem",
+    "--treetutor-branch-color": "light-dark(#1c2724bf, #ebe7dcbf)",
+    "--treetutor-branch-width": "2px",
+    "--treetutor-branch-focus-width": "2.5px",
+    "--treetutor-branch-draw-duration": "350ms"
   },
   __localTokenOwners: {
     "--astryx-theme-neutral-color-status-fill-accent": "neutral",
     "--treetutor-font-reading": "slate",
-    "--treetutor-selection": "slate"
+    "--treetutor-selection": "slate",
+    "--treetutor-map-node-width": "slate",
+    "--treetutor-branch-color": "slate",
+    "--treetutor-branch-width": "slate",
+    "--treetutor-branch-focus-width": "slate",
+    "--treetutor-branch-draw-duration": "slate"
   },
   __localTokenLineage: ["neutral","slate"],
   components: {

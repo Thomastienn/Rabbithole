@@ -694,10 +694,10 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
         <section id="focused-chat" className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video, dialog')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header className="chat-header"><VStack padding={3} gap={1}>
-            <HStack gap={1} vAlign="center">
+            <HStack gap={1} vAlign="center" className="chat-heading-row">
               <VStack gap={0} className="chat-title">
                 {renaming?.id === tree.id && renaming.place === 'header' ? <TitleEditor key={tree.id} title={tree.title} save={title => rename(tree.id, title)} cancel={finishRename} /> : <Button id="rename-conversation" className="rename-title" label="Rename conversation" tooltip={`Rename ${tree.title}`} variant="ghost" size="sm" onClick={() => setRenaming({ id: tree.id, place: 'header' })}><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading></Button>}
-                <Text type="supporting" color="secondary">{modelLabel(tree)} · saved automatically</Text>
+                <Text type="supporting" color="secondary" className="chat-model">{modelLabel(tree)} · saved automatically</Text>
               </VStack>
               <DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" isMenuOpen={modelMenuOpen} onOpenChange={open => void openModels(open)} renderTrigger={props => <IconButton {...props} label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : openingModels ? 'Loading models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(tree)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || openingModels} isLoading={openingModels || savingModel === tree.id} />}>
                 {['claude', 'codex', 'openai'].map(id => { const p = providers?.[id] ?? { label: providerLabel(id), connected: false }; return <DropdownMenuGroup key={id} title={p.label}>
@@ -714,15 +714,21 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
               <IconButton label="Return to tree" tooltip="Back to map (Esc)" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={returnToTree} />
             </HStack>
             {tree.provider === 'codex' && codexFallback && <Text type="supporting" color="secondary" role="note">GPT-6.1 Terra isn’t listed for this account. New conversations use {codexFallback.label}, the account default.</Text>}
-            {tree.branch && <HStack gap={1} vAlign="center" wrap="wrap">
+            {tree.branch && <HStack gap={1} vAlign="center" wrap="wrap" className="chat-parent">
               <Button label="Return to parent conversation" variant="ghost" size="sm" icon={<ArrowUturnLeftIcon />} onClick={() => openConversation(tree.branch!.parent)}>{state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'Parent conversation'}</Button>
-              <Text type="supporting" color="secondary" maxLines={1}>from “{tree.branch.text}”</Text>
+              <Text type="supporting" color="secondary">from “{tree.branch.text}”</Text>
             </HStack>}
+            <Collapsible key={tree.id} className="chat-stats" defaultIsOpen={false} trigger={<Text type="supporting" color="secondary">Token stats</Text>}>
+              <VStack gap={2} className="chat-stats-body">
+                {tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').map((m, i) => <Text key={m.id} type="supporting" color="secondary">Reply {i + 1}: {replyUsageLine(m.usage ?? null, tree.suggestions?.find(s => s.message === m.id)?.usage)}</Text>)}
+                {!tree.messages.some(m => m.role === 'assistant' && m.status === 'completed') && <Text type="supporting" color="secondary">Token usage appears after a completed reply.</Text>}
+              </VStack>
+            </Collapsible>
             {modelError && <HStack gap={2} vAlign="center" role="alert"><Text type="supporting">{modelError}</Text><Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} /></HStack>}
             {!modelError && models && !models.length && <Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} />}
           </VStack></header>
           {source && !validSource && <Text role="alert">Saved source passage is unavailable. No replacement passage was selected.</Text>}
-          <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} footerActions={<Text type="supporting" color="secondary">Enter to send · Shift+Enter for a new line</Text>} />}>
+          <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" maxRows={4} value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} footerActions={<Text type="supporting" color="secondary">Enter to send · Shift+Enter for a new line</Text>} />}>
             <ChatMessageList gap={2}>
               {tree.branch && <Collapsible className="inherited-context" defaultIsOpen={false} trigger={<Text weight="medium">Inherited from {state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'parent conversation'}</Text>}>
                 <dl className="inherited-body">
@@ -748,7 +754,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
           </ChatLayout>
         </> : <VStack gap={0} className="overview">
           <HStack padding={1} className="map-toolbar" role="group" aria-label="Tree view controls">{menu()}</HStack>
-          <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map"><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <><Text color="secondary">Ask your first question; it becomes the chat's title. Come back any time.</Text><Button label="New chat" variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} /></>}</VStack>
+          <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map"><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <><Text color="secondary">Ask your first question; it becomes the chat's title. Come back any time.</Text><Button label="New chat" variant="ghost" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} /></>}</VStack>
         </VStack>}
         </section>
         </section>

@@ -18,8 +18,19 @@ const pause = () => new Promise(r => setTimeout(r, 300));
 const view = () => ev('document.querySelector(".react-flow__viewport").style.transform');
 const box = id => ev(`document.querySelector('.react-flow__node[data-id="${id}"]').style.transform`);
 const zoom = async () => Number((await view()).match(/scale\(([\d.]+)\)/)[1]);
-const checkbox = `document.querySelector('input[type=checkbox]')`;
-const openTree = title => wait(`(() => { const e = [...document.querySelectorAll('nav button')].find(e => e.textContent === ${JSON.stringify(title)}); e?.click(); return e; })()`);
+const checkbox = `document.querySelector('dialog[open] input[type=checkbox]')`;
+const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
+const openTree = async title => {
+  if (await ev(`!!document.querySelector('[aria-label="Expand learning trees"]')`)) await click('Expand learning trees');
+  await wait(`!![...document.querySelectorAll('nav button')].find(e=>e.getAttribute('aria-label') === ${JSON.stringify(title)})`);
+  await click(title);
+};
+const help = async () => {
+  await click('Map menu');
+  await b('find', 'role', 'menuitem', 'click', '--name', 'Help', '--exact');
+  await wait(`document.querySelector('dialog[open] h2')?.textContent === 'Interface'`);
+};
+const closeSettings = async () => { await press('Escape'); await wait(`!document.querySelector('dialog[open]')`); };
 const log = [];
 const step = text => { log.push(text); console.log(`ok - ${text}`); };
 async function tabTo(test, max = 80) {
@@ -56,7 +67,9 @@ try {
   await pause();
 
   // 1. Default off: letters do nothing on the map or a box; standard arrows still work.
+  await help();
   assert.equal(await ev(`${checkbox}.checked`), false);
+  await closeSettings();
   await b('focus', '.tree-canvas');
   for (const key of ['l', 'Shift+J', 'f', '=', '-']) assert.equal(await effect(key), false, `off: ${key} on map`);
   assert.equal(await effect('ArrowRight'), true);
@@ -66,16 +79,17 @@ try {
   step('Default off with no saved preference: h/j/k/l/=/-/f do nothing on map or box; arrows pan/move');
 
   // 2. Help describes the mapping and current state; the checkbox is reachable by Tab and toggles with Space.
-  await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
-  await b('find', 'role', 'menuitem', 'click', '--name', 'Help', '--exact');
-  await wait(`document.querySelector('#tree-navigation').textContent.includes('Vim canvas bindings are off')`);
-  await b('focus', '#tree-navigation button');
+  await help();
+  await wait(`document.querySelector('dialog[open]').textContent.includes('Vim canvas bindings are off')`);
+  await b('focus', 'dialog[open] button');
   await tabTo(`e.type === 'checkbox'`);
   assert.equal(await ev(`getComputedStyle(document.activeElement).outlineStyle !== 'none' || document.activeElement.matches(':focus-visible')`), true);
   await press('Space');
   await wait(`${checkbox}.checked && document.activeElement === ${checkbox} && localStorage.getItem('treetutor.vim') === 'on'`);
-  await wait(`document.querySelector('#tree-navigation').textContent.includes('Vim canvas bindings are on')`);
+  await wait(`document.querySelector('dialog[open]').textContent.includes('Vim canvas bindings are on')`);
   step('Tab reaches the labelled "Vim canvas bindings" checkbox with visible focus; Space checks it, focus stays on it, Help reports on');
+
+  await closeSettings();
 
   // 3. Map region: each alias equals its standard action.
   await b('focus', '.tree-canvas');
@@ -109,7 +123,8 @@ try {
   assert.equal(await box(child.id), p0, 'l / Shift+J undone by ArrowLeft / Shift+ArrowUp');
   const p1 = (await box(child.id)).match(/-?[\d.]+/g).map(Number);
   await press('k'); await pause();
-  assert.deepEqual((await box(child.id)).match(/-?[\d.]+/g).map(Number), [p1[0], p1[1] - 10]);
+  const moved = (await box(child.id)).match(/-?[\d.]+/g).map(Number);
+  assert.ok(Math.abs(moved[0] - p1[0]) < 0.001 && Math.abs(moved[1] - (p1[1] - 10)) < 0.001, 'k moves exactly 10 units (CSS transform rounds fractional placement)');
   await press('j'); await pause();
   const zb = await zoom(); await press('-'); await pause(); assert.ok(await zoom() < zb); await press('f'); await pause();
   assert.equal(await ev(`document.activeElement === document.querySelector('${node}')`), true);
@@ -152,18 +167,23 @@ try {
 
   // 7. Preference survives reload and tree switches; turning it off restores standard controls alone.
   await b('reload');
-  await wait(`document.querySelector('input[type=checkbox]')?.checked === true`);
+  await wait(`!!document.querySelector('.tree-canvas')`);
+  await help();
+  await wait(`${checkbox}?.checked === true`);
+  await closeSettings();
   await openTree('Other saved tree');
   await wait(`document.querySelectorAll('.react-flow__node').length === 1`);
+  await help();
   assert.equal(await ev(`${checkbox}.checked`), true);
+  await closeSettings();
   await openTree('Vim canvas');
   await wait(`document.querySelectorAll('.react-flow__node').length === 2`); await pause();
   await b('focus', '.tree-canvas');
   assert.equal(await effect('l'), true);
-  await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
-  await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
-  await b('focus', '#tree-navigation button'); await tabTo(`e.type === 'checkbox'`); await press('Space');
+  await help();
+  await b('focus', 'dialog[open] button'); await tabTo(`e.type === 'checkbox'`); await press('Space');
   await wait(`!${checkbox}.checked && localStorage.getItem('treetutor.vim') === 'off'`);
+  await closeSettings();
   await b('focus', '.tree-canvas');
   assert.equal(await effect('l'), false);
   assert.equal(await effect('ArrowRight'), true);
@@ -175,8 +195,10 @@ try {
   await press('Escape');
   await wait(`document.activeElement?.closest('.overview')`);
   await b('eval', `localStorage.setItem('treetutor.vim', 'garbage'); true`); await b('reload');
-  await wait(`document.querySelector('input[type=checkbox]')`);
+  await wait(`!!document.querySelector('.tree-canvas')`);
+  await help();
   assert.equal(await ev(`${checkbox}.checked`), false);
+  await closeSettings();
   step('On persists across reload and tree switch; off immediately restores arrows/Enter/Escape alone; unreadable preference means off');
   console.log(JSON.stringify({ result: 'PASS', provider: 'synthetic fixture (no live provider)', steps: log }, null, 2));
 } finally { await b('close').catch(() => {}); app.stop(); store.close(); }

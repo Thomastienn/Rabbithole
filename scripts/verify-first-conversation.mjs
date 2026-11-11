@@ -36,7 +36,7 @@ try {
   const fresh = store.list().find(t => t.title === 'New chat');
   await wait(`!!document.querySelector('[data-id="${fresh.id}"]')`);
   assert.deepEqual(await nodes(), [fresh.id]);
-  assert.equal(await ev(`document.querySelector('[data-id="${fresh.id}"] h3').textContent`), 'New chat');
+  assert.equal(await ev(`document.querySelector('[data-id="${fresh.id}"] h2').textContent`), 'New chat');
   assert.notEqual(await ev(`getComputedStyle(document.querySelector('.focused-chat')).display`), 'none');
 
   // Closing and reopening the unstarted chat keeps the same box and saves no message.
@@ -77,7 +77,7 @@ try {
   await b('find', 'role', 'textbox', 'click', '--name', 'Your question');
   await b('press', 'Enter');
   await b('wait', '--text', 'Fixture response 21');
-  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Why are leaves green?' && document.querySelector('[data-id="${fresh.id}"] h3')?.textContent === 'Why are leaves green?' && [...document.querySelectorAll('#tree-navigation nav button')].some(e => e.textContent === 'Why are leaves green?')`);
+  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Why are leaves green?' && document.querySelector('[data-id="${fresh.id}"] h2')?.textContent === 'Why are leaves green?' && [...document.querySelectorAll('#tree-navigation nav button')].some(e => e.textContent === 'Why are leaves green?')`);
   assert.deepEqual(await nodes(), [fresh.id]);
   assert.equal(store.list().filter(t => !t.parent).length, 2);
   assert.deepEqual(store.tree(fresh.id).messages.map(m => [m.role, m.text, m.status]), [['user', 'Why are leaves green?', 'completed'], ['assistant', 'Fixture response 21', 'completed']]);

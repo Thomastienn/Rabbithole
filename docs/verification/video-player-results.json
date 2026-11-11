@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-11T00:50:15.743Z",
+  "checkedAt": "2026-11-11T01:39:57.298Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
@@ -30,12 +30,12 @@
         "before": {
           "focus": true,
           "messages": 14,
-          "top": 1719
+          "top": 1446
         },
         "after": {
           "focus": true,
           "messages": 14,
-          "top": 1719
+          "top": 1446
         }
       }
     },
@@ -44,9 +44,8 @@
       "pass": true,
       "details": {
         "progress": [
-          "5",
-          "30",
-          "60"
+          "25",
+          "55"
         ],
         "progressLive": false,
         "statuses": [
@@ -141,6 +140,28 @@
           "tutor"
         ]
       }
+    },
+    {
+      "name": "dark and light: raised slate video card, 4px corners, ghost actions and paused decoded frame; no new inference",
+      "pass": true,
+      "details": [
+        {
+          "mode": "dark",
+          "chat": "rgb(36, 49, 45)",
+          "ghost": true,
+          "paused": true,
+          "radius": "4px",
+          "surface": "rgb(36, 49, 45)"
+        },
+        {
+          "mode": "light",
+          "chat": "rgb(243, 245, 241)",
+          "ghost": true,
+          "paused": true,
+          "radius": "4px",
+          "surface": "rgb(243, 245, 241)"
+        }
+      ]
     }
   ]
 }

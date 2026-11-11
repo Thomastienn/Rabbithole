@@ -34,16 +34,16 @@ try {
   await wait(sep);
   let s = await state();
   assert.equal(s.role, 'separator'); assert.equal(s.tab, 0);
-  assert.equal(s.now, 26); assert.equal(s.min, 22); assert.equal(s.max, Math.round(s.workRem * 0.7));
-  assert.ok(Math.abs(s.chatRem - 26) < 0.2, `default chat ${s.chatRem}rem`);
-  steps.push(`default 26rem; separator tabindex 0, aria-valuemin 22, max ${s.max} (70% of ${s.workRem.toFixed(1)}rem), valuetext "${s.text}"`);
+  assert.equal(s.now, 35); assert.equal(s.min, 22); assert.equal(s.max, Math.round(s.workRem * 0.7));
+  assert.ok(Math.abs(s.chatRem - 35) < 0.2, `default chat ${s.chatRem}rem`);
+  steps.push(`default 35rem; separator tabindex 0, aria-valuemin 22, max ${s.max} (70% of ${s.workRem.toFixed(1)}rem), valuetext "${s.text}"`);
 
   await b('mouse', 'move', String(Math.round(s.left)), String(Math.round(s.mid)));
   await b('mouse', 'down');
   await b('mouse', 'move', String(Math.round(s.left) - 160), String(Math.round(s.mid)));
   await b('mouse', 'up');
   s = await state();
-  assert.ok(Math.abs(s.now - 36) <= 1 && Math.abs(s.chatRem - s.now) < 1, `drag 160px left widens to ~36rem (${s.now}, ${s.chatRem})`);
+  assert.ok(Math.abs(s.now - 45) <= 1 && Math.abs(s.chatRem - s.now) < 1, `drag 160px left widens to ~45rem (${s.now}, ${s.chatRem})`);
   steps.push(`drag 160px left: chat ${s.chatRem.toFixed(1)}rem, valuenow ${s.now}`);
   await b('mouse', 'down'); await b('mouse', 'move', '10', String(Math.round(s.mid))); await b('mouse', 'up');
   s = await state();
@@ -56,12 +56,12 @@ try {
 
   await b('dblclick', '.chat-divider');
   s = await state();
-  assert.equal(s.now, 26); steps.push('double-click resets to 26rem');
+  assert.equal(s.now, 35); steps.push('double-click resets to 35rem');
 
   await b('focus', '.chat-divider');
   await b('press', 'ArrowLeft'); await b('press', 'ArrowLeft'); await b('press', 'Shift+ArrowLeft');
-  s = await state(); assert.equal(s.now, 32);
-  await b('press', 'ArrowRight'); s = await state(); assert.equal(s.now, 31);
+  s = await state(); assert.equal(s.now, 41);
+  await b('press', 'ArrowRight'); s = await state(); assert.equal(s.now, 40);
   await b('press', 'Home'); s = await state(); assert.equal(s.now, 22);
   await b('press', 'End'); s = await state(); assert.equal(s.now, s.max);
   await b('press', 'Home'); await b('press', 'Shift+ArrowLeft'); await b('press', 'Shift+ArrowLeft');

@@ -75,8 +75,10 @@ if (process.argv[2] === '--serve') {
   const wait = expression => b('wait', '--fn', expression);
   const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
   async function openRoot(title) {
-    await click('Map menu');
-    await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
+    if (!(await ev(`document.querySelector('[aria-label="Collapse learning trees"]')?.checkVisibility()`))) {
+      await click('Map menu');
+      await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
+    }
     await click(title);
     await b('wait', `[aria-label="Open ${title}"]`);
     await click(`Open ${title}`);
@@ -205,8 +207,8 @@ if (process.argv[2] === '--serve') {
       if (await ev(`getSelection().toString()`) === 'repeat 😀') break;
     }
     assert.equal(await ev(`getSelection().toString()`), 'repeat 😀', 'mouse drag must select the visible reply');
-    await wait(`[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Ask about selection')`);
-    await click('Ask about selection');
+    // Mouse selection opens the anchored passage prompt directly; keyboard selection retains its Ask button.
+    await b('wait', '.branch-form input');
     await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Why repeated?');
     await click('Create focused chat');
     await wait(`document.querySelector('.focused-chat h2')?.textContent==='Why repeated?'`);
