@@ -132,6 +132,9 @@ html { view-transition-name: none; }
 .passage-box { position: absolute; z-index: 3; width: min(100%, 28rem); transform: translateY(-100%); margin-top: calc(-1 * var(--spacing-1)); }
 /* Floating surfaces: raised slate, hairline seams, no shadows (spec, Dialogs and menus). The passage prompt carries the yellow ring. */
 .branch-form { margin-top: var(--spacing-2); border: thin solid var(--color-accent); border-radius: var(--radius-container); background: var(--color-background-popover); }
+.branch-passage { flex: 1; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-family: var(--treetutor-font-reading); }
+.branch-question { flex: 1; min-width: 0; }
+.branch-send { flex: none; border-radius: 50%; }
 .astryx-alert-dialog h2 { margin-block-end: var(--spacing-2); }
 .astryx-alert-dialog .astryx-button[data-variant=destructive] { background: transparent; color: var(--color-text-error); box-shadow: inset 0 0 0 1px var(--color-border-error); }
 .astryx-alert-dialog .astryx-button[data-variant=destructive]:not(:first-child) { margin-inline-start: var(--spacing-4); }

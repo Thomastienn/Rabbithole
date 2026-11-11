@@ -210,7 +210,7 @@ Map cards use raised slate, fine seams, compact semibold Public Sans titles and 
 
 ### Reading, inherited context and copy
 
-Tutor prose uses the reply role; code blocks sit on the ground tone with the code face, and tables retain fine cell seams. Suggestions begin as muted dotted underlines. Explored passages switch to a solid 2px accent underline, shared with their focused map path. The inherited context disclosure is a yellow left rule and muted serif quotation. The compact passage prompt anchors to the selection with an accent border.
+Tutor prose uses the reply role; code blocks sit on the ground tone with the code face, and tables retain fine cell seams. Suggestions begin as muted dotted underlines. Explored passages switch to a solid 2px accent underline, shared with their focused map path. The inherited context disclosure is a yellow left rule and muted serif quotation. The compact passage popup anchors to the selection with an accent border: a clamped serif quote of the passage, a question field and a small round accent send control. Familiarity corrections sit under its overflow menu; outside click or Escape dismisses it.
 
 Reply copy buttons sit quietly below the reply and code copy buttons at the block's upper right. They reveal on hover/focus, stay visible without hover capability, and confirm with a check and an announced “Copied.” They copy the source text. The sidecar's static snippets show visual states; they do not implement clipboard or navigation behavior.
 

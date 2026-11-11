@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-11T05:47:11.552Z",
+  "checkedAt": "2026-11-11T09:39:53.538Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-RcFXM6",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-6ZXvtZ",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "fe75526b-313b-4f16-9e50-996d4deef414",
-        "messageId": "d6b437e2-a0b0-483d-a3ba-743d017bece6",
+        "parent": "8dbcf122-12c6-40d2-bf54-1e6dfc4e7c0f",
+        "messageId": "5c48f52d-a2f5-47dd-875f-fc32b21fe813",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -104,8 +104,8 @@
       "pass": true,
       "details": {
         "processes": [
-          1503315,
-          1504728
+          2078060,
+          2078544
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3
@@ -127,19 +127,19 @@
     "src/artifacts.ts": "239ed145eb9bdc0409a3eda2aa19747e7d2db41b96f8593ce93f1f17ea7b6d7c",
     "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
     "src/mermaid.ts": "4bfb3642cbfc00b8b1e2452360f6b7e00091f01eb623ea66315e69c6fab7a07c",
-    "src/ChatPage.tsx": "e69ea12c02c0553861f489911fa910100bd51155c83b6012d389cf336a2bd724",
-    "src/TreeOverview.tsx": "bf8dc0e4ef72abbc3d4c24762d70758a8f0a46eb561fed34fd73307121852b66",
+    "src/ChatPage.tsx": "b8621b098b2869530b5e72f217e32d1147b53f523a00244ffd4922cfe9fa3511",
+    "src/TreeOverview.tsx": "d9987cf1c2a46a1d7cbf5937fb1d4eece14d9f807724e701274590f3ea0eebc6",
     "src/turn.ts": "a7244c641e6dd539f5bb96050636dd989611b70137b4f0b092bff9570c211414",
-    "src/layout.ts": "f46272a7ac0aa47a1fecf15b7f19983f808a0eb53d04478b6690ffb47fe754bf",
-    "server/store.mjs": "86dd5170adf3a53fd6e14f1a8ad950ef0bd27339d5d2c5cca30952de593166ba",
+    "src/layout.ts": "24da49a630812fa1cb4aadae450471a9d47433376a07fb9aa9f0e9088cc4ffe5",
+    "server/store.mjs": "2f2e1b71b1ae09354793f6b1cb41cd3571a92b72c685fd5b189d03f5bc6de021",
     "server/diagrams.mjs": "7d49dea6b7ac2414f5b69898a8da4c29e5715e979b3fc4d005f2dd7259491a60",
-    "server/app.mjs": "beb51f9519ef4c18039760af1924a4606837e8de2b489adc03f29acc2cad2331",
-    "scripts/verify-diagram-rendering.mjs": "f619a6f6db82a9835b5fab14bdef3cf4a24cc77cf8be6aaa8dfd0b277ba29251",
+    "server/app.mjs": "bf87524cd3eec6e7d03946e005b83d30b0a0e006f47bc273a42549f64632de93",
+    "scripts/verify-diagram-rendering.mjs": "25aba5d416cf036c06bb12492b893448cbdd5e2b3e8a94ecaf81e5af420536cc",
     "test/artifact-render.test.mjs": "b0115d63840c80ee037d4889c832b0a6e21d65f65d32d3d0ef8f907b91f9db3b",
     "tsconfig.json": "4b1a7d176738768f8df927b020f1470c6f22cc3696aa79a53d427f2865780e05",
     "package.json": "77b9672f43ed972430e2d8ab07600f052d49d3bdcc065077cc3261e33dfb85b7",
     "package-lock.json": "8b2a7486e7ac6b6b15eaf11822a53843932adb6ab60d6aa77838c94c14f326fe",
-    "docs/diagram-artifacts.md": "82d1b252b58357bf8d32a59fec278e908a5f92e1c3dc655216e2276092f4af8c",
-    "dist/index.html": "6e33ba56c7ad7d73aadb58e29790509b04a022aae5ca7357692c08d3f3c7d78e"
+    "docs/diagram-artifacts.md": "57236b28d6417db62b5dfa097708217cae55e70fef96d5fb95b2f1f4d28be03e",
+    "dist/index.html": "c6800516f42313c108c969c3dc726e9581057fbe96440723f5f3344fcd341781"
   }
 }

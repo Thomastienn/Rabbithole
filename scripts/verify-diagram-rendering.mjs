@@ -197,7 +197,7 @@ if (process.argv[2] === '--serve') {
     await ready(tall.id); await ready(wide.id);
 
     await ev(`document.querySelector('.passage section').scrollIntoView({block:'center'})`);
-    const picked = `getSelection().toString() || document.querySelector('.passage-box')?.textContent.replace('Question about this passage', '').split('Create focused chat')[0]`;
+    const picked = `getSelection().toString() || document.querySelector('.branch-passage')?.textContent`;
     // Diagrams settling can re-scroll the chat log under the pointer; re-measure and retry the drag.
     for (let attempt = 0; attempt < 3; attempt++) {
       const points = await ev(`(()=>{document.querySelector('.passage section').scrollIntoView({block:'center'});const n=document.createTreeWalker(document.querySelector('.passage section .reply-md'),NodeFilter.SHOW_TEXT).nextNode(),a=document.createRange(),z=document.createRange();a.setStart(n,10);a.setEnd(n,11);z.setStart(n,17);z.setEnd(n,19);const first=a.getBoundingClientRect(),last=z.getBoundingClientRect();return [first.left+1,first.top+first.height/2,last.right-1,last.top+last.height/2]})()`);

@@ -54,13 +54,13 @@ try {
   assert.equal(store.list().length, 1);
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'First draft');
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Edited question');
-  await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Cancel branch').focus()`);
-  await b('press', 'Enter');
+  // Escape dismisses the popup (no Cancel branch button) and returns focus to the reply.
+  await b('press', 'Escape');
   await wait(`!document.querySelector('.branch-form') && document.activeElement?.matches('.focused-chat .passage > section')`);
   assert.equal(store.list().length, 1);
   await drag();
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Mouse question');
-  await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Create focused chat').focus()`);
+  await ev(`document.querySelector('[aria-label="Create focused chat"]').focus()`);
   await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Mouse question'`);
   await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') !== null`);
@@ -85,7 +85,7 @@ try {
   assert.equal(await ev(`document.activeElement?.textContent.trim()`), 'Ask about selection');
   await b('press', 'Enter');
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Edited question');
-  await ev(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Create focused chat').focus()`);
+  await ev(`document.querySelector('[aria-label="Create focused chat"]').focus()`);
   await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Edited question'`);
   const child = store.list().find(t => t.parent === root.id && t.id !== mouseChild.id);

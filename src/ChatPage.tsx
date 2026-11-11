@@ -5,7 +5,7 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, PencilSquareIcon, TrashIcon, ShareIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
@@ -52,7 +52,7 @@ function TitleEditor({ title, save, cancel }: { title: string; save: (title: str
   </VStack>;
 }
 
-function PassageCorrection({ name, api, disabled }: { name: string; api: (path: string, body?: unknown) => Promise<Graph>; disabled: boolean }) {
+function PassageCorrection({ name, api, disabled, children }: { name: string; api: (path: string, body?: unknown) => Promise<Graph>; disabled: boolean; children: React.ReactNode }) {
   const [correction, setCorrection] = useState<'known' | 'unknown' | null>(null);
   const [saving, setSaving] = useState<'known' | 'unknown'>();
   const [error, setError] = useState(''), [status, setStatus] = useState('');
@@ -71,13 +71,15 @@ function PassageCorrection({ name, api, disabled }: { name: string; api: (path: 
     } catch (e) { setError((e as Error).message); }
     finally { setSaving(undefined); }
   }
+  // Overflow keeps both corrections reachable without two prominent buttons; selecting one saves it.
   return <VStack gap={1}>
-    <Text type="supporting" color="secondary">{name}</Text>
-    <HStack gap={2} wrap="wrap" role="group" aria-label={`Corrections for ${name}`}>
-      <Button label="I know this" size="sm" variant={correction === 'known' ? 'secondary' : 'ghost'} aria-pressed={correction === 'known'} isLoading={saving === 'known'} isDisabled={disabled || saving === 'unknown'} onClick={() => void correct('known')} />
-      <Button label="I don't get this" size="sm" variant={correction === 'unknown' ? 'secondary' : 'ghost'} aria-pressed={correction === 'unknown'} isLoading={saving === 'unknown'} isDisabled={disabled || saving === 'known'} onClick={() => void correct('unknown')} />
-    </HStack>
-    <Text type="supporting" role="status">{status}</Text>
+    <HStack gap={1}>{children}<DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} label={`Familiarity options for ${name}`} tooltip="Familiarity" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" isLoading={!!saving} isDisabled={disabled} />}>
+      <DropdownMenuRadioGroup label={`Corrections for ${name}`} value={correction ?? undefined} onChange={kind => void correct(kind as 'known' | 'unknown')}>
+        <DropdownMenuRadioItem value="known" label="I know this" />
+        <DropdownMenuRadioItem value="unknown" label="I don't get this" />
+      </DropdownMenuRadioGroup>
+    </DropdownMenu></HStack>
+    <Text type="supporting" role="status" className="correction-status">{status}</Text>
     {error && <Text type="supporting" role="alert">{error}</Text>}
   </VStack>;
 }
@@ -642,6 +644,18 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       }
     }
   }
+  // Escape returns focus to the passage or underline that opened the popup; an outside click keeps focus where it lands.
+  function closeBranch(refocus: boolean) {
+    setBranch(undefined);
+    requestAnimationFrame(() => { if (refocus || !document.activeElement || document.activeElement === document.body) branchOrigin.current?.current?.focus({ preventScroll: !refocus }); });
+  }
+  useEffect(() => {
+    if (!branch || branching) return;
+    // Capture phase so the popup closes before a new selection or underline reopens it; its menu popover counts as inside.
+    const outside = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.branch-form, [role=menu]')) closeBranch(false); };
+    document.addEventListener('pointerdown', outside, true);
+    return () => document.removeEventListener('pointerdown', outside, true);
+  }, [!!branch, branching]);
   async function submitBranch(e: React.FormEvent) {
     e.preventDefault();
     if (!branch || branching || savingModel === branch.parent || !branch.question.trim()) return;
@@ -799,11 +813,9 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
               </Collapsible>}
               {!tree.messages.length && <VStack gap={3} padding={6}><Heading level={3}>What are you curious about?</Heading><Text color="secondary">Ask about a concept, work through an example, or pick up a question you have been carrying.</Text></VStack>}
               {tree.messages.map(message => { const suggestions = tree.suggestions?.find(s => s.message === message.id), index = tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1; return <ChatMessage key={message.id} sender={message.role === 'user' ? 'user' : 'assistant'} className={message.role === 'user' ? 'chat-question' : 'chat-reply'} name={message.role === 'assistant' && <Text type="supporting" color="secondary">Tutor · {modelLabel(tree)}</Text>} metadata={!overview && message.role === 'assistant' && message.status === 'completed' && <HStack gap={2} vAlign="center"><CopyButton text={message.text} label={`Copy tutor reply ${index}`} className="reply-copy" />{message.usage !== undefined && <Text type="supporting" color="secondary" className="reply-usage">{replyUsageLine(message.usage, suggestions?.usage)}</Text>}</HStack>}>
-                {message.role === 'assistant' ? <Passage message={message} suggestions={suggestions} branched={state?.trees.flatMap(t => t.parent === tree.id && t.messageId === message.id && t.start !== null && t.end !== null && t.passage !== null ? [{ start: t.start, end: t.end, text: t.passage, child: t.id }] : []) ?? []} index={index} reveal={validSource && source?.messageId === message.id ? source : undefined} form={branch?.parent === tree.id && branch.anchor.messageId === message.id ? { at: branch.anchor.at, node: <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); } }}><VStack padding={3} gap={2}>
-                  {/* Small empty box: Enter submits through the form; a disabled submit button blocks sending an empty prompt. */}
-                  <TextInput label="Question about this passage" description={branch.anchor.text.length > 80 ? branch.anchor.text.slice(0, 80) + '…' : branch.anchor.text} size="sm" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus />
-                  {branchConcept && <PassageCorrection key={`${branch.parent}:${branch.anchor.messageId}:${branch.anchor.start}:${branch.anchor.end}`} name={branchConcept} api={api} disabled={branching} />}
-                  <HStack gap={2} wrap="wrap"><Button label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" size="sm" isDisabled={branching || !branch.question.trim() || active} /><Button label="Cancel branch" variant="ghost" size="sm" isDisabled={branching} onClick={() => { setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); }} /></HStack>
+                {message.role === 'assistant' ? <Passage message={message} suggestions={suggestions} branched={state?.trees.flatMap(t => t.parent === tree.id && t.messageId === message.id && t.start !== null && t.end !== null && t.passage !== null ? [{ start: t.start, end: t.end, text: t.passage, child: t.id }] : []) ?? []} index={index} reveal={validSource && source?.messageId === message.id ? source : undefined} form={branch?.parent === tree.id && branch.anchor.messageId === message.id ? { at: branch.anchor.at, node: <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching && !(e.target as Element).closest('[role=menu], [aria-expanded=true]')) { e.preventDefault(); e.stopPropagation(); closeBranch(true); } }}><VStack padding={2} gap={2}>
+                  {(() => { const quote = <Text id="branch-passage" type="supporting" color="secondary" className="branch-passage">{branch.anchor.text}</Text>; return branchConcept ? <PassageCorrection key={`${branch.parent}:${branch.anchor.messageId}:${branch.anchor.start}:${branch.anchor.end}`} name={branchConcept} api={api} disabled={branching}>{quote}</PassageCorrection> : quote; })()}
+                  <HStack gap={1} vAlign="center"><TextInput label="Question about this passage" isLabelHidden placeholder="Ask about this passage" aria-describedby="branch-passage" size="sm" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus containerClassName="branch-question" /><IconButton className="branch-send" label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" icon={<ArrowUpIcon />} variant="primary" size="sm" isLoading={branching} isDisabled={branching || !branch.question.trim() || active} /></HStack>
                 </VStack></form> } : undefined} onOpenChild={id => void openConversation(id)} selecting={selectingMessage === message.id} openSelection={() => setSelectingMessage(message.id)} closeSelection={() => setSelectingMessage(undefined)} onBranch={(anchor, origin) => { branchOrigin.current = origin; setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost" className="question-bubble"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text></ChatMessageBubble>}
                 
                 {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} />)}

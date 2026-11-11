@@ -16,8 +16,8 @@ const click = name => b('find', 'role', 'button', 'click', '--name', name, '--ex
 const dir = mkdtempSync(join(tmpdir(), 'tt-map-identity-')), store = new Store(join(dir, 'trees.sqlite'));
 let finish;
 const provider = { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }], async generate(tree, prompt, emit) {
-  emit({ type: 'item', item: 'reply', text: prompt.startsWith('Compact only') ? 'A tournament lock uses two-thread locks at each internal level.' : 'Each thread raises its flag, then gives the other thread priority.' });
-  if (!prompt.startsWith('Compact only')) await new Promise(r => { finish = r; });
+  emit({ type: 'item', item: 'reply', text: tree.instructions?.startsWith('You write the background') ? 'A tournament lock uses two-thread locks at each internal level.' : 'Each thread raises its flag, then gives the other thread priority.' });
+  if (!tree.instructions?.startsWith('You write the background')) await new Promise(r => { finish = r; });
   emit({ type: 'status', status: 'completed' });
 } };
 const app = createApp({ dir, store, providers: { claude: provider, codex: provider }, auth: { status: () => ({ connected: true }) } });

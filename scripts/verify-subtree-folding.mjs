@@ -69,7 +69,7 @@ try {
   await b('press', 'Home'); for (let i = 0; i < 5; i++) await b('press', 'Shift+ArrowRight');
   await b('press', 'Tab'); await b('press', 'Enter');
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'New branch');
-  await ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Create focused chat').focus()`); await b('press', 'Enter');
+  await ev(`document.querySelector('[aria-label="Create focused chat"]').focus()`); await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'New branch'`);
   const added = store.list().find(t => t.title === 'New branch');
   await wait(`!!document.querySelector(${JSON.stringify(node(grand.id))}) && !!document.querySelector(${JSON.stringify(node(added.id))})`);

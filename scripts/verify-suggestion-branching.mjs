@@ -20,8 +20,10 @@ const root = store.create('Suggestion fixture');
 const replyId = store.message(root.id, 'assistant', text, 'completed');
 const ready = (conversation, message) => { store.pendingSuggestions(conversation, message); store.finishSuggestions(conversation, message, [span('mutex'), span('shared state')], null); };
 ready(root.id, replyId);
-const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }], generate: async (_tree, input, emit) => {
-  if (input.includes('"question":"fail me"')) return emit({ type: 'status', status: 'failed' });
+// Compaction never sees the new question, so the failing branch is armed for one compaction call.
+let failCompact = false;
+const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }], generate: async (tree, input, emit) => {
+  if (failCompact && tree.instructions?.startsWith('You write the background')) { failCompact = false; return emit({ type: 'status', status: 'failed' }); }
   emit({ type: 'item', item: 'one', text: input.startsWith('Compact only facts') ? 'Fixture snapshot' : text }); emit({ type: 'status', status: 'completed' });
 } } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
@@ -54,6 +56,7 @@ try {
   await b('press', 'Enter');
   await wait(boxOpen);
   await b('keyboard', 'type', 'fail me');
+  failCompact = true;
   await b('press', 'Enter');
   await wait(`document.querySelector('[role=alert]') && !document.querySelector('.branch-form input').disabled`);
   assert.equal(await ev(`document.querySelector('.branch-form input').value`), 'fail me');

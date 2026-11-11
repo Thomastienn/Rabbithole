@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-nwx.10",
-  "checkedAt": "2026-11-11T05:22:10.029Z",
+  "checkedAt": "2026-11-11T09:42:53.033Z",
   "evidence": "Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.",
   "appearances": {
     "dark": {
@@ -13,7 +13,7 @@
         "popover": "rgb(42, 56, 51)",
         "secondary": "rgb(159, 176, 168)",
         "signedOut": "rgb(159, 176, 168)",
-        "text": "ClaudeFixture modelSecond modelCodex · not connectedContinue with ChatGPTSign in to use Codex with your ChatGPT planCustom endpoint · not connectedCustom endpoint settingsAdd an endpoint or check its URL, API key and connection",
+        "text": "ClaudeFixture modelSecond modelCodex · not connectedContinue with ChatGPTSign in to use Codex with your ChatGPT planCustom endpoint · not connectedCustom endpoint settingsAdd an endpoint or check its URL, API key and connectionEffort for next replyProvider default",
         "uncheckedBorder": "rgba(0, 0, 0, 0)"
       },
       "delete": {
@@ -41,7 +41,7 @@
         "background": "rgb(42, 56, 51)",
         "border": "rgb(232, 210, 122)",
         "clear": true,
-        "label": "Question about this passagelocksCreate focused chatCancel branch",
+        "label": "locksQuestion about this passage",
         "popover": "rgb(42, 56, 51)",
         "radius": "6px",
         "shadow": "none",
@@ -58,7 +58,7 @@
         "popover": "rgb(247, 248, 245)",
         "secondary": "rgb(74, 90, 83)",
         "signedOut": "rgb(74, 90, 83)",
-        "text": "ClaudeFixture modelSecond modelCodex · not connectedContinue with ChatGPTSign in to use Codex with your ChatGPT planCustom endpoint · not connectedCustom endpoint settingsAdd an endpoint or check its URL, API key and connection",
+        "text": "ClaudeFixture modelSecond modelCodex · not connectedContinue with ChatGPTSign in to use Codex with your ChatGPT planCustom endpoint · not connectedCustom endpoint settingsAdd an endpoint or check its URL, API key and connectionEffort for next replyProvider default",
         "uncheckedBorder": "rgba(0, 0, 0, 0)"
       },
       "delete": {
@@ -86,7 +86,7 @@
         "background": "rgb(247, 248, 245)",
         "border": "rgb(122, 101, 16)",
         "clear": true,
-        "label": "Question about this passagelocksCreate focused chatCancel branch",
+        "label": "locksQuestion about this passage",
         "popover": "rgb(247, 248, 245)",
         "radius": "6px",
         "shadow": "none",
