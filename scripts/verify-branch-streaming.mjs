@@ -64,8 +64,7 @@ try {
   await browser('wait', '--text', 'New checkpoint Branch A latest');
   assert.ok(!(await chatText()).includes('Branch B'));
   assert.equal((await chatText()).split('Question Branch A').length - 1, 1);
-  await click('Map menu');
-  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
+  if (await evaluate('getComputedStyle(document.querySelector(".trees")).display') === 'none') { await click('Map menu'); await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact'); }
   await click('Other tree');
   await open(other.title);
   await send(other.title);
@@ -73,8 +72,7 @@ try {
   for (const tree of [a, other, b]) turns.get(tree.id).emit({ type: 'item', item: 'same-item', text: `Interleaved ${tree.title}` });
   await browser('wait', '--text', 'Interleaved Other tree');
   assert.ok(!(await chatText()).includes('Interleaved Branch'));
-  await click('Map menu');
-  await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
+  if (await evaluate('getComputedStyle(document.querySelector(".trees")).display') === 'none') { await click('Map menu'); await browser('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact'); }
   await click(root.title);
   await open(b.title);
   await browser('wait', '--text', 'Interleaved Branch B');

@@ -5,20 +5,20 @@ body { background: var(--color-background-body); color: var(--color-text-primary
 html { view-transition-name: none; }
 ::selection { background: var(--treetutor-selection); color: var(--color-text-primary); }
 .workspace { position: relative; }
-.trees { display: none; flex: 0 0 18rem; min-width: 0; min-height: 0; border-right: thin solid var(--color-border); background: var(--color-background-body); }
+.trees { display: none; flex: 0 0 var(--treetutor-sidebar-width); min-width: 0; min-height: 0; border-right: thin solid var(--color-border); background: var(--color-background-muted); }
 .trees[data-open=true] { display: flex; }
 .tree-navigation-content { flex: 1; height: 100%; min-height: 0; min-width: 0; }
 .tree-navigation-content h2 { font-size: var(--font-size-lg); }
+.tree-navigation-content .new-chat { justify-content: flex-start; color: var(--color-text-accent); }
+.tree-navigation-content .new-chat:disabled { color: var(--color-text-disabled); }
 .tree-list { flex: 1; min-height: 0; overflow: auto; }
 .tree-date-heading { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .saved-tree-row { border-radius: var(--radius-element); }
 .saved-tree-row[data-current=true] { background: var(--color-neutral); }
-.tree-row-actions { flex-shrink: 0; opacity: 0; pointer-events: none; }
-.saved-tree-row:hover .tree-row-actions, .saved-tree-row:focus-within .tree-row-actions { opacity: 1; pointer-events: auto; }
-@media (hover: none) { .tree-row-actions { opacity: 1; pointer-events: auto; } }
+.tree-row-actions { flex-shrink: 0; color: var(--color-text-secondary); }
 .tree-navigation-footer { border-top: thin solid var(--color-border); }
-.tree-navigation-footer > button:first-child { justify-content: flex-start; }
-.tree-drawer { height: 100%; background: var(--color-background-body); }
+.tree-navigation-footer > button { justify-content: flex-start; }
+.tree-drawer { height: 100%; background: var(--color-background-muted); }
 .sidebar-expand { position: absolute; z-index: 6; top: var(--spacing-3); left: var(--spacing-3); background: var(--color-background-surface); border: thin solid var(--color-border); }
 .workspace[data-sidebar-open=false] .tree-workspace[data-expanded=true] .chat-header, .workspace[data-sidebar-open=false] .knowledge-header { padding-inline-start: calc(var(--spacing-3) + var(--spacing-10) + var(--spacing-2)); }
 .conversation { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }

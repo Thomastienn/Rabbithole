@@ -83,22 +83,22 @@ try {
   await key('Escape'); await wait(`document.activeElement === ${stop('mutex')}`);
   steps.push('Reopening loads the saved correction; failed storage write leaves a visible error and retry; Space saves unknown; Escape returns focus to the underline');
 
-  await b('find', 'role', 'tab', 'click', '--name', 'Knowledge', '--exact');
+  await click('Knowledge');
   await b('wait', '--text', 'You marked this as not understood');
-  assert.equal(await ev(`document.querySelector('#knowledge-panel [aria-label="Corrections for Mutual exclusion"] button:nth-of-type(2)').getAttribute('aria-pressed')`), 'true');
-  await b('find', 'role', 'tab', 'click', '--name', 'Learning', '--exact');
+  assert.equal(await ev(`document.querySelector('.knowledge-panel [aria-label="Corrections for Mutual exclusion"] button:nth-of-type(2)').getAttribute('aria-pressed')`), 'true');
+  await click('Return to learning tree');
   await wait(stop('mutex'));
   await ev(`${stop('mutex')}.focus(); true`); await key('Enter'); await reach(know); await key('Enter');
   await wait(`document.querySelector(${JSON.stringify(know)})?.getAttribute('aria-pressed') === 'true'`);
   await key('Escape');
-  await b('find', 'role', 'tab', 'click', '--name', 'Knowledge', '--exact');
+  await click('Knowledge');
   await b('wait', '--text', 'You marked this as known');
   steps.push('Both passage corrections appear in Knowledge with the same pressed state and familiarity');
 
   // Exercise the next suggestion request through the HTTP seam, including extra inferred evidence.
   for (const [kind, value] of [['known', 1], ['unknown', 0]]) {
     if (kind === 'unknown') {
-      await b('find', 'role', 'tab', 'click', '--name', 'Learning', '--exact');
+      await click('Return to learning tree');
       await ev(`${stop('mutex')}.focus(); true`); await key('Enter'); await reach(unknown); await key('Space');
       await wait(`document.querySelector(${JSON.stringify(unknown)})?.getAttribute('aria-pressed') === 'true'`); await key('Escape');
     }

@@ -33,7 +33,7 @@ const chatShown = `getComputedStyle(document.querySelector('.focused-chat')).dis
 const view = () => ev('document.querySelector(".react-flow__viewport").style.transform');
 // Opening chat animates the map; sample only once the transform holds still for 300ms.
 async function settledView() { for (;;) { const a = await view(); await new Promise(r => setTimeout(r, 300)); if (a === await view()) return a; } }
-async function openTree(name) { await click('Map menu'); await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact'); await click(name); }
+async function openTree(name) { if (await ev('getComputedStyle(document.querySelector(".trees")).display') === 'none') { await click('Map menu'); await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact'); } await click(name); }
 try {
   await b('set', 'viewport', '1440', '900');
   await b('open', `http://127.0.0.1:${app.server.address().port}`);

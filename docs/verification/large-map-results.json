@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-11T02:02:09.934Z",
+  "date": "2026-11-11T02:16:16.632Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,51 +12,51 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 895.0895400000009,
-  "previewQueryMs": 723.7236819999998,
+  "seedMs": 1267.6159770000013,
+  "previewQueryMs": 987.3740839999991,
   "previewBytes": 4876201,
-  "openMs": 3154.066103000001,
+  "openMs": 3938.0346500000014,
   "dom": {
-    "elements": 2454,
+    "elements": 2463,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1969.800000000745,
+    "elapsedMs": 1971.2999999988824,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
     "maxMs": 16.800000000000182,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.799999999999272,
+    "p95Ms": 16.700000000000728,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 362.0783620000002,
-  "unfoldMs": 192.8449440000004,
+  "foldMs": 401.9447790000013,
+  "unfoldMs": 246.4441790000019,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 3677.885559999999,
-  "selectMs": 4508.4257499999985,
-  "selectUiMs": 878.1999999992549,
+  "selectClickMs": 4653.5073840000005,
+  "selectMs": 5830.2067940000015,
+  "selectUiMs": 1204.5,
   "selectedBounds": {
     "bottom": 631.8375244140625,
     "canvasHeight": 900,
-    "canvasWidth": 592,
-    "left": 521.7999877929688,
-    "right": 573,
+    "canvasWidth": 648,
+    "left": 577.7999877929688,
+    "right": 629,
     "toolbarTop": 850,
     "top": 75
   },
-  "streamingMs": 535.960243999998,
+  "streamingMs": 545.4185109999962,
   "chunkRenders": {
-    "b8ce515e-eb97-4a77-8a05-f61ac4212ca4": 14
+    "e185f4fe-2d83-4b0c-94eb-021a7e095570": 14
   },
   "chunkRenderReasons": {
-    "b8ce515e-eb97-4a77-8a05-f61ac4212ca4": [
+    "e185f4fe-2d83-4b0c-94eb-021a7e095570": [
       "preview"
     ]
   }

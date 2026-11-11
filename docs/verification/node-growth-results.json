@@ -1,165 +1,165 @@
 {
-  "date": "2026-11-11T02:03:00.301Z",
+  "date": "2026-11-11T02:16:59.836Z",
   "evidence": "Seeded data, synthetic provider, real browser and HTTP/SSE; controlled one-minute timer; SQLite/HTTP app restored in a fresh Node process. No native provider inference.",
   "stages": {
     "initial": {
-      "0249d52d-419c-4c7b-a5cb-65c16d46e49e": {
-        "height": 60,
-        "width": 256,
-        "x": 270,
-        "y": 100
-      },
-      "0b94a36a-efad-4b32-9c60-452b1c70b245": {
-        "height": 60,
-        "width": 256,
-        "x": 360,
-        "y": 600
-      },
-      "468b5c87-3111-4944-8cb5-3b43aeb2587d": {
+      "300039a3-2479-4973-9c76-ab34d581d785": {
         "height": 132,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "9de5fd41-b9c3-4f1c-9211-a0a81a5b3ad7": {
-        "height": 88,
+      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
+        "height": 60,
         "width": 256,
-        "x": 0,
-        "y": 220
+        "x": 360,
+        "y": 600
       },
-      "d3abad45-a8eb-446b-8e51-3d754fe8179e": {
+      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
         "height": 60,
         "width": 256,
         "x": 720,
         "y": 220
-      }
-    },
-    "grown": {
-      "0249d52d-419c-4c7b-a5cb-65c16d46e49e": {
+      },
+      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "0b94a36a-efad-4b32-9c60-452b1c70b245": {
-        "height": 60,
+      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
+        "height": 88,
         "width": 256,
-        "x": 360,
-        "y": 676
-      },
-      "468b5c87-3111-4944-8cb5-3b43aeb2587d": {
+        "x": 0,
+        "y": 220
+      }
+    },
+    "grown": {
+      "300039a3-2479-4973-9c76-ab34d581d785": {
         "height": 248,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "9de5fd41-b9c3-4f1c-9211-a0a81a5b3ad7": {
-        "height": 88,
-        "width": 256,
-        "x": 0,
-        "y": 296
-      },
-      "d3abad45-a8eb-446b-8e51-3d754fe8179e": {
-        "height": 60,
-        "width": 256,
-        "x": 720,
-        "y": 220
-      }
-    },
-    "dragHeld": {
-      "0249d52d-419c-4c7b-a5cb-65c16d46e49e": {
-        "height": 60,
-        "width": 256,
-        "x": 270,
-        "y": 100
-      },
-      "0b94a36a-efad-4b32-9c60-452b1c70b245": {
+      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
         "height": 60,
         "width": 256,
         "x": 360,
         "y": 676
       },
-      "468b5c87-3111-4944-8cb5-3b43aeb2587d": {
-        "height": 288,
-        "width": 256,
-        "x": 0,
-        "y": 0
-      },
-      "9de5fd41-b9c3-4f1c-9211-a0a81a5b3ad7": {
-        "height": 88,
-        "width": 256,
-        "x": 0,
-        "y": 256
-      },
-      "d3abad45-a8eb-446b-8e51-3d754fe8179e": {
+      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
         "height": 60,
         "width": 256,
         "x": 720,
         "y": 220
-      }
-    },
-    "dragReleased": {
-      "0249d52d-419c-4c7b-a5cb-65c16d46e49e": {
+      },
+      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "0b94a36a-efad-4b32-9c60-452b1c70b245": {
+      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
+        "height": 88,
+        "width": 256,
+        "x": 0,
+        "y": 296
+      }
+    },
+    "dragHeld": {
+      "300039a3-2479-4973-9c76-ab34d581d785": {
+        "height": 288,
+        "width": 256,
+        "x": 0,
+        "y": 0
+      },
+      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
+        "height": 60,
+        "width": 256,
+        "x": 360,
+        "y": 676
+      },
+      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
+        "height": 60,
+        "width": 256,
+        "x": 720,
+        "y": 220
+      },
+      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
+        "height": 60,
+        "width": 256,
+        "x": 270,
+        "y": 100
+      },
+      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
+        "height": 88,
+        "width": 256,
+        "x": 0,
+        "y": 256
+      }
+    },
+    "dragReleased": {
+      "300039a3-2479-4973-9c76-ab34d581d785": {
+        "height": 288,
+        "width": 256,
+        "x": 0,
+        "y": 0
+      },
+      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
         "height": 60,
         "width": 256,
         "x": 360,
         "y": 756
       },
-      "468b5c87-3111-4944-8cb5-3b43aeb2587d": {
-        "height": 288,
-        "width": 256,
-        "x": 0,
-        "y": 0
-      },
-      "9de5fd41-b9c3-4f1c-9211-a0a81a5b3ad7": {
-        "height": 88,
-        "width": 256,
-        "x": 0,
-        "y": 336
-      },
-      "d3abad45-a8eb-446b-8e51-3d754fe8179e": {
+      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
         "height": 60,
         "width": 256,
         "x": 720,
         "y": 220
-      }
-    },
-    "unfolded": {
-      "0249d52d-419c-4c7b-a5cb-65c16d46e49e": {
+      },
+      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "0b94a36a-efad-4b32-9c60-452b1c70b245": {
-        "height": 60,
+      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
+        "height": 88,
         "width": 256,
-        "x": 360,
-        "y": 832
-      },
-      "468b5c87-3111-4944-8cb5-3b43aeb2587d": {
+        "x": 0,
+        "y": 336
+      }
+    },
+    "unfolded": {
+      "300039a3-2479-4973-9c76-ab34d581d785": {
         "height": 364,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "9de5fd41-b9c3-4f1c-9211-a0a81a5b3ad7": {
-        "height": 88,
+      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
+        "height": 60,
         "width": 256,
-        "x": 0,
-        "y": 412
+        "x": 360,
+        "y": 832
       },
-      "d3abad45-a8eb-446b-8e51-3d754fe8179e": {
+      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
         "height": 60,
         "width": 256,
         "x": 720,
         "y": 220
+      },
+      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
+        "height": 60,
+        "width": 256,
+        "x": 270,
+        "y": 100
+      },
+      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
+        "height": 88,
+        "width": 256,
+        "x": 0,
+        "y": 412
       }
     }
   },

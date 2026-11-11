@@ -159,12 +159,11 @@ try {
   step('Custom endpoint shortcut opens Connections with Base URL focused; backdrop click closes; focus returns to model picker');
 
   // 6. Sidebar gear opens the window and focus returns to it.
-  await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
-  await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
+  if (await ev('getComputedStyle(document.querySelector(".trees")).display') === 'none') { await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact'); await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact'); }
   await b('find', 'role', 'button', 'click', '--name', 'Settings', '--exact');
   await wait(dialog);
   await b('press', 'Escape'); await closed();
-  await wait(`${active}?.getAttribute('aria-label') === 'Settings'`);
+  await wait(`${active}?.textContent.trim() === 'Settings'`);
   step('Sidebar settings gear opens the window; Esc returns focus to the gear');
 
   // 7. Mobile: full-screen, tabs as a list, tap into a tab and back.

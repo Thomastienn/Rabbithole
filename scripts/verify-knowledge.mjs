@@ -21,7 +21,9 @@ const second = store.message(other.id, 'assistant', 'Mutual exclusion protects s
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }] } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-const tab = name => `[role=tab][aria-controls=${name}-panel]`;
+const knowledge = '.tree-navigation-footer button[aria-current=page]';
+const openKnowledge = async () => { await reach('.tree-navigation-footer button:first-child'); await key('Enter'); await wait(`document.activeElement?.id === 'return-to-learning'`); };
+const returnToLearning = async () => { await reach('#return-to-learning'); await key('Enter'); await wait(`!document.querySelector('[aria-label="Learning workspace"]').hidden`); };
 async function reach(selector) {
   for (let i = 0; i < 60; i++) {
     if (await ev(`document.activeElement?.matches(${JSON.stringify(selector)})`)) return;
@@ -39,13 +41,12 @@ try {
   await b('set', 'viewport', '1440', '1000');
   await b('open', origin);
   await b('set', 'media', 'light', 'reduced-motion');
-  await b('wait', tab('learning'));
-  await reach(tab('learning'));
-  await key('ArrowRight'); await key('Enter');
-  await wait(`document.querySelector('${tab('knowledge')}')?.getAttribute('aria-selected') === 'true'`);
+  await b('wait', '.tree-navigation-footer');
+  await openKnowledge();
+  await wait(`document.querySelector('${knowledge}')?.textContent === 'Knowledge'`);
   await b('wait', '--text', 'No concepts yet');
-  assert.equal(await ev(`getComputedStyle(document.getElementById('learning-panel')).display`), 'none');
-  steps.push('Keyboard reaches Knowledge with ArrowRight/Enter; empty state explains how concepts appear; learning workspace is hidden');
+  assert.equal(await ev(`getComputedStyle(document.querySelector('[aria-label="Learning workspace"]')).display`), 'none');
+  steps.push('Keyboard reaches the rail Knowledge action with Tab/Enter; empty state explains how concepts appear; learning workspace is hidden');
 
   store.addGraph({ concepts: [{ name: 'Mutex', topics: ['Concurrency'] }, { name: 'Mutual exclusion', topics: ['Concurrency', 'Operating systems'] }], links: [{ from: 'Mutex', to: 'Mutual exclusion', kind: 'related' }] }, message);
   store.addGraph({ concepts: [{ name: 'Mutex', topics: ['Concurrency'] }], links: [] }, second);
@@ -53,7 +54,7 @@ try {
   await wait(`document.activeElement?.textContent === 'Refresh Knowledge'`);
   await key('Enter');
   await wait(`document.querySelectorAll('[data-concept]').length === 3`);
-  assert.equal(await ev(`document.querySelector('#knowledge-panel').innerText.includes('met in 2 replies')`), true);
+  assert.equal(await ev(`document.querySelector('.knowledge-panel').innerText.includes('met in 2 replies')`), true);
   await reach(know);
   assert.equal(await ev(`document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), true);
   await key('Enter');
@@ -94,33 +95,30 @@ try {
   steps.push('Merge dialog opens/selects/submits entirely by keyboard; Escape restores trigger focus; a failed write retains the target for retry; successful merge focuses the kept concept');
 
   // Return to the learning workspace without losing the selected conversation, draft or map transform.
-  await reach(tab('knowledge'));
-  await key('ArrowLeft'); await key('Enter');
-  await wait(`document.querySelector('${tab('learning')}')?.getAttribute('aria-selected') === 'true'`);
+  await returnToLearning();
   await b('find', 'role', 'button', 'click', '--name', 'Open Other learning tree', '--exact');
   await b('wait', '[aria-label="Your question"]');
   await b('find', 'label', 'Your question', 'fill', 'Keep this draft');
   const transform = await ev(`document.querySelector('.react-flow__viewport').getAttribute('style')`);
-  await reach(tab('learning'));
-  await key('End'); await key('Enter');
-  await wait(`document.getElementById('learning-panel').hidden`);
-  await key('Home'); await key('Enter');
-  await wait(`!document.getElementById('learning-panel').hidden`);
+  await openKnowledge();
+  await wait(`document.querySelector('[aria-label="Learning workspace"]').hidden`);
+  await returnToLearning();
   assert.equal(await ev(`document.querySelector('.focused-chat [role=textbox]').textContent`), 'Keep this draft');
   assert.equal(await ev(`document.querySelector('.react-flow__viewport').getAttribute('style')`), transform);
-  steps.push('Home/End + Enter switches tabs; returning preserves the open conversation, composer draft and map transform');
+  steps.push('Keyboard rail navigation and Return to learning tree preserve the open conversation, composer draft and map transform');
 
-  await key('End'); await key('Enter');
+  await openKnowledge();
   await b('wait', '[data-concept="Mutual exclusion"]');
   await b('set', 'viewport', '1440', '1000');
   await b('screenshot', join(shots, 'knowledge-desktop.png'));
   await b('set', 'viewport', '390', '844');
   await b('screenshot', join(shots, 'knowledge-mobile.png'));
-  const widths = await ev(`({ viewport: innerWidth, document: document.documentElement.scrollWidth, panel: document.getElementById('knowledge-panel').scrollWidth, outside: [...document.querySelectorAll('body *')].map(e => ({tag: e.tagName, cls: e.className, left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right})).filter(r => r.left < -1 || r.right > innerWidth + 1).slice(0, 12) })`);
+  const widths = await ev(`({ viewport: innerWidth, document: document.documentElement.scrollWidth, panel: document.querySelector('.knowledge-panel').scrollWidth, outside: [...document.querySelectorAll('body *')].map(e => ({tag: e.tagName, cls: e.className, left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right})).filter(r => r.left < -1 || r.right > innerWidth + 1).slice(0, 12) })`);
   assert.ok(widths.document <= widths.viewport && widths.panel <= widths.viewport, 'no horizontal overflow at phone width: ' + JSON.stringify(widths));
   await b('reload');
-  await b('wait', tab('learning'));
-  await reach(tab('learning')); await key('ArrowRight'); await key('Enter');
+  await b('wait', '#expand-learning-trees');
+  await reach('#expand-learning-trees'); await key('Enter');
+  await openKnowledge();
   await b('wait', '--text', 'You marked this as not understood');
   steps.push('Desktop/phone layouts fit; merged evidence and correction survive page reload');
   console.log(JSON.stringify({ pass: true, steps, screenshots: ['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)) }, null, 2));

@@ -263,12 +263,14 @@ test('delete stops an active video render and removes its partial files without 
     for (const t of [env.child, env.sibling]) await (await env.post(t.id, 'messages', { text: 'Make a video' })).text();
     await until(() => renders.length === 2);
     const deleted = env.store.tree(env.child.id).artifacts.at(-1), kept = env.store.tree(env.sibling.id).artifacts.at(-1);
+    const deletedRender = renders.find(r => r.workspace === join(env.dir, 'video-work', deleted.id));
+    const keptRender = renders.find(r => r.workspace === join(env.dir, 'video-work', kept.id));
     assert.equal((await env.post(env.root.id, 'delete', { conversation: env.child.id })).status, 200);
-    assert.equal(renders[0].signal.aborted, true);
+    assert.equal(deletedRender.signal.aborted, true);
     assert.equal(existsSync(join(env.dir, 'video-work', deleted.id)), false);
     assert.equal(existsSync(mediaPath(env.dir, deleted.id)), false);
-    assert.equal(renders[1].signal.aborted, false);
-    renders[1].resolve({ durationInFrames: 30, fps: 30 });
+    assert.equal(keptRender.signal.aborted, false);
+    keptRender.resolve({ durationInFrames: 30, fps: 30 });
     await until(() => env.store.artifact(env.sibling.id, kept.id).status === 'ready');
     assert.ok(existsSync(mediaPath(env.dir, kept.id)));
   } finally { env.close(); }

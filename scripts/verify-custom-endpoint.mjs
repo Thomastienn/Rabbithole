@@ -86,21 +86,22 @@ if (process.argv[2] === '--serve') {
     assert.equal(await evaluate(`document.querySelector('${key}').value`), '');
     assert.deepEqual(await get('/api/settings/endpoint'), { configured: true, baseUrl: fake.baseUrl });
   }
-  async function closeSettings() { await tabTo('[aria-label="Close learning trees"]'); await browser('press', 'Enter'); await wait('document.querySelector(".trees").dataset.open === "false"'); }
+  async function closeSettings() { await tabTo('[aria-label="Close settings"]'); await browser('press', 'Enter'); await wait('!document.querySelector("dialog[open]")'); }
+  async function connectionSettings() { await mapMenu(); await menuItem('Settings'); await wait('document.activeElement?.id === "settings-heading"'); await tabTo('#settings-connections'); await browser('press', 'Enter'); await wait(`!!document.querySelector('${field}')`); }
   async function openConversation(title) { await tabTo(`[aria-label="Open ${title}"]`); await browser('press', 'Enter'); await wait(`document.querySelector('.chat-title h2')?.textContent === ${JSON.stringify(title)}`); }
   const labels = { claude: 'Sonnet', codex: 'Codex model', openai: 'second-model' };
   const models = { claude: 'sonnet', codex: 'codex-model', openai: 'second-model' };
   async function switchCycle(id, phase) {
     for (const provider of ['openai', 'codex', 'claude', 'codex', 'openai', 'claude']) {
       const before = await saved(id), from = before.provider;
-      const visible = await evaluate("[...document.querySelectorAll('.focused-chat article')].map(e=>e.textContent)");
+      const visible = await evaluate("[...document.querySelectorAll('.focused-chat article')].map(e=>e.querySelector('.reply-md, .question-bubble').textContent)");
       assert.equal(visible.length, before.messages.length);
       await modelMenu(); await menuItem(labels[provider]);
       await wait(`document.querySelector('.chat-title')?.textContent.includes(${JSON.stringify(labels[provider] + ' · saved automatically')})`);
       const after = await saved(id);
       assert.equal(after.provider, provider); assert.equal(after.model, models[provider]);
       assert.deepEqual(after.messages, before.messages); assert.deepEqual(after.branch, before.branch);
-      assert.deepEqual(await evaluate("[...document.querySelectorAll('.focused-chat article')].map(e=>e.textContent)"), visible);
+      assert.deepEqual(await evaluate("[...document.querySelectorAll('.focused-chat article')].map(e=>e.querySelector('.reply-md, .question-bubble').textContent)"), visible);
       await tabTo('[role=textbox][aria-label="Your question"]');
       await browser('keyboard', 'inserttext', `${phase}: ${from} to ${provider}`); await browser('press', 'Enter');
       await wait(`document.querySelectorAll('.focused-chat article').length === ${before.messages.length + 2} && ![...document.querySelectorAll('.focused-chat [role=status]')].some(e=>e.textContent.includes('Responding')) && document.querySelector('[aria-label="Model for next reply"]')?.getAttribute('aria-disabled') !== 'true'`);
@@ -125,8 +126,7 @@ if (process.argv[2] === '--serve') {
     pass('mouse Save, Test and Remove use the same real settings API');
     await keyboardSave();
     await closeSettings();
-    await mapMenu(); await menuItem('Settings');
-    await wait('document.activeElement?.id === "settings-heading"');
+    await connectionSettings();
     await wait(`!!document.querySelector('${field}') && document.querySelector('${field}').value !== ''`);
     assert.equal(await evaluate(`document.querySelector('${key}').value`), '');
     assert.equal(await evaluate(`document.querySelector('${field}').value`), fake.baseUrl);
@@ -160,7 +160,7 @@ if (process.argv[2] === '--serve') {
     await click('Test connection'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Connection works:")');
     await closeSettings(); await modelMenu(); await menuItem('second-model');
     await wait('document.querySelector(".chat-title").textContent.includes("second-model · saved automatically")');
-    await mapMenu(); await menuItem('Settings');
+    await connectionSettings();
     await wait(`document.querySelector('${field}').value !== ''`);
     for (const [width, height] of [[1280, 900], [390, 844]]) {
       await browser('set', 'viewport', String(width), String(height));
@@ -170,7 +170,7 @@ if (process.argv[2] === '--serve') {
       assert.ok(await evaluate('(()=>{const r=[...document.querySelectorAll("[role=menu]")].find(e=>e.getClientRects().length)?.getBoundingClientRect();return r&&r.width>0&&r.x>=0&&r.right<=innerWidth&&r.bottom<=innerHeight})()'), 'Menu outside viewport');
       await browser('press', 'Escape');
       assert.equal(await evaluate('document.activeElement?.getAttribute("aria-label")'), 'Model for next reply');
-      await mapMenu(); await menuItem('Settings'); await wait(`!!document.querySelector('${field}')`);
+      await connectionSettings();
     }
     pass('desktop/mobile form scroll and menu bounds; Escape returns focus to the model button');
     await tabTo('.endpoint-settings button', 'Remove'); await browser('press', 'Enter'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Endpoint removed.")');
@@ -181,7 +181,7 @@ if (process.argv[2] === '--serve') {
     await wait('document.querySelector(".chat-title").textContent.includes("Sonnet · saved automatically")');
     pass('removed endpoint stays explicit in saved chat; actionable menu repairs it or switches to Claude');
     await mapMenu(); await menuItem('Help');
-    assert.ok((await evaluate('document.querySelector(".trees").textContent')).includes('New chats default to Claude.'));
+    assert.ok((await evaluate('document.querySelector("dialog[open]").textContent')).includes('New chats default to Claude.'));
     assert.ok(!await evaluate('document.body.textContent.includes("ui-fixture-secret") || document.body.innerHTML.includes("unsaved-fixture-key")'));
     const result = { result: 'PASS', mode: 'fixture', date: new Date().toISOString(), liveEndpointTested: false, serverPids: [firstPid, secondPid], checks, screenshots: dir };
     writeFileSync('docs/verification/custom-endpoint-settings-results.json', JSON.stringify(result, null, 2) + '\n');

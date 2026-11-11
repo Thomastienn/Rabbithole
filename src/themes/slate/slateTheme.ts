@@ -24,6 +24,7 @@ export const slateTheme = defineTheme({
     // Chalk-yellow text selection; text keeps its colour and passes AA on it in both appearances.
     '--treetutor-selection': ['#e8d27a', '#e8d27a4d'],
     '--treetutor-map-node-width': '16rem',
+    '--treetutor-sidebar-width': '14.5rem',
     '--treetutor-branch-color': ['#1c2724bf', '#ebe7dcbf'],
     '--treetutor-branch-width': '2px',
     '--treetutor-branch-focus-width': '2.5px',

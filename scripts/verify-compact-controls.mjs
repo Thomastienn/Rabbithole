@@ -14,6 +14,7 @@ const root=store.create('Fixture tree'); const msg=store.message(root.id,'assist
 const app=createApp({store,auth:{status:()=>({connected:false})},provider:{}}); await new Promise(r=>app.server.listen(0,'127.0.0.1',r));
 try {
  await b('open',`http://127.0.0.1:${app.server.address().port}`); await b('wait','--fn','document.querySelectorAll(".react-flow__node").length === 2');
+ await b('find','role','button','click','--name','Collapse learning trees','--exact');
  assert.equal(await ev('getComputedStyle(document.querySelector(".trees")).display'), 'none');
  await b('wait','--fn',`document.querySelector('[data-zoom]') !== null`);
  let before=await ev(`document.querySelector('[data-zoom]').textContent`);

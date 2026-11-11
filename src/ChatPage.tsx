@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
@@ -91,10 +91,24 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
   const highlighted = useRef(false);
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
   const wrapper = useRef<HTMLElement>(null);
+  const floating = useRef<HTMLDivElement>(null);
   const passage = useRef<HTMLElement>(null);
   const action = useRef<HTMLButtonElement>(null);
   const completed = message.status === 'completed';
   const underlines = useMemo(() => completed ? underlineRanges(message.text, suggestions) : [], [completed, message.text, suggestions]);
+  useLayoutEffect(() => {
+    const box = floating.current;
+    if (!box) return;
+    const position = () => {
+      box.style.transform = '';
+      const top = wrapper.current!.closest('.focused-chat')!.querySelector('.chat-header')!.getBoundingClientRect().bottom;
+      if (box.getBoundingClientRect().top < top) box.style.transform = 'none';
+    };
+    position();
+    const observer = new ResizeObserver(position); observer.observe(box);
+    window.addEventListener('resize', position); document.addEventListener('scroll', position, true);
+    return () => { observer.disconnect(); window.removeEventListener('resize', position); document.removeEventListener('scroll', position, true); };
+  }, [formOpen, form?.at?.y]);
   useEffect(() => {
     const highlight = reveal && passage.current?.querySelector<HTMLElement>('mark, [data-reveal]');
     highlight?.scrollIntoView({ block: 'center' });
@@ -146,7 +160,7 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
     {completed && !selecting && <Button className="focus-reveal" label={`Select passage in tutor reply ${index}`} variant="ghost" size="sm" onClick={openSelection} />}
     {selecting && <><TextArea label="Select tutor passage" description="Hold Shift and use arrow keys to select. Tab to Ask about selection." value={message.text} isReadOnly rows={4} hasAutoFocus onSelect={e => { const input = e.target as HTMLTextAreaElement; capture(input.selectionStart, input.selectionEnd); }} /></>}
     {ask && (anchor.at ? <HStack className="selection-action" style={{ left: anchor.at.x, top: anchor.at.y }}>{ask}</HStack> : ask)}
-    {form && (form.at ? <VStack className="passage-box" style={{ top: form.at.y }}>{form.node}</VStack> : form.node)}
+    {form && (form.at ? <VStack ref={floating} className="passage-box" style={{ top: form.at.y }}>{form.node}</VStack> : form.node)}
     {selecting && <Button label="Close passage selection" variant="ghost" size="sm" onClick={() => { setAnchor(undefined); closeSelection(); passage.current?.focus(); }} />}
   </VStack>;
 }
@@ -478,7 +492,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   function finishRename() {
     const target = renaming;
     setRenaming(undefined);
-    requestAnimationFrame(() => document.getElementById(target?.place === 'sidebar' ? `rename-chat-${target.id}` : 'rename-conversation')?.focus());
+    requestAnimationFrame(() => document.getElementById(target?.place === 'sidebar' ? `chat-actions-${target.id}` : 'rename-conversation')?.focus());
   }
   async function rename(id: string, title: string) {
     const saved = await api(`/api/trees/${id}/rename`, { title });
@@ -533,7 +547,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
         if (next) { focusComposer.current = true; openTree(next.id, trees); }
         else { ++request.current; selected.current = undefined; setTree(undefined); setRoot(undefined); setOverview(true); setExpanded(false); setLoading(false); }
         if (!next || (next.layout?.panel !== 'beside' && next.layout?.panel !== 'expanded')) requestAnimationFrame(() => document.querySelector<HTMLElement>(next ? '.map-toolbar button' : '.empty-map button')?.focus());
-      } else requestAnimationFrame(() => deleteOrigin.current?.isConnected ? deleteOrigin.current.focus() : document.getElementById(`rename-chat-${root}`)?.focus());
+      } else requestAnimationFrame(() => deleteOrigin.current?.isConnected ? deleteOrigin.current.focus() : document.getElementById(`chat-actions-${root}`)?.focus());
       await refresh();
     } catch (e) { setDeleteError((e as Error).message); }
     finally { setDeleting(false); }
@@ -650,8 +664,9 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   ]} />;
   const sidebar = <VStack gap={0} className="tree-navigation-content">
     <VStack padding={3} gap={3}>
-      <HStack vAlign="center" gap={2} hAlign="between"><Heading level={2}>Learning trees</Heading><IconButton id="collapse-learning-trees" label="Collapse learning trees" tooltip="Collapse learning trees" icon={<ChevronDoubleLeftIcon />} variant="ghost" size="sm" aria-expanded={navigationOpen} aria-controls="tree-navigation" onClick={collapseNavigation} /></HStack>
-      <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
+      <HStack vAlign="center" gap={2} hAlign="between"><Text type="large" weight="semibold">Tree<Text type="inherit" color="accent">Tutor</Text></Text><IconButton id="collapse-learning-trees" label="Collapse learning trees" tooltip="Collapse learning trees" icon={<ChevronDoubleLeftIcon />} variant="ghost" size="sm" aria-expanded={navigationOpen} aria-controls="tree-navigation" onClick={collapseNavigation} /></HStack>
+      <Heading level={2} className="sr-only">Learning trees</Heading>
+      <Button className="new-chat" label={busy ? 'Opening…' : 'New chat'} variant="ghost" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
     </VStack>
     <nav aria-label="Saved learning trees" className="tree-list"><VStack padding={3} gap={5}>
       {treeGroups(state?.trees ?? [], today).map(group => <section key={group.label} aria-label={group.label}><VStack gap={2}>
@@ -659,10 +674,10 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
         <VStack gap={1}>{group.trees.map(({ tree: t, branches }) => <VStack key={t.id} gap={1}>
           {renaming?.id === t.id && renaming.place === 'sidebar' ? <TitleEditor title={t.title} save={title => rename(t.id, title)} cancel={finishRename} /> : <HStack gap={0} vAlign="center" className="saved-tree-row" data-current={tab === 'learning' && root === t.id}>
             <Button className="saved-chat-title" label={t.title} variant="ghost" aria-current={tab === 'learning' && root === t.id ? 'page' : undefined} aria-describedby={`branch-count-${t.id}`} onClick={() => openTree(t.id)}><VStack gap={0}><Text maxLines={2}>{t.title}</Text><Text id={`branch-count-${t.id}`} type="supporting" color="secondary">{branches} {branches === 1 ? 'branch' : 'branches'}</Text></VStack></Button>
-            <HStack gap={0} className="tree-row-actions">
-              <IconButton id={`rename-chat-${t.id}`} label={`Rename ${t.title}`} tooltip="Rename chat" icon={<PencilSquareIcon />} variant="ghost" size="sm" onClick={() => setRenaming({ id: t.id, place: 'sidebar' })} />
-              <IconButton label={`Delete ${t.title}`} tooltip="Delete chat" icon={<TrashIcon />} variant="ghost" size="sm" onClick={e => askDelete(t.id, e.currentTarget)} />
-            </HStack>
+            <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} id={`chat-actions-${t.id}`} className="tree-row-actions" label={`Actions for ${t.title}`} tooltip={`Actions for ${t.title}`} icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />}>
+              <DropdownMenuItem label="Rename chat" icon={<PencilSquareIcon />} onClick={() => setRenaming({ id: t.id, place: 'sidebar' })} />
+              <DropdownMenuItem label="Delete chat…" icon={<TrashIcon />} onClick={() => askDelete(t.id, document.getElementById(`chat-actions-${t.id}`))} />
+            </DropdownMenu>
           </HStack>}
         </VStack>)}</VStack>
       </VStack></section>)}
@@ -670,13 +685,17 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     </VStack></nav>
     <VStack padding={3} gap={2} className="tree-navigation-footer">
       <Button label="Knowledge" icon={<ShareIcon />} variant={tab === 'knowledge' ? 'secondary' : 'ghost'} aria-current={tab === 'knowledge' ? 'page' : undefined} onClick={() => { setTab('knowledge'); setMobileNav(false); focusAfterNavigation(() => document.getElementById('return-to-learning')?.focus()); }} />
-      <IconButton label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
+      <Button label="Settings" icon={<Cog6ToothIcon />} variant="ghost" onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
     </VStack>
   </VStack>;
-  return <VStack gap={0} style={{ height: '100dvh', '--question-bubble-tint': bubbleTints.find(t => t.id === bubbleTint)!.color } as CSSProperties}>
+  return <VStack gap={0} style={{ height: '100dvh', '--question-bubble-tint': bubbleTints.find(t => t.id === bubbleTint)!.color } as CSSProperties} onKeyDown={e => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    if ((e.target as Element).closest('[role=alertdialog]')) { e.preventDefault(); e.stopPropagation(); cancelDelete(); }
+    else if (mobileNav && (e.target as Element).closest('dialog[aria-labelledby=settings-heading]')) { e.preventDefault(); e.stopPropagation(); closeSettings(); }
+  }}>
     <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace" data-sidebar-open={navigationOpen}>
       {!mobile && <aside id="tree-navigation" aria-label="Learning trees" className="trees" data-open={sidebarOpen}>{sidebar}</aside>}
-      {mobile && <Drawer isOpen={mobileNav} onOpenChange={setMobileNav} label="Learning trees" side="start" width="18rem" padding={0}><section id="tree-navigation" className="tree-drawer">{sidebar}</section></Drawer>}
+      {mobile && <Drawer isOpen={mobileNav} onOpenChange={setMobileNav} label="Learning trees" side="start" width="var(--treetutor-sidebar-width)" padding={0}><section id="tree-navigation" className="tree-drawer">{sidebar}</section></Drawer>}
       {(!navigationOpen || mobile) && <IconButton id="expand-learning-trees" className="sidebar-expand" label="Expand learning trees" tooltip="Expand learning trees" icon={<ChevronDoubleRightIcon />} variant="secondary" aria-expanded={navigationOpen} aria-controls="tree-navigation" onClick={() => { changeNavigation(true); if (!mobile) requestAnimationFrame(() => document.getElementById('collapse-learning-trees')?.focus()); }} />}
       <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
         <Heading level={1} className="sr-only">TreeTutor</Heading>

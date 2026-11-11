@@ -114,7 +114,9 @@ try {
   store.db.prepare('UPDATE suggestions SET nameTokens=2501').run();
   await b('reload'); await b('wait', '[aria-label="Map menu"]'); await settings();
   await b('wait', '--text', 'Warning: concept matching is getting expensive');
+  await click('Usage');
   await b('wait', '--text', 'Today\'s usage: 6 input');
+  await click('Models');
   await reach('[role=switch]'); await key('Space');
   await wait(`document.querySelector('[role=switch]')?.checked === false && !document.querySelector('[role=switch]').disabled`);
   assert.equal(store.suggestionSettings().enabled, false);

@@ -67,6 +67,8 @@ async function openApp(width, height, scheme) {
   await b('set', 'viewport', String(width), String(height));
   await b('set', 'media', scheme, 'reduced-motion');
   await b('open', origin);
+  await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(scheme)}); true`);
+  await b('reload');
   await wait(`!!document.querySelector('[aria-label="Open How do fungi trade?"]')`);
   await ev(probes);
 }
@@ -81,6 +83,7 @@ try {
     const menu = await ev('__probe.contrast()'); await shot(`${scheme}-model-menu`); await b('press', 'Escape');
     await b('find', 'role', 'button', 'click', '--name', 'Return to tree', '--exact');
     await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact'); await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
+    await b('find', 'role', 'button', 'click', '--name', 'Connections', '--exact');
     await wait(`!!document.querySelector('.endpoint-settings')`);
     const sidebar = await ev('__probe.contrast()'); await shot(`${scheme}-sidebar`);
     results.checks[`contrast-${scheme}`] = { map, chat, menu, sidebar };
