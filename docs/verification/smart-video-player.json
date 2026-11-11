@@ -1,0 +1,232 @@
+{
+  "checkedAt": "2026-11-11T11:23:49.865Z",
+  "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
+  "checks": [
+    {
+      "name": "request inserts a titled loading rectangle under its own reply in the nested child",
+      "pass": true,
+      "details": {
+        "fence": false,
+        "lastReply": true,
+        "replyText": true,
+        "status": "Peterson in the tournament tree: Creating video…",
+        "title": "Peterson in the tournament tree"
+      }
+    },
+    {
+      "name": "loading rectangle fits wide/narrow in both appearances with reduced motion",
+      "pass": true,
+      "details": [
+        {
+          "mode": "dark",
+          "width": 501,
+          "animations": 0,
+          "height": 281.8125,
+          "overflow": false
+        },
+        {
+          "mode": "light",
+          "width": 501,
+          "animations": 0,
+          "height": 281.8125,
+          "overflow": false
+        },
+        {
+          "mode": "dark",
+          "width": 332,
+          "animations": 0,
+          "height": 186.75,
+          "overflow": false
+        },
+        {
+          "mode": "light",
+          "width": 332,
+          "animations": 0,
+          "height": 186.75,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "learner chats in another conversation; map row reports rendering; no card appears there",
+      "pass": true,
+      "details": true
+    },
+    {
+      "name": "production stages stay hidden; only one loading state and no progress bar",
+      "pass": true,
+      "details": true
+    },
+    {
+      "name": "completion keeps focus, scroll position and message count",
+      "pass": true,
+      "details": {
+        "before": {
+          "focus": true,
+          "messages": 14,
+          "top": 1354
+        },
+        "after": {
+          "focus": true,
+          "messages": 14,
+          "top": 1354
+        }
+      }
+    },
+    {
+      "name": "player replaces the same video-sized rectangle",
+      "pass": true,
+      "details": {
+        "frameBefore": {
+          "height": 281.8125,
+          "width": 501
+        },
+        "frameAfter": {
+          "height": 281.8125,
+          "width": 501
+        }
+      }
+    },
+    {
+      "name": "only loading and ready are announced; production progress stays private",
+      "pass": true,
+      "details": {
+        "progress": [],
+        "progressLive": false,
+        "statuses": [
+          "Peterson in the tournament tree: Creating video…",
+          "Peterson in the tournament tree: Video ready."
+        ]
+      }
+    },
+    {
+      "name": "ready card: paused native player within chat width, 16:9, with text explanation",
+      "pass": true,
+      "details": {
+        "autoplay": false,
+        "cardLive": "off",
+        "controls": true,
+        "description": "Two labelled boxes slide together into a final box over three seconds.",
+        "duration": 3,
+        "fits": true,
+        "label": "Video: Peterson in the tournament tree",
+        "paused": true,
+        "ratio": 1.78,
+        "status": "Peterson in the tournament tree: Video ready."
+      }
+    },
+    {
+      "name": "keyboard: Tab reaches player; Space play/pause, ArrowRight seek, ArrowUp/Down volume, fullscreen button by Tab+Enter; app handlers never intercept",
+      "pass": true,
+      "details": {
+        "chatOpen": true,
+        "focus": "VIDEO",
+        "keys": [
+          {
+            "key": "Tab",
+            "prevented": false
+          },
+          {
+            "key": " ",
+            "prevented": false
+          },
+          {
+            "key": " ",
+            "prevented": false
+          },
+          {
+            "key": "ArrowRight",
+            "prevented": false
+          },
+          {
+            "key": "ArrowDown",
+            "prevented": false
+          },
+          {
+            "key": "ArrowUp",
+            "prevented": false
+          },
+          {
+            "key": "Escape",
+            "prevented": false
+          }
+        ],
+        "prevents": []
+      }
+    },
+    {
+      "name": "Open large plays the video in a near full-screen viewer; Esc closes and returns focus",
+      "pass": true,
+      "details": {
+        "controls": true,
+        "src": true,
+        "width": true
+      }
+    },
+    {
+      "name": "finished video only in its original conversation; map row shows compact status",
+      "pass": true,
+      "details": [
+        "Answer: Here is how Peterson fits.Video: Peterson in the tournament tree · ready"
+      ]
+    },
+    {
+      "name": "reload restores the ready video from the local file with no provider request",
+      "pass": true,
+      "details": {
+        "duration": 3,
+        "media": [
+          206
+        ],
+        "paused": true,
+        "providerCalls": [
+          "tutor",
+          "worker",
+          "tutor"
+        ]
+      }
+    },
+    {
+      "name": "dark and light: raised slate video card, 4px corners, ghost actions and paused decoded frame; no new inference",
+      "pass": true,
+      "details": [
+        {
+          "mode": "dark",
+          "width": 1280,
+          "chat": "rgb(36, 49, 45)",
+          "ghost": true,
+          "paused": true,
+          "radius": "4px",
+          "surface": "rgb(36, 49, 45)"
+        },
+        {
+          "mode": "light",
+          "width": 1280,
+          "chat": "rgb(243, 245, 241)",
+          "ghost": true,
+          "paused": true,
+          "radius": "4px",
+          "surface": "rgb(243, 245, 241)"
+        },
+        {
+          "mode": "dark",
+          "width": 390,
+          "chat": "rgb(36, 49, 45)",
+          "ghost": true,
+          "paused": true,
+          "radius": "4px",
+          "surface": "rgb(36, 49, 45)"
+        },
+        {
+          "mode": "light",
+          "width": 390,
+          "chat": "rgb(243, 245, 241)",
+          "ghost": true,
+          "paused": true,
+          "radius": "4px",
+          "surface": "rgb(243, 245, 241)"
+        }
+      ]
+    }
+  ]
+}

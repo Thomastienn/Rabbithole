@@ -2,7 +2,15 @@ import { createInterface } from 'node:readline';
 const send = obj => process.stdout.write(JSON.stringify(obj) + '\n');
 let threads = 0;
 const threadModels = new Map();
-const reply = text => text.endsWith('diagram fixture request') ? 'A bracket shows each round.\n```treetutor-diagram\n' + JSON.stringify({ title: 'Rounds', description: 'The round winners meet in the final.', intent: 'Show each round.', excerpt: 'Frozen round excerpt.' }) + '\n```'
+const video = `// Description: A winner moves upward.
+// Script: PRIVATE_VIDEO_SCRIPT - each round keeps its winner.
+// Visual plan: PRIVATE_VIDEO_PLAN - move the winner toward the final.
+import { AbsoluteFill, useCurrentFrame } from 'remotion';
+export const durationInFrames = 30;
+export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</AbsoluteFill>;`;
+const reply = text => text.endsWith('video fixture request') ? 'A winner advances.\n```treetutor-video\n' + JSON.stringify({ title: 'Winner', description: 'A winner advances.', intent: 'Show a winner moving.', excerpt: 'Each round keeps its winner.' }) + '\n```'
+  : text.startsWith('{') && JSON.parse(text).request?.endsWith('video fixture request') ? video
+  : text.endsWith('diagram fixture request') ? 'A bracket shows each round.\n```treetutor-diagram\n' + JSON.stringify({ title: 'Rounds', description: 'The round winners meet in the final.', intent: 'Show each round.', excerpt: 'Frozen round excerpt.' }) + '\n```'
   : text.startsWith('{') && JSON.parse(text).intent === 'Show each round.' ? 'flowchart TD\n  W1[Round one] --> W2[Final]' : text === 'Check phrase anchors' ? '🪴 early | middle | early | late | shared \n\tstate | shared state | C++ (x.y) [z]? | a a a' : 'Authoritative original';
 // Suggestion calls get phrase-only picks, including overlaps, unmatched and exhausted repeats.
 // The question decides failure ('suggestions fail') and delay ('slow suggestions'); a wrong cheap model yields invalid output.

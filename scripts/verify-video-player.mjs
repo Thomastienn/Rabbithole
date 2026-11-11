@@ -88,25 +88,46 @@ if (process.argv[2] === '--serve') {
     await openFromMap('Tree levels');
 
     await ask('Make a video explaining how Peterson fits into this tournament tree.');
-    await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='preparing'`);
+    await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='pending'`);
     const placement = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),msgs=[...document.querySelectorAll('.focused-chat .astryx-chat-message')],own=c.closest('.astryx-chat-message');return {status:c.querySelector('[role=status]').textContent,title:c.querySelector('h3').textContent,lastReply:own===msgs.at(-1),replyText:own.textContent.includes('Here is how Peterson fits.'),fence:document.querySelector('.focused-chat').textContent.includes('treetutor-video')}})()`);
-    assert.deepEqual(placement, { status: `${task.title}: Preparing video…`, title: task.title, lastReply: true, replyText: true, fence: false });
-    pass('request inserts a titled Preparing entry under its own reply in the nested child', placement);
+    assert.deepEqual(placement, { status: `${task.title}: Creating video…`, title: task.title, lastReply: true, replyText: true, fence: false });
+    pass('request inserts a titled loading rectangle under its own reply in the nested child', placement);
+
+    const loading = [];
+    mkdirSync('.impeccable/review', { recursive: true });
+    for (const [mode, width] of [['dark', 1280], ['light', 1280], ['dark', 390], ['light', 390]]) {
+      await b('set', 'viewport', String(width), '800');
+      await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); location.reload(); true`);
+      await b('wait', '[aria-label="Open Mutual exclusion"]');
+      await openFromMap('Tree levels');
+      await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='pending'`);
+      await ev(`document.querySelector(${JSON.stringify(card)}).scrollIntoView({block:'center'}); true`);
+      const frame = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),r=c.querySelector('.video-stage').getBoundingClientRect();return {width:r.width,height:r.height,overflow:document.documentElement.scrollWidth>innerWidth,animations:c.getAnimations({subtree:true}).filter(a=>a.playState==='running').length}})()`);
+      assert.ok(Math.abs(frame.width/frame.height-16/9)<0.01);
+      assert.equal(frame.overflow, false); assert.equal(frame.animations, 0);
+      loading.push({mode,width,...frame});
+      await b('screenshot', resolve(`.impeccable/review/smart-video-loading-${mode}-${width}.png`));
+    }
+    pass('loading rectangle fits wide/narrow in both appearances with reduced motion', loading);
+    await b('set', 'viewport', '1280', '800');
 
     // Navigate elsewhere and keep chatting while the job runs.
     await openFromMap('Mutual exclusion');
     await ask('Another question meanwhile');
     await wait(`document.querySelector('.focused-chat').textContent.includes('Continuing elsewhere.')`);
     child_.send('compose');
-    await wait(`document.querySelector('.overview').textContent.includes('Video: ${task.title} · rendering…')`);
+    await wait(`document.querySelector('.overview').textContent.includes('Video: ${task.title} · creating…')`);
     assert.equal(await ev(`document.querySelectorAll(${JSON.stringify(card)}).length`), 0);
-    pass('learner chats in another conversation; map row reports rendering; no card appears there');
+    pass('learner chats in another conversation; map row reports creating; no card appears there');
 
     await openFromMap('Tree levels');
-    await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='rendering'`);
-    assert.equal(await ev(`document.querySelector(${JSON.stringify(card)}).querySelector('[role=status]').textContent`), `${task.title}: Rendering video…`);
+    await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='pending'`);
+    assert.equal(await ev(`document.querySelector(${JSON.stringify(card)}).querySelector('[role=status]').textContent`), `${task.title}: Creating video…`);
     assert.equal(await ev(`!!document.querySelector(${JSON.stringify(card + ' [role=progressbar]')})`), false);
-    pass('Rendering without reported progress shows no progress bar');
+    pass('production stages stay hidden; only one loading state and no progress bar');
+    const frameBefore = await ev(`(()=>{const r=document.querySelector(${JSON.stringify(card + ' .video-stage')}).getBoundingClientRect();return {width:r.width,height:r.height}})()`);
+    assert.ok(Math.abs(frameBefore.width/frameBefore.height-16/9)<0.01);
+    assert.equal(await ev(`document.querySelector(${JSON.stringify(card + ' .video-stage')}).contains(document.querySelector(${JSON.stringify(card + ' button')}))`), true);
 
     // Observe announcements and progress; park the reader mid-conversation with focus in the composer.
     await ev(`(()=>{window.__statuses=[];window.__progress=[];let s,p;new MutationObserver(()=>{const c=document.querySelector(${JSON.stringify(card)});const t=c?.querySelector('[role=status]')?.textContent;if(t&&t!==s){s=t;__statuses.push(t)}const v=c?.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow');if(v&&v!==p){p=v;__progress.push(v)}}).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});return true})()`);
@@ -125,9 +146,13 @@ if (process.argv[2] === '--serve') {
     pass('completion keeps focus, scroll position and message count', { before, after });
 
     const announced = await ev(`({statuses:__statuses,progress:__progress,progressLive:false})`);
-    assert.deepEqual(announced.statuses, [`${task.title}: Rendering video…`, `${task.title}: Video ready.`]);
-    assert.ok(announced.progress.length >= 1, 'renderer progress was shown');
-    pass('one status per state change; progress ticks change no status text', announced);
+    assert.ok(announced.statuses.includes(`${task.title}: Video ready.`));
+    assert.ok(announced.statuses.every(s => [`${task.title}: Creating video…`, `${task.title}: Video ready.`].includes(s)));
+    const frameAfter = await ev(`(()=>{const r=document.querySelector(${JSON.stringify(card + ' video')}).getBoundingClientRect();return {width:r.width,height:r.height}})()`);
+    assert.deepEqual(frameAfter, frameBefore);
+    pass('player replaces the same video-sized rectangle', {frameBefore,frameAfter});
+    assert.equal(announced.progress.length, 0, 'renderer progress stays private');
+    pass('only loading and ready are announced; production progress stays private', announced);
 
     const player = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),v=c.querySelector('video'),list=c.closest('.astryx-chat-message');return {paused:v.paused,autoplay:v.autoplay,controls:v.controls,label:v.getAttribute('aria-label'),description:document.getElementById(v.getAttribute('aria-describedby')).textContent,ratio:Math.round(v.clientWidth/v.clientHeight*100)/100,fits:v.getBoundingClientRect().right<=list.getBoundingClientRect().right+1,duration:Math.round(v.duration),cardLive:c.getAttribute('aria-live'),status:c.querySelector('[role=status]').textContent}})()`);
     assert.deepEqual(player, { paused: true, autoplay: false, controls: true, label: `Video: ${task.title}`, description: 'Two labelled boxes slide together into a final box over three seconds.', ratio: 1.78, fits: true, duration: 3, cardLive: 'off', status: `${task.title}: Video ready.` });
@@ -160,7 +185,7 @@ if (process.argv[2] === '--serve') {
     await b('press', 'Escape');
     const keys = await ev(`({keys:__keys,chatOpen:getComputedStyle(document.querySelector('.focused-chat')).display!=='none',focus:document.activeElement?.tagName})`);
     // Recorded after page handlers, before the native default action: the app prevents none of the player's keys.
-    assert.ok([' ', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Escape'].every(key => keys.keys.some(k => k.key === key)) && keys.keys.every(k => !k.prevented), JSON.stringify(keys.keys));
+    assert.ok([' ', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Escape'].every(key => keys.keys.some(k => k.key === key)) && keys.keys.every(k => !k.prevented), JSON.stringify(keys));
     assert.equal(keys.chatOpen, true);
     pass('keyboard: Tab reaches player; Space play/pause, ArrowRight seek, ArrowUp/Down volume, fullscreen button by Tab+Enter; app handlers never intercept', keys);
 
@@ -195,7 +220,8 @@ if (process.argv[2] === '--serve') {
     assert.equal(reloaded.duration, 3);
     pass('reload restores the ready video from the local file with no provider request', { ...reloaded, providerCalls: callsBefore });
     const appearances = [];
-    for (const mode of ['dark', 'light']) {
+    for (const [mode, width] of [['dark', 1280], ['light', 1280], ['dark', 390], ['light', 390]]) {
+      await b('set', 'viewport', String(width), '800');
       await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); location.reload(); true`);
       await b('wait', '[aria-label="Open Mutual exclusion"]');
       await openFromMap('Tree levels');
@@ -211,13 +237,14 @@ if (process.argv[2] === '--serve') {
       await b('mouse', 'move', '5', '5');
       const style = await ev(`(() => { const c=document.querySelector(${JSON.stringify(card)}),s=getComputedStyle(c),a=[...c.querySelectorAll('button')]; return { surface:s.backgroundColor,chat:getComputedStyle(document.querySelector('.focused-chat')).backgroundColor,radius:s.borderRadius,ghost:a.every(n=>n.dataset.variant==='ghost'),paused:c.querySelector('video').paused }; })()`);
       assert.equal(style.surface, style.chat); assert.equal(style.radius, '4px'); assert.ok(style.ghost && style.paused);
-      appearances.push({ mode, ...style });
-      await b('screenshot', join(process.cwd(), `docs/verification/focused-chat-video-${mode}.png`));
+      assert.equal(await ev(`document.documentElement.scrollWidth<=innerWidth`), true);
+      appearances.push({ mode, width, ...style });
+      await b('screenshot', join(process.cwd(), `.impeccable/review/smart-video-ready-${mode}-${width}.png`));
     }
     assert.notEqual(appearances[0].surface, appearances[1].surface);
     assert.deepEqual(calls(), callsBefore);
     pass('dark and light: raised slate video card, 4px corners, ghost actions and paused decoded frame; no new inference', appearances);
 
-    writeFileSync('docs/verification/video-player-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.', checks }, null, 2) + '\n');
+    writeFileSync('docs/verification/smart-video-player.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.', checks }, null, 2) + '\n');
   } finally { await b('close').catch(() => {}); child_.send('stop'); }
 }

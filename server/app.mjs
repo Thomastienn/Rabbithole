@@ -55,19 +55,32 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       else rmSync(path, { recursive: true, force: true });
     }
   }
-  // Running jobs report their phase and renderer progress in memory only; restart fails pending jobs anyway.
   // Ready videos whose file is missing or unreadable are reported unavailable, so the learner can regenerate them.
   const readable = path => { try { accessSync(path, constants.R_OK); return true; } catch { return false; } };
-  const live = a => a.status === 'pending' && videos.has(a.id) ? { ...a, phase: videos.get(a.id).phase, progress: videos.get(a.id).progress }
-    : a.kind === 'video' && a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
+  const live = artifact => {
+    if (artifact.kind !== 'video') return artifact;
+    const { input, attempt, ...a } = artifact;
+    return a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
+  };
   // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
-  const startVideo = (tree, job) => {
-    const running = { controller: new AbortController(), conversation: tree.id, artifact: job.id, phase: 'preparing', progress: null };
+  const startVideo = job => {
+    const running = { controller: new AbortController(), conversation: job.conversation, artifact: job.id };
+    const input = JSON.parse(job.input), selection = input.selection ?? smart().resolved;
     videos.set(job.id, running);
     videoJobs.add(running);
-    running.done = Promise.resolve().then(() => generateVideo({ provider: metered(pick(tree), 'video', job.attempt, tree), selection: { provider: tree.provider, model: tree.model }, store, dir, artifact: job, signal: running.controller.signal, timeout: videoTimeout, render: videoRender, onPhase: (phase, value = null) => Object.assign(running, { phase, progress: value }) }))
+    running.done = Promise.resolve().then(async () => {
+      const provider = pick(selection);
+      selection.model ??= await provider.model?.({ ...selection, thread: null }) ?? (await provider.models()).find(m => m.isDefault)?.model ?? null;
+      const invalid = await selectionError(selection);
+      if (invalid) throw new Error(`${invalid.error} Check Smart in Settings → Models, then request a new video.`);
+      // Legacy jobs acquire a smart selection only on explicit Retry; newer jobs keep it across attempts.
+      const frozen = JSON.stringify({ ...input, selection });
+      const owned = store.videoInput(job.conversation, job.id, job.attempt, frozen);
+      if (!owned || running.controller.signal.aborted) return;
+      await generateVideo({ provider: metered(provider, 'video', job.attempt, selection), selection, store, dir, artifact: { ...job, input: frozen }, signal: running.controller.signal, timeout: videoTimeout, render: videoRender });
+    })
       // A job stopped with the app stays pending, so the next start marks it interrupted.
-      .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishVideo(tree.id, job.id, job.attempt, {}, error.message); })
+      .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishVideo(job.conversation, job.id, job.attempt, {}, error.message); })
       .finally(() => { videoJobs.delete(running); if (videos.get(job.id) === running) videos.delete(job.id); });
   };
   // Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
@@ -143,7 +156,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       const artifactMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)$/);
       if (req.method === 'GET' && artifactMatch) {
         const artifact = store.artifact(artifactMatch[1], artifactMatch[2]);
-        return json(res, artifact ? 200 : 404, artifact ?? { error: 'Diagram not found in this conversation.' });
+        return json(res, artifact ? 200 : 404, artifact ? live(artifact) : { error: 'Artifact not found in this conversation.' });
       }
       if (req.method === 'GET' && url.pathname === '/auth/callback') {
         try { await auth.callback(url); res.writeHead(303, { Location: '/' }); res.end(); }
@@ -237,13 +250,13 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             if (artifact.status !== 'pending') return json(res, 409, { error: 'This video is no longer generating.' });
             const canceled = store.cancelVideo(id, artifactId);
             videos.get(artifactId)?.controller.abort(new Error('Video generation canceled.'));
-            return json(res, 200, canceled);
+            return json(res, 200, live(canceled));
           }
           // Retry reuses the saved request and frozen input; no learner message is added.
           if (artifact.status === 'pending' || (artifact.status === 'ready' && live(artifact).available !== false)) return json(res, 409, { error: 'This video does not need to be regenerated.' });
           const job = store.retryVideo(id, artifactId);
           if (!job) return json(res, 409, { error: 'This video does not need to be regenerated.' });
-          startVideo(tree, job);
+          startVideo(job);
           return json(res, 200, live(job));
         }
         const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|layout|model|rename|delete)$/);
@@ -431,12 +444,12 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 store.forgetThread(id);
                 // Only a learner's explicit video request starts a job; it runs on after the reply, independent of this stream.
                 if (!output.error && status === 'completed' && asksForVideo(body.text)) {
-                  const input = JSON.stringify({ request: body.text, intent: output.task.intent, excerpt: output.task.excerpt,
+                  const input = JSON.stringify({ selection: smart().resolved, request: body.text, intent: output.task.intent, excerpt: output.task.excerpt,
                     inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null,
                     sources: { conversation: id, requestMessage: user, replyMessage: reply, ...(tree.branch && { parentConversation: tree.branch.parent, parentMessage: tree.branch.messageId }) } });
                   const job = store.pendingArtifact(id, reply, output.task.title, output.task.description, 'video', input);
-                  send({ type: 'artifact', artifact: job });
-                  startVideo(store.tree(id), job);
+                  send({ type: 'artifact', artifact: live(job) });
+                  startVideo(job);
                 }
               } else if (output.requested) {
                 text = output.text;

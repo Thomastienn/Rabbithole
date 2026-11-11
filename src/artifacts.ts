@@ -1,7 +1,7 @@
 import { safeDiagramSource } from './diagramSource.ts';
 
-// Ready videos with a missing file carry available: false. Running video jobs also carry their phase and, when the renderer reports it, progress from 0 to 1.
-export type ArtifactSummary = { id: string; kind?: 'mermaid' | 'video'; title: string; status: 'pending' | 'ready' | 'failed' | 'canceled' | 'interrupted'; phase?: 'preparing' | 'rendering'; progress?: number | null; available?: false };
+// Ready videos with a missing file carry available: false. Production stages remain private.
+export type ArtifactSummary = { id: string; kind?: 'mermaid' | 'video'; title: string; status: 'pending' | 'ready' | 'failed' | 'canceled' | 'interrupted'; available?: false };
 export type Artifact = ArtifactSummary & { conversation: string; message: string; kind: 'mermaid' | 'video'; description: string; source: string | null; error: string | null; created: number };
 export type DiagramState = { status: 'pending' } | { status: 'ready'; url: string } | { status: 'failed' };
 

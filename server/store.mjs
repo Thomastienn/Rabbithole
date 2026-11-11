@@ -290,6 +290,9 @@ export class Store {
     this.db.prepare("UPDATE artifacts SET status=?,source=?,error=? WHERE conversation=? AND id=? AND kind='mermaid' AND status='pending'").run(error ? 'failed' : 'ready', error ? null : source, error, conversation, id);
     return this.artifact(conversation, id);
   }
+  videoInput(conversation, id, attempt, input) {
+    return this.db.prepare("UPDATE artifacts SET input=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'").run(input, conversation, id, attempt).changes > 0;
+  }
   finishVideo(conversation, id, attempt, { description, duration } = {}, error = null) {
     this.db.prepare("UPDATE artifacts SET status=?,description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'").run(error ? 'failed' : 'ready', error ? null : description, error ? null : duration, error, conversation, id, attempt);
     return this.artifact(conversation, id);

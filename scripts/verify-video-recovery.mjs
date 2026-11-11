@@ -51,6 +51,8 @@ if (process.argv[2] === '--serve') {
   const stopped = store.pendingArtifact(tree.id, reply, 'Winner rising', 'Planned.', 'video', input);
   const lost = store.pendingArtifact(tree.id, reply, 'Lost video', 'Planned.', 'video', input);
   store.finishVideo(tree.id, lost.id, lost.attempt, { description: 'A saved video whose file was deleted.', duration: 1 });
+  const failed = store.pendingArtifact(tree.id, reply, 'Failed video', 'A winner advances.', 'video', input);
+  store.finishVideo(tree.id, failed.id, failed.attempt, {}, 'PRIVATE_SCRIPT /private/video-work/attempt');
   store.close();
   writeFileSync(join(dir, 'calls.jsonl'), '');
 
@@ -76,6 +78,13 @@ if (process.argv[2] === '--serve') {
     assert.deepEqual(restarted.interrupted, { state: 'interrupted', status: 'Winner rising: Video generation interrupted when TreeTutor stopped.', button: 'Retry video', video: false, focused: false });
     assert.deepEqual(restarted.unavailable, { state: 'unavailable', status: 'Lost video: Video unavailable: its saved file is missing or unreadable.', button: 'Regenerate video', video: false, focused: false });
     assert.deepEqual(restarted.providerCalls, []);
+    const failure = await view(failed.id);
+    assert.equal(failure.state, 'failed'); assert.equal(failure.video, false); assert.equal(failure.button, 'Retry video');
+    assert.equal(failure.status, 'Failed video: Video could not be generated. Retry, or check Smart in Settings.');
+    assert.equal(await ev(`document.querySelector('.focused-chat').textContent.includes('PRIVATE_SCRIPT')`), false);
+    pass('failure is simple with explicit Retry and no production error details', failure);
+    await ev(`${card(failed.id)}.scrollIntoView({block:'center'}); true`);
+    await b('screenshot', join(process.cwd(), '.impeccable/review/smart-video-failure.png'));
     pass('after restart: unfinished job shows Interrupted with Retry, missing file shows Unavailable with Regenerate, no inference replayed', restarted);
 
     // Keyboard: Tab onto Retry, Enter retries, the same button becomes Cancel and keeps focus.
@@ -83,8 +92,8 @@ if (process.argv[2] === '--serve') {
     await b('press', 'Enter');
     await wait(`${card(stopped.id)}.querySelector('button')?.textContent==='Cancel video'`);
     const retrying = await view(stopped.id);
-    assert.deepEqual(retrying, { state: 'preparing', status: 'Winner rising: Preparing video…', button: 'Cancel video', video: false, focused: true });
-    await wait(`${card(stopped.id)}.dataset.state==='rendering'`);
+    assert.deepEqual(retrying, { state: 'pending', status: 'Winner rising: Creating video…', button: 'Cancel video', video: false, focused: true });
+    await wait(`${card(stopped.id)}.dataset.state==='pending'`);
     pass('Retry by keyboard starts a new attempt; focus stays on the action, now Cancel', retrying);
 
     await b('press', 'Enter');
@@ -96,10 +105,12 @@ if (process.argv[2] === '--serve') {
     await new Promise(r => setTimeout(r, 1500));
     assert.equal((await view(stopped.id)).state, 'canceled');
     pass('Cancel by keyboard shows Canceled, keeps focus on Retry, and stays canceled afterwards', canceled);
+    await ev(`${card(stopped.id)}.scrollIntoView({block:'center'}); true`);
+    await b('screenshot', join(process.cwd(), '.impeccable/review/smart-video-canceled.png'));
 
     const messages = await ev(`document.querySelectorAll('.focused-chat .astryx-chat-message').length`);
     await b('press', 'Enter');
-    await wait(`${card(stopped.id)}.dataset.state==='rendering'`);
+    await wait(`${card(stopped.id)}.dataset.state==='pending'`);
     server.send('render');
     await wait(`${card(stopped.id)}.dataset.state==='ready'`, '120000');
     await wait(`${card(stopped.id)}.querySelector('video')?.readyState>=1`);
@@ -108,19 +119,32 @@ if (process.argv[2] === '--serve') {
     assert.equal(ready.autoplay, false);
     assert.equal(ready.duration, 1);
     assert.equal(ready.messages, messages);
+    assert.equal(ready.focusInCard, true);
+    assert.equal(await ev(`document.activeElement.textContent.trim()`), 'Open large');
     pass('second Retry renders for real and plays paused inline; no learner message added', ready);
 
-    await b('find', 'role', 'button', 'click', '--name', 'Regenerate video', '--exact');
-    await wait(`${card(lost.id)}.dataset.state==='rendering'`);
+    await ev(`${card(lost.id)}.scrollIntoView({block:'center'}); ${card(lost.id)}.querySelector('button').focus(); true`);
+    await b('press', 'Enter');
+    await wait(`${card(lost.id)}.dataset.state==='pending'`);
     server.send('render');
     await wait(`${card(lost.id)}.dataset.state==='ready'`, '120000');
     await wait(`${card(lost.id)}.querySelector('video')?.readyState>=1`);
     assert.ok(existsSync(join(dir, 'videos', `${lost.id}.mp4`)));
     assert.deepEqual(calls(), ['worker', 'worker', 'worker']);
     pass('Regenerate replaces the unavailable entry with a ready video; only isolated worker calls, no tutor calls', { providerCalls: calls() });
+    await ev(`${card(failed.id)}.querySelector('button').focus()`);
+    await b('press', 'Enter');
+    await wait(`${card(failed.id)}.dataset.state==='pending'`);
+    // Wait until the request actually reaches the controlled renderer before releasing it.
+    await wait(`document.querySelectorAll('.focused-chat .video-card[data-state=pending]').length===1`);
+    await new Promise(r => setTimeout(r, 300));
+    server.send('render');
+    await wait(`${card(failed.id)}.dataset.state==='ready'`, '120000');
+    assert.deepEqual(calls(), ['worker', 'worker', 'worker', 'worker']);
+    pass('failure Retry is keyboard accessible and makes one new worker attempt');
     await ev(`${card(lost.id)}.scrollIntoView({block:'center'})`);
     await b('screenshot', join(process.cwd(), '.impeccable/review/video-recovery.png'));
 
-    writeFileSync('docs/verification/video-recovery-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic tutor and worker providers; real sandboxed Remotion renders, production build, HTTP, SQLite and headless Chrome. No native provider inference.', checks }, null, 2) + '\n');
+    writeFileSync('docs/verification/smart-video-recovery.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic tutor and worker providers; real sandboxed Remotion renders, production build, HTTP, SQLite and headless Chrome. No native provider inference.', checks }, null, 2) + '\n');
   } finally { await b('close').catch(() => {}); server.send('stop'); }
 }

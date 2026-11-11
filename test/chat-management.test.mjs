@@ -12,6 +12,7 @@ import { layoutSaver } from '../src/layoutSave.ts';
 const complete = async (tree, text, emit) => { emit({ type: 'item', item: 'a', text: 'Completed answer' }); emit({ type: 'status', status: 'completed' }); };
 const until = async check => { for (let i = 0; i < 200; i++) { if (check()) return; await new Promise(r => setTimeout(r, 10)); } throw new Error('Fixture timed out'); };
 async function fixture(provider = { generate: complete }, options = {}) {
+  provider = { models: async () => [{ model: 'fixture-model', isDefault: true }], ...provider };
   const dir = mkdtempSync(join(tmpdir(), 'tt-chat-management-')), path = join(dir, 'trees.sqlite');
   const store = new Store(path);
   const app = createApp({ store, provider, dir, auth: { status: () => ({ connected: true }) }, ...options });

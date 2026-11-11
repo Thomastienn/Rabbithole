@@ -46,3 +46,17 @@ Not adopted, with reasons:
 
 - **Map overview (minimap):** contradicts "the map owns its field"; fit-view and keyboard navigation already cover orientation.
 - **Markdown export:** a behavior feature with no role in this visual world; it can return as its own PRD increment.
+
+### Smart video loading extension (TreeTutor-133.1)
+
+THESIS: An explicit video request reserves its playback space while private production runs. The learner sees one loading state, then a player or a simple recoverable failure.
+
+OWN-WORLD: Preserve Lecture-hall Slate, Astryx typography, semantic surfaces and existing small corners in both appearances. Use the existing 16:9 media geometry, Astryx Skeleton, stacks and small ghost actions; reduced motion freezes the placeholder.
+
+STORY: Request, keep reading or navigate elsewhere, then play the finished video. Cancel stops an attempt; Retry explicitly starts another. No script, code, engine stages or logs appear.
+
+FIRST VIEWPORT: The existing title sits above a full-column rectangle. Loading text and Cancel sit inside it; paused native playback replaces it at the same size. Description stays below. The persistent action becomes Open large in the player's upper corner, preserving focus.
+
+FORM: A narrow extension of the existing focused-chat media card, code-led; the established direction and seed above remain authoritative. No new visual system or page scaffold.
+
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

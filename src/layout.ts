@@ -136,6 +136,10 @@ html { view-transition-name: none; }
 .diagram-open { display: block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 .diagram-open img { display: block; max-width: 100%; height: auto; }
 .video-frame { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-element); background: var(--color-background-body); }
+.video-stage { position: relative; }
+.video-stage > .astryx-skeleton, .video-controls { position: absolute; inset: 0; }
+.video-card[data-state=ready] .video-controls { inset: var(--spacing-2) var(--spacing-2) auto auto; padding: 0; background: var(--color-background-surface); border-radius: var(--radius-element); }
+@media (prefers-reduced-motion: reduce) { .video-stage .astryx-skeleton, .video-stage .astryx-skeleton::after { animation: none; } }
 /* Lightbox caps media at natural size; generated videos are small, so fill the viewer (contain keeps 16:9). */
 .astryx-lightbox video { width: 92vw; height: calc(100dvh - 8rem); }
 /* Enlarged diagrams: a plain dimmed slate overlay (no blur; the library's backdrop rule outranks plain selectors) and the drawing on a raised panel. No caption: the library sizes it apart from the drawing, and the card keeps the title. */

@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-11-11T11:25:43.750Z",
+  "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual sandboxed short 2D render. No narration, subtitle, long-duration or 3D claim.",
+  "provider": "codex",
+  "effort": "low",
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+  "memoryBytes": 16368893952,
+  "data": "/tmp/tt-smart-video-live-86jJtb",
+  "model": "gpt-6.1-terra",
+  "renderMs": 11156,
+  "elapsedMs": 29050,
+  "media": {
+    "id": "68479126-e94b-4362-82d8-6980f8153e85",
+    "duration": 3,
+    "bytes": 18923,
+    "probe": [
+      {
+        "codec": "h264",
+        "type": "video",
+        "width": 640,
+        "height": 360,
+        "duration": "3.000000"
+      }
+    ]
+  },
+  "usage": [
+    {
+      "at": 1794396361796,
+      "provider": "codex",
+      "model": "gpt-6.1-terra",
+      "task": "video",
+      "input": 4159,
+      "output": 851,
+      "cacheRead": 4224
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-11-11T11:24:30.747Z",
+  "evidence": "Native Claude Code sign-in for smart inference; controlled chat handoff; actual sandboxed short 2D render. No narration, subtitle, long-duration or 3D claim.",
+  "provider": "claude",
+  "model": "sonnet",
+  "effort": "low",
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+  "memoryBytes": 16368893952,
+  "data": "/tmp/tt-smart-video-live-GBW7Zh",
+  "providerError": "Claude: You've hit your 5-hour limit · resets 7:40am (America/Edmonton)",
+  "elapsedMs": 2020,
+  "pass": false,
+  "error": "Video provider failed to generate a composition.\n\n'failed' !== 'ready'\n"
+}

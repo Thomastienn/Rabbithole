@@ -1,0 +1,88 @@
+{
+  "checkedAt": "2026-11-11T11:28:31.842Z",
+  "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion renders, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
+  "checks": [
+    {
+      "name": "failure is simple with explicit Retry and no production error details",
+      "pass": true,
+      "details": {
+        "button": "Retry video",
+        "focused": false,
+        "state": "failed",
+        "status": "Failed video: Video could not be generated. Retry, or check Smart in Settings.",
+        "video": false
+      }
+    },
+    {
+      "name": "after restart: unfinished job shows Interrupted with Retry, missing file shows Unavailable with Regenerate, no inference replayed",
+      "pass": true,
+      "details": {
+        "interrupted": {
+          "button": "Retry video",
+          "focused": false,
+          "state": "interrupted",
+          "status": "Winner rising: Video generation interrupted when TreeTutor stopped.",
+          "video": false
+        },
+        "unavailable": {
+          "button": "Regenerate video",
+          "focused": false,
+          "state": "unavailable",
+          "status": "Lost video: Video unavailable: its saved file is missing or unreadable.",
+          "video": false
+        },
+        "providerCalls": []
+      }
+    },
+    {
+      "name": "Retry by keyboard starts a new attempt; focus stays on the action, now Cancel",
+      "pass": true,
+      "details": {
+        "button": "Cancel video",
+        "focused": true,
+        "state": "pending",
+        "status": "Winner rising: Creating video…",
+        "video": false
+      }
+    },
+    {
+      "name": "Cancel by keyboard shows Canceled, keeps focus on Retry, and stays canceled afterwards",
+      "pass": true,
+      "details": {
+        "button": "Retry video",
+        "focused": true,
+        "state": "canceled",
+        "status": "Winner rising: Video generation canceled.",
+        "video": false
+      }
+    },
+    {
+      "name": "second Retry renders for real and plays paused inline; no learner message added",
+      "pass": true,
+      "details": {
+        "autoplay": false,
+        "description": "A box labelled Winner rises to the top of the tree.",
+        "duration": 1,
+        "focusInCard": true,
+        "messages": 2,
+        "paused": true
+      }
+    },
+    {
+      "name": "Regenerate replaces the unavailable entry with a ready video; only isolated worker calls, no tutor calls",
+      "pass": true,
+      "details": {
+        "providerCalls": [
+          "worker",
+          "worker",
+          "worker"
+        ]
+      }
+    },
+    {
+      "name": "failure Retry is keyboard accessible and makes one new worker attempt",
+      "pass": true,
+      "details": true
+    }
+  ]
+}
