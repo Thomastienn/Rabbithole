@@ -33,6 +33,7 @@ const origin = `http://127.0.0.1:${app.server.address().port}`;
 mkdirSync('.impeccable/review', { recursive: true });
 const shot = name => b('screenshot', `${process.cwd()}/.impeccable/review/chat-defaults-${name}.png`);
 const settings = async () => {
+  await wait(`document.querySelector('[aria-label="Map menu"]')?.checkVisibility()`);
   await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
   await wait('document.querySelector("dialog[open]")');
@@ -44,7 +45,13 @@ const choose = async (label, option) => {
   await b('find', 'role', 'option', 'click', '--name', option, '--exact');
   await wait('document.querySelector("dialog[open]")?.textContent.includes("Chat defaults saved.")');
 };
-const menu = async () => { await b('find', 'role', 'button', 'click', '--name', 'Model for next reply', '--exact'); await wait('document.querySelector("[role=menu]")'); };
+// Focus retries until an opening menu stops reclaiming focus; Enter then commits by keyboard.
+const focusNamed = (selector, name) => wait(`(() => {
+  const label = e => (e.getAttribute('aria-label') || (e.getAttribute('aria-labelledby') || '').split(' ').map(id => document.getElementById(id)?.textContent || '').join(' ').trim() || [...(e.labels || [])].map(l => l.textContent).join(' ') || e.textContent).trim();
+  const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find(e => label(e).startsWith(${JSON.stringify(name)}));
+  el?.focus(); return !!el && document.activeElement === el;
+})()`);
+const menu = async () => { await b('find', 'role', 'button', 'click', '--name', 'Model for next reply', '--exact'); await wait('document.querySelector("[role=menu] [role=menuitemradio]")?.checkVisibility()'); };
 
 try {
   await b('set', 'viewport', '1440', '900');
@@ -54,14 +61,14 @@ try {
   await settings();
   await choose('Chat default model', 'Codex chat');
   await choose('Chat default effort', 'High');
-  assert.deepEqual(store.chatSettings(), { provider: 'codex', model: 'chat', effort: 'high' });
+  assert.deepEqual({ ...store.chatSettings() }, { provider: 'codex', model: 'chat', effort: 'high' });
   assert.deepEqual(store.tree(root.id), before);
   assert.equal(calls.length, 0);
   check('Settings saves provider/model/effort through HTTP without inference or rewriting an existing conversation');
   await shot('settings-dark-desktop');
 
   // Astryx selector keyboard model: open, move to first (Provider default), commit, then restore High.
-  await b('find', 'label', 'Chat default effort', 'focus');
+  await focusNamed('button,[role=combobox],input', 'Chat default effort');
   await b('press', 'Enter'); await b('press', 'Home'); await b('press', 'Enter');
   await wait('document.querySelector("dialog[open]")?.textContent.includes("Chat defaults saved.")');
   assert.equal(store.chatSettings().effort, null);
@@ -74,13 +81,13 @@ try {
   assert.ok(fresh); assert.equal(store.tree(fresh.id).effort, 'high');
   check('Keyboard can save effort; New chat uses saved global defaults');
   await menu();
-  await b('find', 'role', 'menuitemradio', 'focus', '--name', 'Low', '--exact'); await b('press', 'Enter');
+  await focusNamed('[role=menuitemradio]', 'Low'); await b('press', 'Enter');
   await wait('document.querySelector(".chat-model")?.textContent.includes("Codex chat · Low")');
   assert.equal(store.tree(fresh.id).effort, 'low'); assert.equal(store.chatSettings().effort, 'high');
   await menu();
   await b('find', 'role', 'menuitemradio', 'click', '--name', 'Custom chat', '--exact');
   await wait('document.querySelector(".chat-model")?.textContent.includes("Custom endpoint · Custom chat · Provider default")');
-  await wait('document.querySelector(".chat-header [role=status]")?.textContent.includes("Effort changed to Provider default")');
+  await wait('[...document.querySelectorAll(".chat-header [role=status]")].some(e => e.textContent.includes("Effort changed to Provider default"))');
   await menu();
   assert.equal(await ev('document.querySelectorAll("[role=menuitemradio]").length'), 4, 'three models plus Provider default only');
   await b('press', 'Escape');
@@ -89,10 +96,10 @@ try {
   await b('reload');
   await wait('document.querySelector(".chat-model")?.textContent.includes("Custom endpoint · Custom chat · Provider default")');
   await settings();
-  assert.deepEqual(store.chatSettings(), { provider: 'codex', model: 'chat', effort: 'high' });
+  assert.deepEqual({ ...store.chatSettings() }, { provider: 'codex', model: 'chat', effort: 'high' });
   await choose('Chat default model', 'Custom chat');
   await b('find', 'label', 'Chat default effort', 'click');
-  assert.equal(await ev('document.querySelectorAll("[role=option]").length'), 1);
+  assert.deepEqual(JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll("[role=listbox]")].filter(l => l.checkVisibility()).map(l => [...l.querySelectorAll("[role=option]")].map(o => o.textContent)))`)), [["Provider default"]]);
   await b('press', 'Escape');
   check('Reopening restores conversation override and Settings choices; custom Settings effort is limited to Provider default');
 
@@ -101,10 +108,14 @@ try {
     await b('reload');
     await wait('document.querySelector(".chat-model")');
     await b('set', 'viewport', '390', '844');
+    // Narrow layout can show the map instead of the chat; open the conversation if so.
+    if (!await ev('!!document.querySelector(\'[aria-label="Model for next reply"]\')?.checkVisibility()')) await b('find', 'role', 'button', 'click', '--name', 'Reopen chat', '--exact');
+    await wait(`document.querySelector('[aria-label="Model for next reply"]')?.checkVisibility()`);
     await menu();
     assert.equal(await ev('document.documentElement.scrollWidth <= innerWidth'), true);
     await shot(`conversation-${appearance}-narrow`);
     await b('press', 'Escape');
+    await b('find', 'role', 'button', 'click', '--name', 'Return to tree', '--exact');
     await settings();
     assert.equal(await ev('document.documentElement.scrollWidth <= innerWidth'), true);
     assert.equal(await ev('document.querySelector("dialog[open]").scrollWidth <= innerWidth'), true);
@@ -117,7 +128,7 @@ try {
   connected = false;
   await b('find', 'role', 'button', 'click', '--name', 'Refresh chat models', '--exact');
   await wait('document.querySelector("dialog[open]")?.textContent.includes("Saved chat default unavailable")');
-  assert.deepEqual(store.chatSettings(), { provider: 'openai', model: 'chat', effort: null });
+  assert.deepEqual({ ...store.chatSettings() }, { provider: 'openai', model: 'chat', effort: null });
   connected = true;
   await b('find', 'role', 'button', 'click', '--name', 'Refresh chat models', '--exact');
   await wait('!document.querySelector("dialog[open]")?.textContent.includes("Saved chat default unavailable")');

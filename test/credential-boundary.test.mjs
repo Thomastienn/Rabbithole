@@ -91,7 +91,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
   app = await launch();
   assert.deepEqual(JSON.parse(await app.request('/api/settings/endpoint')), { configured: true, baseUrl: fake.baseUrl });
   const catalogue = JSON.parse(await app.request('/api/models'));
-  assert.deepEqual(catalogue.models, [{ provider: 'openai', model: 'local-tutor', label: 'local-tutor', isDefault: true }]);
+  assert.deepEqual(catalogue.models, [{ provider: 'openai', model: 'local-tutor', label: 'local-tutor', isDefault: true, efforts: [] }]);
   assert.equal(catalogue.providers.openai.connected, true);
   await app.request('/api/settings/endpoint/test', {});
   const tree = JSON.parse(await app.request('/api/trees', {}, 201));

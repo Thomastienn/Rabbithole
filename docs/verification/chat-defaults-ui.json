@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-11T08:52:00.592Z",
+  "boundary": "built UI + real HTTP/store + controlled providers, no native inference",
+  "checks": [
+    "Settings saves provider/model/effort through HTTP without inference or rewriting an existing conversation",
+    "Keyboard can save effort; New chat uses saved global defaults",
+    "Keyboard conversation effort override preserves global defaults; custom model without capabilities exposes only Provider default and explains reset",
+    "Reopening restores conversation override and Settings choices; custom Settings effort is limited to Provider default",
+    "Dark/light narrow conversation menus and Settings fit without horizontal overflow; screenshot review captured desktop and narrow states",
+    "Unavailable saved defaults show actionable recovery, retain values and recover on refresh"
+  ],
+  "result": "PASS"
+}
