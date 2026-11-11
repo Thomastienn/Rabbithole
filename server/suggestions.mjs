@@ -49,6 +49,9 @@ export function knownConcepts(graph) {
 // shortcut: ~4 characters per token, upgrade to a provider tokenizer if the warning needs to be exact.
 export const nameTokens = known => Math.ceil(JSON.stringify(known).length / 4);
 
+// Unset quick thinking keeps the inexpensive provider default rather than the chat model.
+export const quickDefault = (tree, models) => tree.provider === 'claude' ? 'haiku' : models.find(m => /luna/i.test(m.model))?.model ?? tree.model ?? null;
+
 // A separate thread-less request: nothing here enters tutor history.
 export async function suggest(provider, tree, input, signal, timeout = 120000, pinnedModel = null) {
   const items = new Map(), bounded = AbortSignal.any([signal, AbortSignal.timeout(timeout)]);
@@ -59,7 +62,7 @@ export async function suggest(provider, tree, input, signal, timeout = 120000, p
   const pinned = pinnedModel && models.find(m => m.model === pinnedModel);
   if (pinnedModel && !pinned) throw new Error('Suggestion model is unavailable.');
   if (pinned && tree.effort != null && !(pinned.efforts ?? []).includes(tree.effort)) throw new Error('Quick thinking effort is no longer supported by its model.');
-  const model = pinnedModel ?? (tree.provider === 'claude' ? 'haiku' : models.find(m => /luna/i.test(m.model))?.model ?? tree.model ?? null);
+  const model = pinnedModel ?? quickDefault(tree, models);
   // The unset default never borrows the conversation's effort, which belongs to the chat model.
   await provider.generate({ provider: tree.provider, model, effort: pinnedModel ? tree.effort ?? null : null, thread: null, instructions: INSTRUCTIONS }, PROMPT + JSON.stringify(input), event => {
     if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);

@@ -213,11 +213,11 @@ for (const name of ['claude', 'codex']) test(`custom endpoint compaction and nes
   const root = store.create('Root', 'openai'); store.model(root.id, 'local-tutor');
   await (await post(`/api/trees/${root.id}/messages`, { text: 'Root fact' })).text();
   const rootBefore = store.tree(root.id), reply = rootBefore.messages.at(-1);
-  fake.reply = (req, res, body) => streamReply(res, [body.messages[0].content.startsWith('Compact') ? 'Frozen compaction fact' : 'Peterson uses two flags.']);
+  fake.reply = (req, res, body) => streamReply(res, [body.messages[0].content.startsWith('You write the background') ? 'Frozen compaction fact' : 'Peterson uses two flags.']);
   const child = await (await post(`/api/trees/${root.id}/branches`, { messageId: reply.id, start: 0, end: 8, text: 'Peterson', question: 'Explain Peterson' })).json();
   const compact = fake.calls.at(-1).body;
   assert.equal(compact.messages.length, 2, 'compaction is one isolated data prompt with its own instructions');
-  assert.match(compact.messages[0].content, /^Compact relevant/);
+  assert.match(compact.messages[0].content, /^You write the background/);
   assert.match(compact.messages[1].content, /Root fact/);
   assert.equal(child.branch.snapshot, 'Frozen compaction fact'); assert.equal(child.provider, 'openai');
   assert.deepEqual(store.tree(root.id), rootBefore, 'compaction never changes source discussion or session');
