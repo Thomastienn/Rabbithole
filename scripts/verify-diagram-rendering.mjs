@@ -35,17 +35,23 @@ if (process.argv[2] === '--serve') {
 } else {
   const dir = mkdtempSync(join(tmpdir(), 'tt-diagram-browser-'));
   const store = new Store(join(dir, 'trees.sqlite'));
-  const states = store.create('Diagram states'), other = store.create('Other conversation'), root = store.create('Diagram fixture');
+  const stepsTree = store.create('Diagram steps'), states = store.create('Diagram states'), other = store.create('Other conversation'), root = store.create('Diagram fixture');
   const text = 'repeat 😀 repeat 😀 end';
   store.message(root.id, 'user', 'Seeded rounds question', 'completed');
   const message = store.message(root.id, 'assistant', text, 'completed');
   store.message(root.id, 'assistant', 'A second reply below the diagrams.', 'completed');
-  const add = (tree, msg, title, source, error) => {
-    const artifact = store.pendingArtifact(tree, msg, title, `${title}: winners advance from one round to the next.`);
+  const add = (tree, msg, title, source, error, description = `${title}: winners advance from one round to the next.`) => {
+    const artifact = store.pendingArtifact(tree, msg, title, description);
     return source || error ? store.finishArtifact(tree, artifact.id, source, error) : artifact;
   };
   const tall = add(root.id, message, 'Tournament rounds', 'flowchart TD\n' + Array.from({ length: 12 }, (_, i) => ` N${i}[Round ${i + 1}] --> N${i + 1}[Round ${i + 2}]`).join('\n'));
   const wide = add(root.id, message, 'Rounds across the page', 'flowchart LR\n' + Array.from({ length: 8 }, (_, i) => ` N${i}[Round ${i + 1}] --> N${i + 1}[Round ${i + 2}]`).join('\n'));
+  const stepMessage = store.message(stepsTree.id, 'assistant', 'A seed absorbs water, sprouts roots, then grows leaves that make food from light.', 'completed');
+  const stepIds = [
+    ['Seed drinks water', 'flowchart LR\n W[Water soaks in]:::blue -->|wakes up| S[Sleeping seed]:::yellow', 'Water enters a seed and helps start germination.'],
+    ['Roots and shoot', '%% A plain Mermaid comment must not disable trusted colors\nflowchart TD\n S[Seed]:::yellow -->|pushes down| R[Root drinks]:::blue\n S -->|pushes up| H[Shoot reaches light]:::green', 'A root grows down to absorb water; a shoot grows up toward light.'],
+    ['Leaves make food', 'flowchart LR\n L[Sunlight]:::yellow --> F[Leaf kitchen]:::green\n F -->|makes| G[Sugar food]:::pink\n class F green', 'A leaf uses light energy to make sugar from water and carbon dioxide.'],
+  ].map(([title, source, description]) => add(stepsTree.id, stepMessage, title, source, null, description).id);
   const stateMessage = store.message(states.id, 'assistant', 'Saved artifact states.', 'completed');
   add(states.id, stateMessage, 'Pending example');
   add(states.id, stateMessage, 'Failed example', null, 'Diagram provider failed to generate a result.');
@@ -56,6 +62,7 @@ if (process.argv[2] === '--serve') {
     ['Script example', 'flowchart TD\n A["<script>window.__diagramAttacked++</script>"]'],
     ['Link example', 'flowchart TD\n A[Open]\n click A href "https://example.test/probe"'],
     ['Config example', '%%{init: {"securityLevel":"loose","htmlLabels":true}}%%\nflowchart TD\n A --> B'],
+    ['Style example', 'flowchart TD\n A[Open]:::evil\n classDef evil fill:url(https://example.test/probe)'],
   ]) add(states.id, stateMessage, title, source);
   const families = [
     ['Sequence', 'sequenceDiagram\n Alice->>Bob: Hello\n Bob-->>Alice: Hi'],
@@ -233,13 +240,54 @@ if (process.argv[2] === '--serve') {
     child.send('release');
     await wait(`[...document.querySelectorAll('.diagram-card')].some(c=>c.textContent.includes('Streaming rounds') && c.dataset.state==='ready' && c.querySelector('img')?.naturalWidth>0)`);
     assert.equal(calls(), 4);
+    assert.ok(await ev(`[...document.querySelectorAll('.diagram-card')].every(c=>c.getAttribute('aria-labelledby').split(' ').every(id=>document.getElementById(id)))`), 'single and multiple cards have no dangling label references');
     pass('pending and ready SSE events update the originating card with no reload');
+
+    await click('Return to tree'); await openRoot('Diagram steps');
+    for (const id of stepIds) await ready(id);
+    const stepSvg = async id => ev(`decodeURIComponent(document.querySelector(${JSON.stringify(card(id) + ' img')}).src.split(',').slice(1).join(','))`);
+    const hexOf = name => ev(`(()=>{const p=document.querySelector('.diagram-card').appendChild(document.createElement('span'));p.style.color='var(--color-text-${name})';const c=document.createElement('canvas').getContext('2d');c.fillStyle=getComputedStyle(p).color;p.remove();c.fillRect(0,0,1,1);return '#'+[...c.getImageData(0,0,1,1).data.slice(0,3)].map(n=>n.toString(16).padStart(2,'0')).join('')})()`);
+    const palette = {};
+    for (const scheme of ['light', 'dark']) {
+      await b('set', 'media', scheme, 'reduced-motion');
+      for (const id of stepIds) await ready(id);
+      // Re-render is async after the appearance switch; wait until the drawing carries this appearance's fill.
+      const yellow = await hexOf('yellow'), blue = await hexOf('blue'), green = await hexOf('green'), pink = await hexOf('pink');
+      await wait(`decodeURIComponent(document.querySelector(${JSON.stringify(card(stepIds[0]) + ' img')}).src).toLowerCase().includes(${JSON.stringify(yellow)})`);
+      const [first, second, third] = [await stepSvg(stepIds[0]), await stepSvg(stepIds[1]), await stepSvg(stepIds[2])];
+      assert.ok(first.toLowerCase().includes(yellow) && first.toLowerCase().includes(blue), `${scheme}: trusted yellow/blue fills present`);
+      assert.ok(second.toLowerCase().includes(green), `${scheme}: trusted green fill present`);
+      assert.ok(third.toLowerCase().includes(pink), `${scheme}: trusted pink fill present`);
+      assert.match(first, /stroke-dasharray:\s*6 3/, `${scheme}: blue also differs by dashed border`);
+      assert.ok(first.includes(">wakes<"), "edge label rendered"); assert.doesNotMatch(first, /<foreignObject|<script|<a\s|<image/);
+      const label = await ev(`getComputedStyle(document.querySelector('.diagram-card')).backgroundColor`);
+      const lum = rgb => rgb.map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const labelLum = lum(label.match(/[\d.]+/g).slice(0, 3).map(Number));
+      const contrast = Object.fromEntries(Object.entries({ yellow, blue, pink, green }).map(([name, hex]) => {
+        const fillLum = lum(hex.slice(1).match(/../g).map(n => parseInt(n, 16)));
+        return [name, (Math.max(labelLum, fillLum) + 0.05) / (Math.min(labelLum, fillLum) + 0.05)];
+      }));
+      assert.ok(Object.values(contrast).every(r => r >= 4.5), `${scheme}: colored node labels pass AA contrast`);
+      palette[scheme] = { yellow, blue, pink, green, label, contrast };
+      await ev(`document.querySelector(${JSON.stringify(card(stepIds[0]))}).scrollIntoView({block:'start'})`);
+      await b('screenshot', resolve(`.impeccable/review/diagram-steps-${scheme}.png`));
+    }
+    assert.notEqual(palette.light.yellow, palette.dark.yellow);
+    const labels = await ev(`[...document.querySelectorAll('.focused-chat .diagram-card')].map(c=>({step:c.querySelector('[id$="-step"]')?.textContent,name:c.getAttribute('aria-labelledby').split(' ').map(i=>document.getElementById(i)?.textContent).join(' '),alt:c.querySelector('img').alt}))`);
+    assert.deepEqual(labels.map(l => l.step), ['Step 1 of 3', 'Step 2 of 3', 'Step 3 of 3']);
+    assert.ok(labels.every(l => l.alt.length > 20 && l.name.startsWith('Step ')));
+    await b('set', 'viewport', '390', '844');
+    assert.ok(await ev(`[...document.querySelectorAll('.diagram-card')].every(c=>c.scrollWidth<=c.clientWidth+1)`));
+    assert.deepEqual(await ev(`[...document.querySelectorAll('.diagram-card .diagram-open img')].map(i=>i.alt)`), labels.map(l => l.alt));
+    await b('set', 'viewport', '1280', '900');
+    await b('set', 'media', 'light', 'reduced-motion');
+    pass('three small colored steps render in order with theme-resolved fills in both appearances, border cues and per-step text alternatives', { palette, labels });
 
     await click('Return to tree'); await openRoot('Diagram states');
     await wait(`[...document.querySelectorAll('.diagram-card')].some(c=>c.textContent.includes('Render error') && c.dataset.state==='failed')`);
     for (const id of familyIds) await ready(id);
     // A diagram left pending when the server started is recovered as interrupted (see diagram-recovery.md).
-    assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="failed"]').length`), 7);
+    assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="failed"]').length`), 8);
     assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="pending"]').length`), 0);
     const failures = await ev(`[...document.querySelectorAll('.diagram-card[data-state="failed"]')].map(c=>({title:c.querySelector('h3').textContent,description:!!c.querySelector('[id$="-description"]')?.textContent,source:c.querySelector('pre')?.textContent,expanded:c.querySelector('button')?.getAttribute('aria-expanded')}))`);
     assert.ok(failures.every(f => f.description && (f.title === 'Failed example' || f.title === 'Pending example' || (f.source && f.expanded === 'true'))));
@@ -266,6 +314,9 @@ if (process.argv[2] === '--serve') {
     const restored = await (await fetch(origin + `/api/trees/${root.id}`)).json();
     assert.deepEqual(restored.artifacts, baseline.artifacts);
     assert.deepEqual(restored.messages, baseline.messages);
+    await click('Return to tree'); await openRoot('Diagram steps');
+    for (const id of stepIds) await ready(id);
+    assert.deepEqual(await ev(`[...document.querySelectorAll('.diagram-card')].map(c=>c.dataset.artifact)`), stepIds);
     assert.equal(calls(), before);
     assert.deepEqual(await ev(`window.__diagramViolations`), []);
     pass('actual server-process and SQLite restart preserve identical artifacts with zero extra inference', { processes, providerCalls: before, restoredArtifacts: restored.artifacts.length });
@@ -273,7 +324,7 @@ if (process.argv[2] === '--serve') {
     assert.match(policy, /script-src 'self';/); assert.doesNotMatch(policy, /script-src[^;]*unsafe/);
     pass('original CSP renders without policy violations or unsafe script sources', policy);
     const sources = ['src/DiagramCard.tsx', 'src/artifacts.ts', 'src/diagramSource.ts', 'src/mermaid.ts', 'src/ChatPage.tsx', 'src/TreeOverview.tsx', 'src/turn.ts', 'src/layout.ts', 'server/store.mjs', 'server/diagrams.mjs', 'server/app.mjs', 'scripts/verify-diagram-rendering.mjs', 'test/artifact-render.test.mjs', 'tsconfig.json', 'package.json', 'package-lock.json', 'docs/diagram-artifacts.md', 'dist/index.html'];
-    writeFileSync('docs/verification/diagram-rendering-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.', fixtureDirectory: dir, checks, screenshots: ['diagram-desktop.png', 'diagram-dark.png', 'diagram-narrow.png'].map(name => `.impeccable/review/${name}`), sourceHashes: Object.fromEntries(sources.map(path => [path, createHash('sha256').update(readFileSync(path)).digest('hex')])) }, null, 2) + '\n');
+    writeFileSync('docs/verification/diagram-rendering-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.', fixtureDirectory: dir, checks, screenshots: ['diagram-desktop.png', 'diagram-dark.png', 'diagram-narrow.png', 'diagram-steps-light.png', 'diagram-steps-dark.png'].map(name => `.impeccable/review/${name}`), sourceHashes: Object.fromEntries(sources.map(path => [path, createHash('sha256').update(readFileSync(path)).digest('hex')])) }, null, 2) + '\n');
   } catch (error) {
     console.error(await b('snapshot', '-c').catch(() => 'Browser snapshot unavailable.'));
     console.error(await b('errors').catch(() => 'Browser errors unavailable.'));

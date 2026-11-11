@@ -193,6 +193,7 @@ test('invalid, unsafe and oversized worker results save honest failures without 
     ['flowchart TD\n A[Ok] --> B[Ok]\n click A callback', /Unsafe diagram source/],
     ['flowchart TD\n A[Ok]\n click A href "https://example.test"', /Unsafe diagram source/],
     ['flowchart TD\n A["<b>HTML</b>"]', /Unsafe diagram source/],
+    ['flowchart TD\n A["Line<br/>break"]', /Unsafe diagram source/],
     ['flowchart TD\n A["#60;script#62;alert(1)#60;/script#62;"]', /Unsafe diagram source/],
     ['flowchart TD\n A["&#x3c;img src=x&#x3e;"]', /Unsafe diagram source/],
     ['flowchart TD\n A["&lt;b&gt;HTML&lt;/b&gt;"]', /Unsafe diagram source/],
@@ -266,7 +267,8 @@ test('malformed requests are hidden and failed without sending transcript-shaped
       '```treetutor-diagram\n' + JSON.stringify({ ...task, thread: 'must-not-pass' }) + '\n```',
       '```treetutor-diagram\n' + JSON.stringify({ ...task, excerpt: 'x'.repeat(1201) }) + '\n```',
       '```treetutor-diagram\n' + JSON.stringify(task),
-      directive + directive,
+      directive + '\n```treetutor-video\n' + JSON.stringify(task) + '\n```',
+      directive.repeat(7),
       '```treetutor-diagram extra\n' + JSON.stringify(task) + '\n```',
     ]) {
       request = value;
@@ -280,6 +282,76 @@ test('malformed requests are hidden and failed without sending transcript-shaped
     }
     assert.equal(workers, 0);
   } finally { env.close(); }
+});
+
+test('a complex reply becomes several small ordered diagram steps; each worker gets one task and unsafe or invalid steps fail alone', async () => {
+  const steps = ['Seeds', 'Sprouts', 'Bad step', 'Trees'].map((title, i) => ({ title, description: `Step ${i + 1}: ${title.toLowerCase()} in words.`, intent: `Show ${title}.`, excerpt: 'Plants grow in stages.' }));
+  const blocks = steps.map(step => '\n```treetutor-diagram\n' + JSON.stringify(step) + '\n```').join('') + '\n```treetutor-diagram\n{broken}\n```';
+  const workers = [];
+  const env = await open({ generate: async (tree, text, emit) => {
+    if (tree.id) return complete(emit, 'Plants grow: a seed absorbs water, then sprouts.' + blocks);
+    workers.push({ instructions: tree.instructions, task: JSON.parse(text) });
+    const title = JSON.parse(text).title;
+    complete(emit, title === 'Bad step' ? 'flowchart TD\n A[Seed] --> B[Sprout]\n style A fill:#f00' : `flowchart LR\n A["${title} start"]:::yellow -->|grows into| B[${title} end]\n class B green`);
+  } });
+  try {
+    const tree = env.store.create('Steps');
+    const stream = await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'How do plants grow?' })).text();
+    assert.doesNotMatch(stream, /treetutor-diagram|broken/);
+    const saved = env.store.tree(tree.id);
+    assert.equal(saved.messages.at(-1).text, 'Plants grow: a seed absorbs water, then sprouts.');
+    assert.deepEqual(saved.artifacts.map(a => [a.title, a.status]), [['Seeds', 'ready'], ['Sprouts', 'ready'], ['Bad step', 'failed'], ['Trees', 'ready'], ['Diagram', 'failed']]);
+    assert.deepEqual(saved.artifacts.slice(0, 4).map(a => a.description), steps.map(s => s.description), 'each step keeps its own text alternative');
+    assert.match(saved.artifacts[2].error, /Unsafe diagram source/);
+    assert.match(saved.artifacts[4].error, /Invalid diagram request/);
+    assert.match(saved.artifacts[0].source, /A\["Seeds start"\]:::yellow/, 'trusted classes are kept without generated styles');
+    assert.deepEqual(workers.map(w => w.task), steps, 'one isolated worker call per valid step, in reply order');
+    for (const w of workers) assert.match(w.instructions, /one main idea[\s\S]*yellow, blue, pink and green[\s\S]*never be the only cue/);
+    const pending = stream.split('\n\n').filter(f => f.includes('"type":"artifact"')).map(f => JSON.parse(f.slice(6)).artifact);
+    assert.deepEqual(pending.slice(0, 5).map(a => a.status), Array(5).fill('pending'), 'all step cards appear before workers run');
+    const { tutorContext, TUTOR_INSTRUCTIONS } = await import('../server/diagrams.mjs');
+    assert.match(TUTOR_INSTRUCTIONS, /several small visual steps[\s\S]*text stays accurate[\s\S]*text alternative/);
+    assert.doesNotMatch(JSON.stringify(tutorContext(saved).messages.at(-1)), /flowchart|Bad step/);
+    assert.match(tutorContext(saved).messages.at(-1).text, /Seeds[\s\S]*Sprouts[\s\S]*Trees/);
+  } finally { env.close(); }
+});
+
+test('Stop keeps completed steps, fails active and queued steps, and never starts the next worker or publishes late output', async () => {
+  const steps = ['Ready', 'Running', 'Queued'].map(title => ({ ...task, title }));
+  const blocks = steps.map(step => '\n```treetutor-diagram\n' + JSON.stringify(step) + '\n```').join('');
+  const workers = [];
+  let release, lateEmit, workerSignal, started;
+  const pending = new Promise(resolve => { started = resolve; });
+  const env = await open({ generate: async (tree, text, emit, save, signal) => {
+    if (tree.id) return complete(emit, 'An explanation stays available.' + blocks);
+    const { title } = JSON.parse(text);
+    workers.push(title);
+    if (title === 'Ready') return complete(emit, source);
+    lateEmit = emit; workerSignal = signal; started();
+    await new Promise(resolve => { release = resolve; });
+  } });
+  try {
+    const tree = env.store.create('Stop steps');
+    const stream = env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain in steps.' }).then(r => r.text());
+    await pending;
+    assert.deepEqual(env.store.tree(tree.id).artifacts.map(a => a.status), ['ready', 'pending', 'pending']);
+    assert.equal((await env.post(`/api/trees/${tree.id}/stop`)).status, 200);
+    await stream;
+    const saved = env.store.tree(tree.id);
+    assert.equal(workerSignal.aborted, true);
+    assert.deepEqual(workers, ['Ready', 'Running']);
+    assert.deepEqual(saved.artifacts.map(a => a.status), ['ready', 'failed', 'failed']);
+    assert.equal(saved.artifacts[0].source, source);
+    assert.ok(saved.artifacts.slice(1).every(a => a.source === null && /cancelled/.test(a.error)));
+    assert.equal(saved.messages.at(-1).text, 'An explanation stays available.');
+    assert.equal(saved.messages.at(-1).status, 'interrupted');
+    complete(lateEmit, source); release();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(env.store.tree(tree.id), saved);
+    const restored = new Store(env.path);
+    try { assert.deepEqual(restored.tree(tree.id), saved, 'step order and terminal states survive reopening'); }
+    finally { restored.close(); }
+  } finally { release?.(); env.close(); }
 });
 
 test('artifact reads and message attachments enforce exact conversation ownership', async () => {

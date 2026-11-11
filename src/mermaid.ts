@@ -15,11 +15,16 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
     [`cScale${i}`, color], [`cScaleLabel${i}`, style.backgroundColor], [`pie${i + 1}`, color],
     [`git${i}`, color], [`gitBranchLabel${i}`, style.backgroundColor],
   ]));
+  // Trusted app classes the worker may assign (A:::blue). Each also differs by border so colour is never the only cue.
+  const hex = (color: string) => { const c = document.createElement('canvas').getContext('2d')!; c.fillStyle = color; c.fillRect(0, 0, 1, 1); return '#' + [...c.getImageData(0, 0, 1, 1).data.slice(0, 3)].map(n => n.toString(16).padStart(2, '0')).join(''); };
+  const borders = ['stroke-width:2px', 'stroke-width:2px,stroke-dasharray:6 3', 'stroke-width:2px,stroke-dasharray:2 2', 'stroke-width:3.5px'];
+  const classes = hues.map((hue, i) => `classDef ${hue} fill:${hex(series[i])},color:${hex(style.backgroundColor)},stroke:${hex(style.color)},${borders[i]}`).join('\n');
+  const styled = /^\s*(?:flowchart|graph)\b/.test(source.replace(/^\s*%%[^\n]*/gm, '')) ? `${source}\n${classes}` : source;
   const render = queue.then(async () => {
     mermaid.initialize({
       startOnLoad: false, securityLevel: 'strict', htmlLabels: false,
       flowchart: { htmlLabels: false }, suppressErrorRendering: true,
-      maxTextSize: 16 * 1024, theme: 'base', look: 'classic',
+      maxTextSize: 17 * 1024, theme: 'base', look: 'classic',
       themeVariables: {
         darkMode: dark,
         background: style.backgroundColor, fontSize: style.fontSize,
@@ -32,7 +37,7 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
         ...seriesVariables, xyChart: { plotColorPalette: series.join(',') },
       },
     });
-    const { svg } = await mermaid.render(`diagram-${crypto.randomUUID()}`, source);
+    const { svg } = await mermaid.render(`diagram-${crypto.randomUUID()}`, styled);
     const drawing = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;
     if (drawing.localName !== 'svg' || drawing.querySelector('parsererror, foreignObject, a, script, image')) throw new Error('Unsupported diagram output.');
     const [, , width, height] = (drawing.getAttribute('viewBox') ?? '').split(/\s+/).map(Number);

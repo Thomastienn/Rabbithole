@@ -1,8 +1,9 @@
 # Diagram artifact contract
 
-**Scoped refinement, 2026-11-11:** The [workspace and media refinement spec](workspace-media-refinement-spec.md) requires simpler, colorful diagrams presented as small visual steps while preserving safe artifact handling. This document describes the existing contract; any extension for multiple diagrams must preserve its validation and isolation guarantees.
+**Scoped refinement, 2026-11-11:** The [workspace and media refinement spec](workspace-media-refinement-spec.md) requires simpler, colorful diagrams presented as small visual steps while preserving safe artifact handling. TreeTutor-86c.1 extends the contract below without changing stored source or passage offsets.
 
-The tutor requests one diagram by appending this block to an explanation:
+The tutor requests a diagram by appending this block to an explanation. Complex
+ideas use several blocks, one per visual step in reading order:
 
 ````text
 ```treetutor-diagram
@@ -12,8 +13,11 @@ The tutor requests one diagram by appending this block to an explanation:
 
 Only `title`, `description`, `intent` and `excerpt` are accepted. They must be
 nonempty strings, limited respectively to 120, 280, 600 and 1200 UTF-16 code
-units. The JSON body is limited to 3000 code units. Multiple blocks, extra fields,
-malformed JSON and unclosed requests fail. Backtick or tilde fences of at least
+units. Each JSON body is limited to 3000 code units. Up to six diagram requests
+per reply bound worker calls, not the number of shapes in a diagram. Extra fields,
+malformed JSON and unclosed requests fail that step; valid steps still run.
+An excessive batch or a mixture of diagram and video requests fails without
+starting workers. Videos retain their single-request contract. Backtick or tilde fences of at least
 three characters are recognized. The server removes recognized requests before
 streaming or saving reply text. It withholds possible opening-fence prefixes
 during streaming; ordinary code fences are flushed unchanged at completion.
@@ -26,8 +30,11 @@ native provider adapters; credentials are never added to task text. Claude uses
 a new CLI session id; Codex starts a separate app-server thread. Neither worker
 session nor its transcript is attached to the tutor.
 
-Generation and validation share a 60-second deadline and the originating turn's
-Stop signal. Output is limited to 16 KiB of UTF-8 and 32 message items. The worker
+Each step's generation and validation share a 60-second deadline and the originating turn's
+Stop signal. All cards are published pending together; workers run sequentially
+in reading order, each receiving only its own task. Stop preserves ready steps,
+fails every remaining pending step and starts no queued worker.
+Output is limited to 16 KiB of UTF-8 and 32 message items per step. The worker
 must report completion and return bare Mermaid source. Oversized streamed output
 aborts immediately. Late callbacks after abort or timeout are ignored. Codex
 interrupts and releases a stalled turn without requiring a terminal event.
@@ -36,8 +43,10 @@ Before parsing, conservative checks reject interaction keywords (`click`, `href`
 `script`, `javascript`, `vbscript`, `callback`), HTML tags and entities,
 configuration directives/frontmatter, resource URLs, images/icons, CSS directives,
 CSS `url()`, Markdown links and backticks. This deliberately rejects some otherwise
-valid labels and styling. The initial contract accepts plain text diagrams;
-supporting richer labels requires revisiting these checks with the renderer.
+valid labels and styling, including HTML line breaks. The contract accepts plain
+text labels and trusted class assignments (`A:::blue` or `class A,B green`),
+never generated class definitions or style rules. The app supplies the four
+classes `yellow`, `blue`, `pink` and `green` only after source validation.
 Accepted source must then pass Mermaid's real `parse` API, without rendering.
 See the [Mermaid parser documentation](https://mermaid.js.org/config/usage.html#syntax-validation-without-rendering).
 Parsing runs in a terminable Node worker with an empty environment. JSDOM supplies
@@ -50,7 +59,9 @@ SQLite `artifacts` records contain `id`, `conversation`, `message`, `kind`,
 retain validated source. Failed records retain a bounded public reason instead
 of provider diagnostics, rejected source or task intent/excerpt. A diagram failure leaves
 the completed explanation available. Stop marks the active reply interrupted
-and its pending artifact failed.
+and its pending artifacts failed. Existing `created,rowid` ordering preserves
+steps even when several are inserted within one millisecond; no schema change
+or duplicate step/source storage is needed.
 
 `GET /api/trees/:conversation` returns `artifacts` alongside messages.
 `GET /api/trees/:conversation/artifacts/:artifact` requires the exact owning
@@ -84,6 +95,11 @@ image alternative. Each card and its scrollable drawing are keyboard reachable;
 the Mermaid source disclosure works with Enter/Space. Pending generation and
 rendering have separate status text. Generation failure retains the description
 and public error; render failure retains the description and opens saved source.
+Multiple diagrams under the same reply carry visible and accessible
+"Step N of M" labels, including failed steps, so numbering remains stable.
+Simple diagrams carry the main idea; the tutor's accompanying prose retains
+technical detail. Worker instructions prefer short labels, purposeful arrows,
+faithful everyday metaphors and top-to-bottom flow in the narrow reading column.
 
 The renderer loads through a dynamic import only when an open chat has a ready
 artifact. It repeats the shared 16-KiB/plain-text source checks before loading
@@ -92,6 +108,9 @@ flowcharts, suppresses Mermaid's error drawing and never binds callbacks. A
 serialized render queue keeps each theme initialization with its own drawing.
 The classic/base appearance takes colors and font metrics from the card's
 computed Astryx tokens and rerenders when the system color scheme changes.
+For flowcharts, trusted class definitions resolve chalk hues from theme tokens
+with surface-colored labels. Solid, dashed, dotted and heavier borders add
+non-color cues; node and arrow words still explain the relationships.
 
 Rendered output becomes an SVG data image, never injected HTML. Output with
 HTML labels, scripts, links or images is rejected; SVG image context also
@@ -109,6 +128,9 @@ Reopen, browser reload and server restart read the existing artifact records;
 presentation never starts inference. Raw reply text and UTF-16 branch offsets
 remain unchanged. Browser/runtime fixture evidence is recorded in
 [diagram-rendering.md](verification/diagram-rendering.md).
+Step-specific integration, rendering and native-example evidence is recorded in
+[diagram-steps.md](verification/diagram-steps.md); syntax validity alone does not
+establish simplicity or learner comprehension.
 
 ## Recovery and boundaries (TreeTutor-vm4.1)
 

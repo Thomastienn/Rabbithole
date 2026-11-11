@@ -374,7 +374,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
           const items = new Map();
-          let text = '', status = 'streaming', finished = false, artifact, usage = null, called = false;
+          let text = '', status = 'streaming', finished = false, diagrams = [], usage = null, called = false;
           const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': keepalive\n\n'); }, 15000);
           const finish = () => {
             if (finished) return;
@@ -383,7 +383,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             controller.signal.removeEventListener('abort', interrupt);
             const output = diagramReply([...items.values()].join('\n\n'), status === 'completed');
             if (output.text !== text) { text = output.text; send({ type: 'text', text }); }
-            if (artifact?.status === 'pending') artifact = store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
+            for (const artifact of diagrams) if (store.artifact(id, artifact.id)?.status === 'pending') store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
             store.update(reply, text, status);
             // Provider-reported counts only; failed, partial and canceled replies keep no usage.
             if (usage && !['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) usage = null;
@@ -442,18 +442,23 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 text = output.text;
                 store.update(reply, text, status);
                 store.forgetThread(id);
-                artifact = store.pendingArtifact(id, reply, output.task?.title ?? 'Diagram', output.task?.description ?? 'Diagram request could not be processed.');
-                send({ type: 'artifact', artifact });
-                try {
-                  if (output.error) throw new Error(output.error);
-                  if (status !== 'completed') throw new Error('Tutor reply did not complete.');
-                  const selection = { provider: tree.provider, model: store.tree(id).model };
-                  const source = await generateDiagram(metered(pick(tree), 'diagram', artifact.id, selection), selection, output.task, controller.signal, diagramTimeout);
-                  if (!finished) artifact = store.finishArtifact(id, artifact.id, source);
-                } catch (error) {
-                  if (!finished) artifact = store.finishArtifact(id, artifact.id, null, error.message);
+                // Every step card appears pending at once; workers then run one at a time in reply order.
+                diagrams = output.diagrams.map(({ task }) => store.pendingArtifact(id, reply, task?.title ?? 'Diagram', task?.description ?? 'Diagram request could not be processed.'));
+                for (const artifact of diagrams) send({ type: 'artifact', artifact });
+                for (const [i, { task, error: invalid }] of output.diagrams.entries()) {
+                  if (finished) break;
+                  let artifact = diagrams[i];
+                  try {
+                    if (invalid) throw new Error(invalid);
+                    if (status !== 'completed') throw new Error('Tutor reply did not complete.');
+                    const selection = { provider: tree.provider, model: store.tree(id).model };
+                    const source = await generateDiagram(metered(pick(tree), 'diagram', artifact.id, selection), selection, task, controller.signal, diagramTimeout);
+                    if (!finished) artifact = store.finishArtifact(id, artifact.id, source);
+                  } catch (error) {
+                    if (!finished) artifact = store.finishArtifact(id, artifact.id, null, error.message);
+                  }
+                  if (!finished) send({ type: 'artifact', artifact });
                 }
-                if (!finished) send({ type: 'artifact', artifact });
               }
             }
           } catch (error) {

@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-11T11:01:08.379Z",
+  "dir": "/tmp/tt-diagram-steps-live-t6n4rz",
+  "evidence": "Live native tutor and isolated diagram workers; real Chromium rendering. Readability is a separate review of the screenshots.",
+  "provider": "codex",
+  "model": "gpt-6.1-terra",
+  "reused": true,
+  "seconds": 4,
+  "reply": "The **water cycle** is the continuous movement of water between Earth’s surface and the atmosphere. The Sun provides much of the energy that keeps it moving.\n\n1. **The Sun warms water.** Water in oceans, lakes, rivers, and soil can change from liquid into an invisible gas called **water vapor**. This is called *evaporation*. Plants also release water vapor into the air.\n\n2. **Clouds form.** As moist air rises, it cools. Some water vapor changes into tiny liquid droplets or ice crystals. This is called *condensation*. These droplets and crystals gather to form clouds.\n\n3. **Rain falls.** Inside clouds, droplets or ice crystals can grow until they become heavy enough to fall. Water falling from clouds is called *precipitation*: it can be rain, snow, sleet, or hail.\n\n4. **Water returns to rivers and oceans.** Some rain flows over the land into streams and rivers, which carry it toward lakes and oceans. Some soaks into the ground, where it can supply plants or slowly flow into rivers and other bodies of water.\n\nThen water can evaporate again. The cycle has no fixed starting point, and a particular drop of water might take many different routes!\n\n\n\n",
+  "artifacts": [
+    {
+      "id": "2e5845b9-4a73-46b7-a1c9-db9b0870754c",
+      "title": "1. The Sun warms water",
+      "description": "Sunlight warms a body of water, and water vapor rises into the air.",
+      "status": "ready",
+      "error": null,
+      "colored": true,
+      "source": "flowchart TD\n    S[\"Sunlight\"]:::yellow -->|warms| W[\"Liquid water\"]:::blue\n    W -->|evaporates| V[\"Invisible water vapor\"]:::green\n    V -->|rises| A[\"Air\"]"
+    },
+    {
+      "id": "3d356afb-7e51-4565-a83c-7a48ff1d52ad",
+      "title": "2. Clouds form",
+      "description": "Moist air rises and cools, and tiny droplets or ice crystals gather into a cloud.",
+      "status": "ready",
+      "error": null,
+      "colored": true,
+      "source": "flowchart TD\n    A[\"Moist air rises\"]:::blue --> B[\"Air cools\"]:::blue\n    B --> C[\"Water vapor condenses or freezes\"]:::yellow\n    C --> D[\"Tiny droplets or ice crystals\"]:::yellow\n    D --> E[\"Cloud forms\"]:::green"
+    },
+    {
+      "id": "6ab89002-876f-47e3-a044-74de24717bd0",
+      "title": "3. Rain falls",
+      "description": "Water droplets fall as rain from a cloud onto the land.",
+      "status": "ready",
+      "error": null,
+      "colored": true,
+      "source": "flowchart TD\n    A([Cloud]):::blue\n    B[Rain droplets]:::blue\n    C[Land]:::green\n    A -->|precipitation| B\n    B -->|falls onto| C"
+    },
+    {
+      "id": "9bd53725-77d5-47f5-a1e1-604b76bba02a",
+      "title": "4. Water flows back",
+      "description": "Rainwater flows into streams and a river that carries water toward the ocean; some water also soaks into the ground.",
+      "status": "ready",
+      "error": null,
+      "colored": true,
+      "source": "flowchart TD\n    A[Rain falls on land]:::blue\n    A -->|flows over land| B[Streams]:::blue\n    B --> C[River]:::blue\n    C -->|carries water toward| D[Ocean]:::blue\n    A -->|soaks in| E[Groundwater]:::green"
+    }
+  ],
+  "screenshots": [
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/light-1.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/light-2.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/light-3.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/light-4.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/light.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/dark-1.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/dark-2.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/dark-3.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/dark-4.png",
+    "/home/thomas/CodeBase/TreeTutor/docs/verification/diagram-steps/dark.png"
+  ],
+  "checks": [
+    {
+      "name": "tutor completed with multiple ready colored steps",
+      "pass": true
+    },
+    {
+      "name": "reply retains explanatory text without directives or generated source",
+      "pass": true
+    },
+    {
+      "name": "light: actual Mermaid images load with matching visible text alternatives",
+      "pass": true
+    },
+    {
+      "name": "dark: actual Mermaid images load with matching visible text alternatives",
+      "pass": true
+    },
+    {
+      "name": "reopening saved examples starts no model generation",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "usage": {
+    "first": 1794394580638,
+    "events": [
+      {
+        "at": 1794394580638,
+        "provider": "codex",
+        "model": "gpt-6.1-terra",
+        "task": "diagram",
+        "input": 8306,
+        "output": 57,
+        "cacheRead": 0
+      },
+      {
+        "at": 1794394584030,
+        "provider": "codex",
+        "model": "gpt-6.1-terra",
+        "task": "diagram",
+        "input": 4073,
+        "output": 67,
+        "cacheRead": 4224
+      },
+      {
+        "at": 1794394587302,
+        "provider": "codex",
+        "model": "gpt-6.1-terra",
+        "task": "diagram",
+        "input": 4067,
+        "output": 51,
+        "cacheRead": 4224
+      },
+      {
+        "at": 1794394590857,
+        "provider": "codex",
+        "model": "gpt-6.1-terra",
+        "task": "diagram",
+        "input": 4096,
+        "output": 75,
+        "cacheRead": 4224
+      },
+      {
+        "at": 1794394591380,
+        "provider": "codex",
+        "model": "gpt-6.1-terra",
+        "task": "chat",
+        "input": 8298,
+        "output": 583,
+        "cacheRead": 0
+      }
+    ]
+  },
+  "pass": true,
+  "sourceHashes": {
+    "server/diagrams.mjs": "e37cf38e83f8d5ba17a6226a62d3aaf24c7a3453b299d0ede4e1b2609c3e410c",
+    "server/app.mjs": "7cfe03b51b7f0d8554973c72bbc9bdc66f58ad07190042836ef243f1cebfd894",
+    "src/DiagramCard.tsx": "cd1a9123fe3392180a2a24085dbf5f51a4534fc89355813c742298084041b72b",
+    "src/mermaid.ts": "15db755c78977fcd588d98a8cca007bda0cd84b59e0714fdb158439fc3ecc699",
+    "src/ChatPage.tsx": "a7386d4c4d0e8a11eb5c6d9284cefe505868c524e93cb3135088da5967642aa9",
+    "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
+    "scripts/verify-diagram-steps-live.mjs": "cb4e438196c9fa7783253fd36a42c407d86a9011b236a5ffb98f45abdb38d3fc",
+    "dist/index.html": "c46d7f46ef6db8c9517b9ffca82528cabdc5769e159b729415addcb81d769c93"
+  }
+}

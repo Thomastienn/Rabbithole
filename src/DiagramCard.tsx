@@ -6,7 +6,7 @@ import { Lightbox } from '@astryxdesign/core/Lightbox';
 import { useTheme } from '@astryxdesign/core/theme';
 import { renderArtifact, type Artifact, type DiagramState } from './artifacts';
 
-export default function DiagramCard({ artifact }: { artifact: Artifact }) {
+export default function DiagramCard({ artifact, steps = [artifact] }: { artifact: Artifact; steps?: Artifact[] }) {
   const id = useId();
   const card = useRef<HTMLElement>(null);
   const [drawing, setDrawing] = useState<DiagramState>({ status: 'pending' });
@@ -22,8 +22,9 @@ export default function DiagramCard({ artifact }: { artifact: Artifact }) {
     return () => { cancelled = true; };
   }, [artifact.id, artifact.status, artifact.source, mode]);
   const failed = drawing.status === 'failed';
-  return <section ref={card} className="diagram-card" tabIndex={0} aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={drawing.status}>
+  return <section ref={card} className="diagram-card" tabIndex={0} aria-labelledby={steps.length > 1 ? `${id}-step ${id}-title` : `${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={drawing.status}>
     <VStack gap={3} padding={3}>
+      {steps.length > 1 && <Text type="supporting" color="secondary" id={`${id}-step`}>Step {steps.indexOf(artifact) + 1} of {steps.length}</Text>}
       <Heading level={3} id={`${id}-title`}>{artifact.title}</Heading>
       <Text id={`${id}-description`}>{artifact.description}</Text>
       {drawing.status === 'pending' && <Text type="supporting" color="secondary" role="status">{artifact.status === 'pending' ? 'Creating diagram…' : 'Rendering diagram…'}</Text>}
