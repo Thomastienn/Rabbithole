@@ -126,8 +126,17 @@ html { view-transition-name: none; }
 .diagram-card:focus-visible, .diagram-open:focus-visible, .diagram-source:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
 .selection-action { position: absolute; z-index: 3; margin-top: var(--spacing-1); transform: translateX(-50%); animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, var(--spacing-1)); } }
-.passage-box { position: absolute; z-index: 3; width: min(100%, 28rem); transform: translateY(-100%); margin-top: calc(-1 * var(--spacing-1)); box-shadow: var(--shadow-low); }
-.branch-form { margin-top: var(--spacing-2); border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); }
+.passage-box { position: absolute; z-index: 3; width: min(100%, 28rem); transform: translateY(-100%); margin-top: calc(-1 * var(--spacing-1)); }
+/* Floating surfaces: raised slate, hairline seams, no shadows (spec, Dialogs and menus). The passage prompt carries the yellow ring. */
+.branch-form { margin-top: var(--spacing-2); border: thin solid var(--color-accent); border-radius: var(--radius-container); background: var(--color-background-popover); }
+.astryx-alert-dialog h2 { margin-block-end: var(--spacing-2); }
+.astryx-alert-dialog .astryx-button[data-variant=destructive] { background: transparent; color: var(--color-text-error); box-shadow: inset 0 0 0 1px var(--color-border-error); }
+.astryx-alert-dialog .astryx-button[data-variant=destructive]:not(:first-child) { margin-inline-start: var(--spacing-4); }
+.astryx-alert-dialog .astryx-button[data-variant=destructive]:focus-visible { background: var(--color-error); color: var(--color-on-error); }
+/* Model menu: the current model is a yellow check, not a radio circle. */
+.astryx-dropdown-menu .astryx-dropdown-menu-radio { background: none; border-color: transparent; }
+.astryx-dropdown-menu .astryx-dropdown-menu-radio .astryx-radio-indicator-dot { display: none; }
+.astryx-dropdown-menu .astryx-dropdown-menu-radio[data-checked=checked]::after { content: ''; width: 0.3rem; height: 0.6rem; border: solid var(--color-accent); border-width: 0 2px 2px 0; transform: translateY(-15%) rotate(45deg); }
 .focused-chat { flex: 0 0 var(--chat-width); min-width: 0; border-left: thin solid var(--color-border); background: var(--color-background-surface); }
 .chat-divider { flex: none; position: relative; z-index: 5; width: var(--spacing-2); margin-inline: calc(-1 * var(--spacing-1)); cursor: col-resize; touch-action: none; }
 .chat-divider::after { content: ''; position: absolute; inset-block: 0; left: 50%; width: 2px; transform: translateX(-50%); background: transparent; transition: background-color 120ms ease-out; }

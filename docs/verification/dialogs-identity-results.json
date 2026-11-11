@@ -1,0 +1,111 @@
+{
+  "issue": "TreeTutor-nwx.10",
+  "checkedAt": "2026-11-11T04:29:25.395Z",
+  "evidence": "Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.",
+  "appearances": {
+    "dark": {
+      "model": {
+        "accent": "rgb(232, 210, 122)",
+        "background": "rgb(42, 56, 51)",
+        "check": "rgb(232, 210, 122)",
+        "checkBox": "rgba(0, 0, 0, 0)",
+        "current": "Fixture model",
+        "popover": "rgb(42, 56, 51)",
+        "secondary": "rgb(159, 176, 168)",
+        "signedOut": "rgb(159, 176, 168)",
+        "text": "ClaudeFixture modelSecond modelCodex · not connectedContinue with ChatGPTSign in to use Codex with your ChatGPT planCustom endpoint · not connectedCustom endpoint settingsAdd an endpoint or check its URL, API key and connection",
+        "uncheckedBorder": "rgba(0, 0, 0, 0)"
+      },
+      "delete": {
+        "action": "rgba(0, 0, 0, 0)",
+        "actionText": "rgb(232, 138, 122)",
+        "alert": "rgb(232, 138, 122)",
+        "alertText": "rgb(232, 138, 122)",
+        "background": "rgb(36, 49, 45)",
+        "gap": 10,
+        "ring": "rgb(232, 138, 122) 0px 0px 0px 1px inset",
+        "shadow": "rgba(235, 231, 220, 0.12) 0px 0px 0px 1px inset",
+        "space": 24,
+        "surface": "rgb(36, 49, 45)",
+        "text": "Delete chat “Tournament trees”?2 conversations and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.Keep conversationsDelete chat",
+        "title": "Delete chat “Tournament trees”?"
+      },
+      "deleteFocused": {
+        "action": "rgb(232, 138, 122)",
+        "error": "rgb(232, 138, 122)",
+        "onError": "rgb(28, 39, 36)",
+        "text": "rgb(28, 39, 36)"
+      },
+      "prompt": {
+        "accent": "rgb(232, 210, 122)",
+        "background": "rgb(42, 56, 51)",
+        "border": "rgb(232, 210, 122)",
+        "clear": true,
+        "label": "Question about this passagelocksCreate focused chatCancel branch",
+        "popover": "rgb(42, 56, 51)",
+        "radius": "6px",
+        "shadow": "none",
+        "width": 448
+      }
+    },
+    "light": {
+      "model": {
+        "accent": "rgb(122, 101, 16)",
+        "background": "rgb(247, 248, 245)",
+        "check": "rgb(122, 101, 16)",
+        "checkBox": "rgba(0, 0, 0, 0)",
+        "current": "Fixture model",
+        "popover": "rgb(247, 248, 245)",
+        "secondary": "rgb(74, 90, 83)",
+        "signedOut": "rgb(74, 90, 83)",
+        "text": "ClaudeFixture modelSecond modelCodex · not connectedContinue with ChatGPTSign in to use Codex with your ChatGPT planCustom endpoint · not connectedCustom endpoint settingsAdd an endpoint or check its URL, API key and connection",
+        "uncheckedBorder": "rgba(0, 0, 0, 0)"
+      },
+      "delete": {
+        "action": "rgba(0, 0, 0, 0)",
+        "actionText": "rgb(168, 56, 44)",
+        "alert": "rgb(168, 56, 44)",
+        "alertText": "rgb(168, 56, 44)",
+        "background": "rgb(243, 245, 241)",
+        "gap": 10,
+        "ring": "rgb(168, 56, 44) 0px 0px 0px 1px inset",
+        "shadow": "rgba(28, 39, 36, 0.12) 0px 0px 0px 1px inset",
+        "space": 24,
+        "surface": "rgb(243, 245, 241)",
+        "text": "Delete chat “Tournament trees”?2 conversations and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.Keep conversationsDelete chat",
+        "title": "Delete chat “Tournament trees”?"
+      },
+      "deleteFocused": {
+        "action": "rgb(168, 56, 44)",
+        "error": "rgb(168, 56, 44)",
+        "onError": "rgb(255, 255, 255)",
+        "text": "rgb(255, 255, 255)"
+      },
+      "prompt": {
+        "accent": "rgb(122, 101, 16)",
+        "background": "rgb(247, 248, 245)",
+        "border": "rgb(122, 101, 16)",
+        "clear": true,
+        "label": "Question about this passagelocksCreate focused chatCancel branch",
+        "popover": "rgb(247, 248, 245)",
+        "radius": "6px",
+        "shadow": "none",
+        "width": 448
+      }
+    }
+  },
+  "screenshots": [
+    "dialogs-model-menu-dark.png",
+    "dialogs-map-menu-dark.png",
+    "dialogs-delete-dark.png",
+    "dialogs-delete-focused-dark.png",
+    "dialogs-rename-dark.png",
+    "dialogs-passage-prompt-dark.png",
+    "dialogs-model-menu-light.png",
+    "dialogs-map-menu-light.png",
+    "dialogs-delete-light.png",
+    "dialogs-delete-focused-light.png",
+    "dialogs-rename-light.png",
+    "dialogs-passage-prompt-light.png"
+  ]
+}

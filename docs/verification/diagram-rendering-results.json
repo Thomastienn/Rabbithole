@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-11T04:16:34.858Z",
+  "checkedAt": "2026-11-11T04:29:25.057Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-Nb1FF1",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-usr58I",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "ed9c4d20-9ed3-4b53-8aa7-1798854e1e46",
-        "messageId": "cd6a0421-9de4-4784-aaab-c60440240a47",
+        "parent": "71968071-6435-41f5-8c32-feef7f26fff7",
+        "messageId": "c4e683b2-3699-42e1-90ac-1dd3ddb6e169",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -104,8 +104,8 @@
       "pass": true,
       "details": {
         "processes": [
-          1128006,
-          1128954
+          1176656,
+          1177642
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3
@@ -127,10 +127,10 @@
     "src/artifacts.ts": "239ed145eb9bdc0409a3eda2aa19747e7d2db41b96f8593ce93f1f17ea7b6d7c",
     "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
     "src/mermaid.ts": "76e478bfea77764299a24efc27cc0f9e27bcce64a736434f57f57ecf86d8e2c1",
-    "src/ChatPage.tsx": "118d8919ab8cfa615286ac4be45d27f5e550ab213778e60e8e387333c215d938",
+    "src/ChatPage.tsx": "2762d01a908f24f37b304f1d9abb2b08c1425a3f775bd00a21a30bedac7261e9",
     "src/TreeOverview.tsx": "d9987cf1c2a46a1d7cbf5937fb1d4eece14d9f807724e701274590f3ea0eebc6",
     "src/turn.ts": "a0016c1b917618b6e7720a913a74a247c8a9d8b4f5e4c258c4e8c129f9b61136",
-    "src/layout.ts": "7e9e16fa1e10fac3db5b5a02359d8abfd636b500c2c90bba05a7782374ad07ff",
+    "src/layout.ts": "af348a5eced77094079769dedcbb45dd7398b311d4c58b3b4ad298c5d70b3ea2",
     "server/store.mjs": "4c60162681a33075b385f094cf00b68f164d80b89b8e2002f959e6627f579f8d",
     "server/diagrams.mjs": "7d49dea6b7ac2414f5b69898a8da4c29e5715e979b3fc4d005f2dd7259491a60",
     "server/app.mjs": "d2a322bf72352ddb8bd63d6f47de56dcc512718f7ed0223d00b0e50d032aa7fd",
@@ -140,6 +140,6 @@
     "package.json": "77b9672f43ed972430e2d8ab07600f052d49d3bdcc065077cc3261e33dfb85b7",
     "package-lock.json": "8b2a7486e7ac6b6b15eaf11822a53843932adb6ab60d6aa77838c94c14f326fe",
     "docs/diagram-artifacts.md": "82d1b252b58357bf8d32a59fec278e908a5f92e1c3dc655216e2276092f4af8c",
-    "dist/index.html": "d6d7485b221e367d087cc4243f47f01f2eff01d841d662c560cb7c5679e0a4db"
+    "dist/index.html": "3cc2e4bd87fd8b9e3ed1bf98ef6df9f8ab946bd0925d63ccb914c29604275bbc"
   }
 }

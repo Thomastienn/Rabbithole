@@ -1,0 +1,51 @@
+script                               status  detail
+verify-appearance.mjs                PASS    5s
+verify-branch-compaction.mjs         SKIP    needs a live provider
+verify-branch-streaming-live.mjs     SKIP    needs a live provider
+verify-branch-streaming.mjs          PASS    4s
+verify-break-down-live.mjs           SKIP    needs a live provider
+verify-break-down-ui.mjs             PASS    6s
+verify-bulk-folding.mjs              PASS    3s
+verify-canvas-navigation.mjs         PASS    6s
+verify-canvas-positions.mjs          KNOWN   TreeTutor-wpc; 3s; log /tmp/treetutor-verify-myFXp3/verify-canvas-positions.log
+verify-chat-divider.mjs              PASS    3s
+verify-chat-expand.mjs               FLAKY   6s; failed once, passed on retry
+verify-chat-management.mjs           PASS    8s
+verify-chat-sidebar.mjs              PASS    4s
+verify-codex-history.mjs             SKIP    needs a live provider
+verify-compact-controls.mjs          PASS    2s
+verify-custom-endpoint.mjs           PASS    42s
+verify-diagram-live.mjs              SKIP    needs a live provider
+verify-diagram-rendering.mjs         PASS    7s
+verify-dialog-identity.mjs           PASS    4s
+verify-first-conversation.mjs        PASS    3s
+verify-focused-chat-layout.mjs       PASS    3s
+verify-focused-chat-surround.mjs     PASS    4s
+verify-inherited-context.mjs         PASS    2s
+verify-keyboard-journey.mjs          PASS    8s
+verify-knowledge.mjs                 PASS    5s
+verify-large-map.mjs                 PASS    32s
+verify-layout-restore.mjs            PASS    5s
+verify-local-delivery.mjs            PASS    2s
+verify-map-gestures.mjs              PASS    3s
+verify-map-identity.mjs              PASS    4s
+verify-media-nested-live.mjs         SKIP    needs a live provider
+verify-model-switch.mjs              PASS    5s
+verify-node-growth.mjs               PASS    4s
+verify-node-previews.mjs             PASS    6s
+verify-passage-corrections.mjs       PASS    4s
+verify-passage-selection.mjs         PASS    8s
+verify-polish.mjs                    PASS    9s
+verify-provider-continuity-live.mjs  SKIP    needs a live provider
+verify-release-journey-live.mjs      SKIP    needs a live provider
+verify-settings-window.mjs           PASS    11s
+verify-sidebar-identity.mjs          PASS    8s
+verify-subtree-folding.mjs           PASS    3s
+verify-suggestion-branching.mjs      PASS    4s
+verify-suggestion-phrases.mjs        SKIP    needs a live provider
+verify-tree-overview.mjs             KNOWN   TreeTutor-wpc; 8s; log /tmp/treetutor-verify-myFXp3/verify-tree-overview.log
+verify-video-player.mjs              PASS    21s
+verify-video-recovery.mjs            PASS    27s
+verify-vim-bindings.mjs              PASS    22s
+
+36 passed, 1 flaky, 0 new failures, 2 known failures, 9 skipped (live)
