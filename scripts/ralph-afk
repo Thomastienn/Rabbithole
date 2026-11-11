@@ -104,10 +104,13 @@ while :; do
     if ! usable "$agent"; then
       kill -0 "$run_pid" 2>/dev/null || break
       log "$agent stopped answering mid-task. Stopping Ralph before checking other agents."
-      node scripts/ralph-takeover.mjs "$run_pid" 9>&-
-      interrupted=true
-      last=''
-      break
+      # A failed stop must not end the supervisor (set -e): keep the run and retry after the next check.
+      if node scripts/ralph-takeover.mjs "$run_pid" 9>&-; then
+        interrupted=true
+        last=''
+        break
+      fi
+      log "Could not stop Ralph. Trying again in ${wait_s}s."
     fi
   done
   wait "$run_pid" || log "Ralph exited with status $?."

@@ -34,7 +34,8 @@ pending edits through `beads-resume`. This also works when Ralph stays alive
 after a mid-task limit. Task output mentioning limits does not trigger a switch.
 Each probe uses the provider; it times out after 180 seconds and forces termination
 5 seconds later if needed. Shutdown waits up to another 40 seconds before
-refusing an overlapping run.
+refusing an overlapping run. If the stop fails, the supervisor keeps that run
+and tries again after the next probe.
 Cheap-model probes can miss a limit specific to the working model.
 
 With no arguments it works the epics listed in `.ralph-tui/epics`, top to

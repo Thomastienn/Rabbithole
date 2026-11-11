@@ -146,3 +146,14 @@ test('a healthy task keeps running even when its output mentions usage limits', 
   assert.ok(f.read('probes').length > 1, 'Healthy provider must remain available during mid-task probes');
   assert.ok(f.read('checks').every(seconds => seconds === '600'), 'Checks default to ten minutes');
 });
+
+test('a failed stop keeps the supervisor alive and is retried at the next check', () => {
+  const f = fixture();
+  const bd = join(f.cwd, 'bin/bd');
+  writeFileSync(bd, readFileSync(bd, 'utf8').replace('\n', `\nif [[ $1 == show && ! -e "${f.cwd}/show-failed" ]]; then touch "${f.cwd}/show-failed"; exit 1; fi\n`));
+  const result = f.run({ FIXTURE_RUNNING: 'limited', RALPH_AFK_WAIT: '7' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Could not stop Ralph/);
+  assert.deepEqual(f.read('resumed'), ['yes']);
+  assert.deepEqual(f.runs().map(run => /--agent (\S+)/.exec(run)[1]), ['claude', 'codex']);
+});
