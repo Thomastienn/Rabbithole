@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-11T04:45:32.645Z",
+  "checkedAt": "2026-11-11T04:53:41.395Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-8AQuTg",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-NzTrjU",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "5b86b481-287a-4f6c-b8b3-96095e97aa1e",
-        "messageId": "254c6d47-4d72-41f0-a3dc-c8ba07d080f9",
+        "parent": "8ed15a11-6261-4846-8685-f7d310e7657b",
+        "messageId": "0b0feeba-edfa-4db9-a0f1-c2bff1666300",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -104,8 +104,8 @@
       "pass": true,
       "details": {
         "processes": [
-          1233058,
-          1234030
+          1277031,
+          1278225
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3

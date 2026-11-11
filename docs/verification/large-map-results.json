@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-11T04:30:10.805Z",
+  "date": "2026-11-11T04:54:26.564Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,18 +12,18 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 1030.9116520000007,
-  "previewQueryMs": 714.7107790000009,
+  "seedMs": 998.3887419999992,
+  "previewQueryMs": 751.1456909999997,
   "previewBytes": 4876201,
-  "openMs": 3181.396409000001,
+  "openMs": 3041.1196290000007,
   "dom": {
-    "elements": 2536,
+    "elements": 2525,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1999.5,
+    "elapsedMs": 1986.5,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
@@ -33,15 +33,15 @@
     "p95Ms": 16.700000000000728,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 374.33360000000175,
-  "unfoldMs": 195.67856699999902,
+  "foldMs": 371.55436199999895,
+  "unfoldMs": 196.83946599999763,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 3720.7083409999977,
-  "selectMs": 4190.113552999999,
-  "selectUiMs": 516.8000000007451,
+  "selectClickMs": 3934.4103050000012,
+  "selectMs": 4536.153570000002,
+  "selectUiMs": 636.6999999992549,
   "selectedBounds": {
     "bottom": 631.8375244140625,
     "canvasHeight": 900,
@@ -51,12 +51,12 @@
     "toolbarTop": 850,
     "top": 75
   },
-  "streamingMs": 534.5921500000004,
+  "streamingMs": 549.5394960000012,
   "chunkRenders": {
-    "89a3fb78-5411-4033-aca1-afd6805c64d1": 14
+    "18c27c6d-022d-44b2-ade4-81d5bdc8aaad": 14
   },
   "chunkRenderReasons": {
-    "89a3fb78-5411-4033-aca1-afd6805c64d1": [
+    "18c27c6d-022d-44b2-ade4-81d5bdc8aaad": [
       "preview"
     ]
   }
