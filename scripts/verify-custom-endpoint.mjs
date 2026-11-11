@@ -181,7 +181,7 @@ if (process.argv[2] === '--serve') {
     await wait('document.querySelector(".chat-model").textContent.includes("Sonnet · ")');
     pass('removed endpoint stays explicit in saved chat; actionable menu repairs it or switches to Claude');
     await mapMenu(); await menuItem('Help');
-    assert.ok((await evaluate('document.querySelector("dialog[open]").textContent')).includes('New chats default to Claude.'));
+    assert.ok((await evaluate('document.querySelector("dialog[open]").textContent')).includes('Set the starting model and effort for new learning trees in Settings → Models.'));
     assert.ok(!await evaluate('document.body.textContent.includes("ui-fixture-secret") || document.body.innerHTML.includes("unsaved-fixture-key")'));
     const result = { result: 'PASS', mode: 'fixture', date: new Date().toISOString(), liveEndpointTested: false, serverPids: [firstPid, secondPid], checks, screenshots: dir };
     writeFileSync('docs/verification/custom-endpoint-settings-results.json', JSON.stringify(result, null, 2) + '\n');

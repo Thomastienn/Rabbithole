@@ -67,7 +67,7 @@ try {
         action: s.backgroundColor, actionText: s.color, ring: s.boxShadow, alert: token('--color-border-error'), alertText: token('--color-text-error'), space: del.getBoundingClientRect().left - keep.getBoundingClientRect().right, gap: d.querySelector('[id]:not(h2)') && d.querySelector('h2').nextElementSibling.getBoundingClientRect().top - d.querySelector('h2').getBoundingClientRect().bottom };
     })()`);
     assert.equal(seen.delete.title, 'Delete chat “Tournament trees”?');
-    assert.match(seen.delete.text, /2 conversations and their messages, branches, diagrams, videos and saved layout will be permanently deleted\..*This cannot be undone\./);
+    assert.match(seen.delete.text, /2 conversations and their messages, branches, diagrams and saved layout will be permanently deleted\. Ready videos stay in Videos\..*This cannot be undone\./);
     assert.equal(seen.delete.background, seen.delete.surface); assert.ok(seen.delete.shadow === 'none' || seen.delete.shadow.endsWith('inset'), `hairline seam, no drop shadow: ${seen.delete.shadow}`);
     assert.equal(seen.delete.action, 'rgba(0, 0, 0, 0)'); assert.equal(seen.delete.actionText, seen.delete.alertText); assert.ok(seen.delete.ring.includes(seen.delete.alert), seen.delete.ring);
     assert.ok(seen.delete.space >= 24, `destructive action set apart: ${seen.delete.space}px`); assert.ok(seen.delete.gap > 0, 'title and consequence separated');

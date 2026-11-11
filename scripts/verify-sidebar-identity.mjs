@@ -57,7 +57,7 @@ try {
     assert.equal(styles.width, 232); assert.equal(styles.background, styles.muted); assert.equal(styles.fill, styles.neutral);
     assert.equal(styles.action, styles.accent); assert.equal(styles.actionBackground, 'rgba(0, 0, 0, 0)');
     assert.equal(styles.wordmark, true); assert.match(styles.font, /Public Sans/); assert.equal(styles.radius, '4px'); assert.equal(styles.overflow, false);
-    assert.deepEqual(styles.footer, ['Knowledge', 'Settings']);
+    assert.deepEqual(styles.footer, ['Knowledge', 'Videos', 'Settings']);
     results.appearances[mode] = styles;
     await shot(mode);
     // A non-current tree's overflow is keyboard reachable and never changes selection.

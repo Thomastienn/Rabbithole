@@ -116,13 +116,15 @@ try {
   await b('reload'); await b('wait', '[aria-label="Map menu"]'); await settings();
   await b('wait', '--text', 'Warning: concept matching is getting expensive');
   await click('Usage');
-  await b('wait', '--text', 'Today\'s usage: 6 input');
+  await b('wait', '--text', '6 input, ');
   await click('Models');
   await reach('[role=switch]'); await key('Space');
   await wait(`document.querySelector('[role=switch]')?.checked === false && !document.querySelector('[role=switch]').disabled`);
   assert.equal(store.suggestionSettings().enabled, false);
   await reach('[role=switch]'); await key('Space');
   await wait(`document.querySelector('[role=switch]')?.checked === true && !document.querySelector('[role=switch]').disabled`);
+  // Off-screen in the scrolled Settings body, a click would land on the backdrop and close Settings.
+  await ev(`[...document.querySelectorAll('dialog[open] label')].find(l => l.textContent.startsWith('Quick thinking model')).scrollIntoView({ block: 'center' }); true`);
   await b('find', 'label', 'Quick thinking model', 'click');
   await wait(`document.activeElement?.matches('[role=combobox]')`);
   await b('keyboard', 'type', 'Fixture alternate');

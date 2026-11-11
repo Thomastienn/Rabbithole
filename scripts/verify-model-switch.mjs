@@ -148,7 +148,8 @@ try {
     failCatalog = true;
     await click('Model for next reply');
     await browser('wait', '--text', 'Could not load models.');
-    assert.equal(await evaluate("document.querySelectorAll('[role=menuitemradio]').length"), 0);
+    // Only the effort choice (Provider default) remains; no model can be listed.
+    assert.deepEqual(await evaluate("[...document.querySelectorAll('[role=menuitemradio]')].map(e => e.textContent.trim())"), ['Provider default']);
     assert.ok(await evaluate("[...document.querySelectorAll('[role=menuitem]')].some(e=>e.textContent.includes('Continue with ChatGPT'))"));
     await browser('press', 'Escape');
     assert.equal((await post(`/api/trees/${child.id}/model`, { model: first.model })).status, 502);
