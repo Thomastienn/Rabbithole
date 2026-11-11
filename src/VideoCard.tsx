@@ -3,6 +3,8 @@ import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Button } from '@astryxdesign/core/Button';
+import { IconButton } from '@astryxdesign/core/IconButton';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import type { Artifact } from './artifacts';
 
@@ -14,7 +16,7 @@ const FAILURE_REASON = /^(?:Video request could not be read: [^\n]+\.|Tutor repl
 
 // Only the status line announces; source stays private.
 // Library cards pass their own media route and no onAction: their source conversation may be gone, so nothing can regenerate there.
-export default function VideoCard({ artifact, inline = false, onAction, media = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/media`, actions }: { artifact: Pick<Artifact, 'id' | 'title' | 'description' | 'status' | 'available' | 'conversation' | 'phase' | 'progress'> & { error?: string | null }; inline?: boolean; onAction?: (action: 'cancel' | 'retry') => Promise<void>; media?: string; actions?: ReactNode }) {
+export default function VideoCard({ artifact, inline = false, onAction, media = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/media`, actions }: { artifact: Pick<Artifact, 'id' | 'title' | 'description' | 'status' | 'available' | 'conversation' | 'phase' | 'progress'> & { error?: string | null }; inline?: boolean; onAction?: (action: 'cancel' | 'retry' | 'regenerate') => Promise<void>; media?: string; actions?: ReactNode }) {
   const id = useId();
   const [enlarged, setEnlarged] = useState(false);
   const state = artifact.status === 'ready' && artifact.available === false ? 'unavailable' : artifact.status;
@@ -27,6 +29,7 @@ export default function VideoCard({ artifact, inline = false, onAction, media = 
         {state === 'ready' && <video className="video-frame" src={media} controls preload="metadata" aria-label={`Video: ${artifact.title}`} aria-describedby={`${id}-description`} />}
         <VStack gap={2} padding={3} hAlign="center" vAlign="center" className="video-controls">
           <Text type="supporting" color="secondary" role="status" className={state === 'ready' ? 'sr-only' : undefined}><Text type="inherit" className="sr-only">{artifact.title}: </Text>{status}</Text>
+          {state === 'ready' && onAction && <IconButton label={`Try a different version of video: ${artifact.title}`} tooltip="Try a different version" icon={<ArrowPathIcon />} variant="ghost" size="sm" clickAction={() => onAction('regenerate')} />}
           {/* Keep the action mounted so Cancel → Retry/Open large preserves keyboard focus. */}
           {(state === 'ready' || onAction) && <Button key="action" label={state === 'ready' ? 'Open large' : state === 'pending' ? 'Cancel video' : state === 'unavailable' ? 'Regenerate video' : 'Retry video'} variant="ghost" size="sm" clickAction={() => state === 'ready' ? setEnlarged(true) : onAction?.(state === 'pending' ? 'cancel' : 'retry')} />}
         </VStack>

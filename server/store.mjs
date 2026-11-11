@@ -336,6 +336,15 @@ export class Store {
     const result = this.db.prepare("UPDATE artifacts SET status='pending',source=NULL,error=NULL WHERE conversation=? AND id=? AND kind IN ('mermaid','visual') AND status='failed' AND input IS NOT NULL").run(conversation, id);
     return result.changes ? this.artifact(conversation, id) : null;
   }
+  regenerateArtifact(conversation, id) {
+    const artifact = this.artifact(conversation, id);
+    if (artifact?.status !== 'ready' || !['visual', 'video'].includes(artifact.kind) || !artifact.input) return null;
+    // A new video id leaves its previous library entry/file intact; updating the row preserves chat order.
+    const next = artifact.kind === 'video' ? randomUUID() : id;
+    const input = JSON.stringify({ ...JSON.parse(artifact.input), differentVersion: true });
+    const result = this.db.prepare("UPDATE artifacts SET id=?,status='pending',source=NULL,error=NULL,duration=NULL,input=?,attempt=? WHERE conversation=? AND id=? AND status='ready'").run(next, input, artifact.kind === 'video' ? randomUUID() : null, conversation, id);
+    return result.changes ? this.artifact(conversation, next) : null;
+  }
   library() { return this.db.prepare('SELECT id,title,description,duration,created FROM videos ORDER BY created DESC,rowid DESC').all().map(v => ({ ...v })); }
   // Removes only the library entry; artifacts and usage records stay as history.
   removeLibraryVideo(id) { this.db.prepare('DELETE FROM videos WHERE id=?').run(id); }

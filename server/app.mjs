@@ -59,7 +59,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
   }
   // Ready videos whose file is missing or unreadable are reported unavailable, so the learner can regenerate them.
   const readable = path => { try { accessSync(path, constants.R_OK); return true; } catch { return false; } };
-  // Frozen inputs stay server-side for every kind; only Retry reads them.
+  // Frozen inputs stay server-side for every kind; explicit worker actions reuse them.
   const live = artifact => {
     const { input, attempt, ...a } = artifact;
     if (a.kind !== 'video') return a;
@@ -109,8 +109,10 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     return generateVisual(metering, selection, input, signal, visualTimeout);
   };
   // Explicit Retry runs detached like a video job, with the same stop/delete/polling lifecycle.
-  const startDrawing = artifact => {
+  const startDrawing = (artifact, parentSignal) => {
     const running = { controller: new AbortController(), conversation: artifact.conversation, artifact: artifact.id };
+    const cancel = () => running.controller.abort(parentSignal.reason);
+    parentSignal?.addEventListener('abort', cancel, { once: true });
     videos.set(artifact.id, running);
     videoJobs.add(running);
     running.done = (async () => {
@@ -120,7 +122,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     })()
       // Stopping leaves it pending, so startup recovery marks it failed; it never retries by itself.
       .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishArtifact(artifact.conversation, artifact.id, null, error.message); })
-      .finally(() => { videoJobs.delete(running); if (videos.get(artifact.id) === running) videos.delete(artifact.id); });
+      .finally(() => { parentSignal?.removeEventListener('abort', cancel); videoJobs.delete(running); if (videos.get(artifact.id) === running) videos.delete(artifact.id); });
   };
   // Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
   const suggesting = new Map();
@@ -306,9 +308,18 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           const opened = store.unstarted();
           return opened ? json(res, 200, store.tree(opened)) : json(res, 201, store.create(undefined, selection.provider, selection.model, selection.effort));
         }
-        const jobMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry)$/);
+        const jobMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry|regenerate)$/);
         if (jobMatch) {
           const [, id, artifactId, action] = jobMatch, tree = store.tree(id), artifact = store.artifact(id, artifactId);
+          if (action === 'regenerate') {
+            if (!tree || !['visual', 'video'].includes(artifact?.kind)) return json(res, 404, { error: 'Visual or video not found in this conversation.' });
+            if (videos.has(artifactId)) return json(res, 409, { error: 'Wait for the current generation to finish, then try a different version.' });
+            const job = store.regenerateArtifact(id, artifactId);
+            if (!job) return json(res, 409, { error: !artifact.input ? 'This was saved without its request. Ask the tutor for it again.' : 'Only a ready visual or video can have a different version.' });
+            if (job.kind === 'video') startVideo(job);
+            else startDrawing(job, tree.messages.find(m => m.id === job.message)?.status === 'streaming' ? active.get(id)?.signal : undefined);
+            return json(res, 200, live(job));
+          }
           if (tree && ['mermaid', 'visual'].includes(artifact?.kind) && action === 'retry') {
             // Retry reruns the worker from the stored request; diagrams saved before stored requests cannot.
             const label = artifact.kind === 'visual' ? 'visual' : 'diagram';

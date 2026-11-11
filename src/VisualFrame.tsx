@@ -4,8 +4,9 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { HStack } from '@astryxdesign/core/Layout';
 import { useTheme } from '@astryxdesign/core/theme';
-import { ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { visualMessage, type Artifact, type VisualMessage } from './artifacts';
 
 // Generated code runs only in this frame: scripts without allow-same-origin give it an opaque origin.
@@ -41,23 +42,27 @@ function Frame({ artifact, onPart }: { artifact: Artifact; onPart?: (part: Extra
   </>;
 }
 
-export default function VisualFrame({ artifact, onRetry }: { artifact: Artifact; onRetry?: () => Promise<void> }) {
+export default function VisualFrame({ artifact, onRetry, onRegenerate }: { artifact: Artifact; onRetry?: () => Promise<void>; onRegenerate?: () => Promise<void> }) {
   const [enlarged, setEnlarged] = useState(false);
   const [retried, setRetried] = useState(false);
   const figure = useRef<HTMLElement>(null);
   useEffect(() => { if (retried && artifact.status === 'ready' && document.activeElement === document.body) figure.current?.focus(); }, [retried, artifact.status]);
+  async function run(action: () => Promise<void>) {
+    setRetried(true); await action();
+    requestAnimationFrame(() => { if (document.activeElement === document.body) (figure.current?.querySelector<HTMLElement>('button') ?? figure.current)?.focus(); });
+  }
   if (artifact.status === 'canceled') return null;
   return <figure ref={figure} className="visual" tabIndex={-1} aria-label={artifact.description} data-artifact={artifact.id} data-state={artifact.status}>
     {artifact.status === 'pending' && <><Skeleton className="visual-shimmer" /><Text className="sr-only" role="status">Creating visual: {artifact.title}</Text></>}
     {artifact.status === 'ready' && artifact.source && <>
       <Frame key={artifact.source} artifact={artifact} />
-      <IconButton className="visual-enlarge" label={`Enlarge visual: ${artifact.title}`} icon={<ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={() => setEnlarged(true)} />
+      <HStack className="visual-actions" gap={1}>
+        {onRegenerate && <IconButton label={`Try a different version of visual: ${artifact.title}`} tooltip="Try a different version" icon={<ArrowPathIcon />} variant="ghost" size="sm" clickAction={() => run(onRegenerate)} />}
+        <IconButton className="visual-enlarge" label={`Enlarge visual: ${artifact.title}`} icon={<ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={() => setEnlarged(true)} />
+      </HStack>
       {enlarged && <Dialog isOpen onOpenChange={setEnlarged} width="min(64rem, calc(100vw - 2rem))" maxHeight="calc(100dvh - 2rem)" aria-label={artifact.title}><Frame artifact={artifact} /></Dialog>}
     </>}
     {(artifact.status === 'failed' || artifact.status === 'interrupted') && <Text display="block" type="supporting" color="secondary" role="status">Visual unavailable. {artifact.error ?? ''}</Text>}
-    {onRetry && (artifact.status === 'failed' || (retried && artifact.status === 'pending')) && <Button key="retry" label="Retry visual" variant="ghost" size="sm" isLoading={artifact.status === 'pending'} clickAction={async () => {
-      setRetried(true); await onRetry();
-      requestAnimationFrame(() => { if (document.activeElement === document.body) figure.current?.querySelector<HTMLElement>('button')?.focus(); });
-    }} />}
+    {onRetry && (artifact.status === 'failed' || (retried && artifact.status === 'pending')) && <Button key="retry" label="Retry visual" variant="ghost" size="sm" isLoading={artifact.status === 'pending'} clickAction={() => run(onRetry)} />}
   </figure>;
 }

@@ -137,9 +137,8 @@ html { view-transition-name: none; }
 .visual-frame { display: block; width: 100%; height: 0; border: 0; background: transparent; }
 /* Chrome skips rendering hidden cross-origin frames, so a loading frame sits transparent over the shimmer instead. */
 .visual-frame:not([data-ready]) { position: absolute; inset: 0; height: 100%; opacity: 0; }
-.visual-enlarge { position: absolute; inset: 0 0 auto auto; opacity: 0; transition: opacity 120ms ease; }
-.visual:is(:hover, :focus-within) .visual-enlarge { opacity: 1; }
-@media (hover: none) { .visual-enlarge { opacity: 1; } }
+.visual-actions { position: absolute; inset: 0 0 auto auto; background: var(--color-background-surface); border-radius: var(--radius-element); opacity: 0; }
+.visual:is(:hover, :focus-within) .visual-actions { opacity: 1; }
 .diagram-card { align-self: stretch; min-width: 0; max-width: 100%; border: thin solid var(--color-border); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
 .diagram-card h3 { font-size: var(--font-size-base); }
 .diagram-open { display: block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
@@ -155,6 +154,9 @@ html { view-transition-name: none; }
 .video-inline:not([data-state=ready]) .video-controls { position: static; flex-direction: row; justify-content: space-between; padding: 0; }
 .video-inline .video-controls > [role=status] { min-width: 0; }
 .video-inline .video-controls > button { flex: none; }
+.video-inline[data-state=ready] .video-controls { flex-direction: row; opacity: 0; }
+.video-inline[data-state=ready]:is(:hover, :focus-within) .video-controls { opacity: 1; }
+@media (hover: none) { .visual-actions, .video-inline[data-state=ready] .video-controls { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .video-stage .astryx-skeleton, .video-stage .astryx-skeleton::after { animation: none; } }
 /* Lightbox caps media at natural size; generated videos are small, so fill the viewer (contain keeps 16:9). */
 .astryx-lightbox video { width: 92vw; height: calc(100dvh - 8rem); }

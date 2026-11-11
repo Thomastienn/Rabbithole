@@ -116,7 +116,7 @@ export async function generateVideo({ provider, selection, store, dir, artifact,
     await mkdir(join(workspace, 'out'), { recursive: true, mode: 0o700 });
     await mkdir(join(workspace, 'tmp'), { recursive: true, mode: 0o700 });
     try {
-      await Promise.race([aborted, provider.generate({ provider: selection.provider, model: selection.model, effort: selection.effort ?? null, thread: null, instructions: WORKER_INSTRUCTIONS }, artifact.input, event => {
+      await Promise.race([aborted, provider.generate({ provider: selection.provider, model: selection.model, effort: selection.effort ?? null, thread: null, instructions: WORKER_INSTRUCTIONS + (JSON.parse(artifact.input).differentVersion ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.' : '') }, artifact.input, event => {
         if (controller.signal.aborted) return;
         if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
         if (event.type === 'status') status = event.status;

@@ -55,7 +55,7 @@ export async function generateVisual(provider, selection, input, parentSignal, t
       const items = new Map();
       let status, overflow;
       try {
-        await provider.generate({ ...selection, thread: null, instructions: INSTRUCTIONS }, JSON.stringify({ request: input.request, earlierTitles: input.earlierTitles, ...(validationError && { validationError }) }), event => {
+        await provider.generate({ ...selection, thread: null, instructions: INSTRUCTIONS + (input.differentVersion ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.' : '') }, JSON.stringify({ request: input.request, earlierTitles: input.earlierTitles, ...(validationError && { validationError }) }), event => {
           if (controller.signal.aborted) return;
           if ((event.type === 'delta' || event.type === 'item') && !overflow) {
             items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);

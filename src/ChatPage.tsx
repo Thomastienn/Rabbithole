@@ -87,15 +87,15 @@ function PassageCorrection({ name, api, disabled, children }: { name: string; ap
 }
 
 // Parsing is memoised so streaming chunks and selection state changes reuse the rendered tree.
-const Reply = memo(function Reply({ text, reveal, underlines, inlineArtifacts = [], onArtifactAction }: { text: string; reveal?: Source; underlines: { start: number; end: number; child?: string }[]; inlineArtifacts?: Artifact[]; onArtifactAction?: (id: string, action: 'cancel' | 'retry') => Promise<void> }) {
+const Reply = memo(function Reply({ text, reveal, underlines, inlineArtifacts = [], onArtifactAction }: { text: string; reveal?: Source; underlines: { start: number; end: number; child?: string }[]; inlineArtifacts?: Artifact[]; onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void> }) {
   useEffect(ensureHighlightStyles, []);
   const action = useRef(onArtifactAction);
   action.current = onArtifactAction;
   const key = JSON.stringify(underlines), artifactKey = JSON.stringify(inlineArtifacts);
-  return <Text as="div" type="body" className="reply-md">{useMemo(() => renderMarkdown(text, reveal, underlines, inlineArtifacts.map(v => ({ at: v.position!, node: v.kind === 'video' ? <VideoCard key={v.id} inline artifact={v} onAction={onArtifactAction && (kind => action.current!(v.id, kind))} /> : <VisualFrame key={v.id} artifact={v} onRetry={onArtifactAction && (() => action.current!(v.id, 'retry'))} /> }))), [text, reveal?.start, reveal?.end, key, artifactKey, !!onArtifactAction])}</Text>;
+  return <Text as="div" type="body" className="reply-md">{useMemo(() => renderMarkdown(text, reveal, underlines, inlineArtifacts.map(v => ({ at: v.position!, node: v.kind === 'video' ? <VideoCard key={v.id} inline artifact={v} onAction={onArtifactAction && (kind => action.current!(v.id, kind))} /> : <VisualFrame key={v.id} artifact={v} onRetry={onArtifactAction && (() => action.current!(v.id, 'retry'))} onRegenerate={onArtifactAction && (() => action.current!(v.id, 'regenerate'))} /> }))), [text, reveal?.start, reveal?.end, key, artifactKey, !!onArtifactAction])}</Text>;
 });
 
-function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, openSelection, closeSelection, form, suggestions, branched, inlineArtifacts, onArtifactAction }: { message: Message; index: number; inlineArtifacts?: Artifact[]; onArtifactAction?: (id: string, action: 'cancel' | 'retry') => Promise<void>; suggestions?: Suggestions; branched: { start: number; end: number; text: string; child: string }[]; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; onOpenChild: (id: string) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; form?: { node: React.ReactNode; at?: Anchor['at'] } }) {
+function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, openSelection, closeSelection, form, suggestions, branched, inlineArtifacts, onArtifactAction }: { message: Message; index: number; inlineArtifacts?: Artifact[]; onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>; suggestions?: Suggestions; branched: { start: number; end: number; text: string; child: string }[]; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; onOpenChild: (id: string) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; form?: { node: React.ReactNode; at?: Anchor['at'] } }) {
   const formOpen = !!form;
   const highlighted = useRef(false);
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
@@ -495,11 +495,15 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   }, [activeKey]);
 
   // Cancel and Retry (videos, visuals and diagrams) update only their own card; refreshing state resumes polling for a retried job.
-  async function videoAction(id: string, artifactId: string, action: 'cancel' | 'retry') {
+  async function videoAction(id: string, artifactId: string, action: 'cancel' | 'retry' | 'regenerate') {
     setError('');
     try {
       const next: Artifact = await api(`/api/trees/${id}/artifacts/${artifactId}/${action}`, {});
-      setTree(t => t?.id === id ? { ...t, artifacts: t.artifacts.map(a => a.id === next.id ? next : a) } : t);
+      const focused = document.activeElement?.closest('[data-artifact]')?.getAttribute('data-artifact') === artifactId;
+      setTree(t => t?.id === id ? { ...t, artifacts: t.artifacts.map(a => a.id === artifactId ? next : a) } : t);
+      if (focused) requestAnimationFrame(() => {
+        if (document.activeElement === document.body) document.querySelector<HTMLElement>(`.focused-chat [data-artifact="${next.id}"] button`)?.focus();
+      });
       await refresh();
     } catch (e) { setError((e as Error).message); }
   }
@@ -818,7 +822,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
                   <HStack gap={1} vAlign="center"><TextInput label="Question about this passage" isLabelHidden placeholder="Ask about this passage" aria-describedby="branch-passage" size="sm" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus containerClassName="branch-question" /><IconButton className="branch-send" label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" icon={<ArrowUpIcon />} variant="primary" size="sm" isLoading={branching} isDisabled={branching || !branch.question.trim() || active} /></HStack>
                 </VStack></form> } : undefined} onOpenChild={id => void openConversation(id)} selecting={selectingMessage === message.id} openSelection={() => setSelectingMessage(message.id)} closeSelection={() => setSelectingMessage(undefined)} onBranch={(anchor, origin) => { branchOrigin.current = origin; setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost" className="question-bubble"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text></ChatMessageBubble>}
                 
-                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(a => a.kind === 'mermaid' || a.position == null).map((artifact, _, all) => artifact.kind === 'visual' ? <VisualFrame key={artifact.id} artifact={artifact} onRetry={() => videoAction(tree.id, artifact.id, 'retry')} /> : artifact.kind === 'video' ? <VideoCard key={artifact.id} inline artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} steps={all.filter(a => a.kind === 'mermaid')} onRetry={() => videoAction(tree.id, artifact.id, 'retry')} />)}
+                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(a => a.kind === 'mermaid' || a.position == null).map((artifact, _, all) => artifact.kind === 'visual' ? <VisualFrame key={artifact.id} artifact={artifact} onRetry={() => videoAction(tree.id, artifact.id, 'retry')} onRegenerate={() => videoAction(tree.id, artifact.id, 'regenerate')} /> : artifact.kind === 'video' ? <VideoCard key={artifact.id} inline artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} steps={all.filter(a => a.kind === 'mermaid')} onRetry={() => videoAction(tree.id, artifact.id, 'retry')} />)}
                 {!overview && message.role === 'assistant' && message.status === 'completed' && suggestions?.status === 'failed' && <Text type="supporting" color="secondary">Suggestions unavailable</Text>}
                 {message.status !== 'completed' && <Text type="supporting" role="status" className="reply-status" data-status={message.status}>{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
               </ChatMessage>; })}
