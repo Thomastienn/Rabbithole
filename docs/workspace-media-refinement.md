@@ -6,7 +6,7 @@ implementation choices below are proposals until confirmed.
 
 ## Requested behavior
 
-- Inherited context contains the selected passage and a single small paragraph
+- Inherited context contains the selected passage and a compact paragraph
   about prior discussion. It must not answer the child's question. Keep the
   exact passage and the new question separate from the generated paragraph.
 - Focused chat gives more room to reading: a smaller header and a floating,
@@ -43,6 +43,20 @@ Source inspection on 2026-11-11, not live behavioral verification:
   Its current policy supports short 2D compositions, not Three.js imports.
   Videos play in their originating conversation; there is no shared library
   or individual delete/reveal action. Conversation deletion removes its media.
+
+## Confirmed context decision
+
+The quick thinking model performs branch compaction. Its source is the parent's
+existing inherited context (which already summarizes earlier ancestors) plus
+the parent conversation. It combines these into the new child's compact
+paragraph, preserving important ideas and removing repetition without adding
+knowledge or answering the child's new question. Apply the same rule recursively
+to grandchildren and deeper descendants.
+
+The owner rejected the proposed 80–150-word target: allow substantially more
+length when needed to preserve important ideas. No new numeric limit is agreed.
+Keep the exact selected passage and child's question separate from the generated
+paragraph. The fixed-snapshot and unchanged-parent-context rules still apply.
 
 ## Initial video research
 

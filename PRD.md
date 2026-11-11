@@ -84,7 +84,8 @@ Use standard keyboard interactions initially. As a later increment, add the opt-
 ## Child conversation context
 
 - Generate compact context on demand when the learner creates a child branch.
-- Summarize relevant prior parent and ancestor discussion in one short paragraph. Preserve the exact selected passage separately. Context preparation must not answer the new question or introduce a new explanation; the child's first learner message carries that question separately.
+- Use the quick thinking model to combine the parent's fixed inherited context with the parent conversation into a compact paragraph for the new child. Preserve important ideas rather than forcing a tiny word budget; the owner rejected the proposed 80–150-word target. Ancestor discussion arrives through the parent's existing summary, recursively at every depth.
+- Preserve the exact selected passage separately. Context preparation summarizes existing discussion without answering the new question or introducing a new explanation; the child's first learner message carries that question separately.
 - Fix inherited context at branch creation; later parent messages do not automatically change it.
 - Preserve original conversation messages so summarization does not replace the source history.
 - Child discussions remain side context. Do not inject their messages or summaries into the parent conversation; returning to the parent leaves its model context unchanged.

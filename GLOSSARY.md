@@ -32,9 +32,12 @@ _Avoid_: Selection, highlight, anchor
 A term or short phrase in a tutor reply that the suggestion model marked as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
 
-**Suggestion model**:
-The learner-chosen model, usually cheaper than the tutor's, that picks suggestions in each saved reply.
+**Quick thinking model**:
+The learner-chosen model for picking suggestions and compacting prior discussion into inherited context for child conversations.
 _Avoid_: Helper model, cheap model
+
+**Suggestion model**:
+The previous name for the quick thinking model, describing its suggestion-picking role. Existing specifications use this name.
 
 **Knowledge graph**:
 The single record, across all learning trees, of concepts the learner has met and how they relate.
@@ -57,5 +60,5 @@ The app's estimate of how well the learner knows a concept, derived from evidenc
 _Avoid_: Mastery, score, level
 
 **Inherited context**:
-The fixed background a child conversation receives at branch creation: the exact passage and one short paragraph summarizing relevant prior discussion. It supplies context without answering the child's question; that question is a separate learner message.
+The fixed background a child conversation receives at branch creation: the exact passage and a compact paragraph combining its parent's inherited context with the parent conversation, preserving important ideas. It supplies context without answering the child's question; that question is a separate learner message.
 _Avoid_: Summary, compacted context
