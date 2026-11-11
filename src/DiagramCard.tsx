@@ -17,7 +17,7 @@ export default function DiagramCard({ artifact }: { artifact: Artifact }) {
     setDrawing({ status: 'pending' });
     void renderArtifact(artifact, async source => {
       const { renderDiagram } = await import('./mermaid');
-      return renderDiagram(source, getComputedStyle(card.current!), mode === 'dark');
+      return renderDiagram(source, card.current!, mode === 'dark');
     }).then(state => { if (!cancelled) setDrawing(state); });
     return () => { cancelled = true; };
   }, [artifact.id, artifact.status, artifact.source, mode]);

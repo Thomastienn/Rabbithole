@@ -18,7 +18,7 @@ import type { Point, Viewport } from './canvas';
 import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from './SettingsWindow';
-import { bubbleTints, type BubbleTint } from './bubbleTint';
+import { bubbleTints, savedTint, type BubbleTint } from './bubbleTint';
 import type { Appearance } from './appearance';
 import { DEFAULT_CHAT_WIDTH, MIN_CHAT_WIDTH, clampChatWidth, keyChatWidth, maxChatWidth, resetChatWidth, savedChatWidth } from './chatWidth';
 import KnowledgePage, { type Graph } from './KnowledgePage';
@@ -202,8 +202,8 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   // Only this boolean is stored, per browser and app origin; unreadable storage means off.
   const [vim, setVim] = useState(() => { try { return localStorage.getItem('treetutor.vim') === 'on'; } catch { return false; } });
   const [bubbleTint, setBubbleTint] = useState<BubbleTint>(() => {
-    try { const saved = localStorage.getItem('treetutor.bubble-tint'); return bubbleTints.find(t => t.id === saved)?.id ?? 'neutral'; }
-    catch { return 'accent'; }
+    try { return savedTint(localStorage.getItem('treetutor.bubble-tint')); }
+    catch { return 'neutral'; }
   });
   const [chatWidth, setChatWidth] = useState(() => { try { return savedChatWidth(localStorage.getItem('treetutor.chat-width')); } catch { return DEFAULT_CHAT_WIDTH; } });
   const [workspaceWidth, setWorkspaceWidth] = useState(() => window.innerWidth / remPx());

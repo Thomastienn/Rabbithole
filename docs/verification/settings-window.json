@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-u7v.3, TreeTutor-nwx.8",
-  "checkedAt": "2026-11-11T04:31:28.324Z",
+  "checkedAt": "2026-11-11T04:47:47.167Z",
   "evidence": "Production build and real app HTTP/storage, agent-browser Chromium. Synthetic Claude sign-in/models, Codex auth failure/redirect, reported usage and loopback OpenAI-compatible upstream. No native provider authentication or inference claimed.",
   "steps": [
     "Settings opens on Interface with Appearance first; dark and light: 6px raised slate, hairline seam, no shadow, Public Sans, small-caps labels {\"dark\":{\"border\":\"0px none\",\"caps\":\"all-small-caps\",\"font\":\"\\\"Public Sans\\\", \\\"Segoe UI\\\", Roboto, Helvetica, Arial, sans-serif\",\"ground\":\"rgb(28, 39, 36)\",\"label\":\"rgb(159, 176, 168)\",\"radius\":\"6px\",\"shadow\":\"rgba(235, 231, 220, 0.12) 0px 0px 0px 1px inset\",\"surface\":\"rgb(36, 49, 45)\",\"text\":\"rgb(235, 231, 220)\"},\"light\":{\"border\":\"0px none\",\"caps\":\"all-small-caps\",\"font\":\"\\\"Public Sans\\\", \\\"Segoe UI\\\", Roboto, Helvetica, Arial, sans-serif\",\"ground\":\"rgb(231, 235, 230)\",\"label\":\"rgb(74, 90, 83)\",\"radius\":\"6px\",\"shadow\":\"rgba(28, 39, 36, 0.12) 0px 0px 0px 1px inset\",\"surface\":\"rgb(243, 245, 241)\",\"text\":\"rgb(28, 39, 36)\"}}",
