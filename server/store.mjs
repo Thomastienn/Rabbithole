@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, chmodSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { previewText, plainText } from '../src/markdownText.ts';
+import { previewText } from '../src/markdownText.ts';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
         kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
@@ -98,22 +98,12 @@ export class Store {
     return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
       .map(t => { try { return { ...t, layout: JSON.parse(t.layout) }; } catch { return { ...t, layout: null }; } });
   }
-  // One result per learning tree, newest first: a title match opens the tree, otherwise its earliest matching message's conversation.
+  // Title-only, newest first; saved conversation text is never scanned.
   search(query) {
     const q = query.trim().toLocaleLowerCase();
     if (!q) return [];
-    const hit = (text) => text.toLocaleLowerCase().includes(q);
-    const roots = this.db.prepare('SELECT id,title FROM trees WHERE id NOT IN (SELECT child FROM branches) ORDER BY created DESC,rowid DESC').all();
-    const messages = this.db.prepare(`WITH RECURSIVE subtree(id) AS (SELECT ? UNION SELECT child FROM branches JOIN subtree ON parent=subtree.id)
-      SELECT m.tree,m.role,m.text FROM messages m JOIN subtree ON m.tree=subtree.id ORDER BY m.seq`);
-    return roots.flatMap(({ id, title }) => {
-      if (hit(title)) return [{ root: id, conversation: null, snippet: null }];
-      const m = messages.all(id).find(m => hit(m.text));
-      if (!m) return [];
-      const text = m.role === 'assistant' ? plainText(m.text) : m.text.replace(/\s+/g, ' ').trim();
-      const at = Math.max(0, text.toLocaleLowerCase().indexOf(q) - 30);
-      return [{ root: id, conversation: m.tree, snippet: (at ? '…' : '') + text.slice(at, at + 120) + (text.length > at + 120 ? '…' : '') }];
-    });
+    return this.db.prepare('SELECT id AS root,title FROM trees WHERE id NOT IN (SELECT child FROM branches) ORDER BY created DESC,rowid DESC').all()
+      .filter(t => t.title.toLocaleLowerCase().includes(q));
   }
   suggestionSettings() {
     const row = this.db.prepare('SELECT enabled,provider,model,effort FROM suggestion_settings WHERE id=1').get();

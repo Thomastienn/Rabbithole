@@ -9,9 +9,18 @@ html { view-transition-name: none; }
 .trees[data-open=true] { display: flex; }
 .tree-navigation-content { flex: 1; height: 100%; min-height: 0; min-width: 0; }
 .tree-navigation-content h2 { font-size: var(--font-size-lg); }
-.tree-navigation-content .new-chat { justify-content: flex-start; color: var(--color-text-accent); }
+.tree-navigation-content .new-chat { flex: 1; justify-content: flex-start; color: var(--color-text-accent); }
 .tree-navigation-content .new-chat:disabled { color: var(--color-text-disabled); }
 .tree-list { flex: 1; min-height: 0; overflow: auto; }
+/* Quiet rail scrollbar: thin rounded thumb, no track; shown on hover, scroll or keyboard focus, never needed to scroll. */
+.tree-list { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.tree-list:is(:hover, :focus-within, [data-scrolling]) { scrollbar-color: var(--color-border-emphasized) transparent; }
+@supports selector(::-webkit-scrollbar) {
+ .tree-list, .tree-list:is(:hover, :focus-within, [data-scrolling]) { scrollbar-width: auto; scrollbar-color: auto; }
+ .tree-list::-webkit-scrollbar { width: 10px; background: transparent; }
+ .tree-list::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: transparent padding-box; }
+ .tree-list:is(:hover, :focus-within, [data-scrolling])::-webkit-scrollbar-thumb { background-color: var(--color-border-emphasized); }
+}
 .tree-date-heading { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .saved-tree-row { border-radius: var(--radius-element); }
 .saved-tree-row[data-current=true] { background: var(--color-neutral); }

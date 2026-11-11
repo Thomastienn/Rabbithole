@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGro
 import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
+import { CommandPalette } from '@astryxdesign/core/CommandPalette';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { Drawer } from '@astryxdesign/core/Drawer';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
@@ -35,7 +36,6 @@ import { effortLabel, type Model } from './models';
 type Anchor = { messageId: string; start: number; end: number; text: string; at?: Point & { below?: number }; suggestion?: boolean };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; provider: string; model: string | null; effort: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
-type SearchResult = { root: string; conversation: string | null; snippet: string | null };
 type Providers = Record<string, { label: string; connected: boolean }>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[]; suggesting?: string[]; usage?: Usage & { replies: number }; conceptNameTokens?: number };
 // The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
@@ -198,7 +198,8 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   const [tab, setTab] = useState('learning');
   const [settings, setSettings] = useState<SettingsRequest>();
   const settingsOpener = useRef<HTMLElement | null>(null);
-  const [query, setQuery] = useState(''), [found, setFound] = useState<SearchResult[]>();
+  const [searching, setSearching] = useState(false);
+  const scrollQuiet = useRef<number>(undefined);
   const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'sidebar' }>();
   const [deletion, setDeletion] = useState<{ id: string; root: string; title: string; count: number; parent: string | null }>();
   const [deleting, setDeleting] = useState(false), [deleteError, setDeleteError] = useState('');
@@ -430,19 +431,11 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   useEffect(() => {
     refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id, data.trees); }).catch(e => setError(e.message));
   }, []);
-  useEffect(() => {
-    if (!query.trim()) { setFound(undefined); return; }
-    let stale = false;
-    api(`/api/search?q=${encodeURIComponent(query)}`).then(results => { if (!stale) setFound(results); }, e => { if (!stale) setError(e.message); });
-    return () => { stale = true; };
-  }, [query]);
-  // Arrow keys move between the search field and its results; Enter on a result opens it.
-  function searchKeys(e: React.KeyboardEvent<HTMLElement>) {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-    const items = [...(e.currentTarget.closest('.tree-navigation-content')?.querySelectorAll<HTMLElement>('.tree-search input, .tree-search-result') ?? [])];
-    const next = items[items.indexOf(document.activeElement as HTMLElement) + (e.key === 'ArrowDown' ? 1 : -1)];
-    if (next) { e.preventDefault(); next.focus(); }
-  }
+  // Title-only search runs on the server so it always reflects saved trees; failures surface like other request errors.
+  const titleSearch = useMemo(() => ({
+    search: (q: string) => api(`/api/search?q=${encodeURIComponent(q)}`).then((r: { root: string; title: string }[]) => r.map(t => ({ id: t.root, label: t.title })), (e: Error) => { setError(e.message); return []; }),
+    bootstrap: () => [],
+  }), []);
   async function loadModels() {
     const version = ++modelRequest.current;
     setModelError('');
@@ -703,21 +696,16 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     { label: tree?.branch ? 'Delete branch…' : 'Delete chat…', isDisabled: !tree, onClick: () => tree && askDelete(tree.id, document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]')) },
     { label: 'Help', onClick: () => openSettings('interface', undefined, mapMenuTrigger()) },
   ]} />;
-  const matches = found?.flatMap(r => { const title = state?.trees.find(t => t.id === r.root)?.title; return title ? [{ ...r, title }] : []; });
   const sidebar = <VStack gap={0} className="tree-navigation-content">
     <VStack padding={3} gap={3}>
       <HStack vAlign="center" gap={2} hAlign="between"><Text type="large" weight="semibold">Tree<Text type="inherit" color="accent">Tutor</Text></Text><IconButton id="collapse-learning-trees" label="Collapse learning trees" tooltip="Collapse learning trees" icon={<ChevronDoubleLeftIcon />} variant="ghost" size="sm" aria-expanded={navigationOpen} aria-controls="tree-navigation" onClick={collapseNavigation} /></HStack>
       <Heading level={2} className="sr-only">Learning trees</Heading>
-      <Button className="new-chat" label={busy ? 'Opening…' : 'New chat'} variant="ghost" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
-      <div className="tree-search"><TextInput type="search" label="Search learning trees" isLabelHidden placeholder="Search learning trees" startIcon={MagnifyingGlassIcon} size="sm" value={query} onChange={setQuery} hasClear autoComplete="off" onKeyDown={searchKeys} onEnter={() => document.querySelector<HTMLElement>('.tree-search-result')?.click()} /></div>
+      <HStack gap={1} vAlign="center"><Button className="new-chat" label={busy ? 'Opening…' : 'New chat'} variant="ghost" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
+      <IconButton className="tree-search" label="Search learning trees" tooltip="Search learning trees" icon={<MagnifyingGlassIcon />} variant="ghost" size="sm" aria-haspopup="dialog" onClick={() => setSearching(true)} />
+      <CommandPalette isOpen={searching} onOpenChange={setSearching} label="Search learning trees" searchSource={titleSearch} onValueChange={id => id && openTree(id)} emptyBootstrapText="Type part of a learning tree’s title." emptySearchText="No learning tree titles match." /></HStack>
     </VStack>
-    <nav aria-label="Saved learning trees" className="tree-list"><VStack padding={3} gap={5}>
-      {query.trim() && matches ? <section aria-label="Search results" onKeyDown={searchKeys}><VStack gap={1}>
-        {matches.map(r => <div key={r.root} className="saved-tree-row" data-current={tab === 'learning' && root === r.root}>
-          <Button className="saved-chat-title tree-search-result" label={r.title} variant="ghost" onClick={() => openTree(r.root, undefined, r.conversation ?? undefined)}><VStack gap={0}><Text maxLines={2}>{r.title}</Text>{r.snippet && <Text type="supporting" color="secondary" maxLines={2}>{r.snippet}</Text>}</VStack></Button>
-        </div>)}
-        <Text role="status" color="secondary">{matches.length ? '' : `No learning trees match “${query.trim()}”.`}</Text>
-      </VStack></section> : treeGroups(state?.trees ?? [], today).map(group => <section key={group.label} aria-label={group.label}><VStack gap={2}>
+    <nav aria-label="Saved learning trees" className="tree-list" onScroll={e => { const el = e.currentTarget; el.dataset.scrolling = ''; clearTimeout(scrollQuiet.current); scrollQuiet.current = window.setTimeout(() => delete el.dataset.scrolling, 800); }}><VStack padding={3} gap={5}>
+      {treeGroups(state?.trees ?? [], today).map(group => <section key={group.label} aria-label={group.label}><VStack gap={2}>
         <Heading level={3} className="tree-date-heading">{group.label}</Heading>
         <VStack gap={1}>{group.trees.map(({ tree: t, branches }) => <VStack key={t.id} gap={1}>
           {renaming?.id === t.id && renaming.place === 'sidebar' ? <TitleEditor title={t.title} save={title => rename(t.id, title)} cancel={finishRename} /> : <HStack gap={0} vAlign="center" className="saved-tree-row" data-current={tab === 'learning' && root === t.id}>
@@ -729,7 +717,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
           </HStack>}
         </VStack>)}</VStack>
       </VStack></section>)}
-      {!query.trim() && state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
+      {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
     </VStack></nav>
     <VStack padding={3} gap={2} className="tree-navigation-footer">
       <Button label="Knowledge" icon={<ShareIcon />} variant={tab === 'knowledge' ? 'secondary' : 'ghost'} aria-current={tab === 'knowledge' ? 'page' : undefined} onClick={() => { setTab('knowledge'); setMobileNav(false); focusAfterNavigation(() => document.getElementById('return-to-learning')?.focus()); }} />

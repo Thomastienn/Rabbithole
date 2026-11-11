@@ -202,7 +202,7 @@ Send uses yellow fill and the paired on-accent text; ghost controls remain quiet
 
 ### Search and navigation
 
-The rail search is a small labelled search input with an inline magnifier, placeholder and clear control. Results use wrapped titles and optional muted two-line snippets; the current tree has the neutral translucent fill. Arrow keys move through field/results and Enter opens the focused result. Overflow actions retain accessible labels, and the footer pairs its settings icon with text. Model menus are plain lists: the current model has a yellow check; disconnected providers keep muted labels and explicit sign-in actions.
+A ghost magnifier icon beside New chat opens Astryx's floating command palette, which matches learning-tree titles only. Arrow keys move the highlight, Enter or a click opens the tree and Escape returns focus to the icon; an empty query and a no-match query each explain themselves. The current tree in the rail has the neutral translucent fill. The rail's scrollbar is a thin rounded `--color-border-emphasized` thumb with no track, shown on hover, scroll or keyboard focus. Overflow actions retain accessible labels, and the footer pairs its settings icon with text. Model menus are plain lists: the current model has a yellow check; disconnected providers keep muted labels and explicit sign-in actions.
 
 ### Conversation cards and question bubbles
 

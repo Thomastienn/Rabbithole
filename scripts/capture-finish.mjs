@@ -70,8 +70,8 @@ try {
     await b('find', 'role', 'menuitem', 'click', '--name', 'Delete chat…', '--exact'); await wait(`!!document.querySelector('[role=alertdialog][open]')`); await shot('6-dialog-delete');
     await b('press', 'Escape'); await wait(`!document.querySelector('[role=alertdialog][open]')`);
     await home(); await nav();
-    await b('fill', '.tree-search input', 'fungi'); await wait(`document.querySelectorAll('.tree-search-result').length > 0`); await shot('3-sidebar-search');
-    await b('click', '.tree-search button'); await wait(`document.querySelectorAll('.tree-date-heading').length > 0`); await shot('3-sidebar');
+    await b('click', '.tree-search'); await b('fill', 'dialog[open][aria-label="Search learning trees"] input', 'fungi'); await wait(`document.querySelectorAll('dialog[open][aria-label="Search learning trees"] [role=option]').length > 0`); await shot('3-sidebar-search');
+    await b('press', 'Escape'); await wait(`!document.querySelector('dialog[open][aria-label="Search learning trees"]')`); await shot('3-sidebar');
     await click('Settings'); await wait(`!!document.querySelector('dialog[open]')`);
     if (width === 'narrow') { await shot('4-settings-list'); await click('Interface'); }
     await wait(`document.querySelector('#settings-section-heading')?.textContent === 'Interface'`); await shot('4-settings');
