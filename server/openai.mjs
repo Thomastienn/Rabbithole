@@ -88,9 +88,14 @@ export class OpenAI {
       const response = await this.#fetch(saved, '/models', signal);
       const data = await response.json();
       if (!Array.isArray(data.data)) throw new EndpointError('Custom endpoint returned an invalid model catalogue. Check the API base URL.');
-      const ids = [...new Set(data.data.filter(m => typeof m?.id === 'string' && m.id.trim() && m.id.length <= 500 && !m.id.includes(saved.apiKey)).map(m => m.id))];
+      const models = data.data.filter(m => typeof m?.id === 'string' && m.id.trim() && m.id.length <= 500 && !m.id.includes(saved.apiKey));
+      const ids = [...new Set(models.map(m => m.id))];
       if (!ids.length) throw new EndpointError('Custom endpoint returned no usable models. Check endpoint settings.');
-      return ids.map((model, i) => ({ model, label: model, isDefault: i === 0 }));
+      return ids.map((model, i) => {
+        // shortcut: /models has no standard effort discovery; only accept explicitly advertised levels, never guess by model name.
+        const levels = models.find(m => m.id === model).supported_reasoning_efforts;
+        return { model, label: model, isDefault: i === 0, efforts: Array.isArray(levels) ? [...new Set(levels.filter(e => typeof e === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(e) && !e.includes(saved.apiKey)))] : [] };
+      });
     } catch (error) {
       throw error instanceof EndpointError ? error : new EndpointError('Could not list custom endpoint models. Check the URL, key and connection, then retry.');
     } finally { this.#requests.delete(controller); }
@@ -106,7 +111,7 @@ export class OpenAI {
       signal.throwIfAborted();
       const system = (tree.instructions ?? TUTOR_INSTRUCTIONS) + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '');
       const messages = [{ role: 'system', content: system }, ...(tree.messages ?? []).filter(m => m.status === 'completed').map(m => ({ role: m.role, content: m.text })), { role: 'user', content: text }];
-      const response = await this.#fetch(saved, '/chat/completions', signal, { model, messages, stream: true });
+      const response = await this.#fetch(saved, '/chat/completions', signal, { model, messages, stream: true, ...(tree.effort != null && { reasoning_effort: tree.effort }) });
       try {
         if (!response.headers.get('content-type')?.startsWith('text/event-stream')) throw new EndpointError('Custom endpoint did not return a chat-completion stream. Check compatibility and the base URL.');
         const output = redactStream(saved.apiKey, emit);

@@ -38,8 +38,8 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
   assert.equal(JSON.parse(readFileSync(path)).apiKey, apiKey);
   const catalogue = await (await get('/api/models')).json();
   assert.deepEqual(catalogue.models, [
-    { provider: 'openai', model: 'local-tutor', label: 'local-tutor', isDefault: true },
-    { provider: 'openai', model: 'second-model', label: 'second-model', isDefault: false },
+    { provider: 'openai', model: 'local-tutor', label: 'local-tutor', isDefault: true, efforts: [] },
+    { provider: 'openai', model: 'second-model', label: 'second-model', isDefault: false, efforts: [] },
   ]);
   assert.equal(catalogue.defaultProvider, 'claude');
   assert.equal((await post('/api/settings/endpoint/test')).status, 200);

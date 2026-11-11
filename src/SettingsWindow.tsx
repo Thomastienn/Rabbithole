@@ -14,17 +14,18 @@ import { useMediaQuery } from '@astryxdesign/core/hooks';
 import { ArrowLeftIcon, ChartBarIcon, CpuChipIcon, LinkIcon, SwatchIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import EndpointSettings from './EndpointSettings';
 import SuggestionSettings from './SuggestionSettings';
+import ChatSettings from './ChatSettings';
+import type { Model } from './models';
 import { bubbleTints, type BubbleTint } from './bubbleTint';
 import { appearances, type Appearance } from './appearance';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
 // tab: undefined opens the default tab on desktop and the tab list on mobile; focus is a selector to focus once open.
 export type SettingsRequest = { tab?: SettingsTab; focus?: string };
-type Model = { provider: string; model: string; label: string };
 
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
   { id: 'interface', label: 'Interface', description: 'Appearance, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
-  { id: 'models', label: 'Models', description: 'Which model picks suggestion underlines, and what concept matching costs.', icon: CpuChipIcon },
+  { id: 'models', label: 'Models', description: 'Chat defaults for new learning trees, suggestion models and concept matching.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
   { id: 'usage', label: 'Usage', description: 'What today’s replies and suggestions have used so far.', icon: ChartBarIcon },
 ];
@@ -84,6 +85,8 @@ export default function SettingsWindow({ request, close, api, models, providers,
       {!narrow && closeButton}
     </HStack>
     {current.id === 'models' && <>
+      <ChatSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} connections={() => showTab('connections')} />
+      <Divider />
       <SuggestionSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} />
       <Divider />
       <Section title="Concept matching" description="Each suggestion call also sends your known concept names so it can match terms to them. A warning appears here when that list passes about 2,000 tokens.">
@@ -131,7 +134,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
       <Section title="Map help">
         <Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text>
         <Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them above. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text>
-        <Text>In Settings → Connections, save one custom endpoint’s base URL and API key, test its model listing, or remove it. Its owner bills requests sent there. The saved key is never shown. In chat, open Model for next reply and use arrows and Enter to choose Claude, Codex or a custom endpoint model. Switching preserves the discussion and inherited context; children start with their parent’s choice. New chats default to Claude.</Text>
+        <Text>In Settings → Connections, save one custom endpoint’s base URL and API key, test its model listing, or remove it. Its owner bills requests sent there. The saved key is never shown. In chat, open Model for next reply and use arrows and Enter to choose Claude, Codex or a custom endpoint model and supported effort. Switching preserves the discussion and inherited context; children start with their parent’s choice. Set the starting model and effort for new learning trees in Settings → Models.</Text>
       </Section>
     </>}
     {current.id === 'usage' && <Section title="Today" description="Tokens and cost reported by providers for replies and suggestions since midnight.">

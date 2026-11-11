@@ -38,6 +38,10 @@ export class Store {
       }
       // Additive nullable column: older TreeTutor builds still open the database.
       if (!this.db.prepare('PRAGMA table_info(messages)').all().some(c => c.name === 'usage')) this.db.exec('ALTER TABLE messages ADD COLUMN usage TEXT');
+      for (const name of ['effort', 'working_effort']) {
+        if (!this.db.prepare('PRAGMA table_info(trees)').all().some(c => c.name === name)) this.db.exec(`ALTER TABLE trees ADD COLUMN ${name} TEXT`);
+      }
+      this.db.exec('CREATE TABLE IF NOT EXISTS chat_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT NOT NULL, model TEXT NOT NULL, effort TEXT)');
       // Additive table: suggestions live beside, never inside, tutor messages; one row per saved reply.
       this.db.exec(`CREATE TABLE IF NOT EXISTS suggestions (message TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), passages TEXT, usage TEXT,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))`);
@@ -110,6 +114,11 @@ export class Store {
   suggestionSettings() {
     const row = this.db.prepare('SELECT enabled,provider,model FROM suggestion_settings WHERE id=1').get();
     return { enabled: row ? !!row.enabled : true, model: row?.model ? { provider: row.provider, model: row.model } : null };
+  }
+  chatSettings() { return this.db.prepare('SELECT provider,model,effort FROM chat_settings WHERE id=1').get() ?? null; }
+  saveChatSettings({ provider, model, effort }) {
+    this.db.prepare('INSERT INTO chat_settings(id,provider,model,effort) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,effort=excluded.effort').run(provider, model, effort);
+    return this.chatSettings();
   }
   saveSuggestionSettings({ enabled, model }) {
     this.db.prepare('INSERT INTO suggestion_settings(id,enabled,provider,model) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,provider=excluded.provider,model=excluded.model').run(+enabled, model?.provider ?? null, model?.model ?? null);
@@ -282,16 +291,15 @@ export class Store {
     return result.changes ? this.artifact(conversation, id) : null;
   }
   forgetThread(id) { this.db.prepare('UPDATE trees SET thread=NULL,working_thread=NULL WHERE id=?').run(id); }
-  create(title = 'New chat', provider = 'codex', model = null) {
+  create(title = 'New chat', provider = 'codex', model = null, effort = null) {
     const id = randomUUID();
-    this.db.prepare('INSERT INTO trees(id,title,created,provider,working_provider,model,working_model) VALUES(?,?,?,?,?,?,?)').run(id, title, Date.now(), provider, provider, model, model);
+    this.db.prepare('INSERT INTO trees(id,title,created,provider,working_provider,model,working_model,effort,working_effort) VALUES(?,?,?,?,?,?,?,?,?)').run(id, title, Date.now(), provider, provider, model, model, effort, effort);
     return this.tree(id);
   }
   branch(parent, anchor, snapshot) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      const child = this.create(anchor.question.trim().slice(0, 200));
-      this.db.prepare('UPDATE trees SET provider=?,model=?,working_model=?,working_provider=? WHERE id=?').run(parent.provider, parent.model, parent.working_model ?? parent.model, parent.working_provider ?? parent.provider, child.id);
+      const child = this.create(anchor.question.trim().slice(0, 200), parent.provider, parent.model, parent.effort ?? null);
       this.db.prepare('INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot) VALUES(?,?,?,?,?,?,?,?)').run(child.id, parent.id, anchor.messageId, anchor.start, anchor.end, anchor.text, anchor.question, snapshot);
       // Branching from a suggestion marks it explored, in the same transaction as the saved child.
       const row = anchor.suggestion === true && this.db.prepare("SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'").get(parent.id, anchor.messageId);
@@ -304,17 +312,17 @@ export class Store {
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
   thread(id, thread, model) { this.db.prepare('UPDATE trees SET thread=?,model=COALESCE(?,model) WHERE id=?').run(thread, model ?? null, id); }
-  model(id, model) { this.db.prepare('UPDATE trees SET model=? WHERE id=?').run(model, id); }
+  model(id, model, effort = null) { this.db.prepare('UPDATE trees SET model=?,effort=? WHERE id=?').run(model, effort, id); }
   // Provider sessions are not portable: switching drops the thread so the next provider receives saved history.
   // The working provider's session is kept so a failed switch, or switching straight back, resumes it.
-  switchProvider(id, provider, model) {
+  switchProvider(id, provider, model, effort = null) {
     this.db.prepare(`UPDATE trees SET working_thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END,
       thread=CASE WHEN ? IS COALESCE(working_provider,provider) THEN CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END END,
-      provider=?,model=? WHERE id=?`).run(provider, provider, model, id);
+      provider=?,model=?,effort=? WHERE id=?`).run(provider, provider, model, effort, id);
   }
   finishModel(id, completed) {
-    this.db.prepare(completed ? 'UPDATE trees SET working_model=model,working_provider=provider WHERE id=?'
-      : 'UPDATE trees SET model=working_model,thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END,provider=COALESCE(working_provider,provider) WHERE id=?').run(id);
+    this.db.prepare(completed ? 'UPDATE trees SET working_model=model,working_provider=provider,working_effort=effort WHERE id=?'
+      : 'UPDATE trees SET model=working_model,effort=working_effort,thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END,provider=COALESCE(working_provider,provider) WHERE id=?').run(id);
   }
   // The first question of an unstarted root replaces its placeholder title, using the branch-title rule.
   unstarted() { return this.db.prepare("SELECT t.id FROM trees t WHERE t.title='New chat' AND t.title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=t.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=t.id) ORDER BY t.created DESC LIMIT 1").get()?.id; }

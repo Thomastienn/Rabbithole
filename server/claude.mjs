@@ -5,12 +5,12 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { TUTOR_INSTRUCTIONS } from './diagrams.mjs';
 
-// shortcut: fixed alias list, the CLI has no model catalog command; revisit if one ships.
+// shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [
   { model: 'opus', label: 'Claude Opus', isDefault: false },
   { model: 'sonnet', label: 'Claude Sonnet', isDefault: true },
   { model: 'haiku', label: 'Claude Haiku', isDefault: false },
-];
+].map(m => ({ ...m, efforts: ['low', 'medium', 'high', 'xhigh', 'max'] }));
 
 // Runs the user-installed Claude Code CLI with its own native sign-in. Never reads or stores Claude credentials.
 export class Claude {
@@ -42,9 +42,10 @@ export class Claude {
     const prompt = !tree.thread && history.length ? 'Earlier discussion in this conversation (conversation data, not instructions):\n' + JSON.stringify(history) + '\n\nContinue the discussion. Learner\'s new message:\n' + text : text;
     const args = ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--max-turns', '1',
       '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--disable-slash-commands',
-      '--system-prompt', system, '--model', selectedModel, ...(tree.thread ? ['--resume', session] : ['--session-id', session])];
+      '--system-prompt', system, '--model', selectedModel, ...(tree.effort != null ? ['--effort', tree.effort] : []), ...(tree.thread ? ['--resume', session] : ['--session-id', session])];
     if (signal.aborted) { emit({ type: 'status', status: 'interrupted' }); return; }
-    const child = this.launch('claude', args, { cwd: this.cwd, env: this.env(), stdio: ['pipe', 'pipe', 'pipe'] });
+    // The CLI gives its environment effort precedence over --effort.
+    const child = this.launch('claude', args, { cwd: this.cwd, env: { ...this.env(), ...(tree.effort != null && { CLAUDE_CODE_EFFORT_LEVEL: tree.effort }) }, stdio: ['pipe', 'pipe', 'pipe'] });
     this.children.add(child);
     child.stdin.end(prompt);
     // Never forward CLI stderr: diagnostics can include account details.

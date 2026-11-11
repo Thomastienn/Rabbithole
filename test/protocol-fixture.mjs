@@ -53,7 +53,7 @@ if (process.argv.includes('--output-format')) {
   if (method === 'model/list') send({ id, result: params.cursor ? {
     data: [{ model: 'fixture-alternate', displayName: 'Alternate', inputModalities: ['text'] }, { model: 'fixture-luna', displayName: 'Luna' }, ...(process.argv.includes('--terra') ? [{ model: 'gpt-6.1-terra', displayName: 'GPT-6.1 Terra', isDefault: false, inputModalities: ['text'] }] : [])], nextCursor: null
   } : {
-    data: [{ model: 'fixture-model', displayName: 'Original', isDefault: true }, { model: 'hidden', hidden: true }, { model: 'image-only', inputModalities: ['image'] }], nextCursor: 'page-two'
+    data: [{ model: 'fixture-model', displayName: 'Original', isDefault: true, supportedReasoningEfforts: ['low', 'medium', 'high'].map(reasoningEffort => ({ reasoningEffort, description: reasoningEffort })), defaultReasoningEffort: 'medium' }, { model: 'hidden', hidden: true }, { model: 'image-only', inputModalities: ['image'] }], nextCursor: 'page-two'
   } });
   if (method === 'thread/inject_items') {
     if (params.items.some(item => item.content[0].text === 'reject import')) send({ id, error: { code: -32602, message: 'Import rejected' } });

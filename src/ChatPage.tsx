@@ -29,12 +29,12 @@ import { previewText } from './markdownText';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { treeGroups } from './treeList';
+import { effortLabel, type Model } from './models';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
 type Anchor = { messageId: string; start: number; end: number; text: string; at?: Point & { below?: number }; suggestion?: boolean };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
-type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
-type Model = { provider: string; model: string; label: string; isDefault: boolean; defaultFallback?: boolean };
+type Tree = { id: string; title: string; provider: string; model: string | null; effort: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
 type SearchResult = { root: string; conversation: string | null; snippet: string | null };
 type Providers = Record<string, { label: string; connected: boolean }>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[]; suggesting?: string[]; usage?: Usage & { replies: number }; conceptNameTokens?: number };
@@ -184,6 +184,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   const [models, setModels] = useState<Model[]>();
   const [providers, setProviders] = useState<Providers>();
   const [modelError, setModelError] = useState('');
+  const [modelNotice, setModelNotice] = useState('');
   const [savingModel, setSavingModel] = useState<string>();
   const [modelMenuOpen, setModelMenuOpen] = useState(false), [openingModels, setOpeningModels] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
@@ -455,17 +456,19 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     setOpeningModels(false);
     if (selected.current === id) setModelMenuOpen(true);
   }
-  async function changeModel(provider: string, model: string) {
+  async function changeModel(provider: string, model: string, effort: string | null) {
     if (!tree || savingModel) return;
     const id = tree.id;
-    setSavingModel(id); setError('');
+    setSavingModel(id); setError(''); setModelNotice('');
     try {
-      const saved = await api(`/api/trees/${id}/model`, { provider, model });
+      const saved = await api(`/api/trees/${id}/model`, { provider, model, effort });
       ++checkpoints.current;
-      setTree(t => t?.id === id ? { ...t, provider: saved.provider, model: saved.model } : t);
+      setTree(t => t?.id === id ? { ...t, provider: saved.provider, model: saved.model, effort: saved.effort } : t);
+      if (selected.current === id && tree.effort && effort === null && (tree.provider !== provider || tree.model !== model)) setModelNotice('Effort changed to Provider default for this model.');
     } catch (e) { if (selected.current === id) setError((e as Error).message); }
     finally { setSavingModel(undefined); }
   }
+  useEffect(() => { setModelNotice(''); }, [tree?.id]);
   useEffect(() => {
     if (!overview && tree && focusComposer.current) { composer.current?.focus(); focusComposer.current = false; }
   }, [tree?.id, overview]);
@@ -656,6 +659,8 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   }
   const providerLabel = (id: string) => providers?.[id]?.label ?? ({ claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' } as Record<string, string>)[id] ?? id;
   const codexFallback = models?.find(m => m.provider === 'codex' && m.defaultFallback);
+  const currentModel = tree && models?.find(m => m.provider === tree.provider && (tree.model ? m.model === tree.model : m.isDefault));
+  const unavailableSelection = !!tree && !!models && (!providers?.[tree.provider]?.connected || !currentModel || (!!tree.effort && !(currentModel.efforts ?? []).includes(tree.effort)));
   const modelLabel = (t: Tree) => {
     const label = models?.find(m => m.provider === t.provider && m.model === t.model)?.label ?? t.model ?? models?.find(m => m.provider === t.provider && m.isDefault)?.label ?? 'default model';
     return label.startsWith(providerLabel(t.provider)) ? label : `${providerLabel(t.provider)} · ${label}`;
@@ -744,11 +749,11 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
             <HStack gap={1} vAlign="center" className="chat-heading-row">
               <VStack gap={0} className="chat-title">
                 {renaming?.id === tree.id && renaming.place === 'header' ? <TitleEditor key={tree.id} title={tree.title} save={title => rename(tree.id, title)} cancel={finishRename} /> : <Button id="rename-conversation" className="rename-title" label="Rename conversation" tooltip={`Rename ${tree.title}`} variant="ghost" size="sm" onClick={() => setRenaming({ id: tree.id, place: 'header' })}><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading></Button>}
-                <Text type="supporting" color="secondary" className="chat-model">{modelLabel(tree)} · saved automatically</Text>
+                <Text type="supporting" color="secondary" className="chat-model">{modelLabel(tree)} · {effortLabel(tree.effort)} · saved automatically</Text>
               </VStack>
               <DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" isMenuOpen={modelMenuOpen} onOpenChange={open => void openModels(open)} renderTrigger={props => <IconButton {...props} label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : openingModels ? 'Loading models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(tree)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || openingModels} isLoading={openingModels || savingModel === tree.id} />}>
                 {['claude', 'codex', 'openai'].map(id => { const p = providers?.[id] ?? { label: providerLabel(id), connected: false }; return <DropdownMenuGroup key={id} title={p.connected ? p.label : `${p.label} · not connected`}>
-                  {p.connected && models?.some(m => m.provider === id) ? <DropdownMenuRadioGroup label={`${p.label} models`} value={tree.provider === id ? tree.model ?? models?.find(m => m.provider === id && m.isDefault)?.model : undefined} onChange={model => void changeModel(id, model)}>
+                  {p.connected && models?.some(m => m.provider === id) ? <DropdownMenuRadioGroup label={`${p.label} models`} value={tree.provider === id ? tree.model ?? models?.find(m => m.provider === id && m.isDefault)?.model : undefined} onChange={model => void changeModel(id, model, tree.effort && models?.find(m => m.provider === id && m.model === model)?.efforts?.includes(tree.effort) ? tree.effort : null)}>
                     {tree.provider === id && tree.model && !models?.some(m => m.provider === id && m.model === tree.model) && <DropdownMenuRadioItem value={tree.model} label={`${tree.model} (saved)`} isDisabled />}
                     {(models ?? []).filter(m => m.provider === id).map(m => <DropdownMenuRadioItem key={m.model} value={m.model} label={m.label} />)}
                   </DropdownMenuRadioGroup>
@@ -756,10 +761,19 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
                   : id === 'codex' ? <DropdownMenuItem label="Continue with ChatGPT" description="Sign in to use Codex with your ChatGPT plan" onClick={() => void signIn().catch(e => setError(e.message))} />
                   : <DropdownMenuItem label={`Check ${p.label} sign-in`} description={id === 'claude' ? 'Run claude in a terminal and sign in, then check again' : 'Sign in, then check again'} onClick={() => void loadModels()} />}
                 </DropdownMenuGroup>; })}
+                <DropdownMenuGroup title="Effort for next reply">
+                  <DropdownMenuRadioGroup label="Conversation effort" value={tree.effort ?? 'default'} onChange={value => { if (currentModel) void changeModel(tree.provider, currentModel.model, value === 'default' ? null : value); }}>
+                    <DropdownMenuRadioItem value="default" label="Provider default" isDisabled={!currentModel} />
+                    {tree.effort && !currentModel?.efforts?.includes(tree.effort) && <DropdownMenuRadioItem value={tree.effort} label={`${effortLabel(tree.effort)} (unavailable)`} isDisabled />}
+                    {(currentModel?.efforts ?? []).map(effort => <DropdownMenuRadioItem key={effort} value={effort} label={effortLabel(effort)} />)}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
               </DropdownMenu>
               <IconButton className="expand-chat" label={expanded ? 'Show map beside chat' : 'Expand chat'} tooltip={expanded ? 'Show map beside chat' : 'Expand chat'} icon={expanded ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={toggleExpanded} />
               <IconButton label="Return to tree" tooltip="Back to map (Esc)" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={returnToTree} />
             </HStack>
+            {modelNotice && <Text type="supporting" role="status">{modelNotice}</Text>}
+            {unavailableSelection && <Text type="supporting" role="alert">Saved model or effort unavailable. Check Connections in Settings or choose a listed model and effort. Your discussion is saved.</Text>}
             {tree.provider === 'codex' && codexFallback && <Text type="supporting" color="secondary" role="note">GPT-6.1 Terra isn’t listed for this account. New conversations use {codexFallback.label}, the account default.</Text>}
             {tree.branch && <HStack gap={1} vAlign="center" wrap="wrap" className="chat-parent">
               <Button label="Return to parent conversation" variant="ghost" size="sm" icon={<ArrowUturnLeftIcon />} onClick={() => openConversation(tree.branch!.parent)}>{state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'Parent conversation'}</Button>

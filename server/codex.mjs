@@ -87,7 +87,9 @@ export class Codex {
     let cursor;
     do {
       const page = await this.rpc('model/list', { limit: 100, includeHidden: false, ...(cursor ? { cursor } : {}) });
-      models.push(...page.data.filter(m => !m.hidden && (!m.inputModalities || m.inputModalities.includes('text'))).map(m => ({ model: m.model, label: m.displayName, isDefault: m.isDefault })));
+      models.push(...page.data.filter(m => !m.hidden && (!m.inputModalities || m.inputModalities.includes('text'))).map(m => ({ model: m.model, label: m.displayName, isDefault: m.isDefault,
+        ...(m.supportedReasoningEfforts && { efforts: m.supportedReasoningEfforts.map(e => e.reasoningEffort) }),
+        ...(m.defaultReasoningEffort && { defaultEffort: m.defaultReasoningEffort }) })));
       cursor = page.nextCursor;
     } while (cursor);
     const terra = models.find(m => m.model === 'gpt-6.1-terra');
@@ -100,6 +102,8 @@ export class Codex {
     await this.ready();
     if (cancelled()) return;
     const model = await this.model(tree);
+    // turn/start retains effort across turns; resolve the advertised default when clearing an override.
+    const effort = tree.effort ?? (await this.models()).find(m => m.model === model)?.defaultEffort;
     if (cancelled()) return;
     const params = { cwd: join(this.dir, 'workspace'), approvalPolicy: 'never', sandbox: 'read-only',
       baseInstructions: (tree.instructions ?? TUTOR_INSTRUCTIONS) + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '') };
@@ -144,7 +148,7 @@ export class Codex {
           }
         };
         this.listeners.add(listener);
-        this.rpc('turn/start', { threadId, model, input: [{ type: 'text', text, text_elements: [] }] }).then(result => {
+        this.rpc('turn/start', { threadId, model, ...(effort != null && { effort }), input: [{ type: 'text', text, text_elements: [] }] }).then(result => {
           turnId = result.turn.id;
           if (interrupted) { interrupt(); return; }
           for (const event of earlyEvents) listener(event);
