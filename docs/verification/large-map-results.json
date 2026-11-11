@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-10T09:52:18.028Z",
+  "date": "2026-11-11T00:48:15.529Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,51 +12,56 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 940.7231869999996,
-  "previewQueryMs": 706.566433,
+  "seedMs": 944.6782379999986,
+  "previewQueryMs": 804.3032190000013,
   "previewBytes": 4876201,
-  "openMs": 2921.932907999999,
+  "openMs": 3289.1034050000017,
   "dom": {
-    "elements": 2309,
+    "elements": 2419,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1982.5999999940395,
+    "elapsedMs": 1971.4000000003723,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
     "maxMs": 16.800000000000182,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.700000000000728,
+    "p95Ms": 16.800000000000182,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 316.4503900000018,
-  "unfoldMs": 186.34417799999937,
+  "foldMs": 333.22720499999923,
+  "unfoldMs": 191.42276299999867,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 3530.438290000002,
-  "selectMs": 3686.3891570000014,
-  "selectUiMs": 193.7000000178814,
+  "selectClickMs": 4043.170836000001,
+  "selectMs": 4735.939157000001,
+  "selectUiMs": 707.8000000007451,
   "selectedBounds": {
-    "bottom": 599.8375244140625,
+    "bottom": 631.8375244140625,
     "canvasHeight": 900,
-    "canvasWidth": 928,
-    "left": 718.213623046875,
-    "right": 769.4136352539062,
+    "canvasWidth": 736,
+    "left": 574.2144165039062,
+    "right": 625.4144287109375,
     "top": 75
   },
-  "streamingMs": 529.3910380000016,
+  "streamingMs": 639.1223129999998,
   "chunkRenders": {
-    "ba1f2e33-b2b7-48e2-8323-b9c9dc313e06": 14
+    "5db99f0d-cfe0-490f-b5d7-e70b7385946d": 1,
+    "b3c0596c-1b4e-4e68-8e74-d019b66591b5": 14
   },
   "chunkRenderReasons": {
-    "ba1f2e33-b2b7-48e2-8323-b9c9dc313e06": [
+    "5db99f0d-cfe0-490f-b5d7-e70b7385946d": [
+      "stubs"
+    ],
+    "b3c0596c-1b4e-4e68-8e74-d019b66591b5": [
       "preview"
     ]
-  }
+  },
+  "error": "streaming chunks do not render unrelated conversations\n+ actual - expected\n\n  [\n+   '5db99f0d-cfe0-490f-b5d7-e70b7385946d',\n    'b3c0596c-1b4e-4e68-8e74-d019b66591b5'\n  ]\n"
 }

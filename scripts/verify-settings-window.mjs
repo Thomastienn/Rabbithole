@@ -95,6 +95,8 @@ try {
   await tab('Interface');
   const ui = await text();
   for (const s of ['Vim canvas bindings', 'Map help', 'Vim canvas bindings are off']) assert.ok(ui.includes(s), s);
+  // Appearance sits above it now; scroll so the click lands inside the dialog, not on its backdrop.
+  await ev(`${dialog}.querySelector('input[type=checkbox]').scrollIntoView({ block: 'center' })`);
   await b('find', 'label', 'Vim canvas bindings', 'check');
   await wait(`localStorage.getItem('treetutor.vim') === 'on' && ${dialog}.textContent.includes('Vim canvas bindings are on')`);
   await shot('interface');

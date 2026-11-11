@@ -1,3 +1,4 @@
+import { useTheme } from '@astryxdesign/core/theme';
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlow, Handle, Position, useNodesInitialized, useNodesState, useUpdateNodeInternals, type NodeProps, type Node, type ReactFlowInstance } from '@xyflow/react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
@@ -81,6 +82,7 @@ function MeasureHandles({ nodes }: { nodes: ConversationNode[] }) {
 }
 
 export default function TreeOverview({ root, trees, previews, active, open, focus, focusControl, transition, save, saveViewport, menu, toolbar, selected, current, initialFolded, onFold, vim }: { vim?: boolean; toolbar?: ReactNode; saveViewport: (viewport: Viewport) => void; initialFolded?: string[]; onFold: (folded: string[]) => void; menu: (actions: MapActions) => ReactNode; root: string; trees: Summary[]; previews: Record<string, Preview>; active: string[]; open: Open; focus?: string; focusControl?: string; transition?: string; selected?: string; current?: string; save: (positions: Record<string, Point>) => void }) {
+  const { mode } = useTheme();
   const flow = useRef<ReactFlowInstance<ConversationNode>>(null);
   const callbacks = useRef({ open, save });
   callbacks.current = { open, save };
@@ -262,7 +264,7 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
       save({ [node.id]: position });
       setNotice(`${node.data.conversation.title} moved to ${Math.round(position.x)}, ${Math.round(position.y)}.`);
     }}>
-      <ConversationTransition.Provider value={transition}><ReactFlow<ConversationNode> nodes={nodes} onlyRenderVisibleElements={canCull && nodes.length > 50} onNodesChange={onNodesChange} edges={edges} nodeTypes={nodeTypes} onInit={instance => { flow.current = instance; }} onMoveStart={event => { if (event) navigated.current = true; }} onMove={(_, viewport) => setZoom(viewport.zoom)} onMoveEnd={(_, viewport) => saveViewport(viewport)} defaultViewport={savedViewport} onNodeClick={(event, node) => { if (!(event.target as HTMLElement).closest('button, a, input, select, textarea, [role="button"], [role="menuitem"], .nodrag')) open(node.id); }} onNodeDragStop={(_, node) => { save({ [node.id]: node.position }); setNotice(`${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`); }} nodesConnectable={false} edgesReconnectable={false} autoPanOnNodeFocus={false} deleteKeyCode={null} disableKeyboardA11y colorMode="system" fitView={!savedViewport} fitViewOptions={fit} minZoom={MIN_ZOOM} maxZoom={1.5} zoomOnScroll zoomOnPinch={false} zoomActivationKeyCode={null}><MeasureHandles nodes={nodes} /></ReactFlow></ConversationTransition.Provider>
+      <ConversationTransition.Provider value={transition}><ReactFlow<ConversationNode> nodes={nodes} onlyRenderVisibleElements={canCull && nodes.length > 50} onNodesChange={onNodesChange} edges={edges} nodeTypes={nodeTypes} onInit={instance => { flow.current = instance; }} onMoveStart={event => { if (event) navigated.current = true; }} onMove={(_, viewport) => setZoom(viewport.zoom)} onMoveEnd={(_, viewport) => saveViewport(viewport)} defaultViewport={savedViewport} onNodeClick={(event, node) => { if (!(event.target as HTMLElement).closest('button, a, input, select, textarea, [role="button"], [role="menuitem"], .nodrag')) open(node.id); }} onNodeDragStop={(_, node) => { save({ [node.id]: node.position }); setNotice(`${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`); }} nodesConnectable={false} edgesReconnectable={false} autoPanOnNodeFocus={false} deleteKeyCode={null} disableKeyboardA11y colorMode={mode} proOptions={{ hideAttribution: true }} fitView={!savedViewport} fitViewOptions={fit} minZoom={MIN_ZOOM} maxZoom={1.5} zoomOnScroll zoomOnPinch={false} zoomActivationKeyCode={null}><MeasureHandles nodes={nodes} /></ReactFlow></ConversationTransition.Provider>
     </VStack>
   </>;
 }

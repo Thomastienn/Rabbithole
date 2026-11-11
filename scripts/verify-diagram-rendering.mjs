@@ -114,6 +114,9 @@ if (process.argv[2] === '--serve') {
     await b('set', 'viewport', '1280', '900');
     await b('set', 'media', 'light', 'reduced-motion');
     await b('open', origin);
+    // Diagrams follow the app's Appearance; System lets the emulated OS scheme drive light/dark below.
+    await b('eval', "localStorage.setItem('treetutor.appearance', 'system'); true");
+    await b('reload');
     await b('wait', '[aria-label="Open Diagram fixture"]');
     await wait(`document.querySelectorAll('.node-message').length >= 2`);
     assert.equal(await ev(`document.querySelectorAll('.diagram-card').length`), 0);

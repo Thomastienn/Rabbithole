@@ -2,14 +2,14 @@ import mermaid from 'mermaid';
 
 // Mermaid has global configuration. Keep each theme initialization with its queued render.
 let queue = Promise.resolve();
-export function renderDiagram(source: string, style: CSSStyleDeclaration): Promise<string> {
+export function renderDiagram(source: string, style: CSSStyleDeclaration, dark: boolean): Promise<string> {
   const render = queue.then(async () => {
     mermaid.initialize({
       startOnLoad: false, securityLevel: 'strict', htmlLabels: false,
       flowchart: { htmlLabels: false }, suppressErrorRendering: true,
       maxTextSize: 16 * 1024, theme: 'base', look: 'classic',
       themeVariables: {
-        darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+        darkMode: dark,
         background: style.backgroundColor, fontSize: style.fontSize,
         primaryColor: style.backgroundColor, secondaryColor: style.backgroundColor, tertiaryColor: style.backgroundColor,
         primaryTextColor: style.color, secondaryTextColor: style.color, tertiaryTextColor: style.color, textColor: style.color, lineColor: style.color,

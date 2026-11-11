@@ -19,6 +19,7 @@ import DiagramCard from './DiagramCard';
 import VideoCard from './VideoCard';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from './SettingsWindow';
 import { bubbleTints, type BubbleTint } from './bubbleTint';
+import type { Appearance } from './appearance';
 import { DEFAULT_CHAT_WIDTH, MIN_CHAT_WIDTH, clampChatWidth, keyChatWidth, maxChatWidth, resetChatWidth, savedChatWidth } from './chatWidth';
 import KnowledgePage, { type Graph } from './KnowledgePage';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
@@ -152,7 +153,7 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
 
 const remPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
 
-export default function ChatPage() {
+export default function ChatPage({ appearance, setAppearance }: { appearance: Appearance; setAppearance: (next: Appearance) => void }) {
   const [state, setState] = useState<State>();
   const [tree, setTree] = useState<Tree>();
   const [previews, setPreviews] = useState<Record<string, Preview>>({});
@@ -184,7 +185,7 @@ export default function ChatPage() {
   // Only this boolean is stored, per browser and app origin; unreadable storage means off.
   const [vim, setVim] = useState(() => { try { return localStorage.getItem('treetutor.vim') === 'on'; } catch { return false; } });
   const [bubbleTint, setBubbleTint] = useState<BubbleTint>(() => {
-    try { const saved = localStorage.getItem('treetutor.bubble-tint'); return bubbleTints.find(t => t.id === saved)?.id ?? 'accent'; }
+    try { const saved = localStorage.getItem('treetutor.bubble-tint'); return bubbleTints.find(t => t.id === saved)?.id ?? 'neutral'; }
     catch { return 'accent'; }
   });
   const [chatWidth, setChatWidth] = useState(() => { try { return savedChatWidth(localStorage.getItem('treetutor.chat-width')); } catch { return DEFAULT_CHAT_WIDTH; } });
@@ -741,7 +742,7 @@ export default function ChatPage() {
                 
                 {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).map(artifact => artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} />)}
                 {!overview && message.role === 'assistant' && message.status === 'completed' && suggestions?.status === 'failed' && <Text type="supporting" color="secondary">Suggestions unavailable</Text>}
-                {message.status !== 'completed' && <Text type="supporting" role="status">{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
+                {message.status !== 'completed' && <Text type="supporting" role="status" className="reply-status" data-status={message.status}>{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
               </ChatMessage>; })}
             </ChatMessageList>
           </ChatLayout>
@@ -756,7 +757,7 @@ export default function ChatPage() {
         {tab === 'knowledge' && <><HStack padding={3} className="knowledge-header"><Button id="return-to-learning" label="Return to learning tree" variant="ghost" icon={<ArrowUturnLeftIcon />} onClick={() => { setTab('learning'); requestAnimationFrame(() => document.querySelector<HTMLElement>(overview ? '.map-toolbar button' : '#rename-conversation')?.focus()); }} /></HStack><KnowledgePage api={api} activity={activeKey} /></>}
       </main>
     </HStack>
-    <SettingsWindow request={settings} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} usage={state?.usage?.replies ? usageLine(state.usage) : undefined} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
+    <SettingsWindow request={settings} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} usage={state?.usage?.replies ? usageLine(state.usage) : undefined} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} appearance={appearance} setAppearance={setAppearance} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
     <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
 }

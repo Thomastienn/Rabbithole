@@ -15,6 +15,7 @@ import { ArrowLeftIcon, ChartBarIcon, CpuChipIcon, LinkIcon, SwatchIcon, XMarkIc
 import EndpointSettings from './EndpointSettings';
 import SuggestionSettings from './SuggestionSettings';
 import { bubbleTints, type BubbleTint } from './bubbleTint';
+import { appearances, type Appearance } from './appearance';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
 // tab: undefined opens the default tab on desktop and the tab list on mobile; focus is a selector to focus once open.
@@ -24,7 +25,7 @@ type Model = { provider: string; model: string; label: string };
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
   { id: 'models', label: 'Models', description: 'Which model picks suggestion underlines, and what concept matching costs.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
-  { id: 'interface', label: 'Interface', description: 'Question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
+  { id: 'interface', label: 'Interface', description: 'Appearance, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
   { id: 'usage', label: 'Usage', description: 'What today’s replies and suggestions have used so far.', icon: ChartBarIcon },
 ];
 
@@ -35,7 +36,7 @@ function Section({ title, description, children }: { title: string; description?
   </VStack>;
 }
 
-export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, usage, conceptNameTokens, auth, signIn, vim, setVim, bubbleTint, setBubbleTint }: {
+export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, usage, conceptNameTokens, auth, signIn, vim, setVim, appearance, setAppearance, bubbleTint, setBubbleTint }: {
   request?: SettingsRequest;
   close: () => void;
   api: (path: string, body?: unknown) => Promise<any>;
@@ -49,6 +50,8 @@ export default function SettingsWindow({ request, close, api, models, providers,
   signIn: () => Promise<void>;
   vim: boolean;
   setVim: (on: boolean) => void;
+  appearance: Appearance;
+  setAppearance: (next: Appearance) => void;
   bubbleTint: BubbleTint;
   setBubbleTint: (tint: BubbleTint) => void;
 }) {
@@ -105,7 +108,13 @@ export default function SettingsWindow({ request, close, api, models, providers,
       <EndpointSettings api={api} changed={() => void loadModels()} />
     </>}
     {current.id === 'interface' && <>
-      <Section title="Question bubbles" description="Choose a tint for your questions. Saved in this browser; follows your light or dark theme.">
+      <Section title="Appearance" description="Dark, light, or System to follow your operating system. Saved in this browser.">
+        <RadioList label="Appearance" value={appearance} onChange={value => setAppearance(value as Appearance)}>
+          {appearances.map(a => <RadioListItem key={a.id} value={a.id} label={a.label} />)}
+        </RadioList>
+      </Section>
+      <Divider />
+      <Section title="Question bubbles" description="Choose a tint for your questions. Saved in this browser; follows your appearance.">
         <RadioList label="Bubble tint" value={bubbleTint} onChange={value => setBubbleTint(value as BubbleTint)}>
           {bubbleTints.map(tint => <RadioListItem key={tint.id} value={tint.id} label={tint.label} endContent={<HStack aria-hidden="true" className="bubble-tint-swatch" style={{ background: tint.color }} />} />)}
         </RadioList>

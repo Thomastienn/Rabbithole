@@ -3,29 +3,24 @@ import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
+import { useTheme } from '@astryxdesign/core/theme';
 import { renderArtifact, type Artifact, type DiagramState } from './artifacts';
 
 export default function DiagramCard({ artifact }: { artifact: Artifact }) {
   const id = useId();
   const card = useRef<HTMLElement>(null);
   const [drawing, setDrawing] = useState<DiagramState>({ status: 'pending' });
-  const [scheme, setScheme] = useState(0);
+  const { mode } = useTheme();
   const [enlarged, setEnlarged] = useState(false);
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const change = () => setScheme(s => s + 1);
-    media.addEventListener('change', change);
-    return () => media.removeEventListener('change', change);
-  }, []);
   useEffect(() => {
     let cancelled = false;
     setDrawing({ status: 'pending' });
     void renderArtifact(artifact, async source => {
       const { renderDiagram } = await import('./mermaid');
-      return renderDiagram(source, getComputedStyle(card.current!));
+      return renderDiagram(source, getComputedStyle(card.current!), mode === 'dark');
     }).then(state => { if (!cancelled) setDrawing(state); });
     return () => { cancelled = true; };
-  }, [artifact.id, artifact.status, artifact.source, scheme]);
+  }, [artifact.id, artifact.status, artifact.source, mode]);
   const failed = drawing.status === 'failed';
   return <section ref={card} className="diagram-card" tabIndex={0} aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={drawing.status}>
     <VStack gap={3} padding={3}>

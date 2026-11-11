@@ -84,7 +84,7 @@ White surface, pale body gray, black primary text and medium gray secondary text
 
 **The Semantic Color Rule.** Use Astryx's existing color roles; let the theme own palette values.
 
-Token authority: installed `@astryxdesign/theme-neutral/dist/theme.css`, generated from `src/neutralTheme.ts` inside that package. The entries above correspond to `--color-accent`, `--color-background-surface`, `--color-background-body`, `--color-text-primary`, `--color-text-secondary`, `--color-border`, `--color-border-emphasized` `--color-neutral` and `--color-background-blue` in that order. Do not copy this snapshot into application CSS as overrides.
+Token authority: the project-owned Lecture-hall Slate theme, source [src/themes/slate/slateTheme.ts](src/themes/slate/slateTheme.ts) (built to `src/themes/slate/slate.css` with `npx astryx theme build`, registered in `src/astryx-themes.ts`), carrying both appearances as `[light, dark]` token tuples; dark is the default. The entries above correspond to `--color-accent`, `--color-background-surface`, `--color-background-body`, `--color-text-primary`, `--color-text-secondary`, `--color-border`, `--color-border-emphasized` `--color-neutral` and `--color-background-blue` in that order; their values are being re-derived per docs/visual-identity-spec.md and this file is rewritten at the finish ticket. Do not copy theme values into application CSS as overrides; the token lint test enforces it.
 
 ## Typography
 
@@ -92,7 +92,7 @@ Figtree serves headings, body and controls with platform sans-serif fallbacks. T
 
 The installed theme adapts coarse-pointer narrow devices to a 16px body floor and re-derived scale. This is a theme adaptation, separate from the application's navigation breakpoint.
 
-Font delivery is self-hosted: [vite.config.ts](vite.config.ts) aliases the theme font stylesheet to `@fontsource/figtree/index.css`; [astryx-themes.ts](src/astryx-themes.ts) imports that stylesheet. Do not restore the theme's remote font import.
+Font delivery is self-hosted: [main.tsx](src/main.tsx) imports `@fontsource/public-sans` and `@fontsource/source-serif-4` weights named by the slate theme. Do not add remote font imports.
 
 ## Layout
 

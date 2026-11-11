@@ -26,6 +26,8 @@ const art = store.pendingArtifact(root.id, reply, 'Lock flow', 'Lock flow: a thr
 store.finishArtifact(root.id, art.id, 'flowchart LR\n A[Take lock] --> B[Release]');
 store.message(root.id, 'user', 'And a semaphore?', 'completed');
 store.message(root.id, 'assistant', 'Partial answer', 'failed');
+store.message(root.id, 'user', 'Why did it stop?', 'completed');
+store.message(root.id, 'assistant', 'Half a thought', 'interrupted');
 let release;
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }], generate: async (_tree, _input, emit) => {
   emit({ type: 'item', item: 'one', text: 'Streaming…' });
@@ -79,6 +81,53 @@ try {
   assert.ok(layout.turnGap > layout.innerGap * 2, `turn gap ${layout.turnGap} > question-reply gap ${layout.innerGap}`);
   assert.match(layout.failed, /Reply failed/, 'failed state stays on its reply');
   steps.push(`learner bubble right-aligned and tinted, no label; "${layout.header}" header labels the reply; text capped ${Math.round(layout.replyWidth)}px of ${Math.round(layout.listWidth)}px; order passage → diagram → usage; turn gap ${Math.round(layout.turnGap)}px vs ${Math.round(layout.innerGap)}px; failed status on its reply`);
+
+  // Transcript world (docs/visual-identity-spec.md, Focused chat): serif replies, sans questions, quiet metadata, distinct statuses.
+  const transcript = () => ev(`(() => {
+    const [q1, r1, , r2, , r3] = document.querySelectorAll('.focused-chat article');
+    const css = n => getComputedStyle(n), probe = document.createElement('span');
+    document.querySelector('.focused-chat').append(probe);
+    const tone = v => { probe.style.color = 'var(' + v + ')'; return css(probe).color; };
+    const reply = css(r1.querySelector('.reply-md p .astryx-text') ?? r1.querySelector('.reply-md')), question = css(q1.querySelector('.question-bubble .astryx-text'));
+    const status = n => n.querySelector('.reply-status'), out = {
+      replyFont: reply.fontFamily, replySize: reply.fontSize, replyLine: parseFloat(reply.lineHeight) / parseFloat(reply.fontSize),
+      questionFont: question.fontFamily, bubble: css(q1.querySelector('.question-bubble')).backgroundColor, replyBg: css(r1.querySelector('.passage')).backgroundColor,
+      meta: css(r1.querySelector('[id]')).color, primary: tone('--color-text-primary'), secondary: tone('--color-text-secondary'), error: tone('--color-text-error'),
+      failed: [status(r2).textContent, css(status(r2)).color], interrupted: [status(r3).textContent, css(status(r3)).color, status(r3).getBoundingClientRect().height],
+      underline: css(r1.querySelector('u.suggestion')).textDecorationStyle, ground: css(document.querySelector('.focused-chat')).backgroundColor,
+    };
+    probe.remove(); return out;
+  })()`);
+  const look = async mode => {
+    const t = await transcript();
+    assert.match(t.replyFont, /Source Serif 4/, `${mode}: reply in the reading serif`);
+    assert.equal(t.replySize, '16px', `${mode}: reply 16px`);
+    assert.ok(Math.abs(t.replyLine - 1.7) < 0.02, `${mode}: reply line height 1.7 (${t.replyLine})`);
+    assert.match(t.questionFont, /Public Sans/, `${mode}: question in the UI sans`);
+    assert.ok(t.bubble !== 'rgba(0, 0, 0, 0)' && t.replyBg === 'rgba(0, 0, 0, 0)', `${mode}: question filled, reply without bubble`);
+    assert.equal(t.meta, t.secondary, `${mode}: reply metadata in muted chalk`);
+    assert.match(t.failed[0], /Reply failed/); assert.equal(t.failed[1], t.error, `${mode}: failed status in the alert colour`);
+    assert.match(t.interrupted[0], /Reply interrupted/); assert.ok(t.interrupted[2] > 0 && t.interrupted[1] === t.secondary, `${mode}: interrupted status visible, muted, not alert`);
+    assert.equal(t.underline, 'dotted', `${mode}: suggestion underline dotted`);
+    await wait(`!document.querySelector('.focused-chat .diagram-card').textContent.includes('Rendering diagram')`);
+    const file = join('docs', 'verification', `focused-chat-transcript-${mode}.png`);
+    await b('screenshot', file);
+    steps.push(`${mode}: serif reply ${t.replySize}/${t.replyLine.toFixed(2)}, sans question bubble, muted metadata, failed in alert colour, interrupted muted; ${file}`);
+    return t;
+  };
+  const reopen = async set => {
+    await ev(`${set}; location.reload(); true`);
+    await b('wait', '[aria-label="Open Layout fixture"]');
+    await click('Open Layout fixture');
+    await wait(`document.querySelector('.focused-chat .diagram-card svg, .focused-chat .diagram-card img')`);
+    if (!(await ev(`!!document.querySelector('.tree-workspace[data-expanded=true]')`))) await click('Expand chat');
+    await b('mouse', 'move', '5', '5');
+  };
+  const dark = await look('dark');
+  await reopen(`localStorage.setItem('treetutor.appearance', 'light')`);
+  const light = await look('light');
+  assert.notEqual(dark.ground, light.ground, 'light appearance is its own ground');
+  await reopen(`localStorage.removeItem('treetutor.appearance')`);
 
   const shots = mkdtempSync(join(tmpdir(), 'chat-layout-shots-')), shot = join(shots, 'focused-chat-layout.png');
   if (noHover) { await b('screenshot', shot); steps.push('no-hover device: usage footer always visible'); } else {
