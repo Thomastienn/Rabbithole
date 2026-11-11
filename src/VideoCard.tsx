@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
@@ -11,7 +11,7 @@ const STATUS = { pending: 'Creating video…', ready: 'Video ready.', failed: 'V
 
 // Only the status line announces; production stages and source stay private.
 // Library cards pass their own media route and no onAction: their source conversation may be gone, so nothing can regenerate there.
-export default function VideoCard({ artifact, onAction, media = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/media` }: { artifact: Pick<Artifact, 'id' | 'title' | 'description' | 'status' | 'available' | 'conversation'>; onAction?: (action: 'cancel' | 'retry') => Promise<void>; media?: string }) {
+export default function VideoCard({ artifact, onAction, media = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/media`, actions }: { artifact: Pick<Artifact, 'id' | 'title' | 'description' | 'status' | 'available' | 'conversation'>; onAction?: (action: 'cancel' | 'retry') => Promise<void>; media?: string; actions?: ReactNode }) {
   const id = useId();
   const [enlarged, setEnlarged] = useState(false);
   const state = artifact.status === 'ready' && artifact.available === false ? 'unavailable' : artifact.status;
@@ -28,6 +28,7 @@ export default function VideoCard({ artifact, onAction, media = `/api/trees/${ar
         </VStack>
       </section>
       <Text id={`${id}-description`}>{artifact.description}</Text>
+      {actions}
       {state === 'ready' && enlarged && <Lightbox isOpen onOpenChange={setEnlarged} hasAutoPlay media={{ src: media, alt: `Video: ${artifact.title}`, caption: artifact.title, type: 'video' }} />}
     </VStack>
   </section>;

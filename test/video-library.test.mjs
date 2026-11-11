@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, unlinkSync, symlinkSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { Store } from '../server/store.mjs';
@@ -10,11 +10,11 @@ import { mediaPath } from '../server/videos.mjs';
 const media = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(2048, 7)]);
 const provider = { models: async () => [{ model: 'fixture-model', isDefault: true }], generate: async () => { throw new Error('Library playback must not call a provider.'); } };
 
-async function serve(path, dir) {
-  const store = new Store(path), app = createApp({ store, provider, dir, auth: { status: () => ({ connected: true }) } });
+async function serve(path, dir, desktop) {
+  const store = new Store(path), app = createApp({ store, provider, dir, desktop, auth: { status: () => ({ connected: true }) } });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`, { csrf } = await (await fetch(origin + '/api/state')).json();
-  return { store, get: (p, headers) => fetch(origin + p, { headers }), post: (p, body) => fetch(origin + p, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) }), close: () => { app.stop(); store.close(); } };
+  return { store, get: (p, headers) => fetch(origin + p, { headers }), post: (p, body, token = csrf) => fetch(origin + p, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': token }, body: JSON.stringify(body) }), close: () => { app.stop(); store.close(); } };
 }
 const file = (path, data) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, data); };
 
@@ -87,4 +87,67 @@ test('a newly finished video joins the library in the same transaction as its re
     store.finishVideo(tree.id, video.id, video.attempt, { description: 'Final', duration: 3 });
     assert.deepEqual(store.library(), [{ id: video.id, title: 'New video', description: 'Final', duration: 3, created: video.created }]);
   } finally { store.close(); }
+});
+
+test('library reveal and trash act only on server-owned media, keep failed entries and preserve usage', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-library-')), path = join(dir, 'trees.sqlite'), calls = [];
+  let fail = false;
+  // Injected desktop boundary: records server-derived paths; the trash fixture moves the file aside like a real trash.
+  const desktop = {
+    reveal: async p => { calls.push(['reveal', p]); if (fail) throw new Error('no file manager'); },
+    trash: async p => { calls.push(['trash', p]); if (fail) throw new Error('trash unavailable'); unlinkSync(p); },
+  };
+  const env = await serve(path, dir, desktop);
+  try {
+    const tree = env.store.create('Chat'), ids = {};
+    for (const name of ['kept', 'gone', 'missing', 'linked']) {
+      const message = env.store.message(tree.id, 'assistant', 'Reply', 'completed');
+      const video = env.store.pendingArtifact(tree.id, message, `Video ${name}`, 'About', 'video', '{}');
+      env.store.finishVideo(tree.id, video.id, video.attempt, { description: 'About', duration: 2 });
+      ids[name] = video.id;
+    }
+    file(mediaPath(dir, ids.kept), media); file(mediaPath(dir, ids.gone), media);
+    file(join(dir, 'outside.mp4'), media); symlinkSync(join(dir, 'outside.mp4'), mediaPath(dir, ids.linked));
+    env.store.record('video:one', 'video', { provider: 'codex', model: 'fixture-model' }, { input: 10, output: 5, cacheRead: 0 });
+    const usage = env.store.usageEvents();
+
+    // Request protection and server-owned identity: no CSRF, unknown ids, traversal and client paths are refused.
+    assert.equal((await env.post(`/api/videos/${ids.kept}/trash`, {}, 'wrong')).status, 403);
+    assert.equal((await env.post('/api/videos/..%2Ftrees.sqlite/trash', {})).status, 404);
+    assert.equal((await env.post(`/api/videos/${tree.id}/reveal`, {})).status, 404);
+    assert.equal((await env.post(`/api/videos/${ids.linked}/trash`, { path: join(dir, 'trees.sqlite') })).status, 409, 'a symlink is not owned media');
+    assert.ok(existsSync(join(dir, 'outside.mp4')));
+    assert.deepEqual(calls, []);
+
+    assert.equal((await env.post(`/api/videos/${ids.kept}/reveal`, { path: '/etc', command: 'rm -rf /' })).status, 200);
+    assert.deepEqual(calls.pop(), ['reveal', mediaPath(dir, ids.kept)]);
+    assert.equal((await env.post(`/api/videos/${ids.missing}/reveal`, {})).status, 404, 'a missing file is not revealed');
+
+    // A failed trash keeps the entry and the file; nothing is permanently deleted as a fallback.
+    fail = true;
+    assert.equal((await env.post(`/api/videos/${ids.kept}/reveal`, {})).status, 502);
+    const failed = await env.post(`/api/videos/${ids.kept}/trash`, {});
+    assert.equal(failed.status, 502);
+    assert.match((await failed.json()).error, /Nothing was deleted/);
+    assert.ok(existsSync(mediaPath(dir, ids.kept)));
+    assert.ok(env.store.libraryVideo(ids.kept));
+    fail = false; calls.length = 0;
+
+    const ok = await env.post(`/api/videos/${ids.gone}/trash`, {});
+    assert.deepEqual(await ok.json(), { trashed: true, missing: false });
+    assert.deepEqual(calls.pop(), ['trash', mediaPath(dir, ids.gone)]);
+    assert.equal(env.store.libraryVideo(ids.gone), undefined);
+    assert.equal((await env.get(`/api/videos/${ids.gone}/media`)).status, 404);
+    // The source conversation keeps the artifact, honestly unavailable with no silent regeneration.
+    const artifact = await (await env.get(`/api/trees/${tree.id}/artifacts/${ids.gone}`)).json();
+    assert.equal(artifact.status, 'ready'); assert.equal(artifact.available, false);
+
+    // An already-missing file only removes the entry, without calling the trash.
+    assert.deepEqual(await (await env.post(`/api/videos/${ids.missing}/trash`, {})).json(), { trashed: false, missing: true });
+    assert.equal(calls.length, 0);
+    const list = (await (await env.get('/api/videos')).json()).map(v => v.id).sort();
+    assert.deepEqual(list, [ids.kept, ids.linked].sort());
+    assert.deepEqual(env.store.usageEvents(), usage, 'usage history survives trash');
+    assert.deepEqual(readFileSync(mediaPath(dir, ids.kept)), media);
+  } finally { env.close(); }
 });

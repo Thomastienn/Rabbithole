@@ -318,6 +318,8 @@ export class Store {
     return result.changes ? this.artifact(conversation, id) : null;
   }
   library() { return this.db.prepare('SELECT id,title,description,duration,created FROM videos ORDER BY created DESC,rowid DESC').all().map(v => ({ ...v })); }
+  // Removes only the library entry; artifacts and usage records stay as history.
+  removeLibraryVideo(id) { this.db.prepare('DELETE FROM videos WHERE id=?').run(id); }
   libraryVideo(id) { return this.db.prepare('SELECT id,title,description,duration,created FROM videos WHERE id=?').get(id); }
   forgetThread(id) { this.db.prepare('UPDATE trees SET thread=NULL,working_thread=NULL WHERE id=?').run(id); }
   create(title = 'New chat', provider = 'codex', model = null, effort = null) {

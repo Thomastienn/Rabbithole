@@ -57,8 +57,8 @@ try {
   assert.deepEqual(nav, { focus: 'return-from-videos', current: 'Videos', heading: 'Videos' });
   report.checks.push({ name: 'rail Videos button opens the library by keyboard and moves focus', ...nav });
   const lostState = await ev(`(c=>({state:c.dataset.state,video:!!c.querySelector('video'),buttons:[...c.querySelectorAll('button')].map(b=>b.textContent.trim()),status:c.querySelector('[role=status]').textContent}))(document.querySelector(${JSON.stringify(card(lost.id))}))`);
-  assert.equal(lostState.state, 'unavailable'); assert.equal(lostState.video, false); assert.deepEqual(lostState.buttons, []);
-  report.checks.push({ name: 'missing file shows unavailable, no player and no regenerate action', ...lostState });
+  assert.equal(lostState.state, 'unavailable'); assert.equal(lostState.video, false); assert.deepEqual(lostState.buttons, ['Remove from Videos']);
+  report.checks.push({ name: 'missing file shows unavailable, no player, no regenerate action; only Remove from Videos', ...lostState });
   const played = await play();
   assert.equal(played.width, 640); assert.ok(Math.abs(played.duration - native.media.duration) < 0.1); assert.equal(played.src, `/api/videos/${native.media.id}/media`);
   report.checks.push({ name: 'migrated native video plays and seeks from the library route', ...played });
