@@ -1,165 +1,165 @@
 {
-  "date": "2026-11-11T04:06:47.541Z",
+  "date": "2026-11-11T04:17:52.052Z",
   "evidence": "Seeded data, synthetic provider, real browser and HTTP/SSE; controlled one-minute timer; SQLite/HTTP app restored in a fresh Node process. No native provider inference.",
   "stages": {
     "initial": {
-      "02de750e-765a-4c0d-a17f-205479060c2c": {
+      "0cf4885c-b094-461b-b967-0e6949513e30": {
         "height": 60,
         "width": 256,
-        "x": 720,
-        "y": 220
+        "x": 360,
+        "y": 600
       },
-      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
-        "height": 60,
-        "width": 256,
-        "x": 270,
-        "y": 100
-      },
-      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
+      "2d7d6cdf-8a6f-4945-9a0d-f99fb4ad166d": {
         "height": 132,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
+      "31d3330a-7c12-45b7-9bd7-4a36bcf76583": {
         "height": 88,
         "width": 256,
         "x": 0,
         "y": 220
       },
-      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
-        "height": 60,
-        "width": 256,
-        "x": 360,
-        "y": 600
-      }
-    },
-    "grown": {
-      "02de750e-765a-4c0d-a17f-205479060c2c": {
-        "height": 60,
-        "width": 256,
-        "x": 720,
-        "y": 220
-      },
-      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
+      "3b3fe6e0-4ac5-4505-aa40-b8e608ab95a5": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
+      "97f155ef-d7b1-4d30-9ca5-5c5370f2dda1": {
+        "height": 60,
+        "width": 256,
+        "x": 720,
+        "y": 220
+      }
+    },
+    "grown": {
+      "0cf4885c-b094-461b-b967-0e6949513e30": {
+        "height": 60,
+        "width": 256,
+        "x": 360,
+        "y": 676
+      },
+      "2d7d6cdf-8a6f-4945-9a0d-f99fb4ad166d": {
         "height": 248,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
+      "31d3330a-7c12-45b7-9bd7-4a36bcf76583": {
         "height": 88,
         "width": 256,
         "x": 0,
         "y": 296
       },
-      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
-        "height": 60,
-        "width": 256,
-        "x": 360,
-        "y": 676
-      }
-    },
-    "dragHeld": {
-      "02de750e-765a-4c0d-a17f-205479060c2c": {
-        "height": 60,
-        "width": 256,
-        "x": 720,
-        "y": 220
-      },
-      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
+      "3b3fe6e0-4ac5-4505-aa40-b8e608ab95a5": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
+      "97f155ef-d7b1-4d30-9ca5-5c5370f2dda1": {
+        "height": 60,
+        "width": 256,
+        "x": 720,
+        "y": 220
+      }
+    },
+    "dragHeld": {
+      "0cf4885c-b094-461b-b967-0e6949513e30": {
+        "height": 60,
+        "width": 256,
+        "x": 360,
+        "y": 676
+      },
+      "2d7d6cdf-8a6f-4945-9a0d-f99fb4ad166d": {
         "height": 288,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
+      "31d3330a-7c12-45b7-9bd7-4a36bcf76583": {
         "height": 88,
         "width": 256,
         "x": 0,
         "y": 256
       },
-      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
-        "height": 60,
-        "width": 256,
-        "x": 360,
-        "y": 676
-      }
-    },
-    "dragReleased": {
-      "02de750e-765a-4c0d-a17f-205479060c2c": {
-        "height": 60,
-        "width": 256,
-        "x": 720,
-        "y": 220
-      },
-      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
+      "3b3fe6e0-4ac5-4505-aa40-b8e608ab95a5": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
+      "97f155ef-d7b1-4d30-9ca5-5c5370f2dda1": {
+        "height": 60,
+        "width": 256,
+        "x": 720,
+        "y": 220
+      }
+    },
+    "dragReleased": {
+      "0cf4885c-b094-461b-b967-0e6949513e30": {
+        "height": 60,
+        "width": 256,
+        "x": 360,
+        "y": 756
+      },
+      "2d7d6cdf-8a6f-4945-9a0d-f99fb4ad166d": {
         "height": 288,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
+      "31d3330a-7c12-45b7-9bd7-4a36bcf76583": {
         "height": 88,
         "width": 256,
         "x": 0,
         "y": 336
       },
-      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
-        "height": 60,
-        "width": 256,
-        "x": 360,
-        "y": 756
-      }
-    },
-    "unfolded": {
-      "02de750e-765a-4c0d-a17f-205479060c2c": {
-        "height": 60,
-        "width": 256,
-        "x": 720,
-        "y": 220
-      },
-      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
+      "3b3fe6e0-4ac5-4505-aa40-b8e608ab95a5": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
+      "97f155ef-d7b1-4d30-9ca5-5c5370f2dda1": {
+        "height": 60,
+        "width": 256,
+        "x": 720,
+        "y": 220
+      }
+    },
+    "unfolded": {
+      "0cf4885c-b094-461b-b967-0e6949513e30": {
+        "height": 60,
+        "width": 256,
+        "x": 360,
+        "y": 832
+      },
+      "2d7d6cdf-8a6f-4945-9a0d-f99fb4ad166d": {
         "height": 364,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
+      "31d3330a-7c12-45b7-9bd7-4a36bcf76583": {
         "height": 88,
         "width": 256,
         "x": 0,
         "y": 412
       },
-      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
+      "3b3fe6e0-4ac5-4505-aa40-b8e608ab95a5": {
         "height": 60,
         "width": 256,
-        "x": 360,
-        "y": 832
+        "x": 270,
+        "y": 100
+      },
+      "97f155ef-d7b1-4d30-9ca5-5c5370f2dda1": {
+        "height": 60,
+        "width": 256,
+        "x": 720,
+        "y": 220
       }
     }
   },

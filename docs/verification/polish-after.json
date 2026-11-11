@@ -1,6 +1,6 @@
 {
   "label": "after",
-  "checkedAt": "2026-11-11T04:07:10.199Z",
+  "checkedAt": "2026-11-11T04:18:14.252Z",
   "evidence": "Synthetic fixture providers, seeded SQLite tree with markdown, ready diagram, failed video and branch; production build in agent-browser Chromium. 200% zoom is emulated as a half-size CSS viewport.",
   "checks": {
     "contrast-light": {

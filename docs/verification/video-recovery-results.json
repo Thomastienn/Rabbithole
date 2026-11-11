@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-11T04:08:41.730Z",
+  "checkedAt": "2026-11-11T04:19:45.010Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion renders, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {

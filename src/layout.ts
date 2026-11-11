@@ -25,8 +25,26 @@ html { view-transition-name: none; }
 .conversation[hidden], .knowledge-panel[hidden] { display: none; }
 .knowledge-panel { flex: 1; min-height: 0; overflow: auto; }
 .knowledge-content { max-width: 70rem; margin-inline: auto; overflow-wrap: anywhere; }
-.knowledge-content .astryx-list-item { min-width: 0; }
-.knowledge-content :focus-visible { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
+/* Knowledge: concept cards on the map's slate field, 1.5px chalk relations, selected concept in yellow (spec, Knowledge page). */
+.knowledge-content :focus-visible { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: var(--focus-outline-offset); }
+.knowledge-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem); gap: var(--spacing-5); align-items: start; }
+.knowledge-field { position: relative; display: flex; flex-direction: column; gap: var(--spacing-6); min-width: 0; }
+.knowledge-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.knowledge-links line { stroke: var(--treetutor-branch-color); stroke-width: 1.5px; stroke-linecap: round; }
+.knowledge-links line[data-selected=true] { stroke: var(--color-accent); }
+.knowledge-topic { position: relative; display: flex; flex-direction: column; gap: var(--spacing-3); }
+.knowledge-topic h2 { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); }
+.knowledge-cards { display: flex; flex-wrap: wrap; gap: var(--spacing-6) var(--spacing-8); }
+.concept-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing-1); max-width: 14rem; padding: var(--spacing-2) var(--spacing-3); border: thin solid var(--color-border); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); font: inherit; text-align: start; cursor: pointer; transition: border-color var(--duration-fast) ease-out; }
+.concept-card:hover { border-color: var(--color-text-secondary); }
+.concept-card[aria-pressed=true] { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: var(--focus-outline-offset); }
+.concept-card[aria-pressed=true] .activity-dot { background: var(--color-accent); }
+.concept-name { display: flex; align-items: center; gap: var(--spacing-2); font-weight: var(--font-weight-semibold); }
+.concept-level { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.knowledge-detail { position: sticky; top: var(--spacing-3); padding: var(--spacing-4); border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); }
+.knowledge-reading, .knowledge-reading.astryx-text { font-family: var(--treetutor-font-reading); line-height: 1.7; }
+@media (max-width: 48rem) { .knowledge-body { grid-template-columns: minmax(0, 1fr); } .knowledge-detail { position: static; } }
+@media (prefers-reduced-motion: reduce) { .concept-card { transition: none; } }
 .tree-workspace { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; flex-direction: row; }
 .focused-chat, .overview { display: flex; flex: 1; min-width: 0; min-height: 0; flex-direction: column; }
 .overview { position: relative; background: var(--color-background-body); }

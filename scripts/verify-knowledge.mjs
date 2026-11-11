@@ -121,6 +121,35 @@ try {
   await openKnowledge();
   await b('wait', '--text', 'You marked this as not understood');
   steps.push('Desktop/phone layouts fit; merged evidence and correction survive page reload');
-  console.log(JSON.stringify({ pass: true, steps, screenshots: ['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)) }, null, 2));
+
+  // Visual identity (spec, Knowledge page): slate field, raised cards, 1.5px chalk relations, selected concept in yellow, serif detail text.
+  store.addGraph({ concepts: [{ name: 'Race condition', topics: ['Concurrency'] }, { name: 'Critical section', topics: ['Concurrency', 'Operating systems'] }, { name: 'Scheduler', topics: ['Operating systems'] }], links: [{ from: 'Critical section', to: 'Mutual exclusion', kind: 'builds on' }, { from: 'Race condition', to: 'Mutual exclusion', kind: 'related' }, { from: 'Scheduler', to: 'Critical section', kind: 'related' }] }, message);
+  const look = {};
+  for (const mode of ['dark', 'light']) {
+    await b('set', 'viewport', '1440', '900');
+    await ev(`localStorage.setItem('treetutor.appearance', '${mode}'); true`);
+    await b('reload');
+    await b('wait', '.tree-navigation-footer');
+    await openKnowledge();
+    await wait(`document.querySelectorAll('.knowledge-links line').length === 3`);
+    look[mode] = await ev(`(() => { const s = getComputedStyle, root = s(document.documentElement), card = document.querySelector('[data-concept][aria-pressed=true]'), detail = document.querySelector('.knowledge-detail'), line = document.querySelector('.knowledge-links line[data-selected=true]'), plain = document.querySelector('.knowledge-links line[data-selected=false]');
+      return { accent: root.getPropertyValue('--color-accent').trim(), cardOutline: s(card).outlineColor, cardRadius: s(card).borderRadius, cardSurface: s(card).backgroundColor, field: s(document.querySelector('.knowledge-panel')).backgroundColor, body: s(document.body).backgroundColor, detailRadius: s(detail).borderRadius, detailShadow: s(detail).boxShadow, lineWidth: s(line).strokeWidth, lineStroke: s(line).stroke, plainStroke: s(plain).stroke, reading: s(detail.querySelector('.knowledge-reading')).fontFamily, ui: s(card).fontFamily }; })()`);
+    const l = look[mode], probe = await ev(`(() => { const e = document.createElement('i'); e.style.color = 'var(--color-accent)'; document.body.append(e); const c = getComputedStyle(e).color; e.remove(); return c; })()`);
+    assert.equal(l.cardOutline, probe, `${mode} selected concept outlined in yellow`);
+    assert.equal(l.lineStroke, probe, `${mode} selected concept's relations in yellow`);
+    assert.notEqual(l.plainStroke, probe, `${mode} other relations in chalk`);
+    assert.equal(l.lineWidth, '1.5px', `${mode} 1.5px relation lines`);
+    assert.equal(l.cardRadius, '4px'); assert.equal(l.detailRadius, '6px');
+    assert.ok([l.body, 'rgba(0, 0, 0, 0)'].includes(l.field), `${mode} bare slate field`);
+    assert.notEqual(l.cardSurface, l.body, `${mode} raised concept cards`);
+    assert.ok(!l.detailShadow.split(/,(?![^(]*\))/).some(x => x !== 'none' && !x.trim().endsWith('inset')), `${mode} no drop shadow`);
+    assert.match(l.reading, /^"?Source Serif 4/, `${mode} serif detail text`);
+    assert.match(l.ui, /^"?Public Sans/, `${mode} Public Sans cards`);
+    await b('screenshot', resolve(`docs/verification/knowledge-${mode}.png`));
+  }
+  await b('set', 'viewport', '390', '844');
+  await b('screenshot', resolve('docs/verification/knowledge-mobile-light.png'));
+  steps.push('Dark and light: concept cards raised on the slate field, 1.5px chalk relations, selected concept and its relations in yellow, serif detail text, Public Sans cards, no drop shadow');
+  console.log(JSON.stringify({ pass: true, steps, screenshots: [...['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)), ...['dark', 'light', 'mobile-light'].map(m => `docs/verification/knowledge-${m}.png`)] }, null, 2));
 } catch (error) { console.error({ steps, snapshot: await b('snapshot', '-i').catch(() => '') }); throw error; }
 finally { await b('close').catch(() => {}); await app.stop(); store.close(); }
