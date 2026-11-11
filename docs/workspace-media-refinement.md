@@ -58,6 +58,14 @@ length when needed to preserve important ideas. No new numeric limit is agreed.
 Keep the exact selected passage and child's question separate from the generated
 paragraph. The fixed-snapshot and unchanged-parent-context rules still apply.
 
+## Confirmed chat model defaults
+
+New learning trees use the chat provider and model selected in Settings. Child
+conversations inherit their parent's current provider and model, including at
+deeper nesting levels. The learner can still switch provider or model within
+each conversation. Changing the Settings default does not change existing
+conversations.
+
 ## Initial video research
 
 Remotion supports [parameterized compositions](https://www.remotion.dev/docs/parameterized-rendering)

@@ -18,7 +18,7 @@ TreeTutor is a local web app only. Hosted deployment and an installed desktop ap
 
 ## Providers
 
-The current release supports Claude through the learner's existing Claude subscription, using the official user-installed Claude Code CLI with its native sign-in, and Codex through the learner's existing ChatGPT subscription. Claude is the default provider for new learning trees; Codex remains available. Do not silently substitute API-key access for either subscription provider.
+The current release supports Claude through the learner's existing Claude subscription, using the official user-installed Claude Code CLI with its native sign-in, and Codex through the learner's existing ChatGPT subscription. Claude is the initial default provider; Codex remains available. The agreed workspace refinement adds a chat provider/model default in Settings for new learning trees; changing it leaves existing conversations unchanged. Do not silently substitute API-key access for either subscription provider.
 
 As a later increment, the learner can add one custom OpenAI-compatible endpoint by entering its base URL and API key in settings. It is an explicit choice that appears as a third provider in the model menu, never a fallback for Claude or Codex. The key stays in a local owner-only file; it is never returned to the browser, logged, or stored with learning trees. Conversations can switch between the custom endpoint, Claude and Codex with the same continuity rule.
 
