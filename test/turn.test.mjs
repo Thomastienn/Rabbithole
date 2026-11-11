@@ -35,4 +35,7 @@ test('underline ranges are the exact saved slices, only once the suggestions are
   assert.deepEqual(underlineRanges(text), []);
   // An explored suggestion keeps its child reference so activating it opens that chat.
   assert.deepEqual(underlineRanges(text, { message: 'm', status: 'ready', passages: [{ ...emoji, child: 'c1' }], usage: null }), [{ start: emoji.start, end: emoji.end, child: 'c1' }]);
+  // A branch from a free selection is marked too, even before suggestions are ready; a suggestion child is not doubled.
+  assert.deepEqual(underlineRanges(text, undefined, [{ ...second, child: 'c2' }]), [{ start: second.start, end: second.end, child: 'c2' }]);
+  assert.deepEqual(underlineRanges(text, { message: 'm', status: 'ready', passages: [{ ...emoji, child: 'c1' }], usage: null }, [{ ...emoji, child: 'c1' }, { ...at('Say'), text: 'Sai', child: 'c3' }]), [{ start: emoji.start, end: emoji.end, child: 'c1' }]);
 });

@@ -89,7 +89,7 @@ const Reply = memo(function Reply({ text, reveal, underlines }: { text: string; 
   return <Text as="div" type="body" className="reply-md">{useMemo(() => renderMarkdown(text, reveal, underlines), [text, reveal?.start, reveal?.end, key])}</Text>;
 });
 
-function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, openSelection, closeSelection, form, suggestions }: { message: Message; index: number; suggestions?: Suggestions; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; onOpenChild: (id: string) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; form?: { node: React.ReactNode; at?: Anchor['at'] } }) {
+function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, openSelection, closeSelection, form, suggestions, branched }: { message: Message; index: number; suggestions?: Suggestions; branched: { start: number; end: number; text: string; child: string }[]; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; onOpenChild: (id: string) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; form?: { node: React.ReactNode; at?: Anchor['at'] } }) {
   const formOpen = !!form;
   const highlighted = useRef(false);
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
@@ -98,7 +98,8 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
   const passage = useRef<HTMLElement>(null);
   const action = useRef<HTMLButtonElement>(null);
   const completed = message.status === 'completed';
-  const underlines = useMemo(() => completed ? underlineRanges(message.text, suggestions) : [], [completed, message.text, suggestions]);
+  const branchKey = JSON.stringify(branched);
+  const underlines = useMemo(() => completed ? underlineRanges(message.text, suggestions, branched) : [], [completed, message.text, suggestions, branchKey]);
   useLayoutEffect(() => {
     const box = floating.current;
     if (!box) return;
@@ -701,7 +702,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
         <VStack gap={1}>{group.trees.map(({ tree: t, branches }) => <VStack key={t.id} gap={1}>
           {renaming?.id === t.id && renaming.place === 'sidebar' ? <TitleEditor title={t.title} save={title => rename(t.id, title)} cancel={finishRename} /> : <HStack gap={0} vAlign="center" className="saved-tree-row" data-current={tab === 'learning' && root === t.id}>
             <Button className="saved-chat-title" label={t.title} variant="ghost" aria-current={tab === 'learning' && root === t.id ? 'page' : undefined} aria-describedby={`branch-count-${t.id}`} onClick={() => openTree(t.id)}><VStack gap={0}><Text maxLines={2}>{t.title}</Text><Text id={`branch-count-${t.id}`} type="supporting" color="secondary">{branches} {branches === 1 ? 'branch' : 'branches'}</Text></VStack></Button>
-            <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} id={`chat-actions-${t.id}`} className="tree-row-actions" label={`Actions for ${t.title}`} tooltip={`Actions for ${t.title}`} icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />}>
+            <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} id={`chat-actions-${t.id}`} className="tree-row-actions" label={`Actions for ${t.title}`} icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />}>
               <DropdownMenuItem label="Rename chat" icon={<PencilSquareIcon />} onClick={() => setRenaming({ id: t.id, place: 'sidebar' })} />
               <DropdownMenuItem label="Delete chat…" icon={<TrashIcon />} onClick={() => askDelete(t.id, document.getElementById(`chat-actions-${t.id}`))} />
             </DropdownMenu>
@@ -785,7 +786,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
               </Collapsible>}
               {!tree.messages.length && <VStack gap={3} padding={6}><Heading level={3}>What are you curious about?</Heading><Text color="secondary">Ask about a concept, work through an example, or pick up a question you have been carrying.</Text></VStack>}
               {tree.messages.map(message => { const suggestions = tree.suggestions?.find(s => s.message === message.id), index = tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1; return <ChatMessage key={message.id} sender={message.role === 'user' ? 'user' : 'assistant'} className={message.role === 'user' ? 'chat-question' : 'chat-reply'} name={message.role === 'assistant' && <Text type="supporting" color="secondary">Tutor · {modelLabel(tree)}</Text>} metadata={!overview && message.role === 'assistant' && message.status === 'completed' && <HStack gap={2} vAlign="center"><CopyButton text={message.text} label={`Copy tutor reply ${index}`} className="reply-copy" />{message.usage !== undefined && <Text type="supporting" color="secondary" className="reply-usage">{replyUsageLine(message.usage, suggestions?.usage)}</Text>}</HStack>}>
-                {message.role === 'assistant' ? <Passage message={message} suggestions={suggestions} index={index} reveal={validSource && source?.messageId === message.id ? source : undefined} form={branch?.parent === tree.id && branch.anchor.messageId === message.id ? { at: branch.anchor.at, node: <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); } }}><VStack padding={3} gap={2}>
+                {message.role === 'assistant' ? <Passage message={message} suggestions={suggestions} branched={state?.trees.flatMap(t => t.parent === tree.id && t.messageId === message.id && t.start !== null && t.end !== null && t.passage !== null ? [{ start: t.start, end: t.end, text: t.passage, child: t.id }] : []) ?? []} index={index} reveal={validSource && source?.messageId === message.id ? source : undefined} form={branch?.parent === tree.id && branch.anchor.messageId === message.id ? { at: branch.anchor.at, node: <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching) { e.preventDefault(); e.stopPropagation(); setBranch(undefined); requestAnimationFrame(() => branchOrigin.current?.current?.focus()); } }}><VStack padding={3} gap={2}>
                   {/* Small empty box: Enter submits through the form; a disabled submit button blocks sending an empty prompt. */}
                   <TextInput label="Question about this passage" description={branch.anchor.text.length > 80 ? branch.anchor.text.slice(0, 80) + '…' : branch.anchor.text} size="sm" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus />
                   {branchConcept && <PassageCorrection key={`${branch.parent}:${branch.anchor.messageId}:${branch.anchor.start}:${branch.anchor.end}`} name={branchConcept} api={api} disabled={branching} />}

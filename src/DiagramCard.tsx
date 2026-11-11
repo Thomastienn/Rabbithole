@@ -30,7 +30,7 @@ export default function DiagramCard({ artifact }: { artifact: Artifact }) {
       {failed && <Text type="supporting" role="status">{artifact.status === 'failed' ? `Diagram unavailable. ${artifact.error ?? ''}` : 'Diagram could not be rendered. Read the description and Mermaid source below.'}</Text>}
       {drawing.status === 'ready' && <>
         <button type="button" className="diagram-open" aria-label={`Open diagram large: ${artifact.title}`} onClick={() => setEnlarged(true)}><img src={drawing.url} alt={artifact.description} onError={() => setDrawing({ status: 'failed' })} /></button>
-        <Lightbox isOpen={enlarged} onOpenChange={setEnlarged} hasZoom media={{ src: drawing.url, alt: artifact.description, caption: artifact.title }} />
+        <Lightbox className="diagram-lightbox" isOpen={enlarged} onOpenChange={setEnlarged} hasZoom media={{ src: drawing.url, alt: artifact.description }} />
       </>}
       {artifact.source && <Collapsible key={failed ? 'fallback' : 'source'} trigger={<Text weight="medium">Mermaid source</Text>} defaultIsOpen={failed}><pre className="diagram-source" tabIndex={0}>{artifact.source}</pre></Collapsible>}
     </VStack>

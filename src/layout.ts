@@ -119,6 +119,9 @@ html { view-transition-name: none; }
 .video-frame { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-element); background: var(--color-background-body); }
 /* Lightbox caps media at natural size; generated videos are small, so fill the viewer (contain keeps 16:9). */
 .astryx-lightbox video { width: 92vw; height: calc(100dvh - 8rem); }
+/* Enlarged diagrams: a plain dimmed slate overlay (no blur; the library's backdrop rule outranks plain selectors) and the drawing on a raised panel. No caption: the library sizes it apart from the drawing, and the card keeps the title. */
+.diagram-lightbox::backdrop { backdrop-filter: none !important; }
+.diagram-lightbox img { background: var(--color-background-surface); outline: thin solid var(--color-border); border-radius: var(--radius-container); }
 .video-frame:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
 .inherited-context { border-inline-start: calc(var(--spacing-1) / 2) solid var(--color-accent); padding-inline-start: var(--spacing-3); color: var(--color-text-secondary); }
 .inherited-context .astryx-collapsible-trigger { padding: var(--spacing-1) 0; color: inherit; }

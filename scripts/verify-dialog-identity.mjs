@@ -40,6 +40,7 @@ try {
     const seen = results.appearances[mode] = {};
     await ev(`localStorage.setItem('treetutor.appearance', '${mode}'); true`); await b('reload');
     await wait(`document.querySelector('[aria-label="Model for next reply"]:not([disabled])') && ${idle}`);
+    assert.equal(await ev(`document.querySelector('.chat-reply u.suggestion')?.textContent`), 'Peterson', 'a manually branched passage stays marked in the rendered reply');
 
     // Model menu: plain list on raised slate, yellow check on the current model, signed-out providers muted with their sign-in action.
     await click('Model for next reply'); await wait(menuOpen);
@@ -84,7 +85,7 @@ try {
     await b('press', 'Escape'); await wait(`document.activeElement?.id === 'rename-conversation'`);
 
     // Passage prompt: anchored to the selection, raised slate, yellow ring, flips below when the header is in the way.
-    await ev(`(() => { const t = document.querySelector('.chat-reply .reply-md'), w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT), n = w.nextNode(), r = document.createRange(); r.setStart(n, 9); r.setEnd(n, 14); getSelection().removeAllRanges(); getSelection().addRange(r); t.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); return true; })()`);
+    await ev(`(() => { const t = document.querySelector('.chat-reply .reply-md'), w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.includes('locks')) {} const start = n.textContent.indexOf('locks'), r = document.createRange(); r.setStart(n, start); r.setEnd(n, start + 5); getSelection().removeAllRanges(); getSelection().addRange(r); t.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); return true; })()`);
     await wait(`document.querySelector('.branch-form input') === document.activeElement`);
     seen.prompt = await ev(`(() => { ${tokenFn}
       const f = document.querySelector('.branch-form'), s = getComputedStyle(f), box = document.querySelector('.passage-box').getBoundingClientRect(), header = document.querySelector('.chat-header').getBoundingClientRect();

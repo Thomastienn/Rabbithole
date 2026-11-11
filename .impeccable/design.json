@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-08T02:44:02.261488+00:00",
+  "generatedAt": "2026-11-11T06:02:50.926712+00:00",
   "title": "Design System: TreeTutor",
   "extensions": {
     "colorMeta": {
@@ -8,234 +8,655 @@
         "role": "primary",
         "displayName": "Accent",
         "tonalRamp": [
-          "#1b1b1b",
-          "#303030",
-          "#474747",
-          "#606060",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#d4d4d4",
-          "#f1f1f1"
+          "oklch(15.00% 0.09947 93.64)",
+          "oklch(26.43% 0.09947 93.64)",
+          "oklch(37.86% 0.09947 93.64)",
+          "oklch(49.29% 0.09947 93.64)",
+          "oklch(60.71% 0.09947 93.64)",
+          "oklch(72.14% 0.09947 93.64)",
+          "oklch(83.57% 0.09947 93.64)",
+          "oklch(95.00% 0.09947 93.64)"
+        ]
+      },
+      "accent-muted": {
+        "role": "primary",
+        "displayName": "Accent Muted",
+        "tonalRamp": [
+          "oklch(15.00% 0.09947 93.64)",
+          "oklch(26.43% 0.09947 93.64)",
+          "oklch(37.86% 0.09947 93.64)",
+          "oklch(49.29% 0.09947 93.64)",
+          "oklch(60.71% 0.09947 93.64)",
+          "oklch(72.14% 0.09947 93.64)",
+          "oklch(83.57% 0.09947 93.64)",
+          "oklch(95.00% 0.09947 93.64)"
+        ]
+      },
+      "text-accent": {
+        "role": "primary",
+        "displayName": "Text Accent",
+        "tonalRamp": [
+          "oklch(15.00% 0.09552 94.36)",
+          "oklch(26.43% 0.09552 94.36)",
+          "oklch(37.86% 0.09552 94.36)",
+          "oklch(49.29% 0.09552 94.36)",
+          "oklch(60.71% 0.09552 94.36)",
+          "oklch(72.14% 0.09552 94.36)",
+          "oklch(83.57% 0.09552 94.36)",
+          "oklch(95.00% 0.09552 94.36)"
+        ]
+      },
+      "on-accent": {
+        "role": "neutral",
+        "displayName": "On Accent",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "body": {
+        "role": "neutral",
+        "displayName": "Body",
+        "tonalRamp": [
+          "oklch(15.00% 0.00790 139.44)",
+          "oklch(26.43% 0.00790 139.44)",
+          "oklch(37.86% 0.00790 139.44)",
+          "oklch(49.29% 0.00790 139.44)",
+          "oklch(60.71% 0.00790 139.44)",
+          "oklch(72.14% 0.00790 139.44)",
+          "oklch(83.57% 0.00790 139.44)",
+          "oklch(95.00% 0.00790 139.44)"
         ]
       },
       "surface": {
         "role": "neutral",
         "displayName": "Surface",
         "tonalRamp": [
-          "#1b1b1b",
-          "#303030",
-          "#474747",
-          "#606060",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#d4d4d4",
-          "#f1f1f1"
+          "oklch(15.00% 0.00569 128.53)",
+          "oklch(26.43% 0.00569 128.53)",
+          "oklch(37.86% 0.00569 128.53)",
+          "oklch(49.29% 0.00569 128.53)",
+          "oklch(60.71% 0.00569 128.53)",
+          "oklch(72.14% 0.00569 128.53)",
+          "oklch(83.57% 0.00569 128.53)",
+          "oklch(95.00% 0.00569 128.53)"
         ]
       },
-      "body": {
+      "popover": {
         "role": "neutral",
-        "displayName": "Body",
+        "displayName": "Popover",
         "tonalRamp": [
-          "#1b1b1b",
-          "#303030",
-          "#474747",
-          "#606060",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#d4d4d4",
-          "#f1f1f1"
+          "oklch(15.00% 0.00409 121.56)",
+          "oklch(26.43% 0.00409 121.56)",
+          "oklch(37.86% 0.00409 121.56)",
+          "oklch(49.29% 0.00409 121.56)",
+          "oklch(60.71% 0.00409 121.56)",
+          "oklch(72.14% 0.00409 121.56)",
+          "oklch(83.57% 0.00409 121.56)",
+          "oklch(95.00% 0.00409 121.56)"
         ]
       },
-      "text-primary": {
+      "rail": {
         "role": "neutral",
-        "displayName": "Text Primary",
+        "displayName": "Rail",
         "tonalRamp": [
-          "#1b1b1b",
-          "#303030",
-          "#474747",
-          "#606060",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#d4d4d4",
-          "#f1f1f1"
-        ]
-      },
-      "text-secondary": {
-        "role": "neutral",
-        "displayName": "Text Secondary",
-        "tonalRamp": [
-          "#1b1b1b",
-          "#303030",
-          "#474747",
-          "#606060",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#d4d4d4",
-          "#f1f1f1"
-        ]
-      },
-      "border": {
-        "role": "neutral",
-        "displayName": "Border",
-        "tonalRamp": [
-          "#1b1b1b",
-          "#303030",
-          "#474747",
-          "#606060",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#d4d4d4",
-          "#f1f1f1"
-        ]
-      },
-      "border-emphasized": {
-        "role": "neutral",
-        "displayName": "Border Emphasized",
-        "tonalRamp": [
-          "#1b1b1b",
-          "#303030",
-          "#474747",
-          "#606060",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#d4d4d4",
-          "#f1f1f1"
+          "oklch(15.00% 0.01031 145.49)",
+          "oklch(26.43% 0.01031 145.49)",
+          "oklch(37.86% 0.01031 145.49)",
+          "oklch(49.29% 0.01031 145.49)",
+          "oklch(60.71% 0.01031 145.49)",
+          "oklch(72.14% 0.01031 145.49)",
+          "oklch(83.57% 0.01031 145.49)",
+          "oklch(95.00% 0.01031 145.49)"
         ]
       },
       "neutral": {
         "role": "neutral",
         "displayName": "Neutral",
         "tonalRamp": [
-          "#1b1b1b",
-          "#303030",
-          "#474747",
-          "#606060",
-          "#7a7a7a",
-          "#9e9e9e",
-          "#d4d4d4",
-          "#f1f1f1"
+          "oklch(15.00% 0.01635 176.44)",
+          "oklch(26.43% 0.01635 176.44)",
+          "oklch(37.86% 0.01635 176.44)",
+          "oklch(49.29% 0.01635 176.44)",
+          "oklch(60.71% 0.01635 176.44)",
+          "oklch(72.14% 0.01635 176.44)",
+          "oklch(83.57% 0.01635 176.44)",
+          "oklch(95.00% 0.01635 176.44)"
+        ]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Text Primary",
+        "tonalRamp": [
+          "oklch(15.00% 0.01635 176.44)",
+          "oklch(26.43% 0.01635 176.44)",
+          "oklch(37.86% 0.01635 176.44)",
+          "oklch(49.29% 0.01635 176.44)",
+          "oklch(60.71% 0.01635 176.44)",
+          "oklch(72.14% 0.01635 176.44)",
+          "oklch(83.57% 0.01635 176.44)",
+          "oklch(95.00% 0.01635 176.44)"
+        ]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Text Secondary",
+        "tonalRamp": [
+          "oklch(15.00% 0.02284 167.01)",
+          "oklch(26.43% 0.02284 167.01)",
+          "oklch(37.86% 0.02284 167.01)",
+          "oklch(49.29% 0.02284 167.01)",
+          "oklch(60.71% 0.02284 167.01)",
+          "oklch(72.14% 0.02284 167.01)",
+          "oklch(83.57% 0.02284 167.01)",
+          "oklch(95.00% 0.02284 167.01)"
+        ]
+      },
+      "text-disabled": {
+        "role": "neutral",
+        "displayName": "Text Disabled",
+        "tonalRamp": [
+          "oklch(15.00% 0.01855 168.14)",
+          "oklch(26.43% 0.01855 168.14)",
+          "oklch(37.86% 0.01855 168.14)",
+          "oklch(49.29% 0.01855 168.14)",
+          "oklch(60.71% 0.01855 168.14)",
+          "oklch(72.14% 0.01855 168.14)",
+          "oklch(83.57% 0.01855 168.14)",
+          "oklch(95.00% 0.01855 168.14)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Border",
+        "tonalRamp": [
+          "oklch(15.00% 0.01635 176.44)",
+          "oklch(26.43% 0.01635 176.44)",
+          "oklch(37.86% 0.01635 176.44)",
+          "oklch(49.29% 0.01635 176.44)",
+          "oklch(60.71% 0.01635 176.44)",
+          "oklch(72.14% 0.01635 176.44)",
+          "oklch(83.57% 0.01635 176.44)",
+          "oklch(95.00% 0.01635 176.44)"
+        ]
+      },
+      "border-emphasized": {
+        "role": "neutral",
+        "displayName": "Border Emphasized",
+        "tonalRamp": [
+          "oklch(15.00% 0.01635 176.44)",
+          "oklch(26.43% 0.01635 176.44)",
+          "oklch(37.86% 0.01635 176.44)",
+          "oklch(49.29% 0.01635 176.44)",
+          "oklch(60.71% 0.01635 176.44)",
+          "oklch(72.14% 0.01635 176.44)",
+          "oklch(83.57% 0.01635 176.44)",
+          "oklch(95.00% 0.01635 176.44)"
+        ]
+      },
+      "overlay": {
+        "role": "neutral",
+        "displayName": "Overlay",
+        "tonalRamp": [
+          "oklch(15.00% 0.01635 176.44)",
+          "oklch(26.43% 0.01635 176.44)",
+          "oklch(37.86% 0.01635 176.44)",
+          "oklch(49.29% 0.01635 176.44)",
+          "oklch(60.71% 0.01635 176.44)",
+          "oklch(72.14% 0.01635 176.44)",
+          "oklch(83.57% 0.01635 176.44)",
+          "oklch(95.00% 0.01635 176.44)"
+        ]
+      },
+      "hover": {
+        "role": "neutral",
+        "displayName": "Hover",
+        "tonalRamp": [
+          "oklch(15.00% 0.01635 176.44)",
+          "oklch(26.43% 0.01635 176.44)",
+          "oklch(37.86% 0.01635 176.44)",
+          "oklch(49.29% 0.01635 176.44)",
+          "oklch(60.71% 0.01635 176.44)",
+          "oklch(72.14% 0.01635 176.44)",
+          "oklch(83.57% 0.01635 176.44)",
+          "oklch(95.00% 0.01635 176.44)"
+        ]
+      },
+      "pressed": {
+        "role": "neutral",
+        "displayName": "Pressed",
+        "tonalRamp": [
+          "oklch(15.00% 0.01635 176.44)",
+          "oklch(26.43% 0.01635 176.44)",
+          "oklch(37.86% 0.01635 176.44)",
+          "oklch(49.29% 0.01635 176.44)",
+          "oklch(60.71% 0.01635 176.44)",
+          "oklch(72.14% 0.01635 176.44)",
+          "oklch(83.57% 0.01635 176.44)",
+          "oklch(95.00% 0.01635 176.44)"
         ]
       },
       "selection": {
         "role": "neutral",
-        "displayName": "Text selection",
+        "displayName": "Selection",
         "tonalRamp": [
-          "#10243a",
-          "#253c5a",
-          "#3c597d",
-          "#5578a4",
-          "#759bc9",
-          "#a1caff",
-          "#b9d7ff",
-          "#e2edff"
+          "oklch(15.00% 0.11130 95.72)",
+          "oklch(26.43% 0.11130 95.72)",
+          "oklch(37.86% 0.11130 95.72)",
+          "oklch(49.29% 0.11130 95.72)",
+          "oklch(60.71% 0.11130 95.72)",
+          "oklch(72.14% 0.11130 95.72)",
+          "oklch(83.57% 0.11130 95.72)",
+          "oklch(95.00% 0.11130 95.72)"
+        ]
+      },
+      "branch": {
+        "role": "neutral",
+        "displayName": "Branch",
+        "tonalRamp": [
+          "oklch(15.00% 0.01635 176.44)",
+          "oklch(26.43% 0.01635 176.44)",
+          "oklch(37.86% 0.01635 176.44)",
+          "oklch(49.29% 0.01635 176.44)",
+          "oklch(60.71% 0.01635 176.44)",
+          "oklch(72.14% 0.01635 176.44)",
+          "oklch(83.57% 0.01635 176.44)",
+          "oklch(95.00% 0.01635 176.44)"
+        ]
+      },
+      "error": {
+        "role": "error",
+        "displayName": "Error",
+        "tonalRamp": [
+          "oklch(15.00% 0.14934 29.43)",
+          "oklch(26.43% 0.14934 29.43)",
+          "oklch(37.86% 0.14934 29.43)",
+          "oklch(49.29% 0.14934 29.43)",
+          "oklch(60.71% 0.14934 29.43)",
+          "oklch(72.14% 0.14934 29.43)",
+          "oklch(83.57% 0.14934 29.43)",
+          "oklch(95.00% 0.14934 29.43)"
+        ]
+      },
+      "error-muted": {
+        "role": "error",
+        "displayName": "Error Muted",
+        "tonalRamp": [
+          "oklch(15.00% 0.14934 29.43)",
+          "oklch(26.43% 0.14934 29.43)",
+          "oklch(37.86% 0.14934 29.43)",
+          "oklch(49.29% 0.14934 29.43)",
+          "oklch(60.71% 0.14934 29.43)",
+          "oklch(72.14% 0.14934 29.43)",
+          "oklch(83.57% 0.14934 29.43)",
+          "oklch(95.00% 0.14934 29.43)"
+        ]
+      },
+      "on-error": {
+        "role": "error",
+        "displayName": "On Error",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "on-error-muted": {
+        "role": "error",
+        "displayName": "On Error Muted",
+        "tonalRamp": [
+          "oklch(15.00% 0.11967 29.33)",
+          "oklch(26.43% 0.11967 29.33)",
+          "oklch(37.86% 0.11967 29.33)",
+          "oklch(49.29% 0.11967 29.33)",
+          "oklch(60.71% 0.11967 29.33)",
+          "oklch(72.14% 0.11967 29.33)",
+          "oklch(83.57% 0.11967 29.33)",
+          "oklch(95.00% 0.11967 29.33)"
+        ]
+      },
+      "yellow": {
+        "role": "series",
+        "displayName": "Yellow",
+        "tonalRamp": [
+          "oklch(15.00% 0.09552 94.36)",
+          "oklch(26.43% 0.09552 94.36)",
+          "oklch(37.86% 0.09552 94.36)",
+          "oklch(49.29% 0.09552 94.36)",
+          "oklch(60.71% 0.09552 94.36)",
+          "oklch(72.14% 0.09552 94.36)",
+          "oklch(83.57% 0.09552 94.36)",
+          "oklch(95.00% 0.09552 94.36)"
+        ]
+      },
+      "blue": {
+        "role": "series",
+        "displayName": "Blue",
+        "tonalRamp": [
+          "oklch(15.00% 0.08839 247.00)",
+          "oklch(26.43% 0.08839 247.00)",
+          "oklch(37.86% 0.08839 247.00)",
+          "oklch(49.29% 0.08839 247.00)",
+          "oklch(60.71% 0.08839 247.00)",
+          "oklch(72.14% 0.08839 247.00)",
+          "oklch(83.57% 0.08839 247.00)",
+          "oklch(95.00% 0.08839 247.00)"
+        ]
+      },
+      "pink": {
+        "role": "series",
+        "displayName": "Pink",
+        "tonalRamp": [
+          "oklch(15.00% 0.12449 352.05)",
+          "oklch(26.43% 0.12449 352.05)",
+          "oklch(37.86% 0.12449 352.05)",
+          "oklch(49.29% 0.12449 352.05)",
+          "oklch(60.71% 0.12449 352.05)",
+          "oklch(72.14% 0.12449 352.05)",
+          "oklch(83.57% 0.12449 352.05)",
+          "oklch(95.00% 0.12449 352.05)"
+        ]
+      },
+      "green": {
+        "role": "series",
+        "displayName": "Green",
+        "tonalRamp": [
+          "oklch(15.00% 0.08597 154.93)",
+          "oklch(26.43% 0.08597 154.93)",
+          "oklch(37.86% 0.08597 154.93)",
+          "oklch(49.29% 0.08597 154.93)",
+          "oklch(60.71% 0.08597 154.93)",
+          "oklch(72.14% 0.08597 154.93)",
+          "oklch(83.57% 0.08597 154.93)",
+          "oklch(95.00% 0.08597 154.93)"
+        ]
+      },
+      "tint-yellow": {
+        "role": "series",
+        "displayName": "Tint Yellow",
+        "tonalRamp": [
+          "oklch(15.00% 0.09947 93.64)",
+          "oklch(26.43% 0.09947 93.64)",
+          "oklch(37.86% 0.09947 93.64)",
+          "oklch(49.29% 0.09947 93.64)",
+          "oklch(60.71% 0.09947 93.64)",
+          "oklch(72.14% 0.09947 93.64)",
+          "oklch(83.57% 0.09947 93.64)",
+          "oklch(95.00% 0.09947 93.64)"
+        ]
+      },
+      "tint-blue": {
+        "role": "series",
+        "displayName": "Tint Blue",
+        "tonalRamp": [
+          "oklch(15.00% 0.08839 247.00)",
+          "oklch(26.43% 0.08839 247.00)",
+          "oklch(37.86% 0.08839 247.00)",
+          "oklch(49.29% 0.08839 247.00)",
+          "oklch(60.71% 0.08839 247.00)",
+          "oklch(72.14% 0.08839 247.00)",
+          "oklch(83.57% 0.08839 247.00)",
+          "oklch(95.00% 0.08839 247.00)"
+        ]
+      },
+      "tint-pink": {
+        "role": "series",
+        "displayName": "Tint Pink",
+        "tonalRamp": [
+          "oklch(15.00% 0.12449 352.05)",
+          "oklch(26.43% 0.12449 352.05)",
+          "oklch(37.86% 0.12449 352.05)",
+          "oklch(49.29% 0.12449 352.05)",
+          "oklch(60.71% 0.12449 352.05)",
+          "oklch(72.14% 0.12449 352.05)",
+          "oklch(83.57% 0.12449 352.05)",
+          "oklch(95.00% 0.12449 352.05)"
+        ]
+      },
+      "tint-green": {
+        "role": "series",
+        "displayName": "Tint Green",
+        "tonalRamp": [
+          "oklch(15.00% 0.08597 154.93)",
+          "oklch(26.43% 0.08597 154.93)",
+          "oklch(37.86% 0.08597 154.93)",
+          "oklch(49.29% 0.08597 154.93)",
+          "oklch(60.71% 0.08597 154.93)",
+          "oklch(72.14% 0.08597 154.93)",
+          "oklch(83.57% 0.08597 154.93)",
+          "oklch(95.00% 0.08597 154.93)"
         ]
       }
     },
     "typographyMeta": {
       "headline": {
-        "displayName": "Application heading",
-        "purpose": "TreeTutor title."
+        "displayName": "Headline",
+        "purpose": "Application UI"
       },
       "title": {
-        "displayName": "Section title",
-        "purpose": "Navigation and selected tree."
+        "displayName": "Title",
+        "purpose": "Application UI"
+      },
+      "node-title": {
+        "displayName": "Node Title",
+        "purpose": "Application UI"
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Transcript and controls."
+        "purpose": "Application UI"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Application UI"
       },
       "supporting": {
         "displayName": "Supporting",
-        "purpose": "Status and keyboard instructions."
+        "purpose": "Application UI"
+      },
+      "reply": {
+        "displayName": "Reply",
+        "purpose": "Tutor and explanatory reading"
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Code in tutor replies"
       }
     },
-    "shadows": [],
-    "motion": [],
+    "shadows": [
+      {
+        "name": "hairline-low-med-high",
+        "value": "inset 0 0 0 1px light-dark(#1c27241f, #ebe7dc1f)",
+        "purpose": "All three theme shadow slots are inset seams; no drop shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "branch-draw",
+        "value": "350ms ease-out",
+        "purpose": "New source-to-child path only; immediate completed line with reduced motion."
+      },
+      {
+        "name": "quiet-reveal",
+        "value": "120ms ease",
+        "purpose": "Reply/code copy visibility."
+      },
+      {
+        "name": "chat-view",
+        "value": "220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Chat view transition; disabled with reduced motion."
+      },
+      {
+        "name": "selection-rise",
+        "value": "140ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Selection action entrance; disabled with reduced motion."
+      }
+    ],
     "breakpoints": [
       {
-        "name": "mobile-navigation",
+        "name": "narrow-layout",
         "value": "48rem"
+      },
+      {
+        "name": "coarse-pointer-type",
+        "value": "1024px (width < 1024px and pointer: coarse)"
       }
-    ]
+    ],
+    "focus": [
+      {
+        "name": "standard",
+        "value": "2px solid var(--color-accent), offset 3px",
+        "purpose": "Standard keyboard and focused-node outline."
+      }
+    ],
+    "tonalRampPolicy": "Panel-only synthesized OKLCH swatches, stepped 15\u201395% lightness using the first (light appearance) tuple colour hue and chroma. These are explanatory metadata, not runtime palette tokens; alpha is represented by the original frontmatter value.",
+    "evidence": {
+      "source": [
+        "src/themes/slate/slateTheme.ts",
+        "src/themes/slate/slate.css",
+        "src/layout.ts",
+        "src/mermaid.ts",
+        "src/themes/slate/diagramFont.ts",
+        "src/CopyButton.ts",
+        "src/ChatPage.tsx",
+        "src/chatWidth.ts",
+        "src/appearance.ts"
+      ],
+      "review": "docs/verification/visual-finish/review.md",
+      "captures": "docs/verification/visual-finish/round-1/",
+      "limits": "Production-build Chromium with isolated SQLite and synthetic providers. No live inference claim. Static component previews do not execute app behavior."
+    }
   },
   "components": [
     {
-      "name": "Primary Button",
+      "name": "Primary action",
       "kind": "button",
-      "refersTo": "button-primary",
-      "description": "Illustrative preview; runtime Astryx owns complete metrics and states.",
-      "html": "<button class=\"ds-button ds-primary\">Create tree</button>",
-      "css": ".ds-button { font-family:var(--font-family-body); font-size:var(--text-body-size); border:0; border-radius:var(--radius-element); padding:var(--spacing-2) var(--spacing-3); cursor:pointer; } .ds-button:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; } .ds-button:hover { filter:brightness(.95); } .ds-button:active { filter:brightness(.9); } .ds-primary { background:var(--color-accent); color:var(--color-on-accent); }"
+      "description": "Yellow fill for the committed primary action.",
+      "html": "<button class=\"ds-primary\">Send</button>",
+      "css": ".ds-primary{border:0;border-radius:var(--radius-element);padding:var(--spacing-2) var(--spacing-3);font-family:var(--font-family-body);font-size:var(--font-size-base);cursor:pointer;background:var(--color-accent);color:var(--color-on-accent);}.ds-primary:hover{background-image:linear-gradient(var(--color-overlay-hover),var(--color-overlay-hover));}.ds-primary:active{background-image:linear-gradient(var(--color-overlay-pressed),var(--color-overlay-pressed));}.ds-primary:focus-visible{outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);}",
+      "refersTo": "button-primary"
     },
     {
-      "name": "Secondary Button",
+      "name": "Quiet action",
       "kind": "button",
-      "refersTo": "button-secondary",
-      "description": "Illustrative preview; runtime Astryx owns complete metrics and states.",
-      "html": "<button class=\"ds-button ds-secondary\">Continue with ChatGPT</button>",
-      "css": ".ds-button { font-family:var(--font-family-body); font-size:var(--text-body-size); border:0; border-radius:var(--radius-element); padding:var(--spacing-2) var(--spacing-3); cursor:pointer; } .ds-button:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; } .ds-button:hover { filter:brightness(.95); } .ds-button:active { filter:brightness(.9); } .ds-secondary { background:var(--color-neutral); color:var(--color-text-primary); }"
+      "description": "Ghost action for chrome and secondary controls.",
+      "html": "<button class=\"ds-ghost\">Settings</button>",
+      "css": ".ds-ghost{border:0;border-radius:var(--radius-element);padding:var(--spacing-2) var(--spacing-3);font-family:var(--font-family-body);font-size:var(--font-size-base);cursor:pointer;background:transparent;color:var(--color-text-primary);}.ds-ghost:hover{background:var(--color-overlay-hover);}.ds-ghost:active{background:var(--color-overlay-pressed);}.ds-ghost:focus-visible{outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);}",
+      "refersTo": "button-ghost"
     },
     {
-      "name": "Ghost Button",
+      "name": "Destructive action",
       "kind": "button",
-      "refersTo": "button-ghost",
-      "description": "Illustrative preview; runtime Astryx owns complete metrics and states.",
-      "html": "<button class=\"ds-button ds-ghost\">Show learning trees</button>",
-      "css": ".ds-button { font-family:var(--font-family-body); font-size:var(--text-body-size); border:0; border-radius:var(--radius-element); padding:var(--spacing-2) var(--spacing-3); cursor:pointer; } .ds-button:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; } .ds-button:hover { filter:brightness(.95); } .ds-button:active { filter:brightness(.9); } .ds-ghost { background:transparent; color:var(--color-text-primary); }"
+      "description": "Outlined red in a delete confirmation; filled on keyboard focus.",
+      "html": "<button class=\"ds-delete\">Delete chat</button>",
+      "css": ".ds-delete{border:0;border-radius:var(--radius-element);padding:var(--spacing-2) var(--spacing-3);font-family:var(--font-family-body);font-size:var(--font-size-base);cursor:pointer;background:transparent;color:var(--color-text-error);box-shadow:inset 0 0 0 1px var(--color-border-error);}.ds-delete:hover{background:var(--color-overlay-hover);}.ds-delete:focus-visible{outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);background:var(--color-error);color:var(--color-on-error);}",
+      "refersTo": "button-destructive"
     },
     {
-      "name": "New Tree Field",
+      "name": "Tree search",
       "kind": "input",
-      "description": "Persistent label above a rounded text field.",
-      "html": "<label class=\"ds-field\">New tree name<input aria-label=\"New tree name\"></label>",
-      "css": ".ds-field { display:grid; gap:var(--spacing-2); font-family:var(--font-family-body); color:var(--color-text-secondary); } .ds-field input { background:var(--color-background-surface); color:var(--color-text-primary); border:1px solid var(--color-border-emphasized); border-radius:var(--radius-element); padding:var(--spacing-2); font:inherit; } .ds-field input:hover { border-color:var(--color-text-secondary); } .ds-field input:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }"
+      "description": "Small rail search field with an accessible label and inline magnifier.",
+      "html": "<label class=\"ds-search\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z\"/></svg><input type=\"search\" aria-label=\"Search learning trees\" placeholder=\"Search learning trees\"></label>",
+      "css": ".ds-search{display:flex;align-items:center;gap:var(--spacing-2);padding:var(--spacing-2);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-secondary);}.ds-search input{min-width:0;width:100%;border:0;outline:0;background:transparent;color:var(--color-text-primary);font-family:var(--font-family-body);font-size:var(--font-size-sm);}.ds-search input::placeholder{color:var(--color-text-secondary);}.ds-search:hover{border-color:var(--color-border-emphasized);}.ds-search:focus-within{outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);}",
+      "refersTo": "search"
     },
     {
-      "name": "Saved Tree Navigation",
+      "name": "Current learning tree",
       "kind": "nav",
-      "description": "Secondary selected tree and ghost alternatives.",
-      "html": "<nav class=\"ds-nav\" aria-label=\"Saved learning trees\"><button class=\"ds-button ds-selected\" aria-current=\"page\">Linear algebra</button><button class=\"ds-button\">Probability</button></nav>",
-      "css": ".ds-button { font-family:var(--font-family-body); font-size:var(--text-body-size); border:0; border-radius:var(--radius-element); padding:var(--spacing-2) var(--spacing-3); cursor:pointer; } .ds-button:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; } .ds-button:hover { filter:brightness(.95); } .ds-button:active { filter:brightness(.9); } .ds-nav { display:grid; gap:var(--spacing-2); } .ds-nav button { color:var(--color-text-primary); background:transparent; white-space:normal; overflow-wrap:anywhere; } .ds-nav .ds-selected { background:var(--color-neutral); }"
+      "description": "Wrapped title and muted branch count in the deeper rail.",
+      "html": "<nav class=\"ds-rail\" aria-label=\"Saved learning trees\"><button class=\"ds-tree\" aria-current=\"page\">Learning trees<span>2 branches</span></button></nav>",
+      "css": ".ds-rail{background:var(--color-background-muted);padding:var(--spacing-3);}.ds-tree{border:0;border-radius:var(--radius-element);padding:var(--spacing-2) var(--spacing-3);font-family:var(--font-family-body);font-size:var(--font-size-base);cursor:pointer;width:100%;text-align:left;background:var(--color-neutral);color:var(--color-text-primary);white-space:normal;}.ds-tree span{display:block;color:var(--color-text-secondary);font-size:var(--font-size-sm);line-height:1.6667;}.ds-tree:hover{background:var(--color-overlay-hover);}.ds-tree:focus-visible{outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);}",
+      "refersTo": "navigation-current"
     },
     {
-      "name": "Question Composer",
+      "name": "Question bubble",
+      "kind": "chip",
+      "description": "Right-aligned question with neutral or selected chalk tint.",
+      "html": "<div class=\"ds-question-row\"><p class=\"ds-question\">Why does this branch inherit context?</p></div>",
+      "css": ".ds-question-row{display:flex;justify-content:flex-end;}.ds-question{margin:0;max-width:85%;padding:var(--spacing-2) var(--spacing-3);background:var(--color-neutral);color:var(--color-text-primary);font-family:var(--font-family-body);font-size:var(--font-size-base);line-height:var(--text-body-leading);border-radius:var(--radius-element);overflow-wrap:anywhere;}",
+      "refersTo": "question"
+    },
+    {
+      "name": "Focused conversation card",
+      "kind": "card",
+      "description": "Raised slate preview with chalk dot and yellow focused outline.",
+      "html": "<article class=\"ds-card\"><button class=\"ds-card-title\"><span class=\"ds-dot\" aria-hidden=\"true\"></span>Learning trees</button><p class=\"ds-card-preview\">A conversation branches from the passage it explores.</p></article>",
+      "css": ".ds-card{width:var(--treetutor-map-node-width);max-width:100%;background:var(--color-background-surface);color:var(--color-text-primary);border:1px solid var(--color-border);border-radius:var(--radius-element);outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);}.ds-card-title{border:0;border-radius:var(--radius-element);padding:var(--spacing-2) var(--spacing-3);font-family:var(--font-family-body);font-size:var(--font-size-base);cursor:pointer;display:flex;align-items:center;gap:var(--spacing-2);background:transparent;color:inherit;text-align:left;font-weight:600;line-height:1.3;}.ds-dot{width:var(--spacing-2);height:var(--spacing-2);border-radius:50%;background:var(--color-text-secondary);flex:none;}.ds-card-preview{margin:0;padding:var(--spacing-2) var(--spacing-3);font-family:var(--font-family-body);font-size:var(--font-size-base);color:var(--color-text-secondary);}.ds-card:hover{border-color:var(--color-text-secondary);}.ds-card-title:hover{background:var(--color-overlay-hover);}.ds-card-title:focus-visible{outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);}",
+      "refersTo": "conversation-card"
+    },
+    {
+      "name": "Tutor reply and copy",
       "kind": "custom",
-      "description": "Flat rounded input with the visible keyboard instruction.",
-      "html": "<form class=\"ds-composer\"><textarea aria-label=\"Your question\" placeholder=\"What would you like to understand?\"></textarea><small>Enter to send \u00b7 Shift+Enter for a new line</small></form>",
-      "css": ".ds-composer { display:grid; gap:var(--spacing-3); padding:var(--spacing-3); border:1px solid var(--color-border-emphasized); border-radius:var(--radius-page); font-family:var(--font-family-body); background:var(--color-background-surface); color:var(--color-text-secondary); } .ds-composer textarea { font:inherit; background:transparent; color:var(--color-text-primary); border:0; resize:vertical; } .ds-composer textarea:hover { background:var(--color-overlay-hover); } .ds-composer textarea:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }"
+      "description": "Unboxed reading text; copy reveals on hover/focus and stays visible on touch.",
+      "html": "<article class=\"ds-reply\"><p>A child conversation keeps the passage that prompted the question.</p><button class=\"ds-copy\" aria-label=\"Copy reply\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-10.5A1.125 1.125 0 0 1 3 20.625V6.375c0-.621.504-1.125 1.125-1.125H6m9.75 12h4.125c.621 0 1.125-.504 1.125-1.125V3.375c0-.621-.504-1.125-1.125-1.125h-10.5C8.754 2.25 8.25 2.754 8.25 3.375V6m7.5 11.25H9.375A1.125 1.125 0 0 1 8.25 16.125V6\"/></svg></button></article>",
+      "css": ".ds-reply{color:var(--color-text-primary);}.ds-reply p{max-width:62ch;margin:0;font-family:var(--treetutor-font-reading);font-size:1rem;line-height:1.7;}.ds-copy{border:0;border-radius:var(--radius-element);padding:var(--spacing-2) var(--spacing-3);font-family:var(--font-family-body);font-size:var(--font-size-base);cursor:pointer;padding:var(--spacing-1);background:transparent;color:var(--color-text-secondary);opacity:0;transition:opacity 120ms ease;}.ds-reply:is(:hover,:focus-within) .ds-copy{opacity:1;}.ds-copy:hover{background:var(--color-overlay-hover);}.ds-copy:focus-visible{outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);}@media(hover:none){.ds-copy{opacity:1;}}@media(prefers-reduced-motion:reduce){.ds-copy{transition:none;}}",
+      "refersTo": "reply"
+    },
+    {
+      "name": "Inherited context",
+      "kind": "custom",
+      "description": "A collapsible yellow-ruled source quotation.",
+      "html": "<details class=\"ds-context\" open><summary>Inherited context</summary><p>The passage that started this child question.</p></details>",
+      "css": ".ds-context{border-inline-start:2px solid var(--color-accent);padding-inline-start:var(--spacing-3);color:var(--color-text-secondary);}.ds-context summary{font-family:var(--font-family-body);font-size:var(--font-size-base);padding:var(--spacing-1) 0;cursor:pointer;}.ds-context p{font-family:var(--treetutor-font-reading);font-size:var(--font-size-base);line-height:1.7;}.ds-context summary:hover{color:var(--color-text-primary);}.ds-context summary:focus-visible{outline:var(--focus-outline-width) solid var(--color-accent);outline-offset:var(--focus-outline-offset);}",
+      "refersTo": "inherited-context"
+    },
+    {
+      "name": "Source-to-branch chalk line",
+      "kind": "custom",
+      "description": "Shared yellow between explored passage and newly drawn focused path.",
+      "html": "<div class=\"ds-branch\"><span class=\"ds-passage\">the passage being explored</span><svg viewBox=\"0 0 280 80\" width=\"280\" height=\"80\" aria-label=\"New focused branch\"><path class=\"ds-path\" d=\"M10 10 C130 10 140 65 270 65\" pathLength=\"1\"/></svg></div>",
+      "css": ".ds-branch{color:var(--color-text-primary);}.ds-passage{font-family:var(--treetutor-font-reading);font-size:1rem;line-height:1.7;text-decoration:underline solid var(--color-accent);text-decoration-thickness:2px;text-underline-offset:0.2em;}.ds-branch svg{display:block;max-width:100%;}.ds-path{fill:none;stroke:var(--color-accent);stroke-width:var(--treetutor-branch-focus-width);stroke-linecap:round;animation:ds-draw var(--treetutor-branch-draw-duration) ease-out;}@keyframes ds-draw{from{stroke-dasharray:1;stroke-dashoffset:1;}to{stroke-dasharray:1;stroke-dashoffset:0;}}@media(prefers-reduced-motion:reduce){.ds-path{animation:none;}}"
     }
   ],
   "narrative": {
-    "northStar": "Room to follow a question",
-    "overview": "TreeTutor uses a quiet light workspace for repeated reading and asking. Restrained neutrals, compact controls and clear heading levels keep attention on the transcript. Saved learning trees sit beside the active conversation on desktop.\n\nThe system is code-led: Astryx supplies primitives and the neutral theme. Preserve its spacing, control states and native keyboard behavior when extending the app. No decorative imagery is needed for the text-focused use scene established in PRODUCT.md.",
+    "northStar": "Lecture-hall Slate",
+    "overview": "TreeTutor is a calm room for following a question. Flat green-black slate, chalk-white reading text and passage-linked branches make the learning tree the visual identity. Chrome stays quiet during long reading sessions; yellow locates the active question, its source and the next action.\n\nDark is the default; light uses pale slate-paper and slate ink with the same hierarchy. Public Sans gives controls a plain voice and Source Serif 4 gives tutor replies a sustained reading rhythm. The world uses actual diagram structure rather than decorative imagery, grain, imitation chalk or handwriting.",
     "keyCharacteristics": [
-      "Quiet neutral surfaces",
-      "Readable text hierarchy",
-      "Compact saved-tree navigation",
-      "Visible composer and explicit reply status"
+      "Bare slate field and compact conversation cards",
+      "One yellow action and provenance accent",
+      "Unboxed serif replies against quiet grotesk controls",
+      "Hairline seams, small corners and no drop shadows"
     ],
     "rules": [
       {
-        "name": "The Semantic Color Rule",
-        "body": "Use Astryx's existing color roles; let the theme own palette values.",
+        "name": "The Working Chalk Rule",
+        "body": "Yellow identifies primary action, focus and branch provenance. Blue, pink and green are tint or diagram-series colours, never competing action accents.",
         "section": "colors"
       },
       {
-        "name": "The Composer Rule",
-        "body": "Preserve the flexible-height conversation and collapsible mobile navigation when adding controls.",
-        "section": "layout"
+        "name": "The Reading Voice Rule",
+        "body": "Tutor replies use the reading serif; questions and controls use Public Sans. Keep code in the code face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Slate Seam Rule",
+        "body": "Separate surfaces with tonal steps and hairlines. Do not add drop shadows, blur or texture.",
+        "section": "elevation"
       }
     ],
     "dos": [
-      "Do use Astryx components and semantic theme tokens.",
-      "Do preserve native keyboard operation and visible focus.",
-      "Do wrap long tree titles and message text.",
-      "Do keep the composer reachable at narrow widths."
+      "Do keep palette values in the project theme and consume semantic CSS variables.",
+      "Do preserve the shared yellow between the branched passage, focused line and focused node.",
+      "Do give tutor replies a 1rem/1.7 reading face and at most 62ch per block.",
+      "Do preserve keyboard focus, accessible names and visible copy controls on touch.",
+      "Do implement both appearances and reduced motion when extending a surface."
     ],
     "donts": [
-      "Don't add decorative imagery to this reading workspace.",
-      "Don't replace the flat transcript with card-wrapped messages.",
-      "Don't hide failed or interrupted reply states."
+      "Don't add grid dots, watermarks or decoration to the bare map field.",
+      "Don't add drop shadows, glass, grain, chalk texture or handwriting fonts.",
+      "Don't turn the secondary chalk hues into competing primary-action colours.",
+      "Don't introduce remote fonts or replace questions with the reply serif.",
+      "Don't replace quiet metadata with badges, decorative eyebrows or extra panels."
     ]
   }
 }

@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-nwx.7",
-  "checkedAt": "2026-11-11T05:24:27.607Z",
+  "checkedAt": "2026-11-11T05:47:33.673Z",
   "evidence": "Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.",
   "appearances": {
     "dark": {

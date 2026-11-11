@@ -2,6 +2,8 @@
 
 Agreed with the owner on 2026-11-10 in a grilling session. This spec owns TreeTutor's look and layout from the moment the direction contract below is recorded; PRD.md keeps authority over behavior and acceptance criteria.
 
+Status: **Complete**, 2026-11-11 (TreeTutor-nwx; finish ticket TreeTutor-nwx.12). All seven screens and both adopted optional features are implemented. The Impeccable finish reviewer returned `ship` after reviewing 46 dark/light desktop/narrow captures; no material fix round was required. The documenter replaced DESIGN.md and its sidecar with the built Lecture-hall Slate world. [Finish evidence and validation](verification/visual-finish/README.md) records fixture coverage, the existing TreeTutor-wpc failures, and native-provider checks outside this visual redesign's scope.
+
 ## Problem Statement
 
 The learner finds TreeTutor unattractive to spend time in. The workspace is grey on grey: no accent color and no identity, so nothing tells the eye where to look. The focused chat is a tall white column with messages pushed to the bottom and a large empty area above them. Conversation nodes are plain white boxes joined by thin grey branch lines that barely read. The learning tree sidebar is mostly empty, with a lone settings gear at its foot and a visible "React Flow" watermark on the map. Reply metadata such as provider, model and token counts is visually noisy. Dark mode is the stock neutral grey. The result reads like a generic admin panel rather than a place to think, even though the product is used for long sessions of reading and asking.

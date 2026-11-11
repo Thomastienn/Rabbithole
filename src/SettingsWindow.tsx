@@ -109,14 +109,14 @@ export default function SettingsWindow({ request, close, api, models, providers,
     </>}
     {current.id === 'interface' && <>
       <Section title="Appearance" description="Dark, light, or System to follow your operating system. Saved in this browser.">
-        <RadioList label="Appearance" value={appearance} onChange={value => setAppearance(value as Appearance)}>
+        <RadioList label="Appearance" isLabelHidden value={appearance} onChange={value => setAppearance(value as Appearance)}>
           {appearances.map(a => <RadioListItem key={a.id} value={a.id} label={a.label} />)}
         </RadioList>
       </Section>
       <Divider />
       <Section title="Question bubbles" description="Choose a tint for your questions. Saved in this browser; follows your appearance.">
-        <RadioList label="Bubble tint" value={bubbleTint} onChange={value => setBubbleTint(value as BubbleTint)}>
-          {bubbleTints.map(tint => <RadioListItem key={tint.id} value={tint.id} label={tint.label} endContent={<HStack aria-hidden="true" className="bubble-tint-swatch" style={{ background: tint.color }} />} />)}
+        <RadioList label="Bubble tint" isLabelHidden value={bubbleTint} onChange={value => setBubbleTint(value as BubbleTint)}>
+          {bubbleTints.map(tint => <RadioListItem key={tint.id} value={tint.id} label={tint.label} startContent={<HStack aria-hidden="true" className="bubble-tint-swatch" style={{ background: tint.color }} />} />)}
         </RadioList>
         <VStack gap={2} role="group" aria-label="Question bubble preview">
           <Text type="supporting" color="secondary">Preview</Text>

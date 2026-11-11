@@ -11,6 +11,7 @@ type Api = (path: string, body?: unknown) => Promise<Graph>;
 const familiarity = (c: Concept) => c.correction === 'known' ? 'You marked this as known' : c.correction === 'unknown' ? 'You marked this as not understood' : `Estimated familiarity: ${c.familiarity >= 0.8 ? 'familiar' : c.familiarity >= 0.35 ? 'some familiarity' : 'unfamiliar'}`;
 
 const level = (c: Concept) => c.correction === 'known' ? 'Marked known' : c.correction === 'unknown' ? 'Marked not understood' : c.familiarity >= 0.8 ? 'Familiar' : c.familiarity >= 0.35 ? 'Some familiarity' : 'Unfamiliar';
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 type Line = { x1: number; y1: number; x2: number; y2: number; key: string; selected: boolean };
 
 export default function KnowledgePage({ api, activity }: { api: Api; activity: string }) {
@@ -108,7 +109,7 @@ export default function KnowledgePage({ api, activity }: { api: Api; activity: s
       <aside id="concept-detail" className="knowledge-detail" aria-label={`${selected.name} details`}><VStack gap={3}>
         <Heading level={2}>{selected.name}</Heading>
         <Text className="knowledge-reading">{familiarity(selected)}</Text>
-        <Text className="knowledge-reading" color="secondary">Evidence: met in {selected.evidence.met} replies · asked about {selected.evidence.asked} times · used {selected.evidence.used} times in questions · ignored {selected.evidence.ignored} underlines (weak hint).</Text>
+        <Text className="knowledge-reading" color="secondary">Evidence: met in {count(selected.evidence.met, 'reply', 'replies')} · asked about {count(selected.evidence.asked, 'time', 'times')} · used {count(selected.evidence.used, 'time', 'times')} in questions · ignored {count(selected.evidence.ignored, 'underline', 'underlines')} (weak hint).</Text>
         {graph.links.filter(l => l.from === selected.name || l.to === selected.name).map(l => <Text key={`${l.from}-${l.to}-${l.kind}`} className="knowledge-reading" color="secondary">{l.from} {l.kind === 'related' ? 'is related to' : 'builds on'} {l.to}</Text>)}
         <HStack gap={2} wrap="wrap" role="group" aria-label={`Corrections for ${selected.name}`}>
           <Button label="I know this" size="sm" variant={selected.correction === 'known' ? 'secondary' : 'ghost'} aria-pressed={selected.correction === 'known'} isDisabled={busy} onClick={() => void correct(selected.name, 'known')} />

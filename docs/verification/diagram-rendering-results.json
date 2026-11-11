@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-11T05:22:09.681Z",
+  "checkedAt": "2026-11-11T05:47:11.552Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-my4TVg",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-RcFXM6",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "10a51e83-f9a1-4c37-a209-c5cbf96a05bb",
-        "messageId": "f5a87b91-2d60-4dea-b115-ae0f04153d81",
+        "parent": "fe75526b-313b-4f16-9e50-996d4deef414",
+        "messageId": "d6b437e2-a0b0-483d-a3ba-743d017bece6",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -104,8 +104,8 @@
       "pass": true,
       "details": {
         "processes": [
-          1401105,
-          1402059
+          1503315,
+          1504728
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3
@@ -123,14 +123,14 @@
     ".impeccable/review/diagram-narrow.png"
   ],
   "sourceHashes": {
-    "src/DiagramCard.tsx": "737785ac6a5916a6512cdb39b5e026194e1b1bf350b8b4cd4b6e5ac086fc332e",
+    "src/DiagramCard.tsx": "2eccde21f805df6b60e2d95756fe1fe800a95397fad4b03d9b006e94818746e9",
     "src/artifacts.ts": "239ed145eb9bdc0409a3eda2aa19747e7d2db41b96f8593ce93f1f17ea7b6d7c",
     "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
-    "src/mermaid.ts": "8106e4dd3e961cc6870c96d6dd8b7d9c0b038545fa3475a9efaf8064e13b2783",
-    "src/ChatPage.tsx": "8866b6f44ef980d634eda720e2ba37aea16611027399a9e6cd0d9b75d056d24c",
-    "src/TreeOverview.tsx": "d9987cf1c2a46a1d7cbf5937fb1d4eece14d9f807724e701274590f3ea0eebc6",
-    "src/turn.ts": "a0016c1b917618b6e7720a913a74a247c8a9d8b4f5e4c258c4e8c129f9b61136",
-    "src/layout.ts": "dd1e94d291d78e40c74ff0d35f0a716af98c5a26f8cb61a41dcdbc36e937598f",
+    "src/mermaid.ts": "4bfb3642cbfc00b8b1e2452360f6b7e00091f01eb623ea66315e69c6fab7a07c",
+    "src/ChatPage.tsx": "e69ea12c02c0553861f489911fa910100bd51155c83b6012d389cf336a2bd724",
+    "src/TreeOverview.tsx": "bf8dc0e4ef72abbc3d4c24762d70758a8f0a46eb561fed34fd73307121852b66",
+    "src/turn.ts": "a7244c641e6dd539f5bb96050636dd989611b70137b4f0b092bff9570c211414",
+    "src/layout.ts": "f46272a7ac0aa47a1fecf15b7f19983f808a0eb53d04478b6690ffb47fe754bf",
     "server/store.mjs": "86dd5170adf3a53fd6e14f1a8ad950ef0bd27339d5d2c5cca30952de593166ba",
     "server/diagrams.mjs": "7d49dea6b7ac2414f5b69898a8da4c29e5715e979b3fc4d005f2dd7259491a60",
     "server/app.mjs": "beb51f9519ef4c18039760af1924a4606837e8de2b489adc03f29acc2cad2331",
@@ -140,6 +140,6 @@
     "package.json": "77b9672f43ed972430e2d8ab07600f052d49d3bdcc065077cc3261e33dfb85b7",
     "package-lock.json": "8b2a7486e7ac6b6b15eaf11822a53843932adb6ab60d6aa77838c94c14f326fe",
     "docs/diagram-artifacts.md": "82d1b252b58357bf8d32a59fec278e908a5f92e1c3dc655216e2276092f4af8c",
-    "dist/index.html": "2b56a055ae647310c37b55da85d72285c784c73e841a935998cee3ac9c114112"
+    "dist/index.html": "6e33ba56c7ad7d73aadb58e29790509b04a022aae5ca7357692c08d3f3c7d78e"
   }
 }

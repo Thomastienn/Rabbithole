@@ -1,4 +1,5 @@
 import mermaid from 'mermaid';
+import { diagramFontFace } from './themes/slate/diagramFont';
 
 // Mermaid has global configuration. Keep each theme initialization with its queued render.
 let queue = Promise.resolve();
@@ -25,6 +26,7 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
         primaryColor: style.backgroundColor, secondaryColor: style.backgroundColor, tertiaryColor: style.backgroundColor,
         primaryTextColor: style.color, secondaryTextColor: style.color, tertiaryTextColor: style.color, textColor: style.color, lineColor: style.color,
         primaryBorderColor: style.borderColor, secondaryBorderColor: style.borderColor, tertiaryBorderColor: style.borderColor, fontFamily: style.fontFamily,
+        edgeLabelBackground: style.backgroundColor, labelBackground: style.backgroundColor,
         pieSectionTextColor: style.backgroundColor, pieStrokeColor: style.backgroundColor, pieOuterStrokeColor: style.borderColor,
         pieTitleTextColor: style.color, pieLegendTextColor: style.color, pieOpacity: '1',
         ...seriesVariables, xyChart: { plotColorPalette: series.join(',') },
@@ -38,6 +40,9 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
     drawing.setAttribute('width', String(Math.ceil(width)));
     drawing.setAttribute('height', String(Math.ceil(height)));
     drawing.removeAttribute('style');
+    const face = drawing.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'style');
+    face.textContent = diagramFontFace;
+    drawing.prepend(face);
     // SVG images cannot execute scripts or follow links. No HTML insertion or bindFunctions.
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(drawing))}`;
   });

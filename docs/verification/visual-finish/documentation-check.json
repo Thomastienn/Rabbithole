@@ -1,0 +1,140 @@
+{
+  "pass": true,
+  "checkedAt": "2026-11-11T06:05:39.060Z",
+  "kind": "Isolated Chromium: all ten sidecar snippets parsed and rendered in shadow DOM using Slate runtime variables; visual states illustrative only",
+  "appearances": {
+    "dark": [
+      {
+        "background": "rgb(232, 210, 122)",
+        "color": "rgb(28, 39, 36)",
+        "rules": 4,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(235, 231, 220)",
+        "rules": 4,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(232, 138, 122)",
+        "rules": 3,
+        "visible": true
+      },
+      {
+        "background": "rgb(36, 49, 45)",
+        "color": "rgb(159, 176, 168)",
+        "rules": 5,
+        "visible": true
+      },
+      {
+        "background": "rgb(22, 32, 29)",
+        "color": "rgb(255, 255, 255)",
+        "rules": 5,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(255, 255, 255)",
+        "rules": 2,
+        "visible": true
+      },
+      {
+        "background": "rgb(36, 49, 45)",
+        "color": "rgb(235, 231, 220)",
+        "rules": 7,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(235, 231, 220)",
+        "rules": 8,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(159, 176, 168)",
+        "rules": 5,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(235, 231, 220)",
+        "rules": 6,
+        "visible": true
+      }
+    ],
+    "light": [
+      {
+        "background": "rgb(122, 101, 16)",
+        "color": "rgb(255, 255, 255)",
+        "rules": 4,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(28, 39, 36)",
+        "rules": 4,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(168, 56, 44)",
+        "rules": 3,
+        "visible": true
+      },
+      {
+        "background": "rgb(243, 245, 241)",
+        "color": "rgb(74, 90, 83)",
+        "rules": 5,
+        "visible": true
+      },
+      {
+        "background": "rgb(220, 226, 220)",
+        "color": "rgb(0, 0, 0)",
+        "rules": 5,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(0, 0, 0)",
+        "rules": 2,
+        "visible": true
+      },
+      {
+        "background": "rgb(243, 245, 241)",
+        "color": "rgb(28, 39, 36)",
+        "rules": 7,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(28, 39, 36)",
+        "rules": 8,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(74, 90, 83)",
+        "rules": 5,
+        "visible": true
+      },
+      {
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(28, 39, 36)",
+        "rules": 6,
+        "visible": true
+      }
+    ]
+  },
+  "frontmatter": {
+    "validYaml": true,
+    "colorsExactInGeneratedTheme": 31,
+    "typeRoles": 8,
+    "canonicalSections": 8,
+    "tokenReferences": "resolved",
+    "narrative": "synchronized",
+    "oldWorld": "replaced"
+  }
+}

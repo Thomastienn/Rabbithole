@@ -1,0 +1,206 @@
+{
+  "capturedAt": "2026-11-11T05:56:46.155766+00:00",
+  "kind": "built-app Chromium screenshots; isolated SQLite, synthetic providers; not native inference",
+  "viewports": {
+    "desktop": [
+      1440,
+      900
+    ],
+    "narrow": [
+      390,
+      844
+    ]
+  },
+  "appearance": [
+    "dark",
+    "light"
+  ],
+  "motion": "reduced; finite animations and fonts settled",
+  "validated": "All images opened by build agent before reviewer handoff. Scrollable chat shows the current reading position; narrow Settings includes list and Interface content.",
+  "files": [
+    {
+      "file": "1-map-dark-desktop.png",
+      "sha256": "5d4a870efde233c6126e7398055732fe257b0a4e09ac1fdb9e1c394ab82ec567"
+    },
+    {
+      "file": "1-map-dark-narrow.png",
+      "sha256": "42c99491fae60f4217851640cde8f3f98a8cf4381eee6eb1073c398a6e6f5d88"
+    },
+    {
+      "file": "1-map-light-desktop.png",
+      "sha256": "58d27eb8cf8e86396ec961d8cb20dcd9c532aaa38a0e3d689df83cdc3ad2b944"
+    },
+    {
+      "file": "1-map-light-narrow.png",
+      "sha256": "0ddd959763e54d5940c1a67fc1e8c6b489d1401e0725b07ba2434213f7ab8f66"
+    },
+    {
+      "file": "2-chat-child-dark-desktop.png",
+      "sha256": "75bb8e43daa33d838dee5598c0474c11169b48c5dddf22953760564016aa3688"
+    },
+    {
+      "file": "2-chat-child-dark-narrow.png",
+      "sha256": "a33bf1b6694403679d2ea78fcfd7a330a9da1f9a883b08c2710e07e44855c583"
+    },
+    {
+      "file": "2-chat-child-light-desktop.png",
+      "sha256": "5c269fb2646159de8bbbf65dc0d0084a8e528e505f948d5e9470fc99b1f820d8"
+    },
+    {
+      "file": "2-chat-child-light-narrow.png",
+      "sha256": "0f03138aa01ff7d2fa3ebf527e0ee749a778f817e636bdc357644d494970c1a3"
+    },
+    {
+      "file": "2-chat-dark-desktop.png",
+      "sha256": "51a5506e9cff036a129138a2a0b971cc5db524ed8556d3ded53b91834a6689cb"
+    },
+    {
+      "file": "2-chat-dark-narrow.png",
+      "sha256": "0918f0047fc58ba79019fd683b36a9980704192eedb00ea91cbce4c465b77810"
+    },
+    {
+      "file": "2-chat-light-desktop.png",
+      "sha256": "52707c1fa2c8f5d05e9ce2324b260682a994395294ad1e3d49ffdee91c87ad3d"
+    },
+    {
+      "file": "2-chat-light-narrow.png",
+      "sha256": "d53586490d28082ae9e50a23b7881bc6fc5bc54391a621d2776781a82d07eaa4"
+    },
+    {
+      "file": "3-sidebar-dark-desktop.png",
+      "sha256": "1ff5fde4d8f6f9ead6ac7a79b4c9987bbe077420e893022b2bc86c06ef8b94b6"
+    },
+    {
+      "file": "3-sidebar-dark-narrow.png",
+      "sha256": "a8a605f035316152729e45c696d3abaec0f940af00380c1b3d8ae95285ef04e7"
+    },
+    {
+      "file": "3-sidebar-light-desktop.png",
+      "sha256": "22d9c390fd7de6a5f69ea13f75d9fcc2fc225d6230f359b826af2e089abf685c"
+    },
+    {
+      "file": "3-sidebar-light-narrow.png",
+      "sha256": "6a1fe7aeeb57da316709c03d51ed3f1db69b501715e23c18d8ada0ce31340be3"
+    },
+    {
+      "file": "3-sidebar-search-dark-desktop.png",
+      "sha256": "d48af56e2af67f3b29e3ba3ac411f6138c7ef06270d28f7fcd4056c466f9685a"
+    },
+    {
+      "file": "3-sidebar-search-dark-narrow.png",
+      "sha256": "11155069becdfe5c6ad5a47b7aa21d37c1ce264e520185bccbb7ced10d82cfb9"
+    },
+    {
+      "file": "3-sidebar-search-light-desktop.png",
+      "sha256": "d3840adbac43c726cec44e7ed1c1be6e237bf8968917e6f0e2b622ee1a09e44f"
+    },
+    {
+      "file": "3-sidebar-search-light-narrow.png",
+      "sha256": "0761a07a9d8a31c291d0e10ae96e5055f8f37f2ca43075dc125ea89c3c4f28ff"
+    },
+    {
+      "file": "4-settings-dark-desktop.png",
+      "sha256": "839555a6ea813d59ca26d0035e8292f929916872f277bdf99cf2f66c8df4e23e"
+    },
+    {
+      "file": "4-settings-dark-narrow.png",
+      "sha256": "111ce020bfa273c2e29afdb08edc6379ab88020bde7d88a568398622d9fa7bce"
+    },
+    {
+      "file": "4-settings-light-desktop.png",
+      "sha256": "a5fa1d6fbdb4537446a327795d860746a5c48fa862b61df5f9461aaf53ff4cdb"
+    },
+    {
+      "file": "4-settings-light-narrow.png",
+      "sha256": "dd751bac8ccb51ddcabeba0828184db42f3fb3f61f370f6babfe609e6a92fe13"
+    },
+    {
+      "file": "4-settings-list-dark-narrow.png",
+      "sha256": "915d03c87bb6e2cceaecc922013f51c0694b07b4f7c190559454680f973a01f2"
+    },
+    {
+      "file": "4-settings-list-light-narrow.png",
+      "sha256": "269a15f6bb10f4dd56ffed6fabdc01666dbfd9b3c37920dfc15a64c4580a5a06"
+    },
+    {
+      "file": "5-knowledge-dark-desktop.png",
+      "sha256": "c43d360565ff634318ea72b34fbcb04dab6d7a7a12dc35ad2d90dfb2c43acd6d"
+    },
+    {
+      "file": "5-knowledge-dark-narrow.png",
+      "sha256": "dd7614127e6225e40e33b47edeecfbab6d72efb9e52144b12a4d68edd2ba1463"
+    },
+    {
+      "file": "5-knowledge-light-desktop.png",
+      "sha256": "22c060bcb9d9afe79557cc595de500428737833182e626305bbe30af745d7066"
+    },
+    {
+      "file": "5-knowledge-light-narrow.png",
+      "sha256": "55cb9cfa0657d26076f70e563a0231730560ea34aca9cf02585d9aee9d5d12f5"
+    },
+    {
+      "file": "6-dialog-delete-dark-desktop.png",
+      "sha256": "cd5f53829a47fc51e3d1dc25d58fd81db70234d1c2c0813675f9bf5c352b64c5"
+    },
+    {
+      "file": "6-dialog-delete-dark-narrow.png",
+      "sha256": "1c47d9dfb3a647775bb5cbc96675a3ad67b507641959a3b5060edfc4acc6ce5d"
+    },
+    {
+      "file": "6-dialog-delete-light-desktop.png",
+      "sha256": "570bf7e29c397f180f93e30333fdd698aad474675f5dcb340f3746e3b1eaddfc"
+    },
+    {
+      "file": "6-dialog-delete-light-narrow.png",
+      "sha256": "51a9907f5c6d4a7ef90b36f43ab3ab0e5a0178f47dbbfb3ef8d469fa48f24a51"
+    },
+    {
+      "file": "6-dialog-model-menu-dark-desktop.png",
+      "sha256": "ccb365931deaced6ec2fc15f2ff491da6707f035f24595c0e2547d22032ec73d"
+    },
+    {
+      "file": "6-dialog-model-menu-dark-narrow.png",
+      "sha256": "c94f6dfe201af2dd9c643d1449c74c7929336eb06e99b84ea4ac38c1eec5cfa8"
+    },
+    {
+      "file": "6-dialog-model-menu-light-desktop.png",
+      "sha256": "e56392c0c43bf8775fd89fd2f1f5e16cdc38cebf609b42b326a7720326dbfca3"
+    },
+    {
+      "file": "6-dialog-model-menu-light-narrow.png",
+      "sha256": "3c2fd536ab8777c41a3737234335ad8684ac70186934f5f0e638af7a84be2cb3"
+    },
+    {
+      "file": "6-dialog-passage-prompt-dark-desktop.png",
+      "sha256": "5c71ebc7bfbd0e2c4294d5399db248b7b77d0762e82c76b4386bb5fbddf237b6"
+    },
+    {
+      "file": "6-dialog-passage-prompt-dark-narrow.png",
+      "sha256": "ea56ea9dda14e603e41d3fdb48add471e1c50855061df935bf83babb8c44abb0"
+    },
+    {
+      "file": "6-dialog-passage-prompt-light-desktop.png",
+      "sha256": "59d8dba5d2cf26a3b0adfcac4d51182b77bcb53fe34601e8f4221a12ea4384eb"
+    },
+    {
+      "file": "6-dialog-passage-prompt-light-narrow.png",
+      "sha256": "8e2979795a78c27ae65458d8c295189c87e97b3c8515549efa7368c5e8735c5a"
+    },
+    {
+      "file": "7-mermaid-dark-desktop.png",
+      "sha256": "10443e63ae2ef71d9fa02e13c39e2b955461ee4bbd1514fc5da6e07841d59c9d"
+    },
+    {
+      "file": "7-mermaid-dark-narrow.png",
+      "sha256": "e2c01053e863a4631c0a51d2f38cfa3f9b18d18b02292396f96b704202eba1af"
+    },
+    {
+      "file": "7-mermaid-light-desktop.png",
+      "sha256": "0707bb831faca5421e4f02b74f25087b47142bfe60fa27104bbbbd30d6eaa98f"
+    },
+    {
+      "file": "7-mermaid-light-narrow.png",
+      "sha256": "2b929a0f8a63bbd6239ed22190f967b3a39616bbd9fc533d48d9b892a3a2682a"
+    }
+  ]
+}
