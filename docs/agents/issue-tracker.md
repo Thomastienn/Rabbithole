@@ -16,7 +16,7 @@ Issues and specs for this repo live in Beads (`bd` CLI, data in `.beads/`). Keep
 
 Create the epic and children with `bd create` (or `bd create --graph plan.json` for many tickets with dependencies).
 
-Then append every new epic ID to `.ralph-tui/epics`, one per line, in release order (newest phase last). Ralph only works on epics listed there: `./scripts/ralph-afk` walks the list top to bottom and skips epics with no ready work; `./scripts/ralph` and `./scripts/ralph-codex` take the first line unless given an epic ID.
+Then append every new epic ID to `.ralph-tui/epics`, one per line, in release order (newest phase last). Ralph only works on epics listed there: `ralph-afk` walks the list top to bottom and skips epics with no ready work; `ralph` and `ralph --agent codex` take the first line unless given an epic ID.
 
 ## When a skill says "fetch the relevant ticket"
 

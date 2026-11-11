@@ -7,9 +7,9 @@ names its phase.
 
 | Run in this order | Phase | Task prefix |
 | --- | --- | --- |
-| `./scripts/ralph` | 1 · Text release | `TreeTutor-7t3.*` |
-| `./scripts/ralph TreeTutor-vm4` | 2 · Learning aids: diagrams, videos, suggestions, Vim | `TreeTutor-vm4.*` |
-| `./scripts/ralph TreeTutor-sh8` | 3 · Product 1.0: rich replies, rename/delete, custom endpoint, release | `TreeTutor-sh8.*` |
+| `ralph` | 1 · Text release | `TreeTutor-7t3.*` |
+| `ralph TreeTutor-vm4` | 2 · Learning aids: diagrams, videos, suggestions, Vim | `TreeTutor-vm4.*` |
+| `ralph TreeTutor-sh8` | 3 · Product 1.0: rich replies, rename/delete, custom endpoint, release | `TreeTutor-sh8.*` |
 
 Start the next phase when the current one has no open tasks. A run stops at its
 iteration limit, so repeat the same command until the phase is done. To check:
@@ -25,7 +25,10 @@ If a task is marked blocked for a provider limit or sign-in, fix that, then
 `bd update <id> -s open` and run the phase again. The task table for each phase
 is under [Issue structure](#issue-structure).
 
-From this repository:
+`ralph` and `ralph-afk` are global commands from `~/thomas_config`
+(`ralph-tui/bin/`, documented in its `docs/ralph.md`): agents and their models,
+takeover, and unattended runs across usage limits with `ralph-afk`. Run them
+from this repository:
 
 AGENTS.md records standing user authorization to implement the existing backlog,
 verify results and commit locally without repeated implementation-approval
@@ -36,14 +39,14 @@ PRD release deferrals still apply. The current configured iteration limit is in
 `.ralph-tui/config.toml`; a single run is not a guarantee that every task finishes.
 
 ```bash
-./scripts/ralph
+ralph
 ```
 
 This starts the existing text-release epic, `TreeTutor-7t3`, using the iteration
 limit in `.ralph-tui/config.toml`. To choose another epic or change the limit:
 
 ```bash
-./scripts/ralph TreeTutor-7t3 --iterations 10
+ralph TreeTutor-7t3 --iterations 10
 ```
 
 ### Unattended handoff
@@ -53,9 +56,9 @@ the requested agent without someone present:
 
 ```bash
 # At 03:55 today, stop the existing runner and start configured Claude.
-sleep "$(( $(date -d '03:55' +%s) - $(date +%s) ))" && ./scripts/ralph --takeover
+sleep "$(( $(date -d '03:55' +%s) - $(date +%s) ))" && ralph --takeover
 # To start Codex instead:
-./scripts/ralph-codex --takeover
+ralph --agent codex --takeover
 ```
 
 Choose a future time for the sleep command and keep only one timer per handoff.
@@ -133,8 +136,8 @@ task is intended for one agent invocation in a 100k–150k context window: plan
 about 100k of working context and keep the rest for startup, tools, verification
 and repair. These are scope estimates; no model context setting is changed, and
 naturally smaller work should finish early. Run the phases in order, one epic
-per launch: `./scripts/ralph`, then `./scripts/ralph TreeTutor-vm4`, then
-`./scripts/ralph TreeTutor-sh8`.
+per launch: `ralph`, then `ralph TreeTutor-vm4`, then
+`ralph TreeTutor-sh8`.
 
 | Phase epic | Tasks in order | Scope |
 | --- | --- | --- |
