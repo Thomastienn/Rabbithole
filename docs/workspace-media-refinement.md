@@ -66,6 +66,14 @@ deeper nesting levels. The learner can still switch provider or model within
 each conversation. Changing the Settings default does not change existing
 conversations.
 
+## Confirmed smart model default
+
+The smart model initially uses a "Same as chat default" setting: it follows the
+Settings chat provider and model as that default changes. The learner can instead
+select a specific provider and model independently. This follows the global chat
+default, not a conversation's model override. Merely configuring the smart model
+starts no model calls; its runtime use belongs to a future feature.
+
 ## Initial video research
 
 Remotion supports [parameterized compositions](https://www.remotion.dev/docs/parameterized-rendering)

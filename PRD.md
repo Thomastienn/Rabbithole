@@ -24,6 +24,8 @@ As a later increment, the learner can add one custom OpenAI-compatible endpoint 
 
 Provider and model selection share the compact model menu. A signed-out provider shows an actionable sign-in message rather than a nonfunctional choice.
 
+The agreed workspace refinement exposes quick thinking, chat default and smart model roles in Settings. Quick thinking handles suggestions and branch compaction. The smart model initially follows the Settings chat default through a "Same as chat default" choice, or can be pinned independently to a specific provider/model. Conversation overrides do not change that global default. Configuring the smart model starts no calls; its runtime use is reserved for a future feature.
+
 Child conversations default to their parent's provider and model. Learners can change model or provider within an existing conversation while preserving visible messages and the conversation's existing context, including inherited branch context. The new provider must be able to continue the discussion using that history.
 
 ## Local persistence and learning trees
