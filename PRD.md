@@ -94,6 +94,12 @@ Use standard keyboard interactions initially. As a later increment, add the opt-
 
 ## Future direction
 
+The agreed workspace refinement adds historical usage graphs covering multiple
+years and all time. Retain usage counts, dates, provider/model and task type
+independently of learning-tree, conversation and video deletion, without keeping
+deleted text or video content. Content deletion must not reduce historical usage
+totals. Missing provider measurements remain unavailable rather than invented.
+
 Automatic suggestions for concepts or passages worth branching into are an explicit long-term product goal. The initial version uses manual text selection. The selected later design is recorded in [break-down-spec.md](docs/break-down-spec.md), which supersedes the earlier suggestions proposal: a suggestion model underlines likely-confusing terms and sections, both underlines and highlighted text open a small prompt box that branches, a knowledge graph across learning trees informs the underlines, and every final response shows its token usage. It ships in a new epic after Product 1.0 (TreeTutor-sh8).
 
 ## Content rollout

@@ -62,3 +62,6 @@ _Avoid_: Mastery, score, level
 **Inherited context**:
 The fixed background a child conversation receives at branch creation: the exact passage and a compact paragraph combining its parent's inherited context with the parent conversation, preserving important ideas. It supplies context without answering the child's question; that question is a separate learner message.
 _Avoid_: Summary, compacted context
+
+**Usage history**:
+The record of reported model usage across learning trees and tasks, retained independently of deleted conversations and media. It contains usage measurements and attribution, not deleted learning content.

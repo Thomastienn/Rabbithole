@@ -37,7 +37,8 @@ Source inspection on 2026-11-11, not live behavioral verification:
   already receives its question as a separate user message.
 - Settings currently exposes suggestion-model selection and today's usage.
   Usage is attached to saved messages and suggestions; historical retention
-  independent of conversation deletion still needs a design decision.
+  independent of conversation deletion is not implemented by that storage model;
+  the agreed retention rule is recorded below.
 - The diagram worker forbids generated styling and has no simplicity budget.
 - Video generation already uses isolated Remotion rendering and local MP4s.
   Its current policy supports short 2D compositions, not Three.js imports.
@@ -73,6 +74,14 @@ Settings chat provider and model as that default changes. The learner can instea
 select a specific provider and model independently. This follows the global chat
 default, not a conversation's model override. Merely configuring the smart model
 starts no model calls; its runtime use belongs to a future feature.
+
+## Confirmed usage retention
+
+Historical usage survives deletion of learning trees, conversations and videos.
+Retain usage counts, dates, provider/model and task type for yearly and all-time
+graphs without retaining deleted conversation text or video content. Deleting
+content must not reduce previously recorded usage totals. Only reported usage
+counts as known usage; missing provider measurements remain unavailable.
 
 ## Initial video research
 
