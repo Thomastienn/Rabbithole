@@ -18,3 +18,5 @@ dist/
 .ralph-tui/afk.lock
 .ralph-tui/session*.json
 .ralph-tui/progress.md
+
+prompt.txt
