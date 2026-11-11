@@ -41,7 +41,7 @@ export default function SmartSettings({ api, models, providers, chatVersion }: {
   const followLabel = selected ? selected.label : r ? `${labels[r.provider] ?? r.provider} · ${r.model ?? 'default model'}` : '';
   return <VStack gap={3}>
     <Heading level={3}>Smart</Heading>
-    <Text type="supporting" color="secondary">For demanding background work such as video scripts. Model and effort each follow the chat default until you choose them here.</Text>
+    <Text type="supporting" color="secondary">Creates visuals and video scripts. Model and effort each follow the chat default until you choose them here.</Text>
     <Selector label="Smart model" value={saved?.model ? key(saved.model) : 'follow'} size="sm" width="100%" hasSearch isDisabled={!saved || !!pending} options={[
       { value: 'follow', label: saved && !saved.model ? `Follow chat default (${followLabel})` : 'Follow chat default' },
       ...(saved?.model && unavailable ? [{ value: key(saved.model), label: `${labels[saved.model.provider] ?? saved.model.provider} · ${saved.model.model} (unavailable)`, disabled: true }] : []),

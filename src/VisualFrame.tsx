@@ -3,6 +3,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { Text } from '@astryxdesign/core/Text';
+import { Button } from '@astryxdesign/core/Button';
 import { useTheme } from '@astryxdesign/core/theme';
 import { ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { visualMessage, type Artifact, type VisualMessage } from './artifacts';
@@ -40,15 +41,23 @@ function Frame({ artifact, onPart }: { artifact: Artifact; onPart?: (part: Extra
   </>;
 }
 
-export default function VisualFrame({ artifact }: { artifact: Artifact }) {
+export default function VisualFrame({ artifact, onRetry }: { artifact: Artifact; onRetry?: () => Promise<void> }) {
   const [enlarged, setEnlarged] = useState(false);
-  return <figure className="visual" data-artifact={artifact.id} data-state={artifact.status}>
+  const [retried, setRetried] = useState(false);
+  const figure = useRef<HTMLElement>(null);
+  useEffect(() => { if (retried && artifact.status === 'ready' && document.activeElement === document.body) figure.current?.focus(); }, [retried, artifact.status]);
+  if (artifact.status === 'canceled') return null;
+  return <figure ref={figure} className="visual" tabIndex={-1} aria-label={artifact.description} data-artifact={artifact.id} data-state={artifact.status}>
     {artifact.status === 'pending' && <><Skeleton className="visual-shimmer" /><Text className="sr-only" role="status">Creating visual: {artifact.title}</Text></>}
     {artifact.status === 'ready' && artifact.source && <>
       <Frame key={artifact.source} artifact={artifact} />
       <IconButton className="visual-enlarge" label={`Enlarge visual: ${artifact.title}`} icon={<ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={() => setEnlarged(true)} />
       {enlarged && <Dialog isOpen onOpenChange={setEnlarged} width="min(64rem, calc(100vw - 2rem))" maxHeight="calc(100dvh - 2rem)" aria-label={artifact.title}><Frame artifact={artifact} /></Dialog>}
     </>}
-    {(artifact.status === 'failed' || artifact.status === 'interrupted') && <Text type="supporting" color="secondary" role="status">Visual unavailable. {artifact.error ?? ''}</Text>}
+    {(artifact.status === 'failed' || artifact.status === 'interrupted') && <Text display="block" type="supporting" color="secondary" role="status">Visual unavailable. {artifact.error ?? ''}</Text>}
+    {onRetry && (artifact.status === 'failed' || (retried && artifact.status === 'pending')) && <Button key="retry" label="Retry visual" variant="ghost" size="sm" isLoading={artifact.status === 'pending'} clickAction={async () => {
+      setRetried(true); await onRetry();
+      requestAnimationFrame(() => { if (document.activeElement === document.body) figure.current?.querySelector<HTMLElement>('button')?.focus(); });
+    }} />}
   </figure>;
 }

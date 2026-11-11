@@ -132,7 +132,7 @@ for (const name of ['claude', 'codex']) test(`${name} adapter generates diagrams
     if (name === 'claude') {
       assert.equal(calls.length, 2);
       const system = call => call.args[call.args.indexOf('--system-prompt') + 1];
-      assert.match(system(calls[0]), /treetutor-diagram/);
+      assert.match(system(calls[0]), /treetutor-visual/);
       assert.match(system(calls[1]), /one Mermaid diagram/);
       assert.doesNotMatch(calls[1].input[0] + system(calls[1]), /UNRELATED ADAPTER TRANSCRIPT|Earlier discussion|diagram fixture request/);
       assert.equal(calls[1].args.includes('--resume'), false);

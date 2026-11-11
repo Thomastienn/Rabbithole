@@ -35,4 +35,4 @@ addEventListener('message', event => {
 });
 
 // Height is the only message the page itself sends; the app clamps and validates it.
-new ResizeObserver(() => parent.postMessage({ type: 'height', height: Math.ceil(document.body.getBoundingClientRect().height) }, '*')).observe(document.body);
+new ResizeObserver(() => { if (rendered) parent.postMessage({ type: 'height', height: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); }).observe(document.body);

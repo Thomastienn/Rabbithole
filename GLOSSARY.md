@@ -43,7 +43,7 @@ The previous name for the quick thinking model, describing its suggestion-pickin
 The model that answers learner messages in a conversation. Its Settings default starts new learning trees; children inherit their parent's current model and effort.
 
 **Smart model**:
-The learner-chosen model for private video scripting, scene planning and animation code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
+The learner-chosen model for visuals and private video scripting, scene planning and animation code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
 
 **Effort**:
 The supported reasoning setting chosen for a model role or conversation. It is independent of model selection; it does not promise a particular response quality or measured amount of computation.

@@ -9,7 +9,7 @@ import { Banner } from '@astryxdesign/core/Banner';
 import { breakdown, buckets, label, span, total, totals, type Totals, type UsageEvent, type UsageRange } from './usage';
 
 const SERIES = [['input', 'Input'], ['output', 'Output'], ['cacheRead', 'Cache read']] as const;
-const TASKS: Record<string, string> = { chat: 'Chat replies', suggestions: 'Suggestions', compaction: 'Context preparation', diagram: 'Diagrams', video: 'Videos' };
+const TASKS: Record<string, string> = { chat: 'Chat replies', suggestions: 'Suggestions', compaction: 'Context preparation', diagram: 'Visuals and diagrams', video: 'Videos' };
 const n = (v: number) => v.toLocaleString();
 const counts = (t: Totals) => `${n(t.input)} input, ${n(t.output)} output, ${n(t.cacheRead)} cache-read tokens (${n(total(t))} total)`;
 const calls = (t: Totals) => `${n(t.calls)} measured call${t.calls === 1 ? '' : 's'}${t.unavailable ? `, ${n(t.unavailable)} without reported counts` : ''}`;

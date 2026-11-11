@@ -69,7 +69,7 @@ try {
   await range('All time');
   assert.equal(await total(), '6,800 input, 1,450 output, 2,850 cache-read tokens (11,100 total)');
   const tasks = await ev(`[...${dialog}.querySelectorAll('table')].at(-1).innerText`);
-  for (const s of ['Chat replies', 'Suggestions', 'Context preparation', 'Diagrams', 'Videos']) assert.ok(tasks.includes(s), s);
+  for (const s of ['Chat replies', 'Suggestions', 'Context preparation', 'Visuals and diagrams', 'Videos']) assert.ok(tasks.includes(s), s);
   assert.match(tasks, /Videos\t—\t—\t—\t—\t0\t1/, 'unreported video attempt is listed, not estimated');
   assert.ok((await ev(`${dialog}.textContent`)).includes('Unknown model (saved before attribution)'));
   await b('find', 'role', 'radio', 'click', '--name', 'Cumulative', '--exact');
