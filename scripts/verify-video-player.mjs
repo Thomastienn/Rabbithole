@@ -10,10 +10,12 @@ import { fileURLToPath } from 'node:url';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { sandboxRender } from '../server/videos.mjs';
+import { fakeNarration } from '../test/fake-narration.mjs';
 
 const filename = fileURLToPath(import.meta.url);
 const task = { title: 'Peterson in the tournament tree', description: 'Two threads meet at each tree level.', intent: 'Animate two winners advancing.', excerpt: 'Peterson locks guard each node.' };
-const composition = `// Description: Two labelled boxes slide together into a final box over three seconds.
+const composition = `// Description: Two labelled boxes slide together into a final box over two seconds.
+// Narration: "Winners advance."
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
 export const durationInFrames = 90;
 export default function Video() {
@@ -36,7 +38,7 @@ if (process.argv[2] === '--serve') {
     },
   };
   const videoRender = async (workspace, output, signal, onProgress) => { await gate('render'); return sandboxRender(workspace, output, signal, onProgress); };
-  const app = createApp({ store, provider, dir, videoRender, auth: { status: () => ({ connected: true }) } });
+  const app = createApp({ store, provider, dir, videoRender, videoNarrate: fakeNarration, auth: { status: () => ({ connected: true }) } });
   process.on('message', message => {
     if (gates[message]) gates[message]();
     if (message === 'stop') { app.stop(); store.close(); process.exit(0); }
@@ -155,7 +157,7 @@ if (process.argv[2] === '--serve') {
     pass('only loading and ready are announced; production progress stays private', announced);
 
     const player = await ev(`(()=>{const c=document.querySelector(${JSON.stringify(card)}),v=c.querySelector('video'),list=c.closest('.astryx-chat-message');return {paused:v.paused,autoplay:v.autoplay,controls:v.controls,label:v.getAttribute('aria-label'),description:document.getElementById(v.getAttribute('aria-describedby')).textContent,ratio:Math.round(v.clientWidth/v.clientHeight*100)/100,fits:v.getBoundingClientRect().right<=list.getBoundingClientRect().right+1,duration:Math.round(v.duration),cardLive:c.getAttribute('aria-live'),status:c.querySelector('[role=status]').textContent}})()`);
-    assert.deepEqual(player, { paused: true, autoplay: false, controls: true, label: `Video: ${task.title}`, description: 'Two labelled boxes slide together into a final box over three seconds.', ratio: 1.78, fits: true, duration: 3, cardLive: 'off', status: `${task.title}: Video ready.` });
+    assert.deepEqual(player, { paused: true, autoplay: false, controls: true, label: `Video: ${task.title}`, description: 'Two labelled boxes slide together into a final box over two seconds.', ratio: 1.78, fits: true, duration: 2, cardLive: 'off', status: `${task.title}: Video ready.` });
     pass('ready card: paused native player within chat width, 16:9, with text explanation', player);
 
     // Tab reaches the player; native controls own its keys.
@@ -217,7 +219,7 @@ if (process.argv[2] === '--serve') {
     const reloaded = await ev(`(()=>{const v=document.querySelector(${JSON.stringify(card + ' video')});return {paused:v.paused,duration:Math.round(v.duration),media:performance.getEntriesByType('resource').filter(e=>e.name.endsWith('/media')).map(e=>e.responseStatus)}})()`);
     assert.deepEqual(calls(), callsBefore);
     assert.equal(reloaded.paused, true);
-    assert.equal(reloaded.duration, 3);
+    assert.equal(reloaded.duration, 2);
     pass('reload restores the ready video from the local file with no provider request', { ...reloaded, providerCalls: callsBefore });
     const appearances = [];
     for (const [mode, width] of [['dark', 1280], ['light', 1280], ['dark', 390], ['light', 390]]) {

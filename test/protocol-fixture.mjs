@@ -3,6 +3,7 @@ const send = obj => process.stdout.write(JSON.stringify(obj) + '\n');
 let threads = 0;
 const threadModels = new Map();
 const video = `// Description: A winner moves upward.
+// Narration: "Each round keeps its winner."
 // Script: PRIVATE_VIDEO_SCRIPT - each round keeps its winner.
 // Visual plan: PRIVATE_VIDEO_PLAN - move the winner toward the final.
 import { AbsoluteFill, useCurrentFrame } from 'remotion';

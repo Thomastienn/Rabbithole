@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-11-11T11:43:05.769Z",
+  "method": "Compare decoded Edge source MP3 and saved MP4 AAC at three positions (normalized waveform correlation, 1 ms resolution); compare embedded caption frame boundaries to returned Edge word timestamps. No ASR/model call.",
+  "audio": [
+    {
+      "atSeconds": 12,
+      "renderedAudioDelayMs": 0,
+      "correlation": 0.9999572822268781
+    },
+    {
+      "atSeconds": 40,
+      "renderedAudioDelayMs": 0,
+      "correlation": 0.9999508526575004
+    },
+    {
+      "atSeconds": 70,
+      "renderedAudioDelayMs": 0,
+      "correlation": 0.9999507763086105
+    }
+  ],
+  "captionCount": 33,
+  "maxCaptionBoundaryRoundingMs": 33.333333333333336,
+  "listening": "24-second actual MP4 audio excerpt from 13s provided through audio tool for listening review; binary-search narration.",
+  "pass": true,
+  "finalRenderChecked": true
+}

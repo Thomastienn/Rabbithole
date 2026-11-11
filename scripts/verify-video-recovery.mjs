@@ -3,16 +3,18 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile, fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { sandboxRender } from '../server/videos.mjs';
+import { fakeNarration } from '../test/fake-narration.mjs';
 
 const filename = fileURLToPath(import.meta.url);
 const composition = `// Description: A box labelled Winner rises to the top of the tree.
+// Narration: "Winners advance."
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
 export const durationInFrames = 30;
 export default function Video() {
@@ -23,19 +25,30 @@ export default function Video() {
 if (process.argv[2] === '--serve') {
   const dir = process.argv[3], store = new Store(join(dir, 'trees.sqlite'));
   const log = kind => appendFileSync(join(dir, 'calls.jsonl'), JSON.stringify({ kind }) + '\n');
-  let release = () => {};
+  const gates = new Map(), released = new Set();
   const provider = {
     models: async () => [{ model: 'fixture-model', label: 'Fixture model', isDefault: true }],
     generate: async (tree, text, emit) => { log(tree.instructions?.includes('Remotion') ? 'worker' : 'tutor'); emit({ type: 'item', item: 'a', text: composition }); emit({ type: 'status', status: 'completed' }); },
   };
   // Each render waits for the test, unless its job is canceled first.
   const videoRender = async (workspace, output, signal, onProgress) => {
-    await new Promise((resolve, reject) => { release = resolve; signal.addEventListener('abort', () => reject(signal.reason), { once: true }); });
+    const attempt = basename(workspace);
+    try {
+      await new Promise((resolve, reject) => {
+        gates.set(attempt, resolve);
+        if (released.has(attempt)) resolve();
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+    } finally { gates.delete(attempt); released.delete(attempt); }
     return sandboxRender(workspace, output, signal, onProgress);
   };
-  const app = createApp({ store, provider, dir, videoRender, auth: { status: () => ({ connected: true }) } });
+  const app = createApp({ store, provider, dir, videoRender, videoNarrate: fakeNarration, auth: { status: () => ({ connected: true }) } });
   process.on('message', message => {
-    if (message === 'render') release();
+    if (message === 'render') {
+      // Narration can still be staging when the UI says Creating; release only the current attempt.
+      const attempt = store.db.prepare("SELECT attempt FROM artifacts WHERE kind='video' AND status='pending' LIMIT 1").get()?.attempt;
+      if (attempt) { released.add(attempt); gates.get(attempt)?.(); }
+    }
     if (message === 'stop') { app.stop(); store.close(); process.exit(0); }
   });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
@@ -117,7 +130,7 @@ if (process.argv[2] === '--serve') {
     const ready = await ev(`(()=>{const c=${card(stopped.id)},v=c.querySelector('video');return {paused:v.paused,autoplay:v.autoplay,duration:Math.round(v.duration),description:c.querySelector('p, [id$=-description]')?.textContent,messages:document.querySelectorAll('.focused-chat .astryx-chat-message').length,focusInCard:c.contains(document.activeElement)}})()`);
     assert.equal(ready.paused, true);
     assert.equal(ready.autoplay, false);
-    assert.equal(ready.duration, 1);
+    assert.equal(ready.duration, 2);
     assert.equal(ready.messages, messages);
     assert.equal(ready.focusInCard, true);
     assert.equal(await ev(`document.activeElement.textContent.trim()`), 'Open large');

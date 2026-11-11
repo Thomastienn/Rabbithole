@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { fakeNarration } from './fake-narration.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -165,7 +166,7 @@ test('video worker attempts record their own reported usage, including failed an
   const dir = mkdtempSync(join(tmpdir(), 'tt-usage-video-'));
   const store = new Store(join(dir, 'trees.sqlite'));
   const task = { title: 'Winners', description: 'Two winners meet.', intent: 'Animate winners.', excerpt: 'A and B advance.' };
-  const source = "// Description: Two boxes meet.\nimport { AbsoluteFill } from 'remotion';\nexport const durationInFrames = 30;\nexport default () => <AbsoluteFill>A + B</AbsoluteFill>;";
+  const source = "// Description: Two boxes meet.\n// Narration: \"Winners advance.\"\nimport { AbsoluteFill } from 'remotion';\nexport const durationInFrames = 30;\nexport default () => <AbsoluteFill>A + B</AbsoluteFill>;";
   const done = (emit, text) => { emit({ type: 'item', item: 'a', text }); emit({ type: 'status', status: 'completed' }); };
   let attempt = 0, renders = 0, holding;
   const held = new Promise(r => { holding = r; });
@@ -177,8 +178,8 @@ test('video worker attempts record their own reported usage, including failed an
     if (text.includes('hold')) { holding(); await new Promise(r => signal.addEventListener('abort', r, { once: true })); return emit({ type: 'status', status: 'interrupted' }); }
     done(emit, source);
   } };
-  const render = async (workspace, output) => { renders++; writeFileSync(output, Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(4096, 1)])); return { durationInFrames: 30, fps: 30 }; };
-  const app = createApp({ store, provider, dir, videoRender: render, auth: { status: () => ({ connected: true }) } });
+  const render = async (workspace, output) => { renders++; writeFileSync(output, Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(4096, 1)])); return { durationInFrames: 60, fps: 30 }; };
+  const app = createApp({ store, provider, dir, videoRender: render, videoNarrate: fakeNarration, auth: { status: () => ({ connected: true }) } });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   t.after(() => { app.stop(); store.close(); });
   const origin = `http://127.0.0.1:${app.server.address().port}`, { csrf } = await (await fetch(origin + '/api/state')).json();

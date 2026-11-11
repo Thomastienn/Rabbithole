@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-11T11:28:31.842Z",
+  "checkedAt": "2026-11-11T11:51:25.673Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion renders, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
@@ -62,7 +62,7 @@
       "details": {
         "autoplay": false,
         "description": "A box labelled Winner rises to the top of the tree.",
-        "duration": 1,
+        "duration": 2,
         "focusInCard": true,
         "messages": 2,
         "paused": true

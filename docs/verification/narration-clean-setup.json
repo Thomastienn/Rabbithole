@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-11-11T11:46:10.735Z",
+  "checkout": "/tmp/tt-narration-clean-9oui0d",
+  "command": "node scripts/start.mjs --port 0",
+  "initialState": "copied source and locked manifests only; no node_modules, dist, browser, Python or narration configuration",
+  "durationMs": 29566,
+  "pass": true,
+  "exit": 0,
+  "notes": "Existing supported Linux OS includes bubblewrap and Chromium system libraries; first start installed dependencies and downloaded browser. No model inference.",
+  "rendererSmoke": {
+    "command": "node --test --test-name-pattern='one real short sandboxed|render sandbox' test/videos.test.mjs",
+    "cwd": "/tmp/tt-narration-clean-9oui0d",
+    "pass": true,
+    "tests": 2,
+    "note": "Actual sandbox restrictions and short audio/subtitle render passed with fresh installed dependencies, bundled ffprobe/ffmpeg and downloaded browser; controlled sine-tone narration, not native Edge evidence."
+  }
+}

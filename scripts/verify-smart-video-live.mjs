@@ -57,7 +57,7 @@ try {
   assert.equal(video?.status, 'ready', video?.error ?? 'No ready video.');
   assert.equal(calls, 1, 'one native inference call; no repair or retry');
   const source = readFileSync(join(dir, 'video-work', video.id, video.attempt, 'Video.tsx'), 'utf8');
-  assert.match(source, /script/i); assert.match(source, /plan/i);
+  assert.match(source, /Narration:/); assert.match(source, /plan/i);
   const visible = stream + await (await get(`/api/trees/${tree.id}`)).text() + JSON.stringify(tutorContext(store.tree(tree.id)));
   assert.ok(!visible.includes(source) && !visible.includes('video-work') && !visible.includes(video.attempt));
   const file = mediaPath(dir, video.id);

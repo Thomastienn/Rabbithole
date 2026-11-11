@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { fakeNarration } from './fake-narration.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -253,9 +254,9 @@ test('delete stops an active video render and removes its partial files without 
   const renders = [];
   const directive = '\n```treetutor-video\n' + JSON.stringify({ title: 'Video', description: 'Description', intent: 'Show roots', excerpt: 'Roots' }) + '\n```';
   const env = await fixture({ generate: async (tree, text, emit) => {
-    emit({ type: 'item', item: 'a', text: tree.instructions?.includes('Remotion') ? '// Description: Roots.\nexport default function Video() { return null; }' : 'Video follows.' + directive });
+    emit({ type: 'item', item: 'a', text: tree.instructions?.includes('Remotion') ? '// Description: Roots.\n// Narration: "Roots grow."\nexport default function Video() { return null; }' : 'Video follows.' + directive });
     emit({ type: 'status', status: 'completed' });
-  } }, { videoRender: (workspace, output, signal) => new Promise((resolve, reject) => {
+  } }, { videoNarrate: fakeNarration, videoRender: (workspace, output, signal) => new Promise((resolve, reject) => {
     writeFileSync(output, Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(4096)]));
     renders.push({ workspace, output, signal, resolve });
     signal.addEventListener('abort', () => reject(signal.reason), { once: true });
@@ -271,7 +272,7 @@ test('delete stops an active video render and removes its partial files without 
     assert.equal(existsSync(join(env.dir, 'video-work', deleted.id)), false);
     assert.equal(existsSync(mediaPath(env.dir, deleted.id)), false);
     assert.equal(keptRender.signal.aborted, false);
-    keptRender.resolve({ durationInFrames: 30, fps: 30 });
+    keptRender.resolve({ durationInFrames: 60, fps: 30 });
     await until(() => env.store.artifact(env.sibling.id, kept.id).status === 'ready');
     assert.ok(existsSync(mediaPath(env.dir, kept.id)));
   } finally { env.close(); }

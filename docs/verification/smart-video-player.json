@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-11T11:23:49.865Z",
+  "checkedAt": "2026-11-11T11:47:01.945Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
@@ -48,7 +48,7 @@
       ]
     },
     {
-      "name": "learner chats in another conversation; map row reports rendering; no card appears there",
+      "name": "learner chats in another conversation; map row reports creating; no card appears there",
       "pass": true,
       "details": true
     },
@@ -106,8 +106,8 @@
         "autoplay": false,
         "cardLive": "off",
         "controls": true,
-        "description": "Two labelled boxes slide together into a final box over three seconds.",
-        "duration": 3,
+        "description": "Two labelled boxes slide together into a final box over two seconds.",
+        "duration": 2,
         "fits": true,
         "label": "Video: Peterson in the tournament tree",
         "paused": true,
@@ -150,8 +150,7 @@
             "key": "Escape",
             "prevented": false
           }
-        ],
-        "prevents": []
+        ]
       }
     },
     {
@@ -174,8 +173,9 @@
       "name": "reload restores the ready video from the local file with no provider request",
       "pass": true,
       "details": {
-        "duration": 3,
+        "duration": 2,
         "media": [
+          0,
           206
         ],
         "paused": true,

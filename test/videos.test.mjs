@@ -1,10 +1,12 @@
 import { test } from 'node:test';
+import { fakeNarration } from './fake-narration.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, symlinkSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { RenderInternals } from '@remotion/renderer';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { tutorContext } from '../server/diagrams.mjs';
@@ -17,6 +19,7 @@ import { fakeOpenAI, streamReply } from './fake-openai.mjs';
 const task = { title: 'Winners advance', description: 'Two winners meet in the final.', intent: 'Animate two winners advancing.', excerpt: 'A and B advance to the final.' };
 const directive = '\n```treetutor-video\n' + JSON.stringify(task) + '\n```';
 const composition = `// Description: Two labelled boxes slide together into a final box.
+// Narration: "Winners advance."
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
 // PRIVATE_SOURCE_MARKER
 export const durationInFrames = 30;
@@ -33,7 +36,7 @@ async function open(provider, options = {}) {
   provider = { models: async () => [{ model: 'fixture-model', isDefault: true }], ...provider };
   const dir = mkdtempSync(join(tmpdir(), 'tt-videos-'));
   const store = new Store(join(dir, 'trees.sqlite'));
-  const app = createApp({ store, provider, auth: { status: () => ({ connected: true }) }, dir, videoRender: fakeRender, ...options });
+  const app = createApp({ store, provider, auth: { status: () => ({ connected: true }) }, dir, videoRender: fakeRender, videoNarrate: fakeNarration, ...options });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`;
   const { csrf } = await (await fetch(`${origin}/api/state`)).json();
@@ -102,7 +105,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.equal(media.headers.get('content-type'), 'video/mp4');
     assert.deepEqual(Buffer.from(await media.arrayBuffer()), mp4);
     assert.equal((await env.get(`/api/trees/${parent.id}/artifacts/${ready.id}/media`)).status, 404);
-    assert.deepEqual(readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt)).sort(), ['Video.tsx', 'index.tsx']);
+    assert.deepEqual(readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt)).sort(), ['Video.tsx', 'index.tsx', 'narration.json', 'public']);
     assert.ok(readFileSync(join(env.dir, 'video-work', ready.id, ready.attempt, 'Video.tsx'), 'utf8').includes('PRIVATE_SOURCE_MARKER'));
 
     // Tutor history, provider-switch history and branch snapshots carry only id, kind, title and description.
@@ -233,7 +236,7 @@ async function job(render, mutate) {
   mutate?.(store, artifact, dir);
   const provider = { generate: async (t, text, emit) => complete(emit, composition) };
   const phases = [];
-  const result = await generateVideo({ provider, selection: {}, store, dir, artifact, signal: new AbortController().signal, render, onPhase: (...p) => phases.push(p) }).then(() => null, error => error.message);
+  const result = await generateVideo({ provider, selection: {}, store, dir, artifact, signal: new AbortController().signal, render, narrate: fakeNarration, onPhase: (...p) => phases.push(p) }).then(() => null, error => error.message);
   assert.ok(!existsSync(join(dir, 'video-work', artifact.id, artifact.attempt, 'out'))); // no leftover unpublished output
   return { result, row: store.artifact(tree.id, artifact.id), published: existsSync(mediaPath(dir, artifact.id)), dir, phases };
 }
@@ -414,6 +417,9 @@ test('render sandbox hides home and app data, blocks network and confines writes
   const dir = mkdtempSync(join(tmpdir(), 'tt-sandbox-'));
   const workspace = join(dir, 'video-work', 'artifact', 'attempt');
   mkdirSync(workspace, { recursive: true });
+  mkdirSync(join(workspace, 'public'));
+  writeFileSync(join(workspace, 'public', 'narration.mp3'), 'OWNED AUDIO');
+  writeFileSync(join(workspace, 'narration.json'), '{}');
   writeFileSync(join(dir, 'trees.sqlite'), 'LEARNING DATA');
   const probe = `const fs = require('fs'); const r = {};
     const tryIt = (k, f) => { try { f(); r[k] = 'allowed'; } catch { r[k] = 'denied'; } };
@@ -422,11 +428,14 @@ test('render sandbox hides home and app data, blocks network and confines writes
     tryIt('repo', () => fs.readFileSync(${JSON.stringify(join(repo, 'package.json'))}));
     tryIt('writeOutside', () => fs.writeFileSync('/usr/x', ''));
     tryIt('writeWorkspace', () => fs.writeFileSync('ok', ''));
+    r.audio = fs.readFileSync('public/narration.mp3', 'utf8');
+    tryIt('mutateAudio', () => fs.writeFileSync('public/narration.mp3', 'changed'));
+    tryIt('mutateTiming', () => fs.writeFileSync('narration.json', 'changed'));
     r.env = Object.keys(process.env).sort().join(',');
     require('net').connect(443, '1.1.1.1').on('connect', () => { r.network = 'allowed'; done(); }).on('error', () => { r.network = 'denied'; done(); });
     function done() { console.log(JSON.stringify(r)); process.exit(0); }`;
   const run = spawnSync('bwrap', [...SANDBOX(workspace), process.execPath, '-e', probe], { encoding: 'utf8', env: {} });
-  assert.deepEqual(JSON.parse(run.stdout), { appData: 'denied', home: 'denied', repo: 'denied', writeOutside: 'denied', writeWorkspace: 'allowed', env: 'HOME,PATH,PWD,TMPDIR', network: 'denied' });
+  assert.deepEqual(JSON.parse(run.stdout), { appData: 'denied', home: 'denied', repo: 'denied', writeOutside: 'denied', writeWorkspace: 'allowed', audio: 'OWNED AUDIO', mutateAudio: 'denied', mutateTiming: 'denied', env: 'HOME,PATH,PWD,TMPDIR', network: 'denied' });
 });
 
 test('one real short sandboxed Remotion render publishes a ready MP4', { skip: !sandboxed && 'bwrap or Remotion browser missing', timeout: 240000 }, async () => {
@@ -437,7 +446,7 @@ test('one real short sandboxed Remotion render publishes a ready MP4', { skip: !
   assert.ok(phases.length > 2 && phases.every(([phase]) => phase === 'rendering'));
   assert.deepEqual(phases.at(-1), ['rendering', 1]);
   assert.equal(row.status, 'ready');
-  assert.equal(row.duration, 1);
+  assert.equal(row.duration, 2);
   assert.equal(published, true);
   assert.equal(readFileSync(mediaPath(dir, row.id)).toString('latin1', 4, 8), 'ftyp');
 });
@@ -445,7 +454,7 @@ test('one real short sandboxed Remotion render publishes a ready MP4', { skip: !
 test('cancel stops only its own job, late output cannot publish, and retry reuses the frozen input without a new message', async () => {
   const renders = [], workers = [];
   // Each render waits until the test releases it and ignores cancellation, like output arriving late.
-  const videoRender = (workspace, output) => new Promise(done => renders.push(() => { writeFileSync(output, mp4); done({ durationInFrames: 30, fps: 30 }); }));
+  const videoRender = (workspace, output) => new Promise(done => renders.push(() => { writeFileSync(output, mp4); done({ durationInFrames: 60, fps: 30 }); }));
   const provider = { generate: async (tree, text, emit) => {
     if (!tree.id) { workers.push(text); return complete(emit, composition); }
     complete(emit, /video/.test(text) ? 'Sure.' + directive : 'Answer in another chat.');
@@ -554,7 +563,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
 
   const calls = [];
   const store = new Store(path);
-  const app = createApp({ store, provider: { models: async () => [{ model: 'fixture-model', isDefault: true }], generate: async (...args) => { calls.push(args); complete(args[2], composition); } }, auth: { status: () => ({ connected: true }) }, dir, videoRender: fakeRender });
+  const app = createApp({ store, provider: { models: async () => [{ model: 'fixture-model', isDefault: true }], generate: async (...args) => { calls.push(args); complete(args[2], composition); } }, auth: { status: () => ({ connected: true }) }, dir, videoRender: fakeRender, videoNarrate: fakeNarration });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`;
   try {
@@ -595,4 +604,89 @@ test('stopping the app during a job marks it interrupted before exit and keeps i
   const reopened = new Store(join(env.dir, 'trees.sqlite'));
   assert.equal(reopened.tree(tree.id).artifacts[0].status, 'interrupted');
   reopened.close();
+});
+
+test('narration stages measured audio, returned timings and subtitles without exposing production or adding model calls', async t => {
+  let calls = 0, speech = 0, captured;
+  const env = await open({ generate: async (tree, text, emit) => {
+    if (!tree.id) calls++;
+    complete(emit, tree.id ? 'Watch.' + directive : composition);
+  } }, { videoNarrate: async (script, signal) => {
+    speech++; assert.equal(script, 'Winners advance.'); assert.equal(signal.aborted, false);
+    return { ...await fakeNarration(), duration: 999 }; // Ignore the client's estimated duration.
+  }, videoRender: async (workspace, output) => {
+    captured = JSON.parse(readFileSync(join(workspace, 'narration.json')));
+    assert.equal(captured.durationInFrames, 60);
+    assert.equal(captured.sentences[0].endFrame, 54);
+    assert.match(readFileSync(join(workspace, 'index.tsx'), 'utf8'), /durationInFrames=\{timing.durationInFrames\}/);
+    return fakeRender(workspace, output);
+  } });
+  t.after(async () => { await env.app.stop(); env.store.close(); });
+  const tree = env.store.create('Narration');
+  const stream = await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a narrated video.' })).text();
+  const ready = await until(() => env.store.tree(tree.id).artifacts.find(a => a.status === 'ready'));
+  const workspace = join(env.dir, 'video-work', ready.id, ready.attempt);
+  assert.deepEqual(JSON.parse(readFileSync(join(workspace, 'public', 'timing.json'))).captions, captured.captions);
+  assert.match(readFileSync(join(workspace, 'public', 'captions.vtt'), 'utf8'), /00:00:00.000 --> 00:00:01.800\nWinners advance\./);
+  assert.equal(readFileSync(join(workspace, 'public', 'narration.mp3')).length, (await fakeNarration()).audio.length);
+  assert.ok(!stream.includes('Narration:'));
+  const publicData = await (await env.get(`/api/trees/${tree.id}`)).text();
+  for (const secret of ['Narration:', 'startFrame', 'sentenceBoundaries', 'narration.mp3', ready.attempt]) assert.ok(!publicData.includes(secret));
+  assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${ready.id}/media`)).status, 200);
+  assert.equal(calls, 1); assert.equal(speech, 1);
+});
+
+test('TTS failure and invalid returned timing stay final until explicit Retry; cancel rejects late speech and preserves attempt ownership', async t => {
+  let calls = 0, speech = 0, renders = 0, release, mode = 'failure';
+  const env = await open({ generate: async (tree, text, emit) => { if (!tree.id) calls++; complete(emit, tree.id ? 'Watch.' + directive : composition); } }, {
+    videoNarrate: async () => {
+      speech++;
+      if (mode === 'failure') throw new Error('Video narration failed.');
+      if (mode === 'late') return new Promise(r => { release = async () => r(await fakeNarration()); });
+      if (mode === 'invalid') return { ...await fakeNarration(), wordBoundaries: [{ offset: -1, duration: 1, text: 'bad' }] };
+      return fakeNarration();
+    }, videoRender: async (...args) => { renders++; return fakeRender(...args); },
+  });
+  t.after(async () => { await env.app.stop(); env.store.close(); });
+  const tree = env.store.create('Failure');
+  await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
+  const failed = await until(() => env.store.tree(tree.id).artifacts.find(a => a.status === 'failed'));
+  await new Promise(r => setTimeout(r, 80));
+  assert.equal(speech, 1); assert.equal(calls, 1); assert.equal(renders, 0);
+  mode = 'invalid';
+  await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/retry`);
+  await until(() => env.store.artifact(tree.id, failed.id).status === 'failed');
+  assert.equal(speech, 2); assert.equal(renders, 0);
+  mode = 'late';
+  await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/retry`);
+  await until(() => release);
+  const old = env.store.artifact(tree.id, failed.id);
+  await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/cancel`);
+  assert.equal(env.store.artifact(tree.id, failed.id).status, 'canceled');
+  mode = 'ready';
+  await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/retry`);
+  const ready = await until(() => { const a = env.store.artifact(tree.id, failed.id); return a.status === 'ready' && a; });
+  await release(); await new Promise(r => setTimeout(r, 50));
+  assert.notEqual(ready.attempt, old.attempt); assert.equal(ready.input, old.input);
+  assert.equal(env.store.artifact(tree.id, failed.id).attempt, ready.attempt);
+  assert.equal(calls, 4); assert.equal(speech, 4); assert.equal(renders, 1);
+  assert.equal(existsSync(join(env.dir, 'video-work', failed.id, old.attempt, 'public')), false);
+});
+
+test('duration follows measured narration beyond two minutes rather than the generated source duration export', async t => {
+  const ffmpeg = RenderInternals.getExecutablePath({ type: 'ffmpeg', indent: false, logLevel: 'error', binariesDirectory: null });
+  const tone = execFileSync(ffmpeg, ['-v', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono', '-t', '125', '-b:a', '48k', '-f', 'mp3', 'pipe:1'], { maxBuffer: 1024 * 1024 });
+  const env = await open({ generate: async (tree, text, emit) => complete(emit, tree.id ? 'Watch.' + directive : composition) }, {
+    videoNarrate: async () => ({ ...await fakeNarration(), audio: tone }),
+    videoRender: async (workspace, output) => {
+      const timing = JSON.parse(readFileSync(join(workspace, 'narration.json')));
+      assert.ok(timing.durationInFrames > 120 * 30);
+      writeFileSync(output, mp4); return { durationInFrames: timing.durationInFrames, fps: 30 };
+    },
+  });
+  t.after(async () => { await env.app.stop(); env.store.close(); });
+  const tree = env.store.create('Longer');
+  await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a longer video, about two minutes ten seconds.' })).text();
+  const ready = await until(() => env.store.tree(tree.id).artifacts.find(a => a.status === 'ready'));
+  assert.ok(ready.duration > 120);
 });
