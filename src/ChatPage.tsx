@@ -492,7 +492,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     return () => clearInterval(timer);
   }, [activeKey]);
 
-  // Cancel and Retry update only their own card; refreshing state resumes polling for a retried job.
+  // Cancel and Retry (videos and diagrams) update only their own card; refreshing state resumes polling for a retried job.
   async function videoAction(id: string, artifactId: string, action: 'cancel' | 'retry') {
     setError('');
     try {
@@ -816,7 +816,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
                   <HStack gap={1} vAlign="center"><TextInput label="Question about this passage" isLabelHidden placeholder="Ask about this passage" aria-describedby="branch-passage" size="sm" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus containerClassName="branch-question" /><IconButton className="branch-send" label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" icon={<ArrowUpIcon />} variant="primary" size="sm" isLoading={branching} isDisabled={branching || !branch.question.trim() || active} /></HStack>
                 </VStack></form> } : undefined} onOpenChild={id => void openConversation(id)} selecting={selectingMessage === message.id} openSelection={() => setSelectingMessage(message.id)} closeSelection={() => setSelectingMessage(undefined)} onBranch={(anchor, origin) => { branchOrigin.current = origin; setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost" className="question-bubble"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text></ChatMessageBubble>}
                 
-                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(a => a.kind !== 'visual' || a.position == null).map((artifact, _, all) => artifact.kind === 'visual' ? <VisualFrame key={artifact.id} artifact={artifact} /> : artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} steps={all.filter(a => a.kind === 'mermaid')} />)}
+                {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(a => a.kind !== 'visual' || a.position == null).map((artifact, _, all) => artifact.kind === 'visual' ? <VisualFrame key={artifact.id} artifact={artifact} /> : artifact.kind === 'video' ? <VideoCard key={artifact.id} artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} steps={all.filter(a => a.kind === 'mermaid')} onRetry={() => videoAction(tree.id, artifact.id, 'retry')} />)}
                 {!overview && message.role === 'assistant' && message.status === 'completed' && suggestions?.status === 'failed' && <Text type="supporting" color="secondary">Suggestions unavailable</Text>}
                 {message.status !== 'completed' && <Text type="supporting" role="status" className="reply-status" data-status={message.status}>{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>}
               </ChatMessage>; })}

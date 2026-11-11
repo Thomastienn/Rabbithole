@@ -4,7 +4,7 @@ import { readFile, stat, lstat } from 'node:fs/promises';
 import { createReadStream, accessSync, constants, existsSync, renameSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, extname, join } from 'node:path';
-import { diagramReply, generateDiagram, tutorContext } from './diagrams.mjs';
+import { diagramReply, generateDiagram, LIMITS, tutorContext } from './diagrams.mjs';
 import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
 import { desktop as systemDesktop } from './desktop.mjs';
 import { anchored, knownConcepts, nameTokens, quickDefault, suggest } from './suggestions.mjs';
@@ -58,9 +58,10 @@ export function createApp({ store, auth, provider, providers = { codex: provider
   }
   // Ready videos whose file is missing or unreadable are reported unavailable, so the learner can regenerate them.
   const readable = path => { try { accessSync(path, constants.R_OK); return true; } catch { return false; } };
+  // Frozen inputs stay server-side for every kind; only Retry reads them.
   const live = artifact => {
-    if (artifact.kind !== 'video') return artifact;
     const { input, attempt, ...a } = artifact;
+    if (a.kind !== 'video') return a;
     return a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
   };
   // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
@@ -83,6 +84,20 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       // A job stopped with the app stays pending, so the next start marks it interrupted.
       .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishVideo(job.conversation, job.id, job.attempt, {}, error.message); })
       .finally(() => { videoJobs.delete(running); if (videos.get(job.id) === running) videos.delete(job.id); });
+  };
+  // An explicit diagram Retry runs detached like a video job (tracked in the same maps for polling, stop and delete) from its stored task.
+  const startDiagram = artifact => {
+    const running = { controller: new AbortController(), conversation: artifact.conversation, artifact: artifact.id };
+    videos.set(artifact.id, running);
+    videoJobs.add(running);
+    running.done = (async () => {
+      const tree = store.tree(artifact.conversation), selection = { provider: tree.provider, model: tree.model };
+      const source = await generateDiagram(metered(pick(tree), 'diagram', `${artifact.id}:${randomUUID()}`, selection), selection, JSON.parse(artifact.input), running.controller.signal, diagramTimeout);
+      store.finishArtifact(artifact.conversation, artifact.id, source);
+    })()
+      // Stopping leaves it pending, so startup recovery marks it failed; it never retries by itself.
+      .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishArtifact(artifact.conversation, artifact.id, null, error.message); })
+      .finally(() => { videoJobs.delete(running); if (videos.get(artifact.id) === running) videos.delete(artifact.id); });
   };
   // Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
   const suggesting = new Map();
@@ -271,6 +286,13 @@ export function createApp({ store, auth, provider, providers = { codex: provider
         const jobMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry)$/);
         if (jobMatch) {
           const [, id, artifactId, action] = jobMatch, tree = store.tree(id), artifact = store.artifact(id, artifactId);
+          if (tree && artifact?.kind === 'mermaid' && action === 'retry') {
+            // Retry reruns the worker from the stored request; diagrams saved before stored requests cannot.
+            const job = artifact.status === 'failed' && !active.has(id) && !videos.has(artifactId) && store.retryDiagram(id, artifactId);
+            if (!job) return json(res, 409, { error: artifact.status === 'failed' && !artifact.input ? 'This diagram was saved without its request. Ask the tutor for it again.' : 'This diagram does not need to be regenerated.' });
+            startDiagram(job);
+            return json(res, 200, live(job));
+          }
           if (!tree || artifact?.kind !== 'video') return json(res, 404, { error: 'Video not found in this conversation.' });
           if (action === 'cancel') {
             if (artifact.status !== 'pending') return json(res, 409, { error: 'This video is no longer generating.' });
@@ -414,16 +436,36 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
           const items = new Map();
-          let text = '', status = 'streaming', finished = false, diagrams = [], usage = null, called = false;
+          let text = '', status = 'streaming', finished = false, artifacts, usage = null, called = false;
           const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': keepalive\n\n'); }, 15000);
+          // Persist once, including on provider failure or Stop; only a completed reply may start workers.
+          const prepareArtifacts = () => {
+            if (artifacts) return;
+            artifacts = [];
+            if (!store.tree(id)) return; // Deletion already removed this reply and its requests.
+            const output = diagramReply([...items.values()].join('\n\n'), true);
+            artifacts = (output.requests ?? []).map(request => {
+              const label = request.kind === 'video' ? 'Video' : 'Diagram';
+              const task = request.task ?? { title: label, description: `The tutor’s ${label.toLowerCase()} request could not be read.`, intent: body.text.trim().slice(0, LIMITS.intent), excerpt: '', ...request.partial };
+              const input = request.kind === 'video' ? { selection: smart().resolved, request: body.text, intent: task.intent, excerpt: task.excerpt,
+                inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null,
+                sources: { conversation: id, requestMessage: user, replyMessage: reply, ...(tree.branch && { parentConversation: tree.branch.parent, parentMessage: tree.branch.messageId }) } } : task;
+              let artifact = store.pendingArtifact(id, reply, task.title, task.description, request.kind, JSON.stringify(input), request.position);
+              const invalid = request.error ?? (status === 'completed' ? null : 'Tutor reply did not complete.') ?? (request.kind === 'video' && !asksForVideo(body.text) ? 'Video request could not be read: the learner did not ask for a video. Retry to create it.' : null);
+              if (invalid) artifact = request.kind === 'video' ? store.finishVideo(id, artifact.id, artifact.attempt, {}, invalid) : store.finishArtifact(id, artifact.id, null, invalid);
+              send({ type: 'artifact', artifact: live(artifact) });
+              return artifact;
+            });
+          };
           const finish = () => {
             if (finished) return;
+            prepareArtifacts();
             finished = true;
             clearInterval(heartbeat);
             controller.signal.removeEventListener('abort', interrupt);
             const output = diagramReply([...items.values()].join('\n\n'), status === 'completed');
             if (output.text !== text) { text = output.text; send({ type: 'text', text }); }
-            for (const artifact of diagrams) if (store.artifact(id, artifact.id)?.status === 'pending') store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
+            for (const artifact of artifacts) if (artifact.kind === 'mermaid' && store.artifact(id, artifact.id)?.status === 'pending') store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
             store.update(reply, text, status);
             // Provider-reported counts only; failed, partial and canceled replies keep no usage.
             if (usage && !['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) usage = null;
@@ -465,39 +507,24 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             if (status === 'streaming') status = controller.signal.aborted ? 'interrupted' : 'completed';
             if (!finished) {
               const output = diagramReply([...items.values()].join('\n\n'), true);
-              if (output.requested && output.kind === 'video') {
+              if (output.requested) {
                 text = output.text;
                 store.update(reply, text, status);
                 store.forgetThread(id);
-                // Only a learner's explicit video request starts a job; it runs on after the reply, independent of this stream.
-                if (!output.error && status === 'completed' && asksForVideo(body.text)) {
-                  const input = JSON.stringify({ selection: smart().resolved, request: body.text, intent: output.task.intent, excerpt: output.task.excerpt,
-                    inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null,
-                    sources: { conversation: id, requestMessage: user, replyMessage: reply, ...(tree.branch && { parentConversation: tree.branch.parent, parentMessage: tree.branch.messageId }) } });
-                  const job = store.pendingArtifact(id, reply, output.task.title, output.task.description, 'video', input, output.position);
-                  send({ type: 'artifact', artifact: live(job) });
-                  startVideo(job);
-                }
-              } else if (output.requested) {
-                text = output.text;
-                store.update(reply, text, status);
-                store.forgetThread(id);
-                // Every step card appears pending at once; workers then run one at a time in reply order.
-                diagrams = output.diagrams.map(({ task, position }) => store.pendingArtifact(id, reply, task?.title ?? 'Diagram', task?.description ?? 'Diagram request could not be processed.', 'mermaid', null, position));
-                for (const artifact of diagrams) send({ type: 'artifact', artifact });
-                for (const [i, { task, error: invalid }] of output.diagrams.entries()) {
+                prepareArtifacts();
+                // Every card appears at once; diagram workers run in reply order, videos detach from the stream.
+                for (let artifact of artifacts) {
                   if (finished) break;
-                  let artifact = diagrams[i];
+                  if (artifact.status !== 'pending') continue;
+                  if (artifact.kind === 'video') { startVideo(artifact); continue; }
                   try {
-                    if (invalid) throw new Error(invalid);
-                    if (status !== 'completed') throw new Error('Tutor reply did not complete.');
                     const selection = { provider: tree.provider, model: store.tree(id).model };
-                    const source = await generateDiagram(metered(pick(tree), 'diagram', artifact.id, selection), selection, task, controller.signal, diagramTimeout);
+                    const source = await generateDiagram(metered(pick(tree), 'diagram', artifact.id, selection), selection, JSON.parse(artifact.input), controller.signal, diagramTimeout);
                     if (!finished) artifact = store.finishArtifact(id, artifact.id, source);
                   } catch (error) {
                     if (!finished) artifact = store.finishArtifact(id, artifact.id, null, error.message);
                   }
-                  if (!finished) send({ type: 'artifact', artifact });
+                  if (!finished) send({ type: 'artifact', artifact: live(artifact) });
                 }
               }
             }

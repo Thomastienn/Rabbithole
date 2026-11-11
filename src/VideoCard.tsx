@@ -9,12 +9,16 @@ import type { Artifact } from './artifacts';
 const STATUS = { pending: 'Creating video…', ready: 'Video ready.', failed: 'Video could not be generated. Retry, or check Smart in Settings.', canceled: 'Video generation canceled.',
   interrupted: 'Video generation interrupted when TreeTutor stopped.', unavailable: 'Video unavailable: its saved file is missing or unreadable.' };
 
+// Job errors stay private; only the server-authored reason a request was rejected is shown.
+const REQUEST_REASON = /^(?:Video request could not be read: |Tutor reply did not complete\.)/;
+
 // Only the status line announces; production stages and source stay private.
 // Library cards pass their own media route and no onAction: their source conversation may be gone, so nothing can regenerate there.
-export default function VideoCard({ artifact, onAction, media = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/media`, actions }: { artifact: Pick<Artifact, 'id' | 'title' | 'description' | 'status' | 'available' | 'conversation'>; onAction?: (action: 'cancel' | 'retry') => Promise<void>; media?: string; actions?: ReactNode }) {
+export default function VideoCard({ artifact, onAction, media = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/media`, actions }: { artifact: Pick<Artifact, 'id' | 'title' | 'description' | 'status' | 'available' | 'conversation'> & { error?: string | null }; onAction?: (action: 'cancel' | 'retry') => Promise<void>; media?: string; actions?: ReactNode }) {
   const id = useId();
   const [enlarged, setEnlarged] = useState(false);
   const state = artifact.status === 'ready' && artifact.available === false ? 'unavailable' : artifact.status;
+  const status = state === 'failed' && REQUEST_REASON.test(artifact.error ?? '') ? artifact.error : STATUS[state];
   return <section className="diagram-card video-card" aria-live="off" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={state}>
     <VStack gap={3} padding={3}>
       <Heading level={3} id={`${id}-title`}>{artifact.title}</Heading>
@@ -22,7 +26,7 @@ export default function VideoCard({ artifact, onAction, media = `/api/trees/${ar
         {state === 'pending' && <Skeleton />}
         {state === 'ready' && <video className="video-frame" src={media} controls preload="metadata" aria-label={`Video: ${artifact.title}`} aria-describedby={`${id}-description`} />}
         <VStack gap={2} padding={3} hAlign="center" vAlign="center" className="video-controls">
-          <Text type="supporting" color="secondary" role="status" className={state === 'ready' ? 'sr-only' : undefined}><Text type="inherit" className="sr-only">{artifact.title}: </Text>{STATUS[state]}</Text>
+          <Text type="supporting" color="secondary" role="status" className={state === 'ready' ? 'sr-only' : undefined}><Text type="inherit" className="sr-only">{artifact.title}: </Text>{status}</Text>
           {/* Keep the action mounted so Cancel → Retry/Open large preserves keyboard focus. */}
           {(state === 'ready' || onAction) && <Button key="action" label={state === 'ready' ? 'Open large' : state === 'pending' ? 'Cancel video' : state === 'unavailable' ? 'Regenerate video' : 'Retry video'} variant="ghost" size="sm" clickAction={() => state === 'ready' ? setEnlarged(true) : onAction?.(state === 'pending' ? 'cancel' : 'retry')} />}
         </VStack>

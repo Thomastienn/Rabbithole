@@ -1,17 +1,20 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { VStack } from '@astryxdesign/core/Layout';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
+import { Button } from '@astryxdesign/core/Button';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import { useTheme } from '@astryxdesign/core/theme';
 import { renderArtifact, type Artifact, type DiagramState } from './artifacts';
 
-export default function DiagramCard({ artifact, steps = [artifact] }: { artifact: Artifact; steps?: Artifact[] }) {
+export default function DiagramCard({ artifact, steps = [artifact], onRetry }: { artifact: Artifact; steps?: Artifact[]; onRetry?: () => Promise<void> }) {
   const id = useId();
   const card = useRef<HTMLElement>(null);
   const [drawing, setDrawing] = useState<DiagramState>({ status: 'pending' });
   const { mode } = useTheme();
   const [enlarged, setEnlarged] = useState(false);
+  // Keeps the Retry button mounted (loading) while its rerun is pending, so keyboard focus stays put.
+  const [retried, setRetried] = useState(false);
   useEffect(() => {
     let cancelled = false;
     setDrawing({ status: 'pending' });
@@ -21,6 +24,8 @@ export default function DiagramCard({ artifact, steps = [artifact] }: { artifact
     }).then(state => { if (!cancelled) setDrawing(state); });
     return () => { cancelled = true; };
   }, [artifact.id, artifact.status, artifact.source, mode]);
+  // A successful Retry removes its button; keep keyboard focus on the card rather than dropping it to the page.
+  useEffect(() => { if (retried && artifact.status === 'ready' && document.activeElement === document.body) card.current?.focus(); }, [retried, artifact.status]);
   const failed = drawing.status === 'failed';
   return <section ref={card} className="diagram-card" tabIndex={0} aria-labelledby={steps.length > 1 ? `${id}-step ${id}-title` : `${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={drawing.status}>
     <VStack gap={3} padding={3}>
@@ -29,6 +34,7 @@ export default function DiagramCard({ artifact, steps = [artifact] }: { artifact
       <Text id={`${id}-description`}>{artifact.description}</Text>
       {drawing.status === 'pending' && <Text type="supporting" color="secondary" role="status">{artifact.status === 'pending' ? 'Creating diagram…' : 'Rendering diagram…'}</Text>}
       {failed && <Text type="supporting" role="status">{artifact.status === 'failed' ? `Diagram unavailable. ${artifact.error ?? ''}` : 'Diagram could not be rendered. Read the description and Mermaid source below.'}</Text>}
+      {onRetry && (artifact.status === 'failed' || (retried && artifact.status === 'pending')) && <HStack><Button key="retry" label="Retry diagram" variant="ghost" size="sm" isLoading={artifact.status === 'pending'} clickAction={async () => { setRetried(true); await onRetry(); }} /></HStack>}
       {drawing.status === 'ready' && <>
         <button type="button" className="diagram-open" aria-label={`Open diagram large: ${artifact.title}`} onClick={() => setEnlarged(true)}><img src={drawing.url} alt={artifact.description} onError={() => setDrawing({ status: 'failed' })} /></button>
         <Lightbox className="diagram-lightbox" isOpen={enlarged} onOpenChange={setEnlarged} hasZoom media={{ src: drawing.url, alt: artifact.description }} />

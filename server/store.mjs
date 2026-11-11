@@ -325,6 +325,11 @@ export class Store {
     const result = this.db.prepare("UPDATE artifacts SET status='pending',attempt=?,error=NULL,duration=NULL WHERE conversation=? AND id=? AND kind='video' AND status!='pending'").run(randomUUID(), conversation, id);
     return result.changes ? this.artifact(conversation, id) : null;
   }
+  // Diagram Retry reruns from the stored task; rows saved before tasks were stored stay failed.
+  retryDiagram(conversation, id) {
+    const result = this.db.prepare("UPDATE artifacts SET status='pending',source=NULL,error=NULL WHERE conversation=? AND id=? AND kind='mermaid' AND status='failed' AND input IS NOT NULL").run(conversation, id);
+    return result.changes ? this.artifact(conversation, id) : null;
+  }
   library() { return this.db.prepare('SELECT id,title,description,duration,created FROM videos ORDER BY created DESC,rowid DESC').all().map(v => ({ ...v })); }
   // Removes only the library entry; artifacts and usage records stay as history.
   removeLibraryVideo(id) { this.db.prepare('DELETE FROM videos WHERE id=?').run(id); }

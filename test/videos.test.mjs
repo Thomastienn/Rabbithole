@@ -83,7 +83,8 @@ test('explicit video request creates one job with frozen input, publishes owned 
     for (const text of ['Explain winners.', 'Explain video encoding.', 'How does animation work?', "Don’t make a video; explain it."]) {
       await (await env.post(`/api/trees/${child.id}/messages`, { text })).text();
     }
-    assert.equal(env.store.tree(child.id).artifacts.length, 0);
+    assert.equal(env.store.tree(child.id).artifacts.length, 4);
+    assert.ok(env.store.tree(child.id).artifacts.every(a => a.kind === 'video' && a.status === 'failed' && /learner did not ask/.test(a.error)), 'unsolicited requests stay visible without starting generation');
     assert.equal(workers.length, 0);
 
     const request = 'Make a video explaining how Peterson fits into this tournament tree.';
@@ -91,7 +92,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.ok(!stream.includes('treetutor-video'));
     const ready = await until(() => env.store.tree(child.id).artifacts.find(a => a.status === 'ready'));
     const saved = env.store.tree(child.id);
-    assert.equal(saved.artifacts.length, 1);
+    assert.equal(saved.artifacts.length, 5);
     assert.equal(ready.kind, 'video');
     assert.equal(ready.source, null);
     assert.equal(ready.duration, 2);
@@ -718,4 +719,120 @@ test('duration follows measured narration beyond two minutes rather than the gen
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a longer video, about two minutes ten seconds.' })).text();
   const ready = await until(() => env.store.tree(tree.id).artifacts.find(a => a.status === 'ready'));
   assert.ok(ready.duration > 120);
+});
+
+test('a malformed video block the learner asked for becomes a visible failed video with a reason, and Retry runs it from the stored request', async () => {
+  const workers = [];
+  let block;
+  const provider = { generate: async (tree, text, emit) => {
+    if (!tree.id) { workers.push(JSON.parse(text)); return complete(emit, composition); }
+    complete(emit, 'Sure.\n```treetutor-video\n' + block);
+  } };
+  const env = await open(provider);
+  try {
+    // Regression replay: tutors have sent a stray key plus a missing field, which used to be dropped silently.
+    const request = 'Make a video of how Earth orbits the Sun.';
+    for (const [value, reason, expected = {}, closed = true] of [
+      [JSON.stringify({ title: 'Orbits', description: 'Earth orbits.', excerpt: 'Earth', style: 'fun' }), /missing intent/, { excerpt: 'Earth' }],
+      ['{"title": "Orbits",', /not valid JSON/],
+      [JSON.stringify({ ...task, intent: '  ' }), /missing intent/, { excerpt: task.excerpt }],
+      [JSON.stringify({ ...task, description: 12 }), /missing description/, { intent: task.intent, excerpt: task.excerpt }],
+      ['null', /not a JSON object/],
+      ['[]', /not a JSON object/],
+      [JSON.stringify(task), /cut off before it closed/, {}, false],
+    ]) {
+      block = value + (closed ? '\n```' : '');
+      const tree = env.store.create('Bad video');
+      const stream = await (await env.post(`/api/trees/${tree.id}/messages`, { text: request })).text();
+      assert.ok(!stream.includes('treetutor-video'));
+      const [failed] = (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts;
+      assert.equal(failed.kind, 'video');
+      assert.equal(failed.status, 'failed');
+      assert.match(failed.error, /^Video request could not be read: /);
+      assert.match(failed.error, reason);
+      assert.equal(failed.input, undefined);
+      assert.equal(failed.position, 'Sure.'.length);
+      assert.equal(workers.length, 0, 'a rejected request never starts by itself');
+      assert.equal((await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/retry`)).status, 200);
+      await until(() => env.store.artifact(tree.id, failed.id).status === 'ready');
+      const sent = workers.pop();
+      assert.equal(sent.request, request);
+      assert.equal(sent.intent, expected.intent ?? request, 'readable fields survive; missing intent falls back to the learner request');
+      assert.equal(sent.excerpt, expected.excerpt ?? '');
+      assert.equal(env.store.tree(tree.id).messages.length, 2);
+    }
+    // Valid tolerant slip: unknown keys and long fields still start the job directly.
+    block = JSON.stringify({ ...task, style: 'fun', intent: 'i'.repeat(17000) }) + '\n```';
+    const tree = env.store.create('Slip');
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of the final.' })).text();
+    await until(() => env.store.tree(tree.id).artifacts[0]?.status === 'ready');
+    assert.equal(workers.pop().intent, 'i'.repeat(600));
+  } finally { env.close(); }
+});
+
+test('mixed and duplicate video blocks each leave a failed artifact of their own kind without starting workers', async () => {
+  let blocks;
+  let workers = 0;
+  const env = await open({ generate: async (tree, text, emit) => {
+    if (!tree.id) { workers++; return complete(emit, composition); }
+    complete(emit, 'Visible answer.' + blocks);
+  } });
+  try {
+    for (const kinds of [['diagram', 'video'], ['video', 'video']]) {
+      blocks = kinds.map(kind => `\n\`\`\`treetutor-${kind}\n${JSON.stringify(task)}\n\`\`\``).join('');
+      const tree = env.store.create('Multiple requests');
+      const stream = await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of winners advancing.' })).text();
+      const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
+      assert.equal(saved.messages.at(-1).text, 'Visible answer.');
+      assert.doesNotMatch(stream, /treetutor-(diagram|video)/);
+      assert.deepEqual(saved.artifacts.map(a => [a.kind, a.status]), kinds.map(kind => [kind === 'diagram' ? 'mermaid' : kind, 'failed']));
+      assert.ok(saved.artifacts.every(a => a.error && a.input === undefined));
+    }
+    assert.equal(workers, 0);
+  } finally { env.close(); }
+});
+
+test('provider failure and learner Stop preserve request failures without starting media work', async () => {
+  let mode, kind, entered;
+  let workers = 0;
+  const env = await open({ generate: async (tree, text, emit, save, signal) => {
+    if (!tree.id) { workers++; return complete(emit, composition); }
+    emit({ type: 'item', item: 'answer', text: `Saved text.\n\`\`\`treetutor-${kind}\n${JSON.stringify(task)}\n\`\`\`` });
+    entered?.();
+    if (mode === 'throw') throw new Error('private provider failure');
+    await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
+  } });
+  try {
+    for (mode of ['throw', 'stop']) for (kind of ['diagram', 'video']) {
+      const tree = env.store.create('Interrupted requests');
+      const ready = new Promise(resolve => { entered = resolve; });
+      const response = env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of winners advancing.' }).then(r => r.text());
+      await ready;
+      if (mode === 'stop') assert.equal((await env.post(`/api/trees/${tree.id}/stop`)).status, 200);
+      await response;
+      const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
+      assert.deepEqual(saved.artifacts.map(a => [a.kind, a.status, a.error]), [[kind === 'diagram' ? 'mermaid' : kind, 'failed', 'Tutor reply did not complete.']]);
+      assert.equal(saved.messages.at(-1).text, 'Saved text.');
+    }
+    assert.equal(workers, 0);
+  } finally { env.close(); }
+});
+
+test('deleting a conversation while its request block is streaming cannot recreate its artifacts', async () => {
+  let entered;
+  const started = new Promise(resolve => { entered = resolve; });
+  const env = await open({ generate: async (tree, text, emit, save, signal) => {
+    emit({ type: 'item', item: 'answer', text: 'Saved text.' + directive });
+    entered();
+    await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
+  } });
+  try {
+    const tree = env.store.create('Delete requests');
+    const response = env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of winners advancing.' }).then(r => r.text());
+    await started;
+    assert.equal((await env.post(`/api/trees/${tree.id}/delete`, { conversation: tree.id })).status, 200);
+    await response;
+    assert.equal((await env.get(`/api/trees/${tree.id}`)).status, 404);
+    assert.deepEqual((await (await env.get('/api/state')).json()).active, []);
+  } finally { env.close(); }
 });

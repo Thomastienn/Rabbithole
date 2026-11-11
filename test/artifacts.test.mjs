@@ -88,7 +88,8 @@ test('diagram request saves an owned artifact and keeps directive, worker prompt
     assert.doesNotMatch(JSON.stringify(next), /flowchart|Winner A|worker-thread-secret|treetutor-diagram|Show two winners|A and B advance/);
     assert.equal(next.tree.artifacts, undefined);
     const reopened = new Store(env.path);
-    try { assert.deepEqual(JSON.parse(JSON.stringify(reopened.tree(reply.id))), await (await env.get(`/api/trees/${reply.id}`)).json()); }
+    // HTTP returns the stored rows minus the server-side request (input) and attempt.
+    try { const saved = reopened.tree(reply.id); assert.deepEqual(JSON.parse(JSON.stringify({ ...saved, artifacts: saved.artifacts.map(({ input, attempt, ...a }) => a) })), await (await env.get(`/api/trees/${reply.id}`)).json()); }
     finally { reopened.close(); }
   } finally { env.close(); }
 });
@@ -264,8 +265,9 @@ test('malformed requests are hidden and failed without sending transcript-shaped
   try {
     for (const value of [
       '```treetutor-diagram\n{broken json}\n```',
-      '```treetutor-diagram\n' + JSON.stringify({ ...task, thread: 'must-not-pass' }) + '\n```',
-      '```treetutor-diagram\n' + JSON.stringify({ ...task, excerpt: 'x'.repeat(1201) }) + '\n```',
+      '```treetutor-diagram\n' + JSON.stringify({ ...task, intent: '  ', thread: 'must-not-pass' }) + '\n```',
+      '```treetutor-diagram\n' + JSON.stringify({ title: 'No intent', description: 'd', excerpt: 'e' }) + '\n```',
+      '```treetutor-diagram\n' + JSON.stringify({ ...task, excerpt: null }) + '\n```',
       '```treetutor-diagram\n' + JSON.stringify(task),
       directive + '\n```treetutor-video\n' + JSON.stringify(task) + '\n```',
       directive.repeat(7),
@@ -277,8 +279,11 @@ test('malformed requests are hidden and failed without sending transcript-shaped
       const saved = env.store.tree(tree.id);
       assert.doesNotMatch(stream, /treetutor-diagram|broken json|must-not-pass/);
       assert.equal(saved.messages.at(-1).text.trim(), 'Visible answer.');
-      assert.equal(saved.artifacts[0].status, 'failed');
-      assert.match(saved.artifacts[0].error, /Invalid diagram request/);
+      assert.equal(saved.artifacts.length, (value.match(/treetutor-(diagram|video)/g) ?? []).length, 'every rejected block gets its own artifact');
+      for (const artifact of saved.artifacts) {
+        assert.equal(artifact.status, 'failed');
+        assert.match(artifact.error, /^(Diagram|Video) request could not be read: the (request|tutor)/);
+      }
     }
     assert.equal(workers, 0);
   } finally { env.close(); }
@@ -303,12 +308,12 @@ test('a complex reply becomes several small ordered diagram steps; each worker g
     assert.deepEqual(saved.artifacts.map(a => [a.title, a.status]), [['Seeds', 'ready'], ['Sprouts', 'ready'], ['Bad step', 'failed'], ['Trees', 'ready'], ['Diagram', 'failed']]);
     assert.deepEqual(saved.artifacts.slice(0, 4).map(a => a.description), steps.map(s => s.description), 'each step keeps its own text alternative');
     assert.match(saved.artifacts[2].error, /Unsafe diagram source/);
-    assert.match(saved.artifacts[4].error, /Invalid diagram request/);
+    assert.match(saved.artifacts[4].error, /Diagram request could not be read: the request was not valid JSON/);
     assert.match(saved.artifacts[0].source, /A\["Seeds start"\]:::yellow/, 'trusted classes are kept without generated styles');
     assert.deepEqual(workers.map(w => w.task), steps, 'one isolated worker call per valid step, in reply order');
     for (const w of workers) assert.match(w.instructions, /one main idea[\s\S]*yellow, blue, pink and green[\s\S]*never be the only cue/);
     const pending = stream.split('\n\n').filter(f => f.includes('"type":"artifact"')).map(f => JSON.parse(f.slice(6)).artifact);
-    assert.deepEqual(pending.slice(0, 5).map(a => a.status), Array(5).fill('pending'), 'all step cards appear before workers run');
+    assert.deepEqual(pending.slice(0, 5).map(a => a.status), ['pending', 'pending', 'pending', 'pending', 'failed'], 'all step cards appear before workers run; rejected requests fail immediately');
     const { tutorContext, TUTOR_INSTRUCTIONS } = await import('../server/diagrams.mjs');
     assert.match(TUTOR_INSTRUCTIONS, /several small visual steps[\s\S]*text stays accurate[\s\S]*text alternative/);
     assert.doesNotMatch(JSON.stringify(tutorContext(saved).messages.at(-1)), /flowchart|Bad step/);
@@ -512,7 +517,8 @@ test('restart fails orphaned pending artifacts once, without replaying generatio
     const origin = `http://127.0.0.1:${app.server.address().port}`;
     const { csrf } = await (await fetch(`${origin}/api/state`)).json();
     const read = await (await fetch(`${origin}/api/trees/${tree.id}/artifacts/${orphan.id}`)).json();
-    assert.deepEqual(read, { ...recovered.artifacts[0] });
+    const { input, attempt, ...visible } = recovered.artifacts[0];
+    assert.deepEqual(read, visible);
     assert.equal(calls.length, 0, 'reading recovered state never starts inference');
     await (await fetch(`${origin}/api/trees/${tree.id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify({ text: 'Continue.' }) })).text();
     const after = restored.tree(tree.id);
@@ -603,4 +609,102 @@ test('an existing database gains the visual kind in place; saved Mermaid artifac
     const saved = await (await fetch(`http://127.0.0.1:${app.server.address().port}/api/trees/${tree.id}`)).json();
     assert.deepEqual(saved.artifacts.map(a => [a.id, a.kind, a.status, a.position, a.source]), [['old-diagram', 'mermaid', 'ready', null, source], [visual.id, 'visual', 'ready', 5, '<svg></svg>']]);
   } finally { app.stop(); reopened.close(); }
+});
+
+test('tolerant parsing ignores unknown keys and trims over-long fields instead of rejecting the request', async () => {
+  const workers = [];
+  const env = await open({ generate: async (tree, text, emit) => {
+    if (!tree.id) { workers.push(JSON.parse(text)); return complete(emit, source); }
+    complete(emit, 'Visible answer.\n```treetutor-diagram\n' + JSON.stringify({ ...task, thread: 'must-not-pass', color: 'red', title: 'T'.repeat(200), description: 'd'.repeat(400), intent: 'i'.repeat(900), excerpt: '  ' + 'x'.repeat(17000) }) + '\n```');
+  } });
+  try {
+    const tree = env.store.create('Slips');
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain.' })).text();
+    const [artifact] = (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts;
+    assert.equal(artifact.status, 'ready', artifact.error);
+    assert.equal(artifact.title, 'T'.repeat(120));
+    assert.equal(artifact.input, undefined, 'the stored request stays server-side');
+    assert.deepEqual(workers, [{ title: 'T'.repeat(120), description: 'd'.repeat(280), intent: 'i'.repeat(600), excerpt: 'x'.repeat(1200) }], 'unknown keys never reach the worker');
+  } finally { env.close(); }
+});
+
+test('failed diagrams offer Retry that reruns the worker from the stored request; a rejected block falls back to the question', async () => {
+  let fail = true;
+  const workers = [];
+  const env = await open({ generate: async (tree, text, emit) => {
+    if (!tree.id) { workers.push(JSON.parse(text)); return complete(emit, fail ? 'not mermaid at all <script>' : source); }
+    complete(emit, 'Answer.' + directive + '\n```treetutor-diagram\n{"title": "Broken",\n```');
+  } });
+  try {
+    const tree = env.store.create('Retry');
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'How do tournaments work?' })).text();
+    let [worked, rejected] = env.store.tree(tree.id).artifacts;
+    assert.equal(worked.status, 'failed');
+    assert.equal(rejected.status, 'failed');
+    assert.match(rejected.error, /not valid JSON/);
+    assert.equal(workers.length, 1, 'the rejected block never reaches a worker by itself');
+    const other = env.store.create('Other');
+    assert.equal((await env.post(`/api/trees/${other.id}/artifacts/${worked.id}/retry`)).status, 404, 'Retry cannot cross conversation ownership');
+    assert.equal((await fetch(`${env.origin}/api/trees/${tree.id}/artifacts/${worked.id}/retry`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 403, 'Retry requires CSRF');
+    fail = false;
+    for (const artifact of [worked, rejected]) {
+      const response = await env.post(`/api/trees/${tree.id}/artifacts/${artifact.id}/retry`, { intent: 'Injected replacement', request: 'Injected replacement' });
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.status, 'pending');
+      assert.equal(body.input, undefined);
+    }
+    assert.equal((await env.post(`/api/trees/${tree.id}/artifacts/${worked.id}/retry`)).status, 409, 'a pending diagram cannot be retried twice');
+    for (let i = 0; i < 200 && env.store.tree(tree.id).artifacts.some(a => a.status === 'pending'); i++) await new Promise(r => setTimeout(r, 25));
+    [worked, rejected] = env.store.tree(tree.id).artifacts;
+    assert.deepEqual([worked.status, rejected.status], ['ready', 'ready']);
+    assert.equal(worked.message, rejected.message);
+    assert.deepEqual(workers.slice(1), [task, { title: 'Diagram', description: 'The tutor’s diagram request could not be read.', intent: 'How do tournaments work?', excerpt: '' }], 'Retry reruns from each stored request');
+    assert.equal(env.store.tree(tree.id).messages.length, 2, 'Retry adds no learner message');
+    assert.equal((await env.post(`/api/trees/${tree.id}/artifacts/${worked.id}/retry`)).status, 409);
+  } finally { env.close(); }
+});
+
+test('shutdown interrupts a running diagram Retry; reopening only recovers state and explicit Retry reuses its durable request', async () => {
+  let entered;
+  const started = new Promise(resolve => { entered = resolve; });
+  const env = await open({ generate: async (tree, text, emit, save, signal) => {
+    if (tree.id) return complete(emit, 'Answer.\n```treetutor-diagram\n' + JSON.stringify({ ...task, intent: '' }) + '\n```');
+    entered();
+    await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
+  } });
+  const tree = env.store.create('Durable Retry');
+  let failed;
+  try {
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'How do tournaments work?' })).text();
+    [failed] = (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts;
+    assert.equal((await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/retry`)).status, 200);
+    await started;
+    await env.app.stop();
+  } finally { env.store.close(); }
+  const calls = [];
+  const reopened = new Store(env.path);
+  const app = createApp({ store: reopened, provider: { generate: async (tree, text, emit) => { calls.push(JSON.parse(text)); complete(emit, source); } }, auth: { status: () => ({ connected: true }) } });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  try {
+    const { csrf, videos } = await (await fetch(`${origin}/api/state`)).json();
+    assert.deepEqual(videos, []);
+    const [recovered] = (await (await fetch(`${origin}/api/trees/${tree.id}`)).json()).artifacts;
+    assert.equal(recovered.id, failed.id);
+    assert.equal(recovered.status, 'failed');
+    assert.match(recovered.error, /interrupted when TreeTutor stopped/);
+    assert.equal(recovered.input, undefined);
+    assert.deepEqual(calls, [], 'startup and reads never start a worker');
+    assert.equal((await fetch(`${origin}/api/trees/${tree.id}/artifacts/${failed.id}/retry`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: '{}' })).status, 200);
+    let saved;
+    for (let i = 0; i < 200; i++) {
+      saved = await (await fetch(`${origin}/api/trees/${tree.id}`)).json();
+      if (saved.artifacts[0].status !== 'pending') break;
+      await new Promise(r => setTimeout(r, 25));
+    }
+    assert.equal(saved.artifacts[0].status, 'ready');
+    assert.deepEqual(calls, [{ ...task, intent: 'How do tournaments work?' }]);
+    assert.equal(saved.messages.length, 2);
+  } finally { await app.stop(); reopened.close(); }
 });
