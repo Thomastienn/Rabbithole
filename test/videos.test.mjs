@@ -579,7 +579,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
   // A database written before the job statuses existed is rebuilt in place.
   const old = new Store(path);
   old.db.exec(`PRAGMA user_version=0; PRAGMA foreign_keys=OFF; DROP TABLE artifacts; CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
-    kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL);`);
+    kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER);`);
   const tree = old.create('Video');
   const reply = old.message(tree.id, 'assistant', 'Reply.', 'completed');
   const running = old.pendingArtifact(tree.id, reply, 'Running', 'Planned.', 'video', '{"request":"Make a video."}');

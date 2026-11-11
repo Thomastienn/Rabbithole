@@ -5,8 +5,8 @@ import { dirname } from 'node:path';
 import { previewText } from '../src/markdownText.ts';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
-        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL,
+        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
+        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 
@@ -72,6 +72,10 @@ export class Store {
         this.db.exec(`CREATE TABLE videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, duration REAL, created INTEGER NOT NULL);
           INSERT INTO videos(id,title,description,duration,created) SELECT id,title,description,duration,created FROM artifacts WHERE kind='video' AND status='ready';`);
       }
+      // Visual kind and reply positions migrate in place; existing rows keep a NULL position and render after their reply.
+      this.db.exec('BEGIN IMMEDIATE');
+      try { this.rebuildArtifacts("'visual'"); this.db.exec('COMMIT'); }
+      catch (error) { this.db.exec('ROLLBACK'); throw error; }
       this.interrupt();
     } catch (error) { error.backupPath = this.backupPath; this.db.close(); throw error; }
   }
@@ -83,13 +87,7 @@ export class Store {
       ${ARTIFACTS}
       CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL);`);
     // Older databases gain the video kind, job columns and job statuses; SQLite cannot alter a CHECK in place.
-    if (!this.db.prepare("SELECT sql FROM sqlite_master WHERE name='artifacts'").get().sql.includes("'interrupted'")) {
-      const kept = this.db.prepare('PRAGMA table_info(artifacts)').all().map(c => c.name).join(',');
-      this.db.exec(`ALTER TABLE artifacts RENAME TO artifacts_old;
-      ${ARTIFACTS.replace('CREATE INDEX', 'DROP INDEX artifacts_conversation; CREATE INDEX')}
-      INSERT INTO artifacts(${kept}) SELECT ${kept} FROM artifacts_old;
-      DROP TABLE artifacts_old;`);
-    }
+    this.rebuildArtifacts("'interrupted'");
     const columns = this.db.prepare('PRAGMA table_info(trees)').all().map(c => c.name);
     if (!columns.includes('provider')) this.db.exec("ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'");
     if (!columns.includes('model')) this.db.exec('ALTER TABLE trees ADD COLUMN model TEXT');
@@ -101,12 +99,21 @@ export class Store {
     if (!columns.includes('working_thread')) this.db.exec('ALTER TABLE trees ADD COLUMN working_thread TEXT');
     if (!columns.includes('title_renamed')) this.db.exec('ALTER TABLE trees ADD COLUMN title_renamed INTEGER NOT NULL DEFAULT 0');
   }
+  // SQLite cannot alter a CHECK in place: rebuild the table when its definition lacks the marker, keeping every saved column.
+  rebuildArtifacts(marker) {
+    if (this.db.prepare("SELECT sql FROM sqlite_master WHERE name='artifacts'").get().sql.includes(marker)) return;
+    const kept = this.db.prepare('PRAGMA table_info(artifacts)').all().map(c => c.name).join(',');
+    this.db.exec(`ALTER TABLE artifacts RENAME TO artifacts_old;
+      ${ARTIFACTS.replace('CREATE INDEX', 'DROP INDEX artifacts_conversation; CREATE INDEX')}
+      INSERT INTO artifacts(${kept}) SELECT ${kept} FROM artifacts_old;
+      DROP TABLE artifacts_old;`);
+  }
   // Starting or stopping never resumes paid inference; saved partial text stays available.
   interrupt() {
     this.db.exec(`UPDATE messages SET status='interrupted' WHERE status='streaming';
       UPDATE suggestions SET status='failed' WHERE status='pending';
       UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when TreeTutor stopped.' WHERE status='pending' AND kind='video';
-      UPDATE artifacts SET status='failed',source=NULL,error='Diagram generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
+      UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
   }
   list() {
     return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
@@ -286,14 +293,15 @@ export class Store {
   artifact(conversation, id) { return this.db.prepare('SELECT * FROM artifacts WHERE conversation=? AND id=?').get(conversation, id); }
   hasArtifact(id) { return !!this.db.prepare('SELECT 1 FROM artifacts WHERE id=?').get(id); }
   // Videos keep their frozen task input and a server-issued attempt; their composition source stays in the job workspace.
-  pendingArtifact(conversation, message, title, description, kind = 'mermaid', input = null) {
+  // position: offset in the stored reply text where the request block was removed; null renders after the reply.
+  pendingArtifact(conversation, message, title, description, kind = 'mermaid', input = null, position = null) {
     const id = randomUUID();
-    const result = this.db.prepare("INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created,input,attempt) SELECT ?,?,?,?,'pending',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')").run(id, conversation, message, kind, title, description, Date.now(), input, kind === 'video' ? randomUUID() : null, message, conversation);
+    const result = this.db.prepare("INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created,input,attempt,position) SELECT ?,?,?,?,'pending',?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')").run(id, conversation, message, kind, title, description, Date.now(), input, kind === 'video' ? randomUUID() : null, position, message, conversation);
     if (!result.changes) throw new Error('Artifact message does not belong to this conversation.');
     return this.artifact(conversation, id);
   }
   finishArtifact(conversation, id, source, error = null) {
-    this.db.prepare("UPDATE artifacts SET status=?,source=?,error=? WHERE conversation=? AND id=? AND kind='mermaid' AND status='pending'").run(error ? 'failed' : 'ready', error ? null : source, error, conversation, id);
+    this.db.prepare("UPDATE artifacts SET status=?,source=?,error=? WHERE conversation=? AND id=? AND kind IN ('mermaid','visual') AND status='pending'").run(error ? 'failed' : 'ready', error ? null : source, error, conversation, id);
     return this.artifact(conversation, id);
   }
   videoInput(conversation, id, attempt, input) {

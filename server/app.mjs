@@ -109,9 +109,14 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const origin = `http://127.0.0.1:${server.address().port}`;
-    if (req.headers.host !== new URL(origin).host || (req.headers.origin && req.headers.origin !== origin) || req.headers['sec-fetch-site'] === 'cross-site') {
+    res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src ${origin}/sandbox.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`);
+    // The visual sandbox has an opaque origin, so its bundled scripts and fonts arrive as cross-site CORS loads; only static GETs are opened to it.
+    const sandboxAsset = req.method === 'GET' && req.headers.host === new URL(origin).host && /^\/assets\/[\w.-]+$/.test(req.url) && req.headers.origin === 'null';
+    if (sandboxAsset) res.setHeader('Access-Control-Allow-Origin', 'null');
+    // Visual code: inline only (its own fragment), bundled libraries from this origin, no network, frames, forms or remote media.
+    if (req.method === 'GET' && req.url === '/sandbox.html') res.setHeader('Content-Security-Policy', `default-src 'none'; script-src ${origin} 'unsafe-inline'; style-src ${origin} 'unsafe-inline'; font-src ${origin} data:; img-src data: blob:; connect-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors ${origin}`);
+    if (!sandboxAsset && (req.headers.host !== new URL(origin).host || (req.headers.origin && req.headers.origin !== origin) || req.headers['sec-fetch-site'] === 'cross-site')) {
       // OAuth is the only permitted cross-site navigation; validated by one-time state.
       if (!(req.method === 'GET' && req.url.startsWith('/auth/callback?') && req.headers.host === new URL(origin).host)) return json(res, 403, { error: 'Open TreeTutor using its loopback address.' });
     }
@@ -469,7 +474,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                   const input = JSON.stringify({ selection: smart().resolved, request: body.text, intent: output.task.intent, excerpt: output.task.excerpt,
                     inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null,
                     sources: { conversation: id, requestMessage: user, replyMessage: reply, ...(tree.branch && { parentConversation: tree.branch.parent, parentMessage: tree.branch.messageId }) } });
-                  const job = store.pendingArtifact(id, reply, output.task.title, output.task.description, 'video', input);
+                  const job = store.pendingArtifact(id, reply, output.task.title, output.task.description, 'video', input, output.position);
                   send({ type: 'artifact', artifact: live(job) });
                   startVideo(job);
                 }
@@ -478,7 +483,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 store.update(reply, text, status);
                 store.forgetThread(id);
                 // Every step card appears pending at once; workers then run one at a time in reply order.
-                diagrams = output.diagrams.map(({ task }) => store.pendingArtifact(id, reply, task?.title ?? 'Diagram', task?.description ?? 'Diagram request could not be processed.'));
+                diagrams = output.diagrams.map(({ task, position }) => store.pendingArtifact(id, reply, task?.title ?? 'Diagram', task?.description ?? 'Diagram request could not be processed.', 'mermaid', null, position));
                 for (const artifact of diagrams) send({ type: 'artifact', artifact });
                 for (const [i, { task, error: invalid }] of output.diagrams.entries()) {
                   if (finished) break;

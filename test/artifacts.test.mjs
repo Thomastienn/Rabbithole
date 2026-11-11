@@ -558,3 +558,49 @@ test('a stopped job cannot publish late results into another conversation runnin
     assert.equal(env.app.active.size, 0);
   } finally { for (const w of workers.values()) w.resolve(); env.close(); }
 });
+
+test('artifacts record where their request block was removed; reply text and passage offsets stay unchanged', async () => {
+  const second = { ...task, title: 'Final round' };
+  const raw = 'Winners pair up.\n\n```treetutor-diagram\n' + JSON.stringify(task) + '\n```\n\nThen the last two meet.\n```treetutor-diagram\n' + JSON.stringify(second) + '\n```\nDone.';
+  const provider = { generate: async (tree, text, emit) => complete(emit, tree.id ? raw : source) };
+  const env = await open(provider);
+  try {
+    const tree = env.store.create('Positions');
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain the bracket.' })).text();
+    const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
+    const reply = saved.messages.at(-1);
+    assert.equal(reply.text, 'Winners pair up.\n\n\nThen the last two meet.\nDone.');
+    assert.deepEqual(saved.artifacts.map(a => [a.title, a.status, a.position]), [['Tournament tree', 'ready', 17], ['Final round', 'ready', 42]]);
+    assert.ok(reply.text.slice(17).startsWith('\n\nThen'));
+    assert.equal(reply.text.slice(42), '\nDone.');
+    // A passage chosen after the blocks still slices the same stored text.
+    const start = reply.text.indexOf('last two'), branch = await env.post(`/api/trees/${tree.id}/branches`, { messageId: reply.id, start, end: start + 8, text: 'last two', question: 'Why two?' });
+    assert.equal(branch.status, 201);
+  } finally { env.close(); }
+});
+
+test('an existing database gains the visual kind in place; saved Mermaid artifacts keep rendering after their reply', async () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'tt-visual-migration-')), 'trees.sqlite');
+  const old = new Store(path);
+  const tree = old.create('Old diagrams'), reply = old.message(tree.id, 'assistant', 'Saved reply.', 'completed');
+  // The artifacts table as shipped before visuals: no visual kind, no position column.
+  old.db.exec(`PRAGMA foreign_keys=OFF; DROP TABLE artifacts; CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
+    title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL,
+    FOREIGN KEY(message, conversation) REFERENCES messages(id, tree)); CREATE INDEX artifacts_conversation ON artifacts(conversation, created);`);
+  old.db.prepare("INSERT INTO artifacts(id,conversation,message,kind,status,title,description,source,created) VALUES ('old-diagram',?,?,'mermaid','ready','Old','Old diagram.',?,1)").run(tree.id, reply, source);
+  assert.throws(() => old.pendingArtifact(tree.id, reply, 'Visual', 'Too early.', 'visual'));
+  old.close();
+  const store = new Store(path);
+  assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 1);
+  const visual = store.finishArtifact(tree.id, store.pendingArtifact(tree.id, reply, 'Bracket', 'A bracket.', 'visual', null, 5).id, '<svg></svg>');
+  assert.deepEqual([visual.kind, visual.status, visual.position], ['visual', 'ready', 5]);
+  store.close();
+  // Reopen through HTTP on the migrated file.
+  const reopened = new Store(path), app = createApp({ store: reopened, provider: { generate: async () => {} }, auth: { status: () => ({ connected: true }) } });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  try {
+    const saved = await (await fetch(`http://127.0.0.1:${app.server.address().port}/api/trees/${tree.id}`)).json();
+    assert.deepEqual(saved.artifacts.map(a => [a.id, a.kind, a.status, a.position, a.source]), [['old-diagram', 'mermaid', 'ready', null, source], [visual.id, 'visual', 'ready', 5, '<svg></svg>']]);
+  } finally { app.stop(); reopened.close(); }
+});

@@ -1,16 +1,28 @@
 import { safeDiagramSource } from './diagramSource.ts';
 
 // Ready videos with a missing file carry available: false. Production stages remain private.
-export type ArtifactSummary = { id: string; kind?: 'mermaid' | 'video'; title: string; status: 'pending' | 'ready' | 'failed' | 'canceled' | 'interrupted'; available?: false };
-export type Artifact = ArtifactSummary & { conversation: string; message: string; kind: 'mermaid' | 'video'; description: string; source: string | null; error: string | null; created: number };
+export type ArtifactSummary = { id: string; kind?: 'mermaid' | 'video' | 'visual'; title: string; status: 'pending' | 'ready' | 'failed' | 'canceled' | 'interrupted'; available?: false };
+export type Artifact = ArtifactSummary & { conversation: string; message: string; kind: 'mermaid' | 'video' | 'visual'; description: string; source: string | null; error: string | null; created: number; position?: number | null };
 export type DiagramState = { status: 'pending' } | { status: 'ready'; url: string } | { status: 'failed' };
 
+const KINDS = ['mermaid', 'video', 'visual'];
+
+// Visual frames may only report their height or ask to branch on a tagged part; any other shape is ignored.
+export type VisualMessage = { type: 'height'; height: number } | { type: 'branch'; label: string; explanation: string };
+export function visualMessage(data: unknown): VisualMessage | undefined {
+  if (!data || typeof data !== 'object') return;
+  const m = data as Record<string, unknown>, keys = Object.keys(m).sort().join();
+  if (m.type === 'height' && keys === 'height,type' && typeof m.height === 'number' && Number.isFinite(m.height)) return { type: 'height', height: Math.min(Math.max(Math.ceil(m.height), 0), 4000) };
+  const bounded = (v: unknown, max: number) => typeof v === 'string' && !!v.trim() && v.length <= max;
+  if (m.type === 'branch' && keys === 'explanation,label,type' && bounded(m.label, 120) && bounded(m.explanation, 280)) return { type: 'branch', label: (m.label as string).trim(), explanation: (m.explanation as string).trim() };
+}
+
 export function artifactsAt(artifacts: Artifact[], conversation: string, message: string) {
-  return artifacts.filter(a => (a.kind === 'mermaid' || a.kind === 'video') && a.conversation === conversation && a.message === message);
+  return artifacts.filter(a => KINDS.includes(a.kind) && a.conversation === conversation && a.message === message);
 }
 
 export function mergeArtifact(artifacts: Artifact[], incoming: Artifact, conversation: string, messages: { id: string; role: string }[]) {
-  if ((incoming.kind !== 'mermaid' && incoming.kind !== 'video') || incoming.conversation !== conversation || !messages.some(m => m.id === incoming.message && m.role === 'assistant')) return artifacts;
+  if (!KINDS.includes(incoming.kind) || incoming.conversation !== conversation || !messages.some(m => m.id === incoming.message && m.role === 'assistant')) return artifacts;
   const index = artifacts.findIndex(a => a.id === incoming.id);
   return index < 0 ? [...artifacts, incoming] : artifacts.map((a, i) => i === index ? incoming : a);
 }

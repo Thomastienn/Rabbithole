@@ -77,3 +77,7 @@ The record of reported model usage across learning trees and tasks, retained ind
 
 **Video library**:
 The local collection of generated videos, available independently of their originating learning trees. A saved video remains until the learner explicitly trashes it, even when its source discussion is deleted.
+
+**Visual**:
+An interactive HTML/SVG/JS fragment shown inside a tutor reply where the tutor placed it, running in an isolated sandbox with no network or access to the app. Older Mermaid diagrams stay diagrams.
+_Avoid_: Widget, canvas, artifact (in UI copy)

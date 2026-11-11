@@ -17,7 +17,8 @@ export function diagramReply(raw, final = false) {
     const close = new RegExp('^[ \\t]*' + match[2][0] + '{' + match[2].length + ',}[ \\t]*\\r?$', 'gm');
     close.lastIndex = open.lastIndex;
     const end = close.exec(raw);
-    requests.push({ kind: match[3] === 'video' ? 'video' : 'mermaid', json: raw.slice(open.lastIndex, end?.index ?? raw.length), closed: !!end, extra: match[4].trim() });
+    // position: where the block was removed in the stored text; earlier text before it is already final.
+    requests.push({ kind: match[3] === 'video' ? 'video' : 'mermaid', json: raw.slice(open.lastIndex, end?.index ?? raw.length), closed: !!end, extra: match[4].trim(), position: text.length });
     cursor = end ? close.lastIndex : raw.length;
     open.lastIndex = cursor;
   }
@@ -36,10 +37,10 @@ export function diagramReply(raw, final = false) {
   };
   const video = requests.length === 1 && requests[0].kind === 'video';
   const invalid = `Invalid ${video ? 'video' : 'diagram'} request. Expected one complete, bounded JSON task.`;
-  if (video) { try { return { text, requested: true, kind: 'video', task: parse(requests[0]) }; } catch { return { text, requested: true, kind: 'video', error: invalid }; } }
+  if (video) { const { position } = requests[0]; try { return { text, requested: true, kind: 'video', position, task: parse(requests[0]) }; } catch { return { text, requested: true, kind: 'video', position, error: invalid }; } }
   // A video stands alone; diagrams may arrive as several ordered steps, each validated on its own.
-  if (requests.length > MAX_DIAGRAMS || requests.some(r => r.kind === 'video')) return { text, requested: true, kind: 'mermaid', diagrams: [{ error: invalid }] };
-  return { text, requested: true, kind: 'mermaid', diagrams: requests.map(request => { try { return { task: parse(request) }; } catch { return { error: invalid }; } }) };
+  if (requests.length > MAX_DIAGRAMS || requests.some(r => r.kind === 'video')) return { text, requested: true, kind: 'mermaid', diagrams: [{ error: invalid, position: requests[0].position }] };
+  return { text, requested: true, kind: 'mermaid', diagrams: requests.map(request => { try { return { task: parse(request), position: request.position }; } catch { return { error: invalid, position: request.position }; } }) };
 }
 
 export function tutorContext(tree) {

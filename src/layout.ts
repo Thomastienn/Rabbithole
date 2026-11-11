@@ -131,6 +131,15 @@ html { view-transition-name: none; }
 .reply-md u.suggestion.explored:hover { text-decoration-color: var(--color-accent); }
 .reply-md u.suggestion:focus-visible { outline: medium solid var(--color-accent); outline-offset: var(--spacing-1); border-radius: var(--radius-element); }
 .reply-md .md-source-syntax { white-space: pre-wrap; font-family: monospace; }
+/* Visuals blend into the reply: no card chrome, full column width, height from the frame's reported content. */
+.visual { position: relative; margin: var(--spacing-3) 0; min-width: 0; }
+.visual-shimmer { display: block; width: 100%; height: calc(4 * 1lh); }
+.visual-frame { display: block; width: 100%; height: 0; border: 0; background: transparent; }
+/* Chrome skips rendering hidden cross-origin frames, so a loading frame sits transparent over the shimmer instead. */
+.visual-frame:not([data-ready]) { position: absolute; inset: 0; height: 100%; opacity: 0; }
+.visual-enlarge { position: absolute; inset: 0 0 auto auto; opacity: 0; transition: opacity 120ms ease; }
+.visual:is(:hover, :focus-within) .visual-enlarge { opacity: 1; }
+@media (hover: none) { .visual-enlarge { opacity: 1; } }
 .diagram-card { align-self: stretch; min-width: 0; max-width: 100%; border: thin solid var(--color-border); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
 .diagram-card h3 { font-size: var(--font-size-base); }
 .diagram-open { display: block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }

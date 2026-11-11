@@ -57,7 +57,8 @@ function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
 
 // Underlines are drawn on text leaves; the first piece of each is its single Tab stop.
 // shortcut: a passage covering only hidden syntax or math draws nothing; extend if suggestions target those.
-export function renderMarkdown(raw: string, reveal?: Span, underlines: (Span & { child?: string })[] = []): ReactNode {
+// Slots (inline visuals) go before the first top-level block starting at or after their offset, else at the end.
+export function renderMarkdown(raw: string, reveal?: Span, underlines: (Span & { child?: string })[] = [], slots: { at: number; node: ReactNode }[] = []): ReactNode {
   let revealed = 0;
   const stops = new Set<number>();
   const hit = (s: number, e: number) => !!reveal && s < reveal.end && e > reveal.start;
@@ -89,7 +90,10 @@ export function renderMarkdown(raw: string, reveal?: Span, underlines: (Span & {
     const { start: s, end: e } = pos(n), kids = () => (n.children ?? []).map(c => node(c, inTable));
     const attrs = { key: `${n.type}-${s}` };
     switch (n.type) {
-      case 'root': return kids();
+      case 'root': {
+        const pending = [...slots].sort((a, b) => a.at - b.at), take = (until: number) => pending.splice(0, pending.filter(slot => slot.at <= until).length).map(slot => slot.node);
+        return [...(n.children ?? []).flatMap(c => [...take(pos(c).start), node(c)]), ...take(Infinity)];
+      }
       case 'text': return sourceLines(raw, n).flat().map(r => leaf(r));
       case 'html': return decoded(raw.slice(s, e), s, false).map(r => leaf(r));
       case 'paragraph': return h(Text, { ...attrs, as: 'p', display: 'block', children: kids() });
