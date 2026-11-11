@@ -66,6 +66,12 @@ export class Store {
         CREATE TABLE IF NOT EXISTS concept_topics (concept INTEGER NOT NULL REFERENCES concepts(id), topic INTEGER NOT NULL REFERENCES topics(id), PRIMARY KEY(concept, topic));
         CREATE TABLE IF NOT EXISTS concept_links (concept INTEGER NOT NULL REFERENCES concepts(id), target INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('related','builds on')), PRIMARY KEY(concept, target, kind), CHECK(concept <> target));
         CREATE TABLE IF NOT EXISTS evidence (concept INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('met','asked','used','ignored','known','unknown')), source TEXT, at INTEGER NOT NULL, UNIQUE(concept, kind, source));`);
+      // Library ownership: ready videos outlive their source conversation; only title, description and timing are kept.
+      // Created once, so existing ready videos migrate without generation and later library removals stay removed.
+      if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='videos'").get()) {
+        this.db.exec(`CREATE TABLE videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, duration REAL, created INTEGER NOT NULL);
+          INSERT INTO videos(id,title,description,duration,created) SELECT id,title,description,duration,created FROM artifacts WHERE kind='video' AND status='ready';`);
+      }
       this.interrupt();
     } catch (error) { error.backupPath = this.backupPath; this.db.close(); throw error; }
   }
@@ -294,7 +300,12 @@ export class Store {
     return this.db.prepare("UPDATE artifacts SET input=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'").run(input, conversation, id, attempt).changes > 0;
   }
   finishVideo(conversation, id, attempt, { description, duration } = {}, error = null) {
-    this.db.prepare("UPDATE artifacts SET status=?,description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'").run(error ? 'failed' : 'ready', error ? null : description, error ? null : duration, error, conversation, id, attempt);
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const done = this.db.prepare("UPDATE artifacts SET status=?,description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'").run(error ? 'failed' : 'ready', error ? null : description, error ? null : duration, error, conversation, id, attempt).changes;
+      if (done && !error) this.db.prepare("INSERT INTO videos(id,title,description,duration,created) SELECT id,title,description,duration,created FROM artifacts WHERE id=? ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,duration=excluded.duration").run(id);
+      this.db.exec('COMMIT');
+    } catch (e) { this.db.exec('ROLLBACK'); throw e; }
     return this.artifact(conversation, id);
   }
   cancelVideo(conversation, id) {
@@ -306,6 +317,8 @@ export class Store {
     const result = this.db.prepare("UPDATE artifacts SET status='pending',attempt=?,error=NULL,duration=NULL WHERE conversation=? AND id=? AND kind='video' AND status!='pending'").run(randomUUID(), conversation, id);
     return result.changes ? this.artifact(conversation, id) : null;
   }
+  library() { return this.db.prepare('SELECT id,title,description,duration,created FROM videos ORDER BY created DESC,rowid DESC').all().map(v => ({ ...v })); }
+  libraryVideo(id) { return this.db.prepare('SELECT id,title,description,duration,created FROM videos WHERE id=?').get(id); }
   forgetThread(id) { this.db.prepare('UPDATE trees SET thread=NULL,working_thread=NULL WHERE id=?').run(id); }
   create(title = 'New chat', provider = 'codex', model = null, effort = null) {
     const id = randomUUID();

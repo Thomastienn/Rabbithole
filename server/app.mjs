@@ -140,12 +140,14 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           defaultProvider,
         });
       }
+      // The library owns ready videos, independent of any conversation; playback never calls a provider.
+      if (req.method === 'GET' && url.pathname === '/api/videos') return json(res, 200, store.library().map(v => readable(mediaPath(dir, v.id)) ? v : { ...v, available: false }));
       // Media is located only from the server-issued artifact id, never from a generated path or URL.
-      const mediaMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/media$/);
-      if (req.method === 'GET' && mediaMatch) {
-        const artifact = store.artifact(mediaMatch[1], mediaMatch[2]);
+      const mediaMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/media$/), libraryMatch = url.pathname.match(/^\/api\/videos\/([^/]+)\/media$/);
+      if (req.method === 'GET' && (mediaMatch || libraryMatch)) {
+        const artifact = mediaMatch ? store.artifact(mediaMatch[1], mediaMatch[2]) : store.libraryVideo(libraryMatch[1]) && { kind: 'video', status: 'ready', id: libraryMatch[1] };
         const info = artifact?.kind === 'video' && artifact.status === 'ready' && await stat(mediaPath(dir, artifact.id)).catch(() => null) || null;
-        if (!info?.isFile()) return json(res, 404, { error: 'Video not available in this conversation.' });
+        if (!info?.isFile()) return json(res, 404, { error: 'Video not available.' });
         // Single byte ranges let the native player seek; anything else gets the whole file.
         const [, from, to] = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '') ?? [];
         const start = from ? Number(from) : to ? Math.max(0, info.size - Number(to)) : 0, end = from && to ? Math.min(Number(to), info.size - 1) : info.size - 1;
@@ -278,7 +280,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               result = store.remove(id, body.conversation, artifacts => {
                 // Move files reversibly before commit; an SQL or filesystem failure restores their original names.
                 for (const a of artifacts.filter(a => a.kind === 'video')) {
-                  for (const path of [mediaPath(dir, a.id), join(dir, 'video-work', a.id), ...(a.attempt ? [join(dir, 'video-work', a.attempt)] : [])]) {
+                  // Library videos keep their media; private production work is still removed.
+                  for (const path of [...(store.libraryVideo(a.id) ? [] : [mediaPath(dir, a.id)]), join(dir, 'video-work', a.id), ...(a.attempt ? [join(dir, 'video-work', a.attempt)] : [])]) {
                     files.push(path);
                     // Live jobs can have filesystem operations in flight; stop and remove those after commit.
                     if ([...videoJobs].some(job => job.artifact === a.id) || !existsSync(path)) continue;

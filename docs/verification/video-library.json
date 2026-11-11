@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-11-11T14:41:00.879Z",
+  "media": "24fdc9cb-49e0-4472-83f8-a6d4946381cc",
+  "evidence": "Copy of native pre-library database and generated MP4 in the production build and actual Chromium player",
+  "checks": [
+    {
+      "name": "rail Videos button opens the library by keyboard and moves focus",
+      "current": "Videos",
+      "focus": "return-from-videos",
+      "heading": "Videos"
+    },
+    {
+      "name": "missing file shows unavailable, no player and no regenerate action",
+      "buttons": [],
+      "state": "unavailable",
+      "status": "Missing file video: Video unavailable: its saved file is missing or unreadable.",
+      "video": false
+    },
+    {
+      "name": "migrated native video plays and seeks from the library route",
+      "duration": 86.101,
+      "height": 360,
+      "src": "/api/videos/24fdc9cb-49e0-4472-83f8-a6d4946381cc/media",
+      "width": 640
+    },
+    {
+      "name": "after deleting the source chat the library still lists and plays the video in dark and light after reload"
+    },
+    {
+      "name": "no provider or narration calls; recorded usage unchanged",
+      "calls": 0
+    }
+  ],
+  "pass": true
+}

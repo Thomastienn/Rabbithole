@@ -82,7 +82,7 @@ test('delete a branch cascades only its descendants, cleans files and layout, an
     assert.deepEqual(env.store.list().find(t => t.id === env.root.id).layout, { folded: [env.sibling.id], selected: env.root.id, panel: 'beside', viewport: { x: 10, y: 20, zoom: 0.8 } });
     const deleted = new Set([env.child.id, env.grandchild.id]), after = snapshot(env.store);
     for (const [table, key] of [['messages', 'tree'], ['branches', 'child'], ['artifacts', 'conversation']]) assert.deepEqual(after[table], before[table].filter(row => !deleted.has(row[key])));
-    for (const path of env.paths) assert.equal(existsSync(path), !deleted.has(readFileOwner(path, before)), path);
+    for (const path of env.paths) assert.equal(existsSync(path), path.endsWith('.mp4') || !deleted.has(readFileOwner(path, before)), path); // library keeps ready media
     assert.deepEqual(env.store.db.prepare('PRAGMA foreign_key_check').all(), []);
     assert.equal((await env.post(env.root.id, 'layout', { folded: [], selected: env.child.id, panel: 'beside' })).status, 400, 'stale selected IDs cannot be saved again');
     assert.equal((await env.post(env.root.id, 'layout', { folded: [env.child.id], selected: env.root.id, panel: 'beside' })).status, 400);
@@ -94,7 +94,7 @@ function readFileOwner(path, before) {
   return before.artifacts.find(a => a.kind === 'video' && (path.includes(a.id) || path.includes(a.attempt))).conversation;
 }
 
-test('delete a whole chat removes every owned row and file; another chat stays byte-identical', async () => {
+test('delete a whole chat removes every owned row and private work file; another chat stays byte-identical', async () => {
   const env = await fixture();
   try {
     const other = env.store.tree(env.other.id), before = snapshot(env.store);
@@ -103,7 +103,7 @@ test('delete a whole chat removes every owned row and file; another chat stays b
     assert.equal((await response.json()).deleted.length, 4);
     assert.deepEqual(env.store.list().map(t => t.id), [env.other.id]);
     assert.deepEqual(env.store.tree(env.other.id), other);
-    for (const path of env.paths) assert.equal(existsSync(path), readFileOwner(path, before) === env.other.id, path);
+    for (const path of env.paths) assert.equal(existsSync(path), path.endsWith('.mp4') || readFileOwner(path, before) === env.other.id, path);
     for (const [table, key] of [['messages', 'tree'], ['artifacts', 'conversation']]) assert.ok(snapshot(env.store)[table].every(row => row[key] === env.other.id));
     assert.equal(snapshot(env.store).branches.length, 0);
     assert.deepEqual(env.store.db.prepare('PRAGMA foreign_key_check').all(), []);

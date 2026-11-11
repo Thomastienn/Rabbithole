@@ -5,7 +5,7 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { CommandPalette } from '@astryxdesign/core/CommandPalette';
@@ -24,6 +24,7 @@ import { bubbleTints, savedTint, type BubbleTint } from './bubbleTint';
 import type { Appearance } from './appearance';
 import { DEFAULT_CHAT_WIDTH, MIN_CHAT_WIDTH, clampChatWidth, keyChatWidth, maxChatWidth, resetChatWidth, savedChatWidth } from './chatWidth';
 import KnowledgePage, { type Graph } from './KnowledgePage';
+import VideoLibrary from './VideoLibrary';
 import { artifactsAt, mergeArtifact, type Artifact } from './artifacts';
 import { renderMarkdown, rawOffsets } from './markdown';
 import { previewText } from './markdownText';
@@ -721,6 +722,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     </VStack></nav>
     <VStack padding={3} gap={2} className="tree-navigation-footer">
       <Button label="Knowledge" icon={<ShareIcon />} variant={tab === 'knowledge' ? 'secondary' : 'ghost'} aria-current={tab === 'knowledge' ? 'page' : undefined} onClick={() => { setTab('knowledge'); setMobileNav(false); focusAfterNavigation(() => document.getElementById('return-to-learning')?.focus()); }} />
+      <Button label="Videos" icon={<FilmIcon />} variant={tab === 'videos' ? 'secondary' : 'ghost'} aria-current={tab === 'videos' ? 'page' : undefined} onClick={() => { setTab('videos'); setMobileNav(false); focusAfterNavigation(() => document.getElementById('return-from-videos')?.focus()); }} />
       <Button label="Settings" icon={<Cog6ToothIcon />} variant="ghost" onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
     </VStack>
   </VStack>;
@@ -822,8 +824,11 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       <main hidden={tab !== 'knowledge'} className="knowledge-panel" aria-label="Knowledge">
         {tab === 'knowledge' && <><HStack padding={3} className="knowledge-header"><Button id="return-to-learning" label="Return to learning tree" variant="ghost" icon={<ArrowUturnLeftIcon />} onClick={() => { setTab('learning'); requestAnimationFrame(() => document.querySelector<HTMLElement>(overview ? '.map-toolbar button' : '#rename-conversation')?.focus()); }} /></HStack><KnowledgePage api={api} activity={activeKey} /></>}
       </main>
+      <main hidden={tab !== 'videos'} className="knowledge-panel" aria-label="Videos">
+        {tab === 'videos' && <><HStack padding={3} className="knowledge-header"><Button id="return-from-videos" label="Return to learning tree" variant="ghost" icon={<ArrowUturnLeftIcon />} onClick={() => { setTab('learning'); requestAnimationFrame(() => document.querySelector<HTMLElement>(overview ? '.map-toolbar button' : '#rename-conversation')?.focus()); }} /></HStack><VideoLibrary api={api} activity={activeKey} /></>}
+      </main>
     </HStack>
     <SettingsWindow request={settings} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} appearance={appearance} setAppearance={setAppearance} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
-    <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams, videos and saved layout will be permanently deleted. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
+    <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
 }

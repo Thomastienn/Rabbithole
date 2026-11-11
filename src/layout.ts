@@ -135,6 +135,7 @@ html { view-transition-name: none; }
 .diagram-card h3 { font-size: var(--font-size-base); }
 .diagram-open { display: block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 .diagram-open img { display: block; max-width: 100%; height: auto; }
+.video-library { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); gap: var(--spacing-5); align-items: start; }
 .video-frame { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-element); background: var(--color-background-body); }
 .video-stage { position: relative; }
 .video-stage > .astryx-skeleton, .video-controls { position: absolute; inset: 0; }
