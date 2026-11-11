@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-11T04:54:26.564Z",
+  "date": "2026-11-11T05:10:11.886Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,10 +12,10 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 998.3887419999992,
-  "previewQueryMs": 751.1456909999997,
+  "seedMs": 1133.598167,
+  "previewQueryMs": 759.9261029999998,
   "previewBytes": 4876201,
-  "openMs": 3041.1196290000007,
+  "openMs": 3192.2203800000025,
   "dom": {
     "elements": 2525,
     "nodes": 5,
@@ -23,25 +23,25 @@
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1986.5,
+    "elapsedMs": 1996.5999999977648,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
     "maxMs": 16.800000000000182,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.700000000000728,
+    "p95Ms": 16.800000000000182,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 371.55436199999895,
-  "unfoldMs": 196.83946599999763,
+  "foldMs": 377.46204899999793,
+  "unfoldMs": 196.17661999999837,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 3934.4103050000012,
-  "selectMs": 4536.153570000002,
-  "selectUiMs": 636.6999999992549,
+  "selectClickMs": 3940.6573739999985,
+  "selectMs": 4487.172607999997,
+  "selectUiMs": 663,
   "selectedBounds": {
     "bottom": 631.8375244140625,
     "canvasHeight": 900,
@@ -51,12 +51,12 @@
     "toolbarTop": 850,
     "top": 75
   },
-  "streamingMs": 549.5394960000012,
+  "streamingMs": 524.3927999999978,
   "chunkRenders": {
-    "18c27c6d-022d-44b2-ade4-81d5bdc8aaad": 14
+    "f202a378-1aa0-444a-93b4-7a8ce038fee3": 14
   },
   "chunkRenderReasons": {
-    "18c27c6d-022d-44b2-ade4-81d5bdc8aaad": [
+    "f202a378-1aa0-444a-93b4-7a8ce038fee3": [
       "preview"
     ]
   }

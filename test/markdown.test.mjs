@@ -207,3 +207,10 @@ test('an explored suggestion draws solid and names its existing chat', () => {
   assert.ok(u.classList.contains('explored'));
   assert.equal(u.getAttribute('aria-label'), 'Explored passage: x = 1. Opens its chat');
 });
+
+test('each code block carries a labelled copy button outside the raw-offset text', () => {
+  const body = dom(renderToStaticMarkup(h('div', null, renderMarkdown('Run:\n\n```js\nconst a = 1;\n```\n\n```\nb\n```')))).getElementById('r');
+  const buttons = [...body.querySelectorAll('pre > button.code-copy, pre button.code-copy')];
+  assert.equal(buttons.length, 2);
+  assert.ok(buttons.every(b => b.getAttribute('aria-label') === 'Copy code' && !b.closest('[data-o]') && !b.querySelector('[data-o]')));
+});

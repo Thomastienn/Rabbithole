@@ -73,9 +73,12 @@ html { view-transition-name: none; }
 .reply-status[data-status=streaming] { border-inline-start-color: var(--color-accent); }
 .reply-status[data-status=failed] { color: var(--color-text-error); border-inline-start-color: var(--color-border-error); }
 .chat-question:not(:first-child) { margin-block-start: var(--spacing-6); }
-.reply-usage { opacity: 0; transition: opacity 120ms ease; }
-.chat-reply:is(:hover, :focus-within) .reply-usage { opacity: 1; }
-@media (hover: none) { .reply-usage { opacity: 1; } }
+.reply-usage, .reply-copy { opacity: 0; transition: opacity 120ms ease; }
+.chat-reply:is(:hover, :focus-within) :is(.reply-usage, .reply-copy) { opacity: 1; }
+@media (hover: none) { .reply-usage, .reply-copy { opacity: 1; } }
+.code-copy { position: absolute; inset-block-start: var(--spacing-1); inset-inline-end: var(--spacing-1); opacity: 0; transition: opacity 120ms ease; }
+.reply-md pre:is(:hover, :focus-within) .code-copy { opacity: 1; }
+@media (hover: none) { .code-copy { opacity: 1; } }
 .chat-title .rename-title { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: 0; }
 .saved-chat-title { flex: 1; min-width: 0; }
 .saved-chat-title > * { min-width: 0; }
@@ -91,7 +94,7 @@ html { view-transition-name: none; }
 .reply-md ol { list-style-type: decimal; }
 .reply-md li + li { margin-block-start: var(--spacing-1); }
 .reply-md blockquote { margin-inline: 0; padding-inline-start: var(--spacing-3); border-inline-start: thin solid var(--color-border-emphasized); color: var(--color-text-secondary); }
-.reply-md pre { margin-inline: 0; padding: var(--spacing-3); background: var(--color-background-body); border-radius: var(--radius-element); white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply-md pre { position: relative; margin-inline: 0; padding: var(--spacing-3) var(--spacing-8) var(--spacing-3) var(--spacing-3); background: var(--color-background-body); border-radius: var(--radius-element); white-space: pre-wrap; overflow-wrap: anywhere; }
 .reply-md pre > code { display: block; padding: 0; background: transparent; white-space: inherit; font-size: var(--font-size-sm); }
 .reply-md code .astryx-text { font-family: inherit; white-space: inherit; }
 .reply-md a { color: var(--color-text-primary); text-decoration: underline; text-underline-offset: var(--spacing-1); }
@@ -169,7 +172,7 @@ html { view-transition-name: none; }
 .activity-dot { display: inline-block; flex: none; width: var(--spacing-2); height: var(--spacing-2); border-radius: 50%; background: var(--color-text-secondary); }
 .conversation-box[data-active=true] .activity-dot { background: var(--color-accent); animation: pulse var(--duration-slow-max) ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.3; } }
-@media (prefers-reduced-motion: reduce) { .conversation-box[data-active=true] .activity-dot, .react-flow__edge .react-flow__edge-path.branch-new, .selection-action, .reply-status::before { animation: none; } .chat-divider::after, .conversation-box, .node-extra, .diagram-card .astryx-icon, .reply-usage { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .conversation-box[data-active=true] .activity-dot, .react-flow__edge .react-flow__edge-path.branch-new, .selection-action, .reply-status::before { animation: none; } .chat-divider::after, .conversation-box, .node-extra, .diagram-card .astryx-icon, .reply-usage, .reply-copy, .code-copy { transition: none; } }
 .react-flow__node:focus-visible { outline: none; }
 .react-flow__node:focus-visible .conversation-box { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: var(--focus-outline-offset); }
 .react-flow__edge:focus-visible { outline: none; }

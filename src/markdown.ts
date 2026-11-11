@@ -6,6 +6,7 @@ import { tokenize } from '@astryxdesign/core/CodeBlock';
 import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
+import CopyButton from './CopyButton.ts';
 export { plainText };
 
 type Span = { start: number; end: number };
@@ -114,7 +115,7 @@ export function renderMarkdown(raw: string, reveal?: Span, underlines: (Span & {
       }
       case 'code': {
         const lines = sourceLines(raw, n, true), tokens = tokenize(n.value!.replace(/\r\n?/g, '\n'), n.lang || 'plaintext');
-        return h('pre', { ...attrs, 'data-language': n.lang || 'plaintext' }, h(Code, { children: lines.flatMap((runs, i) => {
+        return h('pre', { ...attrs, 'data-language': n.lang || 'plaintext' }, h(CopyButton, { text: n.value!, label: 'Copy code', className: 'code-copy' }), h(Code, { children: lines.flatMap((runs, i) => {
           let at = 0;
           const length = runs.map(r => r.value).join('').length;
           return [...(tokens[i] ?? []), { start: length, end: length, type: '' }].flatMap(t => {
