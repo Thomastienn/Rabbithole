@@ -29,7 +29,8 @@ import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { treeGroups } from './treeList';
 
-type Anchor = { messageId: string; start: number; end: number; text: string; at?: Point; suggestion?: boolean };
+// at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
+type Anchor = { messageId: string; start: number; end: number; text: string; at?: Point & { below?: number }; suggestion?: boolean };
 type Branch = Anchor & { parent: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; provider: string; model: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
 type Model = { provider: string; model: string; label: string; isDefault: boolean; defaultFallback?: boolean };
@@ -86,7 +87,7 @@ const Reply = memo(function Reply({ text, reveal, underlines }: { text: string; 
   return <Text as="div" type="body" className="reply-md">{useMemo(() => renderMarkdown(text, reveal, underlines), [text, reveal?.start, reveal?.end, key])}</Text>;
 });
 
-function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, openSelection, closeSelection, form, suggestions }: { message: Message; index: number; suggestions?: Suggestions; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; onOpenChild: (id: string) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; form?: { node: React.ReactNode; at?: Point } }) {
+function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, openSelection, closeSelection, form, suggestions }: { message: Message; index: number; suggestions?: Suggestions; onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void; onOpenChild: (id: string) => void; reveal?: Source; selecting: boolean; openSelection: () => void; closeSelection: () => void; form?: { node: React.ReactNode; at?: Anchor['at'] } }) {
   const formOpen = !!form;
   const highlighted = useRef(false);
   const [anchor, setAnchor] = useState<Anchor & { at?: Point }>();
@@ -102,13 +103,14 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
     const position = () => {
       box.style.transform = '';
       const top = wrapper.current!.closest('.focused-chat')!.querySelector('.chat-header')!.getBoundingClientRect().bottom;
-      if (box.getBoundingClientRect().top < top) box.style.transform = 'none';
+      const at = form?.at;
+      if (at && box.getBoundingClientRect().top < top) box.style.transform = `translateY(calc(${(at.below ?? at.y) - at.y}px + 2 * var(--spacing-1)))`;
     };
     position();
     const observer = new ResizeObserver(position); observer.observe(box);
     window.addEventListener('resize', position); document.addEventListener('scroll', position, true);
     return () => { observer.disconnect(); window.removeEventListener('resize', position); document.removeEventListener('scroll', position, true); };
-  }, [formOpen, form?.at?.y]);
+  }, [formOpen, form?.at?.y, form?.at?.below]);
   useEffect(() => {
     const highlight = reveal && passage.current?.querySelector<HTMLElement>('mark, [data-reveal]');
     highlight?.scrollIntoView({ block: 'center' });
@@ -131,7 +133,7 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
       // A pointer highlight opens the passage textbox above it and wins over any underline it covers; keyboard selection keeps the Ask button.
       if (e.type === 'mouseup' && span.end > span.start) {
         highlighted.current = true; setAnchor(undefined);
-        onBranch({ messageId: message.id, start: span.start, end: span.end, text: message.text.slice(span.start, span.end), at: { x: 0, y: rects[0].top - box.top } }, passage);
+        onBranch({ messageId: message.id, start: span.start, end: span.end, text: message.text.slice(span.start, span.end), at: { x: 0, y: rects[0].top - box.top, below: rects[rects.length - 1].bottom - box.top } }, passage);
         return;
       }
       capture(span.start, span.end, last && { x: Math.min(last.right - box.left, box.width), y: last.bottom - box.top });
@@ -144,7 +146,8 @@ function Passage({ message, index, onBranch, onOpenChild, reveal, selecting, ope
     if (u.child) { onOpenChild(u.child); return true; }
     const stop = [...passage.current!.querySelectorAll<HTMLElement>('u.suggestion[tabindex]')].find(e => +e.dataset.o! >= u.start && +e.dataset.o! < u.end) ?? piece;
     setAnchor(undefined);
-    onBranch({ messageId: message.id, start: u.start, end: u.end, text: message.text.slice(u.start, u.end), suggestion: true, at: { x: 0, y: stop.getBoundingClientRect().top - wrapper.current!.getBoundingClientRect().top } }, { current: stop });
+    const stopBox = stop.getBoundingClientRect(), top = wrapper.current!.getBoundingClientRect().top;
+    onBranch({ messageId: message.id, start: u.start, end: u.end, text: message.text.slice(u.start, u.end), suggestion: true, at: { x: 0, y: stopBox.top - top, below: stopBox.bottom - top } }, { current: stop });
     return true;
   }
   useEffect(() => {

@@ -165,6 +165,8 @@ section[role=alert] { background: var(--color-background-body); }
 /* One frame height for every settings tab, so switching tabs never resizes the window. */
 .settings-shell { height: min(50rem, calc(100dvh - 2rem)); min-height: 0; }
 .settings-shell .astryx-side-nav { flex-shrink: 0; }
+/* Settings sections: seams and small-caps labels, not cards (spec, Settings window). */
+.settings-panel h3 { font-size: var(--font-size-base); font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--color-text-secondary); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }
 @media (max-width: 48rem) {
  .workspace { flex-direction: column; overflow: hidden; }

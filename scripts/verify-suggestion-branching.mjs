@@ -41,13 +41,14 @@ try {
   // Pointer click on an underline opens an empty box above that passage.
   await ev(`${stop('mutex')}.click(); true`);
   await wait(boxOpen);
-  const geometry = await ev(`(() => { const box = document.querySelector('.passage-box').getBoundingClientRect(), u = ${stop('mutex')}.getBoundingClientRect(); return { above: box.bottom <= u.top + 1 }; })()`);
-  assert.equal(geometry.above, true, 'box sits above the passage');
+  const geometry = await ev(`(() => { const box = document.querySelector('.passage-box').getBoundingClientRect(), u = ${stop('mutex')}.getBoundingClientRect(); return { clear: box.bottom <= u.top + 1 || box.top >= u.bottom - 1 }; })()`);
+  // Spec rule 6: above the passage, or below it when above would overlap the chat header.
+  assert.equal(geometry.clear, true, 'box sits beside the passage, not over it');
   await b('press', 'Enter');
   assert.equal(children(root.id).length, 0, 'empty box cannot be sent');
   await b('press', 'Escape');
   await wait(`!document.querySelector('.branch-form') && document.activeElement === ${stop('mutex')}`);
-  steps.push('click opens empty box above underline; empty Enter sends nothing; Escape closes and refocuses the underline');
+  steps.push('click opens empty box anchored beside the underline; empty Enter sends nothing; Escape closes and refocuses the underline');
 
   // Keyboard: Enter on the focused underline opens the same box; a failed branch keeps the prompt.
   await b('press', 'Enter');

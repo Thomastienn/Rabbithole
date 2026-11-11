@@ -23,9 +23,9 @@ export type SettingsRequest = { tab?: SettingsTab; focus?: string };
 type Model = { provider: string; model: string; label: string };
 
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
+  { id: 'interface', label: 'Interface', description: 'Appearance, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
   { id: 'models', label: 'Models', description: 'Which model picks suggestion underlines, and what concept matching costs.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
-  { id: 'interface', label: 'Interface', description: 'Appearance, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
   { id: 'usage', label: 'Usage', description: 'What today’s replies and suggestions have used so far.', icon: ChartBarIcon },
 ];
 
@@ -65,7 +65,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
     const timer = setTimeout(() => document.querySelector<HTMLElement>(request.focus ?? '#settings-heading')?.focus(), 50);
     return () => clearTimeout(timer);
   }, [request]);
-  const shown = tab ?? (narrow ? undefined : 'models');
+  const shown = tab ?? (narrow ? undefined : 'interface');
   const current = TABS.find(t => t.id === shown);
   function showTab(next?: SettingsTab) {
     setTab(next);
@@ -78,7 +78,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
   }
   const closeButton = <IconButton label="Close settings" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={close} />;
 
-  const panel = current && <VStack gap={6}>
+  const panel = current && <VStack gap={6} className="settings-panel">
     <HStack gap={2} vAlign="start" hAlign="between">
       <VStack gap={1}><Heading level={2} id="settings-section-heading" tabIndex={-1}>{current.label}</Heading><Text type="supporting" color="secondary">{current.description}</Text></VStack>
       {!narrow && closeButton}

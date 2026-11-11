@@ -1,165 +1,165 @@
 {
-  "date": "2026-11-11T02:16:59.836Z",
+  "date": "2026-11-11T04:06:47.541Z",
   "evidence": "Seeded data, synthetic provider, real browser and HTTP/SSE; controlled one-minute timer; SQLite/HTTP app restored in a fresh Node process. No native provider inference.",
   "stages": {
     "initial": {
-      "300039a3-2479-4973-9c76-ab34d581d785": {
+      "02de750e-765a-4c0d-a17f-205479060c2c": {
+        "height": 60,
+        "width": 256,
+        "x": 720,
+        "y": 220
+      },
+      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
+        "height": 60,
+        "width": 256,
+        "x": 270,
+        "y": 100
+      },
+      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
         "height": 132,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
+      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
+        "height": 88,
+        "width": 256,
+        "x": 0,
+        "y": 220
+      },
+      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
         "height": 60,
         "width": 256,
         "x": 360,
         "y": 600
-      },
-      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
+      }
+    },
+    "grown": {
+      "02de750e-765a-4c0d-a17f-205479060c2c": {
         "height": 60,
         "width": 256,
         "x": 720,
         "y": 220
       },
-      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
+      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
-        "height": 88,
-        "width": 256,
-        "x": 0,
-        "y": 220
-      }
-    },
-    "grown": {
-      "300039a3-2479-4973-9c76-ab34d581d785": {
+      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
         "height": 248,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
-        "height": 60,
-        "width": 256,
-        "x": 360,
-        "y": 676
-      },
-      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
-        "height": 60,
-        "width": 256,
-        "x": 720,
-        "y": 220
-      },
-      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
-        "height": 60,
-        "width": 256,
-        "x": 270,
-        "y": 100
-      },
-      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
+      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
         "height": 88,
         "width": 256,
         "x": 0,
         "y": 296
-      }
-    },
-    "dragHeld": {
-      "300039a3-2479-4973-9c76-ab34d581d785": {
-        "height": 288,
-        "width": 256,
-        "x": 0,
-        "y": 0
       },
-      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
+      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
         "height": 60,
         "width": 256,
         "x": 360,
         "y": 676
-      },
-      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
+      }
+    },
+    "dragHeld": {
+      "02de750e-765a-4c0d-a17f-205479060c2c": {
         "height": 60,
         "width": 256,
         "x": 720,
         "y": 220
       },
-      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
+      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
-        "height": 88,
-        "width": 256,
-        "x": 0,
-        "y": 256
-      }
-    },
-    "dragReleased": {
-      "300039a3-2479-4973-9c76-ab34d581d785": {
+      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
         "height": 288,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
+      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
+        "height": 88,
+        "width": 256,
+        "x": 0,
+        "y": 256
+      },
+      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
         "height": 60,
         "width": 256,
         "x": 360,
-        "y": 756
-      },
-      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
+        "y": 676
+      }
+    },
+    "dragReleased": {
+      "02de750e-765a-4c0d-a17f-205479060c2c": {
         "height": 60,
         "width": 256,
         "x": 720,
         "y": 220
       },
-      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
+      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
         "height": 60,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
+      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
+        "height": 288,
+        "width": 256,
+        "x": 0,
+        "y": 0
+      },
+      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
         "height": 88,
         "width": 256,
         "x": 0,
         "y": 336
+      },
+      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
+        "height": 60,
+        "width": 256,
+        "x": 360,
+        "y": 756
       }
     },
     "unfolded": {
-      "300039a3-2479-4973-9c76-ab34d581d785": {
+      "02de750e-765a-4c0d-a17f-205479060c2c": {
+        "height": 60,
+        "width": 256,
+        "x": 720,
+        "y": 220
+      },
+      "12f4504c-3f24-430a-82dd-f61f33ae04f5": {
+        "height": 60,
+        "width": 256,
+        "x": 270,
+        "y": 100
+      },
+      "1cb6c0f1-7685-4c63-ada8-dece0cee26cf": {
         "height": 364,
         "width": 256,
         "x": 0,
         "y": 0
       },
-      "9dfa7d2c-488e-4b57-aa15-1362b255a84e": {
-        "height": 60,
-        "width": 256,
-        "x": 360,
-        "y": 832
-      },
-      "b72ab353-8cfd-425a-9ac2-a0a632fe1ff3": {
-        "height": 60,
-        "width": 256,
-        "x": 720,
-        "y": 220
-      },
-      "e08dbab9-7b75-4717-8941-412a41a7f4ad": {
-        "height": 60,
-        "width": 256,
-        "x": 270,
-        "y": 100
-      },
-      "eaf0e522-2fad-4dfe-be66-3e0f864aa5c7": {
+      "45906f5b-ea2f-494f-a5c6-5573e680d33f": {
         "height": 88,
         "width": 256,
         "x": 0,
         "y": 412
+      },
+      "85d13c9d-90c2-4ad8-82be-e3f5000abd7a": {
+        "height": 60,
+        "width": 256,
+        "x": 360,
+        "y": 832
       }
     }
   },

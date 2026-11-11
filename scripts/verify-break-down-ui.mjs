@@ -64,6 +64,7 @@ const manual = async index => {
 const settings = async () => {
   await click('Map menu');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
+  await click('Models');
   await b('wait', '--text', 'Automatic suggestions');
 };
 try {

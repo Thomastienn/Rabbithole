@@ -197,6 +197,7 @@ if (process.argv[2] === '--serve') {
     await ready(tall.id); await ready(wide.id);
 
     await ev(`document.querySelector('.passage section').scrollIntoView({block:'center'})`);
+    const picked = `getSelection().toString() || document.querySelector('.passage-box')?.textContent.replace('Question about this passage', '').split('Create focused chat')[0]`;
     // Diagrams settling can re-scroll the chat log under the pointer; re-measure and retry the drag.
     for (let attempt = 0; attempt < 3; attempt++) {
       const points = await ev(`(()=>{document.querySelector('.passage section').scrollIntoView({block:'center'});const n=document.createTreeWalker(document.querySelector('.passage section .reply-md'),NodeFilter.SHOW_TEXT).nextNode(),a=document.createRange(),z=document.createRange();a.setStart(n,10);a.setEnd(n,11);z.setStart(n,17);z.setEnd(n,19);const first=a.getBoundingClientRect(),last=z.getBoundingClientRect();return [first.left+1,first.top+first.height/2,last.right-1,last.top+last.height/2]})()`);
@@ -204,9 +205,10 @@ if (process.argv[2] === '--serve') {
       await b('mouse', 'down', 'left');
       await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
       await b('mouse', 'up', 'left');
-      if (await ev(`getSelection().toString()`) === 'repeat 😀') break;
+      // The prompt opens on mouse selection and its input takes focus, clearing the page selection; check its quote.
+      if (await ev(picked) === 'repeat 😀') break;
     }
-    assert.equal(await ev(`getSelection().toString()`), 'repeat 😀', 'mouse drag must select the visible reply');
+    assert.equal(await ev(picked), 'repeat 😀', 'mouse drag must select the visible reply');
     // Mouse selection opens the anchored passage prompt directly; keyboard selection retains its Ask button.
     await b('wait', '.branch-form input');
     await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Why repeated?');

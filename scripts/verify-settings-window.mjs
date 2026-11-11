@@ -57,25 +57,46 @@ try {
   await b('find', 'role', 'button', 'click', '--name', 'Open How do fungi trade?', '--exact');
   await wait(`document.querySelector('[aria-label="Map menu"]')`);
 
-  // 1. Map menu Settings opens on Models with the title focused; sidebar no longer holds settings.
+  // 1. Map menu Settings opens on Interface (Appearance first, spec) with the title focused; sidebar no longer holds settings.
   assert.equal(await ev(`!!document.querySelector('.trees')?.textContent.includes('Connections')`), false, 'sidebar has no Connections');
   await mapMenu('Settings');
   await wait(`${active}?.id === 'settings-heading'`);
-  assert.equal(await heading(), 'Models');
+  assert.equal(await heading(), 'Interface');
+  assert.equal(await ev(`${dialog}.querySelector('nav a, nav button')?.textContent`), 'Interface', 'Interface is the first section');
+  assert.equal(await ev(`${dialog}.querySelector('h3')?.textContent`), 'Appearance', 'Appearance is the first setting');
+  // World (spec, Settings window): raised slate, hairline seam, 6px corners, Public Sans, small-caps section labels, no shadow.
+  const look = {};
+  for (const mode of ['dark', 'light']) {
+    await b('find', 'role', 'radio', 'click', '--name', mode === 'dark' ? 'Dark' : 'Light', '--exact');
+    await wait(`document.documentElement.getAttribute('data-theme') === '${mode}'`);
+    look[mode] = await ev(`(() => { const d = ${dialog}, c = getComputedStyle(d), h = getComputedStyle(d.querySelector('h3')), body = getComputedStyle(document.body);
+      return { surface: c.backgroundColor, ground: body.backgroundColor, radius: c.borderRadius, border: c.borderTopWidth + ' ' + c.borderTopStyle, shadow: c.boxShadow, font: getComputedStyle(d.querySelector('p, span')).fontFamily, caps: h.fontVariantCaps, label: h.color, text: body.color }; })()`);
+    assert.equal(look[mode].radius, '6px', `${mode} 6px corners`);
+    assert.notEqual(look[mode].surface, look[mode].ground, `${mode} raised surface`);
+    // The theme draws seams as an inset 1px ring (slateTheme hairline); anything else would be a drop shadow.
+    assert.ok(/^(0\.5|1)px solid$/.test(look[mode].border) || /^\S+(\([^)]*\))? 0px 0px 0px 1px inset$/.test(look[mode].shadow), `${mode} hairline seam: ${look[mode].border} / ${look[mode].shadow}`);
+    assert.ok(!look[mode].shadow.split(/,(?![^(]*\))/).some(x => x !== 'none' && !x.trim().endsWith('inset')), `${mode} no drop shadow: ${look[mode].shadow}`);
+    assert.match(look[mode].font, /^"?Public Sans/, `${mode} Public Sans`);
+    assert.equal(look[mode].caps, 'all-small-caps', `${mode} small-caps labels`);
+    await shot(`interface-${mode}`); await b('screenshot', `${process.cwd()}/docs/verification/settings-interface-${mode}.png`);
+  }
+  await b('eval', `localStorage.removeItem('treetutor.appearance'); true`);
+  step(`Settings opens on Interface with Appearance first; dark and light: 6px raised slate, hairline seam, no shadow, Public Sans, small-caps labels ${JSON.stringify(look)}`);
+  await tab('Models');
   assert.ok((await text()).includes('Automatic suggestions'));
   assert.ok((await text()).includes('Concept matching'));
   assert.ok((await text()).includes('concept matching is getting expensive'));
   const box = await ev(`(() => { const r = ${dialog}.getBoundingClientRect(); return [r.width, r.height]; })()`);
   assert.ok(box[0] > 800 && box[1] > 600, `large on desktop: ${box}`);
   await shot('models');
-  step(`Map menu Settings opens a ${Math.round(box[0])}x${Math.round(box[1])} window on Models, title focused; sidebar holds no settings`);
+  step(`Map menu Settings opens a ${Math.round(box[0])}x${Math.round(box[1])} window, title focused; Models shows suggestions and concept matching; sidebar holds no settings`);
 
   // 2. Each tab shows its contents; moved controls work.
   await tab('Connections');
   const conn = await text();
   for (const s of ['Claude: signed in through Claude Code', 'Codex: not connected', 'Continue with ChatGPT', 'Custom endpoint', 'Base URL']) assert.ok(conn.includes(s), s);
   await wait(`${dialog}.querySelector('.endpoint-settings')?.textContent.includes('No endpoint configured.')`);
-  await shot('connections');
+  await shot('connections'); await b('screenshot', `${process.cwd()}/docs/verification/settings-connections-light.png`);
   await b('find', 'label', 'Base URL', 'fill', upstream.baseUrl);
   await b('find', 'label', 'API key', 'fill', 'settings-fixture-secret');
   await b('find', 'role', 'button', 'click', '--name', 'Save', '--exact');
@@ -183,7 +204,7 @@ try {
   assert.ok(await ev(`${dialog}.contains(${active})`), 'mobile section selection keeps focus inside the dialog');
   assert.equal(await ev(`${dialog}.scrollWidth > ${dialog}.clientWidth + 1`), false, 'no horizontal overflow');
   assert.ok(await ev(`${dialog}.querySelector('h2').getBoundingClientRect().left >= 12`), 'mobile content has an inset');
-  await shot('mobile-connections');
+  await shot('mobile-connections'); await b('screenshot', `${process.cwd()}/docs/verification/settings-mobile-connections-dark.png`);
   await b('find', 'role', 'button', 'click', '--name', 'All settings', '--exact');
   await wait(`!${dialog}.querySelector('h2')`);
   assert.ok(await ev(`${dialog}.contains(${active})`), 'mobile return to settings list keeps focus inside the dialog');
@@ -202,7 +223,7 @@ try {
   assert.equal(authRequests, 2);
   step('ChatGPT connect follows the app auth URL (local fixture redirect only)');
 
-  writeFileSync('docs/verification/settings-window.json', JSON.stringify({ issue: 'TreeTutor-u7v.3', checkedAt: new Date().toISOString(), evidence: 'Production build and real app HTTP/storage, agent-browser Chromium. Synthetic Claude sign-in/models, Codex auth failure/redirect, reported usage and loopback OpenAI-compatible upstream. No native provider authentication or inference claimed.', steps, screenshots: ['models', 'connections', 'interface', 'usage', 'mobile-list', 'mobile-connections'].map(n => `.impeccable/review/settings-window-${n}.png`) }, null, 2) + '\n');
+  writeFileSync('docs/verification/settings-window.json', JSON.stringify({ issue: 'TreeTutor-u7v.3, TreeTutor-nwx.8', checkedAt: new Date().toISOString(), evidence: 'Production build and real app HTTP/storage, agent-browser Chromium. Synthetic Claude sign-in/models, Codex auth failure/redirect, reported usage and loopback OpenAI-compatible upstream. No native provider authentication or inference claimed.', steps, screenshots: ['docs/verification/settings-interface-dark.png', 'docs/verification/settings-interface-light.png', 'docs/verification/settings-connections-light.png', 'docs/verification/settings-mobile-connections-dark.png', ...['models', 'connections', 'interface', 'usage', 'mobile-list', 'mobile-connections'].map(n => `.impeccable/review/settings-window-${n}.png`)] }, null, 2) + '\n');
 } finally {
   await b('close').catch(() => {});
   await app.stop(); store.close();

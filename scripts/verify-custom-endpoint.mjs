@@ -87,7 +87,7 @@ if (process.argv[2] === '--serve') {
     assert.deepEqual(await get('/api/settings/endpoint'), { configured: true, baseUrl: fake.baseUrl });
   }
   async function closeSettings() { await tabTo('[aria-label="Close settings"]'); await browser('press', 'Enter'); await wait('!document.querySelector("dialog[open]")'); }
-  async function connectionSettings() { await mapMenu(); await menuItem('Settings'); await wait('document.activeElement?.id === "settings-heading"'); await tabTo('#settings-connections'); await browser('press', 'Enter'); await wait(`!!document.querySelector('${field}')`); }
+  async function connectionSettings() { await mapMenu(); await menuItem('Settings'); await wait('document.activeElement?.id === "settings-heading"'); await new Promise(r => setTimeout(r, 150)); /* SettingsWindow refocuses its title 50ms after opening; Tab only after that. */ await tabTo('#settings-connections'); await browser('press', 'Enter'); await wait(`!!document.querySelector('${field}')`); }
   async function openConversation(title) { await tabTo(`[aria-label="Open ${title}"]`); await browser('press', 'Enter'); await wait(`document.querySelector('.chat-title h2')?.textContent === ${JSON.stringify(title)}`); }
   const labels = { claude: 'Sonnet', codex: 'Codex model', openai: 'second-model' };
   const models = { claude: 'sonnet', codex: 'codex-model', openai: 'second-model' };
