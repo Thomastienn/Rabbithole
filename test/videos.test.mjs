@@ -6,6 +6,7 @@ import { tmpdir, homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { inflateSync } from 'node:zlib';
 import { RenderInternals } from '@remotion/renderer';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
@@ -26,6 +27,17 @@ export const durationInFrames = 30;
 export default function Video() {
   const frame = useCurrentFrame();
   return <AbsoluteFill style={{ background: 'white', alignItems: 'center', justifyContent: 'center', fontSize: 40, opacity: interpolate(frame, [0, 20], [0, 1]) }}>A + B → Final</AbsoluteFill>;
+}`;
+const spatial = `// Description: A lit cube rotates in 3D space.
+// Narration: "A cube turns."
+import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { ThreeCanvas } from '@remotion/three';
+export default function Video() {
+  const frame = useCurrentFrame();
+  return <AbsoluteFill style={{ background: '#102030' }}><ThreeCanvas width={640} height={360} camera={{ position: [0, 0, 4] }}>
+    <ambientLight intensity={0.5} /><directionalLight position={[2, 2, 3]} />
+    <mesh rotation={[frame / 20, frame / 15, 0]}><boxGeometry args={[1.4, 1.4, 1.4]} /><meshStandardMaterial color="orange" /></mesh>
+  </ThreeCanvas></AbsoluteFill>;
 }`;
 const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(4096, 1)]);
 const fakeRender = async (workspace, output) => { writeFileSync(output, mp4); return { durationInFrames: 60, fps: 30 }; };
@@ -96,6 +108,8 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.equal(workers[0].text, ready.input);
     assert.deepEqual(Object.keys(workers[0].tree).sort(), ['effort', 'instructions', 'model', 'provider', 'thread']);
     assert.equal(workers[0].tree.thread, null);
+    assert.match(workers[0].tree.instructions, /2D for ordinary explanations[\s\S]*3D whenever the subject involves spatial relationships[\s\S]*When the learner or intent asks for 2D or 3D, follow it/);
+    assert.match(workers[0].tree.instructions, /"@remotion\/three"/);
     assert.equal(workers[0].tree.model, 'fixture-model', 'smart follows the global default rather than the conversation override');
     assert.ok(!workers[0].text.includes('UNRELATED SIBLING DISCUSSION'));
 
@@ -227,14 +241,14 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
   assert.equal(fake.calls.filter(c => c.body).length, count + 1);
 });
 
-async function job(render, mutate) {
+async function job(render, mutate, source = composition) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-video-job-'));
   const store = new Store(join(dir, 'trees.sqlite'));
   const tree = store.create('Video');
   const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
   const artifact = store.pendingArtifact(tree.id, message, 'Title', 'Planned.', 'video', '{"request":"Make a video."}');
   mutate?.(store, artifact, dir);
-  const provider = { generate: async (t, text, emit) => complete(emit, composition) };
+  const provider = { generate: async (t, text, emit) => complete(emit, source) };
   const phases = [];
   const result = await generateVideo({ provider, selection: {}, store, dir, artifact, signal: new AbortController().signal, render, narrate: fakeNarration, onPhase: (...p) => phases.push(p) }).then(() => null, error => error.message);
   assert.ok(!existsSync(join(dir, 'video-work', artifact.id, artifact.attempt, 'out'))); // no leftover unpublished output
@@ -289,9 +303,13 @@ test('out-of-workspace output, unreadable media, lost ownership and a failed sav
   assert.equal(racing.row.status, 'ready');
   assert.deepEqual(readFileSync(mediaPath(racing.dir, racing.row.id)), replacement ? newerMedia : mp4, 'a superseded attempt must never overwrite newer ready media');
 
-  for (const bad of [composition.replace("from 'remotion'", "from '../../trees.sqlite'"), composition + "\nfetch('x');", composition + "\nconst m = import('fs');", composition.replace('// Description: ', '// '), composition + '\n<Img src="https://example.com/a.png" />'])
+  for (const bad of [composition.replace("from 'remotion'", "from '../../trees.sqlite'"), composition + "\nfetch('x');", composition + "\nconst m = import('fs');", composition.replace('// Description: ', '// '), composition + '\n<Img src="https://example.com/a.png" />',
+    spatial.replace("from '@remotion/three'", "from '@react-three/drei'"), spatial + "\nnew TextureLoader().load('x.png');", spatial + "\nuseLoader(GLTFLoader, 'm.glb');"])
     assert.throws(() => videoSource(bad));
+  assert.equal(videoSource(spatial + "\nimport * as THREE from 'three';\nimport { useThree } from '@react-three/fiber';").description, 'A lit cube rotates in 3D space.');
   assert.equal(videoSource('```tsx\n' + composition + '\n```').description, 'Two labelled boxes slide together into a final box.');
+  const [description, narration, ...code] = composition.split('\n');
+  assert.ok(!videoSource([description, narration, '```tsx', ...code, '```'].join('\n')).source.includes('`'), 'a fence after the header lines is not compiled as code');
 });
 
 test('app marks a failed job failed without a playable result', async () => {
@@ -449,6 +467,17 @@ test('one real short sandboxed Remotion render publishes a ready MP4', { skip: !
   assert.equal(row.duration, 2);
   assert.equal(published, true);
   assert.equal(readFileSync(mediaPath(dir, row.id)).toString('latin1', 4, 8), 'ftyp');
+});
+
+test('one real short sandboxed Three.js scene renders through the same isolated Remotion path', { skip: !sandboxed && 'bwrap or Remotion browser missing', timeout: 240000 }, async () => {
+  const { result, row, dir } = await job(undefined, undefined, spatial);
+  assert.equal(result, null);
+  assert.equal(row.status, 'ready');
+  // A non-blank WebGL frame: the orange cube is drawn, not just the background.
+  const ffmpeg = RenderInternals.getExecutablePath({ type: 'ffmpeg', indent: false, logLevel: 'error', binariesDirectory: null });
+  const png = execFileSync(ffmpeg, ['-v', 'error', '-ss', '1', '-i', mediaPath(dir, row.id), '-frames:v', '1', '-vf', 'crop=2:2:320:180,format=rgb24', '-f', 'image2pipe', '-c:v', 'png', '-']);
+  const idat = png.indexOf('IDAT'), [, r, g, b] = inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)));
+  assert.ok(r > 120 && b < 80, `expected cube colour at the centre, got ${[r, g, b]}`);
 });
 
 test('cancel stops only its own job, late output cannot publish, and retry reuses the frozen input without a new message', async () => {

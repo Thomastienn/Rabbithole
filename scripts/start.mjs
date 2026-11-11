@@ -22,7 +22,7 @@ async function npm(args) {
   if (code) throw new Error(`npm ${args.join(' ')} failed (exit ${code}). Fix the error above, then run npm start again.`);
 }
 try {
-  if (!existsSync('node_modules/.package-lock.json') || !existsSync('node_modules/typescript/bin/tsc') || !existsSync('node_modules/vite/bin/vite.js') || !existsSync('node_modules/@andresaya/edge-tts/package.json')) {
+  if (!existsSync('node_modules/.package-lock.json') || !existsSync('node_modules/typescript/bin/tsc') || !existsSync('node_modules/vite/bin/vite.js') || !existsSync('node_modules/@andresaya/edge-tts/package.json') || !existsSync('node_modules/@remotion/three/package.json')) {
     console.log('Installing dependencies (npm ci --include=dev). Internet access may be needed on first run.');
     await npm(['ci', '--include=dev']);
   }

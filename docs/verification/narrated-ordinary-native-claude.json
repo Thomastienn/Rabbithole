@@ -1,0 +1,67 @@
+{
+  "checkedAt": "2026-11-11T14:22:41.843Z",
+  "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual Edge TTS with timing metadata, actual sandboxed target-length render; embedded subtitles.",
+  "mode": "ordinary",
+  "provider": "claude",
+  "effort": "low",
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+  "memoryBytes": 16368893952,
+  "data": "/tmp/tt-narrated-video-live-wEqBVZ",
+  "model": "sonnet",
+  "ttsCalls": 1,
+  "ttsMs": 1374,
+  "renderMs": 99213,
+  "elapsedMs": 116139,
+  "dimension": "2d",
+  "timing": {
+    "sentences": 18,
+    "words": 187,
+    "captions": 27,
+    "first": {
+      "text": "A stack is a simple way to organize data",
+      "startMs": 50,
+      "endMs": 2462.5,
+      "startFrame": 1,
+      "endFrame": 74
+    },
+    "last": {
+      "text": "first thing removed",
+      "startMs": 66512.5,
+      "endMs": 67662.5,
+      "startFrame": 1995,
+      "endFrame": 2030
+    },
+    "durationInFrames": 2057
+  },
+  "media": {
+    "id": "16ca6d91-9b6e-4e83-96f1-eefb26b9b7f6",
+    "duration": 68.56666666666666,
+    "bytes": 3127976,
+    "probe": [
+      {
+        "codec": "h264",
+        "type": "video",
+        "width": 640,
+        "height": 360,
+        "duration": "68.566667"
+      },
+      {
+        "codec": "aac",
+        "type": "audio",
+        "duration": "68.587000"
+      }
+    ]
+  },
+  "usage": [
+    {
+      "at": 1794406977421,
+      "provider": "claude",
+      "model": "sonnet",
+      "task": "video",
+      "input": 1749,
+      "output": 2295,
+      "cacheRead": 0
+    }
+  ],
+  "pass": true
+}

@@ -7,7 +7,9 @@ import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 
-const native = JSON.parse(readFileSync('docs/verification/narrated-video-native-codex.json'));
+// argv: native smoke report (default: the 2D Codex run) and the output report.
+const [input = 'docs/verification/narrated-video-native-codex.json', output = 'docs/verification/narrated-playback.json'] = process.argv.slice(2);
+const native = JSON.parse(readFileSync(input));
 const store = new Store(join(native.data, 'trees.sqlite'));
 const tree = store.tree(store.db.prepare('SELECT conversation FROM artifacts WHERE id=?').get(native.media.id).conversation);
 let calls = 0;
@@ -40,12 +42,12 @@ try {
     await ev(`(async()=>{const v=document.querySelector(${JSON.stringify(video)});v.currentTime=20;v.scrollIntoView({block:'center'});await v.play();return true})()`);
     await b('wait', '--fn', `(v=>v.readyState===4&&!v.seeking&&v.currentTime>20.4)(document.querySelector(${JSON.stringify(video)}))`);
     await ev(`document.querySelector(${JSON.stringify(video)}).pause();true`);
-    await b('screenshot', resolve(`.impeccable/review/narrated-playback-${mode}.png`));
+    await b('screenshot', resolve(`.impeccable/review/${native.mode ?? '2d'}-playback-${mode}.png`));
   }
   assert.equal(calls, 0);
   report.checks.push({ name: 'saved native audio/video plays, seeks and reloads in both appearances without generation', calls });
   report.pass = true; console.log('PASS: native saved narrated video decoded, played and sought after restart; dark/light; no inference or TTS.');
 } finally {
   await b('close').catch(() => {}); await app.stop(); store.close();
-  writeFileSync('docs/verification/narrated-playback.json', JSON.stringify(report, null, 2) + '\n');
+  writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
 }

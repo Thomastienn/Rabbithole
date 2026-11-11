@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-11-11T14:27:26.383Z",
+  "media": "f6cc26bd-03ca-4930-a907-a33885634312",
+  "evidence": "Native generated media in restarted production app and actual Chromium player; no controlled media substitution",
+  "checks": [
+    {
+      "name": "saved paused player decodes after app/store restart",
+      "controls": true,
+      "duration": 68.053,
+      "height": 360,
+      "paused": true,
+      "width": 640
+    },
+    {
+      "name": "saved native audio/video plays, seeks and reloads in both appearances without generation",
+      "calls": 0
+    }
+  ],
+  "pass": true
+}
