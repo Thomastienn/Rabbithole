@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings · TreeTutor mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="knowledge.html">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html" aria-current="page">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a></nav>
+ <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
+<p class="mk-note">Settings is a full page reached from the gear, not a dialog. One scroll holds Interface, Models and Connections; <b>Usage</b> is its own screen.</p>
+<div class="app">
+<header class="band" data-c="Band">
+ <a class="band__mark" href="read.html">TreeTutor</a>
+ <a class="band__tree" href="library.html" data-c="TreeSwitcher" title="Open the library of learning trees"><span>How do fungi trade?</span><i class="i i--sm i-chevron-down"></i></a>
+ <nav class="band__tabs" aria-label="Views" data-c="ViewTabs"><a href="read.html"><i class="i i--sm i-book-open"></i>Read</a><a href="map.html"><i class="i i--sm i-map"></i>Map</a><a href="knowledge.html"><i class="i i--sm i-share"></i>Knowledge</a><a href="videos.html"><i class="i i--sm i-film"></i>Videos</a></nav>
+ <div class="band__tools">
+  <span class="band__save" data-c="SaveState">Saved</span>
+  <button class="btn btn--icon" aria-label="Search learning trees" data-c="TreeSearchButton"><i class="i i-magnifying-glass"></i></button>
+  <button class="btn btn--outline" data-c="NewChat"><i class="i i--sm i-plus"></i>New chat</button>
+  <a class="btn btn--icon" href="settings.html" aria-label="Settings" data-c="SettingsLink"><i class="i i-cog-6-tooth"></i></a>
+ </div>
+</header>
+<div class="ws ws--page"><main class="page">
+<header class="page__head"><div><h1>Settings</h1></div><a class="btn btn--outline" href="read.html"><i class="i i--sm i-arrow-uturn-left"></i>Return to learning tree</a></header>
+<div class="set">
+ <nav class="set__nav" aria-label="Settings sections" data-c="SettingsNav"><a href="settings.html#interface" aria-current="page"><i class="i i-swatch"></i>Interface</a><a href="settings.html#models"><i class="i i-cpu-chip"></i>Models</a><a href="settings.html#connections"><i class="i i-link"></i>Connections</a><a href="usage.html#usage"><i class="i i-chart-bar"></i>Usage</a></nav>
+ <div>
+  <section class="set__sec" id="interface" data-c="AppearanceSetting"><h2>Appearance</h2><p>Dark, light, or System to follow your operating system. Saved in this browser.</p>
+   <div class="seg" role="radiogroup" aria-label="Appearance" style="justify-self:start"><button aria-pressed="true"><i class="i i--sm i-moon"></i>Dark</button><button aria-pressed="false"><i class="i i--sm i-sun"></i>Light</button><button aria-pressed="false"><i class="i i--sm i-computer-desktop"></i>System</button></div></section>
+  <section class="set__sec" data-c="BubbleTint"><h2>Question bubbles</h2><p>Choose a tint for your questions. Saved in this browser; follows your appearance.</p>
+   <div class="swatches" role="radiogroup" aria-label="Bubble tint">
+    <label><input class="sr" type="radio" name="tint" checked><i></i>Neutral</label>
+    <label><input class="sr" type="radio" name="tint"><i style="--tint:color-mix(in oklab, var(--ink-1) 30%, transparent)"></i>Amber</label>
+    <label><input class="sr" type="radio" name="tint"><i style="--tint:color-mix(in oklab, var(--ink-2) 30%, transparent)"></i>Leaf</label>
+    <label><input class="sr" type="radio" name="tint"><i style="--tint:color-mix(in oklab, var(--ink-3) 30%, transparent)"></i>Rust</label>
+    <label><input class="sr" type="radio" name="tint"><i style="--tint:color-mix(in oklab, var(--ink-4) 30%, transparent)"></i>Lichen</label></div>
+   <p class="q" aria-label="Question bubble preview">How does this connect to what I already know?</p></section>
+  <section class="set__sec" data-c="VimBindings"><h2>Vim canvas bindings</h2>
+   <label class="choice"><input type="checkbox"><span>Use letter keys on the map<small>With the map or a conversation node focused, h j k l act as arrows; = + - zoom; f fits the tree.</small></span></label></section>
+  <section class="set__sec" data-c="MapHelp"><h2>Map help</h2>
+   <table class="table"><tbody><tr><td>Move between conversation nodes</td><td><span class="kbd">←</span> <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">→</span></td></tr><tr><td>Open the focused conversation</td><td><span class="kbd">Enter</span></td></tr><tr><td>Fold or unfold branches</td><td><span class="kbd">Space</span></td></tr><tr><td>Fit the tree</td><td><span class="kbd">F</span></td></tr></tbody></table></section>
+
+  <section class="set__sec" id="models" data-c="ChatDefaults"><h2>Chat default</h2><p>Starts new learning trees. Branches inherit their parent's model and effort.</p>
+   <div class="set__grid"><label class="field"><span>Chat default model</span><select class="select"><option>Claude · Opus 4</option></select></label><label class="field"><span>Chat default effort</span><select class="select"><option>High</option></select></label></div><button class="btn btn--sm" style="justify-self:start"><i class="i i--sm i-arrow-path"></i>Refresh chat models</button></section>
+  <section class="set__sec" data-c="SmartSettings"><h2>Smart</h2><p>Writes visuals and plans videos.</p><div class="set__grid"><label class="field"><span>Smart model</span><select class="select"><option>Follow chat default</option></select></label><label class="field"><span>Smart effort</span><select class="select"><option>Provider default</option></select></label></div><p>Provider default leaves effort to the provider.</p></section>
+  <section class="set__sec" data-c="QuickThinkingSettings"><h2>Quick thinking</h2><p>Picks suggestions and prepares context for branches.</p>
+   <label class="choice"><input type="checkbox" checked><span>Automatic suggestions<small>Runs saved-reply suggestions in the background.</small></span></label>
+   <div class="set__grid"><label class="field"><span>Quick thinking model</span><select class="select"><option>Claude · Haiku 4</option></select></label><label class="field"><span>Quick thinking effort</span><select class="select"><option>Low</option></select></label></div></section>
+  <section class="set__sec" data-c="ConceptMatchingNotice"><h2>Concept matching</h2><p>Concept matching cost is within the normal range.</p></section>
+
+  <section class="set__sec" id="connections" data-c="Connections"><h2>Connections</h2>
+   <div class="conn"><h3>Claude <span class="state state--on"><i class="i i--sm i-check-circle"></i>Signed in</span></h3><p>Uses your own Claude plan through Claude Code on this computer.</p><button class="btn btn--outline">Check Claude sign-in</button></div>
+   <div class="conn"><h3>Codex <span class="state">Not connected</span></h3><p>Uses your own ChatGPT plan.</p><button class="btn btn--outline">Continue with ChatGPT</button></div>
+   <div class="conn" data-c="EndpointSettings"><h3>Custom endpoint <span class="state state--on"><i class="i i--sm i-check-circle"></i>Saved</span></h3><p>An endpoint is saved. The saved key is never shown.</p><button class="btn btn--danger">Remove</button></div>
+   <div class="set__grid"><label class="field"><span>Base URL</span><input class="input" value="http://localhost:11434/v1"></label><label class="field"><span>API key</span><input class="input" type="password" placeholder="Leave empty to keep the saved key"></label></div>
+   <div style="display:flex;gap:8px"><button class="btn btn--outline">Test connection</button><button class="btn btn--primary">Save</button></div></section>
+ </div>
+</div>
+</main></div></div>
+</body>
+</html>

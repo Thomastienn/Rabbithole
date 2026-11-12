@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map · TreeTutor mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html" aria-current="page">Map</a><a href="library.html">Library</a><a href="knowledge.html">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a></nav>
+ <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
+
+<div class="app">
+<header class="band" data-c="Band">
+ <a class="band__mark" href="read.html">TreeTutor</a>
+ <a class="band__tree" href="library.html" data-c="TreeSwitcher" title="Open the library of learning trees"><span>How do fungi trade?</span><i class="i i--sm i-chevron-down"></i></a>
+ <nav class="band__tabs" aria-label="Views" data-c="ViewTabs"><a href="read.html"><i class="i i--sm i-book-open"></i>Read</a><a href="map.html" aria-current="page"><i class="i i--sm i-map"></i>Map</a><a href="knowledge.html"><i class="i i--sm i-share"></i>Knowledge</a><a href="videos.html"><i class="i i--sm i-film"></i>Videos</a></nav>
+ <div class="band__tools">
+  <span class="band__save" data-c="SaveState">Saved</span>
+  <button class="btn btn--icon" aria-label="Search learning trees" data-c="TreeSearchButton"><i class="i i-magnifying-glass"></i></button>
+  <button class="btn btn--outline" data-c="NewChat"><i class="i i--sm i-plus"></i>New chat</button>
+  <a class="btn btn--icon" href="settings.html" aria-label="Settings" data-c="SettingsLink"><i class="i i-cog-6-tooth"></i></a>
+ </div>
+</header>
+<div class="ws ws--map">
+<aside class="toc" data-c="Contents">
+ <div class="toc__head"><h1 class="toc__title">How do fungi trade?</h1><p class="toc__meta">7 conversations · 3 figures · edited 4 min ago</p></div>
+ <div class="toc__scroll">
+  <div class="toc__h">Contents <button class="btn btn--sm btn--icon" aria-label="Fold all branches"><i class="i i--sm i-chevron-up"></i></button></div>
+  <ul data-c="ContentsOutline"><li><a class="toc__row" style="--d:0"><span class="addr">1</span><span class="dot"></span><span>How do fungi trade?</span></a></li><li><a class="toc__row" style="--d:1;--ink:var(--ink-1)" aria-current="true"><span class="addr">1.1</span><span class="dot"></span><span>Why trade at all?</span></a></li><li><a class="toc__row" style="--d:2;--ink:var(--ink-1)"><span class="addr">1.1.1</span><span class="dot"></span><span>Could a plant go alone?</span><i title="Reply interrupted" class="i i--sm i-pause"></i></a></li><li><a class="toc__row" style="--d:2;--ink:var(--ink-1)"><span class="addr">1.1.2</span><span class="dot"></span><span>Who cheats?</span><i title="Folded" class="i i--sm i-eye-slash"></i></a></li><li><a class="toc__row" style="--d:1;--ink:var(--ink-2)"><span class="addr">1.2</span><span class="dot"></span><span>What are hyphae?</span></a></li><li><a class="toc__row" style="--d:2;--ink:var(--ink-2)"><span class="addr">1.2.1</span><span class="dot"></span><span>How thin is thin?</span><span class="pulse" title="Responding"></span></a></li><li><a class="toc__row" style="--d:1;--ink:var(--ink-3)"><span class="addr">1.3</span><span class="dot"></span><span>Phosphorus in soil</span><i title="Reply failed" class="is-alert i i--sm i-exclamation-triangle"></i></a></li></ul>
+  <div class="toc__h">Figures</div>
+  <ul data-c="FiguresList">
+   <li><a class="toc__row"><span class="addr">Fig 1</span><span>Trade loop</span><em>diagram</em></a></li>
+   <li><a class="toc__row"><span class="addr">Fig 2</span><span>Reach of roots and hyphae</span><em>visual</em></a></li>
+   <li><a class="toc__row"><span class="addr">Fig 3</span><span>The trade, narrated</span><em>video</em></a></li>
+  </ul>
+ </div>
+ <div class="toc__foot" data-c="ContextMeter">Context used by 1.1 <span class="num">· 18% of 200k tokens</span><div class="meter"><i style="width:18%"></i></div></div>
+</aside>
+<main class="map" data-c="LearningTreeMap" aria-label="Conversation tree overview">
+ <div class="map__canvas">
+  <svg aria-hidden="true">
+   <path class="branch branch--focus" style="--ink:var(--ink-1)" d="M556 150 V232 Q556 240 548 240 H246 Q238 240 238 248 V272"/>
+   <path class="branch" style="--ink:var(--ink-2)" d="M588 150 V272"/>
+   <path class="branch" style="--ink:var(--ink-3)" d="M620 150 V232 Q620 240 628 240 H930 Q938 240 938 248 V272"/>
+   <path class="branch" style="--ink:var(--ink-1)" d="M238 380 V512"/>
+   <path class="branch branch--folded" style="--ink:var(--ink-1)" d="M300 380 V468 Q300 476 308 476 H420 Q428 476 428 484 V512"/>
+   <path class="branch branch--draw" style="--ink:var(--ink-2)" d="M588 380 V512"/></svg>
+  <article class="node abs node--wide" style="left:460px;top:48px" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1</span><span>How do fungi trade?</span><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span class="node__q">How do fungi trade with plants?</span><span class="node__a">Trading partners. Mycorrhizal fungi trade phosphorus for sugar. The fungus threads its hyphae between root cells and extends the plant's reach. Diagram: Trade loop</span></div></article>
+  <article class="node abs node--wide node--focus" style="left:110px;top:272px;--ink:var(--ink-1)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.1</span><span>Why trade at all?</span><button class="btn btn--sm btn--icon" aria-label="Reveal source passage"><i class="i i--sm i-link"></i></button><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span class="node__q">Why trade at all?</span><span class="node__a">Neither partner can make what the other offers. A plant fixes carbon from air and light, but its roots touch only a thin sleeve of soil.</span></div></article>
+  <article class="node abs node--wide" style="left:460px;top:272px;--ink:var(--ink-2)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.2</span><span>What are hyphae?</span><button class="btn btn--sm btn--icon" aria-label="Reveal source passage"><i class="i i--sm i-link"></i></button><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span class="node__q">What are hyphae?</span><span class="node__a">Thread-like cells, a tenth the width of a root hair, that run for centimetres through the soil.</span></div></article>
+  <article class="node abs node--wide" style="left:810px;top:272px;--ink:var(--ink-3)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.3</span><span>Phosphorus in soil</span><button class="btn btn--sm btn--icon" aria-label="Reveal source passage"><i class="i i--sm i-link"></i></button><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span class="node__q">Where does soil phosphorus come from?</span><span class="node__a"></span><span class="node__state is-alert"><i class="i i--sm i-exclamation-triangle"></i>Reply failed</span><button class="btn btn--sm btn--outline" style="justify-self:start"><i class="i i--sm i-arrow-path"></i>Retry reply</button></div></article>
+  <article class="node abs node--wide" style="left:110px;top:512px;--ink:var(--ink-1)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.1.1</span><span>Could a plant go alone?</span><button class="btn btn--sm btn--icon" aria-label="Reveal source passage"><i class="i i--sm i-link"></i></button><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span class="node__q">Could a plant go alone?</span><span class="node__a">Some do, in rich soil, but most land plants grow poorly without a partner.</span><span class="node__state">Reply interrupted</span></div></article>
+  <button class="stub abs" style="left:384px;top:512px" data-c="FoldedStub">1.1.2 · 1 folded</button>
+  <article class="node abs node--wide" style="left:460px;top:512px;--ink:var(--ink-2)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.2.1</span><span>How thin is thin?</span><button class="btn btn--sm btn--icon" aria-label="Reveal source passage"><i class="i i--sm i-link"></i></button><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span class="node__q">How thin is thin?</span><span class="node__a"></span><span class="node__state"><span class="pulse"></span>Responding</span></div></article>
+ </div>
+ <div class="map__head abs"><a class="btn btn--sm btn--outline" href="read.html" style="margin-left:auto"><i class="i i--sm i-book-open"></i>Read 1.1</a></div>
+ <div class="map__ctl abs" role="toolbar" aria-label="Tree view controls" data-c="MapControls">
+   <button class="btn btn--sm btn--icon" aria-label="Zoom out"><i class="i i--sm i-minus"></i></button><output>100%</output>
+   <button class="btn btn--sm btn--icon" aria-label="Zoom in"><i class="i i--sm i-plus"></i></button>
+   <button class="btn btn--sm btn--icon" aria-label="Fit tree"><i class="i i--sm i-arrows-pointing-in"></i></button>
+   <button class="btn btn--sm btn--icon" aria-label="Map menu"><i class="i i--sm i-ellipsis-horizontal"></i></button></div>
+ <div class="map__legend abs" data-c="InkLegend"><span><i class="dot"></i>1 trunk</span><span style="--ink:var(--ink-1)"><i class="dot"></i>1.1</span><span style="--ink:var(--ink-2)"><i class="dot"></i>1.2</span><span style="--ink:var(--ink-3)"><i class="dot"></i>1.3</span></div>
+</main>
+</div></div>
+</body>
+</html>

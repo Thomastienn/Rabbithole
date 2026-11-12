@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library · TreeTutor mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html" aria-current="page">Library</a><a href="knowledge.html">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a></nav>
+ <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
+
+<div class="app">
+<header class="band" data-c="Band">
+ <a class="band__mark" href="read.html">TreeTutor</a>
+ <a class="band__tree" href="library.html" data-c="TreeSwitcher" title="Open the library of learning trees"><span>Library</span><i class="i i--sm i-chevron-down"></i></a>
+ <nav class="band__tabs" aria-label="Views" data-c="ViewTabs"><a href="read.html"><i class="i i--sm i-book-open"></i>Read</a><a href="map.html"><i class="i i--sm i-map"></i>Map</a><a href="knowledge.html"><i class="i i--sm i-share"></i>Knowledge</a><a href="videos.html"><i class="i i--sm i-film"></i>Videos</a></nav>
+ <div class="band__tools">
+  <span class="band__save" data-c="SaveState">Saved</span>
+  <button class="btn btn--icon" aria-label="Search learning trees" data-c="TreeSearchButton"><i class="i i-magnifying-glass"></i></button>
+  <button class="btn btn--outline" data-c="NewChat"><i class="i i--sm i-plus"></i>New chat</button>
+  <a class="btn btn--icon" href="settings.html" aria-label="Settings" data-c="SettingsLink"><i class="i i-cog-6-tooth"></i></a>
+ </div>
+</header>
+<div class="ws ws--page"><main class="page">
+<header class="page__head"><div><h1>Library</h1><p>Every learning tree you have started. A tree keeps its root conversation and every branch.</p></div>
+ <button class="btn btn--primary"><i class="i i--sm i-plus"></i>New chat</button></header>
+<div class="lib-tools" data-c="LibraryTools"><div class="search"><i class="i i-magnifying-glass"></i><input class="input" placeholder="Search learning trees" aria-label="Search learning trees"></div>
+ <div class="seg" role="group" aria-label="Library layout" style="margin-left:auto"><button aria-pressed="true"><i class="i i--sm i-rectangle-stack"></i>Shelf</button><button aria-pressed="false"><i class="i i--sm i-list-bullet"></i>List</button></div></div>
+<h2 class="sec-h">Today</h2>
+<div class="shelf" data-c="Shelf"><article class="vol vol--current" data-c="Volume" tabindex="0"><div class="vol__band"><h3>How do fungi trade?</h3><span class="num">Edited 4 min ago</span><button class="btn btn--sm btn--icon vol__more abs" aria-label="More options for How do fungi trade?"><i class="i i--sm i-ellipsis-horizontal"></i></button></div><div class="vol__meta"><div class="vol__spine" title="One tick per conversation, in its branch family's ink"><i style="background:var(--paper)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-3)"></i></div><span>7 conversations · 3 figures</span></div></article><article class="vol" data-c="Volume" tabindex="0"><div class="vol__band"><h3>Why is the sky blue?</h3><span class="num">Edited 2 h ago</span><button class="btn btn--sm btn--icon vol__more abs" aria-label="More options for Why is the sky blue?"><i class="i i--sm i-ellipsis-horizontal"></i></button></div><div class="vol__meta"><div class="vol__spine" title="One tick per conversation, in its branch family's ink"><i style="background:var(--paper)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-2)"></i></div><span>3 conversations · 1 figure</span></div></article></div>
+<h2 class="sec-h">This week</h2>
+<div class="shelf"><article class="vol" data-c="Volume" tabindex="0"><div class="vol__band"><h3>Bayes' rule, slowly</h3><span class="num">Tuesday</span><button class="btn btn--sm btn--icon vol__more abs" aria-label="More options for Bayes' rule, slowly"><i class="i i--sm i-ellipsis-horizontal"></i></button></div><div class="vol__meta"><div class="vol__spine" title="One tick per conversation, in its branch family's ink"><i style="background:var(--paper)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-3)"></i><i style="background:var(--ink-3)"></i><i style="background:var(--ink-4)"></i><i style="background:var(--ink-4)"></i></div><span>12 conversations · 4 figures</span></div></article><article class="vol" data-c="Volume" tabindex="0"><div class="vol__band"><h3>How TCP recovers from loss</h3><span class="num">Monday</span><button class="btn btn--sm btn--icon vol__more abs" aria-label="More options for How TCP recovers from loss"><i class="i i--sm i-ellipsis-horizontal"></i></button></div><div class="vol__meta"><div class="vol__spine" title="One tick per conversation, in its branch family's ink"><i style="background:var(--paper)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-3)"></i></div><span>5 conversations · 2 figures</span></div></article><article class="vol" data-c="Volume" tabindex="0"><div class="vol__band"><h3>What is a monad, really?</h3><span class="num">Monday</span><button class="btn btn--sm btn--icon vol__more abs" aria-label="More options for What is a monad, really?"><i class="i i--sm i-ellipsis-horizontal"></i></button></div><div class="vol__meta"><div class="vol__spine" title="One tick per conversation, in its branch family's ink"><i style="background:var(--paper)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-3)"></i></div><span>9 conversations</span></div></article><article class="vol" data-c="Volume" tabindex="0"><div class="vol__band"><h3>Reading a balance sheet</h3><span class="num">Sunday</span><button class="btn btn--sm btn--icon vol__more abs" aria-label="More options for Reading a balance sheet"><i class="i i--sm i-ellipsis-horizontal"></i></button></div><div class="vol__meta"><div class="vol__spine" title="One tick per conversation, in its branch family's ink"><i style="background:var(--paper)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-2)"></i></div><span>4 conversations · 1 figure</span></div></article></div>
+<h2 class="sec-h">Earlier</h2>
+<div class="shelf"><article class="vol" data-c="Volume" tabindex="0"><div class="vol__band"><h3>Peterson's algorithm</h3><span class="num">28 Oct</span><button class="btn btn--sm btn--icon vol__more abs" aria-label="More options for Peterson's algorithm"><i class="i i--sm i-ellipsis-horizontal"></i></button></div><div class="vol__meta"><div class="vol__spine" title="One tick per conversation, in its branch family's ink"><i style="background:var(--paper)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-1)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-2)"></i><i style="background:var(--ink-2)"></i></div><span>6 conversations · 2 figures</span></div></article><article class="vol" data-c="Volume" tabindex="0"><div class="vol__band"><h3>Why do we dream?</h3><span class="num">21 Oct</span><button class="btn btn--sm btn--icon vol__more abs" aria-label="More options for Why do we dream?"><i class="i i--sm i-ellipsis-horizontal"></i></button></div><div class="vol__meta"><div class="vol__spine" title="One tick per conversation, in its branch family's ink"><i style="background:var(--paper)"></i></div><span>1 conversation</span></div></article></div>
+<h2 class="sec-h">The same trees with List selected</h2>
+<ul class="lib-list" data-c="LibraryList">
+ <li><i class="dot"></i><strong>How do fungi trade?</strong><span>7 conversations</span><span>Edited 4 min ago</span><button class="btn btn--sm btn--icon" aria-label="More options"><i class="i i--sm i-ellipsis-horizontal"></i></button></li>
+ <li><i class="dot"></i><strong>Why is the sky blue?</strong><span>3 conversations</span><span>Edited 2 h ago</span><button class="btn btn--sm btn--icon" aria-label="More options"><i class="i i--sm i-ellipsis-horizontal"></i></button></li>
+ <li><i class="dot"></i><strong>Bayes' rule, slowly</strong><span>12 conversations</span><span>Tuesday</span><button class="btn btn--sm btn--icon" aria-label="More options"><i class="i i--sm i-ellipsis-horizontal"></i></button></li>
+</ul>
+</main></div></div>
+</body>
+</html>

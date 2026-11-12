@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Read · TreeTutor mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html" aria-current="page">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="knowledge.html">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a></nav>
+ <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
+
+<div class="app">
+<header class="band" data-c="Band">
+ <a class="band__mark" href="read.html">TreeTutor</a>
+ <a class="band__tree" href="library.html" data-c="TreeSwitcher" title="Open the library of learning trees"><span>How do fungi trade?</span><i class="i i--sm i-chevron-down"></i></a>
+ <nav class="band__tabs" aria-label="Views" data-c="ViewTabs"><a href="read.html" aria-current="page"><i class="i i--sm i-book-open"></i>Read</a><a href="map.html"><i class="i i--sm i-map"></i>Map</a><a href="knowledge.html"><i class="i i--sm i-share"></i>Knowledge</a><a href="videos.html"><i class="i i--sm i-film"></i>Videos</a></nav>
+ <div class="band__tools">
+  <span class="band__save" data-c="SaveState">Saved</span>
+  <button class="btn btn--icon" aria-label="Search learning trees" data-c="TreeSearchButton"><i class="i i-magnifying-glass"></i></button>
+  <button class="btn btn--outline" data-c="NewChat"><i class="i i--sm i-plus"></i>New chat</button>
+  <a class="btn btn--icon" href="settings.html" aria-label="Settings" data-c="SettingsLink"><i class="i i-cog-6-tooth"></i></a>
+ </div>
+</header>
+<div class="ws">
+<aside class="toc" data-c="Contents">
+ <div class="toc__head"><h1 class="toc__title">How do fungi trade?</h1><p class="toc__meta">7 conversations · 3 figures · edited 4 min ago</p></div>
+ <div class="toc__scroll">
+  <div class="toc__h">Contents <button class="btn btn--sm btn--icon" aria-label="Fold all branches"><i class="i i--sm i-chevron-up"></i></button></div>
+  <ul data-c="ContentsOutline"><li><a class="toc__row" style="--d:0"><span class="addr">1</span><span class="dot"></span><span>How do fungi trade?</span></a></li><li><a class="toc__row" style="--d:1;--ink:var(--ink-1)" aria-current="true"><span class="addr">1.1</span><span class="dot"></span><span>Why trade at all?</span></a></li><li><a class="toc__row" style="--d:2;--ink:var(--ink-1)"><span class="addr">1.1.1</span><span class="dot"></span><span>Could a plant go alone?</span><i title="Reply interrupted" class="i i--sm i-pause"></i></a></li><li><a class="toc__row" style="--d:2;--ink:var(--ink-1)"><span class="addr">1.1.2</span><span class="dot"></span><span>Who cheats?</span><i title="Folded" class="i i--sm i-eye-slash"></i></a></li><li><a class="toc__row" style="--d:1;--ink:var(--ink-2)"><span class="addr">1.2</span><span class="dot"></span><span>What are hyphae?</span></a></li><li><a class="toc__row" style="--d:2;--ink:var(--ink-2)"><span class="addr">1.2.1</span><span class="dot"></span><span>How thin is thin?</span><span class="pulse" title="Responding"></span></a></li><li><a class="toc__row" style="--d:1;--ink:var(--ink-3)"><span class="addr">1.3</span><span class="dot"></span><span>Phosphorus in soil</span><i title="Reply failed" class="is-alert i i--sm i-exclamation-triangle"></i></a></li></ul>
+  <div class="toc__h">Figures</div>
+  <ul data-c="FiguresList">
+   <li><a class="toc__row"><span class="addr">Fig 1</span><span>Trade loop</span><em>diagram</em></a></li>
+   <li><a class="toc__row"><span class="addr">Fig 2</span><span>Reach of roots and hyphae</span><em>visual</em></a></li>
+   <li><a class="toc__row"><span class="addr">Fig 3</span><span>The trade, narrated</span><em>video</em></a></li>
+  </ul>
+ </div>
+ <div class="toc__foot" data-c="ContextMeter">Context used by 1.1 <span class="num">· 18% of 200k tokens</span><div class="meter"><i style="width:18%"></i></div></div>
+</aside>
+<main class="read" data-c="FocusedChat">
+ <header class="read__head" data-c="ChatHeader">
+  <nav class="crumbs" aria-label="Path in this learning tree" data-c="Breadcrumbs"><a href="#" title="Return to parent conversation"><span class="addr">1</span> How do fungi trade?</a><i class="i i--sm i-chevron-right"></i><strong><span class="addr">1.1</span> Why trade at all?</strong></nav>
+  <div class="read__tools">
+   <button class="model" aria-label="Model for next reply" data-c="ModelButton">Claude · Opus 4 · High <i class="i i--sm i-chevron-down"></i></button>
+   <button class="btn btn--icon" aria-pressed="true" aria-label="Token stats" data-c="TokenStatsToggle"><i class="i i-chart-bar"></i></button>
+   <button class="btn btn--icon" aria-pressed="true" aria-label="Hide the map" data-c="MapToggle"><i class="i i-view-columns"></i></button>
+   <button class="btn btn--icon" aria-label="More conversation options" data-c="ConversationMenu"><i class="i i-ellipsis-horizontal"></i></button>
+  </div>
+ </header>
+ <div class="read__body"><div class="col">
+  <h2 class="conv-title" data-c="ConversationTitle">Why trade at all?</h2>
+  <div class="stats" data-c="TokenStats"><span><b>1,200</b>input</span><span><b>300</b>output</span><span><b>800</b>cache read</span><span><b>2,300</b>total tokens</span><div class="meter" title="Context used: 18% of 200k tokens"><i style="width:18%"></i></div><span class="num">18% of context</span></div>
+  <details class="ctx" style="--ink:var(--ink-1)" data-c="InheritedContext"><summary><i class="i i--sm i-chevron-right"></i>Context the tutor received</summary></details>
+
+  <p class="q" data-c="QuestionBubble">Why trade at all?</p>
+  <article class="reply" data-c="TutorReply">
+   <div class="reply__meta">Tutor · Claude · Opus 4</div>
+   <div class="prose">
+    <p>Neither partner can make what the other offers. A plant <span class="sug" data-c="Suggestion">fixes carbon</span> from air and light, but its roots touch only a thin sleeve of soil. A fungus cannot photosynthesise, yet its threads reach phosphorus the plant never could. Could either <a class="psg" style="--ink:var(--ink-1)" data-c="Passage">manage without the other<sup>1.1.1</sup></a>? Rarely, and poorly.</p>
+    <h3>What each side pays</h3>
+    <ul><li>The plant pays in sugar, up to a fifth of what it makes.</li><li>The fungus pays in phosphorus and water, and both sides <a class="psg" style="--ink:var(--ink-1)">punish partners that underpay<sup>1.1.2</sup></a>.</li></ul>
+    <pre class="code" data-c="CodeBlock"><code>const trade = { give: "sugar", get: "phosphorus" };</code><button class="btn btn--sm btn--icon" aria-label="Copy code"><i class="i i--sm i-clipboard-document"></i></button></pre>
+    <p>The price follows supply: when soil phosphorus is scarce, the plant pays more sugar per unit, roughly <span class="math">p = k / [P]</span>.</p>
+    <table><thead><tr><th>Partner</th><th>Has in <span class="sug">surplus</span></th><th>Lacks</th></tr></thead><tbody><tr><td>Plant</td><td>Sugar</td><td>Phosphorus</td></tr><tr><td>Fungus</td><td>Phosphorus</td><td>Sugar</td></tr></tbody></table>
+    <figure class="diagram" data-c="DiagramCard"><div class="diagram__head"><h4>Trade loop</h4><p>Sugar flows to the fungus, phosphorus flows to the root.</p></div>
+     <div class="diagram__art"><svg viewBox="0 0 560 120" role="img" aria-label="Root sends sugar to the fungus; the fungus sends phosphorus to the root" font-family="Archivo, sans-serif" font-size="14">
+ <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="var(--text)"/></marker></defs>
+ <rect x="1" y="30" width="150" height="60" rx="3" fill="var(--raised)" stroke="var(--ink-1)" stroke-width="1.5"/><text x="76" y="65" text-anchor="middle" fill="var(--text)">Root</text>
+ <rect x="409" y="30" width="150" height="60" rx="3" fill="var(--raised)" stroke="var(--ink-2)" stroke-width="1.5"/><text x="484" y="65" text-anchor="middle" fill="var(--text)">Fungus</text>
+ <path d="M151 46 H409" stroke="var(--text)" stroke-width="1.5" marker-end="url(#ah)"/><path d="M409 76 H151" stroke="var(--text)" stroke-width="1.5" marker-end="url(#ah)"/>
+ <text x="280" y="38" text-anchor="middle" fill="var(--muted)" font-size="13">sugar</text><text x="280" y="96" text-anchor="middle" fill="var(--muted)" font-size="13">phosphorus</text></svg></div>
+     <div class="diagram__steps"><button class="btn btn--sm btn--icon" aria-label="Previous step"><i class="i i--sm i-chevron-left"></i></button>Step 2 of 3<button class="btn btn--sm btn--icon" aria-label="Next step"><i class="i i--sm i-chevron-right"></i></button><button class="btn btn--sm" style="margin-left:auto"><i class="i i--sm i-arrows-pointing-out"></i>Open large</button></div>
+     <details><summary><i class="i i--sm i-chevron-right"></i>Mermaid source</summary></details></figure>
+   </div>
+   <div class="reply__foot" data-c="ReplyFooter"><button class="btn btn--sm btn--icon" aria-label="Copy reply"><i class="i i--sm i-clipboard-document"></i></button><span class="num">2,300 tokens</span></div>
+  </article>
+
+  <p class="q">Show me how much further hyphae reach than roots.</p>
+  <article class="reply">
+   <div class="reply__meta">Tutor · Claude · Opus 4</div>
+   <div class="prose">
+    <p>A root hair reaches about two millimetres into the soil. Hyphae are a tenth as wide and run for centimetres, so the same sugar buys far more surface.</p>
+    <div class="visual" data-c="Visual"><svg viewBox="0 0 640 190" role="img" aria-label="Soil reached by roots alone compared with roots plus hyphae" font-family="Archivo, sans-serif" font-size="13">
+ <line x1="120" y1="20" x2="120" y2="150" stroke="var(--seam-strong)"/><line x1="120" y1="150" x2="630" y2="150" stroke="var(--seam-strong)"/>
+ <text x="108" y="58" text-anchor="end" fill="var(--text)">Roots alone</text><rect x="121" y="40" width="64" height="28" rx="2" fill="var(--ink-1)"/><text x="193" y="59" fill="var(--muted)">2 mm</text>
+ <text x="108" y="112" text-anchor="end" fill="var(--text)">With hyphae</text><rect x="121" y="94" width="430" height="28" rx="2" fill="var(--ink-2)" tabindex="0"/><text x="559" y="113" fill="var(--muted)">140 mm</text>
+ <g fill="var(--muted)" font-size="11"><text x="120" y="168">0</text><text x="273" y="168">50</text><text x="427" y="168">100</text><text x="630" y="168" text-anchor="end">150 mm from the root</text></g></svg>
+     <div class="visual__ctl"><span>Soil phosphorus</span><input type="range" min="0" max="100" value="30" aria-label="Soil phosphorus"><span class="num">30 mg/kg</span></div>
+     <div class="visual__tools abs is-shown" data-c="VisualTools"><button class="btn btn--sm"><i class="i i--sm i-arrow-path"></i>Try a different version</button><button class="btn btn--sm btn--icon" aria-label="Open large"><i class="i i--sm i-arrows-pointing-out"></i></button></div></div>
+    <p>Select the lower bar to branch from it, the same way you would from a passage.</p>
+    <div class="video" data-c="VideoPlayer"><svg class="video__art" viewBox="0 0 640 360" aria-hidden="true"><rect width="640" height="360" fill="#14110e"/>
+ <circle cx="210" cy="180" r="70" fill="none" stroke="#dfae4e" stroke-width="3"/><circle cx="430" cy="180" r="70" fill="none" stroke="#9dba6e" stroke-width="3"/>
+ <path d="M280 160 H360 M360 200 H280" stroke="#efe6d6" stroke-width="3" stroke-linecap="round"/>
+ <g font-family="Archivo, sans-serif" font-size="18" fill="#efe6d6" text-anchor="middle"><text x="210" y="186">Root</text><text x="430" y="186">Fungus</text></g></svg><button class="video__play" aria-label="Play The trade, narrated"><i class="i i-play"></i></button>
+     <button class="btn btn--sm video__open abs"><i class="i i--sm i-arrows-pointing-out"></i>Open large</button>
+     <div class="video__bar">0:00<div class="meter"><i style="width:0"></i></div>1:12 <i class="i i--sm i-speaker-wave"></i></div></div>
+    <section class="quiz" data-c="CheckYourself"><h4>Check yourself</h4><p>If soil phosphorus doubled overnight, what would happen to the sugar the plant sends?</p>
+     <div class="quiz__answer">It would fall. The plant pays less per unit when phosphorus is easy to find, and may drop its weakest fungal partners.</div>
+     <button class="btn btn--sm btn--outline">Hide answer</button></section>
+   </div>
+   <div class="reply__foot"><button class="btn btn--sm btn--icon" aria-label="Copy reply"><i class="i i--sm i-clipboard-document"></i></button><span class="num">3,150 tokens</span></div>
+  </article>
+
+  <p class="q">Now walk me through one exchange step by step.</p>
+  <article class="reply" data-c="TutorReply (streaming)">
+   <div class="reply__meta"><span class="pulse"></span>Tutor · Claude · Opus 4 · writing</div>
+   <div class="prose">
+    <p>Start at the root surface. The fungus has wrapped a cortex cell and pushed a branched structure, the <span class="streaming">arbuscule</span></p>
+    <div class="visual visual--pending" data-c="Visual (pending)"><div class="skel" role="status" aria-label="Creating visual"></div></div>
+    <div class="status" data-c="VideoStatus" role="status"><i class="i i--sm i-film"></i>Rendering scenes<div class="meter"><i style="width:42%"></i></div><span class="num">42%</span><button class="btn btn--sm">Cancel</button></div>
+   </div>
+  </article>
+ </div></div>
+ <footer class="composer" data-c="Composer"><div class="composer__box">
+  <textarea rows="1" placeholder="What would you like to understand?" aria-label="Your question"></textarea>
+  <div class="composer__row"><span>Enter to send · Shift+Enter for a new line</span><button class="btn btn--outline"><i class="i i--sm i-stop"></i>Stop</button></div></div></footer>
+</main>
+<aside class="map" data-c="MapPanel" aria-label="Learning tree map">
+ <div class="map__seam abs" role="separator" aria-label="Resize map" title="Drag to resize the map. Double-click to reset." tabindex="0" data-c="MapSeam"></div>
+ <div class="map__canvas">
+  <svg aria-hidden="true">
+   <path class="branch branch--focus" style="--ink:var(--ink-1)" d="M204 150 V184 Q204 192 196 192 H124 Q116 192 116 200 V216"/>
+   <path class="branch" style="--ink:var(--ink-2)" d="M236 150 V184 Q236 192 244 192 H316 Q324 192 324 200 V216"/>
+   <path class="branch" style="--ink:var(--ink-3)" d="M220 150 V536"/>
+   <path class="branch" style="--ink:var(--ink-1)" d="M116 290 V360"/>
+   <path class="branch branch--draw" style="--ink:var(--ink-2)" d="M324 290 V360"/>
+   <path class="branch branch--folded" style="--ink:var(--ink-1)" d="M24 270 H10 V480 H24"/></svg>
+  <article class="node abs " style="left:128px;top:72px" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1</span><span>How do fungi trade?</span><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span>3 branches · 2 figures</span></div></article>
+  <article class="node abs node--focus" style="left:24px;top:216px;--ink:var(--ink-1)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.1</span><span>Why trade at all?</span><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span>2 branches · 1 figure</span></div></article>
+  <article class="node abs " style="left:232px;top:216px;--ink:var(--ink-2)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.2</span><span>What are hyphae?</span><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span>1 branch</span></div></article>
+  <article class="node abs " style="left:24px;top:360px;--ink:var(--ink-1)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.1.1</span><span>Could a plant go alone?</span><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span>Reply interrupted</span></div></article>
+  <button class="stub abs" style="left:24px;top:468px" data-c="FoldedStub">1.1.2 · 1 folded</button>
+  <article class="node abs " style="left:232px;top:360px;--ink:var(--ink-2)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.2.1</span><span>How thin is thin?</span><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span></span><span class="node__state"><span class="pulse"></span>Responding</span></div></article>
+  <article class="node abs " style="left:128px;top:536px;--ink:var(--ink-3)" data-c="ConversationNode" tabindex="0"><header class="node__band"><span class="addr">1.3</span><span>Phosphorus in soil</span><button class="btn btn--sm btn--icon" aria-label="Fold branches"><i class="i i--sm i-chevron-down"></i></button></header><div class="node__body"><span></span><span class="node__state is-alert"><i class="i i--sm i-exclamation-triangle"></i>Reply failed</span></div></article>
+ </div>
+ <div class="map__head abs"><h2>Map</h2><a class="btn btn--sm btn--icon" href="map.html" aria-label="Open the full map"><i class="i i--sm i-arrows-pointing-out"></i></a></div>
+ <div class="map__ctl abs" role="toolbar" aria-label="Tree view controls" data-c="MapControls">
+   <button class="btn btn--sm btn--icon" aria-label="Zoom out"><i class="i i--sm i-minus"></i></button><output>100%</output>
+   <button class="btn btn--sm btn--icon" aria-label="Zoom in"><i class="i i--sm i-plus"></i></button>
+   <button class="btn btn--sm btn--icon" aria-label="Fit tree"><i class="i i--sm i-arrows-pointing-in"></i></button>
+   <button class="btn btn--sm btn--icon" aria-label="Map menu"><i class="i i--sm i-ellipsis-horizontal"></i></button></div>
+</aside>
+</div></div>
+</body>
+</html>

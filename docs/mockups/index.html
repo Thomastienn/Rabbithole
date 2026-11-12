@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index · TreeTutor mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html" aria-current="page">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="knowledge.html">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a></nav>
+ <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
+
+<main class="page">
+<header class="page__head"><div><h1>TreeTutor redesign mockup</h1><p>Paperback Series, Seasonal Inks. A static, non-functional picture of every screen and component. Links and controls do nothing except move between screens. Tick <b>Component labels</b> in the black bar to see each part's name, and <b>Light</b> for the light appearance.</p></div></header>
+
+<h2 class="sec-h" style="margin-top:0">The idea in four rules</h2>
+<ul class="prose" style="font-size:15px;max-width:72ch;list-style:disc;padding-left:24px">
+ <li>A learning tree is a volume. Its root conversation, the trunk, wears paper.</li>
+ <li>Each first-level branch family takes one series ink, in order: amber, leaf, rust, lichen, then repeats. The passage underline, its address chip, the branch line and the conversation node band all share that ink.</li>
+ <li>Conversations carry addresses (1, 1.1, 1.1.2). The contents outline, the passage chips and the map all use them.</li>
+ <li>The reply owns the centre. Leaf green is the only action colour, paper is focus, rose red is failure only.</li>
+</ul>
+
+<h2 class="sec-h">Screens, one task each</h2>
+<table class="table" data-c="Handoff table"><thead><tr><th>Screen</th><th style="text-align:left">Covers</th><th style="text-align:left">Replaces today</th></tr></thead><tbody>
+<tr><td><a href="read.html" style="font-weight:600;text-decoration:underline">Read (focused chat)</a></td><td style="text-align:left">Band, contents outline, reading column with every reply element, composer, docked map.</td><td style="text-align:left" class="muted">src/ChatPage.tsx, src/markdown.ts, src/VisualFrame.tsx, src/VideoCard.tsx, src/DiagramCard.tsx, src/CopyButton.ts</td></tr><tr><td><a href="map.html" style="font-weight:600;text-decoration:underline">Map (learning tree map)</a></td><td style="text-align:left">Full map with conversation nodes, ink branches, folded stub, controls, ink legend.</td><td style="text-align:left" class="muted">src/TreeOverview.tsx, src/canvas.ts, src/layout.ts</td></tr><tr><td><a href="library.html" style="font-weight:600;text-decoration:underline">Library</a></td><td style="text-align:left">Learning trees as volumes with spine ticks, search, Shelf and List.</td><td style="text-align:left" class="muted">src/ChatPage.tsx (sidebar), src/treeList.ts</td></tr><tr><td><a href="knowledge.html" style="font-weight:600;text-decoration:underline">Knowledge</a></td><td style="text-align:left">Knowledge graph by topic, familiarity by form, concept detail and corrections.</td><td style="text-align:left" class="muted">src/KnowledgePage.tsx</td></tr><tr><td><a href="videos.html" style="font-weight:600;text-decoration:underline">Videos</a></td><td style="text-align:left">Video library cards and actions.</td><td style="text-align:left" class="muted">src/VideoLibrary.tsx, src/VideoCard.tsx</td></tr><tr><td><a href="settings.html" style="font-weight:600;text-decoration:underline">Settings</a></td><td style="text-align:left">Interface, Models and Connections as one page.</td><td style="text-align:left" class="muted">src/SettingsWindow.tsx, src/ChatSettings.tsx, src/SmartSettings.tsx, src/SuggestionSettings.tsx, src/EndpointSettings.tsx</td></tr><tr><td><a href="usage.html" style="font-weight:600;text-decoration:underline">Usage</a></td><td style="text-align:left">Usage history chart and tables.</td><td style="text-align:left" class="muted">src/UsageDashboard.tsx, src/usage.ts</td></tr><tr><td><a href="states.html" style="font-weight:600;text-decoration:underline">States and overlays</a></td><td style="text-align:left">Menus, dialogs, passage box, failures, loading, first run, enlarged media.</td><td style="text-align:left" class="muted">src/ChatPage.tsx and the component each specimen names</td></tr><tr><td><a href="narrow.html" style="font-weight:600;text-decoration:underline">Narrow layout</a></td><td style="text-align:left">Read, contents drawer and map at phone width.</td><td style="text-align:left" class="muted">src/layout.ts</td></tr>
+</tbody></table>
+
+<h2 class="sec-h">Shared foundation, do first</h2>
+<table class="table"><tbody>
+ <tr><td>Tokens</td><td style="text-align:left">The <code>:root</code> block in <a href="mock.css" style="text-decoration:underline">mock.css</a> holds every colour as <code>light-dark(light, dark)</code>, the type faces, radii and the 8px module. It becomes the Astryx theme that replaces <span class="muted">src/themes/slate/</span>.</td></tr>
+ <tr><td>Shell</td><td style="text-align:left">Band (global: tree switcher, view tabs, search, New chat, Settings) over a workspace. It replaces the left rail in <span class="muted">src/ChatPage.tsx</span> and <span class="muted">src/layout.ts</span>.</td></tr>
+ <tr><td>Fonts</td><td style="text-align:left">Archivo 400 to 700 for interface, Literata 400, 400 italic and 600 for replies. The mockup loads them from Google Fonts; the app must self-host them.</td></tr>
+ <tr><td>Icons</td><td style="text-align:left">Heroicons 24 outline, already a dependency. <span class="muted">icons.css</span> is generated for the mockup only.</td></tr>
+</tbody></table>
+
+<h2 class="sec-h">Palette</h2>
+<div style="display:grid;grid-template-columns:repeat(6, 1fr);gap:16px" data-c="Palette">
+<div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--ground)"></div><div style="margin-top:6px;font-weight:600">Ground</div><code class="muted" style="font-size:12px">--ground</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--surface)"></div><div style="margin-top:6px;font-weight:600">Surface</div><code class="muted" style="font-size:12px">--surface</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--raised)"></div><div style="margin-top:6px;font-weight:600">Raised</div><code class="muted" style="font-size:12px">--raised</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--deep)"></div><div style="margin-top:6px;font-weight:600">Deep panel</div><code class="muted" style="font-size:12px">--deep</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--band)"></div><div style="margin-top:6px;font-weight:600">Shell band</div><code class="muted" style="font-size:12px">--band</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--paper)"></div><div style="margin-top:6px;font-weight:600">Paper: trunk, focus</div><code class="muted" style="font-size:12px">--paper</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--accent)"></div><div style="margin-top:6px;font-weight:600">Leaf: action</div><code class="muted" style="font-size:12px">--accent</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--ink-1)"></div><div style="margin-top:6px;font-weight:600">Ink 1 amber</div><code class="muted" style="font-size:12px">--ink-1</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--ink-2)"></div><div style="margin-top:6px;font-weight:600">Ink 2 leaf</div><code class="muted" style="font-size:12px">--ink-2</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--ink-3)"></div><div style="margin-top:6px;font-weight:600">Ink 3 rust</div><code class="muted" style="font-size:12px">--ink-3</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--ink-4)"></div><div style="margin-top:6px;font-weight:600">Ink 4 lichen</div><code class="muted" style="font-size:12px">--ink-4</code></div><div><div style="height:56px;border:1px solid var(--seam);border-radius:var(--r-2);background:var(--alert)"></div><div style="margin-top:6px;font-weight:600">Alert</div><code class="muted" style="font-size:12px">--alert</code></div>
+</div>
+
+<h2 class="sec-h">Type</h2>
+<div style="display:grid;gap:12px" data-c="Type">
+ <div class="conv-title">Conversation title, Archivo 700, 34px</div>
+ <div style="font-size:20px;font-weight:700">Panel title, Archivo 700, 20px</div>
+ <div>Interface text, Archivo 400 and 600, 14px. Supporting text, 12px.</div>
+ <div class="prose" style="max-width:640px">Tutor replies are set in Literata at 17px with a 1.7 line height and a measure of about 66 characters, so a long evening of reading stays comfortable.</div>
+</div>
+
+<h2 class="sec-h">What moved, and what did not</h2>
+<ul class="prose" style="font-size:15px;max-width:72ch;list-style:disc;padding-left:24px">
+ <li>The saved-tree rail became the <a href="library.html" style="text-decoration:underline">Library</a> page and the band's tree switcher. The left column now shows the open tree's contents.</li>
+ <li>The map docks beside the reading column in Read, and takes the whole workspace in Map.</li>
+ <li>Settings is a page, not a dialog. Usage stays a Settings section.</li>
+ <li>Visuals and videos stay borderless and untitled inside replies, as docs/inline-visuals-spec.md requires; their names appear only in the contents under Figures.</li>
+ <li>No behaviour is removed. Every label, action and failure state in the current app has a place in these screens.</li>
+</ul>
+</main>
+</body>
+</html>

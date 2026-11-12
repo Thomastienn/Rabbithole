@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knowledge · TreeTutor mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="knowledge.html" aria-current="page">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a></nav>
+ <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
+
+<div class="app">
+<header class="band" data-c="Band">
+ <a class="band__mark" href="read.html">TreeTutor</a>
+ <a class="band__tree" href="library.html" data-c="TreeSwitcher" title="Open the library of learning trees"><span>How do fungi trade?</span><i class="i i--sm i-chevron-down"></i></a>
+ <nav class="band__tabs" aria-label="Views" data-c="ViewTabs"><a href="read.html"><i class="i i--sm i-book-open"></i>Read</a><a href="map.html"><i class="i i--sm i-map"></i>Map</a><a href="knowledge.html" aria-current="page"><i class="i i--sm i-share"></i>Knowledge</a><a href="videos.html"><i class="i i--sm i-film"></i>Videos</a></nav>
+ <div class="band__tools">
+  <span class="band__save" data-c="SaveState">Saved</span>
+  <button class="btn btn--icon" aria-label="Search learning trees" data-c="TreeSearchButton"><i class="i i-magnifying-glass"></i></button>
+  <button class="btn btn--outline" data-c="NewChat"><i class="i i--sm i-plus"></i>New chat</button>
+  <a class="btn btn--icon" href="settings.html" aria-label="Settings" data-c="SettingsLink"><i class="i i-cog-6-tooth"></i></a>
+ </div>
+</header>
+<div class="ws ws--page"><main class="page">
+<header class="page__head"><div><h1>Knowledge</h1><p>Concepts from all your learning trees. Familiarity is an estimate, not measured mastery. Your corrections take precedence.</p></div>
+ <button class="btn btn--outline"><i class="i i--sm i-arrow-path"></i>Refresh Knowledge</button></header>
+<div class="kg">
+ <div>
+  <div class="kg__field" data-c="KnowledgeGraph">
+   <svg aria-hidden="true"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="var(--muted)"/></marker></defs>
+    <path class="link link--focus" d="M133 76 H216"/><path class="link link--builds" d="M328 76 H420"/>
+    <path class="link" d="M270 92 C270 170 120 170 120 240"/><path class="link link--builds" d="M206 256 H268"/>
+    <path class="link" d="M94 420 C94 350 120 330 120 272"/><path class="link" d="M148 436 H216"/><path class="link link--builds" d="M349 436 H444"/></svg>
+   <span class="kg__topic abs" style="left:24px;top:24px">Fungi</span>
+   <button class="concept abs concept--focus" style="left:40px;top:60px" data-c="Concept"><i class="fam"></i>Hyphae</button><button class="concept abs" style="left:216px;top:60px" data-c="Concept"><i class="fam fam--some"></i>Mycorrhiza</button><button class="concept abs" style="left:420px;top:60px" data-c="Concept"><i class="fam"></i>Arbuscule</button>
+   <span class="kg__topic abs" style="left:24px;top:204px">Plant nutrition</span>
+   <button class="concept abs" style="left:40px;top:240px" data-c="Concept"><i class="fam fam--some"></i>Phosphorus uptake</button><button class="concept abs" style="left:268px;top:240px" data-c="Concept"><i class="fam fam--full"></i>Carbon fixing</button><button class="concept abs" style="left:450px;top:240px" data-c="Concept"><i class="fam fam--full"></i>Root hair</button>
+   <span class="kg__topic abs" style="left:24px;top:384px">Ecology</span>
+   <button class="concept abs" style="left:40px;top:420px" data-c="Concept"><i class="fam fam--some"></i>Mutualism</button><button class="concept abs" style="left:216px;top:420px" data-c="Concept"><i class="fam"></i>Partner choice</button><button class="concept abs" style="left:444px;top:420px" data-c="Concept"><i class="fam fam--full"></i>Symbiosis</button>
+  </div>
+  <div class="key" style="margin-top:12px" data-c="FamiliarityKey"><span><i class="fam"></i>Unfamiliar</span><span><i class="fam fam--some"></i>Some familiarity</span><span><i class="fam fam--full"></i>Familiar</span>
+   <span style="margin-left:auto">Line: related</span><span>Arrow: builds on</span></div>
+ </div>
+ <aside class="kg__detail" data-c="ConceptDetail">
+  <h2>Hyphae</h2>
+  <p><strong>Estimated familiarity: unfamiliar.</strong> Thread-like fungal cells that reach soil the roots cannot.</p>
+  <dl><dt>Met in replies</dt><dd>1</dd><dt>Asked about</dt><dd>0</dd><dt>Used in your questions</dt><dd>0</dd><dt>Suggestions ignored (weak hint)</dt><dd>0</dd></dl>
+  <p>Mycorrhiza is related to Hyphae. Arbuscule builds on Hyphae.</p>
+  <div class="kg__actions"><button class="btn btn--outline">I know this</button><button class="btn btn--outline">I don't get this</button><button class="btn">Merge…</button></div>
+ </aside>
+</div>
+</main></div></div>
+</body>
+</html>
