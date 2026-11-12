@@ -1,16 +1,16 @@
 import mermaid from 'mermaid';
-import { diagramFontFace } from './themes/slate/diagramFont';
+import { diagramFontFace } from './themes/paperback/diagramFont';
 
 // Mermaid has global configuration. Keep each theme initialization with its queued render.
 let queue = Promise.resolve();
-// Series order from the spec: yellow, blue, pink, green chalk, resolved for the current appearance.
+// Series inks in order (amber, lichen, rust, leaf via the theme's hue slots), resolved for the current appearance.
 const hues = ['yellow', 'blue', 'pink', 'green'];
 export function renderDiagram(source: string, card: HTMLElement, dark: boolean): Promise<string> {
   const style = getComputedStyle(card);
   const probe = card.appendChild(document.createElement('span'));
   const series = hues.map(hue => { probe.style.color = `var(--color-text-${hue})`; return getComputedStyle(probe).color; });
   probe.remove();
-  // Series fills carry surface-coloured labels; chalk hues are light in dark and dark in light.
+  // Series fills carry surface-coloured labels; series inks are light in dark and dark in light.
   const seriesVariables = Object.fromEntries(series.flatMap((color, i) => [
     [`cScale${i}`, color], [`cScaleLabel${i}`, style.backgroundColor], [`pie${i + 1}`, color],
     [`git${i}`, color], [`gitBranchLabel${i}`, style.backgroundColor],

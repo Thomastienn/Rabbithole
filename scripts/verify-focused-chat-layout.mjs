@@ -100,10 +100,10 @@ try {
   })()`);
   const look = async mode => {
     const t = await transcript();
-    assert.match(t.replyFont, /Source Serif 4/, `${mode}: reply in the reading serif`);
+    assert.match(t.replyFont, /Literata/, `${mode}: reply in the reading serif`);
     assert.equal(t.replySize, '16px', `${mode}: reply 16px`);
     assert.ok(Math.abs(t.replyLine - 1.7) < 0.02, `${mode}: reply line height 1.7 (${t.replyLine})`);
-    assert.match(t.questionFont, /Public Sans/, `${mode}: question in the UI sans`);
+    assert.match(t.questionFont, /Archivo/, `${mode}: question in the UI sans`);
     assert.ok(t.bubble !== 'rgba(0, 0, 0, 0)' && t.replyBg === 'rgba(0, 0, 0, 0)', `${mode}: question filled, reply without bubble`);
     assert.equal(t.meta, t.secondary, `${mode}: reply metadata in muted chalk`);
     assert.match(t.failed[0], /Reply failed/); assert.equal(t.failed[1], t.error, `${mode}: failed status in the alert colour`);

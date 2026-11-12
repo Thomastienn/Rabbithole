@@ -56,7 +56,7 @@ try {
     })()`);
     assert.equal(styles.width, 232); assert.equal(styles.background, styles.muted); assert.equal(styles.fill, styles.neutral);
     assert.equal(styles.action, styles.accent); assert.equal(styles.actionBackground, 'rgba(0, 0, 0, 0)');
-    assert.equal(styles.wordmark, true); assert.match(styles.font, /Public Sans/); assert.equal(styles.radius, '4px'); assert.equal(styles.overflow, false);
+    assert.equal(styles.wordmark, true); assert.match(styles.font, /Archivo/); assert.equal(styles.radius, '3px'); assert.equal(styles.overflow, false);
     assert.deepEqual(styles.footer, ['Knowledge', 'Videos', 'Settings']);
     results.appearances[mode] = styles;
     await shot(mode);
@@ -74,7 +74,7 @@ try {
       results.appearances[mode].detector = JSON.parse(scan.stdout);
     }
   }
-  results.checks.push('Dark/light: deeper 232px rail, Public Sans wordmark, yellow text New chat, 4px current fill, all four date groups, descendant count, labelled footer, keyboard overflow and focus return.');
+  results.checks.push('Dark/light: deeper 232px rail, Archivo wordmark, yellow text New chat, 4px current fill, all four date groups, descendant count, labelled footer, keyboard overflow and focus return.');
   await click("Open Peterson's algorithm"); await wait(`document.querySelector('.focused-chat h2')?.textContent === "Peterson's algorithm" && ${idle}`);
   assert.equal(await ev(current(root.id)), true, 'a branch keeps its root current');
   await click('Settings'); await wait(`document.querySelector('dialog[open] #settings-heading')`);

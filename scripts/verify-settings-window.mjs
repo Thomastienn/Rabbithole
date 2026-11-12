@@ -65,24 +65,24 @@ try {
   assert.equal(await heading(), 'Interface');
   assert.equal(await ev(`${dialog}.querySelector('nav a, nav button')?.textContent`), 'Interface', 'Interface is the first section');
   assert.equal(await ev(`${dialog}.querySelector('h3')?.textContent`), 'Appearance', 'Appearance is the first setting');
-  // World (spec, Settings window): raised slate, hairline seam, 6px corners, Public Sans, small-caps section labels, no shadow.
+  // World (spec, Settings window): raised slate, hairline seam, 4px corners, Archivo, small-caps section labels, no shadow.
   const look = {};
   for (const mode of ['dark', 'light']) {
     await b('find', 'role', 'radio', 'click', '--name', mode === 'dark' ? 'Dark' : 'Light', '--exact');
     await wait(`document.documentElement.getAttribute('data-theme') === '${mode}'`);
     look[mode] = await ev(`(() => { const d = ${dialog}, c = getComputedStyle(d), h = getComputedStyle(d.querySelector('h3')), body = getComputedStyle(document.body);
       return { surface: c.backgroundColor, ground: body.backgroundColor, radius: c.borderRadius, border: c.borderTopWidth + ' ' + c.borderTopStyle, shadow: c.boxShadow, font: getComputedStyle(d.querySelector('p, span')).fontFamily, caps: h.fontVariantCaps, label: h.color, text: body.color }; })()`);
-    assert.equal(look[mode].radius, '6px', `${mode} 6px corners`);
+    assert.equal(look[mode].radius, '4px', `${mode} 4px corners`);
     assert.notEqual(look[mode].surface, look[mode].ground, `${mode} raised surface`);
     // The theme draws seams as an inset 1px ring (slateTheme hairline); anything else would be a drop shadow.
     assert.ok(/^(0\.5|1)px solid$/.test(look[mode].border) || /^\S+(\([^)]*\))? 0px 0px 0px 1px inset$/.test(look[mode].shadow), `${mode} hairline seam: ${look[mode].border} / ${look[mode].shadow}`);
     assert.ok(!look[mode].shadow.split(/,(?![^(]*\))/).some(x => x !== 'none' && !x.trim().endsWith('inset')), `${mode} no drop shadow: ${look[mode].shadow}`);
-    assert.match(look[mode].font, /^"?Public Sans/, `${mode} Public Sans`);
+    assert.match(look[mode].font, /^"?Archivo/, `${mode} Archivo`);
     assert.equal(look[mode].caps, 'all-small-caps', `${mode} small-caps labels`);
     await shot(`interface-${mode}`); await b('screenshot', `${process.cwd()}/docs/verification/settings-interface-${mode}.png`);
   }
   await b('eval', `localStorage.removeItem('treetutor.appearance'); true`);
-  step(`Settings opens on Interface with Appearance first; dark and light: 6px raised slate, hairline seam, no shadow, Public Sans, small-caps labels ${JSON.stringify(look)}`);
+  step(`Settings opens on Interface with Appearance first; dark and light: 4px raised surface, hairline seam, no shadow, Archivo, small-caps labels ${JSON.stringify(look)}`);
   await tab('Models');
   assert.ok((await text()).includes('Automatic suggestions'));
   assert.ok((await text()).includes('Concept matching'));

@@ -44,10 +44,10 @@ TreeTutor's fragment contract:
 - Keep the background transparent, with no surrounding card, border or visible
   title; the host supplies the accessible description. Use only injected CSS theme variables and
   fonts. Text is var(--color-text-primary), secondary text
-  var(--color-text-secondary), borders var(--color-border), focus/accent
-  var(--color-accent). Series may use var(--color-text-yellow),
+  var(--color-text-secondary), borders var(--color-border), action
+  var(--color-accent), focus var(--focus-outline-color). Series may use var(--color-text-yellow),
   var(--color-text-blue), var(--color-text-pink), var(--color-text-green).
-  Use Public Sans for labels and controls, Source Serif 4 for explanatory prose,
+  Use Archivo for labels and controls, Literata for explanatory prose,
   and monospace for code. Do not hardcode palette values. Both light and dark
   must work; CSS variables update when appearance changes. For canvas colors,
   read getComputedStyle and redraw when theme changes.

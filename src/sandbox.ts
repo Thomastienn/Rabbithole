@@ -6,9 +6,9 @@ import katex from 'katex';
 import * as d3 from 'd3';
 import { visualMessage, type VisualPart } from './artifacts';
 import 'katex/dist/katex.min.css';
-import '@fontsource/public-sans/400.css';
-import '@fontsource/public-sans/600.css';
-import '@fontsource/source-serif-4/400.css';
+import '@fontsource/archivo/400.css';
+import '@fontsource/archivo/600.css';
+import '@fontsource/literata/400.css';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
 Object.assign(window, { mermaid, THREE, katex, d3 });

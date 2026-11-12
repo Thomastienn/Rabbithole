@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-nwx.4",
-  "date": "2026-11-11T19:39:32.274Z",
+  "date": "2026-11-12T23:29:08.334Z",
   "evidence": "Built app; agent-browser Chromium; synthetic transcripts and providers; no live inference",
   "references": [
     "map-reference-dark.png",
@@ -12,15 +12,15 @@
   ],
   "appearances": {
     "dark": {
-      "accent": "rgb(232, 210, 122)",
+      "accent": "rgb(157, 186, 110)",
       "cap": "round",
-      "ground": "rgb(28, 39, 36)",
+      "ground": "rgb(26, 22, 19)",
       "offset": "3px",
-      "outline": "rgb(232, 210, 122)",
+      "outline": "rgb(157, 186, 110)",
       "plainAnimated": 0,
       "plainWidth": "2px",
-      "radius": "4px",
-      "stroke": "rgb(232, 210, 122)",
+      "radius": "3px",
+      "stroke": "rgb(157, 186, 110)",
       "titleWeight": "600",
       "width": "2.5px",
       "controls": {
@@ -31,15 +31,15 @@
       }
     },
     "light": {
-      "accent": "rgb(122, 101, 16)",
+      "accent": "rgb(70, 100, 42)",
       "cap": "round",
-      "ground": "rgb(231, 235, 230)",
+      "ground": "rgb(242, 238, 229)",
       "offset": "3px",
-      "outline": "rgb(122, 101, 16)",
+      "outline": "rgb(70, 100, 42)",
       "plainAnimated": 0,
       "plainWidth": "2px",
-      "radius": "4px",
-      "stroke": "rgb(122, 101, 16)",
+      "radius": "3px",
+      "stroke": "rgb(70, 100, 42)",
       "titleWeight": "600",
       "width": "2.5px",
       "controls": {
@@ -68,6 +68,6 @@
   ],
   "attachment": {
     "gap": 0,
-    "message": "44e4fded-1ed0-45ab-bb5e-d4fafd06a63c"
+    "message": "cb17e2f3-e3fe-4952-981f-f475cadc2d81"
   }
 }

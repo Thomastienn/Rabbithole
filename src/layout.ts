@@ -35,7 +35,7 @@ html { view-transition-name: none; }
 .knowledge-panel { flex: 1; min-height: 0; overflow: auto; }
 .knowledge-content { max-width: 70rem; margin-inline: auto; overflow-wrap: anywhere; }
 /* Knowledge: concept cards on the map's slate field, 1.5px chalk relations, selected concept in yellow (spec, Knowledge page). */
-.knowledge-content :focus-visible { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: var(--focus-outline-offset); }
+.knowledge-content :focus-visible { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: var(--focus-outline-offset); }
 .knowledge-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem); gap: var(--spacing-5); align-items: start; }
 .knowledge-field { position: relative; display: flex; flex-direction: column; gap: var(--spacing-6); min-width: 0; }
 .knowledge-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
@@ -69,7 +69,7 @@ html { view-transition-name: none; }
 .question-bubble { background: var(--question-bubble-tint); color: var(--color-text-primary); border-radius: var(--radius-element); padding: var(--spacing-2) var(--spacing-3); overflow-wrap: anywhere; }
 .chat-title { flex: 1; min-width: 0; }
 .chat-reply > * { max-width: 62ch; }
-/* Replies: Source Serif 4 16px/1.7, no bubble (spec, Focused chat). Code keeps the theme's code face. */
+/* Replies: Literata 16px/1.7, no bubble (spec, Focused chat). Code keeps the theme's code face. */
 .reply-md, .reply-md .astryx-text { font-family: var(--treetutor-font-reading); font-size: 1rem; line-height: 1.7; }
 .reply-md pre .astryx-text, .reply-md code .astryx-text { font-size: var(--font-size-sm); line-height: 1.5; }
 .reply-status { display: inline-flex; align-items: center; gap: var(--spacing-2); padding-inline-start: var(--spacing-2); border-inline-start: 2px solid var(--color-border-emphasized); color: var(--color-text-secondary); }
@@ -86,7 +86,7 @@ html { view-transition-name: none; }
 .usage-bar { outline: none; cursor: default; }
 .usage-hit { fill: transparent; }
 .usage-bar[data-active=true] .usage-hit { fill: var(--color-background-muted); }
-.usage-bar:focus-visible .usage-hit { stroke: var(--color-accent); stroke-width: var(--focus-outline-width); vector-effect: non-scaling-stroke; }
+.usage-bar:focus-visible .usage-hit { stroke: var(--focus-outline-color); stroke-width: var(--focus-outline-width); vector-effect: non-scaling-stroke; }
 [data-series=input] { fill: var(--color-icon-blue); background: var(--color-icon-blue); }
 [data-series=output] { fill: var(--color-icon-green); background: var(--color-icon-green); }
 [data-series=cacheRead] { fill: var(--color-icon-yellow); background: var(--color-icon-yellow); }
@@ -130,7 +130,7 @@ html { view-transition-name: none; }
 .reply-md u.suggestion.explored { text-decoration-style: solid; text-decoration-color: var(--color-accent); text-decoration-thickness: 2px; }
 .reply-md u.suggestion:hover { text-decoration-color: var(--color-text-primary); }
 .reply-md u.suggestion.explored:hover { text-decoration-color: var(--color-accent); }
-.reply-md u.suggestion:focus-visible { outline: medium solid var(--color-accent); outline-offset: var(--spacing-1); border-radius: var(--radius-element); }
+.reply-md u.suggestion:focus-visible { outline: medium solid var(--focus-outline-color); outline-offset: var(--spacing-1); border-radius: var(--radius-element); }
 .reply-md .md-source-syntax { white-space: pre-wrap; font-family: monospace; }
 /* Visuals blend into the reply: no card chrome, full column width, height from the frame's reported content. */
 .visual { position: relative; margin: var(--spacing-3) 0; min-width: 0; }
@@ -192,7 +192,7 @@ html { view-transition-name: none; }
 .chat-divider { flex: none; position: relative; z-index: 5; width: var(--spacing-2); margin-inline: calc(-1 * var(--spacing-1)); cursor: col-resize; touch-action: none; }
 .chat-divider::after { content: ''; position: absolute; inset-block: 0; left: 50%; width: 2px; transform: translateX(-50%); background: transparent; transition: background-color 120ms ease-out; }
 .chat-divider:hover::after, .chat-divider:active::after, .chat-divider:focus-visible::after { background: var(--color-accent); }
-.chat-divider:focus-visible { outline: medium solid var(--color-accent); outline-offset: 0; }
+.chat-divider:focus-visible { outline: medium solid var(--focus-outline-color); outline-offset: 0; }
 .focused-chat > .astryx-chat-layout { flex: 1; min-height: 0; overflow: auto; }
 /* Astryx's leading flex spacer bottom-aligns short logs; this world reads from the top. */
 .focused-chat .astryx-chat-message-list > :first-child > [aria-hidden=true]:first-child { flex: none; }
@@ -206,7 +206,7 @@ html { view-transition-name: none; }
 .focused-chat .astryx-chat-composer > :first-child > :first-child { flex: 1; min-width: 0; align-self: center; }
 .focused-chat .astryx-chat-send-button { border-radius: 50%; }
 .tree-canvas { flex: 1; min-height: 0; background: var(--color-background-body); }
-.tree-canvas:focus-visible { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: calc(-1 * var(--spacing-1)); }
+.tree-canvas:focus-visible { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: calc(-1 * var(--spacing-1)); }
 .tree-workspace[data-expanded=true] .overview { display: none; }
 .tree-workspace[data-expanded=true] .focused-chat { flex: 1; border-left: 0; }
 ::view-transition { pointer-events: none; }
@@ -228,9 +228,9 @@ html { view-transition-name: none; }
 @keyframes pulse { 50% { opacity: 0.3; } }
 @media (prefers-reduced-motion: reduce) { .conversation-box[data-active=true] .activity-dot, .react-flow__edge .react-flow__edge-path.branch-new, .selection-action, .reply-status::before { animation: none; } .chat-divider::after, .conversation-box, .node-extra, .diagram-card .astryx-icon, .reply-usage, .reply-copy, .code-copy { transition: none; } }
 .react-flow__node:focus-visible { outline: none; }
-.react-flow__node:focus-visible .conversation-box { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: var(--focus-outline-offset); }
+.react-flow__node:focus-visible .conversation-box { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: var(--focus-outline-offset); }
 .react-flow__edge:focus-visible { outline: none; }
-.react-flow__edge:focus-visible .react-flow__edge-path { stroke: var(--color-accent); stroke-width: var(--treetutor-branch-focus-width); }
+.react-flow__edge:focus-visible .react-flow__edge-path { stroke: var(--focus-outline-color); stroke-width: var(--treetutor-branch-focus-width); }
 .conversation-box button { height: auto; white-space: normal; }
 .node-message[data-role=user] { align-items: flex-end; }
 .node-message[data-role=user] .question-bubble { max-width: 85%; padding: var(--spacing-1) var(--spacing-2); }

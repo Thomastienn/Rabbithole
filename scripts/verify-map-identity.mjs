@@ -72,7 +72,7 @@ try {
       const p=document.createElement('i'); p.style.color='var(--color-accent)'; box.append(p); const accent=getComputedStyle(p).color; p.remove();
       return {ground:getComputedStyle(document.querySelector('.react-flow')).backgroundColor,radius:getComputedStyle(box).borderRadius,outline:getComputedStyle(box).outlineColor,offset:getComputedStyle(box).outlineOffset,accent,stroke:getComputedStyle(edge).stroke,width:getComputedStyle(edge).strokeWidth,plainWidth:getComputedStyle(plain).strokeWidth,cap:getComputedStyle(plain).strokeLinecap,titleWeight:getComputedStyle(box.querySelector('h2')).fontWeight,plainAnimated:plain.getAnimations().length};
     })()`);
-    assert.equal(styles.radius, '4px'); assert.equal(styles.offset, '3px');
+    assert.equal(styles.radius, '3px'); assert.equal(styles.offset, '3px');
     assert.equal(styles.outline, styles.accent); assert.equal(styles.stroke, styles.accent);
     assert.equal(styles.width, '2.5px'); assert.equal(styles.plainWidth, '2px'); assert.equal(styles.cap, 'round'); assert.equal(styles.titleWeight, '600'); assert.equal(styles.plainAnimated, 0);
     assert.equal(await ev(`document.querySelectorAll('.react-flow__attribution, .react-flow__background').length`), 0);

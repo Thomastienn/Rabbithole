@@ -75,7 +75,7 @@ try {
     await wait(`!document.querySelector('.focused-chat .diagram-card').textContent.includes('Rendering diagram')`);
     const file = join('docs', 'verification', `focused-chat-reference-${mode}.png`);
     const t = await look();
-    assert.match(t.titleFont, /Public Sans/, `${mode}: title in Public Sans`);
+    assert.match(t.titleFont, /Archivo/, `${mode}: title in Archivo`);
     assert.equal(t.titleWeight, '600', `${mode}: title weight 600`);
     assert.equal(t.meta, t.secondary, `${mode}: provider and model muted`);
     assert.equal(t.ctxRule[0], '2px', `${mode}: inherited context has a 2px left rule`);
@@ -87,13 +87,13 @@ try {
     assert.equal(t.blur, false, `${mode}: dock uses an opaque slate surface without blur`);
     assert.equal(t.statsOpen, 'false', `${mode}: token stats are collapsed by default`);
     assert.equal(t.card[0], t.seam, `${mode}: diagram card hairline seam`);
-    assert.equal(t.card[2], '4px', `${mode}: diagram card 4px corners`);
+    assert.equal(t.card[2], '3px', `${mode}: diagram card 3px corners`);
     assert.ok(t.gapAbove < 40, `${mode}: short conversation starts at the top (${t.gapAbove}px), empty space below`);
     assert.ok(t.gapBelow > 50, `${mode}: short conversation leaves space below its reply (${t.gapBelow}px)`);
     await click('Inherited from Mutex basics');
     await wait(`document.querySelector('.inherited-body')?.checkVisibility()`);
     const quote = await ev(`(() => { const n = document.querySelector('.inherited-body dd'), s = getComputedStyle(n); return { color: s.color, font: s.fontFamily, values: [...n.parentElement.querySelectorAll('dd')].map(n => n.textContent) }; })()`);
-    assert.equal(quote.color, t.secondary); assert.match(quote.font, /Source Serif 4/);
+    assert.equal(quote.color, t.secondary); assert.match(quote.font, /Literata/);
     assert.deepEqual(quote.values, ['shared state', 'Why must shared state be guarded?', 'The learner asked what a mutex is.\nThe tutor said a mutex lets one thread at a time touch shared state.']);
     await b('mouse', 'move', '5', '5'); await ev(`document.activeElement?.blur(); true`);
     await ev(`(() => { const n = document.querySelector('.focused-chat .astryx-chat-layout'); n.scrollTop = 0; n.dispatchEvent(new Event('scroll')); return true; })()`);
@@ -108,7 +108,7 @@ try {
     await b('find', 'role', 'menuitem', 'click', '--name', 'Hide token stats', '--exact');
     await wait(`!document.querySelector('.chat-stats-body')`);
     steps.push(`${mode}: inherited passage, question and snapshot remain exact in muted reading type; Token stats start hidden; the overflow menu shows and hides the per-reply usage`);
-    steps.push(`${mode}: title Public Sans 600, muted model, inherited context 2px yellow rule, Send the only filled button, diagram card seam + 4px, transcript starts at top (${Math.round(t.gapAbove)}px) with ${Math.round(t.gapBelow)}px empty below; ${file}`);
+    steps.push(`${mode}: title Archivo 600, muted model, inherited context 2px yellow rule, Send the only filled button, diagram card seam + 4px, transcript starts at top (${Math.round(t.gapAbove)}px) with ${Math.round(t.gapBelow)}px empty below; ${file}`);
     return t;
   };
   const dark = await shoot('dark');

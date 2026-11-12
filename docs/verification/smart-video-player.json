@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-12T03:22:00.750Z",
+  "checkedAt": "2026-11-12T23:30:24.634Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
@@ -24,17 +24,17 @@
           "animations": 0,
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
-          "buttonFont": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-          "color": "rgb(159, 176, 168)",
+          "buttonFont": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
+          "color": "rgb(171, 158, 139)",
           "column": 527,
-          "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-          "ground": "rgb(36, 49, 45)",
+          "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
+          "ground": "rgb(36, 31, 26)",
           "height": 28,
           "overflow": false,
           "size": "12px",
           "skeleton": false,
           "titleHidden": true,
-          "contrast": 5.9590034173824815
+          "contrast": 6.217430074719537
         },
         {
           "mode": "light",
@@ -42,17 +42,17 @@
           "animations": 0,
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
-          "buttonFont": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-          "color": "rgb(74, 90, 83)",
+          "buttonFont": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
+          "color": "rgb(95, 85, 71)",
           "column": 527,
-          "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-          "ground": "rgb(243, 245, 241)",
+          "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
+          "ground": "rgb(250, 247, 240)",
           "height": 28,
           "overflow": false,
           "size": "12px",
           "skeleton": false,
           "titleHidden": true,
-          "contrast": 6.649921327228525
+          "contrast": 6.822243247629124
         },
         {
           "mode": "dark",
@@ -60,17 +60,17 @@
           "animations": 0,
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
-          "buttonFont": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-          "color": "rgb(159, 176, 168)",
+          "buttonFont": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
+          "color": "rgb(171, 158, 139)",
           "column": 358,
-          "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-          "ground": "rgb(36, 49, 45)",
+          "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
+          "ground": "rgb(36, 31, 26)",
           "height": 28,
           "overflow": false,
           "size": "12px",
           "skeleton": false,
           "titleHidden": true,
-          "contrast": 5.9590034173824815
+          "contrast": 6.217430074719537
         },
         {
           "mode": "light",
@@ -78,17 +78,17 @@
           "animations": 0,
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
-          "buttonFont": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-          "color": "rgb(74, 90, 83)",
+          "buttonFont": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
+          "color": "rgb(95, 85, 71)",
           "column": 358,
-          "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
-          "ground": "rgb(243, 245, 241)",
+          "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
+          "ground": "rgb(250, 247, 240)",
           "height": 28,
           "overflow": false,
           "size": "12px",
           "skeleton": false,
           "titleHidden": true,
-          "contrast": 6.649921327228525
+          "contrast": 6.822243247629124
         }
       ]
     },
@@ -140,8 +140,8 @@
         "progressLive": false,
         "statuses": [
           "Peterson in the tournament tree: Rendering video… 40%",
-          "Peterson in the tournament tree: Rendering video… 5%",
-          "Peterson in the tournament tree: Rendering video… 40%",
+          "Peterson in the tournament tree: Rendering video… 25%",
+          "Peterson in the tournament tree: Rendering video… 65%",
           "Peterson in the tournament tree: Video ready."
         ]
       }
@@ -243,7 +243,7 @@
           "after": "Then the winners advance.",
           "before": "Here is how Peterson fits.",
           "border": "0px",
-          "chat": "rgb(36, 49, 45)",
+          "chat": "rgb(36, 31, 26)",
           "ghost": true,
           "inline": true,
           "padding": "0px",
@@ -256,7 +256,7 @@
           "after": "Then the winners advance.",
           "before": "Here is how Peterson fits.",
           "border": "0px",
-          "chat": "rgb(243, 245, 241)",
+          "chat": "rgb(250, 247, 240)",
           "ghost": true,
           "inline": true,
           "padding": "0px",
@@ -269,7 +269,7 @@
           "after": "Then the winners advance.",
           "before": "Here is how Peterson fits.",
           "border": "0px",
-          "chat": "rgb(36, 49, 45)",
+          "chat": "rgb(36, 31, 26)",
           "ghost": true,
           "inline": true,
           "padding": "0px",
@@ -282,7 +282,7 @@
           "after": "Then the winners advance.",
           "before": "Here is how Peterson fits.",
           "border": "0px",
-          "chat": "rgb(243, 245, 241)",
+          "chat": "rgb(250, 247, 240)",
           "ghost": true,
           "inline": true,
           "padding": "0px",

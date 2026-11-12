@@ -66,17 +66,17 @@ try {
     assert.equal(new Set(tints.map(t => rows[t].fill)).size, tints.length, `${appearance}: every preset has its own fill`);
     step(`${appearance}: every bubble tint gives question text AA (lowest ${Math.min(...tints.map(t => rows[t].ratio)).toFixed(2)}:1)`);
 
-    // Mermaid: flowchart in surface/chalk/hairline; pie series in yellow, blue, pink, green chalk.
+    // Mermaid: flowchart in surface/paper/hairline; pie series in amber, lichen, rust, leaf ink.
     const [hues, [flowSvg, pieSvg], text, surface] = await Promise.all([ev(series), ev(svgs),
       ev(`getComputedStyle(document.querySelector('.diagram-card')).color`), ev(`getComputedStyle(document.querySelector('.diagram-card')).backgroundColor`)]);
-    assert.ok(flowSvg.includes(text) && flowSvg.includes(surface), `${appearance}: flowchart in chalk text on raised slate`);
+    assert.ok(flowSvg.includes(text) && flowSvg.includes(surface), `${appearance}: flowchart in paper text on the raised surface`);
     const order = hues.map(h => pieSvg.indexOf(`fill:${h}`) >= 0 ? pieSvg.indexOf(`fill:${h}`) : pieSvg.indexOf(`fill="${h}"`));
-    assert.ok(order.every(i => i >= 0), `${appearance}: pie uses every chalk hue ${JSON.stringify(hues)}`);
-    assert.deepEqual([...order].sort((p, q) => p - q), order, `${appearance}: series in yellow, blue, pink, green order`);
+    assert.ok(order.every(i => i >= 0), `${appearance}: pie uses every series ink ${JSON.stringify(hues)}`);
+    assert.deepEqual([...order].sort((p, q) => p - q), order, `${appearance}: series in amber, lichen, rust, leaf order`);
     results[appearance].series = hues;
     await b('eval', `document.querySelectorAll('.diagram-card')[1].scrollIntoView({ block: 'center' }); true`);
     await shot(`diagrams-${appearance}`);
-    step(`${appearance}: Mermaid uses the theme palette, series follow the chalk order`);
+    step(`${appearance}: Mermaid uses the theme palette, series follow the ink order`);
 
     // Choosing a preset in Settings applies it live and persists.
     await open(appearance, 'neutral');
@@ -84,7 +84,7 @@ try {
     await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
     await wait(`document.querySelector('dialog[open]')`);
     await b('find', 'text', 'Interface', 'click', '--exact');
-    await b('find', 'role', 'radio', 'click', '--name', 'Pink', '--exact');
+    await b('find', 'role', 'radio', 'click', '--name', 'Rust', '--exact');
     assert.equal(await ev(`localStorage.getItem('treetutor.bubble-tint')`), 'pink');
     await b('eval', `document.querySelector('dialog[open] .bubble-tint-swatch').scrollIntoView({ block: 'center' }); true`);
     await shot(`tints-settings-${appearance}`);
@@ -92,12 +92,12 @@ try {
     await wait(`!document.querySelector('dialog[open]')`);
     assert.equal((await ev(bubbleContrast)).fill, rows.pink.fill);
     await shot(`bubble-pink-${appearance}`);
-    step(`${appearance}: Settings Pink tint applies to the bubble and persists`);
+    step(`${appearance}: Settings Rust tint applies to the bubble and persists`);
   }
-  // A preset saved under the old palette maps to its chalk hue.
+  // A preset saved under the old palette maps to its nearest ink.
   await open('dark', 'purple');
   assert.equal((await ev(bubbleContrast)).fill, results.dark.pink.fill);
-  step('legacy Purple preference opens as Pink');
+  step('legacy Purple preference opens as Rust');
   writeFileSync('docs/verification/palette-results.json', JSON.stringify(results, null, 2) + '\n');
 } finally {
   await b('close').catch(() => {});

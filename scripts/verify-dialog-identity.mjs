@@ -92,7 +92,7 @@ try {
       const f = document.querySelector('.branch-form'), s = getComputedStyle(f), box = document.querySelector('.passage-box').getBoundingClientRect(), header = document.querySelector('.chat-header').getBoundingClientRect();
       return { border: s.borderTopColor, accent: token('--color-accent'), background: s.backgroundColor, popover: token('--color-background-popover', 'backgroundColor'), radius: s.borderTopLeftRadius, shadow: getComputedStyle(f.parentElement).boxShadow, clear: box.top >= header.bottom, width: box.width, label: f.textContent };
     })()`);
-    assert.equal(seen.prompt.border, seen.prompt.accent); assert.equal(seen.prompt.background, seen.prompt.popover); assert.equal(seen.prompt.radius, '6px');
+    assert.equal(seen.prompt.border, seen.prompt.accent); assert.equal(seen.prompt.background, seen.prompt.popover); assert.equal(seen.prompt.radius, '4px');
     assert.equal(seen.prompt.shadow, 'none'); assert.equal(seen.prompt.clear, true); assert.ok(seen.prompt.width <= 448); assert.match(seen.prompt.label, /Question about this passage/);
     await shot(`passage-prompt-${mode}`);
     await b('press', 'Escape'); await wait(`!document.querySelector('.branch-form')`);

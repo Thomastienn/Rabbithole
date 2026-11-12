@@ -122,7 +122,7 @@ try {
   assert.equal(light.color, await appColor());
   assert.equal(light.background, 'rgba(0, 0, 0, 0)');
   assert.equal(light.root, 'rgba(0, 0, 0, 0)');
-  assert.ok(light.font.includes('Public Sans'));
+  assert.ok(light.font.includes('Archivo'));
   assert.equal(light.libs, 'object,object,object,object');
   await b('screenshot', join(dir, 'visual-light.png'));
   await b('set', 'media', 'dark', 'reduced-motion');

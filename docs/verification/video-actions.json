@@ -1,12 +1,12 @@
 {
-  "checkedAt": "2026-11-11T19:44:30.806Z",
+  "checkedAt": "2026-11-12T23:25:52.923Z",
   "evidence": "Live desktop session (DISPLAY, session D-Bus), real file manager and gio trash; production build in Chromium via agent-browser",
-  "data": "/tmp/tt-video-actions-BTzmeo",
+  "data": "/tmp/tt-video-actions-eKiUNF",
   "checks": [
     {
       "name": "Show in folder (keyboard) opens a real file-manager window on the selected video folder",
       "windows": [
-        "0x05600007  1 nemo.Nemo             thomastien videos"
+        "0x06800007  1 nemo.Nemo             thomastien videos"
       ]
     },
     {
@@ -15,7 +15,7 @@
     },
     {
       "name": "Move to trash (keyboard, confirmed) moves the disposable file into the desktop trash and removes the entry",
-      "trashInfo": "[Trash Info]\nPath=/tmp/tt-video-actions-BTzmeo/videos/5be62c50-7818-4444-9d4a-c5949f3e44f5.mp4\nDeletionDate=2026-11-11T13:44:33",
+      "trashInfo": "[Trash Info]\nPath=/tmp/tt-video-actions-eKiUNF/videos/3353468f-9b07-442d-8a46-ac2aca470048.mp4\nDeletionDate=2026-11-12T17:25:56",
       "focus": "refresh-videos",
       "status": " | Moved “Disposable trash video” to the system trash. Restore it from your desktop trash if needed. | Disposable failing video: Video ready. |  |  |  |  | "
     },

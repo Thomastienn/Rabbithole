@@ -1,49 +1,49 @@
 {
   "issue": "TreeTutor-nwx.7",
-  "checkedAt": "2026-11-11T19:43:21.911Z",
+  "checkedAt": "2026-11-12T23:29:49.794Z",
   "evidence": "Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.",
   "appearances": {
     "dark": {
-      "accent": "rgb(232, 210, 122)",
-      "action": "rgb(232, 210, 122)",
+      "accent": "rgb(169, 198, 122)",
+      "action": "rgb(169, 198, 122)",
       "actionBackground": "rgba(0, 0, 0, 0)",
-      "background": "rgb(22, 32, 29)",
-      "fill": "rgba(235, 231, 220, 0.12)",
-      "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+      "background": "rgb(20, 17, 14)",
+      "fill": "rgba(239, 230, 214, 0.12)",
+      "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
       "footer": [
         "Knowledge",
         "Videos",
         "Settings"
       ],
-      "muted": "rgb(22, 32, 29)",
-      "neutral": "rgba(235, 231, 220, 0.12)",
+      "muted": "rgb(20, 17, 14)",
+      "neutral": "rgba(239, 230, 214, 0.12)",
       "overflow": false,
-      "radius": "4px",
+      "radius": "3px",
       "width": 232,
       "wordmark": true
     },
     "light": {
-      "accent": "rgb(107, 88, 0)",
-      "action": "rgb(107, 88, 0)",
+      "accent": "rgb(61, 90, 34)",
+      "action": "rgb(61, 90, 34)",
       "actionBackground": "rgba(0, 0, 0, 0)",
-      "background": "rgb(220, 226, 220)",
-      "fill": "rgba(28, 39, 36, 0.1)",
-      "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+      "background": "rgb(230, 224, 211)",
+      "fill": "rgba(31, 26, 21, 0.1)",
+      "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
       "footer": [
         "Knowledge",
         "Videos",
         "Settings"
       ],
-      "muted": "rgb(220, 226, 220)",
-      "neutral": "rgba(28, 39, 36, 0.1)",
+      "muted": "rgb(230, 224, 211)",
+      "neutral": "rgba(31, 26, 21, 0.1)",
       "overflow": false,
-      "radius": "4px",
+      "radius": "3px",
       "width": 232,
       "wordmark": true
     }
   },
   "checks": [
-    "Dark/light: deeper 232px rail, Public Sans wordmark, yellow text New chat, 4px current fill, all four date groups, descendant count, labelled footer, keyboard overflow and focus return.",
+    "Dark/light: deeper 232px rail, Archivo wordmark, yellow text New chat, 4px current fill, all four date groups, descendant count, labelled footer, keyboard overflow and focus return.",
     "Child selection marks its root; Settings Escape returns to its labelled opener; Knowledge returns to the same conversation/map transform; keyboard collapse/expand and both stored preferences survive reload.",
     "Long history scrolls without moving footer; 200-character unbroken inline rename persists without page overflow.",
     "Drawer overflow: keyboard rename Escape and delete cancellation retain data/drawer and restore ellipsis focus; nested Settings closes back to its labelled drawer action.",

@@ -109,7 +109,7 @@ if (process.argv[2] === '--serve') {
       assert.equal(frame.width, frame.column);
       assert.equal(frame.border, '0px'); assert.equal(frame.background, 'rgba(0, 0, 0, 0)');
       assert.equal(frame.skeleton, false); assert.equal(frame.titleHidden, true);
-      assert.match(frame.font, /Public Sans/); assert.match(frame.buttonFont, /Public Sans/); assert.ok(parseFloat(frame.size) <= 14);
+      assert.match(frame.font, /Archivo/); assert.match(frame.buttonFont, /Archivo/); assert.ok(parseFloat(frame.size) <= 14);
       const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(v => Number(v) / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
       const ink = luminance(frame.color), ground = luminance(frame.ground);
       frame.contrast = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05);

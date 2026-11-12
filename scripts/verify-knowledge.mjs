@@ -139,17 +139,17 @@ try {
     assert.equal(l.lineStroke, probe, `${mode} selected concept's relations in yellow`);
     assert.notEqual(l.plainStroke, probe, `${mode} other relations in chalk`);
     assert.equal(l.lineWidth, '1.5px', `${mode} 1.5px relation lines`);
-    assert.equal(l.cardRadius, '4px'); assert.equal(l.detailRadius, '6px');
+    assert.equal(l.cardRadius, '3px'); assert.equal(l.detailRadius, '4px');
     assert.ok([l.body, 'rgba(0, 0, 0, 0)'].includes(l.field), `${mode} bare slate field`);
     assert.notEqual(l.cardSurface, l.body, `${mode} raised concept cards`);
     assert.ok(!l.detailShadow.split(/,(?![^(]*\))/).some(x => x !== 'none' && !x.trim().endsWith('inset')), `${mode} no drop shadow`);
-    assert.match(l.reading, /^"?Source Serif 4/, `${mode} serif detail text`);
-    assert.match(l.ui, /^"?Public Sans/, `${mode} Public Sans cards`);
+    assert.match(l.reading, /^"?Literata/, `${mode} serif detail text`);
+    assert.match(l.ui, /^"?Archivo/, `${mode} Archivo cards`);
     await b('screenshot', resolve(`docs/verification/knowledge-${mode}.png`));
   }
   await b('set', 'viewport', '390', '844');
   await b('screenshot', resolve('docs/verification/knowledge-mobile-light.png'));
-  steps.push('Dark and light: concept cards raised on the slate field, 1.5px chalk relations, selected concept and its relations in yellow, serif detail text, Public Sans cards, no drop shadow');
+  steps.push('Dark and light: concept cards raised on the slate field, 1.5px chalk relations, selected concept and its relations in yellow, serif detail text, Archivo cards, no drop shadow');
   console.log(JSON.stringify({ pass: true, steps, screenshots: [...['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)), ...['dark', 'light', 'mobile-light'].map(m => `docs/verification/knowledge-${m}.png`)] }, null, 2));
 } catch (error) { console.error({ steps, snapshot: await b('snapshot', '-i').catch(() => '') }); throw error; }
 finally { await b('close').catch(() => {}); await app.stop(); store.close(); }

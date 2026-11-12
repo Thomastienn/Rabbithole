@@ -3,13 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { bubbleTints, savedTint } from '../src/bubbleTint.ts';
 
-// Read [light, dark] tuples straight from the theme source; ink/chalk are its two named constants.
-const theme = readFileSync('src/themes/slate/slateTheme.ts', 'utf8');
-const consts = { ink: '#1c2724', chalk: '#ebe7dc' };
+// Read [light, dark] pairs from the built theme CSS.
+const theme = readFileSync('src/themes/paperback/paperback.css', 'utf8');
 const token = name => {
-  const m = theme.match(new RegExp(`'${name}': \\[([^\\]]+)\\]`));
+  const m = theme.match(new RegExp(`${name}: light-dark\\(([^)]+)\\)`));
   assert.ok(m, `theme token ${name}`);
-  return m[1].split(',').map(s => { s = s.trim().replace(/'/g, ''); return consts[s] ?? s; });
+  return m[1].split(',').map(s => s.trim());
 };
 const rgba = hex => { const h = hex.slice(1); return [0, 2, 4, 6].map(i => i < 6 ? parseInt(h.slice(i, i + 2), 16) : h.length > 6 ? parseInt(h.slice(6, 8), 16) / 255 : 1); };
 const over = (top, under) => top.slice(0, 3).map((c, i) => c * top[3] + under[i] * (1 - top[3]));
@@ -27,10 +26,29 @@ test('every bubble tint gives question text AA contrast on the chat surface in b
   }
 });
 
-test('saved tints from the old palette map to their chalk hue', () => {
+test('saved tints from the old palette map to their nearest ink', () => {
   assert.equal(savedTint(null), 'neutral');
   assert.equal(savedTint('blue'), 'blue');
   assert.equal(savedTint('purple'), 'pink');
   assert.equal(savedTint('accent'), 'yellow');
   assert.equal(savedTint('bogus'), 'neutral');
+});
+
+test('theme text, actions and inks meet AA on the ground and surface in both appearances', () => {
+  const grounds = ['--color-background-body', '--color-background-surface', '--color-background-popover'].map(token);
+  const texts = ['--color-text-primary', '--color-text-secondary', '--color-text-accent', '--color-text-error',
+    '--color-text-yellow', '--color-text-green', '--color-text-pink', '--color-text-blue'];
+  for (const name of texts) for (const ground of grounds) [0, 1].forEach(appearance => {
+    const ratio = contrast(rgba(token(name)[appearance]), rgba(ground[appearance]));
+    assert.ok(ratio >= 4.5, `${name} ${appearance ? 'dark' : 'light'}: ${ratio.toFixed(2)}`);
+  });
+  const pairs = [['--color-on-accent', '--color-accent'], ['--color-on-error', '--color-error']];
+  for (const [fg, bg] of pairs) [0, 1].forEach(appearance => {
+    const ratio = contrast(rgba(token(fg)[appearance]), rgba(token(bg)[appearance]));
+    assert.ok(ratio >= 4.5, `${fg} on ${bg} ${appearance ? 'dark' : 'light'}: ${ratio.toFixed(2)}`);
+  });
+  // Paper focus ring: non-text contrast against every ground.
+  for (const ground of grounds) [0, 1].forEach(appearance => {
+    assert.ok(contrast(rgba(token('--focus-outline-color')[appearance]), rgba(ground[appearance])) >= 3);
+  });
 });

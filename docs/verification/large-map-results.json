@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-11T19:39:02.622Z",
+  "date": "2026-11-12T23:18:21.946Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,36 +12,36 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 937.7812190000004,
-  "previewQueryMs": 828.166498999999,
+  "seedMs": 991.2719060000018,
+  "previewQueryMs": 907.338620999999,
   "previewBytes": 4876201,
-  "openMs": 3443.920102,
+  "openMs": 3507.3147750000026,
   "dom": {
-    "elements": 2572,
+    "elements": 2573,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1980.9000000059605,
+    "elapsedMs": 1970.5999999996277,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
     "maxMs": 16.800000000000182,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.700000000000273,
+    "p95Ms": 16.733999999999924,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 431.5167959999999,
-  "unfoldMs": 223.20368900000176,
+  "foldMs": 418.13637299999755,
+  "unfoldMs": 221.73973900000055,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 4661.140378000004,
-  "selectMs": 5463.686287000004,
-  "selectUiMs": 879.8999999910593,
+  "selectClickMs": 8488.285637,
+  "selectMs": 9396.803153,
+  "selectUiMs": 989.0999999996276,
   "selectedBounds": {
     "bottom": 631.8375244140625,
     "canvasHeight": 900,
@@ -51,12 +51,12 @@
     "toolbarTop": 850,
     "top": 75
   },
-  "streamingMs": 529.9424650000001,
+  "streamingMs": 538.6494559999992,
   "chunkRenders": {
-    "deff6963-24bd-4f0c-a0f5-2b0d5ce11984": 14
+    "e2bfee58-ccd9-4ccf-9b66-7ce3e16686f9": 14
   },
   "chunkRenderReasons": {
-    "deff6963-24bd-4f0c-a0f5-2b0d5ce11984": [
+    "e2bfee58-ccd9-4ccf-9b66-7ce3e16686f9": [
       "preview"
     ]
   }

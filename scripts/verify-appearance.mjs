@@ -44,13 +44,14 @@ const diagramText = () => ev(`decodeURIComponent(document.querySelector('.diagra
 const diagramReady = `document.querySelector('.diagram-card[data-state=ready] img')`;
 
 async function contrast(mode) {
-  const c = await ev(`(async () => { const p = ${probe}; const names = ['--color-text-primary', '--color-text-secondary', '--color-text-accent', '--color-text-error', '--color-accent', '--treetutor-selection'];
+  const c = await ev(`(async () => { const p = ${probe}; const names = ['--color-text-primary', '--color-text-secondary', '--color-text-accent', '--color-text-error', '--color-accent', '--focus-outline-color', '--treetutor-selection'];
     const grounds = ['--color-background-body', '--color-background-surface', '--color-background-muted', '--color-background-popover'];
     return { fg: Object.fromEntries(names.map(n => [n, p(n)])), bg: Object.fromEntries(grounds.map(n => [n, p(n, 'backgroundColor')])) }; })()`);
   const rows = [];
   for (const [g, bg] of Object.entries(c.bg)) {
     for (const t of ['--color-text-primary', '--color-text-secondary', '--color-text-accent', '--color-text-error']) rows.push([t, g, ratio(c.fg[t], bg), 4.5]);
-    rows.push(['--color-accent (focus outline)', g, ratio(c.fg['--color-accent'], bg), 3]);
+    rows.push(['--color-accent (action)', g, ratio(c.fg['--color-accent'], bg), 3]);
+    rows.push(['--focus-outline-color (paper focus)', g, ratio(c.fg['--focus-outline-color'], bg), 3]);
     rows.push(['--color-text-primary on selection', g, ratio(c.fg['--color-text-primary'], over(c.fg['--treetutor-selection'], bg)), 4.5]);
   }
   for (const [t, g, r, min] of rows) assert.ok(r >= min, `${mode}: ${t} on ${g} is ${r.toFixed(2)}, needs ${min}`);
@@ -79,16 +80,16 @@ try {
   await b('reload');
   await openTree();
   assert.equal(await scheme(), 'dark');
-  assert.equal(await ground(), 'rgb(28, 39, 36)', 'slate ground');
+  assert.equal(await ground(), 'rgb(26, 22, 19)', 'bark ground');
   assert.equal(await flowDark(), true, 'map follows the app');
   assert.equal(await ev(`localStorage.getItem('treetutor.appearance')`), null);
-  assert.match(await ev(`getComputedStyle(document.body).fontFamily`), /^"?Public Sans/);
-  assert.equal(await ev(`document.fonts.check('16px "Public Sans"') && [...document.querySelectorAll('link[rel=stylesheet], style')].every(s => !/fonts\\.(googleapis|gstatic)/.test(s.href || s.textContent))`), true, 'fonts self-hosted');
+  assert.match(await ev(`getComputedStyle(document.body).fontFamily`), /^"?Archivo/);
+  assert.equal(await ev(`document.fonts.check('16px "Archivo"') && document.fonts.check('16px Literata') && [...document.querySelectorAll('link[rel=stylesheet], style')].every(s => !/fonts\\.(googleapis|gstatic)/.test(s.href || s.textContent))`), true, 'fonts self-hosted');
   const darkDiagram = await diagramText();
-  assert.ok(darkDiagram.includes('rgb(235, 231, 220)'), 'diagram drawn in chalk while the OS is light');
+  assert.ok(darkDiagram.includes('rgb(239, 230, 214)'), 'diagram drawn in paper while the OS is light');
   await contrast('Dark');
   await shot('dark');
-  step('fresh storage opens Dark on a light OS: slate ground, self-hosted Public Sans, Mermaid in chalk');
+  step('fresh storage opens Dark on a light OS: bark ground, self-hosted Archivo, Mermaid in paper');
 
   // Appearance control: labelled radio group, keyboard operable.
   await openInterface();
@@ -108,24 +109,24 @@ try {
   await b('reload');
   await openTree();
   assert.equal(await scheme(), 'light');
-  assert.notEqual(await ground(), 'rgb(28, 39, 36)');
+  assert.notEqual(await ground(), 'rgb(26, 22, 19)');
   assert.equal(await flowDark(), false, 'map follows the app, not the dark OS');
   const lightDiagram = await diagramText();
-  assert.ok(lightDiagram.includes('rgb(28, 39, 36)') && !lightDiagram.includes('rgb(235, 231, 220)'), 'diagram drawn in slate ink while the OS is dark');
+  assert.ok(lightDiagram.includes('rgb(31, 26, 21)') && !lightDiagram.includes('rgb(239, 230, 214)'), 'diagram drawn in bark ink while the OS is dark');
   await contrast('Light');
   await shot('light');
-  step('Light persists across reload; Mermaid draws in slate ink although the OS is dark');
+  step('Light persists across reload; Mermaid draws in bark ink although the OS is dark');
 
   // System follows the emulated colour scheme live.
   await openInterface();
   await b('find', 'role', 'radio', 'click', '--name', 'System', '--exact');
   await closeSettings();
   assert.equal(await scheme(), 'system-dark');
-  await wait(`getComputedStyle(document.querySelector('.react-flow')).backgroundColor === 'rgb(28, 39, 36)'`);
-  await wait(`decodeURIComponent(${diagramReady}?.src ?? '').includes('rgb(235, 231, 220)')`);
+  await wait(`getComputedStyle(document.querySelector('.react-flow')).backgroundColor === 'rgb(26, 22, 19)'`);
+  await wait(`decodeURIComponent(${diagramReady}?.src ?? '').includes('rgb(239, 230, 214)')`);
   await b('set', 'media', 'light');
-  await wait(`getComputedStyle(document.querySelector('.react-flow')).backgroundColor !== 'rgb(28, 39, 36)'`);
-  await wait(`decodeURIComponent(${diagramReady}?.src ?? '').includes('rgb(28, 39, 36)')`);
+  await wait(`getComputedStyle(document.querySelector('.react-flow')).backgroundColor !== 'rgb(26, 22, 19)'`);
+  await wait(`decodeURIComponent(${diagramReady}?.src ?? '').includes('rgb(31, 26, 21)')`);
   assert.equal(await ev(`localStorage.getItem('treetutor.appearance')`), 'system');
   step('System follows the emulated scheme live, map ground and Mermaid included');
 

@@ -1,41 +1,41 @@
 {
-  "checkedAt": "2026-11-11T19:43:30.350Z",
+  "checkedAt": "2026-11-12T23:24:45.122Z",
   "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual sandboxed short 2D render. No narration, subtitle, long-duration or 3D claim.",
   "provider": "claude",
   "effort": "low",
   "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
-  "memoryBytes": 16368893952,
-  "data": "/tmp/tt-smart-video-live-hAX0Wr",
+  "memoryBytes": 16368898048,
+  "data": "/tmp/tt-smart-video-live-P7lQk3",
   "model": "sonnet",
-  "renderMs": 16368,
-  "elapsedMs": 27041,
+  "renderMs": 18432,
+  "elapsedMs": 30051,
   "media": {
-    "id": "6310d821-97b0-4aa6-a28a-dfe1a61ffb72",
-    "duration": 5.666666666666667,
-    "bytes": 284939,
+    "id": "0c0fdce4-01b2-4343-9745-205be5014bc8",
+    "duration": 5.4,
+    "bytes": 261177,
     "probe": [
       {
         "codec": "h264",
         "type": "video",
         "width": 640,
         "height": 360,
-        "duration": "5.666667"
+        "duration": "5.400000"
       },
       {
         "codec": "aac",
         "type": "audio",
-        "duration": "5.675000"
+        "duration": "5.419000"
       }
     ]
   },
   "usage": [
     {
-      "at": 1794426219298,
+      "at": 1794525895603,
       "provider": "claude",
       "model": "sonnet",
       "task": "video",
-      "input": 756,
-      "output": 1228,
+      "input": 744,
+      "output": 1587,
       "cacheRead": 963
     }
   ],

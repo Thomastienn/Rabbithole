@@ -35,5 +35,5 @@ test('token lint catches planted literals and allows theme-driven values', () =>
   assert.equal(lint('src/x.ts', "const s = { fontFamily: 'Figtree' };").length, 1);
   assert.deepEqual(lint('src/x.ts', 'a { font-family: inherit; color: var(--color-text); } b { font-family: monospace; }'), []);
   assert.deepEqual(lint('src/x.ts', 'const o = { fontFamily: style.fontFamily }; const h = "&#123;"; const id = "#root";'), []);
-  assert.deepEqual(lint('src/themes/slate/slate.css', 'a { color: #fff; font-family: Inter; }'), []);
+  assert.deepEqual(lint('src/themes/paperback/paperback.css', 'a { color: #fff; font-family: Inter; }'), []);
 });
