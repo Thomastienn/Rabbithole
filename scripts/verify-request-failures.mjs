@@ -70,9 +70,10 @@ try {
     await b('set', 'viewport', String(width), '800');
     await ev(`localStorage.setItem('treetutor.appearance', '${mode}'); location.reload(); true`);
     await openTree();
-    await ev(`${card(video.id)}.scrollIntoView({block:'end'}); true`);
-    const bounds = await ev(`(()=>{const c=${card(video.id)}, stage=c.querySelector('.video-stage').getBoundingClientRect();return [...c.querySelectorAll('[role=status],button')].every(e=>{const r=e.getBoundingClientRect();return r.top>=stage.top&&r.bottom<=stage.bottom&&r.left>=stage.left&&r.right<=stage.right})})()`);
-    assert.equal(bounds, true, 'failure reason and Retry fit inside the video placeholder');
+    await ev(`${card(video.id)}.scrollIntoView({block:'center',behavior:'instant'}); true`);
+    await wait(`(()=>{const r=${card(video.id)}.querySelector('.video-stage').getBoundingClientRect();return r.top>=document.querySelector('.focused-chat .chat-header').getBoundingClientRect().bottom&&r.bottom<=document.querySelector('.focused-chat .astryx-chat-composer').getBoundingClientRect().top})()`);
+    const bounds = await ev(`(()=>{const c=${card(video.id)}, stage=c.querySelector('.video-stage').getBoundingClientRect();return [c.querySelector('[role=status]'),...c.querySelectorAll('button')].every(e=>{const r=e.getBoundingClientRect();return r.top>=stage.top&&r.bottom<=stage.bottom&&r.left>=stage.left&&r.right<=stage.right})})()`);
+    assert.equal(bounds, true, 'failure reason and Retry fit inside the inline video status');
     const file = `request-failures-${size}-${mode}.png`;
     await b('screenshot', join(shots, file));
     captures.push(file);
@@ -100,7 +101,7 @@ try {
   await wait(`${card(video.id)}.dataset.state==='failed'`);
   assert.deepEqual(calls.slice(video_calls), ['video'], 'Retry video runs the video worker once from the stored request');
   assert.equal(await ev(`${card(video.id)}.contains(document.activeElement)`), true, 'Retry video preserves keyboard focus');
-  assert.doesNotMatch((await view(video.id)).status, /composition|source|Remotion/, 'private worker errors stay hidden');
+  assert.match((await view(video.id)).status, /^Orbits: Video composition is missing its description\./, 'the safe server-authored validation reason stays visible');
   pass('Retry video by keyboard reruns the video worker from the stored request', calls.slice(video_calls));
 } finally {
   await b('close').catch(() => {});

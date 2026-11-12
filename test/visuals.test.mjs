@@ -88,6 +88,36 @@ test('closed blocks start smart workers while text streams, queue in order at th
   } finally { first.resolve(); more.resolve(); finish.resolve(); holds.forEach(h => h.resolve()); await env.close(); }
 });
 
+test('predict-then-reveal uses the ordinary inline worker, persists without replay and keeps its answer out of tutor history', async () => {
+  const prediction = { title: 'Predict the search interval', description: 'Search for 12 in 2, 4, 6, 8, 10, 12, 14. The midpoint is 8. Which half remains?', intent: 'A predict-then-reveal check. Ask which half remains; reveal the right half and explain why.', excerpt: 'After comparing target 12 with midpoint 8, keep 10, 12, 14 because 12 is greater than 8.' };
+  const fragment = '<p>Midpoint: 8. Target: 12. Which half remains?</p><details><summary>Reveal answer</summary><p>The right half: 10, 12, 14, because 12 is greater than 8.</p></details>';
+  const workers = [], history = [];
+  let env = await open({ generate: async (tree, text, emit) => {
+    history.push(tree);
+    complete(emit, text === 'Continue' ? 'Next idea.' : 'Compare the target with the midpoint.\n```treetutor-visual\n' + JSON.stringify(prediction) + '\n```\n\nContinue whenever you like.');
+  } }, { generate: async (tree, text, emit) => { workers.push({ tree, input: JSON.parse(text) }); complete(emit, fragment); } });
+  let closed = false;
+  try {
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Help me check binary search.' })).text();
+    const saved = await env.get(`/api/trees/${env.tree.id}`), a = saved.artifacts[0];
+    assert.equal(a.kind, 'visual'); assert.equal(a.status, 'ready'); assert.equal(a.position, 'Compare the target with the midpoint.'.length);
+    assert.equal(a.source, fragment); assert.equal(saved.messages.length, 2);
+    assert.doesNotMatch(saved.messages.at(-1).text + a.title + a.description, /right half|because 12/);
+    assert.equal(workers.length, 1); assert.deepEqual(workers[0].input, { request: prediction, earlierTitles: [] });
+    assert.match(workers[0].tree.instructions, /native details element[\s\S]*no open attribute[\s\S]*Reveal answer/);
+    assert.match(workers[0].tree.instructions, /Other visuals must not add a quiz/);
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Continue' })).text();
+    const context = JSON.stringify(history.at(-1));
+    assert.ok(context.includes(a.id) && context.includes(prediction.description));
+    assert.doesNotMatch(context, /right half|because 12|<details|predict-then-reveal/);
+    const { path, tree } = env;
+    await env.close(); closed = true;
+    env = await open({}, { generate: async () => { throw new Error('Reopening must not generate.'); } }, { path }); closed = false;
+    assert.deepEqual((await env.get(`/api/trees/${tree.id}`)).artifacts[0], a);
+    assert.equal(workers.length, 1);
+  } finally { if (!closed) await env.close(); }
+});
+
 test('Stop cancels every queued/running visual, preserves ready visuals, starts no more calls and ignores late output', async () => {
   const chatHold = deferred(), workerHolds = [], signals = [], emissions = [];
   const env = await open({ generate: async (_tree, _text, emit) => {

@@ -86,6 +86,7 @@ try {
 
     // Passage prompt: anchored to the selection, raised slate, yellow ring, flips below when the header is in the way.
     await ev(`(() => { const t = document.querySelector('.chat-reply .reply-md'), w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.includes('locks')) {} const start = n.textContent.indexOf('locks'), r = document.createRange(); r.setStart(n, start); r.setEnd(n, start + 5); getSelection().removeAllRanges(); getSelection().addRange(r); t.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); return true; })()`);
+    await wait("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ask about selection')"); await ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ask about selection').click(); true`);
     await wait(`document.querySelector('.branch-form input') === document.activeElement`);
     seen.prompt = await ev(`(() => { ${tokenFn}
       const f = document.querySelector('.branch-form'), s = getComputedStyle(f), box = document.querySelector('.passage-box').getBoundingClientRect(), header = document.querySelector('.chat-header').getBoundingClientRect();

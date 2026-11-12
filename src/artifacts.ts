@@ -8,12 +8,16 @@ export type DiagramState = { status: 'pending' } | { status: 'ready'; url: strin
 const KINDS = ['mermaid', 'video', 'visual'];
 
 // Visual frames may only report their height or ask to branch on a tagged part; any other shape is ignored.
-export type VisualMessage = { type: 'height'; height: number } | { type: 'branch'; label: string; explanation: string };
+export type VisualPart = { label: string; explanation: string };
+export type VisualMessage = { type: 'height'; height: number } | ({ type: 'branch' } & VisualPart);
+export function visualPassage(visual: Pick<Artifact, 'title' | 'description'>, part: VisualPart) {
+  return `Visual: ${visual.title}\n${visual.description}\nPart: ${part.label}\n${part.explanation}`;
+}
 export function visualMessage(data: unknown): VisualMessage | undefined {
   if (!data || typeof data !== 'object') return;
   const m = data as Record<string, unknown>, keys = Object.keys(m).sort().join();
   if (m.type === 'height' && keys === 'height,type' && typeof m.height === 'number' && Number.isFinite(m.height)) return { type: 'height', height: Math.min(Math.max(Math.ceil(m.height), 0), 4000) };
-  const bounded = (v: unknown, max: number) => typeof v === 'string' && !!v.trim() && v.length <= max;
+  const bounded = (v: unknown, max: number) => typeof v === 'string' && !!v.trim() && v.length <= max && !/[\r\n]/.test(v);
   if (m.type === 'branch' && keys === 'explanation,label,type' && bounded(m.label, 120) && bounded(m.explanation, 280)) return { type: 'branch', label: (m.label as string).trim(), explanation: (m.explanation as string).trim() };
 }
 

@@ -1,7 +1,8 @@
 {
-  "checkedAt": "2026-11-11T21:25:40.443Z",
-  "media": "24fdc9cb-49e0-4472-83f8-a6d4946381cc",
-  "evidence": "Copy of native pre-library database and generated MP4 in the production build and actual Chromium player",
+  "checkedAt": "2026-11-12T03:28:51.766Z",
+  "media": "eac613eb-af19-4343-8f35-4bdb9416ea62",
+  "evidence": "Copy of saved database and generated MP4 in the production build and actual Chromium player",
+  "inputEvidence": "Synthetic tutor/worker and narration fixtures; actual sandboxed Remotion render from this TreeTutor-zhf acceptance run. No native inference.",
   "checks": [
     {
       "name": "rail Videos button opens the library by keyboard and moves focus",
@@ -19,10 +20,10 @@
       "video": false
     },
     {
-      "name": "migrated native video plays and seeks from the library route",
-      "duration": 86.101,
+      "name": "migrated saved video plays and seeks from the library route",
+      "duration": 2,
       "height": 360,
-      "src": "/api/videos/24fdc9cb-49e0-4472-83f8-a6d4946381cc/media",
+      "src": "/api/videos/eac613eb-af19-4343-8f35-4bdb9416ea62/media",
       "width": 640
     },
     {

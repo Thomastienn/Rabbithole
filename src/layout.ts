@@ -123,6 +123,7 @@ html { view-transition-name: none; }
 .reply-md th { background: var(--color-background-body); font-weight: 600; }
 .reply-md math[display=block] { padding-block: var(--spacing-2); max-width: 100%; overflow-x: auto; }
 .reply-md [data-reveal], mark { background: var(--treetutor-selection); color: var(--color-text-primary); border-radius: var(--radius-inner); }
+::highlight(passage) { background-color: var(--treetutor-selection); color: var(--color-text-primary); }
 /* Suggestions hint in muted dotted chalk; a branched (explored) passage is the 2px chalk-yellow underline its map line shares. */
 .reply-md u.suggestion { text-decoration: underline dotted var(--color-text-secondary); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 .reply-md u.suggestion { cursor: pointer; }

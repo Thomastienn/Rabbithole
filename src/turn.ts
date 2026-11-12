@@ -1,7 +1,7 @@
 import { mergeArtifact, type Artifact, type ArtifactSummary } from './artifacts.ts';
 
 export type Usage = { input: number; output: number; cacheRead: number };
-export type Message = { id: string; role: string; text: string; status: string; usage?: Usage | null; artifacts?: ArtifactSummary[] };
+export type Message = { id: string; role: string; text: string; status: string; stopped?: 'learner' | 'shutdown'; usage?: Usage | null; artifacts?: ArtifactSummary[] };
 export const usageLine = (u: Usage) => `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;
 export type Suggestions = { message: string; status: 'pending' | 'ready' | 'failed'; passages: { start: number; end: number; text: string; child?: string; concept?: string }[]; usage: Usage | null };
 // A reply's token line includes its suggestion call, so background cost is never hidden.
@@ -21,12 +21,13 @@ export function underlineRanges(text: string, suggestions?: Suggestions, branche
     return ok;
   }).map(({ start, end, child }) => child ? { start, end, child } : { start, end });
 }
-export type Turn = { user?: Message; reply?: Message; artifacts?: Artifact[] };
+// replaced: the failed reply a Retry streams over, dropped from the list.
+export type Turn = { user?: Message; reply?: Message; artifacts?: Artifact[]; replaced?: string };
 
 // Reconcile saved checkpoints with the latest events for this conversation only.
 export function withTurn<T extends { id?: string; messages: Message[]; artifacts?: Artifact[] }>(conversation: T, turn?: Turn): T {
   if (!turn) return conversation;
-  const messages = [...conversation.messages];
+  const messages = conversation.messages.filter(m => m.id !== turn.replaced);
   for (const message of [turn.user, turn.reply]) {
     if (!message) continue;
     const index = messages.findIndex(m => m.id === message.id);

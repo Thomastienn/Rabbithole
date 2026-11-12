@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { renderMarkdown, rawOffsets, plainText } from '../src/markdown.ts';
+import { renderMarkdown, rawOffsets, rawRange, plainText } from '../src/markdown.ts';
 
 const raw = [
   '## Plan **bold** heading',
@@ -213,4 +213,15 @@ test('each code block carries a labelled copy button outside the raw-offset text
   const buttons = [...body.querySelectorAll('pre > button.code-copy, pre button.code-copy')];
   assert.equal(buttons.length, 2);
   assert.ok(buttons.every(b => b.getAttribute('aria-label') === 'Copy code' && !b.closest('[data-o]') && !b.querySelector('[data-o]')));
+});
+
+test('rawRange paints exactly the raw passage rawOffsets would capture', () => {
+  const raw = 'Say *same* and **two words** then $x^2$ end.', doc = dom(renderToStaticMarkup(renderMarkdown(raw))), root = doc.getElementById('r');
+  for (const text of ['same', 'and **two', 'words** then', 'two words']) {
+    const start = raw.indexOf(text), range = rawRange(root, start, start + text.length);
+    assert.deepEqual(rawOffsets(root, range), { start, end: start + text.length }, text);
+  }
+  const math = raw.indexOf('x^2'), range = rawRange(root, math, math + 1);
+  assert.deepEqual(rawOffsets(root, range), { start: math - 1, end: math + 4 }, 'atomic math is covered whole');
+  assert.equal(rawRange(root, raw.length, raw.length + 3), undefined);
 });

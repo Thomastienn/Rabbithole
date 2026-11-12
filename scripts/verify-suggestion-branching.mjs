@@ -42,15 +42,15 @@ try {
 
   // Pointer click on an underline opens an empty box above that passage.
   await ev(`${stop('mutex')}.click(); true`);
-  await wait(boxOpen);
+  await wait(`(${boxOpen}) && [...CSS.highlights.get('passage') ?? []][0]?.toString() === 'mutex'`);
   const geometry = await ev(`(() => { const box = document.querySelector('.passage-box').getBoundingClientRect(), u = ${stop('mutex')}.getBoundingClientRect(); return { clear: box.bottom <= u.top + 1 || box.top >= u.bottom - 1 }; })()`);
   // Spec rule 6: above the passage, or below it when above would overlap the chat header.
   assert.equal(geometry.clear, true, 'box sits beside the passage, not over it');
   await b('press', 'Enter');
   assert.equal(children(root.id).length, 0, 'empty box cannot be sent');
   await b('press', 'Escape');
-  await wait(`!document.querySelector('.branch-form') && document.activeElement === ${stop('mutex')}`);
-  steps.push('click opens empty box anchored beside the underline; empty Enter sends nothing; Escape closes and refocuses the underline');
+  await wait(`!document.querySelector('.branch-form') && document.activeElement === ${stop('mutex')} && !CSS.highlights.has('passage')`);
+  steps.push('click opens empty box (passage painted) anchored beside the underline; empty Enter sends nothing; Escape closes and refocuses the underline');
 
   // Keyboard: Enter on the focused underline opens the same box; a failed branch keeps the prompt.
   await b('press', 'Enter');
@@ -114,8 +114,11 @@ try {
   await b('mouse', 'down', 'left');
   await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '8');
   await b('mouse', 'up', 'left');
-  await wait(boxOpen);
+  // The highlight shows Ask (not the child, not the box) and keeps the native selection.
+  await wait(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Ask about selection') && getSelection().toString() === 'ute'`);
   assert.equal(await ev(`document.querySelector('.focused-chat h2').textContent`), 'Suggestion fixture');
+  await click('Ask about selection');
+  await wait(`(${boxOpen}) && CSS.highlights.has('passage')`);
   await b('keyboard', 'type', 'another angle');
   await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'another angle'`);

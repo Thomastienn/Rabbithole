@@ -143,16 +143,19 @@ try {
 
   await b('mouse', 'move', '5', '5');
   await ev(`document.activeElement?.blur(), true`);
-  await wait(`getComputedStyle(${figure(good.id)}.querySelector('.visual-enlarge')).opacity==='0'`);
-  const hidden = await ev(`getComputedStyle(${figure(good.id)}.querySelector('.visual-enlarge')).opacity`);
+  await wait(`getComputedStyle(${figure(good.id)}.querySelector('.visual-actions')).opacity==='0'`);
+  const hidden = await ev(`getComputedStyle(${figure(good.id)}.querySelector('.visual-actions')).opacity`);
   // Pointer over the visual itself (inside the cross-origin frame) reveals the parent's controls.
   const box = await ev(`(${figure(good.id)}.scrollIntoView({block:'center'}),(r=>({x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}))(${figure(good.id)}.querySelector('iframe').getBoundingClientRect()))`);
   await b('mouse', 'move', String(box.x - 10), String(box.y - 10));
   await b('mouse', 'move', String(box.x), String(box.y));
-  await wait(`getComputedStyle(${figure(good.id)}.querySelector('.visual-enlarge')).opacity==='1'`);
+  await wait(`getComputedStyle(${figure(good.id)}.querySelector('.visual-actions')).opacity==='1'`).catch(async error => {
+    console.error(await ev(`({box:${JSON.stringify(box)},target:document.elementFromPoint(${box.x},${box.y})?.outerHTML.slice(0,300),hover:${figure(good.id)}.matches(':hover'),focus:document.activeElement?.outerHTML.slice(0,200)})`));
+    throw error;
+  });
   await b('mouse', 'move', '5', '5');
   await ev(`${figure(good.id)}.querySelector('.visual-enlarge').focus(), true`);
-  await wait(`getComputedStyle(${figure(good.id)}.querySelector('.visual-enlarge')).opacity==='1'`);
+  await wait(`getComputedStyle(${figure(good.id)}.querySelector('.visual-actions')).opacity==='1'`);
   assert.equal(hidden, '0');
   await click('Enlarge visual: Bar heights');
   await wait(`!!document.querySelector('dialog[open] iframe.visual-frame[data-ready]')`);

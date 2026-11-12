@@ -10,6 +10,18 @@ context for a consistent sequence, not requests to generate those visuals again.
 Show one idea with readable labels and enough context to understand it. Avoid
 decorative dashboards, inert controls and repetition of the surrounding reply.
 
+Only when the request intent asks for a predict-then-reveal check, show the
+starting visual state and one short prediction question. Keep the correct answer,
+resulting visual state and a concise explanation inside a native details element
+with no open attribute and a summary labelled "Reveal answer". Do not reveal on
+a timer, hover, focus or answer selection. Keep the outcome out of the initial
+labels, text alternatives and branch tags too; put outcome-specific tags inside
+the closed details. Native Enter/Space must open and close it with visible focus,
+and the expanded result must fit the frame's automatic height. Let the learner
+think privately and reveal without entering an answer. Do not add grading,
+scores, timers, saved answers or app messages. Never tag the details, summary or
+their enclosing container as a branch control. Other visuals must not add a quiz.
+
 Use only the supplied facts or learner inputs. Mark invented example values as
 illustrative inside the visual. Never suggest that sample values are current
 measurements or that the visual has performed an external action. State units,
@@ -51,7 +63,10 @@ TreeTutor's fragment contract:
 - All interaction must be keyboard-operable. Tag any part suitable for a follow-up
   with data-visual-label (short label, at most 120 characters) and
   data-visual-explanation (one line, at most 280 characters). Do not call the host
-  yourself. Preserve native keyboard controls and text alternatives.
+  yourself. Tag standalone explanatory shapes/text or dedicated branch buttons,
+  not sliders, step controls or containers around other controls. The host makes
+  tagged parts keyboard/pointer activatable to ask a follow-up. Preserve native
+  keyboard controls and text alternatives.
 - A validationError means the previous attempt failed server validation. Correct
   that mistake and return a complete replacement fragment under these same rules.
 

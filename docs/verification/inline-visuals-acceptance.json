@@ -1,0 +1,217 @@
+{
+  "checkedAt": "2026-11-12T03:30:41.319747+00:00",
+  "issue": "TreeTutor-zhf",
+  "spec": "docs/inline-visuals-spec.md (original epic scope; Check yourself remains a separate deliverable)",
+  "git": {
+    "branch": "master",
+    "head": "213573ad90b97e2f99f7f337f0552867a2a20403",
+    "workingTree": true,
+    "stagedOrCommitted": false
+  },
+  "children": [
+    {
+      "id": "TreeTutor-zhf.1",
+      "status": "closed"
+    },
+    {
+      "id": "TreeTutor-zhf.2",
+      "status": "closed"
+    },
+    {
+      "id": "TreeTutor-zhf.3",
+      "status": "closed"
+    },
+    {
+      "id": "TreeTutor-zhf.4",
+      "status": "closed"
+    },
+    {
+      "id": "TreeTutor-zhf.5",
+      "status": "closed"
+    },
+    {
+      "id": "TreeTutor-zhf.6",
+      "status": "closed"
+    },
+    {
+      "id": "TreeTutor-zhf.7",
+      "status": "closed"
+    },
+    {
+      "id": "TreeTutor-zhf.8",
+      "status": "closed"
+    }
+  ],
+  "tests": {
+    "command": "node --test test/*.test.mjs",
+    "passed": 212,
+    "failed": 0,
+    "skipped": 0,
+    "detail": "Full suite passed before review and after the passage repair; includes HTTP integration, provider protocol fixtures and actual sandboxed 2D/3D renders."
+  },
+  "build": {
+    "command": "npm run build",
+    "pass": true,
+    "currentFingerprint": true,
+    "warning": "Existing large chunk advisory"
+  },
+  "focusedChecks": [
+    {
+      "script": "verify-reply-retry.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 3.0,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-reply-retry.mjs.log",
+      "command": "node scripts/verify-reply-retry.mjs"
+    },
+    {
+      "script": "verify-visual-sandbox.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 3.1,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-visual-sandbox.mjs.log",
+      "command": "node scripts/verify-visual-sandbox.mjs"
+    },
+    {
+      "script": "verify-visual-workers.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 6.1,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-visual-workers.mjs.log",
+      "command": "node scripts/verify-visual-workers.mjs"
+    },
+    {
+      "script": "verify-different-version.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 10.8,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-different-version.mjs.log",
+      "command": "AGENT_BROWSER_HEADED=1 xvfb-run -a node scripts/verify-different-version.mjs"
+    },
+    {
+      "script": "verify-video-player.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 23.5,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-video-player.mjs.log",
+      "command": "node scripts/verify-video-player.mjs"
+    },
+    {
+      "script": "verify-video-recovery.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 38.0,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-video-recovery.mjs.log",
+      "command": "node scripts/verify-video-recovery.mjs"
+    },
+    {
+      "script": "verify-passage-popup.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 9.9,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-passage-popup.mjs.log",
+      "command": "node scripts/verify-passage-popup.mjs"
+    },
+    {
+      "script": "verify-request-failures.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 7.1,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-request-failures.mjs.log",
+      "command": "node scripts/verify-request-failures.mjs"
+    },
+    {
+      "script": "verify-passage-selection.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 8.6,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-passage-selection.mjs.log",
+      "command": "node scripts/verify-passage-selection.mjs"
+    },
+    {
+      "script": "verify-suggestion-branching.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 3.8,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-suggestion-branching.mjs.log",
+      "command": "node scripts/verify-suggestion-branching.mjs"
+    },
+    {
+      "script": "verify-visual-branch.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 8.0,
+      "repeatPasses": 2,
+      "log": "/tmp/tt-zhf-acceptance-sloq7ukv/verify-visual-branch.mjs.log",
+      "command": "node scripts/verify-visual-branch.mjs"
+    },
+    {
+      "script": "verify-video-library.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "arguments": [
+        "/tmp/tt-zhf-library-input.json"
+      ],
+      "log": "/tmp/tt-zhf-video-library-final.log",
+      "command": "node scripts/verify-video-library.mjs /tmp/tt-zhf-library-input.json"
+    }
+  ],
+  "repairs": [
+    {
+      "problem": "Late suggestions replaced a highlighted text leaf, collapsing the painted passage while the question stayed open.",
+      "evidenceBefore": "Focused built-UI delayed-suggestion regression failed with an empty range instead of latch.",
+      "fix": "Rebuild the CSS Highlight in a layout effect when reply leaves change.",
+      "evidenceAfter": "16 passage-popup checks passed, including delayed suggestions, draft/focus and Escape in dark desktop/light narrow."
+    },
+    {
+      "problem": "Request-failure browser check included an internal screen-reader-only status node and rejected the safe inline-video reason.",
+      "fix": "Measure the visible status and Retry, wait for an unobscured stage before screenshots, and assert the server-authored validation reason."
+    },
+    {
+      "problem": "Visual-branch keyboard check sometimes raced Escape focus restoration or an OOPIF event result.",
+      "fix": "Wait for restored frame focus and Round two before asserting.",
+      "evidenceAfter": "Two consecutive final runs passed all seven groups."
+    },
+    {
+      "problem": "Video-library default native fixture referenced an expired temporary database.",
+      "fix": "Use a copy of this run real-render fixture; seek relative to short duration and record input provenance.",
+      "evidenceAfter": "Migration, playback/seek, source deletion, both appearances and zero inference passed."
+    }
+  ],
+  "review": {
+    "standards": "No confirmed findings.",
+    "spec": "Sole confirmed passage-highlight finding repaired and verified.",
+    "sandboxProbe": "Additional ready hostile visual attempted self-navigation with a dynamically constructed URL to a separate loopback sink. Attempt/return markers confirmed execution; zero sink requests; frame stayed opaque and ready."
+  },
+  "existingNativeEvidence": {
+    "path": "docs/verification/visual-native-codex.json",
+    "checkedAt": "2026-11-11T21:12:12.874Z",
+    "provider": "codex",
+    "model": "gpt-6.1-terra",
+    "workerCalls": 1,
+    "pass": true,
+    "scope": "Previously completed gated native tutor + smart-worker render/interaction, inspected in this run. No fresh inference claimed.",
+    "claude": "docs/verification/visual-native-claude.json records the earlier quota failure; no live Claude visual claimed."
+  },
+  "visualInspection": {
+    "pass": true,
+    "captures": [
+      ".impeccable/review/passage-late-suggestions-dark.png",
+      ".impeccable/review/passage-late-suggestions-light.png",
+      ".impeccable/review/visual-workers-desktop-dark.png",
+      ".impeccable/review/visual-branch-narrow-dark.png",
+      ".impeccable/review/request-failures-desktop-light.png",
+      ".impeccable/review/request-failures-narrow-dark.png",
+      ".impeccable/review/inline-video-failure-light-390.png",
+      ".impeccable/review/video-library-dark.png",
+      ".impeccable/review/video-library-light.png"
+    ]
+  },
+  "limits": [
+    "Fixture providers and narration in current browser checks; actual sandboxed rendering in video checks.",
+    "No fresh native Claude/Codex inference, online TTS, broad E2E or physical screen-reader/device audit in this parent run.",
+    "Original native smoke remains explicit; no provider/session permission or credential boundary changed.",
+    "Pre-existing unrelated Ralph/spec/Check yourself edits preserved; no Git staging, commit or remote operation."
+  ],
+  "pass": true
+}

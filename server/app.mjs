@@ -9,6 +9,7 @@ import { generateVisual } from './visuals.mjs';
 import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
 import { desktop as systemDesktop } from './desktop.mjs';
 import { anchored, knownConcepts, nameTokens, quickDefault, suggest } from './suggestions.mjs';
+import { visualMessage, visualPassage } from '../src/artifacts.ts';
 
 const LABELS = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
 const STOPPED = new Error('TreeTutor stopped.');
@@ -342,7 +343,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           startVideo(job);
           return json(res, 200, live(job));
         }
-        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|stop|branches|position|layout|model|rename|delete)$/);
+        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|retry|stop|branches|position|layout|model|rename|delete)$/);
         if (match) {
           const [, id, action] = match;
           const tree = store.tree(id);
@@ -425,7 +426,14 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           }
           if (action === 'branches') {
             const source = tree.messages.find(m => m.id === body.messageId && m.role === 'assistant' && m.status === 'completed');
-            if (!source || !anchored(source.text, body) || typeof body.question !== 'string' || !body.question.trim()) return json(res, 400, { error: 'Select a completed tutor passage and enter a question.' });
+            let anchor = body;
+            if ('artifactId' in body) {
+              const visual = tree.artifacts.find(a => a.id === body.artifactId && a.message === body.messageId && a.kind === 'visual' && a.status === 'ready');
+              const part = visualMessage({ type: 'branch', label: body.label, explanation: body.explanation });
+              if (!visual || part?.type !== 'branch' || 'start' in body || 'end' in body || 'suggestion' in body) return json(res, 400, { error: 'Choose a part of a ready visual.' });
+              anchor = { messageId: body.messageId, artifactId: visual.id, label: part.label, explanation: part.explanation, text: visualPassage(visual, part), question: body.question };
+            }
+            if (!source || (!anchor.artifactId && !anchored(source.text, anchor)) || typeof anchor.question !== 'string' || !anchor.question.trim()) return json(res, 400, { error: 'Select a completed tutor passage and enter a question.' });
             const controller = new AbortController();
             active.set(id, controller);
             try {
@@ -446,7 +454,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 if (controller.signal.aborted) throw new Error('Context preparation was stopped.');
                 const items = new Map();
                 let status;
-                const prompt = COMPACT + JSON.stringify({ inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null, messages: tutorContext(tree).messages.filter(m => m.status === 'completed'), passage: body.text });
+                const prompt = COMPACT + JSON.stringify({ inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null, messages: tutorContext(tree).messages.filter(m => m.status === 'completed'), passage: anchor.text });
                 await metered(pick(quick), 'compaction', randomUUID(), quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
                   if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
                   if (event.type === 'status') status = event.status;
@@ -458,15 +466,28 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 // Provider limits (context, output, usage) surface as-is instead of dropping history.
                 return json(res, 502, { error: `Focused chat not created; your question is kept. ${error.message.replace(/ ?Partial reply saved; try again\.$/, '')} Retry, or choose another quick thinking model in Settings.` });
               }
-              return json(res, 201, store.branch(parent, body, snapshot));
+              return json(res, 201, store.branch(parent, anchor, snapshot));
             } finally { active.delete(id); }
+          }
+          // Retry resends the latest learner message with the current model and effort, replacing the failed reply.
+          let retried = null;
+          if (action === 'retry') {
+            const [question, failed] = tree.messages.slice(-2);
+            if (failed?.role !== 'assistant' || question?.role !== 'user' || !(failed.status === 'failed' || (failed.status === 'interrupted' && failed.stopped === 'shutdown'))) return json(res, 409, { error: 'Only the latest failed or interrupted reply can be retried.' });
+            if (tree.artifacts.some(a => a.message === failed.id && a.status === 'pending')) return json(res, 409, { error: 'Wait for this reply’s media to finish, then retry.' });
+            store.discardReply(id, failed.id);
+            // The provider session may hold the failed turn; a fresh session receives the saved discussion instead.
+            store.forgetThread(id);
+            Object.assign(tree, { messages: tree.messages.slice(0, -2), thread: null, working_thread: null });
+            retried = { user: question.id, replaced: failed.id };
+            body = { text: question.text };
           }
           if (['artifactId', 'artifactIds', 'artifacts'].some(key => Object.hasOwn(body, key))) return json(res, 400, { error: 'Diagrams are attached by the server to their originating reply.' });
           if (typeof body.text !== 'string' || !body.text.trim()) return json(res, 400, { error: 'Enter a question.' });
           const controller = new AbortController();
           active.set(id, controller);
-          const user = store.message(id, 'user', body.text, 'completed');
-          store.questionEvidence(id, body.text, user);
+          const user = retried?.user ?? store.message(id, 'user', body.text, 'completed');
+          if (!retried) store.questionEvidence(id, body.text, user);
           const reply = store.message(id, 'assistant', '', 'streaming');
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
@@ -529,7 +550,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               }
             }
             for (const artifact of artifacts.values()) if (artifact.kind === 'mermaid' && store.artifact(id, artifact.id)?.status === 'pending') store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
-            store.update(reply, text, status);
+            store.update(reply, text, status, status === 'interrupted' ? (stopping ? 'shutdown' : controller.signal.aborted ? 'learner' : null) : null);
             // Provider-reported counts only; failed, partial and canceled replies keep no usage.
             if (usage && !['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) usage = null;
             if (status === 'completed' && usage) store.usage(reply, usage);
@@ -544,7 +565,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           };
           const interrupt = () => { status = 'interrupted'; finish(); };
           controller.signal.addEventListener('abort', interrupt, { once: true });
-          send({ type: 'saved', id: reply, title: store.tree(id).title, user: { id: user, role: 'user', text: body.text, status: 'completed' } });
+          send({ type: 'saved', id: reply, title: store.tree(id).title, user: { id: user, role: 'user', text: body.text, status: 'completed' }, ...(retried && { replaced: retried.replaced }) });
           try {
             if (!tree.model) {
               tree.model = await pick(tree).model?.(tree) ?? null;

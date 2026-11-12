@@ -212,11 +212,11 @@ if (process.argv[2] === '--serve') {
       await b('mouse', 'down', 'left');
       await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
       await b('mouse', 'up', 'left');
-      // The prompt opens on mouse selection and its input takes focus, clearing the page selection; check its quote.
+      // Mouse selection keeps the native selection and shows Ask; check the selected text.
       if (await ev(picked) === 'repeat 😀') break;
     }
     assert.equal(await ev(picked), 'repeat 😀', 'mouse drag must select the visible reply');
-    // Mouse selection opens the anchored passage prompt directly; keyboard selection retains its Ask button.
+    await ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ask about selection').click(); true`);
     await b('wait', '.branch-form input');
     await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Why repeated?');
     await click('Create focused chat');

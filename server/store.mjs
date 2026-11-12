@@ -9,6 +9,7 @@ const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, co
         title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
+const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT);`;
 
 const WEIGHTS = { met: 0.1, asked: 0.2, used: 0.3, ignored: 0.05 };
 // Whole-word, case-insensitive name match.
@@ -38,6 +39,8 @@ export class Store {
       }
       // Additive nullable column: older TreeTutor builds still open the database.
       if (!this.db.prepare('PRAGMA table_info(messages)').all().some(c => c.name === 'usage')) this.db.exec('ALTER TABLE messages ADD COLUMN usage TEXT');
+      // Why an interrupted reply stopped: 'learner' (Stop) or 'shutdown' (crash or quit); NULL on older rows, so those never offer Retry.
+      if (!this.db.prepare('PRAGMA table_info(messages)').all().some(c => c.name === 'stopped')) this.db.exec('ALTER TABLE messages ADD COLUMN stopped TEXT');
       for (const name of ['effort', 'working_effort']) {
         if (!this.db.prepare('PRAGMA table_info(trees)').all().some(c => c.name === name)) this.db.exec(`ALTER TABLE trees ADD COLUMN ${name} TEXT`);
       }
@@ -76,6 +79,13 @@ export class Store {
       this.db.exec('BEGIN IMMEDIATE');
       try { this.rebuildArtifacts("'visual'"); this.db.exec('COMMIT'); }
       catch (error) { this.db.exec('ROLLBACK'); throw error; }
+      // Visual passages keep their source artifact and part instead of inventing reply offsets.
+      if (!this.db.prepare('PRAGMA table_info(branches)').all().some(c => c.name === 'artifactId')) {
+        this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE branches RENAME TO branches_old;
+          ${BRANCHES}
+          INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot) SELECT child,parent,messageId,start,end,text,question,snapshot FROM branches_old;
+          DROP TABLE branches_old; COMMIT;`);
+      }
       this.interrupt();
     } catch (error) { error.backupPath = this.backupPath; this.db.close(); throw error; }
   }
@@ -85,7 +95,7 @@ export class Store {
       CREATE INDEX IF NOT EXISTS messages_tree_seq ON messages(tree, seq);
       CREATE UNIQUE INDEX IF NOT EXISTS messages_id_tree ON messages(id, tree);
       ${ARTIFACTS}
-      CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL);`);
+      ${BRANCHES}`);
     // Older databases gain the video kind, job columns and job statuses; SQLite cannot alter a CHECK in place.
     this.rebuildArtifacts("'interrupted'");
     const columns = this.db.prepare('PRAGMA table_info(trees)').all().map(c => c.name);
@@ -110,14 +120,14 @@ export class Store {
   }
   // Starting or stopping never resumes paid inference; saved partial text stays available.
   interrupt() {
-    this.db.exec(`UPDATE messages SET status='interrupted' WHERE status='streaming';
+    this.db.exec(`UPDATE messages SET status='interrupted',stopped='shutdown' WHERE status='streaming';
       UPDATE suggestions SET status='failed' WHERE status='pending';
       UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when TreeTutor stopped.' WHERE status='pending' AND kind='video';
       UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
   }
   list() {
-    return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
-      .map(t => { try { return { ...t, layout: JSON.parse(t.layout) }; } catch { return { ...t, layout: null }; } });
+    return this.db.prepare('SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage,b.artifactId,b.label,b.explanation FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC').all()
+      .map(({ artifactId, label, explanation, ...t }) => { const visual = artifactId ? { artifactId, label, explanation } : {}; try { return { ...t, ...visual, layout: JSON.parse(t.layout) }; } catch { return { ...t, ...visual, layout: null }; } });
   }
   // Title-only, newest first; saved conversation text is never scanned.
   search(query) {
@@ -195,8 +205,9 @@ export class Store {
   }
   tree(id) {
     const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
-    const branch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot FROM branches WHERE child=?').get(id);
-    return tree.id && { ...tree, branch: branch ? { ...branch } : null, messages: this.db.prepare('SELECT id,role,text,status,usage FROM messages WHERE tree=? ORDER BY seq').all(id).map(({ usage, ...m }) => m.role === 'assistant' ? { ...m, usage: JSON.parse(usage) } : m), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id),
+    const savedBranch = this.db.prepare('SELECT parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation FROM branches WHERE child=?').get(id);
+    const { artifactId, label, explanation, ...branch } = savedBranch ?? {};
+    return tree.id && { ...tree, branch: savedBranch ? { ...branch, ...(artifactId && { artifactId, label, explanation }) } : null, messages: this.db.prepare('SELECT id,role,text,status,stopped,usage FROM messages WHERE tree=? ORDER BY seq').all(id).map(({ usage, stopped, ...m }) => m.role === 'assistant' ? { ...m, ...(stopped && { stopped }), usage: JSON.parse(usage) } : m), artifacts: this.db.prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid').all(id),
       suggestions: this.db.prepare('SELECT message,status,passages,usage FROM suggestions WHERE conversation=? ORDER BY rowid').all(id).map(s => ({ ...s, passages: JSON.parse(s.passages ?? '[]').map(({ child, ...p }) => this.live(child) ? { ...p, child } : p), usage: JSON.parse(s.usage) })) };
   }
   // An explored suggestion whose child was deleted reads as unexplored again.
@@ -359,7 +370,7 @@ export class Store {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const child = this.create(anchor.question.trim().slice(0, 200), parent.provider, parent.model, parent.effort ?? null);
-      this.db.prepare('INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot) VALUES(?,?,?,?,?,?,?,?)').run(child.id, parent.id, anchor.messageId, anchor.start, anchor.end, anchor.text, anchor.question, snapshot);
+      this.db.prepare('INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(child.id, parent.id, anchor.messageId, anchor.start ?? null, anchor.end ?? null, anchor.text, anchor.question, snapshot, anchor.artifactId ?? null, anchor.label ?? null, anchor.explanation ?? null);
       // Branching from a suggestion marks it explored, in the same transaction as the saved child.
       const row = anchor.suggestion === true && this.db.prepare("SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'").get(parent.id, anchor.messageId);
       const passages = row ? JSON.parse(row.passages) : [], hit = passages.find(p => p.start === anchor.start && p.end === anchor.end && !this.live(p.child));
@@ -405,6 +416,16 @@ export class Store {
     // Suggestion calls count toward the total but not toward the reply count.
     return this.db.prepare("SELECT COALESCE(SUM(input),0) AS input,COALESCE(SUM(output),0) AS output,COALESCE(SUM(cacheRead),0) AS cacheRead,COUNT(CASE WHEN task='chat' THEN input END) AS replies FROM usage_events WHERE at>=?").get(since);
   }
-  update(id, text, status) { this.db.prepare('UPDATE messages SET text=?,status=? WHERE id=?').run(text, status, id); }
+  update(id, text, status, stopped = null) { this.db.prepare('UPDATE messages SET text=?,status=?,stopped=? WHERE id=?').run(text, status, stopped, id); }
+  // Retry drops the failed reply and its artifacts; library videos live in their own table and are kept.
+  discardReply(conversation, message) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.db.prepare('DELETE FROM artifacts WHERE conversation=? AND message=?').run(conversation, message);
+      this.db.prepare('DELETE FROM suggestions WHERE conversation=? AND message=?').run(conversation, message);
+      this.db.prepare("DELETE FROM messages WHERE tree=? AND id=? AND role='assistant'").run(conversation, message);
+      this.db.exec('COMMIT');
+    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
+  }
   close() { this.db.close(); }
 }

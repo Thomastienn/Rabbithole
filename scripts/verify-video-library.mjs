@@ -1,4 +1,4 @@
-// Library UI check on a copy of a native pre-library database: migration, keyboard navigation, playback,
+// Library UI check on a copy of a generated-video database: migration, keyboard navigation, playback,
 // unavailable state and source deletion in both appearances, with no provider or narration calls.
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, copyFileSync } from 'node:fs';
@@ -16,7 +16,7 @@ mkdirSync(join(dir, 'videos'));
 copyFileSync(join(native.data, 'trees.sqlite'), join(dir, 'trees.sqlite'));
 copyFileSync(mediaPath(native.data, native.media.id), mediaPath(dir, native.media.id));
 const legacy = new Store(join(dir, 'trees.sqlite'));
-// Opening the native copy creates the library table; drop it again so the reopen below migrates like a pre-library database.
+// Opening the saved copy creates the library table; drop it again so the reopen below migrates like a pre-library database.
 // A second ready video whose file was never copied: the library must show it unavailable.
 const source = legacy.db.prepare('SELECT conversation,message FROM artifacts WHERE id=?').get(native.media.id);
 const lost = legacy.pendingArtifact(source.conversation, source.message, 'Missing file video', 'Its saved file is gone.', 'video', '{}');
@@ -34,7 +34,7 @@ const run = promisify(execFile), session = (await run('agent-browser', ['session
 const b = async (...args) => (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 1024 * 1024 })).stdout;
 const ev = async script => JSON.parse(await b('eval', script, '--json')).data.result;
 const card = id => `.video-library [data-artifact="${id}"]`;
-const report = { checkedAt: new Date().toISOString(), media: native.media.id, evidence: 'Copy of native pre-library database and generated MP4 in the production build and actual Chromium player', checks: [] };
+const report = { checkedAt: new Date().toISOString(), media: native.media.id, evidence: 'Copy of saved database and generated MP4 in the production build and actual Chromium player', inputEvidence: native.evidence, checks: [] };
 const openLibrary = async () => {
   await b('wait', '.tree-navigation-footer');
   // Keyboard: focus the rail footer button and press Enter; focus moves into the library.
@@ -45,8 +45,9 @@ const openLibrary = async () => {
 };
 const play = async () => {
   const v = JSON.stringify(card(native.media.id) + ' video');
-  await ev(`(async()=>{const v=document.querySelector(${v});v.scrollIntoView({block:'center'});v.currentTime=20;await v.play();return true})()`);
-  await b('wait', '--fn', `(v=>!v.paused&&!v.seeking&&v.readyState>=3&&v.currentTime>20.3)(document.querySelector(${v}))`);
+  const position = Math.min(20, native.media.duration / 3);
+  await ev(`(async()=>{const v=document.querySelector(${v});v.scrollIntoView({block:'center'});v.currentTime=${position};await v.play();return true})()`);
+  await b('wait', '--fn', `(v=>!v.paused&&!v.seeking&&v.readyState>=3&&v.currentTime>${position + 0.3})(document.querySelector(${v}))`);
   await ev(`document.querySelector(${v}).pause();true`);
   return ev(`(v=>({width:v.videoWidth,height:v.videoHeight,duration:v.duration,src:v.getAttribute('src')}))(document.querySelector(${v}))`);
 };
@@ -61,7 +62,7 @@ try {
   report.checks.push({ name: 'missing file shows unavailable, no player, no regenerate action; only Remove from Videos', ...lostState });
   const played = await play();
   assert.equal(played.width, 640); assert.ok(Math.abs(played.duration - native.media.duration) < 0.1); assert.equal(played.src, `/api/videos/${native.media.id}/media`);
-  report.checks.push({ name: 'migrated native video plays and seeks from the library route', ...played });
+  report.checks.push({ name: 'migrated saved video plays and seeks from the library route', ...played });
 
   assert.equal((await (await fetch(origin + '/api/state')).json()).trees.some(t => t.id === root.id), true);
   const { csrf } = await (await fetch(origin + '/api/state')).json();

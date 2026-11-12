@@ -314,7 +314,8 @@ Reading and learning in the focused chat has four rough edges:
 
 ## Out of Scope
 
-- "Check yourself" predict-then-reveal widgets: deferred, recorded separately.
+- The original epic deferred "Check yourself" to TreeTutor-zjq; its later scope
+  is recorded below and does not change the original epic's acceptance.
 - A visuals library or version history for visuals.
 - A "Visualize" action on passages; asking already covers it.
 - Speculatively starting workers when the learner sends a message.
@@ -322,6 +323,33 @@ Reading and learning in the focused chat has four rough edges:
 - Retry on earlier replies or on learner-stopped replies.
 - Screenshot or image input for branches from visuals.
 - Changing how videos are generated, narrated or stored.
+
+## Check yourself extension (TreeTutor-zjq)
+
+Revisited after the visual worker shipped. Reuse an ordinary visual request and
+the isolated smart worker; no new artifact kind, endpoint or saved quiz state.
+The tutor may offer one short optional prediction when a next step or
+cause-and-effect outcome helps test an idea, after enough context to reason.
+Explicit check requests and quiz opt-outs take precedence. Skip short factual
+answers, casual turns and requests for a direct explanation. Continuing the
+conversation never depends on answering or revealing.
+
+The request's intent identifies a predict-then-reveal check; intent/excerpt carry
+the precise question, correct outcome and reason. Visible prose, title and
+description do not spoil the answer. The visual shows its starting state and
+question, with the answer, resulting state and explanation inside an initially
+closed native details/summary labelled **Reveal answer**. Enter and Space open
+and close it; hidden content stays out of the initial accessibility tree.
+Reveal controls are not branch controls. This is private self-checking, with no
+submitted answer, grading, familiarity update, timer or inference on reveal.
+Reload resets the disclosure to closed while retaining the generated source.
+Explicitly revealing a saved branch source inside an answer opens its containing
+disclosure before focusing that part.
+
+Verify HTTP request/worker/persistence/history boundaries, then focused built-UI
+hidden/revealed states, keyboard controls, auto-height, no reveal calls/branches,
+reload without inference and desktop/narrow in both appearances. A gated native
+smoke distinguishes real tutoring and generated interaction from fixtures.
 
 ## Further Notes
 

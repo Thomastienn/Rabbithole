@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-11T21:28:42.621Z",
+  "checkedAt": "2026-11-12T03:22:00.750Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
@@ -24,6 +24,7 @@
           "animations": 0,
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
+          "buttonFont": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
           "color": "rgb(159, 176, 168)",
           "column": 527,
           "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
@@ -41,6 +42,7 @@
           "animations": 0,
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
+          "buttonFont": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
           "color": "rgb(74, 90, 83)",
           "column": 527,
           "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
@@ -58,6 +60,7 @@
           "animations": 0,
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
+          "buttonFont": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
           "color": "rgb(159, 176, 168)",
           "column": 358,
           "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
@@ -75,6 +78,7 @@
           "animations": 0,
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
+          "buttonFont": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
           "color": "rgb(74, 90, 83)",
           "column": 358,
           "font": "\"Public Sans\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
@@ -136,8 +140,8 @@
         "progressLive": false,
         "statuses": [
           "Peterson in the tournament tree: Rendering video… 40%",
-          "Peterson in the tournament tree: Rendering video… 10%",
-          "Peterson in the tournament tree: Rendering video… 50%",
+          "Peterson in the tournament tree: Rendering video… 5%",
+          "Peterson in the tournament tree: Rendering video… 40%",
           "Peterson in the tournament tree: Video ready."
         ]
       }

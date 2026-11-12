@@ -12,6 +12,13 @@ const b = async (...args) => (await run('agent-browser', ['--session', session, 
 const ev = async expression => JSON.parse(await b('eval', expression, '--json')).data.result;
 const wait = expression => b('wait', '--fn', expression);
 const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
+const askShown = `[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Ask about selection')`;
+// A pointer highlight only shows Ask and keeps the native (copyable) selection; Ask opens the box and paints the passage.
+const ask = async selected => {
+  await wait(`${askShown} && !document.querySelector('.branch-form') && getSelection().toString() === ${JSON.stringify(selected)}`);
+  await click('Ask about selection');
+  await wait(`document.activeElement?.closest('.passage-box .branch-form') && document.activeElement.value === '' && CSS.highlights.get('passage')?.size === 1`);
+};
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'passage-')), 'data.sqlite'));
 const root = store.create('Selection fixture');
 const text = 'repeat 😀 repeat 😀 end';
@@ -43,12 +50,12 @@ try {
     await b('mouse', 'down', 'left');
     await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
     await b('mouse', 'up', 'left');
-    // A pointer highlight opens the passage textbox above it directly, focused and empty.
-    await wait(`document.activeElement?.closest('.passage-box .branch-form') && document.activeElement.value === ''`);
+    await ask('repeat 😀');
   };
   await b('mouse', 'up', 'left');
-  await wait(`document.activeElement?.closest('.passage-box .branch-form') && document.activeElement.value === ''`);
+  await ask('repeat 😀');
   assert.equal(await ev(`[...document.querySelectorAll('button')].filter(b=>b.textContent.trim()==='Ask about selection').length`), 0);
+  assert.equal(await ev(`(() => { const r = [...CSS.highlights.get('passage')][0]; return r.toString(); })()`), 'repeat 😀', 'the painted highlight is the exact passage');
   // An empty box cannot be sent: Enter does nothing.
   await b('press', 'Enter');
   assert.equal(store.list().length, 1);
@@ -56,13 +63,13 @@ try {
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Edited question');
   // Escape dismisses the popup (no Cancel branch button) and returns focus to the reply.
   await b('press', 'Escape');
-  await wait(`!document.querySelector('.branch-form') && document.activeElement?.matches('.focused-chat .passage > section')`);
+  await wait(`!document.querySelector('.branch-form') && document.activeElement?.matches('.focused-chat .passage > section') && !CSS.highlights.has('passage')`);
   assert.equal(store.list().length, 1);
   await drag();
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Mouse question');
   await ev(`document.querySelector('[aria-label="Create focused chat"]').focus()`);
   await b('press', 'Enter');
-  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Mouse question'`);
+  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Mouse question' && !CSS.highlights.has('passage')`);
   await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') !== null`);
   const mouseChild = store.list().find(t => t.parent === root.id);
   const mouseBranch = store.tree(mouseChild.id).branch;
@@ -121,7 +128,9 @@ try {
       await b('mouse', 'move', String(Math.round(points[2])), String(Math.round(points[3])), '--steps', '12');
       await b('mouse', 'up', 'left');
     }
-    await wait(`!!document.activeElement?.closest('.passage-box .branch-form')`);
+    await wait(askShown);
+    await click('Ask about selection');
+    await wait(`!!document.activeElement?.closest('.passage-box .branch-form') && CSS.highlights.has('passage')`);
   };
   const cases = [
     [['same', 1, 0], ['same', 1, 4], 'same', true],

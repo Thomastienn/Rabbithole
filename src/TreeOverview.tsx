@@ -8,11 +8,11 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRightIcon, EyeSlashIcon, LinkIcon } from '@heroicons/react/24/outline';
 import type { CSSProperties, ReactNode } from 'react';
 import { MIN_ZOOM, foldHierarchy, offsetCoveredBoxes, parseViewport, placeBox, vimAction, type Point, type Viewport } from './canvas';
-import type { ArtifactSummary } from './artifacts';
+import type { ArtifactSummary, VisualPart } from './artifacts';
 
 export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside' | 'expanded'; viewport?: Viewport };
-export type Summary = { id: string; title: string; created: number; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; x: number | null; y: number | null; layout?: Layout | null };
-export type Source = { messageId: string; start: number; end: number; text: string };
+export type Summary = { id: string; title: string; created: number; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; artifactId?: string; label?: string; explanation?: string; x: number | null; y: number | null; layout?: Layout | null };
+export type Source = { messageId: string; text: string } & ({ start: number; end: number; artifactId?: undefined } | ({ artifactId: string; start?: undefined; end?: undefined } & VisualPart));
 export type Preview = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] }[];
 type Open = (id: string, source?: Source) => void;
 export type MapActions = { expand: () => void; collapse: () => void; keep: () => void; canKeep: boolean };
@@ -20,7 +20,7 @@ type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; previe
 const fit = { padding: 0.2, maxZoom: 1 };
 const noStubs: ConversationNode['data']['stubs'] = [];
 const ConversationTransition = createContext<string | undefined>(undefined);
-const sourceOf = (t: Summary): Source => ({ messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! });
+const sourceOf = (t: Summary): Source => t.artifactId ? { messageId: t.messageId!, text: t.passage!, artifactId: t.artifactId, label: t.label!, explanation: t.explanation! } : { messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! };
 
 const Conversation = memo(function Conversation({ data }: NodeProps<ConversationNode>) {
   const t = data.conversation;

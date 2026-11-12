@@ -163,3 +163,18 @@ export function rawOffsets(root: Element, range: Range): Span | undefined {
   }
   return end > start ? { start, end } : undefined;
 }
+
+// Inverse of rawOffsets: the DOM range covering raw [start, end); atomic leaves are covered whole.
+export function rawRange(root: Element, start: number, end: number): Range | undefined {
+  const range = root.ownerDocument.createRange(), walker = root.ownerDocument.createTreeWalker(root, 4);
+  let text: globalThis.Text | null, found = false;
+  while ((text = walker.nextNode() as globalThis.Text | null)) {
+    const marker = text.parentElement?.closest<HTMLElement>('[data-o]');
+    if (!marker) continue;
+    const o = +marker.getAttribute('data-o')!, e = +marker.getAttribute('data-e')!, atomic = marker.hasAttribute('data-x'), n = text.length;
+    if (e <= start || o >= end) continue;
+    if (!found) { range.setStart(text, atomic ? 0 : Math.min(n, Math.max(0, start - o))); found = true; }
+    range.setEnd(text, atomic ? n : Math.min(n, end - o));
+  }
+  return found ? range : undefined;
+}

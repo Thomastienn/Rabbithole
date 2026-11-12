@@ -60,6 +60,7 @@ try {
     await b('press', 'Escape'); await wait(`!document.querySelector('dialog[open]')`);
     // Passage prompt anchored to a selection in the reply.
     await ev(`(() => { const t = document.querySelector('.chat-reply .reply-md p'), w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT), n = w.nextNode(), r = document.createRange(); r.setStart(n, 0); r.setEnd(n, 11); getSelection().removeAllRanges(); getSelection().addRange(r); t.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); return true; })()`);
+    await wait(`!![...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ask about selection')`); await ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ask about selection').click(); true`);
     await wait(`document.querySelector('.branch-form input') === document.activeElement`); await shot('6-dialog-passage-prompt');
     await b('press', 'Escape');
     await click('Model for next reply'); await wait(`[...document.querySelectorAll('[role=menu]')].some(e => e.checkVisibility())`); await shot('6-dialog-model-menu'); await b('press', 'Escape');

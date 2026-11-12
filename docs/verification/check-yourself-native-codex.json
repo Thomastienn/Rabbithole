@@ -1,0 +1,161 @@
+{
+  "checkedAt": "2026-11-12T03:09:50.777Z",
+  "issue": "TreeTutor-zjq",
+  "evidence": "Real native codex tutor and smart worker, built UI, agent-browser; isolated temporary data. No fixtures for inference.",
+  "checks": [
+    {
+      "name": "native tutor requests a visual and isolated smart worker returns a validated fragment",
+      "pass": true,
+      "detail": {
+        "provider": "codex",
+        "model": "gpt-6.1-terra",
+        "effort": "low",
+        "workerCalls": 1,
+        "launches": 1,
+        "permissions": [
+          {
+            "method": "thread/start",
+            "worker": false,
+            "model": "gpt-6.1-terra",
+            "sandbox": "read-only",
+            "approvalPolicy": "never"
+          },
+          {
+            "method": "turn/start",
+            "model": "gpt-6.1-terra",
+            "effort": "low"
+          },
+          {
+            "method": "thread/start",
+            "worker": true,
+            "model": "gpt-6.1-terra",
+            "sandbox": "read-only",
+            "approvalPolicy": "never"
+          },
+          {
+            "method": "turn/start",
+            "model": "gpt-6.1-terra",
+            "effort": "low"
+          }
+        ],
+        "sourceSha256": "256ad22103d3f3a592f7ad96cb7b4b5af41b7f369b022183737d7dbb5200b816",
+        "usage": [
+          {
+            "at": 1794453017853,
+            "provider": "codex",
+            "model": "gpt-6.1-terra",
+            "task": "diagram",
+            "input": 5261,
+            "output": 913,
+            "cacheRead": 4224
+          }
+        ]
+      }
+    },
+    {
+      "name": "worker result renders at its recorded position with full width, auto-height, transparent frame and accessible description",
+      "pass": true,
+      "detail": {
+        "after": "You can think privately, then reveal the answer immediately. Binary search repeats the comparison on the remaining range until it finds the target or the range is empty.",
+        "before": "Binary search compares the target with the middle value of a sorted list, then keeps only the half where the target could still be.",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "column": 527,
+        "height": 175,
+        "label": "A sorted list with midpoint 8 and target 12, asking which half remains after the comparison.",
+        "sandbox": "allow-scripts",
+        "width": 527
+      }
+    },
+    {
+      "name": "question starts visible; answer and explanation stay hidden until Enter; Space closes without branching",
+      "pass": true
+    },
+    {
+      "name": "sandbox contains rendered visual content and working local interaction",
+      "pass": true,
+      "detail": {
+        "drawn": 1
+      }
+    },
+    {
+      "name": "rendered visual follows both appearances and fits desktop and narrow reading columns",
+      "pass": true
+    },
+    {
+      "name": "reveal and reload preserve source/messages, reset hidden state and make no inference calls",
+      "pass": true
+    },
+    {
+      "name": "native tutor keeps short factual answers and explicit quiz opt-outs direct and text-only",
+      "pass": true
+    }
+  ],
+  "elapsedMs": 26861,
+  "errors": [],
+  "native": {
+    "provider": "codex",
+    "model": "gpt-6.1-terra",
+    "effort": "low",
+    "workerCalls": 1,
+    "launches": 1,
+    "permissions": [
+      {
+        "method": "thread/start",
+        "worker": false,
+        "model": "gpt-6.1-terra",
+        "sandbox": "read-only",
+        "approvalPolicy": "never"
+      },
+      {
+        "method": "turn/start",
+        "model": "gpt-6.1-terra",
+        "effort": "low"
+      },
+      {
+        "method": "thread/start",
+        "worker": true,
+        "model": "gpt-6.1-terra",
+        "sandbox": "read-only",
+        "approvalPolicy": "never"
+      },
+      {
+        "method": "turn/start",
+        "model": "gpt-6.1-terra",
+        "effort": "low"
+      }
+    ],
+    "sourceSha256": "256ad22103d3f3a592f7ad96cb7b4b5af41b7f369b022183737d7dbb5200b816",
+    "usage": [
+      {
+        "at": 1794453017853,
+        "provider": "codex",
+        "model": "gpt-6.1-terra",
+        "task": "diagram",
+        "input": 5261,
+        "output": 913,
+        "cacheRead": 4224
+      }
+    ]
+  },
+  "rendered": {
+    "text": "Sorted list · target: 12\n\n2\n4\n6\n8\nmidpoint\n10\n12\ntarget\n14\n\nWhich half remains after comparing 12 with 8?\n\nReveal answer",
+    "color": "rgb(235, 231, 220)",
+    "drawn": 1,
+    "overflow": false
+  },
+  "closedAccessibility": "Visual\n\n\nSorted list: 2, 4, 6, 8, 10, 12, 14. Midpoint is 8; target is 12.\n\n\nSorted list · target: 12\n2\n4\n6\n8\nmidpoint\n10\n12\ntarget\n14\nWhich half remains after comparing 12 with 8?\nReveal answer\nSorted list · target: 12\n2\n4\n6\n8\nmidpoint\n10\n12\ntarget\n14\nWhich half remains after comparing 12 with 8?\nReveal answer\nReveal answer",
+  "revealed": "Sorted list · target: 12\n\n2\n4\n6\n8\nmidpoint\n10\n12\ntarget\n14\n\nWhich half remains after comparing 12 with 8?\n\nReveal answer\n\nRemaining half\n\n10\n12\n14\n\n12 is greater than 8, so the search continues in the right half.",
+  "openAccessibility": "Visual\n\n\nSorted list: 2, 4, 6, 8, 10, 12, 14. Midpoint is 8; target is 12.\n\n\nSorted list · target: 12\n2\n4\n6\n8\nmidpoint\n10\n12\ntarget\n14\nWhich half remains after comparing 12 with 8?\nReveal answer\n\nAsk about: Remaining half\n\nSorted list · target: 12\n2\n4\n6\n8\nmidpoint\n10\n12\ntarget\n14\nWhich half remains after comparing 12 with 8?\nReveal answer\nRemaining half\n10\n12\n14\n12 is greater than 8, so the search continues in the right half.\nReveal answer\nRemaining half\n10\n12\n14\n12 is greater than 8, so the search continues in the right half.",
+  "directReplies": [
+    {
+      "question": "What is 2 + 2? Answer briefly.",
+      "reply": "2 + 2 = **4**."
+    },
+    {
+      "question": "Explain binary search briefly in plain text. No quizzes or visuals; give me a direct explanation.",
+      "reply": "Binary search finds a target in a **sorted list** by checking the middle item.\n\n- If the middle item is the target, you’re done.\n- If the target is smaller, repeat the search in the left half.\n- If the target is larger, repeat in the right half.\n\nContinue until you find the target or there are no items left. Because it cuts the search area roughly in half each time, binary search takes **O(log n)** steps in the worst case."
+    }
+  ],
+  "pass": true
+}
