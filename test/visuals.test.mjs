@@ -308,3 +308,46 @@ test('smart default resolution fails with a safe actionable reason and an explic
     assert.equal(calls, 1);
   } finally { await env.close(); }
 });
+
+test('Try a different version replaces a ready visual in place from the frozen request, only once at a time, with guards', async () => {
+  const calls = [], hold = deferred(); let output = source, held = false;
+  const env = await open({ generate: async (_tree, _text, emit) => complete(emit, 'See this.' + block()) }, { generate: async (tree, text, emit) => {
+    calls.push({ tree, input: JSON.parse(text) }); if (held) await hold.promise; complete(emit, output);
+  } });
+  try {
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw rounds' })).text();
+    const before = await env.get(`/api/trees/${env.tree.id}`), artifact = before.artifacts[0];
+    assert.equal(artifact.status, 'ready'); assert.equal(calls.length, 1);
+    const url = `/api/trees/${env.tree.id}/artifacts/${artifact.id}/regenerate`;
+    assert.equal((await fetch(env.origin + url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
+    assert.equal((await env.post(`/api/trees/${env.store.create('Foreign').id}/artifacts/${artifact.id}/regenerate`)).status, 404);
+    await env.post('/api/settings/smart', { model: { provider: 'claude', model: 'smart' }, followEffort: false, effort: 'low' });
+    output = source.replace('A → Final ← B', 'Bracket view'); held = true;
+    const response = await env.post(url, { input: 'UNTRUSTED', source: '<p>x</p>' });
+    assert.equal(response.status, 200);
+    const pending = await response.json();
+    assert.equal(pending.id, artifact.id); assert.equal(pending.status, 'pending'); assert.equal(pending.source, null); assert.equal(pending.input, undefined);
+    await until(() => calls.length === 2);
+    assert.equal((await env.post(url)).status, 409, 'one generation at a time');
+    assert.equal((await env.post(`/api/trees/${env.tree.id}/artifacts/${artifact.id}/retry`)).status, 409);
+    hold.resolve();
+    await until(async () => (await env.get(`/api/trees/${env.tree.id}/artifacts/${artifact.id}`)).status === 'ready');
+    const after = await env.get(`/api/trees/${env.tree.id}`);
+    assert.equal(after.artifacts.length, 1, 'no history is kept');
+    assert.deepEqual({ ...after.artifacts[0], source: undefined }, { ...artifact, source: undefined });
+    assert.match(after.artifacts[0].source, /Bracket view/);
+    assert.deepEqual(after.messages, before.messages);
+    assert.deepEqual(calls[1].input, calls[0].input, 'same frozen request; previous source is never sent');
+    assert.doesNotMatch(JSON.stringify(calls[1]), /A → Final|UNTRUSTED/);
+    assert.equal(calls[1].tree.effort, 'high', 'frozen smart selection'); assert.equal(calls[1].tree.thread, null);
+    assert.match(calls[1].tree.instructions, /different approach than the previous version/);
+    assert.doesNotMatch(calls[0].tree.instructions, /different approach than the previous version/);
+    assert.equal((await env.get('/api/usage')).events.filter(e => e.task === 'diagram').length, 2);
+    // Only ready visuals regenerate.
+    output = '<script>fetch("/api/state")</script>';
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw again' })).text();
+    const failed = (await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1);
+    assert.equal(failed.status, 'failed');
+    assert.equal((await env.post(`/api/trees/${env.tree.id}/artifacts/${failed.id}/regenerate`)).status, 409);
+  } finally { hold.resolve(); await env.close(); }
+});

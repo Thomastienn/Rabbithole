@@ -517,6 +517,7 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
   try {
     const a = env.store.create('A'), b = env.store.create('B');
     await (await env.post(`/api/trees/${a.id}/messages`, { text: 'Make a video of A.' })).text();
+    await until(() => renders.length === 1); // Jobs are detached; renders[0] must be A's.
     await (await env.post(`/api/trees/${b.id}/messages`, { text: 'Make a video of B.' })).text();
     await until(() => renders.length === 2);
     const jobA = env.store.tree(a.id).artifacts[0], jobB = env.store.tree(b.id).artifacts[0];
@@ -875,4 +876,43 @@ test('deleting a conversation while its request block is streaming cannot recrea
     assert.equal((await env.get(`/api/trees/${tree.id}`)).status, 404);
     assert.deepEqual((await (await env.get('/api/state')).json()).active, []);
   } finally { env.close(); }
+});
+
+test('Try a different version gives a ready video a new job; the chat shows only the newest and the library keeps both', async () => {
+  const workers = []; let release, held = false;
+  const env = await open({ generate: async (tree, text, emit) => {
+    if (tree.instructions?.includes('Remotion')) { workers.push({ tree, text }); if (held) await new Promise(r => { release = r; }); return complete(emit, composition); }
+    complete(emit, 'Here is the idea.' + directive);
+  } });
+  try {
+    const tree = env.store.create('Videos');
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of the winners advancing.' })).text();
+    const first = await until(() => env.store.tree(tree.id).artifacts.find(a => a.status === 'ready'));
+    const url = `/api/trees/${tree.id}/artifacts/${first.id}/regenerate`;
+    assert.equal((await env.post(`/api/trees/${env.store.create('Foreign').id}/artifacts/${first.id}/regenerate`)).status, 404);
+    held = true;
+    const response = await env.post(url, { input: 'UNTRUSTED' });
+    assert.equal(response.status, 200);
+    const next = await response.json();
+    assert.notEqual(next.id, first.id); assert.equal(next.status, 'pending'); assert.equal(next.input, undefined);
+    assert.equal(next.message, first.message); assert.equal(next.position, first.position);
+    await until(() => workers.length === 2);
+    assert.equal((await env.post(`/api/trees/${tree.id}/artifacts/${next.id}/regenerate`)).status, 409, 'one generation at a time');
+    assert.equal((await env.post(url)).status, 404, 'the previous id is no longer in the chat');
+    // The previous video stays playable in the library while the new one is made.
+    assert.deepEqual((await (await env.get('/api/videos')).json()).map(v => v.id), [first.id]);
+    assert.equal((await env.get(`/api/videos/${first.id}/media`)).status, 200);
+    release();
+    await until(() => env.store.tree(tree.id).artifacts.find(a => a.id === next.id && a.status === 'ready'));
+    const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
+    assert.deepEqual(saved.artifacts.map(a => a.id), [next.id], 'the chat shows only the newest');
+    assert.deepEqual((await (await env.get('/api/videos')).json()).map(v => v.id).sort(), [first.id, next.id].sort());
+    assert.equal((await env.get(`/api/videos/${first.id}/media`)).status, 200);
+    assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${next.id}/media`)).status, 200);
+    const [a, b] = workers.map(w => JSON.parse(w.text));
+    assert.deepEqual({ ...b, differentVersion: undefined }, { ...a, differentVersion: undefined }, 'same frozen request and selection');
+    assert.equal(b.differentVersion, true);
+    assert.match(workers[1].tree.instructions, /different approach than the previous version/);
+    assert.doesNotMatch(workers[1].text, /UNTRUSTED/); assert.equal(workers[1].tree.thread, null);
+  } finally { release?.(); env.close(); }
 });

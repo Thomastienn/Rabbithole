@@ -504,7 +504,11 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       if (focused) requestAnimationFrame(() => {
         if (document.activeElement === document.body) document.querySelector<HTMLElement>(`.focused-chat [data-artifact="${next.id}"] button`)?.focus();
       });
-      await refresh();
+      // A job that settled before this refresh never starts polling, so load its result once.
+      if (!(await refresh()).videos.includes(id) && !turns.current.has(id)) {
+        const saved: Tree = await api(`/api/trees/${id}`);
+        if (selected.current === id && !turns.current.has(id)) setTree(t => t?.id === id ? saved : t);
+      }
     } catch (e) { setError((e as Error).message); }
   }
   // The server reopens an existing unstarted chat rather than creating a second one.
