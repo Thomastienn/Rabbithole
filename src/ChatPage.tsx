@@ -5,10 +5,11 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowUturnLeftIcon, ChartBarIcon, ChevronRightIcon, ViewColumnsIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon, BookOpenIcon, MapIcon, ChevronDownIcon, Bars3Icon, RectangleStackIcon, ListBulletIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowUturnLeftIcon, ChartBarIcon, ChevronRightIcon, ViewColumnsIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon, BookOpenIcon, MapIcon, ChevronDownIcon, Bars3Icon, RectangleStackIcon, ListBulletIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { CommandPalette } from '@astryxdesign/core/CommandPalette';
+import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { ChatComposer, ChatComposerInput, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import TreeOverview, { type Summary, type Source, type Preview, type MapActions, type Layout } from './TreeOverview';
@@ -40,6 +41,7 @@ import Contents from './Contents';
 type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
 type Branch = { parent: string; messageId: string; text: string; question: string; snapshot: string };
 type Tree = { id: string; title: string; provider: string; model: string | null; effort: string | null; messages: Message[]; branch: Branch | null; artifacts: Artifact[]; suggestions?: Suggestions[] };
+type ModelSelection = Pick<Tree, 'provider' | 'model' | 'effort'>;
 type Providers = Record<string, { label: string; connected: boolean }>;
 type State = { csrf: string; auth: { connected: boolean; email: string | null }; trees: Summary[]; active: string[]; videos: string[]; suggesting?: string[]; conceptNameTokens?: number };
 // The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
@@ -49,10 +51,10 @@ function TitleEditor({ title, save, cancel }: { title: string; save: (title: str
   const [value, setValue] = useState(title), [saving, setSaving] = useState(false), [error, setError] = useState('');
   const valid = !!value.trim() && value.trim().length <= 200;
   function submit() { if (!valid || saving) return; setSaving(true); void save(value.trim()).catch(e => { setError(e.message); setSaving(false); }); }
-  return <VStack gap={2} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (!saving) cancel(); } }}>
-    <TextInput label="Conversation title" value={value} onChange={setValue} size="sm" hasAutoFocus isDisabled={saving} description="Up to 200 characters." onEnter={submit} status={value.trim().length > 200 ? { type: 'error', message: 'Use 200 characters or fewer.' } : undefined} />
+  return <VStack gap={2} className="title-editor" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (!saving) cancel(); } }}>
+    <TextInput label="Conversation title" isLabelHidden value={value} onChange={setValue} size="sm" hasAutoFocus isDisabled={saving} description="Up to 200 characters." onEnter={submit} status={value.trim().length > 200 ? { type: 'error', message: 'Use 200 characters or fewer.' } : undefined} />
     {error && <Text role="alert">{error}</Text>}
-    <HStack gap={1} wrap="wrap"><Button label={saving ? 'Saving…' : 'Save title'} size="sm" isDisabled={saving || !valid} onClick={submit} /><Button label="Cancel rename" variant="ghost" size="sm" isDisabled={saving} onClick={cancel} /></HStack>
+    <HStack gap={1}><IconButton label={saving ? 'Saving…' : 'Save title'} icon={<CheckIcon />} variant="primary" size="sm" isDisabled={saving || !valid} onClick={submit} /><IconButton label="Cancel rename" icon={<XMarkIcon />} variant="ghost" size="sm" isDisabled={saving} onClick={cancel} /></HStack>
   </VStack>;
 }
 
@@ -207,6 +209,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [firstModel, setFirstModel] = useState<ModelSelection>();
   const [models, setModels] = useState<Model[]>();
   const [providers, setProviders] = useState<Providers>();
   const [modelError, setModelError] = useState('');
@@ -433,9 +436,11 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     } catch (e) { if (request.current === version) setError((e as Error).message); }
     finally { if (request.current === version) setLoading(false); }
   }
-  useEffect(() => {
-    refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id, data.trees); }).catch(e => setError(e.message));
-  }, []);
+  function loadInitial() {
+    setError('');
+    void refresh().then(data => { const first = data.trees.find(t => !t.parent); if (first) openTree(first.id, data.trees); }).catch(e => setError(e.message));
+  }
+  useEffect(loadInitial, []);
   // Title-only search runs on the server so it always reflects saved trees; failures surface like other request errors.
   const titleSearch = useMemo(() => ({
     search: (q: string) => api(`/api/search?q=${encodeURIComponent(q)}`).then((r: { root: string; title: string }[]) => r.map(t => ({ id: t.root, label: t.title })), (e: Error) => { setError(e.message); return []; }),
@@ -448,6 +453,12 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     catch (e) { if (version === modelRequest.current) { setModelError((e as Error).message); setProviders(undefined); } }
   }
   useEffect(() => { if (state) void loadModels(); }, [!!state, state?.auth.connected]);
+  useEffect(() => {
+    if (!state || state.trees.length || tab === 'settings') return;
+    let canceled = false;
+    void api('/api/settings/chat').then(value => { if (!canceled) setFirstModel(value); }).catch(e => { if (!canceled) setError(e.message); });
+    return () => { canceled = true; };
+  }, [!!state, state?.trees.length === 0, tab === 'settings']);
   async function openModels(open: boolean) {
     if (!open) { setModelMenuOpen(false); return; }
     if (openingModels) return;
@@ -516,17 +527,21 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     } catch (e) { setError((e as Error).message); }
   }
   // The server reopens an existing unstarted chat rather than creating a second one.
-  async function create() {
+  async function create(question?: string) {
     if (busy) return;
     setBusy(true); setError('');
     try {
-      const next: Tree = await api('/api/trees', {});
+      const next: Tree = await api('/api/trees', question && firstModel && currentModel ? { ...firstModel, model: currentModel.model } : {});
       await refresh();
       overviewOrigin.current = undefined; focusComposer.current = true;
       setRoot(next.id); setTab('learning'); setOverview(false); setExpanded(false);
       await select(next.id);
+      if (question?.trim()) {
+        setDrafts(d => ({ ...d, [next.id]: question }));
+        await send(question, next);
+      }
       requestAnimationFrame(() => { if (selected.current === next.id) composer.current?.focus(); });
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { setError((e as Error).message); if (question) setDrafts(d => ({ ...d, first: d.first || question })); }
     finally { setBusy(false); }
   }
   async function signIn() {
@@ -589,7 +604,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
         const next = roots[Math.min(index, roots.length - 1)];
         if (next) { focusComposer.current = true; openTree(next.id, trees); }
         else { ++request.current; selected.current = undefined; setTree(undefined); setRoot(undefined); setTab('learning'); setOverview(true); setExpanded(false); setLoading(false); }
-        if (!next || (next.layout?.panel !== 'beside' && next.layout?.panel !== 'expanded')) requestAnimationFrame(() => document.querySelector<HTMLElement>(next ? '.map-toolbar button' : '.empty-map button')?.focus());
+        if (!next || (next.layout?.panel !== 'beside' && next.layout?.panel !== 'expanded')) requestAnimationFrame(() => document.querySelector<HTMLElement>(next ? '.map-toolbar button' : '.shell-band .new-chat')?.focus());
       } else requestAnimationFrame(() => deleteOrigin.current?.isConnected && deleteOrigin.current.id !== `chat-actions-${deletion.root}` ? deleteOrigin.current.focus() : document.getElementById(`chat-actions-${root}`)?.focus());
       await refresh();
     } catch (e) { setDeleteError((e as Error).message); }
@@ -698,9 +713,10 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   }
   const providerLabel = (id: string) => providers?.[id]?.label ?? ({ claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' } as Record<string, string>)[id] ?? id;
   const codexFallback = models?.find(m => m.provider === 'codex' && m.defaultFallback);
-  const currentModel = tree && models?.find(m => m.provider === tree.provider && (tree.model ? m.model === tree.model : m.isDefault));
+  const composition = tree ?? firstModel;
+  const currentModel = composition && models?.find(m => m.provider === composition.provider && (composition.model ? m.model === composition.model : m.isDefault));
   const unavailableSelection = !!tree && !!models && (!providers?.[tree.provider]?.connected || !currentModel || (!!tree.effort && !(currentModel.efforts ?? []).includes(tree.effort)));
-  const modelLabel = (t: Tree) => {
+  const modelLabel = (t: ModelSelection) => {
     const label = models?.find(m => m.provider === t.provider && m.model === t.model)?.label ?? t.model ?? models?.find(m => m.provider === t.provider && m.isDefault)?.label ?? 'default model';
     return label.startsWith(providerLabel(t.provider)) ? label : `${providerLabel(t.provider)} · ${label}`;
   };
@@ -740,8 +756,9 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     { label: 'Expand all', isDisabled: !actions, onClick: actions?.expand },
     { label: 'Collapse all', isDisabled: !actions, onClick: actions?.collapse },
     { label: 'Keep current branch', isDisabled: !actions?.canKeep, onClick: actions?.keep },
-    { label: tree?.branch ? 'Delete branch…' : 'Delete chat…', isDisabled: !tree, onClick: () => tree && askDelete(tree.id, document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]')) },
     { label: 'Help', onClick: () => openSettings('interface', undefined, mapMenuTrigger()) },
+    { type: 'divider' },
+    { label: tree?.branch ? 'Delete branch…' : 'Delete chat…', isDisabled: !tree, onClick: () => tree && askDelete(tree.id, mapMenuTrigger()) },
   ]} />;
   const rootTitle = state?.trees.find(t => t.id === root)?.title;
   const query = libraryQuery.trim().toLocaleLowerCase();
@@ -783,6 +800,31 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       <IconButton className="band-settings" label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" aria-current={tab === 'settings' ? 'page' : undefined} onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
     </HStack>
   </header>;
+  const chooseModel = (provider: string, model: string, effort: string | null) => tree ? changeModel(provider, model, effort) : setFirstModel({ provider, model, effort });
+  const modelMenu = composition && <DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" isMenuOpen={modelMenuOpen} onOpenChange={open => void openModels(open)} renderTrigger={props => <Button {...props} className="model-picker" label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : openingModels ? 'Loading models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(composition)} · ${effortLabel(composition.effort)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || openingModels || busy} isLoading={openingModels || !!savingModel}><span className="chat-model">{modelLabel(composition)} · {effortLabel(composition.effort)}</span></Button>}>
+                {['claude', 'codex', 'openai'].map(id => { const p = providers?.[id] ?? { label: providerLabel(id), connected: false }; return <DropdownMenuGroup key={id} title={p.connected ? p.label : `${p.label} · not connected`}>
+                  {p.connected && models?.some(m => m.provider === id) ? <DropdownMenuRadioGroup label={`${p.label} models`} value={composition.provider === id ? composition.model ?? models?.find(m => m.provider === id && m.isDefault)?.model : undefined} onChange={model => void chooseModel(id, model, composition.effort && models?.find(m => m.provider === id && m.model === model)?.efforts?.includes(composition.effort) ? composition.effort : null)}>
+                    {composition.provider === id && composition.model && !models?.some(m => m.provider === id && m.model === composition.model) && <DropdownMenuRadioItem value={composition.model} label={`${composition.model} (saved)`} isDisabled />}
+                    {(models ?? []).filter(m => m.provider === id).map(m => <DropdownMenuRadioItem key={m.model} value={m.model} label={m.label} />)}
+                  </DropdownMenuRadioGroup>
+                  : id === 'openai' ? <DropdownMenuItem label="Custom endpoint settings" description="Add an endpoint or check its URL, API key and connection" onClick={() => openSettings('connections', '.endpoint-settings input', document.querySelector<HTMLElement>('[aria-label="Model for next reply"]'))} />
+                  : id === 'codex' ? <DropdownMenuItem label="Continue with ChatGPT" description="Sign in to use Codex with your ChatGPT plan" onClick={() => void signIn().catch(e => setError(e.message))} />
+                  : <DropdownMenuItem label={`Check ${p.label} sign-in`} description={id === 'claude' ? 'Run claude in a terminal and sign in, then check again' : 'Sign in, then check again'} onClick={() => void loadModels()} />}
+                </DropdownMenuGroup>; })}
+                <DropdownMenuGroup title="Effort for next reply">
+                  <DropdownMenuRadioGroup label="Conversation effort" value={composition.effort ?? 'default'} onChange={value => { if (currentModel) void chooseModel(composition.provider, currentModel.model, value === 'default' ? null : value); }}>
+                    <DropdownMenuRadioItem value="default" label="Provider default" isDisabled={!currentModel} />
+                    {composition.effort && !currentModel?.efforts?.includes(composition.effort) && <DropdownMenuRadioItem value={composition.effort} label={`${effortLabel(composition.effort)} (unavailable)`} isDisabled />}
+                    {(currentModel?.efforts ?? []).map(effort => <DropdownMenuRadioItem key={effort} value={effort} label={effortLabel(effort)} />)}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
+              </DropdownMenu>;
+  const firstQuestion = <VStack className="first-question" gap={3} hAlign="center">
+    <Heading level={2}>Your first tree starts with a question.</Heading>
+    <ChatComposer elevation="none" value={drafts.first ?? ''} onChange={value => setDrafts(d => ({ ...d, first: value }))} footerActions={modelMenu} isDisabled={busy} sendButton={!currentModel ? <IconButton label="Send" icon={<ArrowUpIcon />} variant="primary" isDisabled /> : undefined} onSubmit={text => { if (currentModel) void create(text); }} input={<ChatComposerInput label="Your question" maxRows={4} value={drafts.first ?? ''} onChange={value => setDrafts(d => ({ ...d, first: value }))} isDisabled={busy || !currentModel} placeholder="What would you like to understand?" />} />
+    {modelError && <HStack className="failure-banner" role="alert" gap={2}><Text>{modelError}</Text><Button label="Retry loading models" variant="secondary" size="sm" onClick={() => void loadModels()} /></HStack>}
+    {models && !models.length && <Text color="secondary">No model is available. Open Settings to connect one.</Text>}
+  </VStack>;
   return <VStack gap={0} style={{ height: '100dvh', '--question-bubble-tint': bubbleTints.find(t => t.id === bubbleTint)!.color } as CSSProperties} onKeyDown={e => {
     if (e.key !== 'Escape' || e.defaultPrevented) return;
     if ((e.target as Element).closest('[role=alertdialog]')) { e.preventDefault(); e.stopPropagation(); cancelDelete(); }
@@ -795,7 +837,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
       <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
         <Heading level={1} className="sr-only">TreeTutor</Heading>
-        {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
+        {error && <section role="alert" className="failure-banner workspace-failure"><Text>{error}</Text></section>}
         <section className="tree-workspace" data-expanded={expanded && !overview} style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}>
         {!overview && !mobile && contents}
         <section ref={workspace} className="reading-workspace">
@@ -819,28 +861,11 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
             {modelNotice && <Text type="supporting" role="status">{modelNotice}</Text>}
             {unavailableSelection && <Text type="supporting" role="alert">Saved model or effort unavailable. Check Connections in Settings or choose a listed model and effort. Your discussion is saved.</Text>}
             {tree.provider === 'codex' && codexFallback && <Text type="supporting" color="secondary" role="note">GPT-6.1 Terra isn’t listed for this account. New conversations use {codexFallback.label}, the account default.</Text>}
-            {modelError && <HStack gap={2} vAlign="center" role="alert"><Text type="supporting">{modelError}</Text><Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} /></HStack>}
+            {modelError && <HStack gap={2} vAlign="center" role="alert" className="failure-banner"><Text type="supporting">{modelError}</Text><Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} /></HStack>}
             {!modelError && models && !models.length && <Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} />}
           </VStack></header>
           {source && !validSource && <Text role="alert">Saved source passage is unavailable. No replacement passage was selected.</Text>}
-          <ChatLayout density="balanced" composer={<ChatComposer elevation="none" footerActions={<DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" isMenuOpen={modelMenuOpen} onOpenChange={open => void openModels(open)} renderTrigger={props => <Button {...props} className="model-picker" label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : openingModels ? 'Loading models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(tree)} · ${effortLabel(tree.effort)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || openingModels} isLoading={openingModels || savingModel === tree.id}><span className="chat-model">{modelLabel(tree)} · {effortLabel(tree.effort)}</span></Button>}>
-                {['claude', 'codex', 'openai'].map(id => { const p = providers?.[id] ?? { label: providerLabel(id), connected: false }; return <DropdownMenuGroup key={id} title={p.connected ? p.label : `${p.label} · not connected`}>
-                  {p.connected && models?.some(m => m.provider === id) ? <DropdownMenuRadioGroup label={`${p.label} models`} value={tree.provider === id ? tree.model ?? models?.find(m => m.provider === id && m.isDefault)?.model : undefined} onChange={model => void changeModel(id, model, tree.effort && models?.find(m => m.provider === id && m.model === model)?.efforts?.includes(tree.effort) ? tree.effort : null)}>
-                    {tree.provider === id && tree.model && !models?.some(m => m.provider === id && m.model === tree.model) && <DropdownMenuRadioItem value={tree.model} label={`${tree.model} (saved)`} isDisabled />}
-                    {(models ?? []).filter(m => m.provider === id).map(m => <DropdownMenuRadioItem key={m.model} value={m.model} label={m.label} />)}
-                  </DropdownMenuRadioGroup>
-                  : id === 'openai' ? <DropdownMenuItem label="Custom endpoint settings" description="Add an endpoint or check its URL, API key and connection" onClick={() => openSettings('connections', '.endpoint-settings input', document.querySelector<HTMLElement>('[aria-label="Model for next reply"]'))} />
-                  : id === 'codex' ? <DropdownMenuItem label="Continue with ChatGPT" description="Sign in to use Codex with your ChatGPT plan" onClick={() => void signIn().catch(e => setError(e.message))} />
-                  : <DropdownMenuItem label={`Check ${p.label} sign-in`} description={id === 'claude' ? 'Run claude in a terminal and sign in, then check again' : 'Sign in, then check again'} onClick={() => void loadModels()} />}
-                </DropdownMenuGroup>; })}
-                <DropdownMenuGroup title="Effort for next reply">
-                  <DropdownMenuRadioGroup label="Conversation effort" value={tree.effort ?? 'default'} onChange={value => { if (currentModel) void changeModel(tree.provider, currentModel.model, value === 'default' ? null : value); }}>
-                    <DropdownMenuRadioItem value="default" label="Provider default" isDisabled={!currentModel} />
-                    {tree.effort && !currentModel?.efforts?.includes(tree.effort) && <DropdownMenuRadioItem value={tree.effort} label={`${effortLabel(tree.effort)} (unavailable)`} isDisabled />}
-                    {(currentModel?.efforts ?? []).map(effort => <DropdownMenuRadioItem key={effort} value={effort} label={effortLabel(effort)} />)}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuGroup>
-              </DropdownMenu>} value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" maxRows={4} value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} />}>
+          <ChatLayout density="balanced" composer={<ChatComposer elevation="none" sendButton={models && !models.length && !active ? <IconButton label="Send" icon={<ArrowUpIcon />} variant="primary" isDisabled /> : undefined} footerActions={modelMenu} value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => { if (!models || models.length) void send(text); }} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" maxRows={4} value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active || (!!models && !models.length)} placeholder={models && !models.length ? "Sign in to a provider to ask" : "What would you like to understand?"} />} />}>
             <ChatMessageList gap={2} align="top" isStreaming={active}>
               <VStack gap={0} className="chat-title conv-title">
                   {renaming?.id === tree.id && renaming.place === 'header' ? <TitleEditor key={tree.id} title={tree.title} save={title => rename(tree.id, title)} cancel={finishRename} /> : <Button id="rename-conversation" className="rename-title" label="Rename conversation" tooltip={tree.title} variant="ghost" size="sm" onClick={() => setRenaming({ id: tree.id, place: 'header' })}><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading></Button>}
@@ -849,7 +874,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
                 {tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').map((m, i) => <Text key={m.id} type="supporting" color="secondary">Reply {i + 1}: {replyUsageLine(m.usage ?? null, tree.suggestions?.find(s => s.message === m.id)?.usage)}</Text>)}
                 {!tree.messages.some(m => m.role === 'assistant' && m.status === 'completed') && <Text type="supporting" color="secondary">Token usage appears after a completed reply.</Text>}
               </VStack>}
-              {tree.branch && <Collapsible className="inherited-context" defaultIsOpen={false} trigger={<Text weight="medium">Inherited from {state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'parent conversation'}</Text>}>
+              {tree.branch && <Collapsible style={inkStyle(addresses.get(tree.id)?.ink ?? 0)} className="inherited-context" defaultIsOpen={false} trigger={<Text weight="medium">Inherited from {state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'parent conversation'}</Text>}>
                 <dl className="inherited-body">
                   <dt>Passage</dt><dd>{tree.branch.text}</dd>
                   <dt>Your question</dt><dd>{tree.branch.question}</dd>
@@ -864,13 +889,15 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
                 
                 {!overview && message.role === 'assistant' && artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(a => a.kind === 'mermaid' || a.position == null).map((artifact, _, all) => artifact.kind === 'visual' ? <VisualFrame key={artifact.id} artifact={artifact} explored={visualBranches[artifact.id]} reveal={validSource && source?.artifactId === artifact.id ? source : undefined} onPart={openVisualPart} onRetry={() => videoAction(tree.id, artifact.id, 'retry')} onRegenerate={() => videoAction(tree.id, artifact.id, 'regenerate')} /> : artifact.kind === 'video' ? <VideoCard key={artifact.id} inline artifact={artifact} onAction={action => videoAction(tree.id, artifact.id, action)} /> : <DiagramCard key={artifact.id} artifact={artifact} steps={all.filter(a => a.kind === 'mermaid')} onRetry={() => videoAction(tree.id, artifact.id, 'retry')} />)}
                 {!overview && message.role === 'assistant' && message.status === 'completed' && suggestions?.status === 'failed' && <Text type="supporting" color="secondary">Suggestions unavailable</Text>}
-                {message.status !== 'completed' && <HStack gap={2} vAlign="center"><Text type="supporting" role="status" className="reply-status" data-status={message.status}>{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}. You can send another question.`}</Text>{!overview && !active && message === tree.messages.at(-1) && (message.status === 'failed' || message.stopped === 'shutdown') && tree.messages.at(-2)?.role === 'user' && <Button label="Retry reply" variant="secondary" size="sm" onClick={() => void send(tree.messages.at(-2)!.text, tree, true)} />}</HStack>}
+                {message.status !== 'completed' && <HStack gap={2} vAlign="center" className={message.status === 'failed' ? 'failure-banner' : undefined}><Text type="supporting" role="status" className="reply-status" data-status={message.status}>{message.status === 'streaming' ? 'Responding…' : `Reply ${message.status}.${message.stopped === 'learner' ? ' You stopped this reply.' : ''} You can send another question.`}</Text>{!overview && !active && message === tree.messages.at(-1) && (message.status === 'failed' || message.stopped === 'shutdown') && tree.messages.at(-2)?.role === 'user' && <Button label="Retry reply" variant="secondary" size="sm" onClick={() => void send(tree.messages.at(-2)!.text, tree, true)} />}</HStack>}
               </ChatMessage>; })}
             </ChatMessageList>
           </ChatLayout>
         </> : <VStack gap={0} className="overview">
           <HStack padding={1} className="map-toolbar" role="group" aria-label="Tree view controls">{menu()}</HStack>
-          <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map"><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <><Text color="secondary">Ask your first question; it becomes the chat's title. Come back any time.</Text><Button label="New chat" variant="ghost" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} /></>}</VStack>
+          <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map">
+            {!state && error ? <Button label="Retry loading learning trees" variant="secondary" onClick={loadInitial} /> : loading || !state ? <VStack gap={3} className="tree-loading" role="status" aria-label="Loading tree"><Text className="sr-only">Loading tree…</Text><Skeleton height={20} width="60%" /><Skeleton height={14} /><Skeleton height={14} width="92%" /><Skeleton height={14} width="70%" /></VStack> : selected.current ? <HStack className="failure-banner" gap={3} vAlign="center"><Heading level={2}>Tree could not load</Heading><Button label="Retry loading tree" variant="secondary" size="sm" onClick={() => void select(selected.current!)} /></HStack> : tab === 'learning' && firstQuestion}
+          </VStack>
         </VStack>}
         </section>
         {root && state && !overview && !expanded && !mobile && <div className="chat-divider" role="separator" tabIndex={0} aria-label="Resize map" aria-controls="learning-tree-map" aria-orientation="vertical" aria-valuemin={MIN_MAP_WIDTH} aria-valuemax={Math.round(maxMapWidth(workspaceWidth))} aria-valuenow={Math.round(shownMapWidth)} aria-valuetext={`Map width ${Math.round(shownMapWidth)} rem`} title="Drag to resize the map. Double-click to reset."
@@ -890,7 +917,8 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
             <VStack gap={2}><Heading level={1}>Library</Heading><Text color="secondary" className="library-intro">Every learning tree you have started. A tree keeps its root conversation and every branch.</Text></VStack>
             <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
           </HStack>
-          {state && !state.trees.length ? <Text color="secondary">Your first tree starts with a question.</Text> : state && <>
+          {error && <Text className="failure-banner" role="alert">{error}</Text>}
+          {state && !state.trees.length ? firstQuestion : state && <>
             <HStack gap={2} vAlign="center" wrap="wrap" className="library-tools">
               <TextInput label="Search learning tree titles" isLabelHidden placeholder="Search learning trees" startIcon={MagnifyingGlassIcon} size="sm" hasClear value={libraryQuery} onChange={setLibraryQuery} width={320} />
               <SegmentedControl label="Library layout" value={libraryLayout} onChange={v => { setLibraryLayout(v as 'shelf' | 'list'); try { localStorage.setItem('treetutor.library-layout', v); } catch { /* Preference stays for this session only. */ } }}>
@@ -913,7 +941,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
                     </span>
                     <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} id={`chat-actions-${t.id}`} className="tree-row-actions" label={`Actions for ${t.title}`} icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />}>
                       <DropdownMenuItem label="Rename chat" icon={<PencilSquareIcon />} onClick={() => setRenaming({ id: t.id, place: 'library' })} />
-                      <DropdownMenuItem label="Delete chat…" icon={<TrashIcon />} onClick={() => askDelete(t.id, document.getElementById(`chat-actions-${t.id}`))} />
+                      <DropdownMenuItem className="delete-menu-item" label="Delete chat…" icon={<TrashIcon />} onClick={() => askDelete(t.id, document.getElementById(`chat-actions-${t.id}`))} />
                     </DropdownMenu>
                   </>}
                 </li>)}</ul>
@@ -931,6 +959,6 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       </main>
       <SettingsWindow request={tab === 'settings' ? settings : undefined} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} appearance={appearance} setAppearance={setAppearance} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
     </HStack>
-    <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
+    <AlertDialog className="delete-dialog" width="min(420px, calc(100vw - 2rem))" data-failed={!!deleteError} isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
 }

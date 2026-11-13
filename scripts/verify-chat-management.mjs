@@ -155,7 +155,7 @@ if (process.argv[2] === '--serve') {
     await wait('document.activeElement?.getAttribute("aria-label")==="Your question"');
     pass('deleting open chat from the Library opens the next saved chat and focuses its composer');
     await sidebarDelete('Other renamed'); await click('Delete chat');
-    await wait(`!${dialog} && document.querySelector('.empty-map')?.textContent.includes('Start a learning tree')`);
+    await wait(`!${dialog} && document.querySelector('.empty-map')?.textContent.includes('Your first tree starts with a question.')`);
     await wait('document.activeElement?.textContent==="New chat"');
     assert.equal((await (await fetch(origin + '/api/state')).json()).trees.length, 0);
     pass('deleting the final chat opens New chat state and returns focus to New chat');

@@ -79,11 +79,11 @@ async function flow(mode, { word, manual, correction, label }) {
   assert.ok(g.quoteHidden, `${mode}: passage quote is screen-reader-only and still describes the question`);
   assert.deepEqual(g.painted, [word], `${mode}: the reply paints the passage while asking`);
   assert.ok(g.page <= g.width && g.box[0] >= 0 && g.box[2] <= g.width && g.box[1] >= 0 && g.box[3] <= g.height, `${mode}: popup fits the viewport ${JSON.stringify(g)}`);
-  assert.ok(g.sendRound && g.shown.includes('Create focused chat'), `${mode}: small round send control`);
+  assert.ok(!g.sendRound && g.shown.includes('Create focused chat'), `${mode}: small square send control`);
   assert.ok(!g.shown.some(n => /Cancel branch|I know this|I don't get this/.test(n)), `${mode}: no Cancel branch or prominent correction buttons ${JSON.stringify(g.shown)}`);
   assert.ok(g.boxHeight < 160, `${mode}: popup stays compact (${g.boxHeight}px)`);
-  await b('screenshot', `${process.cwd()}/.impeccable/review/passage-popup-${mode.replace(/\W+/g, '-')}.png`);
-  check(`${mode}: suggested underline opens a ${Math.round(g.boxHeight)}px popup, passage painted in the reply and quoted only for screen readers, question field and round send; no Cancel branch`);
+  await b('screenshot', `${process.cwd()}/docs/verification/states-passage-${mode.replace(/\W+/g, '-')}.png`);
+  check(`${mode}: suggested underline opens a ${Math.round(g.boxHeight)}px popup, passage painted in the reply and quoted only for screen readers, question field and square send; no Cancel branch`);
 
   // Empty question cannot submit; Escape dismisses and returns focus to the underline.
   await key('Enter');
@@ -108,12 +108,12 @@ async function flow(mode, { word, manual, correction, label }) {
   await highlight(manual);
   await wait(`[...document.querySelectorAll('.focused-chat button')].some(n => n.textContent.trim() === 'Ask about selection') && !${popup} && getSelection().toString() === ${JSON.stringify(manual)}`);
   assert.ok(await ev(`document.execCommand('copy')`), `${mode}: the kept selection can be copied`);
-  await b('screenshot', `${process.cwd()}/.impeccable/review/passage-ask-${mode.replace(/\W+/g, '-')}.png`);
+  await b('screenshot', `${process.cwd()}/docs/verification/states-passage-ask-${mode.replace(/\W+/g, '-')}.png`);
   await click('Ask about selection');
   await wait(`document.activeElement === ${input} && document.querySelector('.branch-passage')?.textContent === ${JSON.stringify(manual)}`);
   await b('keyboard', 'type', 'typing keeps it');
   assert.deepEqual(await ev(`[...CSS.highlights.get('passage') ?? []].map(r => r.toString())`), [manual], `${mode}: passage stays painted while typing`);
-  await b('screenshot', `${process.cwd()}/.impeccable/review/passage-painted-${mode.replace(/\W+/g, '-')}.png`);
+  await b('screenshot', `${process.cwd()}/docs/verification/states-passage-painted-${mode.replace(/\W+/g, '-')}.png`);
   assert.equal(await ev(`document.querySelectorAll('.branch-form [aria-label^="Familiarity options"]').length`), 0, `${mode}: manual passages guess no concept`);
   await key('Escape'); await wait(`!${popup} && document.activeElement?.matches('.focused-chat .passage > section') && !CSS.highlights.has('passage')`);
   check(`${mode}: manual highlight shows only Ask with a copyable native selection; Ask opens the same popup, painted while typing, without guessed corrections; Escape clears it and returns focus to the reply`);
@@ -138,6 +138,7 @@ async function flow(mode, { word, manual, correction, label }) {
   const menuOpen = `[...document.querySelectorAll('[role=menu]')].some(m => m.checkVisibility())`;
   if (!(await ev(menuOpen))) await click(`Familiarity options for ${word === 'mutex' ? 'Mutual exclusion' : 'Threads'}`);
   await wait(`[...document.querySelectorAll('[role=menu] [role=menuitemradio]')].find(m => m.checkVisibility() && m.textContent.includes(${JSON.stringify(label)}))?.getAttribute('aria-checked') === 'true'`);
+  await b('screenshot', `${process.cwd()}/docs/verification/states-corrections-${mode.replace(/\W+/g, '-')}.png`);
   await key('Escape'); await wait(`!(${menuOpen})`);
   assert.ok(await ev(`!!${popup}`), `${mode}: closing the menu keeps the popup`);
   check(`${mode}: overflow offers I know this / I don't get this; "${label}" saves ${correction}, shows checked, keeps the question; menu Escape keeps the popup`);
@@ -208,7 +209,7 @@ try {
     assert.deepEqual((await geometry()).painted, ['latch'], 'late suggestions retain the passage paint');
     await b('keyboard', 'type', ' How long?');
     assert.equal(await ev(`${input}.value`), 'Why wait? How long?');
-    await b('screenshot', `${process.cwd()}/.impeccable/review/passage-late-suggestions-${mode}.png`);
+    await b('screenshot', `${process.cwd()}/docs/verification/states-passage-late-suggestions-${mode}.png`);
     await key('Escape'); await wait(`!${popup} && !CSS.highlights.has('passage')`);
     check(`${mode}: late suggestions keep the passage painted, question and typing focus intact; Escape clears it`);
   }

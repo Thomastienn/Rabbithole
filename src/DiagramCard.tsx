@@ -15,6 +15,7 @@ export default function DiagramCard({ artifact, steps = [artifact], onRetry }: {
   const [enlarged, setEnlarged] = useState(false);
   // Keeps the Retry button mounted (loading) while its rerun is pending, so keyboard focus stays put.
   const [retried, setRetried] = useState(false);
+  const [renderAttempt, setRenderAttempt] = useState(0);
   useEffect(() => {
     let cancelled = false;
     setDrawing({ status: 'pending' });
@@ -23,9 +24,9 @@ export default function DiagramCard({ artifact, steps = [artifact], onRetry }: {
       return renderDiagram(source, card.current!, mode === 'dark');
     }).then(state => { if (!cancelled) setDrawing(state); });
     return () => { cancelled = true; };
-  }, [artifact.id, artifact.status, artifact.source, mode]);
+  }, [artifact.id, artifact.status, artifact.source, mode, renderAttempt]);
   // A successful Retry removes its button; keep keyboard focus on the card rather than dropping it to the page.
-  useEffect(() => { if (retried && artifact.status === 'ready' && document.activeElement === document.body) card.current?.focus(); }, [retried, artifact.status]);
+  useEffect(() => { if (retried && drawing.status === 'ready' && document.activeElement === document.body) card.current?.focus(); }, [retried, drawing.status]);
   const failed = drawing.status === 'failed';
   return <section ref={card} className="diagram-card" tabIndex={0} aria-labelledby={steps.length > 1 ? `${id}-step ${id}-title` : `${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={drawing.status}>
     <VStack gap={3} padding={3}>
@@ -34,7 +35,7 @@ export default function DiagramCard({ artifact, steps = [artifact], onRetry }: {
       <Text id={`${id}-description`}>{artifact.description}</Text>
       {drawing.status === 'pending' && <Text type="supporting" color="secondary" role="status">{artifact.status === 'pending' ? 'Creating diagram…' : 'Rendering diagram…'}</Text>}
       {failed && <Text type="supporting" role="status">{artifact.status === 'failed' ? `Diagram unavailable. ${artifact.error ?? ''}` : 'Diagram could not be rendered. Read the description and Mermaid source below.'}</Text>}
-      {onRetry && (artifact.status === 'failed' || (retried && artifact.status === 'pending')) && <HStack><Button key="retry" label="Retry diagram" variant="ghost" size="sm" isLoading={artifact.status === 'pending'} clickAction={async () => { setRetried(true); await onRetry(); }} /></HStack>}
+      {(failed || (retried && drawing.status === 'pending')) && <HStack><Button key="retry" label="Retry diagram" variant="secondary" size="sm" isLoading={drawing.status === 'pending'} isDisabled={artifact.status === 'failed' && !onRetry} clickAction={async () => { setRetried(true); if (artifact.status === 'failed') await onRetry?.(); else setRenderAttempt(n => n + 1); }} /></HStack>}
       {drawing.status === 'ready' && <>
         <button type="button" className="diagram-open" aria-label={`Open diagram large: ${artifact.title}`} onClick={() => setEnlarged(true)}><img src={drawing.url} alt={artifact.description} onError={() => setDrawing({ status: 'failed' })} /></button>
         <Lightbox className="diagram-lightbox" isOpen={enlarged} onOpenChange={setEnlarged} hasZoom media={{ src: drawing.url, alt: artifact.description }} />

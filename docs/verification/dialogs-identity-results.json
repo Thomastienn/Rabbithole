@@ -1,13 +1,13 @@
 {
-  "issue": "TreeTutor-nwx.10",
-  "checkedAt": "2026-11-13T03:58:45.017Z",
+  "issue": "TreeTutor-y36.10",
+  "checkedAt": "2026-11-13T06:04:59.515Z",
   "evidence": "Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.",
   "appearances": {
     "dark": {
       "model": {
-        "accent": "rgb(157, 186, 110)",
+        "accent": "rgb(169, 198, 122)",
         "background": "rgb(45, 38, 32)",
-        "check": "rgb(157, 186, 110)",
+        "check": "rgb(169, 198, 122)",
         "checkBox": "rgba(0, 0, 0, 0)",
         "current": "Fixture model",
         "popover": "rgb(45, 38, 32)",
@@ -18,41 +18,43 @@
       },
       "delete": {
         "action": "rgba(0, 0, 0, 0)",
-        "actionText": "rgb(240, 127, 138)",
-        "alert": "rgb(240, 127, 138)",
-        "alertText": "rgb(240, 127, 138)",
-        "background": "rgb(36, 31, 26)",
+        "actionText": "rgb(239, 230, 214)",
+        "alert": "rgba(239, 230, 214, 0.3)",
+        "alertText": "rgb(239, 230, 214)",
+        "background": "rgb(45, 38, 32)",
         "gap": 10,
-        "ring": "rgb(240, 127, 138) 0px 0px 0px 1px inset",
+        "ring": "rgba(239, 230, 214, 0.3) 0px 0px 0px 1px inset",
         "shadow": "rgba(239, 230, 214, 0.12) 0px 0px 0px 1px inset",
-        "space": 24,
-        "surface": "rgb(36, 31, 26)",
+        "space": 40,
+        "surface": "rgb(45, 38, 32)",
         "text": "Delete chat “Tournament trees”?2 conversations and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.Keep conversationsDelete chat",
         "title": "Delete chat “Tournament trees”?"
       },
       "deleteFocused": {
-        "action": "rgb(240, 127, 138)",
-        "error": "rgb(240, 127, 138)",
-        "onError": "rgb(36, 10, 14)",
-        "text": "rgb(36, 10, 14)"
+        "action": "rgb(239, 230, 214)",
+        "error": "rgb(239, 230, 214)",
+        "onError": "rgb(26, 22, 19)",
+        "outline": "rgb(239, 230, 214)",
+        "paper": "rgb(239, 230, 214)",
+        "text": "rgb(26, 22, 19)"
       },
       "prompt": {
-        "accent": "rgb(157, 186, 110)",
+        "accent": "rgb(239, 230, 214)",
         "background": "rgb(45, 38, 32)",
-        "border": "rgb(157, 186, 110)",
+        "border": "rgb(239, 230, 214)",
         "clear": true,
         "label": "locksQuestion about this passage",
         "popover": "rgb(45, 38, 32)",
         "radius": "4px",
         "shadow": "none",
-        "width": 448
+        "width": 320
       }
     },
     "light": {
       "model": {
-        "accent": "rgb(70, 100, 42)",
+        "accent": "rgb(61, 90, 34)",
         "background": "rgb(255, 255, 255)",
-        "check": "rgb(70, 100, 42)",
+        "check": "rgb(61, 90, 34)",
         "checkBox": "rgba(0, 0, 0, 0)",
         "current": "Fixture model",
         "popover": "rgb(255, 255, 255)",
@@ -63,34 +65,36 @@
       },
       "delete": {
         "action": "rgba(0, 0, 0, 0)",
-        "actionText": "rgb(179, 38, 58)",
-        "alert": "rgb(179, 38, 58)",
-        "alertText": "rgb(179, 38, 58)",
-        "background": "rgb(250, 247, 240)",
+        "actionText": "rgb(31, 26, 21)",
+        "alert": "rgba(31, 26, 21, 0.35)",
+        "alertText": "rgb(31, 26, 21)",
+        "background": "rgb(255, 255, 255)",
         "gap": 10,
-        "ring": "rgb(179, 38, 58) 0px 0px 0px 1px inset",
+        "ring": "rgba(31, 26, 21, 0.35) 0px 0px 0px 1px inset",
         "shadow": "rgba(31, 26, 21, 0.15) 0px 0px 0px 1px inset",
-        "space": 24,
-        "surface": "rgb(250, 247, 240)",
+        "space": 40,
+        "surface": "rgb(255, 255, 255)",
         "text": "Delete chat “Tournament trees”?2 conversations and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.Keep conversationsDelete chat",
         "title": "Delete chat “Tournament trees”?"
       },
       "deleteFocused": {
-        "action": "rgb(179, 38, 58)",
-        "error": "rgb(179, 38, 58)",
-        "onError": "rgb(255, 255, 255)",
-        "text": "rgb(255, 255, 255)"
+        "action": "rgb(31, 26, 21)",
+        "error": "rgb(31, 26, 21)",
+        "onError": "rgb(250, 247, 240)",
+        "outline": "rgb(31, 26, 21)",
+        "paper": "rgb(31, 26, 21)",
+        "text": "rgb(250, 247, 240)"
       },
       "prompt": {
-        "accent": "rgb(70, 100, 42)",
+        "accent": "rgb(31, 26, 21)",
         "background": "rgb(255, 255, 255)",
-        "border": "rgb(70, 100, 42)",
+        "border": "rgb(31, 26, 21)",
         "clear": true,
         "label": "locksQuestion about this passage",
         "popover": "rgb(255, 255, 255)",
         "radius": "4px",
         "shadow": "none",
-        "width": 448
+        "width": 320
       }
     }
   },

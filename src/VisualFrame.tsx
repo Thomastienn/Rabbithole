@@ -6,7 +6,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack } from '@astryxdesign/core/Layout';
 import { useTheme } from '@astryxdesign/core/theme';
-import { ArrowPathIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowsPointingOutIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { visualMessage, type Artifact, type VisualPart } from './artifacts';
 
 export type VisualBranch = VisualPart & { child: string };
@@ -51,6 +51,7 @@ export default function VisualFrame({ artifact, explored, reveal, onPart, onRetr
   const [enlarged, setEnlarged] = useState(false);
   const [retried, setRetried] = useState(false);
   const figure = useRef<HTMLElement>(null);
+  const viewer = useRef<HTMLDialogElement>(null);
   useEffect(() => { if (retried && artifact.status === 'ready' && document.activeElement === document.body) figure.current?.focus(); }, [retried, artifact.status]);
   async function run(action: () => Promise<void>) {
     setRetried(true); await action();
@@ -65,9 +66,17 @@ export default function VisualFrame({ artifact, explored, reveal, onPart, onRetr
         {onRegenerate && <IconButton label={`Try a different version of visual: ${artifact.title}`} tooltip="Try a different version" icon={<ArrowPathIcon />} variant="ghost" size="sm" clickAction={() => run(onRegenerate)} />}
         <IconButton className="visual-enlarge" label={`Enlarge visual: ${artifact.title}`} icon={<ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={() => setEnlarged(true)} />
       </HStack>
-      {enlarged && <Dialog isOpen onOpenChange={setEnlarged} width="min(64rem, calc(100vw - 2rem))" maxHeight="calc(100dvh - 2rem)" aria-label={artifact.title}><Frame artifact={artifact} explored={explored} onPart={(visual, part) => { setEnlarged(false); onPart?.(visual, part, figure); }} /></Dialog>}
+      {enlarged && <Dialog ref={viewer} className="visual-viewer" isOpen onOpenChange={setEnlarged} width="min(64rem, calc(100vw - 2rem))" maxHeight="calc(100dvh - 2rem)" aria-label={artifact.title}>
+        {/* Frame keystrokes do not reach the dialog's focus trap; guards catch either boundary. */}
+        <span tabIndex={0} className="sr-only" aria-hidden onFocus={() => viewer.current?.querySelector('iframe')?.focus()} />
+        <IconButton data-autofocus="" className="viewer-close" label="Close visual" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={() => setEnlarged(false)} />
+        <h2>{artifact.title}</h2><p>{artifact.description}</p>
+        <Frame artifact={artifact} explored={explored} onPart={(visual, part) => { setEnlarged(false); onPart?.(visual, part, figure); }} />
+        <span tabIndex={0} className="sr-only" aria-hidden onFocus={() => viewer.current?.querySelector('button')?.focus()} />
+      </Dialog>}
     </>}
-    {(artifact.status === 'failed' || artifact.status === 'interrupted') && <Text display="block" type="supporting" color="secondary" role="status">Visual unavailable. {artifact.error ?? ''}</Text>}
-    {onRetry && (artifact.status === 'failed' || (retried && artifact.status === 'pending')) && <Button key="retry" label="Retry visual" variant="ghost" size="sm" isLoading={artifact.status === 'pending'} clickAction={() => run(onRetry)} />}
+    {artifact.status === 'failed' && <ExclamationTriangleIcon className="failure-icon" aria-hidden />}
+    {(artifact.status === 'failed' || artifact.status === 'interrupted') && <Text display="block" type="supporting" role="status">Visual unavailable. {artifact.error ?? ''}</Text>}
+    {onRetry && (artifact.status === 'failed' || (retried && artifact.status === 'pending')) && <Button key="retry" label="Retry visual" variant="secondary" size="sm" isLoading={artifact.status === 'pending'} clickAction={() => run(onRetry)} />}
   </figure>;
 }

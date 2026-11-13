@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-13T05:04:10.318Z",
+  "checkedAt": "2026-11-13T05:57:04.162Z",
   "evidence": "Live desktop session (DISPLAY, session D-Bus), real file manager and gio trash; production build in Chromium via agent-browser",
-  "data": "/tmp/tt-video-actions-Sf0vMe",
+  "data": "/tmp/tt-video-actions-1YAQAT",
   "checks": [
     {
       "name": "card shows frame, title and action row (Open large, Show in folder, Move to trash); Open large opens and Escape returns focus with a paper ring",
@@ -31,7 +31,7 @@
     },
     {
       "name": "Move to trash (keyboard, confirmed) moves the disposable file into the desktop trash and removes the entry",
-      "trashInfo": "[Trash Info]\nPath=/tmp/tt-video-actions-Sf0vMe/videos/a6226912-a3aa-4b08-8f3a-e19f8c91d688.mp4\nDeletionDate=2026-11-12T23:04:12",
+      "trashInfo": "[Trash Info]\nPath=/tmp/tt-video-actions-1YAQAT/videos/465f5cad-f304-4991-a50a-2196fc3e7c76.mp4\nDeletionDate=2026-11-12T23:57:06",
       "focus": "refresh-videos",
       "status": " | Moved “Disposable trash video” to the system trash. Restore it from your desktop trash if needed. | Disposable failing video: Video ready. |  |  |  |  | "
     },

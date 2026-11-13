@@ -284,7 +284,7 @@ if (process.argv[2] === '--serve') {
     // A diagram left pending when the server started is recovered as interrupted (see diagram-recovery.md).
     assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="failed"]').length`), 8);
     assert.equal(await ev(`document.querySelectorAll('.diagram-card[data-state="pending"]').length`), 0);
-    const failures = await ev(`[...document.querySelectorAll('.diagram-card[data-state="failed"]')].map(c=>({title:c.querySelector('h3').textContent,description:!!c.querySelector('[id$="-description"]')?.textContent,source:c.querySelector('pre')?.textContent,expanded:c.querySelector('button')?.getAttribute('aria-expanded')}))`);
+    const failures = await ev(`[...document.querySelectorAll('.diagram-card[data-state="failed"]')].map(c=>({title:c.querySelector('h3').textContent,description:!!c.querySelector('[id$="-description"]')?.textContent,source:c.querySelector('pre')?.textContent,expanded:c.querySelector('.astryx-collapsible-trigger')?.getAttribute('aria-expanded')}))`);
     assert.ok(failures.every(f => f.description && (f.title === 'Failed example' || f.title === 'Pending example' || (f.source && f.expanded === 'true'))));
     assert.equal(await ev(`document.querySelectorAll('.diagram-card a,.diagram-card script,.diagram-card iframe,.diagram-card foreignObject').length`), 0);
     assert.equal(await ev(`window.__diagramAttacked`), 0);

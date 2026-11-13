@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-13T04:52:38.036Z",
+  "checkedAt": "2026-11-13T06:00:38.638Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-nUTrpO",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-hk78cs",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "fc510a3e-4c94-4a05-aa3a-1d93f02fcea9",
-        "messageId": "a4c87515-944e-46f8-9eff-9db6a18d8364",
+        "parent": "8013ee7c-dd5b-4255-be74-49d6c17621a4",
+        "messageId": "859d971e-1325-4126-940c-2a02a3017454",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -107,12 +107,10 @@
       "details": [
         {
           "description": true,
-          "expanded": null,
           "title": "Pending example"
         },
         {
           "description": true,
-          "expanded": null,
           "title": "Failed example"
         },
         {
@@ -163,8 +161,8 @@
       "pass": true,
       "details": {
         "processes": [
-          1072836,
-          1073398
+          1403076,
+          1404081
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3
@@ -173,7 +171,7 @@
     {
       "name": "original CSP renders without policy violations or unsafe script sources",
       "pass": true,
-      "details": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:43685/sandbox.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+      "details": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:38133/sandbox.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     }
   ],
   "screenshots": [
@@ -184,23 +182,23 @@
     ".impeccable/review/diagram-steps-dark.png"
   ],
   "sourceHashes": {
-    "src/DiagramCard.tsx": "fa3717400b9bd800abc278772f4b7be1e846df357ed1cdb4c7b8d43be2d38814",
+    "src/DiagramCard.tsx": "31c81088d1e7d3a1091908dc8d4c668b278dc0acafe2687bbe1d8ea5c9cb1c54",
     "src/artifacts.ts": "5740d370d532024d7e79706b81d8e5cad30f106d3e9d3994e9e8f8c3673e5fcd",
     "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
     "src/mermaid.ts": "1a429e57905f3919ed9d1ee58ba568860872017153e6765a432f9ee1bac97cca",
-    "src/ChatPage.tsx": "9a2c79baf33fb35a256416e4352fd9f58750be991f59f9b666a85deb8ed3da5b",
+    "src/ChatPage.tsx": "80baef97b348ecca96673ed77830b25938ae9dfd3224aef4acc7bd1d1dfd1d6e",
     "src/TreeOverview.tsx": "6350473c36c698b024a41a0017a7898412b8479726f47dd32eedd5bcd8d1ea23",
     "src/turn.ts": "d31ed2605a3d51a842a12a2cc2b1e6e12549001dbcd6bdea7afcd9bcac7ec9b2",
-    "src/layout.ts": "c3bacef8349928c77b674ea8c5cb8c640a1f674d33ff5a599d1e5a940891ef8a",
+    "src/layout.ts": "ec1c9f781cc5dd4b3fb6ad612e14e74396407464fb23cb58d8ec04a0294ad94a",
     "server/store.mjs": "ac201867d5e4f8efd88beba6601fb0d21f6f5139e6d2493fe693b55635f773d7",
     "server/diagrams.mjs": "4224348a2f0d105b7dbe6d0a97259e27504a9adc434e7ea46e52e17049409896",
     "server/app.mjs": "3dc0621b1e05b26076c4029ce62311a9dc7a9cdd2b832c1d9df2dd90d1cd15cf",
-    "scripts/verify-diagram-rendering.mjs": "4849bd563fc771748ab4851526af81ee3428f566042b9fc876040b6c8b343ad9",
+    "scripts/verify-diagram-rendering.mjs": "96835e4d93ed80f5d8201a28050efbf732cea5b050affe478bb5851dbacb7622",
     "test/artifact-render.test.mjs": "b0115d63840c80ee037d4889c832b0a6e21d65f65d32d3d0ef8f907b91f9db3b",
     "tsconfig.json": "4b1a7d176738768f8df927b020f1470c6f22cc3696aa79a53d427f2865780e05",
     "package.json": "a80f051cfd2c3231bcad40e13366312e2887fd6d282b996515f58c6e0b27b424",
     "package-lock.json": "c5ce28e1c59dfa55429dceb4821a0ba8a8f3708b7fe1aca1943c1a6a6048c325",
     "docs/diagram-artifacts.md": "15bfa88bf83b51ee952c2db37a0b863317e477d2c150c32742765ad8304d6181",
-    "dist/index.html": "78707ec5a7025e32376943c9427941630f7aaa46c54d4b8675762c879ecb46b9"
+    "dist/index.html": "2cfb6ec2b3aa2bce6d8fefaa503b4419bf6bf373236cd14e912deea07f66fb12"
   }
 }

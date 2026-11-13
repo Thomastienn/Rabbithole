@@ -147,7 +147,7 @@ html { view-transition-name: none; }
 .ink-legend .contents-dot { align-self: center; }
 .overview[data-chat-open=true] .ink-legend { display: none; }
 .overview :focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: var(--focus-outline-offset); }
-.empty-map { flex: 1; text-align: center; max-width: 28rem; margin-inline: auto; }
+.empty-map { flex: 1; text-align: center; width: 100%; max-width: none; margin-inline: auto; }
 .empty-map > button { color: var(--color-text-accent); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .focus-reveal:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -293,34 +293,57 @@ html { view-transition-name: none; }
 .video-inline .video-caption .astryx-text:not(h3, h3 *) { max-width: 65ch; font-family: var(--treetutor-font-reading); font-size: 15px; line-height: 1.55; color: var(--color-text-secondary); }
 /* Lightbox caps media at natural size; generated videos are small, so fill the viewer (contain keeps 16:9). */
 .astryx-lightbox video { width: 92vw; height: calc(100dvh - 8rem); }
-/* Enlarged diagrams: a plain dimmed slate overlay (no blur; the library's backdrop rule outranks plain selectors) and the drawing on a raised panel. No caption: the library sizes it apart from the drawing, and the card keeps the title. */
-.diagram-lightbox::backdrop { backdrop-filter: none !important; }
-.diagram-lightbox img { background: var(--color-background-surface); outline: thin solid var(--color-border); border-radius: var(--radius-container); }
+/* Media viewers share the raised sheet and dimmed paper backdrop; no blur. */
+.astryx-lightbox::backdrop { backdrop-filter: none !important; background: var(--color-overlay); }
+.astryx-lightbox :is(img, video), .visual-viewer { background: var(--color-background-popover); outline: thin solid var(--color-border-emphasized); border-radius: var(--radius-container); }
+.visual-viewer h2 { margin: 0 32px 8px 0; font-size: 16px; font-weight: 700; }
+.visual-viewer p { margin-block-end: 16px; color: var(--color-text-secondary); }
+.viewer-close { position: absolute; inset: 8px 8px auto auto; }
 .video-frame:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
 .inherited-context { border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); padding-inline: 12px; color: var(--color-text-primary); }
 .inherited-context .astryx-collapsible-trigger { padding: 10px 0; color: inherit; font-weight: 600; }
 .inherited-body { margin: 0; padding: 0 var(--treetutor-module) calc(2 * var(--treetutor-module)); display: grid; gap: var(--spacing-1); font-size: var(--font-size-sm); }
 .inherited-body dt { color: var(--color-text-secondary); font-weight: 500; margin-block-start: var(--spacing-2); }
-.inherited-body dd:first-of-type { text-decoration: underline 2px var(--ink, var(--color-accent)); text-underline-offset: 4px; }
+.inherited-body dd:first-of-type { border-inline-start: 2px solid var(--ink, var(--color-accent)); padding-inline-start: 12px; color: var(--color-text-primary); }
 .inherited-body dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--color-text-secondary); font-family: var(--treetutor-font-reading); font-size: var(--font-size-base); line-height: 1.7; }
 .diagram-source { max-height: 12rem; overflow: auto; margin: 0; padding: var(--spacing-2); background: var(--color-background-body); color: var(--color-text-primary); font-size: var(--font-size-sm); }
 .diagram-card:focus-visible, .diagram-open:focus-visible, .diagram-source:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: calc(-1 * var(--spacing-1)); }
 .selection-action { position: absolute; z-index: 3; margin-top: var(--spacing-1); transform: translateX(-50%); animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, var(--spacing-1)); } }
-.passage-box { position: absolute; z-index: 3; width: min(100%, 28rem); transform: translateY(-100%); margin-top: calc(-1 * var(--spacing-1)); }
-/* Floating surfaces: raised slate, hairline seams, no shadows (spec, Dialogs and menus). The passage prompt carries the yellow ring. */
-.branch-form { margin-top: var(--spacing-2); border: thin solid var(--color-accent); border-radius: var(--radius-container); background: var(--color-background-popover); }
+.passage-box { position: absolute; z-index: 3; width: min(100%, 320px); transform: translateY(-100%); margin-top: calc(-1 * var(--spacing-1)); }
+/* Raised paper surfaces and a paper passage border (mockup States). */
+.branch-form { margin-top: var(--spacing-2); border: thin solid var(--treetutor-paper); border-radius: var(--radius-container); background: var(--color-background-popover); }
 .branch-passage { flex: 1; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-family: var(--treetutor-font-reading); }
 .branch-question { flex: 1; min-width: 0; }
-.branch-send { flex: none; border-radius: 50%; }
+.branch-send { flex: none; }
 .astryx-alert-dialog h2 { margin-block-end: var(--spacing-2); }
-.astryx-alert-dialog .astryx-button[data-variant=destructive] { background: transparent; color: var(--color-text-error); box-shadow: inset 0 0 0 1px var(--color-border-error); }
-.astryx-alert-dialog .astryx-button[data-variant=destructive]:not(:first-child) { margin-inline-start: var(--spacing-4); }
-.astryx-alert-dialog .astryx-button[data-variant=destructive]:focus-visible { background: var(--color-error); color: var(--color-on-error); }
-/* Model menu: the current model is a yellow check, not a radio circle. */
+.astryx-alert-dialog, .merge-dialog { background: var(--color-background-popover); }
+/* Rose is failure-only; deletion is separated, outlined paper, filled on keyboard focus. */
+.astryx-alert-dialog .astryx-button[data-variant=destructive] { background: transparent; color: var(--color-text-primary); box-shadow: inset 0 0 0 1px var(--color-border-emphasized); }
+.astryx-alert-dialog .astryx-button[data-variant=destructive]:not(:first-child) { margin-inline-start: 32px; }
+.astryx-alert-dialog .astryx-button[data-variant=destructive]:focus-visible { background: var(--treetutor-paper); color: var(--treetutor-paper-ink); outline-color: var(--treetutor-paper); }
+.delete-dialog[data-failed=true] [id$=description] { color: var(--color-text-error); }
+.delete-menu-item { border-block-start: thin solid var(--color-border); margin-block-start: 4px; }
+.astryx-dropdown-menu { background: var(--color-background-popover); }
+/* Model menu: the current model wears the leaf check. */
 .astryx-dropdown-menu .astryx-dropdown-menu-radio { background: none; border-color: transparent; }
 .astryx-dropdown-menu .astryx-dropdown-menu-radio .astryx-radio-indicator-dot { display: none; }
-.astryx-dropdown-menu .astryx-dropdown-menu-radio[data-checked=checked]::after { content: ''; width: 0.3rem; height: 0.6rem; border: solid var(--color-accent); border-width: 0 2px 2px 0; transform: translateY(-15%) rotate(45deg); }
+.astryx-dropdown-menu .astryx-dropdown-menu-radio[data-checked=checked]::after { content: ''; width: 0.3rem; height: 0.6rem; border: solid var(--color-text-accent); border-width: 0 2px 2px 0; transform: translateY(-15%) rotate(45deg); }
+.failure-banner, .visual[data-state=failed], .video-card:is([data-state=failed], [data-state=unavailable]) .video-controls, .diagram-card[data-state=failed] { border: thin solid var(--color-border-error); border-radius: var(--radius-element); background: var(--color-error-muted); padding: 8px 12px; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.failure-banner { flex-wrap: wrap; }
+.failure-banner button { margin-inline-start: auto; flex: none; }
+.workspace-failure { margin: 8px 16px; }
+.visual[data-state=failed] { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.visual[data-state=failed] > button { margin-inline-start: auto; }
+.failure-icon { flex: none; width: 16px; height: 16px; color: var(--color-text-error); }
+.title-editor { display: grid; grid-template-columns: minmax(0, 1fr) auto; width: 100%; align-items: end; }
+.title-editor > [role=alert] { grid-column: 1 / -1; }
+.title-editor > :last-child { justify-content: flex-end; }
+.first-question { width: min(100%, 560px); margin: 48px auto; }
+.first-question > .astryx-chat-composer { width: 100%; text-align: left; }
+.first-question h2 { font-size: 20px; font-weight: 700; text-align: center; }
+.tree-loading { width: min(100%, 640px); }
+@media (prefers-reduced-motion: reduce) { .tree-loading .astryx-skeleton, .tree-loading .astryx-skeleton::after { animation: none; } }
 .focused-chat { flex: 1; min-width: 0; background: var(--color-background-body); }
 /* The map docks right of the reading column on the deep panel (mockup Read: 440px default, seam on its left edge). */
 .overview[data-chat-open=true] { flex: 0 0 var(--map-width); border-left: thin solid var(--color-border); }

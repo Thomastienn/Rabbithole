@@ -128,7 +128,7 @@ export default function KnowledgePage({ api, activity }: { api: Api; activity: s
         </HStack>
       </VStack></aside>
     </div>}
-    <Dialog isOpen={!!merge} onOpenChange={open => { if (!open) closeMerge(); }} purpose={busy ? 'required' : 'form'} width="32rem">
+    <Dialog className="merge-dialog" isOpen={!!merge} onOpenChange={open => { if (!open) closeMerge(); }} purpose={busy ? 'required' : 'form'} width="32rem">
       <DialogHeader title="Merge duplicate concepts" />
       <form onSubmit={submitMerge}><VStack padding={5} gap={4}>
         <Text>Merge “{merge}” into another concept. Keep the chosen name and combine topics, evidence and links. The latest correction from either concept takes precedence. This cannot be undone.</Text>

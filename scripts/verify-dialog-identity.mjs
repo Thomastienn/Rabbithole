@@ -28,7 +28,7 @@ const signedOut = { models: async () => { throw new Error('Synthetic signed-out 
 const app = createApp({ store, dir, providers: { claude: ok, codex: signedOut }, auth: { status: () => ({ connected: false }) } });
 await new Promise(r => app.server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${app.server.address().port}`, out = resolve('docs/verification');
-const results = { issue: 'TreeTutor-nwx.10', checkedAt: new Date().toISOString(), evidence: 'Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.', appearances: {}, screenshots: [] };
+const results = { issue: 'TreeTutor-y36.10', checkedAt: new Date().toISOString(), evidence: 'Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.', appearances: {}, screenshots: [] };
 const shot = async name => { await wait(idle); await wait(`document.fonts.status === 'loaded'`); const file = `dialogs-${name}.png`; await b('screenshot', join(out, file)); results.screenshots.push(file); };
 // Resolves a theme token to its computed value in the current appearance; fill finds the painted surface behind an element.
 const tokenFn = `const token = (name, prop = 'color') => { const el = document.createElement('i'); el.style[prop] = 'var(' + name + ')'; document.body.append(el); const value = getComputedStyle(el)[prop]; el.remove(); return value; };
@@ -42,12 +42,12 @@ try {
     await wait(`document.querySelector('[aria-label="Model for next reply"]:not([disabled])') && ${idle}`);
     assert.equal(await ev(`document.querySelector('.chat-reply u.suggestion')?.textContent`), 'Peterson', 'a manually branched passage stays marked in the rendered reply');
 
-    // Model menu: plain list on raised slate, yellow check on the current model, signed-out providers muted with their sign-in action.
+    // Model menu: plain list on raised paper, leaf check on the current model, signed-out providers muted with their sign-in action.
     await click('Model for next reply'); await wait(menuOpen);
     seen.model = await ev(`(() => { ${tokenFn}
       const menu = [...document.querySelectorAll('[role=menu]')].find(e => e.checkVisibility()), checked = menu.querySelector('[role=menuitemradio][aria-checked=true]');
       const mark = checked.querySelector('.astryx-dropdown-menu-radio'), after = getComputedStyle(mark, '::after'), other = menu.querySelector('[role=menuitemradio][aria-checked=false] .astryx-dropdown-menu-radio');
-      return { background: fill(menu), popover: token('--color-background-popover', 'backgroundColor'), current: checked.textContent, check: after.borderRightColor, accent: token('--color-accent'),
+      return { background: fill(menu), popover: token('--color-background-popover', 'backgroundColor'), current: checked.textContent, check: after.borderRightColor, accent: token('--color-text-accent'),
         checkBox: getComputedStyle(mark).backgroundColor, uncheckedBorder: getComputedStyle(other).borderTopColor, text: menu.textContent, signedOut: [...menu.querySelectorAll('*')].find(e => e.childElementCount === 0 && e.textContent === 'Codex · not connected') ? getComputedStyle([...menu.querySelectorAll('*')].find(e => e.childElementCount === 0 && e.textContent === 'Codex · not connected')).color : null, secondary: token('--color-text-secondary') };
     })()`);
     assert.equal(seen.model.background, seen.model.popover); assert.equal(seen.model.current, 'Fixture model');
@@ -63,8 +63,8 @@ try {
     await item('Delete chat…'); await wait(`${dialog} && document.activeElement?.textContent === 'Keep conversations' && ${idle}`);
     seen.delete = await ev(`(() => { ${tokenFn}
       const d = ${dialog}, [keep, del] = [...d.querySelectorAll('footer button, button')].filter(b => ['Keep conversations', 'Delete chat'].includes(b.textContent)), s = getComputedStyle(del);
-      return { title: d.querySelector('h2').textContent, text: d.textContent, background: getComputedStyle(d).backgroundColor, surface: token('--color-background-surface', 'backgroundColor'), shadow: getComputedStyle(d).boxShadow,
-        action: s.backgroundColor, actionText: s.color, ring: s.boxShadow, alert: token('--color-border-error'), alertText: token('--color-text-error'), space: del.getBoundingClientRect().left - keep.getBoundingClientRect().right, gap: d.querySelector('[id]:not(h2)') && d.querySelector('h2').nextElementSibling.getBoundingClientRect().top - d.querySelector('h2').getBoundingClientRect().bottom };
+      return { title: d.querySelector('h2').textContent, text: d.textContent, background: getComputedStyle(d).backgroundColor, surface: token('--color-background-popover', 'backgroundColor'), shadow: getComputedStyle(d).boxShadow,
+        action: s.backgroundColor, actionText: s.color, ring: s.boxShadow, alert: token('--color-border-emphasized'), alertText: token('--color-text-primary'), space: del.getBoundingClientRect().left - keep.getBoundingClientRect().right, gap: d.querySelector('[id]:not(h2)') && d.querySelector('h2').nextElementSibling.getBoundingClientRect().top - d.querySelector('h2').getBoundingClientRect().bottom };
     })()`);
     assert.equal(seen.delete.title, 'Delete chat “Tournament trees”?');
     assert.match(seen.delete.text, /2 conversations and their messages, branches, diagrams and saved layout will be permanently deleted\. Ready videos stay in Videos\..*This cannot be undone\./);
@@ -73,9 +73,11 @@ try {
     assert.ok(seen.delete.space >= 24, `destructive action set apart: ${seen.delete.space}px`); assert.ok(seen.delete.gap > 0, 'title and consequence separated');
     await shot(`delete-${mode}`);
     await b('press', 'Tab'); await wait(`document.activeElement?.textContent === 'Delete chat'`);
-    seen.deleteFocused = await ev(`(() => { ${tokenFn} const s = getComputedStyle(document.activeElement); return { action: s.backgroundColor, error: token('--color-error', 'backgroundColor'), text: s.color, onError: token('--color-on-error') }; })()`);
-    assert.equal(seen.deleteFocused.action, seen.deleteFocused.error); assert.equal(seen.deleteFocused.text, seen.deleteFocused.onError);
+    seen.deleteFocused = await ev(`(() => { ${tokenFn} const s = getComputedStyle(document.activeElement); return { action: s.backgroundColor, error: token('--treetutor-paper', 'backgroundColor'), text: s.color, onError: token('--treetutor-paper-ink'), outline: s.outlineColor, paper: token('--treetutor-paper') }; })()`);
+    assert.equal(seen.deleteFocused.action, seen.deleteFocused.error); assert.equal(seen.deleteFocused.text, seen.deleteFocused.onError); assert.equal(seen.deleteFocused.outline, seen.deleteFocused.paper);
     await shot(`delete-focused-${mode}`);
+    await b('press', 'Tab'); await wait(`document.activeElement?.textContent === 'Keep conversations'`);
+    await b('press', 'Shift+Tab'); await wait(`document.activeElement?.textContent === 'Delete chat'`);
     await b('press', 'Escape'); await wait(`!${dialog} && document.activeElement?.getAttribute('aria-label') === 'Map menu'`);
     assert.equal((await (await fetch(`${origin}/api/trees/${root.id}`)).json()).title, 'Tournament trees', 'cancel keeps the chat');
 
@@ -84,16 +86,16 @@ try {
     await shot(`rename-${mode}`);
     await b('press', 'Escape'); await wait(`document.activeElement?.id === 'rename-conversation'`);
 
-    // Passage prompt: anchored to the selection, raised slate, yellow ring, flips below when the header is in the way.
+    // Passage prompt: anchored to the selection, raised paper, paper ring, flips below when the header is in the way.
     await ev(`(() => { const t = document.querySelector('.chat-reply .reply-md'), w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.includes('locks')) {} const start = n.textContent.indexOf('locks'), r = document.createRange(); r.setStart(n, start); r.setEnd(n, start + 5); getSelection().removeAllRanges(); getSelection().addRange(r); t.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); return true; })()`);
     await wait("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ask about selection')"); await ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ask about selection').click(); true`);
     await wait(`document.querySelector('.branch-form input') === document.activeElement`);
     seen.prompt = await ev(`(() => { ${tokenFn}
       const f = document.querySelector('.branch-form'), s = getComputedStyle(f), box = document.querySelector('.passage-box').getBoundingClientRect(), header = document.querySelector('.chat-header').getBoundingClientRect();
-      return { border: s.borderTopColor, accent: token('--color-accent'), background: s.backgroundColor, popover: token('--color-background-popover', 'backgroundColor'), radius: s.borderTopLeftRadius, shadow: getComputedStyle(f.parentElement).boxShadow, clear: box.top >= header.bottom, width: box.width, label: f.textContent };
+      return { border: s.borderTopColor, accent: token('--treetutor-paper'), background: s.backgroundColor, popover: token('--color-background-popover', 'backgroundColor'), radius: s.borderTopLeftRadius, shadow: getComputedStyle(f.parentElement).boxShadow, clear: box.top >= header.bottom, width: box.width, label: f.textContent };
     })()`);
     assert.equal(seen.prompt.border, seen.prompt.accent); assert.equal(seen.prompt.background, seen.prompt.popover); assert.equal(seen.prompt.radius, '4px');
-    assert.equal(seen.prompt.shadow, 'none'); assert.equal(seen.prompt.clear, true); assert.ok(seen.prompt.width <= 448); assert.match(seen.prompt.label, /Question about this passage/);
+    assert.equal(seen.prompt.shadow, 'none'); assert.equal(seen.prompt.clear, true); assert.ok(seen.prompt.width <= 320); assert.match(seen.prompt.label, /Question about this passage/);
     await shot(`passage-prompt-${mode}`);
     await b('press', 'Escape'); await wait(`!document.querySelector('.branch-form')`);
 

@@ -41,7 +41,7 @@ const report = { fixture: 'built UI, synthetic provider, isolated SQLite, agent-
 const pass = text => { report.steps.push(text); console.log('PASS:', text); };
 const figure = `document.querySelector('.focused-chat figure[data-artifact="${artifact.id}"]')`;
 const form = `document.querySelector('.branch-form')`;
-const openParent = async () => { await b('wait', '[aria-label="Open Tournament rounds"]'); await click('Open Tournament rounds'); await wait(`${figure}?.querySelector('iframe[data-ready]')`); };
+const openParent = async () => { await b('wait', '[aria-label="Open Tournament rounds"]'); await click('Open Tournament rounds'); await wait(figure); await ev(`${figure}.scrollIntoView({block:'center'})`); await wait(`${figure}?.querySelector('iframe[data-ready]')`); };
 // Same browser/session as agent-browser; only inspect/focus its known opaque iframe when the CLI cannot address an OOPIF.
 async function frameEval(expression, enlarged = false) {
   const socket = new WebSocket((await b('get', 'cdp-url')).trim());

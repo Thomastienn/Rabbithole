@@ -1,15 +1,15 @@
 {
-  "date": "2026-11-12T23:59:58.473Z",
+  "date": "2026-11-13T06:01:02.944Z",
   "evidence": "built UI, real HTTP/SQLite, fixture provider; no native inference",
   "checks": [
-    "dark wide: suggested underline opens a 58px popup, passage painted in the reply and quoted only for screen readers, question field and round send; no Cancel branch",
+    "dark wide: suggested underline opens a 58px popup, passage painted in the reply and quoted only for screen readers, question field and square send; no Cancel branch",
     "dark wide: empty Enter does nothing; Escape dismisses, clears the highlight and returns focus to the underline",
     "dark wide: outside click dismisses with focus kept off the page body; no branch created",
     "dark wide: manual highlight shows only Ask with a copyable native selection; Ask opens the same popup, painted while typing, without guessed corrections; Escape clears it and returns focus to the reply",
     "dark wide: overflow offers I know this / I don't get this; \"I know this\" saves known, shows checked, keeps the question; menu Escape keeps the popup",
     "dark wide: failed submit keeps popup and question; Enter retry creates the branch anchored to exactly \"mutex\"",
     "dark wide: explored underlines reopen their child conversations without a popup",
-    "light narrow: suggested underline opens a 58px popup, passage painted in the reply and quoted only for screen readers, question field and round send; no Cancel branch",
+    "light narrow: suggested underline opens a 58px popup, passage painted in the reply and quoted only for screen readers, question field and square send; no Cancel branch",
     "light narrow: empty Enter does nothing; Escape dismisses, clears the highlight and returns focus to the underline",
     "light narrow: outside click dismisses with focus kept off the page body; no branch created",
     "light narrow: manual highlight shows only Ask with a copyable native selection; Ask opens the same popup, painted while typing, without guessed corrections; Escape clears it and returns focus to the reply",
