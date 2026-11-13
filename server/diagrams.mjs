@@ -12,24 +12,30 @@ const WORKER_INSTRUCTIONS = 'You create one Mermaid diagram from a frozen JSON t
 
 // Hide whole requests and incomplete opening fences before any reply text is persisted or streamed.
 export function diagramReply(raw, final = false) {
-  const open = /(^|\n)[ \t]*(`{3,}|~{3,})[ \t]*treetutor-(diagram|video|visual)\b([^\r\n]*)(?:\r?\n|$)/g;
+  // Fenced form, or tag form <treetutor-visual>{json}</treetutor-visual> whose opening tag may carry stray quotes or spaces.
+  const open = /(^|\n)[ \t]*(`{3,}|~{3,})[ \t]*treetutor-(diagram|video|visual)\b([^\r\n]*)(?:\r?\n|$)|<[\s"']*treetutor-(diagram|video|visual)[\s"']*>/g;
   let text = '', cursor = 0, match;
   const requests = [];
   while ((match = open.exec(raw))) {
     text += raw.slice(cursor, match.index);
-    const close = new RegExp('^[ \\t]*' + match[2][0] + '{' + match[2].length + ',}[ \\t]*\\r?$', 'gm');
+    const kind = match[3] ?? match[5];
+    const close = match[2] ? new RegExp('^[ \\t]*' + match[2][0] + '{' + match[2].length + ',}[ \\t]*\\r?$', 'gm') : new RegExp(`<\\/[\\s"']*treetutor-${kind}[\\s"']*>`, 'g');
     close.lastIndex = open.lastIndex;
     const end = close.exec(raw);
     // position: where the block was removed in the stored text; earlier text before it is already final.
-    requests.push({ kind: match[3] === 'diagram' ? 'mermaid' : match[3], json: raw.slice(open.lastIndex, end?.index ?? raw.length), closed: !!end, extra: match[4].trim(), position: text.length });
+    requests.push({ kind: kind === 'diagram' ? 'mermaid' : kind, json: raw.slice(open.lastIndex, end?.index ?? raw.length), closed: !!end, extra: match[4]?.trim() ?? '', position: text.length });
     cursor = end ? close.lastIndex : raw.length;
     open.lastIndex = cursor;
   }
   text += raw.slice(cursor);
   const lineStart = text.lastIndexOf('\n') + 1, line = text.slice(lineStart).trimStart();
   const fence = /^(?:`{3,}|~{3,})[ \t]*(.*)$/.exec(line);
-  const hidden = !final && (/^(?:`{1,2}|~{1,2})$/.test(line) || !!(fence && ['treetutor-diagram', 'treetutor-video', 'treetutor-visual'].some(name => name.startsWith(fence[1]))));
-  if (hidden) text = text.slice(0, lineStart);
+  const names = ['treetutor-diagram', 'treetutor-video', 'treetutor-visual'];
+  const tag = final ? null : /<[\s"']*([\w-]*)[\s"']*$/.exec(text); // a streamed tag-form opening may still be arriving
+  const fenceHidden = /^(?:`{1,2}|~{1,2})$/.test(line) || !!(fence && names.some(name => name.startsWith(fence[1])));
+  const tagHidden = !!(tag && names.some(name => name.startsWith(tag[1])));
+  const hidden = !final && (fenceHidden || tagHidden);
+  if (hidden) text = text.slice(0, fenceHidden ? lineStart : tag.index);
   if (!requests.length) return { text, requested: false, hidden };
   // Tolerant: unknown keys are ignored and long fields trimmed; incomplete or unreadable blocks still reject with a learner-facing reason.
   // A rejected request keeps whatever fields were readable (partial) so an explicit Retry can rerun from it.
