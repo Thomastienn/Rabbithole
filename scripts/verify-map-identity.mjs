@@ -25,7 +25,7 @@ await new Promise(r => app.server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
 const out = resolve('docs/verification');
 mkdirSync(out, { recursive: true });
-const results = { issue: 'TreeTutor-nwx.4', date: new Date().toISOString(), evidence: 'Built app; agent-browser Chromium; synthetic transcripts and providers; no live inference', references: ['map-reference-dark.png', 'map-reference-light.png'], referenceViewport: [1440, 900], appearances: {}, checks: [] };
+const results = { issue: 'TreeTutor-y36.7', date: new Date().toISOString(), evidence: 'Built app; agent-browser Chromium; synthetic transcripts and providers; no live inference', references: ['map-reference-dark.png', 'map-reference-light.png'], referenceViewport: [1440, 900], appearances: {}, checks: [] };
 const shot = name => b('screenshot', join(out, `map-${name}.png`));
 const appearance = async mode => { await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); true`); await b('reload'); };
 const settled = () => wait(`new Promise(r => { const v = () => document.querySelector('.react-flow__viewport')?.style.transform, a = v(); requestAnimationFrame(() => requestAnimationFrame(() => r(a === v()))); })`);
@@ -74,14 +74,14 @@ try {
       return {ground:getComputedStyle(document.querySelector('.react-flow')).backgroundColor,radius:getComputedStyle(box).borderRadius,outline:getComputedStyle(box).outlineColor,offset:getComputedStyle(box).outlineOffset,accent,stroke:getComputedStyle(edge).stroke,width:getComputedStyle(edge).strokeWidth,plainWidth:getComputedStyle(plain).strokeWidth,cap:getComputedStyle(plain).strokeLinecap,titleWeight:getComputedStyle(box.querySelector('h2')).fontWeight,plainAnimated:plain.getAnimations().length,ink,paper,band:band(${JSON.stringify(node(peterson.id))}),childBand:band(${JSON.stringify(node(memory.id))}),trunkBand:band(${JSON.stringify(node(root.id))}),childStroke:getComputedStyle(document.querySelector('.react-flow__edge[data-id="${memory.id}"] path')).stroke,addresses:[${[root, heap, peterson, memory].map(t => `addr(${JSON.stringify(node(t.id))})`).join(',')}]};
     })()`);
     assert.equal(styles.radius, '3px'); assert.equal(styles.offset, '3px');
-    assert.equal(styles.outline, styles.accent);
+    assert.equal(styles.outline, styles.paper);
     // Peterson is the trunk's second family (1.2, leaf ink); its child shares the ink, the trunk wears paper.
     assert.deepEqual(styles.addresses, ['1', '1.1', '1.2', '1.2.1']);
     assert.equal(styles.stroke, styles.ink); assert.equal(styles.band, styles.ink); assert.equal(styles.childBand, styles.ink); assert.equal(styles.childStroke, styles.ink); assert.equal(styles.trunkBand, styles.paper);
     assert.equal(styles.width, '2.5px'); assert.equal(styles.plainWidth, '2px'); assert.equal(styles.cap, 'round'); assert.equal(styles.titleWeight, '600'); assert.equal(styles.plainAnimated, 0);
     assert.equal(await ev(`document.querySelectorAll('.react-flow__attribution, .react-flow__background').length`), 0);
     assert.equal(await ev(`document.querySelectorAll(${JSON.stringify(node(root.id) + ' [data-message]')}).length`), 4);
-    assert.equal(await ev(`document.querySelector('[aria-label="Show hidden branch Updating a winner"]')?.textContent.trim()`), '1');
+    assert.equal(await ev(`document.querySelector('[aria-label="Show hidden branch Updating a winner"]')?.textContent.trim()`), '1.1.1 · 1 folded');
     const controls = await controlBounds(); assert.equal(controls.within && controls.clear && controls.bottom === 12 && controls.left === 12, true);
     results.appearances[mode] = { ...styles, controls };
     await shot(`reference-${mode}`);
@@ -96,7 +96,7 @@ try {
     }
     await click('Collapse descendants of Tournament trees'); await click('Fit tree'); await settled();
     const counts = await ev(`[...document.querySelectorAll('.fold-stub button')].map(e=>({name:e.getAttribute('aria-label'),count:e.textContent.trim()}))`);
-    assert.equal(counts.length, 2); assert.deepEqual(counts.map(c => c.count).sort(), ['2', '2']);
+    assert.equal(counts.length, 2); assert.deepEqual(counts.map(c => c.count).sort(), ['1.1 · 2 folded', '1.2 · 2 folded']);
     await shot(`folded-${mode}`);
     await click('Expand descendants of Tournament trees'); await click('Fit tree'); await settled();
   }

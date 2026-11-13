@@ -5,7 +5,7 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRightIcon, EyeSlashIcon, LinkIcon } from '@heroicons/react/24/outline';
+import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRightIcon, EyeSlashIcon, LinkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import type { CSSProperties, ReactNode } from 'react';
 import { MIN_ZOOM, foldHierarchy, offsetCoveredBoxes, parseViewport, placeBox, vimAction, type Point, type Viewport } from './canvas';
 import type { ArtifactSummary, VisualPart } from './artifacts';
@@ -17,7 +17,7 @@ export type Source = { messageId: string; text: string } & ({ start: number; end
 export type Preview = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] }[];
 type Open = (id: string, source?: Source) => void;
 export type MapActions = { expand: () => void; collapse: () => void; keep: () => void; canKeep: boolean };
-type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; active: boolean; focused: boolean; focus: boolean; focusControl?: string; childCount: number; address: string; ink: number; stubs: { child: Summary; beneath: number }[]; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
+type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; retry: (id: string) => void; active: boolean; focused: boolean; focus: boolean; focusControl?: string; childCount: number; address: string; ink: number; stubs: { child: Summary; beneath: number; address: string; ink: number }[]; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
 const fit = { padding: 0.2, maxZoom: 1 };
 const noStubs: ConversationNode['data']['stubs'] = [];
 const ConversationTransition = createContext<string | undefined>(undefined);
@@ -39,10 +39,10 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
     const name = `Show hidden branch ${child.title}${stub?.beneath ? `, ${stub.beneath} more ${stub.beneath === 1 ? 'conversation' : 'conversations'} hidden beneath` : ''}`;
     // Focus the fold toggle first; the stub unmounts once the fold expands.
     return <Handle key={child.id} id={child.id} data-source={child.id} type="source" position={Position.Right} style={style}>
-      {stub && <HStack gap={0} className="fold-stub nodrag nopan"><Button label={name} tooltip={name} icon={<EyeSlashIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true }); data.toggle(t.id); }}><Text type="supporting" hasTabularNumbers>{1 + stub.beneath}</Text></Button></HStack>}
+      {stub && <HStack gap={0} className="fold-stub nodrag nopan" style={inkStyle(stub.ink)}><Button label={name} tooltip={name} icon={<EyeSlashIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true }); data.toggle(t.id); }}><Text type="supporting" hasTabularNumbers>{stub.address} · {1 + stub.beneath} folded</Text></Button></HStack>}
     </Handle>;
   };
-  return <VStack gap={2} padding={3} className="conversation-box" data-active={data.active} data-focused={data.focused} style={inkStyle(data.ink)}>
+  return <VStack gap={2} padding={3} className="conversation-box" data-active={data.active} data-focused={data.focused} data-folded={data.folded} style={inkStyle(data.ink)}>
     {t.parent && <Handle type="target" position={Position.Left} />}
     <HStack gap={1} vAlign="center" className="node-band">
       {data.childCount > 0 && <IconButton id={`fold-${t.id}`} className="nodrag nopan" label={`${data.folded ? 'Expand' : 'Collapse'} descendants of ${t.title}`} tooltip={`${data.folded ? 'Expand' : 'Collapse'} descendants`} aria-expanded={!data.folded} icon={data.folded ? <ChevronRightIcon /> : <ChevronDownIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); data.toggle(t.id); }} />}
@@ -56,7 +56,8 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
         const sources = data.sources.filter(child => child.messageId === m.id);
         return <VStack key={m.id} gap={0} className="node-message" data-message={m.id} data-role={m.role} style={sources.length ? { minHeight: `calc(var(--spacing-2) * ${sources.length + 1})` } : undefined}>
           <Text type="supporting" color={m.role === 'user' ? 'primary' : 'secondary'} className={m.role === 'user' ? 'question-bubble' : undefined} maxLines={3}><Text type="inherit" className="sr-only">{m.role === 'user' ? 'Question: ' : 'Answer: '}</Text>{m.text || (m.status === 'streaming' ? 'Thinking…' : 'No text.')}</Text>
-          {m.role === 'assistant' && m.status !== 'completed' && <Text type="supporting" color="secondary">{m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}</Text>}
+          {m.role === 'assistant' && m.status !== 'completed' && <Text type="supporting" className="node-status" data-status={m.status}>{m.status === 'failed' && <ExclamationTriangleIcon aria-hidden />}{m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}</Text>}
+          {m.role === 'assistant' && m.status === 'failed' && m === preview.at(-1) && preview.at(-2)?.role === 'user' && !data.active && <Button label="Retry reply" className="node-retry nodrag nopan" variant="secondary" size="sm" onClick={() => { document.getElementById(`open-${t.id}`)?.focus({ preventScroll: true }); data.retry(t.id); }} />}
           {m.role === 'assistant' && m.artifacts?.filter(a => a.kind !== 'visual' || a.status !== 'canceled').map(a => <Text key={a.id} type="supporting" color="secondary">{a.kind === 'video' ? `Video: ${a.title} · ${a.status === 'pending' ? 'creating…' : a.status === 'ready' ? (a.available === false ? 'unavailable' : 'ready') : a.status}` : <>{a.kind === 'visual' ? 'Visual' : 'Diagram'}: {a.title}{a.status === 'pending' ? ' · creating…' : a.status === 'failed' ? ' · unavailable' : ''}</>}</Text>)}
           {sources.map((child, index) => handle(child, { top: `${100 * (index + 1) / (sources.length + 1)}%` }))}
         </VStack>;
@@ -92,12 +93,13 @@ function MeasureHandles({ nodes }: { nodes: ConversationNode[] }) {
   return null;
 }
 
-export default function TreeOverview({ root, trees, previews, active, open, focus, focusControl, transition, save, saveViewport, menu, toolbar, selected, current, initialFolded, onFold, vim }: { vim?: boolean; toolbar?: ReactNode; saveViewport: (viewport: Viewport) => void; initialFolded?: string[]; onFold: (folded: string[]) => void; menu: (actions: MapActions) => ReactNode; root: string; trees: Summary[]; previews: Record<string, Preview>; active: string[]; open: Open; focus?: string; focusControl?: string; transition?: string; selected?: string; current?: string; save: (positions: Record<string, Point>) => void }) {
+export default function TreeOverview({ root, trees, previews, active, open, retry, focus, focusControl, transition, save, saveViewport, menu, toolbar, selected, current, initialFolded, onFold, vim }: { vim?: boolean; toolbar?: ReactNode; saveViewport: (viewport: Viewport) => void; initialFolded?: string[]; onFold: (folded: string[]) => void; menu: (actions: MapActions) => ReactNode; root: string; trees: Summary[]; previews: Record<string, Preview>; active: string[]; open: Open; retry: (id: string) => void; focus?: string; focusControl?: string; transition?: string; selected?: string; current?: string; save: (positions: Record<string, Point>) => void }) {
   const { mode } = useTheme();
   const flow = useRef<ReactFlowInstance<ConversationNode>>(null);
-  const callbacks = useRef({ open, save });
-  callbacks.current = { open, save };
+  const callbacks = useRef({ open, retry, save });
+  callbacks.current = { open, retry, save };
   const openNode = useCallback<Open>((id, source) => callbacks.current.open(id, source), []);
+  const retryNode = useCallback((id: string) => callbacks.current.retry(id), []);
   // Legacy views lived in localStorage; read once until the first batched save replaces them.
   const [savedViewport] = useState(() => {
     try { return trees.find(t => t.id === root)?.layout?.viewport ?? parseViewport(localStorage.getItem(`treetutor.viewport.${root}`)); } catch { return undefined; }
@@ -187,17 +189,21 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
     return path;
   }, [current, trees]);
   const addresses = useMemo(() => conversationAddresses(trees), [trees]);
+  const legend = [...addresses].flatMap(([id, address]) => {
+    const t = trees.find(t => t.id === id);
+    return t && (id === root || t.parent === root) ? [{ ...t, ...address }] : [];
+  });
   const desiredNodes = useMemo(() => hierarchy.map(({ conversation, sources, hidden, stubs }): ConversationNode => {
     const id = conversation.id;
-    return { id, type: 'conversation', hidden, position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, preview: previews[id], open: openNode, active: active.includes(id), focused: current === id, focus: focus === id && !hidden, focusControl: focus === id ? focusControl : undefined, childCount: sources.length, address: addresses.get(id)?.address ?? '1', ink: addresses.get(id)?.ink ?? 0, stubs: stubs.length ? stubs : noStubs, folded: folded.has(id), toggle } };
-  }), [hierarchy, previews, active, openNode, focus, focusControl, current, folded, toggle, addresses]);
+    return { id, type: 'conversation', hidden, position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, preview: previews[id], open: openNode, retry: retryNode, active: active.includes(id), focused: current === id, focus: focus === id && !hidden, focusControl: focus === id ? focusControl : undefined, childCount: sources.length, address: addresses.get(id)?.address ?? '1', ink: addresses.get(id)?.ink ?? 0, stubs: stubs.length ? stubs.map(stub => ({ ...stub, ...addresses.get(stub.child.id)! })) : noStubs, folded: folded.has(id), toggle } };
+  }), [hierarchy, previews, active, openNode, retryNode, focus, focusControl, current, folded, toggle, addresses]);
   useEffect(() => {
     setNodes(previous => {
       const byId = new Map(previous.map(node => [node.id, node]));
       return desiredNodes.map(node => {
         const old = byId.get(node.id);
         if (old && old.data.sources.length === node.data.sources.length && node.data.sources.every((source, i) => source === old.data.sources[i])) node.data.sources = old.data.sources;
-        if (old && old.data.stubs.length === node.data.stubs.length && node.data.stubs.every((stub, i) => stub.child === old.data.stubs[i].child && stub.beneath === old.data.stubs[i].beneath)) node.data.stubs = old.data.stubs;
+        if (old && old.data.stubs.length === node.data.stubs.length && node.data.stubs.every((stub, i) => stub.child === old.data.stubs[i].child && stub.beneath === old.data.stubs[i].beneath && stub.address === old.data.stubs[i].address && stub.ink === old.data.stubs[i].ink)) node.data.stubs = old.data.stubs;
         if (old && old.hidden === node.hidden && (Object.keys(node.data) as (keyof ConversationNode['data'])[]).every(key => old.data[key] === node.data[key])) return old;
         return { ...old, ...node, position: old?.position ?? node.position };
       });
@@ -260,6 +266,9 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
       {menu({ expand: () => setFolded(new Set()), collapse: () => setFolded(new Set([root])), keep: keepCurrent, canKeep: !!current && trees.some(t => t.id === current) })}
       {toolbar}
     </HStack>
+    <aside className="ink-legend" aria-label="Branch family inks" tabIndex={0}>
+      <ul>{legend.map(t => <li key={t.id} style={inkStyle(t.ink)}><span className="contents-dot" aria-hidden /><span>{t.address} {t.title}{t.id === root && ' · trunk'}</span></li>)}</ul>
+    </aside>
     <Text role="status" type="supporting" aria-live="polite" className="sr-only">{notice}</Text>
     <VStack className="tree-canvas" role="region" tabIndex={0} aria-label="Conversation tree overview" onWheelCapture={e => { if (e.ctrlKey || e.metaKey) e.stopPropagation(); }} onTouchStartCapture={e => { if (e.touches.length > 1) e.stopPropagation(); }} onKeyDown={e => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;

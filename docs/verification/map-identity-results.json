@@ -1,6 +1,6 @@
 {
-  "issue": "TreeTutor-nwx.4",
-  "date": "2026-11-13T01:02:49.893Z",
+  "issue": "TreeTutor-y36.7",
+  "date": "2026-11-13T02:11:49.119Z",
   "evidence": "Built app; agent-browser Chromium; synthetic transcripts and providers; no live inference",
   "references": [
     "map-reference-dark.png",
@@ -26,7 +26,7 @@
       "ground": "rgb(26, 22, 19)",
       "ink": "rgb(157, 186, 110)",
       "offset": "3px",
-      "outline": "rgb(157, 186, 110)",
+      "outline": "rgb(239, 230, 214)",
       "paper": "rgb(239, 230, 214)",
       "plainAnimated": 0,
       "plainWidth": "2px",
@@ -67,7 +67,7 @@
       "ground": "rgb(242, 238, 229)",
       "ink": "rgb(70, 100, 42)",
       "offset": "3px",
-      "outline": "rgb(70, 100, 42)",
+      "outline": "rgb(31, 26, 21)",
       "paper": "rgb(31, 26, 21)",
       "plainAnimated": 0,
       "plainWidth": "2px",
@@ -114,6 +114,6 @@
   ],
   "attachment": {
     "gap": 0,
-    "message": "09bee0d7-a481-445b-b146-8e0e71decfa4"
+    "message": "71aa7386-e811-4993-b741-0ea54c29ccca"
   }
 }

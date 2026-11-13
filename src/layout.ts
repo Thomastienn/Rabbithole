@@ -95,6 +95,12 @@ html { view-transition-name: none; }
 .focused-chat, .overview { display: flex; flex: 1; min-width: 0; min-height: 0; flex-direction: column; }
 .overview { position: relative; background: var(--color-background-body); }
 .map-toolbar { position: absolute; z-index: 5; bottom: var(--spacing-3); left: var(--spacing-3); border: thin solid var(--color-border); border-radius: var(--radius-element); background: var(--color-background-surface); }
+.ink-legend { position: absolute; z-index: 4; right: var(--spacing-4); bottom: var(--spacing-4); max-width: calc(100% - 16rem); max-height: 25%; overflow: auto; padding: var(--spacing-1) var(--spacing-2); background: var(--color-background-body); color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+.ink-legend ul { display: flex; flex-wrap: wrap; gap: var(--spacing-2) var(--spacing-4); margin: 0; padding: 0; list-style: none; }
+.ink-legend li { display: flex; align-items: baseline; gap: var(--spacing-2); overflow-wrap: anywhere; }
+.ink-legend .contents-dot { align-self: center; }
+.overview[data-chat-open=true] .ink-legend { display: none; }
+.overview :focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: var(--focus-outline-offset); }
 .empty-map { flex: 1; text-align: center; max-width: 28rem; margin-inline: auto; }
 .empty-map > button { color: var(--color-text-accent); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -281,10 +287,10 @@ html { view-transition-name: none; }
 }
 .conversation-box { width: var(--treetutor-map-node-width); border: thin solid var(--color-border); border-radius: var(--radius-element); background: var(--color-background-surface); overflow-wrap: anywhere; transition: border-color var(--duration-fast) ease-out; }
 .react-flow__node:hover .conversation-box { border-color: var(--color-text-secondary); }
-.conversation-box[data-focused=true] { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: var(--focus-outline-offset); }
+.conversation-box[data-focused=true] { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: var(--focus-outline-offset); }
 .conversation-box .node-band { margin: calc(-1 * var(--spacing-3)) calc(-1 * var(--spacing-3)) 0; padding: var(--spacing-1) var(--spacing-2); border-radius: calc(var(--radius-element) - 1px) calc(var(--radius-element) - 1px) 0 0; background: var(--ink); color: var(--ink-on); }
 .conversation-box .node-band :is(h2, button, .astryx-icon) { color: var(--ink-on); }
-.conversation-box .node-band :focus-visible { outline-color: var(--ink-on); }
+.conversation-box .node-band :focus-visible { outline-color: var(--treetutor-paper); outline-offset: var(--spacing-2); }
 .conversation-box .node-band .activity-dot, .conversation-box[data-active=true] .node-band .activity-dot { background: var(--ink-on); }
 .node-address { flex: none; color: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
 .conversation-box .node-title { flex: 0 1 auto; min-width: 0; justify-content: flex-start; padding-inline: var(--spacing-1); text-align: start; }
@@ -304,10 +310,14 @@ html { view-transition-name: none; }
 .node-message[data-role=user] { align-items: flex-end; }
 .node-message[data-role=user] .question-bubble { max-width: 85%; padding: var(--spacing-1) var(--spacing-2); }
 .node-message { position: relative; }
+.node-status { display: flex; align-items: center; gap: var(--spacing-1); color: var(--color-text-secondary); }
+.node-status[data-status=failed] { color: var(--color-error); }
+.node-status svg { flex: none; width: var(--spacing-4); height: var(--spacing-4); }
+.node-retry { align-self: flex-start; }
 .node-message .react-flow__handle { right: calc(-1 * var(--spacing-3)); }
 .fold-stub { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); display: flex; align-items: center; pointer-events: auto; }
-.fold-stub::before { content: ''; width: var(--spacing-5); border-top: var(--treetutor-branch-width) dashed var(--treetutor-branch-color); }
-.fold-stub button { background: var(--color-background-body); padding: var(--spacing-1); }
+.fold-stub::before { content: ''; width: var(--spacing-5); border-top: var(--treetutor-branch-width) dashed var(--ink); }
+.fold-stub button { background: var(--color-background-body); border: thin dashed var(--color-border-emphasized); padding: var(--spacing-1) var(--spacing-2); white-space: nowrap; color: var(--color-text-secondary); }
 .react-flow__edge-path { stroke: var(--ink, var(--treetutor-branch-color)); stroke-width: var(--treetutor-branch-width); stroke-linecap: round; }
 .react-flow__edge.branch-focused .react-flow__edge-path { stroke: var(--ink, var(--color-accent)); stroke-width: var(--treetutor-branch-focus-width); }
 .react-flow__edge-path.branch-new { animation: branch-draw var(--treetutor-branch-draw-duration) ease-out; }
@@ -322,6 +332,7 @@ section[role=alert] { background: var(--color-background-body); }
 .settings-panel h3 { font-size: var(--font-size-base); font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--color-text-secondary); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }
 @media (max-width: 48rem) {
+ .ink-legend { bottom: calc(2 * var(--spacing-3) + var(--spacing-10)); max-width: calc(100% - 2 * var(--spacing-4)); }
  .tree-workspace { flex-direction: column; }
  .contents { flex: none; width: 100%; max-height: 45dvh; border-inline-end: 0; border-block-end: thin solid var(--color-border); }
  .contents .contents-toggle { display: flex; flex: none; justify-content: flex-start; }

@@ -590,6 +590,12 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     } catch (e) { setDeleteError((e as Error).message); }
     finally { setDeleting(false); }
   }
+  async function retryFromMap(id: string) {
+    try {
+      const target: Tree = await api(`/api/trees/${id}`);
+      await send(target.messages.at(-2)?.text ?? '', target, true);
+    } catch (e) { setError((e as Error).message); }
+  }
   // retry streams over the latest failed reply; the question and composer draft are left alone.
   async function send(text: string, target = tree, retry = false) {
     if (!target || !text.trim() || savingModel === target.id || state?.active.includes(target.id) || turns.current.has(target.id)) return;
@@ -845,7 +851,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
           onDoubleClick={() => setMapWidth(resetMapWidth(workspaceWidth))}
           onKeyDown={e => { const next = keyMapWidth(shownMapWidth, e.key, workspaceWidth, e.shiftKey); if (next === undefined) return; e.preventDefault(); setMapWidth(next); }} />}
         {root && state && <section id="learning-tree-map" className="overview" data-chat-open={!overview} aria-label="Learning tree">
-          <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
+          <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} retry={retryFromMap} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
         </section>}
         </section>
         </section>
