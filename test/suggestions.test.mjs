@@ -327,8 +327,11 @@ test('the same suggestion call fills one global knowledge graph that survives re
   await env.post(`/api/trees/${a.id}/messages`, { text: 'Continue' });
   await env.settled();
   for (const call of env.calls.filter(c => !c.system.startsWith('You mark'))) assert.doesNotMatch(call.system + call.input, /Peterson|knownConcepts|"concepts"/);
-  const sent = JSON.parse(env.suggestionCalls().at(-1).input.slice(env.suggestionCalls().at(-1).input.indexOf('\n') + 1)).knownConcepts;
-  assert.deepEqual(sent, { Concurrency: ['Mutual exclusion', "Peterson's algorithm"], 'operating systems': ['Mutual exclusion'] });
+  const last = env.suggestionCalls().at(-1).input, newline = last.indexOf('\n');
+  // The known topics go out with the instruction to reuse them and keep topics broad and few.
+  assert.match(last.slice(0, newline), /keep topics broad and few/);
+  assert.match(last.slice(0, newline), /reuse a known topic whenever one fits/);
+  assert.deepEqual(JSON.parse(last.slice(newline + 1)).knownConcepts, { Concurrency: ['Mutual exclusion', "Peterson's algorithm"], 'operating systems': ['Mutual exclusion'] });
 });
 
 test('state reports the concept-name list size so Settings can warn past about 2k tokens', async t => {
