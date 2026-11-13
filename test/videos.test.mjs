@@ -404,7 +404,8 @@ test('inline video exposes bounded live progress and its position, keeps inputs 
     const pending = await artifact(tree.id);
     assert.equal(pending.status, 'pending');
     assert.equal(pending.position, 8);
-    assert.equal(pending.phase, 'creating');
+    assert.equal(pending.phase, 'planning');
+    assert.ok(pending.startedAt <= Date.now() && pending.phaseStartedAt >= pending.startedAt);
     for (const key of ['progress', 'input', 'attempt']) assert.equal(pending[key], undefined);
     const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
     assert.equal(saved.messages.at(-1).text, 'Before.\n\n\nAfter.');
@@ -484,10 +485,13 @@ test('render sandbox hides home and app data, blocks network and confines writes
 test('one real short sandboxed Remotion render publishes a ready MP4', { skip: !sandboxed && 'bwrap or Remotion browser missing', timeout: 240000 }, async () => {
   const { result, row, published, dir, phases } = await job(undefined);
   assert.equal(result, null);
-  // The real renderer reports progress in 5% steps, ending at 100%.
-  assert.deepEqual(phases[0], ['rendering']);
-  assert.ok(phases.length > 2 && phases.every(([phase]) => phase === 'rendering'));
-  assert.deepEqual(phases.at(-1), ['rendering', 1]);
+  // Phases run in order; planning counts characters, rendering reports real 1% steps of a known frame total, ending at 100%.
+  const order = phases.map(([phase]) => phase).filter((phase, i, all) => phase !== all[i - 1]);
+  assert.deepEqual(order, ['planning', 'narrating', 'rendering', 'saving']);
+  assert.ok(phases.find(([phase]) => phase === 'planning')[2].characters > 0);
+  const rendering = phases.filter(([phase]) => phase === 'rendering');
+  assert.ok(rendering.length > 2 && rendering.every(([, , detail]) => detail.frames === 60));
+  assert.deepEqual(rendering.at(-1).slice(0, 2), ['rendering', 1]);
   assert.equal(row.status, 'ready');
   assert.equal(row.duration, 2);
   assert.equal(published, true);
@@ -543,7 +547,7 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     assert.equal(response.input, undefined);
     assert.equal(response.attempt, undefined);
     assert.equal(response.position, jobA.position);
-    assert.equal(response.phase, 'creating');
+    assert.equal(response.phase, 'planning');
     assert.equal(response.progress, undefined);
     const retried = env.store.artifact(a.id, jobA.id);
     assert.equal(retried.status, 'pending');

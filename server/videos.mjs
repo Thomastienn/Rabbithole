@@ -132,7 +132,9 @@ export async function generateVideo({ provider, selection, store, dir, artifact,
         if (controller.signal.aborted) return;
         if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
         if (event.type === 'status') status = event.status;
-        if ([...items.values()].reduce((n, v) => n + v.length, 0) > MAX_SOURCE * 2) controller.abort(new Error('Video composition exceeds 64 KiB.'));
+        const written = [...items.values()].reduce((n, v) => n + v.length, 0);
+        onPhase('planning', undefined, { characters: written });
+        if (written > MAX_SOURCE * 2) controller.abort(new Error('Video composition exceeds 64 KiB.'));
       }, () => {}, controller.signal)]);
     } catch { if (!controller.signal.aborted) throw new Error('Video provider failed to generate a composition.'); }
     if (controller.signal.aborted) throw controller.signal.reason;
@@ -141,6 +143,7 @@ export async function generateVideo({ provider, selection, store, dir, artifact,
     clearTimeout(timer);
     const speechTimer = setTimeout(() => controller.abort(new Error('Video narration timed out.')), 120000 + script.length * 30);
     let timing;
+    onPhase('narrating');
     try {
       const narration = await Promise.race([aborted, narrate(script, controller.signal)]);
       timing = await stageNarration(workspace, narration, controller.signal);
@@ -151,8 +154,10 @@ export async function generateVideo({ provider, selection, store, dir, artifact,
     if (controller.signal.aborted) throw controller.signal.reason;
     const output = join(workspace, 'out', `${randomUUID()}.mp4`);
     clearTimeout(timer);
-    onPhase('rendering');
-    const result = await render(workspace, output, controller.signal, progress => onPhase('rendering', progress));
+    const frames = { frames: timing.durationInFrames };
+    onPhase('rendering', undefined, frames);
+    const result = await render(workspace, output, controller.signal, progress => onPhase('rendering', progress, frames));
+    onPhase('saving');
     await validateOutput(workspace, output);
     const duration = Number(result?.durationInFrames) / Number(result?.fps);
     if (!Number.isFinite(duration) || duration <= 0 || Math.abs(duration - timing.durationInFrames / 30) > 1 / 30) throw new Error('Rendered video is unreadable.');

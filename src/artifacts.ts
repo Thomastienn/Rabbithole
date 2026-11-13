@@ -2,7 +2,7 @@ import { safeDiagramSource } from './diagramSource.ts';
 
 // Ready videos with a missing file carry available: false.
 export type ArtifactSummary = { id: string; kind?: 'mermaid' | 'video' | 'visual'; title: string; status: 'pending' | 'ready' | 'failed' | 'canceled' | 'interrupted'; available?: false };
-export type Artifact = ArtifactSummary & { conversation: string; message: string; kind: 'mermaid' | 'video' | 'visual'; description: string; source: string | null; error: string | null; created: number; position?: number | null; phase?: 'creating' | 'rendering'; progress?: number };
+export type Artifact = ArtifactSummary & { conversation: string; message: string; kind: 'mermaid' | 'video' | 'visual'; description: string; source: string | null; error: string | null; created: number; position?: number | null; phase?: 'planning' | 'creating' | 'narrating' | 'rendering' | 'saving'; progress?: number; characters?: number; frames?: number; startedAt?: number; phaseStartedAt?: number };
 export type DiagramState = { status: 'pending' } | { status: 'ready'; url: string } | { status: 'failed' };
 
 const KINDS = ['mermaid', 'video', 'visual'];

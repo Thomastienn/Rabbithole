@@ -11,5 +11,5 @@ const browserExecutable = join(modules, '.remotion/chrome-headless-shell/linux64
 let reported = 0;
 const composition = await selectComposition({ serveUrl, id: 'Video', browserExecutable, logLevel: 'error' });
 await renderMedia({ serveUrl, composition, browserExecutable, codec: 'h264', outputLocation: output, concurrency: 1, logLevel: 'error',
-  onProgress: ({ progress }) => { const step = Math.floor(progress * 20) / 20; if (step > reported) console.log(JSON.stringify({ progress: reported = step })); } });
+  onProgress: ({ progress }) => { const step = Math.floor(progress * 100) / 100; if (step > reported) console.log(JSON.stringify({ progress: reported = step })); } });
 console.log(JSON.stringify({ durationInFrames: composition.durationInFrames, fps: composition.fps }));
