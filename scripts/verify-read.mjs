@@ -9,6 +9,7 @@ import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { fakeNarration } from '../test/fake-narration.mjs';
+import { nestedFrames } from '../test/one-frame.mjs';
 
 const run = promisify(execFile), dir = mkdtempSync(join(tmpdir(), 'tt-read-'));
 const session = (await run('agent-browser', ['session', 'id', '--scope', 'worktree', '--prefix', 'read'])).stdout.trim();
@@ -65,6 +66,8 @@ const app = createApp({ store, dir, provider, auth: { status: () => ({ connected
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const shot = async name => { const path = `docs/verification/read-${name}.png`; await ev(`document.activeElement.blur()`); await b('mouse', 'move', '5', '5'); await wait(`![...document.querySelectorAll('[role=tooltip]')].some(e => e.checkVisibility())`); await b('screenshot', path); screenshots.push(path); };
 const top = () => ev(`document.querySelector('.focused-chat .astryx-chat-layout').scrollTo(0, 0)`);
+// One frame per object: no frame inside a frame, and the reading surfaces sit on tone with no frame of their own.
+const oneFrame = async label => { const nested = await ev(nestedFrames('.focused-chat, .contents, .band-drawer')); assert.deepEqual(nested, [], `${label}: frame inside a frame`); return nested; };
 const intoView = selector => ev(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({ block: 'center' })`);
 try {
   await b('set', 'viewport', '1440', '900');
@@ -96,6 +99,28 @@ try {
     await click('Inherited from How do fungi trade?');
     assert.equal(await ev(`document.querySelector('.inherited-body dd').textContent`), 'Plants and fungi');
     await click('Inherited from How do fungi trade?');
+    await b('find', 'role', 'button', 'click', '--name', 'Mermaid source', '--exact');
+    await wait(`document.querySelector('.diagram-source')?.checkVisibility()`);
+    await oneFrame(`${mode} reading`);
+    const surfaces = await ev(`(() => { const s = q => getComputedStyle(document.querySelector(q)); const frame = q => { const c = s(q); return [c.borderTopWidth, c.borderInlineStartWidth, c.boxShadow].join(' '); };
+      return { inherited: frame('.inherited-context'), code: frame('.reply-md pre'), card: frame('.diagram-card'), source: frame('.diagram-source'), cell: [s('.reply-md td').borderTopWidth, s('.reply-md td').borderInlineStartWidth, s('.reply-md td').borderBottomWidth], contents: s('.contents-row[aria-current]').boxShadow, contentsFill: s('.contents-row[aria-current]').backgroundColor, chip: [s('.model-picker').borderTopWidth, s('.model-picker').boxShadow] }; })()`);
+    for (const k of ['inherited', 'code', 'card', 'source']) assert.equal(surfaces[k], '0px 0px none', `${mode} ${k} carries no frame`);
+    assert.deepEqual(surfaces.cell, ['0px', '0px', '1px'], `${mode} table rows are separated by one rule`);
+    assert.equal(surfaces.contents, 'none'); assert.notEqual(surfaces.contentsFill, 'rgba(0, 0, 0, 0)', `${mode} current Contents row is a fill`);
+    assert.deepEqual(surfaces.chip, ['0px', 'none'], `${mode} model chip has no outline`);
+    await b('find', 'role', 'button', 'click', '--name', 'Mermaid source', '--exact');
+    await b('find', 'role', 'button', 'click', '--name', 'Inherited from How do fungi trade?', '--exact');
+    await wait(`document.querySelector('.inherited-body')?.checkVisibility()`);
+    await ev(`document.querySelector('.reply-md u.suggestion[tabindex]').click(); true`);
+    await wait(`document.querySelector('.branch-form input')`);
+    // The field's focus ring is a focus outline, not a frame; check the resting form.
+    await ev(`document.activeElement.blur(); true`);
+    await oneFrame(`${mode} branch form`);
+    const form = await ev(`(() => { const s = getComputedStyle(document.querySelector('.branch-form')); return { form: s.borderTopWidth, field: [...document.querySelectorAll('.branch-form *')].filter(e => { const c = getComputedStyle(e); return parseFloat(c.borderTopWidth) > 0 && !/, 0\\)$|transparent/.test(c.borderTopColor) || c.boxShadow !== 'none'; }).length }; })()`);
+    assert.deepEqual(form, { form: '1px', field: 0 }, `${mode} branch form shows one frame`);
+    await b('focus', '.branch-form input'); await b('press', 'Escape'); await wait(`!document.querySelector('.branch-form')`);
+    await click('Inherited from How do fungi trade?');
+    check(`${mode}: one frame per object on Read (inherited context, code, diagram card and source, table, Contents row, model chip, branch form)`, { surfaces, form });
     // Check actual composited theme colours for text, controls and paper focus on the reading surface.
     const contrasts = await ev(`(() => {
       const c = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
@@ -135,6 +160,8 @@ try {
   await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Walk through one exchange'); await b('press', 'Enter');
   await wait(`document.querySelector('.reply-status[data-status=streaming]') && document.querySelector('.visual[data-state=pending]')`);
   const streaming = await ev(`({ status: document.querySelector('.reply-status[data-status=streaming]').textContent, busy: document.querySelector('[role=log]').getAttribute('aria-busy'), skeleton: getComputedStyle(document.querySelector('.visual[data-state=pending] .visual-shimmer')).height, phase: document.querySelector('.video-inline[data-state=pending] [role=status]').textContent, stop: !!document.querySelector('[aria-label=Stop]'), modelDisabled: document.querySelector('.model-picker').matches(':disabled, [aria-disabled=true]') })`);
+  await oneFrame('streaming with Stop and failed video');
+  assert.deepEqual(await ev(`(() => { const s = getComputedStyle(document.querySelector('[aria-label=Stop]')); return [s.borderTopWidth, s.boxShadow]; })()`), ['0px', 'none'], 'Stop carries no outline in the composer');
   assert.equal(streaming.status, 'Responding…'); assert.equal(streaming.busy, 'true'); assert.equal(streaming.skeleton, '180px'); assert.match(streaming.phase, /Rendering frames…/); assert.ok(streaming.stop && streaming.modelDisabled, JSON.stringify(streaming));
   for (const mode of ['light', 'dark']) {
     await b('set', 'media', mode, 'reduced-motion');

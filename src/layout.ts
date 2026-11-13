@@ -124,7 +124,7 @@ html { view-transition-name: none; }
 .contents-label { padding: calc(2 * var(--treetutor-module)) var(--treetutor-module) 6px; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
 .contents-list { list-style: none; margin: 0; padding: 0; }
 .contents .contents-row { display: flex; width: 100%; height: auto; min-height: calc(4 * var(--treetutor-module)); justify-content: flex-start; gap: var(--treetutor-module); padding: 6px var(--treetutor-module) 6px calc(var(--treetutor-module) + var(--depth, 0) * 2 * var(--treetutor-module)); text-align: start; font-weight: 400; }
-.contents-row[aria-current] { background: var(--color-background-surface); box-shadow: inset 0 0 0 1px var(--color-border); font-weight: 600; }
+.contents-row[aria-current] { background: var(--color-background-surface); font-weight: 600; }
 .contents-row > span:first-child > span { flex: 1; min-width: 0; }
 .contents-row-body { display: flex; width: 100%; align-items: center; gap: var(--treetutor-module); }
 .contents-address { flex: none; min-width: 34px; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
@@ -142,7 +142,7 @@ html { view-transition-name: none; }
 .band-drawer { min-height: 100%; background: var(--color-background-muted); }
 .drawer-views { display: flex; flex-direction: column; padding: var(--treetutor-module); border-block-end: thin solid var(--color-border); }
 .band-drawer .view-tab { width: 100%; justify-content: flex-start; font-weight: 400; }
-.band-drawer .view-tab[aria-current=page] { background: var(--color-background-surface); box-shadow: inset 0 0 0 1px var(--color-border); font-weight: 600; }
+.band-drawer .view-tab[aria-current=page] { background: var(--color-background-surface); font-weight: 600; }
 .band-drawer .contents { flex: 1; width: 100%; border: 0; background: none; }
 .band-drawer .drawer-settings { margin: var(--treetutor-module); width: auto; }
 .band-drawer :focus-visible, .contents :focus-visible, .focused-chat [data-artifact]:focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: calc(-1 * var(--spacing-1)); }
@@ -219,7 +219,7 @@ html { view-transition-name: none; }
 .reply-md pre:is(:hover, :focus-within) .code-copy { opacity: 1; }
 @media (hover: none) { .code-copy { opacity: 1; } }
 .chat-title .rename-title { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: 0; }
-.focused-chat .model-picker { flex-shrink: 1; min-width: 0; max-width: 100%; height: 24px; border: thin solid var(--color-border-emphasized); font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
+.focused-chat .model-picker { flex-shrink: 1; min-width: 0; max-width: 100%; height: 24px; background: var(--color-overlay-hover); font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
 .focused-chat .model-picker .chat-model { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .passage { position: relative; align-self: stretch; }
 .reply-md { display: block; min-width: 0; overflow-wrap: anywhere; }
@@ -232,13 +232,14 @@ html { view-transition-name: none; }
 .reply-md ol { list-style-type: decimal; }
 .reply-md li + li { margin-block-start: var(--spacing-1); }
 .reply-md blockquote { margin-inline: 0; padding-inline-start: var(--spacing-3); border-inline-start: thin solid var(--color-border-emphasized); color: var(--color-text-secondary); }
-.reply-md pre { position: relative; margin-inline: 0; padding: 12px 48px 12px 16px; border: thin solid var(--color-border); background: var(--color-background-muted); border-radius: var(--radius-container); white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply-md pre { position: relative; margin-inline: 0; padding: 12px 48px 12px 16px; background: var(--color-background-muted); border-radius: var(--radius-container); white-space: pre-wrap; overflow-wrap: anywhere; }
 .reply-md pre > code { display: block; padding: 0; background: transparent; white-space: inherit; font-size: var(--font-size-sm); }
 .reply-md code .astryx-text { font-family: inherit; white-space: inherit; }
 .reply-md a { color: var(--color-text-primary); text-decoration: underline; text-underline-offset: var(--spacing-1); }
 .reply-md .md-table { max-width: 100%; overflow-x: auto; }
 .reply-md table { width: 100%; border-collapse: collapse; }
-.reply-md :is(th, td) { padding: 8px 12px; border: thin solid var(--color-border); text-align: start; }
+.reply-md :is(th, td) { padding: 8px 12px; border-bottom: thin solid var(--color-border); text-align: start; }
+.reply-md th { border-bottom-color: var(--color-border-emphasized); color: var(--color-text-secondary); }
 .reply-md th { background: var(--color-overlay-hover); font-weight: 600; }
 .reply-md math[display=block] { padding-block: var(--spacing-2); max-width: 100%; overflow-x: auto; }
 .reply-md [data-reveal], mark { background: var(--treetutor-selection); color: var(--color-text-primary); border-radius: var(--radius-inner); }
@@ -260,7 +261,7 @@ html { view-transition-name: none; }
 .visual-frame:not([data-ready]) { position: absolute; inset: 0; height: 100%; opacity: 0; }
 .visual-actions { position: absolute; inset: 0 0 auto auto; gap: 2px; padding: 2px; border: thin solid var(--color-border); background: var(--color-background-popover); border-radius: var(--radius-container); opacity: 0; }
 .visual:is(:hover, :focus-within) .visual-actions { opacity: 1; }
-.diagram-card { align-self: stretch; min-width: 0; max-width: 100%; border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.diagram-card { align-self: stretch; min-width: 0; max-width: 100%; border-radius: var(--radius-container); background: var(--color-background-surface); color: var(--color-text-primary); overflow-wrap: anywhere; }
 .diagram-card h3 { font-size: 14px; font-weight: 600; }
 .diagram-open { display: block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 .diagram-open img { display: block; max-width: 100%; height: auto; }
@@ -319,7 +320,7 @@ html { view-transition-name: none; }
 .visual-viewer p { margin-block-end: 16px; color: var(--color-text-secondary); }
 .viewer-close { position: absolute; inset: 8px 8px auto auto; }
 .video-frame:focus-visible { outline: medium solid var(--color-text-primary); outline-offset: var(--spacing-1); }
-.inherited-context { border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); padding-inline: 12px; color: var(--color-text-primary); }
+.inherited-context { border-radius: var(--radius-container); background: var(--color-background-surface); padding-inline: 12px; color: var(--color-text-primary); }
 .inherited-context .astryx-collapsible-trigger { padding: 10px 0; color: inherit; font-weight: 600; }
 .inherited-body { margin: 0; padding: 0 var(--treetutor-module) calc(2 * var(--treetutor-module)); display: grid; gap: var(--spacing-1); font-size: var(--font-size-sm); }
 .inherited-body dt { color: var(--color-text-secondary); font-weight: 500; margin-block-start: var(--spacing-2); }
@@ -334,6 +335,8 @@ html { view-transition-name: none; }
 .branch-form { margin-top: var(--spacing-2); border: thin solid var(--treetutor-paper); border-radius: var(--radius-container); background: var(--color-background-popover); }
 .branch-passage { flex: 1; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-family: var(--treetutor-font-reading); }
 .branch-question { flex: 1; min-width: 0; }
+/* One frame: the paper sheet is the edge; its field keeps only its focus ring. */
+.branch-form .astryx-text-input:not(:focus-within) { border-color: transparent; box-shadow: none; }
 .branch-send { flex: none; }
 .astryx-alert-dialog h2 { margin-block-end: var(--spacing-2); }
 .astryx-alert-dialog, .merge-dialog { background: var(--color-background-popover); }

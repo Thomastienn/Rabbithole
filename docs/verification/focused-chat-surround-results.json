@@ -1,16 +1,16 @@
 {
-  "checkedAt": "2026-11-13T05:15:49.925Z",
+  "checkedAt": "2026-11-13T21:11:21.155Z",
   "evidence": "Built app, SQLite, HTTP and Chromium; synthetic provider, not live inference.",
   "pass": true,
   "steps": [
     "dark: inherited passage, question and snapshot remain exact in muted reading type; Token stats start hidden; the overflow menu shows and hides the per-reply usage",
-    "dark: title Archivo 700, composer model, inherited context disclosure box, Send the only filled button, diagram card seam + 4px, transcript starts at top (94px) with 96px empty below; docs/verification/focused-chat-reference-dark.png",
+    "dark: title Archivo 700, composer model, borderless tonal inherited context and diagram card (container radius), no frame inside a frame, Send the only filled button, transcript starts at top (94px) with 99px empty below; docs/verification/focused-chat-reference-dark.png",
     "divider seam highlights paper ink on hover",
     "return-to-parent row opens the parent conversation",
     "light: inherited passage, question and snapshot remain exact in muted reading type; Token stats start hidden; the overflow menu shows and hides the per-reply usage",
-    "light: title Archivo 700, composer model, inherited context disclosure box, Send the only filled button, diagram card seam + 4px, transcript starts at top (94px) with 96px empty below; docs/verification/focused-chat-reference-light.png",
+    "light: title Archivo 700, composer model, borderless tonal inherited context and diagram card (container radius), no frame inside a frame, Send the only filled button, transcript starts at top (94px) with 99px empty below; docs/verification/focused-chat-reference-light.png",
     "narrow 390px: chat fills the workspace, composer visible; Shift+Enter newline, Enter sends, Stop ends the reply",
     "narrow 320×568: long draft scrolls; input and Send stay reachable without horizontal overflow",
-    "narrow 320×568: long parent title and exact source passage wrap in the inherited context without horizontal overflow; return-to-parent stays in the one-row header"
+    "narrow 320×568: long parent title and exact source passage wrap in the inherited context without horizontal overflow; return-to-parent stays in the one-row header; the failed reply banner holds Retry with no second frame"
   ]
 }

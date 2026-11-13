@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-13T12:02:14.770Z",
+  "checkedAt": "2026-11-13T21:11:15.313Z",
   "evidence": "Built app, SQLite/HTTP/SSE, Chromium; synthetic providers, controlled renderer, local ffmpeg playback fixture. No native provider or narrated-generation claim.",
   "pass": true,
   "steps": [
@@ -17,6 +17,32 @@
         "map": 440,
         "prose": 640,
         "size": "17px"
+      }
+    },
+    {
+      "name": "dark: one frame per object on Read (inherited context, code, diagram card and source, table, Contents row, model chip, branch form)",
+      "evidence": {
+        "surfaces": {
+          "card": "0px 0px none",
+          "cell": [
+            "0px",
+            "0px",
+            "1px"
+          ],
+          "chip": [
+            "0px",
+            "none"
+          ],
+          "code": "0px 0px none",
+          "contents": "none",
+          "contentsFill": "rgb(36, 31, 26)",
+          "inherited": "0px 0px none",
+          "source": "0px 0px none"
+        },
+        "form": {
+          "field": 0,
+          "form": "1px"
+        }
       }
     },
     {
@@ -40,7 +66,7 @@
             "sel": ".reply-copy"
           },
           {
-            "ratio": 13.188860447897916,
+            "ratio": 10.739525838516144,
             "sel": ".model-picker"
           },
           {
@@ -64,7 +90,7 @@
             "sel": ".video-controls button"
           },
           {
-            "ratio": 13.188860447897916,
+            "ratio": 10.739525838516144,
             "sel": ".chat-model"
           },
           {
@@ -111,6 +137,32 @@
       }
     },
     {
+      "name": "light: one frame per object on Read (inherited context, code, diagram card and source, table, Contents row, model chip, branch form)",
+      "evidence": {
+        "surfaces": {
+          "card": "0px 0px none",
+          "cell": [
+            "0px",
+            "0px",
+            "1px"
+          ],
+          "chip": [
+            "0px",
+            "none"
+          ],
+          "code": "0px 0px none",
+          "contents": "none",
+          "contentsFill": "rgb(250, 247, 240)",
+          "inherited": "0px 0px none",
+          "source": "0px 0px none"
+        },
+        "form": {
+          "field": 0,
+          "form": "1px"
+        }
+      }
+    },
+    {
       "name": "light: measured text/control AA contrast, keyboard paper focus, token stats/context and map toggle",
       "evidence": {
         "contrasts": [
@@ -131,7 +183,7 @@
             "sel": ".reply-copy"
           },
           {
-            "ratio": 16.12967619122046,
+            "ratio": 14.415725030372768,
             "sel": ".model-picker"
           },
           {
@@ -155,7 +207,7 @@
             "sel": ".video-controls button"
           },
           {
-            "ratio": 16.12967619122046,
+            "ratio": 14.415725030372768,
             "sel": ".chat-model"
           },
           {

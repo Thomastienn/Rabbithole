@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
+import { nestedFrames } from '../test/one-frame.mjs';
 
 const run = promisify(execFile), session = `chat-surround-${process.pid}`;
 const b = async (...args) => (await run('agent-browser', ['--session', session, ...args], { env: { ...process.env, AGENT_BROWSER_ARGS: '--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4' } })).stdout;
@@ -54,10 +55,12 @@ const look = () => ev(`(() => {
   const out = {
     titleFont: css(h2).fontFamily, titleWeight: css(h2).fontWeight,
     meta: css(chat.querySelector('.astryx-chat-composer .chat-model')).color, secondary: tone('--color-text-secondary'), primary: tone('--color-text-primary'), paper: tone('--treetutor-paper'), accent: tone('--color-accent', 'backgroundColor'),
-    ctxRule: [css(ctx).borderInlineStartWidth, css(ctx).borderInlineStartColor], ctxTop: css(ctx).borderTopWidth, accentLine: tone('--color-accent'),
+    ctxFrame: [css(ctx).borderTopWidth, css(ctx).borderInlineStartWidth, css(ctx).boxShadow], ctxTone: css(ctx).backgroundColor, accentLine: tone('--color-accent'),
     sendBg: css(send).backgroundColor, filled: [...chat.querySelectorAll('button')].filter(n => n !== send && n.checkVisibility() && css(n).backgroundColor === css(send).backgroundColor).map(n => n.getAttribute('aria-label') ?? n.textContent),
     field: css(chat.querySelector('.astryx-chat-composer').firstElementChild).borderTopWidth,
-    card: [css(chat.querySelector('.diagram-card')).borderTopColor, css(chat.querySelector('.diagram-card')).backgroundColor, css(chat.querySelector('.diagram-card')).borderRadius],
+    card: [css(chat.querySelector('.diagram-card')).borderTopWidth, css(chat.querySelector('.diagram-card')).backgroundColor, css(chat.querySelector('.diagram-card')).borderRadius],
+    radius: tone('--radius-container', 'borderRadius'),
+    chip: [css(chat.querySelector('.model-picker')).borderTopWidth, css(chat.querySelector('.model-picker')).boxShadow],
     seam: tone('--color-border', 'borderTopColor'), surface: css(chat).backgroundColor,
     gapBelow: log.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom,
     gapAbove: log.querySelector('.inherited-context').getBoundingClientRect().top - log.getBoundingClientRect().top,
@@ -78,22 +81,24 @@ try {
     assert.match(t.titleFont, /Archivo/, `${mode}: title in Archivo`);
     assert.equal(t.titleWeight, '700', `${mode}: title weight 700`);
     assert.equal(t.meta, t.primary, `${mode}: composer model button in paper ink`);
-    assert.equal(t.ctxRule[0], '1px', `${mode}: inherited context has a hairline border`);
-    assert.equal(t.ctxRule[1], t.seam, `${mode}: inherited context rule in the theme seam colour`);
-    assert.equal(t.ctxTop, '1px', `${mode}: inherited context uses the mockup disclosure box`);
+    assert.deepEqual(t.ctxFrame, ['0px', '0px', 'none'], `${mode}: inherited context has no frame`);
+    assert.notEqual(t.ctxTone, t.surface, `${mode}: inherited context sits on a tonal step`);
     assert.equal(t.sendBg, t.accent, `${mode}: Send filled in the theme seam colour`);
     assert.deepEqual(t.filled, [], `${mode}: Send is the only filled button`);
     assert.equal(t.field, '1px', `${mode}: composer has a hairline border`);
     assert.equal(t.blur, false, `${mode}: dock uses an opaque slate surface without blur`);
     assert.equal(t.statsOpen, 'false', `${mode}: token stats are collapsed by default`);
-    assert.equal(t.card[0], t.seam, `${mode}: diagram card hairline seam`);
-    assert.equal(t.card[2], '4px', `${mode}: diagram card 4px corners`);
+    assert.equal(t.card[0], '0px', `${mode}: diagram card has no frame`);
+    assert.notEqual(t.card[1], t.surface, `${mode}: diagram card sits on a tonal step`);
+    assert.deepEqual(t.chip, ['0px', 'none'], `${mode}: composer model chip has no second outline`);
+    assert.deepEqual(await ev(nestedFrames('.focused-chat')), [], `${mode}: no frame inside a frame`);
+    assert.equal(t.card[2], t.radius, `${mode}: diagram card wears the container radius`);
     assert.ok(t.gapAbove < 150, `${mode}: short conversation starts at the top (${t.gapAbove}px), empty space below`);
     assert.ok(t.gapBelow > 50, `${mode}: short conversation leaves space below its reply (${t.gapBelow}px)`);
     await click('Inherited from Mutex basics');
     await wait(`document.querySelector('.inherited-body')?.checkVisibility()`);
-    const quote = await ev(`(() => { const n = document.querySelector('.inherited-body dd'), s = getComputedStyle(n); return { color: s.color, font: s.fontFamily, values: [...n.parentElement.querySelectorAll('dd')].map(n => n.textContent) }; })()`);
-    assert.equal(quote.color, t.secondary); assert.match(quote.font, /Literata/);
+    const quote = await ev(`(() => { const n = document.querySelector('.inherited-body dd'), s = getComputedStyle(n); return { color: [...n.parentElement.querySelectorAll('dd')].map(d => getComputedStyle(d).color), font: s.fontFamily, values: [...n.parentElement.querySelectorAll('dd')].map(n => n.textContent) }; })()`);
+    assert.deepEqual(quote.color, [t.primary, t.secondary, t.secondary], 'the passage reads in paper ink, the rest muted'); assert.match(quote.font, /Literata/);
     assert.deepEqual(quote.values, ['shared state', 'Why must shared state be guarded?', 'The learner asked what a mutex is.\nThe tutor said a mutex lets one thread at a time touch shared state.']);
     await b('mouse', 'move', '5', '5'); await ev(`document.activeElement?.blur(); true`);
     await ev(`(() => { const n = document.querySelector('.focused-chat .astryx-chat-layout'); n.scrollTop = 0; n.dispatchEvent(new Event('scroll')); return true; })()`);
@@ -108,7 +113,7 @@ try {
     await b('find', 'role', 'menuitem', 'click', '--name', 'Hide token stats', '--exact');
     await wait(`!document.querySelector('.chat-stats-body')`);
     steps.push(`${mode}: inherited passage, question and snapshot remain exact in muted reading type; Token stats start hidden; the overflow menu shows and hides the per-reply usage`);
-    steps.push(`${mode}: title Archivo 700, composer model, inherited context disclosure box, Send the only filled button, diagram card seam + 4px, transcript starts at top (${Math.round(t.gapAbove)}px) with ${Math.round(t.gapBelow)}px empty below; ${file}`);
+    steps.push(`${mode}: title Archivo 700, composer model, borderless tonal inherited context and diagram card (container radius), no frame inside a frame, Send the only filled button, transcript starts at top (${Math.round(t.gapAbove)}px) with ${Math.round(t.gapBelow)}px empty below; ${file}`);
     return t;
   };
   const dark = await shoot('dark');
@@ -145,6 +150,8 @@ try {
   await b('press', 'Enter');
   await wait(`[...document.querySelectorAll('.focused-chat [role=status]')].some(n => n.textContent === 'Responding…')`);
   await wait(`document.querySelector('.focused-chat button[aria-label="Stop"], .focused-chat button[aria-label*="Stop"]')`);
+  assert.deepEqual(await ev(`(() => { const s = getComputedStyle(document.querySelector('.focused-chat button[aria-label="Stop"]')); return [s.borderTopWidth, s.boxShadow]; })()`), ['0px', 'none'], 'Stop carries no outline inside the composer');
+  assert.deepEqual(await ev(nestedFrames('.focused-chat')), [], 'streaming: no frame inside a frame');
   await b('find', 'role', 'button', 'click', '--name', 'Stop');
   await wait(`![...document.querySelectorAll('.focused-chat [role=status]')].some(n => n.textContent === 'Responding…')`);
   steps.push('narrow 390px: chat fills the workspace, composer visible; Shift+Enter newline, Enter sends, Stop ends the reply');
@@ -160,21 +167,25 @@ try {
   store.rename(root.id, longTitle);
   const longChild = store.branch(store.tree(root.id), { messageId: reply, start: 0, end: sourceText.length, text: sourceText, question: 'Long source example' }, 'Same parent, longer source.');
   store.message(longChild.id, 'user', 'Long source example', 'completed');
+  store.message(longChild.id, 'assistant', 'Partial answer', 'failed');
   await b('reload');
   await b('wait', '[aria-label="Open Long source example"]');
   await click('Open Long source example');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Long source example'`);
   // The header keeps one row; the long parent title and exact source passage live in the inherited context.
+  await ev(`document.querySelector('.focused-chat .astryx-chat-layout').scrollTo(0, 0); true`);
   await b('find', 'text', 'Inherited from', 'click');
   await wait(`document.querySelector('.inherited-body')?.checkVisibility()`);
   const parent = await ev(`(() => { const box = document.querySelector('.inherited-context'), passage = box.querySelector('.inherited-body dd'), css = getComputedStyle(passage); return { trigger: box.querySelector('[aria-expanded]').textContent, passage: passage.textContent, height: passage.getBoundingClientRect().height, line: parseFloat(css.lineHeight), fits: box.scrollWidth <= box.clientWidth && document.documentElement.scrollWidth <= innerWidth, back: document.querySelector('.chat-header [aria-label="Return to parent conversation"]')?.checkVisibility() }; })()`);
   assert.equal(parent.trigger, `Inherited from ${longTitle}`);
   assert.equal(parent.passage, sourceText);
   assert.ok(parent.fits && parent.back && parent.height > parent.line * 2, JSON.stringify(parent));
+  await wait(`[...document.querySelectorAll('.focused-chat .failure-banner button')].some(e => e.textContent.trim() === 'Retry reply')`);
+  assert.deepEqual(await ev(nestedFrames('.focused-chat')), [], 'failure banner: Retry rests on tone inside the one rose frame');
   const placeholder = await ev(`(() => { const p = document.querySelector('.astryx-chat-composer-input > [aria-hidden=true]').getBoundingClientRect(), m = document.querySelector('.astryx-chat-composer .model-picker').getBoundingClientRect(); return { placeholderBottom: p.bottom, modelTop: m.top }; })()`);
   assert.ok(placeholder.placeholderBottom <= placeholder.modelTop, `wrapped placeholder clears the footer: ${JSON.stringify(placeholder)}`);
   await b('screenshot', join('docs', 'verification', 'focused-chat-long-parent-light.png'));
-  steps.push('narrow 320×568: long parent title and exact source passage wrap in the inherited context without horizontal overflow; return-to-parent stays in the one-row header');
+  steps.push('narrow 320×568: long parent title and exact source passage wrap in the inherited context without horizontal overflow; return-to-parent stays in the one-row header; the failed reply banner holds Retry with no second frame');
   writeFileSync('docs/verification/focused-chat-surround-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Built app, SQLite, HTTP and Chromium; synthetic provider, not live inference.', pass: true, steps }, null, 2) + '\n');
   console.log(JSON.stringify({ pass: true, steps }, null, 2));
 } catch (e) { console.error(steps); await b('screenshot', '/tmp/surround-fail.png').catch(() => {}); throw e; }

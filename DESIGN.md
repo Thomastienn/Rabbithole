@@ -337,14 +337,14 @@ Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%
 
 ### Contents outline (signature)
 - A 264px Deep Panel. The head shows the tree title as a headline, with a count of conversations and figures below it.
-- A **Contents** list of rows shows the address (tabular, min 34px, Paper Muted), an 8px family ink dot and the title, ellipsised. The current row becomes Raised Bark with a seam hairline and weight 600.
+- A **Contents** list of rows shows the address (tabular, min 34px, Paper Muted), an 8px family ink dot and the title, ellipsised. The current row is a Raised Bark fill at weight 600, with no ring.
 - A **Figures** list numbers every diagram, visual and video as "Fig n" with its kind.
 - A **Context meter** sits at the foot behind a seam: a 4px bar on Seam filled with Paper Muted, over tabular token counts.
 
 ### Reading column
 - The reply is set in Literata 17px/1.7 at the 640px measure, with no bubble. The learner's question is a bubble in the theme's neutral colour, aligned right (3px, 8px 12px padding).
 - **Suggestions** are dotted 2px Paper Muted underlines. A branched passage is underlined solid in its family's ink and followed by an inked **address chip**.
-- **Composer:** Raised Bark, a 4px container corner and a Seam Strong hairline. On focus, the border and a 1px ring turn Paper. Send is a Leaf Green square at 3px.
+- **Composer:** Raised Bark, a 4px container corner and a Seam Strong hairline. On focus, the border and a 1px ring turn Paper. Send is a Leaf Green square at 3px. The model chip and Stop inside it rest on a hover-tone fill with no outline of their own.
 - **Streaming:** an 8px leaf caret after the last written block, and a pulsing 8px leaf dot in the reply status.
 
 ### Learning tree map (signature)
@@ -358,7 +358,8 @@ Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%
 - **List:** the same volumes as seam-separated 48px rows, with the date column hidden when the layout is narrow.
 
 ### Cards / Containers
-- Diagram cards, the Knowledge field and detail panel, code blocks and inherited context all use 4px corners, a Seam border and either Raised Bark or Deep Panel. They have no shadow and 12–24px of internal padding.
+- **One frame per object.** A frame (a border or ring) appears once per object, and an outlined container never holds another outlined container. Inside a frame, parts are separated by tone (Deep Panel, Raised Bark, hover fills) or spacing. Inputs, the composer, floating sheets and failure banners keep their stroke; the rows, fields, buttons and cards inside them do not. One-sided rules (separators, table row lines, the inherited passage's ink rule) are not frames, and focus outlines are unchanged.
+- On Read, inherited context and diagram cards sit on Raised Bark and code blocks (and a diagram's source) on Deep Panel, with container corners, no border, no shadow and 12–24px of internal padding. Tables in replies separate rows with one Seam line under each row (Seam Strong under the header). The branch form is one paper-edged sheet; its question field shows only its focus ring. The visual action bar is one floating sheet with ghost buttons.
 - Visuals and videos sit inside the reply with no card chrome. Their action bars appear on hover or focus, and always on touch.
 
 ### Inputs / Fields
