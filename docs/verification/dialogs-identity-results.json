@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-y36.10",
-  "checkedAt": "2026-11-13T06:04:59.515Z",
+  "checkedAt": "2026-11-13T09:17:12.989Z",
   "evidence": "Production build, agent-browser Chromium, isolated SQLite and HTTP; synthetic providers and study. No native provider inference.",
   "appearances": {
     "dark": {
@@ -45,7 +45,7 @@
         "clear": true,
         "label": "locksQuestion about this passage",
         "popover": "rgb(45, 38, 32)",
-        "radius": "4px",
+        "radius": "12px",
         "shadow": "none",
         "width": 320
       }
@@ -92,7 +92,7 @@
         "clear": true,
         "label": "locksQuestion about this passage",
         "popover": "rgb(255, 255, 255)",
-        "radius": "4px",
+        "radius": "12px",
         "shadow": "none",
         "width": 320
       }

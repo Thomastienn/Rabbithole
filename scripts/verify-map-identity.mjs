@@ -73,7 +73,7 @@ try {
       const band=e=>getComputedStyle(document.querySelector(e+' .node-band')).backgroundColor, addr=e=>document.querySelector(e+' .node-address').textContent;
       return {ground:getComputedStyle(document.querySelector('.react-flow')).backgroundColor,radius:getComputedStyle(box).borderRadius,outline:getComputedStyle(box).outlineColor,offset:getComputedStyle(box).outlineOffset,accent,stroke:getComputedStyle(edge).stroke,width:getComputedStyle(edge).strokeWidth,plainWidth:getComputedStyle(plain).strokeWidth,cap:getComputedStyle(plain).strokeLinecap,titleWeight:getComputedStyle(box.querySelector('h2')).fontWeight,plainAnimated:plain.getAnimations().length,ink,paper,band:band(${JSON.stringify(node(peterson.id))}),childBand:band(${JSON.stringify(node(memory.id))}),trunkBand:band(${JSON.stringify(node(root.id))}),childStroke:getComputedStyle(document.querySelector('.react-flow__edge[data-id="${memory.id}"] path')).stroke,addresses:[${[root, heap, peterson, memory].map(t => `addr(${JSON.stringify(node(t.id))})`).join(',')}]};
     })()`);
-    assert.equal(styles.radius, '3px'); assert.equal(styles.offset, '3px');
+    assert.equal(styles.radius, '8px'); assert.equal(styles.offset, '3px');
     assert.equal(styles.outline, styles.paper);
     // Peterson is the trunk's second family (1.2, leaf ink); its child shares the ink, the trunk wears paper.
     assert.deepEqual(styles.addresses, ['1', '1.1', '1.2', '1.2.1']);

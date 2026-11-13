@@ -90,7 +90,7 @@ try {
   await b('wait', '.saved-chat-title');
   await b('mouse', 'move', '1300', '450');
   assert.equal(await ev(`${nav}.scrollHeight > ${nav}.clientHeight`), true, 'Library list overflows');
-  const css = await ev(`(() => { const s = [...document.styleSheets].flatMap(x => [...x.cssRules]).map(r => r.cssText).join('\\n'); return { radius: s.includes('border-radius: 999px'), track: /library-panel::-webkit-scrollbar \\{[^}]*background: transparent/.test(s), resting: getComputedStyle(${nav}).overflowY }; })()`);
+  const css = await ev(`(() => { const s = [...document.styleSheets].flatMap(x => [...x.cssRules]).map(r => r.cssText).join('\\n'); return { radius: s.includes('border-radius: var(--radius-full)'), track: /library-panel::-webkit-scrollbar \\{[^}]*background: transparent/.test(s), resting: getComputedStyle(${nav}).overflowY }; })()`);
   assert.deepEqual(css, { radius: true, track: true, resting: 'auto' }, 'rounded thumb, transparent track, scroll never disabled');
   await b('screenshot', join('docs', 'verification', 'tree-search-scroll-rest-dark.png'));
   await b('hover', '.library-panel');

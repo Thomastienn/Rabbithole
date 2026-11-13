@@ -28,9 +28,10 @@ test('every mockup colour token is a theme token with the same light and dark va
   assert.match(css, /--treetutor-band: #33432a/);
 });
 
-test('type faces, 3px corners and the 8px module', () => {
+test('type faces, soft corners and the 8px module', () => {
   assert.match(css, /--font-family-body: Archivo,/);
   assert.match(css, /--treetutor-font-reading: Literata,/);
-  assert.match(css, /--radius-element: 3px/);
+  for (const [token, value] of Object.entries({ inner: '6px', element: '8px', container: '12px', page: '16px', chat: '16px', full: '9999px' }))
+    assert.match(css, new RegExp(`--radius-${token}: ${value};`), `--radius-${token}`);
   assert.match(css, /--treetutor-module: 8px/);
 });

@@ -23,8 +23,8 @@ export const paperbackTheme = defineTheme({
     heading: { family: 'Archivo', fallbacks: '"Segoe UI", Helvetica, Arial, sans-serif' },
     code: { family: 'ui-monospace', fallbacks: '"SF Mono", Menlo, Consolas, monospace' },
   },
-  // 3px corners.
-  radius: { base: 3, multiplier: 1 },
+  // Soft corners: 8px elements.
+  radius: { base: 8, multiplier: 1 },
   icons: paperbackIcons,
   // Neutral bumps secondary text to its own greys in these states; keep the paper palette instead.
   components: Object.fromEntries([['item', 'selected'], ['tree-list-item', 'selected'], ['file-input', 'mode:dropzone'], ['citation', 'variant:number']]
@@ -55,11 +55,11 @@ export const paperbackTheme = defineTheme({
     '--treetutor-branch-draw-duration': '350ms',
   },
   tokens: {
-    '--radius-element': '3px',
-    '--radius-container': '4px',
-    '--radius-inner': '2px',
-    '--radius-page': '4px',
-    '--radius-chat': '4px',
+    '--radius-element': '8px',
+    '--radius-container': '12px',
+    '--radius-inner': '6px',
+    '--radius-page': '16px',
+    '--radius-chat': '16px',
 
     // Paper focus ring.
     '--focus-outline-color': [bark, paper],

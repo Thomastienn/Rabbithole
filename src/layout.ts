@@ -35,7 +35,7 @@ html { view-transition-name: none; }
 @supports selector(::-webkit-scrollbar) {
  .library-panel, .library-panel:is(:hover, :focus-within, [data-scrolling]) { scrollbar-width: auto; scrollbar-color: auto; }
  .library-panel::-webkit-scrollbar { width: 10px; background: transparent; }
- .library-panel::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: transparent padding-box; }
+ .library-panel::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: var(--radius-full); background: transparent padding-box; }
  .library-panel:is(:hover, :focus-within, [data-scrolling])::-webkit-scrollbar-thumb { background-color: var(--color-border-emphasized); }
 }
 .library-head { margin-bottom: calc(4 * var(--treetutor-module)); }
@@ -50,7 +50,7 @@ html { view-transition-name: none; }
 .shelf .volume:hover { border-color: var(--color-border-emphasized); }
 .shelf .volume[data-current=true] { box-shadow: 0 0 0 3px var(--color-background-body), 0 0 0 5px var(--treetutor-paper); }
 .shelf .volume[data-renaming=true] { grid-column: span 2; grid-template-rows: auto; padding: 12px; }
-.shelf .volume-band { display: flex; flex-direction: column; min-height: 0; padding: 12px; border-radius: 2px 2px 0 0; background: var(--treetutor-paper); --color-text-primary: var(--treetutor-paper-ink); --color-text-secondary: var(--treetutor-paper-ink); --color-overlay-hover: transparent; --color-overlay-pressed: transparent; color: var(--treetutor-paper-ink); }
+.shelf .volume-band { display: flex; flex-direction: column; min-height: 0; padding: 12px; border-radius: calc(var(--radius-element) - 1px) calc(var(--radius-element) - 1px) 0 0; background: var(--treetutor-paper); --color-text-primary: var(--treetutor-paper-ink); --color-text-secondary: var(--treetutor-paper-ink); --color-overlay-hover: transparent; --color-overlay-pressed: transparent; color: var(--treetutor-paper-ink); }
 /* The title button covers the whole volume, so the spine and date open it too; the menu sits above it. */
 .shelf .saved-chat-title { position: static; transform: none; height: auto; padding: 0 20px 0 0; font-size: 17px; line-height: 1.15; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; white-space: normal; overflow-wrap: anywhere; text-align: start; justify-content: flex-start; align-items: flex-start; color: var(--treetutor-paper-ink); }
 .shelf .saved-chat-title::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
@@ -58,7 +58,7 @@ html { view-transition-name: none; }
 .shelf .volume-date { margin-top: auto; font-weight: 600; color: var(--treetutor-paper-ink); }
 .volume-meta { display: grid; gap: var(--treetutor-module); padding: 10px 12px 12px; }
 .volume-spine { display: flex; flex-wrap: wrap; gap: 2px; }
-.volume-spine i { flex: 0 0 4px; height: 6px; border-radius: 1px; background: var(--ink); }
+.volume-spine i { flex: 0 0 4px; height: 6px; border-radius: var(--radius-full); background: var(--ink); }
 .shelf .tree-row-actions { position: absolute; top: 4px; right: 4px; z-index: 1; color: var(--treetutor-paper-ink); }
 .library-list { border-top: 1px solid var(--color-border); }
 .library-list .volume { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: calc(2 * var(--treetutor-module)); min-height: 48px; border-bottom: 1px solid var(--color-border); }
@@ -159,7 +159,7 @@ html { view-transition-name: none; }
 .chat-heading-row > button:not(.model-picker) { flex-shrink: 0; }
 .chat-stats-body { font-variant-numeric: tabular-nums; max-height: 20dvh; overflow: auto; padding-block: var(--spacing-1) var(--spacing-2); padding-inline: var(--spacing-2); overflow-wrap: anywhere; }
 .bubble-tint-swatch { width: var(--spacing-5); aspect-ratio: 1; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); }
-.question-bubble { background: var(--question-bubble-tint); color: var(--color-text-primary); border-radius: var(--radius-element); padding: var(--spacing-2) var(--spacing-3); overflow-wrap: anywhere; }
+.question-bubble { background: var(--question-bubble-tint); color: var(--color-text-primary); border-radius: var(--radius-chat); padding: var(--spacing-2) var(--spacing-3); overflow-wrap: anywhere; }
 /* Read (mockup): the focused chat owns the centre at a 640px book measure; header, list and composer share it. */
 .chat-reply, .chat-reply > * { max-width: 100%; }
 .focused-chat .astryx-chat-message-list { width: 100%; max-width: calc(640px + 6 * var(--treetutor-module)); margin-inline: auto; padding: calc(4 * var(--treetutor-module)) calc(3 * var(--treetutor-module)) calc(5 * var(--treetutor-module)); box-sizing: border-box; }
