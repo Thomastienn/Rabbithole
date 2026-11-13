@@ -21,7 +21,6 @@ import VideoCard from './VideoCard';
 import VisualFrame, { type PartAction, type VisualBranch } from './VisualFrame';
 import CopyButton from './CopyButton';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from './SettingsWindow';
-import { bubbleTints, savedTint, type BubbleTint } from './bubbleTint';
 import type { Appearance, ThemeChoice } from './appearance';
 import { DEFAULT_MAP_WIDTH, MIN_MAP_WIDTH, clampMapWidth, keyMapWidth, maxMapWidth, resetMapWidth, savedMapWidth } from './mapWidth';
 import KnowledgePage, { type Graph } from './KnowledgePage';
@@ -238,10 +237,6 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
   const streams = useRef(new Map<string, AbortController>());
   // Only this boolean is stored, per browser and app origin; unreadable storage means off.
   const [vim, setVim] = useState(() => { try { return localStorage.getItem('treetutor.vim') === 'on'; } catch { return false; } });
-  const [bubbleTint, setBubbleTint] = useState<BubbleTint>(() => {
-    try { return savedTint(localStorage.getItem('treetutor.bubble-tint')); }
-    catch { return 'neutral'; }
-  });
   const [mapWidth, setMapWidth] = useState(() => { try { return savedMapWidth(localStorage.getItem('treetutor.map-width')); } catch { return DEFAULT_MAP_WIDTH; } });
   const [workspaceWidth, setWorkspaceWidth] = useState(() => window.innerWidth / remPx());
   useEffect(() => { try { localStorage.setItem('treetutor.map-width', String(mapWidth)); } catch {} }, [mapWidth]);
@@ -878,7 +873,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     {modelError && <HStack className="failure-banner" role="alert" gap={2}><Text>{modelError}</Text><Button label="Retry loading models" variant="secondary" size="sm" onClick={() => void loadModels()} /></HStack>}
     {models && !models.length && <Text color="secondary">No model is available. Open Settings to connect one.</Text>}
   </VStack>;
-  return <VStack gap={0} style={{ height: '100dvh', '--question-bubble-tint': bubbleTints.find(t => t.id === bubbleTint)!.color } as CSSProperties} onKeyDown={e => {
+  return <VStack gap={0} style={{ height: '100dvh' }} onKeyDown={e => {
     if (e.key !== 'Escape' || e.defaultPrevented) return;
     if ((e.target as Element).closest('.delete-dialog')) { e.preventDefault(); e.stopPropagation(); cancelDelete(); }
     else if (tab === 'settings' && !(e.target as Element).closest('dialog, [role=listbox], [role=menu]')) { e.preventDefault(); closeSettings(); }
@@ -1011,7 +1006,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
       <main hidden={tab !== 'videos'} className="knowledge-panel" aria-label="Videos">
         {tab === 'videos' && <><HStack padding={3} className="knowledge-header"><Button id="return-from-videos" label="Return to learning tree" variant="ghost" icon={<ArrowUturnLeftIcon />} onClick={() => { setTab('learning'); requestAnimationFrame(() => document.querySelector<HTMLElement>(overview ? '.map-toolbar button' : '#rename-conversation')?.focus()); }} /></HStack><VideoLibrary api={api} activity={activeKey} /></>}
       </main>
-      <SettingsWindow request={tab === 'settings' ? settings : undefined} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} appearance={appearance} setAppearance={setAppearance} theme={theme} setTheme={setTheme} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
+      <SettingsWindow request={tab === 'settings' ? settings : undefined} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} appearance={appearance} setAppearance={setAppearance} theme={theme} setTheme={setTheme} />
     </HStack>
     <AlertDialog className="delete-dialog" width="min(420px, calc(100vw - 2rem))" data-failed={!!deleteError} isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;

@@ -8,7 +8,7 @@ import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { RadioList, RadioListItem } from '@astryxdesign/core/RadioList';
 import { SideNav, SideNavItem } from '@astryxdesign/core/SideNav';
 import { Icon } from '@astryxdesign/core/Icon';
-import { ArrowUturnLeftIcon, ChartBarIcon, CpuChipIcon, LinkIcon, SwatchIcon } from '@heroicons/react/24/outline';
+import { ArrowUturnLeftIcon, ChartBarIcon, CheckIcon, CpuChipIcon, LinkIcon, SwatchIcon } from '@heroicons/react/24/outline';
 import EndpointSettings from './EndpointSettings';
 import SuggestionSettings from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
@@ -16,7 +16,6 @@ import SmartSettings from './SmartSettings';
 import ModelProfiles, { AutomaticSuggestions } from './ModelProfiles';
 import UsageDashboard from './UsageDashboard';
 import type { Model } from './models';
-import { bubbleTints, type BubbleTint } from './bubbleTint';
 import { appearances, themeChoices, type Appearance, type ThemeChoice } from './appearance';
 import { Theme } from '@astryxdesign/core/theme';
 import { themes } from './astryx-themes';
@@ -47,7 +46,7 @@ function Section({ title, description, children }: { title: string; description?
   </VStack>;
 }
 
-export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, conceptNameTokens, auth, signIn, vim, setVim, appearance, setAppearance, theme, setTheme, bubbleTint, setBubbleTint }: {
+export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, conceptNameTokens, auth, signIn, vim, setVim, appearance, setAppearance, theme, setTheme }: {
   request?: SettingsRequest;
   close: () => void;
   api: (path: string, body?: unknown) => Promise<any>;
@@ -64,8 +63,6 @@ export default function SettingsWindow({ request, close, api, models, providers,
   setAppearance: (next: Appearance) => void;
   theme: ThemeChoice;
   setTheme: (next: ThemeChoice) => void;
-  bubbleTint: BubbleTint;
-  setBubbleTint: (tint: BubbleTint) => void;
 }) {
   const [tab, setTab] = useState<SettingsTab>('interface');
   const [authError, setAuthError] = useState('');
@@ -117,28 +114,20 @@ export default function SettingsWindow({ request, close, api, models, providers,
         </RadioList>
       </Section>
       <Divider />
-      <Section title="Theme" description="Paper and ink colours for the whole app, in your appearance's light or dark variant. Saved in this browser.">
-        <RadioList label="Theme" isLabelHidden value={theme} onChange={value => setTheme(value as ThemeChoice)}>
-          {themeChoices.map(t => <RadioListItem key={t.id} value={t.id} label={t.label} startContent={
-            // Each card wears its own theme, so it shows that theme's bubble, accent and branch-family inks.
+      <Section title="Theme" description="Colours for the whole app, including your question bubbles and the four branch inks. Shown in your appearance's variant. Saved in this browser.">
+        <fieldset className="theme-tiles"><legend className="sr-only">Theme</legend>
+          {themeChoices.map(t => <label key={t.id} className="theme-choice">
+            <input className="sr-only" type="radio" name="theme" value={t.id} checked={theme === t.id} onChange={() => setTheme(t.id)} />
+            {/* Each tile wears its own theme: ground, question bubble, a reply line, the action colour and the four branch inks. */}
             <Theme theme={themes[t.id]} mode={appearance}>
-              <HStack aria-hidden="true" gap={1} vAlign="center" className="theme-swatch" data-theme-swatch={t.id}>
-                <i className="theme-swatch-bubble" style={{ background: bubbleTints.find(b => b.id === bubbleTint)!.color }} />
-                <i style={{ background: 'var(--color-accent)' }} />
-                {[1, 2, 3, 4].map(n => <i key={n} style={{ background: `var(--treetutor-ink-${n})` }} />)}
-              </HStack>
-            </Theme>} />)}
-        </RadioList>
-      </Section>
-      <Divider />
-      <Section title="Question bubbles" description="Choose a tint for your questions. Saved in this browser; follows your appearance.">
-        <RadioList label="Bubble tint" isLabelHidden value={bubbleTint} onChange={value => setBubbleTint(value as BubbleTint)}>
-          {bubbleTints.map(tint => <RadioListItem key={tint.id} value={tint.id} label={tint.label} startContent={<HStack aria-hidden="true" className="bubble-tint-swatch" style={{ background: tint.color }} />} />)}
-        </RadioList>
-        <VStack gap={2} role="group" aria-label="Question bubble preview">
-          <Text type="supporting" color="secondary">Preview</Text>
-          <HStack hAlign="end"><Text className="question-bubble">How does this connect to what I already know?</Text></HStack>
-        </VStack>
+              <span aria-hidden="true" className="theme-tile" data-theme-swatch={t.id}>
+                <i className="theme-tile-bubble" /><i className="theme-tile-line" />
+                <span className="theme-tile-inks"><i style={{ background: 'var(--color-accent)' }} />{[1, 2, 3, 4].map(n => <i key={n} style={{ background: `var(--treetutor-ink-${n})` }} />)}</span>
+              </span>
+            </Theme>
+            <HStack gap={1} vAlign="center" className="theme-choice-name"><Text weight="semibold">{t.label}</Text>{theme === t.id && <Icon icon={CheckIcon} size="sm" />}</HStack>
+          </label>)}
+        </fieldset>
       </Section>
       <Divider />
       <Section title="Keyboard">

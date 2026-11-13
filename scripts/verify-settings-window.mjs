@@ -89,7 +89,8 @@ try {
     assert.match(look[mode].font, /^"?Archivo/, `${mode} Archivo`);
     assert.equal(look[mode].caps, 'all-small-caps', `${mode} small-caps labels`);
     for (const [name, value] of Object.entries(look[mode].contrast)) assert.ok(value >= 4.5, `${mode} ${name} contrast ${value} below AA`);
-    assert.ok(look[mode].controls.length >= 9, 'radio and checkbox indicators measured');
+    // Three Appearance radios plus the Vim checkbox; theme tiles are native radios marked by ring and check.
+    assert.ok(look[mode].controls.length >= 4, 'radio and checkbox indicators measured');
     for (const c of look[mode].controls) assert.ok(c.ratio >= 3, `${mode} ${c.control} boundary contrast ${c.ratio} below AA`);
     await b('focus', '#settings-return'); await b('press', 'Shift+Tab'); await b('press', 'Tab');
     look[mode].ring = await ev(`getComputedStyle(document.activeElement).outlineColor`);

@@ -162,11 +162,19 @@ html { view-transition-name: none; }
 .chat-header { padding: calc(var(--treetutor-module) / 2) calc(2 * var(--treetutor-module)); flex: none; max-height: 40dvh; overflow: auto; border-bottom: thin solid var(--color-border); }
 .chat-heading-row > button:not(.model-picker) { flex-shrink: 0; }
 .chat-stats-body { font-variant-numeric: tabular-nums; max-height: 20dvh; overflow: auto; padding-block: var(--spacing-1) var(--spacing-2); padding-inline: var(--spacing-2); overflow-wrap: anywhere; }
-.bubble-tint-swatch { width: var(--spacing-5); aspect-ratio: 1; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); }
-.theme-swatch { padding: var(--spacing-1) var(--spacing-2); background: var(--color-background-surface); border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); }
-.theme-swatch > i { width: var(--spacing-3); aspect-ratio: 1; border-radius: var(--radius-full); }
-.theme-swatch > .theme-swatch-bubble { width: var(--spacing-6); border-radius: var(--radius-inner); border: thin solid var(--color-border); }
-.question-bubble { background: var(--question-bubble-tint); color: var(--color-text-primary); border-radius: var(--radius-chat); padding: var(--spacing-2) var(--spacing-3); overflow-wrap: anywhere; }
+/* Theme tiles (mockup Settings): each wears its own theme; the checked one gets a paper ring and a check. */
+.theme-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: var(--spacing-4); margin: 0; padding: 0; border: 0; min-width: 0; }
+.theme-choice { position: relative; display: grid; gap: var(--spacing-2); cursor: pointer; }
+.theme-tile { display: grid; gap: var(--spacing-2); height: 5.5rem; padding: var(--spacing-3); border-radius: var(--radius-element); background: var(--color-background-body); box-shadow: inset 0 0 0 1px var(--color-border); }
+.theme-tile > i { display: block; border-radius: var(--radius-chat); }
+.theme-tile-bubble { justify-self: end; width: 64%; height: 1.125rem; background: var(--color-neutral); }
+.theme-tile-line { width: 80%; height: 0.375rem; background: var(--color-text-primary); opacity: .55; }
+.theme-tile-inks { display: flex; gap: 0.375rem; align-self: end; }
+.theme-tile-inks > i { width: 0.625rem; height: 0.625rem; border-radius: var(--radius-full); }
+.theme-tile-inks > i:first-child { width: 1.375rem; border-radius: var(--radius-inner); }
+.theme-choice-name svg { color: var(--color-text-accent); }
+.theme-choice input:checked ~ * .theme-tile, .theme-choice input:focus-visible ~ * .theme-tile { outline: 2px solid var(--treetutor-paper); outline-offset: 3px; }
+.question-bubble { background: var(--color-neutral); color: var(--color-text-primary); border-radius: var(--radius-chat); padding: var(--spacing-2) var(--spacing-3); overflow-wrap: anywhere; }
 /* Read (mockup): the focused chat owns the centre at a 640px book measure; header, list and composer share it. */
 .chat-reply, .chat-reply > * { max-width: 100%; }
 .focused-chat .astryx-chat-message-list { width: 100%; max-width: calc(640px + 6 * var(--treetutor-module)); margin-inline: auto; padding: calc(4 * var(--treetutor-module)) calc(3 * var(--treetutor-module)) calc(5 * var(--treetutor-module)); box-sizing: border-box; }

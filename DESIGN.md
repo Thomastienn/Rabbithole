@@ -243,7 +243,7 @@ The palette is a warm bark-and-paper neutral, a single moss band, and four equal
 - **Rust Ink** (rust-ink): series ink 3.
 - **Lichen Ink** (lichen-ink): series ink 4.
 
-The series inks fill Astryx's hue slots so that tints, badges and usage-chart series follow the world: yellow = amber, green = leaf, pink = rust, blue = lichen. Each ink has a low-alpha wash (light `24` / dark `2e` alpha), which supplies the question-bubble tint presets (Neutral, Amber, Lichen, Rust, Leaf).
+The series inks fill Astryx's hue slots so that soft fills, badges and usage-chart series follow the world: yellow = amber, green = leaf, pink = rust, blue = lichen. Each ink has a low-alpha wash (light `24` / dark `2e` alpha) for badges and soft fills. The question bubble always takes the theme's neutral colour; it has no picker of its own.
 
 ### Neutral
 - **Bark Ground** (bark-ground): the page ground, the reading column and the open map canvas. It is also the text colour on paper and on inks in dark mode.
@@ -342,7 +342,7 @@ Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%
 - A **Context meter** sits at the foot behind a seam: a 4px bar on Seam filled with Paper Muted, over tabular token counts.
 
 ### Reading column
-- The reply is set in Literata 17px/1.7 at the 640px measure, with no bubble. The learner's question is a tinted bubble aligned right (3px, 8px 12px padding, tint chosen from the five presets).
+- The reply is set in Literata 17px/1.7 at the 640px measure, with no bubble. The learner's question is a bubble in the theme's neutral colour, aligned right (3px, 8px 12px padding).
 - **Suggestions** are dotted 2px Paper Muted underlines. A branched passage is underlined solid in its family's ink and followed by an inked **address chip**.
 - **Composer:** Raised Bark, a 4px container corner and a Seam Strong hairline. On focus, the border and a 1px ring turn Paper. Send is a Leaf Green square at 3px.
 - **Streaming:** an 8px leaf caret after the last written block, and a pulsing 8px leaf dot in the reply status.
@@ -388,5 +388,5 @@ Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%
 - **Don't** use rose red for deletion, warnings or emphasis. It means something failed.
 - **Don't** introduce a second action hue, or use blue anywhere as an accent or a focus colour.
 - **Don't** add a fifth series ink or assign inks by topic. The four-ink cycle is the identity.
-- **Don't** put tutor replies in bubbles or cards. Only the learner's question is tinted.
+- **Don't** put tutor replies in bubbles or cards. Only the learner's question sits in a bubble.
 - **Don't** make the interface childish or gamified, a generic SaaS dashboard, or neon hacker-dark, and don't let decoration compete with reply text.

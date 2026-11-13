@@ -1,4 +1,4 @@
-// Bubble tint presets and Mermaid palette (TreeTutor-nwx.11), in both appearances.
+// Question bubble colour (TreeTutor-2li.3) and Mermaid palette (TreeTutor-nwx.11), in both appearances.
 // Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to docs/verification/.
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -33,7 +33,6 @@ await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
 mkdirSync('docs/verification', { recursive: true });
 
-const tints = ['neutral', 'yellow', 'blue', 'pink', 'green'];
 const ready = `document.querySelectorAll('.diagram-card[data-state=ready]').length === 2`;
 // Rendered question text against its bubble fill composited over the chat surface.
 const bubbleContrast = `(() => { const rgba = c => { const n = c.match(/[\\d.]+/g).map(Number); return [n[0], n[1], n[2], n[3] ?? 1]; };
@@ -44,7 +43,9 @@ const bubbleContrast = `(() => { const rgba = c => { const n = c.match(/[\\d.]+/
   const [x, y] = [lum(text), lum(bg)].sort((p, q) => q - p); return { fill: s.backgroundColor, ratio: (x + 0.05) / (y + 0.05) }; })()`;
 const series = `['yellow', 'blue', 'pink', 'green'].map(h => { const el = document.createElement('i'); el.style.color = 'var(--color-text-' + h + ')'; document.querySelector('.diagram-card').append(el); const c = getComputedStyle(el).color; el.remove(); return c; })`;
 const svgs = `[...document.querySelectorAll('.diagram-card .diagram-open img')].map(i => decodeURIComponent(i.src.split(',')[1]))`;
-const open = async (appearance, tint) => {
+const neutral = `(() => { const el = document.createElement('i'); el.style.backgroundColor = 'var(--color-neutral)'; document.querySelector('#root').append(el); const c = getComputedStyle(el).backgroundColor; el.remove(); return c; })()`;
+// A tint saved by older versions must be ignored.
+const open = async (appearance, tint = 'pink') => {
   await b('eval', `localStorage.setItem('treetutor.appearance', '${appearance}'); localStorage.setItem('treetutor.bubble-tint', '${tint}'); true`);
   await b('reload');
   await wait(`document.querySelector('[aria-label="Open How do fungi trade?"]')`);
@@ -58,13 +59,13 @@ try {
   await b('open', origin);
   for (const appearance of ['dark', 'light']) {
     const rows = results[appearance] = {};
-    for (const tint of tints) {
+    for (const tint of ['pink', 'purple', 'bogus']) {
       await open(appearance, tint);
       rows[tint] = await ev(bubbleContrast);
-      assert.ok(rows[tint].ratio >= 4.5, `${appearance} ${tint}: question text ${rows[tint].ratio.toFixed(2)}:1`);
+      assert.equal(rows[tint].fill, await ev(neutral), `${appearance}: saved tint ${tint} ignored, bubble uses the theme colour`);
+      assert.ok(rows[tint].ratio >= 4.5, `${appearance}: question text ${rows[tint].ratio.toFixed(2)}:1`);
     }
-    assert.equal(new Set(tints.map(t => rows[t].fill)).size, tints.length, `${appearance}: every preset has its own fill`);
-    step(`${appearance}: every bubble tint gives question text AA (lowest ${Math.min(...tints.map(t => rows[t].ratio)).toFixed(2)}:1)`);
+    step(`${appearance}: question bubble is the theme colour whatever tint was saved; text AA ${rows.pink.ratio.toFixed(2)}:1`);
 
     // Mermaid: flowchart in surface/paper/hairline; pie series in amber, lichen, rust, leaf ink.
     const [hues, [flowSvg, pieSvg], text, surface] = await Promise.all([ev(series), ev(svgs),
@@ -78,26 +79,16 @@ try {
     await shot(`diagrams-${appearance}`);
     step(`${appearance}: Mermaid uses the theme palette, series follow the ink order`);
 
-    // Choosing a preset in Settings applies it live and persists.
-    await open(appearance, 'neutral');
+    // No tint control remains on the Interface page.
     await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
     await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
     await wait(`document.activeElement?.id === 'settings-heading'`);
-    await b('find', 'text', 'Interface', 'click', '--exact');
-    await b('find', 'role', 'radio', 'click', '--name', 'Rust', '--exact');
-    assert.equal(await ev(`localStorage.getItem('treetutor.bubble-tint')`), 'pink');
-    await b('eval', `document.querySelector('.settings-page:not([hidden]) .bubble-tint-swatch').scrollIntoView({ block: 'center' }); true`);
-    await shot(`tints-settings-${appearance}`);
+    assert.equal(await ev(`/tint|question bubbles/i.test([...document.querySelectorAll('.settings-page:not([hidden]) :is(h3, [role=radio], input)')].map(e => e.textContent + ' ' + (e.getAttribute('aria-label') ?? '') + ' ' + (e.labels?.[0]?.textContent ?? '')).join(' '))`), false);
+    assert.equal(await ev(`document.querySelectorAll('.bubble-tint-swatch').length`), 0);
     await b('press', 'Escape');
     await wait(`!document.querySelector('.settings-page:not([hidden])')`);
-    assert.equal((await ev(bubbleContrast)).fill, rows.pink.fill);
-    await shot(`bubble-pink-${appearance}`);
-    step(`${appearance}: Settings Rust tint applies to the bubble and persists`);
+    step(`${appearance}: no bubble tint control in Settings`);
   }
-  // A preset saved under the old palette maps to its nearest ink.
-  await open('dark', 'purple');
-  assert.equal((await ev(bubbleContrast)).fill, results.dark.pink.fill);
-  step('legacy Purple preference opens as Rust');
   writeFileSync('docs/verification/palette-results.json', JSON.stringify(results, null, 2) + '\n');
 } finally {
   await b('close').catch(() => {});

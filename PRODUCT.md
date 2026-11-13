@@ -33,7 +33,7 @@ Operate mode on a desktop browser: frequent reading and asking, often in the eve
 ## Capabilities and Constraints
 
 - Dark is the default appearance; light is designed with equal care. Appearance setting: Dark, Light, System, persisted per browser.
-- Bubble tint presets stay as a feature, re-derived from the chosen palette.
+- Question bubbles always use the current theme's colour; there is no separate bubble colour setting.
 - Figtree and the old neutral palette are not pinned.
 - Every PRD flow keeps working through the redesign: branching from a passage, map navigation, folding, keyboard and Vim access, model switching, saving and restoring, media, suggestions, the knowledge graph.
 

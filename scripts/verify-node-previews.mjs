@@ -37,7 +37,7 @@ try {
   await check(`${rows}.map(e => e.dataset.message).join() === ${JSON.stringify([first])}.concat(${JSON.stringify(store.tree(root.id).messages.slice(1).map(m => m.id))}).join()`);
   await check(`${rows}.map(e => e.textContent.slice(0, 12)).join('|') === 'Question: Fi|Answer: Firs|Question: Lo|Answer: Long'`);
   await check(`${rows}.every(e => getComputedStyle(e.querySelector('.node-bubble .astryx-text')).webkitLineClamp === '3') && ${rows}[0].dataset.role === 'user' && ${rows}[1].dataset.role === 'assistant'`);
-  // Chat layout: questions right-aligned in the tint bubble, replies left-aligned plain text.
+  // Chat layout: questions right-aligned in the question bubble, replies left-aligned plain text.
   const box = (e, side) => `${e}.getBoundingClientRect().${side}`;
   await check(`${rows}.filter(e => e.dataset.role === 'user').every(e => e.querySelector('.node-bubble .astryx-text').classList.contains('question-bubble') && getComputedStyle(e.querySelector('.node-bubble .astryx-text')).backgroundColor !== 'rgba(0, 0, 0, 0)' && Math.abs(${box("e.querySelector('.node-bubble .astryx-text')", 'right')} - ${box('e', 'right')}) < 1 && ${box("e.querySelector('.node-bubble .astryx-text')", 'left')} > ${box('e', 'left')} + 1)`);
   await check(`${rows}.filter(e => e.dataset.role === 'assistant').every(e => !e.querySelector('.node-bubble .astryx-text').classList.contains('question-bubble') && getComputedStyle(e.querySelector('.node-bubble .astryx-text')).backgroundColor === 'rgba(0, 0, 0, 0)' && Math.abs(${box("e.querySelector('.node-bubble .astryx-text')", 'left')} - ${box('e', 'left')}) < 1)`);
@@ -70,7 +70,7 @@ try {
   await check(`${rows}.length === 6 && ${rows}[5].textContent.includes('Reply interrupted') && ${node(child.id)}?.querySelector('[data-role=assistant]')?.textContent.includes('Reply failed')`);
   await browser('reload');
   await check(`${rows}.length === 6 && ${rows}[5].textContent.includes('Reply interrupted')`);
-  console.log('PASS: every message in order with data-message ids, distinct question/answer rows, three-line clamp, questions right-aligned in the tint bubble, replies left-aligned plain text, branch handles on their source reply row, no inner scroll; long, short, unanswered, streaming, failed and interrupted rows; active-only polling; exact source, navigation and reload.');
+  console.log('PASS: every message in order with data-message ids, distinct question/answer rows, three-line clamp, questions right-aligned in the question bubble, replies left-aligned plain text, branch handles on their source reply row, no inner scroll; long, short, unanswered, streaming, failed and interrupted rows; active-only polling; exact source, navigation and reload.');
 } catch (error) {
   console.error(await browser('snapshot').catch(() => 'snapshot unavailable'));
   throw error;

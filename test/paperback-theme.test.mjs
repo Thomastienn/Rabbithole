@@ -18,7 +18,7 @@ const map = {
   '--selection': '--treetutor-selection', '--alert': '--color-error', '--alert-soft': '--color-error-muted', '--alert-ink': '--color-on-error',
   '--paper': '--treetutor-paper', '--paper-ink': '--treetutor-paper-ink', '--band-ink': '--treetutor-band-ink', '--band-muted': '--treetutor-band-muted',
   '--ink-1': '--treetutor-ink-1', '--ink-2': '--treetutor-ink-2', '--ink-3': '--treetutor-ink-3', '--ink-4': '--treetutor-ink-4', '--ink-on': '--treetutor-ink-on',
-  // Series inks also fill the hue slots that diagrams and bubble tints read.
+  // Series inks also fill the hue slots that diagrams and badges read.
   '--ink-1 ': '--color-text-yellow', '--ink-2 ': '--color-text-green', '--ink-3 ': '--color-text-pink', '--ink-4 ': '--color-text-blue',
 };
 

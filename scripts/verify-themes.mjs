@@ -1,5 +1,5 @@
 // Themes (TreeTutor-got.14/.15): Paperback default, Forest/Harbor/Dusk change surfaces in light and dark, persist across reload,
-// leaves Appearance and bubble tint alone; unknown saved values open Paperback. Built app, isolated database,
+// leaves Appearance alone; question bubbles take each theme's colour and an old saved tint is ignored; unknown saved values open Paperback. Built app, isolated database,
 // synthetic providers, agent-browser Chromium. Screenshots go to docs/verification/.
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync } from 'node:fs';
@@ -41,11 +41,21 @@ async function openInterface() {
 }
 const pick = name => b('find', 'role', 'radio', 'click', '--name', name, '--exact');
 const ready = () => wait(`document.querySelector('[aria-label="Map menu"]')`);
+// Question bubbles on the map node and in the focused chat both use the theme's neutral colour.
+async function bubbles(label) {
+  const neutral = await color('--color-neutral');
+  await wait(`document.querySelector('.node-message[data-role=user] .question-bubble')`);
+  assert.equal(await ev(`getComputedStyle(document.querySelector('.node-message[data-role=user] .question-bubble')).backgroundColor`), neutral, `${label}: map question bubble`);
+  await b('eval', `document.querySelector('[aria-label="Open How do fungi trade?"]').click(); true`);
+  await wait(`document.querySelector('.focused-chat .question-bubble')`);
+  assert.equal(await ev(`getComputedStyle(document.querySelector('.focused-chat .question-bubble')).backgroundColor`), neutral, `${label}: chat question bubble`);
+  await b('press', 'Escape');
+}
 
 try {
   await b('set', 'viewport', '1440', '900');
   await b('open', origin);
-  // Light appearance and the Lichen tint are saved first; theme switching must leave both alone.
+  // Light appearance and an old Lichen tint are saved first; the appearance is kept, the tint ignored.
   await b('eval', `localStorage.clear(); localStorage.setItem('treetutor.appearance', 'light'); localStorage.setItem('treetutor.bubble-tint', 'blue'); true`);
   await b('reload');
   await ready();
@@ -56,10 +66,14 @@ try {
 
   await openInterface();
   assert.deepEqual(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [data-theme-swatch]')].map(s => s.dataset.themeSwatch)`), ['paperback', 'forest', 'harbor', 'dusk', 'ember', 'graphite']);
-  // Each swatch card wears its own theme: different accent and ink dots, the bubble in the chosen tint.
-  const cards = await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [data-theme-swatch]')].map(s => [...s.children].map(i => getComputedStyle(i).backgroundColor))`);
-  for (const card of cards) assert.equal(card.length, 6, 'bubble, accent and four branch inks');
-  assert.equal(new Set(cards.map(card => JSON.stringify(card))).size, 6, 'cards show each theme’s own bubble, accent and inks');
+  // Each tile wears its own theme: ground, question bubble, action colour and four branch inks.
+  const tile = sel => `[...document.querySelectorAll('${sel}')].map(s => [s, s.querySelector('.theme-tile-bubble'), ...s.querySelectorAll('.theme-tile-inks > i')].map(i => getComputedStyle(i).backgroundColor))`;
+  const cards = await ev(tile('.settings-page:not([hidden]) [data-theme-swatch]'));
+  for (const card of cards) assert.equal(card.length, 7, 'ground, bubble, accent and four branch inks');
+  assert.equal(new Set(cards.map(card => JSON.stringify(card))).size, 6, 'tiles show each theme’s own ground, bubble, accent and inks');
+  assert.equal(await ev(`document.querySelectorAll('.bubble-tint-swatch, input[type=radio][value=blue]').length`), 0, 'no bubble tint control');
+  const marked = () => ev(`[...document.querySelectorAll('.theme-choice')].filter(c => c.querySelector('input:checked') && c.querySelector('.theme-choice-name svg') && getComputedStyle(c.querySelector('.theme-tile')).outlineStyle === 'solid').map(c => c.querySelector('input').value)`);
+  assert.deepEqual(await marked(), ['paperback'], 'selected tile carries the ring and check');
   await shot('settings-paperback-light');
   await pick('Forest');
   await wait(`document.documentElement.getAttribute('data-astryx-theme') === 'forest'`);
@@ -69,11 +83,10 @@ try {
   assert.notEqual(forestLight.ink, paperLight.ink, 'branch family inks follow the theme');
   assert.equal(await stored('theme'), 'forest');
   assert.equal(await stored('appearance'), 'light', 'Appearance kept');
-  assert.equal(await stored('bubble-tint'), 'blue', 'bubble tint kept');
   assert.equal(await ev(`document.documentElement.getAttribute('data-theme')`), 'light');
-  assert.equal(await ev(`document.querySelector('input[type=radio][value=blue]')?.checked`), true, 'Lichen still selected');
+  assert.deepEqual(await marked(), ['forest'], 'mark moves to Forest');
   await shot('settings-forest-light');
-  step('picking Forest changes light surfaces and branch inks; Appearance and bubble tint unchanged');
+  step('picking Forest changes light surfaces and branch inks and moves the tile mark; Appearance unchanged');
 
   // Persists across reload, applied with the first render.
   await b('reload');
@@ -98,10 +111,11 @@ try {
   assert.notEqual(forestDark.body, paperDark.body);
   assert.notEqual(forestDark.ink, paperDark.ink);
   assert.equal(await stored('appearance'), 'dark');
-  assert.equal(await stored('bubble-tint'), 'blue');
-  step('Forest and Paperback have different dark surfaces; switching back keeps Dark and the tint');
+  step('Forest and Paperback have different dark surfaces; switching back keeps Dark');
 
   for (const [id, label, light, dark] of [
+    ['paperback', 'Paperback', 'rgb(250, 247, 240)', 'rgb(36, 31, 26)'],
+    ['forest', 'Forest', 'rgb(245, 248, 240)', 'rgb(26, 36, 28)'],
     ['harbor', 'Harbor', 'rgb(243, 246, 249)', 'rgb(26, 34, 45)'],
     ['dusk', 'Dusk', 'rgb(248, 243, 248)', 'rgb(33, 25, 38)'],
     ['ember', 'Ember', 'rgb(251, 245, 238)', 'rgb(43, 30, 24)'],
@@ -114,19 +128,21 @@ try {
       assert.equal((await surfaces()).surface, expected, `${label} ${mode} surface`);
       assert.equal(await stored('theme'), id);
       assert.equal(await stored('appearance'), mode);
-      assert.equal(await stored('bubble-tint'), 'blue');
       assert.equal(await ev(`document.querySelector('input[type=radio][value=${id}]')?.checked`), true);
-      const swatch = await ev(`[...document.querySelector('[data-theme-swatch=${id}]').children].map(i => getComputedStyle(i).backgroundColor)`);
-      assert.equal(swatch[0], await color('--color-background-blue'), 'swatch bubble follows the chosen tint');
-      assert.equal(swatch[1], await color('--color-accent'), 'swatch accent matches the applied theme');
-      for (let n = 1; n <= 4; n++) assert.equal(swatch[n + 1], await color(`--treetutor-ink-${n}`), `swatch branch ink ${n}`);
+      assert.deepEqual(await marked(), [id]);
+      const [swatch] = await ev(tile(`[data-theme-swatch=${id}]`));
+      assert.equal(swatch[0], await color('--color-background-body'), 'tile ground matches the applied theme');
+      assert.equal(swatch[1], await color('--color-neutral'), 'tile bubble is the theme question colour');
+      assert.equal(swatch[2], await color('--color-accent'), 'tile accent matches the applied theme');
+      for (let n = 1; n <= 4; n++) assert.equal(swatch[n + 2], await color(`--treetutor-ink-${n}`), `tile branch ink ${n}`);
       await shot(`settings-${id}-${mode}`);
       await b('reload');
       await ready();
       assert.equal(await themeName(), id, `${label} persists across reload`);
       assert.equal((await surfaces()).surface, expected, `${label} ${mode} restored`);
+      await bubbles(`${label} ${mode}`);
       await openInterface();
-      step(`${label} ${mode}: swatch matches applied palette; persists; Appearance and tint kept`);
+      step(`${label} ${mode}: tile matches applied palette; question bubbles in the theme colour; persists`);
     }
     await b('set', 'viewport', '390', '844');
     assert.equal(await ev(`document.documentElement.scrollWidth <= innerWidth`), true, `${label} narrow settings fit`);
