@@ -263,6 +263,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
   const overviewOrigin = useRef<{ id: string; control: string }>(undefined);
   const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
   const [figureTarget, setFigureTarget] = useState<{ conversation: string; artifact: string }>();
+  const [messageTarget, setMessageTarget] = useState<{ conversation: string; message: string }>();
   const [branch, setBranch] = useState<{ parent: string; anchor: Anchor; question: string }>();
   const [branching, setBranching] = useState(false);
   const [selectingMessage, setSelectingMessage] = useState<string>();
@@ -318,7 +319,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     if (!overviewOrigin.current && tree) overviewOrigin.current = { id: tree.id, control: `open-${tree.id}` };
     changeView(true, overviewOrigin.current?.id);
   }
-  async function openConversation(id: string, source?: Source, artifact?: string) {
+  async function openConversation(id: string, source?: Source, artifact?: string, message?: string) {
     {
       const control = document.activeElement as HTMLElement | null;
       const box = control?.closest<HTMLElement>('.react-flow__node')?.dataset.id;
@@ -326,7 +327,8 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     }
     setReveal(source ? { tree: id, source } : undefined);
     setFigureTarget(artifact ? { conversation: id, artifact } : undefined);
-    focusComposer.current = !source && !artifact;
+    setMessageTarget(message ? { conversation: id, message } : undefined);
+    focusComposer.current = !source && !artifact && !message;
     await select(id);
     if (selected.current === id) changeView(false, overviewOrigin.current?.id ?? id);
   }
@@ -494,6 +496,20 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     });
     return () => cancelAnimationFrame(frame);
   }, [tree?.id, overview, figureTarget]);
+  // A bubble picked on the map opens with that message's top at the reading area top.
+  useLayoutEffect(() => {
+    if (!messageTarget || overview || tree?.id !== messageTarget.conversation) return;
+    // ChatLayout follows the bottom until its scroll listener sees the reader move up, so hold the position for a few frames.
+    let frame = 0, frames = 0;
+    const tick = () => {
+      const message = document.querySelector<HTMLElement>(`.focused-chat [data-chat-message="${CSS.escape(messageTarget.message)}"]`);
+      if (message && document.activeElement !== message) { message.tabIndex = -1; message.focus({ preventScroll: true }); }
+      message?.scrollIntoView({ block: 'start' });
+      if (++frames < 12) frame = requestAnimationFrame(tick); else setMessageTarget(undefined);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [tree?.id, overview, messageTarget]);
   // Reopening a page during a turn recovers saved checkpoints without tying work to focus.
   useEffect(() => {
     if (!activeKey) return;
@@ -886,7 +902,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
                 </dl>
               </Collapsible>}
               {!tree.messages.length && <VStack gap={3} padding={6}><Heading level={3}>What are you curious about?</Heading><Text color="secondary">Ask about a concept, work through an example, or pick up a question you have been carrying.</Text></VStack>}
-              {tree.messages.map(message => { const suggestions = tree.suggestions?.find(s => s.message === message.id), index = tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1; return <ChatMessage key={message.id} sender={message.role === 'user' ? 'user' : 'assistant'} className={message.role === 'user' ? 'chat-question' : 'chat-reply'} name={message.role === 'assistant' && <Text type="supporting" color="secondary">Tutor · {modelLabel(tree)}</Text>} metadata={!overview && message.role === 'assistant' && message.status === 'completed' && <HStack gap={2} vAlign="center"><CopyButton text={message.text} label={`Copy tutor reply ${index}`} className="reply-copy" />{message.usage !== undefined && <Text type="supporting" color="secondary" className="reply-usage">{replyUsageLine(message.usage, suggestions?.usage)}</Text>}</HStack>}>
+              {tree.messages.map(message => { const suggestions = tree.suggestions?.find(s => s.message === message.id), index = tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').indexOf(message) + 1; return <ChatMessage key={message.id} data-chat-message={message.id} sender={message.role === 'user' ? 'user' : 'assistant'} className={message.role === 'user' ? 'chat-question' : 'chat-reply'} name={message.role === 'assistant' && <Text type="supporting" color="secondary">Tutor · {modelLabel(tree)}</Text>} metadata={!overview && message.role === 'assistant' && message.status === 'completed' && <HStack gap={2} vAlign="center"><CopyButton text={message.text} label={`Copy tutor reply ${index}`} className="reply-copy" />{message.usage !== undefined && <Text type="supporting" color="secondary" className="reply-usage">{replyUsageLine(message.usage, suggestions?.usage)}</Text>}</HStack>}>
                 {message.role === 'assistant' ? <Passage message={message} addresses={addresses} suggestions={suggestions} onVisualPart={openVisualPart} visualBranches={visualBranches} onArtifactAction={(artifactId, action) => videoAction(tree.id, artifactId, action)} inlineArtifacts={overview ? undefined : artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(a => (a.kind === 'visual' || a.kind === 'video') && a.position != null)} branched={state?.trees.flatMap(t => t.parent === tree.id && t.messageId === message.id && t.start !== null && t.end !== null && t.passage !== null ? [{ start: t.start, end: t.end, text: t.passage, child: t.id }] : []) ?? []} index={index} reveal={validSource && source?.messageId === message.id ? source : undefined} form={branch?.parent === tree.id && branch.anchor.messageId === message.id ? { at: branch.anchor.at, node: <form className="branch-form" onSubmit={submitBranch} onKeyDown={e => { if (e.key === 'Escape' && !branching && !(e.target as Element).closest('[role=menu], [aria-expanded=true]')) { e.preventDefault(); e.stopPropagation(); closeBranch(true); } }}><VStack padding={2} gap={2}>
                   {(() => { const row = <>{/* The reply paints the passage; this quote only describes the question for screen readers. */}<Text id="branch-passage" className="branch-passage sr-only">{branch.anchor.text}</Text><TextInput label="Question about this passage" isLabelHidden placeholder="Ask about this passage" aria-describedby="branch-passage" size="sm" value={branch.question} onChange={question => setBranch(b => b && { ...b, question })} isDisabled={branching} hasAutoFocus containerClassName="branch-question" /><IconButton className="branch-send" label={branching ? 'Preparing context…' : 'Create focused chat'} type="submit" icon={<ArrowUpIcon />} variant="primary" size="sm" isLoading={branching} isDisabled={branching || !branch.question.trim() || active} /></>; return branchConcept ? <PassageCorrection key={`${branch.parent}:${branch.anchor.messageId}:${branch.anchor.start}:${branch.anchor.end}`} name={branchConcept} api={api} disabled={branching}>{row}</PassageCorrection> : <HStack gap={1} vAlign="center">{row}</HStack>; })()}
                 </VStack></form>, start: branch.anchor.start, end: branch.anchor.end } : undefined} onOpenChild={id => void openConversation(id)} selecting={selectingMessage === message.id} openSelection={() => setSelectingMessage(message.id)} closeSelection={() => setSelectingMessage(undefined)} onBranch={(anchor, origin) => { branchOrigin.current = origin; setBranch({ parent: tree.id, anchor, question: '' }); setError(''); }} /> : <ChatMessageBubble variant="ghost" className="question-bubble"><Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text></ChatMessageBubble>}
@@ -910,7 +926,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
           onDoubleClick={() => setMapWidth(resetMapWidth(workspaceWidth))}
           onKeyDown={e => { const next = keyMapWidth(shownMapWidth, e.key, workspaceWidth, e.shiftKey); if (next === undefined) return; e.preventDefault(); setMapWidth(next); }} />}
         {root && state && <section id="learning-tree-map" className="overview" data-chat-open={!overview} aria-label="Learning tree">
-          <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} retry={retryFromMap} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
+          <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={(id, source, message) => void openConversation(id, source, undefined, message)} retry={retryFromMap} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
         </section>}
         </section>
         </section>

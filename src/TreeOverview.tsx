@@ -15,12 +15,13 @@ export type Layout = { folded: string[]; selected: string | null; panel: 'collap
 export type Summary = { id: string; title: string; created: number; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; artifactId?: string; label?: string; explanation?: string; x: number | null; y: number | null; layout?: Layout | null };
 export type Source = { messageId: string; text: string } & ({ start: number; end: number; artifactId?: undefined } | ({ artifactId: string; start?: undefined; end?: undefined } & VisualPart));
 export type Preview = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] }[];
-type Open = (id: string, source?: Source) => void;
+type Open = (id: string, source?: Source, message?: string) => void;
 export type MapActions = { expand: () => void; collapse: () => void; keep: () => void; canKeep: boolean };
 type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; retry: (id: string) => void; active: boolean; focused: boolean; focus: boolean; focusControl?: string; childCount: number; address: string; ink: number; stubs: { child: Summary; beneath: number; address: string; ink: number }[]; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
 const fit = { padding: 0.2, maxZoom: 1 };
 const noStubs: ConversationNode['data']['stubs'] = [];
 const ConversationTransition = createContext<string | undefined>(undefined);
+const snippet = (text: string) => { const flat = text.replace(/\s+/g, ' ').trim(); return flat.length > 80 ? `${flat.slice(0, 79)}…` : flat; };
 const sourceOf = (t: Summary): Source => t.artifactId ? { messageId: t.messageId!, text: t.passage!, artifactId: t.artifactId, label: t.label!, explanation: t.explanation! } : { messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! };
 
 const Conversation = memo(function Conversation({ data }: NodeProps<ConversationNode>) {
@@ -55,7 +56,7 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
       {preview.map(m => {
         const sources = data.sources.filter(child => child.messageId === m.id);
         return <VStack key={m.id} gap={0} className="node-message" data-message={m.id} data-role={m.role} style={sources.length ? { minHeight: `calc(var(--spacing-${data.folded ? 8 : 2}) * ${sources.length + 1})` } : undefined}>
-          {(m.text || m.status === 'streaming') && <Text type="supporting" color={m.role === 'user' ? 'primary' : 'secondary'} className={m.role === 'user' ? 'question-bubble' : undefined} maxLines={3}><Text type="inherit" className="sr-only">{m.role === 'user' ? 'Question: ' : 'Answer: '}</Text>{m.text || 'Thinking…'}</Text>}
+          {(m.text || m.status === 'streaming') && <Button className="node-bubble nodrag nopan" label={`Jump to ${m.role === 'user' ? 'question' : 'reply'}: ${snippet(m.text || 'Thinking…')}`} variant="ghost" size="sm" onClick={() => data.open(t.id, undefined, m.id)}><Text type="supporting" color={m.role === 'user' ? 'primary' : 'secondary'} className={m.role === 'user' ? 'question-bubble' : undefined} maxLines={3}><Text type="inherit" className="sr-only">{m.role === 'user' ? 'Question: ' : 'Answer: '}</Text>{m.text || 'Thinking…'}</Text></Button>}
           {m.role === 'assistant' && m.status !== 'completed' && <Text type="supporting" className="node-status" data-status={m.status}>{m.status === 'failed' && <ExclamationTriangleIcon aria-hidden />}{m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}</Text>}
           {m.role === 'assistant' && m.status === 'failed' && m === preview.at(-1) && preview.at(-2)?.role === 'user' && !data.active && <Button label="Retry reply" className="node-retry nodrag nopan" variant="secondary" size="sm" onClick={() => { document.getElementById(`open-${t.id}`)?.focus({ preventScroll: true }); data.retry(t.id); }} />}
           {m.role === 'assistant' && m.artifacts?.filter(a => a.kind !== 'visual' || a.status !== 'canceled').map(a => <Text key={a.id} type="supporting" color="secondary">{a.kind === 'video' ? `Video: ${a.title} · ${a.status === 'pending' ? 'creating…' : a.status === 'ready' ? (a.available === false ? 'unavailable' : 'ready') : a.status}` : <>{a.kind === 'visual' ? 'Visual' : 'Diagram'}: {a.title}{a.status === 'pending' ? ' · creating…' : a.status === 'failed' ? ' · unavailable' : ''}</>}</Text>)}
@@ -98,7 +99,7 @@ export default function TreeOverview({ root, trees, previews, active, open, retr
   const flow = useRef<ReactFlowInstance<ConversationNode>>(null);
   const callbacks = useRef({ open, retry, save });
   callbacks.current = { open, retry, save };
-  const openNode = useCallback<Open>((id, source) => callbacks.current.open(id, source), []);
+  const openNode = useCallback<Open>((id, source, message) => callbacks.current.open(id, source, message), []);
   const retryNode = useCallback((id: string) => callbacks.current.retry(id), []);
   // Legacy views lived in localStorage; read once until the first batched save replaces them.
   const [savedViewport] = useState(() => {

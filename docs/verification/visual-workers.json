@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-13T05:18:19.806Z",
+  "checkedAt": "2026-11-13T10:31:58.508Z",
   "issue": "TreeTutor-zhf.5",
   "evidence": "Synthetic providers, isolated temporary SQLite, built UI, agent-browser.",
   "checks": [
@@ -38,7 +38,7 @@
       "pass": true
     }
   ],
-  "elapsedMs": 80,
+  "elapsedMs": 71,
   "rendered": {
     "text": "Winner A → Final ← Winner B\nNext round\n\nRound one",
     "color": "rgb(239, 230, 214)",

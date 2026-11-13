@@ -36,11 +36,11 @@ try {
   const rows = `Array.from(${node(root.id)}.querySelectorAll('[data-message]'))`;
   await check(`${rows}.map(e => e.dataset.message).join() === ${JSON.stringify([first])}.concat(${JSON.stringify(store.tree(root.id).messages.slice(1).map(m => m.id))}).join()`);
   await check(`${rows}.map(e => e.textContent.slice(0, 12)).join('|') === 'Question: Fi|Answer: Firs|Question: Lo|Answer: Long'`);
-  await check(`${rows}.every(e => getComputedStyle(e.firstElementChild).webkitLineClamp === '3') && ${rows}[0].dataset.role === 'user' && ${rows}[1].dataset.role === 'assistant'`);
+  await check(`${rows}.every(e => getComputedStyle(e.querySelector('.node-bubble .astryx-text')).webkitLineClamp === '3') && ${rows}[0].dataset.role === 'user' && ${rows}[1].dataset.role === 'assistant'`);
   // Chat layout: questions right-aligned in the tint bubble, replies left-aligned plain text.
   const box = (e, side) => `${e}.getBoundingClientRect().${side}`;
-  await check(`${rows}.filter(e => e.dataset.role === 'user').every(e => e.firstElementChild.classList.contains('question-bubble') && getComputedStyle(e.firstElementChild).backgroundColor !== 'rgba(0, 0, 0, 0)' && Math.abs(${box('e.firstElementChild', 'right')} - ${box('e', 'right')}) < 1 && ${box('e.firstElementChild', 'left')} > ${box('e', 'left')} + 1)`);
-  await check(`${rows}.filter(e => e.dataset.role === 'assistant').every(e => !e.firstElementChild.classList.contains('question-bubble') && getComputedStyle(e.firstElementChild).backgroundColor === 'rgba(0, 0, 0, 0)' && Math.abs(${box('e.firstElementChild', 'left')} - ${box('e', 'left')}) < 1)`);
+  await check(`${rows}.filter(e => e.dataset.role === 'user').every(e => e.querySelector('.node-bubble .astryx-text').classList.contains('question-bubble') && getComputedStyle(e.querySelector('.node-bubble .astryx-text')).backgroundColor !== 'rgba(0, 0, 0, 0)' && Math.abs(${box("e.querySelector('.node-bubble .astryx-text')", 'right')} - ${box('e', 'right')}) < 1 && ${box("e.querySelector('.node-bubble .astryx-text')", 'left')} > ${box('e', 'left')} + 1)`);
+  await check(`${rows}.filter(e => e.dataset.role === 'assistant').every(e => !e.querySelector('.node-bubble .astryx-text').classList.contains('question-bubble') && getComputedStyle(e.querySelector('.node-bubble .astryx-text')).backgroundColor === 'rgba(0, 0, 0, 0)' && Math.abs(${box("e.querySelector('.node-bubble .astryx-text')", 'left')} - ${box('e', 'left')}) < 1)`);
   // Branch edges still leave from the reply row they came from.
   await check(`[${JSON.stringify(child.id)}, ${JSON.stringify(unanswered.id)}].every(id => ${node(root.id)}.querySelector('[data-source="' + id + '"]')?.closest('[data-message]')?.dataset.message === ${JSON.stringify(source)})`);
   if (process.env.SCREENSHOT) await browser('screenshot', process.env.SCREENSHOT);

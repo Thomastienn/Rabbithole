@@ -58,7 +58,7 @@ if (process.argv[2] === '--serve') {
   const saved = id => get(`/api/trees/${id}`);
   const field = '.endpoint-settings input[type=url]', key = '.endpoint-settings input[type=password]';
   async function tabTo(selector, text) {
-    for (let i = 0; i < 80; i++) { if (await evaluate(`document.activeElement?.matches(${JSON.stringify(selector)}) && (${text === undefined ? 'true' : `document.activeElement.textContent.trim() === ${JSON.stringify(text)}`})`)) return; await browser('press', 'Tab'); }
+    for (let i = 0; i < 200; i++) { if (await evaluate(`document.activeElement?.matches(${JSON.stringify(selector)}) && (${text === undefined ? 'true' : `document.activeElement.textContent.trim() === ${JSON.stringify(text)}`})`)) return; await browser('press', 'Tab'); }
     assert.fail(`Tab did not reach ${selector}: ` + await evaluate('document.activeElement?.outerHTML'));
   }
   async function menuItem(label) {

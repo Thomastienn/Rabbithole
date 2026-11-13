@@ -412,6 +412,9 @@ html { view-transition-name: none; }
 .node-message[data-role=user] { align-items: flex-end; }
 .node-message[data-role=user] .question-bubble { max-width: 85%; padding: var(--spacing-1) var(--spacing-2); }
 .node-message { position: relative; }
+.node-message .node-bubble { height: auto; max-width: 100%; padding: 0; white-space: normal; text-align: start; justify-content: flex-start; }
+.node-message[data-role=user] .node-bubble { max-width: 85%; }
+.node-message[data-role=user] .node-bubble .question-bubble { max-width: 100%; }
 .node-status { display: flex; align-items: center; gap: var(--spacing-1); color: var(--color-text-secondary); }
 .node-status[data-status=failed] { color: var(--color-error); }
 .node-status svg { flex: none; width: var(--spacing-4); height: var(--spacing-4); }

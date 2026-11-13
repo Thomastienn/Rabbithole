@@ -1,43 +1,14 @@
 {
-  "checkedAt": "2026-11-13T00:01:25.190Z",
+  "checkedAt": "2026-11-13T10:19:42.870Z",
   "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual sandboxed short 2D render. No narration, subtitle, long-duration or 3D claim.",
   "provider": "claude",
   "effort": "low",
   "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
   "memoryBytes": 16368898048,
-  "data": "/tmp/tt-smart-video-live-ABMu0D",
+  "data": "/tmp/tt-smart-video-live-VdNyM3",
   "model": "sonnet",
-  "renderMs": 18277,
-  "elapsedMs": 29049,
-  "media": {
-    "id": "8e656a68-fcc6-4be7-aa41-26113b8cefd4",
-    "duration": 6.433333333333334,
-    "bytes": 300478,
-    "probe": [
-      {
-        "codec": "h264",
-        "type": "video",
-        "width": 640,
-        "height": 360,
-        "duration": "6.433333"
-      },
-      {
-        "codec": "aac",
-        "type": "audio",
-        "duration": "6.443000"
-      }
-    ]
-  },
-  "usage": [
-    {
-      "at": 1794528094925,
-      "provider": "claude",
-      "model": "sonnet",
-      "task": "video",
-      "input": 746,
-      "output": 1302,
-      "cacheRead": 963
-    }
-  ],
-  "pass": true
+  "providerError": "Claude Code is signed out. Run claude in a terminal and sign in, then retry.",
+  "elapsedMs": 7025,
+  "pass": false,
+  "error": "Video provider failed to generate a composition.\n\n'failed' !== 'ready'\n"
 }
