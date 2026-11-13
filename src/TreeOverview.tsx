@@ -143,6 +143,7 @@ export default function TreeOverview({ root, trees, previews, active, open, retr
   const [notice, setNotice] = useState('');
   // A restored viewport wins for the restored selection; later selections are still revealed.
   const restored = trees.find(t => t.id === root)?.layout;
+  const [refitted, setRefitted] = useState(0);
   const restoredSelection = useRef(savedViewport && restored?.panel !== 'collapsed' ? restored?.selected ?? undefined : undefined);
   useEffect(() => {
     if (!selected) return;
@@ -170,7 +171,23 @@ export default function TreeOverview({ root, trees, previews, active, open, retr
       if (dx || dy || zoom !== view.zoom) void instance.setViewport({ x: view.x + dx, y: view.y + dy, zoom }, { duration });
     });
     return () => cancelAnimationFrame(frame);
-  }, [selected, nodes.length, nodes.find(node => node.id === selected)?.measured?.width, nodes.find(node => node.id === selected)?.measured?.height]);
+  }, [selected, refitted, nodes.length, nodes.find(node => node.id === selected)?.measured?.width, nodes.find(node => node.id === selected)?.measured?.height]);
+  // Switching Map and Read resizes the canvas; refit an untouched map (readable floor, selected node revealed after); a navigated view stays exactly as left.
+  const [canvasWidth, setCanvasWidth] = useState(0);
+  useEffect(() => {
+    const canvas = document.querySelector('.tree-canvas');
+    if (!canvas) return;
+    const observer = new ResizeObserver(([entry]) => setCanvasWidth(Math.round(entry.contentRect.width)));
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+  const lastWidth = useRef(0);
+  useEffect(() => {
+    const previous = lastWidth.current, instance = flow.current;
+    lastWidth.current = canvasWidth;
+    if (!previous || !canvasWidth || previous === canvasWidth || !instance) return;
+    if (!navigated.current) void instance.fitView({ ...fit, minZoom: 0.75 }).then(() => setRefitted(n => n + 1));
+  }, [canvasWidth]);
   function pan(x: number, y: number) {
     const instance = flow.current;
     if (!instance) return;

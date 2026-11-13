@@ -7,7 +7,7 @@ related_targets: ["docs/mockups/mock.css"]
 
 # TreeTutor redesign mockup (all screens, static)
 
-Mode: Operate. Build path: code-led. Scope: a non-functional mockup of every screen and component, for handoff to implementing agents. The shipped app still follows `.impeccable/surfaces/index-html.md` (Lecture-hall Slate) until that work lands.
+Mode: Operate. Build path: code-led. Scope: a non-functional mockup of every screen and component, for handoff to implementing agents. The shipped app now follows this world; its surface contract is `.impeccable/surfaces/index-html.md` (Paperback Series, finish-reviewed 2026-11-13).
 
 Audience and job: a learner in a long evening reading session who reads a tutor reply, branches from a passage, and finds their place in the learning tree. Must remain: every PRD flow, GLOSSARY.md vocabulary, dark default with a designed light appearance, borderless inline visuals and videos (docs/inline-visuals-spec.md).
 

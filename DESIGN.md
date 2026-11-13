@@ -1,247 +1,392 @@
 ---
 name: TreeTutor
-description: A flat slate workspace for reading and branching connected questions.
+description: A learning tree as a volume in a paperback series, read at a book measure and inked by branch family.
 colors:
-  "accent": "light-dark(#7a6510, #e8d27a)"
-  "accent-muted": "light-dark(#7a65101f, #e8d27a29)"
-  "text-accent": "light-dark(#6b5800, #e8d27a)"
-  "on-accent": "light-dark(#ffffff, #1c2724)"
-  "body": "light-dark(#e7ebe6, #1c2724)"
-  "surface": "light-dark(#f3f5f1, #24312d)"
-  "popover": "light-dark(#f7f8f5, #2a3833)"
-  "rail": "light-dark(#dce2dc, #16201d)"
-  "neutral": "light-dark(#1c27241a, #ebe7dc1f)"
-  "text-primary": "light-dark(#1c2724, #ebe7dc)"
-  "text-secondary": "light-dark(#4a5a53, #9fb0a8)"
-  "text-disabled": "light-dark(#7d8b85, #6c7d76)"
-  "border": "light-dark(#1c272424, #ebe7dc1f)"
-  "border-emphasized": "light-dark(#1c272452, #ebe7dc47)"
-  "overlay": "light-dark(#1c272466, #0b110fb3)"
-  "hover": "light-dark(#1c27240f, #ebe7dc14)"
-  "pressed": "light-dark(#1c27241f, #ebe7dc24)"
-  "selection": "light-dark(#e8d27a, #e8d27a4d)"
-  "branch": "light-dark(#1c2724bf, #ebe7dcbf)"
-  "error": "light-dark(#a8382c, #e88a7a)"
-  "error-muted": "light-dark(#a8382c1f, #e88a7a29)"
-  "on-error": "light-dark(#ffffff, #1c2724)"
-  "on-error-muted": "light-dark(#7d281f, #f2b3a8)"
-  "yellow": "light-dark(#6b5800, #e8d27a)"
-  "blue": "light-dark(#2d5f8a, #9cc3e6)"
-  "pink": "light-dark(#8f3a64, #e7a6c6)"
-  "green": "light-dark(#2f6b47, #9fd3b0)"
-  "tint-yellow": "light-dark(#7a651024, #e8d27a2e)"
-  "tint-blue": "light-dark(#2d5f8a24, #9cc3e62e)"
-  "tint-pink": "light-dark(#8f3a6424, #e7a6c62e)"
-  "tint-green": "light-dark(#2f6b4724, #9fd3b02e)"
+  leaf-action: "#9dba6e"
+  leaf-text: "#a9c67a"
+  on-leaf: "#171c0f"
+  leaf-wash: "#9dba6e26"
+  amber-ink: "#dfae4e"
+  rust-ink: "#d68560"
+  lichen-ink: "#86b8ae"
+  bark-ground: "#1a1613"
+  raised-bark: "#241f1a"
+  popover-bark: "#2d2620"
+  deep-panel: "#14110e"
+  paper: "#efe6d6"
+  paper-muted: "#ab9e8b"
+  paper-faint: "#84786a"
+  seam: "#efe6d61f"
+  seam-strong: "#efe6d64d"
+  selection: "#9dba6e59"
+  moss-band: "#33432a"
+  band-ink: "#e9efd9"
+  band-muted: "#b3c19d"
+  rose-failure: "#f07f8a"
+  rose-wash: "#f07f8a26"
+  on-rose: "#240a0e"
 typography:
+  display:
+    fontFamily: "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif"
+    fontSize: "34px"
+    fontWeight: 700
+    lineHeight: 1.12
+    letterSpacing: "-0.015em"
   headline:
-    fontFamily: "Public Sans, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "1.5rem"
-    fontWeight: 600
-    lineHeight: 1.3333
+    fontFamily: "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif"
+    fontSize: "20px"
+    fontWeight: 700
+    lineHeight: 1.2
+    letterSpacing: "-0.01em"
   title:
-    fontFamily: "Public Sans, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "1.25rem"
-    fontWeight: 600
-    lineHeight: 1.4
-  node-title:
-    fontFamily: "Public Sans, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "0.875rem"
-    fontWeight: 600
-    lineHeight: 1.3
-  body:
-    fontFamily: "Public Sans, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "0.875rem"
-    fontWeight: 400
-    lineHeight: 1.4286
-  label:
-    fontFamily: "Public Sans, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "0.875rem"
-    fontWeight: 500
-    lineHeight: 1.4286
-  supporting:
-    fontFamily: "Public Sans, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "0.75rem"
-    fontWeight: 400
-    lineHeight: 1.6667
-  reply:
-    fontFamily: "Source Serif 4, Georgia, \"Times New Roman\", serif"
-    fontSize: "1rem"
+    fontFamily: "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif"
+    fontSize: "17px"
+    fontWeight: 700
+    lineHeight: 1.15
+    letterSpacing: "-0.01em"
+  reading:
+    fontFamily: "Literata, Georgia, \"Times New Roman\", serif"
+    fontSize: "17px"
     fontWeight: 400
     lineHeight: 1.7
-  code:
-    fontFamily: "ui-monospace, \"SF Mono\", Monaco, Consolas, \"Liberation Mono\", monospace"
-    fontSize: "0.75rem"
+  reading-heading:
+    fontFamily: "Literata, Georgia, \"Times New Roman\", serif"
+    fontSize: "20px"
+    fontWeight: 600
+    lineHeight: 1.3
+  reading-aside:
+    fontFamily: "Literata, Georgia, \"Times New Roman\", serif"
+    fontSize: "15px"
     fontWeight: 400
-    lineHeight: 1.5
+    lineHeight: 1.55
+  body:
+    fontFamily: "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
+    lineHeight: 1.4286
+  small:
+    fontFamily: "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif"
+    fontSize: "13px"
+    fontWeight: 600
+    lineHeight: 1.35
+  label:
+    fontFamily: "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif"
+    fontSize: "12px"
+    fontWeight: 600
+    lineHeight: 1.6667
+  section-label:
+    fontFamily: "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif"
+    fontSize: "14px"
+    fontWeight: 600
+    letterSpacing: "0.06em"
+    fontFeature: "\"smcp\", \"c2sc\""
+  address-chip:
+    fontFamily: "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif"
+    fontSize: "10px"
+    fontWeight: 700
+    lineHeight: 1.45
+    fontFeature: "\"tnum\""
+  code:
+    fontFamily: "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    fontSize: "13px"
+    fontWeight: 400
+    lineHeight: 1.6
 rounded:
-  "inner": "2px"
-  "element": "4px"
-  "container": "6px"
+  tick: "1px"
+  inner: "2px"
+  element: "3px"
+  container: "4px"
+  full: "9999px"
 spacing:
-  "1": "0.25rem"
-  "2": "0.5rem"
-  "3": "0.75rem"
-  "4": "1rem"
-  "5": "1.25rem"
-  "6": "1.5rem"
-  "8": "2rem"
-  "10": "2.5rem"
-  "12": "3rem"
+  half: "4px"
+  module: "8px"
+  module-1-5: "12px"
+  module-2: "16px"
+  module-3: "24px"
+  module-4: "32px"
+  module-5: "40px"
+  module-7: "56px"
+  module-8: "64px"
 components:
   button-primary:
-    backgroundColor: "{colors.accent}"
-    textColor: "{colors.on-accent}"
-    rounded: "{rounded.element}"
-  button-ghost:
-    backgroundColor: "transparent"
-    textColor: "{colors.text-primary}"
-    rounded: "{rounded.element}"
-  button-destructive:
-    backgroundColor: "transparent"
-    textColor: "{colors.error}"
-    rounded: "{rounded.element}"
-  search:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.text-primary}"
-    rounded: "{rounded.element}"
-  navigation-current:
-    backgroundColor: "{colors.neutral}"
-    textColor: "{colors.text-primary}"
-    rounded: "{rounded.element}"
-  question:
-    backgroundColor: "{colors.neutral}"
-    textColor: "{colors.text-primary}"
-    rounded: "{rounded.element}"
-    padding: "0.5rem 0.75rem"
+    backgroundColor: "{colors.leaf-action}"
+    textColor: "{colors.on-leaf}"
     typography: "{typography.body}"
-  conversation-card:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.text-primary}"
+    rounded: "{rounded.element}"
+    padding: "0 12px"
+    height: "32px"
+  button-outlined:
+    backgroundColor: "transparent"
+    textColor: "{colors.paper}"
+    typography: "{typography.body}"
+    rounded: "{rounded.element}"
+    padding: "0 12px"
+    height: "32px"
+  button-delete-focus:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.bark-ground}"
+    rounded: "{rounded.element}"
+  band:
+    backgroundColor: "{colors.moss-band}"
+    textColor: "{colors.band-ink}"
+    height: "56px"
+    padding: "0 16px"
+  band-tab:
+    backgroundColor: "transparent"
+    textColor: "{colors.band-muted}"
+    rounded: "{rounded.element}"
+    padding: "0 12px"
+    height: "32px"
+  band-tab-current:
+    backgroundColor: "{colors.band-ink}"
+    textColor: "{colors.moss-band}"
+    rounded: "{rounded.element}"
+    padding: "0 12px"
+    height: "32px"
+  contents-panel:
+    backgroundColor: "{colors.deep-panel}"
+    textColor: "{colors.paper}"
+    width: "264px"
+  contents-row:
+    backgroundColor: "transparent"
+    textColor: "{colors.paper}"
+    typography: "{typography.body}"
+    rounded: "{rounded.element}"
+    padding: "6px 8px"
+    height: "32px"
+  contents-row-current:
+    backgroundColor: "{colors.raised-bark}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.element}"
+  composer:
+    backgroundColor: "{colors.raised-bark}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.container}"
+    width: "640px"
+  question-bubble:
+    backgroundColor: "{colors.seam}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.element}"
+    padding: "8px 12px"
+  passage-address:
+    backgroundColor: "{colors.amber-ink}"
+    textColor: "{colors.bark-ground}"
+    typography: "{typography.address-chip}"
+    rounded: "{rounded.inner}"
+    padding: "0 4px"
+  conversation-node:
+    backgroundColor: "{colors.raised-bark}"
+    textColor: "{colors.paper}"
     rounded: "{rounded.element}"
     width: "16rem"
-  reply:
-    textColor: "{colors.text-primary}"
-    typography: "{typography.reply}"
-  inherited-context:
-    textColor: "{colors.text-secondary}"
-    padding: "0 0 0 0.75rem"
+  volume:
+    backgroundColor: "{colors.raised-bark}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.element}"
+    width: "176px"
+  volume-cover:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.bark-ground}"
+    typography: "{typography.title}"
+    padding: "12px"
+    height: "144px"
+  concept-card:
+    backgroundColor: "{colors.raised-bark}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.element}"
+    padding: "6px 10px"
+  failure-banner:
+    backgroundColor: "{colors.rose-wash}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.element}"
+    padding: "8px 12px"
+  band-failure:
+    backgroundColor: "{colors.rose-failure}"
+    textColor: "{colors.on-rose}"
+    rounded: "{rounded.element}"
+    padding: "0 8px"
+    height: "24px"
 ---
 
 # Design System: TreeTutor
 
 ## Overview
 
-**Creative North Star: "Lecture-hall Slate"**
+**Creative North Star: "The Paperback Series"**
 
-TreeTutor is a calm room for following a question. Flat green-black slate, chalk-white reading text and passage-linked branches make the learning tree the visual identity. Chrome stays quiet during long reading sessions; yellow locates the active question, its source and the next action.
+A learning tree is a volume in a paperback series. The trunk conversation is paper; each first-level branch family takes one muted seasonal ink (amber, leaf, rust, lichen), and that ink follows the family everywhere: the passage underline it was branched from, the address chip after that passage, the dot in the Contents outline, the branch line on the map, the conversation node's band and the tick on the volume's spine in the Library. Structure, not ornament, is what makes the screen recognisable.
 
-Dark is the default; light uses pale slate-paper and slate ink with the same hierarchy. Public Sans gives controls a plain voice and Source Serif 4 gives tutor replies a sustained reading rhythm. The world uses actual diagram structure rather than decorative imagery, grain, imitation chalk or handwriting.
+The app is dark by default on bark-black with paper text, and the light appearance has the same structure on warm paper with darkened inks. A moss band runs across the top as the series' cover strip. Below it, a numbered Contents outline sits on the left, the reply is read at a book measure in the centre, and the learning tree map is docked on the right. Everything sits on one 8px module, divided by hairline seams and flat ink bands. There is no texture, no drop shadow and no blur. Chrome steps back while the learner reads: the reply is set in Literata with no bubble, and the interface is set in Archivo.
+
+The world rejects the category default of a grey chat column beside a sidebar list with one blue accent. It also rejects what PRODUCT.md names: childish or gamified, generic SaaS dashboard, neon hacker-dark, and decoration that competes with reply text.
 
 **Key Characteristics:**
-- Bare slate field and compact conversation cards
-- One yellow action and provenance accent
-- Unboxed serif replies against quiet grotesk controls
-- Hairline seams, small corners and no drop shadows
-
-Authority: [slateTheme.ts](src/themes/slate/slateTheme.ts) owns the palette, reading face, geometry and branch tokens; [slate.css](src/themes/slate/slate.css) is its generated Astryx output. [layout.ts](src/layout.ts) owns application composition and overrides. The frontmatter records reused built values, with `light-dark(light, dark)` preserved exactly. The [direction contract](docs/visual-identity-spec.md) and [surface brief](.impeccable/surfaces/index-html.md) explain the world.
-
-The [finish review](docs/verification/visual-finish/review.md) is `ship`. Its [46 captures](docs/verification/visual-finish/round-1/) cover all seven screens in both appearances at desktop and narrow sizes, plus interaction states. They use production-build Chromium with isolated SQLite and synthetic providers; they establish the visual fixture, not live inference. Static captures do not establish temporal animation behavior.
+- Bark-black ground, paper text, moss shell band; a designed light appearance with the same roles.
+- Four series inks cycle per first-level branch family; the trunk wears paper.
+- Leaf green is the one action colour; paper is focus; rose red means failure and nothing else.
+- Archivo for what you operate, Literata for what you read.
+- 3px element and 4px container corners, hairline seams, an 8px module, flat ink bands.
+- Motion is brief and structural: a 350ms branch draw-on, which is instant under reduced motion.
 
 ## Colors
 
+The palette is a warm bark-and-paper neutral, a single moss band, and four equal-weight seasonal inks. Every token is a light/dark pair (CSS `light-dark()`), and dark is the default. The frontmatter records the dark values, and the sidecar carries each pair.
+
 ### Primary
+- **Leaf Green** (leaf-action): the one action colour. It is used for the Send button, primary buttons (New chat in the Library), the streaming caret and dot, the "responding" activity dot, the current-model check in the model menu, and the pressed Knowledge filter (as Leaf Wash with a leaf hairline). **Leaf Text** is the same hue, lifted for legibility in text links and accent labels. Text on a leaf fill is **On Leaf**.
 
-Chalk yellow is the one action and orientation accent: Send, New chat text, keyboard focus, the active branch and the passage already explored. The light appearance darkens yellow to ochre for legibility; action fill and accent text have distinct semantic tokens. Selection uses its own yellow fill and retains primary text colour.
+### Secondary
+- **Amber Ink** (amber-ink): series ink 1. It is also used for the pending-video storyboard mark and progress bar.
+- **Leaf Ink**: series ink 2 shares the Leaf Green value. On a passage underline, branch line or node band it marks a family. On a filled button or caret it means action. Placement tells the two apart.
 
-**The Working Chalk Rule.** Yellow identifies primary action, focus and branch provenance. Blue, pink and green are tint or diagram-series colours, never competing action accents.
+### Tertiary
+- **Rust Ink** (rust-ink): series ink 3.
+- **Lichen Ink** (lichen-ink): series ink 4.
+
+The series inks fill Astryx's hue slots so that tints, badges and usage-chart series follow the world: yellow = amber, green = leaf, pink = rust, blue = lichen. Each ink has a low-alpha wash (light `24` / dark `2e` alpha), which supplies the question-bubble tint presets (Neutral, Amber, Lichen, Rust, Leaf).
 
 ### Neutral
+- **Bark Ground** (bark-ground): the page ground, the reading column and the open map canvas. It is also the text colour on paper and on inks in dark mode.
+- **Raised Bark** (raised-bark): the surface for cards, the composer, conversation nodes, volumes, the current Contents row and concept cards.
+- **Popover Bark** (popover-bark): the raised sheet for dialogs, dropdown menus, lightboxes and the branch form.
+- **Deep Panel** (deep-panel): the recessed field used by the Contents outline, the docked map, the Knowledge field and code blocks.
+- **Paper** (paper): primary text, the trunk's ink, the focus ring, the selected-link stroke and the volume cover.
+- **Paper Muted** (paper-muted): secondary text, addresses, labels and the context-meter fill.
+- **Paper Faint** (paper-faint): disabled text only.
+- **Seam** / **Seam Strong**: hairline dividers and borders. Seam Strong is for input and outlined-button strokes.
+- **Moss Band** (moss-band) with **Band Ink** and **Band Muted**: the shell band. Moss keeps the same value in both appearances.
+- **Selection** (selection): text selection, the revealed passage highlight and `mark`.
+- **Rose Failure** (rose-failure), **Rose Wash**, **On Rose**: failure states only.
 
-Slate ground carries the map; raised slate carries chat, cards and details; the deeper rail contains saved learning trees. Popovers have a separate raised tone. Chalk-white primary text, muted chalk secondary text and subdued disabled text retain the same roles in light slate-paper. Translucent seams, hover, pressed and current-row fills provide state without another palette. Browser selection and scrollbar colours use the same semantic roles.
+### Named Rules
+**The Family Ink Rule.** Each first-level branch takes the next ink in the cycle amber, leaf, rust, lichen, repeating, in creation order. Its descendants inherit that ink, and the trunk wears paper. A family's ink appears in the same six places: the passage underline, the address chip, the Contents dot, the branch line, the node band and the spine tick. Never assign an ink by topic, status or decoration.
 
-### Status and series
+**The One Action Colour Rule.** Leaf green is the only fill that means "do this". There is never a second action hue. Secondary actions are outlined neutral.
 
-Chalk red marks save/generation failures and isolated destructive actions. Yellow, blue, pink and green are the Mermaid series order and bubble tint vocabulary. The theme's legacy purple background alias resolves to pink; it is not a fifth series hue. Syntax highlighting inherits Astryx's syntax roles, rather than repurposing action accents.
+**The Paper Focus Rule.** Keyboard focus is a paper outline (band ink on the moss band). Focus is never leaf and never blue.
 
-Dark, Light and System are stored per browser origin. Missing or unreadable storage defaults to Dark. The generated theme sets native browser `color-scheme`; System follows the resolved operating-system scheme. Never reverse the light/dark tuple order or infer app appearance from the operating system alone.
+**The Rose Means Failure Rule.** Rose red appears only for something that failed: an unsaved map layout, a failed reply, a failed visual or video, a failed deletion. Deletion itself is not a failure. It is an outlined neutral button, set 32px apart from the other actions, and it fills with paper on keyboard focus.
 
 ## Typography
 
-Public Sans is the UI and heading face; Source Serif 4 is the tutor-reply and explanatory reading face. Both are self-hosted through `@fontsource`: Public Sans 400/500/600/700; Source Serif 4 400, 400 italic and 600. Code uses the theme's platform monospace stack. No display face is introduced for this working interface.
+**Interface Font:** Archivo (with "Segoe UI", Helvetica, Arial, sans-serif), self-hosted at weights 400, 500, 600 and 700
+**Reading Font:** Literata (with Georgia, "Times New Roman", serif), self-hosted at 400, 400 italic and 600
+**Code Font:** ui-monospace (with "SF Mono", Menlo, Consolas, monospace)
 
-The frontmatter records the desktop hierarchy: headline, title, compact semibold node title, UI body and medium label, supporting metadata, serif reply and reply-code roles. The theme's base is 14 with ratio 1.2. Reply blocks keep their explicit reading size and measure regardless of UI density. Knowledge explanations and inherited quote text also use the reading serif. Question bubbles follow the focused-chat rule and retain Public Sans, overriding the broad direction wording about question text.
+**Character:** Archivo is a compact grotesque that carries the chrome, titles and labels with tight negative tracking at display sizes. Literata is a book face for long evening reading. The pairing marks which text is something to operate and which is something to read.
 
-At widths below 1024px with a coarse pointer, Astryx raises UI body and label to 1rem/1.5, supporting text to 0.875rem/1.4286, title to 1.375rem/1.4545 and headline to 1.625rem/1.3846. This type adaptation is distinct from the application layout breakpoint.
+### Hierarchy
+The app's own ramp is 10, 12, 13, 14, 15, 17, 20 and 34px. Astryx's generated scale (base 14, ratio 1.2: 10, 12, 14, 17, 20, 24, 29, 35px) supplies the 10, 12, 14, 17 and 20 steps. The 13, 15 and 34px steps are deliberate members of the app ramp. They come from the mockup's own scale and are not drift from Astryx.
 
-**The Reading Voice Rule.** Tutor replies use the reading serif; questions and controls use Public Sans. Keep code in the code face.
+- **Display** (Archivo 700, 34px, 1.12, -0.015em): page titles. Used for Library, Settings and the conversation title in the reading column. There is one per page.
+- **Headline** (Archivo 700, 20px, 1.2, -0.01em): the learning-tree title at the head of Contents, the Knowledge detail title and the first-question prompt. The 20px wordmark on the band uses this size at regular weight.
+- **Title** (Archivo 700, 17px, 1.15, -0.01em): volume titles on the Library shelf. They are balanced and wrap freely.
+- **Reading** (Literata 400, 17px, 1.7): tutor replies, set at a 640px measure with no bubble. Inherited-context passages use Literata at 14px/1.7.
+- **Reading heading** (Literata 600, 20px, 1.3): headings inside replies.
+- **Reading aside** (Literata 400, 15px, 1.55–1.6): secondary reading text in Paper Muted. Used for Knowledge concept explanations and video figure captions (max 65ch).
+- **Body** (Archivo 400, 14px, 1.4286): interface text, Contents rows, tables inside replies (14px/1.45), and diagram card titles at 600.
+- **Small** (Archivo 13px, weight 500–600): Library date headings, Knowledge evidence, video draft steps and elapsed time. Also used for code inside replies, in the code face at 13px/1.6.
+- **Label** (Archivo 600, 12px): the Contents and Figures section labels, Knowledge topic headings, the model picker and reply status. Supporting text at 12px/1.6667 uses weight 400.
+- **Section label** (Archivo 600, 14px, all small caps, 0.06em, Paper Muted): Settings group and panel headings, which are the headings themselves and not tags above them.
+- **Address chip** (Archivo 700, 10px, 1.45, tabular): the inked address superscript after a branched passage.
+
+On touch devices narrower than 1024px, Astryx raises the whole scale one step (base 16px). Every address, token count, date and meter uses tabular figures.
+
+### Named Rules
+**The Two Faces Rule.** Use Literata for anything the learner reads as prose: replies, reply headings, inherited context, the passage quoted in the branch form, Knowledge explanations and figure captions. Use Archivo for everything else, including tables and code captions inside a reply.
+
+**The Numbered Address Rule.** Every conversation has an address (trunk 1, children 1.1, 1.2 in creation order, grandchildren 1.1.1). A later sibling never renumbers an earlier one. The address appears in tabular figures wherever the conversation is named.
 
 ## Layout
 
-The viewport shell fills available height. Desktop puts the saved-tree rail (14.5rem, 232px at a 16px root) beside a flexible bare map and a focused-chat column (35rem, 560px by default). The seam is draggable and keyboard adjustable; width is stored per browser, with a 22rem minimum and a workspace-dependent maximum. Expanded chat takes the workspace. Conversation-map cards are 16rem wide and preserve the conversation preview rather than becoming decorative title-only nodes.
+The layout is built on an 8px cover-grid module, and every band, column and major gap is a multiple of it. The shell band is 56px (7 modules) with 16px inline padding, and its controls are 32px tall. The Read view has three columns. The Contents outline is 264px (33 modules) on the Deep Panel. The reading column has a 640px measure plus 24px gutters on each side, with the composer sharing that measure. The learning tree map docks on the right at 440px (27.5rem) by default. The map is resizable from a draggable seam on its left edge, between 320px (20rem) and 60% of the workspace, so the reading column always keeps at least 40%; the arrow, Home and End keys also move the seam. When the pane resizes and the learner has not moved the map, it refits with a readable 75% zoom floor and reveals the selected node. A map the learner has panned keeps its centre.
 
-The rail scrolls its history above a labelled footer. It places the split-colour wordmark, yellow New chat text action, search and current-tree fill above saved items. Main spacing follows Astryx's quarter-rem rhythm: 1–6 for insets and related gaps, 8–12 for larger separation. The map's small control strip sits at the lower left. The field has no grid, watermark or minimap. Knowledge uses the same field language with a sticky detail column; content caps at 70rem.
+The Map view drops the reading column, so Contents sits beside the full canvas. The Library, Knowledge and Settings pages use a 70rem (1120px) page with 40px / 32px / 64px padding (5 / 4 / 8 modules). The Library shelf is a grid of 176px volumes with 32px row and 24px column gaps. Settings uses a 216px sticky section nav beside a 640px column with a 48px gap. Knowledge pairs a flexible concept field with a 16rem–360px detail panel.
 
-At 48rem and below, chat takes the width when open, the map yields, and the rail becomes a drawer. Knowledge detail follows the field. The settings shell changes from a bounded dialog (`min(50rem, 100dvh - 2rem)`) to viewport height; narrow navigation and selected section are separate views. The focused chat header stays one row (title and model/effort shorten; Expand hides because chat already fills the width), long content scrolls within its region, and the floating composer remains reachable. Replies cap each content block at 62ch; media and tables fit the column or scroll locally.
+Contents rows are 32px tall and indent 16px per depth level, up to three levels. Fine-tuning values of 4px, 6px, 10px and 12px appear inside rows and chips. They are internal padding, not layout spacing.
+
+**Narrow (max-width 48rem):** the band wraps. Contents moves into a drawer that holds the view links, then the outline, then Settings. The docked map hides while a chat is open. Settings collapses to one column with the nav above it, the Library list drops its date column, and page padding falls to 24px / 16px / 48px.
 
 ## Elevation & Depth
 
-Flat tonal layering and hairline seams provide depth. The three Astryx shadow slots all resolve to the same inset one-pixel seam; there are no cast/drop shadows. Cards, controls, the rail and reading panel are separated by fill, fine borders and focus outlines. Media overlays dim the slate without blur. The focus ring is a 2px accent outline with a 3px offset where the standard ring is used; local media and divider focus rules remain explicit in layout authority.
+The system is flat, and depth comes from tone. The order runs from Deep Panel (recessed) through Bark Ground and Raised Bark to Popover Bark (sheets), and hairline seams separate them. All three Astryx shadow tokens (low, med, high) resolve to the same 1px inset hairline, `inset 0 0 0 1px` in Seam. Lightbox and dialog backdrops are a flat dimmed overlay (Bark at 72% in dark mode) with the backdrop filter explicitly removed. The floating composer fades into the ground with a gradient instead of sitting on a drawn band.
 
-**The Slate Seam Rule.** Separate surfaces with tonal steps and hairlines. Do not add drop shadows, blur or texture.
+### Named Rules
+**The Hairline Rule.** Separate surfaces with a seam or a tonal step, never with a drop shadow or blur. The only rings are selection and focus rings. The current Library volume wears a 3px ground gap and a 2px paper ring, which is a selection mark and not elevation.
 
 ## Shapes
 
-Straight-sided forms use small corners: element corners, slightly softer panel corners and inner highlight corners are the frontmatter's element/container/inner roles. Hairline borders follow these silhouettes. Round geometry is reserved for activity dots, swatches where appropriate and diagram curves. Branch lines have round caps: ordinary paths use the branch width, focused paths use the slightly heavier focus width. Hidden branches end in a short dashed stub and count.
+Corners are barely softened, which keeps the pages printed and square. Interactive elements (buttons, tabs, rows, chips, nodes, volumes, concept cards, failure banners) use the element radius (3px). Containers and sheets (the composer, code blocks, diagram cards, the Knowledge field and detail panel, dialogs, lightboxes, video frames) use the container radius (4px). Inline marks (address chips, inline code, the context meter, highlight marks, usage swatches) use the inner radius (2px). Volume spine ticks are 4×6px with a 1px tick radius.
+
+Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%`) shapes family ink dots in Contents and the map legend, activity dots, the streaming dot and the familiarity rings in Knowledge (empty, half-filled or filled to show familiarity). The scrollbar thumb is the only pill shape (999px). Neither is a pattern for buttons. Ink bands (the volume cover and node bands) are flat fills that inherit the container's top corners.
 
 ## Components
 
-### Buttons and focus
+### Buttons
+- **Shape:** gently squared (3px), 32px tall in chrome, weight 600 in the band.
+- **Primary:** a Leaf Green fill with On Leaf text, used for Send and New chat in the Library. On the band, New chat is outlined in band ink at 35% alpha.
+- **Outlined (secondary):** transparent, with a Seam Strong inset hairline and paper text. Hover adds an 8% paper tint.
+- **Delete:** looks like Outlined in dialogs, never rose, and sits 32px from the other actions. On keyboard focus it fills with Paper and Bark text.
+- **Ghost:** used for Contents rows, crumbs and toolbar icons. Hover is a 6% paper overlay and press is 12%.
+- **Focus:** a paper outline everywhere, and a band-ink outline on the moss band.
 
-Send uses yellow fill and the paired on-accent text; ghost controls remain quiet and receive semantic hover/pressed fills. New chat is a yellow text action. Standard controls preserve Astryx focus and disabled behavior. Delete confirmation separates Cancel from the outlined red destructive action; destructive fill appears on keyboard focus. No floating shadow treatment is added.
+### Navigation (shell band)
+- The Moss Band holds, in order, the TreeTutor wordmark (20px), the learning-tree switcher (32px, outlined in band ink at 22% alpha, max 280px, ellipsised), the view tabs (Read, Map, Knowledge, Videos, each with a 16px Heroicons outline icon), and then search, New chat and Settings, pushed to the end.
+- **Tabs:** Band Muted at rest and Band Ink on hover. The current tab is a Band Ink fill with Moss text.
+- **Idle save state:** there is none. Map layout batches once a minute, and only a failure shows: a 24px Rose Failure pill reading "Map layout not saved." with an underlined Retry.
 
-### Search and navigation
+### Contents outline (signature)
+- A 264px Deep Panel. The head shows the tree title as a headline, with a count of conversations and figures below it.
+- A **Contents** list of rows shows the address (tabular, min 34px, Paper Muted), an 8px family ink dot and the title, ellipsised. The current row becomes Raised Bark with a seam hairline and weight 600.
+- A **Figures** list numbers every diagram, visual and video as "Fig n" with its kind.
+- A **Context meter** sits at the foot behind a seam: a 4px bar on Seam filled with Paper Muted, over tabular token counts.
 
-A ghost magnifier icon beside New chat opens Astryx's floating command palette, which matches learning-tree titles only. Arrow keys move the highlight, Enter or a click opens the tree and Escape returns focus to the icon; an empty query and a no-match query each explain themselves. The current tree in the rail has the neutral translucent fill. The rail's scrollbar is a thin rounded `--color-border-emphasized` thumb with no track, shown on hover, scroll or keyboard focus. Overflow actions retain accessible labels, and the footer pairs its settings icon with text. Model menus are plain lists: the current model has a yellow check; disconnected providers keep muted labels and explicit sign-in actions.
+### Reading column
+- The reply is set in Literata 17px/1.7 at the 640px measure, with no bubble. The learner's question is a tinted bubble aligned right (3px, 8px 12px padding, tint chosen from the five presets).
+- **Suggestions** are dotted 2px Paper Muted underlines. A branched passage is underlined solid in its family's ink and followed by an inked **address chip**.
+- **Composer:** Raised Bark, a 4px container corner and a Seam Strong hairline. On focus, the border and a 1px ring turn Paper. Send is a Leaf Green square at 3px.
+- **Streaming:** an 8px leaf caret after the last written block, and a pulsing 8px leaf dot in the reply status.
 
-### Conversation cards and question bubbles
+### Learning tree map (signature)
+- **Conversation node:** a 16rem Raised Bark box at 3px with a seam border, topped by a flat **ink band** (Paper for the trunk) that carries the address and title. On hover the border becomes Paper Muted, and focus draws a paper outline.
+- **Branch lines:** 2px, round-capped, in the family ink (Paper at 75% for the trunk). The focused branch is 2.5px. A new branch draws on over 350ms ease-out and appears at once under reduced motion. Folded branches end in a dashed ink stub with a dashed pill showing the count.
+- The canvas sits on Bark Ground when the map is its own view and on Deep Panel when docked. A zoom toolbar sits bottom-left, and an ink legend sits bottom-right (Map view only).
+- **Seam:** an 8px hit area whose 2px line turns Paper on hover, drag or focus (120ms).
 
-Map cards use raised slate, fine seams, compact semibold Public Sans titles and a chalk dot. Focus outlines the card in yellow; secondary node controls reveal on hover or focus and remain visible on touch. Question bubbles align right, use the selected chalk tint (neutral by default), keep small corners and wrap long content. Tutor replies have no enclosing bubble.
+### Library volumes (signature)
+- **Shelf:** 176px volumes. Each has a 144px **Paper cover** carrying the title (17px bold) and start date in Paper Ink, then a Raised Bark meta strip with a **spine**: one 4×6px tick per conversation in its ink, trunk first. The menu sits top-right on the cover.
+- **List:** the same volumes as seam-separated 48px rows, with the date column hidden when the layout is narrow.
 
-### Reading, inherited context and copy
+### Cards / Containers
+- Diagram cards, the Knowledge field and detail panel, code blocks and inherited context all use 4px corners, a Seam border and either Raised Bark or Deep Panel. They have no shadow and 12–24px of internal padding.
+- Visuals and videos sit inside the reply with no card chrome. Their action bars appear on hover or focus, and always on touch.
 
-Tutor prose uses the reply role; code blocks sit on the ground tone with the code face, and tables retain fine cell seams. Suggestions begin as muted dotted underlines. Explored passages switch to a solid 2px accent underline, shared with their focused map path. The inherited context disclosure is a yellow left rule and muted serif quotation. The compact passage popup anchors to the selection with an accent border: a clamped serif quote of the passage, a question field and a small round accent send control. Familiarity corrections sit under its overflow menu; outside click or Escape dismisses it.
+### Inputs / Fields
+- Inputs have a Seam Strong stroke and a 3px radius on Raised Bark. Focus is a Paper outline.
+- **Error:** Rose text and a rose border. Failure banners use Rose Wash with a rose hairline, a 3px radius and 8px 12px padding.
 
-Reply copy buttons sit quietly below the reply and code copy buttons at the block's upper right. They reveal on hover/focus, stay visible without hover capability, and confirm with a check and an announced “Copied.” They copy the source text. The sidecar's static snippets show visual states; they do not implement clipboard or navigation behavior.
+### Knowledge
+- Concept cards are Raised Bark at 3px, with a Seam Strong border, 6px 10px padding and a familiarity ring before the name. The selected card gets a 2px paper outline offset by 3px. Links between concepts are 1.5px Seam Strong lines, "builds on" links are drawn in Paper Muted, and the selected link is a 2px paper line.
 
-### Signature: source-to-branch chalk draw
-
-On creation, the new path draws from its source-message anchor to the child node with stroke draw-on (`350ms ease-out`). Its active stroke and the explored passage underline share yellow. Existing edges do not replay merely because focus changes. Reduced motion displays the completed path immediately and removes activity pulses, selection rise and chat view transitions. Quiet copy/divider state fades use 120ms; chat view transitions use 220ms with `cubic-bezier(0.16, 1, 0.3, 1)`.
-
-### Settings, media and Mermaid
-
-Settings use Public Sans, seams and functional small-cap section labels rather than card stacks; Appearance leads and chalk swatches preview bubble tints. Knowledge concept cards repeat map corners and focus, with serif explanatory details. Diagram cards and video library cards use raised slate and fine seams and enlarge against the dimmed slate overlay.
-
-Focused-chat videos follow the [inline visuals spec](docs/inline-visuals-spec.md): full column width at the stored reply position, transparent and borderless, with title and description available to assistive technology. Pending uses a slim Public Sans status line with the existing phase, rendering percentage and Cancel; failure shows its safe reason and Retry at the same position. The paused native player and Open large action keep their existing behavior. Older videos without a position remain after the reply. See the [inline video review](docs/verification/inline-video-review.md) for current evidence.
-
-Mermaid resolves colours from the rendered card and current app appearance: raised surface fills, primary text and edges, border seams, and yellow/blue/pink/green series. Diagram labels use Public Sans. Generated SVG image content carries an inline self-hosted Latin-400 Public Sans font face because an SVG image cannot inherit page fonts; bold may be synthesized. Enlarged diagrams preserve this delivery. No claim of every Mermaid family is derived from the flowchart captures.
+### Settings
+- Settings is a page, not a modal. A page title sits over a sticky section nav. Sections are divided by seams and headed by small-caps section labels, not cards. Usage shows bar series in lichen (input), leaf (output) and amber (cache read).
 
 ## Do's and Don'ts
 
 ### Do:
-
-- Do keep palette values in the project theme and consume semantic CSS variables.
-- Do preserve the shared yellow between the branched passage, focused line and focused node.
-- Do give tutor replies a 1rem/1.7 reading face and at most 62ch per block.
-- Do preserve keyboard focus, accessible names and visible copy controls on touch.
-- Do implement both appearances and reduced motion when extending a surface.
+- **Do** set every band, column and major gap on the 8px module (56px band, 264px Contents, 640px measure, 440px map).
+- **Do** give each first-level branch family one series ink, in the order amber, leaf, rust, lichen, and carry it to the underline, address chip, Contents dot, branch line, node band and spine tick. The trunk wears paper.
+- **Do** reserve Leaf Green fills for the one action in a region: Send, primary New chat, a pressed filter.
+- **Do** draw focus as a paper outline, or band ink on the moss band.
+- **Do** set replies and other prose for reading in Literata 17px/1.7 at a 640px measure, and everything operable in Archivo.
+- **Do** use 3px corners for elements, 4px for containers and 2px for inline marks.
+- **Do** make every animation instant under `prefers-reduced-motion`. That includes the branch draw-on, pulses, the selection rise and view transitions.
+- **Do** show failures persistently in rose and stay silent about success. There is no "Saved" idle label.
 
 ### Don't:
-
-- Don't add grid dots, watermarks or decoration to the bare map field.
-- Don't add drop shadows, glass, grain, chalk texture or handwriting fonts.
-- Don't turn the secondary chalk hues into competing primary-action colours.
-- Don't introduce remote fonts or replace questions with the reply serif.
-- Don't replace quiet metadata with badges, decorative eyebrows or extra panels.
-
-Not canonized or repaired: no material visual defect was reported by the finish review. Its old-ramp detector advisory is resolved here by documenting the built 1rem reply role; it does not justify a source change. The diagram Latin-only font subset is an implementation limit, not a universal typography constraint.
+- **Don't** use drop shadows, blur or texture. Depth comes from tone and hairline seams.
+- **Don't** use rose red for deletion, warnings or emphasis. It means something failed.
+- **Don't** introduce a second action hue, or use blue anywhere as an accent or a focus colour.
+- **Don't** add a fifth series ink or assign inks by topic. The four-ink cycle is the identity.
+- **Don't** put tutor replies in bubbles or cards. Only the learner's question is tinted.
+- **Don't** make the interface childish or gamified, a generic SaaS dashboard, or neon hacker-dark, and don't let decoration compete with reply text.

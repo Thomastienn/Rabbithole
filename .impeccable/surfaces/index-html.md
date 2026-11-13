@@ -2,67 +2,41 @@
 version: 1
 slug: "index-html"
 primary_target: "index.html"
-related_targets: ["src/main.tsx","src/ChatPage.tsx","src/TreeOverview.tsx"]
+related_targets: ["src/main.tsx","src/ChatPage.tsx","src/Contents.tsx","src/TreeOverview.tsx","src/KnowledgePage.tsx","src/VideoLibrary.tsx","src/SettingsWindow.tsx","src/layout.ts","src/themes/paperback/paperbackTheme.ts"]
 ---
 
-# TreeTutor workspace (all seven screens)
+# TreeTutor workspace (shipped app)
 
-Mode: Operate. Build path: code-led. Design authority: docs/visual-identity-spec.md (Direction contract, per-screen rules, optional features).
+Mode: Operate. Build path: code-led. Design authority: DESIGN.md (written from the shipped build on 2026-11-13) and the static mockup in docs/mockups/ with its brief `.impeccable/surfaces/docs-mockups-index-html.md`. Lecture-hall Slate (2026-11-10) is superseded and kept only in Git history.
 
 ## Direction contract
 
-Chosen by the owner on 2026-11-10 at the Impeccable decision page (direction round, Operate surface, code-led build). World: **Lecture-hall Slate**. Picked sketch: `.impeccable/mocks/decision/assigned.html` (composition reference for the map and focused chat, audited at the finish review). Alternates shown: Reading Room at Night (Impeccable's pick), Star Atlas (competitive challenger), five declined challengers and the category standard.
+Chosen by the owner on 2026-11-12 at the Impeccable decision page. World: **Paperback Series, Seasonal Inks**. Picked sketch: `.impeccable/mocks/decision/paperback-seasonal.html`. Shipped through TreeTutor-y36 (y36.1 to y36.11), finish-reviewed in TreeTutor-y36.12.
 
-THESIS: The learning tree is worked on a slate. A flat green-black ground, chalk-white reply text and branches ruled as chalk lines from the exact passage they came from. It refuses the category default: neutral grey AI-chat panels with one blue accent.
+THESIS: A learning tree is a volume in a paperback series. The trunk is paper and each first-level branch family takes one muted leaf ink, worn by its passage underline, address chip, branch line, contents dot, library spine tick and conversation node band. It refuses the category default of a grey chat column beside a sidebar list with one blue accent.
 
-OWN-WORLD: Dark: slate ground (~#1c2724), raised slate surface (~#24312d), deeper rail (~#16201d), chalk-white text (~#ebe7dc), muted chalk (~#9fb0a8), hairline seams (chalk at ~12% alpha). Chalk accents do jobs: yellow (~#e8d27a) is the one accent (focus, active branch, primary action, branched passage); blue, pink, green chalk are tint and series colours only. One alert colour (a chalk red) reserved for save and generation failures, held until seen. Light: pale slate-paper ground with slate ink, the same chalk hues darkened to pass contrast. Flat colour, no grain, no chalk texture, no handwriting fonts. Type: a readable text serif (Source Serif 4) for replies and question text; a plain grotesk (Public Sans) for UI; both self-hosted. Corners small (4px element, 6px panels). Hairline seams and one elevation step, never drop shadows.
+OWN-WORLD: Dark default: bark-black ground (#1a1613), raised bark (#241f1a), deeper panels (#14110e), paper text (#efe6d6), moss shell band (#33432a). Series inks at equal weight: amber, leaf, rust, lichen, repeating (they fill the Astryx hue slots yellow, green, pink, blue so Mermaid and bubble tints follow). Leaf green is the one action colour; paper is the focus ring; rose red is failure only (deletion is outlined neutral, filled paper on focus). Light: paper ground with the same inks darkened to AA. Archivo for interface and titles, Literata for replies. 3px element and 4px container corners, hairline seams, an 8px module, flat ink bands, no texture.
 
-STORY: The learner opens a calm dark room for thinking, reads a long reply at a comfortable measure, sees a phrase they do not understand, branches from it, and watches a chalk line connect that passage to a new conversation on the map. They trust the tree because every line shows where a question came from.
+STORY: The learner opens a volume from the Library, reads the reply at a book measure in the centre, sees where they are in the numbered contents on the left, and watches a branch they create appear on the docked map in its family's ink.
 
-FIRST VIEWPORT: Desktop 1440x900: learning tree rail left (~232px, deeper slate, TreeTutor wordmark with "Tutor" in chalk yellow, New chat as the yellow text action, tree list below); learning tree map centre on bare slate, conversation nodes as raised slate cards with a chalk-colour dot and title, branches as 2px rounded chalk-white lines, the active branch and focused node in chalk yellow with a yellow outline offset 3px; focused chat right (~560px, raised slate, hairline seam), header with title and quiet provider/model, inherited context as a yellow-ruled quote, replies in the serif at 16px/1.7 and at most 62ch, the branched passage underlined in chalk yellow, composer at the bottom with a yellow Send. Signature move: on branch creation the new chalk line draws from the source passage's anchor to the new node (stroke draw-on, ~350ms ease-out), and the passage underline and the line share the same yellow; reduced motion shows the line at once.
+FIRST VIEWPORT: Desktop 1440x900. Moss band: TreeTutor wordmark, learning-tree switcher (opens the Library), view tabs Read, Map, Knowledge, Videos, then search, New chat, Settings; a map-layout save failure joins the band with Retry. Below, Read is three columns: Contents (264px: tree title and counts, numbered addresses with ink dots, Figures, context meter), the reading column (640px Literata measure, breadcrumbs, 34px title, composer at the foot with the model menu and the leaf-green Send), and the docked learning tree map (440px default, draggable seam, nodes with ink bands). Signature move: one ink per branch family from passage underline and address chip to branch line and node band; a new branch draws on in 350ms and shows at once under reduced motion.
 
-FORM: Lecture-hall Slate, position 6 of the seven grounded candidates (reading room at night, university-press paperback, transit diagram, field notebook, herbarium plate, lecture-hall slate, study-group whiteboard). seed:fd686b1db47bf6f9. Raises kept from declined challengers: hierarchy by scale contrast alone (type specimen); flat colour, one branch geometry drives line, highlight and focus (guide map); vast empty slate, the map owns its field (catalog sleeve); one alert colour held until noticed (gate board); hairline seams and isolated destructive actions (dark console).
+FORM: Paperback Series, position 7 of seven grounded candidates. seed:ed446011afd27ce7. Raises kept: one module for every alignment; the reply owns the centre; figures numbered and listed in the contents; spine ticks per conversation; context budget as a running length.
 
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance. Discharged 2026-11-13: finish review verdict ship (TreeTutor-y36.12), DESIGN.md written from the build, no shipping rasters (embed-prompt scan: 0).
 
 ### Per-screen rules
 
-1. **Learning tree map.** Bare slate field, no grid dots, no watermark, nothing printed around the tree. Conversation nodes keep the chat-style content the PRD requires (whole conversation visible), set as raised slate cards: 4px corners, hairline seam, chalk dot plus title in Public Sans 600, body in muted chalk. Branch lines 2px chalk-white at ~75% with round caps, attached beside their source message; the focused path and node in chalk yellow (line 2.5px, node outline offset 3px). Hidden-branch stubs are short dashed chalk lines with a count. Map controls are quiet ghost buttons on a raised slate strip with hairline seam, bottom left. Signature draw-on runs here.
-2. **Focused chat.** Raised slate column with a hairline seam to the map; draggable divider is the seam itself, highlighted yellow on hover and drag. Header: title in Public Sans 600, provider and model as small muted text, token stats behind a quiet toggle. Replies in Source Serif 4 16px/1.7, max 62ch, no bubble; question bubbles are a 12%-chalk fill, right aligned, Public Sans. Inherited context section is a yellow left rule with muted quote text, collapsible. Branched passages underlined 2px chalk yellow. Diagram and video cards are raised slate with hairline seams, fit the column, open enlarged on a dimmed slate overlay. Composer: hairline-bordered field, yellow Send as the only filled button. Reply copy buttons (adopted) sit quiet under each reply, shown on hover and focus.
-3. **Learning tree sidebar.** Deeper slate rail, wordmark top, New chat as the yellow text action, tree search field (adopted) under it, tree list with the current tree on a 12%-chalk fill; rename and delete in a quiet overflow menu; settings gear joins the rail foot with its label so the foot is not a lone icon.
-4. **Settings window.** Raised slate dialog, hairline seam, 6px corners, Public Sans throughout; sections divided by seams and small-caps labels, not cards. Appearance (Dark, Light, System) is the first setting. Bubble tint presets show as chalk swatches.
-5. **Knowledge page.** Same slate field and chalk-line language as the map: concept nodes as small raised cards, relations as 1.5px chalk lines, the selected concept in yellow; side detail panel uses the focused chat's serif for explanatory text.
-6. **Dialogs and menus.** Delete confirmation: raised slate, the destructive button outlined in the alert colour and separated from Cancel by space, filled only on focus. Model menu: plain list on raised slate, current model marked with a yellow check, signed-out providers in muted text with their sign-in action. Passage prompt box: anchored to the selection, raised slate, yellow ring, compact.
-7. **Mermaid diagram theming.** Mermaid reads the resolved appearance; nodes in raised slate with chalk-white text and hairline strokes, edges chalk-white, one series per chalk hue (yellow, blue, pink, green) in that order; light appearance uses the darkened chalk set.
+1. **Read.** Contents left, reading column centre, map docked right behind a seam that is pointer and keyboard resizable and persisted; Expand chat hides the map. Replies in Literata 17px/1.7 at most 640px, no bubble; questions are Archivo bubbles right aligned with the chosen tint. Branched passages underline in their family ink with an aria-hidden address chip. Inherited context is a collapsible ink-ruled section. Inline visuals and videos stay borderless at their stored position (docs/inline-visuals-spec.md).
+2. **Map.** The Map tab gives the map the full workspace with an ink legend per first-level family. Left-to-right placement, edges anchored beside their source message and persisted node positions are product behaviour and stay. Nodes carry a full-width ink band with address and title; the trunk band is paper; focus and current node wear a paper ring. Folded stubs read "address · N folded". Failures show rose "Reply failed" with Retry reply. When the Map/Read switch resizes an untouched map it refits the whole tree with a 75% zoom floor and then reveals the selected node; a navigated map keeps its exact viewport; saved viewports restore on reload.
+3. **Library.** Learning trees as volumes on a Shelf (default) or List, title search, date groups, a spine tick per conversation in family ink, Rename and Delete in a quiet menu, New chat in leaf green.
+4. **Knowledge and Videos.** Page head like the Library on one 70rem column; the Return to learning tree row sits on the same column. Concepts on the deep field grouped by topic with a familiarity ring; paper selection; secondary actions are outlined hairline buttons; corrections pressed in leaf.
+5. **Settings.** A page, not a dialog, with section navigation (Interface, Models, Connections, Usage). House Astryx radios and small-caps section labels are kept as functional headings (accepted in docs/verification/settings-page-review.md).
+6. **States and overlays.** Menus with leaf checks and a separated delete item; a paper-bordered passage prompt anchored to the selection; enlarged media on a raised overlay; sized skeletons while loading; rose only for failures; first run asks the first question through the composer.
+7. **Narrow (≤48rem).** Band condenses to Contents (opens a drawer holding views, the outline and Settings), wordmark, search and New chat. One pane at a time; no screen scrolls sideways.
 
-### Optional features
+### Kept behaviour notes
 
-Adopted (each its own child ticket under this epic, after the focused chat ticket and before the finish review):
-
-- **Copy buttons** on tutor replies (and code blocks): reply text is the product, and copying it out supports "a place to think" without adding chrome while reading.
-- **Search across learning trees** in the sidebar: the tree list grows over long use, and finding a tree fast keeps the room calm.
-
-Not adopted, with reasons:
-
-- **Map overview (minimap):** contradicts "the map owns its field"; fit-view and keyboard navigation already cover orientation.
-- **Markdown export:** a behavior feature with no role in this visual world; it can return as its own PRD increment.
-
-### Smart video loading extension (TreeTutor-133.1)
-
-THESIS: An explicit video request reserves its playback space while private production runs. The learner sees one loading state, then a player or a simple recoverable failure.
-
-OWN-WORLD: Preserve Lecture-hall Slate, Astryx typography, semantic surfaces and existing small corners in both appearances. Use the existing 16:9 media geometry, Astryx Skeleton, stacks and small ghost actions; reduced motion freezes the placeholder.
-
-STORY: Request, keep reading or navigate elsewhere, then play the finished video. Cancel stops an attempt; Retry explicitly starts another. No script, code, engine stages or logs appear.
-
-FIRST VIEWPORT: The existing title sits above a full-column rectangle. Loading text and Cancel sit inside it; paused native playback replaces it at the same size. Description stays below. The persistent action becomes Open large in the player's upper corner, preserving focus.
-
-FORM: A narrow extension of the existing focused-chat media card, code-led; the established direction and seed above remain authoritative. No new visual system or page scaffold.
-
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
-
-### Inline video extension (TreeTutor-zhf.6)
-
-The later [inline visuals spec](../../docs/inline-visuals-spec.md) supersedes the loading rectangle and chat-card rules above for videos in the focused chat. Videos occupy their stored reply position without a border, surface fill, visible title or description. Title and description remain accessible. Pending uses a slim status line with the existing phase and rendering percentage plus Cancel; failure shows a known safe reason and Retry. Native playback, enlargement, library cards and restart recovery retain their existing behavior. Unpositioned legacy videos remain after the reply.
-
-Preserve Lecture-hall Slate, semantic theme tokens and Public Sans for status/actions alongside the serif reply. No new world, template, dependency or generation behavior. Desktop/narrow, light/dark, keyboard and renderer evidence is recorded in [the inline video review](../../docs/verification/inline-video-review.md).
+- No idle "Saved" label: layout writes batch once a minute, so only the failure state shows (TreeTutor-y36.3).
+- Explicit video requests reserve their place in the reply; pending shows a slim status line with phase and percentage plus Cancel; failure shows a safe reason and Retry; title and description stay accessible (TreeTutor-133.1, TreeTutor-zhf.6, evidence in docs/verification/inline-video-review.md).
+- Copy buttons on replies and code blocks, and title search across learning trees, remain adopted features.

@@ -35,10 +35,10 @@ try {
   await b('set', 'viewport', '1440', '900');
   await b('set', 'media', 'light', 'reduced-motion');
   await b('open', origin);
-  await wait(`document.querySelector('.empty-map')?.textContent.includes('Start a learning tree')`);
+  await wait(`document.querySelector('.empty-map')?.textContent.includes('Your first tree starts with a question.')`);
   for (const mode of ['dark', 'light']) {
     await appearance(mode);
-    await wait(`document.querySelector('.empty-map')?.textContent.includes('Start a learning tree')`);
+    await wait(`document.querySelector('.empty-map')?.textContent.includes('Your first tree starts with a question.')`);
     assert.equal((await controlBounds()).within, true);
     await shot(`empty-${mode}`);
   }

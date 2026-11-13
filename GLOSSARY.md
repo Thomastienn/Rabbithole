@@ -89,3 +89,11 @@ The local collection of generated videos, available independently of their origi
 **Visual**:
 An interactive HTML/SVG/JS fragment shown inside a tutor reply where the tutor placed it, running in an isolated sandbox with no network or access to the app. Older Mermaid diagrams stay diagrams.
 _Avoid_: Widget, canvas, artifact (in UI copy)
+
+**Theme**:
+A named colour palette for the whole app, such as Paperback or Forest, covering surfaces, ink, accent and the four series inks. Each theme has a light and a dark variant; Appearance chooses between them.
+_Avoid_: Skin, colour scheme, tint
+
+**Appearance**:
+The learner's choice of Dark, Light or System, deciding which variant of the current theme is shown.
+_Avoid_: Theme, mode
