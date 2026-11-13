@@ -18,6 +18,7 @@ const level = (c: Concept) => c.correction === 'known' ? 'Marked known' : c.corr
 // Familiarity is drawn by form (empty, half, full ring), never hue alone.
 const fill = (c: Concept) => c.correction === 'known' ? 'full' : c.correction === 'unknown' ? 'none' : c.familiarity >= 0.8 ? 'full' : c.familiarity >= 0.35 ? 'some' : 'none';
 const MIN_SCALE = 0.2;
+const LABEL_SCALE = 0.75;
 type Line = { x1: number; y1: number; x2: number; y2: number; key: string; kind: 'related' | 'builds on'; selected: boolean };
 
 export default function KnowledgePage({ api, activity }: { api: Api; activity: string }) {
@@ -145,7 +146,7 @@ export default function KnowledgePage({ api, activity }: { api: Api; activity: s
           <svg className="knowledge-links" aria-hidden="true"><defs><marker id="knowledge-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" /></marker></defs>
             {lines.map(l => <line key={l.key} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} data-kind={l.kind} data-selected={l.selected} markerEnd={l.kind === 'builds on' ? 'url(#knowledge-arrow)' : undefined} />)}</svg>
           {graph.concepts.map(c => { const p = at.get(c.name); return p && <button key={c.name} type="button" className="concept-point" data-concept={c.name} style={{ left: p.x, top: p.y }} aria-pressed={c === selected} aria-controls="concept-detail" onFocus={() => reveal(c.name)} onClick={() => setChosen(c.name)}>
-            <i className="fam" data-fill={fill(c)} aria-hidden="true" /><span className="concept-name">{c.name}</span><span className="sr-only">, {level(c)}</span>
+            <i className="fam" data-fill={fill(c)} aria-hidden="true" /><span className={view.k < LABEL_SCALE && c !== selected ? 'concept-name sr-only' : 'concept-name'}>{c.name}</span><span className="sr-only">, {level(c)}</span>
           </button>; })}
           {regions.map(r => <span key={r.name} className="topic-label" data-topic-label={r.name} style={{ left: r.x, top: r.y, maxWidth: Math.max(96, POINT_SPACE * 4 * Math.min(1, view.k)), transform: `translate(-50%, -50%) scale(${1 / view.k})` }}>{r.name}</span>)}
         </div>

@@ -149,6 +149,15 @@ try {
   const look = {};
   const mapTransform = () => ev(`document.querySelector('.knowledge-map').style.transform`);
   const scale = async () => +(await mapTransform()).match(/scale\(([\d.]+)\)/)[1];
+  const conceptNames = async () => {
+    const { snapshot, refs } = JSON.parse(await b('snapshot', '-i', '-s', '.knowledge-map', '--json')).data;
+    return [...snapshot.matchAll(/ref=(e\d+)\b/g)].map(m => refs[m[1]]).filter(r => r.role === 'button').map(r => r.name).sort();
+  };
+  const visibleConceptLabels = () => ev(`[...document.querySelectorAll('[data-concept]')].filter(p => { const e = p.querySelector('.concept-name'), r = e.getBoundingClientRect(); return getComputedStyle(e).clipPath === 'none' && r.width > 1 && r.height > 1; }).map(p => p.dataset.concept).sort()`);
+  async function zoomUntil(direction, done) {
+    for (let i = 0; i < 16 && !done(await scale()); i++) await b('find', 'role', 'button', 'click', '--name', direction, '--exact');
+    assert.ok(done(await scale()), `${direction} reaches label zoom threshold`);
+  }
   for (const mode of ['dark', 'light']) {
     await b('set', 'viewport', '1440', '900');
     await ev(`localStorage.setItem('treetutor.appearance', '${mode}'); true`);
@@ -208,6 +217,30 @@ try {
     assert.match(l.reading, /^"?Literata/, `${mode} serif detail text`);
     assert.match(l.ui, /^"?Archivo/, `${mode} Archivo labels`);
     await b('screenshot', resolve(`docs/verification/knowledge-${mode}.png`));
+    await zoomUntil('Zoom in', k => k >= 0.75);
+    const names = await conceptNames(), allConcepts = store.graph().concepts.map(c => c.name).sort();
+    assert.equal(names.length, allConcepts.length, `${mode} every concept has an accessible button name`);
+    for (const c of allConcepts) assert.ok(names.some(n => n.startsWith(c) && /Unfamiliar|Marked not understood/.test(n)), `${mode} accessible name includes ${c} and familiarity`);
+    assert.deepEqual(await visibleConceptLabels(), allConcepts, `${mode} all concept labels show at or above 75%`);
+    await zoomUntil('Zoom out', k => k < 0.75);
+    assert.deepEqual(await visibleConceptLabels(), ['Scheduler'], `${mode} only selected concept label shows below 75%`);
+    assert.deepEqual(await conceptNames(), names, `${mode} zooming below threshold keeps accessible names`);
+    await zoomUntil('Zoom out', k => k <= 0.2);
+    await ev(`document.querySelector('[data-concept="Race condition"]').focus(); true`);
+    await key('Enter');
+    await wait(`document.querySelector('.knowledge-detail h2')?.textContent === 'Race condition'`);
+    assert.deepEqual(await visibleConceptLabels(), ['Race condition'], `${mode} selection reveals its label and hides previous selection at minimum zoom`);
+    assert.deepEqual(await conceptNames(), names, `${mode} names stay available at minimum zoom`);
+    const topicsAtMinimum = await visibleTopicLabels();
+    assert.deepEqual(topicsAtMinimum.map(l => l.name), ['Concurrency', 'Operating systems']);
+    assert.ok(topicsAtMinimum.every(l => l.visible && l.wordsIntact && Math.abs(l.textScale - 1) < 0.05), `${mode} topic labels stay readable when zoomed out`);
+    await b('screenshot', resolve(`docs/verification/knowledge-labels-${mode}.png`));
+    await zoomUntil('Zoom in', k => k >= 0.75);
+    assert.deepEqual(await visibleConceptLabels(), allConcepts, `${mode} zooming back in restores concept labels`);
+    assert.deepEqual(await conceptNames(), names, `${mode} zooming back in keeps accessible names`);
+    l.zoomLabels = { threshold: 0.75, minimum: 0.2, accessibleNames: names, selectedAtMinimum: 'Race condition' };
+    await b('click', '[data-concept="Scheduler"]');
+    await b('find', 'role', 'button', 'click', '--name', 'Fit map', '--exact');
     if (mode === 'dark') {
       // Pan and zoom: wheel zooms, drag pans, toolbar zooms and refits; clicking a point still selects it.
       const fitted = await mapTransform(), k = await scale(), field = await ev(`(() => { const r = document.querySelector('.knowledge-field').getBoundingClientRect(); return { x: Math.round(r.left + 30), y: Math.round(r.top + 30) }; })()`);
@@ -258,6 +291,9 @@ try {
   await b('find', 'role', 'button', 'click', '--name', 'Fit map', '--exact');
   assert.ok(await ev(`(() => { const f = document.querySelector('.knowledge-field').getBoundingClientRect(); return [...document.querySelectorAll('[data-topic]')].every(e => { const r = e.getBoundingClientRect(); return r.left >= f.left && r.right <= f.right && r.top >= f.top && r.bottom <= f.bottom; }); })()`), 'phone Fit map includes complete topic regions');
   const mobileLabels = await checkTopicLabels();
+  assert.ok(await scale() < 0.75, 'phone fit is below concept label threshold');
+  assert.deepEqual(await visibleConceptLabels(), ['Scheduler'], 'phone fit keeps only selected concept label');
+  assert.deepEqual(await conceptNames(), look.light.zoomLabels.accessibleNames, 'phone fit keeps accessible concept names');
   writeFileSync(resolve('docs/verification/knowledge-results.json'), JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Production build in Chromium via agent-browser over a seeded local graph; no model calls', look, mobileLabels }, null, 2) + '\n');
   await b('screenshot', resolve('docs/verification/knowledge-mobile-light.png'));
   // Topic-only changes must invalidate the layout even with the same concept names and links.
@@ -267,7 +303,8 @@ try {
   await wait(`document.querySelector('[data-topic="Scheduling"]') && document.querySelectorAll('[data-topic]').length === 3`);
   assert.notEqual(await ev(`document.querySelector('.knowledge-map').style.transform`), priorLayout, 'new topic membership recalculates layout and fit');
   steps.push('Phone Fit map includes complete regions; refreshing topic membership without changing concept names or links recalculates regions and fit');
+  steps.push('Dark and light: concept labels hide below 75%, return above it, and follow keyboard selection at 20%; topic labels stay readable; Chromium accessible button names and familiarity remain unchanged across zoom levels');
   steps.push('Wheel zoom, drag pan, Zoom out and Fit map work; Tab reaches every concept, pans each into view, Enter opens its details. Dark and light: translucent topic regions contain every member, have centred AA labels clear of points, and fit in view; corrections preserve layout. Round non-overlapping concept points, familiarity rings and key, related lines and builds-on arrows, paper selection and focus, AA text, serif details, Archivo labels, no drop shadow, merge dialog');
-  console.log(JSON.stringify({ pass: true, steps, screenshots: [...['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)), ...['dark', 'light', 'merge-dark', 'merge-light', 'mobile-light'].map(m => `docs/verification/knowledge-${m}.png`)] }, null, 2));
+  console.log(JSON.stringify({ pass: true, steps, screenshots: [...['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)), ...['dark', 'light', 'merge-dark', 'merge-light', 'mobile-light', 'labels-dark', 'labels-light'].map(m => `docs/verification/knowledge-${m}.png`)] }, null, 2));
 } catch (error) { console.error({ steps, snapshot: await b('snapshot', '-i').catch(() => '') }); throw error; }
 finally { await b('close').catch(() => {}); await app.stop(); store.close(); }
