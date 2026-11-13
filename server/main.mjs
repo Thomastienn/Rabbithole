@@ -39,7 +39,7 @@ try {
   if (store.backupPath) console.log(`Saved pre-upgrade backup: ${store.backupPath}`);
   store.pruneEmpty();
   const auth = new Auth(dir), claude = new Claude(dir), endpoint = new OpenAI(dir);
-  app = createApp({ store, auth, endpoint, providers: { claude, codex: new Codex(auth, dir), ...(endpoint.status().configured && { openai: endpoint }) }, defaultProvider: 'claude', dir, suggestions: true });
+  app = createApp({ store, auth, endpoint, providers: { claude, codex: new Codex(auth, dir) }, defaultProvider: 'claude', dir, suggestions: true });
   await new Promise((resolve, reject) => { app.server.once('error', reject); app.server.listen(port, '127.0.0.1', resolve); });
   console.log(`TreeTutor: http://127.0.0.1:${app.server.address().port}`);
   // Local diagnostics only. Start listening first so a missing or slow CLI cannot prevent reading saved trees.

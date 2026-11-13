@@ -1,9 +1,14 @@
 # Custom OpenAI-compatible endpoint
 
-This is an explicitly selected third provider, `openai`, alongside the native
-Claude and Codex subscription adapters. It is registered only when configured.
-New chats still default to Claude. A missing provider fails visibly; it never
-routes a saved conversation to another provider.
+Custom endpoints are explicitly selected providers alongside the native Claude
+and Codex subscription adapters. The learner can save several, each with a
+unique name (compared case-insensitively), a base URL and an API key. Each
+saved endpoint registers as its own provider, labelled with its name in every
+model menu. The endpoint migrated from the earlier single-endpoint setting keeps
+provider id `openai`, so its conversations need no data migration; endpoints
+added later get `openai:<stable id>`. New chats still default to Claude. A
+missing provider fails visibly; it never routes a saved conversation to another
+provider.
 
 ## API and conversation contract
 
@@ -50,19 +55,27 @@ POST also requires JSON and the server's CSRF token.
 
 | Route | Behavior |
 | --- | --- |
-| `GET /api/settings/endpoint` | Return `{ configured, baseUrl }`, URL null when unset. |
-| `POST /api/settings/endpoint` | Save `{ baseUrl, apiKey }`; return only status and URL. No network call or provider selection. |
-| `POST /api/settings/endpoint/test` | Test the saved endpoint with model listing; return only status and URL, or a fixed actionable error. |
-| `POST /api/settings/endpoint/clear` | Remove the saved endpoint and unregister the provider; saved discussions remain available. |
+| `GET /api/settings/endpoints` | Return the ordered list `[{ id, name, baseUrl }]`; never a key. |
+| `POST /api/settings/endpoints` | Add `{ name, baseUrl, apiKey }` and register it as a provider; return the list. No network call or provider selection. A taken name returns 400 with `Another endpoint is called <name>. Choose a different name.` |
+| `POST /api/settings/endpoints/remove` | Remove `{ id }`: delete its key, abort its in-flight requests and unregister only that provider; return the list. Saved discussions and profiles keep their content and fail visibly when used. |
+| `GET /api/settings/endpoint` | Compatibility: `{ configured, baseUrl }` of the `openai` endpoint. |
+| `POST /api/settings/endpoint` | Compatibility: save `{ baseUrl, apiKey }` into the `openai` endpoint (named "Custom endpoint" when new). |
+| `POST /api/settings/endpoint/test` | Compatibility: test the `openai` endpoint with model listing; return status and URL, or a fixed actionable error. |
+| `POST /api/settings/endpoint/clear` | Compatibility: remove the `openai` endpoint. |
 
-Both URL and key are stored in `openai-endpoint.json` in the server's app-data
+Names are 1–80 characters without control characters and must not contain the
+key. All URLs and keys are stored as one list in `openai-endpoints.json` in the server's app-data
 directory (`TREETUTOR_DATA_DIR`, or `$XDG_DATA_HOME/treetutor`, normally
 `~/.local/share/treetutor`). The directory is owner-only; credential files are
 mode 0600, written atomically through a new owner-only temporary file and
 renamed. Loading enforces owner-only permissions and refuses symlinks. The key
 is held in private server memory and never placed in SQLite, provider process
-environments, browser responses or logs. Clearing unlinks the credential file
-instead of retaining a recoverable secret in trash. Invalid saved settings
+environments, browser responses or logs. Removing an endpoint rewrites the file
+without its key, and removing the last one unlinks the file, instead of
+retaining a recoverable secret in trash. On first start after the upgrade, an
+existing single-endpoint `openai-endpoint.json` is read once (with the same
+ownership checks), becomes the first list entry named "Custom endpoint" with
+id `openai`, and is deleted. Invalid saved settings
 leave the provider unconfigured and can be replaced or cleared through settings.
 
 Errors use fixed local messages and never forward upstream bodies or exception
@@ -73,9 +86,14 @@ boundary, not detection of arbitrary encodings or deliberately transformed
 secrets. The configured endpoint necessarily receives the key and inference
 history; its operator controls remote retention and billing.
 
-The learner-facing controls are in Map menu → Settings → Connections. Save
-requires re-entering the key and refreshes the model catalogue. Test connection
-uses only saved settings; unsaved edits must be saved first. Remove clears
-credentials without changing a conversation's provider. The compact model menu
-always includes a Custom endpoint group, with a settings action when unavailable.
+The learner-facing controls are in Map menu → Settings → Connections, under
+Custom endpoints. Add endpoint opens an inline form (name, base URL, API key)
+at the top of the list; Save refreshes the model catalogue, and the key field
+is always cleared and never shown back. Each row shows the name and base URL
+with Remove, which asks for confirmation first and never changes a
+conversation's provider. With no endpoints, an empty state offers Add endpoint.
+Editing, renaming and per-row testing are not in this release yet. Each model
+menu groups models under the endpoint name. The compact model menu always
+includes a Custom endpoint group, and any endpoint group that cannot list
+models shows a settings action that focuses Add endpoint.
 See [settings and menu verification](verification/custom-endpoint-settings.md).

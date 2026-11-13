@@ -860,7 +860,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
                     {composition.provider === id && composition.model && !models?.some(m => m.provider === id && m.model === composition.model) && <DropdownMenuRadioItem value={composition.model} label={`${composition.model} (saved)`} isDisabled />}
                     {(models ?? []).filter(m => m.provider === id).map(m => <DropdownMenuRadioItem key={m.model} value={m.model} label={m.label} />)}
                   </DropdownMenuRadioGroup>
-                  : id === 'openai' ? <DropdownMenuItem label="Custom endpoint settings" description="Add an endpoint or check its URL, API key and connection" onClick={() => openSettings('connections', '.endpoint-settings input', document.querySelector<HTMLElement>('[aria-label="Model for next reply"]'))} />
+                  : /^openai(:|$)/.test(id) ? <DropdownMenuItem label="Custom endpoint settings" description="Add an endpoint or check its URL, API key and connection" onClick={() => openSettings('connections', '.endpoint-add', document.querySelector<HTMLElement>('[aria-label="Model for next reply"]'))} />
                   : id === 'codex' ? <DropdownMenuItem label="Continue with ChatGPT" description="Sign in to use Codex with your ChatGPT plan" onClick={() => void signIn().catch(e => setError(e.message))} />
                   : <DropdownMenuItem label={`Check ${p.label} sign-in`} description={id === 'claude' ? 'Run claude in a terminal and sign in, then check again' : 'Sign in, then check again'} onClick={() => void loadModels()} />}
                 </DropdownMenuGroup>; })}
@@ -880,7 +880,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
   </VStack>;
   return <VStack gap={0} style={{ height: '100dvh', '--question-bubble-tint': bubbleTints.find(t => t.id === bubbleTint)!.color } as CSSProperties} onKeyDown={e => {
     if (e.key !== 'Escape' || e.defaultPrevented) return;
-    if ((e.target as Element).closest('[role=alertdialog]')) { e.preventDefault(); e.stopPropagation(); cancelDelete(); }
+    if ((e.target as Element).closest('.delete-dialog')) { e.preventDefault(); e.stopPropagation(); cancelDelete(); }
     else if (tab === 'settings' && !(e.target as Element).closest('dialog, [role=listbox], [role=menu]')) { e.preventDefault(); closeSettings(); }
   }}>
     {band}

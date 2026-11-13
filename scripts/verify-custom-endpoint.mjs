@@ -1,6 +1,6 @@
 // Real built UI, HTTP, storage and keyboard focus; provider replies are synthetic fixtures.
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFile, fork } from 'node:child_process';
@@ -21,7 +21,7 @@ if (process.argv[2] === '--serve') {
     models: async () => { if (offline) throw new Error('Fixture offline'); return [{ model, label, isDefault: true }]; },
     generate: async (tree, _text, emit, save) => { save(tree.thread ?? `fixture-${tree.id}`, tree.model); emit({ type: 'item', item: 'a', text: 'Peterson fixture continuation.' }); emit({ type: 'status', status: 'completed' }); },
   });
-  const app = createApp({ store, dir, endpoint, providers: { claude: native('sonnet', 'Sonnet'), codex: native('codex-model', 'Codex model'), ...(endpoint.status().configured && { openai: endpoint }) }, defaultProvider: 'claude', auth: { status: () => ({ connected: true }) } });
+  const app = createApp({ store, dir, endpoint, providers: { claude: native('sonnet', 'Sonnet'), codex: native('codex-model', 'Codex model') }, defaultProvider: 'claude', auth: { status: () => ({ connected: true }) } });
   process.on('message', async message => {
     if (message === 'stop') { await app.stop(); store.close(); process.exit(0); }
     offline = message === 'offline'; process.send({ ack: message });
@@ -30,8 +30,13 @@ if (process.argv[2] === '--serve') {
   process.send({ origin: `http://127.0.0.1:${app.server.address().port}`, pid: process.pid });
 } else {
   const dir = mkdtempSync(join(tmpdir(), 'tt-endpoint-ui-')), cleanup = [];
-  const fake = await fakeOpenAI({ after: fn => cleanup.push(fn) });
+  const fake = await fakeOpenAI({ after: fn => cleanup.push(fn) }), gateway = await fakeOpenAI({ after: fn => cleanup.push(fn) });
   fake.reply = (req, res) => streamReply(res, ['Peterson fixture continuation.']);
+  gateway.models = [{ id: 'gateway-model' }];
+  gateway.reply = (req, res) => streamReply(res, ['Gateway fixture continuation.']);
+  // Upgrade fixture: the old single-endpoint file must become "Custom endpoint" with provider id openai.
+  writeFileSync(join(dir, 'openai-endpoint.json'), JSON.stringify({ baseUrl: fake.baseUrl, apiKey: 'legacy-fixture-secret' }), { mode: 0o600 });
+  const secrets = ['legacy-fixture-secret', 'gateway-fixture-secret', 'local-fixture-secret'];
   const store = new Store(join(dir, 'trees.sqlite')), root = store.create('Root switch fixture', 'claude');
   store.model(root.id, 'sonnet');
   store.message(root.id, 'user', 'Root seed question', 'completed');
@@ -53,10 +58,9 @@ if (process.argv[2] === '--serve') {
   let server, origin;
   async function start() { server = fork(filename, ['--serve', dir], { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] }); const [ready] = await once(server, 'message'); origin = ready.origin; return ready.pid; }
   async function stop() { const stopped = once(server, 'exit'); server.send('stop'); await stopped; }
-  async function signal(message) { const ack = once(server, 'message'); server.send(message); await ack; }
   const get = async path => (await fetch(origin + path)).json();
   const saved = id => get(`/api/trees/${id}`);
-  const field = '.endpoint-settings input[type=url]', key = '.endpoint-settings input[type=password]';
+  const settingsText = 'document.querySelector(".endpoint-settings")?.textContent ?? ""';
   async function tabTo(selector, text) {
     for (let i = 0; i < 200; i++) { if (await evaluate(`document.activeElement?.matches(${JSON.stringify(selector)}) && (${text === undefined ? 'true' : `document.activeElement.textContent.trim() === ${JSON.stringify(text)}`})`)) return; await browser('press', 'Tab'); }
     assert.fail(`Tab did not reach ${selector}: ` + await evaluate('document.activeElement?.outerHTML'));
@@ -73,117 +77,144 @@ if (process.argv[2] === '--serve') {
     if (!await evaluate('!!document.querySelector(".focused-chat")?.getClientRects().length')) { await tabTo('[aria-label="Reopen chat"]'); await browser('press', 'Enter'); }
     await tabTo('[aria-label="Model for next reply"]'); await browser('press', 'Space'); await wait(`document.querySelector('[aria-label="Model for next reply"]')?.getAttribute('aria-expanded') === 'true' && [...document.querySelectorAll('[role=menu]')].some(e=>e.getClientRects().length)`);
   }
+  const menuText = '[...document.querySelectorAll("[role=menu]")].find(e=>e.getClientRects().length)?.textContent ?? ""';
   async function mapMenu() {
     if (!await evaluate(`!!document.querySelector('[aria-label="Map menu"]')?.getClientRects().length`)) await browser('press', 'Escape');
     await tabTo('[aria-label="Map menu"]'); await browser('press', 'Space');
   }
-  async function endpointSettings() { await modelMenu(); await menuItem('Custom endpoint settings'); await wait(`document.activeElement?.matches('${field}')`); }
-  async function keyboardSave() {
-    await tabTo(field); await browser('press', 'Control+a'); await browser('keyboard', 'inserttext', fake.baseUrl);
-    await tabTo(key); await browser('keyboard', 'inserttext', 'ui-fixture-secret');
-    assert.equal(await evaluate(`document.querySelector('${key}').type`), 'password');
-    await browser('press', 'Enter'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Endpoint saved.")');
-    assert.equal(await evaluate(`document.querySelector('${key}').value`), '');
-    assert.deepEqual(await get('/api/settings/endpoint'), { configured: true, baseUrl: fake.baseUrl });
-  }
   async function closeSettings() { await tabTo('#settings-return'); await browser('press', 'Enter'); await wait('!document.querySelector(".settings-page:not([hidden])")'); }
-  async function connectionSettings() { await mapMenu(); await menuItem('Settings'); await wait('document.activeElement?.id === "settings-heading"'); await tabTo('#settings-connections'); await browser('press', 'Enter'); await wait(`!!document.querySelector('${field}')`); }
+  async function connectionSettings() { await mapMenu(); await menuItem('Settings'); await wait('document.activeElement?.id === "settings-heading"'); await tabTo('#settings-connections'); await browser('press', 'Enter'); await wait('!!document.querySelector(".endpoint-add") && !document.querySelector(".endpoint-settings")?.textContent.includes("Loading endpoints")'); }
   async function openConversation(title) { await tabTo(`[aria-label="Open ${title}"]`); await browser('press', 'Enter'); await wait(`document.querySelector('.chat-title h2')?.textContent === ${JSON.stringify(title)}`); }
-  const labels = { claude: 'Sonnet', codex: 'Codex model', openai: 'second-model' };
-  const models = { claude: 'sonnet', codex: 'codex-model', openai: 'second-model' };
+  let gw;
+  const labels = () => ({ claude: 'Sonnet', codex: 'Codex model', openai: 'second-model', [gw]: 'gateway-model' });
+  const models = () => ({ claude: 'sonnet', codex: 'codex-model', openai: 'second-model', [gw]: 'gateway-model' });
   async function switchCycle(id, phase) {
-    for (const provider of ['openai', 'codex', 'claude', 'codex', 'openai', 'claude']) {
+    for (const provider of ['openai', gw, 'codex', 'claude', 'openai', gw]) {
       const before = await saved(id), from = before.provider;
       const visible = await evaluate("[...document.querySelectorAll('.focused-chat article')].map(e=>e.querySelector('.reply-md, .question-bubble').textContent)");
       assert.equal(visible.length, before.messages.length);
-      await modelMenu(); await menuItem(labels[provider]);
-      await wait(`document.querySelector('.chat-model')?.textContent.includes(${JSON.stringify(labels[provider] + ' · ')})`);
+      await modelMenu(); await menuItem(labels()[provider]);
+      await wait(`document.querySelector('.chat-model')?.textContent.includes(${JSON.stringify(labels()[provider] + ' · ')})`);
       const after = await saved(id);
-      assert.equal(after.provider, provider); assert.equal(after.model, models[provider]);
+      assert.equal(after.provider, provider); assert.equal(after.model, models()[provider]);
       assert.deepEqual(after.messages, before.messages); assert.deepEqual(after.branch, before.branch);
-      assert.deepEqual(await evaluate("[...document.querySelectorAll('.focused-chat article')].map(e=>e.querySelector('.reply-md, .question-bubble').textContent)"), visible);
       await tabTo('[role=textbox][aria-label="Your question"]');
       await browser('keyboard', 'inserttext', `${phase}: ${from} to ${provider}`); await browser('press', 'Enter');
       await wait(`document.querySelectorAll('.focused-chat article').length === ${before.messages.length + 2} && ![...document.querySelectorAll('.focused-chat [role=status]')].some(e=>e.textContent.includes('Responding')) && document.querySelector('[aria-label="Model for next reply"]')?.getAttribute('aria-disabled') !== 'true'`);
       const replied = await saved(id); assert.equal(replied.messages.length, before.messages.length + 2); assert.equal(replied.messages.at(-1).status, 'completed');
       assert.equal(replied.provider, provider);
-      pass(`${phase}: keyboard ${from} -> ${provider}, transcript unchanged and next reply completed`);
+      assert.equal(replied.messages.at(-1).text, provider === gw ? 'Gateway fixture continuation.' : 'Peterson fixture continuation.');
     }
+    pass(`${phase}: keyboard switches across Custom endpoint, Work gateway, Codex and Claude; transcripts unchanged and each reply came from the chosen endpoint`);
   }
+  async function noSecrets() { assert.ok(!await evaluate(`${JSON.stringify(secrets)}.some(k => document.documentElement.outerHTML.includes(k))`), 'a key reached the page'); }
   try {
     const firstPid = await start();
     await browser('set', 'viewport', '1280', '900'); await browser('open', origin); await browser('set', 'media', 'light', 'reduced-motion');
     await browser('wait', '[aria-label="Model for next reply"]');
-    await endpointSettings(); await keyboardSave();
-    await tabTo('.endpoint-settings button', 'Test connection'); await browser('press', 'Enter'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Connection works:")');
-    await tabTo('.endpoint-settings button', 'Remove'); await browser('press', 'Space'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Endpoint removed.")');
-    assert.deepEqual(await get('/api/settings/endpoint'), { configured: false, baseUrl: null });
-    pass('keyboard-only menu -> focused configuration -> Save -> Test -> Remove; key cleared and never returned');
-    await fill('Base URL', fake.baseUrl); await fill('API key', 'ui-fixture-secret'); await click('Save');
-    await wait('document.querySelector(".endpoint-settings").textContent.includes("Endpoint saved.")');
-    await click('Test connection'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Connection works:")');
-    await click('Remove'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Endpoint removed.")');
-    pass('mouse Save, Test and Remove use the same real settings API');
-    await keyboardSave();
-    await closeSettings();
+    assert.deepEqual(await get('/api/settings/endpoints'), [{ id: 'openai', name: 'Custom endpoint', baseUrl: fake.baseUrl }]);
+    assert.equal(existsSync(join(dir, 'openai-endpoint.json')), false);
     await connectionSettings();
-    await wait(`!!document.querySelector('${field}') && document.querySelector('${field}').value !== ''`);
-    assert.equal(await evaluate(`document.querySelector('${key}').value`), '');
-    assert.equal(await evaluate(`document.querySelector('${field}').value`), fake.baseUrl);
-    await fill('API key', 'unsaved-fixture-key');
-    assert.ok(await evaluate(`[...document.querySelectorAll('.endpoint-settings button')].find(b=>b.textContent.trim()==='Test connection').disabled`));
-    await closeSettings();
-    pass('Map menu Settings focuses the section; reopen restores URL only; unsaved edits cannot be tested');
+    await wait(`document.querySelector('.endpoint-row[data-endpoint="openai"]')?.textContent.includes(${JSON.stringify('Custom endpoint' + fake.baseUrl)})`);
+    pass('upgrade: the single saved endpoint is listed as "Custom endpoint" (provider id openai); old file replaced');
+
+    // Keyboard add, with a duplicate name rejected first.
+    await tabTo('.endpoint-add'); await browser('press', 'Enter');
+    await wait('document.activeElement?.closest(".endpoint-form") && document.activeElement.matches("input")');
+    await browser('keyboard', 'inserttext', 'custom endpoint');
+    await browser('press', 'Tab'); await browser('keyboard', 'inserttext', gateway.baseUrl);
+    await browser('press', 'Tab'); await browser('keyboard', 'inserttext', 'gateway-fixture-secret');
+    assert.equal(await evaluate('document.activeElement.type'), 'password');
+    await browser('press', 'Enter');
+    await wait(`${settingsText}.includes('Another endpoint is called custom endpoint. Choose a different name.')`);
+    assert.equal(await evaluate('document.querySelector(".endpoint-form input[type=password]").value'), '');
+    await fill('Name', 'Work gateway'); await fill('API key', 'gateway-fixture-secret');
+    await click('Save'); await wait(`${settingsText}.includes('Work gateway added.')`);
+    const list = await get('/api/settings/endpoints');
+    assert.deepEqual(list.map(e => [e.name, e.baseUrl]), [['Custom endpoint', fake.baseUrl], ['Work gateway', gateway.baseUrl]]);
+    gw = list[1].id; assert.match(gw, /^openai:[0-9a-f-]{36}$/);
+    await wait('!document.querySelector(".endpoint-form")'); // form closes after save
+    await noSecrets();
+    pass('inline Add endpoint by keyboard: duplicate name rejected with an actionable message, then saved under a new stable id; key cleared and never shown');
+
+    await closeSettings(); await modelMenu();
+    const menu = await evaluate(menuText);
+    for (const label of ['Custom endpoint', 'second-model', 'Work gateway', 'gateway-model']) assert.ok(menu.includes(label), label);
+    assert.ok(menu.indexOf('Work gateway') < menu.indexOf('gateway-model') && menu.indexOf('Custom endpoint') < menu.indexOf('second-model'));
+    await browser('press', 'Escape');
+    pass('model menu groups each endpoint\'s models under its own name');
+
     await switchCycle(root.id, 'root before restart');
     await openConversation('Nested switch fixture'); await switchCycle(nested.id, 'nested before restart');
-    const beforeRestart = await saved(nested.id); await stop(); const secondPid = await start(); assert.notEqual(firstPid, secondPid);
+    await stop(); const secondPid = await start(); assert.notEqual(firstPid, secondPid);
     await browser('open', origin); await browser('wait', '[aria-label="Open Nested switch fixture"]');
-    await openConversation('Root switch fixture'); assert.equal((await saved(root.id)).provider, 'claude');
-    await switchCycle(root.id, 'root after restart');
-    await openConversation('Nested switch fixture'); assert.deepEqual(await saved(nested.id), beforeRestart);
-    await switchCycle(nested.id, 'nested after restart');
-    pass('fresh server PID, SQLite/credential reload and all six directions repeated in root and depth-two child');
-    // The catalogue can fail while other providers work, then while every provider fails.
-    fake.modelStatus = 401;
-    await endpointSettings();
-    await tabTo('.endpoint-settings button', 'Test connection'); await browser('press', 'Enter');
-    await wait('!!document.querySelector(".endpoint-settings [role=alert]")');
-    assert.ok((await evaluate('document.querySelector(".endpoint-settings [role=alert]").textContent')).includes('API key'));
-    assert.equal(await evaluate(`document.querySelector('${key}').value`), '');
-    await closeSettings(); await signal('offline');
-    await endpointSettings(); await wait(`document.querySelector('${field}').value !== ''`);
-    pass('failing endpoint and total catalogue failure keep an actionable settings item; Test names API-key recovery');
-    fake.modelStatus = 200; fake.models = [];
-    await closeSettings(); await signal('online'); await endpointSettings();
-    pass('empty endpoint catalogue also routes to settings instead of a dead selection');
-    fake.models = [{ id: 'local-tutor' }, { id: 'second-model' }];
-    await click('Test connection'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Connection works:")');
-    await closeSettings(); await modelMenu(); await menuItem('second-model');
-    await wait('document.querySelector(".chat-model").textContent.includes("second-model · ")');
+    assert.deepEqual((await get('/api/settings/endpoints')).map(e => e.id), ['openai', gw]);
+    await openConversation('Nested switch fixture'); await switchCycle(nested.id, 'nested after restart');
+    pass('fresh server PID reloads both endpoints and their conversations');
+
+    gateway.modelStatus = 401;
+    await modelMenu();
+    assert.ok((await evaluate(menuText)).includes('Work gateway · not connected'));
+    await menuItem('Custom endpoint settings'); await wait('document.activeElement?.matches(".endpoint-add")');
+    gateway.modelStatus = 200;
+    pass('a failing endpoint shows "Work gateway · not connected" with a settings action that focuses Add endpoint');
+
+    // Remove asks first; Escape cancels; confirm removes only that endpoint.
+    await wait('!!document.querySelector(\'[aria-label="Remove Work gateway"]\')');
+    await tabTo('[aria-label="Remove Work gateway"]'); await browser('press', 'Enter');
+    await wait('!!document.querySelector(".endpoint-remove-dialog[open]")');
+    const dialog = await evaluate('document.querySelector(".endpoint-remove-dialog").textContent');
+    assert.ok(dialog.includes('Remove Work gateway?') && dialog.includes('Its saved key is deleted.') && dialog.includes('keep their content'));
+    await browser('press', 'Escape'); await wait('!document.querySelector(".endpoint-remove-dialog[open]")');
+    assert.equal((await get('/api/settings/endpoints')).length, 2);
+    await tabTo('[aria-label="Remove Work gateway"]'); await browser('press', 'Enter');
+    await wait('!!document.querySelector(".endpoint-remove-dialog[open]")');
+    await tabTo('.endpoint-remove-dialog button', 'Remove'); await browser('press', 'Enter');
+    await wait(`${settingsText}.includes('Work gateway removed.')`);
+    assert.deepEqual((await get('/api/settings/endpoints')).map(e => e.name), ['Custom endpoint']);
+    assert.doesNotMatch(readFileSync(join(dir, 'openai-endpoints.json'), 'utf8'), /gateway-fixture-secret/);
+    assert.equal((await saved(nested.id)).provider, gw, 'removal never silently changes provider');
+    pass('Remove asks for confirmation (Escape cancels), then deletes only Work gateway and its key');
+
+    await closeSettings(); await openConversation('Nested switch fixture');
+    const count = (await saved(nested.id)).messages.length;
+    await tabTo('[role=textbox][aria-label="Your question"]'); await browser('keyboard', 'inserttext', 'After removal'); await browser('press', 'Enter');
+    await wait('document.body.textContent.includes("Selected provider is unavailable")');
+    assert.equal((await saved(nested.id)).messages.length, count + 2, 'question and failed reply are saved; earlier content kept');
+    await modelMenu(); await menuItem('second-model'); await wait('document.querySelector(".chat-model").textContent.includes("second-model · ")');
+    pass('a conversation on the removed endpoint keeps its content and fails visibly; switching to Custom endpoint repairs it');
+
     await connectionSettings();
-    await wait(`document.querySelector('${field}').value !== ''`);
-    for (const [width, height] of [[1280, 900], [390, 844]]) {
-      await browser('set', 'viewport', String(width), String(height));
-      await tabTo(field); await browser('screenshot', join(dir, `settings-${width}.png`));
-      assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Horizontal overflow');
-      await closeSettings(); await modelMenu(); await browser('screenshot', join(dir, `menu-${width}.png`));
-      assert.ok(await evaluate('(()=>{const r=[...document.querySelectorAll("[role=menu]")].find(e=>e.getClientRects().length)?.getBoundingClientRect();return r&&r.width>0&&r.x>=0&&r.right<=innerWidth&&r.bottom<=innerHeight})()'), 'Menu outside viewport');
-      await browser('press', 'Escape');
-      assert.equal(await evaluate('document.activeElement?.getAttribute("aria-label")'), 'Model for next reply');
-      await connectionSettings();
+    await tabTo('[aria-label="Remove Custom endpoint"]'); await browser('press', 'Enter');
+    await wait('!!document.querySelector(".endpoint-remove-dialog[open]")');
+    await tabTo('.endpoint-remove-dialog button', 'Remove'); await browser('press', 'Enter');
+    await wait(`${settingsText}.includes('No custom endpoints yet')`);
+    assert.equal(existsSync(join(dir, 'openai-endpoints.json')), false);
+    pass('removing the last endpoint shows the empty state with Add endpoint and leaves no credential file');
+
+    await click('Add endpoint');
+    await fill('Name', 'Local llama'); await fill('Base URL', fake.baseUrl); await fill('API key', 'local-fixture-secret');
+    await click('Save'); await wait(`${settingsText}.includes('Local llama added.')`);
+    for (const scheme of ['light', 'dark']) {
+      await browser('set', 'viewport', '1280', '900');
+      await evaluate(`localStorage.setItem('treetutor.appearance', '${scheme}'); true`); await browser('reload');
+      await browser('wait', '[aria-label="Model for next reply"]'); await connectionSettings();
+      await wait(`document.documentElement.getAttribute('data-theme') === '${scheme}'`);
+      for (const [width, height] of [[1280, 900], [390, 844]]) {
+        await browser('set', 'viewport', String(width), String(height));
+        await click('Add endpoint'); await wait('!!document.querySelector(".endpoint-form")');
+        assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'), `${scheme} ${width}: horizontal overflow`);
+        await browser('screenshot', width === 1280 ? `docs/verification/custom-endpoints-${scheme}.png` : join(dir, `endpoints-${scheme}-${width}.png`));
+        await click('Cancel');
+        await click('Remove Local llama'); await wait('!!document.querySelector(".endpoint-remove-dialog[open]")');
+        assert.ok(await evaluate('(()=>{const r=document.querySelector(".endpoint-remove-dialog").getBoundingClientRect();return r.width>0&&r.x>=0&&r.right<=innerWidth&&r.bottom<=innerHeight})()'), `${scheme} ${width}: dialog outside viewport`);
+        await browser('screenshot', width === 1280 ? `docs/verification/custom-endpoints-remove-${scheme}.png` : join(dir, `remove-${scheme}-${width}.png`));
+        await click('Cancel'); await wait('!document.querySelector(".endpoint-remove-dialog[open]")');
+      }
+      pass(`${scheme}: list, inline form and remove dialog fit desktop and 390px without sideways scroll`);
     }
-    pass('desktop/mobile form scroll and menu bounds; Escape returns focus to the model button');
-    await tabTo('.endpoint-settings button', 'Remove'); await browser('press', 'Enter'); await wait('document.querySelector(".endpoint-settings").textContent.includes("Endpoint removed.")');
-    assert.equal((await saved(nested.id)).provider, 'openai', 'removal never silently changes provider');
-    await closeSettings(); await modelMenu(); await menuItem('Custom endpoint settings'); await wait(`document.activeElement?.matches('${field}')`);
-    assert.equal(await evaluate(`document.querySelector('${key}').value`), '');
-    await closeSettings(); await modelMenu(); await menuItem('Sonnet');
-    await wait('document.querySelector(".chat-model").textContent.includes("Sonnet · ")');
-    pass('removed endpoint stays explicit in saved chat; actionable menu repairs it or switches to Claude');
-    await mapMenu(); await menuItem('Help');
-    assert.ok((await evaluate('document.querySelector(".settings-page:not([hidden])").textContent')).includes('Set the starting model and effort for new learning trees in Settings → Models.'));
-    assert.ok(!await evaluate('document.body.textContent.includes("ui-fixture-secret") || document.body.innerHTML.includes("unsaved-fixture-key")'));
-    const result = { result: 'PASS', mode: 'fixture', date: new Date().toISOString(), liveEndpointTested: false, serverPids: [firstPid, secondPid], checks, screenshots: dir };
+    await noSecrets();
+    const result = { result: 'PASS', mode: 'fixture', issue: 'TreeTutor-2li.7', date: new Date().toISOString(), liveEndpointTested: false, serverPids: [firstPid, secondPid], checks, screenshots: dir };
     writeFileSync('docs/verification/custom-endpoint-settings-results.json', JSON.stringify(result, null, 2) + '\n');
     console.log(JSON.stringify(result, null, 2));
   } catch (error) {

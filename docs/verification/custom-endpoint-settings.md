@@ -1,5 +1,41 @@
 # Custom endpoint settings and model menu — TreeTutor-sh8.5
 
+## Several endpoints — TreeTutor-2li.7 (2026-11-13)
+
+Fixture evidence only (loopback [fake-openai.mjs](../../test/fake-openai.mjs)
+upstreams, synthetic Claude/Codex callbacks); no live endpoint was tested.
+`node scripts/verify-custom-endpoint.mjs` after `npm run build` now checks, in
+the built UI with real HTTP, SQLite and credential storage:
+
+- Upgrade: a seeded single-endpoint `openai-endpoint.json` is listed as
+  "Custom endpoint" with provider id `openai`; the old file is gone.
+- Keyboard Add endpoint opens the inline form with Name focused; a
+  case-insensitive duplicate name shows "Another endpoint is called … Choose a
+  different name." and clears the key; the second save adds "Work gateway" as
+  `openai:<uuid>`.
+- The model menu groups each endpoint's models under its name. Keyboard switch
+  cycles across both endpoints, Codex and Claude in a root and a depth-two
+  child, before and after a server restart, each reply coming from the chosen
+  upstream.
+- A failing endpoint shows "Work gateway · not connected" with a settings action
+  that focuses Add endpoint.
+- Remove opens a confirmation dialog; Escape cancels; confirming removes only
+  that endpoint and its key from the file. Its conversation keeps its content,
+  fails visibly ("Selected provider is unavailable") and can switch back.
+  Removing the last endpoint shows the empty state and deletes the file.
+- Light and dark appearance, desktop 1280×900 and mobile 390×844: list, inline
+  form and dialog have no sideways scroll and stay in the viewport
+  ([light](custom-endpoints-light.png), [dark](custom-endpoints-dark.png),
+  [remove light](custom-endpoints-remove-light.png),
+  [remove dark](custom-endpoints-remove-dark.png)). No key appears in the page.
+
+[endpoints.test.mjs](../../test/endpoints.test.mjs) covers add, list, remove,
+migration, duplicate names, labels in the models listing, persistence across
+restart and that no response body contains a key.
+
+The sections below record the earlier single-endpoint form (TreeTutor-sh8.5);
+its Save/Test connection form was replaced by the list above.
+
 Verified 2026-11-10 on Node 26.0.0, using the built UI and isolated temporary
 app-data directories. All checks below passed. See the
 [browser result](custom-endpoint-settings-results.json) and

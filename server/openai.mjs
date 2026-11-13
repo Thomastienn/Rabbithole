@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tutorSystem } from './diagrams.mjs';
 
-class EndpointError extends Error {}
+export class EndpointError extends Error {}
 
 function settings(body) {
   const invalid = () => { throw new EndpointError('Enter an HTTP(S) API base URL without credentials, query or fragment, and a nonempty API key.'); };
@@ -30,41 +30,90 @@ function redactStream(key, emit) {
   };
 }
 
+function readOwned(path) {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const info = fstatSync(fd);
+    if (!info.isFile() || info.uid !== process.getuid() || info.nlink !== 1) throw new EndpointError('Credential file is not an owner-only regular file.');
+    fchmodSync(fd, 0o600);
+    return JSON.parse(readFileSync(fd, 'utf8'));
+  } finally { closeSync(fd); }
+}
+
+function endpointName(name, apiKey) {
+  if (typeof name !== 'string' || !name.trim() || name.trim().length > 80 || /[\x00-\x1f\x7f]/.test(name) || name.includes(apiKey)) throw new EndpointError('Enter an endpoint name of up to 80 characters.');
+  return name.trim();
+}
+
+// The list of saved custom endpoints; each entry is registered as its own provider.
 export class OpenAI {
-  #saved = null;
-  #requests = new Set();
+  #list = [];
+  #adapters = new Map();
   constructor(dir) {
-    this.path = join(dir, 'openai-endpoint.json');
+    this.path = join(dir, 'openai-endpoints.json');
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     chmodSync(dir, 0o700);
-    let fd;
     try {
-      fd = openSync(this.path, constants.O_RDONLY | constants.O_NOFOLLOW);
-      const info = fstatSync(fd);
-      if (!info.isFile() || info.uid !== process.getuid() || info.nlink !== 1) return;
-      fchmodSync(fd, 0o600);
-      this.#saved = settings(JSON.parse(readFileSync(fd, 'utf8')));
-    } catch { /* Missing or invalid settings can be replaced through the server. */ }
-    finally { if (fd !== undefined) closeSync(fd); }
+      const list = readOwned(this.path);
+      this.#list = (Array.isArray(list) ? list : []).flatMap(e => {
+        try { return /^openai(:[0-9a-f-]{36})?$/.test(e?.id) ? [{ id: e.id, name: endpointName(e.name, e.apiKey), ...settings(e) }] : []; } catch { return []; }
+      });
+    } catch (error) {
+      // Upgrade: the single saved endpoint becomes "Custom endpoint" and keeps provider id openai.
+      const legacy = join(dir, 'openai-endpoint.json');
+      if (error.code === 'ENOENT') try { this.#list = [{ id: 'openai', name: 'Custom endpoint', ...settings(readOwned(legacy)) }]; this.#write(); rmSync(legacy); } catch { this.#list = []; }
+      /* Otherwise invalid settings can be replaced through the server. */
+    }
+    for (const e of this.#list) this.#adapters.set(e.id, new Endpoint(e));
   }
-  status() { return { configured: !!this.#saved, baseUrl: this.#saved?.baseUrl ?? null }; }
-  save(body) {
-    const saved = settings(body), temp = `${this.path}.${randomUUID()}.tmp`;
+  #write() {
+    if (!this.#list.length) { rmSync(this.path, { force: true }); return; }
+    const temp = `${this.path}.${randomUUID()}.tmp`;
     try {
-      writeFileSync(temp, JSON.stringify(saved), { mode: 0o600, flag: 'wx' });
+      writeFileSync(temp, JSON.stringify(this.#list), { mode: 0o600, flag: 'wx' });
       renameSync(temp, this.path);
     } finally { rmSync(temp, { force: true }); }
-    this.close();
-    this.#saved = saved;
+  }
+  #set(list) {
+    const previous = this.#list;
+    this.#list = list;
+    try { this.#write(); } catch (error) { this.#list = previous; throw error; }
+    for (const [id, adapter] of this.#adapters) if (!list.some(e => e.id === id && e === previous.find(p => p.id === id))) { adapter.close(); this.#adapters.delete(id); }
+    for (const e of list) if (!this.#adapters.has(e.id)) this.#adapters.set(e.id, new Endpoint(e));
+  }
+  list() { return this.#list.map(({ id, name, baseUrl }) => ({ id, name, baseUrl })); }
+  providers() { return Object.fromEntries(this.#adapters); }
+  add(body) {
+    const saved = settings(body), name = endpointName(body.name, saved.apiKey);
+    if (this.#list.some(e => e.name.toLowerCase() === name.toLowerCase())) throw new EndpointError(`Another endpoint is called ${name}. Choose a different name.`);
+    this.#set([...this.#list, { id: `openai:${randomUUID()}`, name, ...saved }]);
+    return this.list();
+  }
+  remove(id) {
+    // Do not retain removed credentials in trash or SQLite: the rewritten file no longer holds the key.
+    if (!this.#list.some(e => e.id === id)) throw new EndpointError('Endpoint not found. Refresh Connections and try again.');
+    this.#set(this.#list.filter(e => e.id !== id));
+    return this.list();
+  }
+  // shortcut: the single-endpoint routes act on the migrated "openai" entry; drop once no caller uses them.
+  status() { const e = this.#list.find(e => e.id === 'openai'); return { configured: !!e, baseUrl: e?.baseUrl ?? null }; }
+  save(body) {
+    const saved = settings(body), old = this.#list.find(e => e.id === 'openai'), entry = { id: 'openai', name: old?.name ?? 'Custom endpoint', ...saved };
+    this.#set(old ? this.#list.map(e => e === old ? entry : e) : [entry, ...this.#list]);
     return this.status();
   }
-  clear() {
-    // Do not retain cleared credentials in trash or SQLite.
-    rmSync(this.path, { force: true });
-    this.close();
-    this.#saved = null;
-    return this.status();
-  }
+  clear() { this.#set(this.#list.filter(e => e.id !== 'openai')); return this.status(); }
+  #legacy() { return this.#adapters.get('openai') ?? new Endpoint(null); }
+  models(signal) { return this.#legacy().models(signal); }
+  model(tree, signal) { return this.#legacy().model(tree, signal); }
+  generate(...args) { return this.#legacy().generate(...args); }
+  close() { for (const adapter of this.#adapters.values()) adapter.close(); }
+}
+
+class Endpoint {
+  #saved;
+  #requests = new Set();
+  constructor(saved) { this.#saved = saved; this.label = saved?.name; }
   async #fetch(saved, path, signal, body) {
     if (!saved) throw new EndpointError('Configure a custom endpoint in settings before using it.');
     const response = await fetch(saved.baseUrl + path, { method: body ? 'POST' : 'GET', redirect: 'error', signal,

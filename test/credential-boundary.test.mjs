@@ -85,9 +85,9 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
   let app = await launch();
   assert.deepEqual(JSON.parse(await app.request('/api/settings/endpoint')), { configured: false, baseUrl: null });
   await app.request('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey });
-  assert.equal(statSync(join(dir, 'openai-endpoint.json')).mode & 0o777, 0o600);
+  assert.equal(statSync(join(dir, 'openai-endpoints.json')).mode & 0o777, 0o600);
   assert.equal(statSync(dir).mode & 0o777, 0o700);
-  assert.equal(JSON.parse(readFileSync(join(dir, 'openai-endpoint.json'))).apiKey, apiKey);
+  assert.equal(JSON.parse(readFileSync(join(dir, 'openai-endpoints.json')))[0].apiKey, apiKey);
   await app.stop();
   app = await launch();
   assert.deepEqual(JSON.parse(await app.request('/api/settings/endpoint')), { configured: true, baseUrl: fake.baseUrl });
@@ -129,7 +129,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
   app = await launch();
   await app.request(`/api/trees/${tree.id}`);
   await app.request('/api/settings/endpoint/clear', {});
-  assert.equal(existsSync(join(dir, 'openai-endpoint.json')), false);
+  assert.equal(existsSync(join(dir, 'openai-endpoints.json')), false);
   assert.equal(readdirSync(dir).some(name => name.endsWith('.tmp')), false);
   await app.request(`/api/trees/${tree.id}/messages`, { text: 'Endpoint cleared' });
   await app.stop();

@@ -119,21 +119,23 @@ try {
   await wait(`document.documentElement.getAttribute('data-theme') === 'light'`);
   await tab('Connections');
   const conn = await text();
-  for (const s of ['Claude: signed in through Claude Code', 'Codex: not connected', 'Continue with ChatGPT', 'Custom endpoint', 'Base URL']) assert.ok(conn.includes(s), s);
-  await wait(`${dialog}.querySelector('.endpoint-settings')?.textContent.includes('No endpoint configured.')`);
+  for (const s of ['Claude: signed in through Claude Code', 'Codex: not connected', 'Continue with ChatGPT', 'Custom endpoints', 'No custom endpoints yet']) assert.ok(conn.includes(s), s);
   await shot('connections'); await b('screenshot', `${process.cwd()}/docs/verification/settings-connections-light.png`);
+  await b('find', 'role', 'button', 'click', '--name', 'Add endpoint', '--exact');
+  await b('find', 'label', 'Name', 'fill', 'Local llama');
   await b('find', 'label', 'Base URL', 'fill', upstream.baseUrl);
   await b('find', 'label', 'API key', 'fill', 'settings-fixture-secret');
   await b('find', 'role', 'button', 'click', '--name', 'Save', '--exact');
-  await wait(`${dialog}.textContent.includes('Endpoint saved.')`);
-  assert.deepEqual(await (await fetch(`${origin}/api/settings/endpoint`)).json(), { configured: true, baseUrl: upstream.baseUrl });
-  assert.equal(await ev(`${dialog}.querySelector('input[type=password]').value`), '');
-  await b('find', 'role', 'button', 'click', '--name', 'Test connection', '--exact');
-  await wait(`${dialog}.textContent.includes('Connection works: model listing succeeded.')`);
+  await wait(`${dialog}.textContent.includes('Local llama added.')`);
+  const [added] = await (await fetch(`${origin}/api/settings/endpoints`)).json();
+  assert.deepEqual(added, { id: added.id, name: 'Local llama', baseUrl: upstream.baseUrl });
+  assert.ok(!await ev(`${dialog}.innerHTML.includes('settings-fixture-secret')`));
+  await b('find', 'role', 'button', 'click', '--name', 'Remove Local llama', '--exact');
+  await wait(`!!document.querySelector('.endpoint-remove-dialog[open]')`);
   await b('find', 'role', 'button', 'click', '--name', 'Remove', '--exact');
-  await wait(`${dialog}.textContent.includes('Endpoint removed.')`);
-  assert.deepEqual(await (await fetch(`${origin}/api/settings/endpoint`)).json(), { configured: false, baseUrl: null });
-  step('Endpoint Save, Test connection and Remove use real app HTTP/storage with an isolated loopback upstream; saved key stays hidden');
+  await wait(`${dialog}.textContent.includes('Local llama removed.')`);
+  assert.deepEqual(await (await fetch(`${origin}/api/settings/endpoints`)).json(), []);
+  step('Endpoint Add and confirmed Remove use real app HTTP/storage with an isolated loopback upstream; saved key stays hidden');
   await b('find', 'role', 'button', 'click', '--name', 'Continue with ChatGPT', '--exact');
   await wait(`[...${dialog}.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('TreeTutor could not finish this request.'))`);
   assert.equal(authRequests, 1);
@@ -228,18 +230,18 @@ try {
   await wait(`${active}?.getAttribute('aria-label') === 'Map menu'`);
   step('Map menu Help opens only the Interface page with the Keyboard section; Return to learning tree returns focus');
 
-  // 5. Endpoint shortcut from the model menu focuses the endpoint form; Return restores focus.
+  // 5. Endpoint shortcut from the model menu focuses Add endpoint; Return restores focus.
   await b('find', 'role', 'button', 'click', '--name', 'Reopen chat', '--exact').catch(() => {});
   await wait(`document.querySelector('[aria-label="Model for next reply"]')?.getClientRects().length`);
   await b('find', 'role', 'button', 'click', '--name', 'Model for next reply', '--exact');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Custom endpoint settings Add an endpoint or check its URL, API key and connection').catch(() => b('find', 'text', 'Custom endpoint settings', 'click'));
-  await wait(`${active}?.matches('.endpoint-settings input[type=url]')`);
+  await wait(`${active}?.matches('.endpoint-add')`);
   assert.equal(await heading(), 'Connections');
   assert.deepEqual(await pages(), ['Connections']);
   await b('find', 'role', 'button', 'click', '--name', 'Return to learning tree', '--exact');
   await closed();
   await wait(`${active}?.getAttribute('aria-label') === 'Model for next reply'`);
-  step('Custom endpoint shortcut opens Connections with Base URL focused; Return goes back to the chat; focus returns to model picker');
+  step('Custom endpoint shortcut opens Connections with Add endpoint focused; Return goes back to the chat; focus returns to model picker');
 
   // 6. Band gear opens the page and focus returns to it.
   await b('find', 'role', 'button', 'click', '--name', 'Settings', '--exact');

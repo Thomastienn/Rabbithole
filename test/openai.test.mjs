@@ -37,9 +37,9 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
   assert.deepEqual((await unconfigured.json()).providers, { claude: { label: 'Claude', connected: false }, codex: { label: 'Codex', connected: false }, openai: { label: 'Custom endpoint', connected: false } });
   assert.equal((await post('/api/settings/endpoint', { baseUrl: fake.baseUrl + '/', apiKey })).status, 200);
   assert.equal(fake.calls.length, 0, 'save does not contact the endpoint');
-  const path = join(dir, 'openai-endpoint.json');
+  const path = join(dir, 'openai-endpoints.json');
   assert.equal(statSync(path).mode & 0o777, 0o600);
-  assert.equal(JSON.parse(readFileSync(path)).apiKey, apiKey);
+  assert.equal(JSON.parse(readFileSync(path))[0].apiKey, apiKey);
   const catalogue = await (await get('/api/models')).json();
   assert.deepEqual(catalogue.models, [
     { provider: 'openai', model: 'local-tutor', label: 'local-tutor', isDefault: true, efforts: [] },
@@ -171,7 +171,7 @@ test('settings enforce CSRF, loopback and URL boundaries; clear unregisters with
   assert.equal(fake.calls.length, 0, 'rejected settings never contact a host');
   assert.equal((await post('/api/settings/endpoint/test')).status, 502);
   assert.equal((await post('/api/settings/endpoint', saved)).status, 200);
-  const path = join(dir, 'openai-endpoint.json');
+  const path = join(dir, 'openai-endpoints.json');
   chmodSync(path, 0o644);
   assert.deepEqual(new OpenAI(dir).status(), { configured: true, baseUrl: fake.baseUrl });
   assert.equal(statSync(path).mode & 0o777, 0o600, 'restart repairs permissive credential mode');
