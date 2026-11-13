@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-13T00:03:01.947Z",
+  "checkedAt": "2026-11-13T03:34:43.802Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
@@ -11,84 +11,84 @@
         "fence": false,
         "inline": true,
         "lastReply": true,
-        "status": "Peterson in the tournament tree: Creating video…"
+        "status": "Peterson in the tournament tree: Writing script and scenes…"
       }
     },
     {
-      "name": "borderless slim pending line fits wide/narrow in both appearances with reduced motion",
+      "name": "16:9 dark-paper draft frame with visible title fits wide/narrow in both appearances with reduced motion",
       "pass": true,
       "details": [
         {
           "mode": "dark",
-          "width": 527,
-          "animations": 0,
+          "width": 528,
+          "animations": "",
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
           "buttonFont": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
-          "color": "rgb(171, 158, 139)",
-          "column": 527,
+          "color": "rgb(239, 230, 214)",
+          "column": 528,
           "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
-          "ground": "rgb(36, 31, 26)",
-          "height": 28,
+          "ground": "rgb(26, 22, 19)",
+          "height": 297,
           "overflow": false,
-          "size": "12px",
+          "size": "13px",
           "skeleton": false,
-          "titleHidden": true,
-          "contrast": 6.217430074719537
+          "titleHidden": false,
+          "contrast": 14.519329554518766
         },
         {
           "mode": "light",
-          "width": 527,
-          "animations": 0,
+          "width": 528,
+          "animations": "",
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
           "buttonFont": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
-          "color": "rgb(95, 85, 71)",
-          "column": 527,
+          "color": "rgb(239, 230, 214)",
+          "column": 528,
           "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
-          "ground": "rgb(250, 247, 240)",
-          "height": 28,
+          "ground": "rgb(26, 22, 19)",
+          "height": 297,
           "overflow": false,
-          "size": "12px",
+          "size": "13px",
           "skeleton": false,
-          "titleHidden": true,
-          "contrast": 6.822243247629124
+          "titleHidden": false,
+          "contrast": 14.519329554518766
         },
         {
           "mode": "dark",
-          "width": 358,
-          "animations": 0,
+          "width": 342,
+          "animations": "",
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
           "buttonFont": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
-          "color": "rgb(171, 158, 139)",
-          "column": 358,
+          "color": "rgb(239, 230, 214)",
+          "column": 342,
           "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
-          "ground": "rgb(36, 31, 26)",
-          "height": 28,
+          "ground": "rgb(26, 22, 19)",
+          "height": 192.375,
           "overflow": false,
-          "size": "12px",
+          "size": "13px",
           "skeleton": false,
-          "titleHidden": true,
-          "contrast": 6.217430074719537
+          "titleHidden": false,
+          "contrast": 14.519329554518766
         },
         {
           "mode": "light",
-          "width": 358,
-          "animations": 0,
+          "width": 342,
+          "animations": "",
           "background": "rgba(0, 0, 0, 0)",
           "border": "0px",
           "buttonFont": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
-          "color": "rgb(95, 85, 71)",
-          "column": 358,
+          "color": "rgb(239, 230, 214)",
+          "column": 342,
           "font": "Archivo, \"Segoe UI\", Helvetica, Arial, sans-serif",
-          "ground": "rgb(250, 247, 240)",
-          "height": 28,
+          "ground": "rgb(26, 22, 19)",
+          "height": 192.375,
           "overflow": false,
-          "size": "12px",
+          "size": "13px",
           "skeleton": false,
-          "titleHidden": true,
-          "contrast": 6.822243247629124
+          "titleHidden": false,
+          "contrast": 14.519329554518766
         }
       ]
     },
@@ -109,26 +109,26 @@
         "before": {
           "focus": true,
           "messages": 14,
-          "top": 1234
+          "top": 1529
         },
         "after": {
           "focus": true,
           "messages": 14,
-          "top": 1234
+          "top": 1529
         }
       }
     },
     {
-      "name": "player replaces the slim status line at full column width and 16:9",
+      "name": "player replaces the draft frame at full column width and 16:9",
       "pass": true,
       "details": {
         "frameBefore": {
-          "height": 28,
-          "width": 527
+          "height": 297,
+          "width": 528
         },
         "frameAfter": {
-          "height": 296.4375,
-          "width": 527
+          "height": 297,
+          "width": 528
         }
       }
     },
@@ -139,9 +139,7 @@
         "progress": [],
         "progressLive": false,
         "statuses": [
-          "Peterson in the tournament tree: Rendering video… 40%",
-          "Peterson in the tournament tree: Rendering video… 10%",
-          "Peterson in the tournament tree: Rendering video… 45%",
+          "Peterson in the tournament tree: Rendering frames…",
           "Peterson in the tournament tree: Video ready."
         ]
       }
@@ -243,7 +241,7 @@
           "after": "Then the winners advance.",
           "before": "Here is how Peterson fits.",
           "border": "0px",
-          "chat": "rgb(36, 31, 26)",
+          "chat": "rgb(26, 22, 19)",
           "ghost": true,
           "inline": true,
           "padding": "0px",
@@ -256,7 +254,7 @@
           "after": "Then the winners advance.",
           "before": "Here is how Peterson fits.",
           "border": "0px",
-          "chat": "rgb(250, 247, 240)",
+          "chat": "rgb(242, 238, 229)",
           "ghost": true,
           "inline": true,
           "padding": "0px",
@@ -269,7 +267,7 @@
           "after": "Then the winners advance.",
           "before": "Here is how Peterson fits.",
           "border": "0px",
-          "chat": "rgb(36, 31, 26)",
+          "chat": "rgb(26, 22, 19)",
           "ghost": true,
           "inline": true,
           "padding": "0px",
@@ -282,7 +280,7 @@
           "after": "Then the winners advance.",
           "before": "Here is how Peterson fits.",
           "border": "0px",
-          "chat": "rgb(250, 247, 240)",
+          "chat": "rgb(242, 238, 229)",
           "ghost": true,
           "inline": true,
           "padding": "0px",

@@ -211,14 +211,39 @@ html { view-transition-name: none; }
 .video-inline .astryx-button, .video-inline .astryx-button .astryx-text { font-family: var(--font-family-body); font-size: var(--text-label-size); line-height: var(--text-label-leading); }
 .video-inline:not([data-state=ready]) .video-controls { position: static; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 4px 0; }
 .video-status-icon { flex: none; width: 16px; height: 16px; color: var(--color-text-secondary); }
-.video-meter { flex: 1; max-width: 200px; height: 4px; border-radius: 2px; background: var(--color-border); overflow: hidden; }
-.video-meter > i { display: block; height: 100%; background: var(--color-accent); }
 .video-inline .video-controls > [role=status] { min-width: 0; }
 .video-inline .video-controls > button { flex: none; }
 .video-inline[data-state=ready] .video-controls { flex-direction: row; opacity: 0; }
 .video-inline[data-state=ready]:is(:hover, :focus-within) .video-controls { opacity: 1; }
 @media (hover: none) { .visual-actions, .video-inline[data-state=ready] .video-controls { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .video-stage .astryx-skeleton, .video-stage .astryx-skeleton::after { animation: none; } }
+/* Inline videos sit on the video's own dark paper in both appearances (docs/video-quality-spec.md); color-scheme: dark resolves the theme's dark values. */
+.video-inline video.video-frame { color-scheme: dark; background: var(--color-background-body); }
+/* Pending draft frame: storyboard ink drawing and erasing behind the real steps, elapsed time, estimated bar and Cancel. */
+.video-inline[data-state=pending] .video-stage { color-scheme: dark; background: var(--color-background-body); color: var(--treetutor-paper); box-shadow: inset 0 0 0 1px var(--color-border); border-radius: var(--radius-container); overflow: hidden; container-type: inline-size; }
+.video-draft { position: absolute; inset: 0; }
+.video-sketch { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: var(--treetutor-paper); stroke-opacity: 0.2; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.video-sketch path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: video-sketch 7.2s cubic-bezier(0.22, 1, 0.36, 1) infinite both; }
+.video-sketch .video-sketch-mark { stroke: var(--treetutor-ink-1); stroke-opacity: 0.55; }
+@keyframes video-sketch { 0% { stroke-dashoffset: 1; } 45%, 72% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -1; } }
+.video-steps { position: absolute; left: 24px; bottom: 26px; margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font: 500 13px/1.35 var(--font-family-body); }
+.video-steps li { display: flex; align-items: center; gap: 8px; color: var(--color-text-secondary); }
+.video-steps li > i { flex: none; width: 7px; height: 7px; margin-inline: 2.5px; border-radius: 50%; border: 1.5px solid currentColor; }
+.video-steps li > svg { flex: none; width: 12px; height: 12px; stroke-width: 2.5; color: var(--treetutor-ink-2); }
+.video-steps li[data-step=active] { color: var(--treetutor-paper); font-weight: 600; }
+.video-steps li[data-step=active] > i { background: var(--treetutor-ink-1); border-color: var(--treetutor-ink-1); animation: video-pulse 1.6s ease-in-out infinite; }
+.video-steps small { font-weight: 400; font-size: 12px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+@keyframes video-pulse { 50% { opacity: 0.35; } }
+.video-inline[data-state=pending] .video-controls { position: absolute; inset: auto 16px 18px auto; flex-direction: row; align-items: center; gap: 12px; padding: 0; }
+.video-elapsed { font: 500 13px/1 var(--font-family-body); font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+.video-draft-bar { position: absolute; inset: auto 0 0 0; height: 3px; background: var(--color-border); }
+.video-draft-bar > i { display: block; height: 100%; background: var(--treetutor-ink-1); transform-origin: left; transition: transform 1.2s linear; }
+@container (width < 440px) { .video-steps li:not([data-step=active]) { display: none; } .video-sketch { opacity: 0.6; } .video-inline[data-state=pending] .video-controls { inset: 8px 8px auto auto; } }
+@media (prefers-reduced-motion: reduce) { .video-sketch path { animation: none; stroke-dashoffset: 0; } .video-steps li[data-step=active] > i { animation: none; } .video-draft-bar > i { transition: none; } }
+/* Figure caption under the player: title in Archivo, description in the reading face. */
+.video-caption { padding-inline: 2px; }
+.video-inline .video-caption :is(h3, h3 *) { margin: 0; font: 600 var(--text-label-size)/var(--text-label-leading) var(--font-family-heading); color: var(--color-text-primary); }
+.video-inline .video-caption .astryx-text:not(h3, h3 *) { max-width: 65ch; font-family: var(--treetutor-font-reading); font-size: 15px; line-height: 1.55; color: var(--color-text-secondary); }
 /* Lightbox caps media at natural size; generated videos are small, so fill the viewer (contain keeps 16:9). */
 .astryx-lightbox video { width: 92vw; height: calc(100dvh - 8rem); }
 /* Enlarged diagrams: a plain dimmed slate overlay (no blur; the library's backdrop rule outranks plain selectors) and the drawing on a raised panel. No caption: the library sizes it apart from the drawing, and the card keeps the title. */

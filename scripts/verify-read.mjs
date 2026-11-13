@@ -72,6 +72,7 @@ try {
   await b('set', 'media', 'dark', 'reduced-motion');
   await b('wait', `[aria-label="Open ${tree.title}"]`);
   await b('focus', `[aria-label="Open ${tree.title}"]`); await b('press', 'Enter');
+  await b('wait', '.visual'); await intoView('.visual');
   await wait(`document.querySelector('.visual-frame[data-ready]') && document.querySelector('.diagram-card img')?.naturalWidth > 0 && document.querySelector('video')?.readyState >= 1`);
   await b('snapshot', '-i');
   for (const mode of ['dark', 'light']) {
@@ -79,6 +80,7 @@ try {
       await ev(`localStorage.setItem('treetutor.appearance', 'light'); location.reload()`);
       await b('wait', `[aria-label="Open ${tree.title}"]`);
       await b('focus', `[aria-label="Open ${tree.title}"]`); await b('press', 'Enter');
+      await b('wait', '.visual'); await intoView('.visual');
       await wait(`document.querySelector('.visual-frame[data-ready]') && document.querySelector('.diagram-card img')?.naturalWidth > 0`);
     }
     await top();
@@ -117,22 +119,23 @@ try {
     assert.equal(await ev(`document.activeElement.matches('.stats-toggle')`), true, 'opening stats from a later reply reveals them while keeping toggle focus');
     await b('press', 'Enter'); await intoView('.visual');
     const media = await ev(`(() => { const v = document.querySelector('.visual'), video = document.querySelector('.video-inline'); return { border: getComputedStyle(v).borderTopWidth, videoBorder: getComputedStyle(video).borderTopWidth, visibleTitles: [...video.querySelectorAll('h3')].filter(e => !e.classList.contains('sr-only')).length, paused: video.querySelector('video').paused, controls: video.querySelector('video').controls }; })()`);
-    assert.deepEqual(media, { border: '0px', videoBorder: '0px', visibleTitles: 0, paused: true, controls: true });
+    // Videos carry a visible figure caption (docs/video-quality-spec.md, decision 12).
+    assert.deepEqual(media, { border: '0px', videoBorder: '0px', visibleTitles: 1, paused: true, controls: true });
     await ev(`window.__readQuiz = null; addEventListener('message', e => { if (e.data?.type === 'readQuiz') window.__readQuiz = e.data; }); true`);
     await b('focus', '.visual-frame'); await b('press', 'Tab');
     await wait(`window.__readQuiz?.focused`);
     await b('press', 'Enter'); await wait(`window.__readQuiz?.open`);
     assert.equal(await ev(`window.__readQuiz.outline`), 'solid');
     await intoView('.visual'); await shot(`media-${mode}`);
-    check(`${mode}: borderless, untitled visual/video and native Check yourself reveal`, media);
+    check(`${mode}: borderless untitled visual, captioned video and native Check yourself reveal`, media);
   }
   // Real SSE streaming and the renderer job phase, with controlled provider/renderer gates.
   await click('Retry video');
-  await wait(`document.querySelector('.video-meter i')?.style.width === '42%'`);
+  await wait(`document.querySelector('.video-steps [data-step=active]')?.textContent.includes('Rendering frames')`);
   await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Walk through one exchange'); await b('press', 'Enter');
   await wait(`document.querySelector('.reply-status[data-status=streaming]') && document.querySelector('.visual[data-state=pending]')`);
   const streaming = await ev(`({ status: document.querySelector('.reply-status[data-status=streaming]').textContent, busy: document.querySelector('[role=log]').getAttribute('aria-busy'), skeleton: getComputedStyle(document.querySelector('.visual[data-state=pending] .visual-shimmer')).height, phase: document.querySelector('.video-inline[data-state=pending] [role=status]').textContent, stop: !!document.querySelector('[aria-label=Stop]'), modelDisabled: document.querySelector('.model-picker').matches(':disabled, [aria-disabled=true]') })`);
-  assert.equal(streaming.status, 'Responding…'); assert.equal(streaming.busy, 'true'); assert.equal(streaming.skeleton, '180px'); assert.match(streaming.phase, /Rendering video… 42%/); assert.ok(streaming.stop && streaming.modelDisabled, JSON.stringify(streaming));
+  assert.equal(streaming.status, 'Responding…'); assert.equal(streaming.busy, 'true'); assert.equal(streaming.skeleton, '180px'); assert.match(streaming.phase, /Rendering frames…/); assert.ok(streaming.stop && streaming.modelDisabled, JSON.stringify(streaming));
   for (const mode of ['light', 'dark']) {
     await b('set', 'media', mode, 'reduced-motion');
     // Change the app appearance through its normal Settings control without reloading the stream.
@@ -140,7 +143,7 @@ try {
     await intoView('.visual[data-state=pending]'); await shot(`streaming-${mode}`);
     await intoView('.video-inline[data-state=pending]'); await shot(`status-${mode}`);
   }
-  check('SSE streaming, busy log, 180px pending visual, Stop and renderer progress at 42%', streaming);
+  check('SSE streaming, busy log, 180px pending visual, Stop and rendering step in the draft frame', streaming);
   await click('Stop'); await wait(`!document.querySelector('.reply-status[data-status=streaming]')`);
   await click('Cancel video'); await wait(`document.querySelector('.video-inline[data-state=canceled]')`);
   await b('set', 'viewport', '390', '780'); await intoView('.visual'); await shot('narrow-dark');

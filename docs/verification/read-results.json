@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-13T01:33:01.419Z",
+  "checkedAt": "2026-11-13T03:34:52.249Z",
   "evidence": "Built app, SQLite/HTTP/SSE, Chromium; synthetic providers, controlled renderer, local ffmpeg playback fixture. No native provider or narrated-generation claim.",
   "pass": true,
   "steps": [
@@ -85,13 +85,13 @@
       }
     },
     {
-      "name": "dark: borderless, untitled visual/video and native Check yourself reveal",
+      "name": "dark: borderless untitled visual, captioned video and native Check yourself reveal",
       "evidence": {
         "border": "0px",
         "controls": true,
         "paused": true,
         "videoBorder": "0px",
-        "visibleTitles": 0
+        "visibleTitles": 1
       }
     },
     {
@@ -176,21 +176,21 @@
       }
     },
     {
-      "name": "light: borderless, untitled visual/video and native Check yourself reveal",
+      "name": "light: borderless untitled visual, captioned video and native Check yourself reveal",
       "evidence": {
         "border": "0px",
         "controls": true,
         "paused": true,
         "videoBorder": "0px",
-        "visibleTitles": 0
+        "visibleTitles": 1
       }
     },
     {
-      "name": "SSE streaming, busy log, 180px pending visual, Stop and renderer progress at 42%",
+      "name": "SSE streaming, busy log, 180px pending visual, Stop and rendering step in the draft frame",
       "evidence": {
         "busy": "true",
         "modelDisabled": true,
-        "phase": "One exchange: Rendering video… 42%",
+        "phase": "One exchange: Rendering frames…",
         "skeleton": "180px",
         "status": "Responding…",
         "stop": true
