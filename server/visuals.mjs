@@ -1,9 +1,24 @@
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { JSDOM } from 'jsdom';
+import { savedTheme, themeChoices } from '../src/appearance.ts';
 
 const INSTRUCTIONS = readFileSync(new URL('./prompts/visual.md', import.meta.url), 'utf8');
 const MAX_SOURCE = 64 * 1024;
+
+// Read Astryx's built colours so the worker prompt and browser share one palette.
+const palettes = Object.fromEntries(themeChoices.map(({ id }) => {
+  const css = readFileSync(new URL(`../src/themes/${id}/${id}.css`, import.meta.url), 'utf8');
+  const tokens = ['--color-background-body', '--color-background-surface', '--color-text-primary', '--color-text-secondary', '--color-border', '--color-accent', '--focus-outline-color', '--color-text-yellow', '--color-text-green', '--color-text-pink', '--color-text-blue'];
+  return [id, Object.fromEntries(tokens.map(name => [name, css.match(new RegExp(`${name}: light-dark\\(([^)]+)\\)`))[1].split(',').map(s => s.trim())]))];
+}));
+
+export const visualTheme = theme => ({ name: savedTheme(theme?.name), mode: theme?.mode === 'light' ? 'light' : 'dark' });
+
+function paletteFor(theme) {
+  const { name, mode } = visualTheme(theme);
+  return { name, mode, tokens: Object.fromEntries(Object.entries(palettes[name]).map(([token, pair]) => [token, pair[mode === 'light' ? 0 : 1]])) };
+}
 
 // A mistake check, not a security boundary: execution stays in the opaque-origin, network-denied sandbox.
 function validate(source) {
@@ -55,7 +70,7 @@ export async function generateVisual(provider, selection, input, parentSignal, t
       const items = new Map();
       let status, overflow;
       try {
-        await provider.generate({ ...selection, thread: null, instructions: INSTRUCTIONS + (input.differentVersion ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.' : '') }, JSON.stringify({ request: input.request, earlierTitles: input.earlierTitles, ...(validationError && { validationError }) }), event => {
+        await provider.generate({ ...selection, thread: null, instructions: INSTRUCTIONS + (input.differentVersion ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.' : '') + '\nCurrent theme palette: ' + JSON.stringify(paletteFor(input.theme)) }, JSON.stringify({ request: input.request, earlierTitles: input.earlierTitles, ...(validationError && { validationError }) }), event => {
           if (controller.signal.aborted) return;
           if ((event.type === 'delta' || event.type === 'item') && !overflow) {
             items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);

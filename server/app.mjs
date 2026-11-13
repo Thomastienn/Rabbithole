@@ -5,7 +5,7 @@ import { createReadStream, accessSync, constants, existsSync, renameSync, rmSync
 import { tmpdir } from 'node:os';
 import { resolve, extname, join } from 'node:path';
 import { compactionMessages, diagramReply, generateDiagram, LIMITS, tutorContext } from './diagrams.mjs';
-import { generateVisual } from './visuals.mjs';
+import { generateVisual, visualTheme } from './visuals.mjs';
 import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
 import { desktop as systemDesktop } from './desktop.mjs';
 import { anchored, knownConcepts, nameTokens, quickDefault, suggest } from './suggestions.mjs';
@@ -550,7 +550,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             store.forgetThread(id);
             Object.assign(tree, { messages: tree.messages.slice(0, -2), thread: null, working_thread: null });
             retried = { user: question.id, replaced: failed.id };
-            body = { text: question.text };
+            body = { text: question.text, theme: body.theme };
           }
           if (['artifactId', 'artifactIds', 'artifacts'].some(key => Object.hasOwn(body, key))) return json(res, 400, { error: 'Diagrams are attached by the server to their originating reply.' });
           if (typeof body.text !== 'string' || !body.text.trim()) return json(res, 400, { error: 'Enter a question.' });
@@ -593,7 +593,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               const input = request.kind === 'video' ? { selection: smart().resolved, request: body.text, intent: task.intent, excerpt: task.excerpt,
                 inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null,
                 sources: { conversation: id, requestMessage: user, replyMessage: reply, ...(tree.branch && { parentConversation: tree.branch.parent, parentMessage: tree.branch.messageId }) } }
-                : request.kind === 'visual' ? { selection: smart().resolved, request: task, earlierTitles: output.requests.slice(0, index).filter(r => r.kind === 'visual').map(r => (r.task ?? r.partial)?.title ?? 'Visual') } : task;
+                : request.kind === 'visual' ? { selection: smart().resolved, theme: visualTheme(body.theme), request: task, earlierTitles: output.requests.slice(0, index).filter(r => r.kind === 'visual').map(r => (r.task ?? r.partial)?.title ?? 'Visual') } : task;
               let artifact = store.pendingArtifact(id, reply, task.title, task.description, request.kind, JSON.stringify(input), request.position);
               const invalid = request.error ?? (final && status !== 'completed' ? 'Tutor reply did not complete.' : null) ?? (request.kind === 'video' && !asksForVideo(body.text) ? 'Video request could not be read: the learner did not ask for a video. Retry to create it.' : null);
               if (invalid) artifact = request.kind === 'video' ? store.finishVideo(id, artifact.id, artifact.attempt, {}, invalid) : store.finishArtifact(id, artifact.id, null, invalid);

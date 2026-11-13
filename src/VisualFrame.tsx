@@ -16,7 +16,7 @@ export type PartAction = (artifact: Artifact, part: VisualPart, origin: React.Re
 function Frame({ artifact, explored = [], reveal, onPart }: { artifact: Artifact; explored?: VisualBranch[]; reveal?: VisualPart; onPart?: PartAction }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState<number>();
-  const { mode } = useTheme();
+  const { mode, name } = useTheme();
   const post = (data: object) => frame.current?.contentWindow?.postMessage(data, '*');
   const parts = () => post({ type: 'parts', explored: explored.map(({ label, explanation }) => ({ label, explanation })), ...(reveal && { reveal: { label: reveal.label, explanation: reveal.explanation } }) });
   const partsKey = JSON.stringify({ explored, reveal });
@@ -36,7 +36,7 @@ function Frame({ artifact, explored = [], reveal, onPart }: { artifact: Artifact
     addEventListener('message', receive);
     return () => removeEventListener('message', receive);
   }, [artifact.status, onPart]);
-  useEffect(() => { if (frame.current) theme(); }, [mode]);
+  useEffect(() => { if (frame.current) theme(); }, [mode, name]);
   useEffect(parts, [partsKey]);
   const ready = height !== undefined;
   return <>

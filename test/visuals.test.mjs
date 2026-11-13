@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Claude } from '../server/claude.mjs';
@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
+import { themeChoices } from '../src/appearance.ts';
 
 const task = { title: 'Rounds', description: 'Two winners meet in the final.', intent: 'Show the winners advancing.', excerpt: 'Winners advance.' };
 const block = (title = task.title) => '\n```treetutor-visual\n' + JSON.stringify({ ...task, title }) + '\n```';
@@ -30,6 +31,36 @@ async function open(chat, smart, options = {}) {
   const tree = store.create('Visuals', 'openai', 'chat');
   return { store, app, origin, path, get, post, tree, close: async () => { await app.stop(); store.close(); } };
 }
+
+test('visual prompts receive the requested theme palette in light and dark, with a safe legacy fallback', async () => {
+  const calls = [];
+  const env = await open({ generate: async (_tree, _text, emit) => complete(emit, block()) }, {
+    generate: async (tree, _text, emit) => { calls.push(tree.instructions); complete(emit, source); },
+  });
+  try {
+    for (const { id: name } of themeChoices) for (const mode of ['light', 'dark']) {
+      await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Show rounds', theme: { name, mode } })).text();
+      await until(() => calls.length === 1);
+      const palette = JSON.parse(calls.pop().split('\nCurrent theme palette: ')[1]);
+      assert.equal(palette.name, name); assert.equal(palette.mode, mode);
+      const css = readFileSync(`src/themes/${name}/${name}.css`, 'utf8');
+      for (const token of ['--color-background-body', '--color-background-surface', '--color-text-primary', '--color-text-secondary', '--color-border', '--color-accent', '--focus-outline-color', '--color-text-yellow', '--color-text-green', '--color-text-pink', '--color-text-blue']) {
+        const pair = css.match(new RegExp(`${token}: light-dark\\(([^)]+)\\)`))[1].split(',').map(s => s.trim());
+        assert.equal(palette.tokens[token], pair[mode === 'light' ? 0 : 1], `${name} ${mode} ${token}`);
+      }
+      if (name === 'forest') assert.equal(palette.tokens['--color-text-green'], mode === 'light' ? '#3b6629' : '#9cc47a');
+      await until(async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every(a => a.status === 'ready'));
+    }
+    for (const theme of [undefined, { name: '../../PRIVATE', mode: 'PRIVATE', instructions: 'PRIVATE' }]) {
+      await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Show rounds', theme })).text();
+      await until(() => calls.length === 1);
+      const instructions = calls.pop(), palette = JSON.parse(instructions.split('\nCurrent theme palette: ')[1]);
+      assert.equal(palette.name, 'paperback'); assert.equal(palette.mode, 'dark');
+      assert.doesNotMatch(instructions, /PRIVATE/);
+      await until(async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every(a => a.status === 'ready'));
+    }
+  } finally { await env.close(); }
+});
 
 test('closed blocks start smart workers while text streams, queue in order at three, freeze requests and record every call', async () => {
   const first = deferred(), more = deferred(), finish = deferred(), holds = [], calls = [], chatCalls = [];

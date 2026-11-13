@@ -65,6 +65,7 @@ addEventListener('message', event => {
   if (data?.type === 'theme' && (data.scheme === 'light' || data.scheme === 'dark') && data.tokens && typeof data.tokens === 'object') {
     const rules = Object.entries(data.tokens).filter(([k, v]) => /^--[\w-]+$/.test(k) && typeof v === 'string' && !/[;{}<]/.test(v)).map(([k, v]) => `${k}:${v}`);
     tokens.textContent = `:root{color-scheme:${data.scheme};${rules.join(';')}}`;
+    dispatchEvent(new Event('treetutor-theme'));
   }
   if (data?.type === 'render' && typeof data.source === 'string' && !rendered) {
     rendered = true;

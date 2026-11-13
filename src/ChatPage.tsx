@@ -37,6 +37,7 @@ import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/Segme
 import { effortLabel, type Model } from './models';
 import Contents from './Contents';
 import TurnRail from './TurnRail';
+import { useTheme } from '@astryxdesign/core/theme';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
 type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
@@ -202,6 +203,7 @@ function Passage({ message, addresses, index, onBranch, onOpenChild, reveal, sel
 const remPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
 
 export default function ChatPage({ appearance, setAppearance, theme, setTheme }: { appearance: Appearance; setAppearance: (next: Appearance) => void; theme: ThemeChoice; setTheme: (next: ThemeChoice) => void }) {
+  const { mode } = useTheme();
   const [state, setState] = useState<State>();
   const [tree, setTree] = useState<Tree>();
   const addresses = useMemo(() => conversationAddresses(state?.trees ?? []), [state?.trees]);
@@ -664,7 +666,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     setError('');
     setState(s => s && { ...s, active: [...s.active, id] });
     try {
-      const response = await fetch(`/api/trees/${id}/${retry ? 'retry' : 'messages'}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state?.csrf ?? '' }, body: JSON.stringify(retry ? {} : { text }), signal: controller.signal });
+      const response = await fetch(`/api/trees/${id}/${retry ? 'retry' : 'messages'}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state?.csrf ?? '' }, body: JSON.stringify({ ...(!retry && { text }), theme: { name: theme, mode } }), signal: controller.signal });
       if (removed.current.has(id)) return;
       if (!response.ok) throw new Error((await response.json()).error);
       if (!retry) setDrafts(d => ({ ...d, [id]: '' }));

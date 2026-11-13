@@ -49,8 +49,12 @@ TreeTutor's fragment contract:
   var(--color-text-blue), var(--color-text-pink), var(--color-text-green).
   Use Archivo for labels and controls, Literata for explanatory prose,
   and monospace for code. Do not hardcode palette values. Both light and dark
-  must work; CSS variables update when appearance changes. For canvas colors,
-  read getComputedStyle and redraw when theme changes.
+  must work; CSS variables update when the theme or appearance changes. The
+  current theme palette below is a generation-time reference; keep CSS variable
+  references in the fragment so it can recolour later. For canvas and 3D colours,
+  resolve a CSS variable through an element's computed color (custom properties
+  may contain light-dark(), which canvas cannot use directly). Draw initially
+  and redraw on the window's treetutor-theme event without resetting controls.
 - Fit a reading column about 400–700 px wide, also shrinking to phone width.
   Use fluid widths and a content-sized root, never a fixed-height root. Give SVG
   a viewBox and responsive width. Keep labels readable at the actual narrow
