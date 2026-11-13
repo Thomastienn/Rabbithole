@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 
-// Branch-first failure: built app, isolated store, fake compaction that fails twice, then succeeds on the second Retry.
+// Branch-first failure: built app, isolated store, fake compaction that fails at form open and twice after submit, then succeeds on the second Retry.
 const run = promisify(execFile), session = `compaction-retry-${process.pid}`;
 const b = async (...args) => (await run('agent-browser', ['--session', session, ...args])).stdout;
 const ev = async expression => JSON.parse(await b('eval', expression, '--json')).data.result;
@@ -16,7 +16,7 @@ const store = new Store(join(mkdtempSync(join(tmpdir(), 'compaction-retry-')), '
 const root = store.create('Roots tree');
 store.message(root.id, 'user', 'How do roots work?', 'completed');
 store.message(root.id, 'assistant', 'Roots exchange nutrients with fungi.', 'completed');
-let failures = 2, compactions = 0;
+let failures = 3, compactions = 0;
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { generate: async (tree, _text, emit) => {
   if (!tree.id) { compactions++; if (failures-- > 0) throw new Error(`Synthetic compaction failure ${compactions}`); emit({ type: 'item', item: 's', text: 'Retried context.' }); }
   else emit({ type: 'item', item: 'a', text: 'Focused answer.' });
@@ -38,7 +38,8 @@ try {
   await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Why fungi?');
   await b('find', 'role', 'button', 'click', '--name', 'Create focused chat', '--exact');
   const chat = `document.querySelector('.focused-chat')?.innerText ?? ''`;
-  for (const n of [1, 2]) {
+  // The form-open run fails first (failure 1); submit runs again because a failed prepared run is never reused.
+  for (const n of [2, 3]) {
     await wait(`(${chat}).includes('Synthetic compaction failure ${n}') && [...document.querySelectorAll('.focused-chat button')].some(e => e.textContent.trim() === 'Retry reply' && !e.disabled)`);
     assert.ok(await ev(`(${chat}).includes('no reply was written without its context') && (${chat}).includes('Why fungi?')`), `inline error ${n} kept the child with its question`);
     const child = store.list().find(t => t.parent === root.id);
@@ -49,6 +50,6 @@ try {
   await wait(`(${chat}).includes('Focused answer.') && !(${chat}).includes('Synthetic compaction failure')`);
   const child = store.list().find(t => t.parent === root.id);
   assert.equal(store.tree(child.id).branch.snapshot, 'Retried context.');
-  assert.equal(compactions, 3);
+  assert.equal(compactions, 4);
   console.log('PASS: failed compaction kept the child with inline error and Retry; second failure showed the error again; Retry then compacted and answered (Focused answer.)');
 } finally { await b('close').catch(() => {}); app.stop(); store.close(); }

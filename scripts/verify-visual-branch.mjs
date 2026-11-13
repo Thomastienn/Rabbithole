@@ -27,6 +27,8 @@ const source = `<style>svg{display:block;width:100%}p{margin-block:var(--spacing
 const artifact = store.pendingArtifact(tree.id, reply, 'Tournament structure', 'Two semifinals lead to a final.', 'visual', null, 26);
 store.finishArtifact(tree.id, artifact.id, source);
 const calls = [];
+// Opening the branch form starts compaction (no tree id); only tutor turns count as inference here.
+const tutor = () => calls.filter(c => c.tree.id).length;
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: {
   models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }],
   generate: async (tree, text, emit) => {
@@ -90,7 +92,7 @@ try {
   await wait(form);
   assert.equal(await ev(`document.activeElement.matches('.branch-form input')`), true);
   assert.equal(await ev(`document.getElementById('branch-passage').textContent`), 'Visual: Tournament structure\nTwo semifinals lead to a final.\nPart: Semifinal\nEach semifinal sends one winner to the final.');
-  assert.equal(calls.length, 0, 'activation opens the prompt without making any provider call');
+  assert.equal(tutor(), 0, 'activation opens the prompt without a tutor call');
   await b('press', 'Escape'); await wait(`!${form}`);
   assert.equal(await ev(`document.activeElement.tagName`), 'IFRAME');
   pass('valid SVG/HTML/dynamic parts are labelled, tabbable and Enter-activatable; invalid tags ignored; Escape restores frame focus');
@@ -105,10 +107,11 @@ try {
   pass('native branch buttons activate once with Space; ordinary visual controls retain their own keyboard action');
 
   // A valid-looking request from the app window is still an unknown frame; malformed requests from the known frame are ignored.
+  const before = calls.length;
   await ev(`window.postMessage({type:'branch',label:'Forged',explanation:'Unknown frame'},'*');true`);
   await frameEval(`[{type:'branch',label:'',explanation:'Empty label'},{type:'branch',label:'x'.repeat(121),explanation:'Long label'},{type:'branch',label:'Valid',explanation:'x'.repeat(281)},{type:'branch',label:'Valid',explanation:'Extra fields',action:'send'},{type:'navigate',url:'/api/state'}].forEach(m=>parent.postMessage(m,'*'));true`);
   await b('snapshot', '-i');
-  assert.equal(await ev(`!!${form}`), false); assert.equal(calls.length, 0);
+  assert.equal(await ev(`!!${form}`), false); assert.equal(calls.length, before);
   pass('unknown-frame and malformed branch messages cause no popup, API call or navigation');
 
   await pointerPart('final'); await wait(form);
@@ -126,7 +129,7 @@ try {
   await b('find', 'label', 'Question about this passage', 'fill', 'Why only one winner?');
   await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat')?.textContent.includes('One winner advances from each semifinal.')`);
-  assert.equal(calls.length, 2, 'one compaction and one child tutor turn');
+  assert.equal(tutor(), 1, 'one child tutor turn');
   const child = store.list().find(t => t.parent === tree.id);
   assert.ok(child); assert.equal(child.start, null); assert.equal(child.end, null); assert.equal(child.artifactId, artifact.id);
   assert.equal(await ev(`document.activeElement.getAttribute('aria-label')`), 'Your question');
@@ -140,7 +143,7 @@ try {
   assert.equal(await frameEval(`document.getElementById('semifinal').getAttribute('aria-label')`), 'Open explored branch: Semifinal');
   await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat')?.textContent.includes('One winner advances from each semifinal.')`);
-  assert.equal(calls.length, 2, 'explored activation reopens the existing child');
+  assert.equal(tutor(), 1, 'explored activation reopens the existing child');
   pass('branch creation focuses the child, maps beside its source reply, reveals/focuses the part, and explored activation reopens without inference');
 
   store.branch(store.tree(tree.id), { messageId: reply, artifactId: artifact.id, label: 'Late part', explanation: 'A part added by the visual script.', text: 'Visual: Tournament structure\nTwo semifinals lead to a final.\nPart: Late part\nA part added by the visual script.', question: 'What about late parts?' }, 'Existing context for a delayed part.');
@@ -152,7 +155,7 @@ try {
   pass('map source reveal waits for a part added asynchronously, then focuses it once');
   await openParent();
   assert.equal(await frameEval(`document.getElementById('semifinal').hasAttribute('data-visual-explored')`), true);
-  assert.equal(calls.length, 2);
+  assert.equal(tutor(), 1);
   const shots = join(process.cwd(), '.impeccable/review'); mkdirSync(shots, { recursive: true });
   for (const [size, width] of [['desktop', 1280], ['narrow', 390]]) for (const mode of ['light', 'dark']) {
     await b('set', 'viewport', String(width), '900');
@@ -166,7 +169,7 @@ try {
     await b('screenshot', file); assert.ok(existsSync(file), 'browser capture exists'); report.captures.push(file);
     await b('press', 'Escape');
   }
-  assert.equal(calls.length, 2);
+  assert.equal(tutor(), 1);
   pass('reload preserves explored state without inference; popup and visual fit desktop/narrow in light/dark with no overflow');
   report.pass = true;
 } catch (error) { report.pass = false; report.error = error.message; throw error; }

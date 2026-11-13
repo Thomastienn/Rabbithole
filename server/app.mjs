@@ -62,22 +62,41 @@ export function createApp({ store, auth, provider, providers = { codex: provider
   };
   // The prompt reads the parent at call time; the passage comes from the anchor (or the saved branch on Retry).
   const compactionPrompt = (parent, passage) => COMPACT + JSON.stringify({ inheritedContext: parent.branch ? { snapshot: parent.branch.snapshot, selectedPassage: parent.branch.text, question: parent.branch.question } : null, messages: compactionMessages(parent), passage });
-  const startCompaction = (child, prompt, quick) => {
-    const compaction = { controller: new AbortController(), settled: false };
+  // The branch anchor from a request: a completed tutor passage or a tagged part of a ready visual; null when invalid.
+  const anchorOf = (tree, body) => {
+    const source = tree.messages.find(m => m.id === body?.messageId && m.role === 'assistant' && m.status === 'completed');
+    let anchor = body;
+    if (body && 'artifactId' in body) {
+      const visual = tree.artifacts.find(a => a.id === body.artifactId && a.message === body.messageId && a.kind === 'visual' && a.status === 'ready');
+      const part = visualMessage({ type: 'branch', label: body.label, explanation: body.explanation });
+      if (!visual || part?.type !== 'branch' || 'start' in body || 'end' in body || 'suggestion' in body) return { error: 'Choose a part of a ready visual.' };
+      anchor = { messageId: body.messageId, artifactId: visual.id, label: part.label, explanation: part.explanation, text: visualPassage(visual, part), question: body.question };
+    }
+    return source && (anchor.artifactId || anchored(source.text, anchor)) ? anchor : null;
+  };
+  // One quick-thinking call; resolves to the one-paragraph snapshot or throws. Metered even when cancelled.
+  const compact = (prompt, quick, controller) => (async () => {
+    const items = new Map();
+    let status;
+    await metered(pick(quick), 'compaction', randomUUID(), quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
+      if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
+      if (event.type === 'status') status = event.status;
+    }, () => {}, controller.signal);
+    // One paragraph by layout only; no length cap, so nothing is cut.
+    const snapshot = [...items.values()].join(' ').replace(/\s*\n\s*/g, ' ').trim();
+    if (controller.signal.aborted || status !== 'completed' || !snapshot) throw new Error(controller.signal.aborted ? 'Context preparation was stopped.' : 'Quick thinking did not return a complete summary.');
+    return snapshot;
+  })();
+  // Parent id -> compaction started when the branch form opened { key, controller, run }; submit reuses it while the key matches.
+  const prepared = new Map();
+  const unprepare = parent => { const p = prepared.get(parent); p?.controller.abort(); p?.run.catch(() => {}); prepared.delete(parent); };
+  const startCompaction = (child, prompt, quick, reuse) => {
+    const compaction = { controller: reuse?.controller ?? new AbortController(), settled: false };
     compactions.set(child, compaction);
-    compaction.done = (async () => {
-      const items = new Map();
-      let status;
-      await metered(pick(quick), 'compaction', randomUUID(), quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
-        if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
-        if (event.type === 'status') status = event.status;
-      }, () => {}, compaction.controller.signal);
-      // One paragraph by layout only; no length cap, so nothing is cut.
-      const snapshot = [...items.values()].join(' ').replace(/\s*\n\s*/g, ' ').trim();
-      if (compaction.controller.signal.aborted || status !== 'completed' || !snapshot) throw new Error(compaction.controller.signal.aborted ? 'Context preparation was stopped.' : 'Quick thinking did not return a complete summary.');
+    compaction.done = (reuse?.run ?? compact(prompt, quick, compaction.controller)).then(snapshot => {
       if (!stopping) store.compacted(child, snapshot);
       if (compactions.get(child) === compaction) compactions.delete(child);
-    })().catch(error => {
+    }).catch(error => {
       // Provider limits (context, output, usage) surface as-is instead of dropping history.
       compaction.error = `Context preparation failed. ${error.message.replace(/ ?Partial reply saved; try again\.$/, '')} Retry, or choose another quick thinking model in Settings if this repeats.`;
     }).finally(() => { compaction.settled = true; });
@@ -387,7 +406,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           startVideo(job);
           return json(res, 200, live(job));
         }
-        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|retry|stop|branches|position|layout|model|rename|delete)$/);
+        const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/(messages|retry|stop|branches|prepare|unprepare|position|layout|model|rename|delete)$/);
         if (match) {
           const [, id, action] = match;
           const tree = store.tree(id);
@@ -421,7 +440,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               for (const [path, moved] of staged.reverse()) renameSync(moved, path);
               throw error;
             }
-            for (const conversation of result.deleted) { active.get(conversation)?.abort(); active.delete(conversation); compactions.get(conversation)?.controller.abort(); compactions.delete(conversation); }
+            for (const conversation of result.deleted) { active.get(conversation)?.abort(); active.delete(conversation); compactions.get(conversation)?.controller.abort(); compactions.delete(conversation); unprepare(conversation); }
             const jobs = [...videoJobs].filter(v => result.deleted.includes(v.conversation));
             for (const job of jobs) job.controller.abort(new Error('Conversation deleted.'));
             await Promise.all(jobs.map(job => job.done));
@@ -446,6 +465,24 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             store.layout(id, { folded, selected, panel, ...(viewport && { viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom } }) }, positions);
             return json(res, 200, {});
           }
+          // Opening the branch form compacts in the background (it never sees the question); closing cancels.
+          // Only the passage being closed is cancelled, so a close racing the next form's prepare never cancels that one.
+          if (action === 'unprepare') { if (prepared.get(id)?.passage === anchorOf(tree, body)?.text) unprepare(id); return json(res, 200, {}); }
+          if (action === 'prepare') {
+            const anchor = anchorOf(tree, body);
+            if (!anchor || anchor.error) return json(res, 400, anchor ?? { error: 'Select a completed tutor passage.' });
+            const parent = { ...tree, model: tree.model ?? await pick(tree).model?.(tree) ?? null };
+            const { quick, status, error } = await quickFor(parent);
+            if (error) return json(res, status, { error });
+            const prompt = compactionPrompt(tree, anchor.text), key = JSON.stringify([prompt, quick]);
+            if (prepared.get(id)?.key !== key || prepared.get(id).failed) {
+              unprepare(id);
+              const controller = new AbortController(), entry = { key, passage: anchor.text, controller, run: compact(prompt, quick, controller) };
+              prepared.set(id, entry);
+              entry.run.catch(() => { entry.failed = true; }); // reopening the form or submitting after a failure runs again
+            }
+            return json(res, 202, {});
+          }
           if (action === 'stop') { active.get(id)?.abort(); return json(res, 200, {}); }
           if (active.has(id)) return json(res, 409, { error: 'This tree is already responding. Stop it or wait.' });
           if (action === 'model') {
@@ -469,15 +506,9 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             finally { active.delete(id); }
           }
           if (action === 'branches') {
-            const source = tree.messages.find(m => m.id === body.messageId && m.role === 'assistant' && m.status === 'completed');
-            let anchor = body;
-            if ('artifactId' in body) {
-              const visual = tree.artifacts.find(a => a.id === body.artifactId && a.message === body.messageId && a.kind === 'visual' && a.status === 'ready');
-              const part = visualMessage({ type: 'branch', label: body.label, explanation: body.explanation });
-              if (!visual || part?.type !== 'branch' || 'start' in body || 'end' in body || 'suggestion' in body) return json(res, 400, { error: 'Choose a part of a ready visual.' });
-              anchor = { messageId: body.messageId, artifactId: visual.id, label: part.label, explanation: part.explanation, text: visualPassage(visual, part), question: body.question };
-            }
-            if (!source || (!anchor.artifactId && !anchored(source.text, anchor)) || typeof anchor.question !== 'string' || !anchor.question.trim()) return json(res, 400, { error: 'Select a completed tutor passage and enter a question.' });
+            const anchor = anchorOf(tree, body);
+            if (anchor?.error) return json(res, 400, anchor);
+            if (!anchor || typeof anchor.question !== 'string' || !anchor.question.trim()) return json(res, 400, { error: 'Select a completed tutor passage and enter a question.' });
             const controller = new AbortController();
             active.set(id, controller);
             let child;
@@ -491,8 +522,11 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               if (error) return json(res, status, { error });
               // The child is saved with an empty snapshot that compaction fills once.
               const prompt = compactionPrompt(tree, anchor.text);
+              // Reuse the form-open compaction only if the parent, passage and quick model are unchanged.
+              const ready = prepared.get(id)?.key === JSON.stringify([prompt, quick]) && !prepared.get(id).failed ? prepared.get(id) : null;
+              if (ready) prepared.delete(id); else unprepare(id);
               child = store.branch(parent, anchor, '');
-              startCompaction(child.id, prompt, quick);
+              startCompaction(child.id, prompt, quick, ready);
             } finally { active.delete(id); }
             return json(res, 201, child);
           }
@@ -702,6 +736,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     for (const v of videoJobs) v.controller.abort(STOPPED);
     for (const s of suggesting.values()) s.controller.abort();
     for (const c of compactions.values()) c.controller.abort();
+    for (const parent of [...prepared.keys()]) unprepare(parent);
     store.interrupt();
     for (const p of new Set(Object.values(providers))) p?.close?.();
     // Let final interrupted events drain before closing sockets; bound shutdown for a stuck client or job.

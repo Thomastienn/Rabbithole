@@ -713,6 +713,14 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     document.addEventListener('pointerdown', outside, true);
     return () => document.removeEventListener('pointerdown', outside, true);
   }, [!!branch, branching]);
+  // Compaction never sees the question, so it starts when the form opens; closing cancels (a no-op after submit took it).
+  const prepareKey = branch && JSON.stringify([branch.parent, { ...branch.anchor, at: undefined }]);
+  useEffect(() => {
+    if (!prepareKey) return;
+    const [parent, anchor] = JSON.parse(prepareKey);
+    api(`/api/trees/${parent}/prepare`, anchor).catch(() => {}); // submit reports any failure
+    return () => { api(`/api/trees/${parent}/unprepare`, anchor).catch(() => {}); };
+  }, [prepareKey]);
   async function submitBranch(e: React.FormEvent) {
     e.preventDefault();
     if (!branch || branching || savingModel === branch.parent || !branch.question.trim()) return;
