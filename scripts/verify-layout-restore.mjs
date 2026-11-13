@@ -84,7 +84,7 @@ try {
   await click('Show map beside chat');
   await wait(`document.querySelector('.tree-workspace').dataset.expanded === 'false'`);
   assert.equal(await settledView(), savedView, 'leaving restored expanded mode returns to the saved map');
-  await click('Expand descendants of F1'); await wait(node(f2.id));
+  await b('focus', `#fold-${f1.id}`); await b('press', 'Enter'); await wait(node(f2.id));
   await openTree('Second');
   await wait(`${node(s1.id)} && document.querySelector('.focused-chat h2')?.textContent === 'Second'`);
   assert.equal(await ev(chatShown), false, 'second tree keeps its own collapsed panel');

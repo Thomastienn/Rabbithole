@@ -41,7 +41,7 @@ try {
   await b('set', 'media', 'dark', 'reduced-motion');
   await open();
 
-  assert.equal(await opacity('.reply-copy'), '0', 'reply Copy quiet at rest');
+  assert.equal(await opacity('.reply-copy'), '1', 'mockup reply Copy visible at rest');
   assert.equal(await opacity('.code-copy'), '0', 'code Copy quiet at rest');
   assert.equal(await ev(`document.querySelectorAll('.focused-chat .code-copy').length`), 1, 'one Copy per code block');
   assert.equal(await ev(`!!document.querySelector('.focused-chat .question-bubble button')`), false, 'no Copy on questions');

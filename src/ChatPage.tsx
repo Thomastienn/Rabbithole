@@ -1,11 +1,11 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon, BookOpenIcon, MapIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowUturnLeftIcon, ChartBarIcon, ChevronRightIcon, ViewColumnsIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon, BookOpenIcon, MapIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { CommandPalette } from '@astryxdesign/core/CommandPalette';
@@ -22,7 +22,7 @@ import CopyButton from './CopyButton';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from './SettingsWindow';
 import { bubbleTints, savedTint, type BubbleTint } from './bubbleTint';
 import type { Appearance } from './appearance';
-import { DEFAULT_CHAT_WIDTH, MIN_CHAT_WIDTH, clampChatWidth, keyChatWidth, maxChatWidth, resetChatWidth, savedChatWidth } from './chatWidth';
+import { DEFAULT_MAP_WIDTH, MIN_MAP_WIDTH, clampMapWidth, keyMapWidth, maxMapWidth, resetMapWidth, savedMapWidth } from './mapWidth';
 import KnowledgePage, { type Graph } from './KnowledgePage';
 import VideoLibrary from './VideoLibrary';
 import { artifactsAt, mergeArtifact, visualPassage, type Artifact } from './artifacts';
@@ -230,19 +230,25 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     try { return savedTint(localStorage.getItem('treetutor.bubble-tint')); }
     catch { return 'neutral'; }
   });
-  const [chatWidth, setChatWidth] = useState(() => { try { return savedChatWidth(localStorage.getItem('treetutor.chat-width')); } catch { return DEFAULT_CHAT_WIDTH; } });
+  const [mapWidth, setMapWidth] = useState(() => { try { return savedMapWidth(localStorage.getItem('treetutor.map-width')); } catch { return DEFAULT_MAP_WIDTH; } });
   const [workspaceWidth, setWorkspaceWidth] = useState(() => window.innerWidth / remPx());
-  useEffect(() => { try { localStorage.setItem('treetutor.chat-width', String(chatWidth)); } catch {} }, [chatWidth]);
+  useEffect(() => { try { localStorage.setItem('treetutor.map-width', String(mapWidth)); } catch {} }, [mapWidth]);
   const workspace = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = workspace.current!, observer = new ResizeObserver(() => setWorkspaceWidth(el.clientWidth / remPx()));
     observer.observe(el); return () => observer.disconnect();
   }, []);
-  const shownChatWidth = clampChatWidth(chatWidth, workspaceWidth);
+  const shownMapWidth = clampMapWidth(mapWidth, workspaceWidth);
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const statsPanel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!statsOpen) return;
+    const frame = requestAnimationFrame(() => statsPanel.current?.scrollIntoView({ block: 'nearest' }));
+    return () => cancelAnimationFrame(frame);
+  }, [statsOpen, tree?.id]);
   const [folds, setFolds] = useState<{ root: string; ids: string[] }>();
   const [transitionBox, setTransitionBox] = useState<string>();
   const overviewOrigin = useRef<{ id: string; control: string }>(undefined);
@@ -674,6 +680,12 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     const label = models?.find(m => m.provider === t.provider && m.model === t.model)?.label ?? t.model ?? models?.find(m => m.provider === t.provider && m.isDefault)?.label ?? 'default model';
     return label.startsWith(providerLabel(t.provider)) ? label : `${providerLabel(t.provider)} · ${label}`;
   };
+  const ancestors: Summary[] = [];
+  for (let id = tree?.branch?.parent; id;) {
+    const parent = state?.trees.find(t => t.id === id);
+    if (!parent) break;
+    ancestors.unshift(parent); id = parent.parent ?? undefined;
+  }
   const source = !overview && reveal?.tree === tree?.id ? reveal?.source : undefined;
   const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && (source.artifactId !== undefined ? tree.artifacts.some(a => a.id === source.artifactId && a.message === m.id && a.kind === 'visual' && a.status === 'ready') : source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text));
   const visualBranches: Record<string, VisualBranch[]> = {};
@@ -737,24 +749,32 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
         <Heading level={1} className="sr-only">TreeTutor</Heading>
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
-        <section ref={workspace} className="tree-workspace" data-expanded={expanded && !overview} style={{ '--chat-width': `${shownChatWidth}rem` } as CSSProperties}>
-        {root && state && <section className="overview" data-chat-open={!overview} aria-label="Learning tree">
-          <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
-        </section>}
-        {root && state && !overview && !expanded && !mobile && <div className="chat-divider" role="separator" tabIndex={0} aria-label="Resize chat" aria-controls="focused-chat" aria-orientation="vertical" aria-valuemin={MIN_CHAT_WIDTH} aria-valuemax={Math.round(maxChatWidth(workspaceWidth))} aria-valuenow={Math.round(shownChatWidth)} aria-valuetext={`Chat width ${Math.round(shownChatWidth)} rem`} title="Drag to resize the chat. Double-click to reset."
-          onPointerDown={e => { if (e.button) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); }}
-          onPointerMove={e => { if (!e.currentTarget.hasPointerCapture(e.pointerId)) return; const box = workspace.current!.getBoundingClientRect(); setChatWidth(clampChatWidth((box.right - e.clientX) / remPx(), box.width / remPx())); }}
-          onDoubleClick={() => setChatWidth(resetChatWidth(workspaceWidth))}
-          onKeyDown={e => { const next = keyChatWidth(shownChatWidth, e.key, workspaceWidth, e.shiftKey); if (next === undefined) return; e.preventDefault(); setChatWidth(next); }} />}
+        <section ref={workspace} className="tree-workspace" data-expanded={expanded && !overview} style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}>
         <section id="focused-chat" className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video, dialog')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header className="chat-header"><VStack paddingInline={2} paddingBlock={1} gap={1}>
             <HStack gap={1} vAlign="center" className="chat-heading-row">
               {tree.branch && <IconButton label="Return to parent conversation" tooltip={`Back to ${state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'parent conversation'}`} icon={<ArrowUturnLeftIcon />} variant="ghost" size="sm" onClick={() => openConversation(tree.branch!.parent)} />}
-              <VStack gap={0} className="chat-title">
-                {renaming?.id === tree.id && renaming.place === 'header' ? <TitleEditor key={tree.id} title={tree.title} save={title => rename(tree.id, title)} cancel={finishRename} /> : <Button id="rename-conversation" className="rename-title" label="Rename conversation" tooltip={tree.title} variant="ghost" size="sm" onClick={() => setRenaming({ id: tree.id, place: 'header' })}><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading></Button>}
-              </VStack>
-              <DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" isMenuOpen={modelMenuOpen} onOpenChange={open => void openModels(open)} renderTrigger={props => <Button {...props} className="model-picker" label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : openingModels ? 'Loading models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(tree)} · ${effortLabel(tree.effort)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || openingModels} isLoading={openingModels || savingModel === tree.id}><span className="chat-model">{modelLabel(tree)} · {effortLabel(tree.effort)}</span></Button>}>
+              <nav className="crumbs" aria-label="Path in this learning tree">
+                {ancestors.map(t => <Fragment key={t.id}><Button className="crumb" label={`${addresses.get(t.id)?.address ?? ''} ${t.title}`.trim()} variant="ghost" size="sm" onClick={() => openConversation(t.id)}><span className="addr">{addresses.get(t.id)?.address}</span> {t.title}</Button><ChevronRightIcon className="crumb-sep" aria-hidden /></Fragment>)}
+                <strong aria-current="location"><span className="addr">{addresses.get(tree.id)?.address}</span> {tree.title}</strong>
+              </nav>
+              <IconButton className="stats-toggle" label="Token stats" tooltip={statsOpen ? 'Hide token stats' : 'Show token stats'} aria-pressed={statsOpen} icon={<ChartBarIcon />} variant="ghost" size="sm" onClick={() => setStatsOpen(open => !open)} />
+              <IconButton className="expand-chat" aria-pressed={!expanded} aria-controls="learning-tree-map" label={expanded ? 'Show map beside chat' : 'Expand chat'} tooltip={expanded ? 'Show map beside chat' : 'Expand chat'} icon={<ViewColumnsIcon />} variant="ghost" size="sm" onClick={toggleExpanded} />
+              <IconButton label="Return to tree" tooltip="Back to map (Esc)" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={returnToTree} />
+              <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} label="More conversation options" tooltip="More" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />}>
+                <DropdownMenuItem label={statsOpen ? 'Hide token stats' : 'Show token stats'} onClick={() => setStatsOpen(open => !open)} />
+                <DropdownMenuItem label="Rename conversation" icon={<PencilSquareIcon />} onClick={() => setRenaming({ id: tree.id, place: 'header' })} />
+              </DropdownMenu>
+            </HStack>
+            {modelNotice && <Text type="supporting" role="status">{modelNotice}</Text>}
+            {unavailableSelection && <Text type="supporting" role="alert">Saved model or effort unavailable. Check Connections in Settings or choose a listed model and effort. Your discussion is saved.</Text>}
+            {tree.provider === 'codex' && codexFallback && <Text type="supporting" color="secondary" role="note">GPT-6.1 Terra isn’t listed for this account. New conversations use {codexFallback.label}, the account default.</Text>}
+            {modelError && <HStack gap={2} vAlign="center" role="alert"><Text type="supporting">{modelError}</Text><Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} /></HStack>}
+            {!modelError && models && !models.length && <Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} />}
+          </VStack></header>
+          {source && !validSource && <Text role="alert">Saved source passage is unavailable. No replacement passage was selected.</Text>}
+          <ChatLayout density="balanced" composer={<ChatComposer elevation="none" footerActions={<DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" isMenuOpen={modelMenuOpen} onOpenChange={open => void openModels(open)} renderTrigger={props => <Button {...props} className="model-picker" label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : openingModels ? 'Loading models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(tree)} · ${effortLabel(tree.effort)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || openingModels} isLoading={openingModels || savingModel === tree.id}><span className="chat-model">{modelLabel(tree)} · {effortLabel(tree.effort)}</span></Button>}>
                 {['claude', 'codex', 'openai'].map(id => { const p = providers?.[id] ?? { label: providerLabel(id), connected: false }; return <DropdownMenuGroup key={id} title={p.connected ? p.label : `${p.label} · not connected`}>
                   {p.connected && models?.some(m => m.provider === id) ? <DropdownMenuRadioGroup label={`${p.label} models`} value={tree.provider === id ? tree.model ?? models?.find(m => m.provider === id && m.isDefault)?.model : undefined} onChange={model => void changeModel(id, model, tree.effort && models?.find(m => m.provider === id && m.model === model)?.efforts?.includes(tree.effort) ? tree.effort : null)}>
                     {tree.provider === id && tree.model && !models?.some(m => m.provider === id && m.model === tree.model) && <DropdownMenuRadioItem value={tree.model} label={`${tree.model} (saved)`} isDisabled />}
@@ -771,27 +791,15 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
                     {(currentModel?.efforts ?? []).map(effort => <DropdownMenuRadioItem key={effort} value={effort} label={effortLabel(effort)} />)}
                   </DropdownMenuRadioGroup>
                 </DropdownMenuGroup>
-              </DropdownMenu>
-              <IconButton className="expand-chat" label={expanded ? 'Show map beside chat' : 'Expand chat'} tooltip={expanded ? 'Show map beside chat' : 'Expand chat'} icon={expanded ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />} variant="ghost" size="sm" onClick={toggleExpanded} />
-              <IconButton label="Return to tree" tooltip="Back to map (Esc)" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={returnToTree} />
-              <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} label="More conversation options" tooltip="More" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />}>
-                <DropdownMenuItem label={statsOpen ? 'Hide token stats' : 'Show token stats'} onClick={() => setStatsOpen(open => !open)} />
-                <DropdownMenuItem label="Rename conversation" icon={<PencilSquareIcon />} onClick={() => setRenaming({ id: tree.id, place: 'header' })} />
-              </DropdownMenu>
-            </HStack>
-            {modelNotice && <Text type="supporting" role="status">{modelNotice}</Text>}
-            {unavailableSelection && <Text type="supporting" role="alert">Saved model or effort unavailable. Check Connections in Settings or choose a listed model and effort. Your discussion is saved.</Text>}
-            {tree.provider === 'codex' && codexFallback && <Text type="supporting" color="secondary" role="note">GPT-6.1 Terra isn’t listed for this account. New conversations use {codexFallback.label}, the account default.</Text>}
-            {statsOpen && <VStack gap={1} className="chat-stats-body" role="region" aria-label="Token stats">
-              {tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').map((m, i) => <Text key={m.id} type="supporting" color="secondary">Reply {i + 1}: {replyUsageLine(m.usage ?? null, tree.suggestions?.find(s => s.message === m.id)?.usage)}</Text>)}
-              {!tree.messages.some(m => m.role === 'assistant' && m.status === 'completed') && <Text type="supporting" color="secondary">Token usage appears after a completed reply.</Text>}
-            </VStack>}
-            {modelError && <HStack gap={2} vAlign="center" role="alert"><Text type="supporting">{modelError}</Text><Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} /></HStack>}
-            {!modelError && models && !models.length && <Button label="Retry loading models" variant="ghost" size="sm" onClick={() => void loadModels()} />}
-          </VStack></header>
-          {source && !validSource && <Text role="alert">Saved source passage is unavailable. No replacement passage was selected.</Text>}
-          <ChatLayout density="balanced" composer={<ChatComposer elevation="none" value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" maxRows={4} value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} />}>
-            <ChatMessageList gap={2}>
+              </DropdownMenu>} value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} onSubmit={text => void send(text)} isStopShown={active} onStop={() => { void api(`/api/trees/${tree.id}/stop`, {}).catch(e => setError(e.message)); }} input={<ChatComposerInput handleRef={composer} label="Your question" maxRows={4} value={drafts[tree.id] ?? ''} onChange={value => setDrafts(d => ({ ...d, [tree.id]: value }))} isDisabled={active} placeholder="What would you like to understand?" />} />}>
+            <ChatMessageList gap={2} align="top" isStreaming={active}>
+              <VStack gap={0} className="chat-title conv-title">
+                  {renaming?.id === tree.id && renaming.place === 'header' ? <TitleEditor key={tree.id} title={tree.title} save={title => rename(tree.id, title)} cancel={finishRename} /> : <Button id="rename-conversation" className="rename-title" label="Rename conversation" tooltip={tree.title} variant="ghost" size="sm" onClick={() => setRenaming({ id: tree.id, place: 'header' })}><Heading level={2} style={{ viewTransitionName: !overview && transitionBox ? 'conversation' : undefined }}>{tree.title}</Heading></Button>}
+              </VStack>
+              {statsOpen && <VStack ref={statsPanel} gap={1} className="chat-stats-body" role="region" aria-label="Token stats">
+                {tree.messages.filter(m => m.role === 'assistant' && m.status === 'completed').map((m, i) => <Text key={m.id} type="supporting" color="secondary">Reply {i + 1}: {replyUsageLine(m.usage ?? null, tree.suggestions?.find(s => s.message === m.id)?.usage)}</Text>)}
+                {!tree.messages.some(m => m.role === 'assistant' && m.status === 'completed') && <Text type="supporting" color="secondary">Token usage appears after a completed reply.</Text>}
+              </VStack>}
               {tree.branch && <Collapsible className="inherited-context" defaultIsOpen={false} trigger={<Text weight="medium">Inherited from {state?.trees.find(t => t.id === tree.branch!.parent)?.title ?? 'parent conversation'}</Text>}>
                 <dl className="inherited-body">
                   <dt>Passage</dt><dd>{tree.branch.text}</dd>
@@ -816,6 +824,14 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
           <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map"><Heading level={2}>{loading ? 'Loading tree…' : selected.current ? 'Tree could not load' : 'Start a learning tree'}</Heading>{selected.current ? <Button label="Retry loading tree" onClick={() => void select(selected.current!)} /> : <><Text color="secondary">Ask your first question; it becomes the chat's title. Come back any time.</Text><Button label="New chat" variant="ghost" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} /></>}</VStack>
         </VStack>}
         </section>
+        {root && state && !overview && !expanded && !mobile && <div className="chat-divider" role="separator" tabIndex={0} aria-label="Resize map" aria-controls="learning-tree-map" aria-orientation="vertical" aria-valuemin={MIN_MAP_WIDTH} aria-valuemax={Math.round(maxMapWidth(workspaceWidth))} aria-valuenow={Math.round(shownMapWidth)} aria-valuetext={`Map width ${Math.round(shownMapWidth)} rem`} title="Drag to resize the map. Double-click to reset."
+          onPointerDown={e => { if (e.button) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); }}
+          onPointerMove={e => { if (!e.currentTarget.hasPointerCapture(e.pointerId)) return; const box = workspace.current!.getBoundingClientRect(); setMapWidth(clampMapWidth((box.right - e.clientX) / remPx(), box.width / remPx())); }}
+          onDoubleClick={() => setMapWidth(resetMapWidth(workspaceWidth))}
+          onKeyDown={e => { const next = keyMapWidth(shownMapWidth, e.key, workspaceWidth, e.shiftKey); if (next === undefined) return; e.preventDefault(); setMapWidth(next); }} />}
+        {root && state && <section id="learning-tree-map" className="overview" data-chat-open={!overview} aria-label="Learning tree">
+          <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
+        </section>}
         </section>
       </main>
       <main hidden={tab !== 'library'} className="library-panel" aria-label="Learning trees">

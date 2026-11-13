@@ -86,7 +86,12 @@ try {
   assert.equal(await ev(`performance.getEntriesByType('resource').some(e=>e.name.includes('sandbox'))`), false);
   pass('map preview lists the visual by title and never loads the sandbox');
 
-  await click('Open Visual fixture');
+  await b('focus', '[aria-label="Open Visual fixture"]'); await b('press', 'Enter');
+  await wait(`!!${figure(good.id)}`);
+  // Chromium defers off-screen frame work; visit both ready visuals before checking their reports.
+  await ev(`${figure(good.id)}.scrollIntoView({ block: 'center' }); true`);
+  await wait(`${figure(good.id)}.querySelector('iframe')?.dataset.ready`);
+  await ev(`${figure(hostile.id)}.scrollIntoView({ block: 'center' }); true`);
   await wait(`document.querySelectorAll('.focused-chat iframe.visual-frame[data-ready]').length===2`).catch(async error => {
     console.error(await ev(`JSON.stringify({frames:[...document.querySelectorAll('iframe')].map(f=>[f.src,f.dataset.ready,f.style.height]),messages:window.__frameMessages.slice(0,20)})`));
     console.error(await b('console').catch(e => e.message), await b('errors').catch(e => e.message));

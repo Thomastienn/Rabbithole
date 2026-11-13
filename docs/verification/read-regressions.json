@@ -1,0 +1,184 @@
+{
+  "checkedAt": "2026-11-13T01:36:07.709967+00:00",
+  "issue": "TreeTutor-y36.6",
+  "evidence": "Built app with SQLite, HTTP/SSE and Chromium; synthetic model providers. video-player and npm test also perform real local sandboxed Remotion rendering with controlled narration. No native Claude/Codex inference or full text-release claim.",
+  "npmTest": {
+    "tests": 217,
+    "passed": 217,
+    "failed": 0
+  },
+  "build": {
+    "passed": true,
+    "checks": [
+      "TypeScript --noEmit",
+      "Vite production build",
+      "build-state recording"
+    ],
+    "warning": "Existing bundle size advisory above 500 kB."
+  },
+  "browserChecks": [
+    {
+      "script": "scripts/verify-appearance.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-branch-streaming.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-canvas-navigation.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-canvas-positions.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-chat-defaults.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-chat-divider.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-chat-expand.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-chat-management.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-chat-sidebar.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-compact-chat.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-compact-controls.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-copy-buttons.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-custom-endpoint.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-diagram-rendering.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-dialog-identity.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-first-conversation.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-focused-chat-layout.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-focused-chat-surround.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-inherited-context.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-keyboard-journey.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-layout-restore.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-model-roles.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-model-switch.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-passage-popup.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-passage-selection.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-polish.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-read.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-reply-retry.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-request-failures.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-shell-band.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-suggestion-branching.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-tree-overview.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-video-actions.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-video-player.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-video-recovery.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-visual-branch.mjs",
+      "passed": true
+    },
+    {
+      "script": "scripts/verify-visual-sandbox.mjs",
+      "passed": true
+    }
+  ],
+  "recoveryNotes": [
+    "Updated old chat-right/35rem, 16px prose, inherited-rule, circular composer and hidden-footer expectations to the pinned Read mockup. No assertions for behavior or failure recovery were removed.",
+    "Keyboard activation reaches map controls beyond the saved viewport without changing the viewport under test. Pointer navigation and dragging remain separately verified.",
+    "Outside-click fixture now uses header padding: the former paragraph coordinate hit an actionable suggestion after narrow text reflow and correctly reopened its prompt.",
+    "Visited offscreen ready visual frames before waiting for their Chromium render reports; every sandbox/CSP hostile-input assertion remains.",
+    "Moved mouse away and waited for hover tooltips to dismiss before native video key checks: the tooltip Escape layer otherwise consumes Escape by design.",
+    "Review fixes: stats opened from later replies scroll into view while toggle keeps focus; grid lets wrapped placeholder size empty composer and clear model/Send at 320px."
+  ],
+  "review": {
+    "initialDisposition": "fix",
+    "composerVerdict": "resolved",
+    "finalDisposition": "ship (scored composer fix)",
+    "codeReview": "Stats visibility finding fixed and browser-verified; no other material findings.",
+    "documentation": "Existing Paperback tokens/patterns extended; no new theme primitives. Slate DESIGN.md/sidecar drift remains assigned to y36.12."
+  }
+}

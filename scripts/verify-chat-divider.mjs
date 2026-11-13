@@ -1,4 +1,4 @@
-// Built-app browser fixture (in-process fake provider, not a live model) for the map/chat divider.
+// Built-app browser fixture (in-process fake provider, not a live model) for the right-docked map / reading-column divider.
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -21,59 +21,59 @@ const app = createApp({ store, auth: { status: () => ({ connected: true }) }, pr
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const steps = [];
 const sep = `document.querySelector('.chat-divider')`;
-const state = () => ev(`(() => { const d = ${sep}, c = document.querySelector('.focused-chat').getBoundingClientRect(), w = document.querySelector('.tree-workspace').getBoundingClientRect();
-  return d && { now: +d.getAttribute('aria-valuenow'), min: +d.getAttribute('aria-valuemin'), max: +d.getAttribute('aria-valuemax'), text: d.getAttribute('aria-valuetext'), role: d.getAttribute('role'), tab: d.tabIndex, chatRem: c.width / 16, workRem: w.width / 16, stored: localStorage.getItem('treetutor.chat-width'), left: d.getBoundingClientRect().left + d.getBoundingClientRect().width / 2, mid: c.top + c.height / 2 }; })()`);
+const state = () => ev(`(() => { const d = ${sep}, c = document.querySelector('#learning-tree-map').getBoundingClientRect(), w = document.querySelector('.tree-workspace').getBoundingClientRect();
+  return d && { now: +d.getAttribute('aria-valuenow'), min: +d.getAttribute('aria-valuemin'), max: +d.getAttribute('aria-valuemax'), text: d.getAttribute('aria-valuetext'), role: d.getAttribute('role'), tab: d.tabIndex, mapRem: c.width / 16, workRem: w.width / 16, stored: localStorage.getItem('treetutor.map-width'), left: d.getBoundingClientRect().left + d.getBoundingClientRect().width / 2, mid: c.top + c.height / 2 }; })()`);
 try {
   await b('set', 'viewport', '1600', '1000');
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
   await b('set', 'media', 'light', 'reduced-motion');
-  await ev(`localStorage.removeItem('treetutor.chat-width'); true`);
+  await ev(`localStorage.removeItem('treetutor.map-width'); true`);
   await b('reload');
   await b('wait', '[aria-label="Open Divider fixture"]');
   await click('Open Divider fixture');
   await wait(sep);
   let s = await state();
   assert.equal(s.role, 'separator'); assert.equal(s.tab, 0);
-  assert.equal(s.now, 35); assert.equal(s.min, 22); assert.equal(s.max, Math.round(s.workRem * 0.7));
-  assert.ok(Math.abs(s.chatRem - 35) < 0.2, `default chat ${s.chatRem}rem`);
-  steps.push(`default 35rem; separator tabindex 0, aria-valuemin 22, max ${s.max} (70% of ${s.workRem.toFixed(1)}rem), valuetext "${s.text}"`);
+  assert.equal(s.now, 28); assert.equal(s.min, 20); assert.equal(s.max, Math.round(s.workRem * 0.6));
+  assert.ok(Math.abs(s.mapRem - 27.5) < 0.2, `default map ${s.mapRem}rem`);
+  steps.push(`default 27.5rem (440px); separator tabindex 0, aria-valuemin 20, max ${s.max} (60% of ${s.workRem.toFixed(1)}rem), valuetext "${s.text}"`);
 
   await b('mouse', 'move', String(Math.round(s.left)), String(Math.round(s.mid)));
   await b('mouse', 'down');
   await b('mouse', 'move', String(Math.round(s.left) - 160), String(Math.round(s.mid)));
   await b('mouse', 'up');
   s = await state();
-  assert.ok(Math.abs(s.now - 45) <= 1 && Math.abs(s.chatRem - s.now) < 1, `drag 160px left widens to ~45rem (${s.now}, ${s.chatRem})`);
-  steps.push(`drag 160px left: chat ${s.chatRem.toFixed(1)}rem, valuenow ${s.now}`);
+  assert.ok(Math.abs(s.now - 38) <= 1 && Math.abs(s.mapRem - s.now) < 1, `drag 160px left widens to ~37.5rem (${s.now}, ${s.mapRem})`);
+  steps.push(`drag 160px left: map ${s.mapRem.toFixed(1)}rem, valuenow ${s.now}`);
   await b('mouse', 'down'); await b('mouse', 'move', '10', String(Math.round(s.mid))); await b('mouse', 'up');
   s = await state();
-  assert.equal(s.now, s.max, 'drag clamps at 70%');
+  assert.equal(s.now, s.max, 'drag clamps at 60%');
   await b('mouse', 'move', String(Math.round(s.left)), String(Math.round(s.mid)));
   await b('mouse', 'down'); await b('mouse', 'move', '1590', String(Math.round(s.mid))); await b('mouse', 'up');
   s = await state();
-  assert.equal(s.now, 22, 'drag clamps at 22rem');
-  steps.push(`drag clamps at ${s.max}rem max and 22rem min`);
+  assert.equal(s.now, 20, 'drag clamps at 20rem');
+  steps.push(`drag clamps at ${s.max}rem max and 20rem min`);
 
   await b('dblclick', '.chat-divider');
   s = await state();
-  assert.equal(s.now, 35); steps.push('double-click resets to 35rem');
+  assert.equal(s.now, 28); steps.push('double-click resets to 27.5rem (rounded aria value 28)');
 
   await b('focus', '.chat-divider');
   await b('press', 'ArrowLeft'); await b('press', 'ArrowLeft'); await b('press', 'Shift+ArrowLeft');
-  s = await state(); assert.equal(s.now, 41);
-  await b('press', 'ArrowRight'); s = await state(); assert.equal(s.now, 40);
-  await b('press', 'Home'); s = await state(); assert.equal(s.now, 22);
+  s = await state(); assert.equal(s.now, 34);
+  await b('press', 'ArrowRight'); s = await state(); assert.equal(s.now, 33);
+  await b('press', 'Home'); s = await state(); assert.equal(s.now, 20);
   await b('press', 'End'); s = await state(); assert.equal(s.now, s.max);
   await b('press', 'Home'); await b('press', 'Shift+ArrowLeft'); await b('press', 'Shift+ArrowLeft');
-  s = await state(); assert.equal(s.now, 30); assert.equal(s.stored, '30');
-  steps.push('keyboard: ArrowLeft +1, Shift+ArrowLeft +4, ArrowRight -1, Home 22, End max; stored "30"');
+  s = await state(); assert.equal(s.now, 28); assert.equal(s.stored, '28');
+  steps.push('keyboard: ArrowLeft +1, Shift+ArrowLeft +4, ArrowRight -1, Home 20, End max; stored "28"');
 
   await b('reload');
   await b('wait', '[aria-label="Open Divider fixture"]');
   if (!(await ev(`!!${sep}`))) await click('Open Divider fixture');
   await wait(sep);
-  s = await state(); assert.equal(s.now, 30); assert.ok(Math.abs(s.chatRem - 30) < 0.2);
-  steps.push('reload keeps 30rem');
+  s = await state(); assert.equal(s.now, 28); assert.ok(Math.abs(s.mapRem - 28) < 0.2);
+  steps.push('reload keeps 28rem');
   const shots = mkdtempSync(join(tmpdir(), 'chat-divider-shots-')), shot = join(shots, 'chat-divider.png');
   await b('focus', '.chat-divider');
   await b('screenshot', shot);
@@ -82,8 +82,8 @@ try {
   await wait(`!${sep} && document.querySelector('.focused-chat').getBoundingClientRect().width > document.querySelector('.tree-workspace').getBoundingClientRect().width - 2`);
   await click('Show map beside chat');
   await wait(sep);
-  s = await state(); assert.equal(s.now, 30);
-  steps.push('expanded mode: chat fills workspace, divider hidden; back beside keeps 30rem');
+  s = await state(); assert.equal(s.now, 28);
+  steps.push('expanded mode: chat fills workspace, divider hidden; back beside keeps 28rem');
   await click('Return to tree');
   await wait(`!${sep} && getComputedStyle(document.querySelector('.focused-chat')).display === 'none'`);
   steps.push('map-only mode: chat and divider hidden');

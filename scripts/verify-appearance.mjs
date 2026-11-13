@@ -80,7 +80,7 @@ try {
   await b('reload');
   await openTree();
   assert.equal(await scheme(), 'dark');
-  assert.equal(await ground(), 'rgb(26, 22, 19)', 'bark ground');
+  assert.equal(await ground(), 'rgb(20, 17, 14)', 'docked map uses the deep bark panel');
   assert.equal(await flowDark(), true, 'map follows the app');
   assert.equal(await ev(`localStorage.getItem('treetutor.appearance')`), null);
   assert.match(await ev(`getComputedStyle(document.body).fontFamily`), /^"?Archivo/);
@@ -109,7 +109,7 @@ try {
   await b('reload');
   await openTree();
   assert.equal(await scheme(), 'light');
-  assert.notEqual(await ground(), 'rgb(26, 22, 19)');
+  assert.notEqual(await ground(), 'rgb(20, 17, 14)');
   assert.equal(await flowDark(), false, 'map follows the app, not the dark OS');
   const lightDiagram = await diagramText();
   assert.ok(lightDiagram.includes('rgb(31, 26, 21)') && !lightDiagram.includes('rgb(239, 230, 214)'), 'diagram drawn in bark ink while the OS is dark');
@@ -122,10 +122,10 @@ try {
   await b('find', 'role', 'radio', 'click', '--name', 'System', '--exact');
   await closeSettings();
   assert.equal(await scheme(), 'system-dark');
-  await wait(`getComputedStyle(document.querySelector('.react-flow')).backgroundColor === 'rgb(26, 22, 19)'`);
+  await wait(`getComputedStyle(document.querySelector('.react-flow')).backgroundColor === 'rgb(20, 17, 14)'`);
   await wait(`decodeURIComponent(${diagramReady}?.src ?? '').includes('rgb(239, 230, 214)')`);
   await b('set', 'media', 'light');
-  await wait(`getComputedStyle(document.querySelector('.react-flow')).backgroundColor !== 'rgb(26, 22, 19)'`);
+  await wait(`getComputedStyle(document.querySelector('.react-flow')).backgroundColor !== 'rgb(20, 17, 14)'`);
   await wait(`decodeURIComponent(${diagramReady}?.src ?? '').includes('rgb(31, 26, 21)')`);
   assert.equal(await ev(`localStorage.getItem('treetutor.appearance')`), 'system');
   step('System follows the emulated scheme live, map ground and Mermaid included');

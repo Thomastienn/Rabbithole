@@ -4,7 +4,7 @@ import { Heading, Text } from '@astryxdesign/core/Text';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, FilmIcon } from '@heroicons/react/24/outline';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import type { Artifact } from './artifacts';
 
@@ -28,7 +28,9 @@ export default function VideoCard({ artifact, inline = false, onAction, media = 
         {state === 'pending' && !inline && <Skeleton />}
         {state === 'ready' && <video className="video-frame" src={media} controls preload="metadata" aria-label={`Video: ${artifact.title}`} aria-describedby={`${id}-description`} />}
         <VStack gap={2} padding={3} hAlign="center" vAlign="center" className="video-controls">
+          {inline && state !== 'ready' && <FilmIcon className="video-status-icon" aria-hidden />}
           <Text type="supporting" color="secondary" role="status" className={state === 'ready' ? 'sr-only' : undefined}><Text type="inherit" className="sr-only">{artifact.title}: </Text>{status}</Text>
+          {inline && state === 'pending' && artifact.progress !== undefined && <span className="video-meter" aria-hidden><i style={{ width: `${Math.round(artifact.progress * 100)}%` }} /></span>}
           {state === 'ready' && onAction && <IconButton label={`Try a different version of video: ${artifact.title}`} tooltip="Try a different version" icon={<ArrowPathIcon />} variant="ghost" size="sm" clickAction={() => onAction('regenerate')} />}
           {/* Keep the action mounted so Cancel → Retry/Open large preserves keyboard focus. */}
           {(state === 'ready' || onAction) && <Button key="action" label={state === 'ready' ? 'Open large' : state === 'pending' ? 'Cancel video' : state === 'unavailable' ? 'Regenerate video' : 'Retry video'} variant="ghost" size="sm" clickAction={() => state === 'ready' ? setEnlarged(true) : onAction?.(state === 'pending' ? 'cancel' : 'retry')} />}

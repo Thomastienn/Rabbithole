@@ -95,8 +95,8 @@ async function flow(mode, { word, manual, correction, label }) {
   // Outside click dismisses without creating a branch, and focus never falls to the page body.
   await key('Enter'); await wait(`document.activeElement === ${input}`);
   await b('keyboard', 'type', 'draft');
-  // Bottom line of the reply text, below the popup that floats above the passage.
-  const hit = await ev(`(() => { const r = document.querySelector('.focused-chat .passage section').getBoundingClientRect(); return [Math.round(r.left + 4), Math.round(r.bottom - 4)]; })()`);
+  // Header padding is outside the popup and every underline, regardless of text wrapping.
+  const hit = await ev(`(() => { const r = document.querySelector('.focused-chat .chat-header').getBoundingClientRect(); return [Math.round(r.left + 4), Math.round(r.top + 4)]; })()`);
   assert.ok(await ev(`!document.elementFromPoint(${hit[0]}, ${hit[1]}).closest('.passage-box')`), `${mode}: click target is outside the popup`);
   await clickAt(hit);
   await wait(`!${popup} && !CSS.highlights.has('passage')`);

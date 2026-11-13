@@ -167,7 +167,9 @@ if (process.argv[2] === '--serve') {
     assert.deepEqual(player, { paused: true, autoplay: false, controls: true, label: `Video: ${task.title}`, description: 'Two labelled boxes slide together into a final box over two seconds.', ratio: 1.78, fits: true, duration: 2, cardLive: 'off', status: `${task.title}: Video ready.` });
     pass('ready card: paused native player within chat width, 16:9, with text explanation', player);
 
-    // Tab reaches the player; native controls own its keys.
+    // Tab reaches the player; native controls own its keys. Dismiss hover tips first: their Escape layer is separate from the player.
+    await b('mouse', 'move', '5', '5');
+    await wait(`![...document.querySelectorAll('[role=tooltip]')].some(e => e.checkVisibility())`);
     await ev(`(()=>{window.__keys=[];document.addEventListener('keydown',e=>{if(e.target.tagName==='VIDEO')__keys.push({key:e.key,prevented:e.defaultPrevented})});return true})()`);
     for (let i = 0; i < 12 && !(await ev(`document.activeElement?.tagName==='VIDEO'`)); i++) await b('press', 'Shift+Tab');
     assert.equal(await ev(`document.activeElement?.tagName`), 'VIDEO');
@@ -191,6 +193,8 @@ if (process.argv[2] === '--serve') {
     await ev(`document.exitFullscreen().then(()=>true)`);
     await wait(`!document.fullscreenElement`);
     await ev(`${video}.focus()`);
+    await b('mouse', 'move', '5', '5');
+    await wait(`![...document.querySelectorAll('[role=tooltip]')].some(e => e.checkVisibility())`);
     await b('press', 'Escape');
     const keys = await ev(`({keys:__keys,chatOpen:getComputedStyle(document.querySelector('.focused-chat')).display!=='none',focus:document.activeElement?.tagName})`);
     // Recorded after page handlers, before the native default action: the app prevents none of the player's keys.

@@ -79,8 +79,8 @@ try {
     await b('press', 'Escape'); await wait(`!${dialog} && document.activeElement?.getAttribute('aria-label') === 'Map menu'`);
     assert.equal((await (await fetch(`${origin}/api/trees/${root.id}`)).json()).title, 'Tournament trees', 'cancel keeps the chat');
 
-    // Rename stays inline in the header; Escape returns focus to the title.
-    await click('Rename conversation'); await wait(`document.activeElement?.closest('.chat-header') && document.activeElement.value === 'Tournament trees'`);
+    // Rename stays inline in the reading column; Escape returns focus to the title.
+    await click('Rename conversation'); await wait(`document.activeElement?.closest('.chat-title') && document.activeElement.value === 'Tournament trees'`);
     await shot(`rename-${mode}`);
     await b('press', 'Escape'); await wait(`document.activeElement?.id === 'rename-conversation'`);
 

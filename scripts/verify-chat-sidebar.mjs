@@ -30,7 +30,7 @@ try {
   await browser('wait', '[aria-label="Open Branch A"]');
   assert.equal(await evalBrowser('getComputedStyle(document.querySelector(".shell-band")).display'), 'flex');
   await open('Branch A');
-  assert.equal(await evalBrowser('(() => { const a=document.querySelector(".overview").getBoundingClientRect(), b=document.querySelector(".focused-chat").getBoundingClientRect(); return a.width>0 && b.width>0 && a.right<=b.left+1 })()'), true);
+  assert.equal(await evalBrowser('(() => { const a=document.querySelector(".overview").getBoundingClientRect(), b=document.querySelector(".focused-chat").getBoundingClientRect(); return a.width>0 && b.width>0 && b.right<=a.left+1 })()'), true);
   await wait(`(() => { const c=document.querySelector('.tree-canvas').getBoundingClientRect(), n=document.querySelector('[data-id="${a.id}"]').getBoundingClientRect(); return n.left>=c.left-1 && n.right<=c.right+1 && n.top>=c.top-1 && n.bottom<=c.bottom+1; })()`);
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Draft A');
   await click('Fit tree');

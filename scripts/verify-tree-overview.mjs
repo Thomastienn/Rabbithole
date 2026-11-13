@@ -48,7 +48,7 @@ try {
   await click('Return to tree');
   await browser('wait', '--fn', '!document.documentElement.matches(":active-view-transition")');
   await click('Zoom in');
-  await click('Open Forest ecology');
+  await browser('focus', `#open-${root.id}`); await browser('press', 'Enter');
   await browser('wait', '.focused-chat [aria-label="Your question"]');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Explain nutrient sharing');
   await click('Send');
@@ -58,7 +58,7 @@ try {
   await click('Return to tree');
   await browser('wait', '--fn', 'document.activeElement?.id.startsWith("open-")');
   await check('window.savedViewport === document.querySelector(".react-flow__viewport").getAttribute("style")');
-  await click('Open Forest ecology');
+  await browser('focus', `#open-${root.id}`); await browser('press', 'Enter');
   await browser('wait', '--text', 'Synthetic response complete');
   if (generations !== 1 || store.tree(root.id).messages.filter(m => m.role === 'user').length !== 1) throw new Error('Navigation restarted generation');
   await browser('set', 'viewport', '390', '844');

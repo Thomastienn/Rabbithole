@@ -9,7 +9,7 @@ import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 
 const run = promisify(execFile), session = `chat-layout-${process.pid}`;
-// Headless Chrome reports (hover: none); emulate a mouse so the hover-only footer can be checked.
+// Headless Chrome reports (hover: none); emulate a mouse to check the code-copy reveal.
 const b = async (...args) => (await run('agent-browser', ['--session', session, ...args], { env: { ...process.env, AGENT_BROWSER_ARGS: process.env.HOVER === 'none' ? '' : '--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4' } })).stdout;
 const ev = async expression => JSON.parse(await b('eval', expression, '--json')).data.result;
 const wait = expression => b('wait', '--fn', `!!(${expression})`);
@@ -43,9 +43,9 @@ try {
   await b('wait', '[aria-label="Open Layout fixture"]');
   await click('Open Layout fixture');
   await wait(`document.querySelector('.focused-chat .diagram-card svg, .focused-chat .diagram-card img')`);
-  const slim = await ev(`document.querySelector('.focused-chat .passage').getBoundingClientRect().width`);
+  const slim = await ev(`document.querySelector('.focused-chat').getBoundingClientRect().width`);
   await click('Expand chat');
-  await wait(`document.querySelector('.focused-chat .passage').getBoundingClientRect().width > ${slim}`);
+  await wait(`document.querySelector('.focused-chat').getBoundingClientRect().width > ${slim}`);
 
   await b('mouse', 'move', '5', '5');
   await ev(`document.activeElement?.blur(); true`);
@@ -73,11 +73,11 @@ try {
   assert.ok(layout.tinted, 'question bubble carries the tint');
   assert.match(layout.header, /^Tutor · /);
   assert.equal(layout.labelled, layout.header, 'reply article is labelled by its Tutor · model header');
-  assert.ok(layout.replyWidth < layout.listWidth - 100, `reply text capped (${layout.replyWidth} of ${layout.listWidth})`);
+  assert.ok(Math.abs(layout.replyWidth - 640) < 1 && layout.listWidth > layout.replyWidth, `reply text capped (${layout.replyWidth} of ${layout.listWidth})`);
   assert.ok(layout.order[0] < layout.order[1] && layout.order[1] < layout.order[2], 'text, then artifacts, then usage footer');
   assert.ok(layout.underline, 'suggestion underline drawn');
   const noHover = await ev(`matchMedia('(hover: none)').matches`);
-  assert.equal(layout.usageOpacity, noHover ? '1' : '0', 'usage footer quiet without hover; always shown on no-hover devices');
+  assert.equal(layout.usageOpacity, '1', 'mockup reply footer stays visible');
   assert.ok(layout.turnGap > layout.innerGap * 2, `turn gap ${layout.turnGap} > question-reply gap ${layout.innerGap}`);
   assert.match(layout.failed, /Reply failed/, 'failed state stays on its reply');
   steps.push(`learner bubble right-aligned and tinted, no label; "${layout.header}" header labels the reply; text capped ${Math.round(layout.replyWidth)}px of ${Math.round(layout.listWidth)}px; order passage → diagram → usage; turn gap ${Math.round(layout.turnGap)}px vs ${Math.round(layout.innerGap)}px; failed status on its reply`);
@@ -101,7 +101,7 @@ try {
   const look = async mode => {
     const t = await transcript();
     assert.match(t.replyFont, /Literata/, `${mode}: reply in the reading serif`);
-    assert.equal(t.replySize, '16px', `${mode}: reply 16px`);
+    assert.equal(t.replySize, '17px', `${mode}: reply 17px`);
     assert.ok(Math.abs(t.replyLine - 1.7) < 0.02, `${mode}: reply line height 1.7 (${t.replyLine})`);
     assert.match(t.questionFont, /Archivo/, `${mode}: question in the UI sans`);
     assert.ok(t.bubble !== 'rgba(0, 0, 0, 0)' && t.replyBg === 'rgba(0, 0, 0, 0)', `${mode}: question filled, reply without bubble`);
@@ -135,10 +135,10 @@ try {
     await wait(`getComputedStyle(document.querySelector('.reply-usage')).opacity === '1'`);
     await b('screenshot', shot);
     await b('mouse', 'move', '5', '5');
-    await wait(`getComputedStyle(document.querySelector('.reply-usage')).opacity === '0'`);
+    await wait(`getComputedStyle(document.querySelector('.reply-usage')).opacity === '1'`);
     await ev(`document.querySelector('.focused-chat u.suggestion[tabindex]').focus(); true`);
     await wait(`getComputedStyle(document.querySelector('.reply-usage')).opacity === '1'`);
-    steps.push('usage footer hidden at rest, shown on hover and on keyboard focus within the reply');
+    steps.push('reply footer stays visible at rest, on hover and on keyboard focus');
   }
 
   await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Third question');

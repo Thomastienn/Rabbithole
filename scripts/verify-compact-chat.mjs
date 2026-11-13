@@ -48,7 +48,7 @@ const layout = async () => { await wait(`document.querySelector('.chat-header')?
   log.scrollTop = log.scrollHeight; log.dispatchEvent(new Event('scroll'));
   await new Promise(r => setTimeout(r, 300));
   const r = n => n.getBoundingClientRect(), header = document.querySelector('.chat-header'), row = header.querySelector('.chat-heading-row');
-  const controls = ['#rename-conversation', '.model-picker', '.expand-chat', '[aria-label="Return to tree"]', '[aria-label="More conversation options"]'].map(s => header.querySelector(s));
+  const controls = ['.stats-toggle', '.expand-chat', '[aria-label="Return to tree"]', '[aria-label="More conversation options"]'].map(s => header.querySelector(s));
   const composer = document.querySelector('.focused-chat .astryx-chat-composer > :first-child'), send = document.querySelector('.focused-chat .astryx-chat-send-button');
   const input = document.querySelector('.focused-chat [aria-label="Your question"]'), last = [...document.querySelectorAll('.focused-chat [role=log] article')].at(-1);
   const css = getComputedStyle(send), probe = document.createElement('i'); document.body.append(probe); probe.style.color = 'var(--color-accent)';
@@ -58,8 +58,9 @@ const layout = async () => { await wait(`document.querySelector('.chat-header')?
     visible: controls.map(n => !!n && n.checkVisibility() && r(n).width > 0 && r(n).right <= r(header).right + 1),
     sameRow: controls.filter(n => n?.checkVisibility()).every(n => Math.abs(r(n).top + r(n).height / 2 - (r(row).top + r(row).height / 2)) < 4),
     savedText: header.textContent.includes('saved automatically'),
-    sendRound: css.borderTopLeftRadius === '50%' || parseFloat(css.borderTopLeftRadius) >= r(send).width / 2,
-    sendBeside: r(send).left >= r(input).right - 1 && r(send).bottom <= r(composer).bottom && r(send).top >= r(composer).top,
+    sendRadius: css.borderTopLeftRadius,
+    sendBelow: r(send).top >= r(input).bottom && r(send).bottom <= r(composer).bottom,
+    modelAtFoot: !!document.querySelector('.astryx-chat-composer .model-picker'),
     sendFill: css.backgroundColor, accent,
     composerRadius: getComputedStyle(composer).borderTopLeftRadius,
     lastClear: r(last).bottom <= r(composer).top,
@@ -69,16 +70,16 @@ const layout = async () => { await wait(`document.querySelector('.chat-header')?
 })()`); };
 const assertLayout = async mode => {
   const l = await layout();
-  assert.ok(l.headerHeight <= 48 && l.headerHeight - l.rowHeight <= 12, `${mode}: one slim header row ${JSON.stringify(l)}`);
+  assert.ok(l.headerHeight <= 57 && l.headerHeight - l.rowHeight <= 17, `${mode}: one slim header row ${JSON.stringify(l)}`);
   // At 48rem and below chat already fills the width, so the existing layout hides Expand.
-  assert.deepEqual(l.visible, [true, true, !mode.includes('narrow'), true, true], `${mode}: title, picker, expand, close and overflow visible ${JSON.stringify(l)}`);
+  assert.deepEqual(l.visible, [true, !mode.includes('narrow'), true, true], `${mode}: stats, map toggle, close and overflow visible ${JSON.stringify(l)}`);
   assert.ok(l.sameRow, `${mode}: controls share the row`);
   assert.equal(l.savedText, false, `${mode}: no permanent autosave text`);
-  assert.ok(l.sendRound && l.sendBeside, `${mode}: circular send beside the input ${JSON.stringify(l)}`);
+  assert.ok(l.sendRadius === '3px' && l.sendBelow && l.modelAtFoot, `${mode}: Send and model button below the input ${JSON.stringify(l)}`);
   if (!mode.includes('streaming')) assert.equal(l.sendFill, l.accent, `${mode}: send uses the accent token`);
   assert.notEqual(l.composerRadius, '0px', `${mode}: rounded composer`);
   assert.ok(l.lastClear && l.inputInView && l.noOverflow, `${mode}: composer clears the latest reply and stays in view ${JSON.stringify(l)}`);
-  check(`${mode}: ${Math.round(l.headerHeight)}px header holds title, model/effort, expand, close and overflow; circular send beside rounded composer clears the latest reply`);
+  check(`${mode}: ${Math.round(l.headerHeight)}px header holds breadcrumbs, stats, map toggle, close and overflow; Send/model at composer foot clears the latest reply`);
 };
 
 try {
@@ -88,23 +89,23 @@ try {
   await ev(`localStorage.setItem('treetutor.vim', 'on'); localStorage.setItem('treetutor.appearance', 'dark'); true`);
   await b('reload');
   await wait(`document.querySelector('[aria-label="Open ${title}"]')`);
-  await click(`Open ${title}`);
+  await b('focus', `[aria-label="Open ${title}"]`); await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(title)}`);
   await assertLayout('dark side panel');
   await shot('dark-side-panel');
 
-  // Full title on hover and on keyboard focus.
+  // Full title wraps in the reading column; rename remains keyboard reachable.
   const tip = `[...document.querySelectorAll('[role=tooltip]')].some(n => n.checkVisibility() && n.textContent.includes(${JSON.stringify(title)}))`;
-  assert.ok(await ev(`(() => { const h = document.querySelector('.chat-title h2'); return h.scrollWidth > h.clientWidth; })()`), 'long title is shortened');
+  await b('scrollintoview', '#rename-conversation');
+  assert.ok(await ev(`(() => { const h = document.querySelector('.chat-title h2'); return h.scrollWidth <= h.clientWidth && h.textContent === ${JSON.stringify(title)}; })()`), 'full title wraps within the reading measure');
   await b('hover', '#rename-conversation');
   await wait(tip);
   await b('mouse', 'move', '5', '5');
   await wait(`!(${tip})`);
-  await focus('[aria-label="Return to tree"]');
-  await b('press', 'Shift+Tab'); await b('press', 'Shift+Tab'); await b('press', 'Shift+Tab');
+  await focus('#rename-conversation');
   assert.equal(await ev(`document.activeElement.id`), 'rename-conversation');
   await wait(tip);
-  check('shortened title reveals the full title on hover and on keyboard focus');
+  check('full title wraps in the reading column; rename has the full-title tooltip on hover and keyboard focus');
 
   // Overflow by keyboard: token stats and rename.
   await focus('[aria-label="More conversation options"]');
@@ -113,11 +114,11 @@ try {
   const moving = await ev(`document.getAnimations().filter(x => (x.effect?.getTiming().duration ?? 0) > 1 && !/color|shadow/.test(x.transitionProperty ?? '')).map(x => (x.animationName ?? x.transitionProperty) + ':' + x.effect.getTiming().duration + ':' + (x.effect.target?.className?.baseVal ?? x.effect.target?.className ?? '').slice(0, 60))`);
   assert.deepEqual(moving, [], 'reduced motion: overflow menu opens without movement (color fades allowed)');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Show token stats', '--exact');
-  await wait(`document.querySelector('[aria-label="Token stats"]')?.checkVisibility()`);
-  assert.match(await ev(`document.querySelector('[aria-label="Token stats"]').textContent`), /Reply 1: 901 input · 60 output · 0 cache-read tokens/);
+  await wait(`document.querySelector('.chat-stats-body')?.checkVisibility()`);
+  assert.match(await ev(`document.querySelector('.chat-stats-body').textContent`), /Reply 1: 901 input · 60 output · 0 cache-read tokens/);
   await click('More conversation options');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Hide token stats', '--exact');
-  await wait(`!document.querySelector('[aria-label="Token stats"]')`);
+  await wait(`!document.querySelector('.chat-stats-body')`);
   await click('More conversation options');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Rename conversation', '--exact');
   await wait(`document.querySelector('.chat-title input')`);

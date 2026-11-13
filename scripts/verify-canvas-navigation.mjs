@@ -86,7 +86,7 @@ try {
     const workspace = document.querySelector('.tree-workspace').getBoundingClientRect();
     const overview = document.querySelector('.overview');
     const map = overview.getBoundingClientRect();
-    return chat.width > 0 && chat.width < workspace.width && map.width > 0 && Math.abs(map.right - chat.left) < 1;
+    return chat.width > 0 && chat.width < workspace.width && map.width > 0 && Math.abs(chat.right - map.left) < 1;
   })()`), true, 'Revealed source opens the chat side panel beside the map');
   // Focus can arrive before the shared-element snapshot is ready. Let this animation
   // finish so the return action does not intentionally skip the transition being measured.
