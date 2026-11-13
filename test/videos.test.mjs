@@ -34,7 +34,7 @@ import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import { ThreeCanvas } from '@remotion/three';
 export default function Video() {
   const frame = useCurrentFrame();
-  return <AbsoluteFill style={{ background: '#102030' }}><ThreeCanvas width={640} height={360} camera={{ position: [0, 0, 4] }}>
+  return <AbsoluteFill style={{ background: '#102030' }}><ThreeCanvas width={1280} height={720} camera={{ position: [0, 0, 4] }}>
     <ambientLight intensity={0.5} /><directionalLight position={[2, 2, 3]} />
     <mesh rotation={[frame / 20, frame / 15, 0]}><boxGeometry args={[1.4, 1.4, 1.4]} /><meshStandardMaterial color="orange" /></mesh>
   </ThreeCanvas></AbsoluteFill>;
@@ -111,6 +111,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.equal(workers[0].tree.thread, null);
     assert.match(workers[0].tree.instructions, /2D for ordinary explanations[\s\S]*3D whenever the subject involves spatial relationships[\s\S]*When the learner or intent asks for 2D or 3D, follow it/);
     assert.match(workers[0].tree.instructions, /"@remotion\/three"/);
+    assert.match(workers[0].tree.instructions, /1280x720[\s\S]*bottom 150 pixels[\s\S]*"\.\/kit"[\s\S]*never hard cuts[\s\S]*different videos look different/);
     assert.equal(workers[0].tree.model, 'fixture-model', 'smart follows the global default rather than the conversation override');
     assert.ok(!workers[0].text.includes('UNRELATED SIBLING DISCUSSION'));
 
@@ -308,6 +309,8 @@ test('out-of-workspace output, unreadable media, lost ownership and a failed sav
     spatial.replace("from '@remotion/three'", "from '@react-three/drei'"), spatial + "\nnew TextureLoader().load('x.png');", spatial + "\nuseLoader(GLTFLoader, 'm.glb');"])
     assert.throws(() => videoSource(bad));
   assert.equal(videoSource(spatial + "\nimport * as THREE from 'three';\nimport { useThree } from '@react-three/fiber';").description, 'A lit cube rotates in 3D space.');
+  assert.equal(videoSource(composition + "\nimport { Scene, palette } from './kit';").description, 'Two labelled boxes slide together into a final box.');
+  assert.throws(() => videoSource(composition + "\nimport x from './other';"));
   assert.equal(videoSource('```tsx\n' + composition + '\n```').description, 'Two labelled boxes slide together into a final box.');
   const [description, narration, ...code] = composition.split('\n');
   assert.ok(!videoSource([description, narration, '```tsx', ...code, '```'].join('\n')).source.includes('`'), 'a fence after the header lines is not compiled as code');
@@ -497,7 +500,7 @@ test('one real short sandboxed Three.js scene renders through the same isolated 
   assert.equal(row.status, 'ready');
   // A non-blank WebGL frame: the orange cube is drawn, not just the background.
   const ffmpeg = RenderInternals.getExecutablePath({ type: 'ffmpeg', indent: false, logLevel: 'error', binariesDirectory: null });
-  const png = execFileSync(ffmpeg, ['-v', 'error', '-ss', '1', '-i', mediaPath(dir, row.id), '-frames:v', '1', '-vf', 'crop=2:2:320:180,format=rgb24', '-f', 'image2pipe', '-c:v', 'png', '-']);
+  const png = execFileSync(ffmpeg, ['-v', 'error', '-ss', '1', '-i', mediaPath(dir, row.id), '-frames:v', '1', '-vf', 'crop=2:2:640:360,format=rgb24', '-f', 'image2pipe', '-c:v', 'png', '-']);
   const idat = png.indexOf('IDAT'), [, r, g, b] = inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)));
   assert.ok(r > 120 && b < 80, `expected cube colour at the centre, got ${[r, g, b]}`);
 });
