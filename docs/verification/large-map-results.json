@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-13T10:12:23.691Z",
+  "date": "2026-11-13T11:56:10.688Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,36 +12,36 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 984.9019609999996,
-  "previewQueryMs": 703.289638000002,
+  "seedMs": 934.2254250000005,
+  "previewQueryMs": 706.1526139999987,
   "previewBytes": 4876201,
-  "openMs": 4003.5628389999983,
+  "openMs": 4336.863370000003,
   "dom": {
-    "elements": 3015,
+    "elements": 3214,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1996.60000000149,
+    "elapsedMs": 2001.39999999851,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
-    "maxMs": 16.800000000000182,
+    "maxMs": 16.700000000000728,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.799999999999272,
+    "p95Ms": 16.700000000000728,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 474.74823999999717,
-  "unfoldMs": 223.0586030000013,
+  "foldMs": 406.63944400000037,
+  "unfoldMs": 236.16182599999956,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 5080.337513000002,
-  "selectMs": 5717.979084999999,
-  "selectUiMs": 1298.10000000149,
+  "selectClickMs": 5428.701290999998,
+  "selectMs": 5788.774270000002,
+  "selectUiMs": 988.7000000029802,
   "selectedBounds": {
     "bottom": 626.0375366210938,
     "canvasHeight": 844,
@@ -51,12 +51,12 @@
     "toolbarTop": 794,
     "top": 70
   },
-  "streamingMs": 542.7564370000036,
+  "streamingMs": 533.4843980000005,
   "chunkRenders": {
-    "4efffb50-bad5-4114-b54a-03253df8beee": 14
+    "347accdc-ba1c-4d32-9836-ecfca465dd44": 13
   },
   "chunkRenderReasons": {
-    "4efffb50-bad5-4114-b54a-03253df8beee": [
+    "347accdc-ba1c-4d32-9836-ecfca465dd44": [
       "preview"
     ]
   }

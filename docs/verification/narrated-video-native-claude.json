@@ -1,65 +1,65 @@
 {
-  "checkedAt": "2026-11-13T10:13:43.827Z",
+  "checkedAt": "2026-11-13T11:57:31.425Z",
   "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual Edge TTS with timing metadata, actual sandboxed target-length render; embedded subtitles.",
   "mode": "2d",
   "provider": "claude",
   "effort": "low",
   "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
   "memoryBytes": 16368898048,
-  "data": "/tmp/tt-narrated-video-live-N0px3Y",
+  "data": "/tmp/tt-narrated-video-live-0IKj9i",
   "model": "sonnet",
   "ttsCalls": 1,
-  "ttsMs": 3259,
-  "renderMs": 173639,
-  "elapsedMs": 196210,
+  "ttsMs": 3353,
+  "renderMs": 168399,
+  "elapsedMs": 199215,
   "dimension": "2d",
   "timing": {
-    "sentences": 25,
-    "words": 218,
-    "captions": 35,
+    "sentences": 26,
+    "words": 206,
+    "captions": 34,
     "first": {
-      "text": "Imagine looking for a name in a phone book",
+      "text": "Imagine you are looking for one number in a long",
       "startMs": 50,
-      "endMs": 2325,
+      "endMs": 2350,
       "startFrame": 1,
-      "endFrame": 70
+      "endFrame": 71
     },
     "last": {
-      "text": "search scales so well",
-      "startMs": 85950,
-      "endMs": 87312.5,
-      "startFrame": 2578,
-      "endFrame": 2620
+      "text": "Sort first then halve and search becomes fast",
+      "startMs": 80600,
+      "endMs": 83725,
+      "startFrame": 2418,
+      "endFrame": 2512
     },
-    "durationInFrames": 2646
+    "durationInFrames": 2538
   },
   "media": {
-    "id": "7e05de1c-72f1-4b77-87c5-8b58d8295f63",
-    "duration": 88.2,
-    "bytes": 4780016,
+    "id": "ff12a70a-6557-409a-b0e4-75513c954d86",
+    "duration": 84.6,
+    "bytes": 4646417,
     "probe": [
       {
         "codec": "h264",
         "type": "video",
         "width": 1280,
         "height": 720,
-        "duration": "88.200000"
+        "duration": "84.600000"
       },
       {
         "codec": "aac",
         "type": "audio",
-        "duration": "88.213000"
+        "duration": "84.608000"
       }
     ]
   },
   "usage": [
     {
-      "at": 1794564843124,
+      "at": 1794571078677,
       "provider": "claude",
       "model": "sonnet",
       "task": "video",
       "input": 2351,
-      "output": 2822,
+      "output": 3843,
       "cacheRead": 0
     }
   ],

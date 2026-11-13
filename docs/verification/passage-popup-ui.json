@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-13T10:18:32.147Z",
+  "date": "2026-11-13T12:01:40.171Z",
   "evidence": "built UI, real HTTP/SQLite, fixture provider; no native inference",
   "checks": [
     "dark wide: suggested underline opens a 58px popup, passage painted in the reply and quoted only for screen readers, question field and square send; no Cancel branch",

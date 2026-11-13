@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-13T10:09:52.681Z",
+  "checkedAt": "2026-11-13T11:52:58.867Z",
   "evidence": "Built app, SQLite/HTTP/SSE and Chromium; synthetic providers. Provider protocol/persistence checked separately by test/usage.test.mjs; no native model call.",
   "pass": true,
   "steps": [

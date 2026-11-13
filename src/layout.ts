@@ -353,7 +353,14 @@ html { view-transition-name: none; }
 .first-question h2 { font-size: 20px; font-weight: 700; text-align: center; }
 .tree-loading { width: min(100%, 640px); }
 @media (prefers-reduced-motion: reduce) { .tree-loading .astryx-skeleton, .tree-loading .astryx-skeleton::after { animation: none; } }
-.focused-chat { flex: 1; min-width: 0; background: var(--color-background-body); }
+.focused-chat { flex: 1; min-width: 0; background: var(--color-background-body); position: relative; }
+/* Turn rail: one tick per learner question on the chat's right edge; the current one is long and inked. */
+.turn-rail { position: absolute; z-index: 3; right: var(--spacing-2); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-end; max-height: 60%; overflow-y: auto; scrollbar-width: none; }
+.turn-rail .turn-tick { min-width: 0; min-height: 0; width: var(--spacing-6); height: var(--spacing-3); padding: 0; justify-content: flex-end; border-radius: var(--radius-inner); }
+.turn-rail .turn-tick span[aria-hidden] { display: block; width: 10px; height: 2px; background: var(--color-border); transition: width 120ms ease-out, background-color 120ms ease-out; }
+.turn-rail .turn-tick:hover span[aria-hidden] { background: var(--color-text-secondary); }
+.turn-rail .turn-tick[aria-current=true] span[aria-hidden] { width: 18px; background: var(--color-text-primary); }
+@media (prefers-reduced-motion: reduce) { .turn-rail .turn-tick span[aria-hidden] { transition: none; } }
 /* The map docks right of the reading column on the deep panel (mockup Read: 440px default, seam on its left edge). */
 .overview[data-chat-open=true] { flex: 0 0 var(--map-width); border-left: thin solid var(--color-border); }
 .overview[data-chat-open=true] .tree-canvas, .overview[data-chat-open=true] .react-flow { --xy-background-color: var(--color-background-muted); background: var(--color-background-muted); }

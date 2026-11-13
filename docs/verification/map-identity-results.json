@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-y36.7",
-  "date": "2026-11-13T10:13:21.692Z",
+  "date": "2026-11-13T11:57:09.488Z",
   "evidence": "Built app; agent-browser Chromium; synthetic transcripts and providers; no live inference",
   "references": [
     "map-reference-dark.png",
@@ -114,6 +114,6 @@
   ],
   "attachment": {
     "gap": 0,
-    "message": "2a2ee9d1-fc15-4bbb-8b15-78b1c9514d56"
+    "message": "7950a93e-73f3-4cd7-a6cc-8eb6c66cf186"
   }
 }

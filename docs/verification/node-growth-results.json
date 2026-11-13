@@ -1,165 +1,165 @@
 {
-  "date": "2026-11-13T10:17:08.216Z",
+  "date": "2026-11-13T12:01:03.388Z",
   "evidence": "Seeded data, synthetic provider, real browser and HTTP/SSE; controlled one-minute timer; SQLite/HTTP app restored in a fresh Node process. No native provider inference.",
   "stages": {
     "initial": {
-      "1e9647b9-127b-4c98-9058-a438a7aa69f8": {
-        "height": 128,
+      "0c36ed3f-01da-4411-9993-62a15fd27692": {
+        "height": 84,
         "width": 256,
         "x": 0,
-        "y": 0
+        "y": 220
       },
-      "9e81985e-b07c-4084-ad38-8f066e2c4fcf": {
+      "28caa102-86f7-4d2b-bce6-350a2cfb57d2": {
         "height": 56,
         "width": 256,
         "x": 720,
         "y": 220
       },
-      "ad63148c-97d8-48d1-b8b6-613f0d8a4b16": {
+      "2b0b7f31-aba1-4874-b319-de298f5b3e0a": {
+        "height": 56,
+        "width": 256,
+        "x": 270,
+        "y": 100
+      },
+      "44d68746-d8df-4add-bdb5-20e3f16e3a13": {
         "height": 56,
         "width": 256,
         "x": 360,
         "y": 600
       },
-      "b9aa7972-773e-4384-8ac9-319ba9e026ed": {
-        "height": 56,
-        "width": 256,
-        "x": 270,
-        "y": 100
-      },
-      "c089ae20-7a66-4b27-86ee-3cd8c3588d19": {
-        "height": 84,
-        "width": 256,
-        "x": 0,
-        "y": 220
-      }
-    },
-    "grown": {
-      "1e9647b9-127b-4c98-9058-a438a7aa69f8": {
-        "height": 244,
+      "8e678b33-3026-4147-bb1d-ac09477ce4af": {
+        "height": 128,
         "width": 256,
         "x": 0,
         "y": 0
-      },
-      "9e81985e-b07c-4084-ad38-8f066e2c4fcf": {
-        "height": 56,
-        "width": 256,
-        "x": 720,
-        "y": 220
-      },
-      "ad63148c-97d8-48d1-b8b6-613f0d8a4b16": {
-        "height": 56,
-        "width": 256,
-        "x": 360,
-        "y": 672
-      },
-      "b9aa7972-773e-4384-8ac9-319ba9e026ed": {
-        "height": 56,
-        "width": 256,
-        "x": 270,
-        "y": 100
-      },
-      "c089ae20-7a66-4b27-86ee-3cd8c3588d19": {
+      }
+    },
+    "grown": {
+      "0c36ed3f-01da-4411-9993-62a15fd27692": {
         "height": 84,
         "width": 256,
         "x": 0,
         "y": 292
-      }
-    },
-    "dragHeld": {
-      "1e9647b9-127b-4c98-9058-a438a7aa69f8": {
-        "height": 284,
-        "width": 256,
-        "x": 0,
-        "y": 0
       },
-      "9e81985e-b07c-4084-ad38-8f066e2c4fcf": {
+      "28caa102-86f7-4d2b-bce6-350a2cfb57d2": {
         "height": 56,
         "width": 256,
         "x": 720,
         "y": 220
       },
-      "ad63148c-97d8-48d1-b8b6-613f0d8a4b16": {
-        "height": 56,
-        "width": 256,
-        "x": 360,
-        "y": 672
-      },
-      "b9aa7972-773e-4384-8ac9-319ba9e026ed": {
+      "2b0b7f31-aba1-4874-b319-de298f5b3e0a": {
         "height": 56,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "c089ae20-7a66-4b27-86ee-3cd8c3588d19": {
+      "44d68746-d8df-4add-bdb5-20e3f16e3a13": {
+        "height": 56,
+        "width": 256,
+        "x": 360,
+        "y": 672
+      },
+      "8e678b33-3026-4147-bb1d-ac09477ce4af": {
+        "height": 244,
+        "width": 256,
+        "x": 0,
+        "y": 0
+      }
+    },
+    "dragHeld": {
+      "0c36ed3f-01da-4411-9993-62a15fd27692": {
         "height": 84,
         "width": 256,
         "x": 0,
         "y": 252
-      }
-    },
-    "dragReleased": {
-      "1e9647b9-127b-4c98-9058-a438a7aa69f8": {
-        "height": 284,
-        "width": 256,
-        "x": 0,
-        "y": 0
       },
-      "9e81985e-b07c-4084-ad38-8f066e2c4fcf": {
+      "28caa102-86f7-4d2b-bce6-350a2cfb57d2": {
         "height": 56,
         "width": 256,
         "x": 720,
         "y": 220
       },
-      "ad63148c-97d8-48d1-b8b6-613f0d8a4b16": {
+      "2b0b7f31-aba1-4874-b319-de298f5b3e0a": {
+        "height": 56,
+        "width": 256,
+        "x": 270,
+        "y": 100
+      },
+      "44d68746-d8df-4add-bdb5-20e3f16e3a13": {
+        "height": 56,
+        "width": 256,
+        "x": 360,
+        "y": 672
+      },
+      "8e678b33-3026-4147-bb1d-ac09477ce4af": {
+        "height": 284,
+        "width": 256,
+        "x": 0,
+        "y": 0
+      }
+    },
+    "dragReleased": {
+      "0c36ed3f-01da-4411-9993-62a15fd27692": {
+        "height": 84,
+        "width": 256,
+        "x": 0,
+        "y": 332
+      },
+      "28caa102-86f7-4d2b-bce6-350a2cfb57d2": {
+        "height": 56,
+        "width": 256,
+        "x": 720,
+        "y": 220
+      },
+      "2b0b7f31-aba1-4874-b319-de298f5b3e0a": {
+        "height": 56,
+        "width": 256,
+        "x": 270,
+        "y": 100
+      },
+      "44d68746-d8df-4add-bdb5-20e3f16e3a13": {
         "height": 56,
         "width": 256,
         "x": 360,
         "y": 752
       },
-      "b9aa7972-773e-4384-8ac9-319ba9e026ed": {
-        "height": 56,
-        "width": 256,
-        "x": 270,
-        "y": 100
-      },
-      "c089ae20-7a66-4b27-86ee-3cd8c3588d19": {
-        "height": 84,
-        "width": 256,
-        "x": 0,
-        "y": 332
-      }
-    },
-    "unfolded": {
-      "1e9647b9-127b-4c98-9058-a438a7aa69f8": {
-        "height": 360,
+      "8e678b33-3026-4147-bb1d-ac09477ce4af": {
+        "height": 284,
         "width": 256,
         "x": 0,
         "y": 0
+      }
+    },
+    "unfolded": {
+      "0c36ed3f-01da-4411-9993-62a15fd27692": {
+        "height": 84,
+        "width": 256,
+        "x": 0,
+        "y": 408
       },
-      "9e81985e-b07c-4084-ad38-8f066e2c4fcf": {
+      "28caa102-86f7-4d2b-bce6-350a2cfb57d2": {
         "height": 56,
         "width": 256,
         "x": 720,
         "y": 220
       },
-      "ad63148c-97d8-48d1-b8b6-613f0d8a4b16": {
-        "height": 56,
-        "width": 256,
-        "x": 360,
-        "y": 828
-      },
-      "b9aa7972-773e-4384-8ac9-319ba9e026ed": {
+      "2b0b7f31-aba1-4874-b319-de298f5b3e0a": {
         "height": 56,
         "width": 256,
         "x": 270,
         "y": 100
       },
-      "c089ae20-7a66-4b27-86ee-3cd8c3588d19": {
-        "height": 84,
+      "44d68746-d8df-4add-bdb5-20e3f16e3a13": {
+        "height": 56,
+        "width": 256,
+        "x": 360,
+        "y": 828
+      },
+      "8e678b33-3026-4147-bb1d-ac09477ce4af": {
+        "height": 360,
         "width": 256,
         "x": 0,
-        "y": 408
+        "y": 0
       }
     }
   },

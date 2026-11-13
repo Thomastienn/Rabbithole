@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-13T10:10:56.765Z",
+  "checkedAt": "2026-11-13T11:54:21.176Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-TJldZY",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-kAhfBp",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "8f03a4a6-9096-48c3-8173-1d9f11ccec69",
-        "messageId": "1fc2e37f-05ed-4a9e-a38d-39b596bf89e3",
+        "parent": "2e1b394c-7f2b-447b-a734-6d407aa1cd42",
+        "messageId": "f9c4aef0-875b-4d4e-afef-34e30647bb1a",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -161,8 +161,8 @@
       "pass": true,
       "details": {
         "processes": [
-          1930756,
-          1931288
+          2241069,
+          2241560
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3
@@ -171,7 +171,7 @@
     {
       "name": "original CSP renders without policy violations or unsafe script sources",
       "pass": true,
-      "details": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:37635/sandbox.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+      "details": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:41713/sandbox.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     }
   ],
   "screenshots": [
@@ -186,19 +186,19 @@
     "src/artifacts.ts": "5740d370d532024d7e79706b81d8e5cad30f106d3e9d3994e9e8f8c3673e5fcd",
     "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
     "src/mermaid.ts": "1a429e57905f3919ed9d1ee58ba568860872017153e6765a432f9ee1bac97cca",
-    "src/ChatPage.tsx": "9f38cc46ec728236e1dca73e512cf44046cda6a9eb8c96b57a55e7cf2309acbd",
-    "src/TreeOverview.tsx": "941a81f9c091c728bff85947cce2eec10d50c7116fbe473d4584f0902f4891c1",
+    "src/ChatPage.tsx": "5185f269dea843309d10ec0485390909d01ce6f30a3ead6b1b35860adb40b6ce",
+    "src/TreeOverview.tsx": "ef8fe9d026609ee417d6213dc3a017cf8088c9b6467c07d854852048bae8b87a",
     "src/turn.ts": "897b800644aa38c5aaf8c9f1ccb6b7a62b5a7e4eda78b15de5dc6a6b7ff9109d",
-    "src/layout.ts": "dfdf06055e32597d26073fac6fc399e2d80b005cbc01bbc7f39e197767cc43f3",
-    "server/store.mjs": "3e2ad21f5fa4e3b6591ac461e7e103ffa7af654cec8e7c1c611ea1d59fb0dad3",
-    "server/diagrams.mjs": "a776cd2aff7e3fcdfc0673b425f1439c2a3c92daa96214121e381cccac9adbd2",
-    "server/app.mjs": "544f11582bff8f91eadf72fc291aab44b245e03bf912ba3b9bbb63263823ffe4",
+    "src/layout.ts": "6f499a6545bca10bf652f3763e832f49b5cbd38008f26a45111a79bd8bb27190",
+    "server/store.mjs": "906b2128c45de9139c338259c7a2ede1e1ed615bb50f1eac4b809bc3f84b5edc",
+    "server/diagrams.mjs": "655c53699b83ab162bf95979e7ee3ea3194438aacbeb1fda1f1abd33dca48d6f",
+    "server/app.mjs": "3cdb852dbad0d97ecea5618a5c9cab7b8ad6aced8137a99025337128b6d75099",
     "scripts/verify-diagram-rendering.mjs": "96835e4d93ed80f5d8201a28050efbf732cea5b050affe478bb5851dbacb7622",
     "test/artifact-render.test.mjs": "b0115d63840c80ee037d4889c832b0a6e21d65f65d32d3d0ef8f907b91f9db3b",
     "tsconfig.json": "4b1a7d176738768f8df927b020f1470c6f22cc3696aa79a53d427f2865780e05",
     "package.json": "a80f051cfd2c3231bcad40e13366312e2887fd6d282b996515f58c6e0b27b424",
     "package-lock.json": "c5ce28e1c59dfa55429dceb4821a0ba8a8f3708b7fe1aca1943c1a6a6048c325",
     "docs/diagram-artifacts.md": "15bfa88bf83b51ee952c2db37a0b863317e477d2c150c32742765ad8304d6181",
-    "dist/index.html": "22e12a16ac2ef5f893add72f51b1e688f2d561283473bfee78036f3de3385f88"
+    "dist/index.html": "ee30e5ec9d32ee4faf51d03fa4df5fbae4db2e22fc3de9159d9619fdd364e885"
   }
 }

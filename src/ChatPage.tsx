@@ -36,6 +36,7 @@ import { conversationAddresses, inkStyle, treeGroups } from './treeList';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { effortLabel, type Model } from './models';
 import Contents from './Contents';
+import TurnRail from './TurnRail';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
 type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
@@ -775,6 +776,9 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
   }
   const source = !overview && reveal?.tree === tree?.id ? reveal?.source : undefined;
   const validSource = source && tree?.messages.some(m => m.id === source.messageId && m.role === 'assistant' && m.status === 'completed' && (source.artifactId !== undefined ? tree.artifacts.some(a => a.id === source.artifactId && a.message === m.id && a.kind === 'visual' && a.status === 'ready') : source.start >= 0 && source.end > source.start && m.text.slice(source.start, source.end) === source.text));
+  // Keyed on ids so streaming text does not rebuild the rail's scroll listener.
+  const questionIds = tree?.messages.filter(m => m.role === 'user').map(m => m.id).join(' ') ?? '';
+  const questions = useMemo(() => tree?.messages.filter(m => m.role === 'user').map(m => ({ id: m.id, text: m.text })) ?? [], [tree?.id, questionIds]);
   const visualBranches: Record<string, VisualBranch[]> = {};
   for (const t of state?.trees ?? []) if (t.parent === tree?.id && t.artifactId && t.label && t.explanation) (visualBranches[t.artifactId] ??= []).push({ child: t.id, label: t.label, explanation: t.explanation });
   const openVisualPart: PartAction = (visual, part, origin) => {
@@ -940,6 +944,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
               </ChatMessage>; })}
             </ChatMessageList>
           </ChatLayout>
+          {!mobile && !overview && questions.length > 1 && <TurnRail questions={questions} jump={message => setMessageTarget({ conversation: tree.id, message })} />}
         </> : <VStack gap={0} className="overview">
           <HStack padding={1} className="map-toolbar" role="group" aria-label="Tree view controls">{menu()}</HStack>
           <VStack padding={6} gap={3} hAlign="center" vAlign="center" className="empty-map">

@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-13T10:13:36.624Z",
+  "date": "2026-11-13T11:57:24.467Z",
   "boundary": "built UI + real HTTP/store + controlled providers, no native inference",
   "checks": [
     "All three roles are visible; smart follows the changed chat default model and effort dynamically",
