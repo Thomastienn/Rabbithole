@@ -130,6 +130,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       // Stopping leaves it pending, so startup recovery marks it failed; it never retries by itself.
       .catch(error => { if (!stopping && running.controller.signal.reason !== STOPPED) store.finishArtifact(artifact.conversation, artifact.id, null, error.message); })
       .finally(() => { parentSignal?.removeEventListener('abort', cancel); videoJobs.delete(running); if (videos.get(artifact.id) === running) videos.delete(artifact.id); });
+    return running;
   };
   // Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
   const suggesting = new Map();
@@ -509,24 +510,21 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           const send = data => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
           const items = new Map();
           let text = '', status = 'streaming', finished = false, usage = null, called = false;
-          const artifacts = new Map(), visualQueue = [], visualJobs = new Set();
+          const artifacts = new Map(), visualQueue = [];
           let runningVisuals = 0;
           const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': keepalive\n\n'); }, 15000);
+          // Visuals run detached (Stop cancels them only while the reply streams); done never waits for them.
           const pumpVisuals = () => {
-            while (!finished && !controller.signal.aborted && runningVisuals < 3 && visualQueue.length) {
+            while (!stopping && !controller.signal.aborted && runningVisuals < 3 && visualQueue.length) {
               const artifact = visualQueue.shift();
               if (store.artifact(id, artifact.id)?.status !== 'pending') continue;
               runningVisuals++;
-              const job = runVisual(artifact, controller.signal)
-                .then(source => { if (!finished && !controller.signal.aborted) store.finishArtifact(id, artifact.id, source); })
-                .catch(error => { if (!finished && !controller.signal.aborted) store.finishArtifact(id, artifact.id, null, error.message); })
-                .finally(() => {
-                  runningVisuals--; visualJobs.delete(job);
-                  const current = store.artifact(id, artifact.id);
-                  if (!finished && current) send({ type: 'artifact', artifact: live(current) });
-                  pumpVisuals();
-                });
-              visualJobs.add(job);
+              startDrawing(artifact, controller.signal).done.finally(() => {
+                runningVisuals--;
+                const current = store.artifact(id, artifact.id);
+                if (!finished && current) send({ type: 'artifact', artifact: live(current) });
+                pumpVisuals();
+              });
             }
           };
           // Closed visual requests can start during streaming. Other media retain their completed-reply policy.
@@ -646,10 +644,6 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               send({ type: 'error', error: error.compaction ? error.message : error.message + ' The last working model selection will be restored.' });
             }
           } finally {
-            if (!finished) {
-              prepareArtifacts(diagramReply([...items.values()].join('\n\n'), true), true);
-              while (visualJobs.size && !finished) await Promise.all([...visualJobs]);
-            }
             finish();
           }
           return;

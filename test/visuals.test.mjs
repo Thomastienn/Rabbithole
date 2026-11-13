@@ -222,6 +222,8 @@ test('provider failures and deadlines do not automatically retry or expose diagn
     for (const reason of [/Visual provider could not generate/, /Visual generation timed out/]) {
       const before = calls;
       const stream = await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })).text();
+      // The turn ends with the text; the visual settles on its own afterwards.
+      await until(async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1).status !== 'pending');
       const a = (await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1);
       assert.equal(a.status, 'failed'); assert.match(a.error, reason); assert.doesNotMatch(stream, /PRIVATE PROVIDER CREDENTIAL/);
       assert.equal(calls, before + 1); fail = false;
@@ -268,6 +270,7 @@ for (const name of ['claude', 'codex']) test(`${name} visual workers retain the 
   const env = await open({ generate: async (_tree, _text, emit) => complete(emit, 'See the rounds.' + block()) }, native, { smartProvider: name, smartModel: name === 'claude' ? 'haiku' : 'fixture-model' });
   try {
     await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw rounds' })).text();
+    await until(async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts[0].status !== 'pending');
     const a = (await env.get(`/api/trees/${env.tree.id}`)).artifacts[0];
     assert.equal(a.status, 'ready', a.error); assert.equal(a.kind, 'visual');
     assert.equal(a.source, '<p>Round winners meet in the final.</p>');
