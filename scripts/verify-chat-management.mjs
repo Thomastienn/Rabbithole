@@ -159,8 +159,9 @@ if (process.argv[2] === '--serve') {
     await wait('document.activeElement?.textContent==="New chat"');
     assert.equal((await (await fetch(origin + '/api/state')).json()).trees.length, 0);
     pass('deleting the final chat opens New chat state and returns focus to New chat');
-    await b('press', 'Enter'); await b('wait', '[aria-label="Rename conversation"]'); await click('Rename conversation');
-    await b('find', 'label', 'Conversation title', 'fill', 'x'.repeat(200)); await b('press', 'Enter');
+    // New chat saves nothing; the first question (200 characters) creates the tree and titles it.
+    await b('press', 'Enter'); await wait('!!document.activeElement?.closest(".first-question [role=textbox]")');
+    await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'x'.repeat(200)); await b('press', 'Enter');
     await wait(`document.querySelector('.chat-title h2')?.textContent==='${'x'.repeat(200)}'`);
     await b('set', 'viewport', '390', '844');
     // Return to the map to reach its menu on a narrow viewport.

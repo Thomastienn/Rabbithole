@@ -54,8 +54,9 @@ try {
 
   // 1. Create and open a chat.
   await tabTo(named('New chat')); assert.equal(await ev(visibleFocus), true); await press('Enter');
-  await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') && document.querySelector('.focused-chat h2')?.textContent === 'New chat' && document.querySelectorAll('.react-flow__node').length === 1 && ${idle}`);
-  step('New chat (Tab, Enter) creates a root box titled New chat, opens its chat and focuses the composer');
+  await wait(`document.activeElement?.closest('.first-question [role=textbox]') && document.querySelectorAll('.react-flow__node').length === 0 && ${idle}`);
+  assert.equal(store.list().length, 0, 'New chat saves nothing before the first send');
+  step('New chat (Tab, Enter) opens a blank, focused composer and saves nothing');
   await type('How do fungi trade?'); await press('Enter');
   await wait(`document.querySelector('.focused-chat')?.innerText.includes(${JSON.stringify(text)}) && !document.querySelector('.focused-chat [role=textbox]').hasAttribute('disabled')`);
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'How do fungi trade?'`);

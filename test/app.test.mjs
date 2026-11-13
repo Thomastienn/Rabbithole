@@ -177,17 +177,16 @@ test('UTF-8 split across HTTP chunks preserves original text; malformed JSON rej
   } finally { env.close(); }
 });
 
-test('New chat opens one unstarted root that titles itself from its first question; rejected and concurrent sends add nothing', async () => {
+test('New chat saves nothing until the first send, which creates one tree titled from its question; rejected and concurrent sends add nothing', async () => {
   let release;
   const env = await open(join(dir, 'starter.sqlite'), (tree, text, emit) => new Promise(resolve => { release = () => { emit({ type: 'item', item: 'a', text: 'Answer' }); emit({ type: 'status', status: 'completed' }); resolve(); }; }));
   try {
+    // New chat is client-only: library and search are still empty before the first send.
+    assert.deepEqual((await (await fetch(`${env.origin}/api/state`)).json()).trees, []);
     const created = await env.post('/api/trees', {});
     assert.equal(created.status, 201);
     const tree = await created.json();
     assert.equal(tree.title, 'New chat');
-    const again = await env.post('/api/trees', {});
-    assert.equal(again.status, 200);
-    assert.equal((await again.json()).id, tree.id, 'New chat reopens the unstarted chat');
     const title = () => env.store.list().find(t => t.id === tree.id).title;
     assert.equal((await env.post(`/api/trees/${tree.id}/messages`, { text: '  ' })).status, 400);
     assert.equal(title(), 'New chat');
@@ -203,10 +202,27 @@ test('New chat opens one unstarted root that titles itself from its first questi
     while (!release) await new Promise(r => setTimeout(r, 5));
     release(); await (await second).text();
     assert.equal(title(), question.trim().slice(0, 200), 'later questions keep the title');
-    assert.equal(env.store.list().length, 1);
+    assert.equal(env.store.list().length, 1, 'the first send created exactly one tree');
     assert.deepEqual(env.store.tree(tree.id).messages.map(m => [m.role, m.text]), [['user', question], ['assistant', 'Answer'], ['user', 'Second question'], ['assistant', 'Answer']]);
     const next = await env.post('/api/trees', {});
-    assert.equal(next.status, 201, 'a started chat no longer blocks New chat');
+    assert.equal(next.status, 201, 'every first send creates its own tree; nothing is reused');
     assert.notEqual((await next.json()).id, tree.id);
+  } finally { env.close(); }
+});
+
+test('startup pruning removes trees with no messages and keeps every tree with a message and its focused chats', async () => {
+  const path = join(dir, 'prune.sqlite');
+  const store = new Store(path);
+  const empty = store.create(), kept = store.create('Kept');
+  const messageId = store.message(kept.id, 'assistant', 'A reply', 'completed');
+  const child = store.branch(kept, { messageId, start: 0, end: 1, text: 'A', question: 'Why?' }, 'Context');
+  store.close();
+  const env = await open(path, complete);
+  try {
+    assert.equal(env.store.pruneEmpty(), 1);
+    assert.deepEqual(env.store.list().map(t => t.id).sort(), [kept.id, child.id].sort());
+    assert.equal(env.store.tree(empty.id), undefined);
+    assert.deepEqual((await (await fetch(`${env.origin}/api/search?q=new`)).json()), [], 'search never lists the empty tree');
+    assert.equal(env.store.pruneEmpty(), 0);
   } finally { env.close(); }
 });

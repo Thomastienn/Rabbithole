@@ -139,9 +139,15 @@ try {
   await b('press', 'Escape');
   await wait(`!document.querySelector('.settings-page:not([hidden])') && document.activeElement.matches('.band-settings')`);
   await click('New chat');
-  await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') && document.querySelector('.tree-switcher').innerText.includes('New chat')`);
+  await wait(`document.activeElement?.closest('.first-question [role=textbox]') && document.querySelector('.tree-switcher').innerText.includes('Learning trees')`);
   assert.deepEqual(await current(), ['Read']);
-  steps.push('Settings opens and returns focus to its band button; New chat opens a focused composer in Read');
+  steps.push('Settings opens and returns focus to its band button; New chat opens a blank focused composer in Read');
+  // New chat saved nothing; reopen the fungi tree for the map checks.
+  await b('click', '.tree-search');
+  await b('fill', 'dialog[open][aria-label="Search learning trees"] input', 'fungi');
+  await wait(`${palette}?.querySelector('[role=option]')`);
+  await b('press', 'ArrowDown'); await b('press', 'Enter');
+  await wait(`!${palette} && document.querySelector('.tree-switcher').innerText.includes('fungi')`);
 
   // Save state: a failed layout write shows in the band with its retry.
   await click('Map');

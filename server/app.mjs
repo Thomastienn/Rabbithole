@@ -356,10 +356,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
         }
         if (url.pathname === '/api/auth') return json(res, 200, { url: auth.start(origin) });
         if (url.pathname === '/api/trees') {
-          // One unstarted chat at a time: New chat reopens it instead of creating another.
-          const unstarted = store.unstarted();
+          // New chat saves nothing; the client creates the tree on the first send with the chosen model.
           const explicit = ['provider', 'model', 'effort'].some(key => Object.hasOwn(body ?? {}, key));
-          if (unstarted && !explicit) return json(res, 200, store.tree(unstarted));
           const selection = explicit ? { provider: body.provider, model: body.model, effort: body.effort ?? null } : chatDefault();
           if (!Object.hasOwn(providers, selection.provider)) return json(res, 400, { error: 'Chat default provider is unavailable. Configure it in Connections or change the chat default in Models.' });
           if (explicit || selection.model) {
@@ -368,9 +366,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           }
           try { selection.model ??= await providers[selection.provider].model?.({ model: null, thread: null }) ?? null; }
           catch { return json(res, 502, { error: 'Could not choose a default model. Check provider sign-in and retry.' }); }
-          const opened = store.unstarted();
-          if (opened && explicit) store.switchProvider(opened, selection.provider, selection.model, selection.effort);
-          return opened ? json(res, 200, store.tree(opened)) : json(res, 201, store.create(undefined, selection.provider, selection.model, selection.effort));
+          return json(res, 201, store.create(undefined, selection.provider, selection.model, selection.effort));
         }
         const jobMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry|regenerate)$/);
         if (jobMatch) {

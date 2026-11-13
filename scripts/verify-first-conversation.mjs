@@ -20,7 +20,7 @@ const saved = store.create('Saved tree');
 store.message(saved.id, 'user', 'Saved question', 'completed');
 store.message(saved.id, 'assistant', 'Saved answer passage.', 'completed');
 const savedMessages = store.tree(saved.id).messages;
-const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { generate: async (_tree, text, emit) => { emit({ type: 'item', item: 'one', text: `Fixture response ${text.length}` }); emit({ type: 'status', status: 'completed' }); } } });
+const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture', isDefault: true, efforts: [] }, { model: 'other', label: 'Other model', efforts: [] }], model: async () => 'fixture', generate: async (_tree, text, emit) => { emit({ type: 'item', item: 'one', text: `Fixture response ${text.length}` }); emit({ type: 'status', status: 'completed' }); } } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 try {
   await b('set', 'viewport', '1440', '900');
@@ -30,55 +30,47 @@ try {
   await openNavigation();
   await click('New chat');
 
-  // New chat: one root box titled New chat, its chat open beside the map, composer focused.
-  const opened = `document.querySelector('.focused-chat h2')?.textContent === 'New chat' && document.activeElement?.closest('.focused-chat [role=textbox]') !== null && ${idle}`;
-  await wait(opened);
-  const fresh = store.list().find(t => t.title === 'New chat');
-  await wait(`!!document.querySelector('[data-id="${fresh.id}"]')`);
-  assert.deepEqual(await nodes(), [fresh.id]);
-  assert.equal(await ev(`document.querySelector('[data-id="${fresh.id}"] h2').textContent`), 'New chat');
-  assert.notEqual(await ev(`getComputedStyle(document.querySelector('.focused-chat')).display`), 'none');
+  // New chat: a blank composer, focused; nothing is saved and no map box appears.
+  const blank = `document.activeElement?.closest('.first-question [role=textbox]') !== null && ${idle}`;
+  await wait(blank);
+  assert.equal(store.list().length, 1, 'New chat saves nothing');
+  assert.deepEqual(await nodes(), []);
 
-  // Closing and reopening the unstarted chat keeps the same box and saves no message.
-  await click('Return to tree');
-  await wait(`document.activeElement?.id === 'open-${fresh.id}' && ${idle}`);
-  assert.deepEqual(await nodes(), [fresh.id]);
-  await b('press', 'Enter');
-  await wait(opened);
-
-  // New chat while an unstarted chat exists reopens it instead of creating another.
+  // Repeating New chat or reloading still saves nothing.
   await openNavigation();
   await click('New chat');
-  await wait(opened);
-  assert.equal(store.list().filter(t => !t.parent).length, 2);
-
-  // A root with no messages restores after reload as the same box.
+  await wait(blank);
   await b('reload');
-  await wait(`!!document.querySelector('[data-id="${fresh.id}"]')`);
-  assert.deepEqual(await nodes(), [fresh.id]);
-  assert.equal(store.tree(fresh.id).messages.length, 0);
-  if (await ev(`getComputedStyle(document.querySelector('.focused-chat')).display`) === 'none') await click('Open New chat');
-  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'New chat' && ${idle}`);
-  await b('find', 'role', 'textbox', 'click', '--name', 'Your question');
+  await b('wait', '[aria-label="Open Saved tree"]');
+  assert.equal(store.list().length, 1);
+  await openNavigation();
+  await click('New chat');
+  await wait(blank);
 
-  // A failed submission keeps the draft and saves nothing.
+  // A failed first send keeps the draft and leaves no tree behind.
   await ev(`window.nativeFetch = window.fetch; window.fetch = (url, options) => { if (String(url).endsWith('/messages') && !window.failed) { window.failed = true; return Promise.reject(new Error('Synthetic network failure')); } return window.nativeFetch(url, options); }; true`);
   await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Why are leaves green?');
   await b('press', 'Enter');
   await b('wait', '--text', 'Synthetic network failure');
-  await wait(`!document.querySelector('.focused-chat [aria-label=Stop]')`);
-  assert.equal(await ev(`document.querySelector('.focused-chat [aria-label="Your question"]').textContent`), 'Why are leaves green?');
-  assert.deepEqual(await nodes(), [fresh.id]);
-  assert.equal(store.tree(fresh.id).messages.length, 0);
-  assert.equal(store.tree(fresh.id).title, 'New chat');
+  await wait(`document.querySelector('.first-question [aria-label="Your question"]')?.textContent === 'Why are leaves green?' && !document.querySelector('.chat-header')`);
+  assert.equal(store.list().length, 1, 'the unsaved first send removed its tree');
 
-  // Retry: the saved question titles the root in the header, map box and band switcher without a reload.
-  await b('find', 'role', 'textbox', 'click', '--name', 'Your question');
+  // The model picked before the first send is the new tree's model.
+  await b('click', '.first-question .model-picker');
+  await wait(`[...document.querySelectorAll('[role=menuitemradio]')].some(e => e.textContent.includes('Other model'))`);
+  await b('find', 'role', 'menuitemradio', 'click', '--name', 'Other model');
+  if (await ev(`!!document.querySelector('[role=menu]')`)) await b('press', 'Escape');
+  await wait(`document.querySelector('.first-question .model-picker')?.textContent.includes('Other model')`);
+
+  // Retry: the first send creates exactly one tree with that message, titled in the header, map box and band switcher.
+  await ev(`document.querySelector('.first-question [role=textbox]').focus(); true`);
   await b('press', 'Enter');
   await b('wait', '--text', 'Fixture response 21');
+  const fresh = store.list().find(t => t.title === 'Why are leaves green?');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Why are leaves green?' && document.querySelector('[data-id="${fresh.id}"] h2')?.textContent === 'Why are leaves green?' && document.querySelector('.tree-switcher-title')?.textContent === 'Why are leaves green?'`);
   assert.deepEqual(await nodes(), [fresh.id]);
   assert.equal(store.list().filter(t => !t.parent).length, 2);
+  assert.equal(store.tree(fresh.id).model, 'other');
   assert.deepEqual(store.tree(fresh.id).messages.map(m => [m.role, m.text, m.status]), [['user', 'Why are leaves green?', 'completed'], ['assistant', 'Fixture response 21', 'completed']]);
 
   // A child created from the first answer stays visible and opens in the panel.
@@ -105,5 +97,5 @@ try {
   assert.deepEqual(await nodes(), [saved.id]);
   assert.deepEqual(store.tree(saved.id).messages, savedMessages);
   assert.equal(store.list().filter(t => !t.parent).length, 2);
-  console.log('PASS: New chat shows one root box with chat open and composer focused, close/reopen and repeat New chat reuse it, reload restores it, failed send keeps draft and saves nothing, retry saves once and titles header, box and sidebar, child visible and opens, saved tree unchanged.');
+  console.log('PASS: New chat shows a focused blank composer and saves nothing (repeat and reload too), failed first send keeps draft and leaves no tree, retry with the picked model creates exactly one tree with the message and titles header, box and band, child visible and opens, saved tree unchanged.');
 } finally { await b('close').catch(() => {}); app.stop(); store.close(); }

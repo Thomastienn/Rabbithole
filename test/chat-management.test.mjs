@@ -45,14 +45,13 @@ async function fixture(provider = { generate: complete }, options = {}) {
 }
 const snapshot = store => Object.fromEntries(['trees', 'messages', 'branches', 'artifacts'].map(table => [table, store.db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]));
 
-test('rename validates the bound, persists across restart, and manually named New chat never auto-retitles or reopens as unstarted', async () => {
+test('rename validates the bound, persists across restart, and manually named New chat never auto-retitles', async () => {
   const env = await fixture();
   try {
     const blank = env.store.create();
     for (const title of ['', '  ', null, 10, 'x'.repeat(201)]) assert.equal((await env.post(blank.id, 'rename', { title })).status, 400);
     assert.equal((await env.post('missing', 'rename', { title: 'Title' })).status, 404);
     assert.equal((await env.post(blank.id, 'rename', { title: '  New chat  ' })).status, 200);
-    assert.equal(env.store.unstarted(), undefined);
     await (await env.post(blank.id, 'messages', { text: 'First question changes nothing' })).text();
     assert.equal(env.store.tree(blank.id).title, 'New chat');
     const title = 'T'.repeat(200);

@@ -456,11 +456,11 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
   }
   useEffect(() => { if (state) void loadModels(); }, [!!state, state?.auth.connected]);
   useEffect(() => {
-    if (!state || state.trees.length || tab === 'settings') return;
+    if (!state || tree || selected.current || tab === 'settings') return;
     let canceled = false;
     void api('/api/settings/chat').then(value => { if (!canceled) setFirstModel(value); }).catch(e => { if (!canceled) setError(e.message); });
     return () => { canceled = true; };
-  }, [!!state, state?.trees.length === 0, tab === 'settings']);
+  }, [!!state, !tree && !selected.current, tab === 'settings']);
   async function openModels(open: boolean) {
     if (!open) { setModelMenuOpen(false); return; }
     if (openingModels) return;
@@ -542,22 +542,34 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
       }
     } catch (e) { setError((e as Error).message); }
   }
-  // The server reopens an existing unstarted chat rather than creating a second one.
-  async function create(question?: string) {
+  // New chat saves nothing: it shows the blank first-question composer; create() saves the tree on the first send.
+  function newChat() {
+    ++request.current; selected.current = undefined; setTree(undefined); setRoot(undefined); setTab('learning'); setOverview(false); setExpanded(false); setLoading(false); setError('');
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.first-question [role=textbox]')?.focus());
+  }
+  async function create(question: string) {
     if (busy) return;
     setBusy(true); setError('');
     try {
-      const next: Tree = await api('/api/trees', question && firstModel && currentModel ? { ...firstModel, model: currentModel.model } : {});
+      const next: Tree = await api('/api/trees', firstModel && currentModel ? { ...firstModel, model: currentModel.model } : {});
       await refresh();
       overviewOrigin.current = undefined; focusComposer.current = true;
       setRoot(next.id); setTab('learning'); setOverview(false); setExpanded(false);
       await select(next.id);
-      if (question?.trim()) {
-        setDrafts(d => ({ ...d, [next.id]: question }));
-        await send(question, next);
+      setDrafts(d => ({ ...d, first: '', [next.id]: question }));
+      await send(question, next);
+      // A first send the server never saved would leave an empty tree in the library: remove it and give the question back.
+      const saved: Tree = await api(`/api/trees/${next.id}`);
+      if (!saved.messages.length) {
+        await api(`/api/trees/${next.id}/delete`, { conversation: next.id, count: 1 });
+        await refresh();
+        // Keep send's error on screen; only drop the selection so the blank composer returns.
+        ++request.current; selected.current = undefined; setTree(undefined); setRoot(undefined);
+        setDrafts(d => ({ ...d, first: question }));
+        return;
       }
       requestAnimationFrame(() => { if (selected.current === next.id) composer.current?.focus(); });
-    } catch (e) { setError((e as Error).message); if (question) setDrafts(d => ({ ...d, first: d.first || question })); }
+    } catch (e) { setError((e as Error).message); setDrafts(d => ({ ...d, first: d.first || question })); }
     finally { setBusy(false); }
   }
   async function signIn() {
@@ -814,7 +826,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     <Text className="band-mark" weight="bold">TreeTutor</Text>
     <HStack gap={1} vAlign="center" className="band-tools">
       <IconButton className="tree-search" label="Search learning trees" tooltip="Search learning trees" icon={<MagnifyingGlassIcon />} variant="ghost" size="sm" aria-haspopup="dialog" onClick={() => setSearching(true)} />
-      <IconButton className="new-chat" label={busy ? 'Opening…' : 'New chat'} tooltip="New chat" icon={<PlusIcon />} variant="ghost" size="sm" isDisabled={busy} onClick={() => void create()} />
+      <IconButton className="new-chat" label={busy ? 'Opening…' : 'New chat'} tooltip="New chat" icon={<PlusIcon />} variant="ghost" size="sm" isDisabled={busy} onClick={newChat} />
     </HStack>
     {saveAlert}
   </header> : <header className="shell-band">
@@ -824,7 +836,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     <HStack gap={1} vAlign="center" className="band-tools">
       {saveAlert}
       <IconButton className="tree-search" label="Search learning trees" tooltip="Search learning trees" icon={<MagnifyingGlassIcon />} variant="ghost" size="sm" aria-haspopup="dialog" onClick={() => setSearching(true)} />
-      <Button className="new-chat" label={busy ? 'Opening…' : 'New chat'} variant="ghost" size="sm" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
+      <Button className="new-chat" label={busy ? 'Opening…' : 'New chat'} variant="ghost" size="sm" icon={<PlusIcon />} isDisabled={busy} onClick={newChat} />
       <IconButton className="band-settings" label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" aria-current={tab === 'settings' ? 'page' : undefined} onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
     </HStack>
   </header>;
@@ -943,7 +955,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
         {tab === 'library' && <VStack gap={0} className="library-content">
           <HStack gap={4} vAlign="end" wrap="wrap" className="library-head">
             <VStack gap={2}><Heading level={1}>Library</Heading><Text color="secondary" className="library-intro">Every learning tree you have started. A tree keeps its root conversation and every branch.</Text></VStack>
-            <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
+            <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={newChat} />
           </HStack>
           {error && <Text className="failure-banner" role="alert">{error}</Text>}
           {state && !state.trees.length ? firstQuestion : state && <>

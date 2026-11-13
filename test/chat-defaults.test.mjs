@@ -84,7 +84,7 @@ test('chat defaults snapshot into roots; overrides and recursive branches persis
 });
 
 
-test('first-run selection creates or reuses an unstarted chat without the unavailable global default', async () => {
+test('first send creates the tree with the model picked before sending, without the unavailable global default', async () => {
   const env = await start(), saved = { provider: 'claude', model: 'chat', effort: 'high' };
   try {
     await env.post('/api/settings/chat', saved);
@@ -99,14 +99,9 @@ test('first-run selection creates or reuses an unstarted chat without the unavai
     const root = await response.json();
     for (const [key, value] of Object.entries(choice)) assert.equal(root[key], value);
     assert.deepEqual(await env.get('/api/settings/chat'), saved);
-    const reused = await (await env.post('/api/trees', { ...choice, effort: 'high' })).json();
-    assert.equal(reused.id, root.id); assert.equal(reused.effort, 'high');
-    assert.equal(env.store.list().length, 1, 'selected creation still reuses the one unstarted chat');
-    assert.equal((await env.post('/api/trees', { ...choice, effort: 'bad' })).status, 400);
-    assert.equal((await env.get(`/api/trees/${root.id}`)).effort, 'high');
-    assert.equal(env.calls.length, 0, 'choosing or creating never starts inference');
+    assert.equal(env.calls.length, 0, 'creating never starts inference');
     await env.send(root.id, 'First question');
-    assert.equal(env.calls[0].tree.provider, 'codex'); assert.equal(env.calls[0].tree.model, 'chat');
+    assert.equal(env.calls[0].tree.provider, 'codex'); assert.equal(env.calls[0].tree.model, 'chat'); assert.equal(env.calls[0].tree.effort, 'low');
     assert.deepEqual(await env.get('/api/settings/chat'), saved);
     assert.equal((await env.post('/api/trees')).status, 502, 'ordinary New chat still uses the saved default');
   } finally { await env.close(); }

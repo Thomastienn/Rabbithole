@@ -76,10 +76,14 @@ try {
   await b('find', 'role', 'button', 'click', '--name', 'Return to learning tree', '--exact');
   await wait('!document.querySelector(".settings-page:not([hidden])")');
   await b('find', 'role', 'button', 'click', '--name', 'New chat', '--exact');
-  await wait('document.querySelector(".chat-model")?.textContent.includes("Codex chat · High")');
-  const fresh = store.list().find(t => t.title === 'New chat');
+  await wait('document.querySelector(".first-question .chat-model")?.textContent.includes("Codex chat · High")');
+  assert.ok(!store.list().some(t => t.title === 'New chat'), 'New chat saves nothing before the first send');
+  await b('click', '.first-question [role=textbox]');
+  await b('keyboard', 'type', 'What is a cedar?'); await b('press', 'Enter');
+  await wait('document.querySelector(".chat-model")?.textContent.includes("Codex chat · High") && document.querySelector(".focused-chat h2")?.textContent === "What is a cedar?"');
+  const fresh = store.list().find(t => t.title === 'What is a cedar?');
   assert.ok(fresh); assert.equal(store.tree(fresh.id).effort, 'high');
-  check('Keyboard can save effort; New chat uses saved global defaults');
+  check('Keyboard can save effort; New chat uses saved global defaults for the tree its first send creates');
   await menu();
   await focusNamed('[role=menuitemradio]', 'Low'); await b('press', 'Enter');
   await wait('document.querySelector(".chat-model")?.textContent.includes("Codex chat · Low")');

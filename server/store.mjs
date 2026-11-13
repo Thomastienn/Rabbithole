@@ -109,6 +109,10 @@ export class Store {
     if (!columns.includes('working_thread')) this.db.exec('ALTER TABLE trees ADD COLUMN working_thread TEXT');
     if (!columns.includes('title_renamed')) this.db.exec('ALTER TABLE trees ADD COLUMN title_renamed INTEGER NOT NULL DEFAULT 0');
   }
+  // Run once at startup: removes learning trees never sent a message (older New chat saved them eagerly); focused chats are kept.
+  pruneEmpty() {
+    return this.db.prepare('DELETE FROM trees WHERE id NOT IN (SELECT child FROM branches) AND id NOT IN (SELECT parent FROM branches) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=trees.id) AND NOT EXISTS(SELECT 1 FROM artifacts a WHERE a.conversation=trees.id)').run().changes;
+  }
   // SQLite cannot alter a CHECK in place: rebuild the table when its definition lacks the marker, keeping every saved column.
   rebuildArtifacts(marker) {
     if (this.db.prepare("SELECT sql FROM sqlite_master WHERE name='artifacts'").get().sql.includes(marker)) return;
@@ -397,7 +401,6 @@ export class Store {
       : 'UPDATE trees SET model=working_model,effort=working_effort,thread=CASE WHEN provider IS COALESCE(working_provider,provider) THEN thread ELSE working_thread END,provider=COALESCE(working_provider,provider) WHERE id=?').run(id);
   }
   // The first question of an unstarted root replaces its placeholder title, using the branch-title rule.
-  unstarted() { return this.db.prepare("SELECT t.id FROM trees t WHERE t.title='New chat' AND t.title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=t.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=t.id) ORDER BY t.created DESC LIMIT 1").get()?.id; }
   message(tree, role, text, status) {
     const id = randomUUID();
     if (role === 'user') this.db.prepare("UPDATE trees SET title=? WHERE id=? AND title='New chat' AND title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=trees.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=trees.id)").run(text.trim().slice(0, 200), tree);

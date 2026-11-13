@@ -133,7 +133,7 @@ test('main starts an old database without providers; busy port explains how to c
   const dir = mkdtempSync(join(tmpdir(), 'treetutor-start-')), path = join(dir, 'trees.sqlite');
   const old = new DatabaseSync(path);
   old.exec(schemas[0].sql.join(';'));
-  old.exec("INSERT INTO trees VALUES('saved','Saved before upgrade',NULL,1)");
+  old.exec("INSERT INTO trees VALUES('saved','Saved before upgrade',NULL,1); INSERT INTO trees VALUES('empty','New chat',NULL,2); INSERT INTO messages(id,tree,role,text,status) VALUES('m1','saved','user','Question','completed')");
   old.close();
   const occupied = createServer();
   await new Promise(resolve => occupied.listen(0, '127.0.0.1', resolve));
@@ -158,7 +158,7 @@ test('main starts an old database without providers; busy port explains how to c
     assert.ok(running.output().includes(dir));
     const state = await (await fetch(origin + '/api/state')).json();
     assert.equal(state.auth.connected, false);
-    assert.equal(state.trees[0].title, 'Saved before upgrade');
+    assert.deepEqual(state.trees.map(t => t.title), ['Saved before upgrade'], 'startup removes the tree with no messages and keeps the one with a message');
     assert.equal((await (await fetch(origin + '/api/trees/saved')).json()).id, 'saved');
     const duplicate = launch(dir);
     try {
