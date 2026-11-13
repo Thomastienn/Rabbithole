@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
+import { nestedFrames } from '../test/one-frame.mjs';
 
 const run = promisify(execFile), session = `knowledge-${process.pid}`;
 const b = async (...args) => (await run('agent-browser', ['--session', session, ...args])).stdout;
@@ -171,17 +172,18 @@ try {
     look[mode] = await ev(`(() => { const s = getComputedStyle, card = document.querySelector('[data-concept][aria-pressed=true]'), ring = card.querySelector('.fam'), detail = document.querySelector('.knowledge-detail'), line = document.querySelector('.knowledge-links line[data-selected=true]'), plain = document.querySelector('.knowledge-links line[data-selected=false][data-kind=related]'), builds = document.querySelector('.knowledge-links line[data-selected=false][data-kind="builds on"]');
       const rgb = c => c.match(/[\\d.]+/g).slice(0, 3).map(Number), lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
       const ratio = (f, b) => { const [x, y] = [lum(f), lum(b)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
-      const field = s(document.querySelector('.knowledge-field')).backgroundColor, surface = s(detail).backgroundColor;
+      const field = s(document.querySelector('.knowledge-field')).backgroundColor, page = s(document.querySelector('.knowledge-panel')).backgroundColor, surface = page === 'rgba(0, 0, 0, 0)' ? s(document.body).backgroundColor : page;
+      const frame = e => [s(e).borderTopWidth, s(e).borderInlineStartWidth, s(e).boxShadow].join(' ');
       const centres = [...document.querySelectorAll('[data-concept] .fam')].map(f => { const r = f.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 }; });
       const box = document.querySelector('.knowledge-field').getBoundingClientRect(), inside = centres.every(c => c.x > box.left && c.x < box.right && c.y > box.top && c.y < box.bottom);
       const gap = Math.min(...centres.flatMap((a, i) => centres.slice(i + 1).map(b => Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r)));
       const topics = [...document.querySelectorAll('[data-topic]')].map(region => {
         const name = region.dataset.topic, label = [...document.querySelectorAll('[data-topic-label]')].find(l => l.dataset.topicLabel === name), r = region.getBoundingClientRect(), l = label.getBoundingClientRect();
-        return { name, x: region.cx.baseVal.value, y: region.cy.baseVal.value, radius: region.r.baseVal.value, opacity: +s(region).fillOpacity, fill: s(region).fill, label: label.textContent, contrast: ratio(s(label).color, s(label).backgroundColor), textScale: l.height / label.offsetHeight, centred: Math.hypot(l.x + l.width / 2 - r.x - r.width / 2, l.y + l.height / 2 - r.y - r.height / 2) < 1, fitted: r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom, clear: [...document.querySelectorAll('.concept-point')].every(p => { const b = p.getBoundingClientRect(); return b.right <= l.left || b.left >= l.right || b.bottom <= l.top || b.top >= l.bottom; }) };
+        return { name, x: region.cx.baseVal.value, y: region.cy.baseVal.value, radius: region.r.baseVal.value, opacity: +s(region).fillOpacity, fill: s(region).fill, label: label.textContent, contrast: ratio(s(label).color, field), chip: [s(label).backgroundColor, s(label).paddingTop],  textScale: l.height / label.offsetHeight, centred: Math.hypot(l.x + l.width / 2 - r.x - r.width / 2, l.y + l.height / 2 - r.y - r.height / 2) < 1, fitted: r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom, clear: [...document.querySelectorAll('.concept-point')].every(p => { const b = p.getBoundingClientRect(); return b.right <= l.left || b.left >= l.right || b.bottom <= l.top || b.top >= l.bottom; }) };
       });
-      const contrast = { label: ratio(s(card.querySelector('.concept-name')).color, field), key: ratio(s(document.querySelector('.knowledge-key')).color, s(document.querySelector('.knowledge-panel')).backgroundColor === 'rgba(0, 0, 0, 0)' ? s(document.body).backgroundColor : s(document.querySelector('.knowledge-panel')).backgroundColor), evidence: ratio(s(detail.querySelector('dt')).color, surface), reading: ratio(s(detail.querySelector('.knowledge-reading')).color, surface) };
+      const contrast = { label: ratio(s(card.querySelector('.concept-name')).color, field), key: ratio(s(document.querySelector('.knowledge-key')).color, surface), evidence: ratio(s(detail.querySelector('dt')).color, surface), reading: ratio(s(detail.querySelector('.knowledge-reading')).color, surface) };
       const points = [...document.querySelectorAll('[data-concept]')].map(p => ({ name: p.dataset.concept, x: parseFloat(p.style.left), y: parseFloat(p.style.top) }));
-      return { topics, points, inside, gap, ringOutline: s(ring).outlineColor, ringOutlineWidth: s(ring).outlineWidth, ringRadius: s(ring).borderRadius, field, body: s(document.body).backgroundColor, detailRadius: s(detail).borderRadius, detailShadow: s(detail).boxShadow, lineWidth: s(line).strokeWidth, lineStroke: s(line).stroke, plainStroke: s(plain).stroke, plainWidth: s(plain).strokeWidth, buildsMarker: builds.getAttribute('marker-end'), plainMarker: plain.getAttribute('marker-end'), reading: s(detail.querySelector('.knowledge-reading')).fontFamily, ui: s(card).fontFamily,
+      return { topics, points, inside, gap, ringOutline: s(ring).outlineColor, ringOutlineWidth: s(ring).outlineWidth, ringRadius: s(ring).borderRadius, field, body: s(document.body).backgroundColor, frames: { field: frame(document.querySelector('.knowledge-field')), detail: frame(detail), detailFill: s(detail).backgroundColor, concepts: [...new Set([...document.querySelectorAll('.concept-point, .concept-name')].map(frame))] }, detailShadow: s(detail).boxShadow, lineWidth: s(line).strokeWidth, lineStroke: s(line).stroke, plainStroke: s(plain).stroke, plainWidth: s(plain).strokeWidth, buildsMarker: builds.getAttribute('marker-end'), plainMarker: plain.getAttribute('marker-end'), reading: s(detail.querySelector('.knowledge-reading')).fontFamily, ui: s(card).fontFamily,
         rings: [...document.querySelectorAll('[data-concept] .fam')].map(f => f.dataset.fill), key: document.querySelector('.knowledge-key').textContent, contrast }; })()`);
     const l = look[mode], probe = await ev(`(() => { const e = document.createElement('i'); e.style.color = 'var(--treetutor-paper)'; document.body.append(e); const c = getComputedStyle(e).color; e.remove(); return c; })()`);
     l.labels = await checkTopicLabels();
@@ -211,7 +213,10 @@ try {
     assert.ok(l.rings.length >= 4 && l.rings.every(f => ['none', 'some', 'full'].includes(f)), `${mode} every concept shows a familiarity ring`);
     assert.equal(l.key, 'UnfamiliarSome familiarityFamiliarLine: relatedArrow: builds on', `${mode} key text names familiarity and relation forms`);
     for (const [name, value] of Object.entries(l.contrast)) assert.ok(value >= 4.5, `${mode} ${name} text contrast ${value} below AA`);
-    assert.equal(l.detailRadius, '12px');
+    // One frame per object: the field is tone, the detail panel is spacing, concepts carry no border; selection keeps its ring.
+    assert.deepEqual(l.frames, { field: '0px 0px none', detail: '0px 0px none', detailFill: 'rgba(0, 0, 0, 0)', concepts: ['0px 0px none'] }, `${mode} Knowledge surfaces carry no frame`);
+    for (const t of l.topics) assert.deepEqual(t.chip, ['rgba(0, 0, 0, 0)', '0px'], `${mode} ${t.name} label is plain text`);
+    assert.deepEqual(await ev(nestedFrames('.knowledge-content')), [], `${mode} no frame inside a frame on Knowledge`);
     assert.notEqual(l.field, l.body, `${mode} deep concept field`);
     assert.ok(!l.detailShadow.split(/,(?![^(]*\))/).some(x => x !== 'none' && !x.trim().endsWith('inset')), `${mode} no drop shadow`);
     assert.match(l.reading, /^"?Literata/, `${mode} serif detail text`);
@@ -303,7 +308,7 @@ try {
   await wait(`document.querySelector('[data-topic="Scheduling"]') && document.querySelectorAll('[data-topic]').length === 3`);
   assert.notEqual(await ev(`document.querySelector('.knowledge-map').style.transform`), priorLayout, 'new topic membership recalculates layout and fit');
   steps.push('Phone Fit map includes complete regions; refreshing topic membership without changing concept names or links recalculates regions and fit');
-  steps.push('Dark and light: concept labels hide below 75%, return above it, and follow keyboard selection at 20%; topic labels stay readable; Chromium accessible button names and familiarity remain unchanged across zoom levels');
+  steps.push('Dark and light: one frame per object (borderless tonal field, frameless detail panel, borderless concepts, plain topic labels, selected ring kept); concept labels hide below 75%, return above it, and follow keyboard selection at 20%; topic labels stay readable; Chromium accessible button names and familiarity remain unchanged across zoom levels');
   steps.push('Wheel zoom, drag pan, Zoom out and Fit map work; Tab reaches every concept, pans each into view, Enter opens its details. Dark and light: translucent topic regions contain every member, have centred AA labels clear of points, and fit in view; corrections preserve layout. Round non-overlapping concept points, familiarity rings and key, related lines and builds-on arrows, paper selection and focus, AA text, serif details, Archivo labels, no drop shadow, merge dialog');
   console.log(JSON.stringify({ pass: true, steps, screenshots: [...['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)), ...['dark', 'light', 'merge-dark', 'merge-light', 'mobile-light', 'labels-dark', 'labels-light'].map(m => `docs/verification/knowledge-${m}.png`)] }, null, 2));
 } catch (error) { console.error({ steps, snapshot: await b('snapshot', '-i').catch(() => '') }); throw error; }

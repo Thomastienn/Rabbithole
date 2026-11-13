@@ -316,7 +316,7 @@ The system is flat, and depth comes from tone. The order runs from Deep Panel (r
 
 ## Shapes
 
-Corners are barely softened, which keeps the pages printed and square. Interactive elements (buttons, tabs, rows, chips, nodes, volumes, concept cards, failure banners) use the element radius (3px). Containers and sheets (the composer, code blocks, diagram cards, the Knowledge field and detail panel, dialogs, lightboxes, video frames) use the container radius (4px). Inline marks (address chips, inline code, the context meter, highlight marks, usage swatches) use the inner radius (2px). Volume spine ticks are 4×6px with a 1px tick radius.
+Corners are barely softened, which keeps the pages printed and square. Interactive elements (buttons, tabs, rows, chips, nodes, volumes, concept cards, failure banners) use the element radius (3px). Containers and sheets (the composer, code blocks, diagram cards, the Knowledge field, dialogs, lightboxes, video frames) use the container radius (4px). Inline marks (address chips, inline code, the context meter, highlight marks, usage swatches) use the inner radius (2px). Volume spine ticks are 4×6px with a 1px tick radius.
 
 Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%`) shapes family ink dots in Contents and the map legend, activity dots, the streaming dot and the familiarity rings in Knowledge (empty, half-filled or filled to show familiarity). The scrollbar thumb is the only pill shape (999px). Neither is a pattern for buttons. Ink bands (the volume cover and node bands) are flat fills that inherit the container's top corners.
 
@@ -367,7 +367,7 @@ Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%
 - **Error:** Rose text and a rose border. Failure banners use Rose Wash with a rose hairline, a 3px radius and 8px 12px padding.
 
 ### Knowledge
-- Concept cards are Raised Bark at 3px, with a Seam Strong border, 6px 10px padding and a familiarity ring before the name. The selected card gets a 2px paper outline offset by 3px. Links between concepts are 1.5px Seam Strong lines, "builds on" links are drawn in Paper Muted, and the selected link is a 2px paper line.
+- The concept field is a borderless Deep Panel at the container corner; the detail panel beside it has no frame or fill and is set apart by spacing. Concepts are familiarity rings with a name on a soft tonal label, with no border. Topic names are plain text over their translucent region, never chips. The selected concept's ring gets a 2px paper outline offset by 3px. Links between concepts are 1.5px Seam Strong lines, "builds on" links are drawn in Paper Muted, and the selected link is a 2px paper line.
 
 ### Settings
 - Settings is a page, not a modal. A page title sits over a sticky section nav. Sections are divided by seams and headed by small-caps section labels, not cards. Usage shows bar series in lichen (input), leaf (output) and amber (cache read).

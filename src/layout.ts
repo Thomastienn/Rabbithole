@@ -79,12 +79,12 @@ html { view-transition-name: none; }
 .knowledge-panel > .knowledge-header + .knowledge-content { padding-block-start: calc(3 * var(--treetutor-module)); }
 .knowledge-content :focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: var(--focus-outline-offset); }
 .knowledge-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 360px); gap: calc(4 * var(--treetutor-module)); align-items: start; }
-.knowledge-field { position: relative; height: 32rem; min-width: 0; overflow: hidden; border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-muted); cursor: grab; touch-action: none; }
+.knowledge-field { position: relative; height: 32rem; min-width: 0; overflow: hidden; border-radius: var(--radius-container); background: var(--color-background-muted); cursor: grab; touch-action: none; }
 .knowledge-field:active { cursor: grabbing; }
 .knowledge-map { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .knowledge-links, .knowledge-regions { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
 .knowledge-regions circle { fill: currentColor; fill-opacity: 0.1; stroke: currentColor; stroke-opacity: 0.4; stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.topic-label { position: absolute; width: min-content; padding: 2px 4px; border-radius: var(--radius-inner); background: var(--color-background-muted); color: var(--color-text-primary); font-size: 14px; line-height: 1.3; font-weight: var(--font-weight-semibold); text-align: center; overflow-wrap: break-word; }
+.topic-label { position: absolute; width: min-content; color: var(--color-text-primary); font-size: 14px; line-height: 1.3; font-weight: var(--font-weight-semibold); text-align: center; overflow-wrap: break-word; }
 .knowledge-links line { stroke: var(--color-border-emphasized); stroke-width: 1.5px; stroke-linecap: round; }
 .knowledge-links line[data-kind="builds on"] { stroke: var(--color-text-secondary); }
 .knowledge-links line[data-selected=true] { stroke: var(--treetutor-paper); stroke-width: 2px; }
@@ -102,7 +102,7 @@ html { view-transition-name: none; }
 .knowledge-key { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 12px; color: var(--color-text-secondary); }
 .knowledge-key span { display: inline-flex; align-items: center; gap: 6px; }
 .knowledge-key-links { margin-inline-start: auto; }
-.knowledge-detail { position: sticky; top: 0; padding: 20px; border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); }
+.knowledge-detail { position: sticky; top: 0; padding: 4px 0 0; }
 .knowledge-detail h2 { font-size: 20px; font-weight: 700; }
 .knowledge-reading, .knowledge-reading.astryx-text { font-family: var(--treetutor-font-reading); font-size: 15px; line-height: 1.6; color: var(--color-text-secondary); }
 .knowledge-reading strong { color: var(--color-text-primary); font-weight: 600; }

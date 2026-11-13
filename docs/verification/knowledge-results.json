@@ -1,20 +1,27 @@
 {
-  "checkedAt": "2026-11-13T13:19:29.739Z",
+  "checkedAt": "2026-11-13T21:14:23.124Z",
   "evidence": "Production build in Chromium via agent-browser over a seeded local graph; no model calls",
   "look": {
     "dark": {
       "body": "rgb(26, 22, 19)",
       "buildsMarker": "url(#knowledge-arrow)",
       "contrast": {
-        "evidence": 6.22,
+        "evidence": 6.84,
         "key": 6.84,
         "label": 15.19,
-        "reading": 6.22
+        "reading": 6.84
       },
-      "detailRadius": "12px",
       "detailShadow": "none",
       "field": "rgb(20, 17, 14)",
-      "gap": 55.95245680333393,
+      "frames": {
+        "concepts": [
+          "0px 0px none"
+        ],
+        "detail": "0px 0px none",
+        "detailFill": "rgba(0, 0, 0, 0)",
+        "field": "0px 0px none"
+      },
+      "gap": 56.121459212780394,
       "inside": true,
       "key": "UnfamiliarSome familiarityFamiliarLine: relatedArrow: builds on",
       "lineStroke": "rgb(239, 230, 214)",
@@ -57,6 +64,10 @@
       "topics": [
         {
           "centred": true,
+          "chip": [
+            "rgba(0, 0, 0, 0)",
+            "0px"
+          ],
           "clear": true,
           "contrast": 15.19,
           "fill": "rgb(223, 174, 78)",
@@ -65,12 +76,16 @@
           "name": "Concurrency",
           "opacity": 0.1,
           "radius": 249.00975036621097,
-          "textScale": 1.0085227272727273,
+          "textScale": 1.0104166666666667,
           "x": 176,
           "y": 0
         },
         {
           "centred": true,
+          "chip": [
+            "rgba(0, 0, 0, 0)",
+            "0px"
+          ],
           "clear": true,
           "contrast": 15.19,
           "fill": "rgb(157, 186, 110)",
@@ -79,7 +94,7 @@
           "name": "Operating systems",
           "opacity": 0.1,
           "radius": 249.00975036621097,
-          "textScale": 1.009375,
+          "textScale": 1.0104166666666667,
           "x": -176,
           "y": 0
         }
@@ -90,7 +105,7 @@
           "centred": true,
           "clear": true,
           "name": "Concurrency",
-          "textScale": 1.0085227272727273,
+          "textScale": 1.0104166666666667,
           "visible": true,
           "wordsIntact": true
         },
@@ -98,7 +113,7 @@
           "centred": true,
           "clear": true,
           "name": "Operating systems",
-          "textScale": 1.009375,
+          "textScale": 1.0104166666666667,
           "visible": true,
           "wordsIntact": true
         }
@@ -120,15 +135,22 @@
       "body": "rgb(242, 238, 229)",
       "buildsMarker": "url(#knowledge-arrow)",
       "contrast": {
-        "evidence": 6.82,
+        "evidence": 6.3,
         "key": 6.3,
         "label": 13.12,
-        "reading": 6.82
+        "reading": 6.3
       },
-      "detailRadius": "12px",
       "detailShadow": "none",
       "field": "rgb(230, 224, 211)",
-      "gap": 55.95245680333393,
+      "frames": {
+        "concepts": [
+          "0px 0px none"
+        ],
+        "detail": "0px 0px none",
+        "detailFill": "rgba(0, 0, 0, 0)",
+        "field": "0px 0px none"
+      },
+      "gap": 56.121459212780394,
       "inside": true,
       "key": "UnfamiliarSome familiarityFamiliarLine: relatedArrow: builds on",
       "lineStroke": "rgb(31, 26, 21)",
@@ -171,6 +193,10 @@
       "topics": [
         {
           "centred": true,
+          "chip": [
+            "rgba(0, 0, 0, 0)",
+            "0px"
+          ],
           "clear": true,
           "contrast": 13.12,
           "fill": "rgb(133, 96, 12)",
@@ -179,12 +205,16 @@
           "name": "Concurrency",
           "opacity": 0.1,
           "radius": 249.00975036621097,
-          "textScale": 1.0085227272727273,
+          "textScale": 1.0104166666666667,
           "x": 176,
           "y": 0
         },
         {
           "centred": true,
+          "chip": [
+            "rgba(0, 0, 0, 0)",
+            "0px"
+          ],
           "clear": true,
           "contrast": 13.12,
           "fill": "rgb(70, 100, 42)",
@@ -193,7 +223,7 @@
           "name": "Operating systems",
           "opacity": 0.1,
           "radius": 249.00975036621097,
-          "textScale": 1.009375,
+          "textScale": 1.0104166666666667,
           "x": -176,
           "y": 0
         }
@@ -204,7 +234,7 @@
           "centred": true,
           "clear": true,
           "name": "Concurrency",
-          "textScale": 1.0085227272727273,
+          "textScale": 1.0104166666666667,
           "visible": true,
           "wordsIntact": true
         },
@@ -212,7 +242,7 @@
           "centred": true,
           "clear": true,
           "name": "Operating systems",
-          "textScale": 1.009375,
+          "textScale": 1.0104166666666667,
           "visible": true,
           "wordsIntact": true
         }
@@ -236,7 +266,7 @@
       "centred": true,
       "clear": true,
       "name": "Concurrency",
-      "textScale": 1.0085227272727273,
+      "textScale": 1.0104166666666667,
       "visible": true,
       "wordsIntact": true
     },
@@ -244,7 +274,7 @@
       "centred": true,
       "clear": true,
       "name": "Operating systems",
-      "textScale": 1.009375,
+      "textScale": 1.0104166666666667,
       "visible": true,
       "wordsIntact": true
     }
