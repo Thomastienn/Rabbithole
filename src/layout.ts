@@ -202,9 +202,17 @@ html { view-transition-name: none; }
 .chat-question:not(:first-child) { margin-block-start: calc(3 * var(--treetutor-module)); }
 /* Streaming: a leaf caret after the last written block (mockup Read). */
 .chat-reply:has(.reply-status[data-status=streaming]) .reply-md > :last-child:is(p, ul, ol, blockquote)::after { content: ''; display: inline-block; width: 8px; height: 1.1em; margin-inline-start: 2px; background: var(--color-accent); vertical-align: -0.2em; }
-.usage-chart { position: relative; display: grid; gap: var(--spacing-1); }
-.usage-chart svg { width: 100%; height: 12rem; display: block; overflow: visible; border-block-end: 1px solid var(--color-border); }
-.usage-max { position: absolute; inset-block-start: 0; inset-inline-end: 0; transform: translateY(-100%); font-variant-numeric: tabular-nums; }
+.usage-total.astryx-text { font-size: 34px; line-height: 1.12; font-weight: 700; letter-spacing: -0.015em; }
+.usage-total small { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--color-text-secondary); }
+.usage-legend b { font-weight: 600; color: var(--color-text-primary); }
+.usage-section { padding-block-start: var(--spacing-6); border-block-start: 1px solid var(--color-border); }
+.usage-section-head h3 { color: var(--color-text-secondary); }
+.usage-chart { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--spacing-2) var(--spacing-3); }
+.usage-chart svg { width: 100%; height: 11rem; display: block; overflow: visible; }
+.usage-scale { display: flex; flex-direction: column; justify-content: space-between; height: 11rem; text-align: end; font-size: 11px; color: var(--color-text-secondary); }
+.usage-grid { stroke: var(--color-border); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.usage-axis { grid-column: 2; }
+.usage-axis .astryx-text { font-size: 11px; }
 .usage-bar { outline: none; cursor: default; }
 .usage-hit { fill: transparent; }
 .usage-bar[data-active=true] .usage-hit { fill: var(--color-background-muted); }
@@ -212,9 +220,14 @@ html { view-transition-name: none; }
 [data-series=input] { fill: var(--color-icon-blue); background: var(--color-icon-blue); }
 [data-series=output] { fill: var(--color-icon-green); background: var(--color-icon-green); }
 [data-series=cacheRead] { fill: var(--color-icon-yellow); background: var(--color-icon-yellow); }
-.usage-swatch { inline-size: 0.75rem; block-size: 0.75rem; border-radius: var(--radius-inner); display: inline-block; }
-.usage-total, .usage-readout, .usage-chart td { font-variant-numeric: tabular-nums; }
+.usage-swatch { inline-size: 10px; block-size: 10px; border-radius: var(--radius-tick); display: inline-block; }
+.usage-dashboard { font-variant-numeric: tabular-nums; }
 .usage-readout { min-block-size: 1.5em; }
+.usage-name { overflow-wrap: anywhere; }
+.usage-share { display: block; height: 3px; margin-block-start: var(--spacing-1); border-radius: var(--radius-tick); background: var(--color-border); }
+.usage-share i { display: block; height: 100%; border-radius: inherit; background: var(--color-text-secondary); }
+.usage-unreported { display: block; font-size: 12px; color: var(--color-text-secondary); }
+@media (max-width: 48rem) { .usage-axis .astryx-text:nth-child(2):not(:last-child) { display: none; } }
 .code-copy { position: absolute; inset-block-start: var(--spacing-1); inset-inline-end: var(--spacing-1); opacity: 0; transition: opacity 120ms ease; }
 .reply-md pre:is(:hover, :focus-within) .code-copy { opacity: 1; }
 @media (hover: none) { .code-copy { opacity: 1; } }

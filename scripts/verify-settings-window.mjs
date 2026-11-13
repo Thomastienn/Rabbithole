@@ -152,7 +152,8 @@ try {
   await shot('interface');
   await tab('Usage');
   await wait(`${dialog}.querySelector('.usage-total')`);
-  assert.ok((await text()).includes('144 input, 48 output, 10 cache-read tokens (202 total)'));
+  assert.ok((await text()).includes('202 tokens'));
+  assert.deepEqual(await ev(`[...${dialog}.querySelectorAll('.usage-legend b')].map(b => b.textContent)`), ['144', '48', '10']);
   for (const s of ['By model', 'By task', 'Values for each']) assert.ok((await text()).includes(s), s);
   await shot('usage');
   // Usage chart reads in both appearances (mockup Usage); the day table is its text alternative.

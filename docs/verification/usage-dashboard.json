@@ -1,19 +1,36 @@
 {
-  "issue": "TreeTutor-000.2",
-  "checkedAt": "2026-11-13T12:05:05.109Z",
-  "evidence": "Production build, real app HTTP/SQLite with seeded usage records, agent-browser Chromium. No live provider inference.",
+  "issue": "TreeTutor-2li.11",
+  "checkedAt": "2026-11-13T22:06:46.425Z",
+  "evidence": "Production build, real app HTTP/SQLite with seeded usage records and fake providers, agent-browser Chromium. No live provider authentication or inference.",
   "steps": [
-    "Month (dark): exact totals 2,550 with 1 unreported call; one bar per day; model and task tables",
-    "Focus + Home/End/ArrowRight read today’s exact values in the polite live readout",
-    "Hover readout; Today = 24 hourly bars; All time includes last New Year’s Eve call with unknown model; cumulative last bar = all-time totals; task table lists chat, suggestions, context preparation, diagrams and videos (video unreported)",
-    "Year 2025: June background work and the 31 Dec 23:30 call, 12 monthly bars",
-    "Textual equivalent: \"Values for each month\" table lists Dec with exact counts",
-    "Light: chart rendered with distinct series colors; empty range shows the no-usage message",
-    "No provider calls while viewing"
+    "Today: total, split, per-hour/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "Week: total, split, per-day/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "Month: total, split, per-day/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "Year: total, split, per-month/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "All time: total, split, per-month/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "dark: named endpoint labels, all five tasks, selected previous year and exact-value table",
+    "dark: keyboard and hover readouts, legend colours, desktop/narrow captures and keyboard table scrolling",
+    "Today: total, split, per-hour/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "Week: total, split, per-day/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "Month: total, split, per-day/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "Year: total, split, per-month/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "All time: total, split, per-month/cumulative chart and both breakdowns agree; shares and unreported calls checked",
+    "light: named endpoint labels, all five tasks, selected previous year and exact-value table",
+    "light: keyboard and hover readouts, legend colours, desktop/narrow captures and keyboard table scrolling",
+    "Delayed range response: old totals hidden; newer selection wins",
+    "Unreported-only range: dash total/split/row, zero reported share, no estimated chart bars",
+    "Empty ranges show zero and no-usage state in both appearances; no provider calls"
   ],
   "screenshots": [
     "docs/verification/usage-dashboard-month-dark.png",
+    "docs/verification/usage-dashboard-breakdown-dark.png",
+    "docs/verification/usage-dashboard-mobile-dark.png",
+    "docs/verification/usage-dashboard-mobile-breakdown-dark.png",
     "docs/verification/usage-dashboard-month-light.png",
+    "docs/verification/usage-dashboard-breakdown-light.png",
+    "docs/verification/usage-dashboard-mobile-light.png",
+    "docs/verification/usage-dashboard-mobile-breakdown-light.png",
+    "docs/verification/usage-dashboard-empty-dark.png",
     "docs/verification/usage-dashboard-empty-light.png"
   ]
 }

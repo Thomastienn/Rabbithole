@@ -28,7 +28,7 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
   { id: 'interface', label: 'Interface', description: 'How TreeTutor looks and how you move around it. Saved in this browser.', icon: SwatchIcon },
   { id: 'models', label: 'Models', description: 'A profile holds a model and effort for each role. Swapping profiles changes all three at once.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
-  { id: 'usage', label: 'Usage', description: 'Tokens providers reported for replies and suggestions, kept even after content is deleted.', icon: ChartBarIcon },
+  { id: 'usage', label: 'Usage', description: 'Tokens providers reported for replies, suggestions and media. Kept even after content is deleted.', icon: ChartBarIcon },
 ];
 
 // Map keys (TreeOverview handlers); Esc is ChatPage's close.
@@ -106,7 +106,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
 
   // One page at a time (mockup Settings); the nav picks the page.
   const panel = <VStack gap={8} className="settings-panel">
-    {tab === 'usage' && group('usage', <Section title="Usage history"><UsageDashboard api={api} /></Section>)}
+    {tab === 'usage' && group('usage', <UsageDashboard api={api} providers={providers} />)}
     {tab === 'interface' && group('interface', <>
       <Section title="Appearance" description="Dark, light, or System to follow your operating system. Saved in this browser.">
         <RadioList label="Appearance" isLabelHidden value={appearance} onChange={value => setAppearance(value as Appearance)}>

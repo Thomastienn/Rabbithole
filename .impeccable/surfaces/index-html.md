@@ -40,3 +40,17 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 - No idle "Saved" label: layout writes batch once a minute, so only the failure state shows (TreeTutor-y36.3).
 - Explicit video requests reserve their place in the reply; pending shows a slim status line with phase and percentage plus Cancel; failure shows a safe reason and Retry; title and description stay accessible (TreeTutor-133.1, TreeTutor-zhf.6, evidence in docs/verification/inline-video-review.md).
 - Copy buttons on replies and code blocks, and title search across learning trees, remain adopted features.
+
+### Usage page (TreeTutor-2li.11)
+
+THESIS: Operate mode; read saved provider-reported usage in the existing Settings page. One selected range drives the summary, chart and breakdown. Calls include all attempts; missing-only token counts show a dash, never an estimate.
+
+OWN-WORLD: Extend Paperback Series without changing its tokens. Archivo and tabular figures, seam-separated sections, house Astryx controls and tables; input is lichen, output leaf and cache read amber in both appearances. Server-supplied labels name providers.
+
+STORY: Choose Today, Week, Month, a selected Year or All time; read the exact total and measured input/output/cache-read split, then inspect a period or switch the single breakdown between model and task. The split doubles as the chart legend. Viewing history never calls a provider.
+
+FIRST VIEWPORT: Keep the Settings heading and section nav. A 34px exact total carries a 20px range qualifier above the split and call count. The chart's per-period/cumulative switch sits beside its small-caps heading; hover and keyboard focus expose exact values, with an expandable text table. The breakdown uses one table with 3px bars showing shares of reported tokens only. Narrow layouts wrap controls and keep table scrolling within the page.
+
+FORM: Code-led ordinary extension, composition pinned by `docs/mockups/usage.html`; no new world, seed or tournament. Compare `src/UsageDashboard.tsx`, its Settings caller and `src/layout.ts` with PRODUCT.md, DESIGN.md and this surface contract. Preserve the parent direction and system files.
+
+FINISH: Independent finish review verdict **ship** (2026-11-13): all ten Usage captures, the approved mockup, source and verification report inspected; no material findings. Recorded verification: build and `npm test` pass; `docs/verification/usage-dashboard.json` records 17 browser steps across dark/light at 1400×900 and 390×844, both chart and grouping modes, every range, a previous year, delayed-response selection changes, missing-only and empty states, and no provider calls. Settings regression checks pass (12 steps). Captures are `docs/verification/usage-dashboard-*.png`; these are verification evidence, not shipping rasters. Pre-existing drift: DESIGN.md is newer than `.impeccable/design.json`; reported without repair.
