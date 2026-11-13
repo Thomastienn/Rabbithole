@@ -56,7 +56,7 @@ if (process.argv.includes('--output-format')) {
   send({ type: 'system', subtype: 'init', session_id: session, model: 'sonnet' });
   send({ type: 'assistant', message: { id: 'answer', content: [{ type: 'text', text }] } });
   // A learner text ending 'no usage' simulates a provider that reports none; 'claude fails' a failed run that still reports usage.
-  send({ type: 'result', is_error: input.endsWith('claude fails'), ...(input.endsWith('claude fails') && { result: 'Fixture failure.' }), ...(!input.endsWith('no usage') && { usage: { input_tokens: 3, cache_creation_input_tokens: 100, cache_read_input_tokens: 40, output_tokens: 7 } }) });
+  send({ type: 'result', is_error: input.endsWith('claude fails'), ...(input.endsWith('claude fails') && { result: 'Fixture failure.' }), ...(input.endsWith('context window') && { modelUsage: { 'claude-fixture': { contextWindow: 200000 } } }), ...(!input.endsWith('no usage') && { usage: { input_tokens: 3, cache_creation_input_tokens: 100, cache_read_input_tokens: 40, output_tokens: 7 } }) });
 } else createInterface({ input: process.stdin }).on('line', line => {
   const { id, method, params } = JSON.parse(line);
   if (!id) return;
@@ -91,6 +91,6 @@ function turn(id, params, text) {
   send({ method: 'item/agentMessage/delta', params: { threadId: params.threadId, turnId: 'old-turn', itemId: 'stale', delta: 'MUST NOT LEAK' } });
   send({ method: 'item/agentMessage/delta', params: { threadId: params.threadId, itemId: 'answer', delta: 'Partial' } });
   send({ method: 'item/completed', params: { threadId: params.threadId, item: { type: 'agentMessage', id: 'answer', text: suggesting(text) ? suggestion(text, threadModels.get(params.threadId), 'fixture-luna') : reply(text) } } });
-  if (!text.endsWith('no usage')) send({ method: 'thread/tokenUsage/updated', params: { threadId: params.threadId, turnId: 'turn-fixture', tokenUsage: { last: { inputTokens: 50, cachedInputTokens: 20, outputTokens: 9, reasoningOutputTokens: 0, totalTokens: 59 }, total: { inputTokens: 500, cachedInputTokens: 200, outputTokens: 90, reasoningOutputTokens: 0, totalTokens: 590 } } } });
+  if (!text.endsWith('no usage')) send({ method: 'thread/tokenUsage/updated', params: { threadId: params.threadId, turnId: 'turn-fixture', tokenUsage: { ...(text.endsWith('context window') && { modelContextWindow: 300000 }), last: { inputTokens: 50, cachedInputTokens: 20, outputTokens: 9, reasoningOutputTokens: 0, totalTokens: 59 }, total: { inputTokens: 500, cachedInputTokens: 200, outputTokens: 90, reasoningOutputTokens: 0, totalTokens: 590 } } } });
   send({ method: 'turn/completed', params: { threadId: params.threadId, turn: { id: 'turn-fixture', status: text === 'fail' ? 'failed' : 'completed', ...(text === 'fail' && { error: { message: 'Fixture usage limit reached.' } }) } } });
 }

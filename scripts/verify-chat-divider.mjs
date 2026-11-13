@@ -21,7 +21,7 @@ const app = createApp({ store, auth: { status: () => ({ connected: true }) }, pr
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const steps = [];
 const sep = `document.querySelector('.chat-divider')`;
-const state = () => ev(`(() => { const d = ${sep}, c = document.querySelector('#learning-tree-map').getBoundingClientRect(), w = document.querySelector('.tree-workspace').getBoundingClientRect();
+const state = () => ev(`(() => { const d = ${sep}, c = document.querySelector('#learning-tree-map').getBoundingClientRect(), w = document.querySelector('.reading-workspace').getBoundingClientRect();
   return d && { now: +d.getAttribute('aria-valuenow'), min: +d.getAttribute('aria-valuemin'), max: +d.getAttribute('aria-valuemax'), text: d.getAttribute('aria-valuetext'), role: d.getAttribute('role'), tab: d.tabIndex, mapRem: c.width / 16, workRem: w.width / 16, stored: localStorage.getItem('treetutor.map-width'), left: d.getBoundingClientRect().left + d.getBoundingClientRect().width / 2, mid: c.top + c.height / 2 }; })()`);
 try {
   await b('set', 'viewport', '1600', '1000');
@@ -79,7 +79,7 @@ try {
   await b('screenshot', shot);
 
   await click('Expand chat');
-  await wait(`!${sep} && document.querySelector('.focused-chat').getBoundingClientRect().width > document.querySelector('.tree-workspace').getBoundingClientRect().width - 2`);
+  await wait(`!${sep} && document.querySelector('.focused-chat').getBoundingClientRect().width > document.querySelector('.reading-workspace').getBoundingClientRect().width - 2`);
   await click('Show map beside chat');
   await wait(sep);
   s = await state(); assert.equal(s.now, 28);

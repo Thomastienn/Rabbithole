@@ -42,7 +42,7 @@ try {
   // Expand to the full workspace: map hidden, chat fills it, focus stays on the toggle.
   await browser('focus', '.expand-chat'); await browser('press', 'Enter');
   assert.equal(await display('.overview'), 'none');
-  assert.equal(await evalBrowser('Math.abs(document.querySelector(".focused-chat").getBoundingClientRect().width - document.querySelector(".tree-workspace").getBoundingClientRect().width) < 2'), true);
+  assert.equal(await evalBrowser('Math.abs(document.querySelector(".focused-chat").getBoundingClientRect().width - document.querySelector(".reading-workspace").getBoundingClientRect().width) < 2'), true);
   assert.equal(await focused(), 'Show map beside chat');
   assert.equal(await transitions(), 0, 'reduced motion: no view transition');
   // Resize narrow and back while expanded with a live reply and a draft.

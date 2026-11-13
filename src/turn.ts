@@ -1,8 +1,16 @@
 import { mergeArtifact, type Artifact, type ArtifactSummary } from './artifacts.ts';
 
-export type Usage = { input: number; output: number; cacheRead: number };
+export type Usage = { input: number; output: number; cacheRead: number; context?: { limit: number; provider: string; model: string | null } };
 export type Message = { id: string; role: string; text: string; status: string; stopped?: 'learner' | 'shutdown'; usage?: Usage | null; artifacts?: ArtifactSummary[] };
 export const usageLine = (u: Usage) => `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;
+// The last completed call is a context snapshot, not the sum of repeated input across turns or background workers.
+export function conversationContext(conversation: { provider: string; model: string | null; messages: Message[] }) {
+  const usage = conversation.messages.filter(m => m.role === 'assistant' && m.status === 'completed').at(-1)?.usage;
+  if (!usage) return;
+  const used = usage.input + usage.output + usage.cacheRead, context = usage.context;
+  const limit = context?.provider === conversation.provider && context.model === conversation.model ? context.limit : undefined;
+  return { used, limit };
+}
 export type Suggestions = { message: string; status: 'pending' | 'ready' | 'failed'; passages: { start: number; end: number; text: string; child?: string; concept?: string }[]; usage: Usage | null };
 // A reply's token line includes its suggestion call, so background cost is never hidden.
 export function replyUsageLine(reply: Usage | null, suggestion?: Usage | null) {

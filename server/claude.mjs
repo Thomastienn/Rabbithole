@@ -76,7 +76,9 @@ export class Claude {
     if (signal.aborted) { emit({ type: 'status', status: 'interrupted' }); return; }
     // Cache writes are billed input, so they count as input; cache reads are shown separately. Failed runs keep what they report.
     const u = result?.usage;
-    if (u) emit({ type: 'usage', usage: { input: u.input_tokens + (u.cache_creation_input_tokens ?? 0), output: u.output_tokens, cacheRead: u.cache_read_input_tokens ?? 0 } });
+    const reportedModels = Object.values(result?.modelUsage ?? {});
+    const contextWindow = reportedModels.length === 1 ? reportedModels[0]?.contextWindow : undefined;
+    if (u) emit({ type: 'usage', usage: { input: u.input_tokens + (u.cache_creation_input_tokens ?? 0), output: u.output_tokens, cacheRead: u.cache_read_input_tokens ?? 0, ...(contextWindow && { contextWindow }) } });
     if (!result || result.is_error) {
       emit({ type: 'status', status: 'failed' });
       // A missing resumed session (num_turns 0) is dropped so the retry starts fresh with saved history.

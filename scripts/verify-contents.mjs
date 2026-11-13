@@ -1,0 +1,161 @@
+// Built-app fixture: real SQLite/HTTP/SSE and Chromium, controlled tutor/visual provider. No native-provider claim.
+import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
+import { execFile } from 'node:child_process';
+import { Store } from '../server/store.mjs';
+import { createApp } from '../server/app.mjs';
+
+const run = promisify(execFile), dir = mkdtempSync(join(tmpdir(), 'tt-contents-')), session = `contents-${process.pid}`;
+const b = async (...args) => (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 8 << 20 })).stdout;
+const ev = async code => JSON.parse(await b('eval', code, '--json')).data.result;
+const wait = code => b('wait', '--fn', `!!(${code})`);
+const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
+const store = new Store(join(dir, 'trees.sqlite'));
+store.create('Another learning tree');
+const root = store.create('How do fungi trade?');
+store.model(root.id, 'fixture');
+store.message(root.id, 'user', root.title, 'completed');
+const text = 'Fungi trade sugar for phosphorus.\n\n' + 'Roots and fungi exchange nutrients; both partners gain from the trade.\n\n'.repeat(16);
+const reply = store.message(root.id, 'assistant', text, 'completed');
+store.usage(reply, { input: 5000, output: 1000, cacheRead: 30000, context: { provider: 'codex', model: 'fixture', limit: 200000 } });
+store.pendingSuggestions(root.id, reply);
+store.finishSuggestions(root.id, reply, [{ start: 22, end: 32, text: 'phosphorus' }], { input: 900000, output: 900000, cacheRead: 900000 });
+const branch = (parent, messageId, passage, question) => store.branch(store.tree(parent.id), { messageId, start: 0, end: passage.length, text: passage, question }, 'Fixed context of the exchange.');
+const first = branch(root, reply, 'Fungi', 'Why trade at all?');
+store.message(first.id, 'user', first.title, 'completed');
+const firstReply = store.message(first.id, 'assistant', 'Neither partner can make what the other offers.', 'completed');
+const grandchild = branch(first, firstReply, 'Neither', 'Could a plant go alone?');
+const second = branch(root, reply, 'Fungi', 'What are hyphae?');
+store.message(second.id, 'assistant', 'The thin threads of a fungus.', 'completed');
+const visual = store.pendingArtifact(root.id, reply, 'Reach of roots and hyphae', 'Illustrative reach of roots and hyphae.', 'visual', null, text.length);
+store.finishArtifact(root.id, visual.id, '<svg viewBox="0 0 640 160" role="img" aria-label="Reach of roots and hyphae"><rect x="10" y="20" width="64" height="30" fill="var(--treetutor-ink-1)"/><rect x="10" y="80" width="430" height="30" fill="var(--treetutor-ink-2)"/></svg>');
+const diagram = store.pendingArtifact(root.id, reply, 'Trade loop', 'Sugar flows to the fungus; phosphorus flows to the root.');
+store.finishArtifact(root.id, diagram.id, 'flowchart LR\n Root -->|sugar| Fungus');
+const video = store.pendingArtifact(first.id, firstReply, 'The trade, narrated', 'An illustrative exchange.', 'video');
+store.finishVideo(first.id, video.id, video.attempt, {}, 'Video rendering failed.');
+let finishVisual;
+const provider = { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }, { model: 'unknown', label: 'Unknown window' }], generate: async (tree, input, emit, _save, signal) => {
+  let answer = 'An exchange of nutrients.';
+  if (tree.instructions?.startsWith('You create one self-contained visual')) {
+    await new Promise(resolve => { finishVisual = resolve; signal.addEventListener('abort', resolve, { once: true }); });
+    answer = '<svg viewBox="0 0 640 120"><rect width="300" height="80" fill="var(--color-accent)"/></svg>';
+  } else if (input === 'Add a visual') answer = 'Here is one exchange.\n\n```treetutor-visual\n' + JSON.stringify({ title: 'One exchange', description: 'A nutrient exchange.', intent: 'Show nutrients trading.', excerpt: 'Here is one exchange.' }) + '\n```';
+  emit({ type: 'item', item: 'answer', text: answer });
+  emit({ type: 'usage', usage: { input: 50000, output: 4000, cacheRead: 10000, ...(tree.model !== 'unknown' && { contextWindow: 200000 }) } });
+  emit({ type: 'status', status: 'completed' });
+} };
+const app = createApp({ store, dir, provider, auth: { status: () => ({ connected: true }) } });
+await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+const steps = [], screenshots = [];
+const check = (name, evidence) => { steps.push({ name, evidence }); console.log('PASS:', name); };
+const shot = async name => { const path = `docs/verification/contents-${name}.png`; await b('mouse', 'move', '5', '5'); await b('screenshot', path); screenshots.push(path); };
+const current = () => ev(`document.querySelector('.contents-row[aria-current]')?.getAttribute('aria-label')`);
+async function selectFigure(title, id) {
+  const label = await ev(`[...document.querySelectorAll('.contents-figure')].find(e => e.textContent.includes(${JSON.stringify(title)})).getAttribute('aria-label')`);
+  await b('focus', `[aria-label="${label}"]`); await b('press', 'Enter');
+  await wait(`document.activeElement?.dataset.artifact === ${JSON.stringify(id)}`);
+  assert.ok(await ev(`(() => { const f = document.activeElement.getBoundingClientRect(), log = document.querySelector('.focused-chat .astryx-chat-layout').getBoundingClientRect(); return f.top < log.bottom && f.bottom > log.top; })()`), `${title} scrolled into the conversation`);
+}
+try {
+  await b('set', 'viewport', '1440', '900');
+  await b('open', `http://127.0.0.1:${app.server.address().port}`);
+  await b('set', 'media', 'dark', 'reduced-motion');
+  await b('wait', `[aria-label="Open ${root.title}"]`); await click('Read');
+  await wait(`document.querySelectorAll('.contents-row:not(.contents-figure)').length === 4 && document.querySelectorAll('.contents-figure').length === 3`);
+  const outline = await ev(`[...document.querySelectorAll('.contents-row:not(.contents-figure)')].map(e => e.getAttribute('aria-label'))`);
+  assert.deepEqual(outline, ['1 How do fungi trade?', '1.1 Why trade at all?', '1.1.1 Could a plant go alone?', '1.2 What are hyphae?']);
+  assert.equal(await current(), '1 How do fungi trade?');
+  assert.match(await ev(`document.querySelector('.contents-context').textContent`), /36,000 tokens · 18% of 200,000/);
+  assert.equal(await ev(`document.querySelector('.contents-context meter').value`), 36000);
+  check('Open tree only; address order, current conversation, all three figure kinds; last reported context excludes background cost', outline);
+
+  for (const mode of ['dark', 'light']) {
+    await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); location.reload()`);
+    await b('wait', `[aria-label="Open ${root.title}"]`); await click('Read');
+    await wait(`document.querySelector('.contents-context meter')`);
+    await ev(`document.querySelector('.focused-chat .astryx-chat-layout').scrollTo(0, 0)`);
+    await b('focus', '.contents-row'); await b('press', 'Tab');
+    const contrast = await ev(`(() => {
+      const c = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+      const rgba = v => { c.clearRect(0,0,1,1); c.fillStyle=v; c.fillRect(0,0,1,1); return [...c.getImageData(0,0,1,1).data]; };
+      const blend = (f,b) => f.slice(0,3).map((v,i) => v*f[3]/255+b[i]*(1-f[3]/255));
+      const bg = e => { const chain=[]; for (;e;e=e.parentElement) chain.unshift(e); return chain.reduce((b,e) => blend(rgba(getComputedStyle(e).backgroundColor),b),[255,255,255]); };
+      const L = rgb => rgb.map(v => { v/=255; return v<=.04045?v/12.92:((v+.055)/1.055)**2.4; }).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
+      const ratio = (f,b) => (Math.max(L(f),L(b))+.05)/(Math.min(L(f),L(b))+.05);
+      const selectors=['.contents-head h2','.contents-head .astryx-text','.contents-label','.contents-address','.contents-name','.contents-figure .astryx-text:last-child','.contents-context .astryx-text'];
+      const text=selectors.map(sel=>{ const e=document.querySelector(sel),back=bg(e); return {sel,ratio:ratio(blend(rgba(getComputedStyle(e).color),back),back)}; });
+      const focused=document.activeElement, s=getComputedStyle(focused), back=bg(focused);
+      return {text,ring:{width:parseFloat(s.outlineWidth),style:s.outlineStyle,ratio:ratio(rgba(s.outlineColor).slice(0,3),back)},width:document.querySelector('.contents').getBoundingClientRect().width,dots:[...document.querySelectorAll('.contents-dot')].map(e=>({color:getComputedStyle(e).backgroundColor,width:e.getBoundingClientRect().width})), overflow:document.documentElement.scrollWidth>innerWidth};
+    })()`);
+    assert.equal(Math.round(contrast.width), 264); assert.equal(contrast.overflow, false);
+    for (const item of contrast.text) assert.ok(item.ratio >= 4.5, `${mode} ${item.sel}: ${item.ratio}`);
+    assert.ok(contrast.ring.width >= 2 && contrast.ring.style === 'solid' && contrast.ring.ratio >= 3, JSON.stringify(contrast));
+    for (const dot of contrast.dots) assert.equal(dot.width, 8);
+    assert.equal(contrast.dots[1].color, contrast.dots[2].color); assert.notEqual(contrast.dots[1].color, contrast.dots[3].color);
+    await shot(mode); check(`${mode}: 264px Contents; AA text, visible focus ring, shared family dots, no document overflow`, contrast);
+  }
+  await b('focus', '[aria-label="1.1.1 Could a plant go alone?"]'); await b('press', 'Enter');
+  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Could a plant go alone?'`);
+  assert.equal(await current(), '1.1.1 Could a plant go alone?');
+  assert.match(await ev(`document.querySelector('.contents-context').textContent`), /Context usage unavailable/);
+  await selectFigure(visual.title, visual.id);
+  await wait(`document.querySelector('.visual-frame[data-ready]')`);
+  assert.equal(await current(), '1 How do fungi trade?');
+  await selectFigure(diagram.title, diagram.id);
+  await selectFigure(video.title, video.id);
+  assert.equal(await current(), '1.1 Why trade at all?');
+  assert.ok(await ev(`[...document.querySelectorAll('.video-inline button')].some(e=>e.textContent.includes('Retry video'))`));
+  check('Keyboard opens nested conversation; Figures open owning conversations, scroll and focus visual, diagram and failed video; failure/Retry preserved');
+  await b('press', 'Escape'); await click('Reopen chat');
+  await wait(`document.activeElement?.getAttribute('aria-label') === 'Your question'`);
+  check('Figure navigation is consumed once: Map → Reopen chat restores composer focus');
+
+  await click('1 How do fungi trade?');
+  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'How do fungi trade?'`);
+  await b('click', 'u.suggestion:not(.explored)');
+  await b('find', 'role', 'textbox', 'fill', '--name', 'Question about this passage', 'Live branch');
+  await click('Create focused chat');
+  await wait(`document.querySelector('.contents-row[aria-current]')?.getAttribute('aria-label') === '1.3 Live branch' && document.querySelector('.focused-chat [aria-label=Send]')`);
+  check('Branch created through passage popup appears live at 1.3 with current marker');
+  await click('1 How do fungi trade?');
+  await wait(`document.querySelector('.focused-chat [role=textbox]')`);
+  await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Add a visual'); await click('Send');
+  await wait(`[...document.querySelectorAll('.contents-figure')].some(e=>e.textContent.includes('One exchange')) && document.querySelector('.visual[data-state=pending]')`);
+  const newVisual = store.tree(root.id).artifacts.find(a => a.title === 'One exchange');
+  assert.ok(finishVisual); finishVisual();
+  await wait(`document.querySelector('[data-artifact="${newVisual.id}"][data-state=ready]')`);
+  await selectFigure('One exchange', newVisual.id);
+  assert.match(await ev(`document.querySelector('.contents-context').textContent`), /64,000 tokens · 32% of 200,000/);
+  check('SSE visual creation appears live in Figures, pending → ready; selecting it focuses; latest turn refreshes context to 64,000 (32%)');
+  await wait(`document.querySelector('.model-picker:not([aria-disabled=true]):not(:disabled)')`);
+  await click('Model for next reply');
+  await wait(`document.querySelector('[role=menuitemradio]')`);
+  await b('find', 'role', 'menuitemradio', 'click', '--name', 'Unknown window', '--exact');
+  await wait(`document.querySelector('.chat-model')?.textContent.includes('Unknown window')`);
+  const unknown = await ev(`document.querySelector('.contents-context').textContent`);
+  assert.match(unknown, /64,000 tokens · limit unavailable/); assert.ok(!unknown.includes('%'));
+  assert.equal(await ev(`!!document.querySelector('.contents-context meter')`), false);
+  check('Switch to unknown model keeps measured tokens and removes percentage/bar');
+
+  await b('set', 'viewport', '390', '780');
+  assert.equal(await ev(`document.querySelector('.contents-panel').checkVisibility()`), false);
+  await b('focus', '.contents-toggle'); await b('press', 'Enter');
+  await wait(`document.querySelector('.contents-panel').checkVisibility()`);
+  await shot('narrow-light');
+  await click('Settings'); await b('click', '#settings-interface');
+  await wait(`document.querySelector('input[type=radio]')`);
+  await b('find', 'role', 'radio', 'click', '--name', 'Dark', '--exact'); await b('press', 'Escape');
+  await shot('narrow-dark');
+  await selectFigure(video.title, video.id);
+  assert.equal(await ev(`document.querySelector('.contents-panel').checkVisibility()`), false);
+  assert.ok(await ev(`document.documentElement.scrollWidth<=innerWidth && Math.round(document.querySelector('.focused-chat').getBoundingClientRect().width)===innerWidth`));
+  check('390px: Contents toggles by keyboard; figure navigation closes panel and focuses media; full-width chat and no overflow');
+  await b('set', 'viewport', '1440', '900'); await click('Map');
+  assert.equal(await ev(`!!document.querySelector('.contents')`), false);
+  check('Map retains its full workspace without Contents');
+  writeFileSync('docs/verification/contents-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Built app, SQLite/HTTP/SSE and Chromium; synthetic providers. Provider protocol/persistence checked separately by test/usage.test.mjs; no native model call.', pass: true, steps, screenshots }, null, 2) + '\n');
+} catch (error) { await b('screenshot', '/tmp/contents-failure.png').catch(() => {}); throw error; }
+finally { finishVisual?.(); await b('close').catch(() => {}); await app.stop(); store.close(); }

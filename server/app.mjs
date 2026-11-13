@@ -553,7 +553,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             store.update(reply, text, status, status === 'interrupted' ? (stopping ? 'shutdown' : controller.signal.aborted ? 'learner' : null) : null);
             // Provider-reported counts only; failed, partial and canceled replies keep no usage.
             if (usage && !['input', 'output', 'cacheRead'].every(k => Number.isSafeInteger(usage[k]) && usage[k] >= 0)) usage = null;
-            if (status === 'completed' && usage) store.usage(reply, usage);
+            if (status === 'completed' && usage) store.usage(reply, { ...usage, ...(usage.context && { context: { ...usage.context, model: store.tree(id)?.model ?? tree.model } }) });
             // History keeps any reported measurement, including failed or stopped calls; unreported ones stay unavailable.
             if (called) store.record(`chat:${reply}`, 'chat', { provider: tree.provider, model: store.tree(id)?.model ?? tree.model }, usage);
             if (status === 'completed' || status === 'failed') store.finishModel(id, status === 'completed');
@@ -588,7 +588,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 prepareArtifacts(output);
               }
               if (event.type === 'status') status = event.status;
-              if (event.type === 'usage') usage = { input: event.usage.input, output: event.usage.output, cacheRead: event.usage.cacheRead };
+              if (event.type === 'usage') usage = { input: event.usage.input, output: event.usage.output, cacheRead: event.usage.cacheRead,
+                ...(Number.isSafeInteger(event.usage.contextWindow) && event.usage.contextWindow > 0 && { context: { limit: event.usage.contextWindow, provider: tree.provider } }) };
             }, (thread, model) => { if (!finished) store.thread(id, thread, model); }, controller.signal);
             if (status === 'streaming') status = controller.signal.aborted ? 'interrupted' : 'completed';
             if (!finished) {

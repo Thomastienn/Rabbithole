@@ -32,6 +32,7 @@ import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { conversationAddresses, treeGroups } from './treeList';
 import { effortLabel, type Model } from './models';
+import Contents from './Contents';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
 type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
@@ -253,6 +254,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   const [transitionBox, setTransitionBox] = useState<string>();
   const overviewOrigin = useRef<{ id: string; control: string }>(undefined);
   const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
+  const [figureTarget, setFigureTarget] = useState<{ conversation: string; artifact: string }>();
   const [branch, setBranch] = useState<{ parent: string; anchor: Anchor; question: string }>();
   const [branching, setBranching] = useState(false);
   const [selectingMessage, setSelectingMessage] = useState<string>();
@@ -308,14 +310,15 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     if (!overviewOrigin.current && tree) overviewOrigin.current = { id: tree.id, control: `open-${tree.id}` };
     changeView(true, overviewOrigin.current?.id);
   }
-  async function openConversation(id: string, source?: Source) {
+  async function openConversation(id: string, source?: Source, artifact?: string) {
     {
       const control = document.activeElement as HTMLElement | null;
       const box = control?.closest<HTMLElement>('.react-flow__node')?.dataset.id;
       overviewOrigin.current = box ? { id: box, control: control!.id || `open-${box}` } : undefined;
     }
     setReveal(source ? { tree: id, source } : undefined);
-    focusComposer.current = !source;
+    setFigureTarget(artifact ? { conversation: id, artifact } : undefined);
+    focusComposer.current = !source && !artifact;
     await select(id);
     if (selected.current === id) changeView(false, overviewOrigin.current?.id ?? id);
   }
@@ -465,6 +468,16 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   useEffect(() => {
     if (!overview && tree && focusComposer.current) { composer.current?.focus(); focusComposer.current = false; }
   }, [tree?.id, overview]);
+  useLayoutEffect(() => {
+    if (!figureTarget || overview || tree?.id !== figureTarget.conversation) return;
+    const frame = requestAnimationFrame(() => {
+      const figure = document.querySelector<HTMLElement>(`.focused-chat [data-artifact="${CSS.escape(figureTarget.artifact)}"]`);
+      figure?.focus({ preventScroll: true });
+      figure?.scrollIntoView({ block: 'center' });
+      setFigureTarget(undefined);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [tree?.id, overview, figureTarget]);
   // Reopening a page during a turn recovers saved checkpoints without tying work to focus.
   useEffect(() => {
     if (!activeKey) return;
@@ -749,7 +762,9 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
         <Heading level={1} className="sr-only">TreeTutor</Heading>
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
-        <section ref={workspace} className="tree-workspace" data-expanded={expanded && !overview} style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}>
+        <section className="tree-workspace" data-expanded={expanded && !overview} style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}>
+        {root && state && !overview && <Contents root={root} trees={state.trees.filter(t => visibleIds.includes(t.id))} addresses={addresses} previews={previews} current={tree} active={state.active} open={id => void openConversation(id)} openFigure={(id, artifact) => void openConversation(id, undefined, artifact)} />}
+        <section ref={workspace} className="reading-workspace">
         <section id="focused-chat" className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video, dialog')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>
           <header className="chat-header"><VStack paddingInline={2} paddingBlock={1} gap={1}>
@@ -832,6 +847,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
         {root && state && <section id="learning-tree-map" className="overview" data-chat-open={!overview} aria-label="Learning tree">
           <TreeOverview vim={vim} toolbar={overview && tree && <IconButton label="Reopen chat" tooltip={`Open chat: ${tree.title}`} icon={<ChatBubbleLeftRightIcon />} variant="ghost" size="sm" onClick={() => { focusComposer.current = true; changeView(false, tree.id); }} />} menu={menu} key={root} root={root} trees={state.trees} previews={previews} active={state.active} open={openConversation} save={savePositions} saveViewport={saveViewport} focus={overview ? overviewOrigin.current?.id : undefined} focusControl={overviewOrigin.current?.control} transition={overview ? transitionBox : undefined} selected={overview ? undefined : tree?.id} current={tree?.id} initialFolded={state.trees.find(t => t.id === root)?.layout?.folded} onFold={ids => setFolds({ root, ids })} />
         </section>}
+        </section>
         </section>
       </main>
       <main hidden={tab !== 'library'} className="library-panel" aria-label="Learning trees">

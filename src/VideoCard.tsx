@@ -21,7 +21,7 @@ export default function VideoCard({ artifact, inline = false, onAction, media = 
   const [enlarged, setEnlarged] = useState(false);
   const state = artifact.status === 'ready' && artifact.available === false ? 'unavailable' : artifact.status;
   const status = state === 'pending' && inline && artifact.phase === 'rendering' ? `Rendering video…${artifact.progress !== undefined ? ` ${Math.round(artifact.progress * 100)}%` : ''}` : state === 'failed' && inline && FAILURE_REASON.test(artifact.error ?? '') ? artifact.error : STATUS[state];
-  return <section className={`video-card ${inline ? 'video-inline' : 'diagram-card'}`} aria-live="off" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={state}>
+  return <section className={`video-card ${inline ? 'video-inline' : 'diagram-card'}`} tabIndex={inline ? -1 : undefined} aria-live="off" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={state}>
     <VStack gap={inline ? 0 : 3} padding={inline ? 0 : 3}>
       <Heading level={3} id={`${id}-title`} className={inline ? 'sr-only' : undefined}>{artifact.title}</Heading>
       <section className={`video-stage${!inline || state === 'ready' ? ' video-frame' : ''}`}>
