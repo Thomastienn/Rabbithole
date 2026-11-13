@@ -1,4 +1,4 @@
-// Settings page (TreeTutor-u7v.3, TreeTutor-y36.9): sections, entry points, focus handling and narrow layout.
+// Settings page (TreeTutor-u7v.3, TreeTutor-y36.9, TreeTutor-2li.2): one page per nav item, deep links, focus handling and narrow layout.
 // Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to docs/verification and .impeccable/review/.
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -44,9 +44,10 @@ async function mapMenu(item) {
   await b('find', 'role', 'menuitem', 'click', '--name', item, '--exact');
   await wait(`${active}?.id === '${item === 'Help' ? 'settings-section-interface' : 'settings-heading'}'`);
 }
-// The selected section in the side navigation; Interface, Models and Connections share one scroll, Usage is its own screen.
+// The selected page in the side navigation; only that page is rendered.
 const heading = () => ev(`${dialog}?.querySelector('nav [aria-current=page]')?.textContent ?? null`);
-const tab = async name => { await ev(`document.getElementById('settings-${name.toLowerCase()}').click(); true`); await wait(`${dialog}.querySelector('nav [aria-current=page]')?.textContent === ${JSON.stringify(name)} && document.activeElement?.id === 'settings-section-${name.toLowerCase()}'`); };
+const pages = () => ev(`[...${dialog}.querySelectorAll('.settings-group h2')].map(h => h.textContent)`);
+const tab = async name => { await ev(`document.getElementById('settings-${name.toLowerCase()}').click(); true`); await wait(`${dialog}.querySelector('nav [aria-current=page]')?.textContent === ${JSON.stringify(name)} && document.activeElement?.id === 'settings-section-${name.toLowerCase()}'`); assert.deepEqual(await pages(), [name], `only ${name} shows`); };
 const text = () => ev(`${dialog}.textContent`);
 const closed = () => wait(`!${dialog}`);
 
@@ -72,7 +73,7 @@ try {
     await b('find', 'role', 'radio', 'click', '--name', mode === 'dark' ? 'Dark' : 'Light', '--exact');
     await wait(`document.documentElement.getAttribute('data-theme') === '${mode}'`);
     await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
-    look[mode] = await ev(`(() => { const d = ${dialog}, s = getComputedStyle, body = s(document.body), h = s(d.querySelector('h2'));
+    look[mode] = await ev(`(() => { const d = ${dialog}, s = getComputedStyle, body = s(document.body), h = s(d.querySelector('.settings-panel h3'));
       const rgb = c => c.match(/[\\d.]+/g).slice(0, 3).map(Number), lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
       const ratio = (f, b) => { const [x, y] = [lum(f), lum(b)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
       const ground = s(d).backgroundColor === 'rgba(0, 0, 0, 0)' ? body.backgroundColor : s(d).backgroundColor;
@@ -106,12 +107,13 @@ try {
   const box = await ev(`(() => { const r = ${dialog}.getBoundingClientRect(); return [r.width, r.height]; })()`);
   assert.ok(box[0] > 1200 && box[1] > 700, `full page on desktop: ${box}`);
   await shot('models'); await b('screenshot', `${process.cwd()}/docs/verification/settings-models-dark.png`);
-  step(`Map menu Settings opens a ${Math.round(box[0])}x${Math.round(box[1])} page, title focused; Models scrolls into view with suggestions and concept matching; band holds no settings`);
+  step(`Map menu Settings opens a ${Math.round(box[0])}x${Math.round(box[1])} page, title focused; Models page alone with suggestions and concept matching; band holds no settings`);
 
   // 2. Each tab shows its contents; moved controls work.
   await b('find', 'role', 'button', 'click', '--name', 'Manage connections', '--exact');
   await wait(`${active}?.id === 'settings-section-connections'`);
   assert.equal(await heading(), 'Connections');
+  assert.deepEqual(await pages(), ['Connections'], 'Manage connections opens only Connections');
   await tab('Interface');
   await b('find', 'role', 'radio', 'click', '--name', 'Light', '--exact');
   await wait(`document.documentElement.getAttribute('data-theme') === 'light'`);
@@ -138,15 +140,16 @@ try {
   step('ChatGPT connection failure is announced inside Connections');
   await tab('Interface');
   const ui = await text();
-  for (const s of ['Vim canvas bindings', 'Map help', 'Vim canvas bindings are off']) assert.ok(ui.includes(s), s);
+  for (const s of ['Keyboard', 'Vim canvas bindings', 'Pan the map', 'Close Settings']) assert.ok(ui.includes(s), s);
+  assert.equal(await ev(`[...${dialog}.querySelectorAll('.settings-panel h3')].find(h => h.textContent === 'Keyboard').parentElement.parentElement.contains(${dialog}.querySelector('input[type=checkbox]'))`), true, 'Vim toggle sits in Keyboard');
+  assert.ok(await ev(`${dialog}.querySelectorAll('[aria-label="Map keys"] kbd').length`) >= 4, 'map keys listed');
   await ev(`${dialog}.querySelector('input[type=checkbox]').scrollIntoView({ block: 'center' })`);
   await b('find', 'label', 'Vim canvas bindings', 'check');
-  await wait(`localStorage.getItem('treetutor.vim') === 'on' && ${dialog}.textContent.includes('Vim canvas bindings are on')`);
+  await wait(`localStorage.getItem('treetutor.vim') === 'on' && ${dialog}.querySelector('input[type=checkbox]').checked`);
   await shot('interface');
   await tab('Usage');
   await wait(`${dialog}.querySelector('.usage-total')`);
   assert.ok((await text()).includes('144 input, 48 output, 10 cache-read tokens (202 total)'));
-  assert.equal(await ev(`!!${dialog}.querySelector('#settings-section-interface')`), false, 'Usage is its own screen');
   for (const s of ['By model', 'By task', 'Values for each']) assert.ok((await text()).includes(s), s);
   await shot('usage');
   // Usage chart reads in both appearances (mockup Usage); the day table is its text alternative.
@@ -202,7 +205,7 @@ try {
   await wait(`${dialog}.textContent.includes('Claude: signed in through Claude Code')`);
   step('Suggestion model pin and refresh work; failed provider discovery stays retryable in Connections and Claude check recovers');
   await tab('Models');
-  step(`Tabs: Connections (Claude, Codex, endpoint), Interface (Vim toggle saved on, map help), Usage, Models (suggestions switch saved enabled=${saved.enabled})`);
+  step(`Tabs: Connections (Claude, Codex, endpoint), Interface (Keyboard: Vim toggle saved on, map keys), Usage, Models (suggestions switch saved enabled=${saved.enabled})`);
 
   // 3. Keyboard: every control is reachable in page order; Esc returns to the learning tree and focus returns to Map menu.
   await b('focus', '#settings-return');
@@ -218,11 +221,12 @@ try {
   // 4. Help opens Interface; close button closes.
   await mapMenu('Help');
   assert.equal(await heading(), 'Interface');
-  assert.ok((await text()).includes('Map help'));
+  assert.deepEqual(await pages(), ['Interface']);
+  assert.ok((await text()).includes('Keyboard'));
   await b('find', 'role', 'button', 'click', '--name', 'Return to learning tree', '--exact');
   await closed();
   await wait(`${active}?.getAttribute('aria-label') === 'Map menu'`);
-  step('Map menu Help opens on Interface with map help; Return to learning tree returns focus');
+  step('Map menu Help opens only the Interface page with the Keyboard section; Return to learning tree returns focus');
 
   // 5. Endpoint shortcut from the model menu focuses the endpoint form; Return restores focus.
   await b('find', 'role', 'button', 'click', '--name', 'Reopen chat', '--exact').catch(() => {});
@@ -231,6 +235,7 @@ try {
   await b('find', 'role', 'menuitem', 'click', '--name', 'Custom endpoint settings Add an endpoint or check its URL, API key and connection').catch(() => b('find', 'text', 'Custom endpoint settings', 'click'));
   await wait(`${active}?.matches('.endpoint-settings input[type=url]')`);
   assert.equal(await heading(), 'Connections');
+  assert.deepEqual(await pages(), ['Connections']);
   await b('find', 'role', 'button', 'click', '--name', 'Return to learning tree', '--exact');
   await closed();
   await wait(`${active}?.getAttribute('aria-label') === 'Model for next reply'`);
@@ -254,6 +259,7 @@ try {
   await ev(`document.querySelector('dialog[open] .drawer-settings').click(); true`);
   await wait(`!document.querySelector('dialog.astryx-drawer[open]') && ${active}?.id === 'settings-heading'`);
   assert.equal(await heading(), 'Interface');
+  assert.ok(await ev(`${dialog}.querySelector('.settings-nav').getBoundingClientRect().bottom <= ${dialog}.querySelector('.settings-panel').getBoundingClientRect().top`), 'narrow nav sits above the page');
   assert.equal(await ev(`document.documentElement.scrollWidth > innerWidth + 1 || ${dialog}.scrollWidth > ${dialog}.clientWidth + 1`), false, 'no horizontal overflow');
   await shot('mobile-list');
   await b('focus', '#settings-interface');
@@ -269,7 +275,7 @@ try {
   await wait(`${active}?.matches('.band-contents')`);
   await ev(`document.querySelector('.band-contents').click(); true`);
   await wait(`document.querySelector('dialog[open] .drawer-settings')`);
-  step(`Narrow 390px page: section nav stacked above the content, keyboard section links scroll and focus, padded content, no sideways scroll; Esc returns to the Contents button`);
+  step(`Narrow 390px page: section nav stacked above the content, keyboard section links open the page and focus its heading, padded content, no sideways scroll; Esc returns to the Contents button`);
   await b('press', 'Escape');
   await b('set', 'viewport', '1440', '900');
   await b('reload');
@@ -283,7 +289,7 @@ try {
   assert.equal(authRequests, 2);
   step('ChatGPT connect follows the app auth URL (local fixture redirect only)');
 
-  writeFileSync('docs/verification/settings-window.json', JSON.stringify({ issue: 'TreeTutor-u7v.3, TreeTutor-nwx.8, TreeTutor-y36.9', checkedAt: new Date().toISOString(), evidence: 'Production build and real app HTTP/storage, agent-browser Chromium. Synthetic Claude sign-in/models, Codex auth failure/redirect, reported usage and loopback OpenAI-compatible upstream. No native provider authentication or inference claimed.', steps, screenshots: ['docs/verification/settings-interface-dark.png', 'docs/verification/settings-models-dark.png', 'docs/verification/settings-usage-dark.png', 'docs/verification/settings-usage-light.png', 'docs/verification/settings-interface-light.png', 'docs/verification/settings-connections-light.png', 'docs/verification/settings-mobile-connections-dark.png', ...['interface', 'usage'].flatMap(section => ['dark', 'light'].map(mode => `docs/verification/settings-mobile-${section}-${mode}.png`)), ...['models', 'connections', 'interface', 'usage', 'mobile-list', 'mobile-connections'].map(n => `.impeccable/review/settings-window-${n}.png`)] }, null, 2) + '\n');
+  writeFileSync('docs/verification/settings-window.json', JSON.stringify({ issue: 'TreeTutor-u7v.3, TreeTutor-nwx.8, TreeTutor-y36.9, TreeTutor-2li.2', checkedAt: new Date().toISOString(), evidence: 'Production build and real app HTTP/storage, agent-browser Chromium. Synthetic Claude sign-in/models, Codex auth failure/redirect, reported usage and loopback OpenAI-compatible upstream. No native provider authentication or inference claimed.', steps, screenshots: ['docs/verification/settings-interface-dark.png', 'docs/verification/settings-models-dark.png', 'docs/verification/settings-usage-dark.png', 'docs/verification/settings-usage-light.png', 'docs/verification/settings-interface-light.png', 'docs/verification/settings-connections-light.png', 'docs/verification/settings-mobile-connections-dark.png', ...['interface', 'usage'].flatMap(section => ['dark', 'light'].map(mode => `docs/verification/settings-mobile-${section}-${mode}.png`)), ...['models', 'connections', 'interface', 'usage', 'mobile-list', 'mobile-connections'].map(n => `.impeccable/review/settings-window-${n}.png`)] }, null, 2) + '\n');
 } finally {
   await b('close').catch(() => {});
   await app.stop(); store.close();

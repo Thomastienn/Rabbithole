@@ -440,15 +440,18 @@ html { view-transition-name: none; }
 @keyframes branch-draw { from { stroke-dasharray: 1; stroke-dashoffset: 1; } to { stroke-dasharray: 1; stroke-dashoffset: 0; } }
 .react-flow__handle { background: var(--color-text-secondary); border-color: var(--color-background-surface); }
 section[role=alert] { background: var(--color-background-body); }
-/* Settings page (mockup Settings, Usage): page head, sticky section nav, one scroll of seamed sections. */
+/* Settings page (mockup Settings, Usage): page head, sticky section nav, one page at a time. */
 .settings-content { --color-border-emphasized: var(--color-text-secondary); max-width: 1120px; margin-inline: auto; padding: calc(5 * var(--treetutor-module)) calc(4 * var(--treetutor-module)) calc(8 * var(--treetutor-module)); }
 .settings-content :focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: var(--focus-outline-offset); }
 .settings-head h1 { font-size: 34px; line-height: 1.12; font-weight: 700; letter-spacing: -.015em; }
 .settings-layout { display: grid; grid-template-columns: 216px minmax(0, 640px); gap: 48px; align-items: start; }
 .settings-nav { position: sticky; top: 0; width: auto; height: auto; background: transparent; border: 0; }
 .settings-content :is(h1, h2) { scroll-margin-top: calc(5 * var(--treetutor-module)); }
-.settings-group + .settings-group { padding-top: var(--spacing-8); border-top: thin solid var(--color-border); }
-.settings-group > :first-child h2 { font-size: var(--font-size-base); font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--color-text-secondary); }
+.settings-group > :first-child h2 { font-size: 20px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; }
+.settings-keys { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--spacing-2) var(--spacing-6); margin: 0; font-size: 13px; color: var(--color-text-secondary); }
+.settings-keys > div { display: contents; }
+.settings-keys dd { margin: 0; display: flex; gap: var(--spacing-1); justify-content: end; }
+.settings-keys kbd { min-width: 20px; padding: 1px 5px; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); font: 12px/1.4 monospace; text-align: center; }
 /* Settings sections: seams and small-caps labels, not cards (spec, Settings window). */
 .settings-panel h3 { font-size: var(--font-size-base); font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--color-text-secondary); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }

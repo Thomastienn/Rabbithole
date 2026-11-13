@@ -25,10 +25,18 @@ export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
 export type SettingsRequest = { tab?: SettingsTab; focus?: string };
 
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
-  { id: 'interface', label: 'Interface', description: 'Appearance, theme, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
+  { id: 'interface', label: 'Interface', description: 'How TreeTutor looks and how you move around it. Saved in this browser.', icon: SwatchIcon },
   { id: 'models', label: 'Models', description: 'Chat default, smart and quick thinking roles, and concept matching.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
   { id: 'usage', label: 'Usage', description: 'Tokens providers reported for replies and suggestions, kept even after content is deleted.', icon: ChartBarIcon },
+];
+
+// Map keys (TreeOverview handlers); Esc is ChatPage's close.
+const KEYS: [string, string[]][] = [
+  ['Pan the map, or move the focused conversation', ['←', '↑', '↓', '→']],
+  ['Move farther', ['Shift', 'arrows']],
+  ['Open the focused conversation', ['Enter', 'Space']],
+  ['Close Settings', ['Esc']],
 ];
 
 function Section({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
@@ -66,9 +74,11 @@ export default function SettingsWindow({ request, close, api, models, providers,
     const el = document.querySelector<HTMLElement>(target);
     el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true });
   }
+  // Switch page during render so the focus effect below finds the requested page already mounted.
+  const [seen, setSeen] = useState(request);
+  if (request !== seen) { setSeen(request); if (request) { setTab(request.tab ?? 'interface'); setAuthError(''); } }
   useEffect(() => {
     if (!request) return;
-    setTab(request.tab ?? 'interface'); setAuthError('');
     const focus = () => reveal(request.focus ?? (request.tab ? `#settings-section-${request.tab}` : '#settings-heading'));
     // The modal drawer keeps the page inert until its closing transition finishes.
     const drawer = document.querySelector('dialog.astryx-drawer[open]');
@@ -96,9 +106,10 @@ export default function SettingsWindow({ request, close, api, models, providers,
     </VStack>;
   };
 
-  const panel = <VStack gap={10} className="settings-panel">
-    {tab === 'usage' ? group('usage', <Section title="Usage history"><UsageDashboard api={api} /></Section>) : <>
-    {group('interface', <>
+  // One page at a time (mockup Settings); the nav picks the page.
+  const panel = <VStack gap={8} className="settings-panel">
+    {tab === 'usage' && group('usage', <Section title="Usage history"><UsageDashboard api={api} /></Section>)}
+    {tab === 'interface' && group('interface', <>
       <Section title="Appearance" description="Dark, light, or System to follow your operating system. Saved in this browser.">
         <RadioList label="Appearance" isLabelHidden value={appearance} onChange={value => setAppearance(value as Appearance)}>
           {appearances.map(a => <RadioListItem key={a.id} value={a.id} label={a.label} />)}
@@ -129,17 +140,14 @@ export default function SettingsWindow({ request, close, api, models, providers,
         </VStack>
       </Section>
       <Divider />
-      <Section title="Vim canvas bindings" description="Optional letter keys for moving around the map.">
-        <CheckboxInput label="Vim canvas bindings" description="With the map or a conversation box focused, h j k l act as arrows; = + - zoom; f fits the tree." value={vim} onChange={setVim} />
-      </Section>
-      <Divider />
-      <Section title="Map help">
-        <Text>Focus the map and use arrow keys to pan. Focus a conversation and use arrows to move it; hold Shift to move farther.</Text>
-        <Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them above. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text>
-        <Text>In Settings → Connections, save one custom endpoint’s base URL and API key, test its model listing, or remove it. Its owner bills requests sent there. The saved key is never shown. In chat, open Model for next reply and use arrows and Enter to choose Claude, Codex or a custom endpoint model and supported effort. Switching preserves the discussion and inherited context; children start with their parent’s choice. Set the starting model and effort for new learning trees in Settings → Models.</Text>
+      <Section title="Keyboard">
+        <CheckboxInput label="Vim canvas bindings" description="With the map or a conversation box focused: h j k l act as arrows, H J K L move farther, = + - zoom, f fits the tree. Never while typing, selecting text or using menus." value={vim} onChange={setVim} />
+        <dl className="settings-keys" aria-label="Map keys">
+          {KEYS.map(([action, keys]) => <div key={action}><dt>{action}</dt><dd>{keys.map(k => <kbd key={k}>{k}</kbd>)}</dd></div>)}
+        </dl>
       </Section>
     </>)}
-    {group('models', <>
+    {tab === 'models' && group('models', <>
       <ChatSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} connections={() => showTab('connections')} onSaved={() => setChatVersion(v => v + 1)} />
       <Divider />
       <SmartSettings api={api} models={models} providers={providers} chatVersion={chatVersion} />
@@ -152,7 +160,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
           : <Text type="supporting">Concept matching cost is within the normal range.</Text>}
       </Section>
     </>)}
-    {group('connections', <>
+    {tab === 'connections' && group('connections', <>
       <Section title="Claude" description="Uses your own Claude plan through Claude Code on this computer.">
         <Text type="supporting">Claude: {providers ? providers.claude?.connected ? 'signed in through Claude Code' : 'run claude in a terminal and sign in' : 'sign-in status unavailable'}</Text>
         {modelError && <Text type="supporting" role="alert">{modelError}</Text>}
@@ -167,7 +175,6 @@ export default function SettingsWindow({ request, close, api, models, providers,
       <Divider />
       <EndpointSettings api={api} changed={() => void loadModels()} />
     </>)}
-    </>}
   </VStack>;
 
   const nav = <SideNav aria-label="Settings sections" className="settings-nav">

@@ -81,14 +81,13 @@ try {
 
   // 2. Help describes the mapping and current state; the checkbox is reachable by Tab and toggles with Space.
   await help();
-  await wait(`document.querySelector('.settings-page:not([hidden])').textContent.includes('Vim canvas bindings are off')`);
+  await wait(`document.querySelector('.settings-page:not([hidden])').textContent.includes('Keyboard') && !${checkbox}.checked`);
   await b('focus', '.settings-page:not([hidden]) button');
   await tabTo(`e.type === 'checkbox'`);
   assert.equal(await ev(`getComputedStyle(document.activeElement).outlineStyle !== 'none' || document.activeElement.matches(':focus-visible')`), true);
   await press('Space');
   await wait(`${checkbox}.checked && document.activeElement === ${checkbox} && localStorage.getItem('treetutor.vim') === 'on'`);
-  await wait(`document.querySelector('.settings-page:not([hidden])').textContent.includes('Vim canvas bindings are on')`);
-  step('Tab reaches the labelled "Vim canvas bindings" checkbox with visible focus; Space checks it, focus stays on it, Help reports on');
+  step('Tab reaches the labelled "Vim canvas bindings" checkbox with visible focus; Space checks it and focus stays on it');
 
   await closeSettings();
 
