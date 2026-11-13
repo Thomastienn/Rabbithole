@@ -62,6 +62,17 @@ export class Store {
       if (!this.db.prepare('PRAGMA table_info(suggestion_settings)').all().some(c => c.name === 'effort')) this.db.exec('ALTER TABLE suggestion_settings ADD COLUMN effort TEXT');
       // Smart role: a NULL model follows the chat default model; follow_effort=1 follows the chat default effort.
       this.db.exec('CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)');
+      // Model profiles: each holds the chat, smart and quick thinking roles; the old role rows seed "Default" once and stay for older builds.
+      if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='profiles'").get()) {
+        this.db.exec(`BEGIN IMMEDIATE;
+          CREATE TABLE profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE, chat_provider TEXT, chat_model TEXT, chat_effort TEXT,
+            smart_provider TEXT, smart_model TEXT, smart_follow_effort INTEGER NOT NULL CHECK(smart_follow_effort IN (0,1)), smart_effort TEXT, quick_provider TEXT, quick_model TEXT, quick_effort TEXT);
+          CREATE TABLE active_profile (id INTEGER PRIMARY KEY CHECK(id=1), profile TEXT NOT NULL REFERENCES profiles(id));
+          INSERT INTO profiles SELECT '${randomUUID()}','Default',c.provider,c.model,c.effort,s.provider,s.model,coalesce(s.follow_effort,1),s.effort,q.provider,q.model,q.effort
+            FROM (SELECT 1) LEFT JOIN chat_settings c ON c.id=1 LEFT JOIN smart_settings s ON s.id=1 LEFT JOIN suggestion_settings q ON q.id=1;
+          INSERT INTO active_profile SELECT 1,id FROM profiles;
+          COMMIT;`);
+      }
       // Additive global tables: one knowledge graph across all learning trees; NOCASE names make a matching concept or topic reuse its row.
       this.db.exec(`CREATE TABLE IF NOT EXISTS concepts (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
         CREATE TABLE IF NOT EXISTS topics (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
@@ -140,25 +151,45 @@ export class Store {
     return this.db.prepare('SELECT id AS root,title FROM trees WHERE id NOT IN (SELECT child FROM branches) ORDER BY created DESC,rowid DESC').all()
       .filter(t => t.title.toLocaleLowerCase().includes(q));
   }
+  // Role settings read and write the active model profile; only automatic suggestions on/off stays global.
+  profileRow() { return this.db.prepare('SELECT p.* FROM profiles p JOIN active_profile a ON a.profile=p.id').get(); }
+  static roles(row) {
+    return {
+      chat: row.chat_model ? { provider: row.chat_provider, model: row.chat_model, effort: row.chat_effort } : null,
+      smart: { model: row.smart_model ? { provider: row.smart_provider, model: row.smart_model } : null, followEffort: !!row.smart_follow_effort, effort: row.smart_follow_effort ? null : row.smart_effort ?? null },
+      quick: { model: row.quick_model ? { provider: row.quick_provider, model: row.quick_model } : null, effort: row.quick_model ? row.quick_effort ?? null : null },
+    };
+  }
+  updateProfile(columns, values) { this.db.prepare(`UPDATE profiles SET ${columns.map(c => `${c}=?`).join(',')} WHERE id=(SELECT profile FROM active_profile WHERE id=1)`).run(...values); }
+  profiles() {
+    return { active: this.profileRow().id, profiles: this.db.prepare('SELECT * FROM profiles ORDER BY rowid').all().map(row => ({ id: row.id, name: row.name, ...Store.roles(row) })) };
+  }
+  // A new profile copies the active one; false when the name is taken.
+  createProfile(name) {
+    if (this.db.prepare('SELECT 1 FROM profiles WHERE name=?').get(name)) return false;
+    const id = randomUUID();
+    this.db.prepare(`INSERT INTO profiles SELECT ?,?,chat_provider,chat_model,chat_effort,smart_provider,smart_model,smart_follow_effort,smart_effort,quick_provider,quick_model,quick_effort FROM profiles WHERE id=(SELECT profile FROM active_profile WHERE id=1)`).run(id, name);
+    return id;
+  }
+  // Never checks model availability: an unavailable role fails visibly when used.
+  activateProfile(id) { return this.db.prepare('UPDATE active_profile SET profile=? WHERE id=1 AND EXISTS(SELECT 1 FROM profiles WHERE id=?)').run(id, id).changes === 1; }
   suggestionSettings() {
-    const row = this.db.prepare('SELECT enabled,provider,model,effort FROM suggestion_settings WHERE id=1').get();
-    return { enabled: row ? !!row.enabled : true, model: row?.model ? { provider: row.provider, model: row.model } : null, effort: row?.model ? row.effort ?? null : null };
+    const row = this.db.prepare('SELECT enabled FROM suggestion_settings WHERE id=1').get();
+    return { enabled: row ? !!row.enabled : true, ...Store.roles(this.profileRow()).quick };
   }
-  smartSettings() {
-    const row = this.db.prepare('SELECT provider,model,follow_effort,effort FROM smart_settings WHERE id=1').get();
-    return { model: row?.model ? { provider: row.provider, model: row.model } : null, followEffort: row ? !!row.follow_effort : true, effort: row && !row.follow_effort ? row.effort ?? null : null };
-  }
+  smartSettings() { return Store.roles(this.profileRow()).smart; }
   saveSmartSettings({ model, followEffort, effort }) {
-    this.db.prepare('INSERT INTO smart_settings(id,provider,model,follow_effort,effort) VALUES(1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,follow_effort=excluded.follow_effort,effort=excluded.effort').run(model?.provider ?? null, model?.model ?? null, +followEffort, followEffort ? null : effort);
+    this.updateProfile(['smart_provider', 'smart_model', 'smart_follow_effort', 'smart_effort'], [model?.provider ?? null, model?.model ?? null, +followEffort, followEffort ? null : effort]);
     return this.smartSettings();
   }
-  chatSettings() { return this.db.prepare('SELECT provider,model,effort FROM chat_settings WHERE id=1').get() ?? null; }
+  chatSettings() { return Store.roles(this.profileRow()).chat; }
   saveChatSettings({ provider, model, effort }) {
-    this.db.prepare('INSERT INTO chat_settings(id,provider,model,effort) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,effort=excluded.effort').run(provider, model, effort);
+    this.updateProfile(['chat_provider', 'chat_model', 'chat_effort'], [provider, model, effort]);
     return this.chatSettings();
   }
   saveSuggestionSettings({ enabled, model, effort }) {
-    this.db.prepare('INSERT INTO suggestion_settings(id,enabled,provider,model,effort) VALUES(1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,provider=excluded.provider,model=excluded.model,effort=excluded.effort').run(+enabled, model?.provider ?? null, model?.model ?? null, model ? effort ?? null : null);
+    this.db.prepare('INSERT INTO suggestion_settings(id,enabled) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled').run(+enabled);
+    this.updateProfile(['quick_provider', 'quick_model', 'quick_effort'], [model?.provider ?? null, model?.model ?? null, model ? effort ?? null : null]);
     return this.suggestionSettings();
   }
   // Strip reply syntax before truncation; the stored messages remain the canonical source.

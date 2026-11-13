@@ -37,9 +37,9 @@ const settings = async () => {
   await b('find', 'text', 'Models', 'click', '--exact');
   await wait(`document.activeElement?.id === 'settings-section-models' && ${dialogText}?.includes("Quick thinking model")`);
 };
-const choose = async (label, option, saved) => {
+const choose = async (label, option, saved, exact = true) => {
   await b('find', 'label', label, 'click');
-  await b('find', 'role', 'option', 'click', '--name', option, '--exact');
+  await b('find', 'role', 'option', 'click', '--name', option, ...exact ? ['--exact'] : []);
   await wait(`${dialogText}?.includes(${JSON.stringify(saved)}) && !${dialogText}?.includes("Saving")`);
 };
 const value = label => ev(`(() => { const l = [...document.querySelectorAll('.settings-page:not([hidden]) label, .settings-page:not([hidden]) [id]')].find(e => e.textContent.trim() === ${JSON.stringify(label)}); const c = l && (document.getElementById(l.htmlFor) || document.querySelector('[aria-labelledby~="' + l.id + '"]')); return c?.textContent.trim() ?? null; })()`);
@@ -54,11 +54,12 @@ try {
   await b('set', 'viewport', '1440', '900');
   await b('open', origin);
   await settings();
-  for (const heading of ['Chat default', 'Smart', 'Quick thinking']) assert.ok(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) h3')].some(h => h.textContent === ${JSON.stringify(heading)})`), heading);
+  assert.deepEqual(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [role=table] [role=rowheader] b')].map(h => h.textContent)`), ['Chat', 'Smart', 'Quick thinking']);
+  assert.equal(await ev(`document.querySelector('.settings-page:not([hidden]) [role=table]').getAttribute('aria-label')`), 'Roles in Default');
   await choose('Chat default model', 'Codex chat', 'Chat defaults saved.');
   await choose('Chat default effort', 'High', 'Chat defaults saved.');
   await wait(`${dialogText}?.includes("Follow chat default (Codex chat)") && ${dialogText}?.includes("Follow chat default (High)")`);
-  check('All three roles are visible; smart follows the changed chat default model and effort dynamically');
+  check('Upgrade/fresh profile "Default" is active; all three roles are visible in one table; smart follows the changed chat default model and effort dynamically');
 
   await choose('Smart effort', 'Low', 'Smart settings saved.');
   assert.deepEqual(store.smartSettings(), { model: null, followEffort: false, effort: 'low' });
@@ -96,6 +97,25 @@ try {
     assert.ok(shown?.includes(expected), `${label}: ${shown}`);
   }
   check('Restarting the server restores every role selection in Settings');
+
+  // Profiles: management UI is TreeTutor-2li.10, so the second profile is created through the store seam.
+  const homeRoles = { chat: { ...store.chatSettings() }, smart: store.smartSettings(), quick: store.suggestionSettings() };
+  const deep = store.createProfile('Deep study');
+  store.activateProfile(deep); store.saveSuggestionSettings({ enabled: true, model: { provider: 'openai', model: 'retired' }, effort: null }); store.activateProfile(store.profiles().profiles[0].id);
+  await b('reload'); await settings();
+  await choose('Model profile', 'Deep study', 'Changes save into Deep study.', false);
+  await wait(`document.querySelector('.settings-page:not([hidden]) [role=table]')?.getAttribute('aria-label') === 'Roles in Deep study' && ${dialogText}?.includes('retired (unavailable)') && ${dialogText}?.includes('Quick thinking model unavailable')`);
+  assert.equal(store.profiles().active, deep);
+  assert.deepEqual(store.suggestionSettings().model, { provider: 'openai', model: 'retired' }, 'an unavailable model is flagged, never replaced');
+  await shot('profile-unavailable-dark-desktop');
+  await choose('Chat default model', 'Codex plain', 'Chat defaults saved.');
+  assert.deepEqual({ ...store.chatSettings() }, { provider: 'codex', model: 'plain', effort: null });
+  await choose('Model profile', 'Default', 'Changes save into Default.', false);
+  await wait(`![...document.querySelectorAll('.settings-page:not([hidden]) [role=alert]')].some(a => a.textContent.includes('unavailable')) && !${dialogText}?.includes('Loading')`);
+  assert.deepEqual({ chat: { ...store.chatSettings() }, smart: store.smartSettings(), quick: store.suggestionSettings() }, homeRoles, 'edits saved into Deep study only');
+  for (const [label, expected] of [['Chat default model', 'Claude chat'], ['Quick thinking model', 'Custom chat']]) assert.ok((await value(label))?.includes(expected), label);
+  assert.equal(calls.length, 0, 'swapping starts no model call');
+  check('Picker swaps all three roles at once; role edits save into the active profile; an unavailable model swaps in flagged and unreplaced');
 
   for (const appearance of ['dark', 'light']) {
     await ev(`localStorage.setItem('treetutor.appearance', '${appearance}'); true`);

@@ -186,7 +186,7 @@ try {
   await tab('Models');
   const before = (await (await fetch(`${origin}/api/settings/suggestions`)).json()).enabled;
   await b('find', 'role', 'switch', 'click', '--name', 'Automatic suggestions');
-  await wait(`${dialog}.textContent.includes('Quick thinking settings saved.')`);
+  await wait(`(s => s && String(s.checked ?? s.getAttribute('aria-checked')) === '${!before}' && !s.disabled)(${dialog}.querySelector('[role=switch]'))`);
   const saved = await (await fetch(`${origin}/api/settings/suggestions`)).json();
   assert.equal(saved.enabled, !before);
   await b('find', 'label', 'Quick thinking model', 'click');
@@ -194,7 +194,7 @@ try {
   await wait(`${dialog}.textContent.includes('Quick thinking settings saved.')`);
   assert.deepEqual((await (await fetch(`${origin}/api/settings/suggestions`)).json()).model, { provider: 'claude', model: 'fixture' });
   connected = false;
-  await b('find', 'role', 'button', 'click', '--name', 'Refresh quick thinking models', '--exact');
+  await b('find', 'role', 'button', 'click', '--name', 'Refresh models', '--exact');
   await wait(`${dialog}.textContent.includes('Could not load models.')`);
   await tab('Connections');
   assert.ok((await text()).includes('sign-in status unavailable'));

@@ -76,6 +76,7 @@ Replies support formatted text, code, math and Mermaid diagrams. Requested video
 | Zoom and fit | Tab to minus, plus or **Fit tree**, then Enter |
 | Fold branches, select a model, expand/collapse chat | Tab to the labeled control, then Enter |
 | Add or remove a custom endpoint | **Map menu → Settings → Connections**, Tab to **Add endpoint** or a row's **Remove**; the model menu's **Custom endpoint settings** focuses Add endpoint directly |
+| Swap model profiles | **Map menu → Settings → Models**, Tab to **Model profile**, Enter, then arrows and Enter; the chat, smart and quick thinking roles below edit the active profile |
 | Select an exact passage | Tab to **Select passage in tutor reply N**, activate it, then hold Shift and use arrows in **Select tutor passage**; Tab to **Ask about selection** |
 | Cancel passage selection / return from chat to map | Escape (close the current selection or form first) |
 | Stop the selected conversation's reply | Tab to **Stop**, then Enter |

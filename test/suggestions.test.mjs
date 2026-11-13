@@ -584,7 +584,7 @@ test('a pre-role suggestion pin migrates to quick thinking with provider-default
   const { DatabaseSync } = await import('node:sqlite');
   new Store(join(dir, 'trees.sqlite')).close();
   const db = new DatabaseSync(join(dir, 'trees.sqlite'));
-  db.exec("CREATE TABLE suggestion_settings_old AS SELECT * FROM suggestion_settings; DROP TABLE suggestion_settings; CREATE TABLE suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT); INSERT INTO suggestion_settings VALUES (1, 0, 'codex', 'fixture-luna'); DROP TABLE suggestion_settings_old");
+  db.exec("CREATE TABLE suggestion_settings_old AS SELECT * FROM suggestion_settings; DROP TABLE suggestion_settings; CREATE TABLE suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT); INSERT INTO suggestion_settings VALUES (1, 0, 'codex', 'fixture-luna'); DROP TABLE suggestion_settings_old; DROP TABLE active_profile; DROP TABLE profiles");
   db.close();
   const env = await start(dir);
   t.after(async () => { await env.close(); });

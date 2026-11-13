@@ -452,6 +452,19 @@ section[role=alert] { background: var(--color-background-body); }
 .settings-keys > div { display: contents; }
 .settings-keys dd { margin: 0; display: flex; gap: var(--spacing-1); justify-content: end; }
 .settings-keys kbd { min-width: 20px; padding: 1px 5px; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); font: 12px/1.4 monospace; text-align: center; }
+/* Models page (mockup Models): profile bar, then one compact row per role; display: contents keeps ARIA rows inside the grid. */
+.settings-profile { padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) var(--spacing-4); border-radius: var(--radius-container); background: var(--color-background-surface); }
+.settings-profile .astryx-selector, .settings-profile > :first-child { min-width: 180px; }
+.settings-roles { display: grid; grid-template-columns: minmax(0, 1fr) 248px 152px; column-gap: var(--spacing-3); }
+.settings-roles [role=cell]:not(.settings-roles__note) { display: flex; align-items: center; }
+.settings-roles__row { display: contents; }
+.settings-roles [role=columnheader] { padding-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.settings-roles [role=rowheader], .settings-roles [role=rowheader] ~ [role=cell] { padding: 10px 0; border-top: thin solid var(--color-border); }
+.settings-roles__role b { display: block; font-weight: 600; }
+.settings-roles__role small { display: block; font-size: 12px; color: var(--color-text-secondary); }
+.settings-roles__note { grid-column: 1 / -1; }
+.settings-roles__note:not(:has(:not(:empty))) { display: none; }
+@media (max-width: 48rem) { .settings-roles { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .settings-roles [role=rowheader] { grid-column: 1 / -1; } .settings-roles [role=rowheader] ~ [role=cell] { border-top: 0; padding-top: 0; } .settings-roles [role=columnheader] { display: none; } }
 /* Settings sections: seams and small-caps labels, not cards (spec, Settings window). */
 .settings-panel h3 { font-size: var(--font-size-base); font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--color-text-secondary); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }

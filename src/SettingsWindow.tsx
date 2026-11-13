@@ -13,6 +13,7 @@ import EndpointSettings from './EndpointSettings';
 import SuggestionSettings from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
 import SmartSettings from './SmartSettings';
+import ModelProfiles, { AutomaticSuggestions } from './ModelProfiles';
 import UsageDashboard from './UsageDashboard';
 import type { Model } from './models';
 import { bubbleTints, type BubbleTint } from './bubbleTint';
@@ -26,7 +27,7 @@ export type SettingsRequest = { tab?: SettingsTab; focus?: string };
 
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
   { id: 'interface', label: 'Interface', description: 'How TreeTutor looks and how you move around it. Saved in this browser.', icon: SwatchIcon },
-  { id: 'models', label: 'Models', description: 'Chat default, smart and quick thinking roles, and concept matching.', icon: CpuChipIcon },
+  { id: 'models', label: 'Models', description: 'A profile holds a model and effort for each role. Swapping profiles changes all three at once.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
   { id: 'usage', label: 'Usage', description: 'Tokens providers reported for replies and suggestions, kept even after content is deleted.', icon: ChartBarIcon },
 ];
@@ -68,7 +69,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
 }) {
   const [tab, setTab] = useState<SettingsTab>('interface');
   const [authError, setAuthError] = useState('');
-  const [chatVersion, setChatVersion] = useState(0);
+  const [chatVersion, setChatVersion] = useState(0), [rolesVersion, setRolesVersion] = useState(0);
   // Scroll to a section (or a control inside it) and focus it; no section means the page title.
   function reveal(target: string) {
     const el = document.querySelector<HTMLElement>(target);
@@ -148,11 +149,15 @@ export default function SettingsWindow({ request, close, api, models, providers,
       </Section>
     </>)}
     {tab === 'models' && group('models', <>
-      <ChatSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} connections={() => showTab('connections')} onSaved={() => setChatVersion(v => v + 1)} />
+      <ModelProfiles api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} connections={() => showTab('connections')} version={rolesVersion}>
+        <ChatSettings api={api} models={models} providers={providers} onSaved={() => { setChatVersion(v => v + 1); setRolesVersion(v => v + 1); }} />
+        <SmartSettings api={api} models={models} providers={providers} chatVersion={chatVersion} onSaved={() => setRolesVersion(v => v + 1)} />
+        <SuggestionSettings api={api} models={models} providers={providers} onSaved={() => setRolesVersion(v => v + 1)} />
+      </ModelProfiles>
       <Divider />
-      <SmartSettings api={api} models={models} providers={providers} chatVersion={chatVersion} />
-      <Divider />
-      <SuggestionSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} />
+      <Section title="Suggestions">
+        <AutomaticSuggestions api={api} />
+      </Section>
       <Divider />
       <Section title="Concept matching" description="Each suggestion call also sends your known concept names so it can match terms to them. A warning appears here when that list passes about 2,000 tokens.">
         {(conceptNameTokens ?? 0) > 2000

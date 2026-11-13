@@ -130,11 +130,11 @@ try {
   check('Dark/light narrow conversation menus and Settings fit without horizontal overflow; screenshot review captured desktop and narrow states');
   await settings();
   connected = false;
-  await b('find', 'role', 'button', 'click', '--name', 'Refresh chat models', '--exact');
+  await b('find', 'role', 'button', 'click', '--name', 'Refresh models', '--exact');
   await wait('document.querySelector(".settings-page:not([hidden])")?.textContent.includes("Saved chat default unavailable")');
   assert.deepEqual({ ...store.chatSettings() }, { provider: 'openai', model: 'chat', effort: null });
   connected = true;
-  await b('find', 'role', 'button', 'click', '--name', 'Refresh chat models', '--exact');
+  await b('find', 'role', 'button', 'click', '--name', 'Refresh models', '--exact');
   await wait('!document.querySelector(".settings-page:not([hidden])")?.textContent.includes("Saved chat default unavailable")');
   check('Unavailable saved defaults show actionable recovery, retain values and recover on refresh');
   writeFileSync('docs/verification/chat-defaults-ui.json', JSON.stringify({ date: new Date().toISOString(), boundary: 'built UI + real HTTP/store + controlled providers, no native inference', checks, result: 'PASS' }, null, 2) + '\n');

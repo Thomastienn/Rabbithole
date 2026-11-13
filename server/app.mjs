@@ -46,6 +46,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     const saved = store.smartSettings(), chat = chatDefault();
     return { ...saved, resolved: { provider: saved.model?.provider ?? chat.provider, model: saved.model ? saved.model.model : chat.model, effort: saved.followEffort ? chat.effort : saved.effort } };
   };
+  // The chat role falls back to the default provider exactly as chatDefault does.
+  const profiles = () => { const list = store.profiles(); return { ...list, profiles: list.profiles.map(p => ({ ...p, chat: p.chat ?? { provider: defaultProvider, model: null, effort: null } })) }; };
   // Accounting boundary for background work: each logical call records once under its own id, with any reported
   // counts even when it fails or stops; an unreported call stays unavailable. Rendering and TTS never pass through here.
   const metered = (provider, task, id, selection) => ({ generate: async (tree, text, emit, saveThread, signal) => {
@@ -243,6 +245,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       if (req.method === 'GET' && url.pathname === '/api/settings/suggestions') return json(res, 200, store.suggestionSettings());
       if (req.method === 'GET' && url.pathname === '/api/settings/chat') return json(res, 200, chatDefault());
       if (req.method === 'GET' && url.pathname === '/api/settings/smart') return json(res, 200, smart());
+      if (req.method === 'GET' && url.pathname === '/api/profiles') return json(res, 200, profiles());
       if (req.method === 'GET' && url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
         if (ids.length > 500) return json(res, 400, { error: 'Too many conversations requested.' });
@@ -309,6 +312,16 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           if (info) try { await desktop.trash(path); } catch { return json(res, 502, { error: 'Could not move the video to the system trash. Nothing was deleted and it stays in your library.' }); }
           store.removeLibraryVideo(id);
           return json(res, 200, { trashed: !!info, missing: !info });
+        }
+        if (url.pathname === '/api/profiles') {
+          const name = typeof body?.name === 'string' ? body.name.trim() : '';
+          if (!name || name.length > 60) return json(res, 400, { error: 'Name the profile (up to 60 characters).' });
+          if (!store.createProfile(name)) return json(res, 409, { error: `A profile named “${name}” already exists. Choose another name.` });
+          return json(res, 200, profiles());
+        }
+        if (url.pathname === '/api/profiles/active') {
+          if (typeof body?.id !== 'string' || !store.activateProfile(body.id)) return json(res, 404, { error: 'Profile not found. Reopen Settings and choose a listed profile.' });
+          return json(res, 200, profiles());
         }
         if (url.pathname === '/api/settings/chat') {
           const selection = { provider: body?.provider, model: body?.model, effort: body?.effort ?? null };
