@@ -13,7 +13,7 @@
 <body>
 <div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="knowledge.html">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html" aria-current="page">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a></nav>
  <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
-<p class="mk-note">Settings is a full page reached from the gear, not a dialog. One scroll holds Interface, Models and Connections; <b>Usage</b> is its own screen.</p>
+<p class="mk-note">Settings is a full page reached from the gear. Each nav item opens its own page (the mock uses #interface, #models, #connections; Usage is <a href="usage.html">usage.html</a>). Edge states sit under the app, in <a href="#states">States</a>. Rule for every screen: one frame per object, never an outline inside an outline.</p>
 <div class="app">
 <header class="band" data-c="Band">
  <a class="band__mark" href="read.html">TreeTutor</a>
@@ -29,39 +29,116 @@
 <div class="ws ws--page"><main class="page">
 <header class="page__head"><div><h1>Settings</h1></div><a class="btn btn--outline" href="read.html"><i class="i i--sm i-arrow-uturn-left"></i>Return to learning tree</a></header>
 <div class="set">
- <nav class="set__nav" aria-label="Settings sections" data-c="SettingsNav"><a href="settings.html#interface" aria-current="page"><i class="i i-swatch"></i>Interface</a><a href="settings.html#models"><i class="i i-cpu-chip"></i>Models</a><a href="settings.html#connections"><i class="i i-link"></i>Connections</a><a href="usage.html#usage"><i class="i i-chart-bar"></i>Usage</a></nav>
- <div>
-  <section class="set__sec" id="interface" data-c="AppearanceSetting"><h2>Appearance</h2><p>Dark, light, or System to follow your operating system. Saved in this browser.</p>
-   <div class="seg" role="radiogroup" aria-label="Appearance" style="justify-self:start"><button aria-pressed="true"><i class="i i--sm i-moon"></i>Dark</button><button aria-pressed="false"><i class="i i--sm i-sun"></i>Light</button><button aria-pressed="false"><i class="i i--sm i-computer-desktop"></i>System</button></div></section>
-  <section class="set__sec" data-c="BubbleTint"><h2>Question bubbles</h2><p>Choose a tint for your questions. Saved in this browser; follows your appearance.</p>
-   <div class="swatches" role="radiogroup" aria-label="Bubble tint">
-    <label><input class="sr" type="radio" name="tint" checked><i></i>Neutral</label>
-    <label><input class="sr" type="radio" name="tint"><i style="--tint:color-mix(in oklab, var(--ink-1) 30%, transparent)"></i>Amber</label>
-    <label><input class="sr" type="radio" name="tint"><i style="--tint:color-mix(in oklab, var(--ink-2) 30%, transparent)"></i>Leaf</label>
-    <label><input class="sr" type="radio" name="tint"><i style="--tint:color-mix(in oklab, var(--ink-3) 30%, transparent)"></i>Rust</label>
-    <label><input class="sr" type="radio" name="tint"><i style="--tint:color-mix(in oklab, var(--ink-4) 30%, transparent)"></i>Lichen</label></div>
-   <p class="q" aria-label="Question bubble preview">How does this connect to what I already know?</p></section>
-  <section class="set__sec" data-c="VimBindings"><h2>Vim canvas bindings</h2>
-   <label class="choice"><input type="checkbox"><span>Use letter keys on the map<small>With the map or a conversation node focused, h j k l act as arrows; = + - zoom; f fits the tree.</small></span></label></section>
-  <section class="set__sec" data-c="MapHelp"><h2>Map help</h2>
-   <table class="table"><tbody><tr><td>Move between conversation nodes</td><td><span class="kbd">←</span> <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">→</span></td></tr><tr><td>Open the focused conversation</td><td><span class="kbd">Enter</span></td></tr><tr><td>Fold or unfold branches</td><td><span class="kbd">Space</span></td></tr><tr><td>Fit the tree</td><td><span class="kbd">F</span></td></tr></tbody></table></section>
+ <nav class="set__nav" aria-label="Settings sections" data-c="SettingsNav"><a href="settings.html#interface" aria-current="page"><i class="i i-swatch"></i>Interface</a><a href="settings.html#models"><i class="i i-cpu-chip"></i>Models</a><a href="settings.html#connections"><i class="i i-link"></i>Connections</a><a href="usage.html"><i class="i i-chart-bar"></i>Usage</a></nav>
+ <div class="set__pages">
 
-  <section class="set__sec" id="models" data-c="ChatDefaults"><h2>Chat default</h2><p>Starts new learning trees. Branches inherit their parent's model and effort.</p>
-   <div class="set__grid"><label class="field"><span>Chat default model</span><select class="select"><option>Claude · Opus 4</option></select></label><label class="field"><span>Chat default effort</span><select class="select"><option>High</option></select></label></div><button class="btn btn--sm" style="justify-self:start"><i class="i i--sm i-arrow-path"></i>Refresh chat models</button></section>
-  <section class="set__sec" data-c="SmartSettings"><h2>Smart</h2><p>Writes visuals and plans videos.</p><div class="set__grid"><label class="field"><span>Smart model</span><select class="select"><option>Follow chat default</option></select></label><label class="field"><span>Smart effort</span><select class="select"><option>Provider default</option></select></label></div><p>Provider default leaves effort to the provider.</p></section>
-  <section class="set__sec" data-c="QuickThinkingSettings"><h2>Quick thinking</h2><p>Picks suggestions and prepares context for branches.</p>
-   <label class="choice"><input type="checkbox" checked><span>Automatic suggestions<small>Runs saved-reply suggestions in the background.</small></span></label>
-   <div class="set__grid"><label class="field"><span>Quick thinking model</span><select class="select"><option>Claude · Haiku 4</option></select></label><label class="field"><span>Quick thinking effort</span><select class="select"><option>Low</option></select></label></div></section>
-  <section class="set__sec" data-c="ConceptMatchingNotice"><h2>Concept matching</h2><p>Concept matching cost is within the normal range.</p></section>
+ <!-- ============ Interface ============ -->
+ <section class="set__page" id="interface" aria-labelledby="h-interface" data-c="InterfacePage">
+  <header class="set__head"><h2 id="h-interface">Interface</h2><p>How TreeTutor looks and how you move around it. Saved in this browser.</p></header>
+  <div class="set__group">
+   <div class="row" data-c="AppearanceSetting"><div class="row__text"><b>Appearance</b><small>System follows your operating system.</small></div>
+    <div class="seg" role="radiogroup" aria-label="Appearance"><button aria-pressed="true"><i class="i i--sm i-moon"></i>Dark</button><button aria-pressed="false"><i class="i i--sm i-sun"></i>Light</button><button aria-pressed="false"><i class="i i--sm i-computer-desktop"></i>System</button></div></div>
+   <div data-c="ThemeSetting" style="padding-top:8px"><div class="row__text"><b>Theme</b><small>Colours for the whole app, including your question bubbles and the four branch inks. Shown in your appearance's variant.</small></div>
+    <div class="themes" role="radiogroup" aria-label="Theme">
+    <label class="theme"><input class="sr" type="radio" name="theme" checked><span class="theme__tile" style="--t-ground:light-dark(#f2eee5,#1a1613);--t-bubble:light-dark(#1f1a151a,#efe6d61f);--t-text:light-dark(#1f1a15,#efe6d6)" aria-hidden="true"><i class="theme__q"></i><i class="theme__line"></i><span class="theme__inks"><i style="background:light-dark(#46642a,#9dba6e)"></i><i style="background:light-dark(#85600c,#dfae4e)"></i><i style="background:light-dark(#46642a,#9dba6e)"></i><i style="background:light-dark(#9a4a22,#d68560)"></i><i style="background:light-dark(#27685f,#86b8ae)"></i></span></span><span class="theme__name">Paperback<i class="i i--sm i-check"></i></span></label>
+    <label class="theme"><input class="sr" type="radio" name="theme"><span class="theme__tile" style="--t-ground:light-dark(#eaf0e3,#121a14);--t-bubble:light-dark(#17251a1a,#e3ecd91f);--t-text:light-dark(#1f1a15,#efe6d6)" aria-hidden="true"><i class="theme__q"></i><i class="theme__line"></i><span class="theme__inks"><i style="background:light-dark(#3b6629,#a6c77a)"></i><i style="background:light-dark(#7a5c10,#d9b25a)"></i><i style="background:light-dark(#3b6629,#9cc47a)"></i><i style="background:light-dark(#93405a,#de8aa3)"></i><i style="background:light-dark(#1f6461,#7fbfb8)"></i></span></span><span class="theme__name">Forest</span></label>
+    <label class="theme"><input class="sr" type="radio" name="theme"><span class="theme__tile" style="--t-ground:light-dark(#e6ebf1,#121821);--t-bubble:light-dark(#1a24331a,#dde5ee1f);--t-text:light-dark(#1f1a15,#efe6d6)" aria-hidden="true"><i class="theme__q"></i><i class="theme__line"></i><span class="theme__inks"><i style="background:light-dark(#1f6b6b,#6cc4bd)"></i><i style="background:light-dark(#7a5c10,#d9b25a)"></i><i style="background:light-dark(#2c6a4c,#8cc7a5)"></i><i style="background:light-dark(#9a3f45,#e8948f)"></i><i style="background:light-dark(#3a5a8c,#9ab4e0)"></i></span></span><span class="theme__name">Harbor</span></label>
+    <label class="theme"><input class="sr" type="radio" name="theme"><span class="theme__tile" style="--t-ground:light-dark(#f0e8f0,#18121b);--t-bubble:light-dark(#2a1a2e1a,#ece0ef1f);--t-text:light-dark(#1f1a15,#efe6d6)" aria-hidden="true"><i class="theme__q"></i><i class="theme__line"></i><span class="theme__inks"><i style="background:light-dark(#6a3fa0,#c3a3ec)"></i><i style="background:light-dark(#7d5a12,#ddb35e)"></i><i style="background:light-dark(#3f6633,#a3c58a)"></i><i style="background:light-dark(#8a3a6e,#dd8cc4)"></i><i style="background:light-dark(#5246a0,#aea8ee)"></i></span></span><span class="theme__name">Dusk</span></label>
+    <label class="theme"><input class="sr" type="radio" name="theme"><span class="theme__tile" style="--t-ground:light-dark(#f1e5da,#1f1511);--t-bubble:light-dark(#35241c1a,#f2e3d41f);--t-text:light-dark(#1f1a15,#efe6d6)" aria-hidden="true"><i class="theme__q"></i><i class="theme__line"></i><span class="theme__inks"><i style="background:light-dark(#9b4328,#e49b75)"></i><i style="background:light-dark(#795814,#e3ba65)"></i><i style="background:light-dark(#65533c,#c3b396)"></i><i style="background:light-dark(#96402b,#e5a183)"></i><i style="background:light-dark(#605451,#bfb1aa)"></i></span></span><span class="theme__name">Ember</span></label>
+    <label class="theme"><input class="sr" type="radio" name="theme"><span class="theme__tile" style="--t-ground:light-dark(#e9e9e9,#161616);--t-bubble:light-dark(#2424241a,#e5e5e51f);--t-text:light-dark(#1f1a15,#efe6d6)" aria-hidden="true"><i class="theme__q"></i><i class="theme__line"></i><span class="theme__inks"><i style="background:light-dark(#2455bf,#8cabff)"></i><i style="background:light-dark(#444444,#bebebe)"></i><i style="background:light-dark(#505050,#cccccc)"></i><i style="background:light-dark(#5a5a5a,#a9a9a9)"></i><i style="background:light-dark(#626262,#dedede)"></i></span></span><span class="theme__name">Graphite</span></label>
+    </div></div>
+  </div>
+  <div class="set__group" data-c="KeyboardSettings">
+   <h3 class="set__label">Keyboard</h3>
+   <label class="row"><span class="row__text"><b>Vim canvas bindings</b><small>With the map or a conversation node focused: h j k l move, H J K L move farther, = + − zoom, f fits the tree. Never while typing.</small></span><input type="checkbox" aria-label="Vim canvas bindings"></label>
+   <div class="keys" role="table" aria-label="Map keys"><span>Pan the map, or move the focused conversation</span><span><span class="kbd">←</span> <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">→</span></span><span>Move farther</span><span><span class="kbd">Shift</span> + arrows</span><span>Open the focused conversation</span><span><span class="kbd">Enter</span></span><span>Fold or unfold branches</span><span><span class="kbd">Space</span></span><span>Close Settings</span><span><span class="kbd">Esc</span></span></div>
+  </div>
+ </section>
 
-  <section class="set__sec" id="connections" data-c="Connections"><h2>Connections</h2>
-   <div class="conn"><h3>Claude <span class="state state--on"><i class="i i--sm i-check-circle"></i>Signed in</span></h3><p>Uses your own Claude plan through Claude Code on this computer.</p><button class="btn btn--outline">Check Claude sign-in</button></div>
-   <div class="conn"><h3>Codex <span class="state">Not connected</span></h3><p>Uses your own ChatGPT plan.</p><button class="btn btn--outline">Continue with ChatGPT</button></div>
-   <div class="conn" data-c="EndpointSettings"><h3>Custom endpoint <span class="state state--on"><i class="i i--sm i-check-circle"></i>Saved</span></h3><p>An endpoint is saved. The saved key is never shown.</p><button class="btn btn--danger">Remove</button></div>
-   <div class="set__grid"><label class="field"><span>Base URL</span><input class="input" value="http://localhost:11434/v1"></label><label class="field"><span>API key</span><input class="input" type="password" placeholder="Leave empty to keep the saved key"></label></div>
-   <div style="display:flex;gap:8px"><button class="btn btn--outline">Test connection</button><button class="btn btn--primary">Save</button></div></section>
+ <!-- ============ Models ============ -->
+ <section class="set__page" id="models" aria-labelledby="h-models" data-c="ModelsPage">
+  <header class="set__head"><h2 id="h-models">Models</h2><p>A profile holds a model and effort for each role. Swapping profiles changes all three at once.</p></header>
+  <div class="set__group">
+   <div class="profile" data-c="ProfileBar">
+    <button class="profile__pick" aria-haspopup="listbox" data-c="ProfilePicker">Everyday<i class="i i--sm i-chevron-down"></i></button>
+    <span class="muted">New learning trees, visuals and suggestions use this profile. Conversations you already started keep their model.</span>
+    <button class="btn btn--icon" aria-label="New profile" title="New profile"><i class="i i-plus"></i></button>
+    <button class="btn btn--icon" aria-label="Profile actions: rename, duplicate, delete" style="margin-left:0" data-c="ProfileMenuButton"><i class="i i-ellipsis-horizontal"></i></button>
+   </div>
+   <div class="roles" role="table" aria-label="Roles in Everyday" data-c="RoleTable" style="margin-top:16px">
+    <span class="roles__h" role="columnheader">Role</span><span class="roles__h" role="columnheader">Model</span><span class="roles__h" role="columnheader">Effort</span>
+    <div class="roles__cell" role="rowheader"><b>Chat</b><small>Answers your questions in new learning trees</small></div>
+    <div class="roles__cell"><select class="select" aria-label="Chat model"><optgroup label="Claude"><option selected>Opus 4</option><option>Sonnet 4</option></optgroup><optgroup label="Local llama"><option>qwen3:32b</option></optgroup></select></div>
+    <div class="roles__cell"><select class="select" aria-label="Chat effort"><option>High</option></select></div>
+    <div class="roles__cell" role="rowheader"><b>Smart</b><small>Writes visuals and plans videos</small></div>
+    <div class="roles__cell"><select class="select" aria-label="Smart model"><option selected>Follow chat (Opus 4)</option></select></div>
+    <div class="roles__cell"><select class="select" aria-label="Smart effort"><option>Follow chat</option></select></div>
+    <div class="roles__cell" role="rowheader"><b>Quick thinking</b><small>Picks suggestions and prepares branch context</small></div>
+    <div class="roles__cell"><select class="select" aria-label="Quick thinking model"><option selected>Claude · Haiku 4</option></select></div>
+    <div class="roles__cell"><select class="select" aria-label="Quick thinking effort"><option>Low</option></select></div>
+   </div>
+   <p class="set__note" style="margin-top:8px">Changes save into Everyday. Provider default leaves effort to the provider. <button class="btn btn--sm btn--text"><i class="i i--sm i-arrow-path"></i>Refresh models</button></p>
+  </div>
+  <div class="set__group">
+   <h3 class="set__label">Suggestions</h3>
+   <label class="row" data-c="AutomaticSuggestions"><span class="row__text"><b>Automatic suggestions</b><small>Underlines terms worth a branch after each reply. Applies to every profile.</small></span><input type="checkbox" checked aria-label="Automatic suggestions"></label>
+   <div class="row" data-c="ConceptMatchingNotice"><div class="row__text"><b>Concept matching</b><small>Each suggestion call also sends your known concept names. A warning appears here past about 2,000 tokens.</small></div><span class="state state--on"><i class="i i--sm i-check-circle"></i>About 640 tokens</span></div>
+  </div>
+ </section>
+
+ <!-- ============ Connections ============ -->
+ <section class="set__page" id="connections" aria-labelledby="h-connections" data-c="ConnectionsPage">
+  <header class="set__head"><h2 id="h-connections">Connections</h2><p>Providers that answer your questions. Learning trees stay on this computer; each question goes to the provider of the model you picked.</p></header>
+  <div class="set__group">
+   <h3 class="set__label">Subscriptions</h3>
+   <div class="prov" data-c="ClaudeConnection"><h3>Claude <span class="state state--on"><i class="i i--sm i-check-circle"></i>Signed in</span></h3><p>Your Claude plan, through Claude Code on this computer.</p><div class="prov__act"><button class="btn btn--sm">Check sign-in</button></div></div>
+   <div class="prov" data-c="CodexConnection"><h3>Codex <span class="state">Not connected</span></h3><p>Your ChatGPT plan.</p><div class="prov__act"><button class="btn btn--outline">Continue with ChatGPT</button></div></div>
+  </div>
+  <div class="set__group" data-c="CustomEndpoints">
+   <h3 class="set__label">Custom endpoints<button class="btn btn--sm btn--outline"><i class="i i--sm i-plus"></i>Add endpoint</button></h3>
+   <p class="set__note">OpenAI-compatible APIs. Each appears under its own name wherever you choose a model. Requests, including discussion and inherited context, go to that endpoint and are billed by its owner.</p>
+   <div class="prov" data-c="EndpointRow"><h3>Local llama <span class="url">http://127.0.0.1:11434/v1</span></h3><p><span class="state state--on"><i class="i i--sm i-check-circle"></i>12 models listed</span> · tested today, 09:12</p>
+    <div class="prov__act"><button class="btn btn--sm">Test</button><button class="btn btn--sm btn--icon" aria-label="Edit Local llama"><i class="i i--sm i-pencil-square"></i></button><button class="btn btn--sm btn--icon btn--remove" aria-label="Remove Local llama"><i class="i i--sm i-trash"></i></button></div></div>
+   <form class="ep-form" aria-label="Edit OpenRouter" data-c="EndpointForm (editing)">
+    <h3>Edit OpenRouter</h3>
+    <label class="field"><span>Name</span><input class="input" value="OpenRouter"><small>Shown in model menus. Renaming keeps every conversation and profile linked.</small></label>
+    <label class="field"><span>Base URL</span><input class="input" value="https://openrouter.ai/api/v2"><small class="warn">URL changed: enter the key again so it never reaches a new host unasked.</small></label>
+    <label class="field field--wide"><span>API key</span><input class="input" type="password" placeholder="Required because the URL changed"><small>Stored in an owner-only file on this computer. The saved key is never shown.</small></label>
+    <div class="ep-form__act"><button class="btn btn--primary" disabled>Save</button><button class="btn">Cancel</button><span class="muted">Test runs after saving. It lists models and sends no chat message.</span></div>
+   </form>
+   <div class="prov" data-c="EndpointRow"><h3>Work gateway <span class="url">https://llm.internal.example/v1</span></h3><p><span class="state">Not tested</span></p>
+    <div class="prov__act"><button class="btn btn--sm">Test</button><button class="btn btn--sm btn--icon" aria-label="Edit Work gateway"><i class="i i--sm i-pencil-square"></i></button><button class="btn btn--sm btn--icon btn--remove" aria-label="Remove Work gateway"><i class="i i--sm i-trash"></i></button></div></div>
+  </div>
+ </section>
  </div>
 </div>
 </main></div></div>
+
+<!-- ============ States (mock only) ============ -->
+<main class="page" id="states" aria-label="Settings states">
+<header class="page__head"><div><h1>States</h1><p>Settings beyond the normal case. Mock only: these sit outside the app frame so agents can see each one.</p></div></header>
+<div class="sheet">
+ <section class="spec"><h2>No custom endpoints</h2><p>Connections before any endpoint is added.</p>
+  <div class="stage"><div class="empty" style="width:100%"><b>No custom endpoints yet</b><span>Add one to use a local or OpenAI-compatible model.</span><button class="btn btn--primary"><i class="i i--sm i-plus"></i>Add endpoint</button></div></div></section>
+ <section class="spec"><h2>Adding an endpoint</h2><p>Opens in place at the top of the list. Save needs all three fields.</p>
+  <div class="stage"><form class="ep-form" style="width:100%;margin:0"><h3>New endpoint</h3><label class="field"><span>Name</span><input class="input" placeholder="For example, Local llama"></label><label class="field"><span>Base URL</span><input class="input" placeholder="http://127.0.0.1:8080/v1"></label><label class="field field--wide"><span>API key</span><input class="input" type="password"><small>Use HTTPS for remote endpoints.</small></label><div class="ep-form__act"><button class="btn btn--primary" disabled>Save</button><button class="btn">Cancel</button></div></form></div></section>
+ <section class="spec"><h2>Name already used</h2><p>Names label model menus, so they are unique.</p>
+  <div class="stage"><label class="field" style="width:100%;max-width:none"><span>Name</span><input class="input is-error" value="Local llama"><small class="err">Another endpoint is called Local llama. Choose a different name.</small></label></div></section>
+ <section class="spec"><h2>Test failed</h2><p>Stays until the next test or save.</p>
+  <div class="stage"><div class="prov" style="width:100%"><h3>Work gateway <span class="url">https://llm.internal.example/v1</span></h3><p><span class="state state--off"><i class="i i--sm i-exclamation-triangle"></i>Test failed</span> · the endpoint refused the key (401). Edit the endpoint and enter the key again.</p><div class="prov__act"><button class="btn btn--sm">Test again</button></div></div></div></section>
+ <section class="spec"><h2>Remove endpoint</h2><p>Confirm before removing. Deletion is outlined neutral, 32px from Cancel.</p>
+  <div class="stage"><div class="pop dialog" role="alertdialog" aria-labelledby="rm-h"><h2 id="rm-h">Remove OpenRouter?</h2><p>Its saved key is deleted. Conversations and profiles that use its models keep their content, but those models show as unavailable until you choose another.</p><div class="dialog__actions"><button class="btn">Cancel</button><button class="btn btn--outline" style="margin-left:32px">Remove</button></div></div></div></section>
+ <section class="spec"><h2>Profile menu</h2><p>The ⋯ beside the profile picker. Delete is unavailable on the last profile.</p>
+  <div class="stage"><div class="pop menu"><div class="menu__item"><i class="i i--sm i-pencil-square"></i>Rename</div><div class="menu__item"><i class="i i--sm i-rectangle-stack"></i>Duplicate</div><hr><div class="menu__item is-off"><i class="i i--sm i-trash"></i><span>Delete<small>Keep at least one profile</small></span></div></div></div></section>
+ <section class="spec"><h2>Profile picker open</h2><p>One click swaps all three roles.</p>
+  <div class="stage"><div class="pop menu"><div class="menu__h">Profiles</div><div class="menu__item"><span>Everyday<small>Opus 4 · Opus 4 · Haiku 4</small></span><i class="i i--sm i-check"></i></div><div class="menu__item is-hover"><span>Deep study<small>Opus 4 high · Opus 4 · Sonnet 4</small></span></div><div class="menu__item"><span>Offline<small>Local llama qwen3:32b · follows chat · Local llama qwen3:8b</small></span></div><hr><div class="menu__item"><i class="i i--sm i-plus"></i>New profile</div></div></div></section>
+ <section class="spec"><h2>New or renamed profile</h2><p>The picker becomes a name field in place.</p>
+  <div class="stage"><div class="profile" style="width:100%"><input class="input" value="Deep study" aria-label="Profile name" style="max-width:220px"><button class="btn btn--primary">Save</button><button class="btn">Cancel</button></div></div></section>
+ <section class="spec spec--wide"><h2>Role with a missing model</h2><p>The profile still swaps. The role fails visibly when used and never falls back to another model.</p>
+  <div class="stage"><div class="roles" style="width:100%;max-width:640px"><span class="roles__h">Role</span><span class="roles__h">Model</span><span class="roles__h">Effort</span>
+   <div class="roles__cell"><b>Chat</b><small>Answers your questions in new learning trees</small></div><div class="roles__cell is-error"><select class="select" aria-label="Chat model"><option>OpenRouter · deepseek-r1 (unavailable)</option></select></div><div class="roles__cell"><select class="select" aria-label="Chat effort" disabled><option>Provider default</option></select></div>
+   <p class="roles__err" role="alert"><i class="i i--sm i-exclamation-triangle"></i><span>OpenRouter was removed. New learning trees cannot start until you choose an available chat model.</span></p></div></div></section>
+</div>
+</main>
 </body>
 </html>

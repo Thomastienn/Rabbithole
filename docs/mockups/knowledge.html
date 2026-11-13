@@ -14,6 +14,7 @@
 <div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="knowledge.html" aria-current="page">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a></nav>
  <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
 
+<p class="mk-note">Topics are few and broad (Biology, not Fungi and Plant nutrition): the quick thinking model reuses a known topic unless none fits. Each topic is one soft region with a plain label; no label chips, no outlines on concepts or the detail panel.</p>
 <div class="app">
 <header class="band" data-c="Band">
  <a class="band__mark" href="read.html">TreeTutor</a>
@@ -32,15 +33,14 @@
 <div class="kg">
  <div>
   <div class="kg__field" data-c="KnowledgeGraph">
-   <svg aria-hidden="true"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="var(--muted)"/></marker></defs>
+   <svg aria-hidden="true"><rect class="region" x="2.5%" y="16" width="95%" height="300" rx="24"/><rect class="region" x="2.5%" y="360" width="95%" height="184" rx="24"/><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="var(--muted)"/></marker></defs>
     <path class="link link--focus" d="M133 76 H216"/><path class="link link--builds" d="M328 76 H420"/>
     <path class="link" d="M270 92 C270 170 120 170 120 240"/><path class="link link--builds" d="M206 256 H268"/>
     <path class="link" d="M94 420 C94 350 120 330 120 272"/><path class="link" d="M148 436 H216"/><path class="link link--builds" d="M349 436 H444"/></svg>
-   <span class="kg__topic abs" style="left:24px;top:24px">Fungi</span>
+   <span class="kg__topic abs" style="left:32px;top:28px">Biology <small>· 6 concepts</small></span>
    <button class="concept abs concept--focus" style="left:40px;top:60px" data-c="Concept"><i class="fam"></i>Hyphae</button><button class="concept abs" style="left:216px;top:60px" data-c="Concept"><i class="fam fam--some"></i>Mycorrhiza</button><button class="concept abs" style="left:420px;top:60px" data-c="Concept"><i class="fam"></i>Arbuscule</button>
-   <span class="kg__topic abs" style="left:24px;top:204px">Plant nutrition</span>
-   <button class="concept abs" style="left:40px;top:240px" data-c="Concept"><i class="fam fam--some"></i>Phosphorus uptake</button><button class="concept abs" style="left:268px;top:240px" data-c="Concept"><i class="fam fam--full"></i>Carbon fixing</button><button class="concept abs" style="left:450px;top:240px" data-c="Concept"><i class="fam fam--full"></i>Root hair</button>
-   <span class="kg__topic abs" style="left:24px;top:384px">Ecology</span>
+      <button class="concept abs" style="left:40px;top:240px" data-c="Concept"><i class="fam fam--some"></i>Phosphorus uptake</button><button class="concept abs" style="left:268px;top:240px" data-c="Concept"><i class="fam fam--full"></i>Carbon fixing</button><button class="concept abs" style="left:450px;top:240px" data-c="Concept"><i class="fam fam--full"></i>Root hair</button>
+   <span class="kg__topic abs" style="left:32px;top:376px">Ecology <small>· 3 concepts</small></span>
    <button class="concept abs" style="left:40px;top:420px" data-c="Concept"><i class="fam fam--some"></i>Mutualism</button><button class="concept abs" style="left:216px;top:420px" data-c="Concept"><i class="fam"></i>Partner choice</button><button class="concept abs" style="left:444px;top:420px" data-c="Concept"><i class="fam fam--full"></i>Symbiosis</button>
   </div>
   <div class="key" style="margin-top:12px" data-c="FamiliarityKey"><span><i class="fam"></i>Unfamiliar</span><span><i class="fam fam--some"></i>Some familiarity</span><span><i class="fam fam--full"></i>Familiar</span>

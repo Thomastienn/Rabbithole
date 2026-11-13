@@ -53,6 +53,14 @@ The model that answers learner messages in a conversation. Its Settings default 
 **Smart model**:
 The learner-chosen model for visuals and private video scripting, scene planning and animation code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
 
+**Model profile**:
+A named set of model choices the learner can swap between: a model and effort for the chat model default, the smart model and the quick thinking model.
+_Avoid_: Agent, agent profile, preset
+
+**Custom endpoint**:
+A learner-added, named OpenAI-compatible provider. The learner can add several, and each appears under its own name wherever models are chosen.
+_Avoid_: OpenAI provider, endpoint (alone)
+
 **Effort**:
 The supported reasoning setting chosen for a model role or conversation. It is independent of model selection; it does not promise a particular response quality or measured amount of computation.
 
@@ -65,7 +73,7 @@ One thing the learner can know, such as "Peterson's algorithm"; shown as a point
 _Avoid_: Term, skill, node
 
 **Topic**:
-A named group of related concepts, such as "Concurrency". A concept can belong to several topics.
+A broad, named group of related concepts, such as "Concurrency". Topics stay general and few; narrow ones are merged into broader ones. A concept belongs to one or two topics.
 _Avoid_: Section, category, area
 
 **Concept link**:
