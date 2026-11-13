@@ -18,6 +18,8 @@ export const themeChoices = [
   { id: 'forest', label: 'Forest' },
   { id: 'harbor', label: 'Harbor' },
   { id: 'dusk', label: 'Dusk' },
+  { id: 'ember', label: 'Ember' },
+  { id: 'graphite', label: 'Graphite' },
 ] as const;
 
 export type ThemeChoice = typeof themeChoices[number]['id'];

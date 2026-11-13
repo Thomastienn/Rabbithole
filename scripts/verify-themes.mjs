@@ -55,11 +55,11 @@ try {
   step('fresh theme storage opens Paperback');
 
   await openInterface();
-  assert.deepEqual(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [data-theme-swatch]')].map(s => s.dataset.themeSwatch)`), ['paperback', 'forest', 'harbor', 'dusk']);
+  assert.deepEqual(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [data-theme-swatch]')].map(s => s.dataset.themeSwatch)`), ['paperback', 'forest', 'harbor', 'dusk', 'ember', 'graphite']);
   // Each swatch card wears its own theme: different accent and ink dots, the bubble in the chosen tint.
   const cards = await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [data-theme-swatch]')].map(s => [...s.children].map(i => getComputedStyle(i).backgroundColor))`);
   for (const card of cards) assert.equal(card.length, 6, 'bubble, accent and four branch inks');
-  assert.equal(new Set(cards.map(card => JSON.stringify(card))).size, 4, 'cards show each theme’s own bubble, accent and inks');
+  assert.equal(new Set(cards.map(card => JSON.stringify(card))).size, 6, 'cards show each theme’s own bubble, accent and inks');
   await shot('settings-paperback-light');
   await pick('Forest');
   await wait(`document.documentElement.getAttribute('data-astryx-theme') === 'forest'`);
@@ -104,6 +104,8 @@ try {
   for (const [id, label, light, dark] of [
     ['harbor', 'Harbor', 'rgb(243, 246, 249)', 'rgb(26, 34, 45)'],
     ['dusk', 'Dusk', 'rgb(248, 243, 248)', 'rgb(33, 25, 38)'],
+    ['ember', 'Ember', 'rgb(251, 245, 238)', 'rgb(43, 30, 24)'],
+    ['graphite', 'Graphite', 'rgb(247, 247, 247)', 'rgb(32, 32, 32)'],
   ]) {
     for (const [mode, expected] of [['light', light], ['dark', dark]]) {
       await pick(mode === 'light' ? 'Light' : 'Dark');
