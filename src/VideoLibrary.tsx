@@ -3,7 +3,7 @@ import { VStack, HStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
-import { FolderOpenIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, FolderOpenIcon, TrashIcon } from '@heroicons/react/24/outline';
 import VideoCard from './VideoCard';
 
 // Library rows carry no conversation, discussion text or production details.
@@ -40,20 +40,22 @@ export default function VideoLibrary({ api, activity }: { api: (path: string, bo
     catch (e) { if (current === version.current) setError((e as Error).message); }
   }
   useEffect(() => { void load(); return () => { version.current++; }; }, [activity]);
-  return <VStack padding={5} gap={5} className="knowledge-content">
+  return <VStack gap={5} className="knowledge-content">
     <VStack gap={2}>
-      <HStack gap={3} hAlign="between" vAlign="center" wrap="wrap"><Heading level={1}>Videos</Heading><Button id="refresh-videos" label="Refresh Videos" variant="ghost" size="sm" onClick={() => void load()} /></HStack>
-      <Text color="secondary">Every saved video from your learning trees. Videos stay here after you delete the conversation they came from.</Text>
+      <HStack gap={4} vAlign="end" wrap="wrap" className="library-head">
+        <VStack gap={2}><Heading level={1}>Videos</Heading><Text color="secondary" className="library-intro">Every saved video from your learning trees. Videos stay here after you delete the conversation they came from.</Text></VStack>
+        <Button id="refresh-videos" label="Refresh Videos" variant="secondary" icon={<ArrowPathIcon />} onClick={() => void load()} />
+      </HStack>
       {error && <Text role="alert">{error}</Text>}
       <Text role="status" color="secondary">{notice}</Text>
       {!videos && !error && <Text role="status">Loading videos…</Text>}
       {videos && !videos.length && <Text color="secondary">No saved videos yet. Ask the tutor for a video in any conversation.</Text>}
     </VStack>
     {!!videos?.length && <section className="video-library" aria-label="Saved videos">
-      {videos.map(v => <VideoCard key={v.id} artifact={{ ...v, status: 'ready', conversation: '' }} media={`/api/videos/${v.id}/media`} actions={<HStack gap={2} wrap="wrap">
+      {videos.map(v => <VideoCard key={v.id} artifact={{ ...v, status: 'ready', conversation: '' }} media={`/api/videos/${v.id}/media`} actions={<>
         {v.available !== false && <Button label="Show in folder" variant="ghost" size="sm" icon={<FolderOpenIcon />} aria-label={`Show “${v.title}” in folder`} onClick={() => void reveal(v)} />}
         <Button label={v.available === false ? 'Remove from Videos' : 'Move to trash'} variant="ghost" size="sm" icon={<TrashIcon />} aria-label={`${v.available === false ? 'Remove' : 'Move'} “${v.title}” ${v.available === false ? 'from Videos' : 'to the system trash'}`} onClick={() => { setTrashError(''); setTrashing(v); }} />
-      </HStack>} />)}
+      </>} />)}
     </section>}
     <AlertDialog isOpen={!!trashing} onOpenChange={open => { if (!open && !busy) setTrashing(undefined); }} title={trashing?.available === false ? `Remove “${trashing?.title ?? ''}” from Videos?` : `Move “${trashing?.title ?? ''}” to the trash?`}
       description={`${trashing?.available === false ? 'Its saved file is already missing, so only the library entry is removed.' : 'The video file moves to your system trash, where you can restore it.'} Your usage history is kept, and TreeTutor will not regenerate it.${trashError ? ` ${trashError}` : ''}`}

@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { VStack } from '@astryxdesign/core/Layout';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { ArrowPathIcon, CheckIcon, FilmIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowsPointingOutIcon, CheckIcon, FilmIcon } from '@heroicons/react/24/outline';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import type { Artifact } from './artifacts';
 import { STEPS, elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
@@ -48,9 +48,10 @@ export default function VideoCard({ artifact, inline = false, onAction, media = 
     <Heading level={3} id={`${id}-title`} className={state === 'ready' || drafting ? undefined : 'sr-only'}>{artifact.title}</Heading>
     {artifact.description && state === 'ready' && <Text id={`${id}-description`}>{artifact.description}</Text>}
   </VStack>;
-  return <section className={`video-card ${inline ? 'video-inline' : 'diagram-card'}`} tabIndex={inline ? -1 : undefined} aria-live="off" aria-labelledby={`${id}-title`} aria-describedby={artifact.description ? `${id}-description` : undefined} data-artifact={artifact.id} data-state={state}>
-    <VStack gap={inline ? 2 : 3} padding={inline ? 0 : 3}>
-      {!inline && <Heading level={3} id={`${id}-title`}>{artifact.title}</Heading>}
+  const open = state === 'ready' && <Button key="action" label="Open large" variant="ghost" size="sm" icon={<ArrowsPointingOutIcon />} aria-label={`Open large: ${artifact.title}`} clickAction={() => setEnlarged(true)} />;
+  // Library cards (mockup Videos): frame first, then title, description and an action row that leads with Open large.
+  return <section className={`video-card ${inline ? 'video-inline' : 'video-volume'}`} tabIndex={inline ? -1 : undefined} aria-live="off" aria-labelledby={`${id}-title`} aria-describedby={artifact.description ? `${id}-description` : undefined} data-artifact={artifact.id} data-state={state}>
+    <VStack gap={2}>
       <section className={`video-stage${!inline || state === 'ready' || drafting ? ' video-frame' : ''}`}>
         {state === 'pending' && !inline && <Skeleton />}
         {drafting && <div className="video-draft">
@@ -71,12 +72,13 @@ export default function VideoCard({ artifact, inline = false, onAction, media = 
           {state === 'ready' && onAction && <IconButton label={`Try a different version of video: ${artifact.title}`} tooltip="Try a different version" icon={<ArrowPathIcon />} variant="ghost" size="sm" clickAction={() => onAction('regenerate')} />}
           {/* Keep the action mounted so Cancel → Retry/Open large preserves keyboard focus. */}
           {drafting && <time className="video-elapsed" aria-label="Elapsed">{elapsed(artifact, now)}</time>}
-          {(state === 'ready' || onAction) && <Button key="action" label={state === 'ready' ? 'Open large' : state === 'pending' ? 'Cancel video' : state === 'unavailable' ? 'Regenerate video' : 'Retry video'} variant="ghost" size="sm" clickAction={() => state === 'ready' ? setEnlarged(true) : onAction?.(state === 'pending' ? 'cancel' : 'retry')} />}
+          {inline && (state === 'ready' || onAction) && <Button key="action" label={state === 'ready' ? 'Open large' : state === 'pending' ? 'Cancel video' : state === 'unavailable' ? 'Regenerate video' : 'Retry video'} variant="ghost" size="sm" clickAction={() => state === 'ready' ? setEnlarged(true) : onAction?.(state === 'pending' ? 'cancel' : 'retry')} />}
         </VStack>
       </section>
       {caption}
-      {!inline && <Text id={`${id}-description`}>{artifact.description}</Text>}
-      {actions}
+      {!inline && <Heading level={3} id={`${id}-title`}>{artifact.title}</Heading>}
+      {!inline && <Text id={`${id}-description`} color="secondary">{artifact.description}</Text>}
+      {!inline && <HStack gap={1} wrap="wrap" className="video-volume-actions">{open}{actions}</HStack>}
       {state === 'ready' && enlarged && <Lightbox isOpen onOpenChange={setEnlarged} hasAutoPlay media={{ src: media, alt: `Video: ${artifact.title}`, caption: artifact.title, type: 'video' }} />}
     </VStack>
   </section>;

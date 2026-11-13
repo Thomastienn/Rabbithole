@@ -47,6 +47,17 @@ try {
   await b('press', 'Enter');
   await b('wait', `.video-library [data-artifact="${trashed}"]`);
 
+  // Mockup Videos: frame, then title, description and the action row; every action is a keyboard stop with a paper focus ring.
+  const card = await ev(`(c=>({order:[...c.querySelectorAll('.video-stage, h3, .video-volume-actions')].map(e=>e.tagName==='H3'?'title':e.className.includes('stage')?'frame':'actions'),buttons:[...c.querySelectorAll('.video-volume-actions button')].map(x=>x.textContent.trim())}))(document.querySelector('.video-library [data-artifact="${trashed}"]'))`);
+  assert.deepEqual(card, { order: ['frame', 'title', 'actions'], buttons: ['Open large', 'Show in folder', 'Move to trash'] });
+  await press('Open large: Disposable trash video');
+  await b('wait', 'dialog[open]');
+  await b('press', 'Escape');
+  await b('wait', '--fn', `!document.querySelector('dialog[open]')`);
+  const ring = await ev(`(()=>{const e=document.createElement('i');e.style.color='var(--treetutor-paper)';document.body.append(e);const p=getComputedStyle(e).color;e.remove();const a=document.activeElement;return{focus:a?.getAttribute('aria-label'),visible:a?.matches(':focus-visible'),ring:getComputedStyle(a).outlineColor===p}})()`);
+  assert.deepEqual(ring, { focus: 'Open large: Disposable trash video', visible: true, ring: true });
+  report.checks.push({ name: 'card shows frame, title and action row (Open large, Show in folder, Move to trash); Open large opens and Escape returns focus with a paper ring', ...card, ...ring });
+
   // Show in folder: a new file-manager window opens on the app's videos folder.
   const before = await windows();
   await press('Show “Disposable trash video” in folder');
@@ -87,7 +98,7 @@ try {
     await b('wait', '.view-tabs');
     await ev(`[...document.querySelectorAll('.view-tabs button')].find(x=>x.textContent.trim()==='Videos').click();true`);
     await b('wait', `.video-library [data-artifact="${failing}"]`);
-    await b('screenshot', resolve(`.impeccable/review/video-actions-${mode}.png`));
+    await b('screenshot', resolve(`docs/verification/videos-${mode}.png`));
   }
   assert.equal(calls, 0);
   assert.equal(JSON.stringify(store.usageEvents()), usage);
