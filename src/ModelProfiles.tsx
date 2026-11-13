@@ -4,6 +4,10 @@ import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Switch } from '@astryxdesign/core/Switch';
 import { Button } from '@astryxdesign/core/Button';
+import { IconButton } from '@astryxdesign/core/IconButton';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { DropdownMenu, DropdownMenuDivider, DropdownMenuItem } from '@astryxdesign/core/DropdownMenu';
+import { EllipsisHorizontalIcon, PencilSquareIcon, PlusIcon, RectangleStackIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { Model, ChatSelection } from './models';
 
 type Pin = Pick<Model, 'provider' | 'model'> | null;
@@ -22,12 +26,16 @@ export default function ModelProfiles({ api, models, providers, modelError, relo
 }) {
   const [list, setList] = useState<{ active: string; profiles: Profile[] }>();
   const [pending, setPending] = useState(false), [error, setError] = useState(''), [refreshing, setRefreshing] = useState(false);
-  async function run(task: Promise<{ active: string; profiles: Profile[] }>) {
+  // Naming state: the picker becomes a name field for a new profile or a rename of the active one.
+  const [naming, setNaming] = useState<{ mode: 'new' | 'rename'; name: string }>();
+  async function run(task: Promise<{ active: string; profiles: Profile[] }>, then?: (list: { active: string; profiles: Profile[] }) => Promise<{ active: string; profiles: Profile[] }>) {
     setPending(true); setError('');
-    try { setList(await task); }
+    try { const next = await task; setList(then ? await then(next) : next); setNaming(undefined); }
     catch (e) { setError((e as Error).message); }
     finally { setPending(false); }
   }
+  // New and Duplicate switch to the created profile (always listed last) so the next edits land in it.
+  const activateNewest = (next: { active: string; profiles: Profile[] }) => api('/api/profiles/active', { id: next.profiles.at(-1)!.id });
   async function refresh() {
     setRefreshing(true);
     try { await reloadModels(); } finally { setRefreshing(false); }
@@ -41,11 +49,32 @@ export default function ModelProfiles({ api, models, providers, modelError, relo
   };
   const summary = (p: Profile) => [name(p.chat), p.smart.model ? name(p.smart.model) : 'follows chat', p.quick.model ? name(p.quick.model) : 'default quick thinking'].join(' · ');
   const active = list?.profiles.find(p => p.id === list.active);
+  function save() {
+    const name = naming?.name.trim();
+    if (!name || !list || pending) return;
+    if (naming!.mode === 'rename') void run(api(`/api/profiles/${list.active}/rename`, { name }));
+    else void run(api('/api/profiles', { name }), activateNewest);
+  }
+  function cancel() { setNaming(undefined); setError(''); }
   return <VStack gap={4}>
     <HStack className="settings-profile" gap={3} vAlign="center" wrap="wrap">
-      <Selector label="Model profile" isLabelHidden value={list?.active ?? ''} size="sm" isDisabled={!list || pending} options={(list?.profiles ?? []).map(p => ({ value: p.id, label: p.name, description: summary(p) }))}
-        onChange={id => { if (id !== list?.active) void run(api('/api/profiles/active', { id })); }} />
-      <Text type="supporting" color="secondary">New learning trees, visuals and suggestions use this profile. Conversations you already started keep their model.</Text>
+      {naming ? <HStack gap={2} vAlign="center">
+        <TextInput label="Profile name" isLabelHidden size="sm" value={naming.name} onChange={name => setNaming({ ...naming, name })} isReadOnly={pending} autoComplete="off" hasAutoFocus
+          onEnter={() => save()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); cancel(); } }} />
+        <Button label="Save" size="sm" variant="primary" isDisabled={!naming.name.trim() || pending} isLoading={pending} onClick={() => save()} />
+        <Button label="Cancel" size="sm" isDisabled={pending} onClick={cancel} />
+      </HStack> : <Selector label="Model profile" isLabelHidden value={list?.active ?? ''} size="sm" isDisabled={!list || pending} options={(list?.profiles ?? []).map(p => ({ value: p.id, label: p.name, description: summary(p) }))}
+        onChange={id => { if (id !== list?.active) void run(api('/api/profiles/active', { id })); }} />}
+      <Text className="settings-profile__note" type="supporting" color="secondary">New learning trees, visuals and suggestions use this profile. Conversations you already started keep their model.</Text>
+      {list && !naming && <HStack gap={1}>
+        <IconButton label="New profile" tooltip="New profile" icon={<PlusIcon />} variant="ghost" size="sm" isDisabled={pending} onClick={() => { setError(''); setNaming({ mode: 'new', name: '' }); }} />
+        <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} label="Profile actions: rename, duplicate, delete" tooltip="Profile actions" icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" isDisabled={pending} />}>
+          <DropdownMenuItem icon={PencilSquareIcon} label="Rename" onClick={() => { setError(''); setNaming({ mode: 'rename', name: active?.name ?? '' }); }} />
+          <DropdownMenuItem icon={RectangleStackIcon} label="Duplicate" onClick={() => void run(api(`/api/profiles/${list.active}/duplicate`, {}), activateNewest)} />
+          <DropdownMenuDivider />
+          <DropdownMenuItem icon={TrashIcon} label={`Delete ${active?.name ?? 'profile'}`} description={list.profiles.length < 2 ? 'Keep at least one profile' : undefined} isDisabled={list.profiles.length < 2} onClick={() => void run(api(`/api/profiles/${list.active}/delete`, {}))} />
+        </DropdownMenu>
+      </HStack>}
     </HStack>
     {error && <Text type="supporting" role="alert">{error}</Text>}
     {!list && !pending && <HStack><Button label="Retry loading profiles" size="sm" variant="ghost" onClick={() => void run(api('/api/profiles'))} /></HStack>}

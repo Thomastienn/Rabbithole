@@ -117,6 +117,64 @@ try {
   assert.equal(calls.length, 0, 'swapping starts no model call');
   check('Picker swaps all three roles at once; role edits save into the active profile; an unavailable model swaps in flagged and unreplaced');
 
+  // Profile management through the UI: naming field, picker and ⋯ menu.
+  const table = `document.querySelector('.settings-page:not([hidden]) [role=table]')?.getAttribute('aria-label')`;
+  const menu = async item => { await b('find', 'role', 'button', 'click', '--name', 'Profile actions: rename, duplicate, delete', '--exact'); if (item) await b('find', 'role', 'menuitem', 'click', '--name', item); };
+  const nameField = `[...document.querySelectorAll('input')].find(i => i.getAttribute('aria-label') === 'Profile name' || i.labels?.[0]?.textContent === 'Profile name')`;
+  const named = () => store.profiles().profiles.map(p => p.name);
+  await b('find', 'role', 'button', 'click', '--name', 'New profile', '--exact');
+  await wait(`document.activeElement?.getAttribute('aria-label') === 'Profile name' || document.activeElement?.labels?.[0]?.textContent === 'Profile name'`);
+  await b('find', 'label', 'Profile name', 'fill', 'deep STUDY');
+  await b('press', 'Enter');
+  await wait(`[...document.querySelectorAll('.settings-page:not([hidden]) [role=alert]')].some(a => a.textContent.includes('already exists'))`);
+  assert.deepEqual(named(), ['Default', 'Deep study'], 'a duplicate name is rejected');
+  await shot('profile-naming-dark-desktop');
+  await b('find', 'label', 'Profile name', 'fill', 'Offline');
+  await b('find', 'role', 'button', 'click', '--name', 'Save', '--exact');
+  await wait(`${table} === 'Roles in Offline' && !${dialogText}?.includes('already exists')`);
+  assert.equal(store.profileName(store.profiles().active), 'Offline');
+  assert.deepEqual({ ...store.chatSettings() }, homeRoles.chat, 'a new profile copies the active one');
+  check('New profile opens a name field in place of the picker, rejects a duplicate name, then creates a copy of the active profile and activates it');
+
+  await menu('Rename');
+  await wait(`${nameField}?.value === 'Offline'`);
+  await b('press', 'Escape');
+  await wait(`${table} === 'Roles in Offline' && !${nameField} && !!document.querySelector('.settings-page:not([hidden])')`);
+  await menu('Rename');
+  await b('find', 'label', 'Profile name', 'fill', 'Local');
+  await b('find', 'role', 'button', 'click', '--name', 'Save', '--exact');
+  await wait(`${table} === 'Roles in Local'`);
+  await menu('Duplicate');
+  await wait(`${table} === 'Roles in Local copy'`);
+  assert.deepEqual(named(), ['Default', 'Deep study', 'Local', 'Local copy']);
+  check('Escape cancels naming without closing Settings; Rename renames the active profile in place; Duplicate copies it as "<name> copy" and activates the copy');
+
+  await b('find', 'label', 'Model profile', 'click');
+  const listed = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll('[role=option]')].filter(o => o.checkVisibility()).map(o => o.textContent))`));
+  assert.equal(listed.length, 4);
+  assert.ok(listed.every(o => /chat/.test(o)) && listed.some(o => o.startsWith('Deep study') && o.includes('retired (unavailable)')), listed.join(' | '));
+  await b('wait', '400');
+  await shot('profile-picker-dark-desktop');
+  await b('press', 'Escape');
+  check('The picker lists every profile with its models, flagging an unavailable one');
+
+  await menu('Delete Local copy');
+  await wait(`${table} === 'Roles in Default'`);
+  assert.deepEqual(named(), ['Default', 'Deep study', 'Local']);
+  for (const name of ['Default', 'Deep study']) {
+    await menu(`Delete ${name}`);
+    await wait(`${table} !== 'Roles in ${name}' && ${table}?.startsWith('Roles in')`);
+  }
+  assert.deepEqual(named(), ['Local']);
+  await menu();
+  await wait(`[...document.querySelectorAll('[role=menuitem]')].some(e => e.checkVisibility() && e.textContent.includes('Delete Local') && e.textContent.includes('Keep at least one profile') && e.getAttribute('aria-disabled') === 'true')`);
+  await b('wait', '400');
+  await shot('profile-menu-last-dark-desktop');
+  await b('press', 'Escape');
+  assert.deepEqual(named(), ['Local']);
+  assert.equal(calls.length, 0, 'managing profiles starts no model call');
+  check('Deleting the active profile activates another; Delete is disabled with "Keep at least one profile" on the last one');
+
   for (const appearance of ['dark', 'light']) {
     await ev(`localStorage.setItem('treetutor.appearance', '${appearance}'); true`);
     await b('set', 'viewport', '390', '844');
@@ -126,7 +184,17 @@ try {
     assert.equal(await ev('document.querySelector(".settings-page:not([hidden])").scrollWidth <= innerWidth'), true);
     await b('find', 'text', 'Smart', 'scrollintoview', '--exact').catch(() => {});
     await shot(`settings-${appearance}-narrow`);
+    await b('find', 'role', 'button', 'click', '--name', 'New profile', '--exact');
+    await b('find', 'label', 'Profile name', 'fill', 'Local');
+    await b('press', 'Enter');
+    await wait(`[...document.querySelectorAll('.settings-page:not([hidden]) [role=alert]')].some(a => a.textContent.includes('already exists'))`);
+    await shot(`profile-naming-${appearance}-narrow`);
+    await b('press', 'Escape');
+    await menu();
+    await b('wait', '400');
+    await shot(`profile-menu-${appearance}-narrow`);
+    await b('press', 'Escape');
   }
-  check('Dark/light narrow Settings fit without horizontal overflow; screenshots captured');
+  check('Dark/light narrow Settings fit without horizontal overflow; naming field error and profile menu captured in both');
   writeFileSync('docs/verification/model-roles-ui.json', JSON.stringify({ date: new Date().toISOString(), boundary: 'built UI + real HTTP/store + controlled providers, no native inference', checks, result: 'PASS' }, null, 2) + '\n');
 } finally { await b('close').catch(() => {}); await app?.stop(); store.close(); }

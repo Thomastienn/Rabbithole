@@ -466,6 +466,7 @@ section[role=alert] { background: var(--color-background-body); }
 /* Models page (mockup Models): profile bar, then one compact row per role; display: contents keeps ARIA rows inside the grid. */
 .settings-profile { padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) var(--spacing-4); border-radius: var(--radius-container); background: var(--color-background-surface); }
 .settings-profile .astryx-selector, .settings-profile > :first-child { min-width: 180px; }
+.settings-profile__note { flex: 1 1 16rem; }
 .settings-roles { display: grid; grid-template-columns: minmax(0, 1fr) 248px 152px; column-gap: var(--spacing-3); }
 .settings-roles [role=cell]:not(.settings-roles__note) { display: flex; align-items: center; }
 .settings-roles__row { display: contents; }

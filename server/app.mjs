@@ -313,10 +313,21 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           store.removeLibraryVideo(id);
           return json(res, 200, { trashed: !!info, missing: !info });
         }
-        if (url.pathname === '/api/profiles') {
-          const name = typeof body?.name === 'string' ? body.name.trim() : '';
+        const profileMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)\/(rename|duplicate|delete)$/);
+        if (url.pathname === '/api/profiles' || profileMatch) {
+          const [, id, action = 'create'] = profileMatch ?? [];
+          const current = id && store.profileName(id);
+          if (id && !current) return json(res, 404, { error: 'Profile not found. Reopen Settings and choose a listed profile.' });
+          if (action === 'delete') {
+            if (!store.deleteProfile(id)) return json(res, 409, { error: 'Keep at least one profile. Create another before deleting this one.' });
+            return json(res, 200, profiles());
+          }
+          // Duplicate names itself "<name> copy", then "<name> copy 2", … until free.
+          let name = action === 'duplicate' ? `${current.slice(0, 50)} copy` : typeof body?.name === 'string' ? body.name.trim() : '';
           if (!name || name.length > 60) return json(res, 400, { error: 'Name the profile (up to 60 characters).' });
-          if (!store.createProfile(name)) return json(res, 409, { error: `A profile named “${name}” already exists. Choose another name.` });
+          if (action === 'rename') { if (!store.renameProfile(id, name)) return json(res, 409, { error: `A profile named “${name}” already exists. Choose another name.` }); }
+          else if (action === 'duplicate') { for (let n = 2, base = name; !store.createProfile(name, id); n++) name = `${base} ${n}`; }
+          else if (!store.createProfile(name)) return json(res, 409, { error: `A profile named “${name}” already exists. Choose another name.` });
           return json(res, 200, profiles());
         }
         if (url.pathname === '/api/profiles/active') {

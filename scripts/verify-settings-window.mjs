@@ -129,7 +129,7 @@ try {
   await b('find', 'role', 'button', 'click', '--name', 'Save', '--exact');
   await wait(`${dialog}.textContent.includes('Local llama added.')`);
   const [added] = await (await fetch(`${origin}/api/settings/endpoints`)).json();
-  assert.deepEqual(added, { id: added.id, name: 'Local llama', baseUrl: upstream.baseUrl });
+  assert.deepEqual(added, { id: added.id, name: 'Local llama', baseUrl: upstream.baseUrl, lastTest: null });
   assert.ok(!await ev(`${dialog}.innerHTML.includes('settings-fixture-secret')`));
   await b('find', 'role', 'button', 'click', '--name', 'Remove Local llama', '--exact');
   await wait(`!!document.querySelector('.endpoint-remove-dialog[open]')`);

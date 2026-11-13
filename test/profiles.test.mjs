@@ -112,3 +112,44 @@ test('a profile whose model is unavailable still swaps in and fails visibly inst
   assert.equal(env.calls.length, 0);
   await env.close();
 });
+
+test('rename, duplicate and delete profiles over HTTP: unique names, last one kept, deleting the active one activates another, all persist', async () => {
+  let env = await start();
+  const json = async (path, body) => { const r = await env.post(path, body); return { status: r.status, body: await r.json() }; };
+  const def = (await env.get('/api/profiles')).profiles[0];
+  assert.equal((await json(`/api/profiles/${def.id}/delete`)).status, 409, 'the last profile cannot be deleted');
+  await env.post('/api/settings/chat', { provider: 'codex', model: 'chat', effort: 'high' });
+
+  const renamed = await json(`/api/profiles/${def.id}/rename`, { name: ' Everyday ' });
+  assert.equal(renamed.status, 200);
+  assert.deepEqual(renamed.body.profiles.map(p => p.name), ['Everyday']);
+  assert.equal((await json(`/api/profiles/${def.id}/rename`, { name: 'EVERYDAY' })).status, 200, 'a profile may change the case of its own name');
+  assert.equal((await json(`/api/profiles/${def.id}/rename`, { name: '' })).status, 400);
+  assert.equal((await json('/api/profiles/missing/rename', { name: 'X' })).status, 404);
+
+  const dup = (await json(`/api/profiles/${def.id}/duplicate`)).body;
+  assert.deepEqual(dup.profiles.map(p => p.name), ['EVERYDAY', 'EVERYDAY copy']);
+  assert.deepEqual(dup.profiles[1].chat, { provider: 'codex', model: 'chat', effort: 'high' }, 'a duplicate copies its source');
+  assert.equal(dup.active, def.id, 'duplicating does not swap');
+  assert.deepEqual((await json(`/api/profiles/${def.id}/duplicate`)).body.profiles.map(p => p.name).slice(2), ['EVERYDAY copy 2']);
+  const copy = dup.profiles[1];
+  assert.equal((await json(`/api/profiles/${copy.id}/rename`, { name: 'everyday' })).status, 409, 'rename rejects a name another profile holds');
+  assert.equal((await json('/api/profiles', { name: 'Everyday copy' })).status, 409, 'create rejects a duplicate name');
+  assert.equal((await json(`/api/profiles/${copy.id}/rename`, { name: 'Offline' })).status, 200);
+
+  await env.post('/api/profiles/active', { id: copy.id });
+  const afterDelete = (await json(`/api/profiles/${copy.id}/delete`)).body;
+  assert.deepEqual(afterDelete.profiles.map(p => p.name), ['EVERYDAY', 'EVERYDAY copy 2']);
+  assert.equal(afterDelete.active, def.id, 'deleting the active profile activates another');
+  assert.deepEqual(await env.get('/api/settings/chat'), { provider: 'codex', model: 'chat', effort: 'high' });
+  const other = afterDelete.profiles[1];
+  assert.equal((await json(`/api/profiles/${other.id}/delete`)).body.active, def.id, 'deleting an inactive profile keeps the active one');
+  assert.equal((await json(`/api/profiles/${other.id}/delete`)).status, 404);
+
+  const dir = env.dir;
+  await env.close(); env = await start(dir);
+  const after = await env.get('/api/profiles');
+  assert.deepEqual(after.profiles.map(p => p.name), ['EVERYDAY'], 'rename and deletes survive a restart');
+  assert.equal(after.active, def.id);
+  await env.close();
+});

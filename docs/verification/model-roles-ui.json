@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-13T20:50:03.906Z",
+  "date": "2026-11-13T21:43:26.938Z",
   "boundary": "built UI + real HTTP/store + controlled providers, no native inference",
   "checks": [
     "Upgrade/fresh profile \"Default\" is active; all three roles are visible in one table; smart follows the changed chat default model and effort dynamically",
@@ -7,7 +7,11 @@
     "Quick thinking accepts the custom endpoint, offers only advertised efforts and saves effort by keyboard without any model call",
     "Restarting the server restores every role selection in Settings",
     "Picker swaps all three roles at once; role edits save into the active profile; an unavailable model swaps in flagged and unreplaced",
-    "Dark/light narrow Settings fit without horizontal overflow; screenshots captured"
+    "New profile opens a name field in place of the picker, rejects a duplicate name, then creates a copy of the active profile and activates it",
+    "Escape cancels naming without closing Settings; Rename renames the active profile in place; Duplicate copies it as \"<name> copy\" and activates the copy",
+    "The picker lists every profile with its models, flagging an unavailable one",
+    "Deleting the active profile activates another; Delete is disabled with \"Keep at least one profile\" on the last one",
+    "Dark/light narrow Settings fit without horizontal overflow; naming field error and profile menu captured in both"
   ],
   "result": "PASS"
 }
