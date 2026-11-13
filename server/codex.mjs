@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { TUTOR_INSTRUCTIONS } from './diagrams.mjs';
+import { tutorSystem } from './diagrams.mjs';
 
 export class Codex {
   constructor(auth, dir, launch = spawn) {
@@ -106,7 +106,7 @@ export class Codex {
     const effort = tree.effort ?? (await this.models()).find(m => m.model === model)?.defaultEffort;
     if (cancelled()) return;
     const params = { cwd: join(this.dir, 'workspace'), approvalPolicy: 'never', sandbox: 'read-only',
-      baseInstructions: (tree.instructions ?? TUTOR_INSTRUCTIONS) + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '') };
+      baseInstructions: tutorSystem(tree) };
     const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', { ...params, model, ...(tree.thread ? { threadId: tree.thread } : {}) });
     if (cancelled()) return;
     const threadId = result.thread.id;

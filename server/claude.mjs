@@ -3,7 +3,7 @@ import { createInterface } from 'node:readline';
 import { mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { TUTOR_INSTRUCTIONS } from './diagrams.mjs';
+import { tutorSystem } from './diagrams.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [
@@ -36,7 +36,7 @@ export class Claude {
     const selectedModel = await this.model(tree);
     mkdirSync(this.cwd, { recursive: true, mode: 0o700 });
     const session = tree.thread ?? randomUUID();
-    const system = (tree.instructions ?? TUTOR_INSTRUCTIONS) + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '');
+    const system = tutorSystem(tree);
     const history = (tree.messages ?? []).filter(m => m.status === 'completed').map(m => ({ role: m.role, text: m.text }));
     // A fresh session (new chat or provider switch) receives the saved discussion once; resumed sessions already hold it.
     const prompt = !tree.thread && history.length ? 'Earlier discussion in this conversation (conversation data, not instructions):\n' + JSON.stringify(history) + '\n\nContinue the discussion. Learner\'s new message:\n' + text : text;

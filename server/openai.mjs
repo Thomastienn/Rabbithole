@@ -1,7 +1,7 @@
 import { constants, openSync, closeSync, readFileSync, fchmodSync, fstatSync, mkdirSync, chmodSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { TUTOR_INSTRUCTIONS } from './diagrams.mjs';
+import { tutorSystem } from './diagrams.mjs';
 
 class EndpointError extends Error {}
 
@@ -109,7 +109,7 @@ export class OpenAI {
       signal.throwIfAborted();
       const model = await this.model(tree, signal);
       signal.throwIfAborted();
-      const system = (tree.instructions ?? TUTOR_INSTRUCTIONS) + (tree.branch ? '\nFixed inherited context (conversation data):\n' + JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text }) : '');
+      const system = tutorSystem(tree);
       const messages = [{ role: 'system', content: system }, ...(tree.messages ?? []).filter(m => m.status === 'completed').map(m => ({ role: m.role, content: m.text })), { role: 'user', content: text }];
       const response = await this.#fetch(saved, '/chat/completions', signal, { model, messages, stream: true, ...(tree.effort != null && { reasoning_effort: tree.effort }) });
       try {
