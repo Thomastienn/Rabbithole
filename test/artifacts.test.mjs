@@ -417,7 +417,7 @@ test('provider switches and branch compaction receive ready metadata only, with 
     const compaction = calls.at(-1);
     assert.equal(compaction.tree.thread, null);
     assert.match(compaction.text, /Tournament tree|Pairs of winners/);
-    assert.ok(compaction.text.includes(artifact.id));
+    assert.ok(compaction.text.includes("[Diagram: Tournament tree — Pairs of winners advance to the root.]"));
     assert.doesNotMatch(compaction.text, /flowchart|Winner A|Show two winners|A and B advance|FAILED PRIVATE|Failed worker detail/);
     const child = await response.json();
     assert.deepEqual(child.artifacts, []);

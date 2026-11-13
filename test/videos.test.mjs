@@ -124,7 +124,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.deepEqual(readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt)).sort(), ['Video.tsx', 'index.tsx', 'kit.tsx', 'narration.json', 'public']);
     assert.ok(readFileSync(join(env.dir, 'video-work', ready.id, ready.attempt, 'Video.tsx'), 'utf8').includes('PRIVATE_SOURCE_MARKER'));
 
-    // Tutor history, provider-switch history and branch snapshots carry only id, kind, title and description.
+    // Tutor history and provider-switch history carry only id, kind, title and description; compaction sees one "[Video: title — description]" line.
     await (await env.post(`/api/trees/${child.id}/messages`, { text: 'Thanks, continue.' })).text();
     const fresh = env.store.tree(child.id);
     const branch = await env.post(`/api/trees/${child.id}/branches`, { messageId: reply.id, start: 0, end: 4, text: 'Here', question: 'Why?' });
@@ -132,7 +132,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.ok(tutorContext(fresh).messages.some(m => m.text.endsWith('Ready artifacts (artifact metadata): ' + JSON.stringify([{ id: ready.id, kind: 'video', title: task.title, description: ready.description }]))));
     const histories = [JSON.stringify(tutor.at(-2).tree), JSON.stringify(tutorContext(fresh)), tutor.at(-1).text];
     for (const history of histories) {
-      for (const field of [ready.id, task.title, ready.description]) assert.ok(history.includes(field), field);
+      for (const field of history === tutor.at(-1).text ? [`[Video: ${task.title} — ${ready.description}]`] : [ready.id, task.title, ready.description]) assert.ok(history.includes(field), field);
       for (const secret of ['PRIVATE_SOURCE_MARKER', 'remotion', env.dir, 'video-work', ready.attempt, ready.input]) assert.ok(!history.includes(secret), secret);
     }
     assert.ok(suggestions.some(text => text.includes('Continuing.')));

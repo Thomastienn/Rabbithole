@@ -381,3 +381,24 @@ test('Try a different version replaces a ready visual in place from the frozen r
     assert.equal((await env.post(`/api/trees/${env.tree.id}/artifacts/${failed.id}/regenerate`)).status, 409);
   } finally { hold.resolve(); await env.close(); }
 });
+
+test('branch compaction keeps passage detail and sees a visual only as one title and description line, never the question', async () => {
+  const compactions = [];
+  const env = await open({ generate: async (tree, text, emit, save) => {
+    if (text.startsWith('Compact')) { compactions.push(text); return complete(emit, 'Rounds summary.'); }
+    save('chat-thread', 'chat');
+    complete(emit, 'Rounds pair winners.' + block() + '\nThe final decides.');
+  } }, { generate: async (tree, text, emit) => complete(emit, source) });
+  try {
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Show rounds' })).text();
+    await until(async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts?.[0]?.status === 'ready');
+    const reply = (await env.get(`/api/trees/${env.tree.id}`)).messages.at(-1);
+    const response = await env.post(`/api/trees/${env.tree.id}/branches`, { messageId: reply.id, start: 0, end: 6, text: 'Rounds', question: 'SECRET BRANCH QUESTION?' });
+    assert.equal(response.status, 201);
+    const [text] = compactions;
+    assert.match(text, /Keep the sentences around "passage" in its message in close detail/);
+    const [message] = JSON.parse(text.slice(text.indexOf('\n') + 1)).messages.filter(m => m.role === 'assistant');
+    assert.equal(message.text, 'Rounds pair winners.\n[Visual: Rounds — Two winners meet in the final.]\n\nThe final decides.');
+    assert.doesNotMatch(text, /treetutor-visual|"intent"|Show the winners advancing|<svg|A → Final|SECRET BRANCH QUESTION/);
+  } finally { await env.close(); }
+});
