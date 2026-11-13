@@ -1,4 +1,4 @@
-// Lecture-hall Slate map reference. Built app, isolated SQLite, synthetic providers only.
+// Paperback map reference (family inks since TreeTutor-y36.2). Built app, isolated SQLite, synthetic providers only.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -69,11 +69,15 @@ try {
     await click('Fit tree'); await settled();
     const styles = await ev(`(() => {
       const box=document.querySelector(${JSON.stringify(node(peterson.id) + ' .conversation-box')}), edge=document.querySelector('.branch-focused path'), plain=document.querySelector('.react-flow__edge:not(.branch-focused) path');
-      const p=document.createElement('i'); p.style.color='var(--color-accent)'; box.append(p); const accent=getComputedStyle(p).color; p.remove();
-      return {ground:getComputedStyle(document.querySelector('.react-flow')).backgroundColor,radius:getComputedStyle(box).borderRadius,outline:getComputedStyle(box).outlineColor,offset:getComputedStyle(box).outlineOffset,accent,stroke:getComputedStyle(edge).stroke,width:getComputedStyle(edge).strokeWidth,plainWidth:getComputedStyle(plain).strokeWidth,cap:getComputedStyle(plain).strokeLinecap,titleWeight:getComputedStyle(box.querySelector('h2')).fontWeight,plainAnimated:plain.getAnimations().length};
+      const probe=v=>{ const p=document.createElement('i'); p.style.color=v; box.append(p); const c=getComputedStyle(p).color; p.remove(); return c; }, accent=probe('var(--color-accent)'), ink=probe('var(--treetutor-ink-2)'), paper=probe('var(--treetutor-paper)');
+      const band=e=>getComputedStyle(document.querySelector(e+' .node-band')).backgroundColor, addr=e=>document.querySelector(e+' .node-address').textContent;
+      return {ground:getComputedStyle(document.querySelector('.react-flow')).backgroundColor,radius:getComputedStyle(box).borderRadius,outline:getComputedStyle(box).outlineColor,offset:getComputedStyle(box).outlineOffset,accent,stroke:getComputedStyle(edge).stroke,width:getComputedStyle(edge).strokeWidth,plainWidth:getComputedStyle(plain).strokeWidth,cap:getComputedStyle(plain).strokeLinecap,titleWeight:getComputedStyle(box.querySelector('h2')).fontWeight,plainAnimated:plain.getAnimations().length,ink,paper,band:band(${JSON.stringify(node(peterson.id))}),childBand:band(${JSON.stringify(node(memory.id))}),trunkBand:band(${JSON.stringify(node(root.id))}),childStroke:getComputedStyle(document.querySelector('.react-flow__edge[data-id="${memory.id}"] path')).stroke,addresses:[${[root, heap, peterson, memory].map(t => `addr(${JSON.stringify(node(t.id))})`).join(',')}]};
     })()`);
     assert.equal(styles.radius, '3px'); assert.equal(styles.offset, '3px');
-    assert.equal(styles.outline, styles.accent); assert.equal(styles.stroke, styles.accent);
+    assert.equal(styles.outline, styles.accent);
+    // Peterson is the trunk's second family (1.2, leaf ink); its child shares the ink, the trunk wears paper.
+    assert.deepEqual(styles.addresses, ['1', '1.1', '1.2', '1.2.1']);
+    assert.equal(styles.stroke, styles.ink); assert.equal(styles.band, styles.ink); assert.equal(styles.childBand, styles.ink); assert.equal(styles.childStroke, styles.ink); assert.equal(styles.trunkBand, styles.paper);
     assert.equal(styles.width, '2.5px'); assert.equal(styles.plainWidth, '2px'); assert.equal(styles.cap, 'round'); assert.equal(styles.titleWeight, '600'); assert.equal(styles.plainAnimated, 0);
     assert.equal(await ev(`document.querySelectorAll('.react-flow__attribution, .react-flow__background').length`), 0);
     assert.equal(await ev(`document.querySelectorAll(${JSON.stringify(node(root.id) + ' [data-message]')}).length`), 4);
@@ -96,7 +100,23 @@ try {
     await shot(`folded-${mode}`);
     await click('Expand descendants of Tournament trees'); await click('Fit tree'); await settled();
   }
-  results.checks.push('Both appearances: bare field, no watermark/grid, 4px cards, 600 titles, focused path/node, 2px round branches, bottom-left controls, every message and counted stubs; opening/unfolding does not animate.');
+  results.checks.push('Both appearances: bare field, no watermark/grid, 3px cards, 600 titles, focused path/node, 2px round branches, bottom-left controls, every message and counted stubs; opening/unfolding does not animate.');
+  results.checks.push('Both appearances: addresses 1, 1.1, 1.2, 1.2.1; the 1.2 family band and branch lines wear ink 2, the trunk band wears paper.');
+  // Read: the passage underline and address chip of a family share its node band and branch ink.
+  for (const mode of ['dark', 'light']) {
+    await appearance(mode);
+    await wait(`document.querySelector(${JSON.stringify(node(root.id))})`);
+    await click('Open Tournament trees');
+    await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Tournament trees' && document.querySelectorAll('.reply-md .passage-address').length === 2 && !document.documentElement.matches(':active-view-transition')`);
+    const read = await ev(`(() => { const p=document.createElement('i'); p.style.color='var(--treetutor-ink-2)'; document.body.append(p); const ink=getComputedStyle(p).color; p.remove();
+      const chip=[...document.querySelectorAll('.reply-md .passage-address')].find(c=>c.textContent==='1.2'), u=chip.previousElementSibling;
+      return {ink,underline:getComputedStyle(u).textDecorationColor,chip:getComputedStyle(chip).backgroundColor,chips:[...document.querySelectorAll('.reply-md .passage-address')].map(c=>c.textContent),label:document.querySelector('.reply-md u.explored[tabindex]').getAttribute('aria-label')}; })()`);
+    assert.equal(read.underline, read.ink); assert.equal(read.chip, read.ink); assert.deepEqual(read.chips.sort(), ['1.1', '1.2']);
+    results.appearances[mode].read = read;
+    await b('screenshot', join(out, `read-inks-${mode}.png`));
+    await click('Return to tree'); await click('Fit tree'); await settled();
+  }
+  results.checks.push('Both appearances: the 1.2 passage underline and its address chip share the ink of its node band and branch line.');
   // Keyboard opening, source attachment and focus marker survive returning to the map.
   await b('focus', `#open-${peterson.id}`); await b('press', 'Enter');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === "Peterson's algorithm" && !document.documentElement.matches(':active-view-transition')`);

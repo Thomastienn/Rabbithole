@@ -55,3 +55,18 @@ test('branch counts include every descendant, exclude roots and stay separate ac
   const chain = Array.from({ length: 10_000 }, (_, i) => ({ id: String(i), parent: i ? String(i - 1) : null, created: i }));
   assert.equal(treeGroups(chain, new Date(0))[0].trees[0].branches, 9_999, 'deep trees need no recursive stack');
 });
+
+test('conversation addresses number siblings by creation and each first-level family keeps one repeating series ink', async () => {
+  const { conversationAddresses } = await import('../src/treeList.ts');
+  const t = (id, parent, created) => ({ id, parent, created });
+  const trees = [t('b5', 'root', 50), t('root', null, 0), t('b2', 'root', 20), t('b1', 'root', 10), t('b3', 'root', 30), t('b4', 'root', 40),
+    t('b1b', 'b1', 70), t('b1a', 'b1', 60), t('b1a1', 'b1a', 80), t('b5a', 'b5', 90)];
+  const view = map => Object.fromEntries([...map].map(([id, v]) => [id, `${v.address}:${v.ink}`]));
+  const before = view(conversationAddresses(trees));
+  assert.deepEqual(before, { root: '1:0', b1: '1.1:1', b2: '1.2:2', b3: '1.3:3', b4: '1.4:4', b5: '1.5:1', b1a: '1.1.1:1', b1b: '1.1.2:1', b1a1: '1.1.1.1:1', b5a: '1.5.1:1' });
+  // A sibling added later takes the next number; nobody before it moves.
+  const after = view(conversationAddresses([...trees, t('b6', 'root', 100), t('b1c', 'b1', 100)]));
+  assert.deepEqual({ ...after, b6: undefined, b1c: undefined }, { ...before, b6: undefined, b1c: undefined });
+  assert.equal(after.b6, '1.6:2');
+  assert.equal(after.b1c, '1.1.3:1');
+});

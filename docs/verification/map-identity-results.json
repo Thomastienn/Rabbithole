@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-nwx.4",
-  "date": "2026-11-13T00:14:09.079Z",
+  "date": "2026-11-13T01:02:49.893Z",
   "evidence": "Built app; agent-browser Chromium; synthetic transcripts and providers; no live inference",
   "references": [
     "map-reference-dark.png",
@@ -13,45 +13,91 @@
   "appearances": {
     "dark": {
       "accent": "rgb(157, 186, 110)",
+      "addresses": [
+        "1",
+        "1.1",
+        "1.2",
+        "1.2.1"
+      ],
+      "band": "rgb(157, 186, 110)",
       "cap": "round",
+      "childBand": "rgb(157, 186, 110)",
+      "childStroke": "rgb(157, 186, 110)",
       "ground": "rgb(26, 22, 19)",
+      "ink": "rgb(157, 186, 110)",
       "offset": "3px",
       "outline": "rgb(157, 186, 110)",
+      "paper": "rgb(239, 230, 214)",
       "plainAnimated": 0,
       "plainWidth": "2px",
       "radius": "3px",
       "stroke": "rgb(157, 186, 110)",
       "titleWeight": "600",
+      "trunkBand": "rgb(239, 230, 214)",
       "width": "2.5px",
       "controls": {
         "bottom": 12,
         "clear": true,
         "left": 12,
         "within": true
+      },
+      "read": {
+        "chip": "rgb(157, 186, 110)",
+        "chips": [
+          "1.1",
+          "1.2"
+        ],
+        "ink": "rgb(157, 186, 110)",
+        "label": "Explored passage: A tournament lock. Opens its chat, 1.2",
+        "underline": "rgb(157, 186, 110)"
       }
     },
     "light": {
       "accent": "rgb(70, 100, 42)",
+      "addresses": [
+        "1",
+        "1.1",
+        "1.2",
+        "1.2.1"
+      ],
+      "band": "rgb(70, 100, 42)",
       "cap": "round",
+      "childBand": "rgb(70, 100, 42)",
+      "childStroke": "rgb(70, 100, 42)",
       "ground": "rgb(242, 238, 229)",
+      "ink": "rgb(70, 100, 42)",
       "offset": "3px",
       "outline": "rgb(70, 100, 42)",
+      "paper": "rgb(31, 26, 21)",
       "plainAnimated": 0,
       "plainWidth": "2px",
       "radius": "3px",
       "stroke": "rgb(70, 100, 42)",
       "titleWeight": "600",
+      "trunkBand": "rgb(31, 26, 21)",
       "width": "2.5px",
       "controls": {
         "bottom": 12,
         "clear": true,
         "left": 12,
         "within": true
+      },
+      "read": {
+        "chip": "rgb(70, 100, 42)",
+        "chips": [
+          "1.1",
+          "1.2"
+        ],
+        "ink": "rgb(70, 100, 42)",
+        "label": "Explored passage: A tournament lock. Opens its chat, 1.2",
+        "underline": "rgb(70, 100, 42)"
       }
     }
   },
   "checks": [
-    "Both appearances: bare field, no watermark/grid, 4px cards, 600 titles, focused path/node, 2px round branches, bottom-left controls, every message and counted stubs; opening/unfolding does not animate.",
+    "Both appearances: bare field, no watermark/grid, 3px cards, 600 titles, focused path/node, 2px round branches, bottom-left controls, every message and counted stubs; opening/unfolding does not animate.",
+    "Both appearances: addresses 1, 1.1, 1.2, 1.2.1; the 1.2 family band and branch lines wear ink 2, the trunk band wears paper.",
+    "Both appearances: the 1.2 passage underline and its address chip share the ink of its node band and branch line.",
     "Keyboard open/return retains focused conversation; branch leaves its source message; new branch draws 350ms from source to child; replying dot pulses, both stop under reduced motion.",
     "A newly created branch does not replay its draw-on when folded and unfolded later.",
     "390px map has no horizontal overflow; controls remain visible bottom-left and clear of the shell band."
@@ -68,6 +114,6 @@
   ],
   "attachment": {
     "gap": 0,
-    "message": "0f90846e-db49-4e6c-bbf7-19c27b25a0e5"
+    "message": "09bee0d7-a481-445b-b146-8e0e71decfa4"
   }
 }

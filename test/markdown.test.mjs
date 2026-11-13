@@ -208,6 +208,22 @@ test('an explored suggestion draws solid and names its existing chat', () => {
   assert.equal(u.getAttribute('aria-label'), 'Explored passage: x = 1. Opens its chat');
 });
 
+test('an explored passage wears its family ink and ends in an address chip outside selection offsets', () => {
+  const start = raw.indexOf('x = 1');
+  const body = dom(renderToStaticMarkup(h('div', null, renderMarkdown(raw, undefined, [{ start, end: start + 5, child: 'c1', address: '1.2', ink: 2 }])))).getElementById('r');
+  const u = body.querySelector('u.suggestion');
+  assert.match(u.getAttribute('style'), /--ink:var\(--treetutor-ink-2\)/);
+  assert.equal(u.getAttribute('aria-label'), 'Explored passage: x = 1. Opens its chat, 1.2');
+  const chip = body.querySelectorAll('sup.passage-address');
+  assert.equal(chip.length, 1);
+  assert.equal(chip[0].textContent, '1.2');
+  assert.equal(chip[0].getAttribute('aria-hidden'), 'true');
+  const whole = root => { const r = root.ownerDocument.createRange(); r.selectNodeContents(root); return rawOffsets(root, r); };
+  assert.deepEqual(whole(body), whole(dom(renderToStaticMarkup(h('div', null, renderMarkdown(raw)))).getElementById('r')));
+  const chipOnly = body.ownerDocument.createRange(); chipOnly.selectNodeContents(chip[0]);
+  assert.equal(rawOffsets(body, chipOnly), undefined);
+});
+
 test('each code block carries a labelled copy button outside the raw-offset text', () => {
   const body = dom(renderToStaticMarkup(h('div', null, renderMarkdown('Run:\n\n```js\nconst a = 1;\n```\n\n```\nb\n```')))).getElementById('r');
   const buttons = [...body.querySelectorAll('pre > button.code-copy, pre button.code-copy')];

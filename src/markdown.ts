@@ -7,6 +7,7 @@ import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
+import { inkStyle } from './treeList.ts';
 export { plainText };
 
 type Span = { start: number; end: number };
@@ -58,7 +59,7 @@ function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
 // Underlines are drawn on text leaves; the first piece of each is its single Tab stop.
 // shortcut: a passage covering only hidden syntax or math draws nothing; extend if suggestions target those.
 // Slots (inline visuals) go before the first top-level block starting at or after their offset, else at the end.
-export function renderMarkdown(raw: string, reveal?: Span, underlines: (Span & { child?: string })[] = [], slots: { at: number; node: ReactNode }[] = []): ReactNode {
+export function renderMarkdown(raw: string, reveal?: Span, underlines: (Span & { child?: string; address?: string; ink?: number })[] = [], slots: { at: number; node: ReactNode }[] = []): ReactNode {
   let revealed = 0;
   const stops = new Set<number>();
   const hit = (s: number, e: number) => !!reveal && s < reveal.end && e > reveal.start;
@@ -73,7 +74,12 @@ export function renderMarkdown(raw: string, reveal?: Span, underlines: (Span & {
     if (u) {
       const stop = !stops.has(u.start) && stops.add(u.start);
       const name = plainText(raw.slice(u.start, u.end)) || raw.slice(u.start, u.end);
-      return h('u', { ...attrs, className: [u.child ? 'suggestion explored' : 'suggestion', className].filter(Boolean).join(' '), ...(stop && { tabIndex: 0, role: 'button', 'aria-label': u.child ? `Explored passage: ${name}. Opens its chat` : `Suggested passage: ${name}` }) }, value);
+      const opens = u.address ? `. Opens its chat, ${u.address}` : '. Opens its chat';
+      // The address chip ends the passage; zero-width atomic offsets keep it out of selection and highlight maths.
+      const chip = u.child && u.address && e >= u.end && { className: 'passage-address', 'aria-hidden': true, 'data-o': String(u.end), 'data-e': String(u.end), 'data-x': '', children: u.address };
+      const ink = u.child && u.ink !== undefined ? inkStyle(u.ink) : undefined;
+      const under = h('u', { ...attrs, className: [u.child ? 'suggestion explored' : 'suggestion', className].filter(Boolean).join(' '), style: ink, ...(stop && { tabIndex: 0, role: 'button', 'aria-label': u.child ? `Explored passage: ${name}${opens}` : `Suggested passage: ${name}` }) }, value);
+      return chip ? h(Fragment, { key: s }, under, h('sup', { ...chip, style: ink })) : under;
     }
     return h(Text, { ...attrs, type: 'inherit', children: value });
   };

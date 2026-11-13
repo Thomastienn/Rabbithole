@@ -9,6 +9,7 @@ import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRig
 import type { CSSProperties, ReactNode } from 'react';
 import { MIN_ZOOM, foldHierarchy, offsetCoveredBoxes, parseViewport, placeBox, vimAction, type Point, type Viewport } from './canvas';
 import type { ArtifactSummary, VisualPart } from './artifacts';
+import { conversationAddresses, inkStyle } from './treeList';
 
 export type Layout = { folded: string[]; selected: string | null; panel: 'collapsed' | 'beside' | 'expanded'; viewport?: Viewport };
 export type Summary = { id: string; title: string; created: number; parent: string | null; messageId: string | null; start: number | null; end: number | null; passage: string | null; artifactId?: string; label?: string; explanation?: string; x: number | null; y: number | null; layout?: Layout | null };
@@ -16,7 +17,7 @@ export type Source = { messageId: string; text: string } & ({ start: number; end
 export type Preview = { id: string; role: string; text: string; status: string; artifacts?: ArtifactSummary[] }[];
 type Open = (id: string, source?: Source) => void;
 export type MapActions = { expand: () => void; collapse: () => void; keep: () => void; canKeep: boolean };
-type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; active: boolean; focused: boolean; focus: boolean; focusControl?: string; childCount: number; stubs: { child: Summary; beneath: number }[]; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
+type ConversationNode = Node<{ conversation: Summary; sources: Summary[]; preview?: Preview; open: Open; active: boolean; focused: boolean; focus: boolean; focusControl?: string; childCount: number; address: string; ink: number; stubs: { child: Summary; beneath: number }[]; folded: boolean; toggle: (id: string) => void }, 'conversation'>;
 const fit = { padding: 0.2, maxZoom: 1 };
 const noStubs: ConversationNode['data']['stubs'] = [];
 const ConversationTransition = createContext<string | undefined>(undefined);
@@ -41,11 +42,12 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
       {stub && <HStack gap={0} className="fold-stub nodrag nopan"><Button label={name} tooltip={name} icon={<EyeSlashIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true }); data.toggle(t.id); }}><Text type="supporting" hasTabularNumbers>{1 + stub.beneath}</Text></Button></HStack>}
     </Handle>;
   };
-  return <VStack gap={2} padding={3} className="conversation-box" data-active={data.active} data-focused={data.focused}>
+  return <VStack gap={2} padding={3} className="conversation-box" data-active={data.active} data-focused={data.focused} style={inkStyle(data.ink)}>
     {t.parent && <Handle type="target" position={Position.Left} />}
-    <HStack gap={1} vAlign="center">
+    <HStack gap={1} vAlign="center" className="node-band">
       {data.childCount > 0 && <IconButton id={`fold-${t.id}`} className="nodrag nopan" label={`${data.folded ? 'Expand' : 'Collapse'} descendants of ${t.title}`} tooltip={`${data.folded ? 'Expand' : 'Collapse'} descendants`} aria-expanded={!data.folded} icon={data.folded ? <ChevronRightIcon /> : <ChevronDownIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); data.toggle(t.id); }} />}
       <Text className="activity-dot" role={data.active ? 'status' : undefined} aria-hidden={!data.active || undefined}>{data.active && <Text className="sr-only">Responding</Text>}</Text>
+      <Text className="node-address" hasTabularNumbers>{data.address}</Text>
       <Button id={`open-${t.id}`} className="node-title nodrag nopan" label={`Open ${t.title}`} variant="ghost" size="sm" onClick={() => data.open(t.id)}><Heading level={2} style={{ viewTransitionName: transition === t.id ? 'conversation' : undefined }}>{t.title}</Heading></Button>
       {t.parent && <IconButton id={`reveal-${t.id}`} className="node-extra nodrag nopan" label={`Reveal source passage for ${t.title}`} tooltip={`From “${t.passage}”`} icon={<LinkIcon />} variant="ghost" size="sm" onClick={() => data.open(t.parent!, sourceOf(t))} />}
     </HStack>
@@ -71,7 +73,7 @@ function Branch(props: EdgeProps) {
   // Negative delay keeps culling/remounts from replaying an already drawn branch.
   const created = props.data?.created as number | undefined;
   const [delay] = useState(() => created ? Math.min(0, created - performance.now()) : 0);
-  return <BaseEdge id={props.id} path={path} pathLength={1} className={created ? 'branch-new' : undefined} style={created ? { animationDelay: `${delay}ms` } : undefined} />;
+  return <BaseEdge id={props.id} path={path} pathLength={1} className={created ? 'branch-new' : undefined} style={{ ...inkStyle(props.data?.ink as number), ...created && { animationDelay: `${delay}ms` } }} />;
 }
 const edgeTypes = { branch: Branch };
 
@@ -184,10 +186,11 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
     while (id && !path.has(id)) { path.add(id); id = trees.find(t => t.id === id)?.parent ?? undefined; }
     return path;
   }, [current, trees]);
+  const addresses = useMemo(() => conversationAddresses(trees), [trees]);
   const desiredNodes = useMemo(() => hierarchy.map(({ conversation, sources, hidden, stubs }): ConversationNode => {
     const id = conversation.id;
-    return { id, type: 'conversation', hidden, position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, preview: previews[id], open: openNode, active: active.includes(id), focused: current === id, focus: focus === id && !hidden, focusControl: focus === id ? focusControl : undefined, childCount: sources.length, stubs: stubs.length ? stubs : noStubs, folded: folded.has(id), toggle } };
-  }), [hierarchy, previews, active, openNode, focus, focusControl, current, folded, toggle]);
+    return { id, type: 'conversation', hidden, position: { x: conversation.x ?? 0, y: conversation.y ?? 0 }, ariaLabel: `${conversation.title}. Use arrow keys to move; Shift moves farther.`, data: { conversation, sources, preview: previews[id], open: openNode, active: active.includes(id), focused: current === id, focus: focus === id && !hidden, focusControl: focus === id ? focusControl : undefined, childCount: sources.length, address: addresses.get(id)?.address ?? '1', ink: addresses.get(id)?.ink ?? 0, stubs: stubs.length ? stubs : noStubs, folded: folded.has(id), toggle } };
+  }), [hierarchy, previews, active, openNode, focus, focusControl, current, folded, toggle, addresses]);
   useEffect(() => {
     setNodes(previous => {
       const byId = new Map(previous.map(node => [node.id, node]));
@@ -246,8 +249,8 @@ export default function TreeOverview({ root, trees, previews, active, open, focu
   }, [nodes]);
   const edges = useMemo(() => hierarchy.filter(n => !n.hidden && n.conversation.parent && !folded.has(n.conversation.parent)).map(n => {
     const t = n.conversation;
-    return { id: t.id, type: 'branch', className: focusedPath.has(t.id) ? 'branch-focused' : undefined, source: t.parent!, sourceHandle: t.id, target: t.id, ariaLabel: `Passage “${t.passage}” to ${t.title}`, data: { messageId: t.messageId, start: t.start, end: t.end, created: createdBranches.current.get(t.id) } };
-  }), [hierarchy, folded, focusedPath]);
+    return { id: t.id, type: 'branch', className: focusedPath.has(t.id) ? 'branch-focused' : undefined, source: t.parent!, sourceHandle: t.id, target: t.id, ariaLabel: `Passage “${t.passage}” to ${t.title}`, data: { messageId: t.messageId, start: t.start, end: t.end, created: createdBranches.current.get(t.id), ink: addresses.get(t.id)?.ink ?? 0 } };
+  }), [hierarchy, folded, focusedPath, addresses]);
   return <>
     <HStack padding={1} gap={1} vAlign="center" className="map-toolbar" role="group" aria-label="Tree view controls">
       <IconButton label="Zoom out" tooltip="Zoom out" icon={<MinusIcon />} variant="ghost" size="sm" onClick={zoomOut} />

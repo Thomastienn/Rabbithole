@@ -161,7 +161,7 @@ try {
   await click('Reveal source passage for Second emoji passage');
   await browser('wait', '--fn', 'document.activeElement?.tagName === "MARK"');
   // Markdown rendering drops the paragraph's trailing space from the highlighted text.
-  assert.deepEqual(await evaluate(`(() => { const m=document.querySelector('mark'); return {text:m.textContent, prefix:m.previousSibling?.textContent.length, visible:m.getBoundingClientRect().top >= 0 && m.getBoundingClientRect().bottom <= innerHeight}; })()`), { text: text.slice(start).trimEnd(), prefix: start, visible: true });
+  assert.deepEqual(await evaluate(`(() => { const m=document.querySelector('mark'); return {text:m.textContent, prefix:(() => { const c=m.previousSibling?.cloneNode(true); c?.querySelectorAll?.('.passage-address').forEach(e=>e.remove()); return c?.textContent.length; })(), visible:m.getBoundingClientRect().top >= 0 && m.getBoundingClientRect().bottom <= innerHeight}; })()`), { text: text.slice(start).trimEnd(), prefix: start, visible: true });
   await browser('find', 'role', 'textbox', 'click', '--name', 'Your question');
   await browser('press', 'ArrowLeft');
   assert.deepEqual(position(), moved);
@@ -222,7 +222,7 @@ try {
   console.log(await browser('screenshot', resolve('.impeccable/review/canvas-mobile.png')));
   await click('Reveal source passage for Second emoji passage');
   await browser('wait', '--fn', 'document.activeElement?.tagName === "MARK"');
-  assert.equal(await evaluate('document.querySelector("mark").previousSibling.textContent.length'), start);
+  assert.equal(await evaluate(`(() => { const c=document.querySelector('mark').previousSibling.cloneNode(true); c.querySelectorAll?.('.passage-address').forEach(e=>e.remove()); return c.textContent.length; })()`), start);
   assert.equal(await evaluate('document.documentElement.scrollWidth === innerWidth'), true);
   await returnToMap();
   await browser('set', 'viewport', '1440', '900');

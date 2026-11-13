@@ -24,6 +24,14 @@ _Avoid_: Chat page, conversation view
 The parent-to-child link created when the learner asks about a passage of a conversation.
 _Avoid_: Edge, connection, subtree
 
+**Address**:
+A conversation's place in its learning tree: the root conversation (trunk) is 1, its children 1.1, 1.2 and so on down (1.1.2). Siblings are numbered in the order they were created (ties by id), so adding a branch never renumbers the conversations before it. Deleting a branch renumbers its later siblings.
+_Avoid_: Path, index, number
+
+**Branch family**:
+A first-level branch of the trunk and every conversation beneath it. Each family takes one series ink in address order (amber, leaf, rust, lichen, then repeating); the trunk wears paper. A passage underline, its address chip, the branch line on the map and the conversation node band share their family's ink.
+_Avoid_: Subtree, colour group
+
 **Passage**:
 The exact contiguous text of a tutor reply that a branch was created from.
 _Avoid_: Selection, highlight, anchor

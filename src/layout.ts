@@ -137,12 +137,13 @@ html { view-transition-name: none; }
 .reply-md math[display=block] { padding-block: var(--spacing-2); max-width: 100%; overflow-x: auto; }
 .reply-md [data-reveal], mark { background: var(--treetutor-selection); color: var(--color-text-primary); border-radius: var(--radius-inner); }
 ::highlight(passage) { background-color: var(--treetutor-selection); color: var(--color-text-primary); }
-/* Suggestions hint in muted dotted chalk; a branched (explored) passage is the 2px chalk-yellow underline its map line shares. */
+/* Suggestions hint in muted dotted chalk; a branched (explored) passage wears its branch family's ink (--ink, set inline) and address chip, shared with its map line and node band. */
 .reply-md u.suggestion { text-decoration: underline dotted var(--color-text-secondary); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 .reply-md u.suggestion { cursor: pointer; }
-.reply-md u.suggestion.explored { text-decoration-style: solid; text-decoration-color: var(--color-accent); text-decoration-thickness: 2px; }
+.reply-md u.suggestion.explored { text-decoration-style: solid; text-decoration-color: var(--ink, var(--color-accent)); text-decoration-thickness: 2px; }
+.reply-md .passage-address { display: inline-block; margin-inline-start: 2px; padding: 0 4px; border-radius: var(--radius-inner); background: var(--ink); color: var(--ink-on); font: var(--font-weight-bold) var(--font-size-xs)/1.45 var(--font-family-body); font-variant-numeric: tabular-nums; vertical-align: 5px; text-decoration: none; user-select: none; }
 .reply-md u.suggestion:hover { text-decoration-color: var(--color-text-primary); }
-.reply-md u.suggestion.explored:hover { text-decoration-color: var(--color-accent); }
+.reply-md u.suggestion.explored:hover { text-decoration-color: var(--ink, var(--color-accent)); }
 .reply-md u.suggestion:focus-visible { outline: medium solid var(--focus-outline-color); outline-offset: var(--spacing-1); border-radius: var(--radius-element); }
 .reply-md .md-source-syntax { white-space: pre-wrap; font-family: monospace; }
 /* Visuals blend into the reply: no card chrome, full column width, height from the frame's reported content. */
@@ -231,6 +232,11 @@ html { view-transition-name: none; }
 .conversation-box { width: var(--treetutor-map-node-width); border: thin solid var(--color-border); border-radius: var(--radius-element); background: var(--color-background-surface); overflow-wrap: anywhere; transition: border-color var(--duration-fast) ease-out; }
 .react-flow__node:hover .conversation-box { border-color: var(--color-text-secondary); }
 .conversation-box[data-focused=true] { outline: var(--focus-outline-width) solid var(--color-accent); outline-offset: var(--focus-outline-offset); }
+.conversation-box .node-band { margin: calc(-1 * var(--spacing-3)) calc(-1 * var(--spacing-3)) 0; padding: var(--spacing-1) var(--spacing-2); border-radius: calc(var(--radius-element) - 1px) calc(var(--radius-element) - 1px) 0 0; background: var(--ink); color: var(--ink-on); }
+.conversation-box .node-band :is(h2, button, .astryx-icon) { color: var(--ink-on); }
+.conversation-box .node-band :focus-visible { outline-color: var(--ink-on); }
+.conversation-box .node-band .activity-dot, .conversation-box[data-active=true] .node-band .activity-dot { background: var(--ink-on); }
+.node-address { flex: none; color: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
 .conversation-box .node-title { flex: 0 1 auto; min-width: 0; justify-content: flex-start; padding-inline: var(--spacing-1); text-align: start; }
 .conversation-box .node-title h2 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .node-extra { margin-inline-start: auto; opacity: 0; transition: opacity 120ms ease-out; }
@@ -252,8 +258,8 @@ html { view-transition-name: none; }
 .fold-stub { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); display: flex; align-items: center; pointer-events: auto; }
 .fold-stub::before { content: ''; width: var(--spacing-5); border-top: var(--treetutor-branch-width) dashed var(--treetutor-branch-color); }
 .fold-stub button { background: var(--color-background-body); padding: var(--spacing-1); }
-.react-flow__edge-path { stroke: var(--treetutor-branch-color); stroke-width: var(--treetutor-branch-width); stroke-linecap: round; }
-.react-flow__edge.branch-focused .react-flow__edge-path { stroke: var(--color-accent); stroke-width: var(--treetutor-branch-focus-width); }
+.react-flow__edge-path { stroke: var(--ink, var(--treetutor-branch-color)); stroke-width: var(--treetutor-branch-width); stroke-linecap: round; }
+.react-flow__edge.branch-focused .react-flow__edge-path { stroke: var(--ink, var(--color-accent)); stroke-width: var(--treetutor-branch-focus-width); }
 .react-flow__edge-path.branch-new { animation: branch-draw var(--treetutor-branch-draw-duration) ease-out; }
 @keyframes branch-draw { from { stroke-dasharray: 1; stroke-dashoffset: 1; } to { stroke-dasharray: 1; stroke-dashoffset: 0; } }
 .react-flow__handle { background: var(--color-text-secondary); border-color: var(--color-background-surface); }
