@@ -79,20 +79,21 @@ html { view-transition-name: none; }
 .knowledge-panel > .knowledge-header + .knowledge-content { padding-block-start: calc(3 * var(--treetutor-module)); }
 .knowledge-content :focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: var(--focus-outline-offset); }
 .knowledge-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 360px); gap: calc(4 * var(--treetutor-module)); align-items: start; }
-.knowledge-field { position: relative; display: flex; flex-direction: column; gap: var(--spacing-6); min-width: 0; min-height: 22rem; padding: 24px; border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-muted); }
-.knowledge-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.knowledge-field { position: relative; height: 32rem; min-width: 0; overflow: hidden; border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-muted); cursor: grab; touch-action: none; }
+.knowledge-field:active { cursor: grabbing; }
+.knowledge-map { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.knowledge-links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
 .knowledge-links line { stroke: var(--color-border-emphasized); stroke-width: 1.5px; stroke-linecap: round; }
 .knowledge-links line[data-kind="builds on"] { stroke: var(--color-text-secondary); }
 .knowledge-links line[data-selected=true] { stroke: var(--treetutor-paper); stroke-width: 2px; }
 .knowledge-links marker path { fill: var(--color-text-secondary); }
-.knowledge-topic { position: relative; display: flex; flex-direction: column; gap: 12px; }
-.knowledge-topic h2 { font-size: 12px; font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); }
-.knowledge-cards { display: flex; flex-wrap: wrap; gap: var(--spacing-6) var(--spacing-8); padding-inline-start: 16px; }
-.concept-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; max-width: 16rem; padding: 6px 10px; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); background: var(--color-background-surface); color: var(--color-text-primary); font: inherit; text-align: start; cursor: pointer; transition: border-color var(--duration-fast) ease-out; }
-.concept-card:hover { border-color: var(--color-text-secondary); }
-.concept-card[aria-pressed=true] { outline: 2px solid var(--treetutor-paper); outline-offset: 3px; }
-.concept-name { display: flex; align-items: center; gap: 8px; font-weight: var(--font-weight-semibold); }
-.concept-level { padding-inline-start: 18px; font-size: 12px; color: var(--color-text-secondary); }
+/* Concept points: the ring sits on the layout position; the label hangs below it. */
+.concept-point { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; border-radius: var(--radius-inner); background: none; color: var(--color-text-primary); font: inherit; cursor: pointer; transform: translate(-50%, -7px); }
+.concept-point .fam { width: 14px; height: 14px; }
+.concept-point .fam[data-fill=none] { background: var(--color-background-muted); }
+.concept-point:hover .fam { box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-text-primary) 15%, transparent); }
+.concept-point[aria-pressed=true] .fam { outline: 2px solid var(--treetutor-paper); outline-offset: 3px; }
+.concept-name { max-width: 11rem; overflow: hidden; padding: 0 4px; border-radius: var(--radius-inner); background: color-mix(in oklab, var(--color-background-muted) 88%, transparent); font-size: 12px; font-weight: var(--font-weight-semibold); white-space: nowrap; text-overflow: ellipsis; }
 .fam { display: inline-block; flex: none; width: 10px; height: 10px; border: 1.5px solid var(--color-text-primary); border-radius: 50%; }
 .fam[data-fill=some] { background: linear-gradient(90deg, var(--color-text-primary) 50%, transparent 50%); }
 .fam[data-fill=full] { background: var(--color-text-primary); }
@@ -108,8 +109,7 @@ html { view-transition-name: none; }
 .knowledge-content .astryx-button[data-variant=secondary] { background: transparent; box-shadow: inset 0 0 0 1px var(--color-border-emphasized); }
 .knowledge-content .astryx-button[data-variant=secondary]:hover { background: color-mix(in oklab, var(--color-text-primary) 8%, transparent); }
 .knowledge-actions button[aria-pressed=true] { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); background: var(--color-accent-muted); }
-@media (max-width: 48rem) { .knowledge-panel > .knowledge-header { padding-inline: calc(2 * var(--treetutor-module)); } .knowledge-content { padding: calc(3 * var(--treetutor-module)) calc(2 * var(--treetutor-module)) calc(6 * var(--treetutor-module)); } .knowledge-body { grid-template-columns: minmax(0, 1fr); } .knowledge-detail { position: static; } .knowledge-key-links { margin-inline-start: 0; } }
-@media (prefers-reduced-motion: reduce) { .concept-card { transition: none; } }
+@media (max-width: 48rem) { .knowledge-panel > .knowledge-header { padding-inline: calc(2 * var(--treetutor-module)); } .knowledge-content { padding: calc(3 * var(--treetutor-module)) calc(2 * var(--treetutor-module)) calc(6 * var(--treetutor-module)); } .knowledge-body { grid-template-columns: minmax(0, 1fr); } .knowledge-detail { position: static; } .knowledge-field { height: 22rem; } .knowledge-key-links { margin-inline-start: 0; } }
 .tree-workspace { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; flex-direction: row; }
 .reading-workspace { display: flex; flex: 1; min-width: 0; min-height: 0; }
 .contents { display: flex; flex-direction: column; flex: 0 0 calc(33 * var(--treetutor-module)); width: calc(33 * var(--treetutor-module)); min-height: 0; border-inline-end: thin solid var(--color-border); background: var(--color-background-muted); }

@@ -183,6 +183,5 @@
     "docs/verification/states-tree-menu-light.png",
     "docs/verification/states-failures-narrow-dark.png",
     "docs/verification/states-failures-narrow-light.png"
-  ],
-  "focusContainment": "Forward/reverse Tab containment checked for visual, diagram, video and merge dialogs in both appearances; delete containment checked by verify-dialog-identity."
+  ]
 }

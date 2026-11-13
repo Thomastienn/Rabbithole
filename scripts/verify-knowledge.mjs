@@ -54,7 +54,7 @@ try {
   for (let i = 0; i < 12 && await ev(`document.activeElement?.textContent`) !== 'Refresh Knowledge'; i++) await key('Tab');
   await wait(`document.activeElement?.textContent === 'Refresh Knowledge'`);
   await key('Enter');
-  await wait(`document.querySelectorAll('[data-concept]').length === 3`);
+  await wait(`document.querySelectorAll('[data-concept]').length === 2`);
   assert.equal(await ev(`[...document.querySelectorAll('.knowledge-evidence dt')].find(d => d.textContent === 'Met in replies')?.nextElementSibling.textContent`), '2');
   await reach(know);
   assert.equal(await ev(`document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), true);
@@ -65,7 +65,7 @@ try {
   await key('Space');
   await wait(`document.querySelector('${unknown}')?.getAttribute('aria-pressed') === 'true'`);
   assert.equal(store.graph().concepts.find(c => c.name === 'Mutex').familiarity, 0);
-  steps.push('Rows show multi-topic concepts and evidence across two learning trees; both corrections activate with Enter/Space and have visible focus');
+  steps.push('Points show multi-topic concepts and evidence across two learning trees; both corrections activate with Enter/Space and have visible focus');
 
   await key('Tab');
   await key('Enter');
@@ -124,9 +124,11 @@ try {
   await b('wait', '--text', 'You marked this as not understood');
   steps.push('Desktop/phone layouts fit; merged evidence and correction survive page reload');
 
-  // Visual identity (mockup Knowledge): deep field, raised cards with familiarity rings, related lines and builds-on arrows, paper selection and focus, serif detail text.
+  // Visual identity: concept points with familiarity rings on the deep pannable field, related lines and builds-on arrows, paper selection and focus, serif detail text.
   store.addGraph({ concepts: [{ name: 'Race condition', topics: ['Concurrency'] }, { name: 'Critical section', topics: ['Concurrency', 'Operating systems'] }, { name: 'Scheduler', topics: ['Operating systems'] }], links: [{ from: 'Critical section', to: 'Mutual exclusion', kind: 'builds on' }, { from: 'Race condition', to: 'Mutual exclusion', kind: 'related' }, { from: 'Scheduler', to: 'Critical section', kind: 'related' }] }, message);
   const look = {};
+  const mapTransform = () => ev(`document.querySelector('.knowledge-map').style.transform`);
+  const scale = async () => +(await mapTransform()).match(/scale\(([\d.]+)\)/)[1];
   for (const mode of ['dark', 'light']) {
     await b('set', 'viewport', '1440', '900');
     await ev(`localStorage.setItem('treetutor.appearance', '${mode}'); true`);
@@ -135,33 +137,74 @@ try {
     await openKnowledge();
     await wait(`document.querySelectorAll('.knowledge-links line').length === 3`);
     // Select a concept that is not linked to everything, so plain and builds-on relations both show unselected.
-    await ev(`document.querySelector('[data-concept="Scheduler"]').click(); true`);
+    await b('click', '[data-concept="Scheduler"]');
     await wait(`document.querySelector('.knowledge-links line[data-selected=false][data-kind="builds on"]')`);
-    look[mode] = await ev(`(() => { const s = getComputedStyle, card = document.querySelector('[data-concept][aria-pressed=true]'), detail = document.querySelector('.knowledge-detail'), line = document.querySelector('.knowledge-links line[data-selected=true]'), plain = document.querySelector('.knowledge-links line[data-selected=false][data-kind=related]'), builds = document.querySelector('.knowledge-links line[data-selected=false][data-kind="builds on"]');
+    look[mode] = await ev(`(() => { const s = getComputedStyle, card = document.querySelector('[data-concept][aria-pressed=true]'), ring = card.querySelector('.fam'), detail = document.querySelector('.knowledge-detail'), line = document.querySelector('.knowledge-links line[data-selected=true]'), plain = document.querySelector('.knowledge-links line[data-selected=false][data-kind=related]'), builds = document.querySelector('.knowledge-links line[data-selected=false][data-kind="builds on"]');
       const rgb = c => c.match(/[\\d.]+/g).slice(0, 3).map(Number), lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
       const ratio = (f, b) => { const [x, y] = [lum(f), lum(b)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
       const field = s(document.querySelector('.knowledge-field')).backgroundColor, surface = s(detail).backgroundColor;
-      const contrast = { topic: ratio(s(document.querySelector('.knowledge-topic h2')).color, field), key: ratio(s(document.querySelector('.knowledge-key')).color, s(document.querySelector('.knowledge-panel')).backgroundColor === 'rgba(0, 0, 0, 0)' ? s(document.body).backgroundColor : s(document.querySelector('.knowledge-panel')).backgroundColor), level: ratio(s(card.querySelector('.concept-level')).color, s(card).backgroundColor), name: ratio(s(card).color, s(card).backgroundColor), evidence: ratio(s(detail.querySelector('dt')).color, surface), reading: ratio(s(detail.querySelector('.knowledge-reading')).color, surface) };
-      return { cardOutline: s(card).outlineColor, cardOutlineWidth: s(card).outlineWidth, cardRadius: s(card).borderRadius, cardSurface: s(card).backgroundColor, field, body: s(document.body).backgroundColor, detailRadius: s(detail).borderRadius, detailShadow: s(detail).boxShadow, lineWidth: s(line).strokeWidth, lineStroke: s(line).stroke, plainStroke: s(plain).stroke, plainWidth: s(plain).strokeWidth, buildsMarker: builds.getAttribute('marker-end'), plainMarker: plain.getAttribute('marker-end'), reading: s(detail.querySelector('.knowledge-reading')).fontFamily, ui: s(card).fontFamily,
+      const centres = [...document.querySelectorAll('[data-concept] .fam')].map(f => { const r = f.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 }; });
+      const box = document.querySelector('.knowledge-field').getBoundingClientRect(), inside = centres.every(c => c.x > box.left && c.x < box.right && c.y > box.top && c.y < box.bottom);
+      const gap = Math.min(...centres.flatMap((a, i) => centres.slice(i + 1).map(b => Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r)));
+      const contrast = { label: ratio(s(card.querySelector('.concept-name')).color, field), key: ratio(s(document.querySelector('.knowledge-key')).color, s(document.querySelector('.knowledge-panel')).backgroundColor === 'rgba(0, 0, 0, 0)' ? s(document.body).backgroundColor : s(document.querySelector('.knowledge-panel')).backgroundColor), evidence: ratio(s(detail.querySelector('dt')).color, surface), reading: ratio(s(detail.querySelector('.knowledge-reading')).color, surface) };
+      return { inside, gap, ringOutline: s(ring).outlineColor, ringOutlineWidth: s(ring).outlineWidth, ringRadius: s(ring).borderRadius, field, body: s(document.body).backgroundColor, detailRadius: s(detail).borderRadius, detailShadow: s(detail).boxShadow, lineWidth: s(line).strokeWidth, lineStroke: s(line).stroke, plainStroke: s(plain).stroke, plainWidth: s(plain).strokeWidth, buildsMarker: builds.getAttribute('marker-end'), plainMarker: plain.getAttribute('marker-end'), reading: s(detail.querySelector('.knowledge-reading')).fontFamily, ui: s(card).fontFamily,
         rings: [...document.querySelectorAll('[data-concept] .fam')].map(f => f.dataset.fill), key: document.querySelector('.knowledge-key').textContent, contrast }; })()`);
     const l = look[mode], probe = await ev(`(() => { const e = document.createElement('i'); e.style.color = 'var(--treetutor-paper)'; document.body.append(e); const c = getComputedStyle(e).color; e.remove(); return c; })()`);
-    assert.equal(l.cardOutline, probe, `${mode} selected concept outlined in paper`);
-    assert.equal(l.cardOutlineWidth, '2px');
+    assert.equal(l.ringOutline, probe, `${mode} selected concept's ring outlined in paper`);
+    assert.equal(l.ringOutlineWidth, '2px');
+    assert.equal(l.ringRadius, '50%', `${mode} concepts are round points`);
+    assert.ok(l.inside, `${mode} fitted map shows every point`);
+    assert.ok(l.gap > 0, `${mode} points do not overlap (gap ${l.gap})`);
     assert.equal(l.lineStroke, probe, `${mode} selected concept's relations in paper`);
     assert.equal(l.lineWidth, '2px');
     assert.notEqual(l.plainStroke, probe, `${mode} other relations quiet`);
     assert.equal(l.plainWidth, '1.5px', `${mode} 1.5px relation lines`);
     assert.equal(l.buildsMarker, 'url(#knowledge-arrow)', `${mode} builds on draws an arrow`); assert.equal(l.plainMarker, null, `${mode} related is a plain line`);
-    assert.ok(l.rings.length >= 5 && l.rings.every(f => ['none', 'some', 'full'].includes(f)), `${mode} every concept shows a familiarity ring`);
+    assert.ok(l.rings.length >= 4 && l.rings.every(f => ['none', 'some', 'full'].includes(f)), `${mode} every concept shows a familiarity ring`);
     assert.equal(l.key, 'UnfamiliarSome familiarityFamiliarLine: relatedArrow: builds on', `${mode} key text names familiarity and relation forms`);
     for (const [name, value] of Object.entries(l.contrast)) assert.ok(value >= 4.5, `${mode} ${name} text contrast ${value} below AA`);
-    assert.equal(l.cardRadius, '3px'); assert.equal(l.detailRadius, '4px');
+    assert.equal(l.detailRadius, '4px');
     assert.notEqual(l.field, l.body, `${mode} deep concept field`);
-    assert.notEqual(l.cardSurface, l.body, `${mode} raised concept cards`);
     assert.ok(!l.detailShadow.split(/,(?![^(]*\))/).some(x => x !== 'none' && !x.trim().endsWith('inset')), `${mode} no drop shadow`);
     assert.match(l.reading, /^"?Literata/, `${mode} serif detail text`);
-    assert.match(l.ui, /^"?Archivo/, `${mode} Archivo cards`);
+    assert.match(l.ui, /^"?Archivo/, `${mode} Archivo labels`);
     await b('screenshot', resolve(`docs/verification/knowledge-${mode}.png`));
+    if (mode === 'dark') {
+      // Pan and zoom: wheel zooms, drag pans, toolbar zooms and refits; clicking a point still selects it.
+      const fitted = await mapTransform(), k = await scale(), field = await ev(`(() => { const r = document.querySelector('.knowledge-field').getBoundingClientRect(); return { x: Math.round(r.left + 30), y: Math.round(r.top + 30) }; })()`);
+      await b('mouse', 'move', String(field.x), String(field.y));
+      await b('mouse', 'wheel', '-300');
+      await wait(`!document.querySelector('.knowledge-map').style.transform.includes('scale(${k})')`);
+      assert.ok(await scale() > k, 'wheel up zooms in');
+      const zoomed = await mapTransform();
+      await b('mouse', 'down'); await b('mouse', 'move', String(field.x + 120), String(field.y + 60), '--steps', '8'); await b('mouse', 'up');
+      assert.notEqual(await mapTransform(), zoomed, 'drag pans the map');
+      await b('find', 'role', 'button', 'click', '--name', 'Fit map', '--exact');
+      await wait(`document.querySelector('.knowledge-map').style.transform === ${JSON.stringify(fitted)}`);
+      await b('find', 'role', 'button', 'click', '--name', 'Zoom out', '--exact');
+      assert.ok(await scale() < k, 'Zoom out button zooms out');
+      await b('find', 'role', 'button', 'click', '--name', 'Fit map', '--exact');
+      await b('click', '[data-concept="Race condition"]');
+      await wait(`document.querySelector('.knowledge-detail h2')?.textContent === 'Race condition'`);
+      // Keyboard: Tab from the selected point reaches every concept, each panned into view, and Enter opens its details.
+      await b('find', 'role', 'button', 'click', '--name', 'Zoom in', '--exact');
+      await b('find', 'role', 'button', 'click', '--name', 'Zoom in', '--exact');
+      await b('find', 'role', 'button', 'click', '--name', 'Zoom in', '--exact');
+      await ev(`document.querySelector('[data-concept]').focus(); true`);
+      const reached = new Set(), total = await ev(`document.querySelectorAll('[data-concept]').length`);
+      for (let i = 0; i < total; i++) {
+        const name = await ev(`document.activeElement.dataset.concept`);
+        assert.ok(name, `Tab stays on concepts (${i})`);
+        assert.ok(await ev(`(() => { const p = document.activeElement.querySelector('.fam').getBoundingClientRect(), f = document.querySelector('.knowledge-field').getBoundingClientRect(); return p.left >= f.left && p.right <= f.right && p.top >= f.top && p.bottom <= f.bottom; })()`), `${name} panned into view on focus`);
+        reached.add(name);
+        if (i < total - 1) await key('Tab');
+      }
+      assert.equal(reached.size, total, 'keyboard reaches every concept');
+      await key('Enter');
+      await wait(`document.querySelector('.knowledge-detail h2')?.textContent === ${JSON.stringify([...reached].at(-1))}`);
+      await b('click', '[data-concept="Scheduler"]');
+      await b('find', 'role', 'button', 'click', '--name', 'Fit map', '--exact');
+    }
     await reach(`${group('Scheduler')} button:nth-of-type(1)`);
     l.focusRing = await ev(`getComputedStyle(document.activeElement).outlineColor`);
     assert.equal(l.focusRing, probe, `${mode} paper focus ring on detail controls`);
@@ -175,7 +218,7 @@ try {
   writeFileSync(resolve('docs/verification/knowledge-results.json'), JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Production build in Chromium via agent-browser over a seeded local graph; no model calls', look }, null, 2) + '\n');
   await b('set', 'viewport', '390', '844');
   await b('screenshot', resolve('docs/verification/knowledge-mobile-light.png'));
-  steps.push('Dark and light: concept cards raised on the deep field with familiarity rings and key text, related lines and builds-on arrows, selected concept and its relations in paper, paper focus ring, AA text contrast, serif detail text, Archivo cards, no drop shadow, merge dialog');
+  steps.push('Wheel zoom, drag pan, Zoom out and Fit map work; Tab reaches every concept, pans each into view, Enter opens its details. Dark and light: round non-overlapping concept points fitted on the deep field with familiarity rings and key text, related lines and builds-on arrows, selected concept and its relations in paper, paper focus ring, AA text contrast, serif detail text, Archivo labels, no drop shadow, merge dialog');
   console.log(JSON.stringify({ pass: true, steps, screenshots: [...['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)), ...['dark', 'light', 'merge-dark', 'merge-light', 'mobile-light'].map(m => `docs/verification/knowledge-${m}.png`)] }, null, 2));
 } catch (error) { console.error({ steps, snapshot: await b('snapshot', '-i').catch(() => '') }); throw error; }
 finally { await b('close').catch(() => {}); await app.stop(); store.close(); }

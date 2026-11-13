@@ -1,25 +1,21 @@
 {
-  "checkedAt": "2026-11-13T08:51:42.150Z",
+  "checkedAt": "2026-11-13T09:10:16.427Z",
   "evidence": "Production build in Chromium via agent-browser over a seeded local graph; no model calls",
   "look": {
     "dark": {
       "body": "rgb(26, 22, 19)",
       "buildsMarker": "url(#knowledge-arrow)",
-      "cardOutline": "rgb(239, 230, 214)",
-      "cardOutlineWidth": "2px",
-      "cardRadius": "3px",
-      "cardSurface": "rgb(36, 31, 26)",
       "contrast": {
         "evidence": 6.22,
         "key": 6.84,
-        "level": 6.22,
-        "name": 13.19,
-        "reading": 6.22,
-        "topic": 7.16
+        "label": 15.19,
+        "reading": 6.22
       },
       "detailRadius": "4px",
       "detailShadow": "none",
       "field": "rgb(20, 17, 14)",
+      "gap": 112.77015199192792,
+      "inside": true,
       "key": "UnfamiliarSome familiarityFamiliarLine: relatedArrow: builds on",
       "lineStroke": "rgb(239, 230, 214)",
       "lineWidth": "2px",
@@ -27,9 +23,10 @@
       "plainStroke": "rgba(239, 230, 214, 0.3)",
       "plainWidth": "1.5px",
       "reading": "Literata, Georgia, \"Times New Roman\", serif",
+      "ringOutline": "rgb(239, 230, 214)",
+      "ringOutlineWidth": "2px",
+      "ringRadius": "50%",
       "rings": [
-        "none",
-        "none",
         "none",
         "none",
         "none",
@@ -41,21 +38,17 @@
     "light": {
       "body": "rgb(242, 238, 229)",
       "buildsMarker": "url(#knowledge-arrow)",
-      "cardOutline": "rgb(31, 26, 21)",
-      "cardOutlineWidth": "2px",
-      "cardRadius": "3px",
-      "cardSurface": "rgb(250, 247, 240)",
       "contrast": {
         "evidence": 6.82,
         "key": 6.3,
-        "level": 6.82,
-        "name": 16.13,
-        "reading": 6.82,
-        "topic": 5.55
+        "label": 13.12,
+        "reading": 6.82
       },
       "detailRadius": "4px",
       "detailShadow": "none",
       "field": "rgb(230, 224, 211)",
+      "gap": 112.77015199192792,
+      "inside": true,
       "key": "UnfamiliarSome familiarityFamiliarLine: relatedArrow: builds on",
       "lineStroke": "rgb(31, 26, 21)",
       "lineWidth": "2px",
@@ -63,9 +56,10 @@
       "plainStroke": "rgba(31, 26, 21, 0.35)",
       "plainWidth": "1.5px",
       "reading": "Literata, Georgia, \"Times New Roman\", serif",
+      "ringOutline": "rgb(31, 26, 21)",
+      "ringOutlineWidth": "2px",
+      "ringRadius": "50%",
       "rings": [
-        "none",
-        "none",
         "none",
         "none",
         "none",
