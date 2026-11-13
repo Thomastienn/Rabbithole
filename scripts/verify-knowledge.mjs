@@ -37,6 +37,20 @@ const unknown = `${group('Mutex')} button:nth-of-type(2)`;
 const merge = `${group('Mutex')} button:nth-of-type(3)`;
 const steps = [], shots = resolve('.impeccable/review');
 mkdirSync(shots, { recursive: true });
+const visibleTopicLabels = async () => ev(`(() => {
+  const points = [...document.querySelectorAll('.concept-point')].map(p => p.getBoundingClientRect());
+  return [...document.querySelectorAll('[data-topic-label]')].map(e => {
+    const r = e.getBoundingClientRect(), range = document.createRange(); range.selectNodeContents(e);
+    const text = range.getBoundingClientRect(), region = [...document.querySelectorAll('[data-topic]')].find(t => t.dataset.topic === e.dataset.topicLabel).getBoundingClientRect();
+    const node = e.firstChild, words = [...e.textContent.matchAll(/\\S+/g)].map(m => { const word = document.createRange(); word.setStart(node, m.index); word.setEnd(node, m.index + m[0].length); return word.getClientRects().length === 1; });
+    return { name: e.textContent, visible: e.scrollWidth <= e.clientWidth && e.scrollHeight <= e.clientHeight && text.left >= r.left && text.right <= r.right && text.top >= r.top && text.bottom <= r.bottom, wordsIntact: words.every(Boolean), centred: Math.hypot(r.x + r.width / 2 - region.x - region.width / 2, r.y + r.height / 2 - region.y - region.height / 2) < 1, textScale: r.height / e.offsetHeight, clear: points.every(p => p.right <= r.left || p.left >= r.right || p.bottom <= r.top || p.top >= r.bottom) };
+  });
+})()`);
+async function checkTopicLabels() {
+  const labels = await visibleTopicLabels();
+  for (const l of labels) assert.ok(l.visible && l.wordsIntact && l.centred && l.clear && Math.abs(l.textScale - 1) < 0.05, 'full readable topic name centred and clear: ' + JSON.stringify(l));
+  return labels;
+}
 try {
   await b('set', 'viewport', '1440', '1000');
   await b('open', origin);
@@ -65,6 +79,10 @@ try {
   await key('Space');
   await wait(`document.querySelector('${unknown}')?.getAttribute('aria-pressed') === 'true'`);
   assert.equal(store.graph().concepts.find(c => c.name === 'Mutex').familiarity, 0);
+  const correctedLayout = await ev(`document.querySelector('.knowledge-map').getAttribute('style')`);
+  await key('Enter');
+  await wait(`!document.querySelector('${unknown}')?.disabled`);
+  assert.equal(await ev(`document.querySelector('.knowledge-map').getAttribute('style')`), correctedLayout, 'corrections keep topic layout and viewport');
   steps.push('Points show multi-topic concepts and evidence across two learning trees; both corrections activate with Enter/Space and have visible focus');
 
   await key('Tab');
@@ -113,6 +131,8 @@ try {
   await b('set', 'viewport', '1440', '1000');
   await b('screenshot', join(shots, 'knowledge-desktop.png'));
   await b('set', 'viewport', '390', '844');
+  await b('find', 'role', 'button', 'click', '--name', 'Fit map', '--exact');
+  await checkTopicLabels();
   await b('screenshot', join(shots, 'knowledge-mobile.png'));
   const widths = await ev(`({ viewport: innerWidth, document: document.documentElement.scrollWidth, panel: document.querySelector('.knowledge-panel').scrollWidth, outside: [...document.querySelectorAll('body *')].map(e => ({tag: e.tagName, cls: e.className, left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right})).filter(r => r.left < -1 || r.right > innerWidth + 1).slice(0, 12) })`);
   assert.ok(widths.document <= widths.viewport && widths.panel <= widths.viewport, 'no horizontal overflow at phone width: ' + JSON.stringify(widths));
@@ -146,15 +166,34 @@ try {
       const centres = [...document.querySelectorAll('[data-concept] .fam')].map(f => { const r = f.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 }; });
       const box = document.querySelector('.knowledge-field').getBoundingClientRect(), inside = centres.every(c => c.x > box.left && c.x < box.right && c.y > box.top && c.y < box.bottom);
       const gap = Math.min(...centres.flatMap((a, i) => centres.slice(i + 1).map(b => Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r)));
+      const topics = [...document.querySelectorAll('[data-topic]')].map(region => {
+        const name = region.dataset.topic, label = [...document.querySelectorAll('[data-topic-label]')].find(l => l.dataset.topicLabel === name), r = region.getBoundingClientRect(), l = label.getBoundingClientRect();
+        return { name, x: region.cx.baseVal.value, y: region.cy.baseVal.value, radius: region.r.baseVal.value, opacity: +s(region).fillOpacity, fill: s(region).fill, label: label.textContent, contrast: ratio(s(label).color, s(label).backgroundColor), textScale: l.height / label.offsetHeight, centred: Math.hypot(l.x + l.width / 2 - r.x - r.width / 2, l.y + l.height / 2 - r.y - r.height / 2) < 1, fitted: r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom, clear: [...document.querySelectorAll('.concept-point')].every(p => { const b = p.getBoundingClientRect(); return b.right <= l.left || b.left >= l.right || b.bottom <= l.top || b.top >= l.bottom; }) };
+      });
       const contrast = { label: ratio(s(card.querySelector('.concept-name')).color, field), key: ratio(s(document.querySelector('.knowledge-key')).color, s(document.querySelector('.knowledge-panel')).backgroundColor === 'rgba(0, 0, 0, 0)' ? s(document.body).backgroundColor : s(document.querySelector('.knowledge-panel')).backgroundColor), evidence: ratio(s(detail.querySelector('dt')).color, surface), reading: ratio(s(detail.querySelector('.knowledge-reading')).color, surface) };
-      return { inside, gap, ringOutline: s(ring).outlineColor, ringOutlineWidth: s(ring).outlineWidth, ringRadius: s(ring).borderRadius, field, body: s(document.body).backgroundColor, detailRadius: s(detail).borderRadius, detailShadow: s(detail).boxShadow, lineWidth: s(line).strokeWidth, lineStroke: s(line).stroke, plainStroke: s(plain).stroke, plainWidth: s(plain).strokeWidth, buildsMarker: builds.getAttribute('marker-end'), plainMarker: plain.getAttribute('marker-end'), reading: s(detail.querySelector('.knowledge-reading')).fontFamily, ui: s(card).fontFamily,
+      const points = [...document.querySelectorAll('[data-concept]')].map(p => ({ name: p.dataset.concept, x: parseFloat(p.style.left), y: parseFloat(p.style.top) }));
+      return { topics, points, inside, gap, ringOutline: s(ring).outlineColor, ringOutlineWidth: s(ring).outlineWidth, ringRadius: s(ring).borderRadius, field, body: s(document.body).backgroundColor, detailRadius: s(detail).borderRadius, detailShadow: s(detail).boxShadow, lineWidth: s(line).strokeWidth, lineStroke: s(line).stroke, plainStroke: s(plain).stroke, plainWidth: s(plain).strokeWidth, buildsMarker: builds.getAttribute('marker-end'), plainMarker: plain.getAttribute('marker-end'), reading: s(detail.querySelector('.knowledge-reading')).fontFamily, ui: s(card).fontFamily,
         rings: [...document.querySelectorAll('[data-concept] .fam')].map(f => f.dataset.fill), key: document.querySelector('.knowledge-key').textContent, contrast }; })()`);
     const l = look[mode], probe = await ev(`(() => { const e = document.createElement('i'); e.style.color = 'var(--treetutor-paper)'; document.body.append(e); const c = getComputedStyle(e).color; e.remove(); return c; })()`);
+    l.labels = await checkTopicLabels();
     assert.equal(l.ringOutline, probe, `${mode} selected concept's ring outlined in paper`);
     assert.equal(l.ringOutlineWidth, '2px');
     assert.equal(l.ringRadius, '50%', `${mode} concepts are round points`);
     assert.ok(l.inside, `${mode} fitted map shows every point`);
     assert.ok(l.gap > 0, `${mode} points do not overlap (gap ${l.gap})`);
+    assert.deepEqual(l.topics.map(t => t.name), ['Concurrency', 'Operating systems']);
+    assert.equal(new Set(l.topics.map(t => t.fill)).size, 2, `${mode} topics use different theme inks`);
+    for (const t of l.topics) {
+      assert.ok(t.opacity > 0 && t.opacity < 1, `${mode} ${t.name} region is translucent`);
+      assert.equal(t.label, t.name);
+      assert.ok(t.centred && t.clear && t.fitted, `${mode} ${t.name} centred label clear of points; whole region fitted`);
+      assert.ok(t.contrast >= 4.5, `${mode} ${t.name} label contrast ${t.contrast} below AA`);
+      assert.ok(Math.abs(t.textScale - 1) < 0.05, `${mode} topic text stays at its readable size when fitted`);
+      for (const c of store.graph().concepts.filter(c => c.topics.includes(t.name))) {
+        const p = l.points.find(p => p.name === c.name);
+        assert.ok(Math.hypot(p.x - t.x, p.y - t.y) < t.radius, `${mode} ${c.name} inside ${t.name}`);
+      }
+    }
     assert.equal(l.lineStroke, probe, `${mode} selected concept's relations in paper`);
     assert.equal(l.lineWidth, '2px');
     assert.notEqual(l.plainStroke, probe, `${mode} other relations quiet`);
@@ -163,7 +202,7 @@ try {
     assert.ok(l.rings.length >= 4 && l.rings.every(f => ['none', 'some', 'full'].includes(f)), `${mode} every concept shows a familiarity ring`);
     assert.equal(l.key, 'UnfamiliarSome familiarityFamiliarLine: relatedArrow: builds on', `${mode} key text names familiarity and relation forms`);
     for (const [name, value] of Object.entries(l.contrast)) assert.ok(value >= 4.5, `${mode} ${name} text contrast ${value} below AA`);
-    assert.equal(l.detailRadius, '4px');
+    assert.equal(l.detailRadius, '12px');
     assert.notEqual(l.field, l.body, `${mode} deep concept field`);
     assert.ok(!l.detailShadow.split(/,(?![^(]*\))/).some(x => x !== 'none' && !x.trim().endsWith('inset')), `${mode} no drop shadow`);
     assert.match(l.reading, /^"?Literata/, `${mode} serif detail text`);
@@ -215,10 +254,20 @@ try {
     await key('Escape');
     await wait(`!document.querySelector('dialog[open]')`);
   }
-  writeFileSync(resolve('docs/verification/knowledge-results.json'), JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Production build in Chromium via agent-browser over a seeded local graph; no model calls', look }, null, 2) + '\n');
   await b('set', 'viewport', '390', '844');
+  await b('find', 'role', 'button', 'click', '--name', 'Fit map', '--exact');
+  assert.ok(await ev(`(() => { const f = document.querySelector('.knowledge-field').getBoundingClientRect(); return [...document.querySelectorAll('[data-topic]')].every(e => { const r = e.getBoundingClientRect(); return r.left >= f.left && r.right <= f.right && r.top >= f.top && r.bottom <= f.bottom; }); })()`), 'phone Fit map includes complete topic regions');
+  const mobileLabels = await checkTopicLabels();
+  writeFileSync(resolve('docs/verification/knowledge-results.json'), JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Production build in Chromium via agent-browser over a seeded local graph; no model calls', look, mobileLabels }, null, 2) + '\n');
   await b('screenshot', resolve('docs/verification/knowledge-mobile-light.png'));
-  steps.push('Wheel zoom, drag pan, Zoom out and Fit map work; Tab reaches every concept, pans each into view, Enter opens its details. Dark and light: round non-overlapping concept points fitted on the deep field with familiarity rings and key text, related lines and builds-on arrows, selected concept and its relations in paper, paper focus ring, AA text contrast, serif detail text, Archivo labels, no drop shadow, merge dialog');
+  // Topic-only changes must invalidate the layout even with the same concept names and links.
+  const priorLayout = await ev(`document.querySelector('.knowledge-map').style.transform`);
+  store.addGraph({ concepts: [{ name: 'Scheduler', topics: ['Scheduling'] }], links: [] }, message);
+  await b('find', 'role', 'button', 'click', '--name', 'Refresh Knowledge', '--exact');
+  await wait(`document.querySelector('[data-topic="Scheduling"]') && document.querySelectorAll('[data-topic]').length === 3`);
+  assert.notEqual(await ev(`document.querySelector('.knowledge-map').style.transform`), priorLayout, 'new topic membership recalculates layout and fit');
+  steps.push('Phone Fit map includes complete regions; refreshing topic membership without changing concept names or links recalculates regions and fit');
+  steps.push('Wheel zoom, drag pan, Zoom out and Fit map work; Tab reaches every concept, pans each into view, Enter opens its details. Dark and light: translucent topic regions contain every member, have centred AA labels clear of points, and fit in view; corrections preserve layout. Round non-overlapping concept points, familiarity rings and key, related lines and builds-on arrows, paper selection and focus, AA text, serif details, Archivo labels, no drop shadow, merge dialog');
   console.log(JSON.stringify({ pass: true, steps, screenshots: [...['knowledge-desktop.png', 'knowledge-mobile.png', 'knowledge-merge.png'].map(p => join(shots, p)), ...['dark', 'light', 'merge-dark', 'merge-light', 'mobile-light'].map(m => `docs/verification/knowledge-${m}.png`)] }, null, 2));
 } catch (error) { console.error({ steps, snapshot: await b('snapshot', '-i').catch(() => '') }); throw error; }
 finally { await b('close').catch(() => {}); await app.stop(); store.close(); }

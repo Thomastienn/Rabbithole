@@ -82,7 +82,9 @@ html { view-transition-name: none; }
 .knowledge-field { position: relative; height: 32rem; min-width: 0; overflow: hidden; border: thin solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-muted); cursor: grab; touch-action: none; }
 .knowledge-field:active { cursor: grabbing; }
 .knowledge-map { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-.knowledge-links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.knowledge-links, .knowledge-regions { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.knowledge-regions circle { fill: currentColor; fill-opacity: 0.1; stroke: currentColor; stroke-opacity: 0.4; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.topic-label { position: absolute; width: min-content; padding: 2px 4px; border-radius: var(--radius-inner); background: var(--color-background-muted); color: var(--color-text-primary); font-size: 14px; line-height: 1.3; font-weight: var(--font-weight-semibold); text-align: center; overflow-wrap: break-word; }
 .knowledge-links line { stroke: var(--color-border-emphasized); stroke-width: 1.5px; stroke-linecap: round; }
 .knowledge-links line[data-kind="builds on"] { stroke: var(--color-text-secondary); }
 .knowledge-links line[data-selected=true] { stroke: var(--treetutor-paper); stroke-width: 2px; }

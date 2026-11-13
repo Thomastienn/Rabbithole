@@ -35,9 +35,9 @@ export default function KnowledgePage({ api, activity }: { api: Api; activity: s
   const [view, setView] = useState(zoomIdentity);
   const selected = graph?.concepts.find(c => c.name === chosen) ?? graph?.concepts[0];
   const hasMap = !!(graph && selected);
-  // Corrections refetch the graph; only a change of concepts or links moves points or refits the view.
-  const shape = graph ? JSON.stringify([graph.concepts.map(c => c.name), graph.links]) : '';
-  const places = useMemo(() => graph ? layoutConcepts(graph) : [], [shape]);
+  // Corrections refetch the graph; only concepts, topic membership or links move points or refit the view.
+  const shape = graph ? JSON.stringify([graph.concepts.map(c => [c.name, c.topics]), graph.links]) : '';
+  const { points: places, regions } = useMemo(() => graph ? layoutConcepts(graph) : { points: [], regions: [] }, [shape]);
   const at = useMemo(() => new Map(places.map(p => [p.name, p])), [places]);
   const lines: Line[] = (graph?.links ?? []).flatMap(l => {
     const a = at.get(l.from), b = at.get(l.to);
@@ -50,7 +50,12 @@ export default function KnowledgePage({ api, activity }: { api: Api; activity: s
     const box = field.current, z = zoomer.current;
     if (!box || !z || !places.length || !box.clientWidth) return;
     const pad = POINT_SPACE * 1.5, xs = places.map(p => p.x), ys = places.map(p => p.y);
-    const [x0, x1, y0, y1] = [Math.min(...xs) - pad, Math.max(...xs) + pad, Math.min(...ys) - pad, Math.max(...ys) + pad];
+    const [x0, x1, y0, y1] = [
+      Math.min(...xs.map(x => x - pad), ...regions.map(r => r.x - r.radius - 8)),
+      Math.max(...xs.map(x => x + pad), ...regions.map(r => r.x + r.radius + 8)),
+      Math.min(...ys.map(y => y - pad), ...regions.map(r => r.y - r.radius - 8)),
+      Math.max(...ys.map(y => y + pad), ...regions.map(r => r.y + r.radius + 8)),
+    ];
     const k = Math.max(MIN_SCALE, Math.min(1.25, box.clientWidth / (x1 - x0), box.clientHeight / (y1 - y0)));
     fitted.current = shape;
     select(box).call(z.transform, zoomIdentity.translate(box.clientWidth / 2 - k * (x0 + x1) / 2, box.clientHeight / 2 - k * (y0 + y1) / 2).scale(k));
@@ -136,11 +141,13 @@ export default function KnowledgePage({ api, activity }: { api: Api; activity: s
     {graph && selected && <div className="knowledge-body">
       <div><div className="knowledge-field" ref={field} role="region" aria-label="Knowledge map">
         <div className="knowledge-map" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, visibility: fitted.current === shape ? undefined : 'hidden' }}>
+          <svg className="knowledge-regions" aria-hidden="true">{regions.map((r, i) => <circle key={r.name} data-topic={r.name} cx={r.x} cy={r.y} r={r.radius} style={{ color: `var(--treetutor-ink-${i % 4 + 1})` }} />)}</svg>
           <svg className="knowledge-links" aria-hidden="true"><defs><marker id="knowledge-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" /></marker></defs>
             {lines.map(l => <line key={l.key} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} data-kind={l.kind} data-selected={l.selected} markerEnd={l.kind === 'builds on' ? 'url(#knowledge-arrow)' : undefined} />)}</svg>
           {graph.concepts.map(c => { const p = at.get(c.name); return p && <button key={c.name} type="button" className="concept-point" data-concept={c.name} style={{ left: p.x, top: p.y }} aria-pressed={c === selected} aria-controls="concept-detail" onFocus={() => reveal(c.name)} onClick={() => setChosen(c.name)}>
             <i className="fam" data-fill={fill(c)} aria-hidden="true" /><span className="concept-name">{c.name}</span><span className="sr-only">, {level(c)}</span>
           </button>; })}
+          {regions.map(r => <span key={r.name} className="topic-label" data-topic-label={r.name} style={{ left: r.x, top: r.y, maxWidth: Math.max(96, POINT_SPACE * 4 * Math.min(1, view.k)), transform: `translate(-50%, -50%) scale(${1 / view.k})` }}>{r.name}</span>)}
         </div>
         <HStack padding={1} gap={1} vAlign="center" className="map-toolbar" role="group" aria-label="Knowledge map controls">
           <IconButton label="Zoom out" tooltip="Zoom out" icon={<MinusIcon />} variant="ghost" size="sm" onClick={() => field.current && zoomer.current && select(field.current).call(zoomer.current.scaleBy, 0.8)} />
