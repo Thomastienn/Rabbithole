@@ -1,5 +1,6 @@
 {
-  "checkedAt": "2026-11-13T11:52:58.867Z",
+  "issue": "TreeTutor-2li.13",
+  "checkedAt": "2026-11-13T22:27:52.540Z",
   "evidence": "Built app, SQLite/HTTP/SSE and Chromium; synthetic providers. Provider protocol/persistence checked separately by test/usage.test.mjs; no native model call.",
   "pass": true,
   "steps": [
@@ -146,6 +147,9 @@
     },
     {
       "name": "Switch to unknown model keeps measured tokens and removes percentage/bar"
+    },
+    {
+      "name": "390px: Settings opens on Interface after the drawer closes; Dark applies before returning to Contents"
     },
     {
       "name": "390px: Contents drawer opens by keyboard; figure navigation closes the drawer and focuses media; full-width chat and no overflow"

@@ -125,14 +125,16 @@ try {
   await b('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Add a visual'); await click('Send');
   await wait(`[...document.querySelectorAll('.contents-figure')].some(e=>e.textContent.includes('One exchange')) && document.querySelector('.visual[data-state=pending]')`);
   const newVisual = store.tree(root.id).artifacts.find(a => a.title === 'One exchange');
+  // Let the tutor's final snapshot settle before releasing the controlled visual.
+  await wait(`document.querySelector('.model-picker:not([aria-disabled=true]):not(:disabled)')`);
   assert.ok(finishVisual); finishVisual();
   await wait(`document.querySelector('[data-artifact="${newVisual.id}"][data-state=ready]')`);
   await selectFigure('One exchange', newVisual.id);
   assert.match(await ev(`document.querySelector('.contents-context').textContent`), /64,000 tokens · 32% of 200,000/);
   check('SSE visual creation appears live in Figures, pending → ready; selecting it focuses; latest turn refreshes context to 64,000 (32%)');
   await wait(`document.querySelector('.model-picker:not([aria-disabled=true]):not(:disabled)')`);
-  await click('Model for next reply');
-  await wait(`document.querySelector('[role=menuitemradio]')`);
+  await b('focus', '.model-picker'); await b('press', 'Enter');
+  await wait(`[...document.querySelectorAll('[role=menuitemradio]')].some(e => e.checkVisibility() && e.textContent.trim() === 'Unknown window')`);
   await b('find', 'role', 'menuitemradio', 'click', '--name', 'Unknown window', '--exact');
   await wait(`document.querySelector('.chat-model')?.textContent.includes('Unknown window')`);
   const unknown = await ev(`document.querySelector('.contents-context').textContent`);
@@ -144,9 +146,15 @@ try {
   assert.equal(await ev(`!!document.querySelector('main .contents')`), false);
   const drawer = async () => { await b('focus', '.band-contents'); await b('press', 'Enter'); await wait(`document.querySelector('dialog[open] .contents-panel')?.checkVisibility()`); };
   await drawer(); await shot('narrow-light');
-  await click('Settings'); await b('click', '#settings-interface');
-  await wait(`document.querySelector('input[type=radio]')`);
-  await b('find', 'role', 'radio', 'click', '--name', 'Dark', '--exact'); await b('press', 'Escape');
+  await click('Settings');
+  // The closing modal drawer keeps the Settings page inert until focus transfers.
+  await wait(`!document.querySelector('dialog[open]') && document.activeElement?.id === 'settings-heading'`);
+  assert.ok(await ev(`document.querySelector('#settings-interface[aria-current=page]')?.checkVisibility()`));
+  await b('find', 'role', 'radio', 'click', '--name', 'Dark', '--exact');
+  await wait(`document.documentElement.getAttribute('data-theme') === 'dark'`);
+  await b('press', 'Escape');
+  await wait(`!document.querySelector('.settings-page:not([hidden])')`);
+  check('390px: Settings opens on Interface after the drawer closes; Dark applies before returning to Contents');
   await drawer(); await shot('narrow-dark');
   await selectFigure(video.title, video.id);
   assert.equal(await ev(`!!document.querySelector('dialog[open] .contents')`), false);
@@ -155,6 +163,6 @@ try {
   await b('set', 'viewport', '1440', '900'); await click('Map');
   assert.equal(await ev(`!!document.querySelector('.contents')`), false);
   check('Map retains its full workspace without Contents');
-  writeFileSync('docs/verification/contents-results.json', JSON.stringify({ checkedAt: new Date().toISOString(), evidence: 'Built app, SQLite/HTTP/SSE and Chromium; synthetic providers. Provider protocol/persistence checked separately by test/usage.test.mjs; no native model call.', pass: true, steps, screenshots }, null, 2) + '\n');
+  writeFileSync('docs/verification/contents-results.json', JSON.stringify({ issue: 'TreeTutor-2li.13', checkedAt: new Date().toISOString(), evidence: 'Built app, SQLite/HTTP/SSE and Chromium; synthetic providers. Provider protocol/persistence checked separately by test/usage.test.mjs; no native model call.', pass: true, steps, screenshots }, null, 2) + '\n');
 } catch (error) { await b('screenshot', '/tmp/contents-failure.png').catch(() => {}); throw error; }
 finally { finishVisual?.(); await b('close').catch(() => {}); await app.stop(); store.close(); }
