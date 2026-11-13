@@ -28,7 +28,7 @@ test('every theme defines every token in both variants', () => {
 
 test('unknown saved themes fall back to Paperback', () => {
   assert.equal(savedTheme(null), 'paperback');
-  assert.equal(savedTheme('forest'), 'forest');
+  for (const { id } of themeChoices) assert.equal(savedTheme(id), id);
   assert.equal(savedTheme('ocean'), 'paperback');
 });
 

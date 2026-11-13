@@ -1,4 +1,4 @@
-// Themes (TreeTutor-got.14): Paperback default, Forest changes surfaces in light and dark, persists across reload,
+// Themes (TreeTutor-got.14/.15): Paperback default, Forest/Harbor/Dusk change surfaces in light and dark, persist across reload,
 // leaves Appearance and bubble tint alone; unknown saved values open Paperback. Built app, isolated database,
 // synthetic providers, agent-browser Chromium. Screenshots go to docs/verification/.
 import assert from 'node:assert/strict';
@@ -55,11 +55,11 @@ try {
   step('fresh theme storage opens Paperback');
 
   await openInterface();
-  assert.deepEqual(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [data-theme-swatch]')].map(s => s.dataset.themeSwatch)`), ['paperback', 'forest']);
+  assert.deepEqual(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [data-theme-swatch]')].map(s => s.dataset.themeSwatch)`), ['paperback', 'forest', 'harbor', 'dusk']);
   // Each swatch card wears its own theme: different accent and ink dots, the bubble in the chosen tint.
   const cards = await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [data-theme-swatch]')].map(s => [...s.children].map(i => getComputedStyle(i).backgroundColor))`);
-  assert.equal(cards[0].length, 6, 'bubble, accent and four branch inks');
-  assert.notDeepEqual(cards[0].slice(1), cards[1].slice(1), 'cards show each theme’s own accent and inks');
+  for (const card of cards) assert.equal(card.length, 6, 'bubble, accent and four branch inks');
+  assert.equal(new Set(cards.map(card => JSON.stringify(card))).size, 4, 'cards show each theme’s own bubble, accent and inks');
   await shot('settings-paperback-light');
   await pick('Forest');
   await wait(`document.documentElement.getAttribute('data-astryx-theme') === 'forest'`);
@@ -100,6 +100,38 @@ try {
   assert.equal(await stored('appearance'), 'dark');
   assert.equal(await stored('bubble-tint'), 'blue');
   step('Forest and Paperback have different dark surfaces; switching back keeps Dark and the tint');
+
+  for (const [id, label, light, dark] of [
+    ['harbor', 'Harbor', 'rgb(243, 246, 249)', 'rgb(26, 34, 45)'],
+    ['dusk', 'Dusk', 'rgb(248, 243, 248)', 'rgb(33, 25, 38)'],
+  ]) {
+    for (const [mode, expected] of [['light', light], ['dark', dark]]) {
+      await pick(mode === 'light' ? 'Light' : 'Dark');
+      await pick(label);
+      await wait(`document.documentElement.getAttribute('data-astryx-theme') === '${id}' && document.documentElement.getAttribute('data-theme') === '${mode}'`);
+      assert.equal((await surfaces()).surface, expected, `${label} ${mode} surface`);
+      assert.equal(await stored('theme'), id);
+      assert.equal(await stored('appearance'), mode);
+      assert.equal(await stored('bubble-tint'), 'blue');
+      assert.equal(await ev(`document.querySelector('input[type=radio][value=${id}]')?.checked`), true);
+      const swatch = await ev(`[...document.querySelector('[data-theme-swatch=${id}]').children].map(i => getComputedStyle(i).backgroundColor)`);
+      assert.equal(swatch[0], await color('--color-background-blue'), 'swatch bubble follows the chosen tint');
+      assert.equal(swatch[1], await color('--color-accent'), 'swatch accent matches the applied theme');
+      for (let n = 1; n <= 4; n++) assert.equal(swatch[n + 1], await color(`--treetutor-ink-${n}`), `swatch branch ink ${n}`);
+      await shot(`settings-${id}-${mode}`);
+      await b('reload');
+      await ready();
+      assert.equal(await themeName(), id, `${label} persists across reload`);
+      assert.equal((await surfaces()).surface, expected, `${label} ${mode} restored`);
+      await openInterface();
+      step(`${label} ${mode}: swatch matches applied palette; persists; Appearance and tint kept`);
+    }
+    await b('set', 'viewport', '390', '844');
+    assert.equal(await ev(`document.documentElement.scrollWidth <= innerWidth`), true, `${label} narrow settings fit`);
+    await b('eval', `document.querySelector('[data-theme-swatch=${id}]').scrollIntoView({ block: 'center' }); true`);
+    await shot(`settings-${id}-narrow`);
+    await b('set', 'viewport', '1440', '900');
+  }
 
   // Unknown stored value falls back to Paperback.
   await b('eval', `localStorage.setItem('treetutor.theme', 'ocean'); true`);

@@ -16,6 +16,8 @@ export function savedAppearance(): Appearance {
 export const themeChoices = [
   { id: 'paperback', label: 'Paperback' },
   { id: 'forest', label: 'Forest' },
+  { id: 'harbor', label: 'Harbor' },
+  { id: 'dusk', label: 'Dusk' },
 ] as const;
 
 export type ThemeChoice = typeof themeChoices[number]['id'];
