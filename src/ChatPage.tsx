@@ -378,7 +378,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     const response = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: {
       'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state?.csrf ?? '' }, body: JSON.stringify(body) });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error ?? 'Request failed. Reload and try again.');
+    if (!response.ok) throw Object.assign(new Error(data.error ?? 'Request failed. Reload and try again.'), { data });
     return data;
   }
   function savePositions(positions: Record<string, Point>) { if (root) markLayout(root, layoutOf(root), positions); }
@@ -462,7 +462,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     const version = ++modelRequest.current;
     setModelError('');
     try { const data = await api('/api/models'); if (version === modelRequest.current) { setModels(data.models); setProviders(data.providers); } }
-    catch (e) { if (version === modelRequest.current) { setModelError((e as Error).message); setProviders(undefined); } }
+    catch (e) { if (version === modelRequest.current) { setModelError((e as Error).message); setProviders((e as { data?: { providers?: Providers } }).data?.providers); } }
   }
   useEffect(() => { if (state) void loadModels(); }, [!!state, state?.auth.connected]);
   useEffect(() => {
@@ -761,7 +761,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     } catch (e) { if (selected.current === branch.parent) setError((e as Error).message); }
     finally { setBranching(false); }
   }
-  const providerLabel = (id: string) => providers?.[id]?.label ?? ({ claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' } as Record<string, string>)[id] ?? id;
+  const providerLabel = (id: string) => providers?.[id]?.label ?? id;
   const codexFallback = models?.find(m => m.provider === 'codex' && m.defaultFallback);
   const composition = tree ?? firstModel;
   const currentModel = composition && models?.find(m => m.provider === composition.provider && (composition.model ? m.model === composition.model : m.isDefault));
@@ -855,7 +855,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
   </header>;
   const chooseModel = (provider: string, model: string, effort: string | null) => tree ? changeModel(provider, model, effort) : setFirstModel({ provider, model, effort });
   const modelMenu = composition && <DropdownMenu presentation="popover" alignment="end" menuWidth="16rem" isMenuOpen={modelMenuOpen} onOpenChange={open => void openModels(open)} renderTrigger={props => <Button {...props} className="model-picker" label="Model for next reply" tooltip={active ? 'Wait for this reply to finish before changing models' : openingModels ? 'Loading models' : savingModel ? 'Saving model selection' : `Model for next reply: ${modelLabel(composition)} · ${effortLabel(composition.effort)}`} icon={<AdjustmentsHorizontalIcon />} variant="ghost" size="sm" isDisabled={active || !!savingModel || openingModels || busy} isLoading={openingModels || !!savingModel}><span className="chat-model">{modelLabel(composition)} · {effortLabel(composition.effort)}</span></Button>}>
-                {['claude', 'codex', 'openai'].map(id => { const p = providers?.[id] ?? { label: providerLabel(id), connected: false }; return <DropdownMenuGroup key={id} title={p.connected ? p.label : `${p.label} · not connected`}>
+                {Object.entries(providers ?? {}).map(([id, p]) => { return <DropdownMenuGroup key={id} title={p.connected ? p.label : `${p.label} · not connected`}>
                   {p.connected && models?.some(m => m.provider === id) ? <DropdownMenuRadioGroup label={`${p.label} models`} value={composition.provider === id ? composition.model ?? models?.find(m => m.provider === id && m.isDefault)?.model : undefined} onChange={model => void chooseModel(id, model, composition.effort && models?.find(m => m.provider === id && m.model === model)?.efforts?.includes(composition.effort) ? composition.effort : null)}>
                     {composition.provider === id && composition.model && !models?.some(m => m.provider === id && m.model === composition.model) && <DropdownMenuRadioItem value={composition.model} label={`${composition.model} (saved)`} isDisabled />}
                     {(models ?? []).filter(m => m.provider === id).map(m => <DropdownMenuRadioItem key={m.model} value={m.model} label={m.label} />)}

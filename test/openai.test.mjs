@@ -31,7 +31,10 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
   const fake = await fakeOpenAI(t), env = await open(t);
   const { get, post, store, dir } = env, apiKey = 'fixture-custom-endpoint-secret';
   assert.deepEqual(await (await get('/api/settings/endpoint')).json(), { configured: false, baseUrl: null });
-  assert.equal((await get('/api/models')).status, 502);
+  const unconfigured = await get('/api/models');
+  assert.equal(unconfigured.status, 502);
+  // Provider names come from the server even when nothing connects, so the client keeps no label list.
+  assert.deepEqual((await unconfigured.json()).providers, { claude: { label: 'Claude', connected: false }, codex: { label: 'Codex', connected: false }, openai: { label: 'Custom endpoint', connected: false } });
   assert.equal((await post('/api/settings/endpoint', { baseUrl: fake.baseUrl + '/', apiKey })).status, 200);
   assert.equal(fake.calls.length, 0, 'save does not contact the endpoint');
   const path = join(dir, 'openai-endpoint.json');
@@ -43,6 +46,7 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
     { provider: 'openai', model: 'second-model', label: 'second-model', isDefault: false, efforts: [] },
   ]);
   assert.equal(catalogue.defaultProvider, 'claude');
+  assert.deepEqual(Object.entries(catalogue.providers).map(([id, p]) => [id, p.label, p.connected]), [['claude', 'Claude', false], ['codex', 'Codex', false], ['openai', 'Custom endpoint', true]]);
   assert.equal((await post('/api/settings/endpoint/test')).status, 200);
   const root = store.create('Parent', 'openai');
   const source = store.message(root.id, 'assistant', 'Peterson passage', 'completed');

@@ -6,12 +6,11 @@ import { Button } from '@astryxdesign/core/Button';
 import { effortLabel, type Model, type ChatSelection } from './models';
 
 const key = (selection: Pick<Model, 'provider' | 'model'>) => JSON.stringify({ provider: selection.provider, model: selection.model });
-const labels: Record<string, string> = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
 
 export default function ChatSettings({ api, models, providers, modelError, reloadModels, connections, onSaved }: {
   api: (path: string, body?: unknown) => Promise<ChatSelection>;
   models?: Model[];
-  providers?: Record<string, { connected: boolean }>;
+  providers?: Record<string, { label: string; connected: boolean }>;
   modelError: string;
   reloadModels: () => Promise<void>;
   connections: () => void;
@@ -44,8 +43,8 @@ export default function ChatSettings({ api, models, providers, modelError, reloa
     <Heading level={3}>Chat default</Heading>
     <Text type="supporting" color="secondary">Starts new learning trees. Conversations keep their saved choices; branches inherit their parent’s current model and effort.</Text>
     <Selector label="Chat default model" value={selected ? key(selected) : 'unavailable'} size="sm" width="100%" hasSearch isDisabled={!saved || !!pending} options={[
-      ...(!selected ? [{ value: 'unavailable', label: saved ? `${labels[saved.provider] ?? saved.provider} · ${saved.model ?? 'default model'}${models ? ' (unavailable)' : ''}` : 'Loading chat default…', disabled: true }] : []),
-      ...Object.keys(labels).map(provider => ({ type: 'section' as const, title: labels[provider], options: available.filter(m => m.provider === provider).map(m => ({ value: key(m), label: m.label })) })).filter(section => section.options.length),
+      ...(!selected ? [{ value: 'unavailable', label: saved ? `${providers?.[saved.provider]?.label ?? saved.provider} · ${saved.model ?? 'default model'}${models ? ' (unavailable)' : ''}` : 'Loading chat default…', disabled: true }] : []),
+      ...Object.entries(providers ?? {}).map(([provider, { label }]) => ({ type: 'section' as const, title: label, options: available.filter(m => m.provider === provider).map(m => ({ value: key(m), label: m.label })) })).filter(section => section.options.length),
     ]} onChange={value => {
       const model = available.find(m => key(m) === value);
       if (model && saved) void save({ provider: model.provider, model: model.model, effort: saved.effort && model.efforts?.includes(saved.effort) ? saved.effort : null });

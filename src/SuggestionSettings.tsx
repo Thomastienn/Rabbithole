@@ -7,13 +7,12 @@ import { Button } from '@astryxdesign/core/Button';
 import { effortLabel, type Model } from './models';
 
 type Settings = { enabled: boolean; model: Pick<Model, 'provider' | 'model'> | null; effort: string | null };
-const labels: Record<string, string> = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
 const key = (model: Settings['model']) => model ? JSON.stringify({ provider: model.provider, model: model.model }) : 'default';
 
 export default function SuggestionSettings({ api, models, providers, modelError, reloadModels }: {
   api: (path: string, body?: unknown) => Promise<Settings>;
   models?: Model[];
-  providers?: Record<string, { connected: boolean }>;
+  providers?: Record<string, { label: string; connected: boolean }>;
   modelError: string;
   reloadModels: () => Promise<void>;
 }) {
@@ -49,8 +48,8 @@ export default function SuggestionSettings({ api, models, providers, modelError,
     <Switch label="Automatic suggestions" value={saved?.enabled ?? false} onChange={enabled => void save({ enabled })} isDisabled={!saved || !!pending} isLoading={pending === 'saving'} description="New saved replies only. Saved suggestions stay visible; calls already running finish." />
     <Selector label="Quick thinking model" value={key(saved?.model ?? null)} size="sm" width="100%" hasSearch isDisabled={!saved || !!pending || refreshing} isLoading={refreshing} description="Default follows each conversation: Haiku for Claude, Luna for Codex. A chosen model applies across conversations." options={[
       { value: 'default', label: 'Default for each provider' },
-      ...(unavailable ? [{ value: key(saved!.model), label: `${labels[saved!.model!.provider] ?? saved!.model!.provider} · ${saved!.model!.model} (unavailable)`, disabled: true }] : []),
-      ...Object.keys(labels).map(provider => ({ type: 'section' as const, title: labels[provider], options: available.filter(m => m.provider === provider).map(m => ({ value: key(m), label: m.label })) })).filter(section => section.options.length),
+      ...(unavailable ? [{ value: key(saved!.model), label: `${providers?.[saved!.model!.provider]?.label ?? saved!.model!.provider} · ${saved!.model!.model} (unavailable)`, disabled: true }] : []),
+      ...Object.entries(providers ?? {}).map(([provider, { label }]) => ({ type: 'section' as const, title: label, options: available.filter(m => m.provider === provider).map(m => ({ value: key(m), label: m.label })) })).filter(section => section.options.length),
     ]} onChange={value => {
       if (value === 'default') return void save({ model: null });
       const model = available.find(m => key(m) === value);

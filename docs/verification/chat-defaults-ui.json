@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-13T20:08:13.008Z",
+  "date": "2026-11-13T20:13:18.981Z",
   "boundary": "built UI + real HTTP/store + controlled providers, no native inference",
   "checks": [
     "Settings saves provider/model/effort through HTTP without inference or rewriting an existing conversation",

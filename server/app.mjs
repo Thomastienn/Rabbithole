@@ -241,10 +241,12 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       if (req.method === 'GET' && url.pathname === '/api/models') {
         const ids = Object.keys(providers);
         const results = await Promise.allSettled(ids.map(id => providers[id].models()));
-        if (results.every(r => r.status === 'rejected')) return json(res, 502, { error: providers.openai ? 'Could not load models. Check provider sign-in or custom endpoint settings, then retry.' : 'Could not load models. Sign in to Claude or ChatGPT, then retry.' });
+        // Every known provider is named, connected or not, so clients never keep their own label list.
+        const named = Object.fromEntries(Object.keys({ ...LABELS, ...providers }).map(id => [id, { label: LABELS[id] ?? id, connected: results[ids.indexOf(id)]?.status === 'fulfilled' }]));
+        if (results.every(r => r.status === 'rejected')) return json(res, 502, { error: providers.openai ? 'Could not load models. Check provider sign-in or custom endpoint settings, then retry.' : 'Could not load models. Sign in to Claude or ChatGPT, then retry.', providers: named });
         return json(res, 200, {
           models: results.flatMap((r, i) => r.status === 'fulfilled' ? r.value.map(m => ({ provider: ids[i], ...m })) : []),
-          providers: Object.fromEntries(ids.map((id, i) => [id, { label: LABELS[id] ?? id, connected: results[i].status === 'fulfilled' }])),
+          providers: named,
           defaultProvider,
         });
       }

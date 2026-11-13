@@ -51,7 +51,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
   close: () => void;
   api: (path: string, body?: unknown) => Promise<any>;
   models?: Model[];
-  providers?: Record<string, { connected: boolean }>;
+  providers?: Record<string, { label: string; connected: boolean }>;
   modelError: string;
   loadModels: () => Promise<void>;
   conceptNameTokens?: number;
@@ -162,7 +162,7 @@ export default function SettingsWindow({ request, close, api, models, providers,
     </>)}
     {tab === 'connections' && group('connections', <>
       <Section title="Claude" description="Uses your own Claude plan through Claude Code on this computer.">
-        <Text type="supporting">Claude: {providers ? providers.claude?.connected ? 'signed in through Claude Code' : 'run claude in a terminal and sign in' : 'sign-in status unavailable'}</Text>
+        <Text type="supporting">Claude: {providers && !modelError ? providers.claude?.connected ? 'signed in through Claude Code' : 'run claude in a terminal and sign in' : 'sign-in status unavailable'}</Text>
         {modelError && <Text type="supporting" role="alert">{modelError}</Text>}
         {!providers?.claude?.connected && <HStack><Button label="Check Claude sign-in" variant="secondary" size="sm" onClick={() => void loadModels()} /></HStack>}
       </Section>
