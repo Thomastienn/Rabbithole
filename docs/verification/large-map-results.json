@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-12T23:52:24.925Z",
+  "date": "2026-11-13T03:50:35.761Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,18 +12,18 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 976.8464940000013,
-  "previewQueryMs": 875.5655409999999,
+  "seedMs": 1042.029158999998,
+  "previewQueryMs": 749.2496479999973,
   "previewBytes": 4876201,
-  "openMs": 3992.8952500000014,
+  "openMs": 3147.8902579999994,
   "dom": {
-    "elements": 2547,
+    "elements": 2582,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1995.1000000005588,
+    "elapsedMs": 1971,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
@@ -33,30 +33,30 @@
     "p95Ms": 16.800000000000182,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 420.85584200000085,
-  "unfoldMs": 237.49926200000118,
+  "foldMs": 369.4098669999985,
+  "unfoldMs": 207.3956700000017,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 4684.488902999998,
-  "selectMs": 5966.187638000003,
-  "selectUiMs": 1324.5,
+  "selectClickMs": 4383.484390999998,
+  "selectMs": 4542.458136000001,
+  "selectUiMs": 604.1000000014901,
   "selectedBounds": {
-    "bottom": 626.8375244140625,
+    "bottom": 626.0375366210938,
     "canvasHeight": 844,
-    "canvasWidth": 880,
-    "left": 718.3239135742188,
-    "right": 769.52392578125,
+    "canvasWidth": 439,
+    "left": 368.800048828125,
+    "right": 420,
     "toolbarTop": 794,
     "top": 70
   },
-  "streamingMs": 540.563694000004,
+  "streamingMs": 552.025235000001,
   "chunkRenders": {
-    "4854f82f-e315-4179-b645-eedc4328283f": 14
+    "318cff3c-4bdc-4a91-9c8c-d5715deb3a00": 13
   },
   "chunkRenderReasons": {
-    "4854f82f-e315-4179-b645-eedc4328283f": [
+    "318cff3c-4bdc-4a91-9c8c-d5715deb3a00": [
       "preview"
     ]
   }

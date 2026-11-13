@@ -88,7 +88,7 @@ try {
       const selectors=['.contents-head h2','.contents-head .astryx-text','.contents-label','.contents-address','.contents-name','.contents-figure .astryx-text:last-child','.contents-context .astryx-text'];
       const text=selectors.map(sel=>{ const e=document.querySelector(sel),back=bg(e); return {sel,ratio:ratio(blend(rgba(getComputedStyle(e).color),back),back)}; });
       const focused=document.activeElement, s=getComputedStyle(focused), back=bg(focused);
-      return {text,ring:{width:parseFloat(s.outlineWidth),style:s.outlineStyle,ratio:ratio(rgba(s.outlineColor).slice(0,3),back)},width:document.querySelector('.contents').getBoundingClientRect().width,dots:[...document.querySelectorAll('.contents-dot')].map(e=>({color:getComputedStyle(e).backgroundColor,width:e.getBoundingClientRect().width})), overflow:document.documentElement.scrollWidth>innerWidth};
+      return {text,ring:{width:parseFloat(s.outlineWidth),style:s.outlineStyle,ratio:ratio(rgba(s.outlineColor).slice(0,3),back)},width:document.querySelector('.contents').getBoundingClientRect().width,dots:[...document.querySelectorAll('.contents .contents-dot')].map(e=>({color:getComputedStyle(e).backgroundColor,width:e.getBoundingClientRect().width})), overflow:document.documentElement.scrollWidth>innerWidth};
     })()`);
     assert.equal(Math.round(contrast.width), 264); assert.equal(contrast.overflow, false);
     for (const item of contrast.text) assert.ok(item.ratio >= 4.5, `${mode} ${item.sel}: ${item.ratio}`);

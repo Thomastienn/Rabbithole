@@ -1,6 +1,6 @@
 {
   "label": "after",
-  "checkedAt": "2026-11-13T00:58:40.484Z",
+  "checkedAt": "2026-11-13T03:58:52.812Z",
   "evidence": "Synthetic fixture providers, seeded SQLite tree with markdown, ready diagram, failed video and branch; production build in agent-browser Chromium. 200% zoom is emulated as a half-size CSS viewport.",
   "checks": {
     "contrast-light": {
@@ -23,8 +23,8 @@
     },
     "chat-open-shift": {
       "stable": true,
-      "first": "{\"x\":905,\"y\":852,\"width\":463,\"height\":22,\"top\":852,\"right\":1368,\"bottom\":874,\"left\":905}",
-      "later": "{\"x\":905,\"y\":852,\"width\":463,\"height\":22,\"top\":852,\"right\":1368,\"bottom\":874,\"left\":905}"
+      "first": "{\"x\":324,\"y\":817,\"width\":616,\"height\":22,\"top\":817,\"right\":940,\"bottom\":839,\"left\":324}",
+      "later": "{\"x\":324,\"y\":817,\"width\":616,\"height\":22,\"top\":817,\"right\":940,\"bottom\":839,\"left\":324}"
     },
     "unnamed-controls": [],
     "focus-visible": {

@@ -5,7 +5,7 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRightIcon, EyeSlashIcon, LinkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { MinusIcon, PlusIcon, ArrowsPointingOutIcon, ChevronDownIcon, ChevronRightIcon, LinkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import type { CSSProperties, ReactNode } from 'react';
 import { MIN_ZOOM, foldHierarchy, offsetCoveredBoxes, parseViewport, placeBox, vimAction, type Point, type Viewport } from './canvas';
 import type { ArtifactSummary, VisualPart } from './artifacts';
@@ -39,7 +39,7 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
     const name = `Show hidden branch ${child.title}${stub?.beneath ? `, ${stub.beneath} more ${stub.beneath === 1 ? 'conversation' : 'conversations'} hidden beneath` : ''}`;
     // Focus the fold toggle first; the stub unmounts once the fold expands.
     return <Handle key={child.id} id={child.id} data-source={child.id} type="source" position={Position.Right} style={style}>
-      {stub && <HStack gap={0} className="fold-stub nodrag nopan" style={inkStyle(stub.ink)}><Button label={name} tooltip={name} icon={<EyeSlashIcon />} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true }); data.toggle(t.id); }}><Text type="supporting" hasTabularNumbers>{stub.address} · {1 + stub.beneath} folded</Text></Button></HStack>}
+      {stub && <HStack gap={0} className="fold-stub nodrag nopan" style={inkStyle(stub.ink)}><Button label={name} tooltip={name} variant="ghost" size="sm" onClick={e => { e.stopPropagation(); document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true }); data.toggle(t.id); }}><Text type="supporting" hasTabularNumbers>{stub.address} · {1 + stub.beneath} folded</Text></Button></HStack>}
     </Handle>;
   };
   return <VStack gap={2} padding={3} className="conversation-box" data-active={data.active} data-focused={data.focused} data-folded={data.folded} style={inkStyle(data.ink)}>
@@ -54,7 +54,7 @@ const Conversation = memo(function Conversation({ data }: NodeProps<Conversation
     {!!preview?.length && <VStack gap={1} className="node-preview">
       {preview.map(m => {
         const sources = data.sources.filter(child => child.messageId === m.id);
-        return <VStack key={m.id} gap={0} className="node-message" data-message={m.id} data-role={m.role} style={sources.length ? { minHeight: `calc(var(--spacing-2) * ${sources.length + 1})` } : undefined}>
+        return <VStack key={m.id} gap={0} className="node-message" data-message={m.id} data-role={m.role} style={sources.length ? { minHeight: `calc(var(--spacing-${data.folded ? 8 : 2}) * ${sources.length + 1})` } : undefined}>
           {(m.text || m.status === 'streaming') && <Text type="supporting" color={m.role === 'user' ? 'primary' : 'secondary'} className={m.role === 'user' ? 'question-bubble' : undefined} maxLines={3}><Text type="inherit" className="sr-only">{m.role === 'user' ? 'Question: ' : 'Answer: '}</Text>{m.text || 'Thinking…'}</Text>}
           {m.role === 'assistant' && m.status !== 'completed' && <Text type="supporting" className="node-status" data-status={m.status}>{m.status === 'failed' && <ExclamationTriangleIcon aria-hidden />}{m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}</Text>}
           {m.role === 'assistant' && m.status === 'failed' && m === preview.at(-1) && preview.at(-2)?.role === 'user' && !data.active && <Button label="Retry reply" className="node-retry nodrag nopan" variant="secondary" size="sm" onClick={() => { document.getElementById(`open-${t.id}`)?.focus({ preventScroll: true }); data.retry(t.id); }} />}

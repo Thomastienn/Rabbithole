@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-13T03:34:52.249Z",
+  "checkedAt": "2026-11-13T03:59:10.805Z",
   "evidence": "Built app, SQLite/HTTP/SSE, Chromium; synthetic providers, controlled renderer, local ffmpeg playback fixture. No native provider or narrated-generation claim.",
   "pass": true,
   "steps": [

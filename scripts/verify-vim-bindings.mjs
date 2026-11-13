@@ -152,7 +152,7 @@ try {
   // 6. Composer and read-only passage text keep every letter; returning to the map restores focus.
   await b('focus', `#open-${root.id}`); await press('Enter');
   await wait(`document.activeElement?.closest('.focused-chat [role=textbox]')`);
-  const chatView = await view();
+  await pause(); const chatView = await view(); // the docked map settles its viewport after the chat opens
   await b('keyboard', 'type', 'hjkl HJKL =+-f');
   assert.ok((await ev(`document.querySelector('.focused-chat [role=textbox]').textContent`)).includes('hjkl HJKL =+-f'));
   await press('Control+a'); await press('Backspace');

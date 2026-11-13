@@ -92,9 +92,10 @@ try {
     await b('hover', `${node(families[1].id)} .conversation-box`);
     assert.equal(await ev(`getComputedStyle(document.querySelector(${JSON.stringify(node(families[1].id) + ' .conversation-box')})).borderColor`),state.hover);
     await click('Collapse descendants of How do fungi trade?'); await click('Fit tree'); await settled();
-    const stubs = await ev(`[...document.querySelectorAll('.fold-stub')].map(e=>({text:e.textContent,ink:getComputedStyle(e,'::before').borderTopColor})).sort((a,b)=>a.text.localeCompare(b.text))`);
+    const stubs = await ev(`[...document.querySelectorAll('.fold-stub')].map(e=>({text:e.innerText.trim(),ink:getComputedStyle(e,'::before').borderTopColor})).sort((a,b)=>a.text.localeCompare(b.text))`);
     assert.deepEqual(stubs.map(s=>s.text), ['1.1 · 2 folded','1.2 · 1 folded','1.3 · 1 folded','1.4 · 1 folded','1.5 · 1 folded']);
     assert.deepEqual(stubs.map(s=>s.ink),state.inks);
+    assert.equal(await ev(`[...document.querySelectorAll('.fold-stub button')].every(s=>{const r=s.getBoundingClientRect();return s.contains(document.elementFromPoint(r.right-4,r.top+r.height/2));})`),true,'folded stubs are not covered by later nodes');
     assert.equal(await ev(`document.querySelectorAll('.ink-legend li').length`),6,'legend includes folded families');
     await shot(`folded-${mode}`);
     await click('Expand descendants of How do fungi trade?'); await click('Fit tree'); await settled();

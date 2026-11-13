@@ -65,7 +65,7 @@ try {
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
   await b('set', 'media', 'dark', 'reduced-motion');
   await wait(`document.querySelector('.react-flow__node')`);
-  assert.equal(await ev(`!!document.querySelector('aside, #tree-navigation, .sidebar-expand, [aria-label="Expand learning trees"]')`), false, 'the left rail is gone');
+  assert.equal(await ev(`!!document.querySelector('aside:not(.ink-legend), #tree-navigation, .sidebar-expand, [aria-label="Expand learning trees"]')`), false, 'the left rail is gone');
   assert.deepEqual(await current(), ['Map'], 'the newest tree opens on its map');
   assert.match(await ev(`document.querySelector('.tree-switcher').innerText`), /How do fungi trade with plant roots\?/);
   steps.push('Load: band shows TreeTutor, the open tree in the switcher, Map current; no left rail');
