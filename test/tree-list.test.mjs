@@ -70,3 +70,18 @@ test('conversation addresses number siblings by creation and each first-level fa
   assert.equal(after.b6, '1.6:2');
   assert.equal(after.b1c, '1.1.3:1');
 });
+
+test('library spine has one tick per conversation in its family ink, matching conversation addresses', async () => {
+  const { conversationAddresses } = await import('../src/treeList.ts');
+  const trees = [
+    { id: 'root', parent: null, created: 0 },
+    ...['a', 'b', 'c', 'd', 'e'].map((id, i) => ({ id, parent: 'root', created: 10 - i })),
+    { id: 'a1', parent: 'a', created: 20 }, { id: 'a2', parent: 'a1', created: 21 },
+  ];
+  const [{ spine, branches }] = treeGroups(trees, new Date(0))[0].trees;
+  assert.equal(spine.length, trees.length);
+  assert.equal(branches, trees.length - 1);
+  const inks = conversationAddresses(trees);
+  assert.deepEqual([...spine].sort(), [...inks.values()].map(v => v.ink).sort(), 'same inks as the map and contents');
+  assert.deepEqual(spine, [0, 1, 2, 3, 4, 1, 1, 1], 'families contiguous in address order');
+});

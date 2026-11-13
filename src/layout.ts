@@ -26,22 +26,50 @@ html { view-transition-name: none; }
 .shell-band .new-chat { height: 32px; border: 1px solid color-mix(in srgb, var(--treetutor-band-ink) 35%, transparent); font-weight: 600; }
 .band-save { height: 24px; padding-inline: var(--treetutor-module); border-radius: var(--radius-element); background: var(--color-error); color: var(--color-on-error); --color-text-primary: var(--color-on-error); --color-text-secondary: var(--color-on-error); }
 .shell-band .band-save button { height: 20px; color: var(--color-on-error); text-decoration: underline; }
-.library-content { height: 100%; max-width: 40rem; margin-inline: auto; }
-.library-content h1 { font-size: var(--font-size-2xl); }
-.tree-list { flex: 1; min-height: 0; overflow: auto; }
-/* Quiet rail scrollbar: thin rounded thumb, no track; shown on hover, scroll or keyboard focus, never needed to scroll. */
-.tree-list { scrollbar-width: thin; scrollbar-color: transparent transparent; }
-.tree-list:is(:hover, :focus-within, [data-scrolling]) { scrollbar-color: var(--color-border-emphasized) transparent; }
+/* Library (mockup Library): every learning tree is a volume on a shelf, or a row in the list; paper focus ring. */
+.library-content { max-width: 70rem; margin-inline: auto; padding: calc(5 * var(--treetutor-module)) calc(4 * var(--treetutor-module)) calc(8 * var(--treetutor-module)); }
+.library-content :focus-visible, .volume:has(.saved-chat-title:focus-visible) { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: var(--focus-outline-offset); }
+.library-panel { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+/* Quiet page scrollbar: thin rounded thumb, no track; shown on hover, scroll or keyboard focus, never needed to scroll. */
+.library-panel:is(:hover, :focus-within, [data-scrolling]) { scrollbar-color: var(--color-border-emphasized) transparent; }
 @supports selector(::-webkit-scrollbar) {
- .tree-list, .tree-list:is(:hover, :focus-within, [data-scrolling]) { scrollbar-width: auto; scrollbar-color: auto; }
- .tree-list::-webkit-scrollbar { width: 10px; background: transparent; }
- .tree-list::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: transparent padding-box; }
- .tree-list:is(:hover, :focus-within, [data-scrolling])::-webkit-scrollbar-thumb { background-color: var(--color-border-emphasized); }
+ .library-panel, .library-panel:is(:hover, :focus-within, [data-scrolling]) { scrollbar-width: auto; scrollbar-color: auto; }
+ .library-panel::-webkit-scrollbar { width: 10px; background: transparent; }
+ .library-panel::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: transparent padding-box; }
+ .library-panel:is(:hover, :focus-within, [data-scrolling])::-webkit-scrollbar-thumb { background-color: var(--color-border-emphasized); }
 }
-.tree-date-heading { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
-.saved-tree-row { border-radius: var(--radius-element); }
-.saved-tree-row[data-current=true] { background: var(--color-neutral); }
-.tree-row-actions { flex-shrink: 0; color: var(--color-text-secondary); }
+.library-head { margin-bottom: calc(4 * var(--treetutor-module)); }
+.library-head > :first-child { flex: 1 1 24rem; }
+.library-head h1 { font-size: 34px; line-height: 1.12; font-weight: 700; letter-spacing: -.015em; }
+.library-intro { max-width: 62ch; }
+.library-tools { justify-content: space-between; margin-bottom: var(--treetutor-module); }
+.tree-date-heading { margin: calc(4 * var(--treetutor-module)) 0 12px; font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
+.shelf, .library-list { list-style: none; margin: 0; padding: 0; }
+.shelf { display: grid; grid-template-columns: repeat(auto-fill, 176px); gap: calc(4 * var(--treetutor-module)) calc(3 * var(--treetutor-module)); }
+.shelf .volume { position: relative; display: grid; grid-template-rows: 144px auto; border: 1px solid var(--color-border); border-radius: var(--radius-element); background: var(--color-background-surface); }
+.shelf .volume:hover { border-color: var(--color-border-emphasized); }
+.shelf .volume[data-current=true] { box-shadow: 0 0 0 3px var(--color-background-body), 0 0 0 5px var(--treetutor-paper); }
+.shelf .volume[data-renaming=true] { grid-column: span 2; grid-template-rows: auto; padding: 12px; }
+.shelf .volume-band { display: flex; flex-direction: column; min-height: 0; padding: 12px; border-radius: 2px 2px 0 0; background: var(--treetutor-paper); --color-text-primary: var(--treetutor-paper-ink); --color-text-secondary: var(--treetutor-paper-ink); --color-overlay-hover: transparent; --color-overlay-pressed: transparent; color: var(--treetutor-paper-ink); }
+/* The title button covers the whole volume, so the spine and date open it too; the menu sits above it. */
+.shelf .saved-chat-title { position: static; transform: none; height: auto; padding: 0 20px 0 0; font-size: 17px; line-height: 1.15; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; white-space: normal; overflow-wrap: anywhere; text-align: start; justify-content: flex-start; align-items: flex-start; color: var(--treetutor-paper-ink); }
+.shelf .saved-chat-title::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+.shelf .saved-chat-title:focus-visible { outline: none; }
+.shelf .volume-date { margin-top: auto; font-weight: 600; color: var(--treetutor-paper-ink); }
+.volume-meta { display: grid; gap: var(--treetutor-module); padding: 10px 12px 12px; }
+.volume-spine { display: flex; flex-wrap: wrap; gap: 2px; }
+.volume-spine i { flex: 0 0 4px; height: 6px; border-radius: 1px; background: var(--ink); }
+.shelf .tree-row-actions { position: absolute; top: 4px; right: 4px; z-index: 1; color: var(--treetutor-paper-ink); }
+.library-list { border-top: 1px solid var(--color-border); }
+.library-list .volume { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: calc(2 * var(--treetutor-module)); min-height: 48px; border-bottom: 1px solid var(--color-border); }
+.library-list .volume[data-current=true] { background: var(--color-neutral); }
+.library-list .volume[data-renaming=true] { display: block; padding-block: var(--treetutor-module); }
+.library-list .volume-band, .library-list .volume-meta { display: contents; }
+.library-list .volume-spine { display: none; }
+.library-list .saved-chat-title { justify-content: flex-start; height: auto; min-height: 40px; white-space: normal; overflow-wrap: anywhere; text-align: start; font-weight: 600; }
+.library-list .volume-date { order: 1; min-width: 7rem; color: var(--color-text-secondary); }
+.library-list .tree-row-actions { order: 2; }
+@media (max-width: 48rem) { .library-list .volume { grid-template-columns: minmax(0, 1fr) auto auto; } .library-list .volume-date { display: none; } }
 .conversation { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .conversation[hidden], .knowledge-panel[hidden], .library-panel[hidden] { display: none; }
 .knowledge-panel, .library-panel { flex: 1; min-height: 0; overflow: auto; }
@@ -160,8 +188,6 @@ html { view-transition-name: none; }
 .reply-md pre:is(:hover, :focus-within) .code-copy { opacity: 1; }
 @media (hover: none) { .code-copy { opacity: 1; } }
 .chat-title .rename-title { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: 0; }
-.saved-chat-title { flex: 1; min-width: 0; }
-.saved-chat-title > * { min-width: 0; }
 .focused-chat .model-picker { flex-shrink: 1; min-width: 0; max-width: 100%; height: 24px; border: thin solid var(--color-border-emphasized); font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
 .focused-chat .model-picker .chat-model { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .passage { position: relative; align-self: stretch; }
@@ -354,7 +380,6 @@ html { view-transition-name: none; }
 .react-flow__edge-path.branch-new { animation: branch-draw var(--treetutor-branch-draw-duration) ease-out; }
 @keyframes branch-draw { from { stroke-dasharray: 1; stroke-dashoffset: 1; } to { stroke-dasharray: 1; stroke-dashoffset: 0; } }
 .react-flow__handle { background: var(--color-text-secondary); border-color: var(--color-background-surface); }
-.tree-list .saved-chat-title { height: auto; min-height: var(--spacing-8); padding-block: var(--spacing-2); white-space: normal; overflow-wrap: anywhere; text-align: start; justify-content: flex-start; }
 section[role=alert] { background: var(--color-background-body); }
 /* One frame height for every settings tab, so switching tabs never resizes the window. */
 .settings-shell { height: min(50rem, calc(100dvh - 2rem)); min-height: 0; }

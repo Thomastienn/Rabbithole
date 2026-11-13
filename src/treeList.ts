@@ -3,17 +3,22 @@ type LearningTree = { id: string; parent: string | null; created: number };
 const localDay = (date: Date) => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
 
 export function treeGroups<T extends LearningTree>(trees: readonly T[], now = new Date()) {
-  const groups = ['Today', 'Yesterday', 'Previous 7 days', 'Older'].map(label => ({ label, trees: [] as { tree: T; branches: number }[] }));
-  const children = new Map<string, string[]>();
+  const groups = ['Today', 'Yesterday', 'Previous 7 days', 'Older'].map(label => ({ label, trees: [] as { tree: T; branches: number; spine: number[] }[] }));
+  const children = new Map<string, T[]>();
   for (const tree of trees) if (tree.parent) {
     if (!children.has(tree.parent)) children.set(tree.parent, []);
-    children.get(tree.parent)!.push(tree.id);
+    children.get(tree.parent)!.push(tree);
   }
   for (const tree of trees.filter(t => !t.parent).sort((a, b) => b.created - a.created)) {
-    const descendants = [...(children.get(tree.id) ?? [])];
-    for (let i = 0; i < descendants.length; i++) descendants.push(...(children.get(descendants[i]) ?? []));
+    // Spine: one ink per conversation, trunk (0) first, then each first-level family in conversationAddresses order.
+    const spine = [0];
+    [...children.get(tree.id) ?? []].sort((a, b) => a.created - b.created || (a.id < b.id ? -1 : 1)).forEach((child, i) => {
+      const family = [child];
+      for (let j = 0; j < family.length; j++) family.push(...(children.get(family[j].id) ?? []));
+      for (const _ of family) spine.push(i % 4 + 1);
+    });
     const age = localDay(now) - localDay(new Date(tree.created));
-    groups[age <= 0 ? 0 : age === 1 ? 1 : age <= 7 ? 2 : 3].trees.push({ tree, branches: descendants.length });
+    groups[age <= 0 ? 0 : age === 1 ? 1 : age <= 7 ? 2 : 3].trees.push({ tree, branches: spine.length - 1, spine });
   }
   return groups.filter(group => group.trees.length);
 }

@@ -83,9 +83,7 @@ if (process.argv[2] === '--serve') {
   const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
   async function openRoot(title) {
     await b('click', '.tree-switcher');
-    await click(title);
-    await b('wait', `[aria-label="Open ${title}"]`);
-    await click(`Open ${title}`);
+    await click(title); // A Library volume opens its tree in Read.
     await wait(`document.querySelector('.focused-chat h2')?.textContent===${JSON.stringify(title)} && getComputedStyle(document.querySelector('.focused-chat')).display!=='none'`);
   }
   const calls = () => { try { return readFileSync(join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').filter(Boolean).length; } catch { return 0; } };

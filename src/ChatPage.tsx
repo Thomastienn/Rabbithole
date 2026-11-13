@@ -5,7 +5,7 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowUturnLeftIcon, ChartBarIcon, ChevronRightIcon, ViewColumnsIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon, BookOpenIcon, MapIcon, ChevronDownIcon, Bars3Icon, RectangleStackIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowUturnLeftIcon, ChartBarIcon, ChevronRightIcon, ViewColumnsIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon, BookOpenIcon, MapIcon, ChevronDownIcon, Bars3Icon, RectangleStackIcon, ListBulletIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { CommandPalette } from '@astryxdesign/core/CommandPalette';
@@ -31,7 +31,8 @@ import { previewText } from './markdownText';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
-import { conversationAddresses, treeGroups } from './treeList';
+import { conversationAddresses, inkStyle, treeGroups } from './treeList';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { effortLabel, type Model } from './models';
 import Contents from './Contents';
 
@@ -215,11 +216,13 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 48rem)').matches);
   const [today, setToday] = useState(() => new Date());
   const [tab, setTab] = useState('learning');
+  const [libraryQuery, setLibraryQuery] = useState('');
+  const scrollQuiet = useRef<number>(undefined);
+  const [libraryLayout, setLibraryLayout] = useState<'shelf' | 'list'>(() => { try { return localStorage.getItem('treetutor.library-layout') === 'list' ? 'list' : 'shelf'; } catch { return 'shelf'; } });
   const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState<SettingsRequest>();
   const settingsOpener = useRef<HTMLElement | null>(null);
   const [searching, setSearching] = useState(false);
-  const scrollQuiet = useRef<number>(undefined);
   const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'library' }>();
   const [deletion, setDeletion] = useState<{ id: string; root: string; title: string; count: number; parent: string | null }>();
   const [deleting, setDeleting] = useState(false), [deleteError, setDeleteError] = useState('');
@@ -325,12 +328,12 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     if (selected.current === id) changeView(false, overviewOrigin.current?.id ?? id);
   }
   // A message match opens its own conversation in chat; otherwise the tree reopens as saved.
-  function openTree(id: string, trees = state?.trees ?? [], focus?: string) {
+  function openTree(id: string, trees = state?.trees ?? [], focus?: string, read = false) {
     setTab('learning');
     overviewOrigin.current = undefined;
     const layout = trees.find(t => t.id === id)?.layout;
     const saved = focus ?? (layout?.selected && rootOf(layout.selected, trees) === id ? layout.selected : id);
-    setRoot(id); setOverview(!focus && layout?.panel !== 'beside' && layout?.panel !== 'expanded'); setExpanded(layout?.panel === 'expanded');
+    setRoot(id); setOverview(!focus && !read && layout?.panel !== 'beside' && layout?.panel !== 'expanded'); setExpanded(layout?.panel === 'expanded');
     void select(saved);
   }
   function rootOf(id: string, trees: Summary[]) {
@@ -741,6 +744,8 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     { label: 'Help', onClick: () => openSettings('interface', undefined, mapMenuTrigger()) },
   ]} />;
   const rootTitle = state?.trees.find(t => t.id === root)?.title;
+  const query = libraryQuery.trim().toLocaleLowerCase();
+  const libraryGroups = treeGroups((state?.trees ?? []).filter(t => t.parent || t.title.toLocaleLowerCase().includes(query)), today);
   const reading = tab === 'learning' && (!overview || !root), mapping = tab === 'learning' && overview && !!root;
   const viewTab = (label: string, icon: React.ReactNode, current: boolean, onClick: () => void, disabled = false) => <Button key={label} className="view-tab" label={label} icon={icon} variant="ghost" size="sm" aria-current={current ? 'page' : undefined} isDisabled={disabled} onClick={onClick} />;
   const views = [
@@ -878,24 +883,43 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
         </section>
         </section>
       </main>
-      <main hidden={tab !== 'library'} className="library-panel" aria-label="Learning trees">
+      <main hidden={tab !== 'library'} className="library-panel" aria-label="Learning trees" onScroll={e => { const el = e.currentTarget; el.dataset.scrolling = ''; clearTimeout(scrollQuiet.current); scrollQuiet.current = window.setTimeout(() => delete el.dataset.scrolling, 800); }}>
         {tab === 'library' && <VStack gap={0} className="library-content">
-          <VStack padding={3}><Heading level={1}>Learning trees</Heading></VStack>
-          <nav aria-label="Saved learning trees" className="tree-list" onScroll={e => { const el = e.currentTarget; el.dataset.scrolling = ''; clearTimeout(scrollQuiet.current); scrollQuiet.current = window.setTimeout(() => delete el.dataset.scrolling, 800); }}><VStack padding={3} gap={5}>
-            {treeGroups(state?.trees ?? [], today).map(group => <section key={group.label} aria-label={group.label}><VStack gap={2}>
-              <Heading level={3} className="tree-date-heading">{group.label}</Heading>
-              <VStack gap={1}>{group.trees.map(({ tree: t, branches }) => <VStack key={t.id} gap={1}>
-                {renaming?.id === t.id && renaming.place === 'library' ? <TitleEditor title={t.title} save={title => rename(t.id, title)} cancel={finishRename} /> : <HStack gap={0} vAlign="center" className="saved-tree-row" data-current={root === t.id}>
-                  <Button className="saved-chat-title" label={t.title} variant="ghost" aria-current={root === t.id ? 'true' : undefined} aria-describedby={`branch-count-${t.id}`} onClick={() => openTree(t.id)}><VStack gap={0}><Text maxLines={2}>{t.title}</Text><Text id={`branch-count-${t.id}`} type="supporting" color="secondary">{branches} {branches === 1 ? 'branch' : 'branches'}</Text></VStack></Button>
-                  <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} id={`chat-actions-${t.id}`} className="tree-row-actions" label={`Actions for ${t.title}`} icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />}>
-                    <DropdownMenuItem label="Rename chat" icon={<PencilSquareIcon />} onClick={() => setRenaming({ id: t.id, place: 'library' })} />
-                    <DropdownMenuItem label="Delete chat…" icon={<TrashIcon />} onClick={() => askDelete(t.id, document.getElementById(`chat-actions-${t.id}`))} />
-                  </DropdownMenu>
-                </HStack>}
-              </VStack>)}</VStack>
-            </VStack></section>)}
-            {state && !state.trees.length && <Text color="secondary">Your first tree starts with a question.</Text>}
-          </VStack></nav>
+          <HStack gap={4} vAlign="end" wrap="wrap" className="library-head">
+            <VStack gap={2}><Heading level={1}>Library</Heading><Text color="secondary" className="library-intro">Every learning tree you have started. A tree keeps its root conversation and every branch.</Text></VStack>
+            <Button label={busy ? 'Opening…' : 'New chat'} variant="primary" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
+          </HStack>
+          {state && !state.trees.length ? <Text color="secondary">Your first tree starts with a question.</Text> : state && <>
+            <HStack gap={2} vAlign="center" wrap="wrap" className="library-tools">
+              <TextInput label="Search learning tree titles" isLabelHidden placeholder="Search learning trees" startIcon={MagnifyingGlassIcon} size="sm" hasClear value={libraryQuery} onChange={setLibraryQuery} width={320} />
+              <SegmentedControl label="Library layout" value={libraryLayout} onChange={v => { setLibraryLayout(v as 'shelf' | 'list'); try { localStorage.setItem('treetutor.library-layout', v); } catch { /* Preference stays for this session only. */ } }}>
+                <SegmentedControlItem value="shelf" label="Shelf" icon={<RectangleStackIcon />} />
+                <SegmentedControlItem value="list" label="List" icon={<ListBulletIcon />} />
+              </SegmentedControl>
+            </HStack>
+            <nav aria-label="Saved learning trees" className="tree-list" data-layout={libraryLayout}>
+              {libraryGroups.map(group => <section key={group.label} aria-label={group.label}>
+                <Heading level={2} className="tree-date-heading">{group.label}</Heading>
+                <ul className={libraryLayout === 'shelf' ? 'shelf' : 'library-list'}>{group.trees.map(({ tree: t, branches, spine }) => <li key={t.id} className="volume" data-current={root === t.id} data-renaming={renaming?.id === t.id && renaming.place === 'library'}>
+                  {renaming?.id === t.id && renaming.place === 'library' ? <TitleEditor title={t.title} save={title => rename(t.id, title)} cancel={finishRename} /> : <>
+                    <span className="volume-band">
+                      <Button className="saved-chat-title" label={t.title} variant="ghost" aria-current={root === t.id ? 'true' : undefined} aria-describedby={`tree-date-${t.id} branch-count-${t.id}`} onClick={() => openTree(t.id, undefined, undefined, true)}><Text as="span" type="inherit" maxLines={4}>{t.title}</Text></Button>
+                      <Text as="span" type="supporting" id={`tree-date-${t.id}`} className="volume-date"><time dateTime={new Date(t.created).toISOString()}>Started {new Date(t.created).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: new Date(t.created).getFullYear() === today.getFullYear() ? undefined : 'numeric' })}</time></Text>
+                    </span>
+                    <span className="volume-meta">
+                      <span className="volume-spine" aria-hidden title="One tick per conversation, in its branch family's ink">{spine.map((ink, i) => <i key={i} style={inkStyle(ink)} />)}</span>
+                      <Text type="supporting" color="secondary" id={`branch-count-${t.id}`}>{branches + 1} {branches ? 'conversations' : 'conversation'} · {branches} {branches === 1 ? 'branch' : 'branches'}</Text>
+                    </span>
+                    <DropdownMenu presentation="popover" alignment="end" renderTrigger={props => <IconButton {...props} id={`chat-actions-${t.id}`} className="tree-row-actions" label={`Actions for ${t.title}`} icon={<EllipsisHorizontalIcon />} variant="ghost" size="sm" />}>
+                      <DropdownMenuItem label="Rename chat" icon={<PencilSquareIcon />} onClick={() => setRenaming({ id: t.id, place: 'library' })} />
+                      <DropdownMenuItem label="Delete chat…" icon={<TrashIcon />} onClick={() => askDelete(t.id, document.getElementById(`chat-actions-${t.id}`))} />
+                    </DropdownMenu>
+                  </>}
+                </li>)}</ul>
+              </section>)}
+              {!libraryGroups.length && <Text color="secondary">No learning tree titles match.</Text>}
+            </nav>
+          </>}
         </VStack>}
       </main>
       <main hidden={tab !== 'knowledge'} className="knowledge-panel" aria-label="Knowledge">

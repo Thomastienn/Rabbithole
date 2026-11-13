@@ -32,7 +32,8 @@ const options = () => ev(`[...(${palette}?.querySelectorAll('[role=option]') ?? 
 const highlighted = () => ev(`document.getElementById(document.querySelector('${input}').getAttribute('aria-activedescendant'))?.innerText.trim() ?? null`);
 const current = () => ev(`document.querySelector('.tree-switcher-title')?.innerText`);
 const openSearch = async () => { await b('click', '.tree-search'); await wait(`${palette} && document.activeElement.matches('${input}')`); };
-const ready = () => b('wait', '.chat-header, .overview');
+// Any visible chat header or map; a plain selector wait can pick a hidden .overview first.
+const ready = () => b('wait', '--fn', `[...document.querySelectorAll('.chat-header, .overview')].some(e => e.checkVisibility())`);
 try {
   await b('set', 'viewport', '1400', '900');
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
@@ -84,15 +85,15 @@ try {
   steps.push('Escape dismisses without opening anything; focus returns to the icon; reopening starts empty');
 
   // Scrollbar: thin rounded transparent-track thumb, hidden at rest, shown on hover/scroll/focus.
-  const nav = `document.querySelector('.tree-list')`;
+  const nav = `document.querySelector('.library-panel')`;
   await b('click', '.tree-switcher');
   await b('wait', '.saved-chat-title');
   await b('mouse', 'move', '1300', '450');
   assert.equal(await ev(`${nav}.scrollHeight > ${nav}.clientHeight`), true, 'Library list overflows');
-  const css = await ev(`(() => { const s = [...document.styleSheets].flatMap(x => [...x.cssRules]).map(r => r.cssText).join('\\n'); return { radius: s.includes('border-radius: 999px'), track: /tree-list::-webkit-scrollbar \\{[^}]*background: transparent/.test(s), resting: getComputedStyle(${nav}).overflowY }; })()`);
+  const css = await ev(`(() => { const s = [...document.styleSheets].flatMap(x => [...x.cssRules]).map(r => r.cssText).join('\\n'); return { radius: s.includes('border-radius: 999px'), track: /library-panel::-webkit-scrollbar \\{[^}]*background: transparent/.test(s), resting: getComputedStyle(${nav}).overflowY }; })()`);
   assert.deepEqual(css, { radius: true, track: true, resting: 'auto' }, 'rounded thumb, transparent track, scroll never disabled');
   await b('screenshot', join('docs', 'verification', 'tree-search-scroll-rest-dark.png'));
-  await b('hover', '.tree-list');
+  await b('hover', '.library-panel');
   await b('screenshot', join('docs', 'verification', 'tree-search-scroll-hover-dark.png'));
   await b('mouse', 'wheel', '600');
   await wait(`${nav}.scrollTop > 0 && 'scrolling' in ${nav}.dataset`);
@@ -110,7 +111,7 @@ try {
   // Narrow: the band's search icon opens search; choose a result.
   await b('set', 'viewport', '390', '800');
   await b('reload');
-  await b('wait', '.chat-header, .overview');
+  await ready();
   await b('click', '.tree-search');
   await wait(`${palette} && document.activeElement.matches('${input}')`);
   await b('type', input, 'roman');
@@ -122,10 +123,11 @@ try {
 
   for (const [w, h] of [['1400', '900'], ['390', '800']]) {
     await b('set', 'viewport', w, h);
-    await ev(`localStorage.setItem('treetutor.appearance', 'light'); location.reload(); true`);
-    await b('wait', '.chat-header, .overview');
+    await ev(`localStorage.setItem('treetutor.appearance', 'light'); true`);
+    await b('reload');
+    await ready();
     if (w === '390') await b('click', '.tree-search');
-    else { await b('click', '.tree-switcher'); await b('wait', '.saved-chat-title'); await b('hover', '.tree-list'); await b('screenshot', join('docs', 'verification', 'tree-search-scroll-hover-light.png')); await b('click', '.tree-search'); }
+    else { await b('click', '.tree-switcher'); await b('wait', '.saved-chat-title'); await b('hover', '.library-panel'); await b('screenshot', join('docs', 'verification', 'tree-search-scroll-hover-light.png')); await b('click', '.tree-search'); }
     await wait(`${palette}`);
     await b('type', input, 'leaves');
     await wait(`${palette}.innerText.includes('No learning tree titles match')`);

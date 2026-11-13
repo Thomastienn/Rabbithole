@@ -1,0 +1,15 @@
+{
+  "kind": "built-app fixture (fake provider)",
+  "date": "2026-11-13T04:54:52.839Z",
+  "steps": [
+    "Shelf (default): newest first under Today/Yesterday/Previous 7 days/Older; spine ticks 5/1/2/1 match conversation counts in family inks; title, date, conversation and branch counts; current tree marked",
+    "Title search filters case-insensitively; no match shows \"No learning tree titles match.\"",
+    "List shows the same trees in the same order; the choice survives reload; Rename chat and Delete chat… keep their menu, confirmation and focus return",
+    "Opening a volume (click anywhere on it) opens that tree in Read; the band switcher shows its title",
+    "dark shelf: text and menu contrast >= 6.2:1; Tab reaches every volume and its menu with a paper focus ring",
+    "dark list: text and menu contrast >= 5.1:1; Tab reaches every volume and its menu with a paper focus ring",
+    "light shelf: text and menu contrast >= 6.3:1; Tab reaches every volume and its menu with a paper focus ring",
+    "light list: text and menu contrast >= 5.1:1; Tab reaches every volume and its menu with a paper focus ring",
+    "No trees: the first-run prompt and New chat show instead of an empty shelf or search"
+  ]
+}

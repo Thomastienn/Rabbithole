@@ -82,6 +82,9 @@ try {
   // The mobile drawer slides in; a click mid-slide lands off-screen.
   await browser('wait', '--fn', 'document.querySelector("[aria-label=\'Separate ocean tree\']")?.getBoundingClientRect().x >= 0');
   await click('Separate ocean tree');
+  // A Library volume opens in Read; return to its map to check isolation.
+  await browser('wait', '--fn', 'document.querySelector(".focused-chat h2")?.textContent === "Separate ocean tree"');
+  await click('Return to tree');
   await browser('wait', '[aria-label="Open Separate ocean tree"]');
   await check('document.querySelectorAll(".react-flow__node").length === 1 && document.querySelectorAll(".react-flow__edge").length === 0');
   console.log('PASS: source-message handles including grandchild, keyboard exact-passage reveal, no bottom passage list, nested overview, viewport/focus return, generation continuity, mobile composer, new branch focus, separate-tree isolation.');

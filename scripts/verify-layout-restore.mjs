@@ -33,7 +33,12 @@ const chatShown = `getComputedStyle(document.querySelector('.focused-chat')).dis
 const view = () => ev('document.querySelector(".react-flow__viewport").style.transform');
 // Opening chat animates the map; sample only once the transform holds still for 300ms.
 async function settledView() { for (;;) { const a = await view(); await new Promise(r => setTimeout(r, 300)); if (a === await view()) return a; } }
-async function openTree(name) { await b('click', '.tree-switcher'); await click(name); }
+// Band search reopens a tree in its saved view; Library volumes always open in Read (verify-library).
+async function openTree(name) {
+  await b('click', '.tree-search'); await b('type', 'dialog[open][aria-label="Search learning trees"] input', name);
+  await wait(`[...document.querySelectorAll('dialog[open] [role=option]')].some(o => o.innerText.trim() === ${JSON.stringify(name)})`);
+  await b('find', 'role', 'option', 'click', '--name', name, '--exact');
+}
 try {
   await b('set', 'viewport', '1440', '900');
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
