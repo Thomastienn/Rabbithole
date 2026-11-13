@@ -1,11 +1,11 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
-import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { HStack, Layout as Regions, LayoutContent, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowUturnLeftIcon, ChartBarIcon, ChevronRightIcon, ViewColumnsIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon, BookOpenIcon, MapIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, Cog6ToothIcon, EllipsisHorizontalIcon, XMarkIcon, ArrowUturnLeftIcon, ChartBarIcon, ChevronRightIcon, ViewColumnsIcon, ChatBubbleLeftRightIcon, ChatBubbleBottomCenterTextIcon, PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpIcon, ShareIcon, MagnifyingGlassIcon, FilmIcon, BookOpenIcon, MapIcon, ChevronDownIcon, Bars3Icon, RectangleStackIcon } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { CommandPalette } from '@astryxdesign/core/CommandPalette';
@@ -30,6 +30,7 @@ import { renderMarkdown, rawOffsets, rawRange } from './markdown';
 import { previewText } from './markdownText';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
+import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
 import { conversationAddresses, treeGroups } from './treeList';
 import { effortLabel, type Model } from './models';
 import Contents from './Contents';
@@ -214,6 +215,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 48rem)').matches);
   const [today, setToday] = useState(() => new Date());
   const [tab, setTab] = useState('learning');
+  const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState<SettingsRequest>();
   const settingsOpener = useRef<HTMLElement | null>(null);
   const [searching, setSearching] = useState(false);
@@ -271,7 +273,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   const saver = useRef<ReturnType<typeof layoutSaver<Layout>>>(undefined);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 48rem)');
-    const resize = () => setMobile(media.matches);
+    const resize = () => { setMobile(media.matches); setDrawer(false); };
     media.addEventListener('change', resize);
     return () => media.removeEventListener('change', resize);
   }, []);
@@ -740,18 +742,37 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   ]} />;
   const rootTitle = state?.trees.find(t => t.id === root)?.title;
   const reading = tab === 'learning' && (!overview || !root), mapping = tab === 'learning' && overview && !!root;
-  const viewTab = (label: string, icon: React.ReactNode, current: boolean, onClick: () => void, disabled = false) => <Button className="view-tab" label={label} icon={icon} variant="ghost" size="sm" aria-current={current ? 'page' : undefined} isDisabled={disabled} onClick={onClick} />;
-  const band = <header className="shell-band">
+  const viewTab = (label: string, icon: React.ReactNode, current: boolean, onClick: () => void, disabled = false) => <Button key={label} className="view-tab" label={label} icon={icon} variant="ghost" size="sm" aria-current={current ? 'page' : undefined} isDisabled={disabled} onClick={onClick} />;
+  const views = [
+    viewTab('Read', <BookOpenIcon />, reading, () => { setTab('learning'); if (overview && root) { focusComposer.current = true; changeView(false, tree?.id); } }),
+    viewTab('Map', <MapIcon />, mapping, () => { setTab('learning'); if (!overview) returnToTree(); }, !root),
+    viewTab('Knowledge', <ShareIcon />, tab === 'knowledge', () => setTab('knowledge')),
+    viewTab('Videos', <FilmIcon />, tab === 'videos', () => setTab('videos')),
+  ];
+  const contents = root && state && <Contents root={root} trees={state.trees.filter(t => visibleIds.includes(t.id))} addresses={addresses} previews={previews} current={tree} active={state.active} open={id => { setTab('learning'); void openConversation(id); }} openFigure={(id, artifact) => { setTab('learning'); void openConversation(id, undefined, artifact); }} />;
+  // Narrow band (mockup Narrow): views, the outline and Settings move into this drawer; any choice inside closes it.
+  const narrowDrawer = <Drawer isOpen={drawer} onOpenChange={setDrawer} label="Contents" side="start" width={320} padding={0}>
+    <Regions padding={2} header={<DrawerHeader className="drawer-head" title="TreeTutor" onOpenChange={setDrawer} />} content={<LayoutContent padding={0}><VStack gap={0} className="band-drawer" onClick={e => { if ((e.target as Element).closest('button')) setDrawer(false); }}>
+      <nav aria-label="Views" className="drawer-views">{views.slice(0, 2)}{viewTab('Library', <RectangleStackIcon />, tab === 'library', () => setTab('library'))}{views.slice(2)}</nav>
+      {contents}
+      <Button className="view-tab drawer-settings" label="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" onClick={() => openSettings(undefined, undefined, document.querySelector<HTMLElement>('.band-contents'))} />
+    </VStack></LayoutContent>} />
+  </Drawer>;
+  const saveAlert = root && state && layoutFailed && <HStack gap={1} vAlign="center" role="alert" className="band-save"><Text type="supporting" weight="semibold">Map layout not saved.<span className="sr-only"> It retries every minute while this tree stays open.</span></Text><Button label="Retry saving layout" variant="ghost" size="sm" onClick={() => void saver.current?.flush()} /></HStack>;
+  const band = mobile ? <header className="shell-band">
+    <IconButton className="band-contents" label="Contents" tooltip="Contents" icon={<Bars3Icon />} variant="ghost" size="sm" aria-haspopup="dialog" aria-expanded={drawer} onClick={() => setDrawer(true)} />
+    <Text className="band-mark" weight="bold">TreeTutor</Text>
+    <HStack gap={1} vAlign="center" className="band-tools">
+      <IconButton className="tree-search" label="Search learning trees" tooltip="Search learning trees" icon={<MagnifyingGlassIcon />} variant="ghost" size="sm" aria-haspopup="dialog" onClick={() => setSearching(true)} />
+      <IconButton className="new-chat" label={busy ? 'Opening…' : 'New chat'} tooltip="New chat" icon={<PlusIcon />} variant="ghost" size="sm" isDisabled={busy} onClick={() => void create()} />
+    </HStack>
+    {saveAlert}
+  </header> : <header className="shell-band">
     <Text className="band-mark" weight="bold">TreeTutor</Text>
     <Button className="tree-switcher" label={rootTitle ? `${rootTitle} · Learning trees` : 'Learning trees'} tooltip="Open the library of learning trees" variant="ghost" size="sm" aria-current={tab === 'library' ? 'page' : undefined} onClick={() => setTab('library')}><span className="tree-switcher-content"><span className="tree-switcher-title">{rootTitle ?? 'Learning trees'}</span><ChevronDownIcon className="tree-switcher-icon" aria-hidden /></span></Button>
-    <nav aria-label="Views" className="view-tabs">
-      {viewTab('Read', <BookOpenIcon />, reading, () => { setTab('learning'); if (overview && root) { focusComposer.current = true; changeView(false, tree?.id); } })}
-      {viewTab('Map', <MapIcon />, mapping, () => { setTab('learning'); if (!overview) returnToTree(); }, !root)}
-      {viewTab('Knowledge', <ShareIcon />, tab === 'knowledge', () => setTab('knowledge'))}
-      {viewTab('Videos', <FilmIcon />, tab === 'videos', () => setTab('videos'))}
-    </nav>
+    <nav aria-label="Views" className="view-tabs">{views}</nav>
     <HStack gap={1} vAlign="center" className="band-tools">
-      {root && state && layoutFailed && <HStack gap={1} vAlign="center" role="alert" className="band-save"><Text type="supporting" weight="semibold">Map layout not saved.<span className="sr-only"> It retries every minute while this tree stays open.</span></Text><Button label="Retry saving layout" variant="ghost" size="sm" onClick={() => void saver.current?.flush()} /></HStack>}
+      {saveAlert}
       <IconButton className="tree-search" label="Search learning trees" tooltip="Search learning trees" icon={<MagnifyingGlassIcon />} variant="ghost" size="sm" aria-haspopup="dialog" onClick={() => setSearching(true)} />
       <Button className="new-chat" label={busy ? 'Opening…' : 'New chat'} variant="ghost" size="sm" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
       <IconButton className="band-settings" label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
@@ -762,6 +783,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
     if ((e.target as Element).closest('[role=alertdialog]')) { e.preventDefault(); e.stopPropagation(); cancelDelete(); }
   }}>
     {band}
+    {mobile && narrowDrawer}
     {/* Outside the band so the palette keeps popover colours. */}
     <CommandPalette isOpen={searching} onOpenChange={setSearching} label="Search learning trees" searchSource={titleSearch} onValueChange={id => id && openTree(id)} emptyBootstrapText="Type part of a learning tree’s title." emptySearchText="No learning tree titles match." />
     <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
@@ -769,7 +791,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
         <Heading level={1} className="sr-only">TreeTutor</Heading>
         {error && <section role="alert"><VStack padding={4}><Text>{error}</Text></VStack></section>}
         <section className="tree-workspace" data-expanded={expanded && !overview} style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}>
-        {root && state && !overview && <Contents root={root} trees={state.trees.filter(t => visibleIds.includes(t.id))} addresses={addresses} previews={previews} current={tree} active={state.active} open={id => void openConversation(id)} openFigure={(id, artifact) => void openConversation(id, undefined, artifact)} />}
+        {!overview && !mobile && contents}
         <section ref={workspace} className="reading-workspace">
         <section id="focused-chat" className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video, dialog')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>

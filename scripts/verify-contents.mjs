@@ -141,18 +141,17 @@ try {
   check('Switch to unknown model keeps measured tokens and removes percentage/bar');
 
   await b('set', 'viewport', '390', '780');
-  assert.equal(await ev(`document.querySelector('.contents-panel').checkVisibility()`), false);
-  await b('focus', '.contents-toggle'); await b('press', 'Enter');
-  await wait(`document.querySelector('.contents-panel').checkVisibility()`);
-  await shot('narrow-light');
+  assert.equal(await ev(`!!document.querySelector('main .contents')`), false);
+  const drawer = async () => { await b('focus', '.band-contents'); await b('press', 'Enter'); await wait(`document.querySelector('dialog[open] .contents-panel')?.checkVisibility()`); };
+  await drawer(); await shot('narrow-light');
   await click('Settings'); await b('click', '#settings-interface');
   await wait(`document.querySelector('input[type=radio]')`);
   await b('find', 'role', 'radio', 'click', '--name', 'Dark', '--exact'); await b('press', 'Escape');
-  await shot('narrow-dark');
+  await drawer(); await shot('narrow-dark');
   await selectFigure(video.title, video.id);
-  assert.equal(await ev(`document.querySelector('.contents-panel').checkVisibility()`), false);
+  assert.equal(await ev(`!!document.querySelector('dialog[open] .contents')`), false);
   assert.ok(await ev(`document.documentElement.scrollWidth<=innerWidth && Math.round(document.querySelector('.focused-chat').getBoundingClientRect().width)===innerWidth`));
-  check('390px: Contents toggles by keyboard; figure navigation closes panel and focuses media; full-width chat and no overflow');
+  check('390px: Contents drawer opens by keyboard; figure navigation closes the drawer and focuses media; full-width chat and no overflow');
   await b('set', 'viewport', '1440', '900'); await click('Map');
   assert.equal(await ev(`!!document.querySelector('.contents')`), false);
   check('Map retains its full workspace without Contents');

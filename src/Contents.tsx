@@ -1,8 +1,7 @@
-import { useState, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { Preview, Summary } from './TreeOverview';
 import type { Artifact } from './artifacts';
 import { conversationAddresses, inkStyle } from './treeList';
@@ -14,7 +13,6 @@ export default function Contents({ root, trees, addresses, previews, current, ac
   root: string; trees: Summary[]; addresses: ReturnType<typeof conversationAddresses>; previews: Record<string, Preview>;
   current?: Current; active: string[]; open: (id: string) => void; openFigure: (conversation: string, artifact: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const byId = new Map(trees.map(t => [t.id, t]));
   const conversations = [...addresses].flatMap(([id, address]) => byId.has(id) ? [{ ...byId.get(id)!, ...address }] : []);
   const figures = conversations.flatMap(t => (t.id === current?.id
@@ -23,10 +21,8 @@ export default function Contents({ root, trees, addresses, previews, current, ac
   const context = current && conversationContext(current);
   const used = context?.used.toLocaleString();
   const percentage = context?.limit ? (100 * context.used / context.limit).toLocaleString(undefined, { maximumFractionDigits: 1 }) : undefined;
-  const navigate = (action: () => void) => { setExpanded(false); action(); };
   return <aside className="contents" aria-label="Learning tree contents">
-    <Button className="contents-toggle" label="Contents" variant="ghost" size="sm" icon={<ChevronDownIcon />} aria-expanded={expanded} aria-controls="contents-panel" onClick={() => setExpanded(v => !v)} />
-    <VStack id="contents-panel" gap={0} className="contents-panel" data-open={expanded}>
+    <VStack gap={0} className="contents-panel">
       <VStack gap={1} className="contents-head">
         <Heading level={2}>{byId.get(root)?.title}</Heading>
         <Text type="supporting" color="secondary">{conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'} · {figures.length} {figures.length === 1 ? 'figure' : 'figures'}</Text>
@@ -35,7 +31,7 @@ export default function Contents({ root, trees, addresses, previews, current, ac
         <nav aria-label="Contents">
           <Heading level={3} className="contents-label">Contents</Heading>
           <ol className="contents-list">{conversations.map(t => <li key={t.id} style={{ ...inkStyle(t.ink), '--depth': Math.min(t.address.split('.').length - 1, 3) } as CSSProperties}>
-            <Button className="contents-row" label={`${t.address} ${t.title}`} variant="ghost" size="sm" aria-current={current?.id === t.id ? 'location' : undefined} onClick={() => navigate(() => open(t.id))}>
+            <Button className="contents-row" label={`${t.address} ${t.title}`} variant="ghost" size="sm" aria-current={current?.id === t.id ? 'location' : undefined} onClick={() => open(t.id)}>
               <Text as="span" type="inherit" className="contents-row-body">
               <Text type="supporting" className="contents-address">{t.address}</Text><Text as="span" className="contents-dot" aria-hidden>{''}</Text><Text as="span" className="contents-name">{t.title}</Text>
               {active.includes(t.id) && <Text type="supporting" className="contents-busy">Responding…</Text>}
@@ -46,7 +42,7 @@ export default function Contents({ root, trees, addresses, previews, current, ac
         <nav aria-label="Figures">
           <Heading level={3} className="contents-label">Figures</Heading>
           <ol className="contents-list">{figures.map((figure, i) => <li key={figure.id}>
-            <Button className="contents-row contents-figure" label={`Fig ${i + 1} ${figure.title}`} variant="ghost" size="sm" onClick={() => navigate(() => openFigure(figure.conversation, figure.id))}>
+            <Button className="contents-row contents-figure" label={`Fig ${i + 1} ${figure.title}`} variant="ghost" size="sm" onClick={() => openFigure(figure.conversation, figure.id)}>
               <Text as="span" type="inherit" className="contents-row-body">
               <Text type="supporting" className="contents-address">Fig {i + 1}</Text><Text as="span" className="contents-name">{figure.title}</Text><Text type="supporting" color="secondary">{figure.kind === 'mermaid' || !figure.kind ? 'diagram' : figure.kind}</Text>
               </Text>

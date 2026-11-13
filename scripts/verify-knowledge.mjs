@@ -116,6 +116,8 @@ try {
   await b('screenshot', join(shots, 'knowledge-mobile.png'));
   const widths = await ev(`({ viewport: innerWidth, document: document.documentElement.scrollWidth, panel: document.querySelector('.knowledge-panel').scrollWidth, outside: [...document.querySelectorAll('body *')].map(e => ({tag: e.tagName, cls: e.className, left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right})).filter(r => r.left < -1 || r.right > innerWidth + 1).slice(0, 12) })`);
   assert.ok(widths.document <= widths.viewport && widths.panel <= widths.viewport, 'no horizontal overflow at phone width: ' + JSON.stringify(widths));
+  // Narrow views move into the Contents drawer (verify-narrow); reload checks persistence at desktop width.
+  await b('set', 'viewport', '1440', '1000');
   await b('reload');
   await b('wait', '.view-tabs');
   await openKnowledge();

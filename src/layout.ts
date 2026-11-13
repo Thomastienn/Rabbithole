@@ -26,7 +26,6 @@ html { view-transition-name: none; }
 .shell-band .new-chat { height: 32px; border: 1px solid color-mix(in srgb, var(--treetutor-band-ink) 35%, transparent); font-weight: 600; }
 .band-save { height: 24px; padding-inline: var(--treetutor-module); border-radius: var(--radius-element); background: var(--color-error); color: var(--color-on-error); --color-text-primary: var(--color-on-error); --color-text-secondary: var(--color-on-error); }
 .shell-band .band-save button { height: 20px; color: var(--color-on-error); text-decoration: underline; }
-@media (max-width: 48rem) { .band-mark { display: none; } .view-tabs { margin-inline-start: 0; } }
 .library-content { height: 100%; max-width: 40rem; margin-inline: auto; }
 .library-content h1 { font-size: var(--font-size-2xl); }
 .tree-list { flex: 1; min-height: 0; overflow: auto; }
@@ -90,8 +89,15 @@ html { view-transition-name: none; }
 .contents-context meter::-webkit-meter-bar { height: 4px; border: none; border-radius: var(--radius-inner); background: var(--color-border); }
 .contents-context meter::-webkit-meter-optimum-value { background: var(--color-text-secondary); border-radius: var(--radius-inner); }
 .contents-context meter::-moz-meter-bar { background: var(--color-text-secondary); border-radius: var(--radius-inner); }
-.contents-toggle { display: none; }
-.contents :focus-visible, .focused-chat [data-artifact]:focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: calc(-1 * var(--spacing-1)); }
+/* Narrow contents drawer (mockup Narrow): view links, the outline, then Settings. */
+.drawer-head { padding: var(--treetutor-module) var(--treetutor-module) var(--treetutor-module) calc(2 * var(--treetutor-module)); }
+.band-drawer { min-height: 100%; background: var(--color-background-muted); }
+.drawer-views { display: flex; flex-direction: column; padding: var(--treetutor-module); border-block-end: thin solid var(--color-border); }
+.band-drawer .view-tab { width: 100%; justify-content: flex-start; font-weight: 400; }
+.band-drawer .view-tab[aria-current=page] { background: var(--color-background-surface); box-shadow: inset 0 0 0 1px var(--color-border); font-weight: 600; }
+.band-drawer .contents { flex: 1; width: 100%; border: 0; background: none; }
+.band-drawer .drawer-settings { margin: var(--treetutor-module); width: auto; }
+.band-drawer :focus-visible, .contents :focus-visible, .focused-chat [data-artifact]:focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: calc(-1 * var(--spacing-1)); }
 .focused-chat, .overview { display: flex; flex: 1; min-width: 0; min-height: 0; flex-direction: column; }
 .overview { position: relative; background: var(--color-background-body); }
 .map-toolbar { position: absolute; z-index: 5; bottom: var(--spacing-3); left: var(--spacing-3); border: thin solid var(--color-border); border-radius: var(--radius-element); background: var(--color-background-surface); }
@@ -358,15 +364,11 @@ section[role=alert] { background: var(--color-background-body); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }
 @media (max-width: 48rem) {
  .ink-legend { bottom: calc(2 * var(--spacing-3) + var(--spacing-10)); max-width: calc(100% - 2 * var(--spacing-4)); }
- .tree-workspace { flex-direction: column; }
- .contents { flex: none; width: 100%; max-height: 45dvh; border-inline-end: 0; border-block-end: thin solid var(--color-border); }
- .contents .contents-toggle { display: flex; flex: none; justify-content: flex-start; }
- .contents-panel[data-open=false] { display: none; }
- .contents-head { display: none; }
- .contents-context { padding-block: var(--treetutor-module); }
+ .shell-band { flex-wrap: wrap; height: auto; min-height: calc(7 * var(--treetutor-module)); padding-inline: var(--treetutor-module); overflow-x: visible; }
+ .shell-band .band-mark { margin-inline-start: var(--treetutor-module); font-size: 17px; }
+ .shell-band .band-save { flex-basis: 100%; flex-wrap: wrap; height: auto; margin-block-end: var(--treetutor-module); }
  .workspace { flex-direction: column; overflow: hidden; }
  .conversation { min-height: 0; flex: 1; }
- .chat-header { padding-inline-start: calc(var(--spacing-3) + var(--spacing-10) + var(--spacing-2)); }
  .overview[data-chat-open=true] { display: none; }
  .focused-chat { flex: 1; border-left: 0; }
  .expand-chat { display: none; }
