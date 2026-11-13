@@ -378,9 +378,10 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             return json(res, 200, status);
           } catch { return json(res, 400, { error: 'Endpoint settings could not be saved. Check the HTTP(S) base URL, API key and local data-directory write access.' }); }
         }
-        if (endpoint && ['/api/settings/endpoints', '/api/settings/endpoints/remove'].includes(url.pathname)) {
+        if (endpoint && ['/api/settings/endpoints', '/api/settings/endpoints/remove', '/api/settings/endpoints/edit', '/api/settings/endpoints/test'].includes(url.pathname)) {
           try {
-            const list = url.pathname.endsWith('/remove') ? endpoint.remove(body?.id) : endpoint.add(body ?? {});
+            const action = url.pathname.split('/')[4];
+            const list = action === 'remove' ? endpoint.remove(body?.id) : action === 'edit' ? endpoint.edit(body ?? {}) : action === 'test' ? await endpoint.test(body?.id) : endpoint.add(body ?? {});
             syncEndpoints();
             return json(res, 200, list);
           } catch (error) { return json(res, 400, { error: error instanceof EndpointError ? error.message : 'Endpoint settings could not be saved. Check local data-directory write access.' }); }

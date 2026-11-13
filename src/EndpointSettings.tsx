@@ -5,15 +5,20 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 
-type Endpoint = { id: string; name: string; baseUrl: string };
+type Endpoint = { id: string; name: string; baseUrl: string; lastTest: null | { ok: true; models: number; at: string } | { ok: false; error: string; at: string } };
+
+const when = (at: string) => {
+  const d = new Date(at), time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString() ? `today, ${time}` : `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}, ${time}`;
+};
 
 export default function EndpointSettings({ api, changed }: { api: (path: string, body?: unknown) => Promise<Endpoint[]>; changed: () => void }) {
   const [list, setList] = useState<Endpoint[]>();
-  const [adding, setAdding] = useState(false), [removing, setRemoving] = useState<Endpoint>();
+  const [adding, setAdding] = useState(false), [editing, setEditing] = useState<Endpoint>(), [removing, setRemoving] = useState<Endpoint>();
   const [name, setName] = useState(''), [baseUrl, setBaseUrl] = useState(''), [apiKey, setApiKey] = useState('');
-  const [pending, setPending] = useState('loading'), [error, setError] = useState(''), [message, setMessage] = useState('');
+  const [testing, setTesting] = useState(''), [pending, setPending] = useState('loading'), [error, setError] = useState(''), [message, setMessage] = useState('');
   async function load() {
     setPending('loading'); setError('');
     try { setList(await api('/api/settings/endpoints')); }
@@ -21,27 +26,35 @@ export default function EndpointSettings({ api, changed }: { api: (path: string,
     finally { setPending(''); }
   }
   useEffect(() => { void load(); }, []);
-  async function act(action: 'add' | 'remove', body: unknown, done: string) {
+  async function act(action: 'add' | 'remove' | 'edit' | 'test', body: { id?: string; [key: string]: unknown }, done: string) {
     if (pending) return;
     setPending(action); setError(''); setMessage('');
     try {
-      setList(await api(`/api/settings/endpoints${action === 'remove' ? '/remove' : ''}`, body));
+      setList(await api(`/api/settings/endpoints${action === 'add' ? '' : `/${action}`}`, body));
       setMessage(done);
-      if (action === 'add') { setAdding(false); setName(''); setBaseUrl(''); }
+      if (action === 'add' || action === 'edit') { setAdding(false); setEditing(undefined); setName(''); setBaseUrl(''); }
       setRemoving(undefined);
     } catch (e) { setError((e as Error).message); }
     finally { setApiKey(''); setPending(''); changed(); }
+    // Test runs after saving an edit; it lists models and sends no chat message.
+    if (action === 'edit' && body.id) { setPending('test'); try { setList(await api('/api/settings/endpoints/test', { id: body.id })); } catch (e) { setError((e as Error).message); } finally { setPending(''); changed(); } }
   }
-  const openAdd = () => { setAdding(true); setError(''); setMessage(''); };
+  const openAdd = () => { setAdding(true); setEditing(undefined); setName(''); setBaseUrl(''); setApiKey(''); setError(''); setMessage(''); };
+  const openEdit = (e: Endpoint) => { setEditing(e); setAdding(false); setName(e.name); setBaseUrl(e.baseUrl); setApiKey(''); setError(''); setMessage(''); };
   const nameTaken = error.startsWith('Another endpoint is called');
-  const form = adding && <form className="endpoint-form" aria-label="New endpoint" onSubmit={e => { e.preventDefault(); if (name.trim() && baseUrl.trim() && apiKey.trim()) void act('add', { name, baseUrl, apiKey }, `${name.trim()} added. Choose its models in any model menu.`); }}><VStack gap={3}>
-    <Heading level={4}>New endpoint</Heading>
-    <TextInput label="Name" description="Shown in model menus." placeholder="For example, Local llama" value={name} onChange={setName} isReadOnly={!!pending} autoComplete="off" isRequired hasAutoFocus status={nameTaken ? { type: 'error', message: error } : undefined} />
-    <TextInput label="Base URL" type="url" description="API root including its path prefix. Use HTTPS for remote endpoints." placeholder="http://127.0.0.1:8080/v1" value={baseUrl} onChange={setBaseUrl} isReadOnly={!!pending} autoComplete="off" isRequired />
-    <TextInput label="API key" type="password" description="Stored in an owner-only file on this computer. The saved key is never shown." value={apiKey} onChange={setApiKey} isReadOnly={!!pending} autoComplete="new-password" isRequired />
-    <HStack gap={2} wrap="wrap">
-      <Button label={pending === 'add' ? 'Saving…' : 'Save'} type="submit" size="sm" isDisabled={!!pending || !name.trim() || !baseUrl.trim() || !apiKey.trim()} />
-      <Button label="Cancel" variant="secondary" size="sm" isDisabled={!!pending} onClick={() => { setAdding(false); setApiKey(''); setError(''); }} />
+  // Compare loosely to the saved form: the server strips trailing slashes.
+  const urlChanged = !!editing && baseUrl.trim().replace(/\/+$/, '') !== editing.baseUrl;
+  const keyNeeded = !editing || urlChanged;
+  const form = (adding || editing) && <form className="endpoint-form" aria-label={editing ? `Edit ${editing.name}` : 'New endpoint'} onSubmit={e => { e.preventDefault(); if (name.trim() && baseUrl.trim() && (apiKey.trim() || !keyNeeded)) void (editing ? act('edit', { id: editing.id, name, baseUrl, ...(apiKey && { apiKey }) }, `${name.trim()} saved.`) : act('add', { name, baseUrl, apiKey }, `${name.trim()} added. Choose its models in any model menu.`)); }}><VStack gap={3}>
+    <Heading level={4}>{editing ? `Edit ${editing.name}` : 'New endpoint'}</Heading>
+    <TextInput label="Name" description={editing ? 'Shown in model menus. Renaming keeps every conversation and profile linked.' : 'Shown in model menus.'} placeholder="For example, Local llama" value={name} onChange={setName} isReadOnly={!!pending} autoComplete="off" isRequired hasAutoFocus status={nameTaken ? { type: 'error', message: error } : undefined} />
+    <TextInput label="Base URL" type="url" description="API root including its path prefix. Use HTTPS for remote endpoints." placeholder="http://127.0.0.1:8080/v1" value={baseUrl} onChange={setBaseUrl} isReadOnly={!!pending} autoComplete="off" isRequired
+      status={urlChanged ? { type: 'warning', message: 'URL changed: enter the key again so it never reaches a new host unasked.' } : undefined} />
+    <TextInput label="API key" type="password" description={editing && !urlChanged ? 'Leave empty to keep the saved key. Stored in an owner-only file on this computer; never shown.' : 'Stored in an owner-only file on this computer. The saved key is never shown.'} placeholder={urlChanged ? 'Required because the URL changed' : undefined} value={apiKey} onChange={setApiKey} isReadOnly={!!pending} autoComplete="new-password" isRequired={keyNeeded} />
+    <HStack gap={2} wrap="wrap" vAlign="center">
+      <Button label={pending === 'add' || pending === 'edit' ? 'Saving…' : 'Save'} type="submit" size="sm" isDisabled={!!pending || !name.trim() || !baseUrl.trim() || (keyNeeded && !apiKey.trim())} />
+      <Button label="Cancel" variant="secondary" size="sm" isDisabled={!!pending} onClick={() => { setAdding(false); setEditing(undefined); setApiKey(''); setError(''); }} />
+      {editing && <Text type="supporting" color="secondary">Test runs after saving. It lists models and sends no chat message.</Text>}
     </HStack>
   </VStack></form>;
   return <VStack gap={3} className="endpoint-settings" as="section" aria-label="Custom endpoints">
@@ -52,11 +65,21 @@ export default function EndpointSettings({ api, changed }: { api: (path: string,
     </HStack>
     <Text type="supporting" color="secondary">OpenAI-compatible APIs. Each appears under its own name wherever you choose a model. Requests, including discussion and inherited context, go to that endpoint and are billed by its owner.</Text>
     {pending === 'loading' && <Text type="supporting" role="status">Loading endpoints…</Text>}
-    {form}
+    {adding && form}
     {list?.length === 0 && !adding && <EmptyState isCompact headingLevel={4} title="No custom endpoints yet" description="Add one to use a local or OpenAI-compatible model." actions={<Button label="Add endpoint" size="sm" icon={<PlusIcon />} onClick={openAdd} />} />}
-    {list?.map(e => <HStack key={e.id} gap={2} vAlign="center" hAlign="between" className="endpoint-row" data-endpoint={e.id}>
-      <VStack gap={0}><Text weight="bold">{e.name}</Text><Text type="supporting" color="secondary">{e.baseUrl}</Text></VStack>
-      <Button label={`Remove ${e.name}`} variant="ghost" size="sm" icon={<TrashIcon />} isDisabled={!!pending} onClick={() => setRemoving(e)}>Remove</Button>
+    {list?.map(e => editing?.id === e.id ? <div key={e.id}>{form}</div> : <HStack key={e.id} gap={2} vAlign="center" hAlign="between" wrap="wrap" className="endpoint-row" data-endpoint={e.id}>
+      <VStack gap={0}>
+        <Text weight="bold">{e.name}</Text>
+        <Text type="supporting" color="secondary">{e.baseUrl}</Text>
+        <Text type="supporting" className="endpoint-test" role={e.lastTest?.ok === false ? 'alert' : undefined} color={e.lastTest?.ok === false ? undefined : 'secondary'}>
+          {pending === 'test' && testing === e.id ? 'Testing…' : !e.lastTest ? 'Not tested' : e.lastTest.ok ? `${e.lastTest.models} ${e.lastTest.models === 1 ? 'model' : 'models'} listed · tested ${when(e.lastTest.at)}` : `Test failed · ${e.lastTest.error} · ${when(e.lastTest.at)}`}
+        </Text>
+      </VStack>
+      <HStack gap={1} vAlign="center">
+        <Button label={e.lastTest?.ok === false ? `Test ${e.name} again` : `Test ${e.name}`} variant="secondary" size="sm" isDisabled={!!pending} onClick={() => { setTesting(e.id); void act('test', { id: e.id }, ''); }}>{e.lastTest?.ok === false ? 'Test again' : 'Test'}</Button>
+        <Button label={`Edit ${e.name}`} variant="ghost" size="sm" icon={<PencilSquareIcon />} isDisabled={!!pending} onClick={() => openEdit(e)}>Edit</Button>
+        <Button label={`Remove ${e.name}`} variant="ghost" size="sm" icon={<TrashIcon />} isDisabled={!!pending} onClick={() => setRemoving(e)}>Remove</Button>
+      </HStack>
     </HStack>)}
     {message && <Text type="supporting" role="status">{message}</Text>}
     {error && !nameTaken && !removing && <Text type="supporting" role="alert">{error}</Text>}

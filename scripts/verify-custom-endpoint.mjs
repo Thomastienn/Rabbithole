@@ -60,7 +60,7 @@ if (process.argv[2] === '--serve') {
   async function stop() { const stopped = once(server, 'exit'); server.send('stop'); await stopped; }
   const get = async path => (await fetch(origin + path)).json();
   const saved = id => get(`/api/trees/${id}`);
-  const settingsText = 'document.querySelector(".endpoint-settings")?.textContent ?? ""';
+  const settingsText = '(document.querySelector(".endpoint-settings")?.textContent ?? "")';
   async function tabTo(selector, text) {
     for (let i = 0; i < 200; i++) { if (await evaluate(`document.activeElement?.matches(${JSON.stringify(selector)}) && (${text === undefined ? 'true' : `document.activeElement.textContent.trim() === ${JSON.stringify(text)}`})`)) return; await browser('press', 'Tab'); }
     assert.fail(`Tab did not reach ${selector}: ` + await evaluate('document.activeElement?.outerHTML'));
@@ -112,7 +112,7 @@ if (process.argv[2] === '--serve') {
     const firstPid = await start();
     await browser('set', 'viewport', '1280', '900'); await browser('open', origin); await browser('set', 'media', 'light', 'reduced-motion');
     await browser('wait', '[aria-label="Model for next reply"]');
-    assert.deepEqual(await get('/api/settings/endpoints'), [{ id: 'openai', name: 'Custom endpoint', baseUrl: fake.baseUrl }]);
+    assert.deepEqual(await get('/api/settings/endpoints'), [{ id: 'openai', name: 'Custom endpoint', baseUrl: fake.baseUrl, lastTest: null }]);
     assert.equal(existsSync(join(dir, 'openai-endpoint.json')), false);
     await connectionSettings();
     await wait(`document.querySelector('.endpoint-row[data-endpoint="openai"]')?.textContent.includes(${JSON.stringify('Custom endpoint' + fake.baseUrl)})`);
@@ -156,8 +156,43 @@ if (process.argv[2] === '--serve') {
     await modelMenu();
     assert.ok((await evaluate(menuText)).includes('Work gateway · not connected'));
     await menuItem('Custom endpoint settings'); await wait('document.activeElement?.matches(".endpoint-add")');
-    gateway.modelStatus = 200;
     pass('a failing endpoint shows "Work gateway · not connected" with a settings action that focuses Add endpoint');
+
+    // Failed test stays on the row, also after a reload, until the next test or save.
+    const row = name => `(document.querySelector('.endpoint-row[data-endpoint="${name}"]')?.textContent ?? '')`;
+    assert.ok((await evaluate(row(gw))).includes('Not tested'));
+    await click('Test Work gateway'); await wait(`${row(gw)}.includes('Test failed · Custom endpoint rejected the API key. Check endpoint settings.')`);
+    assert.ok(await evaluate(`!!document.querySelector('.endpoint-row[data-endpoint="${gw}"] [role=alert]')`), 'failure is announced: ' + await evaluate(`document.querySelector('.endpoint-row[data-endpoint="${gw}"]').outerHTML`));
+    await browser('reload'); await browser('wait', '[aria-label="Model for next reply"]'); await connectionSettings();
+    await wait(`${row(gw)}.includes('Test failed')`);
+    assert.ok(await evaluate(`!!document.querySelector('[aria-label="Test Work gateway again"]')`));
+    for (const scheme of ['light', 'dark']) {
+      await evaluate(`localStorage.setItem('treetutor.appearance', '${scheme}'); true`); await browser('reload');
+      await browser('wait', '[aria-label="Model for next reply"]'); await connectionSettings(); await wait(`${row(gw)}.includes('Test failed')`);
+      await browser('screenshot', `docs/verification/custom-endpoints-test-failed-${scheme}.png`);
+    }
+    await evaluate(`localStorage.setItem('treetutor.appearance', 'light'); true`); await browser('reload');
+    await browser('wait', '[aria-label="Model for next reply"]'); await connectionSettings();
+    gateway.modelStatus = 200;
+    pass('a failed test shows the failure with what to do, stays after reload and offers Test again');
+
+    // Edit inline: a URL change needs the key again; rename keeps the key and the conversation's provider.
+    const gatewayCalls = gateway.calls.length;
+    await click('Edit Work gateway'); await wait('!!document.querySelector(\'.endpoint-form[aria-label="Edit Work gateway"]\')');
+    assert.equal(await evaluate('document.querySelector(".endpoint-form input[type=password]").value'), '');
+    await fill('Name', 'Team gateway'); await fill('Base URL', fake.baseUrl);
+    await wait(`${settingsText}.includes('URL changed: enter the key again so it never reaches a new host unasked.')`);
+    assert.ok(await evaluate('[...document.querySelectorAll(".endpoint-form button")].find(b => b.textContent.trim() === "Save").disabled'), 'Save waits for the key');
+    await fill('Base URL', gateway.baseUrl + '/');
+    await wait(`!${settingsText}.includes('URL changed')`);
+    await click('Save'); await wait(`${row(gw)}.includes('1 model listed · tested today')`);
+    assert.deepEqual((await get('/api/settings/endpoints')).find(e => e.id === gw).name, 'Team gateway');
+    assert.equal(gateway.calls.slice(gatewayCalls).at(-1).headers.authorization, 'Bearer gateway-fixture-secret', 'rename kept the key');
+    assert.equal(fake.calls.filter(c => c.headers.authorization === 'Bearer gateway-fixture-secret').length, 0, 'the key never reached another host');
+    assert.equal((await saved(nested.id)).provider, gw);
+    await click('Edit Team gateway'); await fill('Name', 'Work gateway'); await click('Save'); await wait(`${row(gw)}.includes('Work gateway') && ${row(gw)}.includes('model listed')`);
+    await noSecrets();
+    pass('inline Edit: URL change warns and requires the key; rename keeps key, id and conversations; save runs a test that clears the failure');
 
     // Remove asks first; Escape cancels; confirm removes only that endpoint.
     await wait('!!document.querySelector(\'[aria-label="Remove Work gateway"]\')');
@@ -206,15 +241,20 @@ if (process.argv[2] === '--serve') {
         assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'), `${scheme} ${width}: horizontal overflow`);
         await browser('screenshot', width === 1280 ? `docs/verification/custom-endpoints-${scheme}.png` : join(dir, `endpoints-${scheme}-${width}.png`));
         await click('Cancel');
+        await click('Edit Local llama'); await wait('!!document.querySelector(".endpoint-form")');
+        await fill('Base URL', 'https://moved.example/v1'); await wait(`${settingsText}.includes('URL changed')`);
+        assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'), `${scheme} ${width}: edit form overflow`);
+        await browser('screenshot', width === 1280 ? `docs/verification/custom-endpoints-edit-${scheme}.png` : join(dir, `edit-${scheme}-${width}.png`));
+        await click('Cancel');
         await click('Remove Local llama'); await wait('!!document.querySelector(".endpoint-remove-dialog[open]")');
         assert.ok(await evaluate('(()=>{const r=document.querySelector(".endpoint-remove-dialog").getBoundingClientRect();return r.width>0&&r.x>=0&&r.right<=innerWidth&&r.bottom<=innerHeight})()'), `${scheme} ${width}: dialog outside viewport`);
         await browser('screenshot', width === 1280 ? `docs/verification/custom-endpoints-remove-${scheme}.png` : join(dir, `remove-${scheme}-${width}.png`));
         await click('Cancel'); await wait('!document.querySelector(".endpoint-remove-dialog[open]")');
       }
-      pass(`${scheme}: list, inline form and remove dialog fit desktop and 390px without sideways scroll`);
+      pass(`${scheme}: list, inline add and edit forms and remove dialog fit desktop and 390px without sideways scroll`);
     }
     await noSecrets();
-    const result = { result: 'PASS', mode: 'fixture', issue: 'TreeTutor-2li.7', date: new Date().toISOString(), liveEndpointTested: false, serverPids: [firstPid, secondPid], checks, screenshots: dir };
+    const result = { result: 'PASS', mode: 'fixture', issues: ['TreeTutor-2li.7', 'TreeTutor-2li.8'], date: new Date().toISOString(), liveEndpointTested: false, serverPids: [firstPid, secondPid], checks, screenshots: dir };
     writeFileSync('docs/verification/custom-endpoint-settings-results.json', JSON.stringify(result, null, 2) + '\n');
     console.log(JSON.stringify(result, null, 2));
   } catch (error) {

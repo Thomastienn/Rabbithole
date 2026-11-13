@@ -55,8 +55,10 @@ POST also requires JSON and the server's CSRF token.
 
 | Route | Behavior |
 | --- | --- |
-| `GET /api/settings/endpoints` | Return the ordered list `[{ id, name, baseUrl }]`; never a key. |
+| `GET /api/settings/endpoints` | Return the ordered list `[{ id, name, baseUrl, lastTest }]`; never a key. `lastTest` is `null`, `{ ok: true, models, at }` or `{ ok: false, error, at }`. |
 | `POST /api/settings/endpoints` | Add `{ name, baseUrl, apiKey }` and register it as a provider; return the list. No network call or provider selection. A taken name returns 400 with `Another endpoint is called <name>. Choose a different name.` |
+| `POST /api/settings/endpoints/edit` | Edit `{ id, name, baseUrl, apiKey? }`. Without `apiKey` the saved key is kept, but only for the same base URL; a new base URL without a key returns 400 with `The base URL changed. Enter the API key again so the saved key is never sent to a new host.` The id stays, so conversations and profiles follow. Any change clears `lastTest` and aborts the endpoint's in-flight requests. |
+| `POST /api/settings/endpoints/test` | Test `{ id }` by listing models (no chat message); store the result with the endpoint (it survives restarts) and return the list. A failed test stays until the next test or save. |
 | `POST /api/settings/endpoints/remove` | Remove `{ id }`: delete its key, abort its in-flight requests and unregister only that provider; return the list. Saved discussions and profiles keep their content and fail visibly when used. |
 | `GET /api/settings/endpoint` | Compatibility: `{ configured, baseUrl }` of the `openai` endpoint. |
 | `POST /api/settings/endpoint` | Compatibility: save `{ baseUrl, apiKey }` into the `openai` endpoint (named "Custom endpoint" when new). |
@@ -90,9 +92,12 @@ The learner-facing controls are in Map menu → Settings → Connections, under
 Custom endpoints. Add endpoint opens an inline form (name, base URL, API key)
 at the top of the list; Save refreshes the model catalogue, and the key field
 is always cleared and never shown back. Each row shows the name and base URL
-with Remove, which asks for confirmation first and never changes a
-conversation's provider. With no endpoints, an empty state offers Add endpoint.
-Editing, renaming and per-row testing are not in this release yet. Each model
+and its last test result (model count and when, or the failure with what to
+do) with Test, Edit and Remove. Edit opens the same form in place of the row;
+leaving the key empty keeps it, and changing the base URL warns and requires
+the key again. Saving an edit runs a test. Remove asks for confirmation first
+and never changes a conversation's provider. With no endpoints, an empty state
+offers Add endpoint. Each model
 menu groups models under the endpoint name. The compact model menu always
 includes a Custom endpoint group, and any endpoint group that cannot list
 models shows a settings action that focuses Add endpoint.

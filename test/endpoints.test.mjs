@@ -35,7 +35,7 @@ test('several named endpoints are added, listed, used side by side, labelled in 
   assert.equal(first.status, 200);
   const [added] = first.json();
   assert.match(added.id, /^openai:[0-9a-f-]{36}$/);
-  assert.deepEqual(added, { id: added.id, name: 'Local llama', baseUrl: local.baseUrl });
+  assert.deepEqual(added, { id: added.id, name: 'Local llama', baseUrl: local.baseUrl, lastTest: null });
   const duplicate = await env.post('/api/settings/endpoints', { name: 'local LLAMA', baseUrl: gateway.baseUrl, apiKey: keys[1] });
   assert.equal(duplicate.status, 400);
   assert.equal(duplicate.json().error, 'Another endpoint is called local LLAMA. Choose a different name.');
@@ -84,7 +84,7 @@ test('upgrade turns the single saved endpoint into "Custom endpoint" with provid
   const fake = await fakeOpenAI(t), dir = mkdtempSync(join(tmpdir(), 'tt-endpoints-migrate-'));
   writeFileSync(join(dir, 'openai-endpoint.json'), JSON.stringify({ baseUrl: fake.baseUrl, apiKey: 'legacy-endpoint-secret' }), { mode: 0o600 });
   const env = await open(t, dir);
-  assert.deepEqual((await env.get('/api/settings/endpoints')).json(), [{ id: 'openai', name: 'Custom endpoint', baseUrl: fake.baseUrl }]);
+  assert.deepEqual((await env.get('/api/settings/endpoints')).json(), [{ id: 'openai', name: 'Custom endpoint', baseUrl: fake.baseUrl, lastTest: null }]);
   assert.equal(existsSync(join(dir, 'openai-endpoint.json')), false, 'the old file is read once and replaced');
   assert.equal(statSync(join(dir, 'openai-endpoints.json')).mode & 0o777, 0o600);
   assert.deepEqual((await env.get('/api/models')).json().providers.openai, { label: 'Custom endpoint', connected: true });
@@ -95,4 +95,59 @@ test('upgrade turns the single saved endpoint into "Custom endpoint" with provid
   assert.match(next[1].id, /^openai:/);
   assert.equal((await env.post('/api/settings/endpoints', { name: 'custom endpoint', baseUrl: fake.baseUrl, apiKey: 'third-endpoint-secret' })).status, 400);
   for (const body of env.bodies) assert.ok(!/legacy-endpoint-secret|second-endpoint-secret/.test(body));
+});
+
+test('rename keeps the key, a URL change needs the key again, tests persist their result and an edit aborts in-flight requests', async t => {
+  const fake = await fakeOpenAI(t), moved = await fakeOpenAI(t), dir = mkdtempSync(join(tmpdir(), 'tt-endpoints-edit-'));
+  const key = 'edit-endpoint-secret-1', newKey = 'edit-endpoint-secret-2';
+  let env = await open(t, dir);
+  const [added, other] = (await env.post('/api/settings/endpoints', { name: 'Local', baseUrl: fake.baseUrl, apiKey: key })).json()
+    .concat((await env.post('/api/settings/endpoints', { name: 'Other', baseUrl: moved.baseUrl, apiKey: newKey })).json().slice(1));
+  const tree = env.store.create('Edited', added.id, 'local-tutor');
+
+  // Rename without a key keeps the id, the key and the conversation.
+  const renamed = await env.post('/api/settings/endpoints/edit', { id: added.id, name: 'Local llama', baseUrl: fake.baseUrl });
+  assert.equal(renamed.status, 200);
+  assert.deepEqual(renamed.json()[0], { id: added.id, name: 'Local llama', baseUrl: fake.baseUrl, lastTest: null });
+  assert.equal((await env.get('/api/models')).json().providers[added.id].label, 'Local llama');
+  assert.match((await env.post(`/api/trees/${tree.id}/messages`, { text: 'After rename' })).text, /"status":"completed"/);
+  assert.equal(fake.calls.at(-1).headers.authorization, `Bearer ${key}`);
+  assert.equal((await env.post('/api/settings/endpoints/edit', { id: added.id, name: 'other', baseUrl: fake.baseUrl })).json().error, 'Another endpoint is called other. Choose a different name.');
+  assert.equal((await env.post('/api/settings/endpoints/edit', { id: 'openai:missing', name: 'X', baseUrl: fake.baseUrl })).status, 400);
+
+  // A new host without the key is refused and contacts nobody.
+  const calls = moved.calls.length;
+  const refused = await env.post('/api/settings/endpoints/edit', { id: added.id, name: 'Local llama', baseUrl: moved.baseUrl });
+  assert.equal(refused.status, 400);
+  assert.equal(refused.json().error, 'The base URL changed. Enter the API key again so the saved key is never sent to a new host.');
+  assert.equal(moved.calls.length, calls);
+  assert.equal(JSON.parse(readFileSync(join(dir, 'openai-endpoints.json'), 'utf8'))[0].baseUrl, fake.baseUrl);
+
+  // Test success records the model count and time; failure stays across restart until a save.
+  const tested = (await env.post('/api/settings/endpoints/test', { id: added.id })).json()[0].lastTest;
+  assert.equal(tested.ok, true); assert.equal(tested.models, 2); assert.ok(Date.parse(tested.at));
+  assert.equal(fake.calls.at(-1).path, '/v1/models', 'testing sends no chat message');
+  fake.modelStatus = 401;
+  const failed = (await env.post('/api/settings/endpoints/test', { id: added.id })).json()[0].lastTest;
+  assert.deepEqual([failed.ok, failed.error], [false, 'Custom endpoint rejected the API key. Check endpoint settings.']);
+  assert.equal((await env.post('/api/settings/endpoints/test', { id: 'openai:missing' })).status, 400);
+  await env.close();
+  env = await open(t, dir);
+  assert.deepEqual((await env.get('/api/settings/endpoints')).json()[0].lastTest, failed, 'the failed test survives a restart');
+  assert.equal((await env.get('/api/settings/endpoints')).json()[1].lastTest, null, 'results belong to their own endpoint');
+
+  // A URL change with the key moves the endpoint, clears the old result and aborts the in-flight reply.
+  let started;
+  const replying = new Promise(resolve => { started = resolve; });
+  fake.modelStatus = 200;
+  fake.reply = (req, res) => { res.writeHead(200, { 'Content-Type': 'text/event-stream' }); res.write(': open\n\n'); started(); };
+  const stream = env.post(`/api/trees/${tree.id}/messages`, { text: 'In flight' });
+  await replying;
+  const edited = (await env.post('/api/settings/endpoints/edit', { id: added.id, name: 'Local llama', baseUrl: moved.baseUrl, apiKey: newKey })).json()[0];
+  assert.deepEqual(edited, { id: added.id, name: 'Local llama', baseUrl: moved.baseUrl, lastTest: null });
+  assert.match((await stream).text, /"status":"interrupted"/);
+  assert.match((await env.post(`/api/trees/${tree.id}/messages`, { text: 'Moved' })).text, /"status":"completed"/);
+  assert.equal(moved.calls.at(-1).headers.authorization, `Bearer ${newKey}`);
+  assert.ok(!JSON.stringify(fake.calls.slice(-1)).includes(newKey), 'the new key never reached the old host');
+  for (const body of env.bodies) for (const k of [key, newKey]) assert.ok(!body.includes(k), 'keys never appear in a response');
 });

@@ -40,6 +40,10 @@ function readOwned(path) {
   } finally { closeSync(fd); }
 }
 
+function lastTest(t) {
+  return t && typeof t.at === 'string' && (t.ok === true ? Number.isInteger(t.models) : t.ok === false && typeof t.error === 'string');
+}
+
 function endpointName(name, apiKey) {
   if (typeof name !== 'string' || !name.trim() || name.trim().length > 80 || /[\x00-\x1f\x7f]/.test(name) || name.includes(apiKey)) throw new EndpointError('Enter an endpoint name of up to 80 characters.');
   return name.trim();
@@ -56,7 +60,7 @@ export class OpenAI {
     try {
       const list = readOwned(this.path);
       this.#list = (Array.isArray(list) ? list : []).flatMap(e => {
-        try { return /^openai(:[0-9a-f-]{36})?$/.test(e?.id) ? [{ id: e.id, name: endpointName(e.name, e.apiKey), ...settings(e) }] : []; } catch { return []; }
+        try { return /^openai(:[0-9a-f-]{36})?$/.test(e?.id) ? [{ id: e.id, name: endpointName(e.name, e.apiKey), ...settings(e), ...(lastTest(e.lastTest) && { lastTest: e.lastTest }) }] : []; } catch { return []; }
       });
     } catch (error) {
       // Upgrade: the single saved endpoint becomes "Custom endpoint" and keeps provider id openai.
@@ -78,20 +82,50 @@ export class OpenAI {
     const previous = this.#list;
     this.#list = list;
     try { this.#write(); } catch (error) { this.#list = previous; throw error; }
-    for (const [id, adapter] of this.#adapters) if (!list.some(e => e.id === id && e === previous.find(p => p.id === id))) { adapter.close(); this.#adapters.delete(id); }
+    // Any change to name, URL or key replaces the adapter and aborts its in-flight requests; a test result alone does not.
+    const same = (a, b) => a && b && a.name === b.name && a.baseUrl === b.baseUrl && a.apiKey === b.apiKey;
+    for (const [id, adapter] of this.#adapters) if (!same(list.find(e => e.id === id), previous.find(p => p.id === id))) { adapter.close(); this.#adapters.delete(id); }
     for (const e of list) if (!this.#adapters.has(e.id)) this.#adapters.set(e.id, new Endpoint(e));
   }
-  list() { return this.#list.map(({ id, name, baseUrl }) => ({ id, name, baseUrl })); }
+  list() { return this.#list.map(({ id, name, baseUrl, lastTest }) => ({ id, name, baseUrl, lastTest: lastTest ?? null })); }
   providers() { return Object.fromEntries(this.#adapters); }
   add(body) {
     const saved = settings(body), name = endpointName(body.name, saved.apiKey);
-    if (this.#list.some(e => e.name.toLowerCase() === name.toLowerCase())) throw new EndpointError(`Another endpoint is called ${name}. Choose a different name.`);
+    this.#unique(name);
     this.#set([...this.#list, { id: `openai:${randomUUID()}`, name, ...saved }]);
+    return this.list();
+  }
+  #unique(name, id) {
+    if (this.#list.some(e => e.id !== id && e.name.toLowerCase() === name.toLowerCase())) throw new EndpointError(`Another endpoint is called ${name}. Choose a different name.`);
+  }
+  #find(id) {
+    const old = this.#list.find(e => e.id === id);
+    if (!old) throw new EndpointError('Endpoint not found. Refresh Connections and try again.');
+    return old;
+  }
+  // Rename keeps the key; a new base URL needs the key again so a saved key never reaches a new host unasked.
+  edit(body) {
+    const old = this.#find(body?.id), newKey = typeof body.apiKey === 'string' && body.apiKey !== '';
+    const saved = settings({ baseUrl: body.baseUrl, apiKey: newKey ? body.apiKey : old.apiKey });
+    if (!newKey && saved.baseUrl !== old.baseUrl) throw new EndpointError('The base URL changed. Enter the API key again so the saved key is never sent to a new host.');
+    const name = endpointName(body.name, saved.apiKey);
+    this.#unique(name, old.id);
+    this.#set(this.#list.map(e => e === old ? { id: old.id, name, ...saved } : e));
+    return this.list();
+  }
+  // Lists models without sending a chat message; the result is kept until the next test or save.
+  async test(id) {
+    const old = this.#find(id), at = new Date().toISOString();
+    let result;
+    try { result = { ok: true, models: (await this.#adapters.get(id).models()).length, at }; }
+    catch (error) { result = { ok: false, error: error instanceof EndpointError ? error.message : 'Could not list custom endpoint models. Check the URL, key and connection, then retry.', at }; }
+    // Drop the result if the endpoint was edited or removed while testing.
+    if (this.#list.includes(old)) this.#set(this.#list.map(e => e === old ? { ...e, lastTest: result } : e));
     return this.list();
   }
   remove(id) {
     // Do not retain removed credentials in trash or SQLite: the rewritten file no longer holds the key.
-    if (!this.#list.some(e => e.id === id)) throw new EndpointError('Endpoint not found. Refresh Connections and try again.');
+    this.#find(id);
     this.#set(this.#list.filter(e => e.id !== id));
     return this.list();
   }

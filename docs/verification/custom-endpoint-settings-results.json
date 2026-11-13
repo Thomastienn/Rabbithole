@@ -1,12 +1,15 @@
 {
   "result": "PASS",
   "mode": "fixture",
-  "issue": "TreeTutor-2li.7",
-  "date": "2026-11-13T20:35:12.299Z",
+  "issues": [
+    "TreeTutor-2li.7",
+    "TreeTutor-2li.8"
+  ],
+  "date": "2026-11-13T21:35:21.693Z",
   "liveEndpointTested": false,
   "serverPids": [
-    2810916,
-    2814306
+    2996217,
+    2999336
   ],
   "checks": [
     "upgrade: the single saved endpoint is listed as \"Custom endpoint\" (provider id openai); old file replaced",
@@ -17,11 +20,13 @@
     "nested after restart: keyboard switches across Custom endpoint, Work gateway, Codex and Claude; transcripts unchanged and each reply came from the chosen endpoint",
     "fresh server PID reloads both endpoints and their conversations",
     "a failing endpoint shows \"Work gateway · not connected\" with a settings action that focuses Add endpoint",
+    "a failed test shows the failure with what to do, stays after reload and offers Test again",
+    "inline Edit: URL change warns and requires the key; rename keeps key, id and conversations; save runs a test that clears the failure",
     "Remove asks for confirmation (Escape cancels), then deletes only Work gateway and its key",
     "a conversation on the removed endpoint keeps its content and fails visibly; switching to Custom endpoint repairs it",
     "removing the last endpoint shows the empty state with Add endpoint and leaves no credential file",
-    "light: list, inline form and remove dialog fit desktop and 390px without sideways scroll",
-    "dark: list, inline form and remove dialog fit desktop and 390px without sideways scroll"
+    "light: list, inline add and edit forms and remove dialog fit desktop and 390px without sideways scroll",
+    "dark: list, inline add and edit forms and remove dialog fit desktop and 390px without sideways scroll"
   ],
-  "screenshots": "/tmp/tt-endpoint-ui-Sp2W6w"
+  "screenshots": "/tmp/tt-endpoint-ui-XjbE2X"
 }

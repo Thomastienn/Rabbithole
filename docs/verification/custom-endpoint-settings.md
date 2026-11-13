@@ -1,5 +1,28 @@
 # Custom endpoint settings and model menu — TreeTutor-sh8.5
 
+## Edit, rename and test — TreeTutor-2li.8 (2026-11-13)
+
+Fixture evidence (fake OpenAI-compatible servers, real built UI and HTTP); no
+live endpoint tested. `node scripts/verify-custom-endpoint.mjs` PASS:
+
+- Test on a row with a 401 fixture shows "Test failed · Custom endpoint
+  rejected the API key. Check endpoint settings." with the time, announced as
+  an alert; it stays after a reload and offers Test again.
+- Edit opens inline; changing the base URL warns "URL changed: enter the key
+  again…" and keeps Save disabled until a key is entered. Renaming without a
+  key keeps the id, key and conversation provider; the key never reached the
+  other host. Saving runs a test that replaces the failure with "1 model
+  listed · tested today".
+- Edit form fits 1280 and 390 px in light and dark without sideways scroll.
+- Screenshots: `custom-endpoints-test-failed-{light,dark}.png`,
+  `custom-endpoints-edit-{light,dark}.png`.
+- Fixed in passing: the script's text waits used `a ?? "".includes(…)`, which
+  always passed; they are now parenthesised.
+
+Server: `test/endpoints.test.mjs` covers rename, URL change refused without a
+key, URL change with a key, test success and failure, persistence of the
+failure across restart and abort of an in-flight reply on edit.
+
 ## Several endpoints — TreeTutor-2li.7 (2026-11-13)
 
 Fixture evidence only (loopback [fake-openai.mjs](../../test/fake-openai.mjs)
