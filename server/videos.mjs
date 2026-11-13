@@ -111,7 +111,7 @@ export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
 export async function generateVideo({ provider, selection, store, dir, artifact, signal, timeout, render = sandboxRender, narrate = edgeNarration, onPhase = () => {} }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
   const controller = new AbortController(), items = new Map();
-  const timer = setTimeout(() => controller.abort(new Error('Video composition timed out.')), timeout ?? 120000);
+  const timer = setTimeout(() => controller.abort(new Error('Video composition timed out.')), timeout ?? 600000);
   const cancel = () => controller.abort(signal.reason);
   signal.addEventListener('abort', cancel, { once: true });
   let rejectAbort;

@@ -402,3 +402,15 @@ test('branch compaction keeps passage detail and sees a visual only as one title
     assert.doesNotMatch(text, /treetutor-visual|"intent"|Show the winners advancing|<svg|A → Final|SECRET BRANCH QUESTION/);
   } finally { await env.close(); }
 });
+
+test('a slow visual provider within the injected budget still yields a ready visual', async () => {
+  // Scaled stand-in: 100 ms delay outlasts a 60 ms "old" budget but fits the injected 400 ms one.
+  const env = await open({ generate: async (_tree, _text, emit) => complete(emit, 'Look.' + block()) }, { generate: async (_tree, _text, emit) => {
+    await new Promise(r => setTimeout(r, 100)); complete(emit, source);
+  } }, { visualTimeout: 400 });
+  try {
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })).text();
+    await until(async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1)?.status === 'ready');
+    assert.equal((await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1).source, source);
+  } finally { await env.close(); }
+});

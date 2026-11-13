@@ -36,7 +36,7 @@ function validate(source) {
   return source.trim();
 }
 
-export async function generateVisual(provider, selection, input, parentSignal, timeout = 60000) {
+export async function generateVisual(provider, selection, input, parentSignal, timeout = 300000) {
   const controller = new AbortController();
   const cancel = () => controller.abort(new Error('Visual generation canceled.'));
   parentSignal.addEventListener('abort', cancel, { once: true });

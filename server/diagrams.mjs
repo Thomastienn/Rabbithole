@@ -78,7 +78,7 @@ export function compactionMessages(tree) {
   });
 }
 
-export async function generateDiagram(provider, selection, task, parentSignal, timeout = 60000) {
+export async function generateDiagram(provider, selection, task, parentSignal, timeout = 300000) {
   const controller = new AbortController();
   const cancel = () => controller.abort(new Error('Diagram generation cancelled.'));
   const timer = setTimeout(() => controller.abort(new Error('Diagram generation timed out.')), timeout);
