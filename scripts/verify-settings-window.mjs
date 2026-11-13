@@ -1,5 +1,5 @@
-// Settings window (TreeTutor-u7v.3): tabs, entry points, focus handling and mobile layout.
-// Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to .impeccable/review/.
+// Settings page (TreeTutor-u7v.3, TreeTutor-y36.9): sections, entry points, focus handling and narrow layout.
+// Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to docs/verification and .impeccable/review/.
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,7 +16,7 @@ const b = async (...args) => (await run('agent-browser', ['--session', session, 
 const ev = async code => JSON.parse(await b('eval', code, '--json')).data.result;
 const wait = code => b('wait', '--fn', `!!(${code})`, '--timeout', '15000');
 const shot = async name => { await wait('document.getAnimations().every(a => a.playState !== "running")'); await new Promise(r => setTimeout(r, 300)); return b('screenshot', `${process.cwd()}/.impeccable/review/settings-window-${name}.png`); };
-const dialog = `document.querySelector('dialog[open]')`;
+const dialog = `document.querySelector('.settings-page:not([hidden])')`;
 const active = 'document.activeElement';
 const steps = [], step = text => { steps.push(text); console.log(`ok - ${text}`); };
 
@@ -42,10 +42,11 @@ mkdirSync('.impeccable/review', { recursive: true });
 async function mapMenu(item) {
   await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
   await b('find', 'role', 'menuitem', 'click', '--name', item, '--exact');
-  await wait(dialog);
+  await wait(`${active}?.id === '${item === 'Help' ? 'settings-section-interface' : 'settings-heading'}'`);
 }
-const heading = () => ev(`${dialog}.querySelector('h2')?.textContent`);
-const tab = async name => { await b('find', 'role', 'link', 'click', '--name', name, '--exact').catch(() => b('find', 'text', name, 'click', '--exact')); await wait(`${dialog}.querySelector('h2')?.textContent === ${JSON.stringify(name)}`); };
+// The selected section in the side navigation; Interface, Models and Connections share one scroll, Usage is its own screen.
+const heading = () => ev(`${dialog}?.querySelector('nav [aria-current=page]')?.textContent ?? null`);
+const tab = async name => { await ev(`document.getElementById('settings-${name.toLowerCase()}').click(); true`); await wait(`${dialog}.querySelector('nav [aria-current=page]')?.textContent === ${JSON.stringify(name)} && document.activeElement?.id === 'settings-section-${name.toLowerCase()}'`); };
 const text = () => ev(`${dialog}.textContent`);
 const closed = () => wait(`!${dialog}`);
 
@@ -65,34 +66,55 @@ try {
   assert.equal(await heading(), 'Interface');
   assert.equal(await ev(`${dialog}.querySelector('nav a, nav button')?.textContent`), 'Interface', 'Interface is the first section');
   assert.equal(await ev(`${dialog}.querySelector('h3')?.textContent`), 'Appearance', 'Appearance is the first setting');
-  // World (spec, Settings window): raised slate, hairline seam, 4px corners, Archivo, small-caps section labels, no shadow.
+  // World (mockup Settings): a page on the body ground (no dialog surface), Archivo, small-caps group labels, paper focus ring, AA text.
   const look = {};
   for (const mode of ['dark', 'light']) {
     await b('find', 'role', 'radio', 'click', '--name', mode === 'dark' ? 'Dark' : 'Light', '--exact');
     await wait(`document.documentElement.getAttribute('data-theme') === '${mode}'`);
-    look[mode] = await ev(`(() => { const d = ${dialog}, c = getComputedStyle(d), h = getComputedStyle(d.querySelector('h3')), body = getComputedStyle(document.body);
-      return { surface: c.backgroundColor, ground: body.backgroundColor, radius: c.borderRadius, border: c.borderTopWidth + ' ' + c.borderTopStyle, shadow: c.boxShadow, font: getComputedStyle(d.querySelector('p, span')).fontFamily, caps: h.fontVariantCaps, label: h.color, text: body.color }; })()`);
-    assert.equal(look[mode].radius, '4px', `${mode} 4px corners`);
-    assert.notEqual(look[mode].surface, look[mode].ground, `${mode} raised surface`);
-    // The theme draws seams as an inset 1px ring (slateTheme hairline); anything else would be a drop shadow.
-    assert.ok(/^(0\.5|1)px solid$/.test(look[mode].border) || /^\S+(\([^)]*\))? 0px 0px 0px 1px inset$/.test(look[mode].shadow), `${mode} hairline seam: ${look[mode].border} / ${look[mode].shadow}`);
-    assert.ok(!look[mode].shadow.split(/,(?![^(]*\))/).some(x => x !== 'none' && !x.trim().endsWith('inset')), `${mode} no drop shadow: ${look[mode].shadow}`);
+    await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
+    look[mode] = await ev(`(() => { const d = ${dialog}, s = getComputedStyle, body = s(document.body), h = s(d.querySelector('h2'));
+      const rgb = c => c.match(/[\\d.]+/g).slice(0, 3).map(Number), lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      const ratio = (f, b) => { const [x, y] = [lum(f), lum(b)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+      const ground = s(d).backgroundColor === 'rgba(0, 0, 0, 0)' ? body.backgroundColor : s(d).backgroundColor;
+      const solid = (f, b) => { const parts = f.match(/[\\d.]+/g).map(Number), alpha = parts[3] ?? 1; return 'rgb(' + parts.slice(0, 3).map((v, i) => v * alpha + rgb(b)[i] * (1 - alpha)).join(',') + ')'; };
+      const controls = [...d.querySelectorAll('.astryx-radio-indicator, .astryx-checkbox-indicator, .astryx-text-input, .astryx-selector')].filter(e => parseFloat(s(e).borderTopWidth) > 0).map(e => {
+        const bg = solid(s(e).backgroundColor, ground), border = solid(s(e).borderTopColor, bg);
+        return { control: e.classList[0], ratio: ratio(border, ground) };
+      });
+      const probe = document.createElement('i'); probe.style.color = 'var(--treetutor-paper)'; document.body.append(probe); const paper = s(probe).color; probe.remove();
+      return { dialogs: document.querySelectorAll('dialog[open]').length, font: s(d.querySelector('p, span')).fontFamily, caps: h.fontVariantCaps, paper, controls,
+        contrast: { title: ratio(s(d.querySelector('h1')).color, ground), label: ratio(h.color, ground), text: ratio(s(d.querySelector('.settings-group p, .settings-group span')).color, ground), nav: ratio(s(d.querySelector('nav [aria-current]')).color, ground), muted: ratio(s(d.querySelector('nav a:not([aria-current]), nav button:not([aria-current])')).color, ground) } }; })()`);
+    assert.equal(look[mode].dialogs, 0, `${mode} settings is a page, not a dialog`);
     assert.match(look[mode].font, /^"?Archivo/, `${mode} Archivo`);
     assert.equal(look[mode].caps, 'all-small-caps', `${mode} small-caps labels`);
+    for (const [name, value] of Object.entries(look[mode].contrast)) assert.ok(value >= 4.5, `${mode} ${name} contrast ${value} below AA`);
+    assert.ok(look[mode].controls.length >= 9, 'radio and checkbox indicators measured');
+    for (const c of look[mode].controls) assert.ok(c.ratio >= 3, `${mode} ${c.control} boundary contrast ${c.ratio} below AA`);
+    await b('focus', '#settings-return'); await b('press', 'Shift+Tab'); await b('press', 'Tab');
+    look[mode].ring = await ev(`getComputedStyle(document.activeElement).outlineColor`);
+    assert.equal(look[mode].ring === look[mode].paper, true, `${mode} paper focus ring on Return: ${look[mode].ring} vs ${look[mode].paper}`);
+    await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
     await shot(`interface-${mode}`); await b('screenshot', `${process.cwd()}/docs/verification/settings-interface-${mode}.png`);
   }
-  await b('eval', `localStorage.removeItem('treetutor.appearance'); true`);
-  step(`Settings opens on Interface with Appearance first; dark and light: 4px raised surface, hairline seam, no shadow, Archivo, small-caps labels ${JSON.stringify(look)}`);
+  await b('find', 'role', 'radio', 'click', '--name', 'Dark', '--exact');
+  await wait(`document.documentElement.getAttribute('data-theme') === 'dark'`);
+  step(`Settings page opens on Interface with Appearance first; dark and light: no dialog, Archivo, small-caps labels, AA text contrast, paper focus ring ${JSON.stringify(look)}`);
   await tab('Models');
   assert.ok((await text()).includes('Automatic suggestions'));
   assert.ok((await text()).includes('Concept matching'));
   assert.ok((await text()).includes('concept matching is getting expensive'));
   const box = await ev(`(() => { const r = ${dialog}.getBoundingClientRect(); return [r.width, r.height]; })()`);
-  assert.ok(box[0] > 800 && box[1] > 600, `large on desktop: ${box}`);
-  await shot('models');
-  step(`Map menu Settings opens a ${Math.round(box[0])}x${Math.round(box[1])} window, title focused; Models shows suggestions and concept matching; sidebar holds no settings`);
+  assert.ok(box[0] > 1200 && box[1] > 700, `full page on desktop: ${box}`);
+  await shot('models'); await b('screenshot', `${process.cwd()}/docs/verification/settings-models-dark.png`);
+  step(`Map menu Settings opens a ${Math.round(box[0])}x${Math.round(box[1])} page, title focused; Models scrolls into view with suggestions and concept matching; band holds no settings`);
 
   // 2. Each tab shows its contents; moved controls work.
+  await b('find', 'role', 'button', 'click', '--name', 'Manage connections', '--exact');
+  await wait(`${active}?.id === 'settings-section-connections'`);
+  assert.equal(await heading(), 'Connections');
+  await tab('Interface');
+  await b('find', 'role', 'radio', 'click', '--name', 'Light', '--exact');
+  await wait(`document.documentElement.getAttribute('data-theme') === 'light'`);
   await tab('Connections');
   const conn = await text();
   for (const s of ['Claude: signed in through Claude Code', 'Codex: not connected', 'Continue with ChatGPT', 'Custom endpoint', 'Base URL']) assert.ok(conn.includes(s), s);
@@ -111,13 +133,12 @@ try {
   assert.deepEqual(await (await fetch(`${origin}/api/settings/endpoint`)).json(), { configured: false, baseUrl: null });
   step('Endpoint Save, Test connection and Remove use real app HTTP/storage with an isolated loopback upstream; saved key stays hidden');
   await b('find', 'role', 'button', 'click', '--name', 'Continue with ChatGPT', '--exact');
-  await wait(`${dialog}.querySelector('[role=alert]')?.textContent.includes('TreeTutor could not finish this request.')`);
+  await wait(`[...${dialog}.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('TreeTutor could not finish this request.'))`);
   assert.equal(authRequests, 1);
   step('ChatGPT connection failure is announced inside Connections');
   await tab('Interface');
   const ui = await text();
   for (const s of ['Vim canvas bindings', 'Map help', 'Vim canvas bindings are off']) assert.ok(ui.includes(s), s);
-  // Appearance sits above it now; scroll so the click lands inside the dialog, not on its backdrop.
   await ev(`${dialog}.querySelector('input[type=checkbox]').scrollIntoView({ block: 'center' })`);
   await b('find', 'label', 'Vim canvas bindings', 'check');
   await wait(`localStorage.getItem('treetutor.vim') === 'on' && ${dialog}.textContent.includes('Vim canvas bindings are on')`);
@@ -125,7 +146,38 @@ try {
   await tab('Usage');
   await wait(`${dialog}.querySelector('.usage-total')`);
   assert.ok((await text()).includes('144 input, 48 output, 10 cache-read tokens (202 total)'));
+  assert.equal(await ev(`!!${dialog}.querySelector('#settings-section-interface')`), false, 'Usage is its own screen');
+  for (const s of ['By model', 'By task', 'Values for each']) assert.ok((await text()).includes(s), s);
   await shot('usage');
+  // Usage chart reads in both appearances (mockup Usage); the day table is its text alternative.
+  for (const mode of ['dark', 'light']) {
+    await tab('Interface');
+    await b('find', 'role', 'radio', 'click', '--name', mode === 'dark' ? 'Dark' : 'Light', '--exact');
+    await wait(`document.documentElement.getAttribute('data-theme') === '${mode}'`);
+    await tab('Usage');
+    await wait(`${dialog}.querySelector('.usage-bar rect[data-series]')`);
+    const bars = await ev(`(() => { const g = getComputedStyle(document.body).backgroundColor; return [...new Set([...${dialog}.querySelectorAll('.usage-bar rect[data-series]')].map(r => getComputedStyle(r).fill))].filter(f => f !== g).length; })()`);
+    assert.ok(bars >= 2, `${mode} usage series draw in distinct fills: ${bars}`);
+    await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
+    await shot(`usage-${mode}`); await b('screenshot', `${process.cwd()}/docs/verification/settings-usage-${mode}.png`);
+  }
+  await b('set', 'viewport', '390', '844');
+  for (const mode of ['dark', 'light']) {
+    await tab('Interface');
+    await b('find', 'role', 'radio', 'click', '--name', mode === 'dark' ? 'Dark' : 'Light', '--exact');
+    await wait(`document.documentElement.getAttribute('data-theme') === '${mode}'`);
+    await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
+    await shot(`mobile-interface-${mode}`);
+    await b('screenshot', `${process.cwd()}/docs/verification/settings-mobile-interface-${mode}.png`);
+    await tab('Usage');
+    await wait(`${dialog}.querySelector('.usage-bar rect[data-series]')`);
+    assert.equal(await ev(`${dialog}.scrollWidth > ${dialog}.clientWidth + 1`), false, `${mode} narrow Usage has no page overflow`);
+    await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
+    await shot(`mobile-usage-${mode}`);
+    await b('screenshot', `${process.cwd()}/docs/verification/settings-mobile-usage-${mode}.png`);
+  }
+  await b('set', 'viewport', '1440', '900');
+  await b('eval', `localStorage.removeItem('treetutor.appearance'); true`);
   await tab('Models');
   const before = (await (await fetch(`${origin}/api/settings/suggestions`)).json()).enabled;
   await b('find', 'role', 'switch', 'click', '--name', 'Automatic suggestions');
@@ -143,7 +195,7 @@ try {
   assert.ok((await text()).includes('sign-in status unavailable'));
   const checksBefore = modelChecks;
   await b('find', 'role', 'button', 'click', '--name', 'Check Claude sign-in', '--exact');
-  await wait(`${dialog}.querySelector('[role=alert]')?.textContent.includes('Could not load models.')`);
+  await wait(`[...${dialog}.querySelectorAll('[aria-labelledby=settings-section-connections] [role=alert]')].some(a => a.textContent.includes('Could not load models.'))`);
   assert.ok(modelChecks > checksBefore);
   connected = true;
   await b('find', 'role', 'button', 'click', '--name', 'Check Claude sign-in', '--exact');
@@ -152,71 +204,78 @@ try {
   await tab('Models');
   step(`Tabs: Connections (Claude, Codex, endpoint), Interface (Vim toggle saved on, map help), Usage, Models (suggestions switch saved enabled=${saved.enabled})`);
 
-  // 3. Focus trap: 40 Tabs and 10 Shift+Tabs never leave the dialog; Esc closes and returns focus to Map menu.
-  for (let i = 0; i < 40; i++) { await b('press', 'Tab'); assert.ok(await ev(`${dialog}.contains(${active})`), `Tab ${i} left dialog: ${await ev(`${active}?.outerHTML.slice(0, 100)`)}`); }
-  for (let i = 0; i < 10; i++) { await b('press', 'Shift+Tab'); assert.ok(await ev(`${dialog}.contains(${active})`), `Shift+Tab ${i} left dialog`); }
+  // 3. Keyboard: every control is reachable in page order; Esc returns to the learning tree and focus returns to Map menu.
+  await b('focus', '#settings-return');
+  const reached = new Set();
+  for (let i = 0; i < 60; i++) { await b('press', 'Tab'); const id = await ev(`${dialog}.contains(${active}) ? (${active}.id || ${active}.getAttribute('aria-label') || ${active}.textContent.trim().slice(0, 30)) : null`); if (!id) break; reached.add(id); }
+  for (const id of ['settings-interface', 'settings-models', 'settings-connections', 'settings-usage']) assert.ok(reached.has(id), `Tab reaches ${id}: ${[...reached]}`);
+  await b('focus', '#settings-heading');
   await b('press', 'Escape');
   await closed();
   await wait(`${active}?.getAttribute('aria-label') === 'Map menu'`);
-  step('Focus trapped over 40 Tab and 10 Shift+Tab; Esc closes and focus returns to Map menu');
+  step(`Tab walks the page (${reached.size} stops, every section link); Esc returns to the learning tree and focus returns to Map menu`);
 
   // 4. Help opens Interface; close button closes.
   await mapMenu('Help');
   assert.equal(await heading(), 'Interface');
   assert.ok((await text()).includes('Map help'));
-  await b('find', 'role', 'button', 'click', '--name', 'Close settings', '--exact');
+  await b('find', 'role', 'button', 'click', '--name', 'Return to learning tree', '--exact');
   await closed();
   await wait(`${active}?.getAttribute('aria-label') === 'Map menu'`);
-  step('Map menu Help opens on Interface with map help; close button closes and returns focus');
+  step('Map menu Help opens on Interface with map help; Return to learning tree returns focus');
 
-  // 5. Endpoint shortcut from the model menu focuses the endpoint form; backdrop click closes and returns focus.
+  // 5. Endpoint shortcut from the model menu focuses the endpoint form; Return restores focus.
   await b('find', 'role', 'button', 'click', '--name', 'Reopen chat', '--exact').catch(() => {});
   await wait(`document.querySelector('[aria-label="Model for next reply"]')?.getClientRects().length`);
   await b('find', 'role', 'button', 'click', '--name', 'Model for next reply', '--exact');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Custom endpoint settings Add an endpoint or check its URL, API key and connection').catch(() => b('find', 'text', 'Custom endpoint settings', 'click'));
   await wait(`${active}?.matches('.endpoint-settings input[type=url]')`);
   assert.equal(await heading(), 'Connections');
-  await b('mouse', 'move', '5', '5'); await b('mouse', 'down'); await b('mouse', 'up');
+  await b('find', 'role', 'button', 'click', '--name', 'Return to learning tree', '--exact');
   await closed();
   await wait(`${active}?.getAttribute('aria-label') === 'Model for next reply'`);
-  step('Custom endpoint shortcut opens Connections with Base URL focused; backdrop click closes; focus returns to model picker');
+  step('Custom endpoint shortcut opens Connections with Base URL focused; Return goes back to the chat; focus returns to model picker');
 
-  // 6. Band gear opens the window and focus returns to it.
+  // 6. Band gear opens the page and focus returns to it.
   await b('find', 'role', 'button', 'click', '--name', 'Settings', '--exact');
-  await wait(dialog);
+  await wait(`${active}?.id === 'settings-heading'`);
+  assert.equal(await ev(`document.querySelector('.band-settings').getAttribute('aria-current')`), 'page', 'gear shows the current page');
   await b('press', 'Escape'); await closed();
   await wait(`${active}?.getAttribute('aria-label') === 'Settings'`);
-  step('Band settings gear opens the window; Esc returns focus to the gear');
+  step('Band settings gear opens the page; Esc returns focus to the gear');
 
-  // 7. Mobile: full-screen, tabs as a list, tap into a tab and back.
+  // 7. Narrow: the page stacks the section nav above one column; no sideways scroll; Help goes straight to Interface.
   await b('set', 'viewport', '390', '844');
   await b('reload');
-  await wait(`document.querySelector('[aria-label="Map menu"]')?.getClientRects().length`);
-  await mapMenu('Settings');
-  const mobile = await ev(`(() => { const r = ${dialog}.getBoundingClientRect(); return [r.width, r.height, innerWidth, innerHeight]; })()`);
-  assert.ok(mobile[0] >= mobile[2] - 1 && mobile[1] >= mobile[3] - 1, `full-screen: ${mobile}`);
-  assert.equal(await heading(), null, 'tab list first, no panel');
-  assert.equal(await ev(`document.documentElement.scrollWidth > innerWidth + 1`), false);
+  await wait(`document.querySelector('.band-contents')?.getClientRects().length`);
+  await ev(`document.querySelector('.band-contents').click(); true`);
+  await wait(`document.querySelector('dialog[open] .drawer-settings')`);
+  await wait('document.getAnimations().every(a => a.playState !== "running")');
+  await ev(`document.querySelector('dialog[open] .drawer-settings').click(); true`);
+  await wait(`!document.querySelector('dialog.astryx-drawer[open]') && ${active}?.id === 'settings-heading'`);
+  assert.equal(await heading(), 'Interface');
+  assert.equal(await ev(`document.documentElement.scrollWidth > innerWidth + 1 || ${dialog}.scrollWidth > ${dialog}.clientWidth + 1`), false, 'no horizontal overflow');
   await shot('mobile-list');
-  for (let i = 0; i < 8 && await ev(`${active}?.textContent`) !== 'Connections'; i++) await b('press', 'Tab');
-  assert.equal(await ev(`${active}?.textContent`), 'Connections');
+  await b('focus', '#settings-interface');
+  for (let i = 0; i < 8 && await ev(`${active}?.id`) !== 'settings-connections'; i++) await b('press', 'Tab');
+  assert.equal(await ev(`${active}?.id`), 'settings-connections');
   await b('press', 'Enter');
-  await wait(`${dialog}.querySelector('h2')?.textContent === 'Connections'`);
-  assert.ok(await ev(`${dialog}.contains(${active})`), 'mobile section selection keeps focus inside the dialog');
+  await wait(`${active}?.id === 'settings-section-connections'`);
+  assert.equal(await heading(), 'Connections');
+  assert.ok(await ev(`${dialog}.querySelector('#settings-section-connections').getBoundingClientRect().left >= 12`), 'narrow content has an inset');
   assert.equal(await ev(`${dialog}.scrollWidth > ${dialog}.clientWidth + 1`), false, 'no horizontal overflow');
-  assert.ok(await ev(`${dialog}.querySelector('h2').getBoundingClientRect().left >= 12`), 'mobile content has an inset');
   await shot('mobile-connections'); await b('screenshot', `${process.cwd()}/docs/verification/settings-mobile-connections-dark.png`);
-  await b('find', 'role', 'button', 'click', '--name', 'All settings', '--exact');
-  await wait(`!${dialog}.querySelector('h2')`);
-  assert.ok(await ev(`${dialog}.contains(${active})`), 'mobile return to settings list keeps focus inside the dialog');
-  assert.equal(await ev(`${active}?.id`), 'settings-connections', 'return restores the originating section');
   await b('press', 'Escape'); await closed();
+  await wait(`${active}?.matches('.band-contents')`);
+  await ev(`document.querySelector('.band-contents').click(); true`);
+  await wait(`document.querySelector('dialog[open] .drawer-settings')`);
+  step(`Narrow 390px page: section nav stacked above the content, keyboard section links scroll and focus, padded content, no sideways scroll; Esc returns to the Contents button`);
+  await b('press', 'Escape');
+  await b('set', 'viewport', '1440', '900');
+  await b('reload');
+  await wait(`document.querySelector('[aria-label="Map menu"]')?.getClientRects().length`);
   await mapMenu('Help');
   assert.equal(await heading(), 'Interface');
-  await wait(`${active}?.id === 'settings-heading'`);
-  step(`Mobile ${mobile[0]}x${mobile[1]} full-screen; keyboard list/detail navigation keeps focus inside; padded content scrolls; Help goes straight to Interface`);
-
-  await b('find', 'role', 'button', 'click', '--name', 'All settings', '--exact');
   await tab('Connections');
   authFailure = false;
   await b('find', 'role', 'button', 'click', '--name', 'Continue with ChatGPT', '--exact');
@@ -224,7 +283,7 @@ try {
   assert.equal(authRequests, 2);
   step('ChatGPT connect follows the app auth URL (local fixture redirect only)');
 
-  writeFileSync('docs/verification/settings-window.json', JSON.stringify({ issue: 'TreeTutor-u7v.3, TreeTutor-nwx.8', checkedAt: new Date().toISOString(), evidence: 'Production build and real app HTTP/storage, agent-browser Chromium. Synthetic Claude sign-in/models, Codex auth failure/redirect, reported usage and loopback OpenAI-compatible upstream. No native provider authentication or inference claimed.', steps, screenshots: ['docs/verification/settings-interface-dark.png', 'docs/verification/settings-interface-light.png', 'docs/verification/settings-connections-light.png', 'docs/verification/settings-mobile-connections-dark.png', ...['models', 'connections', 'interface', 'usage', 'mobile-list', 'mobile-connections'].map(n => `.impeccable/review/settings-window-${n}.png`)] }, null, 2) + '\n');
+  writeFileSync('docs/verification/settings-window.json', JSON.stringify({ issue: 'TreeTutor-u7v.3, TreeTutor-nwx.8, TreeTutor-y36.9', checkedAt: new Date().toISOString(), evidence: 'Production build and real app HTTP/storage, agent-browser Chromium. Synthetic Claude sign-in/models, Codex auth failure/redirect, reported usage and loopback OpenAI-compatible upstream. No native provider authentication or inference claimed.', steps, screenshots: ['docs/verification/settings-interface-dark.png', 'docs/verification/settings-models-dark.png', 'docs/verification/settings-usage-dark.png', 'docs/verification/settings-usage-light.png', 'docs/verification/settings-interface-light.png', 'docs/verification/settings-connections-light.png', 'docs/verification/settings-mobile-connections-dark.png', ...['interface', 'usage'].flatMap(section => ['dark', 'light'].map(mode => `docs/verification/settings-mobile-${section}-${mode}.png`)), ...['models', 'connections', 'interface', 'usage', 'mobile-list', 'mobile-connections'].map(n => `.impeccable/review/settings-window-${n}.png`)] }, null, 2) + '\n');
 } finally {
   await b('close').catch(() => {});
   await app.stop(); store.close();

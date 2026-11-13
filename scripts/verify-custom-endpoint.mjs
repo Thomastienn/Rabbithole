@@ -86,8 +86,8 @@ if (process.argv[2] === '--serve') {
     assert.equal(await evaluate(`document.querySelector('${key}').value`), '');
     assert.deepEqual(await get('/api/settings/endpoint'), { configured: true, baseUrl: fake.baseUrl });
   }
-  async function closeSettings() { await tabTo('[aria-label="Close settings"]'); await browser('press', 'Enter'); await wait('!document.querySelector("dialog[open]")'); }
-  async function connectionSettings() { await mapMenu(); await menuItem('Settings'); await wait('document.activeElement?.id === "settings-heading"'); await new Promise(r => setTimeout(r, 150)); /* SettingsWindow refocuses its title 50ms after opening; Tab only after that. */ await tabTo('#settings-connections'); await browser('press', 'Enter'); await wait(`!!document.querySelector('${field}')`); }
+  async function closeSettings() { await tabTo('#settings-return'); await browser('press', 'Enter'); await wait('!document.querySelector(".settings-page:not([hidden])")'); }
+  async function connectionSettings() { await mapMenu(); await menuItem('Settings'); await wait('document.activeElement?.id === "settings-heading"'); await tabTo('#settings-connections'); await browser('press', 'Enter'); await wait(`!!document.querySelector('${field}')`); }
   async function openConversation(title) { await tabTo(`[aria-label="Open ${title}"]`); await browser('press', 'Enter'); await wait(`document.querySelector('.chat-title h2')?.textContent === ${JSON.stringify(title)}`); }
   const labels = { claude: 'Sonnet', codex: 'Codex model', openai: 'second-model' };
   const models = { claude: 'sonnet', codex: 'codex-model', openai: 'second-model' };
@@ -181,7 +181,7 @@ if (process.argv[2] === '--serve') {
     await wait('document.querySelector(".chat-model").textContent.includes("Sonnet · ")');
     pass('removed endpoint stays explicit in saved chat; actionable menu repairs it or switches to Claude');
     await mapMenu(); await menuItem('Help');
-    assert.ok((await evaluate('document.querySelector("dialog[open]").textContent')).includes('Set the starting model and effort for new learning trees in Settings → Models.'));
+    assert.ok((await evaluate('document.querySelector(".settings-page:not([hidden])").textContent')).includes('Set the starting model and effort for new learning trees in Settings → Models.'));
     assert.ok(!await evaluate('document.body.textContent.includes("ui-fixture-secret") || document.body.innerHTML.includes("unsaved-fixture-key")'));
     const result = { result: 'PASS', mode: 'fixture', date: new Date().toISOString(), liveEndpointTested: false, serverPids: [firstPid, secondPid], checks, screenshots: dir };
     writeFileSync('docs/verification/custom-endpoint-settings-results.json', JSON.stringify(result, null, 2) + '\n');

@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-13T00:05:45.945Z",
+  "checkedAt": "2026-11-13T05:18:19.806Z",
   "issue": "TreeTutor-zhf.5",
   "evidence": "Synthetic providers, isolated temporary SQLite, built UI, agent-browser.",
   "checks": [
@@ -15,11 +15,11 @@
         "before": "Winners advance in rounds.",
         "bg": "rgba(0, 0, 0, 0)",
         "border": "0px",
-        "column": 527,
+        "column": 528,
         "height": 204,
         "label": "Two winners meet in the final.",
         "sandbox": "allow-scripts",
-        "width": 527
+        "width": 528
       }
     },
     {
@@ -38,7 +38,7 @@
       "pass": true
     }
   ],
-  "elapsedMs": 81,
+  "elapsedMs": 80,
   "rendered": {
     "text": "Winner A → Final ← Winner B\nNext round\n\nRound one",
     "color": "rgb(239, 230, 214)",

@@ -396,9 +396,15 @@ html { view-transition-name: none; }
 @keyframes branch-draw { from { stroke-dasharray: 1; stroke-dashoffset: 1; } to { stroke-dasharray: 1; stroke-dashoffset: 0; } }
 .react-flow__handle { background: var(--color-text-secondary); border-color: var(--color-background-surface); }
 section[role=alert] { background: var(--color-background-body); }
-/* One frame height for every settings tab, so switching tabs never resizes the window. */
-.settings-shell { height: min(50rem, calc(100dvh - 2rem)); min-height: 0; }
-.settings-shell .astryx-side-nav { flex-shrink: 0; }
+/* Settings page (mockup Settings, Usage): page head, sticky section nav, one scroll of seamed sections. */
+.settings-content { --color-border-emphasized: var(--color-text-secondary); max-width: 1120px; margin-inline: auto; padding: calc(5 * var(--treetutor-module)) calc(4 * var(--treetutor-module)) calc(8 * var(--treetutor-module)); }
+.settings-content :focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-paper); outline-offset: var(--focus-outline-offset); }
+.settings-head h1 { font-size: 34px; line-height: 1.12; font-weight: 700; letter-spacing: -.015em; }
+.settings-layout { display: grid; grid-template-columns: 216px minmax(0, 640px); gap: 48px; align-items: start; }
+.settings-nav { position: sticky; top: 0; width: auto; height: auto; background: transparent; border: 0; }
+.settings-content :is(h1, h2) { scroll-margin-top: calc(5 * var(--treetutor-module)); }
+.settings-group + .settings-group { padding-top: var(--spacing-8); border-top: thin solid var(--color-border); }
+.settings-group > :first-child h2 { font-size: var(--font-size-base); font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--color-text-secondary); }
 /* Settings sections: seams and small-caps labels, not cards (spec, Settings window). */
 .settings-panel h3 { font-size: var(--font-size-base); font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--color-text-secondary); }
 * { scrollbar-color: var(--color-border) var(--color-background-surface); }
@@ -412,7 +418,8 @@ section[role=alert] { background: var(--color-background-body); }
  .overview[data-chat-open=true] { display: none; }
  .focused-chat { flex: 1; border-left: 0; }
  .expand-chat { display: none; }
- .settings-shell { height: 100dvh; }
- .settings-shell .astryx-side-nav { width: 100%; }
+ .settings-content { padding: calc(3 * var(--treetutor-module)) calc(2 * var(--treetutor-module)) calc(6 * var(--treetutor-module)); }
+ .settings-layout { grid-template-columns: minmax(0, 1fr); gap: var(--spacing-6); }
+ .settings-nav { position: static; }
 }
 `;

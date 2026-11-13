@@ -135,9 +135,9 @@ try {
 
   // Settings and New chat.
   await click('Settings');
-  await wait(`document.querySelector('dialog[open] #settings-heading')`);
+  await wait(`document.activeElement?.id === 'settings-heading'`);
   await b('press', 'Escape');
-  await wait(`!document.querySelector('dialog[open] #settings-heading') && document.activeElement.matches('.band-settings')`);
+  await wait(`!document.querySelector('.settings-page:not([hidden])') && document.activeElement.matches('.band-settings')`);
   await click('New chat');
   await wait(`document.activeElement?.closest('.focused-chat [role=textbox]') && document.querySelector('.tree-switcher').innerText.includes('New chat')`);
   assert.deepEqual(await current(), ['Read']);

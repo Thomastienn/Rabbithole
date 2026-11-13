@@ -12,7 +12,7 @@ const run = promisify(execFile), session = `usage-dashboard-${process.pid}`;
 const b = async (...args) => (await run('agent-browser', ['--session', session, ...args])).stdout;
 const ev = async expression => JSON.parse(await b('eval', expression, '--json')).data.result;
 const wait = expression => b('wait', '--fn', `!!(${expression})`);
-const dialog = `document.querySelector('dialog[open]')`;
+const dialog = `document.querySelector('.settings-page:not([hidden])')`;
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'usage-dashboard-')), 'data.sqlite'));
 const now = new Date(), lastYear = now.getFullYear() - 1;
 store.record('chat:a', 'chat', { provider: 'claude', model: 'sonnet' }, { input: 1200, output: 300, cacheRead: 800 }, +now - 1000);
@@ -32,7 +32,7 @@ const total = () => ev(`${dialog}.querySelector('.usage-total')?.textContent`);
 const openUsage = async () => {
   await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
-  await wait(dialog);
+  await wait(`document.activeElement?.id === 'settings-heading'`);
   await b('find', 'text', 'Usage', 'click', '--exact');
   await wait(`${dialog}.querySelector('.usage-total')`);
 };

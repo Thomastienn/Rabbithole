@@ -65,11 +65,11 @@ const openTree = async () => {
 async function openInterface() {
   await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
-  await wait(`document.querySelector('dialog[open]')`);
+  await wait(`document.activeElement?.id === 'settings-heading'`);
   await b('find', 'text', 'Interface', 'click', '--exact');
-  await wait(`document.querySelector('dialog[open] h2')?.textContent === 'Interface'`);
+  await wait(`document.querySelector('.settings-page:not([hidden]) h2')?.textContent === 'Interface'`);
 }
-const closeSettings = async () => { await b('press', 'Escape'); await wait(`!document.querySelector('dialog[open]')`); };
+const closeSettings = async () => { await b('press', 'Escape'); await wait(`!document.querySelector('.settings-page:not([hidden])')`); };
 
 try {
   await b('set', 'viewport', '1440', '900');
@@ -93,9 +93,9 @@ try {
 
   // Appearance control: labelled radio group, keyboard operable.
   await openInterface();
-  assert.equal(await ev(`[...document.querySelectorAll('dialog[open] [role=radiogroup], dialog[open] fieldset')].some(g => (g.getAttribute('aria-label') ?? g.querySelector('legend')?.textContent ?? document.getElementById(g.getAttribute('aria-labelledby'))?.textContent ?? '').trim() === 'Appearance')`), true, 'labelled Appearance group');
-  assert.deepEqual(await ev(`[...document.querySelectorAll('dialog[open] input[type=radio][name]')].filter(r => r.closest('[role=radiogroup], fieldset')?.textContent.includes('System')).map(${nameOf})`), ['Dark', 'Light', 'System']);
-  await b('eval', `[...document.querySelectorAll('dialog[open] input[type=radio]')].find(r => ${nameOf}(r) === 'Dark').focus(); true`);
+  assert.equal(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) [role=radiogroup], .settings-page:not([hidden]) fieldset')].some(g => (g.getAttribute('aria-label') ?? g.querySelector('legend')?.textContent ?? document.getElementById(g.getAttribute('aria-labelledby'))?.textContent ?? '').trim() === 'Appearance')`), true, 'labelled Appearance group');
+  assert.deepEqual(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) input[type=radio][name]')].filter(r => r.closest('[role=radiogroup], fieldset')?.textContent.includes('System')).map(${nameOf})`), ['Dark', 'Light', 'System']);
+  await b('eval', `[...document.querySelectorAll('.settings-page:not([hidden]) input[type=radio]')].find(r => ${nameOf}(r) === 'Dark').focus(); true`);
   await b('press', 'ArrowDown');
   await wait(`document.documentElement.getAttribute('data-theme') === 'light'`);
   assert.equal(await ev(`${nameOf}(document.activeElement)`), 'Light');

@@ -1,17 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { HStack, VStack, Layout, LayoutContent } from '@astryxdesign/core/Layout';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
-import { IconButton } from '@astryxdesign/core/IconButton';
-import { Dialog } from '@astryxdesign/core/Dialog';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Banner } from '@astryxdesign/core/Banner';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { RadioList, RadioListItem } from '@astryxdesign/core/RadioList';
 import { SideNav, SideNavItem } from '@astryxdesign/core/SideNav';
 import { Icon } from '@astryxdesign/core/Icon';
-import { useMediaQuery } from '@astryxdesign/core/hooks';
-import { ArrowLeftIcon, ChartBarIcon, CpuChipIcon, LinkIcon, SwatchIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowUturnLeftIcon, ChartBarIcon, CpuChipIcon, LinkIcon, SwatchIcon } from '@heroicons/react/24/outline';
 import EndpointSettings from './EndpointSettings';
 import SuggestionSettings from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
@@ -22,7 +19,7 @@ import { bubbleTints, type BubbleTint } from './bubbleTint';
 import { appearances, type Appearance } from './appearance';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
-// tab: undefined opens the default tab on desktop and the tab list on mobile; focus is a selector to focus once open.
+// tab: the section to scroll to (undefined opens at the top); focus is a selector to focus once open.
 export type SettingsRequest = { tab?: SettingsTab; focus?: string };
 
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
@@ -57,64 +54,47 @@ export default function SettingsWindow({ request, close, api, models, providers,
   bubbleTint: BubbleTint;
   setBubbleTint: (tint: BubbleTint) => void;
 }) {
-  const narrow = useMediaQuery('(max-width: 48rem)');
-  const [tab, setTab] = useState<SettingsTab>();
+  const [tab, setTab] = useState<SettingsTab>('interface');
   const [authError, setAuthError] = useState('');
   const [chatVersion, setChatVersion] = useState(0);
+  // Scroll to a section (or a control inside it) and focus it; no section means the page title.
+  function reveal(target: string) {
+    const el = document.querySelector<HTMLElement>(target);
+    el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true });
+  }
   useEffect(() => {
     if (!request) return;
-    setTab(request.tab); setAuthError('');
-    // After the dialog's own initial focus, move to the requested control or the title.
-    const timer = setTimeout(() => document.querySelector<HTMLElement>(request.focus ?? '#settings-heading')?.focus(), 50);
-    return () => clearTimeout(timer);
+    setTab(request.tab ?? 'interface'); setAuthError('');
+    const focus = () => reveal(request.focus ?? (request.tab ? `#settings-section-${request.tab}` : '#settings-heading'));
+    // The modal drawer keeps the page inert until its closing transition finishes.
+    const drawer = document.querySelector('dialog.astryx-drawer[open]');
+    if (drawer) {
+      drawer.addEventListener('close', focus, { once: true });
+      return () => drawer.removeEventListener('close', focus);
+    }
+    const frame = requestAnimationFrame(focus);
+    return () => cancelAnimationFrame(frame);
   }, [request]);
-  const shown = tab ?? (narrow ? undefined : 'interface');
-  const current = TABS.find(t => t.id === shown);
-  function showTab(next?: SettingsTab) {
+  function showTab(next: SettingsTab) {
     setTab(next);
-    if (narrow) requestAnimationFrame(() => document.querySelector<HTMLElement>(next ? '#settings-section-heading' : `#settings-${tab}`)?.focus());
+    requestAnimationFrame(() => reveal(`#settings-section-${next}`));
   }
   async function connect() {
     setAuthError('');
     try { await signIn(); }
     catch (e) { setAuthError((e as Error).message); }
   }
-  const closeButton = <IconButton label="Close settings" icon={<XMarkIcon />} variant="ghost" size="sm" onClick={close} />;
+  const group = (id: SettingsTab, children: ReactNode) => {
+    const t = TABS.find(t => t.id === id)!;
+    return <VStack gap={6} as="section" className="settings-group" aria-labelledby={`settings-section-${id}`}>
+      <VStack gap={1}><Heading level={2} id={`settings-section-${id}`} tabIndex={-1}>{t.label}</Heading><Text type="supporting" color="secondary">{t.description}</Text></VStack>
+      {children}
+    </VStack>;
+  };
 
-  const panel = current && <VStack gap={6} className="settings-panel">
-    <HStack gap={2} vAlign="start" hAlign="between">
-      <VStack gap={1}><Heading level={2} id="settings-section-heading" tabIndex={-1}>{current.label}</Heading><Text type="supporting" color="secondary">{current.description}</Text></VStack>
-      {!narrow && closeButton}
-    </HStack>
-    {current.id === 'models' && <>
-      <ChatSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} connections={() => showTab('connections')} onSaved={() => setChatVersion(v => v + 1)} />
-      <Divider />
-      <SmartSettings api={api} models={models} providers={providers} chatVersion={chatVersion} />
-      <Divider />
-      <SuggestionSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} />
-      <Divider />
-      <Section title="Concept matching" description="Each suggestion call also sends your known concept names so it can match terms to them. A warning appears here when that list passes about 2,000 tokens.">
-        {(conceptNameTokens ?? 0) > 2000
-          ? <Banner status="warning" title="Warning: concept matching is getting expensive" description={`The last suggestion call sent about ${conceptNameTokens!.toLocaleString()} tokens of concept names.`} />
-          : <Text type="supporting">Concept matching cost is within the normal range.</Text>}
-      </Section>
-    </>}
-    {current.id === 'connections' && <>
-      <Section title="Claude" description="Uses your own Claude plan through Claude Code on this computer.">
-        <Text type="supporting">Claude: {providers ? providers.claude?.connected ? 'signed in through Claude Code' : 'run claude in a terminal and sign in' : 'sign-in status unavailable'}</Text>
-        {modelError && <Text type="supporting" role="alert">{modelError}</Text>}
-        {!providers?.claude?.connected && <HStack><Button label="Check Claude sign-in" variant="secondary" size="sm" onClick={() => void loadModels()} /></HStack>}
-      </Section>
-      <Divider />
-      <Section title="Codex" description="Uses your own ChatGPT plan.">
-        <Text type="supporting">Codex: {auth?.connected ? `connected ${auth.email ?? 'to ChatGPT'}` : 'not connected'}</Text>
-        <HStack><Button label={auth?.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'} variant="secondary" size="sm" data-oai-siwc-button="" onClick={() => void connect()}>{auth?.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'}</Button></HStack>
-        {authError && <Text type="supporting" role="alert">{authError}</Text>}
-      </Section>
-      <Divider />
-      <EndpointSettings api={api} changed={() => void loadModels()} />
-    </>}
-    {current.id === 'interface' && <>
+  const panel = <VStack gap={10} className="settings-panel">
+    {tab === 'usage' ? group('usage', <Section title="Usage history"><UsageDashboard api={api} /></Section>) : <>
+    {group('interface', <>
       <Section title="Appearance" description="Dark, light, or System to follow your operating system. Saved in this browser.">
         <RadioList label="Appearance" isLabelHidden value={appearance} onChange={value => setAppearance(value as Appearance)}>
           {appearances.map(a => <RadioListItem key={a.id} value={a.id} label={a.label} />)}
@@ -140,29 +120,50 @@ export default function SettingsWindow({ request, close, api, models, providers,
         <Text>Vim canvas bindings are {vim ? 'on' : 'off'}; change them above. When on, with the map or a conversation box itself focused: h, j, k and l act as the left, down, up and right arrows (H, J, K, L move farther); = or + zooms in, - zooms out and f fits the tree. They never apply while typing, selecting text or using menus.</Text>
         <Text>In Settings → Connections, save one custom endpoint’s base URL and API key, test its model listing, or remove it. Its owner bills requests sent there. The saved key is never shown. In chat, open Model for next reply and use arrows and Enter to choose Claude, Codex or a custom endpoint model and supported effort. Switching preserves the discussion and inherited context; children start with their parent’s choice. Set the starting model and effort for new learning trees in Settings → Models.</Text>
       </Section>
+    </>)}
+    {group('models', <>
+      <ChatSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} connections={() => showTab('connections')} onSaved={() => setChatVersion(v => v + 1)} />
+      <Divider />
+      <SmartSettings api={api} models={models} providers={providers} chatVersion={chatVersion} />
+      <Divider />
+      <SuggestionSettings api={api} models={models} providers={providers} modelError={modelError} reloadModels={loadModels} />
+      <Divider />
+      <Section title="Concept matching" description="Each suggestion call also sends your known concept names so it can match terms to them. A warning appears here when that list passes about 2,000 tokens.">
+        {(conceptNameTokens ?? 0) > 2000
+          ? <Banner status="warning" title="Warning: concept matching is getting expensive" description={`The last suggestion call sent about ${conceptNameTokens!.toLocaleString()} tokens of concept names.`} />
+          : <Text type="supporting">Concept matching cost is within the normal range.</Text>}
+      </Section>
+    </>)}
+    {group('connections', <>
+      <Section title="Claude" description="Uses your own Claude plan through Claude Code on this computer.">
+        <Text type="supporting">Claude: {providers ? providers.claude?.connected ? 'signed in through Claude Code' : 'run claude in a terminal and sign in' : 'sign-in status unavailable'}</Text>
+        {modelError && <Text type="supporting" role="alert">{modelError}</Text>}
+        {!providers?.claude?.connected && <HStack><Button label="Check Claude sign-in" variant="secondary" size="sm" onClick={() => void loadModels()} /></HStack>}
+      </Section>
+      <Divider />
+      <Section title="Codex" description="Uses your own ChatGPT plan.">
+        <Text type="supporting">Codex: {auth?.connected ? `connected ${auth.email ?? 'to ChatGPT'}` : 'not connected'}</Text>
+        <HStack><Button label={auth?.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'} variant="secondary" size="sm" data-oai-siwc-button="" onClick={() => void connect()}>{auth?.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'}</Button></HStack>
+        {authError && <Text type="supporting" role="alert">{authError}</Text>}
+      </Section>
+      <Divider />
+      <EndpointSettings api={api} changed={() => void loadModels()} />
+    </>)}
     </>}
-    {current.id === 'usage' && <Section title="Usage history"><UsageDashboard api={api} /></Section>}
   </VStack>;
 
-  const nav = <SideNav aria-label="Settings sections" header={<HStack padding={2} vAlign="center" hAlign="between">
-    <Heading level={1} id="settings-heading" tabIndex={-1}>Settings</Heading>{narrow && closeButton}
-  </HStack>}>
-    {TABS.map(t => <SideNavItem key={t.id} id={`settings-${t.id}`} label={t.label} icon={<Icon icon={t.icon} size="sm" color="primary" />} isSelected={!narrow && t.id === shown} onClick={() => showTab(t.id)} />)}
+  const nav = <SideNav aria-label="Settings sections" className="settings-nav">
+    {TABS.map(t => <SideNavItem key={t.id} id={`settings-${t.id}`} label={t.label} icon={<Icon icon={t.icon} size="sm" color="primary" />} isSelected={t.id === tab} onClick={() => showTab(t.id)} />)}
   </SideNav>;
 
-  return <Dialog isOpen={!!request} onOpenChange={open => { if (!open) close(); }} width="min(60rem, calc(100vw - 2rem))" maxHeight="min(50rem, calc(100dvh - 2rem))" variant={narrow ? 'fullscreen' : 'standard'} padding={0} aria-labelledby="settings-heading">
-    {narrow
-      ? <VStack gap={0} className="settings-shell">{current
-        ? <>
-          <HStack padding={2} gap={2} vAlign="center" hAlign="between">
-            <Button label="All settings" variant="ghost" size="sm" icon={<ArrowLeftIcon />} onClick={() => showTab()}>All settings</Button>
-            <Heading level={1} id="settings-heading" tabIndex={-1} className="sr-only">Settings</Heading>
-            {closeButton}
-          </HStack>
-          <Divider />
-          <Layout content={<LayoutContent isScrollable padding={4}>{panel}</LayoutContent>} />
-        </>
-        : nav}</VStack>
-      : <VStack gap={0} className="settings-shell"><Layout start={nav} content={<LayoutContent isScrollable padding={6}>{panel}</LayoutContent>} /></VStack>}
-  </Dialog>;
+  // A full page, not a dialog (mockup Settings, Usage); ChatPage maps Escape to close like the old window.
+  return <main hidden={!request} className="knowledge-panel settings-page" aria-label="Settings">
+    {request && <VStack gap={8} className="settings-content">
+      <HStack gap={4} vAlign="end" hAlign="between" wrap="wrap" className="settings-head">
+        <Heading level={1} id="settings-heading" tabIndex={-1}>Settings</Heading>
+        <Button id="settings-return" label="Return to learning tree" variant="secondary" icon={<ArrowUturnLeftIcon />} onClick={close} />
+      </HStack>
+      <div className="settings-layout">{nav}{panel}</div>
+    </VStack>}
+  </main>;
 }

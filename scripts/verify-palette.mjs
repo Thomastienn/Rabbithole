@@ -82,14 +82,14 @@ try {
     await open(appearance, 'neutral');
     await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
     await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
-    await wait(`document.querySelector('dialog[open]')`);
+    await wait(`document.activeElement?.id === 'settings-heading'`);
     await b('find', 'text', 'Interface', 'click', '--exact');
     await b('find', 'role', 'radio', 'click', '--name', 'Rust', '--exact');
     assert.equal(await ev(`localStorage.getItem('treetutor.bubble-tint')`), 'pink');
-    await b('eval', `document.querySelector('dialog[open] .bubble-tint-swatch').scrollIntoView({ block: 'center' }); true`);
+    await b('eval', `document.querySelector('.settings-page:not([hidden]) .bubble-tint-swatch').scrollIntoView({ block: 'center' }); true`);
     await shot(`tints-settings-${appearance}`);
     await b('press', 'Escape');
-    await wait(`!document.querySelector('dialog[open]')`);
+    await wait(`!document.querySelector('.settings-page:not([hidden])')`);
     assert.equal((await ev(bubbleContrast)).fill, rows.pink.fill);
     await shot(`bubble-pink-${appearance}`);
     step(`${appearance}: Settings Rust tint applies to the bubble and persists`);

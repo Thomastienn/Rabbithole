@@ -46,7 +46,11 @@ async function home() {
   await b('reload');
   await wait(`!!document.querySelector('[aria-label="Open How do fungi trade?"]')`);
 }
-const nav = async () => { await b('click', '.tree-switcher'); await wait(`!!document.querySelector('.saved-chat-title') && ${idle}`); };
+const page = async name => {
+  if (width === 'narrow') { await click('Contents'); await wait(`!!document.querySelector('dialog[open] .drawer-views') && ${idle}`); }
+  await click(name);
+};
+const nav = async () => { if (width === 'narrow') await page('Library'); else await b('click', '.tree-switcher'); await wait(`!!document.querySelector('.library-panel:not([hidden]) .saved-chat-title') && ${idle}`); };
 const openChat = async () => { await click('Open How do fungi trade?'); await wait(`!!document.querySelector('.focused-chat .diagram-card[data-state=ready]')`); };
 try {
   for (scheme of ['dark', 'light']) for (const [w, [vw, vh]] of Object.entries(sizes)) {
@@ -65,7 +69,7 @@ try {
     await b('press', 'Escape');
     await click('Model for next reply'); await wait(`[...document.querySelectorAll('[role=menu]')].some(e => e.checkVisibility())`); await shot('6-dialog-model-menu'); await b('press', 'Escape');
     // Child chat: the yellow passage underline, focused path and inherited section together.
-    await home(); await click('Open Why trade at all?'); await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Why trade at all?'`); await shot('2-chat-child');
+    await home(); if (width === 'narrow') await page('1.1 Why trade at all?'); else await click('Open Why trade at all?'); await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Why trade at all?'`); await shot('2-chat-child');
     await home(); await nav();
     await click('Actions for How do fungi trade?'); await wait(`[...document.querySelectorAll('[role=menu]')].some(e => e.checkVisibility())`);
     await b('find', 'role', 'menuitem', 'click', '--name', 'Delete chat…', '--exact'); await wait(`!!document.querySelector('[role=alertdialog][open]')`); await shot('6-dialog-delete');
@@ -73,11 +77,9 @@ try {
     await home(); await nav();
     await b('click', '.tree-search'); await b('fill', 'dialog[open][aria-label="Search learning trees"] input', 'fungi'); await wait(`document.querySelectorAll('dialog[open][aria-label="Search learning trees"] [role=option]').length > 0`); await shot('3-sidebar-search');
     await b('press', 'Escape'); await wait(`!document.querySelector('dialog[open][aria-label="Search learning trees"]')`); await shot('3-sidebar');
-    await click('Settings'); await wait(`!!document.querySelector('dialog[open]')`);
-    if (width === 'narrow') { await shot('4-settings-list'); await click('Interface'); }
-    await wait(`document.querySelector('#settings-section-heading')?.textContent === 'Interface'`); await shot('4-settings');
-    await b('press', 'Escape'); await wait(`![...document.querySelectorAll('dialog[open]')].some(d => d.textContent.includes('Appearance'))`);
-    await nav(); await click('Knowledge'); await wait(`document.querySelectorAll('[data-concept]').length >= 3`); await shot('5-knowledge');
+    await page('Settings'); await wait(`document.activeElement?.id === 'settings-heading'`); await shot('4-settings');
+    await b('press', 'Escape'); await wait(`!document.querySelector('.settings-page:not([hidden])')`);
+    await nav(); await page('Knowledge'); await wait(`document.querySelectorAll('[data-concept]').length >= 3`); await shot('5-knowledge');
   }
   console.log(files.join('\n'));
 } finally {

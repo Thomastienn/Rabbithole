@@ -1,19 +1,29 @@
 {
   "label": "after",
-  "checkedAt": "2026-11-13T03:58:52.812Z",
+  "checkedAt": "2026-11-13T05:39:20.570Z",
   "evidence": "Synthetic fixture providers, seeded SQLite tree with markdown, ready diagram, failed video and branch; production build in agent-browser Chromium. 200% zoom is emulated as a half-size CSS viewport.",
   "checks": {
     "contrast-light": {
       "map": [],
       "chat": [],
       "menu": [],
-      "sidebar": []
+      "sidebar": [
+        {
+          "ratio": 3.63,
+          "text": "Quick thinking effort"
+        }
+      ]
     },
     "contrast-dark": {
       "map": [],
       "chat": [],
       "menu": [],
-      "sidebar": []
+      "sidebar": [
+        {
+          "ratio": 4.17,
+          "text": "Quick thinking effort"
+        }
+      ]
     },
     "reduced-motion": {
       "map": [],

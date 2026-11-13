@@ -18,19 +18,19 @@ const pause = () => new Promise(r => setTimeout(r, 300));
 const view = () => ev('document.querySelector(".react-flow__viewport").style.transform');
 const box = id => ev(`document.querySelector('.react-flow__node[data-id="${id}"]').style.transform`);
 const zoom = async () => Number((await view()).match(/scale\(([\d.]+)\)/)[1]);
-const checkbox = `document.querySelector('dialog[open] input[type=checkbox]')`;
+const checkbox = `document.querySelector('.settings-page:not([hidden]) input[type=checkbox]')`;
 const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
 const openTree = async title => {
   await b('click', '.tree-switcher');
-  await wait(`!![...document.querySelectorAll('nav button')].find(e=>e.getAttribute('aria-label') === ${JSON.stringify(title)})`);
+  await wait(`[...document.querySelectorAll('.library-panel:not([hidden]) .saved-chat-title')].some(e => e.textContent.trim() === ${JSON.stringify(title)})`);
   await click(title);
 };
 const help = async () => {
   await click('Map menu');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Help', '--exact');
-  await wait(`document.querySelector('dialog[open] h2')?.textContent === 'Interface'`);
+  await wait(`document.activeElement?.id === 'settings-section-interface'`);
 };
-const closeSettings = async () => { await press('Escape'); await wait(`!document.querySelector('dialog[open]')`); };
+const closeSettings = async () => { await press('Escape'); await wait(`!document.querySelector('.settings-page:not([hidden])')`); };
 const log = [];
 const step = text => { log.push(text); console.log(`ok - ${text}`); };
 async function tabTo(test, max = 80) {
@@ -62,6 +62,7 @@ try {
   await b('open', origin);
   await b('eval', 'localStorage.clear(); true');
   await b('reload');
+  await wait(`document.querySelectorAll('.react-flow__node').length === 2`);
   await openTree('Vim canvas');
   await wait(`document.querySelectorAll('.react-flow__node').length === 2 && document.querySelector('${node}').style.transform`);
   await pause();
@@ -80,13 +81,13 @@ try {
 
   // 2. Help describes the mapping and current state; the checkbox is reachable by Tab and toggles with Space.
   await help();
-  await wait(`document.querySelector('dialog[open]').textContent.includes('Vim canvas bindings are off')`);
-  await b('focus', 'dialog[open] button');
+  await wait(`document.querySelector('.settings-page:not([hidden])').textContent.includes('Vim canvas bindings are off')`);
+  await b('focus', '.settings-page:not([hidden]) button');
   await tabTo(`e.type === 'checkbox'`);
   assert.equal(await ev(`getComputedStyle(document.activeElement).outlineStyle !== 'none' || document.activeElement.matches(':focus-visible')`), true);
   await press('Space');
   await wait(`${checkbox}.checked && document.activeElement === ${checkbox} && localStorage.getItem('treetutor.vim') === 'on'`);
-  await wait(`document.querySelector('dialog[open]').textContent.includes('Vim canvas bindings are on')`);
+  await wait(`document.querySelector('.settings-page:not([hidden])').textContent.includes('Vim canvas bindings are on')`);
   step('Tab reaches the labelled "Vim canvas bindings" checkbox with visible focus; Space checks it, focus stays on it, Help reports on');
 
   await closeSettings();
@@ -181,7 +182,7 @@ try {
   await b('focus', '.tree-canvas');
   assert.equal(await effect('l'), true);
   await help();
-  await b('focus', 'dialog[open] button'); await tabTo(`e.type === 'checkbox'`); await press('Space');
+  await b('focus', '.settings-page:not([hidden]) button'); await tabTo(`e.type === 'checkbox'`); await press('Space');
   await wait(`!${checkbox}.checked && localStorage.getItem('treetutor.vim') === 'off'`);
   await closeSettings();
   await b('focus', '.tree-canvas');

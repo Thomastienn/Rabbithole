@@ -125,9 +125,9 @@ try {
     assert.equal(await ev(`[...document.querySelectorAll('.drawer-views .view-tab')].length`), 5);
   }
   await openDrawer(); await focusIn('Settings'); await b('press', 'Enter');
-  await wait(`document.querySelector('.settings-shell')`);
+  await wait(`document.activeElement?.id === 'settings-heading'`);
   views.Settings = await sideways(); assert.deepEqual(views.Settings, []);
-  await b('press', 'Escape'); await wait(`!document.querySelector('dialog[open] .settings-shell')`);
+  await b('press', 'Escape'); await wait(`!document.querySelector('.settings-page:not([hidden])')`);
   await wait(`document.activeElement?.classList.contains('band-contents')`);
   check('Library, Knowledge, Videos and Settings reachable from the drawer with no sideways scroll; Settings returns focus to the menu button', views);
 

@@ -36,14 +36,14 @@ const settings = async () => {
   await wait(`document.querySelector('[aria-label="Map menu"]')?.checkVisibility()`);
   await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
-  await wait('document.querySelector("dialog[open]")');
+  await wait('document.activeElement?.id === "settings-heading"');
   await b('find', 'text', 'Models', 'click', '--exact');
-  await wait('document.querySelector("dialog[open]")?.textContent.includes("Chat default")');
+  await wait('document.activeElement?.id === "settings-section-models" && document.querySelector(".settings-page:not([hidden])")?.textContent.includes("Chat default")');
 };
 const choose = async (label, option) => {
   await b('find', 'label', label, 'click');
   await b('find', 'role', 'option', 'click', '--name', option, '--exact');
-  await wait('document.querySelector("dialog[open]")?.textContent.includes("Chat defaults saved.")');
+  await wait('document.querySelector(".settings-page:not([hidden])")?.textContent.includes("Chat defaults saved.")');
 };
 // Focus retries until an opening menu stops reclaiming focus; Enter then commits by keyboard.
 const focusNamed = (selector, name) => wait(`(() => {
@@ -70,11 +70,11 @@ try {
   // Astryx selector keyboard model: open, move to first (Provider default), commit, then restore High.
   await focusNamed('button,[role=combobox],input', 'Chat default effort');
   await b('press', 'Enter'); await b('press', 'Home'); await b('press', 'Enter');
-  await wait('document.querySelector("dialog[open]")?.textContent.includes("Chat defaults saved.")');
+  await wait('document.querySelector(".settings-page:not([hidden])")?.textContent.includes("Chat defaults saved.")');
   assert.equal(store.chatSettings().effort, null);
   await choose('Chat default effort', 'High');
-  await b('find', 'role', 'button', 'click', '--name', 'Close settings', '--exact');
-  await wait('!document.querySelector("dialog[open]")');
+  await b('find', 'role', 'button', 'click', '--name', 'Return to learning tree', '--exact');
+  await wait('!document.querySelector(".settings-page:not([hidden])")');
   await b('find', 'role', 'button', 'click', '--name', 'New chat', '--exact');
   await wait('document.querySelector(".chat-model")?.textContent.includes("Codex chat · High")');
   const fresh = store.list().find(t => t.title === 'New chat');
@@ -118,7 +118,7 @@ try {
     await b('find', 'role', 'button', 'click', '--name', 'Return to tree', '--exact');
     await settings();
     assert.equal(await ev('document.documentElement.scrollWidth <= innerWidth'), true);
-    assert.equal(await ev('document.querySelector("dialog[open]").scrollWidth <= innerWidth'), true);
+    assert.equal(await ev('document.querySelector(".settings-page:not([hidden])").scrollWidth <= innerWidth'), true);
     await shot(`settings-${appearance}-narrow`);
     await b('press', 'Escape');
     await b('set', 'viewport', '1440', '900');
@@ -127,11 +127,11 @@ try {
   await settings();
   connected = false;
   await b('find', 'role', 'button', 'click', '--name', 'Refresh chat models', '--exact');
-  await wait('document.querySelector("dialog[open]")?.textContent.includes("Saved chat default unavailable")');
+  await wait('document.querySelector(".settings-page:not([hidden])")?.textContent.includes("Saved chat default unavailable")');
   assert.deepEqual({ ...store.chatSettings() }, { provider: 'openai', model: 'chat', effort: null });
   connected = true;
   await b('find', 'role', 'button', 'click', '--name', 'Refresh chat models', '--exact');
-  await wait('!document.querySelector("dialog[open]")?.textContent.includes("Saved chat default unavailable")');
+  await wait('!document.querySelector(".settings-page:not([hidden])")?.textContent.includes("Saved chat default unavailable")');
   check('Unavailable saved defaults show actionable recovery, retain values and recover on refresh');
   writeFileSync('docs/verification/chat-defaults-ui.json', JSON.stringify({ date: new Date().toISOString(), boundary: 'built UI + real HTTP/store + controlled providers, no native inference', checks, result: 'PASS' }, null, 2) + '\n');
 } finally { await b('close').catch(() => {}); await app.stop(); store.close(); }

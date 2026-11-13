@@ -59,13 +59,14 @@ const manual = async index => {
   await ev(`(() => { const e = document.querySelector('textarea[readonly]'); e.focus(); e.setSelectionRange(2, 7); e.dispatchEvent(new Event('select', { bubbles: true })); return true; })()`);
   await reach('.passage button'); await key('Enter');
   await wait(`document.activeElement?.matches('.branch-form input')`);
-  await key('Escape'); await click('Close passage selection');
+  await key('Escape'); await reach('button', 'Close passage selection'); await key('Enter');
 };
 const settings = async () => {
   await click('Map menu');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
+  await wait(`document.activeElement?.id === 'settings-heading'`);
   await click('Models');
-  await b('wait', '--text', 'Automatic suggestions');
+  await wait(`document.activeElement?.id === 'settings-section-models'`);
 };
 try {
   await b('set', 'viewport', '1440', '1000'); await b('open', origin);
@@ -123,8 +124,8 @@ try {
   assert.equal(store.suggestionSettings().enabled, false);
   await reach('[role=switch]'); await key('Space');
   await wait(`document.querySelector('[role=switch]')?.checked === true && !document.querySelector('[role=switch]').disabled`);
-  // Off-screen in the scrolled Settings body, a click would land on the backdrop and close Settings.
-  await ev(`[...document.querySelectorAll('dialog[open] label')].find(l => l.textContent.startsWith('Quick thinking model')).scrollIntoView({ block: 'center' }); true`);
+  // Bring the model selector into the page viewport before opening its list.
+  await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) label')].find(l => l.textContent.startsWith('Quick thinking model')).scrollIntoView({ block: 'center' }); true`);
   await b('find', 'label', 'Quick thinking model', 'click');
   await wait(`document.activeElement?.matches('[role=combobox]')`);
   await b('keyboard', 'type', 'Fixture alternate');

@@ -28,21 +28,21 @@ const launch = async () => {
 };
 mkdirSync('.impeccable/review', { recursive: true });
 const shot = name => b('screenshot', `${process.cwd()}/.impeccable/review/model-roles-${name}.png`);
-const dialogText = 'document.querySelector("dialog[open]")?.textContent';
+const dialogText = 'document.querySelector(".settings-page:not([hidden])")?.textContent';
 const settings = async () => {
   await wait(`document.querySelector('[aria-label="Map menu"]')?.checkVisibility()`);
   await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
   await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
-  await wait('document.querySelector("dialog[open]")');
+  await wait('document.activeElement?.id === "settings-heading"');
   await b('find', 'text', 'Models', 'click', '--exact');
-  await wait(`${dialogText}?.includes("Quick thinking model")`);
+  await wait(`document.activeElement?.id === 'settings-section-models' && ${dialogText}?.includes("Quick thinking model")`);
 };
 const choose = async (label, option, saved) => {
   await b('find', 'label', label, 'click');
   await b('find', 'role', 'option', 'click', '--name', option, '--exact');
   await wait(`${dialogText}?.includes(${JSON.stringify(saved)}) && !${dialogText}?.includes("Saving")`);
 };
-const value = label => ev(`(() => { const l = [...document.querySelectorAll('dialog[open] label, dialog[open] [id]')].find(e => e.textContent.trim() === ${JSON.stringify(label)}); const c = l && (document.getElementById(l.htmlFor) || document.querySelector('[aria-labelledby~="' + l.id + '"]')); return c?.textContent.trim() ?? null; })()`);
+const value = label => ev(`(() => { const l = [...document.querySelectorAll('.settings-page:not([hidden]) label, .settings-page:not([hidden]) [id]')].find(e => e.textContent.trim() === ${JSON.stringify(label)}); const c = l && (document.getElementById(l.htmlFor) || document.querySelector('[aria-labelledby~="' + l.id + '"]')); return c?.textContent.trim() ?? null; })()`);
 const focusNamed = (selector, name) => wait(`(() => {
   const label = e => (e.getAttribute('aria-label') || (e.getAttribute('aria-labelledby') || '').split(' ').map(id => document.getElementById(id)?.textContent || '').join(' ').trim() || [...(e.labels || [])].map(l => l.textContent).join(' ') || e.textContent).trim();
   const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find(e => label(e).startsWith(${JSON.stringify(name)}));
@@ -54,7 +54,7 @@ try {
   await b('set', 'viewport', '1440', '900');
   await b('open', origin);
   await settings();
-  for (const heading of ['Chat default', 'Smart', 'Quick thinking']) assert.ok(await ev(`[...document.querySelectorAll('dialog[open] h3')].some(h => h.textContent === ${JSON.stringify(heading)})`), heading);
+  for (const heading of ['Chat default', 'Smart', 'Quick thinking']) assert.ok(await ev(`[...document.querySelectorAll('.settings-page:not([hidden]) h3')].some(h => h.textContent === ${JSON.stringify(heading)})`), heading);
   await choose('Chat default model', 'Codex chat', 'Chat defaults saved.');
   await choose('Chat default effort', 'High', 'Chat defaults saved.');
   await wait(`${dialogText}?.includes("Follow chat default (Codex chat)") && ${dialogText}?.includes("Follow chat default (High)")`);
@@ -103,7 +103,7 @@ try {
     await b('reload');
     await settings();
     assert.equal(await ev('document.documentElement.scrollWidth <= innerWidth'), true);
-    assert.equal(await ev('document.querySelector("dialog[open]").scrollWidth <= innerWidth'), true);
+    assert.equal(await ev('document.querySelector(".settings-page:not([hidden])").scrollWidth <= innerWidth'), true);
     await b('find', 'text', 'Smart', 'scrollintoview', '--exact').catch(() => {});
     await shot(`settings-${appearance}-narrow`);
   }

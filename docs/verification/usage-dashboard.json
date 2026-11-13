@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-000.2",
-  "checkedAt": "2026-11-13T00:02:30.050Z",
+  "checkedAt": "2026-11-13T05:38:14.138Z",
   "evidence": "Production build, real app HTTP/SQLite with seeded usage records, agent-browser Chromium. No live provider inference.",
   "steps": [
     "Month (dark): exact totals 2,550 with 1 unreported call; one bar per day; model and task tables",

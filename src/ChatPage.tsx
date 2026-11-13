@@ -221,7 +221,7 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   const [libraryLayout, setLibraryLayout] = useState<'shelf' | 'list'>(() => { try { return localStorage.getItem('treetutor.library-layout') === 'list' ? 'list' : 'shelf'; } catch { return 'shelf'; } });
   const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState<SettingsRequest>();
-  const settingsOpener = useRef<HTMLElement | null>(null);
+  const settingsOpener = useRef<HTMLElement | null>(null), settingsFrom = useRef('learning');
   const [searching, setSearching] = useState(false);
   const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'library' }>();
   const [deletion, setDeletion] = useState<{ id: string; root: string; title: string; count: number; parent: string | null }>();
@@ -724,11 +724,11 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
   };
   const active = !!tree && !!state?.active.includes(tree.id);
   const branchConcept = branch?.anchor.suggestion ? tree?.suggestions?.find(s => s.message === branch.anchor.messageId)?.passages.find(p => p.start === branch.anchor.start && p.end === branch.anchor.end)?.concept : undefined;
-  function openSettings(tab?: SettingsTab, focus?: string, opener = document.activeElement as HTMLElement | null) {
-    settingsOpener.current = opener; setSettings({ tab, focus });
+  function openSettings(section?: SettingsTab, focus?: string, opener = document.activeElement as HTMLElement | null) {
+    settingsOpener.current = opener; if (tab !== 'settings') settingsFrom.current = tab; setTab('settings'); setSettings({ tab: section, focus });
   }
   function closeSettings() {
-    setSettings(undefined);
+    setSettings(undefined); setTab(settingsFrom.current);
     // Menu items that opened the window are gone by now; fall back to the menu trigger that held them.
     const opener = settingsOpener.current;
     requestAnimationFrame(() => (opener?.isConnected ? opener : document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]'))?.focus());
@@ -780,12 +780,13 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       {saveAlert}
       <IconButton className="tree-search" label="Search learning trees" tooltip="Search learning trees" icon={<MagnifyingGlassIcon />} variant="ghost" size="sm" aria-haspopup="dialog" onClick={() => setSearching(true)} />
       <Button className="new-chat" label={busy ? 'Opening…' : 'New chat'} variant="ghost" size="sm" icon={<PlusIcon />} isDisabled={busy} onClick={() => void create()} />
-      <IconButton className="band-settings" label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
+      <IconButton className="band-settings" label="Settings" tooltip="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" aria-current={tab === 'settings' ? 'page' : undefined} onClick={e => openSettings(undefined, undefined, e.currentTarget)} />
     </HStack>
   </header>;
   return <VStack gap={0} style={{ height: '100dvh', '--question-bubble-tint': bubbleTints.find(t => t.id === bubbleTint)!.color } as CSSProperties} onKeyDown={e => {
     if (e.key !== 'Escape' || e.defaultPrevented) return;
     if ((e.target as Element).closest('[role=alertdialog]')) { e.preventDefault(); e.stopPropagation(); cancelDelete(); }
+    else if (tab === 'settings' && !(e.target as Element).closest('dialog, [role=listbox], [role=menu]')) { e.preventDefault(); closeSettings(); }
   }}>
     {band}
     {mobile && narrowDrawer}
@@ -928,8 +929,8 @@ export default function ChatPage({ appearance, setAppearance }: { appearance: Ap
       <main hidden={tab !== 'videos'} className="knowledge-panel" aria-label="Videos">
         {tab === 'videos' && <><HStack padding={3} className="knowledge-header"><Button id="return-from-videos" label="Return to learning tree" variant="ghost" icon={<ArrowUturnLeftIcon />} onClick={() => { setTab('learning'); requestAnimationFrame(() => document.querySelector<HTMLElement>(overview ? '.map-toolbar button' : '#rename-conversation')?.focus()); }} /></HStack><VideoLibrary api={api} activity={activeKey} /></>}
       </main>
+      <SettingsWindow request={tab === 'settings' ? settings : undefined} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} appearance={appearance} setAppearance={setAppearance} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
     </HStack>
-    <SettingsWindow request={settings} close={closeSettings} api={api} models={models} providers={providers} modelError={modelError} loadModels={loadModels} conceptNameTokens={state?.conceptNameTokens} auth={state?.auth} signIn={signIn} vim={vim} setVim={on => { setVim(on); try { localStorage.setItem('treetutor.vim', on ? 'on' : 'off'); } catch { /* Preference stays for this session only. */ } }} appearance={appearance} setAppearance={setAppearance} bubbleTint={bubbleTint} setBubbleTint={tint => { setBubbleTint(tint); try { localStorage.setItem('treetutor.bubble-tint', tint); } catch { /* Preference stays for this session only. */ } }} />
     <AlertDialog isOpen={!!deletion} onOpenChange={open => { if (!open) cancelDelete(); }} title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`} description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`} actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'} cancelLabel="Keep conversations" isActionLoading={deleting} onAction={() => void deleteConversation()} />
   </VStack>;
 }
