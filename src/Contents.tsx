@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { IconButton } from '@astryxdesign/core/IconButton';
+import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 import type { Preview, Summary } from './TreeOverview';
 import type { Artifact } from './artifacts';
 import { conversationAddresses, inkStyle } from './treeList';
@@ -9,9 +11,9 @@ import { conversationContext, type Message } from './turn';
 
 type Current = { id: string; provider: string; model: string | null; messages: Message[]; artifacts: Artifact[] };
 
-export default function Contents({ root, trees, addresses, previews, current, active, open, openFigure }: {
+export default function Contents({ root, trees, addresses, previews, current, active, open, openFigure, collapse }: {
   root: string; trees: Summary[]; addresses: ReturnType<typeof conversationAddresses>; previews: Record<string, Preview>;
-  current?: Current; active: string[]; open: (id: string) => void; openFigure: (conversation: string, artifact: string) => void;
+  current?: Current; active: string[]; open: (id: string) => void; openFigure: (conversation: string, artifact: string) => void; collapse?: () => void;
 }) {
   const byId = new Map(trees.map(t => [t.id, t]));
   const conversations = [...addresses].flatMap(([id, address]) => byId.has(id) ? [{ ...byId.get(id)!, ...address }] : []);
@@ -24,6 +26,7 @@ export default function Contents({ root, trees, addresses, previews, current, ac
   return <aside className="contents" aria-label="Learning tree contents">
     <VStack gap={0} className="contents-panel">
       <VStack gap={1} className="contents-head">
+        {collapse && <IconButton className="contents-collapse" label="Hide contents" tooltip="Hide contents" aria-expanded icon={<ChevronLeftIcon />} variant="ghost" size="sm" onClick={collapse} />}
         <Heading level={2}>{byId.get(root)?.title}</Heading>
         <Text type="supporting" color="secondary">{conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'} · {figures.length} {figures.length === 1 ? 'figure' : 'figures'}</Text>
       </VStack>

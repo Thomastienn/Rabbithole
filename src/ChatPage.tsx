@@ -251,6 +251,13 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [contentsOpen, setContentsOpen] = useState(() => { try { return localStorage.getItem('treetutor.contents') !== 'collapsed'; } catch { return true; } });
+  // The toggle unmounts with its panel, so focus moves to its counterpart.
+  function toggleContents(open: boolean) {
+    flushSync(() => setContentsOpen(open));
+    document.querySelector<HTMLElement>(open ? '.contents-collapse' : '.contents-reopen')?.focus();
+    try { localStorage.setItem('treetutor.contents', open ? 'open' : 'collapsed'); } catch { /* Preference stays for this session only. */ }
+  }
   const [statsOpen, setStatsOpen] = useState(false);
   const statsPanel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -811,12 +818,12 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
     viewTab('Knowledge', <ShareIcon />, tab === 'knowledge', () => setTab('knowledge')),
     viewTab('Videos', <FilmIcon />, tab === 'videos', () => setTab('videos')),
   ];
-  const contents = root && state && <Contents root={root} trees={state.trees.filter(t => visibleIds.includes(t.id))} addresses={addresses} previews={previews} current={tree} active={state.active} open={id => { setTab('learning'); void openConversation(id); }} openFigure={(id, artifact) => { setTab('learning'); void openConversation(id, undefined, artifact); }} />;
+  const contents = (collapse?: () => void) => root && state && <Contents collapse={collapse} root={root} trees={state.trees.filter(t => visibleIds.includes(t.id))} addresses={addresses} previews={previews} current={tree} active={state.active} open={id => { setTab('learning'); void openConversation(id); }} openFigure={(id, artifact) => { setTab('learning'); void openConversation(id, undefined, artifact); }} />;
   // Narrow band (mockup Narrow): views, the outline and Settings move into this drawer; any choice inside closes it.
   const narrowDrawer = <Drawer isOpen={drawer} onOpenChange={setDrawer} label="Contents" side="start" width={320} padding={0}>
     <Regions padding={2} header={<DrawerHeader className="drawer-head" title="TreeTutor" onOpenChange={setDrawer} />} content={<LayoutContent padding={0}><VStack gap={0} className="band-drawer" onClick={e => { if ((e.target as Element).closest('button')) setDrawer(false); }}>
       <nav aria-label="Views" className="drawer-views">{views.slice(0, 2)}{viewTab('Library', <RectangleStackIcon />, tab === 'library', () => setTab('library'))}{views.slice(2)}</nav>
-      {contents}
+      {contents()}
       <Button className="view-tab drawer-settings" label="Settings" icon={<Cog6ToothIcon />} variant="ghost" size="sm" onClick={() => openSettings(undefined, undefined, document.querySelector<HTMLElement>('.band-contents'))} />
     </VStack></LayoutContent>} />
   </Drawer>;
@@ -879,7 +886,7 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
         <Heading level={1} className="sr-only">TreeTutor</Heading>
         {error && <section role="alert" className="failure-banner workspace-failure"><Text>{error}</Text></section>}
         <section className="tree-workspace" data-expanded={expanded && !overview} style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}>
-        {!overview && !mobile && contents}
+        {!overview && !mobile && (contentsOpen ? contents(() => toggleContents(false)) : <aside className="contents-rail" aria-label="Learning tree contents"><IconButton className="contents-reopen" label="Show contents" tooltip="Show contents" aria-expanded={false} icon={<ChevronRightIcon />} variant="ghost" size="sm" onClick={() => toggleContents(true)} /></aside>)}
         <section ref={workspace} className="reading-workspace">
         <section id="focused-chat" className="focused-chat" style={{ display: overview && root ? 'none' : 'flex' }} onKeyDown={e => { if (e.key === 'Escape' && !branch && !e.defaultPrevented && !(e.target as Element).closest('[role=menu], video, dialog')) { e.preventDefault(); returnToTree(); } }}>
         {tree ? <>

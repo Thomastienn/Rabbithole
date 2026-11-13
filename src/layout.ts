@@ -114,6 +114,8 @@ html { view-transition-name: none; }
 .reading-workspace { display: flex; flex: 1; min-width: 0; min-height: 0; }
 .contents { display: flex; flex-direction: column; flex: 0 0 calc(33 * var(--treetutor-module)); width: calc(33 * var(--treetutor-module)); min-height: 0; border-inline-end: thin solid var(--color-border); background: var(--color-background-muted); }
 .contents-panel { flex: 1; min-height: 0; }
+.contents-collapse { align-self: flex-start; margin: calc(-2 * var(--treetutor-module)) 0 0 calc(-1 * var(--treetutor-module)); }
+.contents-rail { flex: none; display: flex; flex-direction: column; align-items: center; padding-block: var(--treetutor-module); border-inline-end: thin solid var(--color-border); background: var(--color-background-muted); }
 .contents-head { flex: none; padding: calc(3 * var(--treetutor-module)) calc(2 * var(--treetutor-module)) calc(2 * var(--treetutor-module)); }
 .contents-head h2 { font-size: 20px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .contents-scroll { flex: 1; min-height: 0; overflow: auto; padding: 0 var(--treetutor-module) calc(2 * var(--treetutor-module)); }
