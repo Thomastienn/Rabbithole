@@ -10,11 +10,11 @@ import '@fontsource/literata/400.css';
 import '@fontsource/literata/400-italic.css';
 import '@fontsource/literata/600.css';
 import { Theme } from '@astryxdesign/core/theme';
-import { themes, defaultThemeSlug } from './astryx-themes';
+import { themes } from './astryx-themes';
 import { layoutCss } from './layout';
 import flowCss from '@xyflow/react/dist/style.css?inline';
 import ChatPage from './ChatPage';
-import { savedAppearance, type Appearance } from './appearance';
+import { savedAppearance, savedTheme, type Appearance, type ThemeChoice } from './appearance';
 
 const styles = document.createElement('style');
 styles.textContent = flowCss + layoutCss;
@@ -22,8 +22,11 @@ document.head.append(styles);
 
 function App() {
   const [appearance, setAppearance] = useState(savedAppearance);
-  return <Theme theme={themes[defaultThemeSlug]} mode={appearance}>
-    <ChatPage appearance={appearance} setAppearance={next => { setAppearance(next); try { localStorage.setItem('treetutor.appearance', next); } catch { /* Preference stays for this session only. */ } }} />
+  // Read before the first render, so the saved theme is the first one painted.
+  const [theme, setTheme] = useState<ThemeChoice>(() => { try { return savedTheme(localStorage.getItem('treetutor.theme')); } catch { return 'paperback'; } });
+  return <Theme theme={themes[theme]} mode={appearance}>
+    <ChatPage appearance={appearance} setAppearance={next => { setAppearance(next); try { localStorage.setItem('treetutor.appearance', next); } catch { /* Preference stays for this session only. */ } }}
+      theme={theme} setTheme={next => { setTheme(next); try { localStorage.setItem('treetutor.theme', next); } catch { /* Preference stays for this session only. */ } }} />
   </Theme>;
 }
 

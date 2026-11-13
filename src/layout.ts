@@ -159,6 +159,9 @@ html { view-transition-name: none; }
 .chat-heading-row > button:not(.model-picker) { flex-shrink: 0; }
 .chat-stats-body { font-variant-numeric: tabular-nums; max-height: 20dvh; overflow: auto; padding-block: var(--spacing-1) var(--spacing-2); padding-inline: var(--spacing-2); overflow-wrap: anywhere; }
 .bubble-tint-swatch { width: var(--spacing-5); aspect-ratio: 1; border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); }
+.theme-swatch { padding: var(--spacing-1) var(--spacing-2); background: var(--color-background-surface); border: thin solid var(--color-border-emphasized); border-radius: var(--radius-element); }
+.theme-swatch > i { width: var(--spacing-3); aspect-ratio: 1; border-radius: var(--radius-full); }
+.theme-swatch > .theme-swatch-bubble { width: var(--spacing-6); border-radius: var(--radius-inner); border: thin solid var(--color-border); }
 .question-bubble { background: var(--question-bubble-tint); color: var(--color-text-primary); border-radius: var(--radius-chat); padding: var(--spacing-2) var(--spacing-3); overflow-wrap: anywhere; }
 /* Read (mockup): the focused chat owns the centre at a 640px book measure; header, list and composer share it. */
 .chat-reply, .chat-reply > * { max-width: 100%; }

@@ -16,14 +16,16 @@ import SmartSettings from './SmartSettings';
 import UsageDashboard from './UsageDashboard';
 import type { Model } from './models';
 import { bubbleTints, type BubbleTint } from './bubbleTint';
-import { appearances, type Appearance } from './appearance';
+import { appearances, themeChoices, type Appearance, type ThemeChoice } from './appearance';
+import { Theme } from '@astryxdesign/core/theme';
+import { themes } from './astryx-themes';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
 // tab: the section to scroll to (undefined opens at the top); focus is a selector to focus once open.
 export type SettingsRequest = { tab?: SettingsTab; focus?: string };
 
 const TABS: { id: SettingsTab; label: string; description: string; icon: typeof CpuChipIcon }[] = [
-  { id: 'interface', label: 'Interface', description: 'Appearance, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
+  { id: 'interface', label: 'Interface', description: 'Appearance, theme, question bubble tint, keyboard controls and help for the map.', icon: SwatchIcon },
   { id: 'models', label: 'Models', description: 'Chat default, smart and quick thinking roles, and concept matching.', icon: CpuChipIcon },
   { id: 'connections', label: 'Connections', description: 'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.', icon: LinkIcon },
   { id: 'usage', label: 'Usage', description: 'Tokens providers reported for replies and suggestions, kept even after content is deleted.', icon: ChartBarIcon },
@@ -36,7 +38,7 @@ function Section({ title, description, children }: { title: string; description?
   </VStack>;
 }
 
-export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, conceptNameTokens, auth, signIn, vim, setVim, appearance, setAppearance, bubbleTint, setBubbleTint }: {
+export default function SettingsWindow({ request, close, api, models, providers, modelError, loadModels, conceptNameTokens, auth, signIn, vim, setVim, appearance, setAppearance, theme, setTheme, bubbleTint, setBubbleTint }: {
   request?: SettingsRequest;
   close: () => void;
   api: (path: string, body?: unknown) => Promise<any>;
@@ -51,6 +53,8 @@ export default function SettingsWindow({ request, close, api, models, providers,
   setVim: (on: boolean) => void;
   appearance: Appearance;
   setAppearance: (next: Appearance) => void;
+  theme: ThemeChoice;
+  setTheme: (next: ThemeChoice) => void;
   bubbleTint: BubbleTint;
   setBubbleTint: (tint: BubbleTint) => void;
 }) {
@@ -98,6 +102,20 @@ export default function SettingsWindow({ request, close, api, models, providers,
       <Section title="Appearance" description="Dark, light, or System to follow your operating system. Saved in this browser.">
         <RadioList label="Appearance" isLabelHidden value={appearance} onChange={value => setAppearance(value as Appearance)}>
           {appearances.map(a => <RadioListItem key={a.id} value={a.id} label={a.label} />)}
+        </RadioList>
+      </Section>
+      <Divider />
+      <Section title="Theme" description="Paper and ink colours for the whole app, in your appearance's light or dark variant. Saved in this browser.">
+        <RadioList label="Theme" isLabelHidden value={theme} onChange={value => setTheme(value as ThemeChoice)}>
+          {themeChoices.map(t => <RadioListItem key={t.id} value={t.id} label={t.label} startContent={
+            // Each card wears its own theme, so it shows that theme's bubble, accent and branch-family inks.
+            <Theme theme={themes[t.id]} mode={appearance}>
+              <HStack aria-hidden="true" gap={1} vAlign="center" className="theme-swatch" data-theme-swatch={t.id}>
+                <i className="theme-swatch-bubble" style={{ background: bubbleTints.find(b => b.id === bubbleTint)!.color }} />
+                <i style={{ background: 'var(--color-accent)' }} />
+                {[1, 2, 3, 4].map(n => <i key={n} style={{ background: `var(--treetutor-ink-${n})` }} />)}
+              </HStack>
+            </Theme>} />)}
         </RadioList>
       </Section>
       <Divider />

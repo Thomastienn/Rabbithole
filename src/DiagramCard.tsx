@@ -11,7 +11,7 @@ export default function DiagramCard({ artifact, steps = [artifact], onRetry }: {
   const id = useId();
   const card = useRef<HTMLElement>(null);
   const [drawing, setDrawing] = useState<DiagramState>({ status: 'pending' });
-  const { mode } = useTheme();
+  const { mode, name } = useTheme();
   const [enlarged, setEnlarged] = useState(false);
   // Keeps the Retry button mounted (loading) while its rerun is pending, so keyboard focus stays put.
   const [retried, setRetried] = useState(false);
@@ -24,7 +24,7 @@ export default function DiagramCard({ artifact, steps = [artifact], onRetry }: {
       return renderDiagram(source, card.current!, mode === 'dark');
     }).then(state => { if (!cancelled) setDrawing(state); });
     return () => { cancelled = true; };
-  }, [artifact.id, artifact.status, artifact.source, mode, renderAttempt]);
+  }, [artifact.id, artifact.status, artifact.source, mode, name, renderAttempt]);
   // A successful Retry removes its button; keep keyboard focus on the card rather than dropping it to the page.
   useEffect(() => { if (retried && drawing.status === 'ready' && document.activeElement === document.body) card.current?.focus(); }, [retried, drawing.status]);
   const failed = drawing.status === 'failed';
