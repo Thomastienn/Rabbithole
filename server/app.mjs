@@ -48,6 +48,41 @@ export function createApp({ store, auth, provider, providers = { codex: provider
   const active = new Map(), videos = new Map(), videoJobs = new Set();
   // Branch-first: child id -> background compaction { controller, done, settled, error }; kept after failure, removed on success.
   const compactions = new Map();
+  // Quick thinking compacts in an isolated call: its own model and effort, no thread, and never the new question.
+  const quickFor = async parent => {
+    const saved = store.suggestionSettings();
+    let quick;
+    try { quick = saved.model ? { ...saved.model, effort: saved.effort } : { provider: parent.provider, model: quickDefault(parent, await pick(parent).models?.() ?? []), effort: null }; }
+    catch (error) { return { status: 502, error: `Quick thinking cannot prepare this chat's context. ${error.message} Retry, or choose another quick thinking model in Settings.` }; }
+    if (saved.model) {
+      const invalid = await selectionError(quick);
+      if (invalid) return { status: invalid.status, error: `Quick thinking cannot prepare this chat's context. ${invalid.error}` };
+    }
+    return { quick };
+  };
+  // The prompt reads the parent at call time; the passage comes from the anchor (or the saved branch on Retry).
+  const compactionPrompt = (parent, passage) => COMPACT + JSON.stringify({ inheritedContext: parent.branch ? { snapshot: parent.branch.snapshot, selectedPassage: parent.branch.text, question: parent.branch.question } : null, messages: compactionMessages(parent), passage });
+  const startCompaction = (child, prompt, quick) => {
+    const compaction = { controller: new AbortController(), settled: false };
+    compactions.set(child, compaction);
+    compaction.done = (async () => {
+      const items = new Map();
+      let status;
+      await metered(pick(quick), 'compaction', randomUUID(), quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
+        if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
+        if (event.type === 'status') status = event.status;
+      }, () => {}, compaction.controller.signal);
+      // One paragraph by layout only; no length cap, so nothing is cut.
+      const snapshot = [...items.values()].join(' ').replace(/\s*\n\s*/g, ' ').trim();
+      if (compaction.controller.signal.aborted || status !== 'completed' || !snapshot) throw new Error(compaction.controller.signal.aborted ? 'Context preparation was stopped.' : 'Quick thinking did not return a complete summary.');
+      if (!stopping) store.compacted(child, snapshot);
+      if (compactions.get(child) === compaction) compactions.delete(child);
+    })().catch(error => {
+      // Provider limits (context, output, usage) surface as-is instead of dropping history.
+      compaction.error = `Context preparation failed. ${error.message.replace(/ ?Partial reply saved; try again\.$/, '')} Retry, or choose another quick thinking model in Settings if this repeats.`;
+    }).finally(() => { compaction.settled = true; });
+    return compaction;
+  };
   let stopping = false, stopped;
   // A crash before commit restores staged files; a crash after commit finishes removing them.
   // The suffix records the owning artifact, including legacy workspaces named only by attempt.
@@ -445,43 +480,20 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             if (!source || (!anchor.artifactId && !anchored(source.text, anchor)) || typeof anchor.question !== 'string' || !anchor.question.trim()) return json(res, 400, { error: 'Select a completed tutor passage and enter a question.' });
             const controller = new AbortController();
             active.set(id, controller);
-            let child, compaction, quick, prompt;
+            let child;
             try {
               const parent = { ...tree, model: tree.model ?? await pick(tree).model?.(tree) ?? null };
               if (parent.effort !== null) {
                 const invalid = await selectionError(parent);
                 if (invalid) return json(res, invalid.status, { error: invalid.error });
               }
-              // Quick thinking compacts in an isolated call: its own model and effort, no thread, and never the new question.
-              const saved = store.suggestionSettings();
-              try { quick = saved.model ? { ...saved.model, effort: saved.effort } : { provider: parent.provider, model: quickDefault(parent, await pick(parent).models?.() ?? []), effort: null }; }
-              catch (error) { return json(res, 502, { error: `Focused chat not created; your question is kept. ${error.message} Retry, or choose another quick thinking model in Settings.` }); }
-              if (saved.model) {
-                const invalid = await selectionError(quick);
-                if (invalid) return json(res, invalid.status, { error: `Quick thinking cannot prepare this chat's context. ${invalid.error}` });
-              }
-              // The prompt reads the parent now; the child is saved with an empty snapshot that compaction fills once.
-              prompt = COMPACT + JSON.stringify({ inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null, messages: compactionMessages(tree), passage: anchor.text });
+              const { quick, status, error } = await quickFor(parent);
+              if (error) return json(res, status, { error });
+              // The child is saved with an empty snapshot that compaction fills once.
+              const prompt = compactionPrompt(tree, anchor.text);
               child = store.branch(parent, anchor, '');
-              compaction = { controller: new AbortController(), settled: false };
-              compactions.set(child.id, compaction);
+              startCompaction(child.id, prompt, quick);
             } finally { active.delete(id); }
-            compaction.done = (async () => {
-              const items = new Map();
-              let status;
-              await metered(pick(quick), 'compaction', randomUUID(), quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
-                if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
-                if (event.type === 'status') status = event.status;
-              }, () => {}, compaction.controller.signal);
-              // One paragraph by layout only; no length cap, so nothing is cut.
-              const snapshot = [...items.values()].join(' ').replace(/\s*\n\s*/g, ' ').trim();
-              if (compaction.controller.signal.aborted || status !== 'completed' || !snapshot) throw new Error(compaction.controller.signal.aborted ? 'Context preparation was stopped.' : 'Quick thinking did not return a complete summary.');
-              if (!stopping) store.compacted(child.id, snapshot);
-              if (compactions.get(child.id) === compaction) compactions.delete(child.id);
-            })().catch(error => {
-              // Provider limits (context, output, usage) surface as-is instead of dropping history.
-              compaction.error = `Context preparation failed. ${error.message.replace(/ ?Partial reply saved; try again\.$/, '')} Choose another quick thinking model in Settings if this repeats.`;
-            }).finally(() => { compaction.settled = true; });
             return json(res, 201, child);
           }
           // Retry resends the latest learner message with the current model and effort, replacing the failed reply.
@@ -490,6 +502,19 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             const [question, failed] = tree.messages.slice(-2);
             if (failed?.role !== 'assistant' || question?.role !== 'user' || !(failed.status === 'failed' || (failed.status === 'interrupted' && failed.stopped === 'shutdown'))) return json(res, 409, { error: 'Only the latest failed or interrupted reply can be retried.' });
             if (tree.artifacts.some(a => a.message === failed.id && a.status === 'pending')) return json(res, 409, { error: 'Wait for this reply’s media to finish, then retry.' });
+            // A focused chat whose context preparation failed (or was lost on restart) compacts again before the reply.
+            if (tree.branch && !tree.branch.snapshot && !(compactions.get(id) && !compactions.get(id).error)) {
+              const parent = store.tree(tree.branch.parent);
+              if (!parent) return json(res, 409, { error: 'This focused chat’s parent is gone, so its context cannot be prepared. Delete it and branch again.' });
+              const controller = new AbortController();
+              active.set(id, controller);
+              try {
+                const { quick, status, error } = await quickFor(tree);
+                if (error) return json(res, status, { error });
+                if (controller.signal.aborted) return json(res, 409, { error: 'Retry cancelled.' });
+                startCompaction(id, compactionPrompt(parent, tree.branch.text), quick);
+              } finally { active.delete(id); }
+            }
             store.discardReply(id, failed.id);
             // The provider session may hold the failed turn; a fresh session receives the saved discussion instead.
             store.forgetThread(id);
@@ -500,7 +525,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           if (['artifactId', 'artifactIds', 'artifacts'].some(key => Object.hasOwn(body, key))) return json(res, 400, { error: 'Diagrams are attached by the server to their originating reply.' });
           if (typeof body.text !== 'string' || !body.text.trim()) return json(res, 400, { error: 'Enter a question.' });
           const compaction = tree.branch && !tree.branch.snapshot ? compactions.get(id) : null;
-          if (tree.branch && !tree.branch.snapshot && !compaction) return json(res, 409, { error: 'This focused chat’s context was not prepared. Create the focused chat again from its passage.' });
+          if (tree.branch && !tree.branch.snapshot && (!compaction || (compaction.error && !retried && tree.messages.length))) return json(res, 409, { error: 'This focused chat’s context was not prepared. Retry its reply to prepare it again.' });
           const controller = new AbortController();
           active.set(id, controller);
           const user = retried?.user ?? store.message(id, 'user', body.text, 'completed');
@@ -652,7 +677,10 @@ export function createApp({ store, auth, provider, providers = { codex: provider
       const treeMatch = url.pathname.match(/^\/api\/trees\/([^/]+)$/);
       if (req.method === 'GET' && treeMatch) {
         const tree = store.tree(treeMatch[1]);
-        return json(res, tree ? 200 : 404, tree ? { ...tree, artifacts: tree.artifacts.map(live) } : { error: 'Learning tree not found.' });
+        // A child still waiting for inherited context reports why: running, failed (with reason) or lost on restart.
+        const compaction = tree?.branch && !tree.branch.snapshot && compactions.get(tree.id);
+        const preparing = tree?.branch && !tree.branch.snapshot && { compaction: !compaction ? { status: 'failed', error: 'This focused chat’s context was not prepared. Retry to prepare it again.' } : compaction.error ? { status: 'failed', error: compaction.error } : { status: 'compacting' } };
+        return json(res, tree ? 200 : 404, tree ? { ...tree, artifacts: tree.artifacts.map(live), ...preparing } : { error: 'Learning tree not found.' });
       }
       if (url.pathname.startsWith('/api/')) return json(res, 404, { error: 'Not found.' });
       if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed.' });

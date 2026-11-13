@@ -374,3 +374,62 @@ test('branch-first: the child is saved and listed before a held compaction finis
     assert.equal(store.tree(child.id).branch.snapshot, 'Held compacted context.');
   } finally { release(); app.stop(); store.close(); }
 });
+
+test('branch-first: a failed compaction keeps the child with a readable error; Retry compacts again then replies', async () => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-compaction-retry-')), 'trees.sqlite'));
+  let fail = true, compactions = 0, chat = null;
+  const provider = { generate: async (tree, text, emit) => {
+    if (!tree.id) {
+      compactions++;
+      if (fail) throw new Error(`Synthetic compaction failure ${compactions}`);
+      emit({ type: 'item', item: 's', text: 'Retried compacted context.' });
+    } else { chat = tree; emit({ type: 'item', item: 'a', text: 'Focused answer.' }); }
+    emit({ type: 'status', status: 'completed' });
+  } };
+  const app = createApp({ store, provider, auth: { status: () => ({ connected: true }) } });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+  const post = (path, body = {}) => fetch(`${origin}/api/trees/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) });
+  const get = async id => (await fetch(`${origin}/api/trees/${id}`)).json();
+  try {
+    const parent = store.create('Parent');
+    const messageId = store.message(parent.id, 'assistant', 'Roots exchange nutrients.', 'completed');
+    const branch = async () => {
+      const child = await compacted(origin, (await (await post(`${parent.id}/branches`, { messageId, start: 0, end: 5, text: 'Roots', question: 'Why roots?' })).json()).id);
+      assert.equal(child.branch.snapshot, '');
+      assert.deepEqual(child.compaction, { status: 'failed', error: 'Context preparation failed. Synthetic compaction failure 1 Retry, or choose another quick thinking model in Settings if this repeats.' });
+      return child;
+    };
+    const child = await branch();
+    assert.ok((await (await fetch(`${origin}/api/state`)).json()).trees.some(t => t.id === child.id), 'the failed child stays saved');
+    // The first reply fails without calling the tutor; no reply text is written.
+    assert.match(await (await post(`${child.id}/messages`, { text: 'Why roots?' })).text(), /Context preparation failed\. Synthetic compaction failure 1/);
+    assert.equal(chat, null);
+    let saved = await get(child.id);
+    assert.deepEqual(saved.messages.map(m => [m.role, m.text, m.status]), [['user', 'Why roots?', 'completed'], ['assistant', '', 'failed']]);
+    assert.equal(saved.compaction.status, 'failed');
+    assert.equal((await post(`${child.id}/messages`, { text: 'Again?' })).status, 409, 'only Retry prepares the context again');
+    // A second failure shows the error again.
+    assert.match(await (await post(`${child.id}/retry`)).text(), /Context preparation failed\. Synthetic compaction failure 2/);
+    assert.equal(compactions, 2);
+    assert.equal(chat, null);
+    saved = await get(child.id);
+    assert.match(saved.compaction.error, /Synthetic compaction failure 2/);
+    assert.deepEqual(saved.messages.map(m => [m.role, m.status]), [['user', 'completed'], ['assistant', 'failed']]);
+    // Retry compacts again, then answers the question with the inherited context.
+    fail = false;
+    const stream = await (await post(`${child.id}/retry`)).text();
+    assert.ok(stream.indexOf('"compacting"') < stream.indexOf('"thinking"') && stream.indexOf('"thinking"') < stream.indexOf('Focused answer.'));
+    assert.equal(chat.branch.snapshot, 'Retried compacted context.');
+    saved = await get(child.id);
+    assert.equal(saved.compaction, undefined);
+    assert.deepEqual(saved.messages.map(m => [m.role, m.text, m.status]), [['user', 'Why roots?', 'completed'], ['assistant', 'Focused answer.', 'completed']]);
+    // Deleting a failed child still works.
+    fail = true; compactions = 0;
+    const failed = await branch();
+    assert.equal((await post(`${parent.id}/delete`, { conversation: failed.id })).status, 200);
+    assert.equal(store.tree(failed.id), undefined);
+    assert.equal((await get(failed.id)).error, 'Learning tree not found.');
+  } finally { app.stop(); store.close(); }
+});
