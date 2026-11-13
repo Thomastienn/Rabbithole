@@ -28,7 +28,6 @@ store.addGraph(graph, reply);
 store.pendingSuggestions(root.id, reply); store.finishSuggestions(root.id, reply, passages, null);
 // An earlier manual branch underlines its passage and reopens that child instead of the popup.
 const explored = store.branch(store.tree(root.id), { messageId: reply, start: 15, end: 27, text: 'shared state', question: 'Which state?' }, 'Fixture snapshot');
-let failCompact = false;
 let releaseSuggestion;
 const provider = { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }], generate: async (tree, input, emit) => {
   if (tree.instructions?.startsWith('You mark')) {
@@ -36,7 +35,6 @@ const provider = { models: async () => [{ model: 'fixture', label: 'Fixture mode
     if (late) await new Promise(resolve => { releaseSuggestion = resolve; });
     emit({ type: 'item', item: 'one', text: JSON.stringify(late ? { concepts: [], links: [], suggestions: [{ text: 'latch' }] } : { ...graph, suggestions: [] }) }); emit({ type: 'status', status: 'completed' }); return;
   }
-  if (tree.instructions?.startsWith('You write the background') && failCompact) throw new Error('Fixture compaction failure');
   emit({ type: 'item', item: 'one', text: tree.instructions?.startsWith('You write the background') ? 'Fixture inherited context' : input === 'Explain a latch' ? 'A latch waits for a signal.' : 'Fixture reply.' });
   emit({ type: 'status', status: 'completed' });
 } };
@@ -143,18 +141,12 @@ async function flow(mode, { word, manual, correction, label }) {
   assert.ok(await ev(`!!${popup}`), `${mode}: closing the menu keeps the popup`);
   check(`${mode}: overflow offers I know this / I don't get this; "${label}" saves ${correction}, shows checked, keeps the question; menu Escape keeps the popup`);
 
-  // Failed submit keeps the popup and question; retry by Enter creates the branch with the exact anchor.
-  failCompact = true;
-  await ev(`${input}.focus(); true`); await key('Enter');
-  await wait(`document.body.textContent.includes('Fixture compaction failure') || document.querySelector('[role=alert]')`);
-  await wait(`${popup} && ${input}.value === 'why' && !${input}.disabled`);
-  assert.equal(children(), before, `${mode}: failure creates no branch`);
-  failCompact = false;
+  // Enter creates the branch with the exact anchor. Branch-first keeps a child on compaction failure; TreeTutor-got.7 covers that path.
   await ev(`${input}.focus(); true`); await key('Enter');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'why' && !CSS.highlights.has('passage')`);
   const anchor = store.list().filter(t => t.parent === root.id).map(t => store.tree(t.id).branch).find(a => a.text === word);
   assert.deepEqual([anchor.messageId, anchor.text, anchor.question, text.slice(anchor.start, anchor.end)], [reply, word, 'why', word]);
-  check(`${mode}: failed submit keeps popup and question; Enter retry creates the branch anchored to exactly "${word}"`);
+  check(`${mode}: Enter creates the branch anchored to exactly "${word}"`);
   before = children();
 
   // Explored underlines reopen their child.

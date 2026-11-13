@@ -62,8 +62,9 @@ test('chat defaults snapshot into roots; overrides and recursive branches persis
     await env.post(`/api/trees/${child.id}/model`, { ...chosen, effort: 'low' });
     const grandchild = await branch(child.id);
     assert.equal(grandchild.provider, 'codex'); assert.equal(grandchild.effort, 'low');
-    const snapshot = grandchild.branch;
     await env.send(grandchild.id);
+    // Branch-first: the inherited context is filled once the first reply's wait for compaction ends.
+    const snapshot = (await env.get(`/api/trees/${grandchild.id}`)).branch;
     await env.post(`/api/trees/${grandchild.id}/model`, { ...chosen, effort: 'high' });
     const before = await env.get(`/api/trees/${grandchild.id}`);
     await env.post('/api/settings/chat', { provider: 'claude', model: 'plain', effort: null });

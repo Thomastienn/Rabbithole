@@ -1,7 +1,7 @@
 import { mergeArtifact, type Artifact, type ArtifactSummary } from './artifacts.ts';
 
 export type Usage = { input: number; output: number; cacheRead: number; context?: { limit: number; provider: string; model: string | null } };
-export type Message = { id: string; role: string; text: string; status: string; stopped?: 'learner' | 'shutdown'; usage?: Usage | null; artifacts?: ArtifactSummary[] };
+export type Message = { id: string; role: string; text: string; status: string; phase?: 'compacting'; stopped?: 'learner' | 'shutdown'; usage?: Usage | null; artifacts?: ArtifactSummary[] };
 export const usageLine = (u: Usage) => `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;
 // The last completed call is a context snapshot, not the sum of repeated input across turns or background workers.
 export function conversationContext(conversation: { provider: string; model: string | null; messages: Message[] }) {

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
+import { compacted } from './branch-first.mjs';
 
 test('sibling branches interleave independent saved turns while another tree submits', async () => {
   const path = join(mkdtempSync(join(tmpdir(), 'treetutor-interleaving-')), 'trees.sqlite');
@@ -92,10 +93,16 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
   try {
     for (const invalid of [{ ...body, start: 18 }, { ...body, messageId: 'missing' }, { ...body, start: 1, end: 2, text: original.slice(1, 2) }, { ...body, question: '' }]) assert.equal((await post(invalid)).status, 400);
     const before = store.tree(parent.id);
+    // Branch-first: a failed compaction keeps the child; its first reply fails with the reason.
     fail = true;
     const failed = await post(body);
-    assert.equal(failed.status, 502);
-    assert.match((await failed.json()).error, /Focused chat not created; your question is kept\. Synthetic compaction failure/);
+    assert.equal(failed.status, 201);
+    const orphan = await compacted(origin, (await failed.json()).id);
+    assert.equal(orphan.branch.snapshot, '');
+    const stream = await (await fetch(`${origin}/api/trees/${orphan.id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify({ text: body.question }) })).text();
+    assert.match(stream, /Context preparation failed\. Synthetic compaction failure/);
+    assert.equal(store.tree(orphan.id).messages.at(-1).status, 'failed');
+    await fetch(`${origin}/api/trees/${parent.id}/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify({ conversation: orphan.id }) });
     assert.equal(store.list().length, 1);
     fail = false;
     store.db.exec("CREATE TRIGGER reject_branch BEFORE INSERT ON branches BEGIN SELECT RAISE(ABORT, 'synthetic save failure'); END");
@@ -104,7 +111,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
     store.db.exec('DROP TRIGGER reject_branch');
     const response = await post(body);
     assert.equal(response.status, 201);
-    const child = await response.json();
+    const child = await compacted(origin, (await response.json()).id);
     assert.equal(child.model, 'fixture-model');
     assert.equal(child.provider, 'codex');
     assert.equal(child.thread, null);
@@ -148,6 +155,7 @@ test('recursive branches compact fixed ancestor context without reading live anc
     const { csrf } = await (await fetch(`${origin}/api/state`)).json();
     return {
       get: async id => (await fetch(`${origin}/api/trees/${id}`)).json(),
+      compacted: id => compacted(origin, id),
       post: (route, body) => fetch(`${origin}/api/trees${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) }),
     };
   };
@@ -158,7 +166,7 @@ test('recursive branches compact fixed ancestor context without reading live anc
     const source = store.message(root.id, 'assistant', 'Luma has 37 branches.', 'completed');
     const anchor = { messageId: source, start: 0, end: 4, text: 'Luma', question: 'Explain Luma' };
     const rootBefore = await api.get(root.id);
-    const first = await (await api.post(`/${root.id}/branches`, anchor)).json();
+    const first = await api.compacted((await (await api.post(`/${root.id}/branches`, anchor)).json()).id);
     assert.deepEqual(await api.get(root.id), rootBefore);
     const snapshots = [first.branch];
     store.message(root.id, 'user', 'Later root change: Nova has 99 branches.', 'completed');
@@ -172,7 +180,7 @@ test('recursive branches compact fixed ancestor context without reading live anc
       const before = await api.get(parent.id);
       const response = await api.post(`/${parent.id}/branches`, body);
       assert.equal(response.status, 201);
-      const child = await response.json();
+      const child = await api.compacted((await response.json()).id);
       const call = calls.at(-1);
       const context = JSON.parse(call.text.slice(call.text.indexOf('\n') + 1));
       assert.deepEqual(context.inheritedContext, { snapshot: 'Luma has 37 branches.', selectedPassage: parent.branch.text, question: parent.branch.question });
@@ -264,6 +272,7 @@ test('quick thinking recursively compacts root, child and grandchild context wit
     const { csrf } = await (await fetch(`${origin}/api/state`)).json();
     return {
       get: async id => (await fetch(`${origin}/api/trees/${id}`)).json(),
+      compacted: id => compacted(origin, id),
       post: (route, body) => fetch(`${origin}/api/trees${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) }),
     };
   };
@@ -283,13 +292,15 @@ test('quick thinking recursively compacts root, child and grandchild context wit
       const before = await api.get(parent.id);
       limit = 'Claude: Prompt is too long for this model\'s context window.';
       const failed = await api.post(`/${parent.id}/branches`, body);
-      assert.equal(failed.status, 502);
-      assert.match((await failed.json()).error, /not created; your question is kept\. Claude: Prompt is too long/);
-      assert.equal(store.list().length, depth + 1, 'failed compaction creates no branch');
+      assert.equal(failed.status, 201);
+      const orphan = await api.compacted((await failed.json()).id);
+      assert.match(await (await api.post(`/${orphan.id}/messages`, { text: question })).text(), /Context preparation failed\. Claude: Prompt is too long/);
+      await api.post(`/${root.id}/delete`, { conversation: orphan.id });
+      assert.equal(store.list().length, depth + 1, 'the kept failed child was deleted');
       limit = null;
       const response = await api.post(`/${parent.id}/branches`, body);
       assert.equal(response.status, 201);
-      const child = await response.json();
+      const child = await api.compacted((await response.json()).id);
       const call = compactions.at(-1);
       assert.deepEqual([call.tree.provider, call.tree.model, call.tree.effort, call.tree.thread], ['claude', 'quick-model', 'low', null]);
       assert.doesNotMatch(call.text, new RegExp(question.replace('?', '\\?')), 'the new question is not summarizer input');
@@ -319,4 +330,47 @@ test('quick thinking recursively compacts root, child and grandchild context wit
     const reopened = (await Promise.all(store.list().map(t => api.get(t.id)))).filter(t => t.branch && t.id !== sibling.id);
     assert.deepEqual(reopened.map(t => t.branch).sort((a, b) => a.question.localeCompare(b.question)), snapshots);
   } finally { app?.stop(); store.close(); }
+});
+
+test('branch-first: the child is saved and listed before a held compaction finishes; its first reply waits for the inherited context', async () => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-branch-first-')), 'trees.sqlite'));
+  let release, replied = false, chat;
+  const held = new Promise(resolve => { release = resolve; });
+  const provider = { generate: async (tree, text, emit) => {
+    if (!tree.id) { await held; emit({ type: 'item', item: 's', text: 'Held compacted context.' }); }
+    else { replied = true; chat = tree; emit({ type: 'item', item: 'a', text: 'Focused answer.' }); }
+    emit({ type: 'status', status: 'completed' });
+  } };
+  const app = createApp({ store, provider, auth: { status: () => ({ connected: true }) } });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+  const post = (path, body) => fetch(`${origin}/api/trees/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf }, body: JSON.stringify(body) });
+  try {
+    const parent = store.create('Parent');
+    const messageId = store.message(parent.id, 'assistant', 'Roots exchange nutrients.', 'completed');
+    const response = await post(`${parent.id}/branches`, { messageId, start: 0, end: 5, text: 'Roots', question: 'Why roots?' });
+    assert.equal(response.status, 201);
+    const child = await response.json();
+    assert.equal(child.branch.snapshot, '');
+    const state = await (await fetch(`${origin}/api/state`)).json();
+    assert.ok(state.trees.some(t => t.id === child.id && t.parent === parent.id));
+    assert.deepEqual(state.compacting, [child.id]);
+    assert.deepEqual(state.active, [], 'the parent is free while the child compacts');
+    // Read the stream incrementally: compacting status arrives while compaction is still held.
+    const stream = (await post(`${child.id}/messages`, { text: 'Why roots?' })).body.getReader();
+    let seen = '';
+    while (!seen.includes('"compacting"')) seen += new TextDecoder().decode((await stream.read()).value);
+    assert.match(seen, /"type":"saved"/);
+    assert.equal(replied, false);
+    release();
+    while (true) { const { value, done } = await stream.read(); if (done) break; seen += new TextDecoder().decode(value); }
+    assert.ok(seen.indexOf('"compacting"') < seen.indexOf('"thinking"') && seen.indexOf('"thinking"') < seen.indexOf('Focused answer.'));
+    assert.equal(chat.branch.snapshot, 'Held compacted context.');
+    assert.equal(store.tree(child.id).branch.snapshot, 'Held compacted context.');
+    assert.deepEqual((await (await fetch(`${origin}/api/state`)).json()).compacting, []);
+    // Fixed from then on: a second write never replaces it.
+    store.compacted(child.id, 'Other');
+    assert.equal(store.tree(child.id).branch.snapshot, 'Held compacted context.');
+  } finally { release(); app.stop(); store.close(); }
 });

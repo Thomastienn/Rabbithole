@@ -12,6 +12,7 @@ import { Codex } from '../server/codex.mjs';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { fakeOpenAI, streamReply } from './fake-openai.mjs';
+import { compacted } from './branch-first.mjs';
 
 async function open(t, providers = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-openai-')), store = new Store(join(dir, 'trees.sqlite'));
@@ -208,13 +209,13 @@ for (const name of ['claude', 'codex']) test(`custom endpoint compaction and nes
     return child;
   };
   const native = name === 'claude' ? new Claude(dir, launch, (cmd, args, opts, cb) => cb(null, '{"loggedIn":true}')) : new Codex({ token: async () => 'fixture-subscription-token' }, dir, launch);
-  const { post, store } = await open(t, { [name]: native });
+  const { post, store, origin } = await open(t, { [name]: native });
   await post('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey: 'switch-fixture-secret' });
   const root = store.create('Root', 'openai'); store.model(root.id, 'local-tutor');
   await (await post(`/api/trees/${root.id}/messages`, { text: 'Root fact' })).text();
   const rootBefore = store.tree(root.id), reply = rootBefore.messages.at(-1);
   fake.reply = (req, res, body) => streamReply(res, [body.messages[0].content.startsWith('You write the background') ? 'Frozen compaction fact' : 'Peterson uses two flags.']);
-  const child = await (await post(`/api/trees/${root.id}/branches`, { messageId: reply.id, start: 0, end: 8, text: 'Peterson', question: 'Explain Peterson' })).json();
+  const child = await compacted(origin, (await (await post(`/api/trees/${root.id}/branches`, { messageId: reply.id, start: 0, end: 8, text: 'Peterson', question: 'Explain Peterson' })).json()).id);
   const compact = fake.calls.at(-1).body;
   assert.equal(compact.messages.length, 2, 'compaction is one isolated data prompt with its own instructions');
   assert.match(compact.messages[0].content, /^You write the background/);
@@ -238,7 +239,7 @@ for (const name of ['claude', 'codex']) test(`custom endpoint compaction and nes
   assert.match(continued.messages[0].content, /Frozen compaction fact/);
   assert.doesNotMatch(JSON.stringify(continued), /LATER ROOT MUST NOT ENTER CHILD/);
   assert.equal(store.tree(child.id).thread, null);
-  const nested = await (await post(`/api/trees/${child.id}/branches`, { messageId: store.tree(child.id).messages.at(-1).id, start: 0, end: 8, text: 'Peterson', question: 'Nested question' })).json();
+  const nested = await compacted(origin, (await (await post(`/api/trees/${child.id}/branches`, { messageId: store.tree(child.id).messages.at(-1).id, start: 0, end: 8, text: 'Peterson', question: 'Nested question' })).json()).id);
   const nestedPrompt = fake.calls.at(-1).body.messages[1].content;
   assert.match(nestedPrompt, /Frozen compaction fact/); assert.match(nestedPrompt, /Native child fact/);
   assert.equal(nested.provider, 'openai'); assert.equal(nested.model, 'second-model');

@@ -187,7 +187,7 @@ function Passage({ message, addresses, index, onBranch, onOpenChild, reveal, sel
     if (place) { setAnchor(undefined); onBranch({ ...picked, at: place }, passage); } else onBranch({ ...picked, at: undefined }, action);
   }} />;
   return <VStack ref={wrapper} gap={2} className="passage" onKeyDown={e => { if (e.key === 'Escape' && (anchor || selecting)) { e.preventDefault(); e.stopPropagation(); setAnchor(undefined); closeSelection(); passage.current?.focus(); } }}>
-    <section ref={passage} tabIndex={-1} onMouseUp={captureSelection} onKeyUp={captureSelection} onClick={e => { if (!highlighted.current) activate(e.target); }} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && activate(e.target)) e.preventDefault(); }}><Reply text={message.text || (message.status === 'streaming' ? 'Thinking…' : '')} reveal={reveal} underlines={underlines} inlineArtifacts={inlineArtifacts} onArtifactAction={onArtifactAction} onVisualPart={onVisualPart} visualBranches={visualBranches} /></section>
+    <section ref={passage} tabIndex={-1} onMouseUp={captureSelection} onKeyUp={captureSelection} onClick={e => { if (!highlighted.current) activate(e.target); }} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && activate(e.target)) e.preventDefault(); }}><Reply text={message.text || (message.status === 'streaming' ? (message.phase === 'compacting' ? 'Compacting parent context…' : 'Thinking…') : '')} reveal={reveal} underlines={underlines} inlineArtifacts={inlineArtifacts} onArtifactAction={onArtifactAction} onVisualPart={onVisualPart} visualBranches={visualBranches} /></section>
     {/* Mounted before suggestions arrive so their arrival is announced once; reopened replies are not re-announced. */}
     <Text role="status" className="sr-only">{underlines.length ? `${underlines.length} suggested ${underlines.length === 1 ? 'passage' : 'passages'} in tutor reply ${index}` : ''}</Text>
     {completed && !selecting && <Button className="focus-reveal" label={`Select passage in tutor reply ${index}`} variant="ghost" size="sm" onClick={openSelection} />}
@@ -652,11 +652,13 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
             setState(s => s && { ...s, trees: s.trees.map(t => t.id === id ? { ...t, title } : t) });
             turn.reply = { id: event.id, role: 'assistant', text: '', status: 'streaming' };
           }
+          // A focused chat's first reply waits for its inherited context: "compacting", then "thinking".
+          if (turn.reply && event.type === 'status') turn.reply = { ...turn.reply, phase: event.status === 'compacting' ? 'compacting' : undefined };
           if (turn.reply && (event.type === 'text' || event.type === 'done')) {
             turn.reply = { ...turn.reply, text: event.text ?? turn.reply.text, status: event.status ?? turn.reply.status };
           }
           if (event.type === 'artifact' && turn.reply) turn.artifacts = mergeArtifact(turn.artifacts ?? [], event.artifact, id, [turn.reply]);
-          if (event.type === 'saved' || event.type === 'text' || event.type === 'done' || event.type === 'artifact') {
+          if (event.type === 'saved' || event.type === 'status' || event.type === 'text' || event.type === 'done' || event.type === 'artifact') {
             setTree(t => t?.id === id ? withTurn(t, turn) : t);
             setPreviews(p => ({ ...p, [id]: withLiveTurn(p[id], turn) }));
           }
@@ -705,9 +707,11 @@ export default function ChatPage({ appearance, setAppearance, theme, setTheme }:
       setDrafts(d => ({ ...d, [next.id]: branch.question }));
       overviewOrigin.current = undefined;
       setBranch(undefined);
+      // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
+      if (selected.current === branch.parent) { focusComposer.current = true; setOverview(false); selected.current = next.id; ++request.current; setTree(next); setLoading(false); }
+      const sending = send(branch.question, next);
       await refresh();
-      if (selected.current === branch.parent) { focusComposer.current = true; setOverview(false); await select(next.id); }
-      await send(branch.question, next);
+      await sending;
     } catch (e) { if (selected.current === branch.parent) setError((e as Error).message); }
     finally { setBranching(false); }
   }

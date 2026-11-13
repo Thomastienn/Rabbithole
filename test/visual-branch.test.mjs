@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
+import { compacted } from './branch-first.mjs';
 
 const passage = 'Visual: Tournament rounds\nTwo winners advance to the final.\nPart: Final\nThe winners of the two semifinals meet here.';
 const part = { label: 'Final', explanation: 'The winners of the two semifinals meet here.' };
@@ -38,7 +39,7 @@ test('visual branches freeze the visual and part passage, inherit compact contex
     const before = await env.get(`/api/trees/${parent.id}`);
     const response = await env.post(`/api/trees/${parent.id}/branches`, { messageId, artifactId: visual.id, ...part, text: 'Untrusted replacement title and description', question: 'Why do they meet?' });
     assert.equal(response.status, 201);
-    const child = await response.json();
+    const child = await compacted(env.origin, (await response.json()).id);
     assert.deepEqual(child.branch, { parent: parent.id, messageId, artifactId: visual.id, ...part, start: null, end: null, text: passage, question: 'Why do they meet?', snapshot: 'The learner is studying tournament rounds.' });
     assert.equal(child.thread, null); assert.equal(child.model, 'chat'); assert.equal(child.effort, 'low');
     const compact = env.calls[0];

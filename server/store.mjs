@@ -381,6 +381,8 @@ export class Store {
       return this.tree(child.id);
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
+  // Inherited context is written once, when the branch's background compaction finishes.
+  compacted(child, snapshot) { this.db.prepare("UPDATE branches SET snapshot=? WHERE child=? AND snapshot=''").run(snapshot, child); }
   thread(id, thread, model) { this.db.prepare('UPDATE trees SET thread=?,model=COALESCE(?,model) WHERE id=?').run(thread, model ?? null, id); }
   model(id, model, effort = null) { this.db.prepare('UPDATE trees SET model=?,effort=? WHERE id=?').run(model, effort, id); }
   // Provider sessions are not portable: switching drops the thread so the next provider receives saved history.

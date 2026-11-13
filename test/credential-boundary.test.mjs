@@ -9,6 +9,7 @@ import { Auth } from '../server/auth.mjs';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { fakeOpenAI, streamReply } from './fake-openai.mjs';
+import { compacted } from './branch-first.mjs';
 
 test('credential-bearing auth keeps tokens out of browser state, catalog, replies and reconnect URL', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'treetutor-credentials-'));
@@ -79,7 +80,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
       return text;
     };
     csrf = JSON.parse(await request('/api/state')).csrf;
-    return { request, stop };
+    return { request, stop, origin };
   };
   let app = await launch();
   assert.deepEqual(JSON.parse(await app.request('/api/settings/endpoint')), { configured: false, baseUrl: null });
@@ -106,7 +107,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
   assert.equal(saved.messages.at(-1).text, 'Safe: [redacted] [redacted][redacted] End.');
   await app.request(`/api/previews?id=${tree.id}`);
   // Compaction output crosses the same boundary before its snapshot reaches SQLite.
-  const child = JSON.parse(await app.request(`/api/trees/${tree.id}/branches`, { messageId: saved.messages.at(-1).id, start: 0, end: 4, text: 'Safe', question: 'Branch question' }, 201));
+  const child = await compacted(app.origin, JSON.parse(await app.request(`/api/trees/${tree.id}/branches`, { messageId: saved.messages.at(-1).id, start: 0, end: 4, text: 'Safe', question: 'Branch question' }, 201)).id);
   assert.equal(child.branch.snapshot, 'Safe: [redacted] [redacted][redacted] End.');
   fake.modelStatus = 401; fake.error = { message: apiKey };
   await app.request('/api/settings/endpoint/test', {}, 502);

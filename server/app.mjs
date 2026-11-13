@@ -46,6 +46,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     } finally { store.record(`${task}:${id}`, task, { provider: selection.provider, model }, usage); }
   } });
   const active = new Map(), videos = new Map(), videoJobs = new Set();
+  // Branch-first: child id -> background compaction { controller, done, settled, error }; kept after failure, removed on success.
+  const compactions = new Map();
   let stopping = false, stopped;
   // A crash before commit restores staged files; a crash after commit finishes removing them.
   // The suffix records the owning artifact, including legacy workspaces named only by attempt.
@@ -168,7 +170,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     const url = new URL(req.url, origin);
     try {
       if (stopping) return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
-      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))], suggesting: [...new Set([...suggesting.values()].map(s => s.conversation))], conceptNameTokens: store.nameTokens() });
+      if (req.method === 'GET' && url.pathname === '/api/state') return json(res, 200, { csrf, auth: auth.status(), trees: store.list(), active: [...active.keys()], usage: store.usageSince(new Date().setHours(0, 0, 0, 0)), videos: [...new Set([...videos.values()].map(v => v.conversation))], suggesting: [...new Set([...suggesting.values()].map(s => s.conversation))], compacting: [...compactions].filter(([, c]) => !c.settled).map(([child]) => child), conceptNameTokens: store.nameTokens() });
       if (req.method === 'GET' && url.pathname === '/api/usage') return json(res, 200, store.usageEvents(...['from', 'to'].map(k => url.searchParams.has(k) ? Number(url.searchParams.get(k)) || 0 : undefined)));
       if (req.method === 'GET' && url.pathname === '/api/search') return json(res, 200, store.search((url.searchParams.get('q') ?? '').slice(0, 200)));
       if (req.method === 'GET' && url.pathname === '/api/graph') return json(res, 200, store.graph());
@@ -383,7 +385,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
               for (const [path, moved] of staged.reverse()) renameSync(moved, path);
               throw error;
             }
-            for (const conversation of result.deleted) { active.get(conversation)?.abort(); active.delete(conversation); }
+            for (const conversation of result.deleted) { active.get(conversation)?.abort(); active.delete(conversation); compactions.get(conversation)?.controller.abort(); compactions.delete(conversation); }
             const jobs = [...videoJobs].filter(v => result.deleted.includes(v.conversation));
             for (const job of jobs) job.controller.abort(new Error('Conversation deleted.'));
             await Promise.all(jobs.map(job => job.done));
@@ -442,6 +444,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
             if (!source || (!anchor.artifactId && !anchored(source.text, anchor)) || typeof anchor.question !== 'string' || !anchor.question.trim()) return json(res, 400, { error: 'Select a completed tutor passage and enter a question.' });
             const controller = new AbortController();
             active.set(id, controller);
+            let child, compaction, quick, prompt;
             try {
               const parent = { ...tree, model: tree.model ?? await pick(tree).model?.(tree) ?? null };
               if (parent.effort !== null) {
@@ -449,31 +452,36 @@ export function createApp({ store, auth, provider, providers = { codex: provider
                 if (invalid) return json(res, invalid.status, { error: invalid.error });
               }
               // Quick thinking compacts in an isolated call: its own model and effort, no thread, and never the new question.
-              let snapshot;
-              try {
-                const saved = store.suggestionSettings();
-                const quick = saved.model ? { ...saved.model, effort: saved.effort } : { provider: parent.provider, model: quickDefault(parent, await pick(parent).models?.() ?? []), effort: null };
-                if (saved.model) {
-                  const invalid = await selectionError(quick);
-                  if (invalid) return json(res, invalid.status, { error: `Quick thinking cannot prepare this chat's context. ${invalid.error}` });
-                }
-                if (controller.signal.aborted) throw new Error('Context preparation was stopped.');
-                const items = new Map();
-                let status;
-                const prompt = COMPACT + JSON.stringify({ inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null, messages: compactionMessages(tree), passage: anchor.text });
-                await metered(pick(quick), 'compaction', randomUUID(), quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
-                  if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
-                  if (event.type === 'status') status = event.status;
-                }, () => {}, controller.signal);
-                // One paragraph by layout only; no length cap, so nothing is cut.
-                snapshot = [...items.values()].join(' ').replace(/\s*\n\s*/g, ' ').trim();
-                if (controller.signal.aborted || status !== 'completed' || !snapshot) throw new Error(controller.signal.aborted ? 'Context preparation was stopped.' : 'Quick thinking did not return a complete summary.');
-              } catch (error) {
-                // Provider limits (context, output, usage) surface as-is instead of dropping history.
-                return json(res, 502, { error: `Focused chat not created; your question is kept. ${error.message.replace(/ ?Partial reply saved; try again\.$/, '')} Retry, or choose another quick thinking model in Settings.` });
+              const saved = store.suggestionSettings();
+              try { quick = saved.model ? { ...saved.model, effort: saved.effort } : { provider: parent.provider, model: quickDefault(parent, await pick(parent).models?.() ?? []), effort: null }; }
+              catch (error) { return json(res, 502, { error: `Focused chat not created; your question is kept. ${error.message} Retry, or choose another quick thinking model in Settings.` }); }
+              if (saved.model) {
+                const invalid = await selectionError(quick);
+                if (invalid) return json(res, invalid.status, { error: `Quick thinking cannot prepare this chat's context. ${invalid.error}` });
               }
-              return json(res, 201, store.branch(parent, anchor, snapshot));
+              // The prompt reads the parent now; the child is saved with an empty snapshot that compaction fills once.
+              prompt = COMPACT + JSON.stringify({ inheritedContext: tree.branch ? { snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text, question: tree.branch.question } : null, messages: compactionMessages(tree), passage: anchor.text });
+              child = store.branch(parent, anchor, '');
+              compaction = { controller: new AbortController(), settled: false };
+              compactions.set(child.id, compaction);
             } finally { active.delete(id); }
+            compaction.done = (async () => {
+              const items = new Map();
+              let status;
+              await metered(pick(quick), 'compaction', randomUUID(), quick).generate({ provider: quick.provider, model: quick.model, effort: quick.effort, thread: null, instructions: 'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.' }, prompt, event => {
+                if (event.type === 'delta' || event.type === 'item') items.set(event.item, event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text);
+                if (event.type === 'status') status = event.status;
+              }, () => {}, compaction.controller.signal);
+              // One paragraph by layout only; no length cap, so nothing is cut.
+              const snapshot = [...items.values()].join(' ').replace(/\s*\n\s*/g, ' ').trim();
+              if (compaction.controller.signal.aborted || status !== 'completed' || !snapshot) throw new Error(compaction.controller.signal.aborted ? 'Context preparation was stopped.' : 'Quick thinking did not return a complete summary.');
+              if (!stopping) store.compacted(child.id, snapshot);
+              if (compactions.get(child.id) === compaction) compactions.delete(child.id);
+            })().catch(error => {
+              // Provider limits (context, output, usage) surface as-is instead of dropping history.
+              compaction.error = `Context preparation failed. ${error.message.replace(/ ?Partial reply saved; try again\.$/, '')} Choose another quick thinking model in Settings if this repeats.`;
+            }).finally(() => { compaction.settled = true; });
+            return json(res, 201, child);
           }
           // Retry resends the latest learner message with the current model and effort, replacing the failed reply.
           let retried = null;
@@ -490,6 +498,8 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           }
           if (['artifactId', 'artifactIds', 'artifacts'].some(key => Object.hasOwn(body, key))) return json(res, 400, { error: 'Diagrams are attached by the server to their originating reply.' });
           if (typeof body.text !== 'string' || !body.text.trim()) return json(res, 400, { error: 'Enter a question.' });
+          const compaction = tree.branch && !tree.branch.snapshot ? compactions.get(id) : null;
+          if (tree.branch && !tree.branch.snapshot && !compaction) return json(res, 409, { error: 'This focused chat’s context was not prepared. Create the focused chat again from its passage.' });
           const controller = new AbortController();
           active.set(id, controller);
           const user = retried?.user ?? store.message(id, 'user', body.text, 'completed');
@@ -573,6 +583,15 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           controller.signal.addEventListener('abort', interrupt, { once: true });
           send({ type: 'saved', id: reply, title: store.tree(id).title, user: { id: user, role: 'user', text: body.text, status: 'completed' }, ...(retried && { replaced: retried.replaced }) });
           try {
+            // The child's first reply waits for its inherited context; the stream shows each phase.
+            if (compaction) {
+              send({ type: 'status', status: 'compacting' });
+              await Promise.race([compaction.done, new Promise(resolve => controller.signal.addEventListener('abort', resolve, { once: true }))]);
+              if (finished) return;
+              if (compaction.error) throw Object.assign(new Error(compaction.error), { compaction: true });
+              tree.branch = store.tree(id).branch;
+            }
+            send({ type: 'status', status: 'thinking' });
             if (!tree.model) {
               tree.model = await pick(tree).model?.(tree) ?? null;
               if (finished) return;
@@ -624,7 +643,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
           } catch (error) {
             if (!finished) {
               status = 'failed';
-              send({ type: 'error', error: error.message + ' The last working model selection will be restored.' });
+              send({ type: 'error', error: error.compaction ? error.message : error.message + ' The last working model selection will be restored.' });
             }
           } finally {
             if (!finished) {
@@ -660,6 +679,7 @@ export function createApp({ store, auth, provider, providers = { codex: provider
     for (const controller of active.values()) controller.abort();
     for (const v of videoJobs) v.controller.abort(STOPPED);
     for (const s of suggesting.values()) s.controller.abort();
+    for (const c of compactions.values()) c.controller.abort();
     store.interrupt();
     for (const p of new Set(Object.values(providers))) p?.close?.();
     // Let final interrupted events drain before closing sockets; bound shutdown for a stuck client or job.
