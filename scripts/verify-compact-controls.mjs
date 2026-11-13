@@ -14,8 +14,6 @@ const root=store.create('Fixture tree'); const msg=store.message(root.id,'assist
 const app=createApp({store,auth:{status:()=>({connected:false})},provider:{}}); await new Promise(r=>app.server.listen(0,'127.0.0.1',r));
 try {
  await b('open',`http://127.0.0.1:${app.server.address().port}`); await b('wait','--fn','document.querySelectorAll(".react-flow__node").length === 2');
- await b('find','role','button','click','--name','Collapse learning trees','--exact');
- assert.equal(await ev('getComputedStyle(document.querySelector(".trees")).display'), 'none');
  await b('wait','--fn',`document.querySelector('[data-zoom]') !== null`);
  let before=await ev(`document.querySelector('[data-zoom]').textContent`);
  await b('find','role','button','click','--name','Zoom in','--exact');
@@ -27,7 +25,7 @@ try {
  assert.equal(await ev(`[...[...document.querySelectorAll('[role=menu]')].find(m=>m.checkVisibility()).querySelectorAll('[role=menuitem]')].filter(e=>['Expand all','Collapse all','Keep current branch'].includes(e.textContent.trim())).length === 3 && [...[...document.querySelectorAll('[role=menu]')].find(m=>m.checkVisibility()).querySelectorAll('[role=menuitem]')].filter(e=>['Expand all','Collapse all','Keep current branch'].includes(e.textContent.trim())).every(e=>e.getAttribute('aria-disabled') !== 'true')`), true);
  await b('press','Escape'); await b('wait','--fn','document.activeElement?.getAttribute("aria-label") === "Map menu"');
  await b('press','Enter'); await b('wait','--fn','[...document.querySelectorAll("[role=menu]")].some(m=>m.checkVisibility())'); await b('press','Escape'); await b('wait','--fn','document.activeElement?.getAttribute("aria-label") === "Map menu"');
- await b('find','role','button','click','--name','Map menu','--exact'); await b('find','role','menuitem','click','--name','Learning trees','--exact'); await b('wait','--fn','getComputedStyle(document.querySelector(".trees")).display !== "none"');
+ await b('find','role','button','click','--name','Map menu','--exact'); await b('find','role','menuitem','click','--name','Learning trees','--exact'); await b('wait','--fn','!document.querySelector("main[aria-label=\'Learning trees\']").hidden');
  const emptyStore = new Store(join(mkdtempSync(join(tmpdir(), 'compact-empty-')), 'data.sqlite'));
  const emptyApp = createApp({store: emptyStore, auth: {status: () => ({connected: false})}, provider: {}});
  await new Promise(r => emptyApp.server.listen(0, '127.0.0.1', r));

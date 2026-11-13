@@ -46,7 +46,7 @@ async function home() {
   await b('reload');
   await wait(`!!document.querySelector('[aria-label="Open How do fungi trade?"]')`);
 }
-const nav = async () => { if (width === 'narrow' && !(await ev(`!!document.querySelector('dialog[open] .tree-drawer')`))) { await click('Expand learning trees'); await wait(`document.querySelector('dialog[open] .tree-drawer') && ${idle}`); } };
+const nav = async () => { await b('click', '.tree-switcher'); await wait(`!!document.querySelector('.saved-chat-title') && ${idle}`); };
 const openChat = async () => { await click('Open How do fungi trade?'); await wait(`!!document.querySelector('.focused-chat .diagram-card[data-state=ready]')`); };
 try {
   for (scheme of ['dark', 'light']) for (const [w, [vw, vh]] of Object.entries(sizes)) {

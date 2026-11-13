@@ -21,7 +21,7 @@ const zoom = async () => Number((await view()).match(/scale\(([\d.]+)\)/)[1]);
 const checkbox = `document.querySelector('dialog[open] input[type=checkbox]')`;
 const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
 const openTree = async title => {
-  if (await ev(`!!document.querySelector('[aria-label="Expand learning trees"]')`)) await click('Expand learning trees');
+  await b('click', '.tree-switcher');
   await wait(`!![...document.querySelectorAll('nav button')].find(e=>e.getAttribute('aria-label') === ${JSON.stringify(title)})`);
   await click(title);
 };

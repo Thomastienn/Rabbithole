@@ -1,22 +1,22 @@
 {
-  "checkedAt": "2026-11-12T23:19:42.715Z",
+  "checkedAt": "2026-11-12T23:56:17.334Z",
   "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual Edge TTS with timing metadata, actual sandboxed target-length render; embedded subtitles.",
   "mode": "2d",
   "provider": "claude",
   "effort": "low",
   "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
   "memoryBytes": 16368898048,
-  "data": "/tmp/tt-narrated-video-live-vpx2Xk",
+  "data": "/tmp/tt-narrated-video-live-y3kP1V",
   "model": "sonnet",
   "ttsCalls": 1,
-  "ttsMs": 3775,
-  "renderMs": 147839,
-  "elapsedMs": 173196,
+  "ttsMs": 2470,
+  "renderMs": 124379,
+  "elapsedMs": 157180,
   "dimension": "2d",
   "timing": {
-    "sentences": 28,
-    "words": 242,
-    "captions": 38,
+    "sentences": 24,
+    "words": 212,
+    "captions": 33,
     "first": {
       "text": "Imagine looking for a name in a phone book",
       "startMs": 50,
@@ -25,42 +25,42 @@
       "endFrame": 70
     },
     "last": {
-      "text": "search becomes tiny",
-      "startMs": 97462.5,
-      "endMs": 98762.5,
-      "startFrame": 2923,
-      "endFrame": 2963
+      "text": "search scales so well",
+      "startMs": 81987.5,
+      "endMs": 83350,
+      "startFrame": 2459,
+      "endFrame": 2501
     },
-    "durationInFrames": 2989
+    "durationInFrames": 2527
   },
   "media": {
-    "id": "32dc7088-e384-4696-85c3-65e54abaac26",
-    "duration": 99.63333333333334,
-    "bytes": 5106525,
+    "id": "1ebafe49-2882-49cc-aebf-47ca8bff95fc",
+    "duration": 84.23333333333333,
+    "bytes": 3979604,
     "probe": [
       {
         "codec": "h264",
         "type": "video",
         "width": 640,
         "height": 360,
-        "duration": "99.633333"
+        "duration": "84.233333"
       },
       {
         "codec": "aac",
         "type": "audio",
-        "duration": "99.648000"
+        "duration": "84.245000"
       }
     ]
   },
   "usage": [
     {
-      "at": 1794525603895,
+      "at": 1794527807230,
       "provider": "claude",
       "model": "sonnet",
       "task": "video",
-      "input": 1853,
-      "output": 3123,
-      "cacheRead": 0
+      "input": 890,
+      "output": 4587,
+      "cacheRead": 963
     }
   ],
   "pass": true

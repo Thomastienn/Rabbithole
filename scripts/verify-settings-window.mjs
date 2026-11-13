@@ -59,7 +59,7 @@ try {
   await wait(`document.querySelector('[aria-label="Map menu"]')`);
 
   // 1. Map menu Settings opens on Interface (Appearance first, spec) with the title focused; sidebar no longer holds settings.
-  assert.equal(await ev(`!!document.querySelector('.trees')?.textContent.includes('Connections')`), false, 'sidebar has no Connections');
+  assert.equal(await ev(`!!document.querySelector('.shell-band')?.textContent.includes('Connections')`), false, 'band has no Connections');
   await mapMenu('Settings');
   await wait(`${active}?.id === 'settings-heading'`);
   assert.equal(await heading(), 'Interface');
@@ -181,13 +181,12 @@ try {
   await wait(`${active}?.getAttribute('aria-label') === 'Model for next reply'`);
   step('Custom endpoint shortcut opens Connections with Base URL focused; backdrop click closes; focus returns to model picker');
 
-  // 6. Sidebar gear opens the window and focus returns to it.
-  if (await ev('getComputedStyle(document.querySelector(".trees")).display') === 'none') { await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact'); await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact'); }
+  // 6. Band gear opens the window and focus returns to it.
   await b('find', 'role', 'button', 'click', '--name', 'Settings', '--exact');
   await wait(dialog);
   await b('press', 'Escape'); await closed();
-  await wait(`${active}?.textContent.trim() === 'Settings'`);
-  step('Sidebar settings gear opens the window; Esc returns focus to the gear');
+  await wait(`${active}?.getAttribute('aria-label') === 'Settings'`);
+  step('Band settings gear opens the window; Esc returns focus to the gear');
 
   // 7. Mobile: full-screen, tabs as a list, tap into a tab and back.
   await b('set', 'viewport', '390', '844');

@@ -42,8 +42,8 @@ let opened = [];
 try {
   await b('open', origin);
   await b('set', 'viewport', '1280', '800');
-  await b('wait', '.tree-navigation-footer');
-  await ev(`[...document.querySelectorAll('.tree-navigation-footer button')].find(x=>x.textContent.trim()==='Videos').focus();true`);
+  await b('wait', '.view-tabs');
+  await ev(`[...document.querySelectorAll('.view-tabs button')].find(x=>x.textContent.trim()==='Videos').focus();true`);
   await b('press', 'Enter');
   await b('wait', `.video-library [data-artifact="${trashed}"]`);
 
@@ -84,8 +84,8 @@ try {
   mkdirSync('.impeccable/review', { recursive: true });
   for (const mode of ['dark', 'light']) {
     await ev(`localStorage.setItem('treetutor.appearance',${JSON.stringify(mode)});location.reload();true`);
-    await b('wait', '.tree-navigation-footer');
-    await ev(`[...document.querySelectorAll('.tree-navigation-footer button')].find(x=>x.textContent.trim()==='Videos').click();true`);
+    await b('wait', '.view-tabs');
+    await ev(`[...document.querySelectorAll('.view-tabs button')].find(x=>x.textContent.trim()==='Videos').click();true`);
     await b('wait', `.video-library [data-artifact="${failing}"]`);
     await b('screenshot', resolve(`.impeccable/review/video-actions-${mode}.png`));
   }

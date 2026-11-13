@@ -21,8 +21,8 @@ const second = store.message(other.id, 'assistant', 'Mutual exclusion protects s
 const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }] } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-const knowledge = '.tree-navigation-footer button[aria-current=page]';
-const openKnowledge = async () => { await reach('.tree-navigation-footer button:first-child'); await key('Enter'); await wait(`document.activeElement?.id === 'return-to-learning'`); };
+const knowledge = '.view-tabs button[aria-current=page]';
+const openKnowledge = async () => { await reach('.view-tabs button:nth-child(3)'); await key('Enter'); await wait(`!document.querySelector('main[aria-label=Knowledge]').hidden`); };
 const returnToLearning = async () => { await reach('#return-to-learning'); await key('Enter'); await wait(`!document.querySelector('[aria-label="Learning workspace"]').hidden`); };
 async function reach(selector) {
   for (let i = 0; i < 60; i++) {
@@ -41,16 +41,17 @@ try {
   await b('set', 'viewport', '1440', '1000');
   await b('open', origin);
   await b('set', 'media', 'light', 'reduced-motion');
-  await b('wait', '.tree-navigation-footer');
+  await b('wait', '.view-tabs');
   await openKnowledge();
   await wait(`document.querySelector('${knowledge}')?.textContent === 'Knowledge'`);
   await b('wait', '--text', 'No concepts yet');
   assert.equal(await ev(`getComputedStyle(document.querySelector('[aria-label="Learning workspace"]')).display`), 'none');
-  steps.push('Keyboard reaches the rail Knowledge action with Tab/Enter; empty state explains how concepts appear; learning workspace is hidden');
+  steps.push('Keyboard reaches the band Knowledge tab with Tab/Enter; empty state explains how concepts appear; learning workspace is hidden');
 
   store.addGraph({ concepts: [{ name: 'Mutex', topics: ['Concurrency'] }, { name: 'Mutual exclusion', topics: ['Concurrency', 'Operating systems'] }], links: [{ from: 'Mutex', to: 'Mutual exclusion', kind: 'related' }] }, message);
   store.addGraph({ concepts: [{ name: 'Mutex', topics: ['Concurrency'] }], links: [] }, second);
-  await key('Tab');
+  // Focus stays on the band's Knowledge tab; Tab on through the band into the page.
+  for (let i = 0; i < 12 && await ev(`document.activeElement?.textContent`) !== 'Refresh Knowledge'; i++) await key('Tab');
   await wait(`document.activeElement?.textContent === 'Refresh Knowledge'`);
   await key('Enter');
   await wait(`document.querySelectorAll('[data-concept]').length === 3`);
@@ -105,7 +106,7 @@ try {
   await returnToLearning();
   assert.equal(await ev(`document.querySelector('.focused-chat [role=textbox]').textContent`), 'Keep this draft');
   assert.equal(await ev(`document.querySelector('.react-flow__viewport').getAttribute('style')`), transform);
-  steps.push('Keyboard rail navigation and Return to learning tree preserve the open conversation, composer draft and map transform');
+  steps.push('Keyboard band navigation and Return to learning tree preserve the open conversation, composer draft and map transform');
 
   await openKnowledge();
   await b('wait', '[data-concept="Mutual exclusion"]');
@@ -116,8 +117,7 @@ try {
   const widths = await ev(`({ viewport: innerWidth, document: document.documentElement.scrollWidth, panel: document.querySelector('.knowledge-panel').scrollWidth, outside: [...document.querySelectorAll('body *')].map(e => ({tag: e.tagName, cls: e.className, left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right})).filter(r => r.left < -1 || r.right > innerWidth + 1).slice(0, 12) })`);
   assert.ok(widths.document <= widths.viewport && widths.panel <= widths.viewport, 'no horizontal overflow at phone width: ' + JSON.stringify(widths));
   await b('reload');
-  await b('wait', '#expand-learning-trees');
-  await reach('#expand-learning-trees'); await key('Enter');
+  await b('wait', '.view-tabs');
   await openKnowledge();
   await b('wait', '--text', 'You marked this as not understood');
   steps.push('Desktop/phone layouts fit; merged evidence and correction survive page reload');
@@ -129,7 +129,7 @@ try {
     await b('set', 'viewport', '1440', '900');
     await ev(`localStorage.setItem('treetutor.appearance', '${mode}'); true`);
     await b('reload');
-    await b('wait', '.tree-navigation-footer');
+    await b('wait', '.view-tabs');
     await openKnowledge();
     await wait(`document.querySelectorAll('.knowledge-links line').length === 3`);
     look[mode] = await ev(`(() => { const s = getComputedStyle, root = s(document.documentElement), card = document.querySelector('[data-concept][aria-pressed=true]'), detail = document.querySelector('.knowledge-detail'), line = document.querySelector('.knowledge-links line[data-selected=true]'), plain = document.querySelector('.knowledge-links line[data-selected=false]');

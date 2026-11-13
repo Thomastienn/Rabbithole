@@ -82,10 +82,7 @@ if (process.argv[2] === '--serve') {
   const wait = expression => b('wait', '--fn', expression);
   const click = name => b('find', 'role', 'button', 'click', '--name', name, '--exact');
   async function openRoot(title) {
-    if (!(await ev(`document.querySelector('[aria-label="Collapse learning trees"]')?.checkVisibility()`))) {
-      await click('Map menu');
-      await b('find', 'role', 'menuitem', 'click', '--name', 'Learning trees', '--exact');
-    }
+    await b('click', '.tree-switcher');
     await click(title);
     await b('wait', `[aria-label="Open ${title}"]`);
     await click(`Open ${title}`);

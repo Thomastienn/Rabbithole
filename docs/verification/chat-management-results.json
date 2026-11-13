@@ -1,19 +1,19 @@
 {
-  "checkedAt": "2026-11-12T23:16:01.886Z",
+  "checkedAt": "2026-11-13T00:22:43.109Z",
   "evidence": "Synthetic provider fixture; real production build, browser layout/focus, loopback HTTP, SQLite, and process restart. No native provider inference or learner data.",
   "checks": [
     {
-      "name": "header rename by mouse/Enter updates header, sidebar, map and SQLite and returns focus to the title",
+      "name": "header rename by mouse/Enter updates header, band switcher, Library, map and SQLite and returns focus to the title",
       "pass": true,
       "details": true
     },
     {
-      "name": "sidebar inline rename works by mouse and keyboard without selecting another chat",
+      "name": "Library inline rename works by mouse and keyboard without selecting another chat",
       "pass": true,
       "details": true
     },
     {
-      "name": "cancel from sidebar restores its trigger; deleting a background chat keeps the open conversation and focuses its saved-chat action",
+      "name": "cancel from the Library restores its trigger; deleting a background chat keeps the open conversation and focuses its saved-chat action",
       "pass": true,
       "details": true
     },
@@ -26,8 +26,8 @@
       "name": "all renamed titles survive a real fixture server/SQLite restart",
       "pass": true,
       "details": {
-        "beforePid": 135841,
-        "afterPid": 136206
+        "beforePid": 361735,
+        "afterPid": 362057
       }
     },
     {
@@ -51,10 +51,10 @@
       "pass": true,
       "details": {
         "siblingEdge": {
-          "dx": 0.0001220703125,
+          "dx": 0.00006103515625,
           "dy": 0.000030517578125,
           "edges": 1,
-          "message": "0c256193-624b-4b87-ae19-ca85c7d7ca95"
+          "message": "34f8189f-d5ae-49e9-bbc5-715b9d960bc4"
         }
       }
     },
@@ -64,7 +64,7 @@
       "details": true
     },
     {
-      "name": "deleting open chat from sidebar opens the next saved chat and focuses its composer",
+      "name": "deleting open chat from the Library opens the next saved chat and focuses its composer",
       "pass": true,
       "details": true
     },
@@ -88,8 +88,8 @@
     "server/store.mjs": "ac201867d5e4f8efd88beba6601fb0d21f6f5139e6d2493fe693b55635f773d7",
     "server/app.mjs": "0a79fe337645f5d41ee6e5f67620bb25c33cad7bdcbc6308a562c623ef919c0f",
     "server/videos.mjs": "800aeee473fdd09af13627ac17a4a5b75e9d29847632a778350d31e340828d29",
-    "src/ChatPage.tsx": "8e2f8e51f392882e6aa4501856a887f02c347f6cf27bfaf201dd93406aff3756",
-    "src/layout.ts": "5bec37c635ae8dc4d55007faf5e55fa5e8bdfe21cd9a71e3dde884b73a308397",
+    "src/ChatPage.tsx": "61bbd24eb714743f87821b7073749f0a8fe0d7f89c352a75d8b040c05334db1a",
+    "src/layout.ts": "44a6aa3cb217714d3e685379f013cd4d8ffd25a6bbb129ab7995054d42e9fc30",
     "src/layoutSave.ts": "8930bfc45f9b29388adde2900a23945f41afa0a1ed41aa41182aa891966f9cc3"
   }
 }

@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-nwx.4",
-  "date": "2026-11-12T23:29:08.334Z",
+  "date": "2026-11-13T00:14:09.079Z",
   "evidence": "Built app; agent-browser Chromium; synthetic transcripts and providers; no live inference",
   "references": [
     "map-reference-dark.png",
@@ -54,7 +54,7 @@
     "Both appearances: bare field, no watermark/grid, 4px cards, 600 titles, focused path/node, 2px round branches, bottom-left controls, every message and counted stubs; opening/unfolding does not animate.",
     "Keyboard open/return retains focused conversation; branch leaves its source message; new branch draws 350ms from source to child; replying dot pulses, both stop under reduced motion.",
     "A newly created branch does not replay its draw-on when folded and unfolded later.",
-    "390px map has no horizontal overflow; controls remain visible bottom-left and separate from the sidebar toggle."
+    "390px map has no horizontal overflow; controls remain visible bottom-left and clear of the shell band."
   ],
   "draw": [
     {
@@ -68,6 +68,6 @@
   ],
   "attachment": {
     "gap": 0,
-    "message": "cb17e2f3-e3fe-4952-981f-f475cadc2d81"
+    "message": "0f90846e-db49-4e6c-bbf7-19c27b25a0e5"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-12T23:30:24.634Z",
+  "checkedAt": "2026-11-13T00:03:01.947Z",
   "evidence": "Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.",
   "checks": [
     {
@@ -109,12 +109,12 @@
         "before": {
           "focus": true,
           "messages": 14,
-          "top": 1206
+          "top": 1234
         },
         "after": {
           "focus": true,
           "messages": 14,
-          "top": 1206
+          "top": 1234
         }
       }
     },
@@ -140,8 +140,8 @@
         "progressLive": false,
         "statuses": [
           "Peterson in the tournament tree: Rendering video… 40%",
-          "Peterson in the tournament tree: Rendering video… 25%",
-          "Peterson in the tournament tree: Rendering video… 65%",
+          "Peterson in the tournament tree: Rendering video… 10%",
+          "Peterson in the tournament tree: Rendering video… 45%",
           "Peterson in the tournament tree: Video ready."
         ]
       }

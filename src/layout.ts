@@ -5,12 +5,30 @@ body { background: var(--color-background-body); color: var(--color-text-primary
 html { view-transition-name: none; }
 ::selection { background: var(--treetutor-selection); color: var(--color-text-primary); }
 .workspace { position: relative; }
-.trees { display: none; flex: 0 0 var(--treetutor-sidebar-width); min-width: 0; min-height: 0; border-right: thin solid var(--color-border); background: var(--color-background-muted); }
-.trees[data-open=true] { display: flex; }
-.tree-navigation-content { flex: 1; height: 100%; min-height: 0; min-width: 0; }
-.tree-navigation-content h2 { font-size: var(--font-size-lg); }
-.tree-navigation-content .new-chat { flex: 1; justify-content: flex-start; color: var(--color-text-accent); }
-.tree-navigation-content .new-chat:disabled { color: var(--color-text-disabled); }
+/* Moss shell band (mockup Read): paper-toned text, focus ring and current tab on moss in both appearances. */
+/* Overrides sit on the controls, not the header: tooltips and the palette render inside the band and keep popover colours. */
+.shell-band :is(button, .band-mark) { --color-text-primary: var(--treetutor-band-ink); --color-text-secondary: var(--treetutor-band-muted); --color-icon-primary: var(--treetutor-band-ink); --color-icon-secondary: var(--treetutor-band-muted); --color-text-disabled: var(--treetutor-band-muted); --color-icon-disabled: var(--treetutor-band-muted); --color-overlay-hover: color-mix(in srgb, var(--treetutor-band-ink) 12%, transparent); --color-overlay-pressed: color-mix(in srgb, var(--treetutor-band-ink) 16%, transparent); --focus-outline-color: var(--treetutor-band-ink); }
+.shell-band {
+ display: flex; flex: none; align-items: center; gap: var(--treetutor-module); height: calc(7 * var(--treetutor-module)); padding-inline: calc(2 * var(--treetutor-module)); overflow-x: auto; scrollbar-width: none; background: var(--treetutor-band); color: var(--treetutor-band-ink); }
+.shell-band button { color: var(--treetutor-band-ink); }
+.shell-band :focus-visible { outline: var(--focus-outline-width) solid var(--treetutor-band-ink); outline-offset: var(--focus-outline-offset); }
+.band-mark { flex: none; margin-inline-end: var(--treetutor-module); font-size: 20px; letter-spacing: -.01em; color: var(--treetutor-band-ink); }
+.tree-switcher { flex: 0 1 auto; max-width: 280px; min-width: 0; height: 32px; border: 1px solid color-mix(in srgb, var(--treetutor-band-ink) 22%, transparent); font-weight: 600; }
+.tree-switcher[aria-current=page] { background: color-mix(in srgb, var(--treetutor-band-ink) 16%, transparent); }
+.tree-switcher-content { display: flex; align-items: center; min-width: 0; }
+.tree-switcher-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-switcher-icon { flex: none; width: 16px; height: 16px; margin-inline-start: var(--treetutor-module); }
+.view-tabs { display: flex; flex: none; gap: 2px; margin-inline-start: calc(2 * var(--treetutor-module)); }
+.shell-band .view-tab { height: 32px; padding-inline: 12px; font-weight: 600; color: var(--treetutor-band-muted); }
+.shell-band .view-tab:hover { color: var(--treetutor-band-ink); }
+.shell-band .view-tab[aria-current=page] { background: var(--treetutor-band-ink); color: var(--treetutor-band); }
+.band-tools { flex: none; margin-inline-start: auto; }
+.shell-band .new-chat { height: 32px; border: 1px solid color-mix(in srgb, var(--treetutor-band-ink) 35%, transparent); font-weight: 600; }
+.band-save { height: 24px; padding-inline: var(--treetutor-module); border-radius: var(--radius-element); background: var(--color-error); color: var(--color-on-error); --color-text-primary: var(--color-on-error); --color-text-secondary: var(--color-on-error); }
+.shell-band .band-save button { height: 20px; color: var(--color-on-error); text-decoration: underline; }
+@media (max-width: 48rem) { .band-mark { display: none; } .view-tabs { margin-inline-start: 0; } }
+.library-content { height: 100%; max-width: 40rem; margin-inline: auto; }
+.library-content h1 { font-size: var(--font-size-2xl); }
 .tree-list { flex: 1; min-height: 0; overflow: auto; }
 /* Quiet rail scrollbar: thin rounded thumb, no track; shown on hover, scroll or keyboard focus, never needed to scroll. */
 .tree-list { scrollbar-width: thin; scrollbar-color: transparent transparent; }
@@ -25,14 +43,9 @@ html { view-transition-name: none; }
 .saved-tree-row { border-radius: var(--radius-element); }
 .saved-tree-row[data-current=true] { background: var(--color-neutral); }
 .tree-row-actions { flex-shrink: 0; color: var(--color-text-secondary); }
-.tree-navigation-footer { border-top: thin solid var(--color-border); }
-.tree-navigation-footer > button { justify-content: flex-start; }
-.tree-drawer { height: 100%; background: var(--color-background-muted); }
-.sidebar-expand { position: absolute; z-index: 6; top: var(--spacing-3); left: var(--spacing-3); background: var(--color-background-surface); border: thin solid var(--color-border); }
-.workspace[data-sidebar-open=false] .tree-workspace[data-expanded=true] .chat-header, .workspace[data-sidebar-open=false] .knowledge-header { padding-inline-start: calc(var(--spacing-3) + var(--spacing-10) + var(--spacing-2)); }
 .conversation { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.conversation[hidden], .knowledge-panel[hidden] { display: none; }
-.knowledge-panel { flex: 1; min-height: 0; overflow: auto; }
+.conversation[hidden], .knowledge-panel[hidden], .library-panel[hidden] { display: none; }
+.knowledge-panel, .library-panel { flex: 1; min-height: 0; overflow: auto; }
 .knowledge-content { max-width: 70rem; margin-inline: auto; overflow-wrap: anywhere; }
 /* Knowledge: concept cards on the map's slate field, 1.5px chalk relations, selected concept in yellow (spec, Knowledge page). */
 .knowledge-content :focus-visible { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: var(--focus-outline-offset); }

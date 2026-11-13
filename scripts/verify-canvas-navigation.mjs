@@ -108,10 +108,10 @@ try {
   await browser('press', 'Escape');
   await wait(`document.activeElement?.id === 'reveal-${first.id}'`);
   assert.equal(await view(), saved);
-  if (await evaluate("!!document.getElementById('expand-learning-trees')")) await click('Expand learning trees');
+  await browser('click', '.tree-switcher');
   await click('Other saved tree');
   await browser('wait', '[aria-label="Open Other saved tree"]');
-  if (await evaluate("!!document.getElementById('expand-learning-trees')")) await click('Expand learning trees');
+  await browser('click', '.tree-switcher');
   await click('Canvas navigation');
   await browser('wait', '[aria-label="Open First branch"]');
   assert.equal(await view(), saved);

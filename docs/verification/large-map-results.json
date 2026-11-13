@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-12T23:18:21.946Z",
+  "date": "2026-11-12T23:52:24.925Z",
   "seed": 721,
   "conversations": 200,
   "turnsPerConversation": 20,
@@ -12,51 +12,51 @@
     "os": "linux 7.0.0-42-generic x64",
     "node": "v26.0.0"
   },
-  "seedMs": 991.2719060000018,
-  "previewQueryMs": 907.338620999999,
+  "seedMs": 976.8464940000013,
+  "previewQueryMs": 875.5655409999999,
   "previewBytes": 4876201,
-  "openMs": 3507.3147750000026,
+  "openMs": 3992.8952500000014,
   "dom": {
-    "elements": 2573,
+    "elements": 2547,
     "nodes": 5,
     "rows": 200,
     "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   },
   "panZoom": {
-    "elapsedMs": 1970.5999999996277,
+    "elapsedMs": 1995.1000000005588,
     "finalTransform": "translate(-81.0763px, -5.8771px) scale(0.413347)",
     "frames": 119,
     "initialTransform": "translate(80px, 100px) scale(0.35)",
     "maxMs": 16.800000000000182,
     "over33Ms": 0,
     "p50Ms": 16.699999999999818,
-    "p95Ms": 16.733999999999924,
+    "p95Ms": 16.800000000000182,
     "pannedTransform": "translate(-38px, 41px) scale(0.35)"
   },
-  "foldMs": 418.13637299999755,
-  "unfoldMs": 221.73973900000055,
+  "foldMs": 420.85584200000085,
+  "unfoldMs": 237.49926200000118,
   "fit": {
     "allInside": true,
     "zoom": "0.2%"
   },
-  "selectClickMs": 8488.285637,
-  "selectMs": 9396.803153,
-  "selectUiMs": 989.0999999996276,
+  "selectClickMs": 4684.488902999998,
+  "selectMs": 5966.187638000003,
+  "selectUiMs": 1324.5,
   "selectedBounds": {
-    "bottom": 631.8375244140625,
-    "canvasHeight": 900,
-    "canvasWidth": 648,
-    "left": 577.7999877929688,
-    "right": 629,
-    "toolbarTop": 850,
-    "top": 75
+    "bottom": 626.8375244140625,
+    "canvasHeight": 844,
+    "canvasWidth": 880,
+    "left": 718.3239135742188,
+    "right": 769.52392578125,
+    "toolbarTop": 794,
+    "top": 70
   },
-  "streamingMs": 538.6494559999992,
+  "streamingMs": 540.563694000004,
   "chunkRenders": {
-    "e2bfee58-ccd9-4ccf-9b66-7ce3e16686f9": 14
+    "4854f82f-e315-4179-b645-eedc4328283f": 14
   },
   "chunkRenderReasons": {
-    "e2bfee58-ccd9-4ccf-9b66-7ce3e16686f9": [
+    "4854f82f-e315-4179-b645-eedc4328283f": [
       "preview"
     ]
   }

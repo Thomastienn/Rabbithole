@@ -36,12 +36,12 @@ const ev = async script => JSON.parse(await b('eval', script, '--json')).data.re
 const card = id => `.video-library [data-artifact="${id}"]`;
 const report = { checkedAt: new Date().toISOString(), media: native.media.id, evidence: 'Copy of saved database and generated MP4 in the production build and actual Chromium player', inputEvidence: native.evidence, checks: [] };
 const openLibrary = async () => {
-  await b('wait', '.tree-navigation-footer');
-  // Keyboard: focus the rail footer button and press Enter; focus moves into the library.
-  await ev(`[...document.querySelectorAll('.tree-navigation-footer button')].find(x=>x.textContent.trim()==='Videos').focus();true`);
+  await b('wait', '.view-tabs');
+  // Keyboard: focus the band's Videos tab and press Enter; focus stays on the tab, now current.
+  await ev(`[...document.querySelectorAll('.view-tabs button')].find(x=>x.textContent.trim()==='Videos').focus();true`);
   await b('press', 'Enter');
   await b('wait', card(native.media.id) + ' video');
-  return ev(`({focus:document.activeElement?.id,current:document.querySelector('.tree-navigation-footer [aria-current=page]')?.textContent.trim(),heading:document.querySelector('.video-library')?.closest('.knowledge-content')?.querySelector('h1')?.textContent})`);
+  return ev(`({focus:document.activeElement?.textContent.trim(),current:document.querySelector('.view-tabs [aria-current=page]')?.textContent.trim(),heading:document.querySelector('.video-library')?.closest('.knowledge-content')?.querySelector('h1')?.textContent})`);
 };
 const play = async () => {
   const v = JSON.stringify(card(native.media.id) + ' video');
@@ -55,8 +55,8 @@ try {
   await b('open', origin);
   await b('set', 'viewport', '1280', '800');
   const nav = await openLibrary();
-  assert.deepEqual(nav, { focus: 'return-from-videos', current: 'Videos', heading: 'Videos' });
-  report.checks.push({ name: 'rail Videos button opens the library by keyboard and moves focus', ...nav });
+  assert.deepEqual(nav, { focus: 'Videos', current: 'Videos', heading: 'Videos' });
+  report.checks.push({ name: 'band Videos tab opens the library by keyboard and becomes current', ...nav });
   const lostState = await ev(`(c=>({state:c.dataset.state,video:!!c.querySelector('video'),buttons:[...c.querySelectorAll('button')].map(b=>b.textContent.trim()),status:c.querySelector('[role=status]').textContent}))(document.querySelector(${JSON.stringify(card(lost.id))}))`);
   assert.equal(lostState.state, 'unavailable'); assert.equal(lostState.video, false); assert.deepEqual(lostState.buttons, ['Remove from Videos']);
   report.checks.push({ name: 'missing file shows unavailable, no player, no regenerate action; only Remove from Videos', ...lostState });

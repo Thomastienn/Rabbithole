@@ -60,7 +60,7 @@ if (process.argv[2] === '--serve') {
   const dialog = 'document.querySelector("[role=alertdialog][open]")';
   const settle = () => wait(`!document.getAnimations().some(a => a.playState==='running' && a.effect?.getTiming().iterations!==Infinity)`);
   async function openMapDelete(label = 'Delete branch…') { await settle(); await click('Map menu'); await item(label); await wait(`${dialog} && document.activeElement?.textContent==='Keep conversations'`); }
-  async function openNav() { if (await ev('document.querySelector(".trees")?.getAttribute("data-open")!=="true"')) { await click('Map menu'); await item('Learning trees'); } }
+  async function openNav() { await b('click', '.tree-switcher'); await b('wait', '.saved-chat-title'); }
   async function sidebarDelete(title) {
     await settle(); await openNav();
     await wait(`(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===${JSON.stringify(`Actions for ${title}`)}),r=b?.getBoundingClientRect();return !!r&&b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})()`);
@@ -73,10 +73,11 @@ if (process.argv[2] === '--serve') {
     await click('Rename conversation'); await b('find', 'label', 'Conversation title', 'fill', 'Renamed tournament'); await b('press', 'Enter');
     await wait('document.querySelector(".chat-title h2")?.textContent==="Renamed tournament"');
     assert.equal(await focusLabel(), 'Rename conversation');
-    await openNav();
     await b('wait', '[aria-label="Open Renamed tournament"]');
+    await openNav();
+    await b('wait', '[aria-label="Renamed tournament · Learning trees"]');
     assert.equal((await get(root.id)).title, 'Renamed tournament');
-    pass('header rename by mouse/Enter updates header, sidebar, map and SQLite and returns focus to the title');
+    pass('header rename by mouse/Enter updates header, band switcher, Library, map and SQLite and returns focus to the title');
 
     await click('Actions for Other saved chat'); await item('Rename chat');
     await b('find', 'label', 'Conversation title', 'fill', 'Other mouse'); await click('Save title');
@@ -85,13 +86,14 @@ if (process.argv[2] === '--serve') {
     await b('find', 'label', 'Conversation title', 'fill', 'Other renamed'); await b('press', 'Enter');
     await wait(`document.getElementById('chat-actions-${other.id}')?.getAttribute('aria-label')==='Actions for Other renamed'`);
     assert.equal((await get(other.id)).title, 'Other renamed');
-    pass('sidebar inline rename works by mouse and keyboard without selecting another chat');
+    pass('Library inline rename works by mouse and keyboard without selecting another chat');
     await sidebarDelete('Background chat'); await b('press', 'Escape'); await wait(`!${dialog}`);
     assert.equal(await ev('document.activeElement.id'), `chat-actions-${background.id}`);
     await sidebarDelete('Background chat'); await click('Delete chat'); await wait(`!${dialog}`);
     assert.equal((await view()).title, 'Renamed tournament');
-    assert.equal(await ev('document.activeElement.id'), `chat-actions-${root.id}`);
-    pass('cancel from sidebar restores its trigger; deleting a background chat keeps the open conversation and focuses its saved-chat action');
+    await wait(`document.activeElement?.id==='chat-actions-${root.id}'`);
+    pass('cancel from the Library restores its trigger; deleting a background chat keeps the open conversation and focuses its saved-chat action');
+    await click('Map'); await wait(`getComputedStyle(document.querySelector('.focused-chat')).display==='none'`);
 
     await ev(`document.getElementById('open-${child.id}').focus()`); await b('press', 'Enter');
     await wait('document.querySelector(".chat-title h2")?.textContent==="Peterson branch"');
@@ -151,7 +153,7 @@ if (process.argv[2] === '--serve') {
     assert.ok((await ev(`${dialog}.textContent`)).includes('2 conversations'));
     await click('Delete chat'); await wait(`!${dialog} && document.querySelector('.chat-title h2')?.textContent==='Other renamed'`);
     await wait('document.activeElement?.getAttribute("aria-label")==="Your question"');
-    pass('deleting open chat from sidebar opens the next saved chat and focuses its composer');
+    pass('deleting open chat from the Library opens the next saved chat and focuses its composer');
     await sidebarDelete('Other renamed'); await click('Delete chat');
     await wait(`!${dialog} && document.querySelector('.empty-map')?.textContent.includes('Start a learning tree')`);
     await wait('document.activeElement?.textContent==="New chat"');

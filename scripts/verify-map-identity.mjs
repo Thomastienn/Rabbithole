@@ -30,7 +30,7 @@ const shot = name => b('screenshot', join(out, `map-${name}.png`));
 const appearance = async mode => { await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); true`); await b('reload'); };
 const settled = () => wait(`new Promise(r => { const v = () => document.querySelector('.react-flow__viewport')?.style.transform, a = v(); requestAnimationFrame(() => requestAnimationFrame(() => r(a === v()))); })`);
 const node = id => `.react-flow__node[data-id="${id}"]`;
-const controlBounds = async () => ev(`(() => { const t=document.querySelector('.map-toolbar').getBoundingClientRect(), m=document.querySelector('.overview').getBoundingClientRect(), s=document.querySelector('.sidebar-expand')?.getBoundingClientRect(); return {bottom:m.bottom-t.bottom,left:t.left-m.left,within:t.left>=m.left && t.right<=m.right && t.top>=m.top && t.bottom<=m.bottom,clear:!s || t.top>=s.bottom}; })()`);
+const controlBounds = async () => ev(`(() => { const t=document.querySelector('.map-toolbar').getBoundingClientRect(), m=document.querySelector('.overview').getBoundingClientRect(), s=document.querySelector('.shell-band').getBoundingClientRect(); return {bottom:m.bottom-t.bottom,left:t.left-m.left,within:t.left>=m.left && t.right<=m.right && t.top>=m.top && t.bottom<=m.bottom,clear:t.top>=s.bottom}; })()`);
 try {
   await b('set', 'viewport', '1440', '900');
   await b('set', 'media', 'light', 'reduced-motion');
@@ -136,7 +136,7 @@ try {
   assert.equal(await ev('document.documentElement.scrollWidth === innerWidth'), true);
   assert.equal((await controlBounds()).within, true); assert.equal((await controlBounds()).clear, true);
   await shot('narrow-light');
-  results.checks.push('390px map has no horizontal overflow; controls remain visible bottom-left and separate from the sidebar toggle.');
+  results.checks.push('390px map has no horizontal overflow; controls remain visible bottom-left and clear of the shell band.');
   writeFileSync(join(out, 'map-identity-results.json'), JSON.stringify(results, null, 2) + '\n');
   if (process.env.IMPECCABLE_SCAN) writeFileSync(join(out, 'map-detector-results.json'), JSON.stringify(Object.fromEntries(Object.entries(results.appearances).map(([mode, data]) => [mode, data.detector])), null, 2) + '\n');
   console.log('PASS: ' + results.checks.join('\nPASS: '));

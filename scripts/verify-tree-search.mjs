@@ -1,4 +1,4 @@
-// Built-app browser fixture (in-process fake provider, not a live model) for floating title search and the quiet rail scrollbar.
+// Built-app browser fixture (in-process fake provider, not a live model) for floating title search in the shell band and the quiet Library list scrollbar.
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -13,7 +13,7 @@ const b = async (...args) => (await run('agent-browser', ['--session', session, 
 const ev = async expression => JSON.parse(await b('eval', expression, '--json')).data.result;
 const wait = expression => b('wait', '--fn', `!!(${expression})`);
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'tree-search-')), 'data.sqlite'));
-// Enough older trees that the rail must scroll to reach the oldest one.
+// Enough older trees that the Library list must scroll to reach the oldest one.
 for (let i = 1; i <= 30; i++) store.create(`Filler topic ${i}`);
 const photo = store.create('Photosynthesis basics');
 store.message(photo.id, 'user', 'How do leaves make sugar?', 'completed');
@@ -30,15 +30,15 @@ const palette = `document.querySelector('dialog[open][aria-label="Search learnin
 const input = 'dialog[open][aria-label="Search learning trees"] input';
 const options = () => ev(`[...(${palette}?.querySelectorAll('[role=option]') ?? [])].map(e => e.innerText.trim())`);
 const highlighted = () => ev(`document.getElementById(document.querySelector('${input}').getAttribute('aria-activedescendant'))?.innerText.trim() ?? null`);
-const current = () => ev(`document.querySelector('.saved-tree-row[data-current=true]')?.innerText.split('\\n')[0]`);
+const current = () => ev(`document.querySelector('.tree-switcher-title')?.innerText`);
 const openSearch = async () => { await b('click', '.tree-search'); await wait(`${palette} && document.activeElement.matches('${input}')`); };
-const ready = () => b('wait', '.saved-chat-title');
+const ready = () => b('wait', '.chat-header, .overview');
 try {
   await b('set', 'viewport', '1400', '900');
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
   await b('set', 'media', 'dark', 'reduced-motion');
   await ready();
-  assert.equal(await ev(`!!document.querySelector('.tree-navigation-content input:not(dialog[aria-label="Search learning trees"] input)')`), false, 'no persistent search field in the rail');
+  assert.equal(await ev(`!!document.querySelector('.shell-band input:not(dialog input)')`), false, 'no persistent search field in the band');
 
   await openSearch();
   assert.match(await ev(`${palette}.innerText`), /Type part of a learning tree’s title/, 'empty query explains what to type');
@@ -66,7 +66,7 @@ try {
   await wait(`${palette}.querySelectorAll('[role=option]').length === 1`);
   await b('press', 'ArrowDown');
   await b('press', 'Enter');
-  await wait(`!${palette} && document.querySelector('.saved-tree-row[data-current=true]')?.innerText.startsWith('Photosynthesis')`);
+  await wait(`!${palette} && document.querySelector('.tree-switcher-title')?.innerText.startsWith('Photosynthesis')`);
   assert.equal(await current(), 'Photosynthesis basics');
   steps.push('Typed "photo", ArrowDown, Enter: dialog closes and Photosynthesis basics opens');
 
@@ -85,8 +85,10 @@ try {
 
   // Scrollbar: thin rounded transparent-track thumb, hidden at rest, shown on hover/scroll/focus.
   const nav = `document.querySelector('.tree-list')`;
+  await b('click', '.tree-switcher');
+  await b('wait', '.saved-chat-title');
   await b('mouse', 'move', '1300', '450');
-  assert.equal(await ev(`${nav}.scrollHeight > ${nav}.clientHeight`), true, 'rail overflows');
+  assert.equal(await ev(`${nav}.scrollHeight > ${nav}.clientHeight`), true, 'Library list overflows');
   const css = await ev(`(() => { const s = [...document.styleSheets].flatMap(x => [...x.cssRules]).map(r => r.cssText).join('\\n'); return { radius: s.includes('border-radius: 999px'), track: /tree-list::-webkit-scrollbar \\{[^}]*background: transparent/.test(s), resting: getComputedStyle(${nav}).overflowY }; })()`);
   assert.deepEqual(css, { radius: true, track: true, resting: 'auto' }, 'rounded thumb, transparent track, scroll never disabled');
   await b('screenshot', join('docs', 'verification', 'tree-search-scroll-rest-dark.png'));
@@ -96,7 +98,7 @@ try {
   await wait(`${nav}.scrollTop > 0 && 'scrolling' in ${nav}.dataset`);
   await b('mouse', 'move', '1300', '450');
   await wait(`!('scrolling' in ${nav}.dataset)`);
-  steps.push('Mouse wheel scrolls the rail and marks it scrolling (thumb shown), mark clears after scrolling stops; rest/hover screenshots saved');
+  steps.push('Mouse wheel scrolls the Library list and marks it scrolling (thumb shown), mark clears after scrolling stops; rest/hover screenshots saved');
 
   await ev(`${nav}.scrollTop = 0; true`);
   await ev(`[...document.querySelectorAll('.saved-chat-title')].at(-1).focus(); true`);
@@ -105,27 +107,25 @@ try {
   assert.equal(await ev(`document.querySelectorAll('.tree-date-heading').length > 0`), true, 'grouping intact');
   steps.push('Keyboard focus on the oldest tree scrolls it into view; date groups intact');
 
-  // Narrow: rail is a drawer; search from it and choose a result.
+  // Narrow: the band's search icon opens search; choose a result.
   await b('set', 'viewport', '390', '800');
   await b('reload');
   await b('wait', '.chat-header, .overview');
-  await b('click', '[aria-label="Expand learning trees"]');
-  await wait(`document.querySelector('dialog[open] .tree-search')`);
-  await b('click', 'dialog[open] .tree-search');
+  await b('click', '.tree-search');
   await wait(`${palette} && document.activeElement.matches('${input}')`);
   await b('type', input, 'roman');
   await wait(`${palette}.querySelectorAll('[role=option]').length === 1`);
   await b('screenshot', join('docs', 'verification', 'tree-search-narrow-dark.png'));
   await b('click', `${input.replace(' input', '')} [role=option]`);
   await wait(`!${palette} && document.querySelector('.chat-header')?.innerText.includes('Roman roads')`);
-  steps.push('Narrow dark: icon in the drawer opens search; tapping "Roman roads" opens it; docs/verification/tree-search-narrow-dark.png');
+  steps.push('Narrow dark: band search icon opens search; tapping "Roman roads" opens it; docs/verification/tree-search-narrow-dark.png');
 
   for (const [w, h] of [['1400', '900'], ['390', '800']]) {
     await b('set', 'viewport', w, h);
     await ev(`localStorage.setItem('treetutor.appearance', 'light'); location.reload(); true`);
     await b('wait', '.chat-header, .overview');
-    if (w === '390') { await b('click', '[aria-label="Expand learning trees"]'); await wait(`document.querySelector('dialog[open] .tree-search')`); await b('click', 'dialog[open] .tree-search'); }
-    else { await b('hover', '.tree-list'); await b('screenshot', join('docs', 'verification', 'tree-search-scroll-hover-light.png')); await b('click', '.tree-search'); }
+    if (w === '390') await b('click', '.tree-search');
+    else { await b('click', '.tree-switcher'); await b('wait', '.saved-chat-title'); await b('hover', '.tree-list'); await b('screenshot', join('docs', 'verification', 'tree-search-scroll-hover-light.png')); await b('click', '.tree-search'); }
     await wait(`${palette}`);
     await b('type', input, 'leaves');
     await wait(`${palette}.innerText.includes('No learning tree titles match')`);
