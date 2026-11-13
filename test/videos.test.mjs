@@ -120,7 +120,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.equal(media.headers.get('content-type'), 'video/mp4');
     assert.deepEqual(Buffer.from(await media.arrayBuffer()), mp4);
     assert.equal((await env.get(`/api/trees/${parent.id}/artifacts/${ready.id}/media`)).status, 404);
-    assert.deepEqual(readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt)).sort(), ['Video.tsx', 'index.tsx', 'narration.json', 'public']);
+    assert.deepEqual(readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt)).sort(), ['Video.tsx', 'index.tsx', 'kit.tsx', 'narration.json', 'public']);
     assert.ok(readFileSync(join(env.dir, 'video-work', ready.id, ready.attempt, 'Video.tsx'), 'utf8').includes('PRIVATE_SOURCE_MARKER'));
 
     // Tutor history, provider-switch history and branch snapshots carry only id, kind, title and description.
