@@ -98,6 +98,14 @@ The local collection of generated videos, available independently of their origi
 An interactive HTML/SVG/JS fragment shown inside a tutor reply where the tutor placed it, running in an isolated sandbox with no network or access to the app. Older Mermaid diagrams stay diagrams.
 _Avoid_: Widget, canvas, artifact (in UI copy)
 
+**Cut**:
+One continuous segment of a video with its own part of the narration and its own animation. A video is a planned sequence of cuts sharing one look, joined by transitions under a single narration track.
+_Avoid_: Scene, clip, shot
+
+**Focus mode**:
+The learner's choice to hide the app's top bar on any page, leaving only the current page's content.
+_Avoid_: Full screen, zen mode, distraction-free mode
+
 **Theme**:
 A named colour palette for the whole app, such as Paperback or Forest, covering surfaces, ink, accent and the four series inks. Each theme has a light and a dark variant; Appearance chooses between them.
 _Avoid_: Skin, colour scheme, tint
