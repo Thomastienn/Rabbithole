@@ -1,5 +1,12 @@
-import { createContext, memo, useContext, useEffect } from 'react';
-import { Handle, Position, useNodesInitialized, type NodeProps, type Node } from '@xyflow/react';
+import { createContext, memo, useContext, useEffect, useRef } from 'react';
+import {
+  Handle,
+  Position,
+  useNodesInitialized,
+  useUpdateNodeInternals,
+  type NodeProps,
+  type Node,
+} from '@xyflow/react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -254,3 +261,24 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
     </VStack>
   );
 });
+
+// Batch handle measurements so loading 200 transcripts schedules one React Flow update.
+export function MeasureHandles({ nodes }: { nodes: ConversationNode[] }) {
+  const update = useUpdateNodeInternals();
+  const previous = useRef(new Map<string, ConversationNode['data']>());
+  useEffect(() => {
+    const changed = nodes.filter((n) => {
+      const old = previous.current.get(n.id);
+      return (
+        !n.hidden &&
+        (!old ||
+          old.preview !== n.data.preview ||
+          old.sources !== n.data.sources ||
+          old.folded !== n.data.folded)
+      );
+    });
+    previous.current = new Map(nodes.filter((n) => !n.hidden).map((n) => [n.id, n.data]));
+    if (changed.length) update(changed.map((n) => n.id));
+  }, [nodes, update]);
+  return null;
+}

@@ -10,7 +10,7 @@ const CODE = /\.(m?js|tsx?)$/;
 const GENERATED = /^src\/themes\/[^/]+\/[^/]+\.(js|css|d\.ts|doc\.mjs)$|^test\/fixtures\//;
 
 // Files waiting for their split ticket; each split removes its entry.
-export const OVERSIZED = ['src/map/TreeOverview.tsx'];
+export const OVERSIZED = [];
 
 export function checkSize(root, oversized = OVERSIZED) {
   const lines = new Map();

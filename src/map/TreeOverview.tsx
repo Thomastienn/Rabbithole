@@ -1,41 +1,35 @@
 import { useTheme } from '@astryxdesign/core/theme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ReactFlow,
-  BaseEdge,
-  getBezierPath,
-  useNodesState,
-  useUpdateNodeInternals,
-  type EdgeProps,
-  type ReactFlowInstance,
-} from '@xyflow/react';
-import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { ReactFlow, useNodesState } from '@xyflow/react';
+import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
-import { IconButton } from '@astryxdesign/core/IconButton';
-import { MinusIcon, PlusIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import type { ReactNode } from 'react';
 import {
   MIN_ZOOM,
   foldHierarchy,
   offsetCoveredBoxes,
-  parseViewport,
   placeBox,
   vimAction,
-  zoomLabel,
   type Point,
   type Viewport,
 } from './canvas';
 import type { ArtifactSummary, VisualPart } from '../media/artifacts';
-import { conversationAddresses, inkStyle } from './treeList';
-import { Conversation, ConversationTransition, type ConversationNode } from './Conversation';
-import { InkLegend } from './MapControls';
+import { conversationAddresses } from './treeList';
+import {
+  Conversation,
+  ConversationTransition,
+  MeasureHandles,
+  type ConversationNode,
+} from './Conversation';
+import Branch from './Branch';
+import { fit, useMapViewport } from './useMapViewport';
+import { InkLegend, MapToolbar } from './MapControls';
 import {
   branchEdges,
   familyLegend,
   keepCurrentFolded,
   revealAddedBranches,
   reconcileNodes,
-  revealViewport,
   keyMovement,
   type Open,
 } from './mapState';
@@ -79,50 +73,10 @@ export type MapActions = {
   keep: () => void;
   canKeep: boolean;
 };
-const fit = { padding: 0.2, maxZoom: 1 };
 const noStubs: ConversationNode['data']['stubs'] = [];
 const nodeTypes = { conversation: Conversation };
 
-function Branch(props: EdgeProps) {
-  const [path] = getBezierPath(props);
-  // Negative delay keeps culling/remounts from replaying an already drawn branch.
-  const created = props.data?.created as number | undefined;
-  const [delay] = useState(() => (created ? Math.min(0, created - performance.now()) : 0));
-  return (
-    <BaseEdge
-      id={props.id}
-      path={path}
-      pathLength={1}
-      className={created ? 'branch-new' : undefined}
-      style={{
-        ...inkStyle(props.data?.ink as number),
-        ...(created && { animationDelay: `${delay}ms` }),
-      }}
-    />
-  );
-}
 const edgeTypes = { branch: Branch };
-
-// Batch handle measurements so loading 200 transcripts schedules one React Flow update.
-function MeasureHandles({ nodes }: { nodes: ConversationNode[] }) {
-  const update = useUpdateNodeInternals();
-  const previous = useRef(new Map<string, ConversationNode['data']>());
-  useEffect(() => {
-    const changed = nodes.filter((n) => {
-      const old = previous.current.get(n.id);
-      return (
-        !n.hidden &&
-        (!old ||
-          old.preview !== n.data.preview ||
-          old.sources !== n.data.sources ||
-          old.folded !== n.data.folded)
-      );
-    });
-    previous.current = new Map(nodes.filter((n) => !n.hidden).map((n) => [n.id, n.data]));
-    if (changed.length) update(changed.map((n) => n.id));
-  }, [nodes, update]);
-  return null;
-}
 
 export default function TreeOverview({
   root,
@@ -164,7 +118,6 @@ export default function TreeOverview({
   save: (positions: Record<string, Point>) => void;
 }) {
   const { mode } = useTheme();
-  const flow = useRef<ReactFlowInstance<ConversationNode>>(null);
   const callbacks = useRef({ open, retry, save });
   callbacks.current = { open, retry, save };
   const openNode = useCallback<Open>(
@@ -172,19 +125,9 @@ export default function TreeOverview({
     [],
   );
   const retryNode = useCallback((id: string) => callbacks.current.retry(id), []);
-  // Legacy views lived in localStorage; read once until the first batched save replaces them.
-  const [savedViewport] = useState(() => {
-    try {
-      return (
-        trees.find((t) => t.id === root)?.layout?.viewport ??
-        parseViewport(localStorage.getItem(`treetutor.viewport.${root}`))
-      );
-    } catch {
-      return undefined;
-    }
-  });
-  const navigated = useRef(!!savedViewport);
   const [nodes, setNodes, onNodesChange] = useNodesState<ConversationNode>([]);
+  const { flow, savedViewport, navigated, zoom, setZoom, pan, zoomOut, zoomIn, fitTree } =
+    useMapViewport({ root, trees, nodes, selected });
   const [canCull, setCanCull] = useState(false);
   const [folded, setFolded] = useState<Set<string>>(() => new Set(initialFolded));
   useEffect(() => onFold([...folded]), [folded]);
@@ -218,92 +161,7 @@ export default function TreeOverview({
     if (next) setFolded(next);
   }
   const placed = useRef(new Set<string>());
-  const [zoom, setZoom] = useState(savedViewport?.zoom ?? 1);
   const [notice, setNotice] = useState('');
-  // A restored viewport wins for the restored selection; later selections are still revealed.
-  const restored = trees.find((t) => t.id === root)?.layout;
-  const [refitted, setRefitted] = useState(0);
-  const restoredSelection = useRef(
-    savedViewport && restored?.panel !== 'collapsed'
-      ? (restored?.selected ?? undefined)
-      : undefined,
-  );
-  useEffect(() => {
-    if (!selected) return;
-    if (restoredSelection.current === selected) return;
-    restoredSelection.current = undefined;
-    const frame = requestAnimationFrame(() => {
-      const canvas = document.querySelector<HTMLElement>('.tree-canvas');
-      const instance = flow.current,
-        node = instance?.getNode(selected);
-      if (!canvas || !node?.measured?.width || !node.measured.height || !instance) return;
-      const bounds = canvas.getBoundingClientRect();
-      if (!bounds.width || !bounds.height) return;
-      const view = instance.getViewport();
-      const toolbar = document.querySelector('.map-toolbar')?.getBoundingClientRect();
-      const next = revealViewport(
-        view,
-        { ...node.position, width: node.measured.width, height: node.measured.height },
-        bounds.width,
-        bounds.height,
-        toolbar && { top: toolbar.top - bounds.top, height: toolbar.height },
-      );
-      const zoom = next.zoom;
-      const duration =
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-        (nodes.length > 50 && zoom > view.zoom * 2)
-          ? 0
-          : 200;
-      if (next.x !== view.x || next.y !== view.y || zoom !== view.zoom)
-        void instance.setViewport(next, { duration });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [
-    selected,
-    refitted,
-    nodes.length,
-    nodes.find((node) => node.id === selected)?.measured?.width,
-    nodes.find((node) => node.id === selected)?.measured?.height,
-  ]);
-  // Switching Map and Read resizes the canvas; refit an untouched map (readable floor, selected node revealed after); a navigated view stays exactly as left.
-  const [canvasWidth, setCanvasWidth] = useState(0);
-  useEffect(() => {
-    const canvas = document.querySelector('.tree-canvas');
-    if (!canvas) return;
-    const observer = new ResizeObserver(([entry]) =>
-      setCanvasWidth(Math.round(entry.contentRect.width)),
-    );
-    observer.observe(canvas);
-    return () => observer.disconnect();
-  }, []);
-  const lastWidth = useRef(0);
-  useEffect(() => {
-    const previous = lastWidth.current,
-      instance = flow.current;
-    lastWidth.current = canvasWidth;
-    if (!previous || !canvasWidth || previous === canvasWidth || !instance) return;
-    if (!navigated.current)
-      void instance.fitView({ ...fit, minZoom: 0.75 }).then(() => setRefitted((n) => n + 1));
-  }, [canvasWidth]);
-  function pan(x: number, y: number) {
-    const instance = flow.current;
-    if (!instance) return;
-    navigated.current = true;
-    const view = instance.getViewport();
-    void instance.setViewport({ ...view, x: view.x + x, y: view.y + y });
-  }
-  const zoomOut = () => {
-    navigated.current = true;
-    void flow.current?.zoomOut();
-  };
-  const zoomIn = () => {
-    navigated.current = true;
-    void flow.current?.zoomIn();
-  };
-  const fitTree = () => {
-    navigated.current = true;
-    void flow.current?.fitView(fit);
-  };
   const hierarchy = useMemo(() => foldHierarchy(root, trees, folded), [root, trees, folded]);
   const focusedPath = useMemo(() => {
     const path = new Set<string>();
@@ -483,42 +341,7 @@ export default function TreeOverview({
   );
   return (
     <>
-      <HStack
-        padding={1}
-        gap={1}
-        vAlign="center"
-        className="map-toolbar"
-        role="group"
-        aria-label="Tree view controls"
-      >
-        <IconButton
-          label="Zoom out"
-          tooltip="Zoom out"
-          icon={<MinusIcon />}
-          variant="ghost"
-          size="sm"
-          onClick={zoomOut}
-        />
-        <Text className="sr-only">Current zoom</Text>
-        <Text data-zoom="" type="supporting" hasTabularNumbers>
-          {zoomLabel(zoom)}
-        </Text>
-        <IconButton
-          label="Zoom in"
-          tooltip="Zoom in"
-          icon={<PlusIcon />}
-          variant="ghost"
-          size="sm"
-          onClick={zoomIn}
-        />
-        <IconButton
-          label="Fit tree"
-          tooltip="Fit tree"
-          icon={<ArrowsPointingOutIcon />}
-          variant="ghost"
-          size="sm"
-          onClick={fitTree}
-        />
+      <MapToolbar zoom={zoom} zoomOut={zoomOut} zoomIn={zoomIn} fitTree={fitTree}>
         {menu({
           expand: () => setFolded(new Set()),
           collapse: () => setFolded(new Set([root])),
@@ -526,7 +349,7 @@ export default function TreeOverview({
           canKeep: !!current && trees.some((t) => t.id === current),
         })}
         {toolbar}
-      </HStack>
+      </MapToolbar>
       <InkLegend legend={legend} root={root} />
       <Text role="status" type="supporting" aria-live="polite" className="sr-only">
         {notice}
