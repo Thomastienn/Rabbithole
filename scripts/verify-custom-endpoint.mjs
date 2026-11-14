@@ -8,7 +8,7 @@ import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { Store } from '../server/store.mjs';
-import { OpenAI } from '../server/openai.mjs';
+import { OpenAI } from '../server/providers/openai.mjs';
 import { createApp } from '../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../test/fake-openai.mjs';
 

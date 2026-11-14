@@ -3,8 +3,8 @@ import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import lockfile from 'proper-lockfile';
-import { Auth } from '../server/auth.mjs';
-import { Codex } from '../server/codex.mjs';
+import { Auth } from '../server/providers/auth.mjs';
+import { Codex } from '../server/providers/codex.mjs';
 
 // Explicit live check: uses the existing app-owned consent and sends synthetic content.
 // Stop the app first: the lock protects its rotating OAuth refresh token.

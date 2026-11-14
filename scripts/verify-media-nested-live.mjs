@@ -9,11 +9,11 @@ import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import lockfile from 'proper-lockfile';
 import { Store } from '../server/store.mjs';
-import { Auth } from '../server/auth.mjs';
-import { Claude } from '../server/claude.mjs';
-import { Codex } from '../server/codex.mjs';
+import { Auth } from '../server/providers/auth.mjs';
+import { Claude } from '../server/providers/claude.mjs';
+import { Codex } from '../server/providers/codex.mjs';
 import { createApp } from '../server/app.mjs';
-import { mediaPath } from '../server/videos.mjs';
+import { mediaPath } from '../server/media/videos.mjs';
 
 process.umask(0o077);
 const dir = mkdtempSync(join(tmpdir(), 'tt-media-nested-'));

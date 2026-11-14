@@ -350,7 +350,7 @@ if (process.argv[2] === '--serve') {
     const files = [
       'server/store.mjs',
       'server/app.mjs',
-      'server/videos.mjs',
+      'server/media/videos.mjs',
       'src/ChatPage.tsx',
       'src/layout.ts',
       'src/layoutSave.ts',

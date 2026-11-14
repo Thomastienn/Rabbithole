@@ -8,9 +8,9 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 import lockfile from 'proper-lockfile';
-import { Auth } from '../server/auth.mjs';
-import { Claude } from '../server/claude.mjs';
-import { Codex } from '../server/codex.mjs';
+import { Auth } from '../server/providers/auth.mjs';
+import { Claude } from '../server/providers/claude.mjs';
+import { Codex } from '../server/providers/codex.mjs';
 import { Store } from '../server/store.mjs';
 import { anchored, knownConcepts, suggest } from '../server/suggestions.mjs';
 

@@ -678,7 +678,7 @@ if (process.argv[2] === '--serve') {
       'src/turn.ts',
       'src/layout.ts',
       'server/store.mjs',
-      'server/diagrams.mjs',
+      'server/media/diagrams.mjs',
       'server/app.mjs',
       'scripts/verify-diagram-rendering.mjs',
       'test/artifact-render.test.mjs',

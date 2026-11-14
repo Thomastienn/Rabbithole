@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { Codex } from '../server/codex.mjs';
+import { Codex } from '../server/providers/codex.mjs';
 
 const fixture = (inspect = () => {}) =>
   new Codex(

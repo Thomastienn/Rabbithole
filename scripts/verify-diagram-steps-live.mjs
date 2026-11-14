@@ -7,9 +7,9 @@ import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile, spawn } from 'node:child_process';
 import { Store } from '../server/store.mjs';
-import { Claude } from '../server/claude.mjs';
-import { Codex } from '../server/codex.mjs';
-import { Auth } from '../server/auth.mjs';
+import { Claude } from '../server/providers/claude.mjs';
+import { Codex } from '../server/providers/codex.mjs';
+import { Auth } from '../server/providers/auth.mjs';
 import lockfile from 'proper-lockfile';
 import { createApp } from '../server/app.mjs';
 

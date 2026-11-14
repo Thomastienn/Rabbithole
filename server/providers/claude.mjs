@@ -3,7 +3,7 @@ import { createInterface } from 'node:readline';
 import { mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { tutorSystem } from './diagrams.mjs';
+import { tutorSystem } from '../media/diagrams.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [

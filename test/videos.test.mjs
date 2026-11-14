@@ -18,11 +18,11 @@ import { inflateSync } from 'node:zlib';
 import { RenderInternals } from '@remotion/renderer';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { tutorContext } from '../server/diagrams.mjs';
-import { generateVideo, videoSource, mediaPath, SANDBOX } from '../server/videos.mjs';
-import { Claude } from '../server/claude.mjs';
-import { Codex } from '../server/codex.mjs';
-import { OpenAI } from '../server/openai.mjs';
+import { tutorContext } from '../server/media/diagrams.mjs';
+import { generateVideo, videoSource, mediaPath, SANDBOX } from '../server/media/videos.mjs';
+import { Claude } from '../server/providers/claude.mjs';
+import { Codex } from '../server/providers/codex.mjs';
+import { OpenAI } from '../server/providers/openai.mjs';
 import { fakeOpenAI, streamReply } from './fake-openai.mjs';
 
 const task = {

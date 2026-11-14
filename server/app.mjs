@@ -18,13 +18,13 @@ import {
   generateDiagram,
   LIMITS,
   tutorContext,
-} from './diagrams.mjs';
-import { generateVisual, visualTheme } from './visuals.mjs';
-import { asksForVideo, generateVideo, mediaPath } from './videos.mjs';
+} from './media/diagrams.mjs';
+import { generateVisual, visualTheme } from './media/visuals.mjs';
+import { asksForVideo, generateVideo, mediaPath } from './media/videos.mjs';
 import { desktop as systemDesktop } from './desktop.mjs';
 import { anchored, knownConcepts, nameTokens, quickDefault, suggest } from './suggestions.mjs';
 import { visualMessage, visualPassage } from '../src/artifacts.ts';
-import { EndpointError } from './openai.mjs';
+import { EndpointError } from './providers/openai.mjs';
 
 const LABELS = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
 const STOPPED = new Error('TreeTutor stopped.');

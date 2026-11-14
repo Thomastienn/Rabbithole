@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { JSDOM } from 'jsdom';
-import { savedTheme, themeChoices } from '../src/appearance.ts';
+import { savedTheme, themeChoices } from '../../src/appearance.ts';
 
 const INSTRUCTIONS = readFileSync(new URL('./prompts/visual.md', import.meta.url), 'utf8');
 const MAX_SOURCE = 64 * 1024;
@@ -9,7 +9,7 @@ const MAX_SOURCE = 64 * 1024;
 // Read Astryx's built colours so the worker prompt and browser share one palette.
 const palettes = Object.fromEntries(
   themeChoices.map(({ id }) => {
-    const css = readFileSync(new URL(`../src/themes/${id}/${id}.css`, import.meta.url), 'utf8');
+    const css = readFileSync(new URL(`../../src/themes/${id}/${id}.css`, import.meta.url), 'utf8');
     const tokens = [
       '--color-background-body',
       '--color-background-surface',

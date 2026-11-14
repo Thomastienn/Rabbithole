@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import { EdgeTTS } from '@andresaya/edge-tts';
-import { edgeNarration } from '../server/narration.mjs';
+import { edgeNarration } from '../server/media/narration.mjs';
 import { fakeNarration } from './fake-narration.mjs';
 
 test('actual Edge client sends private script once, receives audio/boundaries, does not retry refusal, and closes on cancel', async (t) => {

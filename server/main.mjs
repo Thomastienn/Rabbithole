@@ -4,10 +4,10 @@ import { mkdirSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import lockfile from 'proper-lockfile';
 import { Store } from './store.mjs';
-import { Auth } from './auth.mjs';
-import { Codex } from './codex.mjs';
-import { Claude } from './claude.mjs';
-import { OpenAI } from './openai.mjs';
+import { Auth } from './providers/auth.mjs';
+import { Codex } from './providers/codex.mjs';
+import { Claude } from './providers/claude.mjs';
+import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
 
 process.umask(0o077);

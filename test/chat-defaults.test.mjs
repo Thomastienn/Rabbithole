@@ -7,9 +7,9 @@ import { spawn } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { Claude } from '../server/claude.mjs';
-import { Codex } from '../server/codex.mjs';
-import { OpenAI } from '../server/openai.mjs';
+import { Claude } from '../server/providers/claude.mjs';
+import { Codex } from '../server/providers/codex.mjs';
+import { OpenAI } from '../server/providers/openai.mjs';
 import { fakeOpenAI } from './fake-openai.mjs';
 
 async function start(dir = mkdtempSync(join(tmpdir(), 'tt-chat-defaults-'))) {

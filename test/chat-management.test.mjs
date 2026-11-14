@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { mediaPath } from '../server/videos.mjs';
+import { mediaPath } from '../server/media/videos.mjs';
 import { layoutSaver } from '../src/layoutSave.ts';
 
 const complete = async (tree, text, emit) => {

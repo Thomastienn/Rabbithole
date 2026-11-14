@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { mediaPath } from '../server/videos.mjs';
+import { mediaPath } from '../server/media/videos.mjs';
 
 const media = Buffer.concat([
   Buffer.from([0, 0, 0, 24]),

@@ -5,9 +5,9 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile, execFileSync } from 'node:child_process';
 import lockfile from 'proper-lockfile';
-import { Auth } from '../server/auth.mjs';
-import { Codex } from '../server/codex.mjs';
-import { Claude } from '../server/claude.mjs';
+import { Auth } from '../server/providers/auth.mjs';
+import { Codex } from '../server/providers/codex.mjs';
+import { Claude } from '../server/providers/claude.mjs';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 

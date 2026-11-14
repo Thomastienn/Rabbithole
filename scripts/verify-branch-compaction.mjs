@@ -3,8 +3,8 @@ import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import lockfile from 'proper-lockfile';
-import { Auth } from '../server/auth.mjs';
-import { Codex } from '../server/codex.mjs';
+import { Auth } from '../server/providers/auth.mjs';
+import { Codex } from '../server/providers/codex.mjs';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, statSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { OpenAI } from '../server/openai.mjs';
+import { OpenAI } from '../server/providers/openai.mjs';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { fakeOpenAI, streamReply } from './fake-openai.mjs';

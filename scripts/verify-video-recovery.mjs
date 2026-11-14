@@ -9,7 +9,7 @@ import { execFile, fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { sandboxRender } from '../server/videos.mjs';
+import { sandboxRender } from '../server/media/videos.mjs';
 import { fakeNarration } from '../test/fake-narration.mjs';
 
 const filename = fileURLToPath(import.meta.url);

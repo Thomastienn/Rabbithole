@@ -1,5 +1,5 @@
 import { Worker } from 'node:worker_threads';
-import { safeDiagramSource } from '../src/diagramSource.ts';
+import { safeDiagramSource } from '../../src/diagramSource.ts';
 
 const MAX_SOURCE = 16 * 1024;
 // Resource bound on worker calls per reply, not a node limit inside a diagram.

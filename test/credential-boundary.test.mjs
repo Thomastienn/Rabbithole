@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Auth } from '../server/auth.mjs';
+import { Auth } from '../server/providers/auth.mjs';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { fakeOpenAI, streamReply } from './fake-openai.mjs';

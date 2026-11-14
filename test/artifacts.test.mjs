@@ -7,8 +7,8 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { Claude } from '../server/claude.mjs';
-import { Codex } from '../server/codex.mjs';
+import { Claude } from '../server/providers/claude.mjs';
+import { Codex } from '../server/providers/codex.mjs';
 
 const task = {
   title: 'Tournament tree',
@@ -531,7 +531,7 @@ test('a complex reply becomes several small ordered diagram steps; each worker g
       ['pending', 'pending', 'pending', 'pending', 'failed'],
       'all step cards appear before workers run; rejected requests fail immediately',
     );
-    const { tutorContext, TUTOR_INSTRUCTIONS } = await import('../server/diagrams.mjs');
+    const { tutorContext, TUTOR_INSTRUCTIONS } = await import('../server/media/diagrams.mjs');
     assert.match(
       TUTOR_INSTRUCTIONS,
       /several small visual steps[\s\S]*text stays accurate[\s\S]*text alternative/,

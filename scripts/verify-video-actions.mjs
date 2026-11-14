@@ -17,7 +17,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { mediaPath } from '../server/videos.mjs';
+import { mediaPath } from '../server/media/videos.mjs';
 import { desktop } from '../server/desktop.mjs';
 
 const [output = 'docs/verification/video-actions.json'] = process.argv.slice(2);

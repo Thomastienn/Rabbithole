@@ -8,7 +8,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { mediaPath } from '../server/videos.mjs';
+import { mediaPath } from '../server/media/videos.mjs';
 
 const [
   input = 'docs/verification/narrated-video-native-codex.json',

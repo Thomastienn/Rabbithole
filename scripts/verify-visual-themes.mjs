@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import { execFile, execFileSync } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { mediaPath } from '../server/videos.mjs';
+import { mediaPath } from '../server/media/videos.mjs';
 import { themeChoices } from '../src/appearance.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'tt-visual-themes-'));

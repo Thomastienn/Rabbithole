@@ -20,9 +20,9 @@ if (process.argv[2] === '--serve') {
   const [{ default: lockfile }, { Auth }, { Codex }, { Claude }, { Store }, { createApp }] =
     await Promise.all([
       import('proper-lockfile'),
-      import('../server/auth.mjs'),
-      import('../server/codex.mjs'),
-      import('../server/claude.mjs'),
+      import('../server/providers/auth.mjs'),
+      import('../server/providers/codex.mjs'),
+      import('../server/providers/claude.mjs'),
       import('../server/store.mjs'),
       import('../server/app.mjs'),
     ]);

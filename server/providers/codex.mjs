@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tutorSystem } from './diagrams.mjs';
+import { tutorSystem } from '../media/diagrams.mjs';
 
 export class Codex {
   constructor(auth, dir, launch = spawn) {

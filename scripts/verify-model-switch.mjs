@@ -6,8 +6,8 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import lockfile from 'proper-lockfile';
 import { Store } from '../server/store.mjs';
-import { Codex } from '../server/codex.mjs';
-import { Auth } from '../server/auth.mjs';
+import { Codex } from '../server/providers/codex.mjs';
+import { Auth } from '../server/providers/auth.mjs';
 import { createApp } from '../server/app.mjs';
 
 // Default is a deterministic browser check. --live uses app-owned consent and synthetic data only.

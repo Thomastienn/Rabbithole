@@ -6,7 +6,7 @@ import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { Store } from '../server/store.mjs';
-import { Claude } from '../server/claude.mjs';
+import { Claude } from '../server/providers/claude.mjs';
 import { createApp } from '../server/app.mjs';
 
 const dir = mkdtempSync(join(tmpdir(), 'tt-diagram-live-'));
