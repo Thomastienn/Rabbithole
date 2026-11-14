@@ -71,7 +71,7 @@ try {
   assert.ok(Math.abs(saved.duration - native.media.duration) < 0.1);
   report.checks.push({ name: 'saved paused player decodes after app/store restart', ...saved });
   await ev(
-    `(async()=>{const v=document.querySelector(${JSON.stringify(video)});v.currentTime=20;await v.play();return true})()`,
+    `(async()=>{const v=document.querySelector(${JSON.stringify(video)});v.currentTime=20;v.muted=true;await v.play();return true})()`,
   );
   await b(
     'wait',
@@ -89,7 +89,7 @@ try {
       await b('find', 'role', 'button', 'click', '--name', `Open ${tree.title}`, '--exact');
     await b('wait', video);
     await ev(
-      `(async()=>{const v=document.querySelector(${JSON.stringify(video)});v.currentTime=20;v.scrollIntoView({block:'center'});await v.play();return true})()`,
+      `(async()=>{const v=document.querySelector(${JSON.stringify(video)});v.currentTime=20;v.scrollIntoView({block:'center'});v.muted=true;await v.play();return true})()`,
     );
     await b(
       'wait',

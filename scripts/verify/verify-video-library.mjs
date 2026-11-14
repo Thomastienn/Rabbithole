@@ -92,7 +92,7 @@ const play = async () => {
   const v = JSON.stringify(card(native.media.id) + ' video');
   const position = Math.min(20, native.media.duration / 3);
   await ev(
-    `(async()=>{const v=document.querySelector(${v});v.scrollIntoView({block:'center'});v.currentTime=${position};await v.play();return true})()`,
+    `(async()=>{const v=document.querySelector(${v});v.scrollIntoView({block:'center'});v.currentTime=${position};v.muted=true;await v.play();return true})()`,
   );
   await b(
     'wait',
