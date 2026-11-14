@@ -34,7 +34,11 @@ Prerequisites: {{dependsOn}}
 - Prefer integration checks. Use browser/E2E checks where acceptance requires
   them. Run `npm test` plus only the verify scripts named in the acceptance
   criteria or covering the files you changed; do not run the full
-  `npm run verify` unless the acceptance criteria ask for it. Run
+  `npm run verify` unless the acceptance criteria ask for it. Run long checks
+  in the background and read only the final summary when they finish; do not
+  stream, tail or monitor their output line by line, since every wake-up
+  re-reads the whole context. Compare failures against the `known` map and the
+  previous commit instead of re-running the whole suite. Run
   `npm run test:render` only when the change touches video rendering. Restore
   regenerated `docs/verification/` files the task does not need as evidence. Keep internal steps and acceptance review in this same issue. Split only
   for a separate deliverable, external/user gate or demonstrated context limit;
