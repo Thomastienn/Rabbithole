@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { replyUsageLine, underlineRanges, withTurn } from '../../src/chat/turn.ts';
+import { replyFeedback, replyUsageLine, underlineRanges, withTurn } from '../../src/chat/turn.ts';
 
 test('navigation reconciles stale saved checkpoints with latest owning turn without duplicates', () => {
   const user = {
@@ -23,6 +23,69 @@ test('navigation reconciles stale saved checkpoints with latest owning turn with
   assert.deepEqual(withTurn(withTurn(stale, turn), turn).messages, [user, reply]);
   assert.deepEqual(stale, before);
   assert.equal(withTurn(stale), stale);
+});
+
+test('interleaved sibling/final turns replace stale reads only for their owning conversation', () => {
+  const saved = (id) => ({
+    id,
+    messages: [
+      { id: `${id}-q`, role: 'user', text: `Question ${id}`, status: 'completed' },
+      { id: `${id}-a`, role: 'assistant', text: 'Old partial', status: 'streaming' },
+    ],
+  });
+  const reads = new Map(['a', 'b', 'other-tree'].map((id) => [id, saved(id)]));
+  const turns = new Map(
+    [...reads].map(([id, value]) => [
+      id,
+      {
+        user: value.messages[0],
+        reply: { ...value.messages[1], text: `Latest ${id}`, status: 'completed' },
+      },
+    ]),
+  );
+  for (const id of ['b', 'other-tree', 'a', 'b']) {
+    const read = reads.get(id),
+      result = withTurn(read, turns.get(id));
+    assert.equal(result.messages.length, 2);
+    assert.equal(result.messages[1].text, `Latest ${id}`);
+    assert.equal(result.messages[1].status, 'completed');
+    assert.equal(read.messages[1].text, 'Old partial');
+  }
+});
+
+test('reply feedback labels compaction failures and only retries the latest eligible question', () => {
+  const user = { role: 'user', text: 'Why?', status: 'completed' };
+  const failed = { role: 'assistant', text: '', status: 'failed' };
+  assert.deepEqual(replyFeedback(failed, user, true, false, false, 'No context.'), {
+    label: 'No context. The focused chat is kept; no reply was written without its context.',
+    retry: true,
+  });
+  for (const [message, previous, latest, active, overview] of [
+    [failed, user, false, false, false],
+    [failed, user, true, true, false],
+    [failed, user, true, false, true],
+    [failed, failed, true, false, false],
+    [{ ...failed, status: 'completed' }, user, true, false, false],
+    [{ ...failed, status: 'canceled', stopped: 'learner' }, user, true, false, false],
+  ])
+    assert.equal(replyFeedback(message, previous, latest, active, overview).retry, false);
+  const stopped = replyFeedback(
+    { ...failed, status: 'canceled', stopped: 'learner' },
+    user,
+    true,
+    false,
+    false,
+  );
+  assert.match(stopped.label, /You stopped this reply/);
+  assert.equal(
+    replyFeedback({ ...failed, status: 'canceled', stopped: 'shutdown' }, user, true, false, false)
+      .retry,
+    true,
+  );
+  assert.equal(
+    replyFeedback({ ...failed, status: 'streaming' }, user, true, true, false).label,
+    'Responding…',
+  );
 });
 
 test('the token line adds suggestion usage and never invents missing counts', () => {

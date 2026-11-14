@@ -3,7 +3,6 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { Divider } from '@astryxdesign/core/Divider';
-import { Banner } from '@astryxdesign/core/Banner';
 import { SideNav, SideNavItem } from '@astryxdesign/core/SideNav';
 import { Icon } from '@astryxdesign/core/Icon';
 import {
@@ -14,10 +13,10 @@ import {
   SwatchIcon,
 } from '@heroicons/react/24/outline';
 import EndpointSettings from './EndpointSettings';
-import SuggestionSettings from './SuggestionSettings';
+import SuggestionSettings, { ConceptCost, AutomaticSuggestions } from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
 import SmartSettings from './SmartSettings';
-import ModelProfiles, { AutomaticSuggestions } from './ModelProfiles';
+import ModelProfiles from './ModelProfiles';
 import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
@@ -221,15 +220,7 @@ export default function SettingsWindow({
               title="Concept matching"
               description="Each suggestion call also sends your known concept names so it can match terms to them. A warning appears here when that list passes about 2,000 tokens."
             >
-              {(conceptNameTokens ?? 0) > 2000 ? (
-                <Banner
-                  status="warning"
-                  title="Warning: concept matching is getting expensive"
-                  description={`The last suggestion call sent about ${conceptNameTokens!.toLocaleString()} tokens of concept names.`}
-                />
-              ) : (
-                <Text type="supporting">Concept matching cost is within the normal range.</Text>
-              )}
+              <ConceptCost tokens={conceptNameTokens} />
             </Section>
           </>,
         )}

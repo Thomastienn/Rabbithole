@@ -23,13 +23,9 @@ const live = new Set([
 ]);
 // Failures already recorded in TreeTutor-cpi (one-line cause each); drop an entry when it is fixed.
 const known = {
-  'verify-break-down-ui.mjs': 'TreeTutor-cpi: manual highlight call count 3 !== 2',
   'verify-compact-chat.mjs': 'TreeTutor-cpi: dark side panel layout assertion (savedText false)',
   'verify-different-version.mjs': 'TreeTutor-cpi: ready visual + video wait times out',
   'verify-narrated-playback.mjs': "TreeTutor-cpi: reads a past native run's deleted /tmp data dir",
-  'verify-passage-selection.mjs':
-    'TreeTutor-cpi: Open Selection click lands on a covering map path',
-  'verify-suggestion-branching.mjs': 'TreeTutor-cpi: alert wait times out',
   'verify-video-library.mjs':
     "TreeTutor-cpi: copies an MP4 from a past live run's deleted /tmp dir",
   'verify-visual-sandbox.mjs':

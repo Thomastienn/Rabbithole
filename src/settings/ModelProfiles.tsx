@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
-import { Switch } from '@astryxdesign/core/Switch';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { TextInput } from '@astryxdesign/core/TextInput';
@@ -283,51 +282,6 @@ export default function ModelProfiles({
       {modelError && (
         <Text type="supporting" role="alert">
           {modelError}
-        </Text>
-      )}
-    </VStack>
-  );
-}
-
-// Global on/off, outside every profile.
-export function AutomaticSuggestions({
-  api,
-}: {
-  api: (path: string, body?: unknown) => Promise<{ enabled: boolean }>;
-}) {
-  const [enabled, setEnabled] = useState<boolean>(),
-    [pending, setPending] = useState(false),
-    [error, setError] = useState('');
-  useEffect(() => {
-    api('/api/settings/suggestions').then(
-      (s) => setEnabled(s.enabled),
-      (e) => setError((e as Error).message),
-    );
-  }, []);
-  async function save(next: boolean) {
-    setPending(true);
-    setError('');
-    try {
-      setEnabled((await api('/api/settings/suggestions', { enabled: next })).enabled);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setPending(false);
-    }
-  }
-  return (
-    <VStack gap={2}>
-      <Switch
-        label="Automatic suggestions"
-        value={enabled ?? false}
-        onChange={(next) => void save(next)}
-        isDisabled={enabled === undefined || pending}
-        isLoading={pending}
-        description="Underlines terms worth a branch after each new saved reply. Applies to every profile; calls already running finish."
-      />
-      {error && (
-        <Text type="supporting" role="alert">
-          {error}
         </Text>
       )}
     </VStack>

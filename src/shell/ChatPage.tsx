@@ -1,6 +1,5 @@
 import {
   Fragment,
-  memo,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -25,11 +24,9 @@ import {
   EllipsisHorizontalIcon,
   XMarkIcon,
   ArrowUturnLeftIcon,
-  ChartBarIcon,
   ChevronRightIcon,
   ViewColumnsIcon,
   ChatBubbleLeftRightIcon,
-  ChatBubbleBottomCenterTextIcon,
   PlusIcon,
   PencilSquareIcon,
   TrashIcon,
@@ -43,7 +40,6 @@ import {
   ListBulletIcon,
   CheckIcon,
 } from '@heroicons/react/24/outline';
-import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import TreeSearch from './TreeSearch';
 import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
@@ -67,15 +63,7 @@ import TreeOverview, {
   type MapActions,
   type Layout,
 } from '../map/TreeOverview';
-import {
-  replyUsageLine,
-  underlineRanges,
-  withTurn,
-  type Message,
-  type Suggestions,
-  type Turn,
-  type Usage,
-} from '../chat/turn';
+import { replyUsageLine, withTurn, type Message, type Suggestions, type Turn } from '../chat/turn';
 import { layoutSaver, type Batch } from '../map/layoutSave';
 import type { Point, Viewport } from '../map/canvas';
 import DiagramCard from '../media/DiagramCard';
@@ -95,29 +83,27 @@ import {
   resetMapWidth,
   savedMapWidth,
 } from '../map/mapWidth';
-import KnowledgePage, { type Graph } from '../knowledge/KnowledgePage';
+import KnowledgePage from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
 import { artifactsAt, mergeArtifact, visualPassage, type Artifact } from '../media/artifacts';
-import { renderMarkdown, rawOffsets, rawRange } from '../markdown/markdown';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
-import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
-import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { conversationAddresses, inkStyle, treeGroups, markLibraryScrolling } from '../map/treeList';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { effortLabel, type Model } from '../settings/models';
+import { TokenStats, TokenStatsToggle, InheritedContext, ReplyFeedback } from '../chat/ChatDetails';
+import Passage from '../chat/Passage';
+import BranchForm from '../chat/BranchForm';
+import {
+  branchRequest,
+  branchConcept,
+  prepareBranch,
+  type Anchor,
+  type Branch,
+} from '../chat/branch';
 import Contents from '../chat/Contents';
 import TurnRail from '../chat/TurnRail';
 import { useTheme } from '@astryxdesign/core/theme';
 
-// at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
-type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
-type Branch = {
-  parent: string;
-  messageId: string;
-  text: string;
-  question: string;
-  snapshot: string;
-};
 type Tree = {
   id: string;
   title: string;
@@ -210,490 +196,6 @@ function TitleEditor({
           onClick={cancel}
         />
       </HStack>
-    </VStack>
-  );
-}
-
-function PassageCorrection({
-  name,
-  api,
-  disabled,
-  children,
-}: {
-  name: string;
-  api: (path: string, body?: unknown) => Promise<Graph>;
-  disabled: boolean;
-  children: React.ReactNode;
-}) {
-  const [correction, setCorrection] = useState<'known' | 'unknown' | null>(null);
-  const [saving, setSaving] = useState<'known' | 'unknown'>();
-  const [error, setError] = useState(''),
-    [status, setStatus] = useState('');
-  const version = useRef(0);
-  useEffect(() => {
-    const current = ++version.current;
-    void api('/api/graph')
-      .then((graph) => {
-        if (current === version.current)
-          setCorrection(
-            graph.concepts.find((c) => c.name.toLowerCase() === name.toLowerCase())?.correction ??
-              null,
-          );
-      })
-      .catch((e) => {
-        if (current === version.current) setError(e.message);
-      });
-    return () => {
-      version.current++;
-    };
-  }, [name]);
-  async function correct(kind: 'known' | 'unknown') {
-    if (saving || disabled) return;
-    version.current++;
-    setSaving(kind);
-    setError('');
-    setStatus('');
-    try {
-      await api('/api/graph/correct', { name, kind });
-      setCorrection(kind);
-      setStatus(
-        `${name}: ${kind === 'known' ? 'marked as known' : 'marked as not understood'}. Your correction overrides the estimate.`,
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(undefined);
-    }
-  }
-  // Overflow keeps both corrections reachable without two prominent buttons; selecting one saves it.
-  return (
-    <VStack gap={1}>
-      <HStack gap={1} vAlign="center">
-        {children}
-        <DropdownMenu
-          presentation="popover"
-          alignment="end"
-          renderTrigger={(props) => (
-            <IconButton
-              {...props}
-              label={`Familiarity options for ${name}`}
-              tooltip="Familiarity"
-              icon={<EllipsisHorizontalIcon />}
-              variant="ghost"
-              size="sm"
-              isLoading={!!saving}
-              isDisabled={disabled}
-            />
-          )}
-        >
-          <DropdownMenuRadioGroup
-            label={`Corrections for ${name}`}
-            value={correction ?? undefined}
-            onChange={(kind) => void correct(kind as 'known' | 'unknown')}
-          >
-            <DropdownMenuRadioItem value="known" label="I know this" />
-            <DropdownMenuRadioItem value="unknown" label="I don't get this" />
-          </DropdownMenuRadioGroup>
-        </DropdownMenu>
-      </HStack>
-      <Text type="supporting" role="status" className="correction-status">
-        {status}
-      </Text>
-      {error && (
-        <Text type="supporting" role="alert">
-          {error}
-        </Text>
-      )}
-    </VStack>
-  );
-}
-
-// Parsing is memoised so streaming chunks and selection state changes reuse the rendered tree.
-const Reply = memo(function Reply({
-  text,
-  reveal,
-  underlines,
-  inlineArtifacts = [],
-  onArtifactAction,
-  onVisualPart,
-  visualBranches,
-}: {
-  text: string;
-  reveal?: Source;
-  underlines: { start: number; end: number; child?: string }[];
-  inlineArtifacts?: Artifact[];
-  onVisualPart?: PartAction;
-  visualBranches?: Record<string, VisualBranch[]>;
-  onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
-}) {
-  useEffect(ensureHighlightStyles, []);
-  const action = useRef(onArtifactAction),
-    partAction = useRef(onVisualPart);
-  action.current = onArtifactAction;
-  partAction.current = onVisualPart;
-  const key = JSON.stringify(underlines),
-    artifactKey = JSON.stringify(inlineArtifacts),
-    visualBranchKey = JSON.stringify(visualBranches);
-  return (
-    <Text as="div" type="body" className="reply-md">
-      {useMemo(
-        () =>
-          renderMarkdown(
-            text,
-            reveal?.artifactId === undefined ? reveal : undefined,
-            underlines,
-            inlineArtifacts.map((v) => ({
-              at: v.position!,
-              node:
-                v.kind === 'video' ? (
-                  <VideoCard
-                    key={v.id}
-                    inline
-                    artifact={v}
-                    onAction={onArtifactAction && ((kind) => action.current!(v.id, kind))}
-                  />
-                ) : (
-                  <VisualFrame
-                    key={v.id}
-                    artifact={v}
-                    explored={visualBranches?.[v.id]}
-                    reveal={reveal?.artifactId === v.id ? reveal : undefined}
-                    onPart={(...args) => partAction.current?.(...args)}
-                    onRetry={onArtifactAction && (() => action.current!(v.id, 'retry'))}
-                    onRegenerate={onArtifactAction && (() => action.current!(v.id, 'regenerate'))}
-                  />
-                ),
-            })),
-          ),
-        [
-          text,
-          reveal?.start,
-          reveal?.end,
-          reveal?.text,
-          key,
-          artifactKey,
-          visualBranchKey,
-          reveal?.artifactId,
-          !!onArtifactAction,
-        ],
-      )}
-    </Text>
-  );
-});
-
-function Passage({
-  message,
-  addresses,
-  index,
-  onBranch,
-  onOpenChild,
-  reveal,
-  selecting,
-  openSelection,
-  closeSelection,
-  form,
-  suggestions,
-  branched,
-  inlineArtifacts,
-  onArtifactAction,
-  onVisualPart,
-  visualBranches,
-}: {
-  message: Message;
-  addresses: ReturnType<typeof conversationAddresses>;
-  index: number;
-  inlineArtifacts?: Artifact[];
-  onVisualPart?: PartAction;
-  visualBranches?: Record<string, VisualBranch[]>;
-  onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
-  suggestions?: Suggestions;
-  branched: { start: number; end: number; text: string; child: string }[];
-  onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void;
-  onOpenChild: (id: string) => void;
-  reveal?: Source;
-  selecting: boolean;
-  openSelection: () => void;
-  closeSelection: () => void;
-  form?: { node: React.ReactNode; at?: Anchor['at']; start?: number; end?: number };
-}) {
-  const formOpen = !!form;
-  const highlighted = useRef(false);
-  // place is where a pointer highlight's passage box floats once Ask is clicked.
-  const [anchor, setAnchor] = useState<Anchor & { at?: Point; place?: Anchor['at'] }>();
-  const wrapper = useRef<HTMLElement>(null);
-  const floating = useRef<HTMLDivElement>(null);
-  const passage = useRef<HTMLElement>(null);
-  const action = useRef<HTMLButtonElement>(null);
-  const completed = message.status === 'completed';
-  const branchKey = JSON.stringify(branched);
-  const underlines = useMemo(
-    () =>
-      completed
-        ? underlineRanges(message.text, suggestions, branched).map((u) =>
-            u.child ? { ...u, ...addresses.get(u.child) } : u,
-          )
-        : [],
-    [completed, message.text, suggestions, branchKey, addresses],
-  );
-  useLayoutEffect(() => {
-    const box = floating.current;
-    if (!box) return;
-    const position = () => {
-      box.style.transform = '';
-      const top = wrapper
-        .current!.closest('.focused-chat')!
-        .querySelector('.chat-header')!
-        .getBoundingClientRect().bottom;
-      const at = form?.at;
-      if (at && box.getBoundingClientRect().top < top)
-        box.style.transform = `translateY(calc(${(at.below ?? at.y) - at.y}px + 2 * var(--spacing-1)))`;
-    };
-    position();
-    const observer = new ResizeObserver(position);
-    observer.observe(box);
-    window.addEventListener('resize', position);
-    document.addEventListener('scroll', position, true);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', position);
-      document.removeEventListener('scroll', position, true);
-    };
-  }, [formOpen, form?.at?.y, form?.at?.below]);
-  useEffect(() => {
-    const highlight = reveal && passage.current?.querySelector<HTMLElement>('mark, [data-reveal]');
-    if (!highlight) return;
-    highlight.scrollIntoView({ block: 'center' });
-    highlight.focus?.({ preventScroll: true });
-    // ChatLayout jumps to the bottom on the frame after mount; reveal again if that jump hid the passage.
-    let frame = requestAnimationFrame(() => {
-      frame = requestAnimationFrame(() => {
-        const box = highlight.getBoundingClientRect();
-        if (box.bottom < 0 || box.top > innerHeight) highlight.scrollIntoView({ block: 'center' });
-      });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [reveal]);
-  // While the box is open its passage is painted with the CSS Custom Highlight API, leaving the DOM and native selection alone.
-  useLayoutEffect(() => {
-    const root = passage.current,
-      range =
-        form &&
-        root &&
-        typeof Highlight !== 'undefined' &&
-        form.start !== undefined &&
-        form.end !== undefined &&
-        rawRange(root, form.start, form.end);
-    if (!range) return;
-    const mine = new Highlight(range);
-    CSS.highlights.set('passage', mine);
-    return () => {
-      if (CSS.highlights.get('passage') === mine) CSS.highlights.delete('passage');
-    };
-  }, [form?.start, form?.end, formOpen, message.text, underlines, reveal]);
-  function capture(start: number, end: number, at?: Point, place?: Anchor['at']) {
-    setAnchor(
-      end > start
-        ? { messageId: message.id, start, end, text: message.text.slice(start, end), at, place }
-        : undefined,
-    );
-  }
-  function captureSelection(e: React.MouseEvent | React.KeyboardEvent) {
-    highlighted.current = false;
-    if (!completed) return;
-    const selection = window.getSelection();
-    if (!selection?.rangeCount || selection.isCollapsed) {
-      setAnchor(undefined);
-      return;
-    }
-    const range = selection.getRangeAt(0),
-      root = passage.current;
-    if (!root?.contains(range.startContainer) || !root.contains(range.endContainer)) {
-      setAnchor(undefined);
-      return;
-    }
-    const span = rawOffsets(root, range);
-    if (!span) {
-      setAnchor(undefined);
-      return;
-    }
-    // Float the action just under the end of the selection, inside this reply.
-    const rects = range.getClientRects(),
-      last = rects[rects.length - 1],
-      box = wrapper.current!.getBoundingClientRect();
-    // A pointer highlight keeps the native selection (copy works) and only shows Ask; it wins over any underline it covers.
-    const pointer = e.type === 'mouseup' && span.end > span.start;
-    highlighted.current = pointer;
-    capture(
-      span.start,
-      span.end,
-      last && { x: Math.min(last.right - box.left, box.width), y: last.bottom - box.top },
-      pointer ? { x: 0, y: rects[0].top - box.top, below: last.bottom - box.top } : undefined,
-    );
-  }
-  // An unexplored underline opens the passage textbox; an explored one opens its existing child.
-  function activate(target: EventTarget) {
-    const piece = (target as Element).closest?.('u.suggestion') as HTMLElement | null;
-    const u =
-      piece && underlines.find((u) => +piece.dataset.o! >= u.start && +piece.dataset.o! < u.end);
-    if (!u || !completed) return false;
-    if (u.child) {
-      onOpenChild(u.child);
-      return true;
-    }
-    const stop =
-      [...passage.current!.querySelectorAll<HTMLElement>('u.suggestion[tabindex]')].find(
-        (e) => +e.dataset.o! >= u.start && +e.dataset.o! < u.end,
-      ) ?? piece;
-    setAnchor(undefined);
-    const stopBox = stop.getBoundingClientRect(),
-      top = wrapper.current!.getBoundingClientRect().top;
-    onBranch(
-      {
-        messageId: message.id,
-        start: u.start,
-        end: u.end,
-        text: message.text.slice(u.start, u.end),
-        suggestion: true,
-        at: { x: 0, y: stopBox.top - top, below: stopBox.bottom - top },
-      },
-      { current: stop },
-    );
-    return true;
-  }
-  useEffect(() => {
-    function dismiss(e: PointerEvent) {
-      if (
-        !passage.current?.contains(e.target as Node) &&
-        !action.current?.contains(e.target as Node) &&
-        !selecting &&
-        !formOpen
-      )
-        setAnchor(undefined);
-    }
-    document.addEventListener('pointerdown', dismiss);
-    return () => document.removeEventListener('pointerdown', dismiss);
-  }, [selecting, formOpen]);
-  const ask = anchor && !formOpen && (
-    <Button
-      ref={action}
-      label="Ask about selection"
-      variant="primary"
-      size="sm"
-      elevation="med"
-      icon={<ChatBubbleBottomCenterTextIcon />}
-      onClick={() => {
-        const { place, ...picked } = anchor;
-        // Pointer Ask opens the box floating above the passage and returns focus to the reply; keyboard Ask keeps the inline box.
-        if (place) {
-          setAnchor(undefined);
-          onBranch({ ...picked, at: place }, passage);
-        } else onBranch({ ...picked, at: undefined }, action);
-      }}
-    />
-  );
-  return (
-    <VStack
-      ref={wrapper}
-      gap={2}
-      className="passage"
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && (anchor || selecting)) {
-          e.preventDefault();
-          e.stopPropagation();
-          setAnchor(undefined);
-          closeSelection();
-          passage.current?.focus();
-        }
-      }}
-    >
-      <section
-        ref={passage}
-        tabIndex={-1}
-        onMouseUp={captureSelection}
-        onKeyUp={captureSelection}
-        onClick={(e) => {
-          if (!highlighted.current) activate(e.target);
-        }}
-        onKeyDown={(e) => {
-          if ((e.key === 'Enter' || e.key === ' ') && activate(e.target)) e.preventDefault();
-        }}
-      >
-        <Reply
-          text={
-            message.text ||
-            (message.status === 'streaming'
-              ? message.phase === 'compacting'
-                ? 'Compacting parent context…'
-                : 'Thinking…'
-              : '')
-          }
-          reveal={reveal}
-          underlines={underlines}
-          inlineArtifacts={inlineArtifacts}
-          onArtifactAction={onArtifactAction}
-          onVisualPart={onVisualPart}
-          visualBranches={visualBranches}
-        />
-      </section>
-      {/* Mounted before suggestions arrive so their arrival is announced once; reopened replies are not re-announced. */}
-      <Text role="status" className="sr-only">
-        {underlines.length
-          ? `${underlines.length} suggested ${underlines.length === 1 ? 'passage' : 'passages'} in tutor reply ${index}`
-          : ''}
-      </Text>
-      {completed && !selecting && (
-        <Button
-          className="focus-reveal"
-          label={`Select passage in tutor reply ${index}`}
-          variant="ghost"
-          size="sm"
-          onClick={openSelection}
-        />
-      )}
-      {selecting && (
-        <>
-          <TextArea
-            label="Select tutor passage"
-            description="Hold Shift and use arrow keys to select. Tab to Ask about selection."
-            value={message.text}
-            isReadOnly
-            rows={4}
-            hasAutoFocus
-            onSelect={(e) => {
-              const input = e.target as HTMLTextAreaElement;
-              capture(input.selectionStart, input.selectionEnd);
-            }}
-          />
-        </>
-      )}
-      {ask &&
-        (anchor.at ? (
-          <HStack className="selection-action" style={{ left: anchor.at.x, top: anchor.at.y }}>
-            {ask}
-          </HStack>
-        ) : (
-          ask
-        ))}
-      {form &&
-        (form.at ? (
-          <VStack ref={floating} className="passage-box" style={{ top: form.at.y }}>
-            {form.node}
-          </VStack>
-        ) : (
-          form.node
-        ))}
-      {selecting && (
-        <Button
-          label="Close passage selection"
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setAnchor(undefined);
-            closeSelection();
-            passage.current?.focus();
-          }}
-        />
-      )}
     </VStack>
   );
 }
@@ -1585,24 +1087,12 @@ export default function ChatPage({
         branchOrigin.current?.current?.focus({ preventScroll: !refocus });
     });
   }
-  useEffect(() => {
-    if (!branch || branching) return;
-    // Capture phase so the popup closes before a new selection or underline reopens it; its menu popover counts as inside.
-    const outside = (e: PointerEvent) => {
-      if (!(e.target as Element).closest?.('.branch-form, [role=menu]')) closeBranch(false);
-    };
-    document.addEventListener('pointerdown', outside, true);
-    return () => document.removeEventListener('pointerdown', outside, true);
-  }, [!!branch, branching]);
   // Compaction never sees the question, so it starts when the form opens; closing cancels (a no-op after submit took it).
-  const prepareKey = branch && JSON.stringify([branch.parent, { ...branch.anchor, at: undefined }]);
+  const prepareKey = branch && JSON.stringify([branch.parent, branchRequest(branch.anchor)]);
   useEffect(() => {
     if (!prepareKey) return;
     const [parent, anchor] = JSON.parse(prepareKey);
-    api(`/api/trees/${parent}/prepare`, anchor).catch(() => {}); // submit reports any failure
-    return () => {
-      api(`/api/trees/${parent}/unprepare`, anchor).catch(() => {});
-    };
+    return prepareBranch(parent, anchor, api);
   }, [prepareKey]);
   async function submitBranch(e: React.FormEvent) {
     e.preventDefault();
@@ -1610,11 +1100,10 @@ export default function ChatPage({
     setBranching(true);
     setError('');
     try {
-      const { at: _at, ...anchor } = branch.anchor;
-      const next: Tree = await api(`/api/trees/${branch.parent}/branches`, {
-        ...anchor,
-        question: branch.question,
-      });
+      const next: Tree = await api(
+        `/api/trees/${branch.parent}/branches`,
+        branchRequest(branch.anchor, branch.question),
+      );
       setDrafts((d) => ({ ...d, [next.id]: branch.question }));
       overviewOrigin.current = undefined;
       setBranch(undefined);
@@ -1739,12 +1228,7 @@ export default function ChatPage({
     setError('');
   };
   const active = !!tree && !!state?.active.includes(tree.id);
-  const branchConcept = branch?.anchor.suggestion
-    ? tree?.suggestions
-        ?.find((s) => s.message === branch.anchor.messageId)
-        ?.passages.find((p) => p.start === branch.anchor.start && p.end === branch.anchor.end)
-        ?.concept
-    : undefined;
+  const concept = branch && branchConcept(branch.anchor, tree?.suggestions);
   function openSettings(
     section?: SettingsTab,
     focus?: string,
@@ -2146,15 +1630,9 @@ export default function ChatPage({
                               {tree.title}
                             </strong>
                           </nav>
-                          <IconButton
-                            className="stats-toggle"
-                            label="Token stats"
-                            tooltip={statsOpen ? 'Hide token stats' : 'Show token stats'}
-                            aria-pressed={statsOpen}
-                            icon={<ChartBarIcon />}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setStatsOpen((open) => !open)}
+                          <TokenStatsToggle
+                            open={statsOpen}
+                            toggle={() => setStatsOpen((open) => !open)}
                           />
                           <IconButton
                             className="expand-chat"
@@ -2319,57 +1797,20 @@ export default function ChatPage({
                             </Button>
                           )}
                         </VStack>
-                        {statsOpen && (
-                          <VStack
-                            ref={statsPanel}
-                            gap={1}
-                            className="chat-stats-body"
-                            role="region"
-                            aria-label="Token stats"
-                          >
-                            {tree.messages
-                              .filter((m) => m.role === 'assistant' && m.status === 'completed')
-                              .map((m, i) => (
-                                <Text key={m.id} type="supporting" color="secondary">
-                                  Reply {i + 1}:{' '}
-                                  {replyUsageLine(
-                                    m.usage ?? null,
-                                    tree.suggestions?.find((s) => s.message === m.id)?.usage,
-                                  )}
-                                </Text>
-                              ))}
-                            {!tree.messages.some(
-                              (m) => m.role === 'assistant' && m.status === 'completed',
-                            ) && (
-                              <Text type="supporting" color="secondary">
-                                Token usage appears after a completed reply.
-                              </Text>
-                            )}
-                          </VStack>
-                        )}
-                        {tree.branch && (
-                          <Collapsible
-                            style={inkStyle(addresses.get(tree.id)?.ink ?? 0)}
-                            className="inherited-context"
-                            defaultIsOpen={false}
-                            trigger={
-                              <Text weight="medium">
-                                Inherited from{' '}
-                                {state?.trees.find((t) => t.id === tree.branch!.parent)?.title ??
-                                  'parent conversation'}
-                              </Text>
-                            }
-                          >
-                            <dl className="inherited-body">
-                              <dt>Passage</dt>
-                              <dd>{tree.branch.text}</dd>
-                              <dt>Your question</dt>
-                              <dd>{tree.branch.question}</dd>
-                              <dt>Context the tutor received</dt>
-                              <dd>{tree.branch.snapshot}</dd>
-                            </dl>
-                          </Collapsible>
-                        )}
+                        <TokenStats
+                          open={statsOpen}
+                          panel={statsPanel}
+                          messages={tree.messages}
+                          suggestions={tree.suggestions}
+                        />
+                        <InheritedContext
+                          branch={tree.branch}
+                          parentTitle={
+                            state?.trees.find((t) => t.id === tree.branch?.parent)?.title ??
+                            'parent conversation'
+                          }
+                          ink={addresses.get(tree.id)?.ink ?? 0}
+                        />
                         {!tree.messages.length && (
                           <VStack gap={3} padding={6}>
                             <Heading level={3}>What are you curious about?</Heading>
@@ -2476,85 +1917,18 @@ export default function ChatPage({
                                       ? {
                                           at: branch.anchor.at,
                                           node: (
-                                            <form
-                                              className="branch-form"
-                                              onSubmit={submitBranch}
-                                              onKeyDown={(e) => {
-                                                if (
-                                                  e.key === 'Escape' &&
-                                                  !branching &&
-                                                  !(e.target as Element).closest(
-                                                    '[role=menu], [aria-expanded=true]',
-                                                  )
-                                                ) {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  closeBranch(true);
-                                                }
-                                              }}
-                                            >
-                                              <VStack padding={2} gap={2}>
-                                                {(() => {
-                                                  const row = (
-                                                    <>
-                                                      {/* The reply paints the passage; this quote only describes the question for screen readers. */}
-                                                      <Text
-                                                        id="branch-passage"
-                                                        className="branch-passage sr-only"
-                                                      >
-                                                        {branch.anchor.text}
-                                                      </Text>
-                                                      <TextInput
-                                                        label="Question about this passage"
-                                                        isLabelHidden
-                                                        placeholder="Ask about this passage"
-                                                        aria-describedby="branch-passage"
-                                                        size="sm"
-                                                        value={branch.question}
-                                                        onChange={(question) =>
-                                                          setBranch((b) => b && { ...b, question })
-                                                        }
-                                                        isDisabled={branching}
-                                                        hasAutoFocus
-                                                        containerClassName="branch-question"
-                                                      />
-                                                      <IconButton
-                                                        className="branch-send"
-                                                        label={
-                                                          branching
-                                                            ? 'Preparing context…'
-                                                            : 'Create focused chat'
-                                                        }
-                                                        type="submit"
-                                                        icon={<ArrowUpIcon />}
-                                                        variant="primary"
-                                                        size="sm"
-                                                        isLoading={branching}
-                                                        isDisabled={
-                                                          branching ||
-                                                          !branch.question.trim() ||
-                                                          active
-                                                        }
-                                                      />
-                                                    </>
-                                                  );
-                                                  return branchConcept ? (
-                                                    <PassageCorrection
-                                                      key={`${branch.parent}:${branch.anchor.messageId}:${branch.anchor.start}:${branch.anchor.end}`}
-                                                      name={branchConcept}
-                                                      api={api}
-                                                      disabled={branching}
-                                                    >
-                                                      {row}
-                                                    </PassageCorrection>
-                                                  ) : (
-                                                    <HStack gap={1} vAlign="center">
-                                                      {row}
-                                                    </HStack>
-                                                  );
-                                                })()}
-                                              </VStack>
-                                            </form>
+                                            <BranchForm
+                                              branch={branch}
+                                              branching={branching}
+                                              active={active}
+                                              concept={concept}
+                                              api={api}
+                                              submit={submitBranch}
+                                              close={closeBranch}
+                                              setQuestion={(question) =>
+                                                setBranch((b) => b && { ...b, question })
+                                              }
+                                            />
                                           ),
                                           start: branch.anchor.start,
                                           end: branch.anchor.end,
@@ -2620,53 +1994,16 @@ export default function ChatPage({
                                       />
                                     ),
                                   )}
-                              {!overview &&
-                                message.role === 'assistant' &&
-                                message.status === 'completed' &&
-                                suggestions?.status === 'failed' && (
-                                  <Text type="supporting" color="secondary">
-                                    Suggestions unavailable
-                                  </Text>
-                                )}
-                              {message.status !== 'completed' && (
-                                <HStack
-                                  gap={2}
-                                  vAlign="center"
-                                  className={
-                                    message.status === 'failed' ? 'failure-banner' : undefined
-                                  }
-                                >
-                                  <Text
-                                    type="supporting"
-                                    role="status"
-                                    className="reply-status"
-                                    data-status={message.status}
-                                  >
-                                    {message.status === 'streaming'
-                                      ? 'Responding…'
-                                      : message.status === 'failed' &&
-                                          message === tree.messages.at(-1) &&
-                                          tree.compaction?.error
-                                        ? `${tree.compaction.error} The focused chat is kept; no reply was written without its context.`
-                                        : `Reply ${message.status}.${message.stopped === 'learner' ? ' You stopped this reply.' : ''} You can send another question.`}
-                                  </Text>
-                                  {!overview &&
-                                    !active &&
-                                    message === tree.messages.at(-1) &&
-                                    (message.status === 'failed' ||
-                                      message.stopped === 'shutdown') &&
-                                    tree.messages.at(-2)?.role === 'user' && (
-                                      <Button
-                                        label="Retry reply"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() =>
-                                          void send(tree.messages.at(-2)!.text, tree, true)
-                                        }
-                                      />
-                                    )}
-                                </HStack>
-                              )}
+                              <ReplyFeedback
+                                message={message}
+                                suggestions={suggestions}
+                                overview={overview}
+                                active={active}
+                                latest={message === tree.messages.at(-1)}
+                                previous={tree.messages.at(-2)}
+                                compactionError={tree.compaction?.error}
+                                retry={(text) => void send(text, tree, true)}
+                              />
                             </ChatMessage>
                           );
                         })}

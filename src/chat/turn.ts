@@ -76,6 +76,30 @@ export function underlineRanges(
 // replaced: the failed reply a Retry streams over, dropped from the list.
 export type Turn = { user?: Message; reply?: Message; artifacts?: Artifact[]; replaced?: string };
 
+export function replyFeedback(
+  message: Message,
+  previous: Message | undefined,
+  latest: boolean,
+  active: boolean,
+  overview: boolean,
+  compactionError?: string,
+) {
+  return {
+    label:
+      message.status === 'streaming'
+        ? 'Responding…'
+        : message.status === 'failed' && latest && compactionError
+          ? `${compactionError} The focused chat is kept; no reply was written without its context.`
+          : `Reply ${message.status}.${message.stopped === 'learner' ? ' You stopped this reply.' : ''} You can send another question.`,
+    retry:
+      !overview &&
+      !active &&
+      latest &&
+      (message.status === 'failed' || message.stopped === 'shutdown') &&
+      previous?.role === 'user',
+  };
+}
+
 // Reconcile saved checkpoints with the latest events for this conversation only.
 export function withTurn<T extends { id?: string; messages: Message[]; artifacts?: Artifact[] }>(
   conversation: T,

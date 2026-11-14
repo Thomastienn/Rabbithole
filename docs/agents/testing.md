@@ -66,6 +66,51 @@ cover one again, add it to a smoke script.
 
 <!-- One line per lost check: script, check, reason. -->
 
+- `verify-read`: the map is 440px wide and directly to the right of focused chat; responsive CSS geometry.
+- `verify-read`: prose is 640px wide with a 60–76 character measure and Literata at 17px/1.7; loaded fonts and browser text layout.
+- `verify-read`: inherited context has no border or shadow; computed CSS.
+- `verify-read`: code blocks have no border or shadow; computed CSS.
+- `verify-read`: diagram cards have no border or shadow; computed CSS.
+- `verify-read`: expanded Mermaid source has no border or shadow; computed CSS.
+- `verify-read`: table cells have only a bottom rule; computed CSS.
+- `verify-read`: current Contents rows use a visible fill without a shadow; computed CSS.
+- `verify-read`: the composer model chip has no border or shadow; computed CSS.
+- `verify-read`: the branch form has one outer frame and no internal frames/shadows; computed CSS.
+- `verify-read`: Read text, copy/model/stats/media controls and breadcrumbs meet AA in both appearances; composited browser colors.
+- `verify-read`: native Tab draws a solid paper focus ring at least 2px wide; browser focus traversal and computed CSS.
+- `verify-read`: expanding chat hides the divider and showing the map restores it; CSS layout (the keyboard-journey smoke remains).
+- `verify-read`: opening token stats from a later reply scrolls them fully between the header and composer while retaining toggle focus; native scrolling and measured bounds (toggle state and stats remain component tested).
+- `verify-read`: inline visuals and videos have no border; computed CSS (artifact states and actions retain component/boundary coverage).
+- `verify-read`: the ready video starts paused with working native controls; browser media playback (video-player smoke remains).
+- `verify-read`: the generated iframe's Check yourself reveal opens on native Enter with a solid summary focus ring; native iframe execution and focus/CSS.
+- `verify-read`: pending visuals have a 180px shimmer; computed CSS geometry (pending artifact state remains tested).
+- `verify-read`: Stop has no outline or shadow in the composer; computed CSS.
+- `verify-read`: at 390px focused chat fills the viewport and Send remains onscreen without document overflow; responsive CSS geometry.
+- `verify-inherited-context`: collapsed context stays above the first message and its body is visually hidden until expanded; browser bounds and collapse CSS (DOM order, expanded state and plain-text contents remain component tested).
+- `verify-passage-corrections`: native Tab reaches the correction overflow with a visible focus outline; browser traversal and computed focus styles (menu handlers remain component tested).
+- `verify-passage-corrections`: native Enter/Space selects correction items and closing the menu restores trigger focus; browser menu keyboard/focus integration (saved/checked/error states remain component tested).
+- `verify-passage-corrections`: passage controls fit desktop and 390px viewports after reload; responsive CSS geometry (correction persistence remains boundary tested).
+- `verify-passage-popup`: the passage quote is visually clipped to screen-reader-only width; CSS clipping (its text and aria-describedby link remain component tested).
+- `verify-passage-popup`: CSS Custom Highlights visibly paint the exact passage while typing and after late suggestions in both appearances; native highlight rendering (range mapping and highlight registry lifecycle remain tested).
+- `verify-passage-popup`: popup bounds fit wide and narrow viewports; responsive CSS geometry.
+- `verify-passage-popup`: the send control is square, correction controls are visually quiet, and the popup is under 160px high; computed CSS/visibility and geometry (control names/structure remain tested).
+- `verify-passage-popup`: native empty Enter submits nothing and nonempty Enter creates the branch; browser default form submission (disabled states, submit handler and request bodies remain tested).
+- `verify-passage-popup`: Escape and outside pointer clicks restore/retain native focus off the body; browser focus integration (dismissal callbacks and selection focus targets remain tested; keyboard-journey smoke remains).
+- `verify-passage-popup`: dragging a manual highlight preserves a copyable native selection through Ask; native pointer gestures and clipboard integration (DOM Range capture and selection preservation remain tested).
+- `verify-passage-popup`: Escape in a portalled familiarity menu closes only the menu; native popup keyboard/focus integration (synthetic menu Escape and outside-click exclusion remain tested).
+- `verify-passage-selection`: real mouse drags select repeated emoji and rich Markdown passages across line wraps; native pointer gestures and measured text geometry (UTF-16/raw-range mapping remains tested).
+- `verify-passage-selection`: native Shift-arrow selection and Tab reach Ask, and sending the branch focuses its composer; browser keyboard/default-action integration (read-only selection handlers remain tested; branching/keyboard smoke remains).
+- `verify-passage-selection`: source reveal focuses and scrolls old/new rich-text and syntax-only anchors into view after reload; native scrolling (saved offsets, reveal markup and raw ranges remain tested).
+- `verify-passage-selection`: streaming additions preserve the measured vertical position of earlier content; browser reflow (heading/code DOM identity remains component tested).
+- `verify-passage-selection`: activating a reply link opens an isolated new tab with a null opener and leaves the original conversation in place; browser tab navigation (safe href/target/rel remain tested).
+- `verify-passage-selection`: rich replies fit desktop/390px widths with colored syntax, larger headings and nonzero math width in both appearances; computed CSS and browser text/math layout.
+- `verify-suggestion-branching`: the popup sits above/below its underline without covering it; browser text/header geometry.
+- `verify-suggestion-branching`: explored underlines paint solid while unexplored ones paint dotted; computed CSS (explored classes, names and routing remain tested).
+- `verify-suggestion-branching`: an actual drag inside an explored underline creates a new selection instead of opening its child; native pointer gesture/click suppression (synthetic Range precedence remains component tested).
+- `verify-break-down-ui`: late suggestions preserve the scrolled transcript position; browser scrolling (focus, announcement and passage state remain component tested).
+- `verify-break-down-ui`: native Tab/Enter/Space complete manual branching, suggestion activation, switch toggling and model selection; browser keyboard/default actions (DOM controls/callbacks remain component tested; keyboard-journey smoke remains).
+- `verify-break-down-ui`: reply usage and Settings copy fit desktop and phone widths without document overflow; responsive CSS geometry.
+
 - `verify-knowledge`: correction controls have visible focus outlines; computed CSS and focus-visible rendering.
 - `verify-knowledge`: switching to Knowledge and back restores the exact rendered map transform; browser transforms (graph state and correction persistence remain tested).
 - `verify-knowledge`: desktop and phone panels fit without horizontal overflow; responsive CSS geometry.
