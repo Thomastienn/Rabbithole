@@ -42,6 +42,11 @@ helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mj
 
 ## Commands
 
+- Run `npm run format` before committing; `npm run format:check` must pass. Prettier uses
+  print width 100 and single quotes.
+- Keep hand-written JS, TS, TSX and CSS files in `src`, `server`, `scripts` and `test` at
+  500 lines or fewer; split by behaviour instead of adding exemptions. `npm test` enforces
+  this rule. Generated Astryx theme output and test fixtures stay excluded.
 - While you work, run only the test files covering the change:
   `node --test test/<file or folder>`.
 - Run `npm test` once at the end.

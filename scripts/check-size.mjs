@@ -5,30 +5,22 @@ import { pathToFileURL } from 'node:url';
 
 const LIMIT = 500;
 const DIRS = ['src', 'server', 'scripts', 'test'];
-const CODE = /\.(m?js|tsx?)$/;
+const CODE = /\.(m?js|tsx?|css)$/;
 // Astryx theme build output and test fixtures; keep in step with .prettierignore.
 const GENERATED = /^src\/themes\/[^/]+\/[^/]+\.(js|css|d\.ts|doc\.mjs)$|^test\/fixtures\//;
 
-// Files waiting for their split ticket; each split removes its entry.
-export const OVERSIZED = [];
-
-export function checkSize(root, oversized = OVERSIZED) {
-  const lines = new Map();
+export function checkSize(root) {
+  const problems = [];
   for (const dir of DIRS) {
     for (const file of readdirSync(join(root, dir), { recursive: true, withFileTypes: true })) {
       const path = join(file.parentPath, file.name)
         .slice(root.length + 1)
         .replaceAll('\\', '/');
       if (!file.isFile() || !CODE.test(path) || GENERATED.test(path)) continue;
-      lines.set(path, readFileSync(join(root, path), 'utf8').split('\n').length - 1);
+      const source = readFileSync(join(root, path), 'utf8');
+      const count = source.split('\n').length - (source.endsWith('\n') ? 1 : 0);
+      if (count > LIMIT) problems.push(`${path}: ${count} lines`);
     }
-  }
-  const problems = [];
-  for (const [path, count] of lines) {
-    if (count > LIMIT && !oversized.includes(path)) problems.push(`${path}: ${count} lines`);
-  }
-  for (const path of oversized) {
-    if (!(lines.get(path) > LIMIT)) problems.push(`${path}: stale oversized entry, remove it`);
   }
   return problems;
 }
