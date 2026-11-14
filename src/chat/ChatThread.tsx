@@ -165,6 +165,7 @@ export default function ChatThread({
                   key={artifact.id}
                   artifact={artifact}
                   explored={visualBranches[artifact.id]}
+                  onOpenChild={(id) => void openConversation(id)}
                   reveal={validSource && source?.artifactId === artifact.id ? source : undefined}
                   onPart={openVisualPart}
                   onRetry={() => videoAction(tree.id, artifact.id, 'retry')}

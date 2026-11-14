@@ -412,7 +412,8 @@ mark {
   text-decoration-color: var(--ink, var(--color-accent));
   text-decoration-thickness: 2px;
 }
-.reply-md .passage-address {
+.reply-md .passage-address,
+.visual-chips .passage-address {
   display: inline-block;
   margin-inline-start: 2px;
   padding: 0 4px;

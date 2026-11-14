@@ -24,6 +24,16 @@
   height: 100%;
   opacity: 0;
 }
+/* A visual's child branches: the passage address chip as a button, in a row under the figure. */
+.visual-chips {
+  margin-top: 6px;
+}
+.visual-chips .passage-address {
+  margin: 0;
+  border: 0;
+  vertical-align: baseline;
+  cursor: pointer;
+}
 .visual-actions {
   position: absolute;
   inset: 0 0 auto auto;

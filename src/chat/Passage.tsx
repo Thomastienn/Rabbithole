@@ -263,6 +263,7 @@ export default function Passage({
           onArtifactAction={onArtifactAction}
           onVisualPart={onVisualPart}
           visualBranches={visualBranches}
+          onOpenChild={onOpenChild}
         />
       </section>
       {/* Mounted before suggestions arrive so their arrival is announced once; reopened replies are not re-announced. */}

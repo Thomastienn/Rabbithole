@@ -12,9 +12,10 @@ import {
   ExclamationTriangleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { inkStyle } from '../map/treeList';
 import { visualMessage, type Artifact, type VisualPart } from './artifacts';
 
-export type VisualBranch = VisualPart & { child: string };
+export type VisualBranch = VisualPart & { child: string; address?: string; ink?: number };
 export type PartAction = (
   artifact: Artifact,
   part: VisualPart,
@@ -82,12 +83,15 @@ function Frame({ artifact }: { artifact: Artifact }) {
 export default function VisualFrame({
   artifact,
   reveal,
+  explored = [],
+  onOpenChild,
   onPart,
   onRetry,
   onRegenerate,
 }: {
   artifact: Artifact;
-  explored?: VisualBranch[]; // shortcut: unused until child chips render under the visual (TreeTutor-3cd.2)
+  explored?: VisualBranch[];
+  onOpenChild?: (id: string) => void;
   reveal?: VisualPart;
   onPart?: PartAction;
   onRetry?: () => Promise<void>;
@@ -222,6 +226,25 @@ export default function VisualFrame({
             </Dialog>
           )}
         </>
+      )}
+      {onOpenChild && explored.some((b) => b.address) && (
+        <HStack className="visual-chips" gap={1} wrap="wrap" role="group" aria-label="Branches from this visual">
+          {explored
+            .filter((b) => b.address)
+            .sort((a, b) => a.address!.localeCompare(b.address!, undefined, { numeric: true }))
+            .map((b) => (
+              <button
+                key={b.child}
+                type="button"
+                className="passage-address"
+                style={inkStyle(b.ink ?? 0)}
+                aria-label={`Open branch ${b.address}: ${b.label}`}
+                onClick={() => onOpenChild(b.child)}
+              >
+                {b.address}
+              </button>
+            ))}
+        </HStack>
       )}
       {artifact.status === 'failed' && (
         <ExclamationTriangleIcon className="failure-icon" aria-hidden />

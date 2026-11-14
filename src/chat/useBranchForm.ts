@@ -70,6 +70,7 @@ export function useBranchForm(
     if (t.parent === tree?.id && t.artifactId && t.label && t.explanation)
       (visualBranches[t.artifactId] ??= []).push({
         child: t.id,
+        ...c.addresses.get(t.id),
         label: t.label,
         explanation: t.explanation,
       });

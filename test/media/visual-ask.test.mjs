@@ -77,3 +77,40 @@ test('Ask appears only on ready visuals, opens the branch form with the whole vi
   assert.deepEqual(calls.shift(), ['ask', 'v-ready', source, figure]);
   assert.equal(document.querySelector('.visual-viewer'), null, 'asking closes the enlarged view');
 });
+
+test('child chips sit under the visual in address order and family ink, and a chip opens its child', async (t) => {
+  const opened = [];
+  const explored = [
+    { child: 'c10', address: '1.10', ink: 2, label: 'Tournament rounds', explanation: 'x' },
+    // An older visual-part branch: label from a tagged part, not the visual title.
+    { child: 'c2', address: '1.2', ink: 2, label: 'Final', explanation: 'The last match.' },
+    { child: 'c3', address: '1.3', ink: 3, label: 'Tournament rounds', explanation: 'x' },
+  ];
+  const { container, act, cleanup } = await render(
+    h(
+      'div',
+      null,
+      h(VisualFrame, {
+        artifact: visual('ready'),
+        explored,
+        onOpenChild: (id) => opened.push(id),
+      }),
+      h(VisualFrame, { artifact: { ...visual('ready'), id: 'lonely' }, onOpenChild: () => {} }),
+    ),
+  );
+  t.after(cleanup);
+  const chips = [...container.querySelectorAll('[data-artifact=v-ready] .visual-chips button')];
+  assert.deepEqual(
+    chips.map((c) => c.textContent),
+    ['1.2', '1.3', '1.10'],
+  );
+  assert.ok(chips.every((c) => c.classList.contains('passage-address')), 'reuses the passage chip');
+  assert.deepEqual(
+    chips.map((c) => c.style.getPropertyValue('--ink')),
+    ['var(--treetutor-ink-2)', 'var(--treetutor-ink-3)', 'var(--treetutor-ink-2)'],
+  );
+  assert.equal(chips[0].getAttribute('aria-label'), 'Open branch 1.2: Final');
+  await act(async () => chips[0].click());
+  assert.deepEqual(opened, ['c2']);
+  assert.equal(container.querySelector('[data-artifact=lonely] .visual-chips'), null);
+});

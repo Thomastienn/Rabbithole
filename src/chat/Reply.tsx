@@ -16,6 +16,7 @@ const Reply = memo(function Reply({
   onArtifactAction,
   onVisualPart,
   visualBranches,
+  onOpenChild,
 }: {
   text: string;
   reveal?: Source;
@@ -23,11 +24,14 @@ const Reply = memo(function Reply({
   inlineArtifacts?: Artifact[];
   onVisualPart?: PartAction;
   visualBranches?: Record<string, VisualBranch[]>;
+  onOpenChild?: (id: string) => void;
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
 }) {
   useEffect(ensureHighlightStyles, []);
   const action = useRef(onArtifactAction),
-    partAction = useRef(onVisualPart);
+    partAction = useRef(onVisualPart),
+    openChild = useRef(onOpenChild);
+  openChild.current = onOpenChild;
   action.current = onArtifactAction;
   partAction.current = onVisualPart;
   const key = JSON.stringify(underlines),
@@ -56,6 +60,7 @@ const Reply = memo(function Reply({
                     key={v.id}
                     artifact={v}
                     explored={visualBranches?.[v.id]}
+                    onOpenChild={(id) => openChild.current?.(id)}
                     reveal={reveal?.artifactId === v.id ? reveal : undefined}
                     onPart={(...args) => partAction.current?.(...args)}
                     onRetry={onArtifactAction && (() => action.current!(v.id, 'retry'))}
