@@ -98,6 +98,7 @@ addEventListener('message', (event) => {
       return {
         playable: cut.playable === true,
         timing: cut.timing,
+        emphasis: cut.emphasis,
         Component: own.Component,
         audio: own.audio,
         clip: own.clip,

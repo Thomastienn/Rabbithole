@@ -189,6 +189,7 @@ export async function writeCuts({
       cuts[index].engine === 'manim' ? MANIM_COMPONENT : cuts[index].code,
     );
     await writeFile(join(dir, 'index.tsx'), CUT_ENTRY);
+    await writeFile(join(dir, 'emphasis.json'), JSON.stringify(plan.cuts[index].emphasis ?? []));
     await writeFile(
       join(dir, 'kit.tsx'),
       kit +

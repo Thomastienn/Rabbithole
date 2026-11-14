@@ -137,6 +137,25 @@ const renderSkip =
     ? 'set TREETUTOR_REAL_RENDER=1 (npm run test:render)'
     : 'bwrap or Remotion browser missing');
 
+// One RGB pixel of an MP4 frame, read with Remotion's bundled ffmpeg.
+const pixel = (video, seconds, x = 960, y = 540) => {
+  const ffmpeg = RenderInternals.getExecutablePath({
+    type: 'ffmpeg',
+    indent: false,
+    logLevel: 'error',
+    binariesDirectory: null,
+  });
+  const png = execFileSync(ffmpeg, [
+    ...['-v', 'error', '-ss', String(seconds), '-i', video, '-frames:v', '1'],
+    ...['-vf', `crop=2:2:${x}:${y},format=rgb24`, '-f', 'image2pipe', '-c:v', 'png', '-'],
+  ]);
+  const idat = png.indexOf('IDAT');
+  return [...inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)))].slice(
+    1,
+    4,
+  );
+};
+
 test(
   'render sandbox hides home and app data, blocks network and confines writes to the workspace',
   { skip: !sandboxed && 'bwrap or Remotion browser missing' },
@@ -228,40 +247,10 @@ test(
     const metadata = await getVideoMetadata(mediaPath(dir, row.id));
     assert.deepEqual([metadata.width, metadata.height, metadata.fps], [1920, 1080, 30]);
     assert.ok(Math.abs(metadata.durationInSeconds - 7.5) < 1 / 30);
-    const ffmpeg = RenderInternals.getExecutablePath({
-      type: 'ffmpeg',
-      indent: false,
-      logLevel: 'error',
-      binariesDirectory: null,
-    });
-    // Centre cube fades into the ground during the first pause, then returns in cut two.
-    const pixel = (seconds) => {
-      const png = execFileSync(ffmpeg, [
-        '-v',
-        'error',
-        '-ss',
-        String(seconds),
-        '-i',
-        mediaPath(dir, row.id),
-        '-frames:v',
-        '1',
-        '-vf',
-        'crop=2:2:960:540,format=rgb24',
-        '-f',
-        'image2pipe',
-        '-c:v',
-        'png',
-        '-',
-      ]);
-      const idat = png.indexOf('IDAT');
-      return [...inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)))].slice(
-        1,
-        4,
-      );
-    };
-    const before = pixel(1),
-      pause = pixel(2.4667),
-      after = pixel(3.5);
+    const video = mediaPath(dir, row.id),
+      before = pixel(video, 1),
+      pause = pixel(video, 2.4667),
+      after = pixel(video, 3.5);
     assert.ok(before[0] > 100 && after[0] > 100, `expected visible cuts: ${before}, ${after}`);
     assert.ok(
       pause[0] < 40 && pause[1] < 40 && pause[2] < 40,
@@ -307,6 +296,43 @@ test(
     const idat = png.indexOf('IDAT'),
       [, r, g, b] = inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)));
     assert.ok(r > 120 && b < 80, `expected cube colour at the centre, got ${[r, g, b]}`);
+  },
+);
+
+test(
+  'one real short sandboxed cut draws the cursor and sketch overlay timed to its sentence',
+  { skip: renderSkip, timeout: 240000 },
+  async () => {
+    const plan = planFor(composition);
+    // Fixture narration has one 1.8 s sentence (frames 0 to 54); the overlay fades by the pause.
+    plan.cuts[0].emphasis = [
+      { tool: 'cursor', sentence: 0, x: 400, y: 300, label: 'Winner' },
+      {
+        tool: 'sketch',
+        shape: 'underline',
+        sentence: 0,
+        points: [
+          [600, 800],
+          [1300, 800],
+        ],
+      },
+    ];
+    const { result, row, dir } = await job(undefined, undefined, composition, 1, { plan });
+    assert.equal(result, null);
+    assert.equal(row.status, 'ready');
+    const video = mediaPath(dir, row.id),
+      pen = pixel(video, 1, 960, 799),
+      cursor = pixel(video, 1, 406, 322),
+      faded = pixel(video, 2.2, 960, 799);
+    assert.ok(pen[0] > 150 && pen[2] < 120, `expected amber underline: ${pen}`);
+    assert.ok(
+      cursor.every((c) => c > 180),
+      `expected paper cursor: ${cursor}`,
+    );
+    assert.ok(
+      faded.every((c) => c < 60),
+      `expected faded underline: ${faded}`,
+    );
   },
 );
 

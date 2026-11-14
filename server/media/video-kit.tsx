@@ -146,3 +146,176 @@ export const Lights = () => (
     <directionalLight position={[-5, -2, -4]} intensity={0.35} color={palette.lichen} />
   </>
 );
+
+// Emphasis overlay: the app draws these above every cut (Manim included) from the plan's cut.emphasis marks,
+// timed to narration sentence frames, in the shared 1920x1080 frame space.
+type Timed = { startFrame: number; endFrame: number };
+type Point = [number, number];
+export type Mark =
+  | { tool: 'cursor'; sentence: number; x: number; y: number; label?: string }
+  | {
+      tool: 'sketch';
+      shape: 'circle' | 'underline' | 'arrow' | 'freehand';
+      sentence: number;
+      points: Point[];
+    };
+const GLIDE = 15,
+  DRAW = 20,
+  FADE = 10;
+
+// Cursor position, visibility and label at frame f: it glides to each target as its sentence starts,
+// shows that target's label once it arrives, and fades after the last target's sentence ends.
+export function cursorAt(marks: Mark[], sentences: Timed[], f: number) {
+  const stops = marks
+    .flatMap((m) =>
+      m.tool === 'cursor' && sentences[m.sentence]
+        ? [{ ...m, start: sentences[m.sentence].startFrame, end: sentences[m.sentence].endFrame }]
+        : [],
+    )
+    .sort((a, b) => a.start - b.start);
+  if (!stops.length) return null;
+  const i = Math.max(0, stops.filter((s) => f >= s.start).length - 1),
+    stop = stops[i],
+    from = stops[i - 1] ?? stop,
+    t = progress(f, stop.start, GLIDE);
+  return {
+    x: from.x + (stop.x - from.x) * t,
+    y: from.y + (stop.y - from.y) * t,
+    opacity: progress(f, stops[0].start - FADE, FADE) * (1 - progress(f, stops.at(-1)!.end, FADE)),
+    label: stop.label,
+    labelOpacity: progress(f, stop.start + GLIDE, 8) * (1 - progress(f, stop.end, 8)),
+  };
+}
+
+// Sketch stroke progress (0 to 1 drawn) and opacity at frame f: drawn as its sentence starts, faded as it ends.
+export function sketchAt(mark: Mark, sentences: Timed[], f: number) {
+  const s = sentences[mark.sentence];
+  if (!s || f < s.startFrame) return { draw: 0, opacity: 0 };
+  return {
+    draw: progress(f, s.startFrame, Math.max(1, Math.min(DRAW, s.endFrame - s.startFrame))),
+    opacity: 1 - progress(f, s.endFrame, FADE),
+  };
+}
+
+// Hand-drawn wobble, deterministic per mark so every frame and render draws the same stroke.
+export function sketchPath(mark: Extract<Mark, { tool: 'sketch' }>) {
+  const seed = mark.points.flat().reduce((n, v) => n + v, 0);
+  const wobble = (i: number, k: number) => Math.sin(seed * 12.9898 + i * 78.233) * k;
+  const [[ax, ay], [bx, by]] = mark.points;
+  let pts: Point[] = [];
+  if (mark.shape === 'circle') {
+    const cx = (ax + bx) / 2,
+      cy = (ay + by) / 2,
+      rx = Math.abs(bx - ax) / 2 + 18,
+      ry = Math.abs(by - ay) / 2 + 18;
+    // A hand circle overshoots its start a little.
+    for (let i = 0; i <= 48; i++) {
+      const a = -2.2 + (i / 48) * (Math.PI * 2 + 0.45),
+        r = 1 + wobble(i, 0.035);
+      pts.push([cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r]);
+    }
+  } else if (mark.shape === 'freehand') {
+    pts = mark.points.map(([x, y], i) => [x + wobble(i, 3), y + wobble(i + 7, 3)]);
+  } else {
+    const n = 16,
+      bow = mark.shape === 'arrow' ? 0.08 : 0;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n,
+        arc = Math.sin(t * Math.PI) * bow;
+      pts.push([
+        ax + (bx - ax) * t - (by - ay) * arc + wobble(i, 2.5),
+        ay + (by - ay) * t + (bx - ax) * arc + wobble(i + 3, 2.5),
+      ]);
+    }
+  }
+  let d = 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L');
+  if (mark.shape === 'arrow') {
+    const [px, py] = pts.at(-3)!,
+      angle = Math.atan2(by - py, bx - px);
+    const head = (turn: number) =>
+      `${(bx - Math.cos(angle + turn) * 34).toFixed(1)} ${(by - Math.sin(angle + turn) * 34).toFixed(1)}`;
+    d += ` M${head(0.5)} L${bx} ${by} L${head(-0.5)}`;
+  }
+  return d;
+}
+
+export function Sketch({ marks = [], sentences }: { marks?: Mark[]; sentences: Timed[] }) {
+  const f = useCurrentFrame();
+  return (
+    <svg
+      width={frame.width}
+      height={frame.height}
+      viewBox={`0 0 ${frame.width} ${frame.height}`}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+    >
+      {marks.map((mark, i) => {
+        if (mark.tool !== 'sketch') return null;
+        const { draw, opacity } = sketchAt(mark, sentences, f);
+        return opacity > 0 ? (
+          <path
+            key={i}
+            d={sketchPath(mark)}
+            pathLength={1}
+            strokeDasharray="1 1"
+            strokeDashoffset={1 - draw}
+            fill="none"
+            stroke={palette.amber}
+            strokeWidth={7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={opacity}
+          />
+        ) : null;
+      })}
+    </svg>
+  );
+}
+
+export function Cursor({ marks = [], sentences }: { marks?: Mark[]; sentences: Timed[] }) {
+  const at = cursorAt(marks, sentences, useCurrentFrame());
+  if (!at || at.opacity <= 0) return null;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: at.x,
+        top: at.y,
+        opacity: at.opacity,
+        pointerEvents: 'none',
+      }}
+    >
+      <svg
+        width={40}
+        height={48}
+        viewBox="0 0 40 48"
+        style={{ position: 'absolute', left: -4, top: -3 }}
+      >
+        <path
+          d="M4 3 L4 40 L14 30 L21 45 L28 42 L21 27 L35 27 Z"
+          fill={palette.paper}
+          stroke={palette.ground}
+          strokeWidth={3}
+          strokeLinejoin="round"
+        />
+      </svg>
+      {at.label && at.labelOpacity > 0 && (
+        <div
+          style={{
+            ...type.label,
+            position: 'absolute',
+            left: 36,
+            top: 40,
+            whiteSpace: 'nowrap',
+            padding: '8px 18px',
+            borderRadius: 14,
+            background: palette.raised,
+            border: `2px solid ${palette.line}`,
+            opacity: at.labelOpacity,
+          }}
+        >
+          {at.label}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 
 type LiveCuts = {
   paletteRoles: Record<string, string>;
-  cuts: { engine: string; playable: boolean; code: string | null; timing: unknown }[];
+  cuts: {
+    engine: string;
+    playable: boolean;
+    code: string | null;
+    timing: unknown;
+    emphasis: unknown[];
+  }[];
 };
 
 // Plays a pending video's ready cuts inside the opaque-origin player frame. The app fetches cut code, narration

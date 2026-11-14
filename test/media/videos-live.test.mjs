@@ -24,6 +24,8 @@ const plan = {
     endState: `Winner at position ${i + 1}`,
   })),
 };
+const emphasis = [{ tool: 'cursor', sentence: 0, x: 960, y: 400, label: 'Winner' }];
+plan.cuts[0].emphasis = emphasis;
 
 test('a video plays live once cut 1 is ready while later cuts are pending, with phases in order and real counts', async () => {
   const gates = {},
@@ -100,6 +102,10 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
     assert.match(live.cuts[0].code, /require\("remotion"\)/);
     assert.doesNotMatch(live.cuts[0].code, /<AbsoluteFill|^import /m);
     assert.equal(live.cuts[0].timing.durationInFrames, 75);
+    assert.deepEqual(
+      live.cuts.map((c) => c.emphasis),
+      [emphasis, []],
+    );
     const voice = await env.get(`${cuts}/0/narration`);
     assert.equal(voice.headers.get('content-type'), 'audio/mpeg');
     assert.deepEqual(

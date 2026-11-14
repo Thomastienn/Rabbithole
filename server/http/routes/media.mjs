@@ -93,8 +93,9 @@ export async function mediaRoutes(req, res, url, ctx, body) {
       if (!file)
         return json(res, 200, {
           paletteRoles: data.plan.styleBrief.paletteRoles,
-          cuts: data.cuts.map((cut) => ({
+          cuts: data.cuts.map((cut, i) => ({
             engine: cut.engine,
+            emphasis: data.plan.cuts[i].emphasis ?? [],
             timing: cut.timing,
             code: playable(cut) && cut.engine !== 'manim' ? compileCut(cut.code) : null,
             playable: playable(cut),

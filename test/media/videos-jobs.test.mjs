@@ -166,7 +166,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     );
     assert.deepEqual(
       readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt, 'cut-0')).sort(),
-      ['Video.tsx', 'index.tsx', 'kit.tsx', 'narration.json', 'public'],
+      ['Video.tsx', 'emphasis.json', 'index.tsx', 'kit.tsx', 'narration.json', 'public'],
     );
     assert.ok(
       readFileSync(

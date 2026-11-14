@@ -10,19 +10,29 @@ import {
   useBufferState,
   useCurrentFrame,
 } from 'remotion';
-import { fonts, frame as videoFrame, palette, progress } from '../../server/media/video-kit';
+import {
+  Cursor,
+  Sketch,
+  fonts,
+  frame as videoFrame,
+  palette,
+  progress,
+  type Mark,
+} from '../../server/media/video-kit';
 
 type Caption = { text: string; startFrame: number; endFrame: number };
+type Sentence = { startFrame: number; endFrame: number };
 export type LiveCut = {
   playable: boolean;
   timing: {
     durationInFrames: number;
     audioFrames: number;
     transitionIn: boolean;
-    sentences: unknown[];
+    sentences: Sentence[];
     captions: Caption[];
   } | null;
-  Component?: ComponentType<{ sentences: unknown[]; durationInFrames: number }>;
+  emphasis?: Mark[];
+  Component?: ComponentType<{ sentences: Sentence[]; durationInFrames: number }>;
   audio?: string;
   clip?: string;
 };
@@ -102,6 +112,8 @@ function Narrated({ cut }: { cut: LiveCut }) {
             Cut && <Cut sentences={timing.sentences} durationInFrames={timing.durationInFrames} />
           )}
         </Contained>
+        <Sketch marks={cut.emphasis} sentences={timing.sentences} />
+        <Cursor marks={cut.emphasis} sentences={timing.sentences} />
       </AbsoluteFill>
       <Audio src={cut.audio!} />
       <div
