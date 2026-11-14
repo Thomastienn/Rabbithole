@@ -1,58 +1,10 @@
-import {
-  constants,
-  openSync,
-  closeSync,
-  readFileSync,
-  fchmodSync,
-  fstatSync,
-  mkdirSync,
-  chmodSync,
-  writeFileSync,
-  renameSync,
-  rmSync,
-} from 'node:fs';
+import { readFileSync, mkdirSync, chmodSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
+import { EndpointError, endpointName, lastTest, readOwned, settings } from './endpointSettings.mjs';
 
-export class EndpointError extends Error {}
-
-function settings(body) {
-  const invalid = () => {
-    throw new EndpointError(
-      'Enter an HTTP(S) API base URL without credentials, query or fragment, and a nonempty API key.',
-    );
-  };
-  if (
-    typeof body?.baseUrl !== 'string' ||
-    body.baseUrl.length > 2048 ||
-    typeof body.apiKey !== 'string' ||
-    !/^[\x21-\x7e]{1,8192}$/.test(body.apiKey)
-  )
-    invalid();
-  let url;
-  try {
-    url = new URL(body.baseUrl);
-  } catch {
-    invalid();
-  }
-  if (
-    !['http:', 'https:'].includes(url.protocol) ||
-    url.username ||
-    url.password ||
-    /[?#]/.test(url.href) ||
-    /[\x00-\x20\x7f]/.test(body.baseUrl)
-  )
-    invalid();
-  const baseUrl = url.href.replace(/\/+$/, '');
-  // The public URL must never double as a credential field.
-  try {
-    if (decodeURIComponent(baseUrl).includes(body.apiKey)) invalid();
-  } catch {
-    invalid();
-  }
-  return { baseUrl, apiKey: body.apiKey };
-}
+export { EndpointError };
 
 // Only exact key echoes are filtered; hold a matching suffix across stream chunks.
 function redactStream(key, emit) {
@@ -65,39 +17,6 @@ function redactStream(key, emit) {
     pending = pending.slice(pending.length - hold);
     if (safe) emit({ type: 'delta', item: 'reply', text: safe });
   };
-}
-
-function readOwned(path) {
-  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-  try {
-    const info = fstatSync(fd);
-    if (!info.isFile() || info.uid !== process.getuid() || info.nlink !== 1)
-      throw new EndpointError('Credential file is not an owner-only regular file.');
-    fchmodSync(fd, 0o600);
-    return JSON.parse(readFileSync(fd, 'utf8'));
-  } finally {
-    closeSync(fd);
-  }
-}
-
-function lastTest(t) {
-  return (
-    t &&
-    typeof t.at === 'string' &&
-    (t.ok === true ? Number.isInteger(t.models) : t.ok === false && typeof t.error === 'string')
-  );
-}
-
-function endpointName(name, apiKey) {
-  if (
-    typeof name !== 'string' ||
-    !name.trim() ||
-    name.trim().length > 80 ||
-    /[\x00-\x1f\x7f]/.test(name) ||
-    name.includes(apiKey)
-  )
-    throw new EndpointError('Enter an endpoint name of up to 80 characters.');
-  return name.trim();
 }
 
 // The list of saved custom endpoints; each entry is registered as its own provider.
@@ -118,6 +37,7 @@ export class OpenAI {
                   id: e.id,
                   name: endpointName(e.name, e.apiKey),
                   ...settings(e),
+                  ...(e.acceptsImages === true && { acceptsImages: true }),
                   ...(lastTest(e.lastTest) && { lastTest: e.lastTest }),
                 },
               ]
@@ -163,9 +83,14 @@ export class OpenAI {
       this.#list = previous;
       throw error;
     }
-    // Any change to name, URL or key replaces the adapter and aborts its in-flight requests; a test result alone does not.
+    // Any change to name, URL, key or Accepts images replaces the adapter and aborts its in-flight requests; a test result alone does not.
     const same = (a, b) =>
-      a && b && a.name === b.name && a.baseUrl === b.baseUrl && a.apiKey === b.apiKey;
+      a &&
+      b &&
+      a.name === b.name &&
+      a.baseUrl === b.baseUrl &&
+      a.apiKey === b.apiKey &&
+      !!a.acceptsImages === !!b.acceptsImages;
     for (const [id, adapter] of this.#adapters)
       if (
         !same(
@@ -179,10 +104,11 @@ export class OpenAI {
     for (const e of list) if (!this.#adapters.has(e.id)) this.#adapters.set(e.id, new Endpoint(e));
   }
   list() {
-    return this.#list.map(({ id, name, baseUrl, lastTest }) => ({
+    return this.#list.map(({ id, name, baseUrl, acceptsImages, lastTest }) => ({
       id,
       name,
       baseUrl,
+      acceptsImages: !!acceptsImages,
       lastTest: lastTest ?? null,
     }));
   }
@@ -193,7 +119,15 @@ export class OpenAI {
     const saved = settings(body),
       name = endpointName(body.name, saved.apiKey);
     this.#unique(name);
-    this.#set([...this.#list, { id: `openai:${randomUUID()}`, name, ...saved }]);
+    this.#set([
+      ...this.#list,
+      {
+        id: `openai:${randomUUID()}`,
+        name,
+        ...saved,
+        ...(body.acceptsImages === true && { acceptsImages: true }),
+      },
+    ]);
     return this.list();
   }
   #unique(name, id) {
@@ -216,7 +150,13 @@ export class OpenAI {
       );
     const name = endpointName(body.name, saved.apiKey);
     this.#unique(name, old.id);
-    this.#set(this.#list.map((e) => (e === old ? { id: old.id, name, ...saved } : e)));
+    const acceptsImages =
+      typeof body.acceptsImages === 'boolean' ? body.acceptsImages : !!old.acceptsImages;
+    this.#set(
+      this.#list.map((e) =>
+        e === old ? { id: old.id, name, ...saved, ...(acceptsImages && { acceptsImages }) } : e,
+      ),
+    );
     return this.list();
   }
   // Lists models without sending a chat message; the result is kept until the next test or save.
@@ -255,7 +195,12 @@ export class OpenAI {
   save(body) {
     const saved = settings(body),
       old = this.#list.find((e) => e.id === 'openai'),
-      entry = { id: 'openai', name: old?.name ?? 'Custom endpoint', ...saved };
+      entry = {
+        id: 'openai',
+        name: old?.name ?? 'Custom endpoint',
+        ...saved,
+        ...(old?.acceptsImages && { acceptsImages: true }),
+      };
     this.#set(old ? this.#list.map((e) => (e === old ? entry : e)) : [entry, ...this.#list]);
     return this.status();
   }
@@ -286,6 +231,7 @@ class Endpoint {
   constructor(saved) {
     this.#saved = saved;
     this.label = saved?.name;
+    this.readsImages = !!saved?.acceptsImages;
   }
   async #fetch(saved, path, signal, body) {
     if (!saved) throw new EndpointError('Configure a custom endpoint in settings before using it.');
@@ -391,7 +337,21 @@ class Endpoint {
         ...(tree.messages ?? [])
           .filter((m) => m.status === 'completed')
           .map((m) => ({ role: m.role, content: m.text })),
-        { role: 'user', content: text },
+        // This turn's images go as data URLs; history turns carry only their [image: name] text.
+        {
+          role: 'user',
+          content: tree.images?.length
+            ? [
+                { type: 'text', text },
+                ...tree.images.map((i) => ({
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${i.type};base64,${readFileSync(i.path).toString('base64')}`,
+                  },
+                })),
+              ]
+            : text,
+        },
       ];
       const response = await this.#fetch(saved, '/chat/completions', signal, {
         model,

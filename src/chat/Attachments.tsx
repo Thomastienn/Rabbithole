@@ -3,11 +3,12 @@ import { HStack } from '@astryxdesign/core/Layout';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Token } from '@astryxdesign/core/Token';
 import { ChatComposerDrawer } from '@astryxdesign/core/Chat';
-import { DocumentTextIcon, PaperClipIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, PaperClipIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 export type Attachment = { id: string; name: string; type: string; size: number; delivery: string };
 
-const DELIVERY: Record<string, string> = { text: 'read as text' };
+const DELIVERY: Record<string, string> = { text: 'read as text', image: 'sent as image' };
+const icon = (type: string) => (type.startsWith('image/') ? <PhotoIcon /> : <DocumentTextIcon />);
 
 // The paperclip opens the file picker; paste and drop reach the same add() through the input's onFiles.
 export function AttachButton({
@@ -59,7 +60,7 @@ export function PendingAttachments({
           <Token
             key={`${i}-${file.name}`}
             label={file.name}
-            icon={<DocumentTextIcon />}
+            icon={icon(file.type)}
             onRemove={() => remove(i)}
           />
         ))}
@@ -69,7 +70,7 @@ export function PendingAttachments({
 }
 
 export const attachmentLabel = (a: Attachment) =>
-  `Text file · ${DELIVERY[a.delivery] ?? a.delivery}`;
+  `${a.delivery === 'image' ? 'Image' : 'Text file'} · ${DELIVERY[a.delivery] ?? a.delivery}`;
 
 // A question's files: each chip names the file, its type and how it reached the tutor, and opens it.
 export function MessageAttachments({
@@ -91,7 +92,7 @@ export function MessageAttachments({
         >
           <Token
             label={a.name}
-            icon={<DocumentTextIcon />}
+            icon={icon(a.type)}
             endContent={<span className="attachment-delivery">{attachmentLabel(a)}</span>}
           />
         </a>

@@ -64,8 +64,19 @@ test('several named endpoints are added, listed, used side by side, labelled in 
     id: added.id,
     name: 'Local llama',
     baseUrl: local.baseUrl,
+    acceptsImages: false,
     lastTest: null,
   });
+  // Accepts images is saved through the settings route and turned off again.
+  for (const acceptsImages of [true, false]) {
+    const flagged = await env.post('/api/settings/endpoints/edit', {
+      id: added.id,
+      name: 'Local llama',
+      baseUrl: local.baseUrl,
+      acceptsImages,
+    });
+    assert.equal(flagged.json().find((e) => e.id === added.id).acceptsImages, acceptsImages);
+  }
   const duplicate = await env.post('/api/settings/endpoints', {
     name: 'local LLAMA',
     baseUrl: gateway.baseUrl,
@@ -188,7 +199,13 @@ test('upgrade turns the single saved endpoint into "Custom endpoint" with provid
   );
   const env = await open(t, dir);
   assert.deepEqual((await env.get('/api/settings/endpoints')).json(), [
-    { id: 'openai', name: 'Custom endpoint', baseUrl: fake.baseUrl, lastTest: null },
+    {
+      id: 'openai',
+      name: 'Custom endpoint',
+      baseUrl: fake.baseUrl,
+      acceptsImages: false,
+      lastTest: null,
+    },
   ]);
   assert.equal(
     existsSync(join(dir, 'openai-endpoint.json')),
@@ -266,6 +283,7 @@ test('rename keeps the key, a URL change needs the key again, tests persist thei
     id: added.id,
     name: 'Local llama',
     baseUrl: fake.baseUrl,
+    acceptsImages: false,
     lastTest: null,
   });
   assert.equal((await env.get('/api/models')).json().providers[added.id].label, 'Local llama');
@@ -369,6 +387,7 @@ test('rename keeps the key, a URL change needs the key again, tests persist thei
     id: added.id,
     name: 'Local llama',
     baseUrl: moved.baseUrl,
+    acceptsImages: false,
     lastTest: null,
   });
   assert.match((await stream).text, /"status":"interrupted"/);

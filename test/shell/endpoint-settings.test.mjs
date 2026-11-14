@@ -8,14 +8,31 @@ const { default: EndpointSettings } = await import('../../src/settings/EndpointS
 
 test('endpoint settings add, reject duplicates, show failed tests, guard URL edits and confirm removal', async (t) => {
   const at = new Date().toISOString();
-  let list = [{ id: 'openai', name: 'Custom endpoint', baseUrl: 'http://a/v1', lastTest: null }];
+  let list = [
+    {
+      id: 'openai',
+      name: 'Custom endpoint',
+      baseUrl: 'http://a/v1',
+      acceptsImages: false,
+      lastTest: null,
+    },
+  ];
   const calls = [];
   const api = async (path, body) => {
     if (body) calls.push([path, body]);
     if (path === '/api/settings/endpoints' && body) {
       if (list.some((e) => e.name.toLowerCase() === body.name.toLowerCase()))
         throw new Error(`Another endpoint is called ${body.name}. Choose a different name.`);
-      list = [...list, { id: 'openai:gw', name: body.name, baseUrl: body.baseUrl, lastTest: null }];
+      list = [
+        ...list,
+        {
+          id: 'openai:gw',
+          name: body.name,
+          baseUrl: body.baseUrl,
+          acceptsImages: body.acceptsImages,
+          lastTest: null,
+        },
+      ];
     }
     if (path.endsWith('/test'))
       list = list.map((e) =>
@@ -30,7 +47,9 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
           : e,
       );
     if (path.endsWith('/edit'))
-      list = list.map((e) => (e.id === body.id ? { ...e, name: body.name } : e));
+      list = list.map((e) =>
+        e.id === body.id ? { ...e, name: body.name, acceptsImages: body.acceptsImages } : e,
+      );
     if (path.endsWith('/remove')) list = list.filter((e) => e.id !== body.id);
     return list;
   };
@@ -70,10 +89,15 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
     inputValue(field('Name'), 'Work gateway');
     inputValue(field('API key'), 'secret');
   });
+  // Accepts images is off by default and saved with the endpoint.
+  const images = () => container.querySelector('.endpoint-form [role=switch]');
+  assert.match(images().labels[0].textContent, /Accepts images/);
+  assert.equal(images().checked, false);
+  await act(async () => images().click());
   await submit();
   assert.deepEqual(calls.at(-1), [
     '/api/settings/endpoints',
-    { name: 'Work gateway', baseUrl: 'http://gw/v1', apiKey: 'secret' },
+    { name: 'Work gateway', baseUrl: 'http://gw/v1', apiKey: 'secret', acceptsImages: true },
   ]);
   assert.equal(container.querySelector('.endpoint-form'), null, 'the form closes after saving');
   assert.match(container.textContent, /Work gateway added\. Choose its models in any model menu\./);
@@ -90,6 +114,8 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
   // Edit: a URL change warns and needs the key; restoring it (trailing slash ignored) clears that.
   await act(async () => button(container, 'Edit Work gateway').click());
   assert.equal(field('API key').value, '');
+  assert.equal(images().checked, true, 'editing shows the saved switch');
+  await act(async () => images().click());
   const save = () => button(container.querySelector('.endpoint-form'), 'Save');
   await act(async () => inputValue(field('Base URL'), 'http://a/v1'));
   assert.match(container.textContent, /URL changed: enter the key again/);
@@ -104,7 +130,7 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
   assert.deepEqual(calls.slice(-2), [
     [
       '/api/settings/endpoints/edit',
-      { id: 'openai:gw', name: 'Team gateway', baseUrl: 'http://gw/v1/' },
+      { id: 'openai:gw', name: 'Team gateway', baseUrl: 'http://gw/v1/', acceptsImages: false },
     ],
     ['/api/settings/endpoints/test', { id: 'openai:gw' }],
   ]);

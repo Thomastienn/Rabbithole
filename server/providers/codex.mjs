@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 
 export class Codex {
+  readsImages = true;
   constructor(auth, dir, launch = spawn) {
     this.auth = auth;
     this.dir = dir;
@@ -283,7 +284,11 @@ export class Codex {
           threadId,
           model,
           ...(effort != null && { effort }),
-          input: [{ type: 'text', text, text_elements: [] }],
+          input: [
+            { type: 'text', text, text_elements: [] },
+            // The app-server reads the stored file itself; no base64 copy.
+            ...(tree.images ?? []).map((i) => ({ type: 'localImage', path: i.path })),
+          ],
         }).then((result) => {
           turnId = result.turn.id;
           if (interrupted) {

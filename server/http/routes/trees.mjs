@@ -4,6 +4,7 @@ import { mediaPath } from '../../media/videos.mjs';
 import { LABELS, isEndpoint } from '../roles.mjs';
 import { anchorOf, compactionPrompt } from '../jobs/compaction.mjs';
 import { sendRoute } from './send.mjs';
+import { IMAGE_TYPES } from '../../attachments.mjs';
 
 // Learning trees: create, read, rename, delete, layout, model changes and branching; send and retry live in send.mjs.
 export async function treeRoutes(req, res, url, ctx, body) {
@@ -15,11 +16,16 @@ export async function treeRoutes(req, res, url, ctx, body) {
     if (file && !attachment) return json(res, 404, { error: 'Attachment not found.' });
     if (attachment) {
       const data = readFileSync(join(ctx.dir, 'attachments', file[1], attachment.id));
-      const text = attachment.delivery === 'text';
+      const text = attachment.delivery === 'text',
+        image = attachment.delivery === 'image' && IMAGE_TYPES.includes(attachment.type);
       const ascii = attachment.name.replace(/[^\x20-\x7e]|["\\]/g, '_');
       res.writeHead(200, {
-        'Content-Type': text ? 'text/plain; charset=utf-8' : 'application/octet-stream',
-        'Content-Disposition': `${text ? 'inline' : 'attachment'}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(attachment.name)}`,
+        'Content-Type': text
+          ? 'text/plain; charset=utf-8'
+          : image
+            ? attachment.type
+            : 'application/octet-stream',
+        'Content-Disposition': `${text || image ? 'inline' : 'attachment'}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(attachment.name)}`,
         'Content-Security-Policy': "sandbox; default-src 'none'",
         'Content-Length': data.length,
       });

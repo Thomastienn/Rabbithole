@@ -8,6 +8,14 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+// Until OCR lands, an image for a chat model that cannot read images is refused before anything changes.
+const imageRefusal = (provider, attachments) => {
+  const image = attachments.find((a) => a.delivery === 'image');
+  return image && !provider?.readsImages
+    ? `${image.name}: this chat model can't read images. Choose Claude, Codex or a custom endpoint with Accepts images on, then send again.`
+    : null;
+};
+
 // Conversation send and Retry: streams one tutor reply as server-sent events and starts its media jobs.
 export async function sendRoute(res, ctx, id, tree, action, body) {
   const { store, json, active, compactions, pick, selectionError, live } = ctx;
@@ -53,6 +61,8 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
         active.delete(id);
       }
     }
+    const refused = imageRefusal(ctx.providers[tree.provider], question.attachments ?? []);
+    if (refused) return json(res, 400, { error: refused });
     store.discardReply(id, failed.id);
     // The provider session may hold the failed turn; a fresh session receives the saved discussion instead.
     store.forgetThread(id);
@@ -108,6 +118,8 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
       return json(res, 400, { error: error.message });
     }
   }
+  const refused = imageRefusal(ctx.providers[tree.provider], prepared);
+  if (refused) return json(res, 400, { error: refused });
   if (prepared.length) {
     const folder = join(ctx.dir, 'attachments', id);
     mkdirSync(folder, { recursive: true, mode: 0o700 });
@@ -115,6 +127,10 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
   }
   const attachments = retried?.attachments ?? prepared;
   const prompt = withAttachments(body.text, attachments);
+  // Only this turn's images go to the model as images; history keeps their [image: name] text.
+  const images = attachments
+    .filter((a) => a.delivery === 'image')
+    .map((a) => ({ name: a.name, type: a.type, path: join(ctx.dir, 'attachments', id, a.id) }));
   const controller = new AbortController();
   active.set(id, controller);
   const user =
@@ -377,7 +393,7 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
     }
     called = true;
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
-      { ...tutorContext(tree), tutorStyle: store.tutorStyle() },
+      { ...tutorContext(tree), tutorStyle: store.tutorStyle(), ...(images.length && { images }) },
       prompt,
       (event) => {
         if (finished) return;

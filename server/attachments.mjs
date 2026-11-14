@@ -1,17 +1,24 @@
 // Attachment preparation: turns a learner's file into prepared parts the tutor receives.
-// shortcut: plain-text files only; images and PDFs are refused until their preparation lands.
+// shortcut: PDFs are refused until their preparation lands.
+
+// Images the chat models read natively; their stored text is the placeholder history and compaction see.
+export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 // { name, type, bytes } -> { delivery, parts: [{ text }] }; throws with the learner-facing reason when unsupported.
 export function prepareAttachment({ name, type, bytes }) {
+  if (IMAGE_TYPES.includes(type))
+    return { delivery: 'image', parts: [{ text: `[image: ${name}]`, image: true }] };
   let text = null;
   if (!type.startsWith('image/') && type !== 'application/pdf')
     try {
       text = utf8.decode(bytes);
     } catch {}
   if (text === null || text.includes('\0'))
-    throw new Error(`${name}: this file type can't be attached. Attach a plain-text file.`);
+    throw new Error(
+      `${name}: this file type can't be attached. Attach a plain-text file or a PNG, JPEG or WebP image.`,
+    );
   return { delivery: 'text', parts: [{ text: `[Attached file: ${name}]\n${text}` }] };
 }
 

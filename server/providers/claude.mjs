@@ -1,6 +1,6 @@
 import { spawn, execFile } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
@@ -14,6 +14,7 @@ const MODELS = [
 
 // Runs the user-installed Claude Code CLI with its own native sign-in. Never reads or stores Claude credentials.
 export class Claude {
+  readsImages = true;
   constructor(dir, launch = spawn, run = execFile) {
     this.cwd = join(dir, 'claude-workspace');
     this.launch = launch;
@@ -83,6 +84,8 @@ export class Claude {
       selectedModel,
       ...(tree.effort != null ? ['--effort', tree.effort] : []),
       ...(tree.thread ? ['--resume', session] : ['--session-id', session]),
+      // Image turns send one stream-json user message; resumed sessions keep the image, so text turns stay plain.
+      ...(tree.images?.length ? ['--input-format', 'stream-json'] : []),
     ];
     if (signal.aborted) {
       emit({ type: 'status', status: 'interrupted' });
@@ -95,7 +98,27 @@ export class Claude {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     this.children.add(child);
-    child.stdin.end(prompt);
+    child.stdin.end(
+      tree.images?.length
+        ? JSON.stringify({
+            type: 'user',
+            message: {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                ...tree.images.map((i) => ({
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: i.type,
+                    data: readFileSync(i.path).toString('base64'),
+                  },
+                })),
+              ],
+            },
+          }) + '\n'
+        : prompt,
+    );
     // Never forward CLI stderr: diagnostics can include account details.
     child.stderr.resume();
     const kill = () => child.kill();

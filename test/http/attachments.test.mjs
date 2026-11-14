@@ -25,7 +25,7 @@ test('preparation: a text file becomes one text part with a file-name header', (
   for (const file of [
     { name: 'b.bin', type: '', bytes: new Uint8Array([0xff, 0xfe, 0x00, 0x81]) },
     { name: 'z.dat', type: 'application/octet-stream', bytes: bytes('a\0b') },
-    { name: 'p.png', type: 'image/png', bytes: bytes('PNG') },
+    { name: 'a.gif', type: 'image/gif', bytes: bytes('GIF') },
   ])
     assert.throws(() => prepareAttachment(file), new RegExp(`^Error: ${file.name}: .*plain-text`));
   assert.equal(
@@ -33,6 +33,11 @@ test('preparation: a text file becomes one text part with a file-name header', (
     '[Attached file: a]\nA\n\n[Attached file: b]\nB',
   );
   assert.equal(withAttachments('Why?', []), 'Why?');
+  for (const type of ['image/png', 'image/jpeg', 'image/webp'])
+    assert.deepEqual(prepareAttachment({ name: 'p', type, bytes: bytes('IMG') }), {
+      delivery: 'image',
+      parts: [{ text: '[image: p]', image: true }],
+    });
 });
 
 test('multipart send stores text attachments, delivers them, serves them safely and deletes them with the conversation', async (t) => {
@@ -99,10 +104,10 @@ test('multipart send stores text attachments, delivers them, serves them safely 
   const refused = await create();
   const bad = await upload(`/${refused}/messages`, 'Look', [
     ['ok.txt', 'fine', 'text/plain'],
-    ['pic.png', 'PNG', 'image/png'],
+    ['anim.gif', 'GIF', 'image/gif'],
   ]);
   assert.equal(bad.status, 400);
-  assert.match((await bad.json()).error, /^pic\.png: .*plain-text file/);
+  assert.match((await bad.json()).error, /^anim\.gif: .*plain-text file/);
   assert.equal(store.tree(refused).messages.length, 0);
   assert.equal(calls.length, 1);
   assert.ok(!existsSync(join(dir, 'attachments', refused)));
@@ -197,4 +202,91 @@ test('multipart send stores text attachments, delivers them, serves them safely 
     0,
   );
   assert.equal((await fetch(`${origin}/api/trees/${id}/attachments/${attachment.id}`)).status, 404);
+});
+
+test('images reach models that read them, are refused for ones that cannot, and become [image: name] in history', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'treetutor-images-'));
+  const store = new Store(join(dir, 'trees.sqlite'));
+  const calls = [];
+  const reader = (readsImages) => ({
+    readsImages,
+    generate: async (tree, text, emit) => {
+      calls.push({ tree, text });
+      emit({ type: 'item', item: 'a', text: 'Red.' });
+      emit({ type: 'status', status: 'completed' });
+    },
+  });
+  const app = createApp({
+    store,
+    dir,
+    providers: { codex: reader(true), claude: reader(false) },
+    auth: { status: () => ({ connected: true }) },
+    log: () => {},
+  });
+  await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+  t.after(() => {
+    app.stop();
+    store.close();
+  });
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+  const post = (route, body) =>
+    fetch(`${origin}/api/trees${route}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      body: JSON.stringify(body),
+    });
+  const upload = (route, text, files) => {
+    const form = new FormData();
+    form.set('text', text);
+    for (const [name, content, type] of files)
+      form.append('files', new File([content], name, { type }));
+    return fetch(`${origin}/api/trees${route}`, {
+      method: 'POST',
+      headers: { 'X-TreeTutor-CSRF': csrf },
+      body: form,
+    });
+  };
+  const create = async (provider) => {
+    const id = (await (await post('', {})).json()).id;
+    store.switchProvider(id, provider, 'm');
+    return id;
+  };
+
+  // A model that cannot read images refuses the send with the reason; nothing is saved.
+  const blind = await create('claude');
+  const refused = await upload(`/${blind}/messages`, 'What colour?', [
+    ['red.png', 'PNG', 'image/png'],
+  ]);
+  assert.equal(refused.status, 400);
+  assert.match((await refused.json()).error, /^red\.png: this chat model can't read images/);
+  assert.equal(store.tree(blind).messages.length, 0);
+  assert.ok(!existsSync(join(dir, 'attachments', blind)));
+  assert.equal(calls.length, 0);
+
+  // A model that reads images gets this turn's stored file as an image part.
+  const id = await create('codex');
+  const stream = await (
+    await upload(`/${id}/messages`, 'What colour?', [['red.png', 'PNG', 'image/png']])
+  ).text();
+  assert.match(stream, /"status":"completed"/);
+  const [attachment] = store.tree(id).messages[0].attachments;
+  assert.equal(attachment.delivery, 'image');
+  assert.equal(calls[0].text, 'What colour?\n\n[image: red.png]');
+  assert.deepEqual(calls[0].tree.images, [
+    { name: 'red.png', type: 'image/png', path: join(dir, 'attachments', id, attachment.id) },
+  ]);
+
+  // Later turns send no image; history names it.
+  store.forgetThread(id);
+  await (await post(`/${id}/messages`, { text: 'Sure?' })).text();
+  assert.equal(calls[1].tree.images, undefined);
+  assert.equal(calls[1].tree.messages[0].text, 'What colour?\n\n[image: red.png]');
+
+  // The chip opens the image inline under the sandboxed asset route.
+  const asset = await fetch(`${origin}/api/trees/${id}/attachments/${attachment.id}`);
+  assert.equal(asset.headers.get('content-type'), 'image/png');
+  assert.match(asset.headers.get('content-disposition'), /^inline; filename="red.png"/);
+  assert.equal(asset.headers.get('content-security-policy'), "sandbox; default-src 'none'");
+  assert.equal(await asset.text(), 'PNG');
 });

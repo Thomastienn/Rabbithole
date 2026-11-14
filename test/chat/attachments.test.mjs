@@ -83,6 +83,7 @@ test('a message chip names the file, its type and how it reached the tutor, and 
       conversation: 'c1',
       attachments: [
         { id: 'a1', name: 'heap.py', type: 'text/x-python', size: 20, delivery: 'text' },
+        { id: 'a2', name: 'red.png', type: 'image/png', size: 7, delivery: 'image' },
       ],
     }),
     ui,
@@ -94,4 +95,7 @@ test('a message chip names the file, its type and how it reached the tutor, and 
   assert.match(link.getAttribute('rel'), /noopener/);
   assert.match(link.textContent, /heap\.py/);
   assert.match(link.textContent, /Text file · read as text/);
+  const image = container.querySelectorAll('a')[1];
+  assert.equal(image.getAttribute('href'), '/api/trees/c1/attachments/a2');
+  assert.match(image.textContent, /red\.png.*Image · sent as image/);
 });

@@ -3,6 +3,7 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
+import { Switch } from '@astryxdesign/core/Switch';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { PlusIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
@@ -11,6 +12,7 @@ type Endpoint = {
   id: string;
   name: string;
   baseUrl: string;
+  acceptsImages: boolean;
   lastTest:
     null | { ok: true; models: number; at: string } | { ok: false; error: string; at: string };
 };
@@ -36,7 +38,8 @@ export default function EndpointSettings({
     [removing, setRemoving] = useState<Endpoint>();
   const [name, setName] = useState(''),
     [baseUrl, setBaseUrl] = useState(''),
-    [apiKey, setApiKey] = useState('');
+    [apiKey, setApiKey] = useState(''),
+    [acceptsImages, setAcceptsImages] = useState(false);
   const [testing, setTesting] = useState(''),
     [pending, setPending] = useState('loading'),
     [error, setError] = useState(''),
@@ -100,6 +103,7 @@ export default function EndpointSettings({
     setName('');
     setBaseUrl('');
     setApiKey('');
+    setAcceptsImages(false);
     setError('');
     setMessage('');
   };
@@ -109,6 +113,7 @@ export default function EndpointSettings({
     setName(e.name);
     setBaseUrl(e.baseUrl);
     setApiKey('');
+    setAcceptsImages(e.acceptsImages);
     setError('');
     setMessage('');
   };
@@ -126,12 +131,12 @@ export default function EndpointSettings({
           void (editing
             ? act(
                 'edit',
-                { id: editing.id, name, baseUrl, ...(apiKey && { apiKey }) },
+                { id: editing.id, name, baseUrl, acceptsImages, ...(apiKey && { apiKey }) },
                 `${name.trim()} saved.`,
               )
             : act(
                 'add',
-                { name, baseUrl, apiKey },
+                { name, baseUrl, apiKey, acceptsImages },
                 `${name.trim()} added. Choose its models in any model menu.`,
               ));
       }}
@@ -188,6 +193,13 @@ export default function EndpointSettings({
           isReadOnly={!!pending}
           autoComplete="new-password"
           isRequired={keyNeeded}
+        />
+        <Switch
+          label="Accepts images"
+          value={acceptsImages}
+          onChange={setAcceptsImages}
+          isDisabled={!!pending}
+          description="Turn on only if this endpoint's models read images. Images are sent on the turn they are attached; later turns name them."
         />
         <HStack gap={2} wrap="wrap" vAlign="center">
           <Button
