@@ -244,7 +244,6 @@ cover one again, add it to a smoke script.
 - `verify-chat-expand`: expand hides the map with chat at full workspace width and collapse restores the exact prior map transform; CSS layout and React Flow transforms (keyboard-journey smoke keeps the toggle focus).
 - `verify-chat-expand`: expanded mode, a live reply and a draft survive resizing across 390px and back; browser resizing with responsive CSS.
 - `verify-chat-expand`: expand runs one View Transition with motion allowed and none under reduced motion; native View Transitions and media queries.
-- `verify-chat-sidebar`: drafts stay per conversation across switches, and a late reply or slow selection response never replaces the conversation now open; ChatPage orchestration that jsdom cannot mount before the ChatPage split (owning-turn reconciliation remains unit tested).
 - `verify-chat-sidebar`: the band, focused chat and map sit side by side, and the opened node stays inside the canvas; CSS geometry.
 - `verify-compact-chat`: the header is one row of at most 57px with all controls visible and level; computed CSS geometry (control names and actions remain component tested).
 - `verify-compact-chat`: Send is 3px-rounded, accent-filled and below the input beside the model button, and the rounded composer clears the latest reply; computed CSS and geometry.

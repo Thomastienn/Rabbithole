@@ -1,0 +1,126 @@
+import { useEffect, useState } from 'react';
+import { branchRequest, branchConcept, prepareBranch, type Anchor } from './branch';
+import { visualPassage } from '../media/artifacts';
+import type { PartAction, VisualBranch } from '../media/VisualFrame';
+import type { Tree } from './types';
+import type { ChatState } from './useChatState';
+import type { LearningTrees } from './useLearningTrees';
+import type { ChatModel } from './useChatModel';
+import type { ReplyStream } from './useReplyStream';
+
+// Branch form: opening it from a passage or visual part, inherited context preparation and submit.
+export function useBranchForm(
+  c: ChatState,
+  { refresh, openConversation }: LearningTrees,
+  { savingModel }: ChatModel,
+  { send }: ReplyStream,
+) {
+  const { tree, state, branch, setBranch, branchOrigin, selected, setError, api } = c;
+  const { overview, setOverview, overviewOrigin, focusComposer, request, setTree, setLoading } = c;
+  const { setDrafts } = c;
+  const [branching, setBranching] = useState(false);
+  // Escape returns focus to the passage or underline that opened the popup; an outside click keeps focus where it lands.
+  function closeBranch(refocus: boolean) {
+    setBranch(undefined);
+    requestAnimationFrame(() => {
+      if (refocus || !document.activeElement || document.activeElement === document.body)
+        branchOrigin.current?.current?.focus({ preventScroll: !refocus });
+    });
+  }
+  // Compaction never sees the question, so it starts when the form opens; closing cancels (a no-op after submit took it).
+  const prepareKey = branch && JSON.stringify([branch.parent, branchRequest(branch.anchor)]);
+  useEffect(() => {
+    if (!prepareKey) return;
+    const [parent, anchor] = JSON.parse(prepareKey);
+    return prepareBranch(parent, anchor, api);
+  }, [prepareKey]);
+  async function submitBranch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!branch || branching || savingModel === branch.parent || !branch.question.trim()) return;
+    setBranching(true);
+    setError('');
+    try {
+      const next: Tree = await api(
+        `/api/trees/${branch.parent}/branches`,
+        branchRequest(branch.anchor, branch.question),
+      );
+      setDrafts((d) => ({ ...d, [next.id]: branch.question }));
+      overviewOrigin.current = undefined;
+      setBranch(undefined);
+      // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
+      if (selected.current === branch.parent) {
+        focusComposer.current = true;
+        setOverview(false);
+        selected.current = next.id;
+        ++request.current;
+        setTree(next);
+        setLoading(false);
+      }
+      const sending = send(branch.question, next);
+      await refresh();
+      await sending;
+    } catch (e) {
+      if (selected.current === branch.parent) setError((e as Error).message);
+    } finally {
+      setBranching(false);
+    }
+  }
+  const visualBranches: Record<string, VisualBranch[]> = {};
+  for (const t of state?.trees ?? [])
+    if (t.parent === tree?.id && t.artifactId && t.label && t.explanation)
+      (visualBranches[t.artifactId] ??= []).push({
+        child: t.id,
+        label: t.label,
+        explanation: t.explanation,
+      });
+  const openVisualPart: PartAction = (visual, part, origin) => {
+    if (
+      !tree ||
+      overview ||
+      visual.status !== 'ready' ||
+      visual.conversation !== tree.id ||
+      !tree.messages.some((m) => m.id === visual.message && m.status === 'completed')
+    )
+      return;
+    const child = visualBranches[visual.id]?.find(
+      (p) => p.label === part.label && p.explanation === part.explanation,
+    )?.child;
+    if (child) {
+      void openConversation(child);
+      return;
+    }
+    branchOrigin.current = origin;
+    setBranch({
+      parent: tree.id,
+      anchor: {
+        messageId: visual.message,
+        artifactId: visual.id,
+        ...part,
+        text: visualPassage(visual, part),
+      },
+      question: '',
+    });
+    setError('');
+  };
+  function startBranch(
+    parent: string,
+    anchor: Anchor,
+    origin: React.RefObject<HTMLElement | null>,
+  ) {
+    branchOrigin.current = origin;
+    setBranch({ parent, anchor, question: '' });
+    setError('');
+  }
+  const concept = branch && branchConcept(branch.anchor, tree?.suggestions);
+  return {
+    branching,
+    closeBranch,
+    submitBranch,
+    visualBranches,
+    openVisualPart,
+    startBranch,
+    concept,
+  };
+}
+
+export type BranchFormState = ReturnType<typeof useBranchForm>;

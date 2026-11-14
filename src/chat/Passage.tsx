@@ -1,92 +1,18 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { ChatBubbleBottomCenterTextIcon } from '@heroicons/react/24/outline';
-import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import type { Point } from '../map/canvas';
 import type { Source } from '../map/TreeOverview';
 import type { conversationAddresses } from '../map/treeList';
 import { underlineRanges, type Message, type Suggestions } from './turn';
 import { passageAnchor, type Anchor } from './branch';
-import { renderMarkdown, rawOffsets, rawRange } from '../markdown/markdown';
+import { rawOffsets, rawRange } from '../markdown/markdown';
 import type { Artifact } from '../media/artifacts';
-import VideoCard from '../media/VideoCard';
-import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
-
-// Parsing is memoised so streaming chunks and selection state changes reuse the rendered tree.
-const Reply = memo(function Reply({
-  text,
-  reveal,
-  underlines,
-  inlineArtifacts = [],
-  onArtifactAction,
-  onVisualPart,
-  visualBranches,
-}: {
-  text: string;
-  reveal?: Source;
-  underlines: { start: number; end: number; child?: string }[];
-  inlineArtifacts?: Artifact[];
-  onVisualPart?: PartAction;
-  visualBranches?: Record<string, VisualBranch[]>;
-  onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
-}) {
-  useEffect(ensureHighlightStyles, []);
-  const action = useRef(onArtifactAction),
-    partAction = useRef(onVisualPart);
-  action.current = onArtifactAction;
-  partAction.current = onVisualPart;
-  const key = JSON.stringify(underlines),
-    artifactKey = JSON.stringify(inlineArtifacts),
-    visualBranchKey = JSON.stringify(visualBranches);
-  return (
-    <Text as="div" type="body" className="reply-md">
-      {useMemo(
-        () =>
-          renderMarkdown(
-            text,
-            reveal?.artifactId === undefined ? reveal : undefined,
-            underlines,
-            inlineArtifacts.map((v) => ({
-              at: v.position!,
-              node:
-                v.kind === 'video' ? (
-                  <VideoCard
-                    key={v.id}
-                    inline
-                    artifact={v}
-                    onAction={onArtifactAction && ((kind) => action.current!(v.id, kind))}
-                  />
-                ) : (
-                  <VisualFrame
-                    key={v.id}
-                    artifact={v}
-                    explored={visualBranches?.[v.id]}
-                    reveal={reveal?.artifactId === v.id ? reveal : undefined}
-                    onPart={(...args) => partAction.current?.(...args)}
-                    onRetry={onArtifactAction && (() => action.current!(v.id, 'retry'))}
-                    onRegenerate={onArtifactAction && (() => action.current!(v.id, 'regenerate'))}
-                  />
-                ),
-            })),
-          ),
-        [
-          text,
-          reveal?.start,
-          reveal?.end,
-          reveal?.text,
-          key,
-          artifactKey,
-          visualBranchKey,
-          reveal?.artifactId,
-          !!onArtifactAction,
-        ],
-      )}
-    </Text>
-  );
-});
+import type { PartAction, VisualBranch } from '../media/VisualFrame';
+import Reply from './Reply';
 
 export default function Passage({
   message,
