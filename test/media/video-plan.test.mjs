@@ -76,12 +76,23 @@ export default () => <div style={{background:palette.ground,color:colors.winner,
     code.replace('fonts.heading', 'fonts.reading'),
     code.replace('colors,', 'colors as inks,').replace('colors.winner', 'inks.winner'),
     code.replace('<div ', '<div hidden '),
+    // Expressions built from kit values pass; real cuts use props, templates, series and helpers.
+    code.replace('colors.winner', 'props.tint'),
+    code.replace('colors.winner', 'series[0]'),
+    code.replace('colors.winner', 'on && colors.winner'),
+    code.replace('colors.winner', 'interpolateColors(0, [0, 1], [colors.winner, palette.paper])'),
+    code.replace('background:palette.ground', 'border:`2px solid ${palette.line}`'),
+    code.replace('background:palette.ground', 'border:0'),
+    code.replace('fonts.heading', '`600 32px ${fonts.heading}`'),
   ])
     assert.equal(cutSource(source, styleBrief), source);
   for (const source of [
     code.replace('colors.winner', 'palette.leaf'),
     code.replace('colors.winner', 'colors.missing'),
     code.replace('colors.winner', "'red'"),
+    code.replace('colors.winner', "on ? 'white' : colors.winner"),
+    code.replace('background:palette.ground', 'border:`2px solid ${"x"} skyblue`'),
+    code.replace('background:palette.ground', 'border:`2px solid #00f ${palette.line}`'),
     code.replace('colors.winner', "'#ff0000'"),
     code.replace('colors.winner', "'rgb(255,0,0)'"),
     code.replace('fonts.heading', "'Arial'"),

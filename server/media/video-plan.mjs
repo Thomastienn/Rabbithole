@@ -112,8 +112,10 @@ export function cutSource(raw, brief) {
   }
   const allowed = new Set([...neutrals, ...Object.values(brief.paletteRoles)]);
   const literals = new Set([...allowed].map((k) => videoPalette[k]));
-  const styleError = () => {
-    throw new Error('Video cut breaks the style brief colors or fonts.');
+  const styleError = (detail) => {
+    throw new Error(
+      `Video cut breaks the style brief colors or fonts${detail ? `: ${detail}` : ''}. Use colors.<role>, palette.<neutral>, series, fonts.heading or fonts.reading.`,
+    );
   };
   const property = (n) =>
     ts.isPropertyAccessExpression(n)
@@ -121,24 +123,34 @@ export function cutSource(raw, brief) {
       : ts.isElementAccessExpression(n) && ts.isStringLiteral(n.argumentExpression)
         ? [n.expression.getText(file), n.argumentExpression.text]
         : [];
-  const styleValue = (n, font, seen = new Set()) => {
+  const keywords = ['none', 'transparent', 'currentcolor', 'inherit'];
+  // shortcut: common CSS color names only, not all 148; extend if models slip others through.
+  const named =
+    /\b[a-z]*(?:white|black|red|green|blue|yellow|orange|purple|pink|gr[ae]y|silver|gold|cyan|magenta|lime|navy|teal|maroon|olive|aqua|fuchsia|violet|indigo|brown|crimson|coral|salmon|tomato|turquoise|beige|ivory|khaki|lavender|plum|orchid)\b/i;
+  // Only literal text can introduce a foreign hue or font; any expression is built from kit values.
+  const literalOk = (text, name) =>
+    /^font/.test(name)
+      ? /archivo|literata|^inherit$/i.test(text)
+      : /^(?:color|backgroundColor|fill|stroke|stopColor|borderColor|outlineColor)$/.test(name)
+        ? literals.has(text.toLowerCase()) || keywords.includes(text.toLowerCase())
+        : !named.test(text);
+  const styleValue = (n, name, seen = new Set()) => {
     if (ts.isIdentifier(n) && locals.has(n.text) && !seen.has(n.text)) {
       seen.add(n.text);
-      return styleValue(locals.get(n.text), font, seen);
+      return styleValue(locals.get(n.text), name, seen);
     }
-    const [base, key] = property(n),
-      binding = bindings.get(base);
-    if (font) return binding === 'fonts' && ['heading', 'reading'].includes(key);
-    if (binding === 'palette') return allowed.has(key);
-    if (binding === 'colors') return Object.hasOwn(brief.paletteRoles, key);
-    if (ts.isStringLiteralLike(n))
+    if (ts.isParenthesizedExpression(n)) return styleValue(n.expression, name, seen);
+    if (ts.isStringLiteralLike(n)) return literalOk(n.text, name);
+    if (ts.isTemplateExpression(n))
       return (
-        literals.has(n.text.toLowerCase()) ||
-        ['none', 'transparent', 'currentColor'].includes(n.text)
+        /^font/.test(name) ||
+        [n.head, ...n.templateSpans.map((s) => s.literal)].every((t) => !named.test(t.text))
       );
     if (ts.isConditionalExpression(n))
-      return styleValue(n.whenTrue, font) && styleValue(n.whenFalse, font);
-    return false;
+      return styleValue(n.whenTrue, name, seen) && styleValue(n.whenFalse, name, seen);
+    if (ts.isBinaryExpression(n))
+      return styleValue(n.left, name, seen) && styleValue(n.right, name, seen);
+    return true;
   };
   const collect = (n) => {
     if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer)
@@ -150,14 +162,16 @@ export function cutSource(raw, brief) {
     if (ts.isExportDeclaration(n) && n.moduleSpecifier)
       throw new Error('Video composition uses a disallowed import or resource.');
     const [base, key] = property(n);
-    if (bindings.get(base) === 'palette' && !allowed.has(key)) styleError();
-    if (bindings.get(base) === 'colors' && !Object.hasOwn(brief.paletteRoles, key)) styleError();
+    if (bindings.get(base) === 'palette' && !allowed.has(key))
+      styleError(`palette.${key} is not in this brief`);
+    if (bindings.get(base) === 'colors' && !Object.hasOwn(brief.paletteRoles, key))
+      styleError(`colors.${key} is not a brief role`);
     if (
-      ts.isStringLiteralLike(n) &&
+      (ts.isStringLiteralLike(n) || ts.isTemplateLiteralToken(n)) &&
       /#[\da-f]{3,8}\b|\b(?:rgb|hsl)a?\(/i.test(n.text) &&
       !literals.has(n.text.toLowerCase())
     )
-      styleError();
+      styleError(`"${n.text.slice(0, 60)}" is not a kit color`);
     const name = n.name?.text;
     const value = ts.isPropertyAssignment(n)
       ? n.initializer
@@ -171,9 +185,9 @@ export function cutSource(raw, brief) {
       /^(?:color|background|backgroundColor|backgroundImage|fill|stroke|stopColor|border|borderColor|borderTop|borderRight|borderBottom|borderLeft|outline|outlineColor|boxShadow|textShadow|fontFamily|font)$/.test(
         name,
       ) &&
-      !styleValue(value, name === 'fontFamily' || name === 'font')
+      !styleValue(value, name)
     )
-      styleError();
+      styleError(`${name}: ${value.getText(file).slice(0, 60)}`);
     ts.forEachChild(n, check);
   };
   check(file);
