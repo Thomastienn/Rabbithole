@@ -16,6 +16,12 @@ test('layout snapshots stay per tree, hold only IDs and survive restart; legacy 
   legacy.close();
   let store = new Store(path);
   assert.equal(store.list().find((t) => t.id === 'old').layout, null);
+  store.db.prepare('UPDATE trees SET layout=? WHERE id=?').run('{broken', 'old');
+  assert.equal(
+    store.list().find((t) => t.id === 'old').layout,
+    null,
+    'corrupt legacy layout uses defaults',
+  );
   const first = store.create('First'),
     second = store.create('Second');
   const text = 'A long tutor reply that must never be copied into layout.';

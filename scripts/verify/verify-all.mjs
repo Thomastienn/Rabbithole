@@ -30,7 +30,6 @@ const known = {
   'verify-passage-selection.mjs':
     'TreeTutor-cpi: Open Selection click lands on a covering map path',
   'verify-suggestion-branching.mjs': 'TreeTutor-cpi: alert wait times out',
-  'verify-tree-overview.mjs': 'TreeTutor-cpi: savedViewport eval fails (intermittent)',
   'verify-video-library.mjs':
     "TreeTutor-cpi: copies an MP4 from a past live run's deleted /tmp dir",
   'verify-visual-sandbox.mjs':

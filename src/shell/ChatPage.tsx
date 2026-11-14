@@ -48,7 +48,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
-import { CommandPalette } from '@astryxdesign/core/CommandPalette';
+import TreeSearch from './TreeSearch';
+import { treeSearchSource } from './treeSearch';
+import { restoredTree, rootOf } from '../map/mapState';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import {
@@ -97,11 +99,11 @@ import KnowledgePage, { type Graph } from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
 import { artifactsAt, mergeArtifact, visualPassage, type Artifact } from '../media/artifacts';
 import { renderMarkdown, rawOffsets, rawRange } from '../markdown/markdown';
-import { previewText } from '../markdown/markdownText';
+import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
-import { conversationAddresses, inkStyle, treeGroups } from '../map/treeList';
+import { conversationAddresses, inkStyle, treeGroups, markLibraryScrolling } from '../map/treeList';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { effortLabel, type Model } from '../settings/models';
 import Contents from '../chat/Contents';
@@ -140,24 +142,6 @@ type State = {
   suggesting?: string[];
   conceptNameTokens?: number;
 };
-// The in-flight question and streaming reply become the last rows of the node, cut like saved rows.
-const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview =>
-  withTurn(
-    { messages: preview },
-    turn && {
-      replaced: turn.replaced,
-      user: turn.user && { ...turn.user, text: previewText(turn.user.text, 'user') },
-      reply: turn.reply && {
-        ...turn.reply,
-        text: previewText(turn.reply.text, 'assistant'),
-        ...(turn.artifacts && {
-          artifacts: turn.artifacts
-            .filter((a) => a.message === turn.reply!.id)
-            .map(({ id, kind, title, status }) => ({ id, kind, title, status })),
-        }),
-      },
-    },
-  ).messages;
 
 function TitleEditor({
   title,
@@ -749,7 +733,7 @@ export default function ChatPage({
   const [today, setToday] = useState(() => new Date());
   const [tab, setTab] = useState('learning');
   const [libraryQuery, setLibraryQuery] = useState('');
-  const scrollQuiet = useRef<number>(undefined);
+  const scrollQuiet = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [libraryLayout, setLibraryLayout] = useState<'shelf' | 'list'>(() => {
     try {
       return localStorage.getItem('treetutor.library-layout') === 'list' ? 'list' : 'shelf';
@@ -938,24 +922,11 @@ export default function ChatPage({
   function openTree(id: string, trees = state?.trees ?? [], focus?: string, read = false) {
     setTab('learning');
     overviewOrigin.current = undefined;
-    const layout = trees.find((t) => t.id === id)?.layout;
-    const saved =
-      focus ?? (layout?.selected && rootOf(layout.selected, trees) === id ? layout.selected : id);
+    const { saved, overview, expanded } = restoredTree(id, trees, focus, read);
     setRoot(id);
-    setOverview(!focus && !read && layout?.panel !== 'beside' && layout?.panel !== 'expanded');
-    setExpanded(layout?.panel === 'expanded');
+    setOverview(overview);
+    setExpanded(expanded);
     void select(saved);
-  }
-  function rootOf(id: string, trees: Summary[]) {
-    const seen = new Set<string>();
-    for (
-      let t = trees.find((t) => t.id === id);
-      t && !seen.has(t.id);
-      t = trees.find((p) => p.id === t!.parent)
-    ) {
-      seen.add(t.id);
-      if (!t.parent) return t.id;
-    }
   }
   // Trees show unsaved layout immediately; the saver writes it in one batch per minute.
   function withUnsaved(trees: Summary[]) {
@@ -1074,13 +1045,9 @@ export default function ChatPage({
     let cancelled = false;
     async function load(ids: string[]) {
       try {
-        const batches = [];
-        for (let i = 0; i < ids.length; i += 500) {
-          const params = new URLSearchParams();
-          ids.slice(i, i + 500).forEach((id) => params.append('id', id));
-          batches.push(api(`/api/previews?${params}`));
-        }
-        const results: Record<string, Preview>[] = await Promise.all(batches);
+        const results: Record<string, Preview>[] = await Promise.all(
+          previewRequests(ids).map((path) => api(path)),
+        );
         if (!cancelled) {
           const next: Record<string, Preview> = Object.assign({}, ...results);
           for (const id of ids)
@@ -1094,7 +1061,7 @@ export default function ChatPage({
     const visible: string[] = JSON.parse(previewKey);
     void load(visible);
     // While replies run, refetch only the conversations that are replying.
-    const replying = visible.filter((id) => activeKey.split(',').includes(id));
+    const replying = replyingPreviews(visible, activeKey);
     const timer = replying.length ? setInterval(() => load(replying), 1500) : undefined;
     return () => {
       cancelled = true;
@@ -1133,21 +1100,7 @@ export default function ChatPage({
       .catch((e) => setError(e.message));
   }
   useEffect(loadInitial, []);
-  // Title-only search runs on the server so it always reflects saved trees; failures surface like other request errors.
-  const titleSearch = useMemo(
-    () => ({
-      search: (q: string) =>
-        api(`/api/search?q=${encodeURIComponent(q)}`).then(
-          (r: { root: string; title: string }[]) => r.map((t) => ({ id: t.root, label: t.title })),
-          (e: Error) => {
-            setError(e.message);
-            return [];
-          },
-        ),
-      bootstrap: () => [],
-    }),
-    [],
-  );
+  const titleSearch = useMemo(() => treeSearchSource(api, setError), []);
   async function loadModels() {
     const version = ++modelRequest.current;
     setModelError('');
@@ -2285,14 +2238,11 @@ export default function ChatPage({
       {band}
       {mobile && narrowDrawer}
       {/* Outside the band so the palette keeps popover colours. */}
-      <CommandPalette
+      <TreeSearch
         isOpen={searching}
         onOpenChange={setSearching}
-        label="Search learning trees"
         searchSource={titleSearch}
         onValueChange={(id) => id && openTree(id)}
-        emptyBootstrapText="Type part of a learning tree’s title."
-        emptySearchText="No learning tree titles match."
       />
       <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
         <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
@@ -3055,10 +3005,7 @@ export default function ChatPage({
           className="library-panel"
           aria-label="Learning trees"
           onScroll={(e) => {
-            const el = e.currentTarget;
-            el.dataset.scrolling = '';
-            clearTimeout(scrollQuiet.current);
-            scrollQuiet.current = window.setTimeout(() => delete el.dataset.scrolling, 800);
+            scrollQuiet.current = markLibraryScrolling(e.currentTarget, scrollQuiet.current);
           }}
         >
           {tab === 'library' && (

@@ -8,6 +8,11 @@ const GLOBALS = [
   'Node',
   'Element',
   'HTMLElement',
+  'HTMLInputElement',
+  'HTMLTextAreaElement',
+  'HTMLSelectElement',
+  'HTMLDialogElement',
+  'CSS',
   'Event',
   'MouseEvent',
   'KeyboardEvent',
@@ -20,11 +25,12 @@ const GLOBALS = [
   'removeEventListener',
 ];
 
-export async function render(element) {
+export async function render(element, setup = () => {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     pretendToBeVisual: true,
     url: 'http://localhost/',
   });
+  setup(dom.window);
   const saved = GLOBALS.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]);
   for (const key of GLOBALS) {
     const value = dom.window[key];

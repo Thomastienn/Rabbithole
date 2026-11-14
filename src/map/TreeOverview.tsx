@@ -1,42 +1,19 @@
 import { useTheme } from '@astryxdesign/core/theme';
-import {
-  createContext,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   BaseEdge,
   getBezierPath,
-  Handle,
-  Position,
-  useNodesInitialized,
   useNodesState,
   useUpdateNodeInternals,
   type EdgeProps,
-  type NodeProps,
-  type Node,
   type ReactFlowInstance,
 } from '@xyflow/react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
-import { Heading, Text } from '@astryxdesign/core/Text';
-import { Button } from '@astryxdesign/core/Button';
+import { Text } from '@astryxdesign/core/Text';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import {
-  MinusIcon,
-  PlusIcon,
-  ArrowsPointingOutIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  LinkIcon,
-  ExclamationTriangleIcon,
-} from '@heroicons/react/24/outline';
-import type { CSSProperties, ReactNode } from 'react';
+import { MinusIcon, PlusIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
+import type { ReactNode } from 'react';
 import {
   MIN_ZOOM,
   foldHierarchy,
@@ -49,6 +26,18 @@ import {
 } from './canvas';
 import type { ArtifactSummary, VisualPart } from '../media/artifacts';
 import { conversationAddresses, inkStyle } from './treeList';
+import { Conversation, ConversationTransition, type ConversationNode } from './Conversation';
+import { InkLegend } from './MapControls';
+import {
+  branchEdges,
+  familyLegend,
+  keepCurrentFolded,
+  revealAddedBranches,
+  reconcileNodes,
+  revealViewport,
+  keyMovement,
+  type Open,
+} from './mapState';
 
 export type Layout = {
   folded: string[];
@@ -83,271 +72,14 @@ export type Preview = {
   status: string;
   artifacts?: ArtifactSummary[];
 }[];
-type Open = (id: string, source?: Source, message?: string) => void;
 export type MapActions = {
   expand: () => void;
   collapse: () => void;
   keep: () => void;
   canKeep: boolean;
 };
-type ConversationNode = Node<
-  {
-    conversation: Summary;
-    sources: Summary[];
-    preview?: Preview;
-    open: Open;
-    retry: (id: string) => void;
-    active: boolean;
-    focused: boolean;
-    focus: boolean;
-    focusControl?: string;
-    childCount: number;
-    address: string;
-    ink: number;
-    stubs: { child: Summary; beneath: number; address: string; ink: number }[];
-    folded: boolean;
-    toggle: (id: string) => void;
-  },
-  'conversation'
->;
 const fit = { padding: 0.2, maxZoom: 1 };
 const noStubs: ConversationNode['data']['stubs'] = [];
-const ConversationTransition = createContext<string | undefined>(undefined);
-const snippet = (text: string) => {
-  const flat = text.replace(/\s+/g, ' ').trim();
-  return flat.length > 80 ? `${flat.slice(0, 79)}…` : flat;
-};
-const sourceOf = (t: Summary): Source =>
-  t.artifactId
-    ? {
-        messageId: t.messageId!,
-        text: t.passage!,
-        artifactId: t.artifactId,
-        label: t.label!,
-        explanation: t.explanation!,
-      }
-    : { messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! };
-
-const Conversation = memo(function Conversation({ data }: NodeProps<ConversationNode>) {
-  const t = data.conversation;
-  const transition = useContext(ConversationTransition);
-  const initialized = useNodesInitialized();
-  useEffect(() => {
-    if (!data.focus || !initialized) return;
-    // Only restore focus lost by leaving chat; a box remounting after a fold must not steal it.
-    const frame = requestAnimationFrame(() => {
-      if (!document.activeElement?.closest('.overview'))
-        document
-          .getElementById(data.focusControl ?? `open-${t.id}`)
-          ?.focus({ preventScroll: true });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [data.focus, data.focusControl, t.id, initialized]);
-  const preview = data.preview;
-  const handle = (child: Summary, style?: CSSProperties) => {
-    const stub = data.stubs.find((s) => s.child === child);
-    const name = `Show hidden branch ${child.title}${stub?.beneath ? `, ${stub.beneath} more ${stub.beneath === 1 ? 'conversation' : 'conversations'} hidden beneath` : ''}`;
-    // Focus the fold toggle first; the stub unmounts once the fold expands.
-    return (
-      <Handle
-        key={child.id}
-        id={child.id}
-        data-source={child.id}
-        type="source"
-        position={Position.Right}
-        style={style}
-      >
-        {stub && (
-          <HStack gap={0} className="fold-stub nodrag nopan" style={inkStyle(stub.ink)}>
-            <Button
-              label={name}
-              tooltip={name}
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                document.getElementById(`fold-${t.id}`)?.focus({ preventScroll: true });
-                data.toggle(t.id);
-              }}
-            >
-              <Text type="supporting" hasTabularNumbers>
-                {stub.address} · {1 + stub.beneath} folded
-              </Text>
-            </Button>
-          </HStack>
-        )}
-      </Handle>
-    );
-  };
-  return (
-    <VStack
-      gap={2}
-      padding={3}
-      className="conversation-box"
-      data-active={data.active}
-      data-focused={data.focused}
-      data-folded={data.folded}
-      style={inkStyle(data.ink)}
-    >
-      {t.parent && <Handle type="target" position={Position.Left} />}
-      <HStack gap={1} vAlign="center" className="node-band">
-        {data.childCount > 0 && (
-          <IconButton
-            id={`fold-${t.id}`}
-            className="nodrag nopan"
-            label={`${data.folded ? 'Expand' : 'Collapse'} descendants of ${t.title}`}
-            tooltip={`${data.folded ? 'Expand' : 'Collapse'} descendants`}
-            aria-expanded={!data.folded}
-            icon={data.folded ? <ChevronRightIcon /> : <ChevronDownIcon />}
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              data.toggle(t.id);
-            }}
-          />
-        )}
-        <Text
-          className="activity-dot"
-          role={data.active ? 'status' : undefined}
-          aria-hidden={!data.active || undefined}
-        >
-          {data.active && <Text className="sr-only">Responding</Text>}
-        </Text>
-        <Text className="node-address" hasTabularNumbers>
-          {data.address}
-        </Text>
-        <Button
-          id={`open-${t.id}`}
-          className="node-title nodrag nopan"
-          label={`Open ${t.title}`}
-          variant="ghost"
-          size="sm"
-          onClick={() => data.open(t.id)}
-        >
-          <Heading
-            level={2}
-            style={{ viewTransitionName: transition === t.id ? 'conversation' : undefined }}
-          >
-            {t.title}
-          </Heading>
-        </Button>
-        {t.parent && (
-          <IconButton
-            id={`reveal-${t.id}`}
-            className="node-extra nodrag nopan"
-            label={`Reveal source passage for ${t.title}`}
-            tooltip={`From “${t.passage}”`}
-            icon={<LinkIcon />}
-            variant="ghost"
-            size="sm"
-            onClick={() => data.open(t.parent!, sourceOf(t))}
-          />
-        )}
-      </HStack>
-      {!!preview?.length && (
-        <VStack gap={1} className="node-preview">
-          {preview.map((m) => {
-            const sources = data.sources.filter((child) => child.messageId === m.id);
-            return (
-              <VStack
-                key={m.id}
-                gap={0}
-                className="node-message"
-                data-message={m.id}
-                data-role={m.role}
-                style={
-                  sources.length
-                    ? {
-                        minHeight: `calc(var(--spacing-${data.folded ? 8 : 2}) * ${sources.length + 1})`,
-                      }
-                    : undefined
-                }
-              >
-                {(m.text || m.status === 'streaming') && (
-                  <Button
-                    className="node-bubble nodrag nopan"
-                    label={`Jump to ${m.role === 'user' ? 'question' : 'reply'}: ${snippet(m.text || 'Thinking…')}`}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => data.open(t.id, undefined, m.id)}
-                  >
-                    <Text
-                      type="supporting"
-                      color={m.role === 'user' ? 'primary' : 'secondary'}
-                      className={m.role === 'user' ? 'question-bubble' : undefined}
-                      maxLines={3}
-                    >
-                      <Text type="inherit" className="sr-only">
-                        {m.role === 'user' ? 'Question: ' : 'Answer: '}
-                      </Text>
-                      {m.text || 'Thinking…'}
-                    </Text>
-                  </Button>
-                )}
-                {m.role === 'assistant' && m.status !== 'completed' && (
-                  <Text type="supporting" className="node-status" data-status={m.status}>
-                    {m.status === 'failed' && <ExclamationTriangleIcon aria-hidden />}
-                    {m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}
-                  </Text>
-                )}
-                {m.role === 'assistant' &&
-                  m.status === 'failed' &&
-                  m === preview.at(-1) &&
-                  preview.at(-2)?.role === 'user' &&
-                  !data.active && (
-                    <Button
-                      label="Retry reply"
-                      className="node-retry nodrag nopan"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        document.getElementById(`open-${t.id}`)?.focus({ preventScroll: true });
-                        data.retry(t.id);
-                      }}
-                    />
-                  )}
-                {m.role === 'assistant' &&
-                  m.artifacts
-                    ?.filter((a) => a.kind !== 'visual' || a.status !== 'canceled')
-                    .map((a) => (
-                      <Text key={a.id} type="supporting" color="secondary">
-                        {a.kind === 'video' ? (
-                          `Video: ${a.title} · ${a.status === 'pending' ? 'creating…' : a.status === 'ready' ? (a.available === false ? 'unavailable' : 'ready') : a.status}`
-                        ) : (
-                          <>
-                            {a.kind === 'visual' ? 'Visual' : 'Diagram'}: {a.title}
-                            {a.status === 'pending'
-                              ? ' · creating…'
-                              : a.status === 'failed'
-                                ? ' · unavailable'
-                                : ''}
-                          </>
-                        )}
-                      </Text>
-                    ))}
-                {sources.map((child, index) =>
-                  handle(child, { top: `${(100 * (index + 1)) / (sources.length + 1)}%` }),
-                )}
-              </VStack>
-            );
-          })}
-          {preview.at(-1)?.role === 'user' && (
-            <Text type="supporting" color="secondary">
-              <Text type="inherit" className="sr-only">
-                Answer:{' '}
-              </Text>
-              No reply yet.
-            </Text>
-          )}
-        </VStack>
-      )}
-      {data.sources
-        .filter((child) => !preview?.some((m) => m.id === child.messageId))
-        .map((child) => handle(child))}
-    </VStack>
-  );
-});
 const nodeTypes = { conversation: Conversation };
 
 function Branch(props: EdgeProps) {
@@ -463,17 +195,7 @@ export default function TreeOverview({
     if (!added.length) return;
     for (const child of added) createdBranches.current.set(child.id, performance.now());
     setFolded((previous) => {
-      const next = new Set(previous);
-      for (const child of added) {
-        let parent = child.parent;
-        const seen = new Set<string>();
-        while (parent && !seen.has(parent)) {
-          seen.add(parent);
-          next.delete(parent);
-          parent = trees.find((t) => t.id === parent)?.parent ?? null;
-        }
-      }
-      return next;
+      return revealAddedBranches(previous, added, trees);
     });
   }, [trees]);
   const toggle = useCallback(
@@ -491,20 +213,8 @@ export default function TreeOverview({
     [folded],
   );
   function keepCurrent() {
-    const path = new Set<string>();
-    let id = current;
-    while (id && !path.has(id)) {
-      path.add(id);
-      id = trees.find((t) => t.id === id)?.parent ?? undefined;
-    }
-    if (!path.has(root)) return;
-    setFolded(
-      new Set(
-        trees
-          .filter((t) => t.parent && t.parent !== current && path.has(t.parent) && !path.has(t.id))
-          .map((t) => t.id),
-      ),
-    );
+    const next = keepCurrentFolded(root, trees, current);
+    if (next) setFolded(next);
   }
   const placed = useRef(new Set<string>());
   const [zoom, setZoom] = useState(savedViewport?.zoom ?? 1);
@@ -530,37 +240,21 @@ export default function TreeOverview({
       if (!bounds.width || !bounds.height) return;
       const view = instance.getViewport();
       const toolbar = document.querySelector('.map-toolbar')?.getBoundingClientRect();
-      const top = toolbar ? toolbar.height / 2 : 0;
-      const rightLimit = bounds.width - top;
-      const bottomLimit = toolbar ? toolbar.top - bounds.top - top : bounds.height;
-      const availableHeight = bottomLimit - top;
-      // Scale a tall transcript to the available map; keep its title reachable at 20%.
-      const zoom = Math.max(
-        0.2,
-        Math.min(
-          view.zoom,
-          (rightLimit - top) / node.measured.width,
-          availableHeight / node.measured.height,
-        ),
+      const next = revealViewport(
+        view,
+        { ...node.position, width: node.measured.width, height: node.measured.height },
+        bounds.width,
+        bounds.height,
+        toolbar && { top: toolbar.top - bounds.top, height: toolbar.height },
       );
-      const left = node.position.x * zoom + view.x,
-        y = node.position.y * zoom + view.y;
-      const right = left + node.measured.width * zoom,
-        bottom = y + node.measured.height * zoom;
-      const dx = left < top ? top - left : right > rightLimit ? rightLimit - right : 0;
-      const dy =
-        y < top || node.measured.height * zoom > availableHeight
-          ? top - y
-          : bottom > bottomLimit
-            ? bottomLimit - bottom
-            : 0;
+      const zoom = next.zoom;
       const duration =
         window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
         (nodes.length > 50 && zoom > view.zoom * 2)
           ? 0
           : 200;
-      if (dx || dy || zoom !== view.zoom)
-        void instance.setViewport({ x: view.x + dx, y: view.y + dy, zoom }, { duration });
+      if (next.x !== view.x || next.y !== view.y || zoom !== view.zoom)
+        void instance.setViewport(next, { duration });
     });
     return () => cancelAnimationFrame(frame);
   }, [
@@ -620,10 +314,7 @@ export default function TreeOverview({
     return path;
   }, [current, trees]);
   const addresses = useMemo(() => conversationAddresses(trees), [trees]);
-  const legend = [...addresses].flatMap(([id, address]) => {
-    const t = trees.find((t) => t.id === id);
-    return t && (id === root || t.parent === root) ? [{ ...t, ...address }] : [];
-  });
+  const legend = familyLegend(root, trees, addresses);
   const desiredNodes = useMemo(
     () =>
       hierarchy.map(({ conversation, sources, hidden, stubs }): ConversationNode => {
@@ -670,39 +361,7 @@ export default function TreeOverview({
     ],
   );
   useEffect(() => {
-    setNodes((previous) => {
-      const byId = new Map(previous.map((node) => [node.id, node]));
-      return desiredNodes.map((node) => {
-        const old = byId.get(node.id);
-        if (
-          old &&
-          old.data.sources.length === node.data.sources.length &&
-          node.data.sources.every((source, i) => source === old.data.sources[i])
-        )
-          node.data.sources = old.data.sources;
-        if (
-          old &&
-          old.data.stubs.length === node.data.stubs.length &&
-          node.data.stubs.every(
-            (stub, i) =>
-              stub.child === old.data.stubs[i].child &&
-              stub.beneath === old.data.stubs[i].beneath &&
-              stub.address === old.data.stubs[i].address &&
-              stub.ink === old.data.stubs[i].ink,
-          )
-        )
-          node.data.stubs = old.data.stubs;
-        if (
-          old &&
-          old.hidden === node.hidden &&
-          (Object.keys(node.data) as (keyof ConversationNode['data'])[]).every(
-            (key) => old.data[key] === node.data[key],
-          )
-        )
-          return old;
-        return { ...old, ...node, position: old?.position ?? node.position };
-      });
-    });
+    setNodes((previous) => reconcileNodes(previous, desiredNodes));
   }, [desiredNodes, setNodes]);
   const measured = useRef(new Map<string, { height: number; hidden: boolean }>());
   const deferredGrowth = useRef(new Set<string>());
@@ -818,28 +477,7 @@ export default function TreeOverview({
     return () => cancelAnimationFrame(frame);
   }, [nodes]);
   const edges = useMemo(
-    () =>
-      hierarchy
-        .filter((n) => !n.hidden && n.conversation.parent && !folded.has(n.conversation.parent))
-        .map((n) => {
-          const t = n.conversation;
-          return {
-            id: t.id,
-            type: 'branch',
-            className: focusedPath.has(t.id) ? 'branch-focused' : undefined,
-            source: t.parent!,
-            sourceHandle: t.id,
-            target: t.id,
-            ariaLabel: `Passage “${t.passage}” to ${t.title}`,
-            data: {
-              messageId: t.messageId,
-              start: t.start,
-              end: t.end,
-              created: createdBranches.current.get(t.id),
-              ink: addresses.get(t.id)?.ink ?? 0,
-            },
-          };
-        }),
+    () => branchEdges(hierarchy, folded, focusedPath, addresses, createdBranches.current),
     [hierarchy, folded, focusedPath, addresses],
   );
   return (
@@ -888,19 +526,7 @@ export default function TreeOverview({
         })}
         {toolbar}
       </HStack>
-      <aside className="ink-legend" aria-label="Branch family inks" tabIndex={0}>
-        <ul>
-          {legend.map((t) => (
-            <li key={t.id} style={inkStyle(t.ink)}>
-              <span className="contents-dot" aria-hidden />
-              <span>
-                {t.address} {t.title}
-                {t.id === root && ' · trunk'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </aside>
+      <InkLegend legend={legend} root={root} />
       <Text role="status" type="supporting" aria-live="polite" className="sr-only">
         {notice}
       </Text>
@@ -944,18 +570,12 @@ export default function TreeOverview({
             return;
           }
           const key = alias ?? e.key;
-          const delta: Record<string, Point> = {
-            ArrowLeft: { x: -1, y: 0 },
-            ArrowRight: { x: 1, y: 0 },
-            ArrowUp: { x: 0, y: -1 },
-            ArrowDown: { x: 0, y: 1 },
-          };
-          if (!delta[key]) return;
+          const delta = keyMovement(key, e.shiftKey, e.target === e.currentTarget);
+          if (!delta) return;
           if (e.target === e.currentTarget) {
             e.preventDefault();
             e.stopPropagation();
-            const step = e.shiftKey ? 300 : 100;
-            pan(-delta[key].x * step, -delta[key].y * step);
+            pan(delta.x, delta.y);
             return;
           }
           if (e.target !== (e.target as HTMLElement).closest('.react-flow__node')) return;
@@ -964,10 +584,9 @@ export default function TreeOverview({
           const id = (e.target as HTMLElement).dataset.id;
           const node = nodes.find((n) => n.id === id);
           if (!node) return;
-          const step = e.shiftKey ? 100 : 10;
           const position = {
-            x: node.position.x + delta[key].x * step,
-            y: node.position.y + delta[key].y * step,
+            x: node.position.x + delta.x,
+            y: node.position.y + delta.y,
           };
           setNodes((current) =>
             current.map((n) => (n.id === id ? { ...n, position, selected: true } : n)),

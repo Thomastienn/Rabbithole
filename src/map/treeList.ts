@@ -61,3 +61,12 @@ export const inkStyle = (ink: number) =>
     '--ink': ink ? `var(--treetutor-ink-${ink})` : 'var(--treetutor-paper)',
     '--ink-on': ink ? 'var(--treetutor-ink-on)' : 'var(--treetutor-paper-ink)',
   }) as CSSProperties;
+
+export function markLibraryScrolling(
+  element: HTMLElement,
+  previous?: ReturnType<typeof setTimeout>,
+) {
+  element.dataset.scrolling = '';
+  clearTimeout(previous);
+  return setTimeout(() => delete element.dataset.scrolling, 800);
+}

@@ -40,6 +40,7 @@ async function open(path, generate) {
 
 test('failed latest reply retries in place with the current model; no duplicate question; library videos kept', async () => {
   const calls = [];
+  const rawQuestion = 'Second question about roots and fungi. '.repeat(40);
   let fail = true;
   const env = await open(join(dir, 'failed.sqlite'), async (tree, text, emit, saveThread) => {
     calls.push({
@@ -64,7 +65,7 @@ test('failed latest reply retries in place with the current model; no duplicate 
     assert.equal(env.store.tree(tree.id).messages[1].status, 'failed');
     assert.equal((await env.post(`/api/trees/${tree.id}/retry`, {})).status, 409);
     fail = true;
-    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Second' })).text();
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: rawQuestion })).text();
     let saved = env.store.tree(tree.id);
     const failed = saved.messages.at(-1);
     assert.equal(failed.status, 'failed');
@@ -109,8 +110,8 @@ test('failed latest reply retries in place with the current model; no duplicate 
         ['assistant', 'Partial', 'failed'],
         ['user', 'First', 'completed'],
         ['assistant', 'Answer: First', 'completed'],
-        ['user', 'Second', 'completed'],
-        ['assistant', 'Answer: Second', 'completed'],
+        ['user', rawQuestion, 'completed'],
+        ['assistant', `Answer: ${rawQuestion}`, 'completed'],
       ],
     );
     assert.notEqual(saved.messages[5].id, failed.id);
@@ -123,7 +124,7 @@ test('failed latest reply retries in place with the current model; no duplicate 
     const retry = calls.at(-1);
     assert.deepEqual(
       [retry.text, retry.model, retry.thread, retry.history],
-      ['Second', 'model-now', null, ['Zero', 'Partial', 'First', 'Answer: First']],
+      [rawQuestion, 'model-now', null, ['Zero', 'Partial', 'First', 'Answer: First']],
     );
     assert.equal(saved.model, 'model-now');
     // A completed latest reply is not retried.
