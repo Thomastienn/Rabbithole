@@ -9,7 +9,7 @@ export const media = {
   hasArtifact(id) {
     return !!this.db.prepare('SELECT 1 FROM artifacts WHERE id=?').get(id);
   },
-  // Videos keep their frozen task input and a server-issued attempt; their composition source stays in the job workspace.
+  // Videos keep frozen input and an attempt; source holds their private plan and ordered cuts.
   // position: offset in the stored reply text where the request block was removed; null renders after the reply.
   pendingArtifact(
     conversation,
@@ -75,15 +75,25 @@ export const media = {
         .run(input, conversation, id, attempt).changes > 0
     );
   },
-  finishVideo(conversation, id, attempt, { description, duration } = {}, error = null) {
+  videoData(conversation, id, attempt, data) {
+    return (
+      this.db
+        .prepare(
+          "UPDATE artifacts SET source=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
+        )
+        .run(JSON.stringify(data), conversation, id, attempt).changes > 0
+    );
+  },
+  finishVideo(conversation, id, attempt, { title, description, duration } = {}, error = null) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const done = this.db
         .prepare(
-          "UPDATE artifacts SET status=?,description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
+          "UPDATE artifacts SET status=?,title=COALESCE(?,title),description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
         )
         .run(
           error ? 'failed' : 'ready',
+          error ? null : (title ?? null),
           error ? null : description,
           error ? null : duration,
           error,
@@ -116,7 +126,7 @@ export const media = {
   retryVideo(conversation, id) {
     const result = this.db
       .prepare(
-        "UPDATE artifacts SET status='pending',attempt=?,error=NULL,duration=NULL WHERE conversation=? AND id=? AND kind='video' AND status!='pending'",
+        "UPDATE artifacts SET status='pending',attempt=?,source=NULL,error=NULL,duration=NULL WHERE conversation=? AND id=? AND kind='video' AND status!='pending'",
       )
       .run(randomUUID(), conversation, id);
     return result.changes ? this.artifact(conversation, id) : null;

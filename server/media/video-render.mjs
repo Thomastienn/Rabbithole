@@ -1,9 +1,54 @@
 // Runs inside the bubblewrap sandbox from videos.mjs; argv: workspace, output file, dependency directory.
 import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { bundle } from '@remotion/bundler';
-import { selectComposition, renderMedia } from '@remotion/renderer';
+import { selectComposition, renderMedia, RenderInternals } from '@remotion/renderer';
 
 const [workspace, output, modules] = process.argv.slice(2);
+if (existsSync(join(workspace, 'cuts.json'))) {
+  const cuts = JSON.parse(readFileSync(join(workspace, 'cuts.json'), 'utf8'));
+  const durationInFrames = cuts.reduce((n, c) => n + c.durationInFrames, 0);
+  const list = join(workspace, 'cuts.txt');
+  writeFileSync(
+    list,
+    cuts
+      .map((c) => `file '${c.file.replaceAll("'", "'\\''")}'\nduration ${c.durationInFrames / 30}`)
+      .join('\n'),
+  );
+  const binary = RenderInternals.getExecutablePath({
+    type: 'ffmpeg',
+    indent: false,
+    logLevel: 'error',
+    binariesDirectory: null,
+  });
+  // Cuts already contain their transition and silent pause; remux video without rendering it again.
+  execFileSync(
+    binary,
+    [
+      '-v',
+      'error',
+      '-f',
+      'concat',
+      '-safe',
+      '0',
+      '-i',
+      list,
+      '-c:v',
+      'copy',
+      '-c:a',
+      'aac',
+      '-t',
+      String(durationInFrames / 30),
+      '-movflags',
+      '+faststart',
+      output,
+    ],
+    { stdio: 'pipe' },
+  );
+  console.log(JSON.stringify({ durationInFrames, fps: 30 }));
+  process.exit(0);
+}
 const serveUrl = await bundle({
   entryPoint: join(workspace, 'index.tsx'),
   publicDir: join(workspace, 'public'),

@@ -10,10 +10,13 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { videoSource, mediaPath } from '../../server/media/videos.mjs';
+import { mediaPath } from '../../server/media/videos.mjs';
+import { cutSource } from '../../server/media/video-plan.mjs';
 import {
   directive,
   composition,
+  videoResponse,
+  styleBrief,
   spatial,
   mp4,
   fakeRender,
@@ -103,31 +106,24 @@ test('out-of-workspace output, unreadable media, lost ownership and a failed sav
     composition.replace("from 'remotion'", "from '../../trees.sqlite'"),
     composition + "\nfetch('x');",
     composition + "\nconst m = import('fs');",
-    composition.replace('// Description: ', '// '),
     composition + '\n<Img src="https://example.com/a.png" />',
     spatial.replace("from '@remotion/three'", "from '@react-three/drei'"),
     spatial + "\nnew TextureLoader().load('x.png');",
     spatial + "\nuseLoader(GLTFLoader, 'm.glb');",
   ])
-    assert.throws(() => videoSource(bad));
-  assert.equal(
-    videoSource(
+    assert.throws(() => cutSource(bad, styleBrief));
+  assert.ok(
+    cutSource(
       spatial + "\nimport * as THREE from 'three';\nimport { useThree } from '@react-three/fiber';",
-    ).description,
-    'A lit cube rotates in 3D space.',
+      styleBrief,
+    ),
   );
-  assert.equal(
-    videoSource(composition + "\nimport { Scene, palette } from './kit';").description,
-    'Two labelled boxes slide together into a final box.',
-  );
-  assert.throws(() => videoSource(composition + "\nimport x from './other';"));
-  assert.equal(
-    videoSource('```tsx\n' + composition + '\n```').description,
-    'Two labelled boxes slide together into a final box.',
-  );
+  assert.ok(cutSource(composition + "\nimport { Scene, palette } from './kit';", styleBrief));
+  assert.throws(() => cutSource(composition + "\nimport x from './other';", styleBrief));
+  assert.equal(cutSource('```tsx\n' + composition + '\n```', styleBrief), composition);
   const [description, narration, ...code] = composition.split('\n');
   assert.ok(
-    !videoSource([description, narration, '```tsx', ...code, '```'].join('\n')).source.includes(
+    !cutSource([description, narration, '```tsx', ...code, '```'].join('\n'), styleBrief).includes(
       '`',
     ),
     'a fence after the header lines is not compiled as code',
@@ -137,7 +133,7 @@ test('out-of-workspace output, unreadable media, lost ownership and a failed sav
 test('app marks a failed job failed without a playable result', async () => {
   const provider = {
     generate: async (tree, text, emit) =>
-      complete(emit, tree.id ? 'Sure.' + directive : composition),
+      complete(emit, tree.id ? 'Sure.' + directive : videoResponse(tree)),
   };
   const env = await open(provider, {
     videoRender: async () => {
@@ -174,14 +170,14 @@ test('failed or timed-out script calls stay final; only explicit Retry calls aga
             if (timeout)
               await new Promise((r) => {
                 late = () => {
-                  complete(emit, composition);
+                  complete(emit, videoResponse(tree));
                   r();
                 };
               });
             else emit({ type: 'status', status: 'failed' });
             return;
           }
-          complete(emit, composition);
+          complete(emit, videoResponse(tree));
         },
       },
       {
@@ -209,7 +205,7 @@ test('failed or timed-out script calls stay final; only explicit Retry calls aga
       await until(() => env.store.artifact(tree.id, failed.id).status === 'ready');
       late?.();
       await new Promise((r) => setImmediate(r));
-      assert.equal(calls, 2);
+      assert.equal(calls, 3);
       assert.equal(renders, 1);
       assert.equal(env.store.artifact(tree.id, failed.id).status, 'ready');
     } finally {

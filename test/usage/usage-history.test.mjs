@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { videoResponse } from '../support/video-kit.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -219,7 +220,7 @@ test('video worker attempts record their own reported usage, including failed an
         await new Promise((r) => signal.addEventListener('abort', r, { once: true }));
         return emit({ type: 'status', status: 'interrupted' });
       }
-      done(emit, source);
+      done(emit, videoResponse(tree, source));
     },
   };
   const render = async (workspace, output) => {
@@ -228,7 +229,7 @@ test('video worker attempts record their own reported usage, including failed an
       output,
       Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(4096, 1)]),
     );
-    return { durationInFrames: 60, fps: 30 };
+    return { durationInFrames: 75, fps: 30 };
   };
   const app = createApp({
     store,
@@ -281,7 +282,8 @@ test('video worker attempts record their own reported usage, including failed an
   assert.deepEqual(videos, [
     { ...by, input: 10, output: 5, cacheRead: 2 }, // failed attempt
     { ...by, input: 11, output: 5, cacheRead: 2 }, // explicit retry: its own attempt
-    { ...by, input: 12, output: 5, cacheRead: 2 }, // canceled attempt keeps what it reported
+    { ...by, input: 12, output: 5, cacheRead: 2 }, // cut in the explicit retry
+    { ...by, input: 13, output: 5, cacheRead: 2 }, // canceled attempt keeps what it reported
     { ...by, input: null, output: null, cacheRead: null },
   ]);
   assert.equal(renders, 1);

@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
+import { planFor } from './video-kit.mjs';
 
 export async function protocol(stdin, stdout, argv, exit, wait = async () => {}) {
   const send = (obj) => stdout.write(JSON.stringify(obj) + '\n');
@@ -22,33 +23,35 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
           excerpt: 'Frozen round excerpt.',
         }) +
         '\n```'
-      : text.startsWith('{') && typeof JSON.parse(text).request === 'object'
-        ? '<p>Round winners meet in the final.</p>'
-        : text.endsWith('video fixture request')
-          ? 'A winner advances.\n```treetutor-video\n' +
-            JSON.stringify({
-              title: 'Winner',
-              description: 'A winner advances.',
-              intent: 'Show a winner moving.',
-              excerpt: 'Each round keeps its winner.',
-            }) +
-            '\n```'
-          : text.startsWith('{') && JSON.parse(text).request?.endsWith('video fixture request')
-            ? video
-            : text.endsWith('diagram fixture request')
-              ? 'A bracket shows each round.\n```treetutor-diagram\n' +
-                JSON.stringify({
-                  title: 'Rounds',
-                  description: 'The round winners meet in the final.',
-                  intent: 'Show each round.',
-                  excerpt: 'Frozen round excerpt.',
-                }) +
-                '\n```'
-              : text.startsWith('{') && JSON.parse(text).intent === 'Show each round.'
-                ? 'flowchart TD\n  W1[Round one] --> W2[Final]'
-                : text === 'Check phrase anchors'
-                  ? '🪴 early | middle | early | late | shared \n\tstate | shared state | C++ (x.y) [z]? | a a a'
-                  : 'Authoritative original';
+      : text.startsWith('{') && JSON.parse(text).cut
+        ? video
+        : text.startsWith('{') && typeof JSON.parse(text).request === 'object'
+          ? '<p>Round winners meet in the final.</p>'
+          : text.endsWith('video fixture request')
+            ? 'A winner advances.\n```treetutor-video\n' +
+              JSON.stringify({
+                title: 'Winner',
+                description: 'A winner advances.',
+                intent: 'Show a winner moving.',
+                excerpt: 'Each round keeps its winner.',
+              }) +
+              '\n```'
+            : text.startsWith('{') && JSON.parse(text).request?.endsWith('video fixture request')
+              ? JSON.stringify(planFor(video))
+              : text.endsWith('diagram fixture request')
+                ? 'A bracket shows each round.\n```treetutor-diagram\n' +
+                  JSON.stringify({
+                    title: 'Rounds',
+                    description: 'The round winners meet in the final.',
+                    intent: 'Show each round.',
+                    excerpt: 'Frozen round excerpt.',
+                  }) +
+                  '\n```'
+                : text.startsWith('{') && JSON.parse(text).intent === 'Show each round.'
+                  ? 'flowchart TD\n  W1[Round one] --> W2[Final]'
+                  : text === 'Check phrase anchors'
+                    ? '🪴 early | middle | early | late | shared \n\tstate | shared state | C++ (x.y) [z]? | a a a'
+                    : 'Authoritative original';
   // Suggestion calls get phrase-only picks, including overlaps, unmatched and exhausted repeats.
   // The question decides failure ('suggestions fail') and delay ('slow suggestions'); a wrong cheap model yields invalid output.
   const suggesting = (text) => text.startsWith('Mark every term');

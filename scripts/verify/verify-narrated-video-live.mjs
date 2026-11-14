@@ -166,17 +166,17 @@ try {
   }
   report.elapsedMs = Date.now() - started;
   assert.equal(video?.status, 'ready', video?.error ?? 'No ready video.');
-  assert.equal(calls, 1, 'one native inference call; no repair or retry');
-  const source = readFileSync(
-    join(dir, 'video-work', video.id, video.attempt, 'Video.tsx'),
-    'utf8',
+  const data = JSON.parse(video.source);
+  assert.ok(data.plan.cuts.length > 0 && data.cuts.every((c) => c.status === 'ready'));
+  assert.ok(
+    calls >= 1 + data.cuts.length && calls <= 1 + data.cuts.length * 2,
+    'one plan and bounded cut-writing/repair calls',
   );
-  assert.match(source, /Narration:/);
-  assert.match(
-    source.split('\n').slice(2).join('\n'),
-    /\/\/|\/\*/,
-    'private visual plan kept as source comments',
-  );
+  const completedCalls = calls;
+  report.calls = calls;
+  report.cuts = data.cuts.length;
+  report.repairs = calls - 1 - data.cuts.length;
+  const source = data.cuts.map((c) => c.code).join('\n');
   report.dimension = /from\s*['"]@remotion\/three['"]/.test(source) ? '3d' : '2d';
   assert.equal(report.dimension, mode === 'spatial' ? '3d' : '2d', 'model dimension choice');
   const visible =
@@ -188,19 +188,23 @@ try {
       !visible.includes('video-work') &&
       !visible.includes(video.attempt),
   );
-  assert.equal(report.ttsCalls, 1);
+  assert.equal(report.ttsCalls, data.cuts.length);
   assert.ok(video.duration >= 60 && video.duration <= 120, 'representative target length');
-  const timing = JSON.parse(
-    readFileSync(join(dir, 'video-work', video.id, video.attempt, 'public', 'timing.json')),
-  );
-  report.timing = {
-    sentences: timing.sentences.length,
-    words: timing.words.length,
-    captions: timing.captions.length,
-    first: timing.captions[0],
-    last: timing.captions.at(-1),
-    durationInFrames: timing.durationInFrames,
-  };
+  report.timing = data.cuts.map((cut, i) => {
+    const timing = JSON.parse(
+      readFileSync(
+        join(dir, 'video-work', video.id, video.attempt, `cut-${i}`, 'public', 'timing.json'),
+      ),
+    );
+    return {
+      sentences: timing.sentences.length,
+      words: timing.words.length,
+      captions: timing.captions.length,
+      first: timing.captions[0],
+      last: timing.captions.at(-1),
+      durationInFrames: timing.durationInFrames,
+    };
+  });
   const file = mediaPath(dir, video.id);
   report.media = {
     id: video.id,
@@ -238,11 +242,11 @@ try {
   store = new Store(path);
   ({ get } = await serve());
   assert.equal((await get(`/api/trees/${tree.id}/artifacts/${video.id}/media`)).status, 200);
-  assert.equal(calls, 1, 'reopen serves local media without inference');
-  assert.equal(report.ttsCalls, 1, 'restart performs no TTS');
+  assert.equal(calls, completedCalls, 'reopen serves local media without inference');
+  assert.equal(report.ttsCalls, data.cuts.length, 'restart performs no TTS');
   report.pass = true;
   console.log(
-    `PASS (${mode}, ${report.dimension}): native smart script/plan and custom composition, real narrated MP4 with embedded subtitles, private production, restart reuse; one call.`,
+    `PASS (${mode}, ${report.dimension}): native smart script/plan and custom composition, real narrated MP4 with embedded subtitles, private production, restart reuse; planned cuts.`,
   );
 } catch (error) {
   report.pass = false;

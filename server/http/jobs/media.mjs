@@ -38,6 +38,7 @@ export function mediaJobs(ctx) {
   const live = (artifact) => {
     const { input, attempt, ...a } = artifact;
     if (a.kind !== 'video') return a;
+    delete a.source;
     if (a.status === 'pending' && a.conversation) {
       const job = videos.get(a.id);
       return {
@@ -86,7 +87,12 @@ export function mediaJobs(ctx) {
         const owned = store.videoInput(job.conversation, job.id, job.attempt, frozen);
         if (!owned || running.controller.signal.aborted) return;
         await generateVideo({
-          provider: metered(provider, 'video', job.attempt, selection),
+          provider: {
+            generate: (...args) =>
+              metered(provider, 'video', `${job.attempt}:${randomUUID()}`, selection).generate(
+                ...args,
+              ),
+          },
           selection,
           store,
           dir,

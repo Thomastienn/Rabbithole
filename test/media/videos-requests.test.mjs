@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { task, directive, composition, complete, until, open, job } from '../support/video-kit.mjs';
+import {
+  task,
+  directive,
+  composition,
+  videoResponse,
+  complete,
+  until,
+  open,
+  job,
+} from '../support/video-kit.mjs';
 
 test('a malformed video block the learner asked for becomes a visible failed video with a reason, and Retry runs it from the stored request', async () => {
   const workers = [];
@@ -8,8 +17,8 @@ test('a malformed video block the learner asked for becomes a visible failed vid
   const provider = {
     generate: async (tree, text, emit) => {
       if (!tree.id) {
-        workers.push(JSON.parse(text));
-        return complete(emit, composition);
+        if (tree.instructions.startsWith('You plan')) workers.push(JSON.parse(text));
+        return complete(emit, videoResponse(tree));
       }
       complete(emit, 'Sure.\n```treetutor-video\n' + block);
     },
@@ -89,7 +98,7 @@ test('mixed and duplicate video blocks each leave a failed artifact of their own
     generate: async (tree, text, emit) => {
       if (!tree.id) {
         workers++;
-        return complete(emit, composition);
+        return complete(emit, videoResponse(tree));
       }
       complete(emit, 'Visible answer.' + blocks);
     },
@@ -130,7 +139,7 @@ test('provider failure and learner Stop preserve legacy diagram request failures
     generate: async (tree, text, emit, save, signal) => {
       if (!tree.id) {
         workers++;
-        return complete(emit, composition);
+        return complete(emit, videoResponse(tree));
       }
       emit({
         type: 'item',
@@ -204,12 +213,12 @@ test('Try a different version gives a ready video a new job; the chat shows only
   const env = await open({
     generate: async (tree, text, emit) => {
       if (tree.instructions?.includes('Remotion')) {
-        workers.push({ tree, text });
-        if (held)
+        if (tree.instructions.startsWith('You plan')) workers.push({ tree, text });
+        if (held && tree.instructions.startsWith('You plan'))
           await new Promise((r) => {
             release = r;
           });
-        return complete(emit, composition);
+        return complete(emit, videoResponse(tree));
       }
       complete(emit, 'Here is the idea.' + directive);
     },

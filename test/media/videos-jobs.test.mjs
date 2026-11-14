@@ -13,6 +13,8 @@ import {
   task,
   directive,
   composition,
+  videoResponse,
+  planFor,
   spatial,
   mp4,
   complete,
@@ -29,7 +31,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     generate: async (tree, text, emit) => {
       if (tree.instructions?.includes('Remotion')) {
         workers.push({ tree, text });
-        return complete(emit, composition);
+        return complete(emit, videoResponse(tree));
       }
       if (text.startsWith('Mark every term')) {
         suggestions.push(text);
@@ -100,8 +102,8 @@ test('explicit video request creates one job with frozen input, publishes owned 
     const saved = env.store.tree(child.id);
     assert.equal(saved.artifacts.length, 5);
     assert.equal(ready.kind, 'video');
-    assert.equal(ready.source, null);
-    assert.equal(ready.duration, 2);
+    assert.equal(JSON.parse(ready.source).cuts[0].status, 'ready');
+    assert.equal(ready.duration, 2.5);
     assert.equal(ready.description, 'Two labelled boxes slide together into a final box.');
     const [user, reply] = saved.messages.slice(-2);
     assert.equal(ready.message, reply.id);
@@ -126,7 +128,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     });
 
     // The worker receives only the frozen input, in a fresh session, with its own instructions.
-    assert.equal(workers.length, 1);
+    assert.equal(workers.length, 2);
     assert.equal(workers[0].text, ready.input);
     assert.deepEqual(Object.keys(workers[0].tree).sort(), [
       'effort',
@@ -140,12 +142,12 @@ test('explicit video request creates one job with frozen input, publishes owned 
       workers[0].tree.instructions,
       /2D for ordinary explanations[\s\S]*3D whenever the subject involves spatial relationships[\s\S]*When the learner or intent asks for 2D or 3D, follow it/,
     );
-    assert.match(workers[0].tree.instructions, /"@remotion\/three"/);
+    assert.match(workers[1].tree.instructions, /"@remotion\/three"/);
     assert.match(
-      workers[0].tree.instructions,
+      workers[1].tree.instructions,
       /1920x1080[\s\S]*bottom 120 pixels[\s\S]*"\.\/kit"[\s\S]*never hard cuts[\s\S]*different videos look different/,
     );
-    assert.match(workers[0].tree.instructions, /ThreeCanvas with width=\{1920\} height=\{1080\}/);
+    assert.match(workers[1].tree.instructions, /ThreeCanvas with width=\{1920\} height=\{1080\}/);
     assert.equal(
       workers[0].tree.model,
       'fixture-model',
@@ -162,16 +164,13 @@ test('explicit video request creates one job with frozen input, publishes owned 
       (await env.get(`/api/trees/${parent.id}/artifacts/${ready.id}/media`)).status,
       404,
     );
-    assert.deepEqual(readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt)).sort(), [
-      'Video.tsx',
-      'index.tsx',
-      'kit.tsx',
-      'narration.json',
-      'public',
-    ]);
+    assert.deepEqual(
+      readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt, 'cut-0')).sort(),
+      ['Video.tsx', 'index.tsx', 'kit.tsx', 'narration.json', 'public'],
+    );
     assert.ok(
       readFileSync(
-        join(env.dir, 'video-work', ready.id, ready.attempt, 'Video.tsx'),
+        join(env.dir, 'video-work', ready.id, ready.attempt, 'cut-0', 'Video.tsx'),
         'utf8',
       ).includes('PRIVATE_SOURCE_MARKER'),
     );
@@ -301,19 +300,17 @@ test('video HTTP requests route smart model and effort through the real Claude/C
       assert.equal(worker.args[worker.args.indexOf('--effort') + 1], 'high');
       assert.ok(worker.args.includes('--session-id') && !worker.args.includes('--resume'));
       assert.equal(worker.args[worker.args.indexOf('--tools') + 1], '');
-      assert.equal(worker.text, ready.input);
+      assert.equal(JSON.parse(worker.text).cut.narration, 'Each round keeps its winner.');
     } else {
       const requests = traffic.flatMap((c) => c.input),
         worker = requests.findLast((c) => c.method === 'thread/start');
       assert.equal(worker.params.model, model);
-      assert.match(
-        worker.params.baseInstructions,
-        /Privately develop an educational script and visual plan/,
-      );
+      assert.match(worker.params.baseInstructions, /Follow the brief exactly/);
       assert.equal(requests.findLast((c) => c.method === 'turn/start').params.effort, 'high');
       assert.equal(
-        requests.findLast((c) => c.method === 'turn/start').params.input[0].text,
-        ready.input,
+        JSON.parse(requests.findLast((c) => c.method === 'turn/start').params.input[0].text).cut
+          .narration,
+        'Each round keeps its winner.',
       );
     }
     assert.equal(env.store.tree(tree.id).effort, 'low', 'worker effort never overwrites chat');
@@ -341,8 +338,10 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
   };
   let release, upstream;
   fake.reply = (_req, res, body) => {
-    upstream = body;
-    release = () => streamReply(res, [composition]);
+    if (body.messages[0].content.startsWith('You plan')) {
+      upstream = body;
+      release = () => streamReply(res, [JSON.stringify(planFor())]);
+    } else streamReply(res, [composition]);
   };
   const env = await open(tutor, { endpoint });
   t.after(async () => {
@@ -393,7 +392,7 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
   // Finishing uses the frozen selection; private work stays outside every public representation.
   release();
   await until(() => env.store.artifact(tree.id, original.id).status === 'ready');
-  assert.equal(fake.calls.filter((c) => c.body).length, 1);
+  assert.equal(fake.calls.filter((c) => c.body).length, 2);
   for (const path of [
     `/api/trees/${tree.id}`,
     `/api/trees/${tree.id}/artifacts/${original.id}`,
@@ -425,11 +424,12 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
   await env.app.settled();
   assert.equal(fake.calls.filter((c) => c.body).length, count);
   await env.post('/api/settings/smart', { model: null, followEffort: true });
-  fake.reply = (_req, res) => streamReply(res, [composition]);
+  fake.reply = (_req, res, body) =>
+    streamReply(res, [videoResponse({ instructions: body.messages[0].content })]);
   await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/retry`);
   await until(() => env.store.artifact(tree.id, failed.id).status === 'ready');
   assert.equal(fake.calls.filter((c) => c.body).at(-1).body.reasoning_effort, 'high');
-  assert.equal(fake.calls.filter((c) => c.body).length, count + 1);
+  assert.equal(fake.calls.filter((c) => c.body).length, count + 2);
   // A cleared endpoint is an explicit failure, even though chat remains connected and Settings now follow it.
   env.store.cancelVideo(
     tree.id,
@@ -440,5 +440,5 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
   await env.post('/api/settings/endpoint/clear');
   await env.post(`/api/trees/${tree.id}/artifacts/${offline.id}/retry`);
   await until(() => env.store.artifact(tree.id, offline.id).status === 'failed');
-  assert.equal(fake.calls.filter((c) => c.body).length, count + 1);
+  assert.equal(fake.calls.filter((c) => c.body).length, count + 2);
 });

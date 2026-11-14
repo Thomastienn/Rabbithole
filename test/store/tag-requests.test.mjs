@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
+import { videoResponse } from '../support/video-kit.mjs';
 
 const task = {
   title: 'Winners advance',
@@ -36,7 +37,7 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
       complete(
         emit,
         tree.instructions?.includes('Remotion')
-          ? '// Description: d\nexport default () => null;'
+          ? videoResponse(tree)
           : tree.instructions?.includes('Mermaid')
             ? 'flowchart TD\n  A --> B'
             : '<svg viewBox="0 0 10 10"></svg>',
@@ -54,7 +55,7 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
     videoNarrate: fakeNarration,
     videoRender: async (w, out) => {
       writeFileSync(out, mp4);
-      return { durationInFrames: 60, fps: 30 };
+      return { durationInFrames: 75, fps: 30 };
     },
   });
   await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
@@ -93,6 +94,8 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
       'Make a video of winners advancing.',
     );
     assert.deepEqual([video.kind, video.title, video.error ?? null], ['video', task.title, null]);
+    await app.settled();
+    assert.equal(store.artifact(video.conversation, video.id).status, 'ready');
     const broken = await send('<treetutor-visual>{broken json}</treetutor-visual>');
     assert.equal(broken.status, 'failed');
     assert.match(broken.error, /^Visual request could not be read: the request was not valid JSON/);

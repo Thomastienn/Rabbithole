@@ -9,6 +9,7 @@ import { createApp } from '../../server/app.mjs';
 import { mediaPath } from '../../server/media/videos.mjs';
 import { layoutSaver } from '../../src/map/layoutSave.ts';
 import { fixture, snapshot } from '../support/chat-management-kit.mjs';
+import { videoResponse } from '../support/video-kit.mjs';
 
 test('failure at commit rolls back the complete cascade, root layout and staged files, and does not stop active work', async () => {
   const turns = [];
@@ -241,7 +242,10 @@ test('delete stops an active video render and removes its partial files without 
           type: 'item',
           item: 'a',
           text: tree.instructions?.includes('Remotion')
-            ? '// Description: Roots.\n// Narration: "Roots grow."\nexport default function Video() { return null; }'
+            ? videoResponse(
+                tree,
+                '// Description: Roots.\n// Narration: "Roots grow."\nexport default function Video() { return null; }',
+              )
             : 'Video follows.' + directive,
         });
         emit({ type: 'status', status: 'completed' });
@@ -271,10 +275,10 @@ test('delete stops an active video render and removes its partial files without 
     const deleted = env.store.tree(env.child.id).artifacts.at(-1),
       kept = env.store.tree(env.sibling.id).artifacts.at(-1);
     const deletedRender = renders.find(
-      (r) => r.workspace === join(env.dir, 'video-work', deleted.id, deleted.attempt),
+      (r) => r.workspace === join(env.dir, 'video-work', deleted.id, deleted.attempt, 'cut-0'),
     );
     const keptRender = renders.find(
-      (r) => r.workspace === join(env.dir, 'video-work', kept.id, kept.attempt),
+      (r) => r.workspace === join(env.dir, 'video-work', kept.id, kept.attempt, 'cut-0'),
     );
     assert.equal(
       (await env.post(env.root.id, 'delete', { conversation: env.child.id })).status,
@@ -284,7 +288,7 @@ test('delete stops an active video render and removes its partial files without 
     assert.equal(existsSync(join(env.dir, 'video-work', deleted.id)), false);
     assert.equal(existsSync(mediaPath(env.dir, deleted.id)), false);
     assert.equal(keptRender.signal.aborted, false);
-    keptRender.resolve({ durationInFrames: 60, fps: 30 });
+    keptRender.resolve({ durationInFrames: 75, fps: 30 });
     await until(() => env.store.artifact(env.sibling.id, kept.id).status === 'ready');
     assert.ok(existsSync(mediaPath(env.dir, kept.id)));
   } finally {

@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { generateVideo, mediaPath } from '../../server/media/videos.mjs';
+import { readFileSync } from 'node:fs';
 
 export const task = {
   title: 'Winners advance',
@@ -22,17 +23,18 @@ import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
 export const durationInFrames = 30;
 export default function Video() {
   const frame = useCurrentFrame();
-  return <AbsoluteFill style={{ background: 'white', alignItems: 'center', justifyContent: 'center', fontSize: 40, opacity: interpolate(frame, [0, 20], [0, 1]) }}>A + B → Final</AbsoluteFill>;
+  return <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', fontSize: 40, opacity: interpolate(frame, [0, 20], [0, 1]) }}>A + B → Final</AbsoluteFill>;
 }`;
 export const spatial = `// Description: A lit cube rotates in 3D space.
 // Narration: "A cube turns."
 import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import { ThreeCanvas } from '@remotion/three';
+import { palette } from './kit';
 export default function Video() {
   const frame = useCurrentFrame();
-  return <AbsoluteFill style={{ background: '#102030' }}><ThreeCanvas width={1920} height={1080} camera={{ position: [0, 0, 4] }}>
+  return <AbsoluteFill style={{ background: palette.ground }}><ThreeCanvas width={1920} height={1080} camera={{ position: [0, 0, 4] }}>
     <ambientLight intensity={0.5} /><directionalLight position={[2, 2, 3]} />
-    <mesh rotation={[frame / 20, frame / 15, 0]}><boxGeometry args={[1.4, 1.4, 1.4]} /><meshStandardMaterial color="orange" /></mesh>
+    <mesh rotation={[frame / 20, frame / 15, 0]}><boxGeometry args={[1.4, 1.4, 1.4]} /><meshStandardMaterial color={palette.amber} /></mesh>
   </ThreeCanvas></AbsoluteFill>;
 }`;
 export const mp4 = Buffer.concat([
@@ -42,8 +44,32 @@ export const mp4 = Buffer.concat([
 ]);
 export const fakeRender = async (workspace, output) => {
   writeFileSync(output, mp4);
-  return { durationInFrames: 60, fps: 30 };
+  return {
+    durationInFrames: JSON.parse(readFileSync(join(workspace, 'narration.json'))).durationInFrames,
+    fps: 30,
+  };
 };
+export const styleBrief = {
+  layoutAreas: [{ name: 'stage', description: 'Winner above the final at the centre.' }],
+  paletteRoles: { winner: 'amber' },
+  recurringObjects: [{ name: 'Winner', position: 'centre', colorRole: 'winner' }],
+  exactTerms: ['Winner', 'Final'],
+};
+export const planFor = (source = composition, count = 1) => ({
+  title: task.title,
+  description: /^\/\/ Description: (.+)$/m.exec(source)?.[1] ?? task.description,
+  styleBrief,
+  cuts: Array.from({ length: count }, (_, i) => ({
+    purpose: `Step ${i + 1}`,
+    engine: 'remotion',
+    narration: JSON.parse(/^\/\/ Narration: (.+)$/m.exec(source)?.[1] ?? '"Winners advance."'),
+    endState: `Winner at position ${i + 1}`,
+  })),
+});
+export const videoResponse = (tree, source = composition) =>
+  tree.instructions?.startsWith('You plan') && source.startsWith('// Description:')
+    ? JSON.stringify(planFor(source))
+    : source;
 export const complete = (emit, text) => {
   emit({ type: 'item', item: 'answer', text });
   emit({ type: 'status', status: 'completed' });
@@ -85,7 +111,7 @@ export async function open(provider, options = {}) {
   };
 }
 
-export async function job(render, mutate, source = composition) {
+export async function job(render, mutate, source = composition, count = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-video-job-'));
   const store = observeStore(new Store(join(dir, 'trees.sqlite')));
   const tree = store.create('Video');
@@ -99,7 +125,15 @@ export async function job(render, mutate, source = composition) {
     '{"request":"Make a video."}',
   );
   mutate?.(store, artifact, dir);
-  const provider = { generate: async (t, text, emit) => complete(emit, source) };
+  const provider = {
+    generate: async (t, text, emit) =>
+      complete(
+        emit,
+        t.instructions.startsWith('You plan') && source.startsWith('// Description:')
+          ? JSON.stringify(planFor(source, count))
+          : source,
+      ),
+  };
   const phases = [];
   const result = await generateVideo({
     provider,

@@ -8,6 +8,7 @@ import { RenderInternals } from '@remotion/renderer';
 import {
   directive,
   composition,
+  videoResponse,
   mp4,
   fakeRender,
   complete,
@@ -23,7 +24,7 @@ test('narration stages measured audio, returned timings and subtitles without ex
     {
       generate: async (tree, text, emit) => {
         if (!tree.id) calls++;
-        complete(emit, tree.id ? 'Watch.' + directive : composition);
+        complete(emit, tree.id ? 'Watch.' + directive : videoResponse(tree));
       },
     },
     {
@@ -35,7 +36,7 @@ test('narration stages measured audio, returned timings and subtitles without ex
       },
       videoRender: async (workspace, output) => {
         captured = JSON.parse(readFileSync(join(workspace, 'narration.json')));
-        assert.equal(captured.durationInFrames, 60);
+        assert.equal(captured.durationInFrames, 75);
         assert.equal(captured.sentences[0].endFrame, 54);
         assert.match(
           readFileSync(join(workspace, 'index.tsx'), 'utf8'),
@@ -56,7 +57,7 @@ test('narration stages measured audio, returned timings and subtitles without ex
   const ready = await until(() =>
     env.store.tree(tree.id).artifacts.find((a) => a.status === 'ready'),
   );
-  const workspace = join(env.dir, 'video-work', ready.id, ready.attempt);
+  const workspace = join(env.dir, 'video-work', ready.id, ready.attempt, 'cut-0');
   assert.deepEqual(
     JSON.parse(readFileSync(join(workspace, 'public', 'timing.json'))).captions,
     captured.captions,
@@ -80,7 +81,7 @@ test('narration stages measured audio, returned timings and subtitles without ex
   ])
     assert.ok(!publicData.includes(secret));
   assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${ready.id}/media`)).status, 200);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.equal(speech, 1);
 });
 
@@ -94,7 +95,7 @@ test('TTS failure and invalid returned timing stay final until explicit Retry; c
     {
       generate: async (tree, text, emit) => {
         if (!tree.id) calls++;
-        complete(emit, tree.id ? 'Watch.' + directive : composition);
+        complete(emit, tree.id ? 'Watch.' + directive : videoResponse(tree));
       },
     },
     {
@@ -129,7 +130,7 @@ test('TTS failure and invalid returned timing stay final until explicit Retry; c
   );
   await env.app.settled();
   assert.equal(speech, 1);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.equal(renders, 0);
   mode = 'invalid';
   await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/retry`);
@@ -153,7 +154,7 @@ test('TTS failure and invalid returned timing stay final until explicit Retry; c
   assert.notEqual(ready.attempt, old.attempt);
   assert.equal(ready.input, old.input);
   assert.equal(env.store.artifact(tree.id, failed.id).attempt, ready.attempt);
-  assert.equal(calls, 4);
+  assert.equal(calls, 8);
   assert.equal(speech, 4);
   assert.equal(renders, 1);
   assert.equal(existsSync(join(env.dir, 'video-work', failed.id, old.attempt, 'public')), false);
@@ -188,7 +189,7 @@ test('duration follows measured narration beyond two minutes rather than the gen
   const env = await open(
     {
       generate: async (tree, text, emit) =>
-        complete(emit, tree.id ? 'Watch.' + directive : composition),
+        complete(emit, tree.id ? 'Watch.' + directive : videoResponse(tree)),
     },
     {
       videoNarrate: async () => ({ ...(await fakeNarration()), audio: tone }),

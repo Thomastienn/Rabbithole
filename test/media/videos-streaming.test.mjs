@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { directive, composition, complete, until, open } from '../support/video-kit.mjs';
+import {
+  directive,
+  composition,
+  videoResponse,
+  complete,
+  until,
+  open,
+} from '../support/video-kit.mjs';
 
 test('a closed video block starts its job mid-reply, completes once and survives Stop after the reply', async (t) => {
   const closeBlock = Promise.withResolvers(),
@@ -14,7 +21,7 @@ test('a closed video block starts its job mid-reply, completes once and survives
         calls++;
         workerSignal = signal;
         await finishVideo.promise;
-        return complete(emit, composition);
+        return complete(emit, videoResponse(tree));
       }
       emit({ type: 'delta', item: 'answer', text: 'Before.' + directive.slice(0, -3) });
       await closeBlock.promise;
@@ -60,7 +67,7 @@ test('a closed video block starts its job mid-reply, completes once and survives
   assert.equal(saved.artifacts.length, 1);
   assert.equal(saved.artifacts[0].status, 'ready');
   assert.equal(saved.messages.at(-1).status, 'completed');
-  assert.equal(calls, 1, 'finishing the reply never starts a second job');
+  assert.equal(calls, 2, 'one plan and one cut; finishing the reply never starts a second job');
 });
 
 test('Stop during the reply cancels its video and rejects late worker output', async (t) => {
@@ -74,7 +81,7 @@ test('Stop during the reply cancels its video and rejects late worker output', a
         calls++;
         workerSignal = signal;
         await finishVideo.promise;
-        return complete(emit, composition);
+        return complete(emit, videoResponse(tree));
       }
       emit({ type: 'item', item: 'answer', text: 'Keep this.' + directive });
       await finishReply.promise;
@@ -112,7 +119,7 @@ test('a video ready before the reply finishes is preserved by Stop', async (t) =
   const finishReply = Promise.withResolvers();
   const env = await open({
     generate: async (tree, text, emit) => {
-      if (!tree.id) return complete(emit, composition);
+      if (!tree.id) return complete(emit, videoResponse(tree));
       emit({ type: 'item', item: 'answer', text: 'Watch.' + directive });
       await finishReply.promise;
     },
@@ -145,7 +152,7 @@ test('a later conflicting media block fails the pending video without publishing
       if (!tree.id) {
         workerSignal = signal;
         await finishVideo.promise;
-        return complete(emit, composition);
+        return complete(emit, videoResponse(tree));
       }
       emit({ type: 'delta', item: 'answer', text: 'Watch.' + directive });
       await more.promise;
@@ -188,7 +195,7 @@ test('a tutor failure after request close leaves its detached video running', as
       if (!tree.id) {
         workerSignal = signal;
         await finishVideo.promise;
-        return complete(emit, composition);
+        return complete(emit, videoResponse(tree));
       }
       emit({ type: 'item', item: 'answer', text: 'Watch.' + directive });
       throw new Error('Tutor failed after the request.');

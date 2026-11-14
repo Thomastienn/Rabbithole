@@ -34,7 +34,7 @@ const launch = (command, args, options) => {
   const end = child.stdin.end.bind(child.stdin);
   child.stdin.end = (text) => {
     stdin.push({
-      worker: /You (create one Mermaid|write one short Remotion)/.test(
+      worker: /You (create one Mermaid|plan a narrated Remotion|write one Remotion cut)/.test(
         args[args.indexOf('--system-prompt') + 1],
       ),
       text: text + '\n' + args[args.indexOf('--system-prompt') + 1],
@@ -49,7 +49,9 @@ const spy = (name, p) => {
   p.generate = (ctx, text, emit, ...rest) => {
     const call = {
       provider: name,
-      worker: /You (create one Mermaid|write one short Remotion)/.test(ctx.instructions ?? ''),
+      worker: /You (create one Mermaid|plan a narrated Remotion|write one Remotion cut)/.test(
+        ctx.instructions ?? '',
+      ),
       thread: ctx.thread ?? null,
       context: JSON.stringify(ctx),
       text,
@@ -217,18 +219,21 @@ try {
     list.filter(
       (c) =>
         forbidden.some((f) => (c.context + c.text).includes(f)) ||
-        /You (create one Mermaid|write one short Remotion)/.test(c.context + c.text),
+        /You (create one Mermaid|plan a narrated Remotion|write one Remotion cut)/.test(
+          c.context + c.text,
+        ),
     ).length;
   check(
-    'workers: one diagram and one video worker, each a fresh thread with its own instructions',
-    workers.length >= 2 && workers.every((w) => w.thread === null),
+    'workers: diagram, video plan and cut writers each have fresh threads and their own instructions',
+    workers.length >= 3 && workers.every((w) => w.thread === null),
     workers.map((w) => w.provider),
   );
   const tasks = workers.map((w) => Object.keys(JSON.parse(w.text)).sort().join());
   check(
     'workers: inputs are only the frozen task fields, no tutor transcript or canary',
     tasks.includes('description,excerpt,intent,title') &&
-      tasks.includes('excerpt,inheritedContext,intent,request,sources') &&
+      tasks.includes('excerpt,inheritedContext,intent,request,selection,sources') &&
+      tasks.some((keys) => keys === 'cut,previousEndState,styleBrief') &&
       workers.every(
         (w) => !w.text.includes(canary) && !w.text.includes(store.tree(root).messages[1].text),
       ),

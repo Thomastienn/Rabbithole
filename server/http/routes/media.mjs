@@ -115,7 +115,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
   if (action === 'regenerate') {
     if (!tree || !['visual', 'video'].includes(artifact?.kind))
       return json(res, 404, { error: 'Visual or video not found in this conversation.' });
-    if (videos.has(artifactId))
+    // A published video's remaining work is cleanup; its new version gets a different id.
+    if (videos.has(artifactId) && !(artifact.kind === 'video' && artifact.status === 'ready'))
       return json(res, 409, {
         error: 'Wait for the current generation to finish, then try a different version.',
       });

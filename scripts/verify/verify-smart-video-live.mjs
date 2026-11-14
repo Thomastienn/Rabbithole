@@ -1,7 +1,7 @@
 // Bounded 2D smart-worker smoke: native selected provider, real isolated Remotion, HTTP and SQLite. Chat handoff is controlled.
 import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir, cpus, totalmem } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -136,13 +136,17 @@ try {
   }
   report.elapsedMs = Date.now() - started;
   assert.equal(video?.status, 'ready', video?.error ?? 'No ready video.');
-  assert.equal(calls, 1, 'one native inference call; no repair or retry');
-  const source = readFileSync(
-    join(dir, 'video-work', video.id, video.attempt, 'Video.tsx'),
-    'utf8',
+  const data = JSON.parse(video.source);
+  assert.ok(data.plan.cuts.length > 0 && data.cuts.every((c) => c.status === 'ready'));
+  assert.ok(
+    calls >= 1 + data.cuts.length && calls <= 1 + data.cuts.length * 2,
+    'one plan and bounded cut-writing/repair calls',
   );
-  assert.match(source, /Narration:/);
-  assert.match(source, /plan/i);
+  const completedCalls = calls;
+  report.calls = calls;
+  report.cuts = data.cuts.length;
+  report.repairs = calls - 1 - data.cuts.length;
+  const source = data.cuts.map((c) => c.code).join('\n');
   const visible =
     stream +
     (await (await get(`/api/trees/${tree.id}`)).text()) +
@@ -188,10 +192,10 @@ try {
   store = new Store(path);
   ({ get } = await serve());
   assert.equal((await get(`/api/trees/${tree.id}/artifacts/${video.id}/media`)).status, 200);
-  assert.equal(calls, 1, 'reopen serves local media without inference');
+  assert.equal(calls, completedCalls, 'reopen serves local media without inference');
   report.pass = true;
   console.log(
-    'PASS: native smart script/plan and custom 2D composition, real MP4, private production, restart reuse; one call.',
+    'PASS: native smart script/plan and custom 2D composition, real MP4, private production, restart reuse; planned cuts.',
   );
 } catch (error) {
   report.pass = false;

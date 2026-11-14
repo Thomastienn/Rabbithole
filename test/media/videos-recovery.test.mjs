@@ -11,6 +11,7 @@ import { mediaPath } from '../../server/media/videos.mjs';
 import {
   directive,
   composition,
+  videoResponse,
   mp4,
   fakeRender,
   complete,
@@ -29,15 +30,15 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     return new Promise((done) =>
       renders.push(() => {
         writeFileSync(output, mp4);
-        done({ durationInFrames: 60, fps: 30 });
+        done({ durationInFrames: 75, fps: 30 });
       }),
     );
   };
   const provider = {
     generate: async (tree, text, emit) => {
       if (!tree.id) {
-        workers.push(text);
-        return complete(emit, composition);
+        if (tree.instructions.startsWith('You plan')) workers.push(text);
+        return complete(emit, videoResponse(tree));
       }
       complete(emit, /video/.test(text) ? 'Sure.' + directive : 'Answer in another chat.');
     },
@@ -94,7 +95,7 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     );
     assert.equal(
       (await (await env.get(`/api/trees/${b.id}/artifacts/${jobB.id}`)).json()).progress,
-      undefined,
+      0,
     );
 
     // The canceled attempt's late output arrives first and is ignored; the retry publishes.
@@ -135,8 +136,8 @@ test('render, composition and save failures stay honest and retry the same reque
   const provider = {
     generate: async (tree, text, emit) => {
       if (tree.id) return complete(emit, 'Sure.' + directive);
-      compose++;
-      complete(emit, compose === 2 ? 'not a composition' : composition);
+      if (tree.instructions.startsWith('You plan')) compose++;
+      complete(emit, compose === 2 ? 'not a composition' : videoResponse(tree));
     },
   };
   const env = await open(provider, { videoRender });
@@ -150,10 +151,7 @@ test('render, composition and save failures stay honest and retry the same reque
     fail = false;
     await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
     await until(() => env.store.artifact(tree.id, id).status === 'failed');
-    assert.equal(
-      env.store.artifact(tree.id, id).error,
-      'Video composition is missing its description.',
-    );
+    assert.equal(env.store.artifact(tree.id, id).error, 'Video plan or style brief is malformed.');
     const finish = env.store.finishVideo.bind(env.store);
     env.store.finishVideo = (c, i, at, result, error) => {
       if (!error) throw new Error('disk full');
@@ -219,7 +217,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
       models: async () => [{ model: 'fixture-model', isDefault: true }],
       generate: async (...args) => {
         calls.push(args);
-        complete(args[2], composition);
+        complete(args[2], videoResponse(args[0]));
       },
     },
     auth: { status: () => ({ connected: true }) },
@@ -269,7 +267,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
     assert.equal((await post(running.id)).status, 200);
     await app.settled();
     assert.ok(store.tree(tree.id).artifacts.every((a) => a.status === 'ready'));
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 4);
     assert.equal(
       JSON.parse(calls.find((c) => c[1].includes('Make a video.'))?.[1]).request,
       JSON.parse(running.input).request,
@@ -295,7 +293,7 @@ test('stopping the app during a job marks it interrupted before exit and keeps i
   const env = await open(
     {
       generate: async (tree, text, emit) =>
-        complete(emit, tree.id ? 'Sure.' + directive : composition),
+        complete(emit, tree.id ? 'Sure.' + directive : videoResponse(tree)),
     },
     { videoRender },
   );
