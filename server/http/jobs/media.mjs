@@ -38,6 +38,8 @@ export function mediaJobs(ctx) {
   // Frozen inputs stay server-side for every kind; explicit worker actions reuse them.
   const live = (artifact) => {
     const { input, attempt, ...a } = artifact;
+    if (a.kind === 'visual' && a.status === 'pending')
+      return { ...a, source: videos.get(a.id)?.source ?? null };
     if (a.kind !== 'video') return a;
     delete a.source;
     if (a.status === 'pending' && a.conversation) {
@@ -164,7 +166,7 @@ export function mediaJobs(ctx) {
       });
     return running;
   };
-  const runVisual = async (artifact, signal) => {
+  const runVisual = async (artifact, signal, onPartial) => {
     const input = JSON.parse(artifact.input),
       selection = { ...input.selection },
       provider = pick(selection);
@@ -198,10 +200,10 @@ export function mediaJobs(ctx) {
           message: artifact.message,
         }).generate(...args),
     };
-    return generateVisual(metering, selection, input, signal, ctx.visualTimeout);
+    return generateVisual(metering, selection, input, signal, ctx.visualTimeout, onPartial);
   };
   // Explicit Retry runs detached like a video job, with the same stop/delete/polling lifecycle.
-  const startDrawing = (artifact, parentSignal) => {
+  const startDrawing = (artifact, parentSignal, onUpdate = () => {}) => {
     const running = {
       controller: new AbortController(),
       conversation: artifact.conversation,
@@ -217,7 +219,13 @@ export function mediaJobs(ctx) {
         selection = { provider: tree.provider, model: tree.model };
       const source =
         artifact.kind === 'visual'
-          ? await runVisual(artifact, running.controller.signal)
+          ? await runVisual(artifact, running.controller.signal, (source) => {
+              if (videos.get(artifact.id) !== running || running.controller.signal.aborted) return;
+              const current = store.artifact(artifact.conversation, artifact.id);
+              if (current?.status !== 'pending') return;
+              running.source = source;
+              onUpdate(live(current));
+            })
           : await generateDiagram(
               metered(pick(tree), 'diagram', `${artifact.id}:${randomUUID()}`, selection, {
                 message: artifact.message,

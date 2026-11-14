@@ -6,6 +6,7 @@ import katex from 'katex';
 import * as d3 from 'd3';
 import type { VisualPart } from './artifacts';
 import { activatedPart, tagParts } from './visualParts';
+import { renderVisual } from './visualMarkup';
 import 'katex/dist/katex.min.css';
 import '@fontsource/archivo/400.css';
 import '@fontsource/archivo/600.css';
@@ -16,13 +17,16 @@ Object.assign(window, { mermaid, THREE, katex, d3 });
 const root = document.getElementById('visual')!,
   tokens = document.head.appendChild(document.createElement('style'));
 let rendered = false;
+let complete = false;
 let explored: VisualPart[] = [];
 let reveal: VisualPart | undefined;
 let revealPending = false;
 const tag = () => {
+  if (!complete) return;
   revealPending = tagParts(root, explored, reveal, revealPending);
 };
 function activate(event: MouseEvent | KeyboardEvent) {
+  if (!complete) return;
   const part = activatedPart(root, event);
   if (!part) return;
   event.preventDefault();
@@ -52,16 +56,10 @@ addEventListener('message', (event) => {
     tokens.textContent = `:root{color-scheme:${data.scheme};${rules.join(';')}}`;
     dispatchEvent(new Event('treetutor-theme'));
   }
-  if (data?.type === 'render' && typeof data.source === 'string' && !rendered) {
+  if (data?.type === 'render' && typeof data.source === 'string' && !complete) {
     rendered = true;
-    root.innerHTML = data.source;
-    // innerHTML never runs scripts; recreate each so the fragment's own code runs in document order.
-    for (const old of root.querySelectorAll('script')) {
-      const script = document.createElement('script');
-      for (const { name, value } of old.attributes) script.setAttribute(name, value);
-      script.textContent = old.textContent;
-      old.replaceWith(script);
-    }
+    complete = data.complete === true;
+    renderVisual(root, data.source, complete);
     tag();
   }
   if (data?.type === 'parts' && Array.isArray(data.explored)) {

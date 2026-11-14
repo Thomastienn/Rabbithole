@@ -62,7 +62,7 @@ export const media = {
   cancelVisuals(conversation, message) {
     this.db
       .prepare(
-        "UPDATE artifacts SET status='canceled',source=NULL,error=NULL WHERE conversation=? AND message=? AND kind='visual' AND status='pending'",
+        "UPDATE artifacts SET status='failed',source=NULL,error='Visual generation canceled.' WHERE conversation=? AND message=? AND kind='visual' AND status='pending'",
       )
       .run(conversation, message);
   },

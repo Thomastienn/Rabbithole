@@ -19,6 +19,68 @@ const visual = (status, extra = {}) => ({
   ...extra,
 });
 
+test('progressive visual keeps its frame, posts the latest partial on load, then final markup; failure removes it', async (t) => {
+  let set;
+  const parts = [];
+  function Host() {
+    const [artifact, setArtifact] = useState(visual('pending'));
+    set = setArtifact;
+    return h(VisualFrame, {
+      artifact,
+      onPart: (...args) => parts.push(args),
+      onRetry: async () => {},
+    });
+  }
+  const { container, act, cleanup } = await render(h(Host), (w) => {
+    ui(w);
+    w.CSSStyleDeclaration.prototype[Symbol.iterator] = function* () {
+      for (let i = 0; i < this.length; i++) yield this[i];
+    };
+  });
+  t.after(cleanup);
+  const frame = container.querySelector('iframe');
+  const posted = [];
+  frame.contentWindow.postMessage = (data) => posted.push(data);
+  await act(async () => set(visual('pending', { source: '<p>First</p>' })));
+  assert.equal(posted.length, 0, 'wait for the sandbox to load');
+  await act(async () => frame.dispatchEvent(new Event('load')));
+  assert.deepEqual(
+    posted.find((m) => m.type === 'render'),
+    {
+      type: 'render',
+      source: '<p>First</p>',
+      complete: false,
+    },
+  );
+  const receive = (data) =>
+    act(async () =>
+      window.dispatchEvent(
+        new window.MessageEvent('message', { source: frame.contentWindow, data }),
+      ),
+    );
+  await receive({ type: 'height', height: 180 });
+  assert.equal(container.querySelector('.visual-shimmer'), null);
+  await receive({ type: 'branch', label: 'Early', explanation: 'Not ready.' });
+  assert.equal(parts.length, 0);
+  await act(async () => set(visual('pending', { source: '<p>First Second</p>' })));
+  assert.deepEqual(posted.at(-1), {
+    type: 'render',
+    source: '<p>First Second</p>',
+    complete: false,
+  });
+  await act(async () => set(visual('ready', { source: '<p>Final</p><script>run()</script>' })));
+  assert.equal(container.querySelector('iframe'), frame, 'completion never remounts the frame');
+  assert.deepEqual(posted.at(-1), {
+    type: 'render',
+    source: '<p>Final</p><script>run()</script>',
+    complete: true,
+  });
+  await act(async () => set(visual('failed', { error: 'Visual generation canceled.' })));
+  assert.equal(container.querySelector('iframe'), null);
+  assert.match(container.querySelector('[role=status]').textContent, /unavailable.*canceled/);
+  assert.ok(button(container, 'Retry visual'));
+});
+
 test('visuals: pending shimmer announces; ready frame is sandboxed; only the frame’s valid branch messages reach onPart', async (t) => {
   const parts = [],
     regenerated = [];
@@ -35,7 +97,7 @@ test('visuals: pending shimmer announces; ready frame is sandboxed; only the fra
   const { container, act, cleanup } = await render(h(Host), ui);
   t.after(cleanup);
   const figure = () => container.querySelector('figure.visual');
-  assert.equal(figure().querySelectorAll('iframe').length, 0);
+  assert.equal(figure().querySelectorAll('iframe').length, 1);
   assert.ok(figure().querySelector('.visual-shimmer'));
   assert.equal(figure().querySelector('[role=status]').textContent, 'Creating visual: Bar heights');
 

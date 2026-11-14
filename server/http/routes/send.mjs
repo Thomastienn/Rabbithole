@@ -103,7 +103,9 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
       if (store.artifact(id, artifact.id)?.status !== 'pending') continue;
       runningMedia++;
       const start = artifact.kind === 'video' ? ctx.startVideo : ctx.startDrawing;
-      start(artifact, controller.signal).done.finally(() => {
+      start(artifact, controller.signal, (updated) => {
+        if (!finished) send({ type: 'artifact', artifact: updated });
+      }).done.finally(() => {
         runningMedia--;
         if (!finished) {
           const current = store.artifact(id, artifact.id);

@@ -205,12 +205,12 @@ test('Stop cancels every queued/running visual, preserves ready visuals, starts 
       saved = await env.get(`/api/trees/${env.tree.id}`);
     assert.deepEqual(
       saved.artifacts.map((a) => a.status),
-      ['ready', ...Array(6).fill('canceled')],
+      ['ready', ...Array(6).fill('failed')],
     );
     assert.ok(signals.slice(1).every((s) => s.aborted));
     assert.equal(saved.messages.at(-1).status, 'interrupted');
-    assert.match(events, /"status":"canceled"/);
-    assert.ok(saved.artifacts.slice(1).every((a) => a.error === null && a.source === null));
+    assert.match(events, /"status":"failed"/);
+    assert.ok(saved.artifacts.slice(1).every((a) => /canceled/.test(a.error) && a.source === null));
     emissions.forEach((e) => complete(e, '<p>LATE PRIVATE RESULT</p>'));
     workerHolds.forEach((h) => h.resolve());
     chatHold.resolve();
@@ -243,9 +243,14 @@ test('Stop cancels every queued/running visual, preserves ready visuals, starts 
     });
     assert.equal(
       (await env.post(`/api/trees/${env.tree.id}/artifacts/${saved.artifacts[1].id}/retry`)).status,
-      409,
-      'a deliberate stop never retries',
+      200,
+      'a stopped visual retries only on the learner’s explicit request',
     );
+    await until(() => signals.length === 5);
+    workerHolds.at(-1).resolve();
+    complete(emissions.at(-1), source);
+    await env.app.settled();
+    assert.equal(env.store.artifact(env.tree.id, saved.artifacts[1].id).status, 'ready');
   } finally {
     workerHolds.forEach((h) => h.resolve());
     chatHold.resolve();
@@ -324,8 +329,10 @@ test('concurrent replies get separate three-worker queues; deleting one aborts o
 
 test('a slow visual provider within the injected budget still yields a ready visual', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
+  const started = deferred();
   const provider = {
     generate: async (_tree, _text, emit) => {
+      started.resolve();
       await new Promise((r) => setTimeout(r, 100));
       complete(emit, source);
     },
@@ -336,6 +343,7 @@ test('a slow visual provider within the injected budget still yields a ready vis
   t.mock.timers.tick(60);
   await rejected;
   const ready = start(400);
+  await started.promise;
   t.mock.timers.tick(100);
   assert.equal(await ready, source);
 });

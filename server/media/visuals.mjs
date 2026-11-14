@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { savedTheme, themeChoices } from '../../src/shell/appearance.ts';
+import { visualMarkup } from '../../src/media/visualMarkup.ts';
 
 const INSTRUCTIONS = readFileSync(new URL('./prompts/visual.md', import.meta.url), 'utf8');
 const MAX_SOURCE = 64 * 1024;
@@ -118,10 +119,17 @@ async function validate(source) {
       javascript(element.textContent);
     }
   }
-  return source.trim();
+  return visualMarkup(source.trim(), fragment.ownerDocument, true);
 }
 
-export async function generateVisual(provider, selection, input, parentSignal, timeout = 300000) {
+export async function generateVisual(
+  provider,
+  selection,
+  input,
+  parentSignal,
+  timeout = 300000,
+  onPartial = () => {},
+) {
   const controller = new AbortController();
   const cancel = () => controller.abort(new Error('Visual generation canceled.'));
   parentSignal.addEventListener('abort', cancel, { once: true });
@@ -137,10 +145,13 @@ export async function generateVisual(provider, selection, input, parentSignal, t
     if (controller.signal.aborted) rejectAbort();
   });
   const run = async () => {
+    const { JSDOM } = await import('jsdom');
+    const document = JSDOM.fragment('').ownerDocument;
     let validationError;
     for (let attempt = 0; attempt < 2; attempt++) {
       if (controller.signal.aborted) throw controller.signal.reason;
       const items = new Map();
+      onPartial('');
       let status, overflow;
       try {
         await provider.generate(
@@ -174,6 +185,7 @@ export async function generateVisual(provider, selection, input, parentSignal, t
                 overflow = 'Visual output is invalid: the fragment exceeds its size limit.';
                 items.clear();
               }
+              onPartial(visualMarkup([...items.values()].join('\n\n'), document));
             }
             if (event.type === 'status') status = event.status;
           },

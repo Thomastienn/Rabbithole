@@ -35,6 +35,7 @@ function Frame({
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState<number>();
+  const loaded = useRef(false);
   const { mode, name } = useTheme();
   const post = (data: object) => frame.current?.contentWindow?.postMessage(data, '*');
   const parts = () =>
@@ -67,7 +68,16 @@ function Frame({
     if (frame.current) theme();
   }, [mode, name]);
   useEffect(parts, [partsKey]);
-  const ready = height !== undefined;
+  const render = () =>
+    post({
+      type: 'render',
+      source: artifact.source ?? '',
+      complete: artifact.status === 'ready',
+    });
+  useEffect(() => {
+    if (loaded.current) render();
+  }, [artifact.source, artifact.status]);
+  const ready = height !== undefined && (artifact.status === 'ready' || !!artifact.source);
   return (
     <>
       {!ready && <Skeleton className="visual-shimmer" />}
@@ -81,7 +91,8 @@ function Frame({
         data-ready={ready || undefined}
         onLoad={() => {
           theme();
-          post({ type: 'render', source: artifact.source });
+          loaded.current = true;
+          render();
           parts();
         }}
       />
@@ -131,22 +142,21 @@ export default function VisualFrame({
       data-state={artifact.status}
     >
       {artifact.status === 'pending' && (
-        <>
-          <Skeleton className="visual-shimmer" />
-          <Text className="sr-only" role="status">
-            Creating visual: {artifact.title}
-          </Text>
-        </>
+        <Text className="sr-only" role="status">
+          Creating visual: {artifact.title}
+        </Text>
+      )}
+      {(artifact.status === 'pending' || artifact.status === 'ready') && (
+        <Frame
+          key={artifact.id}
+          artifact={artifact}
+          explored={explored}
+          reveal={reveal}
+          onPart={onPart}
+        />
       )}
       {artifact.status === 'ready' && artifact.source && (
         <>
-          <Frame
-            key={artifact.source}
-            artifact={artifact}
-            explored={explored}
-            reveal={reveal}
-            onPart={onPart}
-          />
           <HStack className="visual-actions" gap={1}>
             {onRegenerate && (
               <IconButton

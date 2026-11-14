@@ -301,6 +301,7 @@ cover one again, add it to a smoke script.
 - `verify-visual-branch`: the popup and visual fit desktop and 390px in both appearances; responsive CSS geometry.
 - `verify-visual-sandbox`: visuals are full column width, auto-height, borderless and transparent, with a 30px+ pending shimmer; computed CSS and geometry (placement order, sandbox attributes and pending status remain tested).
 - `verify-visual-sandbox`: frame content uses app ink, Archivo and its bundled libraries in both appearances; real iframe execution.
+- Progressive visual painting, auto-height changes and final script execution in the real opaque-origin iframe remain untested in a browser; chunk delivery and failure/Stop are integration tested, with sanitization, DOM execution and frame reuse covered in jsdom.
 - `verify-visual-sandbox`: hostile visual code cannot navigate the app, open dialogs or grow unbounded; real iframe sandbox (sandbox CSP and height bounds remain tested).
 - `verify-visual-sandbox`: the map preview never loads the sandbox page; browser resource loading.
 - `verify-visual-sandbox`: Enlarge appears only on hover or focus and Escape closes the viewer; computed CSS and native dialog.
