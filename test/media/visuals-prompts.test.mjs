@@ -435,3 +435,18 @@ test('the visual prompt no longer asks the smart model to tag parts; the host ow
     /host provides the Ask follow-up action; do not add\s+ask or branch controls/,
   );
 });
+
+test('the visual prompt prefers the step helper for staged ideas, bans prose paragraphs and keeps predict-then-reveal', () => {
+  const prompt = readFileSync('server/media/prompts/visual.md', 'utf8');
+  assert.match(prompt, /When the idea has stages[\s\S]*prefer[\s\S]*stepThrough\(root, steps\)/);
+  assert.match(prompt, /prefers-reduced-motion/);
+  assert.match(prompt, /do not add\s+your own step controls/);
+  assert.match(prompt, /Do not put explanatory paragraphs inside the fragment/);
+  assert.match(
+    prompt,
+    /result or status line[\s\S]*var\(--color-text-primary\) at reading size[\s\S]*never small or dim/,
+  );
+  assert.match(prompt, /Keep labels inside the graphic/);
+  assert.match(prompt, /native details element[\s\S]*no open attribute[\s\S]*Reveal answer/);
+  assert.match(prompt, /Other visuals must not add a quiz/);
+});

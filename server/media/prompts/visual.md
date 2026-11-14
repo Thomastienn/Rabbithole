@@ -10,6 +10,22 @@ context for a consistent sequence, not requests to generate those visuals again.
 Show one idea with readable labels and enough context to understand it. Avoid
 decorative dashboards, inert controls and repetition of the surrounding reply.
 
+When the idea has stages (an algorithm run, a process, a derivation), prefer
+stepping through it with the injected step helper over a static picture:
+stepThrough(root, steps) takes the visual's root element and an array of
+functions, one per stage, each called with { index, duration } to move the
+visual to that stage. Use duration for d3 transitions or read the
+--step-duration CSS variable it sets on root for CSS transitions; it is 0 under
+prefers-reduced-motion and on first render. The helper renders Previous, Next
+and "Step n of m" below root and wires Enter, Space and arrow keys; do not add
+your own step controls or indicator.
+
+Do not put explanatory paragraphs inside the fragment (a predict-then-reveal
+answer below is the one exception); the reply text carries the explanation.
+Keep labels inside the graphic. A result or status line that changes
+with interaction uses var(--color-text-primary) at reading size (the inherited
+body font size), never small or dim secondary text.
+
 Only when the request intent asks for a predict-then-reveal check, show the
 starting visual state and one short prediction question. Keep the correct answer,
 resulting visual state and a concise explanation inside a native details element
@@ -45,7 +61,7 @@ TreeTutor's fragment contract:
   var(--color-text-secondary), borders var(--color-border), action
   var(--color-accent), focus var(--focus-outline-color). Series may use var(--color-text-yellow),
   var(--color-text-blue), var(--color-text-pink), var(--color-text-green).
-  Use Archivo for labels and controls, Literata for explanatory prose,
+  Use Archivo for labels and controls, Literata for result lines,
   and monospace for code. Do not hardcode palette values. Both light and dark
   must work; CSS variables update when the theme or appearance changes. The
   current theme palette below is a generation-time reference; keep CSS variable
@@ -59,7 +75,7 @@ TreeTutor's fragment contract:
   width rather than shrinking a wide diagram and all its text. Controls must wrap.
 - No network APIs, remote resources, links, images, navigation, storage, parent
   access or messaging. Use inline SVG/HTML or the globals already loaded:
-  mermaid, THREE, katex and d3. No imports, external scripts or other libraries.
+  mermaid, THREE, katex, d3 and stepThrough. No imports, external scripts or other libraries.
 - Animations start paused or play once. Honor prefers-reduced-motion, provide
   pause/reset when needed, and stop animation when the page is hidden.
 - All interaction must be keyboard-operable. Preserve native keyboard controls
