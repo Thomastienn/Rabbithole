@@ -5,12 +5,16 @@ import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { duskIcons } from './icons';
 
-const mist = '#ece0ef', pine = '#2a1a2e';
+const mist = '#ece0ef',
+  pine = '#2a1a2e';
 const hairline = 'inset 0 0 0 1px light-dark(#2a1a2e26, #ece0ef1f)';
 
 // Series inks in the same hue slots as Paperback: yellow = amber, green = sage, pink = plum, blue = violet.
 type Pair = [light: string, dark: string];
-const amber: Pair = ['#7d5a12', '#ddb35e'], sage: Pair = ['#3f6633', '#a3c58a'], plum: Pair = ['#8a3a6e', '#dd8cc4'], violet: Pair = ['#5246a0', '#aea8ee'];
+const amber: Pair = ['#7d5a12', '#ddb35e'],
+  sage: Pair = ['#3f6633', '#a3c58a'],
+  plum: Pair = ['#8a3a6e', '#dd8cc4'],
+  violet: Pair = ['#5246a0', '#aea8ee'];
 const soft = ([l, d]: Pair): Pair => [`${l}24`, `${d}2e`];
 const secondary: Pair = ['#5e4c63', '#b5a3ba'];
 
@@ -25,8 +29,17 @@ export const duskTheme = defineTheme({
   },
   radius: { base: 8, multiplier: 1 },
   icons: duskIcons,
-  components: Object.fromEntries([['item', 'selected'], ['tree-list-item', 'selected'], ['file-input', 'mode:dropzone'], ['citation', 'variant:number']]
-    .map(([name, state]) => [name, { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } }])),
+  components: Object.fromEntries(
+    [
+      ['item', 'selected'],
+      ['tree-list-item', 'selected'],
+      ['file-input', 'mode:dropzone'],
+      ['citation', 'variant:number'],
+    ].map(([name, state]) => [
+      name,
+      { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } },
+    ]),
+  ),
   localTokens: {
     '--treetutor-font-reading': 'Literata, Georgia, "Times New Roman", serif',
     '--treetutor-module': '8px',
@@ -101,11 +114,23 @@ export const duskTheme = defineTheme({
     '--color-icon-error': ['#b3263a', '#f07f8a'],
     '--color-border-error': ['#b3263a', '#f07f8a'],
 
-    '--color-text-yellow': amber, '--color-icon-yellow': amber, '--color-border-yellow': amber, '--color-background-yellow': soft(amber),
-    '--color-text-green': sage, '--color-icon-green': sage, '--color-border-green': sage, '--color-background-green': soft(sage),
-    '--color-text-pink': plum, '--color-icon-pink': plum, '--color-border-pink': plum, '--color-background-pink': soft(plum),
+    '--color-text-yellow': amber,
+    '--color-icon-yellow': amber,
+    '--color-border-yellow': amber,
+    '--color-background-yellow': soft(amber),
+    '--color-text-green': sage,
+    '--color-icon-green': sage,
+    '--color-border-green': sage,
+    '--color-background-green': soft(sage),
+    '--color-text-pink': plum,
+    '--color-icon-pink': plum,
+    '--color-border-pink': plum,
+    '--color-background-pink': soft(plum),
     '--color-background-purple': soft(plum),
-    '--color-text-blue': violet, '--color-icon-blue': violet, '--color-border-blue': violet, '--color-background-blue': soft(violet),
+    '--color-text-blue': violet,
+    '--color-icon-blue': violet,
+    '--color-border-blue': violet,
+    '--color-background-blue': soft(violet),
 
     '--shadow-low': hairline,
     '--shadow-med': hairline,

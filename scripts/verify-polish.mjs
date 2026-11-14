@@ -9,26 +9,78 @@ import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 
 const label = process.argv[2] ?? 'after';
-const run = promisify(execFile), session = `polish-${process.pid}`;
-const b = async (...args) => (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 8 * 1024 * 1024 })).stdout;
-const ev = async code => JSON.parse(await b('eval', code, '--json')).data.result;
-const wait = code => b('wait', '--fn', code, '--timeout', '20000');
+const run = promisify(execFile),
+  session = `polish-${process.pid}`;
+const b = async (...args) =>
+  (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 8 * 1024 * 1024 }))
+    .stdout;
+const ev = async (code) => JSON.parse(await b('eval', code, '--json')).data.result;
+const wait = (code) => b('wait', '--fn', code, '--timeout', '20000');
 const dir = mkdtempSync(join(tmpdir(), 'tt-polish-'));
 const store = new Store(join(dir, 'trees.sqlite'));
 store.create('Second chat', 'claude');
 const root = store.create('How do fungi trade?', 'claude');
 store.message(root.id, 'user', 'How do fungi trade with plants?', 'completed');
-const reply = store.message(root.id, 'assistant', '## Trading partners\n\nMycorrhizal **fungi trade** phosphorus for sugar.\n\n- Hyphae reach far\n- Roots pay in carbon\n\n| Gives | Gets |\n| --- | --- |\n| Fungus | Sugar |\n\n`code` and $E=mc^2$.', 'completed');
-store.finishArtifact(root.id, store.pendingArtifact(root.id, reply, 'Trade loop', 'Sugar flows to the fungus, phosphorus flows to the root.').id, 'flowchart LR\n R[Root] -->|sugar| F[Fungus]\n F -->|phosphorus| R');
-const video = store.pendingArtifact(root.id, reply, 'Hyphae growing', 'Hyphae spread through soil.', 'video', '{}');
+const reply = store.message(
+  root.id,
+  'assistant',
+  '## Trading partners\n\nMycorrhizal **fungi trade** phosphorus for sugar.\n\n- Hyphae reach far\n- Roots pay in carbon\n\n| Gives | Gets |\n| --- | --- |\n| Fungus | Sugar |\n\n`code` and $E=mc^2$.',
+  'completed',
+);
+store.finishArtifact(
+  root.id,
+  store.pendingArtifact(
+    root.id,
+    reply,
+    'Trade loop',
+    'Sugar flows to the fungus, phosphorus flows to the root.',
+  ).id,
+  'flowchart LR\n R[Root] -->|sugar| F[Fungus]\n F -->|phosphorus| R',
+);
+const video = store.pendingArtifact(
+  root.id,
+  reply,
+  'Hyphae growing',
+  'Hyphae spread through soil.',
+  'video',
+  '{}',
+);
 store.finishVideo(root.id, video.id, video.attempt, {}, 'Renderer stopped.');
-const child = store.branch(store.tree(root.id), { messageId: reply, start: 33, end: 44, text: 'fungi trade', question: 'Why trade at all?' }, 'Root snapshot.');
+const child = store.branch(
+  store.tree(root.id),
+  { messageId: reply, start: 33, end: 44, text: 'fungi trade', question: 'Why trade at all?' },
+  'Root snapshot.',
+);
 store.message(child.id, 'user', 'Why trade at all?', 'completed');
-store.message(child.id, 'assistant', 'Neither partner can make what the other offers.', 'completed');
-const fixture = { models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }], generate: async (t, text, emit) => { emit({ type: 'item', item: 'answer', text: 'Fixture reply.' }); emit({ type: 'status', status: 'completed' }); } };
-const signedOut = { models: async () => { throw new Error('signed out'); }, generate: async () => { throw new Error('signed out'); } };
-const app = createApp({ store, providers: { claude: fixture, codex: signedOut }, defaultProvider: 'claude', dir, auth: { status: () => ({ connected: false, email: null }) } });
-await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+store.message(
+  child.id,
+  'assistant',
+  'Neither partner can make what the other offers.',
+  'completed',
+);
+const fixture = {
+  models: async () => [{ model: 'fixture', label: 'Fixture model', isDefault: true }],
+  generate: async (t, text, emit) => {
+    emit({ type: 'item', item: 'answer', text: 'Fixture reply.' });
+    emit({ type: 'status', status: 'completed' });
+  },
+};
+const signedOut = {
+  models: async () => {
+    throw new Error('signed out');
+  },
+  generate: async () => {
+    throw new Error('signed out');
+  },
+};
+const app = createApp({
+  store,
+  providers: { claude: fixture, codex: signedOut },
+  defaultProvider: 'claude',
+  dir,
+  auth: { status: () => ({ connected: false, email: null }) },
+});
+await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
 mkdirSync('.impeccable/review', { recursive: true });
 
@@ -61,8 +113,15 @@ const probes = `window.__probe = {
     .map(e => (e.className?.baseVal ?? e.className) + ' ' + getComputedStyle(e).transitionProperty + '/' + getComputedStyle(e).animationName).slice(0, 20); },
   overflow() { return document.documentElement.scrollWidth > innerWidth + 1; },
 }; true`;
-const results = { label, checkedAt: new Date().toISOString(), evidence: 'Synthetic fixture providers, seeded SQLite tree with markdown, ready diagram, failed video and branch; production build in agent-browser Chromium. 200% zoom is emulated as a half-size CSS viewport.', checks: {} };
-const shot = name => b('screenshot', `${process.cwd()}/.impeccable/review/polish-${label}-${name}.png`);
+const results = {
+  label,
+  checkedAt: new Date().toISOString(),
+  evidence:
+    'Synthetic fixture providers, seeded SQLite tree with markdown, ready diagram, failed video and branch; production build in agent-browser Chromium. 200% zoom is emulated as a half-size CSS viewport.',
+  checks: {},
+};
+const shot = (name) =>
+  b('screenshot', `${process.cwd()}/.impeccable/review/polish-${label}-${name}.png`);
 async function openApp(width, height, scheme) {
   await b('set', 'viewport', String(width), String(height));
   await b('set', 'media', scheme, 'reduced-motion');
@@ -72,28 +131,44 @@ async function openApp(width, height, scheme) {
   await wait(`!!document.querySelector('[aria-label="Open How do fungi trade?"]')`);
   await ev(probes);
 }
-const openChat = async () => { await b('find', 'role', 'button', 'click', '--name', 'Open How do fungi trade?', '--exact'); await wait(`!!document.querySelector('.focused-chat .diagram-card[data-state=ready]')`); await ev(probes); };
+const openChat = async () => {
+  await b('find', 'role', 'button', 'click', '--name', 'Open How do fungi trade?', '--exact');
+  await wait(`!!document.querySelector('.focused-chat .diagram-card[data-state=ready]')`);
+  await ev(probes);
+};
 try {
   for (const scheme of ['light', 'dark']) {
     await openApp(1440, 900, scheme);
-    const map = await ev('__probe.contrast()'); await shot(`${scheme}-map`);
+    const map = await ev('__probe.contrast()');
+    await shot(`${scheme}-map`);
     await openChat();
-    const chat = await ev('__probe.contrast()'); await shot(`${scheme}-chat`);
-    await b('find', 'role', 'button', 'click', '--name', 'Model for next reply', '--exact'); await wait(`!!document.querySelector('[role=menu]')`);
-    const menu = await ev('__probe.contrast()'); await shot(`${scheme}-model-menu`); await b('press', 'Escape');
+    const chat = await ev('__probe.contrast()');
+    await shot(`${scheme}-chat`);
+    await b('find', 'role', 'button', 'click', '--name', 'Model for next reply', '--exact');
+    await wait(`!!document.querySelector('[role=menu]')`);
+    const menu = await ev('__probe.contrast()');
+    await shot(`${scheme}-model-menu`);
+    await b('press', 'Escape');
     await b('find', 'role', 'button', 'click', '--name', 'Return to tree', '--exact');
-    await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact'); await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
+    await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
+    await b('find', 'role', 'menuitem', 'click', '--name', 'Settings', '--exact');
     await b('find', 'role', 'button', 'click', '--name', 'Connections', '--exact');
     await wait(`!!document.querySelector('.endpoint-settings')`);
-    const sidebar = await ev('__probe.contrast()'); await shot(`${scheme}-sidebar`);
+    const sidebar = await ev('__probe.contrast()');
+    await shot(`${scheme}-sidebar`);
     results.checks[`contrast-${scheme}`] = { map, chat, menu, sidebar };
   }
   // Reduced motion: nothing visible keeps a transition or animation; chat opening keeps the composer still.
   await openApp(1440, 900, 'light');
   const motionMap = await ev('__probe.motion()');
   await openChat();
-  const composerAt = () => ev(`JSON.stringify(document.querySelector('.focused-chat [role=textbox]').getBoundingClientRect())`);
-  const first = await composerAt(); await new Promise(r => setTimeout(r, 800)); const later = await composerAt();
+  const composerAt = () =>
+    ev(
+      `JSON.stringify(document.querySelector('.focused-chat [role=textbox]').getBoundingClientRect())`,
+    );
+  const first = await composerAt();
+  await new Promise((r) => setTimeout(r, 800));
+  const later = await composerAt();
   results.checks['reduced-motion'] = { map: motionMap, chat: await ev('__probe.motion()') };
   results.checks['chat-open-shift'] = { stable: first === later, first, later };
   results.checks['unnamed-controls'] = await ev('__probe.unnamed()');
@@ -101,22 +176,45 @@ try {
   const stops = [];
   await b('press', 'Escape');
   await ev('document.activeElement.blur(); document.body.focus(); true');
-  for (let i = 0; i < 45; i++) { await b('press', 'Tab'); stops.push(await ev('__probe.ring()')); }
+  for (let i = 0; i < 45; i++) {
+    await b('press', 'Tab');
+    stops.push(await ev('__probe.ring()'));
+  }
   await openChat();
-  for (let i = 0; i < 30; i++) { await b('press', 'Tab'); stops.push(await ev('__probe.ring()')); }
-  results.checks['focus-visible'] = { stops: stops.length, missing: stops.filter(s => s && (!s.visible || !s.onScreen)) };
+  for (let i = 0; i < 30; i++) {
+    await b('press', 'Tab');
+    stops.push(await ev('__probe.ring()'));
+  }
+  results.checks['focus-visible'] = {
+    stops: stops.length,
+    missing: stops.filter((s) => s && (!s.visible || !s.onScreen)),
+  };
   // Responsive and zoom: no horizontal page overflow, composer reachable.
-  const sizes = { narrow: [390, 844], zoom200: [720, 450], wide: [2560, 1080], breakpoint: [768, 900] };
+  const sizes = {
+    narrow: [390, 844],
+    zoom200: [720, 450],
+    wide: [2560, 1080],
+    breakpoint: [768, 900],
+  };
   for (const [name, [w, h]] of Object.entries(sizes)) {
-    await openApp(w, h, 'light'); const mapOverflow = await ev('__probe.overflow()'); await shot(`${name}-map`);
+    await openApp(w, h, 'light');
+    const mapOverflow = await ev('__probe.overflow()');
+    await shot(`${name}-map`);
     await openChat();
-    const composer = await ev(`(() => { const r = document.querySelector('.focused-chat [role=textbox]').getBoundingClientRect(); return r.height > 0 && r.bottom <= innerHeight + 1; })()`);
-    results.checks[`viewport-${name}`] = { mapOverflow, chatOverflow: await ev('__probe.overflow()'), composerVisible: composer };
+    const composer = await ev(
+      `(() => { const r = document.querySelector('.focused-chat [role=textbox]').getBoundingClientRect(); return r.height > 0 && r.bottom <= innerHeight + 1; })()`,
+    );
+    results.checks[`viewport-${name}`] = {
+      mapOverflow,
+      chatOverflow: await ev('__probe.overflow()'),
+      composerVisible: composer,
+    };
     await shot(`${name}-chat`);
   }
   writeFileSync(`docs/verification/polish-${label}.json`, JSON.stringify(results, null, 2) + '\n');
   console.log(JSON.stringify(results.checks, null, 1));
 } finally {
   await b('close').catch(() => {});
-  app.stop(); store.close();
+  app.stop();
+  store.close();
 }

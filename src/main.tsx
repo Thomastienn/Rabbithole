@@ -23,11 +23,41 @@ document.head.append(styles);
 function App() {
   const [appearance, setAppearance] = useState(savedAppearance);
   // Read before the first render, so the saved theme is the first one painted.
-  const [theme, setTheme] = useState<ThemeChoice>(() => { try { return savedTheme(localStorage.getItem('treetutor.theme')); } catch { return 'paperback'; } });
-  return <Theme theme={themes[theme]} mode={appearance}>
-    <ChatPage appearance={appearance} setAppearance={next => { setAppearance(next); try { localStorage.setItem('treetutor.appearance', next); } catch { /* Preference stays for this session only. */ } }}
-      theme={theme} setTheme={next => { setTheme(next); try { localStorage.setItem('treetutor.theme', next); } catch { /* Preference stays for this session only. */ } }} />
-  </Theme>;
+  const [theme, setTheme] = useState<ThemeChoice>(() => {
+    try {
+      return savedTheme(localStorage.getItem('treetutor.theme'));
+    } catch {
+      return 'paperback';
+    }
+  });
+  return (
+    <Theme theme={themes[theme]} mode={appearance}>
+      <ChatPage
+        appearance={appearance}
+        setAppearance={(next) => {
+          setAppearance(next);
+          try {
+            localStorage.setItem('treetutor.appearance', next);
+          } catch {
+            /* Preference stays for this session only. */
+          }
+        }}
+        theme={theme}
+        setTheme={(next) => {
+          setTheme(next);
+          try {
+            localStorage.setItem('treetutor.theme', next);
+          } catch {
+            /* Preference stays for this session only. */
+          }
+        }}
+      />
+    </Theme>
+  );
 }
 
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);

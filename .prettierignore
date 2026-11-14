@@ -1,0 +1,15 @@
+# Format only hand-written code: src, server, scripts, test and vite.config.ts.
+/*
+!/src/
+!/server/
+!/scripts/
+!/test/
+!/vite.config.ts
+*.md
+*.html
+# Astryx theme build output
+src/themes/*/*.js
+src/themes/*/*.css
+src/themes/*/*.d.ts
+src/themes/*/*.doc.mjs
+test/fixtures

@@ -7,7 +7,15 @@ import { Lightbox } from '@astryxdesign/core/Lightbox';
 import { useTheme } from '@astryxdesign/core/theme';
 import { renderArtifact, type Artifact, type DiagramState } from './artifacts';
 
-export default function DiagramCard({ artifact, steps = [artifact], onRetry }: { artifact: Artifact; steps?: Artifact[]; onRetry?: () => Promise<void> }) {
+export default function DiagramCard({
+  artifact,
+  steps = [artifact],
+  onRetry,
+}: {
+  artifact: Artifact;
+  steps?: Artifact[];
+  onRetry?: () => Promise<void>;
+}) {
   const id = useId();
   const card = useRef<HTMLElement>(null);
   const [drawing, setDrawing] = useState<DiagramState>({ status: 'pending' });
@@ -19,28 +27,106 @@ export default function DiagramCard({ artifact, steps = [artifact], onRetry }: {
   useEffect(() => {
     let cancelled = false;
     setDrawing({ status: 'pending' });
-    void renderArtifact(artifact, async source => {
+    void renderArtifact(artifact, async (source) => {
       const { renderDiagram } = await import('./mermaid');
       return renderDiagram(source, card.current!, mode === 'dark');
-    }).then(state => { if (!cancelled) setDrawing(state); });
-    return () => { cancelled = true; };
+    }).then((state) => {
+      if (!cancelled) setDrawing(state);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [artifact.id, artifact.status, artifact.source, mode, name, renderAttempt]);
   // A successful Retry removes its button; keep keyboard focus on the card rather than dropping it to the page.
-  useEffect(() => { if (retried && drawing.status === 'ready' && document.activeElement === document.body) card.current?.focus(); }, [retried, drawing.status]);
+  useEffect(() => {
+    if (retried && drawing.status === 'ready' && document.activeElement === document.body)
+      card.current?.focus();
+  }, [retried, drawing.status]);
   const failed = drawing.status === 'failed';
-  return <section ref={card} className="diagram-card" tabIndex={0} aria-labelledby={steps.length > 1 ? `${id}-step ${id}-title` : `${id}-title`} aria-describedby={`${id}-description`} data-artifact={artifact.id} data-state={drawing.status}>
-    <VStack gap={3} padding={3}>
-      {steps.length > 1 && <Text type="supporting" color="secondary" id={`${id}-step`}>Step {steps.indexOf(artifact) + 1} of {steps.length}</Text>}
-      <Heading level={3} id={`${id}-title`}>{artifact.title}</Heading>
-      <Text id={`${id}-description`}>{artifact.description}</Text>
-      {drawing.status === 'pending' && <Text type="supporting" color="secondary" role="status">{artifact.status === 'pending' ? 'Creating diagram…' : 'Rendering diagram…'}</Text>}
-      {failed && <Text type="supporting" role="status">{artifact.status === 'failed' ? `Diagram unavailable. ${artifact.error ?? ''}` : 'Diagram could not be rendered. Read the description and Mermaid source below.'}</Text>}
-      {(failed || (retried && drawing.status === 'pending')) && <HStack><Button key="retry" label="Retry diagram" variant="secondary" size="sm" isLoading={drawing.status === 'pending'} isDisabled={artifact.status === 'failed' && !onRetry} clickAction={async () => { setRetried(true); if (artifact.status === 'failed') await onRetry?.(); else setRenderAttempt(n => n + 1); }} /></HStack>}
-      {drawing.status === 'ready' && <>
-        <button type="button" className="diagram-open" aria-label={`Open diagram large: ${artifact.title}`} onClick={() => setEnlarged(true)}><img src={drawing.url} alt={artifact.description} onError={() => setDrawing({ status: 'failed' })} /></button>
-        <Lightbox className="diagram-lightbox" isOpen={enlarged} onOpenChange={setEnlarged} hasZoom media={{ src: drawing.url, alt: artifact.description }} />
-      </>}
-      {artifact.source && <Collapsible key={failed ? 'fallback' : 'source'} trigger={<Text weight="medium">Mermaid source</Text>} defaultIsOpen={failed}><pre className="diagram-source" tabIndex={0}>{artifact.source}</pre></Collapsible>}
-    </VStack>
-  </section>;
+  return (
+    <section
+      ref={card}
+      className="diagram-card"
+      tabIndex={0}
+      aria-labelledby={steps.length > 1 ? `${id}-step ${id}-title` : `${id}-title`}
+      aria-describedby={`${id}-description`}
+      data-artifact={artifact.id}
+      data-state={drawing.status}
+    >
+      <VStack gap={3} padding={3}>
+        {steps.length > 1 && (
+          <Text type="supporting" color="secondary" id={`${id}-step`}>
+            Step {steps.indexOf(artifact) + 1} of {steps.length}
+          </Text>
+        )}
+        <Heading level={3} id={`${id}-title`}>
+          {artifact.title}
+        </Heading>
+        <Text id={`${id}-description`}>{artifact.description}</Text>
+        {drawing.status === 'pending' && (
+          <Text type="supporting" color="secondary" role="status">
+            {artifact.status === 'pending' ? 'Creating diagram…' : 'Rendering diagram…'}
+          </Text>
+        )}
+        {failed && (
+          <Text type="supporting" role="status">
+            {artifact.status === 'failed'
+              ? `Diagram unavailable. ${artifact.error ?? ''}`
+              : 'Diagram could not be rendered. Read the description and Mermaid source below.'}
+          </Text>
+        )}
+        {(failed || (retried && drawing.status === 'pending')) && (
+          <HStack>
+            <Button
+              key="retry"
+              label="Retry diagram"
+              variant="secondary"
+              size="sm"
+              isLoading={drawing.status === 'pending'}
+              isDisabled={artifact.status === 'failed' && !onRetry}
+              clickAction={async () => {
+                setRetried(true);
+                if (artifact.status === 'failed') await onRetry?.();
+                else setRenderAttempt((n) => n + 1);
+              }}
+            />
+          </HStack>
+        )}
+        {drawing.status === 'ready' && (
+          <>
+            <button
+              type="button"
+              className="diagram-open"
+              aria-label={`Open diagram large: ${artifact.title}`}
+              onClick={() => setEnlarged(true)}
+            >
+              <img
+                src={drawing.url}
+                alt={artifact.description}
+                onError={() => setDrawing({ status: 'failed' })}
+              />
+            </button>
+            <Lightbox
+              className="diagram-lightbox"
+              isOpen={enlarged}
+              onOpenChange={setEnlarged}
+              hasZoom
+              media={{ src: drawing.url, alt: artifact.description }}
+            />
+          </>
+        )}
+        {artifact.source && (
+          <Collapsible
+            key={failed ? 'fallback' : 'source'}
+            trigger={<Text weight="medium">Mermaid source</Text>}
+            defaultIsOpen={failed}
+          >
+            <pre className="diagram-source" tabIndex={0}>
+              {artifact.source}
+            </pre>
+          </Collapsible>
+        )}
+      </VStack>
+    </section>
+  );
 }

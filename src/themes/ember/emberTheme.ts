@@ -5,12 +5,16 @@ import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { emberIcons } from './icons';
 
-const mist = '#f2e3d4', pine = '#35241c';
+const mist = '#f2e3d4',
+  pine = '#35241c';
 const hairline = 'inset 0 0 0 1px light-dark(#35241c26, #f2e3d41f)';
 
 // Series inks in the same hue slots as Paperback: yellow = gold, green = umber, pink = clay, blue = ash.
 type Pair = [light: string, dark: string];
-const gold: Pair = ['#795814', '#e3ba65'], umber: Pair = ['#65533c', '#c3b396'], clay: Pair = ['#96402b', '#e5a183'], ash: Pair = ['#605451', '#bfb1aa'];
+const gold: Pair = ['#795814', '#e3ba65'],
+  umber: Pair = ['#65533c', '#c3b396'],
+  clay: Pair = ['#96402b', '#e5a183'],
+  ash: Pair = ['#605451', '#bfb1aa'];
 const soft = ([l, d]: Pair): Pair => [`${l}24`, `${d}2e`];
 const secondary: Pair = ['#665044', '#c4a995'];
 
@@ -25,8 +29,17 @@ export const emberTheme = defineTheme({
   },
   radius: { base: 8, multiplier: 1 },
   icons: emberIcons,
-  components: Object.fromEntries([['item', 'selected'], ['tree-list-item', 'selected'], ['file-input', 'mode:dropzone'], ['citation', 'variant:number']]
-    .map(([name, state]) => [name, { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } }])),
+  components: Object.fromEntries(
+    [
+      ['item', 'selected'],
+      ['tree-list-item', 'selected'],
+      ['file-input', 'mode:dropzone'],
+      ['citation', 'variant:number'],
+    ].map(([name, state]) => [
+      name,
+      { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } },
+    ]),
+  ),
   localTokens: {
     '--treetutor-font-reading': 'Literata, Georgia, "Times New Roman", serif',
     '--treetutor-module': '8px',
@@ -101,11 +114,23 @@ export const emberTheme = defineTheme({
     '--color-icon-error': ['#b3263a', '#f07f8a'],
     '--color-border-error': ['#b3263a', '#f07f8a'],
 
-    '--color-text-yellow': gold, '--color-icon-yellow': gold, '--color-border-yellow': gold, '--color-background-yellow': soft(gold),
-    '--color-text-green': umber, '--color-icon-green': umber, '--color-border-green': umber, '--color-background-green': soft(umber),
-    '--color-text-pink': clay, '--color-icon-pink': clay, '--color-border-pink': clay, '--color-background-pink': soft(clay),
+    '--color-text-yellow': gold,
+    '--color-icon-yellow': gold,
+    '--color-border-yellow': gold,
+    '--color-background-yellow': soft(gold),
+    '--color-text-green': umber,
+    '--color-icon-green': umber,
+    '--color-border-green': umber,
+    '--color-background-green': soft(umber),
+    '--color-text-pink': clay,
+    '--color-icon-pink': clay,
+    '--color-border-pink': clay,
+    '--color-background-pink': soft(clay),
     '--color-background-purple': soft(clay),
-    '--color-text-blue': ash, '--color-icon-blue': ash, '--color-border-blue': ash, '--color-background-blue': soft(ash),
+    '--color-text-blue': ash,
+    '--color-icon-blue': ash,
+    '--color-border-blue': ash,
+    '--color-background-blue': soft(ash),
 
     '--shadow-low': hairline,
     '--shadow-med': hairline,

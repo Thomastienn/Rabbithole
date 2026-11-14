@@ -5,12 +5,16 @@ import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { graphiteIcons } from './icons';
 
-const mist = '#e5e5e5', pine = '#242424';
+const mist = '#e5e5e5',
+  pine = '#242424';
 const hairline = 'inset 0 0 0 1px light-dark(#24242426, #e5e5e51f)';
 
 // Series inks in the same hue slots as Paperback: four gray tones; addresses keep families identifiable without hue.
 type Pair = [light: string, dark: string];
-const graphite: Pair = ['#444444', '#bebebe'], charcoal: Pair = ['#505050', '#cccccc'], steel: Pair = ['#5a5a5a', '#a9a9a9'], silver: Pair = ['#626262', '#dedede'];
+const graphite: Pair = ['#444444', '#bebebe'],
+  charcoal: Pair = ['#505050', '#cccccc'],
+  steel: Pair = ['#5a5a5a', '#a9a9a9'],
+  silver: Pair = ['#626262', '#dedede'];
 const soft = ([l, d]: Pair): Pair => [`${l}24`, `${d}2e`];
 const secondary: Pair = ['#535353', '#b2b2b2'];
 
@@ -25,8 +29,17 @@ export const graphiteTheme = defineTheme({
   },
   radius: { base: 8, multiplier: 1 },
   icons: graphiteIcons,
-  components: Object.fromEntries([['item', 'selected'], ['tree-list-item', 'selected'], ['file-input', 'mode:dropzone'], ['citation', 'variant:number']]
-    .map(([name, state]) => [name, { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } }])),
+  components: Object.fromEntries(
+    [
+      ['item', 'selected'],
+      ['tree-list-item', 'selected'],
+      ['file-input', 'mode:dropzone'],
+      ['citation', 'variant:number'],
+    ].map(([name, state]) => [
+      name,
+      { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } },
+    ]),
+  ),
   localTokens: {
     '--treetutor-font-reading': 'Literata, Georgia, "Times New Roman", serif',
     '--treetutor-module': '8px',
@@ -101,11 +114,23 @@ export const graphiteTheme = defineTheme({
     '--color-icon-error': ['#b3263a', '#f07f8a'],
     '--color-border-error': ['#b3263a', '#f07f8a'],
 
-    '--color-text-yellow': graphite, '--color-icon-yellow': graphite, '--color-border-yellow': graphite, '--color-background-yellow': soft(graphite),
-    '--color-text-green': charcoal, '--color-icon-green': charcoal, '--color-border-green': charcoal, '--color-background-green': soft(charcoal),
-    '--color-text-pink': steel, '--color-icon-pink': steel, '--color-border-pink': steel, '--color-background-pink': soft(steel),
+    '--color-text-yellow': graphite,
+    '--color-icon-yellow': graphite,
+    '--color-border-yellow': graphite,
+    '--color-background-yellow': soft(graphite),
+    '--color-text-green': charcoal,
+    '--color-icon-green': charcoal,
+    '--color-border-green': charcoal,
+    '--color-background-green': soft(charcoal),
+    '--color-text-pink': steel,
+    '--color-icon-pink': steel,
+    '--color-border-pink': steel,
+    '--color-background-pink': soft(steel),
     '--color-background-purple': soft(steel),
-    '--color-text-blue': silver, '--color-icon-blue': silver, '--color-border-blue': silver, '--color-background-blue': soft(silver),
+    '--color-text-blue': silver,
+    '--color-icon-blue': silver,
+    '--color-border-blue': silver,
+    '--color-background-blue': soft(silver),
 
     '--shadow-low': hairline,
     '--shadow-med': hairline,

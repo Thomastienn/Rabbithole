@@ -2,7 +2,7 @@
 // lists every visible element that draws a frame (four-sided border or ring) inside another framed element.
 // One-sided rules (separators, ink rules, table row lines) and glyphs under 16px (step dots) are not frames;
 // focus outlines are not checked.
-export const nestedFrames = roots => `(() => {
+export const nestedFrames = (roots) => `(() => {
   const clear = c => /^rgba\\(.*,\\s*0\\)$|^transparent$/.test(c);
   const framed = e => { const s = getComputedStyle(e);
     const border = ['Top', 'Right', 'Bottom', 'Left'].every(k => parseFloat(s['border' + k + 'Width']) > 0 && s['border' + k + 'Style'] !== 'none' && !clear(s['border' + k + 'Color']));

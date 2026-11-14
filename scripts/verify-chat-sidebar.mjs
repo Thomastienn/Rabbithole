@@ -6,77 +6,170 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-const exec = promisify(execFile), session = `sidebar-${process.pid}`;
-const browser = async (...args) => (await exec('agent-browser', ['--session', session, ...args])).stdout;
-const evalBrowser = async code => JSON.parse(await browser('eval', code, '--json')).data.result;
-const wait = code => browser('wait', '--fn', code);
-const click = name => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
+const exec = promisify(execFile),
+  session = `sidebar-${process.pid}`;
+const browser = async (...args) =>
+  (await exec('agent-browser', ['--session', session, ...args])).stdout;
+const evalBrowser = async (code) => JSON.parse(await browser('eval', code, '--json')).data.result;
+const wait = (code) => browser('wait', '--fn', code);
+const click = (name) => browser('find', 'role', 'button', 'click', '--name', name, '--exact');
 const store = new Store(join(mkdtempSync(join(tmpdir(), 'sidebar-')), 'trees.sqlite'));
 const root = store.create('Root');
 const source = store.message(root.id, 'assistant', 'Roots exchange nutrients.', 'completed');
-const a = store.branch(root, { messageId: source, start: 0, end: 5, text: 'Roots', question: 'Branch A' }, 'Fixed context');
-const b = store.branch(root, { messageId: source, start: 0, end: 5, text: 'Roots', question: 'Branch B' }, 'Fixed context');
+const a = store.branch(
+  root,
+  { messageId: source, start: 0, end: 5, text: 'Roots', question: 'Branch A' },
+  'Fixed context',
+);
+const b = store.branch(
+  root,
+  { messageId: source, start: 0, end: 5, text: 'Roots', question: 'Branch B' },
+  'Fixed context',
+);
 const turns = new Map();
-const app = createApp({ store, auth: { status: () => ({ connected: true }) }, provider: { generate: (tree, text, emit) => new Promise(resolve => { turns.set(tree.id, { emit, resolve }); emit({ type: 'item', item: 'reply', text: `Partial ${tree.title}` }); }) } });
-await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+const app = createApp({
+  store,
+  auth: { status: () => ({ connected: true }) },
+  provider: {
+    generate: (tree, text, emit) =>
+      new Promise((resolve) => {
+        turns.set(tree.id, { emit, resolve });
+        emit({ type: 'item', item: 'reply', text: `Partial ${tree.title}` });
+      }),
+  },
+});
+await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
 let openCount = 0;
 // Fit tree and chat collapse move the canvas a frame later; click only once the viewport is still.
-const settled = () => wait("new Promise(r => { const v = () => document.querySelector('.react-flow__viewport')?.style.transform, a = v(); requestAnimationFrame(() => requestAnimationFrame(() => r(a === v()))); })");
-const open = async title => { const attempt = ++openCount; await settled(); await click(`Open ${title}`); try { await wait(`document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(title)}`); } catch (error) { console.error(`Open attempt ${attempt}: ${title}`); throw error; } };
+const settled = () =>
+  wait(
+    "new Promise(r => { const v = () => document.querySelector('.react-flow__viewport')?.style.transform, a = v(); requestAnimationFrame(() => requestAnimationFrame(() => r(a === v()))); })",
+  );
+const open = async (title) => {
+  const attempt = ++openCount;
+  await settled();
+  await click(`Open ${title}`);
+  try {
+    await wait(
+      `document.querySelector('.focused-chat h2')?.textContent === ${JSON.stringify(title)}`,
+    );
+  } catch (error) {
+    console.error(`Open attempt ${attempt}: ${title}`);
+    throw error;
+  }
+};
 try {
   await browser('set', 'viewport', '1440', '900');
   await browser('open', `http://127.0.0.1:${app.server.address().port}`);
   await browser('set', 'media', 'light', 'reduced-motion');
   await browser('wait', '[aria-label="Open Branch A"]');
-  assert.equal(await evalBrowser('getComputedStyle(document.querySelector(".shell-band")).display'), 'flex');
+  assert.equal(
+    await evalBrowser('getComputedStyle(document.querySelector(".shell-band")).display'),
+    'flex',
+  );
   await open('Branch A');
-  assert.equal(await evalBrowser('(() => { const a=document.querySelector(".overview").getBoundingClientRect(), b=document.querySelector(".focused-chat").getBoundingClientRect(); return a.width>0 && b.width>0 && b.right<=a.left+1 })()'), true);
-  await wait(`(() => { const c=document.querySelector('.tree-canvas').getBoundingClientRect(), n=document.querySelector('[data-id="${a.id}"]').getBoundingClientRect(); return n.left>=c.left-1 && n.right<=c.right+1 && n.top>=c.top-1 && n.bottom<=c.bottom+1; })()`);
+  assert.equal(
+    await evalBrowser(
+      '(() => { const a=document.querySelector(".overview").getBoundingClientRect(), b=document.querySelector(".focused-chat").getBoundingClientRect(); return a.width>0 && b.width>0 && b.right<=a.left+1 })()',
+    ),
+    true,
+  );
+  await wait(
+    `(() => { const c=document.querySelector('.tree-canvas').getBoundingClientRect(), n=document.querySelector('[data-id="${a.id}"]').getBoundingClientRect(); return n.left>=c.left-1 && n.right<=c.right+1 && n.top>=c.top-1 && n.bottom<=c.bottom+1; })()`,
+  );
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Draft A');
   await click('Fit tree');
   await open('Branch B');
   await browser('find', 'role', 'textbox', 'fill', '--name', 'Your question', 'Draft B');
   await click('Fit tree');
   await open('Branch A');
-  assert.equal(await evalBrowser('document.querySelector(".focused-chat [role=textbox]").textContent'), 'Branch ADraft A');
+  assert.equal(
+    await evalBrowser('document.querySelector(".focused-chat [role=textbox]").textContent'),
+    'Branch ADraft A',
+  );
   await click('Send');
   await browser('wait', '--text', 'Partial Branch A');
   await browser('focus', '.tree-canvas');
-  const before = await evalBrowser('document.querySelector(".react-flow__viewport").style.transform');
+  const before = await evalBrowser(
+    'document.querySelector(".react-flow__viewport").style.transform',
+  );
   await browser('press', 'ArrowRight');
-  assert.notEqual(await evalBrowser('document.querySelector(".react-flow__viewport").style.transform'), before);
+  assert.notEqual(
+    await evalBrowser('document.querySelector(".react-flow__viewport").style.transform'),
+    before,
+  );
   await click('Fit tree');
   await open('Branch B');
-  assert.equal(await evalBrowser('document.querySelector(".focused-chat [role=textbox]").textContent'), 'Branch BDraft B');
+  assert.equal(
+    await evalBrowser('document.querySelector(".focused-chat [role=textbox]").textContent'),
+    'Branch BDraft B',
+  );
   await click('Send');
   await browser('wait', '--text', 'Partial Branch B');
   assert.equal(app.active.size, 2);
   turns.get(a.id).emit({ type: 'item', item: 'reply', text: 'Complete Branch A' });
-  turns.get(a.id).emit({ type: 'status', status: 'completed' }); turns.get(a.id).resolve();
+  turns.get(a.id).emit({ type: 'status', status: 'completed' });
+  turns.get(a.id).resolve();
   await wait(`(async()=>!(await (await fetch('/api/state')).json()).active.includes('${a.id}'))()`);
-  assert.equal(await evalBrowser('document.querySelector(".focused-chat h2").textContent'), 'Branch B');
-  assert.equal(await evalBrowser('document.querySelector(".focused-chat").innerText.includes("Complete Branch A")'), false);
+  assert.equal(
+    await evalBrowser('document.querySelector(".focused-chat h2").textContent'),
+    'Branch B',
+  );
+  assert.equal(
+    await evalBrowser(
+      'document.querySelector(".focused-chat").innerText.includes("Complete Branch A")',
+    ),
+    false,
+  );
   turns.get(b.id).emit({ type: 'item', item: 'reply', text: 'Complete Branch B' });
-  turns.get(b.id).emit({ type: 'status', status: 'completed' }); turns.get(b.id).resolve();
+  turns.get(b.id).emit({ type: 'status', status: 'completed' });
+  turns.get(b.id).resolve();
   await browser('wait', '--text', 'Complete Branch B');
   await click('Return to tree');
   await click('Reopen chat');
-  assert.equal(await evalBrowser('document.querySelector(".focused-chat h2").textContent'), 'Branch B');
-  await click('Fit tree'); await open('Branch A'); await browser('wait', '--text', 'Complete Branch A');
+  assert.equal(
+    await evalBrowser('document.querySelector(".focused-chat h2").textContent'),
+    'Branch B',
+  );
   await click('Fit tree');
-  await evalBrowser(`window.originalFetch=window.fetch; window.fetch=async (url, options) => { const response=await window.originalFetch(url, options); if (url==='/api/trees/${b.id}' && !options) await new Promise(resolve => window.releaseSelection=resolve); return response; }; true`);
+  await open('Branch A');
+  await browser('wait', '--text', 'Complete Branch A');
+  await click('Fit tree');
+  await evalBrowser(
+    `window.originalFetch=window.fetch; window.fetch=async (url, options) => { const response=await window.originalFetch(url, options); if (url==='/api/trees/${b.id}' && !options) await new Promise(resolve => window.releaseSelection=resolve); return response; }; true`,
+  );
   await evalBrowser(`document.getElementById('open-${b.id}').click(); true`);
   await wait('!!window.releaseSelection');
   await evalBrowser(`document.getElementById('open-${a.id}').click(); true`);
   await wait("document.querySelector('.focused-chat h2')?.textContent === 'Branch A'");
   await evalBrowser('window.releaseSelection(); true');
   await wait("document.querySelector('.focused-chat h2')?.textContent === 'Branch A'");
-  assert.equal(await evalBrowser('document.querySelector(".focused-chat h2").textContent'), 'Branch A');
+  assert.equal(
+    await evalBrowser('document.querySelector(".focused-chat h2").textContent'),
+    'Branch A',
+  );
   await browser('set', 'viewport', '390', '844');
-  assert.equal(await evalBrowser('getComputedStyle(document.querySelector(".overview")).display'), 'none');
+  assert.equal(
+    await evalBrowser('getComputedStyle(document.querySelector(".overview")).display'),
+    'none',
+  );
   await click('Return to tree');
-  assert.equal(await evalBrowser('getComputedStyle(document.querySelector(".overview")).display'), 'flex');
+  assert.equal(
+    await evalBrowser('getComputedStyle(document.querySelector(".overview")).display'),
+    'flex',
+  );
   await click('Reopen chat');
-  assert.equal(await evalBrowser('document.querySelector(".focused-chat h2").textContent'), 'Branch A');
-  console.log('PASS: desktop band and workspace geometry, default navigation, drafts, map pan during reply, late reply isolation, collapse and reopen.');
-} finally { for (const turn of turns.values()) turn.resolve(); await browser('close').catch(() => {}); while (app.active.size) await new Promise(resolve => setTimeout(resolve, 20)); app.stop(); store.close(); }
+  assert.equal(
+    await evalBrowser('document.querySelector(".focused-chat h2").textContent'),
+    'Branch A',
+  );
+  console.log(
+    'PASS: desktop band and workspace geometry, default navigation, drafts, map pan during reply, late reply isolation, collapse and reopen.',
+  );
+} finally {
+  for (const turn of turns.values()) turn.resolve();
+  await browser('close').catch(() => {});
+  while (app.active.size) await new Promise((resolve) => setTimeout(resolve, 20));
+  app.stop();
+  store.close();
+}

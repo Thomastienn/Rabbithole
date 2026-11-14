@@ -5,12 +5,16 @@ import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { forestIcons } from './icons';
 
-const mist = '#e3ecd9', pine = '#17251a';
+const mist = '#e3ecd9',
+  pine = '#17251a';
 const hairline = 'inset 0 0 0 1px light-dark(#17251a26, #e3ecd91f)';
 
 // Series inks in the same hue slots as Paperback: yellow = ochre, green = fern, pink = berry, blue = pine teal.
 type Pair = [light: string, dark: string];
-const ochre: Pair = ['#7a5c10', '#d9b25a'], fern: Pair = ['#3b6629', '#9cc47a'], berry: Pair = ['#93405a', '#de8aa3'], teal: Pair = ['#1f6461', '#7fbfb8'];
+const ochre: Pair = ['#7a5c10', '#d9b25a'],
+  fern: Pair = ['#3b6629', '#9cc47a'],
+  berry: Pair = ['#93405a', '#de8aa3'],
+  teal: Pair = ['#1f6461', '#7fbfb8'];
 const soft = ([l, d]: Pair): Pair => [`${l}24`, `${d}2e`];
 const secondary: Pair = ['#4a5c48', '#a3b39c'];
 
@@ -25,8 +29,17 @@ export const forestTheme = defineTheme({
   },
   radius: { base: 8, multiplier: 1 },
   icons: forestIcons,
-  components: Object.fromEntries([['item', 'selected'], ['tree-list-item', 'selected'], ['file-input', 'mode:dropzone'], ['citation', 'variant:number']]
-    .map(([name, state]) => [name, { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } }])),
+  components: Object.fromEntries(
+    [
+      ['item', 'selected'],
+      ['tree-list-item', 'selected'],
+      ['file-input', 'mode:dropzone'],
+      ['citation', 'variant:number'],
+    ].map(([name, state]) => [
+      name,
+      { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } },
+    ]),
+  ),
   localTokens: {
     '--treetutor-font-reading': 'Literata, Georgia, "Times New Roman", serif',
     '--treetutor-module': '8px',
@@ -101,11 +114,23 @@ export const forestTheme = defineTheme({
     '--color-icon-error': ['#b3263a', '#f07f8a'],
     '--color-border-error': ['#b3263a', '#f07f8a'],
 
-    '--color-text-yellow': ochre, '--color-icon-yellow': ochre, '--color-border-yellow': ochre, '--color-background-yellow': soft(ochre),
-    '--color-text-green': fern, '--color-icon-green': fern, '--color-border-green': fern, '--color-background-green': soft(fern),
-    '--color-text-pink': berry, '--color-icon-pink': berry, '--color-border-pink': berry, '--color-background-pink': soft(berry),
+    '--color-text-yellow': ochre,
+    '--color-icon-yellow': ochre,
+    '--color-border-yellow': ochre,
+    '--color-background-yellow': soft(ochre),
+    '--color-text-green': fern,
+    '--color-icon-green': fern,
+    '--color-border-green': fern,
+    '--color-background-green': soft(fern),
+    '--color-text-pink': berry,
+    '--color-icon-pink': berry,
+    '--color-border-pink': berry,
+    '--color-background-pink': soft(berry),
     '--color-background-purple': soft(berry),
-    '--color-text-blue': teal, '--color-icon-blue': teal, '--color-border-blue': teal, '--color-background-blue': soft(teal),
+    '--color-text-blue': teal,
+    '--color-icon-blue': teal,
+    '--color-border-blue': teal,
+    '--color-background-blue': soft(teal),
 
     '--shadow-low': hairline,
     '--shadow-med': hairline,

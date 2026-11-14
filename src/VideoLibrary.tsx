@@ -7,58 +7,157 @@ import { ArrowPathIcon, FolderOpenIcon, TrashIcon } from '@heroicons/react/24/ou
 import VideoCard from './VideoCard';
 
 // Library rows carry no conversation, discussion text or production details.
-export type LibraryVideo = { id: string; title: string; description: string; duration: number | null; created: number; available?: false };
+export type LibraryVideo = {
+  id: string;
+  title: string;
+  description: string;
+  duration: number | null;
+  created: number;
+  available?: false;
+};
 
-export default function VideoLibrary({ api, activity }: { api: (path: string, body?: unknown) => Promise<any>; activity: string }) {
+export default function VideoLibrary({
+  api,
+  activity,
+}: {
+  api: (path: string, body?: unknown) => Promise<any>;
+  activity: string;
+}) {
   const [videos, setVideos] = useState<LibraryVideo[]>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [trashing, setTrashing] = useState<LibraryVideo>(), [busy, setBusy] = useState(false), [trashError, setTrashError] = useState('');
+  const [trashing, setTrashing] = useState<LibraryVideo>(),
+    [busy, setBusy] = useState(false),
+    [trashError, setTrashError] = useState('');
   const version = useRef(0);
   async function reveal(v: LibraryVideo) {
     setNotice('');
-    try { await api(`/api/videos/${v.id}/reveal`, {}); setNotice(`Opened the folder containing “${v.title}”.`); }
-    catch (e) { setNotice((e as Error).message); }
+    try {
+      await api(`/api/videos/${v.id}/reveal`, {});
+      setNotice(`Opened the folder containing “${v.title}”.`);
+    } catch (e) {
+      setNotice((e as Error).message);
+    }
   }
   async function trash() {
     const v = trashing!;
-    setBusy(true); setTrashError('');
+    setBusy(true);
+    setTrashError('');
     try {
       const result: { missing: boolean } = await api(`/api/videos/${v.id}/trash`, {});
       // Remove locally only after the server confirms; a failure keeps the entry and the dialog open.
-      setVideos(list => list?.filter(x => x.id !== v.id));
+      setVideos((list) => list?.filter((x) => x.id !== v.id));
       setTrashing(undefined);
-      setNotice(result.missing ? `Removed “${v.title}” from Videos. Its file was already missing.` : `Moved “${v.title}” to the system trash. Restore it from your desktop trash if needed.`);
+      setNotice(
+        result.missing
+          ? `Removed “${v.title}” from Videos. Its file was already missing.`
+          : `Moved “${v.title}” to the system trash. Restore it from your desktop trash if needed.`,
+      );
       requestAnimationFrame(() => document.getElementById('refresh-videos')?.focus());
-    } catch (e) { setTrashError((e as Error).message); }
-    finally { setBusy(false); }
+    } catch (e) {
+      setTrashError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   async function load() {
     const current = ++version.current;
     setError('');
-    try { const data = await api('/api/videos'); if (current === version.current) setVideos(data); }
-    catch (e) { if (current === version.current) setError((e as Error).message); }
+    try {
+      const data = await api('/api/videos');
+      if (current === version.current) setVideos(data);
+    } catch (e) {
+      if (current === version.current) setError((e as Error).message);
+    }
   }
-  useEffect(() => { void load(); return () => { version.current++; }; }, [activity]);
-  return <VStack gap={5} className="knowledge-content">
-    <VStack gap={2}>
-      <HStack gap={4} vAlign="end" wrap="wrap" className="library-head">
-        <VStack gap={2}><Heading level={1}>Videos</Heading><Text color="secondary" className="library-intro">Every saved video from your learning trees. Videos stay here after you delete the conversation they came from.</Text></VStack>
-        <Button id="refresh-videos" label="Refresh Videos" variant="secondary" icon={<ArrowPathIcon />} onClick={() => void load()} />
-      </HStack>
-      {error && <Text role="alert">{error}</Text>}
-      <Text role="status" color="secondary">{notice}</Text>
-      {!videos && !error && <Text role="status">Loading videos…</Text>}
-      {videos && !videos.length && <Text color="secondary">No saved videos yet. Ask the tutor for a video in any conversation.</Text>}
+  useEffect(() => {
+    void load();
+    return () => {
+      version.current++;
+    };
+  }, [activity]);
+  return (
+    <VStack gap={5} className="knowledge-content">
+      <VStack gap={2}>
+        <HStack gap={4} vAlign="end" wrap="wrap" className="library-head">
+          <VStack gap={2}>
+            <Heading level={1}>Videos</Heading>
+            <Text color="secondary" className="library-intro">
+              Every saved video from your learning trees. Videos stay here after you delete the
+              conversation they came from.
+            </Text>
+          </VStack>
+          <Button
+            id="refresh-videos"
+            label="Refresh Videos"
+            variant="secondary"
+            icon={<ArrowPathIcon />}
+            onClick={() => void load()}
+          />
+        </HStack>
+        {error && <Text role="alert">{error}</Text>}
+        <Text role="status" color="secondary">
+          {notice}
+        </Text>
+        {!videos && !error && <Text role="status">Loading videos…</Text>}
+        {videos && !videos.length && (
+          <Text color="secondary">
+            No saved videos yet. Ask the tutor for a video in any conversation.
+          </Text>
+        )}
+      </VStack>
+      {!!videos?.length && (
+        <section className="video-library" aria-label="Saved videos">
+          {videos.map((v) => (
+            <VideoCard
+              key={v.id}
+              artifact={{ ...v, status: 'ready', conversation: '' }}
+              media={`/api/videos/${v.id}/media`}
+              actions={
+                <>
+                  {v.available !== false && (
+                    <Button
+                      label="Show in folder"
+                      variant="ghost"
+                      size="sm"
+                      icon={<FolderOpenIcon />}
+                      aria-label={`Show “${v.title}” in folder`}
+                      onClick={() => void reveal(v)}
+                    />
+                  )}
+                  <Button
+                    label={v.available === false ? 'Remove from Videos' : 'Move to trash'}
+                    variant="ghost"
+                    size="sm"
+                    icon={<TrashIcon />}
+                    aria-label={`${v.available === false ? 'Remove' : 'Move'} “${v.title}” ${v.available === false ? 'from Videos' : 'to the system trash'}`}
+                    onClick={() => {
+                      setTrashError('');
+                      setTrashing(v);
+                    }}
+                  />
+                </>
+              }
+            />
+          ))}
+        </section>
+      )}
+      <AlertDialog
+        isOpen={!!trashing}
+        onOpenChange={(open) => {
+          if (!open && !busy) setTrashing(undefined);
+        }}
+        title={
+          trashing?.available === false
+            ? `Remove “${trashing?.title ?? ''}” from Videos?`
+            : `Move “${trashing?.title ?? ''}” to the trash?`
+        }
+        description={`${trashing?.available === false ? 'Its saved file is already missing, so only the library entry is removed.' : 'The video file moves to your system trash, where you can restore it.'} Your usage history is kept, and TreeTutor will not regenerate it.${trashError ? ` ${trashError}` : ''}`}
+        actionLabel={trashing?.available === false ? 'Remove from Videos' : 'Move to trash'}
+        cancelLabel="Keep video"
+        isActionLoading={busy}
+        onAction={() => void trash()}
+      />
     </VStack>
-    {!!videos?.length && <section className="video-library" aria-label="Saved videos">
-      {videos.map(v => <VideoCard key={v.id} artifact={{ ...v, status: 'ready', conversation: '' }} media={`/api/videos/${v.id}/media`} actions={<>
-        {v.available !== false && <Button label="Show in folder" variant="ghost" size="sm" icon={<FolderOpenIcon />} aria-label={`Show “${v.title}” in folder`} onClick={() => void reveal(v)} />}
-        <Button label={v.available === false ? 'Remove from Videos' : 'Move to trash'} variant="ghost" size="sm" icon={<TrashIcon />} aria-label={`${v.available === false ? 'Remove' : 'Move'} “${v.title}” ${v.available === false ? 'from Videos' : 'to the system trash'}`} onClick={() => { setTrashError(''); setTrashing(v); }} />
-      </>} />)}
-    </section>}
-    <AlertDialog isOpen={!!trashing} onOpenChange={open => { if (!open && !busy) setTrashing(undefined); }} title={trashing?.available === false ? `Remove “${trashing?.title ?? ''}” from Videos?` : `Move “${trashing?.title ?? ''}” to the trash?`}
-      description={`${trashing?.available === false ? 'Its saved file is already missing, so only the library entry is removed.' : 'The video file moves to your system trash, where you can restore it.'} Your usage history is kept, and TreeTutor will not regenerate it.${trashError ? ` ${trashError}` : ''}`}
-      actionLabel={trashing?.available === false ? 'Remove from Videos' : 'Move to trash'} cancelLabel="Keep video" isActionLoading={busy} onAction={() => void trash()} />
-  </VStack>;
+  );
 }

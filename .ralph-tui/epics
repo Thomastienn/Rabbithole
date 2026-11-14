@@ -1,22 +1,4 @@
 # Epics Ralph works on, one per line, in release order.
 # ralph and ralph --agent codex default to the first one;
 # ralph-afk works through all of them from top to bottom.
-TreeTutor-7t3
-TreeTutor-vm4
-TreeTutor-sh8
-TreeTutor-5ut
-TreeTutor-u7v
-TreeTutor-nwx
-TreeTutor-llr
-TreeTutor-q57
-TreeTutor-dx0
-TreeTutor-8mz
-TreeTutor-000
-TreeTutor-86c
-TreeTutor-133
-TreeTutor-4fl
-TreeTutor-zhf
-TreeTutor-yqe
-TreeTutor-y36
-TreeTutor-got
-TreeTutor-2li
+TreeTutor-p1k

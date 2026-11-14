@@ -12,26 +12,35 @@ import '@fontsource/literata/400.css';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
 Object.assign(window, { mermaid, THREE, katex, d3 });
-const root = document.getElementById('visual')!, tokens = document.head.appendChild(document.createElement('style'));
+const root = document.getElementById('visual')!,
+  tokens = document.head.appendChild(document.createElement('style'));
 let rendered = false;
 let explored: VisualPart[] = [];
 let reveal: VisualPart | undefined;
 let revealPending = false;
 const partOf = (element: Element) => {
-  const part = visualMessage({ type: 'branch', label: element.getAttribute('data-visual-label'), explanation: element.getAttribute('data-visual-explanation') });
+  const part = visualMessage({
+    type: 'branch',
+    label: element.getAttribute('data-visual-label'),
+    explanation: element.getAttribute('data-visual-explanation'),
+  });
   return part?.type === 'branch' ? part : undefined;
 };
-const same = (a: VisualPart, b?: VisualPart) => a.label === b?.label && a.explanation === b.explanation;
+const same = (a: VisualPart, b?: VisualPart) =>
+  a.label === b?.label && a.explanation === b.explanation;
 function tagParts() {
   for (const element of root.querySelectorAll('[data-visual-label][data-visual-explanation]')) {
     const part = partOf(element);
     if (!part || element.matches('input, select, textarea, [contenteditable]')) continue;
     element.setAttribute('tabindex', '0');
     if (!element.matches('button')) element.setAttribute('role', 'button');
-    const visited = explored.some(p => same(part, p));
+    const visited = explored.some((p) => same(part, p));
     element.toggleAttribute('data-visual-explored', visited);
     element.toggleAttribute('data-visual-reveal', same(part, reveal));
-    element.setAttribute('aria-label', `${visited ? 'Open explored branch' : 'Ask about'}: ${part.label}`);
+    element.setAttribute(
+      'aria-label',
+      `${visited ? 'Open explored branch' : 'Ask about'}: ${part.label}`,
+    );
     element.setAttribute('aria-description', part.explanation);
     if (revealPending && same(part, reveal)) {
       for (let parent = element.parentElement; parent; parent = parent.parentElement) {
@@ -46,10 +55,19 @@ function tagParts() {
 function activate(event: MouseEvent | KeyboardEvent) {
   const target = event.target instanceof Element ? event.target : null;
   const element = target?.closest('[data-visual-label][data-visual-explanation]');
-  if (!element || !root.contains(element) || element.matches('input, select, textarea, [contenteditable], :disabled, [aria-disabled=true]')) return;
+  if (
+    !element ||
+    !root.contains(element) ||
+    element.matches('input, select, textarea, [contenteditable], :disabled, [aria-disabled=true]')
+  )
+    return;
   const control = target?.closest('button, input, select, textarea, a, [contenteditable]');
   if (control && control !== element) return;
-  if (event instanceof KeyboardEvent && (event.repeat || element.matches('button') || !['Enter', ' '].includes(event.key))) return;
+  if (
+    event instanceof KeyboardEvent &&
+    (event.repeat || element.matches('button') || !['Enter', ' '].includes(event.key))
+  )
+    return;
   const part = partOf(element);
   if (!part) return;
   event.preventDefault();
@@ -57,13 +75,25 @@ function activate(event: MouseEvent | KeyboardEvent) {
 }
 root.addEventListener('click', activate);
 root.addEventListener('keydown', activate);
-new MutationObserver(tagParts).observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-visual-label', 'data-visual-explanation'] });
+new MutationObserver(tagParts).observe(root, {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  attributeFilter: ['data-visual-label', 'data-visual-explanation'],
+});
 
-addEventListener('message', event => {
+addEventListener('message', (event) => {
   if (event.source !== parent) return;
   const data = event.data;
-  if (data?.type === 'theme' && (data.scheme === 'light' || data.scheme === 'dark') && data.tokens && typeof data.tokens === 'object') {
-    const rules = Object.entries(data.tokens).filter(([k, v]) => /^--[\w-]+$/.test(k) && typeof v === 'string' && !/[;{}<]/.test(v)).map(([k, v]) => `${k}:${v}`);
+  if (
+    data?.type === 'theme' &&
+    (data.scheme === 'light' || data.scheme === 'dark') &&
+    data.tokens &&
+    typeof data.tokens === 'object'
+  ) {
+    const rules = Object.entries(data.tokens)
+      .filter(([k, v]) => /^--[\w-]+$/.test(k) && typeof v === 'string' && !/[;{}<]/.test(v))
+      .map(([k, v]) => `${k}:${v}`);
     tokens.textContent = `:root{color-scheme:${data.scheme};${rules.join(';')}}`;
     dispatchEvent(new Event('treetutor-theme'));
   }
@@ -88,4 +118,10 @@ addEventListener('message', event => {
 });
 
 // The host validates these height reports and tagged-part branch requests against this frame's window.
-new ResizeObserver(() => { if (rendered) parent.postMessage({ type: 'height', height: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); }).observe(document.body);
+new ResizeObserver(() => {
+  if (rendered)
+    parent.postMessage(
+      { type: 'height', height: Math.ceil(document.body.getBoundingClientRect().height) },
+      '*',
+    );
+}).observe(document.body);

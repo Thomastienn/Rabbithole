@@ -8,38 +8,93 @@ const hues = ['yellow', 'blue', 'pink', 'green'];
 export function renderDiagram(source: string, card: HTMLElement, dark: boolean): Promise<string> {
   const style = getComputedStyle(card);
   const probe = card.appendChild(document.createElement('span'));
-  const series = hues.map(hue => { probe.style.color = `var(--color-text-${hue})`; return getComputedStyle(probe).color; });
+  const series = hues.map((hue) => {
+    probe.style.color = `var(--color-text-${hue})`;
+    return getComputedStyle(probe).color;
+  });
   probe.remove();
   // Series fills carry surface-coloured labels; series inks are light in dark and dark in light.
-  const seriesVariables = Object.fromEntries(series.flatMap((color, i) => [
-    [`cScale${i}`, color], [`cScaleLabel${i}`, style.backgroundColor], [`pie${i + 1}`, color],
-    [`git${i}`, color], [`gitBranchLabel${i}`, style.backgroundColor],
-  ]));
+  const seriesVariables = Object.fromEntries(
+    series.flatMap((color, i) => [
+      [`cScale${i}`, color],
+      [`cScaleLabel${i}`, style.backgroundColor],
+      [`pie${i + 1}`, color],
+      [`git${i}`, color],
+      [`gitBranchLabel${i}`, style.backgroundColor],
+    ]),
+  );
   // Trusted app classes the worker may assign (A:::blue). Each also differs by border so colour is never the only cue.
-  const hex = (color: string) => { const c = document.createElement('canvas').getContext('2d')!; c.fillStyle = color; c.fillRect(0, 0, 1, 1); return '#' + [...c.getImageData(0, 0, 1, 1).data.slice(0, 3)].map(n => n.toString(16).padStart(2, '0')).join(''); };
-  const borders = ['stroke-width:2px', 'stroke-width:2px,stroke-dasharray:6 3', 'stroke-width:2px,stroke-dasharray:2 2', 'stroke-width:3.5px'];
-  const classes = hues.map((hue, i) => `classDef ${hue} fill:${hex(series[i])},color:${hex(style.backgroundColor)},stroke:${hex(style.color)},${borders[i]}`).join('\n');
-  const styled = /^\s*(?:flowchart|graph)\b/.test(source.replace(/^\s*%%[^\n]*/gm, '')) ? `${source}\n${classes}` : source;
+  const hex = (color: string) => {
+    const c = document.createElement('canvas').getContext('2d')!;
+    c.fillStyle = color;
+    c.fillRect(0, 0, 1, 1);
+    return (
+      '#' +
+      [...c.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+        .map((n) => n.toString(16).padStart(2, '0'))
+        .join('')
+    );
+  };
+  const borders = [
+    'stroke-width:2px',
+    'stroke-width:2px,stroke-dasharray:6 3',
+    'stroke-width:2px,stroke-dasharray:2 2',
+    'stroke-width:3.5px',
+  ];
+  const classes = hues
+    .map(
+      (hue, i) =>
+        `classDef ${hue} fill:${hex(series[i])},color:${hex(style.backgroundColor)},stroke:${hex(style.color)},${borders[i]}`,
+    )
+    .join('\n');
+  const styled = /^\s*(?:flowchart|graph)\b/.test(source.replace(/^\s*%%[^\n]*/gm, ''))
+    ? `${source}\n${classes}`
+    : source;
   const render = queue.then(async () => {
     mermaid.initialize({
-      startOnLoad: false, securityLevel: 'strict', htmlLabels: false,
-      flowchart: { htmlLabels: false }, suppressErrorRendering: true,
-      maxTextSize: 17 * 1024, theme: 'base', look: 'classic',
+      startOnLoad: false,
+      securityLevel: 'strict',
+      htmlLabels: false,
+      flowchart: { htmlLabels: false },
+      suppressErrorRendering: true,
+      maxTextSize: 17 * 1024,
+      theme: 'base',
+      look: 'classic',
       themeVariables: {
         darkMode: dark,
-        background: style.backgroundColor, fontSize: style.fontSize,
-        primaryColor: style.backgroundColor, secondaryColor: style.backgroundColor, tertiaryColor: style.backgroundColor,
-        primaryTextColor: style.color, secondaryTextColor: style.color, tertiaryTextColor: style.color, textColor: style.color, lineColor: style.color,
-        primaryBorderColor: style.borderColor, secondaryBorderColor: style.borderColor, tertiaryBorderColor: style.borderColor, fontFamily: style.fontFamily,
-        edgeLabelBackground: style.backgroundColor, labelBackground: style.backgroundColor,
-        pieSectionTextColor: style.backgroundColor, pieStrokeColor: style.backgroundColor, pieOuterStrokeColor: style.borderColor,
-        pieTitleTextColor: style.color, pieLegendTextColor: style.color, pieOpacity: '1',
-        ...seriesVariables, xyChart: { plotColorPalette: series.join(',') },
+        background: style.backgroundColor,
+        fontSize: style.fontSize,
+        primaryColor: style.backgroundColor,
+        secondaryColor: style.backgroundColor,
+        tertiaryColor: style.backgroundColor,
+        primaryTextColor: style.color,
+        secondaryTextColor: style.color,
+        tertiaryTextColor: style.color,
+        textColor: style.color,
+        lineColor: style.color,
+        primaryBorderColor: style.borderColor,
+        secondaryBorderColor: style.borderColor,
+        tertiaryBorderColor: style.borderColor,
+        fontFamily: style.fontFamily,
+        edgeLabelBackground: style.backgroundColor,
+        labelBackground: style.backgroundColor,
+        pieSectionTextColor: style.backgroundColor,
+        pieStrokeColor: style.backgroundColor,
+        pieOuterStrokeColor: style.borderColor,
+        pieTitleTextColor: style.color,
+        pieLegendTextColor: style.color,
+        pieOpacity: '1',
+        ...seriesVariables,
+        xyChart: { plotColorPalette: series.join(',') },
       },
     });
     const { svg } = await mermaid.render(`diagram-${crypto.randomUUID()}`, styled);
     const drawing = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;
-    if (drawing.localName !== 'svg' || drawing.querySelector('parsererror, foreignObject, a, script, image')) throw new Error('Unsupported diagram output.');
+    if (
+      drawing.localName !== 'svg' ||
+      drawing.querySelector('parsererror, foreignObject, a, script, image')
+    )
+      throw new Error('Unsupported diagram output.');
     const [, , width, height] = (drawing.getAttribute('viewBox') ?? '').split(/\s+/).map(Number);
     if (!(width > 0 && height > 0)) throw new Error('Diagram has no drawing area.');
     drawing.setAttribute('width', String(Math.ceil(width)));
@@ -51,6 +106,9 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
     // SVG images cannot execute scripts or follow links. No HTML insertion or bindFunctions.
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(drawing))}`;
   });
-  queue = render.then(() => {}, () => {});
+  queue = render.then(
+    () => {},
+    () => {},
+  );
   return render;
 }

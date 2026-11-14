@@ -5,12 +5,16 @@ import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { harborIcons } from './icons';
 
-const mist = '#dde5ee', pine = '#1a2433';
+const mist = '#dde5ee',
+  pine = '#1a2433';
 const hairline = 'inset 0 0 0 1px light-dark(#1a243326, #dde5ee1f)';
 
 // Series inks in the same hue slots as Paperback: yellow = sand, green = sea green, pink = coral rose, blue = slate blue.
 type Pair = [light: string, dark: string];
-const sand: Pair = ['#7a5c10', '#d9b25a'], sea: Pair = ['#2c6a4c', '#8cc7a5'], coral: Pair = ['#9a3f45', '#e8948f'], slate: Pair = ['#3a5a8c', '#9ab4e0'];
+const sand: Pair = ['#7a5c10', '#d9b25a'],
+  sea: Pair = ['#2c6a4c', '#8cc7a5'],
+  coral: Pair = ['#9a3f45', '#e8948f'],
+  slate: Pair = ['#3a5a8c', '#9ab4e0'];
 const soft = ([l, d]: Pair): Pair => [`${l}24`, `${d}2e`];
 const secondary: Pair = ['#4a5668', '#a0adbd'];
 
@@ -25,8 +29,17 @@ export const harborTheme = defineTheme({
   },
   radius: { base: 8, multiplier: 1 },
   icons: harborIcons,
-  components: Object.fromEntries([['item', 'selected'], ['tree-list-item', 'selected'], ['file-input', 'mode:dropzone'], ['citation', 'variant:number']]
-    .map(([name, state]) => [name, { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } }])),
+  components: Object.fromEntries(
+    [
+      ['item', 'selected'],
+      ['tree-list-item', 'selected'],
+      ['file-input', 'mode:dropzone'],
+      ['citation', 'variant:number'],
+    ].map(([name, state]) => [
+      name,
+      { [state]: { '--color-text-secondary': `light-dark(${secondary[0]}, ${secondary[1]})` } },
+    ]),
+  ),
   localTokens: {
     '--treetutor-font-reading': 'Literata, Georgia, "Times New Roman", serif',
     '--treetutor-module': '8px',
@@ -101,11 +114,23 @@ export const harborTheme = defineTheme({
     '--color-icon-error': ['#b3263a', '#f07f8a'],
     '--color-border-error': ['#b3263a', '#f07f8a'],
 
-    '--color-text-yellow': sand, '--color-icon-yellow': sand, '--color-border-yellow': sand, '--color-background-yellow': soft(sand),
-    '--color-text-green': sea, '--color-icon-green': sea, '--color-border-green': sea, '--color-background-green': soft(sea),
-    '--color-text-pink': coral, '--color-icon-pink': coral, '--color-border-pink': coral, '--color-background-pink': soft(coral),
+    '--color-text-yellow': sand,
+    '--color-icon-yellow': sand,
+    '--color-border-yellow': sand,
+    '--color-background-yellow': soft(sand),
+    '--color-text-green': sea,
+    '--color-icon-green': sea,
+    '--color-border-green': sea,
+    '--color-background-green': soft(sea),
+    '--color-text-pink': coral,
+    '--color-icon-pink': coral,
+    '--color-border-pink': coral,
+    '--color-background-pink': soft(coral),
     '--color-background-purple': soft(coral),
-    '--color-text-blue': slate, '--color-icon-blue': slate, '--color-border-blue': slate, '--color-background-blue': soft(slate),
+    '--color-text-blue': slate,
+    '--color-icon-blue': slate,
+    '--color-border-blue': slate,
+    '--color-background-blue': soft(slate),
 
     '--shadow-low': hairline,
     '--shadow-med': hairline,

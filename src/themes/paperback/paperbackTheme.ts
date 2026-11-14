@@ -4,14 +4,18 @@ import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { paperbackIcons } from './icons';
 
-const paper = '#efe6d6', bark = '#1f1a15';
+const paper = '#efe6d6',
+  bark = '#1f1a15';
 // Hairline seams, never drop shadows.
 const hairline = 'inset 0 0 0 1px light-dark(#1f1a1526, #efe6d61f)';
 
 // Series inks: amber, leaf, rust, lichen. Astryx hue slots carry them so diagrams and tints follow:
 // yellow = amber, green = leaf, pink = rust, blue = lichen.
 type Pair = [light: string, dark: string];
-const amber: Pair = ['#85600c', '#dfae4e'], leaf: Pair = ['#46642a', '#9dba6e'], rust: Pair = ['#9a4a22', '#d68560'], lichen: Pair = ['#27685f', '#86b8ae'];
+const amber: Pair = ['#85600c', '#dfae4e'],
+  leaf: Pair = ['#46642a', '#9dba6e'],
+  rust: Pair = ['#9a4a22', '#d68560'],
+  lichen: Pair = ['#27685f', '#86b8ae'];
 const soft = ([l, d]: Pair): Pair => [`${l}24`, `${d}2e`];
 
 export const paperbackTheme = defineTheme({
@@ -27,8 +31,17 @@ export const paperbackTheme = defineTheme({
   radius: { base: 8, multiplier: 1 },
   icons: paperbackIcons,
   // Neutral bumps secondary text to its own greys in these states; keep the paper palette instead.
-  components: Object.fromEntries([['item', 'selected'], ['tree-list-item', 'selected'], ['file-input', 'mode:dropzone'], ['citation', 'variant:number']]
-    .map(([name, state]) => [name, { [state]: { '--color-text-secondary': 'light-dark(#5f5547, #ab9e8b)' } }])),
+  components: Object.fromEntries(
+    [
+      ['item', 'selected'],
+      ['tree-list-item', 'selected'],
+      ['file-input', 'mode:dropzone'],
+      ['citation', 'variant:number'],
+    ].map(([name, state]) => [
+      name,
+      { [state]: { '--color-text-secondary': 'light-dark(#5f5547, #ab9e8b)' } },
+    ]),
+  ),
   localTokens: {
     // Reply and question reading face.
     '--treetutor-font-reading': 'Literata, Georgia, "Times New Roman", serif',
@@ -112,11 +125,23 @@ export const paperbackTheme = defineTheme({
     '--color-border-error': ['#b3263a', '#f07f8a'],
 
     // Series inks in the Astryx hue slots: tint and series colours only.
-    '--color-text-yellow': amber, '--color-icon-yellow': amber, '--color-border-yellow': amber, '--color-background-yellow': soft(amber),
-    '--color-text-green': leaf, '--color-icon-green': leaf, '--color-border-green': leaf, '--color-background-green': soft(leaf),
-    '--color-text-pink': rust, '--color-icon-pink': rust, '--color-border-pink': rust, '--color-background-pink': soft(rust),
+    '--color-text-yellow': amber,
+    '--color-icon-yellow': amber,
+    '--color-border-yellow': amber,
+    '--color-background-yellow': soft(amber),
+    '--color-text-green': leaf,
+    '--color-icon-green': leaf,
+    '--color-border-green': leaf,
+    '--color-background-green': soft(leaf),
+    '--color-text-pink': rust,
+    '--color-icon-pink': rust,
+    '--color-border-pink': rust,
+    '--color-background-pink': soft(rust),
     '--color-background-purple': soft(rust),
-    '--color-text-blue': lichen, '--color-icon-blue': lichen, '--color-border-blue': lichen, '--color-background-blue': soft(lichen),
+    '--color-text-blue': lichen,
+    '--color-icon-blue': lichen,
+    '--color-border-blue': lichen,
+    '--color-background-blue': soft(lichen),
 
     '--shadow-low': hairline,
     '--shadow-med': hairline,

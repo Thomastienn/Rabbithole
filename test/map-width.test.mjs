@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampMapWidth, keyMapWidth, maxMapWidth, resetMapWidth, savedMapWidth } from '../src/mapWidth.ts';
+import {
+  clampMapWidth,
+  keyMapWidth,
+  maxMapWidth,
+  resetMapWidth,
+  savedMapWidth,
+} from '../src/mapWidth.ts';
 
 test('map width clamps between 20rem and 60% of the workspace', () => {
   assert.equal(clampMapWidth(10, 100), 20);
