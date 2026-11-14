@@ -14,7 +14,6 @@ export const OVERSIZED = [
   'server/app.mjs',
   'server/store.mjs',
   'src/shell/ChatPage.tsx',
-  'src/knowledge/KnowledgePage.tsx',
   'src/map/TreeOverview.tsx',
 ];
 

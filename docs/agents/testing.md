@@ -17,8 +17,8 @@ tests are never the check for a routine ticket.
    `.tsx`, extensionless relative imports and CSS. `render(element)` from
    `test/support/render.mjs` mounts into a fresh jsdom with `act` and returns
    `{ container, act, cleanup }`; pass `cleanup` to `t.after`. Put the test at
-   `test/<area>/<component>.test.mjs`; `test/chat/turn-rail.test.mjs` is the example. Run one
-   with `node --import ./test/support/tsx.mjs --test test/chat/turn-rail.test.mjs`; for a folder
+   `test/<area>/<component>.test.mjs`; `test/chat/navigation.test.mjs` is the example. Run one
+   with `node --import ./test/support/tsx.mjs --test test/chat/navigation.test.mjs`; for a folder
    pass a quoted glob (`"test/chat/*.test.mjs"`), since `node --test` rejects a bare directory.
    `render(element, setupWindow)` optionally supplies missing DOM APIs before mounting. Keep
    those stubs local to the test; they do not prove native browser behavior. The map tests
@@ -65,6 +65,59 @@ browser (pixel geometry, CSS cascade, pointer gestures, scrolling or media playb
 cover one again, add it to a smoke script.
 
 <!-- One line per lost check: script, check, reason. -->
+
+- `verify-knowledge`: correction controls have visible focus outlines; computed CSS and focus-visible rendering.
+- `verify-knowledge`: switching to Knowledge and back restores the exact rendered map transform; browser transforms (graph state and correction persistence remain tested).
+- `verify-knowledge`: desktop and phone panels fit without horizontal overflow; responsive CSS geometry.
+- `verify-knowledge`: whole topic labels remain readable and clear of points at phone Fit; measured text and SVG geometry.
+- `verify-knowledge-map`: concept rings are round, have the specified paper outline and sit inside the fitted field without overlap; computed CSS and measured bounds (placement/fit math remains unit tested).
+- `verify-knowledge-map`: topic regions use distinct translucent inks and contain their measured points; CSS cascade and SVG geometry (membership and containment math remain tested).
+- `verify-knowledge-map`: topic labels are centered, clear of points, fully fitted, unbroken and unchanged in text size at every zoom and phone width; browser text layout and transforms.
+- `verify-knowledge-map`: selected and plain relation strokes have the specified paper/quiet colors and widths; computed SVG styles (relation kinds, selected attributes and arrow markers remain tested).
+- `verify-knowledge-map`: knowledge text and topic labels meet AA contrast in both appearances; computed CSS (theme token contrast remains tested).
+- `verify-knowledge-map`: field, detail and concepts are frameless, labels have no chip, the field is deep and details cast no drop shadow; computed CSS.
+- `verify-knowledge-map`: details use Literata, point labels use Archivo and controls have paper focus rings; loaded fonts and computed CSS.
+- `verify-knowledge-map`: concept labels actually hide below 75% while accessible names remain in Chromium's accessibility tree; CSS clipping and native accessibility (classes and DOM names remain tested).
+- `verify-knowledge-map`: wheel zoom, pointer drag and Fit restore the rendered transform; native gestures and measured field bounds.
+- `verify-knowledge-map`: Tab reaches every concept and focus pans each fully inside the field; native focus traversal and browser bounds.
+- `verify-vim-bindings`: aliases pan/move/zoom/fit the rendered map by the specified distances while preserving conversation focus and announcements; React Flow measurements (key mappings, movement math and standard keyboard smoke coverage remain).
+- `verify-vim-bindings`: checkbox focus is visible and native Tab/Space activation works; native traversal and computed focus styles (checkbox state/callbacks remain component tested).
+- `verify-vim-bindings`: letters in real editable/read-only fields and open menus never move the rendered map; browser keyboard/IME integration (modifier/IME exclusions remain unit tested).
+- `verify-narrow`: every page fits at 390px with no sideways scroll outside code/map surfaces; responsive CSS geometry.
+- `verify-narrow`: Read is one 390px column with the map hidden, the composer onscreen and Map fills the width; responsive CSS visibility and measured bounds.
+- `verify-narrow`: the Contents drawer's native Escape/Close path restores band focus after its animation; native modal behavior and transitions (drawer controls and callbacks remain tested).
+- `verify-narrow`: band/drawer text is AA, focus rings reach 3:1 and focused controls stay inside the drawer; computed CSS and geometry.
+- `verify-narrow`: the layout-save alert and Retry fit inside the phone band; responsive CSS geometry (alert and Retry handler remain tested).
+- `verify-palette`: saved legacy bubble tints never change the rendered question bubble color; CSS cascade (neutral theme tokens and absence of tint controls remain tested).
+- `verify-palette`: actual bubble text meets AA over its composited fill in both appearances; computed CSS (token compositing remains unit tested).
+- `verify-palette`: Mermaid SVGs render paper text on the raised surface with all series inks in order; browser rendering and computed CSS (palette inputs and series order remain unit tested).
+- `verify-shell-band`: native Tab order traverses the band and Settings restores opener focus; browser focus navigation (DOM control order and callback wiring remain tested; Settings also retains its smoke script).
+- `verify-shell-band`: Read/Map/Knowledge/Videos and Library paint the expected visible page; CSS visibility (current-view attributes and action callbacks remain tested).
+- `verify-shell-band`: band/current-tab/tooltip text and paper focus rings meet contrast minima; computed CSS including hover tooltip rendering.
+- `verify-shell-band`: search results keep popover colors and AA contrast outside the band; CSS cascade (search behavior remains component tested).
+- `verify-shell-band`: layout failure pill text meets AA against its rendered background; computed CSS (failure status, saver recovery and Retry remain tested).
+- `verify-polish`: visible map, chat, model menu and Connections text meet AA after compositing ancestor fills; browser visibility, typography and CSS cascade.
+- `verify-polish`: reduced motion leaves no visible transitions/animations and opening chat never shifts the composer; native media queries and measured animation/layout.
+- `verify-polish`: every visible whole-app control has an accessible name; browser visibility and native accessibility audit (component names remain tested).
+- `verify-polish`: 75 native Tab stops through map/chat show focus rings and stay onscreen; browser traversal, scrolling and computed focus styles.
+- `verify-polish`: 390px, 720px (emulated 200% zoom), 768px and 2560px views avoid horizontal overflow and keep the composer reachable; responsive CSS geometry.
+- `verify-states`: the first-run composer is exactly 560px wide in both appearances; CSS geometry (first-question controls remain tested).
+- `verify-states`: inherited context uses its branch-family border ink; computed CSS (family ink assignments remain tested).
+- `verify-states`: the generated iframe's native details reveal opens on Enter with a solid focus outline; native iframe execution, focus and CSS.
+- `verify-states`: visual, diagram and video viewers trap native Tab focus and Escape returns to their openers; native modal/iframe focus behavior (video-player smoke remains).
+- `verify-states`: ready diagrams load with nonzero natural image width; native image decoding.
+- `verify-states`: failed media use the error border while cancellation has no border, and failure/reply text meets AA; computed CSS (failure labels, reasons and retries remain tested).
+- `verify-states`: loading skeletons have the specified rendered widths/heights; browser geometry (four labelled skeletons remain component tested).
+- `verify-states`: failed video text and Retry fit inside their card at 390px in both appearances; responsive CSS geometry.
+- `verify-themes`: applying each theme changes actual surfaces, branch inks and neutral bubbles on the map and chat; CSS cascade (all authored/shipped token values remain tested).
+- `verify-themes`: theme tiles render their own ground, neutral bubble, accent and four inks, matching the applied palette; nested theme CSS (tile structure and token inputs remain tested).
+- `verify-themes`: selected theme tiles draw the solid outline; computed CSS (checked state and check icon remain tested).
+- `verify-themes`: the saved theme paints on the first render after a real reload; browser startup/paint timing (stored choices and fallbacks remain tested).
+- `verify-themes`: Settings tiles fit without overflow at 390px for all six themes; responsive CSS geometry.
+- `verify-appearance`: map background and React Flow dark class follow app Appearance across reload and live OS-scheme changes; browser media query/CSS integration (preference restoration remains tested).
+- `verify-appearance`: Archivo/Literata fonts load from self-hosted resources with no remote font stylesheet; native font loading (theme typography remains tested).
+- `verify-appearance`: Mermaid output repaints in app ink when Appearance/System changes despite the opposite OS scheme; browser media query/render integration (palette mode inputs remain unit tested).
+- `verify-appearance`: native ArrowDown selects the next appearance radio and moves focus; browser radio-key behavior (labelled radios and selection callbacks remain component tested).
 
 - `verify-tree-overview`: exact rendered viewport stays unchanged on return from focused chat; browser transforms and resizing.
 - `verify-tree-overview`: the narrow composer stays inside the viewport without horizontal overflow; responsive CSS geometry.

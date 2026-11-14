@@ -13,6 +13,7 @@ import { Theme } from '@astryxdesign/core/theme';
 import { themes } from './astryx-themes';
 import ChatPage from './ChatPage';
 import { savedAppearance, savedTheme, type Appearance, type ThemeChoice } from './appearance';
+import { savePreference } from './preferences';
 // Last, so the map and app styles follow every other stylesheet, in this order.
 import '@xyflow/react/dist/style.css';
 import '../styles/shell.css';
@@ -41,20 +42,12 @@ function App() {
         appearance={appearance}
         setAppearance={(next) => {
           setAppearance(next);
-          try {
-            localStorage.setItem('treetutor.appearance', next);
-          } catch {
-            /* Preference stays for this session only. */
-          }
+          savePreference('appearance', next);
         }}
         theme={theme}
         setTheme={(next) => {
           setTheme(next);
-          try {
-            localStorage.setItem('treetutor.theme', next);
-          } catch {
-            /* Preference stays for this session only. */
-          }
+          savePreference('theme', next);
         }}
       />
     </Theme>

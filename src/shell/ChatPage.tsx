@@ -9,7 +9,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { flushSync } from 'react-dom';
-import { HStack, Layout as Regions, LayoutContent, VStack } from '@astryxdesign/core/Layout';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -22,7 +22,6 @@ import {
 } from '@astryxdesign/core/DropdownMenu';
 import {
   AdjustmentsHorizontalIcon,
-  Cog6ToothIcon,
   EllipsisHorizontalIcon,
   XMarkIcon,
   ArrowUturnLeftIcon,
@@ -40,8 +39,6 @@ import {
   FilmIcon,
   BookOpenIcon,
   MapIcon,
-  ChevronDownIcon,
-  Bars3Icon,
   RectangleStackIcon,
   ListBulletIcon,
   CheckIcon,
@@ -49,9 +46,10 @@ import {
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import TreeSearch from './TreeSearch';
+import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
+import { savedVim, savePreference } from './preferences';
 import { treeSearchSource } from './treeSearch';
 import { restoredTree, rootOf } from '../map/mapState';
-import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import {
   ChatComposer,
@@ -84,6 +82,8 @@ import DiagramCard from '../media/DiagramCard';
 import VideoCard from '../media/VideoCard';
 import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
 import CopyButton from '../markdown/CopyButton';
+import { FirstQuestion, TreeLoading, TreeLoadFailure } from '../chat/ChatStates';
+import { firstQuestion as startFirstQuestion } from '../chat/firstQuestion';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from '../settings/SettingsWindow';
 import type { Appearance, ThemeChoice } from './appearance';
 import {
@@ -102,7 +102,6 @@ import { renderMarkdown, rawOffsets, rawRange } from '../markdown/markdown';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
-import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
 import { conversationAddresses, inkStyle, treeGroups, markLibraryScrolling } from '../map/treeList';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { effortLabel, type Model } from '../settings/models';
@@ -761,13 +760,7 @@ export default function ChatPage({
   const renamed = useRef(new Map<string, string>());
   const streams = useRef(new Map<string, AbortController>());
   // Only this boolean is stored, per browser and app origin; unreadable storage means off.
-  const [vim, setVim] = useState(() => {
-    try {
-      return localStorage.getItem('treetutor.vim') === 'on';
-    } catch {
-      return false;
-    }
-  });
+  const [vim, setVim] = useState(savedVim);
   const [mapWidth, setMapWidth] = useState(() => {
     try {
       return savedMapWidth(localStorage.getItem('treetutor.map-width'));
@@ -1293,25 +1286,26 @@ export default function ChatPage({
     setBusy(true);
     setError('');
     try {
-      const next: Tree = await api(
-        '/api/trees',
+      const result = await startFirstQuestion<Tree>(
+        question,
         firstModel && currentModel ? { ...firstModel, model: currentModel.model } : {},
+        {
+          api,
+          refresh,
+          send,
+          open: async (next) => {
+            overviewOrigin.current = undefined;
+            focusComposer.current = true;
+            setRoot(next.id);
+            setTab('learning');
+            setOverview(false);
+            setExpanded(false);
+            await select(next.id);
+            setDrafts((d) => ({ ...d, first: '', [next.id]: question }));
+          },
+        },
       );
-      await refresh();
-      overviewOrigin.current = undefined;
-      focusComposer.current = true;
-      setRoot(next.id);
-      setTab('learning');
-      setOverview(false);
-      setExpanded(false);
-      await select(next.id);
-      setDrafts((d) => ({ ...d, first: '', [next.id]: question }));
-      await send(question, next);
-      // A first send the server never saved would leave an empty tree in the library: remove it and give the question back.
-      const saved: Tree = await api(`/api/trees/${next.id}`);
-      if (!saved.messages.length) {
-        await api(`/api/trees/${next.id}/delete`, { conversation: next.id, count: 1 });
-        await refresh();
+      if (result.empty) {
         // Keep send's error on screen; only drop the selection so the blank composer returns.
         ++request.current;
         selected.current = undefined;
@@ -1321,7 +1315,7 @@ export default function ChatPage({
         return;
       }
       requestAnimationFrame(() => {
-        if (selected.current === next.id) composer.current?.focus();
+        if (selected.current === result.id) composer.current?.focus();
       });
     } catch (e) {
       setError((e as Error).message);
@@ -1812,25 +1806,6 @@ export default function ChatPage({
   );
   const reading = tab === 'learning' && (!overview || !root),
     mapping = tab === 'learning' && overview && !!root;
-  const viewTab = (
-    label: string,
-    icon: React.ReactNode,
-    current: boolean,
-    onClick: () => void,
-    disabled = false,
-  ) => (
-    <Button
-      key={label}
-      className="view-tab"
-      label={label}
-      icon={icon}
-      variant="ghost"
-      size="sm"
-      aria-current={current ? 'page' : undefined}
-      isDisabled={disabled}
-      onClick={onClick}
-    />
-  );
   const views = [
     viewTab('Read', <BookOpenIcon />, reading, () => {
       setTab('learning');
@@ -1875,163 +1850,35 @@ export default function ChatPage({
     );
   // Narrow band (mockup Narrow): views, the outline and Settings move into this drawer; any choice inside closes it.
   const narrowDrawer = (
-    <Drawer
-      isOpen={drawer}
-      onOpenChange={setDrawer}
-      label="Contents"
-      side="start"
-      width={320}
-      padding={0}
-    >
-      <Regions
-        padding={2}
-        header={<DrawerHeader className="drawer-head" title="TreeTutor" onOpenChange={setDrawer} />}
-        content={
-          <LayoutContent padding={0}>
-            <VStack
-              gap={0}
-              className="band-drawer"
-              onClick={(e) => {
-                if ((e.target as Element).closest('button')) setDrawer(false);
-              }}
-            >
-              <nav aria-label="Views" className="drawer-views">
-                {views.slice(0, 2)}
-                {viewTab('Library', <RectangleStackIcon />, tab === 'library', () =>
-                  setTab('library'),
-                )}
-                {views.slice(2)}
-              </nav>
-              {contents()}
-              <Button
-                className="view-tab drawer-settings"
-                label="Settings"
-                icon={<Cog6ToothIcon />}
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  openSettings(
-                    undefined,
-                    undefined,
-                    document.querySelector<HTMLElement>('.band-contents'),
-                  )
-                }
-              />
-            </VStack>
-          </LayoutContent>
-        }
-      />
-    </Drawer>
+    <ContentsDrawer
+      tab={tab}
+      drawer={drawer}
+      setDrawer={setDrawer}
+      views={views}
+      contents={contents()}
+      library={() => setTab('library')}
+      settings={() =>
+        openSettings(undefined, undefined, document.querySelector<HTMLElement>('.band-contents'))
+      }
+    />
   );
-  const saveAlert = root && state && layoutFailed && (
-    <HStack gap={1} vAlign="center" role="alert" className="band-save">
-      <Text type="supporting" weight="semibold">
-        Map layout not saved.
-        <span className="sr-only"> It retries every minute while this tree stays open.</span>
-      </Text>
-      <Button
-        label="Retry saving layout"
-        variant="ghost"
-        size="sm"
-        onClick={() => void saver.current?.flush()}
-      />
-    </HStack>
-  );
-  const band = mobile ? (
-    <header className="shell-band">
-      <IconButton
-        className="band-contents"
-        label="Contents"
-        tooltip="Contents"
-        icon={<Bars3Icon />}
-        variant="ghost"
-        size="sm"
-        aria-haspopup="dialog"
-        aria-expanded={drawer}
-        onClick={() => setDrawer(true)}
-      />
-      <Text className="band-mark" weight="bold">
-        TreeTutor
-      </Text>
-      <HStack gap={1} vAlign="center" className="band-tools">
-        <IconButton
-          className="tree-search"
-          label="Search learning trees"
-          tooltip="Search learning trees"
-          icon={<MagnifyingGlassIcon />}
-          variant="ghost"
-          size="sm"
-          aria-haspopup="dialog"
-          onClick={() => setSearching(true)}
-        />
-        <IconButton
-          className="new-chat"
-          label={busy ? 'Opening…' : 'New chat'}
-          tooltip="New chat"
-          icon={<PlusIcon />}
-          variant="ghost"
-          size="sm"
-          isDisabled={busy}
-          onClick={newChat}
-        />
-      </HStack>
-      {saveAlert}
-    </header>
-  ) : (
-    <header className="shell-band">
-      <Text className="band-mark" weight="bold">
-        TreeTutor
-      </Text>
-      <Button
-        className="tree-switcher"
-        label={rootTitle ? `${rootTitle} · Learning trees` : 'Learning trees'}
-        tooltip="Open the library of learning trees"
-        variant="ghost"
-        size="sm"
-        aria-current={tab === 'library' ? 'page' : undefined}
-        onClick={() => setTab('library')}
-      >
-        <span className="tree-switcher-content">
-          <span className="tree-switcher-title">{rootTitle ?? 'Learning trees'}</span>
-          <ChevronDownIcon className="tree-switcher-icon" aria-hidden />
-        </span>
-      </Button>
-      <nav aria-label="Views" className="view-tabs">
-        {views}
-      </nav>
-      <HStack gap={1} vAlign="center" className="band-tools">
-        {saveAlert}
-        <IconButton
-          className="tree-search"
-          label="Search learning trees"
-          tooltip="Search learning trees"
-          icon={<MagnifyingGlassIcon />}
-          variant="ghost"
-          size="sm"
-          aria-haspopup="dialog"
-          onClick={() => setSearching(true)}
-        />
-        <Button
-          className="new-chat"
-          label={busy ? 'Opening…' : 'New chat'}
-          variant="ghost"
-          size="sm"
-          icon={<PlusIcon />}
-          isDisabled={busy}
-          onClick={newChat}
-        />
-        <IconButton
-          className="band-settings"
-          label="Settings"
-          tooltip="Settings"
-          icon={<Cog6ToothIcon />}
-          variant="ghost"
-          size="sm"
-          aria-current={tab === 'settings' ? 'page' : undefined}
-          onClick={(e) => openSettings(undefined, undefined, e.currentTarget)}
-        />
-      </HStack>
-    </header>
+  const band = (
+    <ShellBand
+      mobile={mobile}
+      rootTitle={rootTitle}
+      tab={tab}
+      busy={busy}
+      drawer={drawer}
+      views={views}
+      saveAlert={
+        root && state && layoutFailed && <SaveAlert retry={() => void saver.current?.flush()} />
+      }
+      setDrawer={setDrawer}
+      search={() => setSearching(true)}
+      newChat={newChat}
+      library={() => setTab('library')}
+      settings={(e) => openSettings(undefined, undefined, e.currentTarget)}
+    />
   );
   const chooseModel = (provider: string, model: string, effort: string | null) =>
     tree ? changeModel(provider, model, effort) : setFirstModel({ provider, model, effort });
@@ -2173,48 +2020,17 @@ export default function ChatPage({
     </DropdownMenu>
   );
   const firstQuestion = (
-    <VStack className="first-question" gap={3} hAlign="center">
-      <Heading level={2}>Your first tree starts with a question.</Heading>
-      <ChatComposer
-        elevation="none"
-        value={drafts.first ?? ''}
-        onChange={(value) => setDrafts((d) => ({ ...d, first: value }))}
-        footerActions={modelMenu}
-        isDisabled={busy}
-        sendButton={
-          !currentModel ? (
-            <IconButton label="Send" icon={<ArrowUpIcon />} variant="primary" isDisabled />
-          ) : undefined
-        }
-        onSubmit={(text) => {
-          if (currentModel) void create(text);
-        }}
-        input={
-          <ChatComposerInput
-            label="Your question"
-            maxRows={4}
-            value={drafts.first ?? ''}
-            onChange={(value) => setDrafts((d) => ({ ...d, first: value }))}
-            isDisabled={busy || !currentModel}
-            placeholder="What would you like to understand?"
-          />
-        }
-      />
-      {modelError && (
-        <HStack className="failure-banner" role="alert" gap={2}>
-          <Text>{modelError}</Text>
-          <Button
-            label="Retry loading models"
-            variant="secondary"
-            size="sm"
-            onClick={() => void loadModels()}
-          />
-        </HStack>
-      )}
-      {models && !models.length && (
-        <Text color="secondary">No model is available. Open Settings to connect one.</Text>
-      )}
-    </VStack>
+    <FirstQuestion
+      draft={drafts.first ?? ''}
+      setDraft={(value) => setDrafts((d) => ({ ...d, first: value }))}
+      busy={busy}
+      available={!!currentModel}
+      modelMenu={modelMenu}
+      submit={(text) => void create(text)}
+      modelError={modelError}
+      loadModels={() => void loadModels()}
+      noModels={!!models && !models.length}
+    />
   );
   return (
     <VStack
@@ -2887,28 +2703,9 @@ export default function ChatPage({
                           onClick={loadInitial}
                         />
                       ) : loading || !state ? (
-                        <VStack
-                          gap={3}
-                          className="tree-loading"
-                          role="status"
-                          aria-label="Loading tree"
-                        >
-                          <Text className="sr-only">Loading tree…</Text>
-                          <Skeleton height={20} width="60%" />
-                          <Skeleton height={14} />
-                          <Skeleton height={14} width="92%" />
-                          <Skeleton height={14} width="70%" />
-                        </VStack>
+                        <TreeLoading />
                       ) : selected.current ? (
-                        <HStack className="failure-banner" gap={3} vAlign="center">
-                          <Heading level={2}>Tree could not load</Heading>
-                          <Button
-                            label="Retry loading tree"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => void select(selected.current!)}
-                          />
-                        </HStack>
+                        <TreeLoadFailure retry={() => void select(selected.current!)} />
                       ) : (
                         tab === 'learning' && firstQuestion
                       )}
@@ -3266,11 +3063,7 @@ export default function ChatPage({
           vim={vim}
           setVim={(on) => {
             setVim(on);
-            try {
-              localStorage.setItem('treetutor.vim', on ? 'on' : 'off');
-            } catch {
-              /* Preference stays for this session only. */
-            }
+            savePreference('vim', on ? 'on' : 'off');
           }}
           appearance={appearance}
           setAppearance={setAppearance}

@@ -1,28 +1,17 @@
 import mermaid from 'mermaid';
 import { diagramFontFace } from '../themes/paperback/diagramFont';
+import { DIAGRAM_HUES, diagramTheme } from './diagramTheme';
 
 // Mermaid has global configuration. Keep each theme initialization with its queued render.
 let queue = Promise.resolve();
-// Series inks in order (amber, lichen, rust, leaf via the theme's hue slots), resolved for the current appearance.
-const hues = ['yellow', 'blue', 'pink', 'green'];
 export function renderDiagram(source: string, card: HTMLElement, dark: boolean): Promise<string> {
   const style = getComputedStyle(card);
   const probe = card.appendChild(document.createElement('span'));
-  const series = hues.map((hue) => {
+  const series = DIAGRAM_HUES.map((hue) => {
     probe.style.color = `var(--color-text-${hue})`;
     return getComputedStyle(probe).color;
   });
   probe.remove();
-  // Series fills carry surface-coloured labels; series inks are light in dark and dark in light.
-  const seriesVariables = Object.fromEntries(
-    series.flatMap((color, i) => [
-      [`cScale${i}`, color],
-      [`cScaleLabel${i}`, style.backgroundColor],
-      [`pie${i + 1}`, color],
-      [`git${i}`, color],
-      [`gitBranchLabel${i}`, style.backgroundColor],
-    ]),
-  );
   // Trusted app classes the worker may assign (A:::blue). Each also differs by border so colour is never the only cue.
   const hex = (color: string) => {
     const c = document.createElement('canvas').getContext('2d')!;
@@ -41,12 +30,10 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
     'stroke-width:2px,stroke-dasharray:2 2',
     'stroke-width:3.5px',
   ];
-  const classes = hues
-    .map(
-      (hue, i) =>
-        `classDef ${hue} fill:${hex(series[i])},color:${hex(style.backgroundColor)},stroke:${hex(style.color)},${borders[i]}`,
-    )
-    .join('\n');
+  const classes = DIAGRAM_HUES.map(
+    (hue, i) =>
+      `classDef ${hue} fill:${hex(series[i])},color:${hex(style.backgroundColor)},stroke:${hex(style.color)},${borders[i]}`,
+  ).join('\n');
   const styled = /^\s*(?:flowchart|graph)\b/.test(source.replace(/^\s*%%[^\n]*/gm, ''))
     ? `${source}\n${classes}`
     : source;
@@ -60,33 +47,7 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
       maxTextSize: 17 * 1024,
       theme: 'base',
       look: 'classic',
-      themeVariables: {
-        darkMode: dark,
-        background: style.backgroundColor,
-        fontSize: style.fontSize,
-        primaryColor: style.backgroundColor,
-        secondaryColor: style.backgroundColor,
-        tertiaryColor: style.backgroundColor,
-        primaryTextColor: style.color,
-        secondaryTextColor: style.color,
-        tertiaryTextColor: style.color,
-        textColor: style.color,
-        lineColor: style.color,
-        primaryBorderColor: style.borderColor,
-        secondaryBorderColor: style.borderColor,
-        tertiaryBorderColor: style.borderColor,
-        fontFamily: style.fontFamily,
-        edgeLabelBackground: style.backgroundColor,
-        labelBackground: style.backgroundColor,
-        pieSectionTextColor: style.backgroundColor,
-        pieStrokeColor: style.backgroundColor,
-        pieOuterStrokeColor: style.borderColor,
-        pieTitleTextColor: style.color,
-        pieLegendTextColor: style.color,
-        pieOpacity: '1',
-        ...seriesVariables,
-        xyChart: { plotColorPalette: series.join(',') },
-      },
+      themeVariables: diagramTheme(style, series, dark),
     });
     const { svg } = await mermaid.render(`diagram-${crypto.randomUUID()}`, styled);
     const drawing = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;

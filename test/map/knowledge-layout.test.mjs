@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { layoutConcepts, POINT_SPACE } from '../../src/knowledge/knowledgeLayout.ts';
+import {
+  familiarity,
+  level,
+  fill,
+  graphShape,
+  conceptLines,
+  fitKnowledge,
+} from '../../src/knowledge/knowledge.ts';
 
 const names = Array.from({ length: 40 }, (_, i) => `Concept ${i}`);
 const graph = {
@@ -100,4 +108,93 @@ test('topics attract their concepts and a shared concept sits between its topics
     Math.abs(bridge.x - (a.x + b.x) / 2) < POINT_SPACE,
     'shared attraction uses both topics',
   );
+});
+
+test('familiarity labels and ring forms agree at thresholds; explicit corrections win', () => {
+  for (const [score, label, form] of [
+    [0, 'Unfamiliar', 'none'],
+    [0.349, 'Unfamiliar', 'none'],
+    [0.35, 'Some familiarity', 'some'],
+    [0.799, 'Some familiarity', 'some'],
+    [0.8, 'Familiar', 'full'],
+    [1, 'Familiar', 'full'],
+  ]) {
+    const c = { familiarity: score, correction: null };
+    assert.equal(level(c), label);
+    assert.equal(fill(c), form);
+    assert.equal(familiarity(c), `Estimated familiarity: ${label.toLowerCase()}`);
+    assert.equal(level({ ...c, correction: 'known' }), 'Marked known');
+    assert.equal(fill({ ...c, correction: 'known' }), 'full');
+    assert.equal(familiarity({ ...c, correction: 'known' }), 'You marked this as known');
+    assert.equal(level({ ...c, correction: 'unknown' }), 'Marked not understood');
+    assert.equal(fill({ ...c, correction: 'unknown' }), 'none');
+    assert.equal(familiarity({ ...c, correction: 'unknown' }), 'You marked this as not understood');
+  }
+});
+
+test('corrections preserve map shape; topic-only changes and new links invalidate it', () => {
+  const g = { concepts: [{ name: 'Mutex', topics: ['Concurrency'], familiarity: 0 }], links: [] };
+  assert.equal(
+    graphShape(g),
+    graphShape({ ...g, concepts: [{ ...g.concepts[0], familiarity: 1, correction: 'known' }] }),
+  );
+  assert.notEqual(
+    graphShape(g),
+    graphShape({ ...g, concepts: [{ ...g.concepts[0], topics: ['Scheduling'] }] }),
+  );
+  assert.notEqual(
+    graphShape(g),
+    graphShape({ ...g, links: [{ from: 'Mutex', to: 'Other', kind: 'related' }] }),
+  );
+});
+
+test('concept lines skip dangling endpoints, mark selection and shorten only builds-on arrows', () => {
+  const at = new Map([
+    ['A', { x: 0, y: 0 }],
+    ['B', { x: 100, y: 0 }],
+    ['C', { x: 1, y: 0 }],
+  ]);
+  const lines = conceptLines(
+    [
+      { from: 'A', to: 'B', kind: 'related' },
+      { from: 'A', to: 'B', kind: 'builds on' },
+      { from: 'A', to: 'Missing', kind: 'related' },
+      { from: 'B', to: 'C', kind: 'related' },
+      { from: 'A', to: 'C', kind: 'builds on' },
+      { from: 'A', to: 'A', kind: 'builds on' },
+    ],
+    at,
+    'A',
+  );
+  assert.deepEqual(
+    lines.map((l) => [l.x2, l.selected]),
+    [
+      [100, true],
+      [89, true],
+      [1, false],
+      [0.5, true],
+      [0, true],
+    ],
+  );
+  assert.equal(lines[0].key, 'A-B-related');
+  assert.equal(lines[1].kind, 'builds on');
+});
+
+test('Fit includes whole topic regions, centers bounds and clamps zoom for wide/narrow maps', () => {
+  const points = [{ name: 'A', x: 100, y: 80 }];
+  const regions = [{ name: 'Topic', x: 100, y: 80, radius: 200 }];
+  for (const [width, height] of [
+    [900, 700],
+    [390, 300],
+  ]) {
+    const { x, y, k } = fitKnowledge(points, regions, width, height);
+    assert.equal(x + 100 * k, width / 2);
+    assert.equal(y + 80 * k, height / 2);
+    assert.ok(x + (100 - 208) * k >= 0);
+    assert.ok(x + (100 + 208) * k <= width);
+    assert.ok(y + (80 - 208) * k >= 0);
+    assert.ok(y + (80 + 208) * k <= height);
+  }
+  assert.equal(fitKnowledge(points, [], 1000, 1000).k, 1.25);
+  assert.equal(fitKnowledge(points, regions, 10, 10).k, 0.2);
 });
