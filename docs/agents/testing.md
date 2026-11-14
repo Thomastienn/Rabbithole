@@ -267,3 +267,55 @@ cover one again, add it to a smoke script.
 - `verify-turn-rail`: the rail hides at narrow widths and returns when wide; responsive media query.
 - `verify-chat-management`: rename and delete confirmations stay inside desktop and narrow viewports with safe focus, and a 200-character unbroken title fits; CSS geometry and native dialog focus (prompt copy and title limits remain tested).
 - `verify-chat-management`: deleting the open chat opens the next saved chat with composer focus, or New chat when none remain, and Library rename never selects another chat; ChatPage orchestration (subtree selection, deletion and rename persistence remain unit/integration tested).
+
+- `verify-diagram-rendering`: real Mermaid output for flowchart and five more families is safe SVG (no foreignObject/script/link/image) with text alternatives; browser SVG layout (safe-source rejection and output checks before rendering remain tested).
+- `verify-diagram-rendering`: trusted series fills, dashed borders and AA node-label contrast in both appearances, re-rendered on Appearance/System change; browser rendering and computed CSS (palette inputs remain unit tested).
+- `verify-diagram-rendering`: Tab reaches the card with a solid outline, Enter/Space/click enlarge with zoom and pan, Escape returns focus and the source disclosure toggles by keyboard; native focus and Lightbox gestures (labels, steps and fallback disclosure remain component tested).
+- `verify-diagram-rendering`: wide drawings stay contained at narrow widths and small ones at natural size; responsive CSS geometry.
+- `verify-diagram-rendering`: the map lists diagram metadata without loading the Mermaid chunk; browser resource loading (preview metadata remains integration tested).
+- `verify-diagram-rendering`: the app renders with zero CSP violations; browser CSP enforcement (CSP headers remain integration tested).
+- `verify-different-version`: visual and video Try a different version controls are hidden at rest and revealed by hover or focus; computed CSS with real hover (controls, callbacks and server replacement remain tested).
+- `verify-different-version`: focus stays with the visual after its replacement renders; browser focus through a real iframe reload.
+- `verify-narrated-playback`: a saved narrated MP4 decodes, plays and seeks after restart in both appearances; native media playback (its no-inference restart remains integration tested; video-player smoke remains). Its input was a deleted /tmp native run, so no fixture replaces it.
+- `verify-video-actions`: Show in folder opens a real file-manager window and Move to trash lands the file in the desktop trash; live desktop session (the reveal/trash boundary and UI states remain tested).
+- `verify-video-actions`: Open large opens the Lightbox and Escape returns focus with a paper ring; native dialog focus and computed CSS.
+- `verify-video-library`: library videos play and seek from the library route in both appearances after their source chat is deleted; native media playback (migration, survival and the media route remain tested). Its input MP4 came from a deleted /tmp native run.
+- `verify-video-library`: the band's Videos tab opens the library by keyboard and keeps focus; browser keyboard default action (current-view callbacks remain component tested).
+- `verify-video-recovery`: Retry renders a real sandboxed video that loads paused inline without adding a message; real Remotion render and native media (states, focus handoff and jobs remain tested; video-player smoke remains).
+- `verify-video-recovery`: failed videos sit in their reply without border or background at desktop and 390px in both appearances; computed CSS and geometry (slot placement remains unit tested).
+- `verify-visual-branch`: Tab order through SVG/HTML parts and Escape restoring iframe focus inside the real opaque-origin frame; native iframe focus (part tagging and activation remain unit tested).
+- `verify-visual-branch`: pointer activation, enlarged-frame activation and map source reveal open the passage popup or focus the part after reload, including a part added later; real iframe messaging and ChatPage orchestration (message validation, onPart filtering and reveal tagging remain tested).
+- `verify-visual-branch`: the popup and visual fit desktop and 390px in both appearances; responsive CSS geometry.
+- `verify-visual-sandbox`: visuals are full column width, auto-height, borderless and transparent, with a 30px+ pending shimmer; computed CSS and geometry (placement order, sandbox attributes and pending status remain tested).
+- `verify-visual-sandbox`: frame content uses app ink, Archivo and its bundled libraries in both appearances; real iframe execution.
+- `verify-visual-sandbox`: hostile visual code cannot navigate the app, open dialogs or grow unbounded; real iframe sandbox (sandbox CSP and height bounds remain tested).
+- `verify-visual-sandbox`: the map preview never loads the sandbox page; browser resource loading.
+- `verify-visual-sandbox`: Enlarge appears only on hover or focus and Escape closes the viewer; computed CSS and native dialog.
+- `verify-visual-themes`: switching appearance and all six themes recolours SVG/canvas inside the same frame without rerunning its script or losing control state, and the saved MP4 bytes stay unchanged with no provider calls; real iframe execution and CSS cascade.
+- `verify-visual-workers`: a worker's fragment renders, its local control works and the Check yourself reveal opens by keyboard inside the frame, fitting desktop and narrow columns in both appearances; real iframe execution and geometry (worker boundary, retry, queue, Stop and predict/reveal persistence remain integration tested).
+- `verify-visual-workers`: the native `--live` worker mode; live provider (covered by the `live` media scripts).
+- `verify-library`: library text and menu triggers meet AA and native Tab reaches every volume and menu with a paper focus ring in both appearances and layouts; computed CSS and browser traversal (volume structure remains component tested).
+- `verify-library`: spine ticks paint paper then family inks; computed CSS (spine inks remain unit tested).
+- `verify-library`: clicking anywhere on a volume, including the spine, opens the tree in Read; pointer hit testing and ChatPage orchestration (the title button's open callback remains component tested).
+- `verify-library`: Rename/Delete menus confirm and return focus to the actions trigger; native menu/dialog focus (TitleEditor and delete copy remain tested).
+- `verify-local-delivery`: the documented `npm start` launcher's OS-level listening sockets are loopback only; real process sockets (the 127.0.0.1 bind and startup output remain integration tested).
+- `verify-local-delivery`: built JS/CSS bundles carry no provider credential patterns; needs a production build (browser state and responses remain integration tested).
+- `verify-custom-endpoint`: native Tab/Enter drive Add endpoint and the Remove confirmation, and Escape cancels the dialog; browser focus traversal and native dialog keys (submit, Cancel and Remove handlers remain component tested).
+- `verify-custom-endpoint`: the model menu's "Custom endpoint settings" action opens Settings with Add endpoint focused; cross-window focus (menu groups/actions remain unit tested; settings-window smoke remains).
+- `verify-custom-endpoint`: the list, add/edit forms and remove dialog fit desktop and 390px without sideways scroll in both appearances; responsive CSS geometry.
+- `verify-dialog-identity`: the model menu sits on raised paper with an accent leaf check, transparent check boxes and muted signed-out headings; computed CSS (group titles and repair actions remain unit tested).
+- `verify-dialog-identity`: the map menu uses the popover fill; computed CSS.
+- `verify-dialog-identity`: delete confirmation has a popover surface, hairline seam, transparent destructive action with an alert ring set ≥24px apart, and a paper fill/outline when focused; computed CSS and geometry (its copy remains tested in tree-list).
+- `verify-dialog-identity`: native Tab cycles inside the delete dialog and Escape returns focus to Map menu; native modal focus.
+- `verify-dialog-identity`: rename Escape returns focus to the title; browser focus integration (Escape cancel remains component tested).
+- `verify-dialog-identity`: the passage prompt has a paper border, popover fill, 12px radius, no shadow, is ≤320px wide and clears the header; computed CSS and geometry (its label remains component tested).
+- `verify-model-roles`: native Enter/End/Enter picks the last quick thinking effort; browser listbox keyboard (options and saves remain component tested).
+- `verify-model-roles`: dark/light Settings at 390px fit without horizontal overflow; responsive CSS geometry.
+- `verify-model-switch`: keyboard-only Space/Home/ArrowDown/Enter picks a model in the composer menu; native menu keyboard (keyboard-journey smoke remains).
+- `verify-model-switch`: the composer model chip is disabled while a reply streams and re-enables after it; full ChatPage streaming (the server's 409 refusal remains tested).
+- `verify-model-switch`: desktop and 390px focused chat keep the composer onscreen without overflow after switching; responsive CSS geometry.
+- `verify-request-failures`: failed diagram/video reasons and Retry fit inside the video stage at desktop and 390px in both appearances; responsive CSS geometry.
+- `verify-request-failures`: a successful diagram Retry keeps focus on the card after its button goes away; needs native Mermaid rendering to reach the ready state (failure reasons and Retry remain tested).
+- `verify-usage-dashboard`: legend swatches and chart series use three distinct matching colours; computed CSS.
+- `verify-usage-dashboard`: hovering a bar fills the readout and focused bars show a focus-visible ring; native pointer hover and computed focus styles (keyboard readout remains component tested).
+- `verify-usage-dashboard`: the desktop breakdown shows every column, the 390px page has no overflow and the overflowing table is keyboard scrollable; responsive CSS geometry.

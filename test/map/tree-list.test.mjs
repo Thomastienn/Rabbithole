@@ -192,3 +192,30 @@ test('delete confirmation names the kind, counts every conversation and appends 
   assert.equal(root.actionLabel, 'Delete chat');
   assert.match(root.description, /^3 conversations .* Deletion failed: Locked$/);
 });
+
+test('library search filters root titles case-insensitively and counts conversations and branches', async () => {
+  const { librarySearch, volumeCounts } = await import('../../src/map/treeList.ts');
+  const trees = [
+    { id: 'fungi', parent: null, title: 'How do fungi trade?' },
+    { id: 'roads', parent: null, title: 'Roman roads' },
+    { id: 'child', parent: 'roads', title: 'FUNGI in a branch title' },
+  ];
+  assert.deepEqual(
+    librarySearch(trees, '  FUNGI ').map((t) => t.id),
+    ['fungi', 'child'],
+  );
+  assert.deepEqual(
+    treeGroups(
+      librarySearch(trees, 'zzz').map((t) => ({ ...t, created: 0 })),
+      new Date(0),
+    ),
+    [],
+    'no match leaves no group, so the page says nothing matches',
+  );
+  assert.equal(librarySearch(trees, '').length, 3);
+  assert.deepEqual([0, 1, 4].map(volumeCounts), [
+    '1 conversation · 0 branches',
+    '2 conversations · 1 branch',
+    '5 conversations · 4 branches',
+  ]);
+});

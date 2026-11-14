@@ -34,6 +34,17 @@ export function treeGroups<T extends LearningTree>(trees: readonly T[], now = ne
   return groups.filter((group) => group.trees.length);
 }
 
+// Library search matches root titles only; branches stay so a matched tree keeps its counts.
+export function librarySearch<T extends { parent: string | null; title: string }>(
+  trees: readonly T[],
+  query: string,
+) {
+  const q = query.trim().toLocaleLowerCase();
+  return trees.filter((t) => t.parent || t.title.toLocaleLowerCase().includes(q));
+}
+export const volumeCounts = (branches: number) =>
+  `${branches + 1} ${branches ? 'conversations' : 'conversation'} · ${branches} ${branches === 1 ? 'branch' : 'branches'}`;
+
 // Addresses: trunk 1, children 1.1, 1.2 … in creation order (ties by id), so a later sibling never renumbers earlier ones.
 // Ink: each first-level family takes series ink 1–4 in that order, repeating; descendants keep it; the trunk is 0 (paper).
 export function conversationAddresses(trees: readonly LearningTree[]) {

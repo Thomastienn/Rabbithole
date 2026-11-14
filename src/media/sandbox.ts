@@ -4,7 +4,8 @@ import mermaid from 'mermaid';
 import * as THREE from 'three';
 import katex from 'katex';
 import * as d3 from 'd3';
-import { visualMessage, type VisualPart } from './artifacts';
+import type { VisualPart } from './artifacts';
+import { activatedPart, tagParts } from './visualParts';
 import 'katex/dist/katex.min.css';
 import '@fontsource/archivo/400.css';
 import '@fontsource/archivo/600.css';
@@ -18,64 +19,18 @@ let rendered = false;
 let explored: VisualPart[] = [];
 let reveal: VisualPart | undefined;
 let revealPending = false;
-const partOf = (element: Element) => {
-  const part = visualMessage({
-    type: 'branch',
-    label: element.getAttribute('data-visual-label'),
-    explanation: element.getAttribute('data-visual-explanation'),
-  });
-  return part?.type === 'branch' ? part : undefined;
+const tag = () => {
+  revealPending = tagParts(root, explored, reveal, revealPending);
 };
-const same = (a: VisualPart, b?: VisualPart) =>
-  a.label === b?.label && a.explanation === b.explanation;
-function tagParts() {
-  for (const element of root.querySelectorAll('[data-visual-label][data-visual-explanation]')) {
-    const part = partOf(element);
-    if (!part || element.matches('input, select, textarea, [contenteditable]')) continue;
-    element.setAttribute('tabindex', '0');
-    if (!element.matches('button')) element.setAttribute('role', 'button');
-    const visited = explored.some((p) => same(part, p));
-    element.toggleAttribute('data-visual-explored', visited);
-    element.toggleAttribute('data-visual-reveal', same(part, reveal));
-    element.setAttribute(
-      'aria-label',
-      `${visited ? 'Open explored branch' : 'Ask about'}: ${part.label}`,
-    );
-    element.setAttribute('aria-description', part.explanation);
-    if (revealPending && same(part, reveal)) {
-      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
-        if (parent instanceof HTMLDetailsElement) parent.open = true;
-      }
-      (element as HTMLElement).scrollIntoView({ block: 'center' });
-      (element as HTMLElement).focus();
-      revealPending = false;
-    }
-  }
-}
 function activate(event: MouseEvent | KeyboardEvent) {
-  const target = event.target instanceof Element ? event.target : null;
-  const element = target?.closest('[data-visual-label][data-visual-explanation]');
-  if (
-    !element ||
-    !root.contains(element) ||
-    element.matches('input, select, textarea, [contenteditable], :disabled, [aria-disabled=true]')
-  )
-    return;
-  const control = target?.closest('button, input, select, textarea, a, [contenteditable]');
-  if (control && control !== element) return;
-  if (
-    event instanceof KeyboardEvent &&
-    (event.repeat || element.matches('button') || !['Enter', ' '].includes(event.key))
-  )
-    return;
-  const part = partOf(element);
+  const part = activatedPart(root, event);
   if (!part) return;
   event.preventDefault();
   parent.postMessage(part, '*');
 }
 root.addEventListener('click', activate);
 root.addEventListener('keydown', activate);
-new MutationObserver(tagParts).observe(root, {
+new MutationObserver(tag).observe(root, {
   childList: true,
   subtree: true,
   attributes: true,
@@ -107,13 +62,13 @@ addEventListener('message', (event) => {
       script.textContent = old.textContent;
       old.replaceWith(script);
     }
-    tagParts();
+    tag();
   }
   if (data?.type === 'parts' && Array.isArray(data.explored)) {
     explored = data.explored;
     reveal = data.reveal;
     revealPending = !!reveal;
-    tagParts();
+    tag();
   }
 });
 

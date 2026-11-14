@@ -2,7 +2,7 @@ import { until, observeProvider } from '../support/events.mjs';
 import http from 'node:http';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
@@ -199,6 +199,26 @@ test('rejects foreign origins, Host rebinding, missing CSRF, malformed JSON and 
       ).status,
       400,
     );
+    // The app may frame only the sandbox page; the sandbox page forbids network and frames, and its opaque origin cannot reach the API.
+    const policy = (path) =>
+      fetch(env.origin + path).then((r) => r.headers.get('Content-Security-Policy'));
+    assert.match(
+      await policy('/'),
+      new RegExp(`frame-src ${env.origin}/sandbox.html;.*frame-ancestors 'none'`),
+    );
+    const sandbox = await policy('/sandbox.html');
+    for (const rule of [
+      "default-src 'none'",
+      "connect-src 'none'",
+      "frame-src 'none'",
+      `frame-ancestors ${env.origin}`,
+    ])
+      assert.ok(sandbox.includes(rule), rule);
+    assert.equal(
+      (await fetch(`${env.origin}/api/state`, { headers: { Origin: 'null' } })).status,
+      403,
+    );
+    assert.equal(statSync(join(dir, 'boundary.sqlite')).mode & 0o777, 0o600, 'private SQLite save');
     assert.equal(env.store.list().length, 0);
   } finally {
     env.close();

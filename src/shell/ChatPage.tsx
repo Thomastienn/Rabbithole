@@ -18,8 +18,6 @@ import {
   ChevronRightIcon,
   ChatBubbleLeftRightIcon,
   PlusIcon,
-  PencilSquareIcon,
-  TrashIcon,
   ArrowUpIcon,
   ShareIcon,
   MagnifyingGlassIcon,
@@ -32,7 +30,7 @@ import {
 import { TextInput } from '@astryxdesign/core/TextInput';
 import TreeSearch from './TreeSearch';
 import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
-import { savedContentsOpen, savedVim, savePreference } from './preferences';
+import { savedContentsOpen, savedLibraryLayout, savedVim, savePreference } from './preferences';
 import { treeSearchSource } from './treeSearch';
 import { restoredTree, rootOf } from '../map/mapState';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
@@ -73,17 +71,18 @@ import SettingsWindow, { type SettingsRequest, type SettingsTab } from '../setti
 import type { Appearance, ThemeChoice } from './appearance';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
 import MapDivider from '../map/MapDivider';
+import LibraryShelf from '../map/LibraryShelf';
 import KnowledgePage from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
 import { artifactsAt, visualPassage, type Artifact } from '../media/artifacts';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
 import {
   conversationAddresses,
-  inkStyle,
   deletePrompt,
   subtreeIds,
   treeGroups,
   markLibraryScrolling,
+  librarySearch,
 } from '../map/treeList';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import {
@@ -91,6 +90,7 @@ import {
   effortOptions,
   effortWasReset,
   keptEffort,
+  menuGroups,
   type Model,
 } from '../settings/models';
 import { TokenStats, InheritedContext, ReplyFeedback } from '../chat/ChatDetails';
@@ -166,13 +166,7 @@ export default function ChatPage({
   const [tab, setTab] = useState('learning');
   const [libraryQuery, setLibraryQuery] = useState('');
   const scrollQuiet = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [libraryLayout, setLibraryLayout] = useState<'shelf' | 'list'>(() => {
-    try {
-      return localStorage.getItem('treetutor.library-layout') === 'list' ? 'list' : 'shelf';
-    } catch {
-      return 'shelf';
-    }
-  });
+  const [libraryLayout, setLibraryLayout] = useState(savedLibraryLayout);
   const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState<SettingsRequest>();
   const settingsOpener = useRef<HTMLElement | null>(null),
@@ -1175,11 +1169,7 @@ export default function ChatPage({
     />
   );
   const rootTitle = state?.trees.find((t) => t.id === root)?.title;
-  const query = libraryQuery.trim().toLocaleLowerCase();
-  const libraryGroups = treeGroups(
-    (state?.trees ?? []).filter((t) => t.parent || t.title.toLocaleLowerCase().includes(query)),
-    today,
-  );
+  const libraryGroups = treeGroups(librarySearch(state?.trees ?? [], libraryQuery), today);
   const reading = tab === 'learning' && (!overview || !root),
     mapping = tab === 'learning' && overview && !!root;
   const views = [
@@ -1291,18 +1281,14 @@ export default function ChatPage({
         </Button>
       )}
     >
-      {Object.entries(providers ?? {}).map(([id, p]) => {
+      {menuGroups(providers ?? {}, models, composition).map((g) => {
+        const { id } = g;
         return (
-          <DropdownMenuGroup key={id} title={p.connected ? p.label : `${p.label} · not connected`}>
-            {p.connected && models?.some((m) => m.provider === id) ? (
+          <DropdownMenuGroup key={id} title={g.title}>
+            {g.items ? (
               <DropdownMenuRadioGroup
-                label={`${p.label} models`}
-                value={
-                  composition.provider === id
-                    ? (composition.model ??
-                      models?.find((m) => m.provider === id && m.isDefault)?.model)
-                    : undefined
-                }
+                label={`${g.label} models`}
+                value={g.value}
                 onChange={(model) =>
                   void chooseModel(
                     id,
@@ -1314,22 +1300,16 @@ export default function ChatPage({
                   )
                 }
               >
-                {composition.provider === id &&
-                  composition.model &&
-                  !models?.some((m) => m.provider === id && m.model === composition.model) && (
-                    <DropdownMenuRadioItem
-                      value={composition.model}
-                      label={`${composition.model} (saved)`}
-                      isDisabled
-                    />
-                  )}
-                {(models ?? [])
-                  .filter((m) => m.provider === id)
-                  .map((m) => (
-                    <DropdownMenuRadioItem key={m.model} value={m.model} label={m.label} />
-                  ))}
+                {g.items.map((m) => (
+                  <DropdownMenuRadioItem
+                    key={m.value}
+                    value={m.value}
+                    label={m.label}
+                    isDisabled={m.disabled}
+                  />
+                ))}
               </DropdownMenuRadioGroup>
-            ) : /^openai(:|$)/.test(id) ? (
+            ) : g.action === 'endpoint' ? (
               <DropdownMenuItem
                 label="Custom endpoint settings"
                 description="Add an endpoint or check its URL, API key and connection"
@@ -1341,7 +1321,7 @@ export default function ChatPage({
                   )
                 }
               />
-            ) : id === 'codex' ? (
+            ) : g.action === 'codex' ? (
               <DropdownMenuItem
                 label="Continue with ChatGPT"
                 description="Sign in to use Codex with your ChatGPT plan"
@@ -1349,7 +1329,7 @@ export default function ChatPage({
               />
             ) : (
               <DropdownMenuItem
-                label={`Check ${p.label} sign-in`}
+                label={`Check ${g.label} sign-in`}
                 description={
                   id === 'claude'
                     ? 'Run claude in a terminal and sign in, then check again'
@@ -1982,11 +1962,7 @@ export default function ChatPage({
                           value={libraryLayout}
                           onChange={(v) => {
                             setLibraryLayout(v as 'shelf' | 'list');
-                            try {
-                              localStorage.setItem('treetutor.library-layout', v);
-                            } catch {
-                              /* Preference stays for this session only. */
-                            }
+                            savePreference('library-layout', v);
                           }}
                         >
                           <SegmentedControlItem
@@ -2001,132 +1977,18 @@ export default function ChatPage({
                           />
                         </SegmentedControl>
                       </HStack>
-                      <nav
-                        aria-label="Saved learning trees"
-                        className="tree-list"
-                        data-layout={libraryLayout}
-                      >
-                        {libraryGroups.map((group) => (
-                          <section key={group.label} aria-label={group.label}>
-                            <Heading level={2} className="tree-date-heading">
-                              {group.label}
-                            </Heading>
-                            <ul className={libraryLayout === 'shelf' ? 'shelf' : 'library-list'}>
-                              {group.trees.map(({ tree: t, branches, spine }) => (
-                                <li
-                                  key={t.id}
-                                  className="volume"
-                                  data-current={root === t.id}
-                                  data-renaming={
-                                    renaming?.id === t.id && renaming.place === 'library'
-                                  }
-                                >
-                                  {renaming?.id === t.id && renaming.place === 'library' ? (
-                                    <TitleEditor
-                                      title={t.title}
-                                      save={(title) => rename(t.id, title)}
-                                      cancel={finishRename}
-                                    />
-                                  ) : (
-                                    <>
-                                      <span className="volume-band">
-                                        <Button
-                                          className="saved-chat-title"
-                                          label={t.title}
-                                          variant="ghost"
-                                          aria-current={root === t.id ? 'true' : undefined}
-                                          aria-describedby={`tree-date-${t.id} branch-count-${t.id}`}
-                                          onClick={() => openTree(t.id, undefined, undefined, true)}
-                                        >
-                                          <Text as="span" type="inherit" maxLines={4}>
-                                            {t.title}
-                                          </Text>
-                                        </Button>
-                                        <Text
-                                          as="span"
-                                          type="supporting"
-                                          id={`tree-date-${t.id}`}
-                                          className="volume-date"
-                                        >
-                                          <time dateTime={new Date(t.created).toISOString()}>
-                                            Started{' '}
-                                            {new Date(t.created).toLocaleDateString(undefined, {
-                                              day: 'numeric',
-                                              month: 'short',
-                                              year:
-                                                new Date(t.created).getFullYear() ===
-                                                today.getFullYear()
-                                                  ? undefined
-                                                  : 'numeric',
-                                            })}
-                                          </time>
-                                        </Text>
-                                      </span>
-                                      <span className="volume-meta">
-                                        <span
-                                          className="volume-spine"
-                                          aria-hidden
-                                          title="One tick per conversation, in its branch family's ink"
-                                        >
-                                          {spine.map((ink, i) => (
-                                            <i key={i} style={inkStyle(ink)} />
-                                          ))}
-                                        </span>
-                                        <Text
-                                          type="supporting"
-                                          color="secondary"
-                                          id={`branch-count-${t.id}`}
-                                        >
-                                          {branches + 1}{' '}
-                                          {branches ? 'conversations' : 'conversation'} · {branches}{' '}
-                                          {branches === 1 ? 'branch' : 'branches'}
-                                        </Text>
-                                      </span>
-                                      <DropdownMenu
-                                        presentation="popover"
-                                        alignment="end"
-                                        renderTrigger={(props) => (
-                                          <IconButton
-                                            {...props}
-                                            id={`chat-actions-${t.id}`}
-                                            className="tree-row-actions"
-                                            label={`Actions for ${t.title}`}
-                                            icon={<EllipsisHorizontalIcon />}
-                                            variant="ghost"
-                                            size="sm"
-                                          />
-                                        )}
-                                      >
-                                        <DropdownMenuItem
-                                          label="Rename chat"
-                                          icon={<PencilSquareIcon />}
-                                          onClick={() =>
-                                            setRenaming({ id: t.id, place: 'library' })
-                                          }
-                                        />
-                                        <DropdownMenuItem
-                                          className="delete-menu-item"
-                                          label="Delete chat…"
-                                          icon={<TrashIcon />}
-                                          onClick={() =>
-                                            askDelete(
-                                              t.id,
-                                              document.getElementById(`chat-actions-${t.id}`),
-                                            )
-                                          }
-                                        />
-                                      </DropdownMenu>
-                                    </>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          </section>
-                        ))}
-                        {!libraryGroups.length && (
-                          <Text color="secondary">No learning tree titles match.</Text>
-                        )}
-                      </nav>
+                      <LibraryShelf
+                        groups={libraryGroups}
+                        layout={libraryLayout}
+                        current={root}
+                        renaming={renaming?.place === 'library' ? renaming.id : undefined}
+                        today={today}
+                        onOpen={(id) => openTree(id, undefined, undefined, true)}
+                        onRename={rename}
+                        onCancelRename={finishRename}
+                        onStartRename={(id) => setRenaming({ id, place: 'library' })}
+                        onDelete={askDelete}
+                      />
                     </>
                   )}
             </VStack>

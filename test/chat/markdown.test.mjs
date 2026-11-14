@@ -393,3 +393,26 @@ test('rawRange paints exactly the raw passage rawOffsets would capture', () => {
   );
   assert.equal(rawRange(root, raw.length, raw.length + 3), undefined);
 });
+
+test('inline media slots sit between blocks at their recorded raw offsets, unplaced ones last', () => {
+  const text = 'Intro paragraph.\n\nMiddle paragraph.\n\nClosing paragraph.';
+  const slot = (at, id) => ({ at, node: h('figure', { key: id, id }) });
+  const doc = dom(
+    renderToStaticMarkup(
+      renderMarkdown(
+        text,
+        undefined,
+        [],
+        [
+          slot(text.length + 10, 'late'),
+          slot(text.indexOf('Middle'), 'chart'),
+          slot(text.indexOf('Closing'), 'pending'),
+        ],
+      ),
+    ),
+  );
+  assert.deepEqual(
+    [...doc.getElementById('r').children].map((e) => e.id || e.textContent),
+    ['Intro paragraph.', 'chart', 'Middle paragraph.', 'pending', 'Closing paragraph.', 'late'],
+  );
+});

@@ -22,17 +22,7 @@ const live = new Set([
   'verify-suggestion-phrases.mjs',
 ]);
 // Failures already recorded in TreeTutor-cpi (one-line cause each); drop an entry when it is fixed.
-const known = {
-  'verify-different-version.mjs': 'TreeTutor-cpi: ready visual + video wait times out',
-  'verify-narrated-playback.mjs': "TreeTutor-cpi: reads a past native run's deleted /tmp data dir",
-  'verify-video-library.mjs':
-    "TreeTutor-cpi: copies an MP4 from a past live run's deleted /tmp dir",
-  'verify-visual-sandbox.mjs':
-    'TreeTutor-cpi: figure.visual state wait can time out under parallel load',
-  'verify-video-recovery.mjs':
-    "TreeTutor-cpi: status 'Writing script and scenes…' where Creating/Rendering expected",
-};
-const args = { 'verify-local-delivery.mjs': (out) => [join(out, 'local-delivery-results.json')] };
+const known = {};
 
 const only = process.argv.slice(2);
 const scripts = readdirSync(import.meta.dirname)
@@ -64,15 +54,11 @@ const jobs = Math.max(
 );
 const attempt = (f, log) =>
   new Promise((done) => {
-    const child = spawn(
-      process.execPath,
-      [join(import.meta.dirname, f), ...(args[f]?.(logs) ?? [])],
-      {
-        timeout: 300000,
-        env,
-        detached: true,
-      },
-    );
+    const child = spawn(process.execPath, [join(import.meta.dirname, f)], {
+      timeout: 300000,
+      env,
+      detached: true,
+    });
     let out = '';
     child.stdout.on('data', (d) => (out += d));
     child.stderr.on('data', (d) => (out += d));

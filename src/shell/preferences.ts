@@ -16,7 +16,19 @@ export function savedContentsOpen() {
   }
 }
 
-export function savePreference(key: 'appearance' | 'theme' | 'vim' | 'contents', value: string) {
+// Library opens as a shelf unless List was chosen.
+export function savedLibraryLayout(): 'shelf' | 'list' {
+  try {
+    return localStorage.getItem('treetutor.library-layout') === 'list' ? 'list' : 'shelf';
+  } catch {
+    return 'shelf';
+  }
+}
+
+export function savePreference(
+  key: 'appearance' | 'theme' | 'vim' | 'contents' | 'library-layout',
+  value: string,
+) {
   try {
     localStorage.setItem(`treetutor.${key}`, value);
   } catch {
