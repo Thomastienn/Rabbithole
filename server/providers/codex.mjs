@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
+import { inputParts } from '../attachments.mjs';
 
 export class Codex {
   readsImages = true;
@@ -284,11 +285,11 @@ export class Codex {
           threadId,
           model,
           ...(effort != null && { effort }),
-          input: [
-            { type: 'text', text, text_elements: [] },
-            // The app-server reads the stored file itself; no base64 copy.
-            ...(tree.images ?? []).map((i) => ({ type: 'localImage', path: i.path })),
-          ],
+          input: inputParts(tree, text).map((p) =>
+            p.image
+              ? { type: 'localImage', path: p.image.path }
+              : { type: 'text', text: p.text, text_elements: [] },
+          ),
         }).then((result) => {
           turnId = result.turn.id;
           if (interrupted) {

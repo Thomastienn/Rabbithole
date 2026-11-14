@@ -128,3 +128,35 @@ test('OCR chip explains its limits without opening the attachment', async (t) =>
   );
   assert.equal(trigger.getAttribute('aria-expanded'), 'false');
 });
+
+test('PDF chips summarise typed, native image, mixed and OCR deliveries with accessible OCR help', async (t) => {
+  const deliveries = ['text', 'image', 'text,image', 'ocr', 'text,ocr'];
+  const { container, act, cleanup } = await render(
+    h(MessageAttachments, {
+      conversation: 'c1',
+      attachments: deliveries.map((delivery, id) => ({
+        id: String(id),
+        name: `notes-${id}.pdf`,
+        type: 'application/pdf',
+        size: 20,
+        delivery,
+      })),
+    }),
+    ui,
+  );
+  t.after(cleanup);
+  assert.deepEqual(
+    [...container.querySelectorAll('.attachment-delivery')].map((e) => e.textContent),
+    [
+      'PDF · read as text',
+      'PDF · sent as image',
+      'PDF · read as text, sent as image',
+      'PDF · OCR',
+      'PDF · read as text, OCR',
+    ],
+  );
+  assert.equal(container.querySelectorAll('a').length, 5);
+  await act(async () => button(container, 'About OCR for notes-4.pdf').click());
+  const popup = document.querySelector('[role=dialog][aria-label="About OCR"]');
+  assert.match(popup.textContent, /miss handwriting and diagrams/);
+});

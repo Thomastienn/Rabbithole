@@ -2,6 +2,7 @@ import { readFileSync, mkdirSync, chmodSync, writeFileSync, renameSync, rmSync }
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
+import { inputParts } from '../attachments.mjs';
 import { EndpointError, endpointName, lastTest, readOwned, settings } from './endpointSettings.mjs';
 
 export { EndpointError };
@@ -332,6 +333,7 @@ class Endpoint {
       const model = await this.model(tree, signal);
       signal.throwIfAborted();
       const system = tutorSystem(tree);
+      const parts = inputParts(tree, text);
       const messages = [
         { role: 'system', content: system },
         ...(tree.messages ?? [])
@@ -340,16 +342,17 @@ class Endpoint {
         // This turn's images go as data URLs; history turns carry only their [image: name] text.
         {
           role: 'user',
-          content: tree.images?.length
-            ? [
-                { type: 'text', text },
-                ...tree.images.map((i) => ({
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:${i.type};base64,${readFileSync(i.path).toString('base64')}`,
-                  },
-                })),
-              ]
+          content: parts.some((p) => p.image)
+            ? parts.map((p) =>
+                p.image
+                  ? {
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:${p.image.type};base64,${readFileSync(p.image.path).toString('base64')}`,
+                      },
+                    }
+                  : { type: 'text', text: p.text },
+              )
             : text,
         },
       ];

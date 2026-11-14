@@ -50,6 +50,18 @@ test('Claude: image turns send one stream-json user message with base64 image bl
     );
   await run({ images: [image(dir())] });
   await run({});
+  const img = image(dir());
+  await run({
+    thread: null,
+    messages: history,
+    parts: [
+      { text: 'PDF intro' },
+      { image: img },
+      { text: 'Figure caption' },
+      { image: img },
+      { text: 'Last page' },
+    ],
+  });
   const [withImage, plain] = calls;
   assert.deepEqual(withImage.args.slice(-2), ['--input-format', 'stream-json']);
   assert.deepEqual(JSON.parse(withImage.input), {
@@ -64,6 +76,16 @@ test('Claude: image turns send one stream-json user message with base64 image bl
   });
   assert.ok(!plain.args.includes('--input-format'));
   assert.equal(plain.input, 'What colour?');
+  const ordered = JSON.parse(calls[2].input).message.content;
+  assert.deepEqual(
+    ordered.map((p) => p.type),
+    ['text', 'image', 'text', 'image', 'text'],
+  );
+  assert.match(ordered[0].text, /Earlier discussion in this conversation/);
+  assert.match(ordered[0].text, /Learner's new message:\nPDF intro$/);
+  assert.equal(ordered[1].source.data, b64);
+  assert.equal(ordered[2].text, 'Figure caption');
+  assert.equal(ordered[4].text, 'Last page');
 });
 
 test('Codex: image parts follow the text item as localImage inputs with the stored path', async () => {
@@ -82,10 +104,24 @@ test('Codex: image parts follow the text item as localImage inputs with the stor
   });
   assert.equal(client.readsImages, true);
   const img = image(dir());
+  const parts = [
+    { text: 'PDF intro' },
+    { image: img },
+    { text: 'Figure caption' },
+    { image: img },
+    { text: 'Last page' },
+  ];
   try {
     await client.generate(
       { thread: null, model: 'fixture-model', messages: [], images: [img] },
       'What colour?',
+      () => {},
+      () => {},
+      new AbortController().signal,
+    );
+    await client.generate(
+      { thread: null, model: 'fixture-model', messages: [], parts },
+      'Flattened fallback',
       () => {},
       () => {},
       new AbortController().signal,
@@ -96,6 +132,13 @@ test('Codex: image parts follow the text item as localImage inputs with the stor
   assert.deepEqual(requests.find((r) => r.method === 'turn/start').params.input, [
     { type: 'text', text: 'What colour?', text_elements: [] },
     { type: 'localImage', path: img.path },
+  ]);
+  assert.deepEqual(requests.filter((r) => r.method === 'turn/start').at(-1).params.input, [
+    { type: 'text', text: 'PDF intro', text_elements: [] },
+    { type: 'localImage', path: img.path },
+    { type: 'text', text: 'Figure caption', text_elements: [] },
+    { type: 'localImage', path: img.path },
+    { type: 'text', text: 'Last page', text_elements: [] },
   ]);
 });
 
@@ -142,5 +185,38 @@ test('custom endpoint: Accepts images defaults off, persists, and sends only thi
       ],
     },
   ]);
+  await endpoints.providers()[vision.id].generate(
+    {
+      model: 'local-tutor',
+      messages: history,
+      parts: [
+        { text: 'PDF intro' },
+        { image: img },
+        { text: 'Figure caption' },
+        { image: img },
+        { text: 'Last page' },
+      ],
+    },
+    'Flattened fallback',
+    () => {},
+    () => {},
+    new AbortController().signal,
+  );
+  assert.deepEqual(fake.calls.at(-1).body.messages.at(-1).content, [
+    { type: 'text', text: 'PDF intro' },
+    { type: 'image_url', image_url: { url: `data:image/png;base64,${b64}` } },
+    { type: 'text', text: 'Figure caption' },
+    { type: 'image_url', image_url: { url: `data:image/png;base64,${b64}` } },
+    { type: 'text', text: 'Last page' },
+  ]);
+  await endpoints.providers()[vision.id].generate(
+    { model: 'local-tutor', messages: history },
+    'Continue',
+    () => {},
+    () => {},
+    new AbortController().signal,
+  );
+  assert.equal(fake.calls.at(-1).body.messages.at(-1).content, 'Continue');
+  assert.doesNotMatch(JSON.stringify(fake.calls.at(-1).body.messages), /image_url/);
   endpoints.close();
 });

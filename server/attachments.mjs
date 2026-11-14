@@ -1,5 +1,4 @@
 // Attachment preparation: turns a learner's file into prepared parts the tutor receives.
-// shortcut: PDFs are refused until their preparation lands.
 import { OCR_UNAVAILABLE, ocrText } from './ocr.mjs';
 
 // Images the chat models read natively; their stored text is the placeholder history and compaction see.
@@ -12,6 +11,23 @@ export async function prepareAttachment(
   { name, type, bytes },
   { readsImages = true, recognize } = {},
 ) {
+  if (type === 'application/pdf') {
+    const { pdfParts } = await import('./pdf.mjs');
+    const extracted = await pdfParts({ name, bytes });
+    const parts = [],
+      deliveries = new Set();
+    for (const part of extracted) {
+      if (!part.image) {
+        parts.push(part);
+        deliveries.add('text');
+      } else {
+        const prepared = await prepareAttachment(part, { readsImages, recognize });
+        deliveries.add(prepared.delivery);
+        parts.push(...(readsImages ? [part] : prepared.parts));
+      }
+    }
+    return { delivery: [...deliveries].join(','), parts };
+  }
   if (IMAGE_TYPES.includes(type)) {
     if (readsImages)
       return { delivery: 'image', parts: [{ text: `[image: ${name}]`, image: true }] };
@@ -35,7 +51,7 @@ export async function prepareAttachment(
     } catch {}
   if (text === null || text.includes('\0'))
     throw new Error(
-      `${name}: this file type can't be attached. Attach a plain-text file or a PNG, JPEG or WebP image.`,
+      `${name}: this file type can't be attached. Attach a PDF, plain-text file or a PNG, JPEG or WebP image.`,
     );
   return { delivery: 'text', parts: [{ text: `[Attached file: ${name}]\n${text}` }] };
 }
@@ -43,3 +59,7 @@ export async function prepareAttachment(
 // A learner message as the models read it: the typed question, then each attachment's prepared text.
 export const withAttachments = (text, attachments = []) =>
   [text, ...attachments.map((a) => a.text).filter(Boolean)].filter((t) => t.trim()).join('\n\n');
+
+// PDF turns interleave text and images; older callers still supply one text prompt plus images.
+export const inputParts = (tree, text) =>
+  tree.parts ?? [{ text }, ...(tree.images ?? []).map((image) => ({ image }))];

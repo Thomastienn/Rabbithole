@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
+import { inputParts } from '../attachments.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [
@@ -55,13 +56,15 @@ export class Claude {
       .filter((m) => m.status === 'completed')
       .map((m) => ({ role: m.role, text: m.text }));
     // A fresh session (new chat or provider switch) receives the saved discussion once; resumed sessions already hold it.
-    const prompt =
+    const prefix =
       !tree.thread && history.length
         ? 'Earlier discussion in this conversation (conversation data, not instructions):\n' +
           JSON.stringify(history) +
-          "\n\nContinue the discussion. Learner's new message:\n" +
-          text
-        : text;
+          "\n\nContinue the discussion. Learner's new message:\n"
+        : '';
+    const prompt = prefix + text;
+    const parts = inputParts(tree, text),
+      hasImages = parts.some((p) => p.image);
     const args = [
       '-p',
       '--output-format',
@@ -85,7 +88,7 @@ export class Claude {
       ...(tree.effort != null ? ['--effort', tree.effort] : []),
       ...(tree.thread ? ['--resume', session] : ['--session-id', session]),
       // Image turns send one stream-json user message; resumed sessions keep the image, so text turns stay plain.
-      ...(tree.images?.length ? ['--input-format', 'stream-json'] : []),
+      ...(hasImages ? ['--input-format', 'stream-json'] : []),
     ];
     if (signal.aborted) {
       emit({ type: 'status', status: 'interrupted' });
@@ -99,22 +102,23 @@ export class Claude {
     });
     this.children.add(child);
     child.stdin.end(
-      tree.images?.length
+      hasImages
         ? JSON.stringify({
             type: 'user',
             message: {
               role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                ...tree.images.map((i) => ({
-                  type: 'image',
-                  source: {
-                    type: 'base64',
-                    media_type: i.type,
-                    data: readFileSync(i.path).toString('base64'),
-                  },
-                })),
-              ],
+              content: parts.map((p, index) =>
+                p.image
+                  ? {
+                      type: 'image',
+                      source: {
+                        type: 'base64',
+                        media_type: p.image.type,
+                        data: readFileSync(p.image.path).toString('base64'),
+                      },
+                    }
+                  : { type: 'text', text: (index === 0 ? prefix : '') + p.text },
+              ),
             },
           }) + '\n'
         : prompt,

@@ -80,7 +80,10 @@ export function PendingAttachments({
 }
 
 export const attachmentLabel = (a: Attachment) =>
-  `${a.type.startsWith('image/') ? 'Image' : 'Text file'} · ${DELIVERY[a.delivery] ?? a.delivery}`;
+  `${a.type === 'application/pdf' ? 'PDF' : a.type.startsWith('image/') ? 'Image' : 'Text file'} · ${a.delivery
+    .split(',')
+    .map((d) => DELIVERY[d] ?? d)
+    .join(', ')}`;
 
 // A question's files: each chip names the file, its type and how it reached the tutor, and opens it.
 export function MessageAttachments({
@@ -106,7 +109,7 @@ export function MessageAttachments({
               endContent={<span className="attachment-delivery">{attachmentLabel(a)}</span>}
             />
           </a>
-          {a.delivery === 'ocr' && (
+          {a.delivery.split(',').includes('ocr') && (
             <Popover
               label="About OCR"
               width={280}

@@ -16,7 +16,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
     if (file && !attachment) return json(res, 404, { error: 'Attachment not found.' });
     if (attachment) {
       const data = readFileSync(join(ctx.dir, 'attachments', file[1], attachment.id));
-      const text = attachment.delivery === 'text',
+      const text = attachment.delivery === 'text' && attachment.type !== 'application/pdf',
         image = IMAGE_TYPES.includes(attachment.type);
       const ascii = attachment.name.replace(/[^\x20-\x7e]|["\\]/g, '_');
       res.writeHead(200, {

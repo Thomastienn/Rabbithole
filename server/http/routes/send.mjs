@@ -4,8 +4,7 @@ import { visualTheme } from '../../media/visuals.mjs';
 import { asksForVideo } from '../../media/videos.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
 import { withAttachments } from '../../attachments.mjs';
-import { prepareUploads, prepareRetry } from '../attachments.mjs';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { attachmentParts, prepareUploads, prepareRetry, savePrepared } from '../attachments.mjs';
 import { join } from 'node:path';
 
 // Conversation send and Retry: streams one tutor reply as server-sent events and starts its media jobs.
@@ -58,6 +57,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       return json(res, 400, { error: error.message });
     }
     if (controller.signal.aborted) return json(res, 409, { error: 'Retry cancelled.' });
+    savePrepared(attachments, join(ctx.dir, 'attachments', id));
     store.attachmentDelivery(id, attachments);
     store.discardReply(id, failed.id);
     // The provider session may hold the failed turn; a fresh session receives the saved discussion instead.
@@ -101,17 +101,12 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     return json(res, 400, { error: error.message });
   }
   if (controller.signal.aborted) return json(res, 409, { error: 'Send cancelled.' });
-  if (prepared.length) {
-    const folder = join(ctx.dir, 'attachments', id);
-    mkdirSync(folder, { recursive: true, mode: 0o700 });
-    for (const a of prepared) writeFileSync(join(folder, a.id), a.bytes, { mode: 0o600 });
-  }
+  savePrepared(prepared, join(ctx.dir, 'attachments', id));
   const attachments = retried?.attachments ?? prepared;
   const prompt = withAttachments(body.text, attachments);
+  const parts = attachmentParts(body.text, attachments, join(ctx.dir, 'attachments', id));
   // Only this turn's images go to the model as images; history keeps their [image: name] text.
-  const images = attachments
-    .filter((a) => a.delivery === 'image')
-    .map((a) => ({ name: a.name, type: a.type, path: join(ctx.dir, 'attachments', id, a.id) }));
+  const images = parts.filter((p) => p.image).map((p) => p.image);
   const user =
     retried?.user ??
     store.message(
@@ -342,7 +337,9 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       role: 'user',
       text: body.text,
       status: 'completed',
-      ...(attachments.length && { attachments: attachments.map(({ text, bytes, ...a }) => a) }),
+      ...(attachments.length && {
+        attachments: attachments.map(({ text, bytes, parts, ...a }) => a),
+      }),
     },
     ...(retried && { replaced: retried.replaced }),
   });
@@ -372,7 +369,12 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     }
     called = true;
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
-      { ...tutorContext(tree), tutorStyle: store.tutorStyle(), ...(images.length && { images }) },
+      {
+        ...tutorContext(tree),
+        tutorStyle: store.tutorStyle(),
+        ...(images.length && { images }),
+        ...(attachments.some((a) => a.type === 'application/pdf') && { parts }),
+      },
       prompt,
       (event) => {
         if (finished) return;
