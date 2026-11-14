@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 import { RenderInternals, getVideoMetadata } from '@remotion/renderer';
 import { mediaPath, SANDBOX } from '../../server/media/videos.mjs';
+import { manimBindings } from '../../server/media/manim-cut.mjs';
+import { detectManim } from '../../server/media/manim.mjs';
 import {
   task,
   directive,
@@ -20,6 +22,7 @@ import {
   until,
   open,
   job,
+  planFor,
 } from '../support/video-kit.mjs';
 
 test('inline video exposes bounded live progress and its position, keeps inputs private, then serves seekable media', async () => {
@@ -299,5 +302,143 @@ test(
     const idat = png.indexOf('IDAT'),
       [, r, g, b] = inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)));
     assert.ok(r > 120 && b < 80, `expected cube colour at the centre, got ${[r, g, b]}`);
+  },
+);
+
+test(
+  'one real short sandboxed Manim cut joins a Remotion cut with house fonts, math, narration and subtitles',
+  { skip: renderSkip, timeout: 240000 },
+  async () => {
+    const runtime = detectManim();
+    assert.equal(runtime.ready, true, runtime.error);
+    const root = mkdtempSync(join(tmpdir(), 'tt-python-sandbox-'));
+    const workspace = join(root, 'video-work', 'artifact', 'attempt', 'cut-0');
+    mkdirSync(join(workspace, 'tmp'), { recursive: true });
+    mkdirSync(join(workspace, 'public'));
+    writeFileSync(join(root, 'trees.sqlite'), 'PRIVATE APP DATA');
+    writeFileSync(join(workspace, 'public/narration.mp3'), 'OWNED AUDIO');
+    const probe = `import json, os, socket
+from pathlib import Path
+results = {}
+def check(name, operation):
+    try:
+        operation()
+        results[name] = 'allowed'
+    except OSError:
+        results[name] = 'denied'
+check('appData', lambda: Path(${JSON.stringify(join(root, 'trees.sqlite'))}).read_text())
+check('home', lambda: list(Path(${JSON.stringify(join(homedir(), '.claude'))}).iterdir()))
+check('repo', lambda: Path(${JSON.stringify(join(repo, 'package.json'))}).read_text())
+check('writeRuntime', lambda: Path(${JSON.stringify(join(repo, '.venv/UNEXPECTED'))}).write_text('bad'))
+check('writeOutside', lambda: Path('/usr/UNEXPECTED').write_text('bad'))
+check('writeWorkspace', lambda: Path('ok').write_text('ok'))
+check('mutateAudio', lambda: Path('public/narration.mp3').write_text('bad'))
+check('network', lambda: socket.create_connection(('1.1.1.1',443), timeout=1))
+results['env'] = sorted(k for k in os.environ if k not in ['HOME','PATH','PWD','TMPDIR','LC_CTYPE'])
+print(json.dumps(results))`;
+    const probeResult = spawnSync(
+      'bwrap',
+      [...SANDBOX(workspace), ...manimBindings(runtime.python), runtime.python, '-I', '-c', probe],
+      { encoding: 'utf8', env: {} },
+    );
+    assert.equal(probeResult.status, 0, probeResult.stderr);
+    assert.deepEqual(JSON.parse(probeResult.stdout), {
+      appData: 'denied',
+      home: 'denied',
+      repo: 'denied',
+      writeRuntime: 'denied',
+      writeOutside: 'denied',
+      writeWorkspace: 'allowed',
+      mutateAudio: 'denied',
+      network: 'denied',
+      env: [],
+    });
+    const plan = planFor(composition, 2);
+    plan.cuts[1].engine = 'manim';
+    const { result, row, dir, published } = await job(undefined, undefined, composition, 2, {
+      plan,
+    });
+    assert.equal(result, null);
+    assert.equal(row.status, 'ready');
+    assert.equal(published, true);
+    const data = JSON.parse(row.source);
+    assert.deepEqual(
+      data.cuts.map((c) => c.engine),
+      ['remotion', 'manim'],
+    );
+    assert.deepEqual(
+      data.cuts.map((c) => c.status),
+      ['ready', 'ready'],
+    );
+    const clip = join(dir, 'video-work', row.id, row.attempt, data.cuts[1].clip);
+    for (const path of [clip, mediaPath(dir, row.id)]) {
+      const metadata = await getVideoMetadata(path);
+      assert.deepEqual([metadata.width, metadata.height, metadata.fps], [1920, 1080, 30]);
+      assert.ok(Math.abs(metadata.durationInSeconds - (path === clip ? 2.5 : 5)) < 1 / 30);
+    }
+    assert.equal((await getVideoMetadata(mediaPath(dir, row.id))).audioCodec, 'aac');
+    const ffmpeg = RenderInternals.getExecutablePath({
+      type: 'ffmpeg',
+      indent: false,
+      logLevel: 'error',
+      binariesDirectory: null,
+    });
+    const region = (file, seconds, crop) =>
+      execFileSync(ffmpeg, [
+        '-v',
+        'error',
+        '-ss',
+        String(seconds),
+        '-i',
+        file,
+        '-frames:v',
+        '1',
+        '-vf',
+        `crop=${crop},format=rgb24`,
+        '-f',
+        'image2pipe',
+        '-c:v',
+        'png',
+        '-pred',
+        'none',
+        '-',
+      ]);
+    const bright = (buffer) => {
+      const chunks = [];
+      const width = buffer.readUInt32BE(16);
+      for (let offset = 8; offset < buffer.length;) {
+        const size = buffer.readUInt32BE(offset);
+        if (buffer.toString('ascii', offset + 4, offset + 8) === 'IDAT')
+          chunks.push(buffer.subarray(offset + 8, offset + 8 + size));
+        offset += size + 12;
+      }
+      const pixels = inflateSync(Buffer.concat(chunks));
+      let count = 0;
+      for (let row = 0; row < pixels.length; row += width * 3 + 1) {
+        assert.equal(pixels[row], 0, 'PNG uses unfiltered RGB rows');
+        for (let i = row + 1; i < row + width * 3 + 1; i += 3) if (pixels[i] > 100) count++;
+      }
+      return count;
+    };
+    const equation = '600:200:660:400';
+    assert.ok(
+      bright(region(clip, 0.7, equation)) > 500,
+      'Manim draws an equation, not just the ground',
+    );
+    assert.ok(
+      bright(region(mediaPath(dir, row.id), 3.2, equation)) > 500,
+      'the rendered math reaches its ordered timeline position',
+    );
+    const band = '1680:120:120:960';
+    assert.equal(bright(region(clip, 0.7, band)), 0, 'raw math leaves the subtitle band empty');
+    assert.ok(
+      bright(region(mediaPath(dir, row.id), 3.2, band)) > 100,
+      'the shared wrapper draws subtitles over the Manim clip',
+    );
+    assert.equal(
+      bright(region(mediaPath(dir, row.id), 4.9667, equation)),
+      0,
+      'Manim fades into the same dark pause',
+    );
   },
 );

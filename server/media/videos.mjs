@@ -1,17 +1,17 @@
-import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { renameSync, unlinkSync, readFileSync, existsSync } from 'node:fs';
-import { mkdir, writeFile, realpath, lstat, open, rm } from 'node:fs/promises';
-import { join, basename, resolve } from 'node:path';
-import { homedir } from 'node:os';
-import { fileURLToPath } from 'node:url';
+import { renameSync, unlinkSync, readFileSync } from 'node:fs';
+import { mkdir, writeFile, realpath, lstat, open, rm, copyFile } from 'node:fs/promises';
+import { join, basename } from 'node:path';
 import { edgeNarration } from './narration.mjs';
 import { videoPlan, PLAN_INSTRUCTIONS, CUT_ATTEMPTS } from './video-plan.mjs';
 import { videoCall, writeCuts } from './video-cuts.mjs';
+import { sandboxProcess, REPO } from './video-sandbox.mjs';
+import { detectManim } from './manim.mjs';
+import { sandboxManim } from './manim-cut.mjs';
 
 const MAX_MEDIA = 200 * 1024 * 1024;
 const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
-const REPO = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
+const MANIM_KIT = readFileSync(new URL('./manim-kit.py', import.meta.url), 'utf8');
 // The learner must name a video; the tutor's block alone never starts one.
 export const asksForVideo = (text) =>
   !/\b(?:don['’]t|do not|never)\s+(?:\w+\s+){0,3}(?:make|create|generate|render|produce|show|give|animate)\b/i.test(
@@ -21,104 +21,27 @@ export const asksForVideo = (text) =>
     text,
   );
 
-// Bundling and Chromium run generated code: no network, an empty home, read-only system, and only this workspace writable.
-// The learner's home and app-data directory are hidden; attempts are grouped by their owning artifact.
-export const SANDBOX = (workspace) => [
-  '--ro-bind',
-  '/',
-  '/',
-  '--tmpfs',
-  homedir(),
-  '--tmpfs',
-  resolve(workspace, /^cut-\d+$/.test(basename(workspace)) ? '../../../..' : '../../..'),
-  '--tmpfs',
-  '/tmp',
-  '--tmpfs',
-  '/run/user',
-  '--ro-bind',
-  join(REPO, 'node_modules'),
-  join(REPO, 'node_modules'),
-  '--ro-bind',
-  join(REPO, 'server', 'media', 'video-render.mjs'),
-  join(REPO, 'server', 'media', 'video-render.mjs'),
-  '--bind',
-  workspace,
-  workspace,
-  ...['public', 'narration.json'].flatMap((name) =>
-    existsSync(join(workspace, name))
-      ? ['--ro-bind', join(workspace, name), join(workspace, name)]
-      : [],
-  ),
-  '--chdir',
-  workspace,
-  '--unshare-all',
-  '--die-with-parent',
-  '--new-session',
-  '--dev',
-  '/dev',
-  '--proc',
-  '/proc',
-  '--clearenv',
-  '--setenv',
-  'PATH',
-  '/usr/bin:/bin',
-  '--setenv',
-  'HOME',
-  workspace,
-  '--setenv',
-  'TMPDIR',
-  join(workspace, 'tmp'),
-];
+export { SANDBOX } from './video-sandbox.mjs';
 
 export function sandboxRender(workspace, output, signal, onProgress = () => {}, timeout) {
-  return new Promise((resolvePromise, reject) => {
-    const budget =
-      timeout ??
-      120000 +
-        (JSON.parse(readFileSync(join(workspace, 'narration.json'), 'utf8')).durationInFrames /
-          30) *
-          15000;
-    const child = spawn(
-      'bwrap',
-      [
-        ...SANDBOX(workspace),
-        process.execPath,
-        join(REPO, 'server', 'media', 'video-render.mjs'),
-        workspace,
-        output,
-        join(REPO, 'node_modules'),
-      ],
-      { stdio: ['ignore', 'pipe', 'pipe'], env: {} },
-    );
-    let out = '';
-    child.stdout.on('data', (chunk) => {
-      out = (out + chunk).slice(-4096);
-      // Progress lines are {"progress":0..1}; the last line is the result.
-      for (const line of out.split('\n').slice(-3, -1)) {
-        const value = /^\{"progress":([\d.]+)\}$/.exec(line)?.[1];
-        if (value) onProgress(Math.min(1, Number(value)));
-      }
-    });
-    // Diagnostics stay in the job workspace process; never forwarded to chat or tutor.
-    child.stderr.resume();
-    const kill = () => child.kill('SIGKILL');
-    // Rendering scales with narration; retain a finite attempt budget without a short-video duration cap.
-    const timer = setTimeout(kill, budget);
-    signal.addEventListener('abort', kill, { once: true });
-    if (signal.aborted) kill();
-    child.on('error', () => reject(new Error('Video renderer could not start.')));
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      signal.removeEventListener('abort', kill);
-      if (signal.aborted) return reject(signal.reason ?? new Error('Video generation cancelled.'));
-      try {
-        if (code) throw new Error();
-        resolvePromise(JSON.parse(out.trim().split('\n').at(-1)));
-      } catch {
-        reject(new Error(code === null ? 'Video rendering timed out.' : 'Video rendering failed.'));
-      }
-    });
-  });
+  const budget =
+    timeout ??
+    120000 +
+      (JSON.parse(readFileSync(join(workspace, 'narration.json'), 'utf8')).durationInFrames / 30) *
+        15000;
+  return sandboxProcess(
+    workspace,
+    [
+      process.execPath,
+      join(REPO, 'server/media/video-render.mjs'),
+      workspace,
+      output,
+      join(REPO, 'node_modules'),
+    ],
+    signal,
+    onProgress,
+    budget,
+  );
 }
 
 // Accept only the server-chosen file inside this attempt's private output, as a regular readable MP4.
@@ -151,6 +74,8 @@ export async function generateVideo({
   render = sandboxRender,
   narrate = edgeNarration,
   onPhase = () => {},
+  manim = { detect: detectManim, render: sandboxManim },
+  onWarning = console.warn,
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
   const controller = new AbortController();
@@ -196,14 +121,21 @@ export async function generateVideo({
         artifact.input,
       ),
     );
-    if (plan.cuts.some((c) => c.engine !== 'remotion'))
-      throw new Error('Manim video cuts are unavailable. Use Remotion until Manim is installed.');
+    let runtime;
+    if (plan.cuts.some((c) => c.engine === 'manim')) {
+      runtime = manim.detect();
+      if (!runtime.ready) {
+        onWarning(`WARN video ${runtime.error}`);
+        throw new Error(runtime.error);
+      }
+    }
     count = plan.cuts.length;
     onPhase('narrating');
     const work = await writeCuts({
       plan,
       workspace,
       kit: KIT,
+      manimKit: MANIM_KIT,
       call,
       narrate,
       signal: controller.signal,
@@ -227,6 +159,16 @@ export async function generateVideo({
         const output = join(cutDir, 'out', randomUUID() + '.mp4');
         onPhase('rendering', index / cuts.length, frames);
         try {
+          if (cut.engine === 'manim') {
+            const clip = join(cutDir, 'out', randomUUID() + '.mp4');
+            const result = await manim.render(cutDir, clip, controller.signal, () => {}, runtime);
+            controller.signal.throwIfAborted();
+            await validateOutput(cutDir, clip);
+            if (result?.fps !== 30 || result.durationInFrames !== cut.timing.durationInFrames)
+              throw new Error('Rendered Manim cut is unreadable.');
+            await copyFile(clip, join(cutDir, 'public', 'manim.mp4'));
+            cut.clip = `cut-${index}/public/manim.mp4`;
+          }
           const result = await render(cutDir, output, controller.signal, (p) =>
             onPhase('rendering', (index + p) / cuts.length, frames),
           );
@@ -240,7 +182,8 @@ export async function generateVideo({
           break;
         } catch (error) {
           controller.signal.throwIfAborted();
-          if (work.attempts[index] >= CUT_ATTEMPTS) {
+          if (error.manimUnavailable) onWarning(`WARN video ${error.message}`);
+          if (error.manimUnavailable || work.attempts[index] >= CUT_ATTEMPTS) {
             cut.status = 'failed';
             work.persist();
             throw error;
@@ -249,7 +192,9 @@ export async function generateVideo({
           // Renderer diagnostics can contain private paths or generated text. Send only a fixed repair hint.
           await work.rewrite(
             index,
-            'The previous cut failed rendering. Rewrite a simpler valid component.',
+            cut.engine === 'manim'
+              ? 'The previous Manim cut failed validation or rendering. Rewrite a simpler valid Cut(HouseScene) using only named kit imports, brief colors/fonts and measured narration time.'
+              : 'The previous cut failed rendering. Rewrite a simpler valid component.',
           );
         }
       }

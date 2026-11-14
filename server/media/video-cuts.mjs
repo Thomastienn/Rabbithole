@@ -1,7 +1,14 @@
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CUT_ENTRY, CUT_INSTRUCTIONS } from './video-cut.mjs';
-import { cutSource, CUT_ATTEMPTS, CUT_PAUSE_FRAMES, MAX_SOURCE } from './video-plan.mjs';
+import {
+  cutSource,
+  CUT_ATTEMPTS,
+  CUT_PAUSE_FRAMES,
+  MAX_SOURCE,
+  videoPalette,
+} from './video-plan.mjs';
+import { MANIM_INSTRUCTIONS, MANIM_COMPONENT } from './manim-cut.mjs';
 import { stageNarration } from './narration.mjs';
 
 export async function videoCall(provider, selection, instructions, input, signal, onText) {
@@ -40,7 +47,18 @@ export async function videoCall(provider, selection, instructions, input, signal
   return [...items.values()].join('\n\n');
 }
 
-export async function writeCuts({ plan, workspace, kit, call, narrate, signal, save, wait, stop }) {
+export async function writeCuts({
+  plan,
+  workspace,
+  kit,
+  manimKit,
+  call,
+  narrate,
+  signal,
+  save,
+  wait,
+  stop,
+}) {
   const cuts = plan.cuts.map((c) => ({
     engine: c.engine,
     status: 'pending',
@@ -63,7 +81,7 @@ export async function writeCuts({ plan, workspace, kit, call, narrate, signal, s
       let raw;
       try {
         raw = await call(
-          CUT_INSTRUCTIONS,
+          cuts[index].engine === 'manim' ? MANIM_INSTRUCTIONS : CUT_INSTRUCTIONS,
           JSON.stringify({
             styleBrief: plan.styleBrief,
             cut: plan.cuts[index],
@@ -77,7 +95,10 @@ export async function writeCuts({ plan, workspace, kit, call, narrate, signal, s
         continue;
       }
       try {
-        cuts[index].code = cutSource(raw, plan.styleBrief);
+        cuts[index].code =
+          cuts[index].engine === 'manim'
+            ? raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim()
+            : cutSource(raw, plan.styleBrief);
       } catch (e) {
         error = e;
         continue;
@@ -141,7 +162,32 @@ export async function writeCuts({ plan, workspace, kit, call, narrate, signal, s
   }
   const stage = async (index) => {
     const dir = join(workspace, `cut-${index}`);
-    await writeFile(join(dir, 'Video.tsx'), cuts[index].code);
+    if (cuts[index].engine === 'manim') {
+      await writeFile(join(dir, 'Cut.py'), cuts[index].code);
+      await writeFile(join(dir, 'kit.py'), manimKit);
+      await writeFile(
+        join(dir, 'brief.json'),
+        JSON.stringify({
+          palette: Object.fromEntries(
+            Object.entries(videoPalette).filter(
+              ([ink]) =>
+                !['amber', 'leaf', 'rust', 'lichen'].includes(ink) ||
+                Object.values(plan.styleBrief.paletteRoles).includes(ink),
+            ),
+          ),
+          colors: Object.fromEntries(
+            Object.entries(plan.styleBrief.paletteRoles).map(([role, ink]) => [
+              role,
+              videoPalette[ink],
+            ]),
+          ),
+        }),
+      );
+    }
+    await writeFile(
+      join(dir, 'Video.tsx'),
+      cuts[index].engine === 'manim' ? MANIM_COMPONENT : cuts[index].code,
+    );
     await writeFile(join(dir, 'index.tsx'), CUT_ENTRY);
     await writeFile(
       join(dir, 'kit.tsx'),

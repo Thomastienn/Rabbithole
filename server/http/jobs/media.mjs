@@ -101,6 +101,8 @@ export function mediaJobs(ctx) {
           timeout: ctx.videoTimeout,
           render: ctx.videoRender,
           narrate: ctx.videoNarrate,
+          manim: ctx.videoManim,
+          onWarning: ctx.log,
           onPhase: (phase, progress, detail = {}) => {
             if (videos.get(job.id) !== running || running.controller.signal.aborted) return;
             if (running.phase !== phase) running.phaseStartedAt = Date.now();

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { videoPlan, cutSource, CUT_PAUSE_FRAMES } from '../../server/media/video-plan.mjs';
 import { planFor, composition, spatial, styleBrief } from '../support/video-kit.mjs';
 
-test('compact plan validates the brief and ordered cuts, including the future Manim engine', () => {
+test('compact plan validates the brief and ordered cuts, including the Manim engine', () => {
   const good = planFor(composition, 3);
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
   good.cuts[1].engine = 'manim';

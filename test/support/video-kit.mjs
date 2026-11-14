@@ -37,6 +37,16 @@ export default function Video() {
     <mesh rotation={[frame / 20, frame / 15, 0]}><boxGeometry args={[1.4, 1.4, 1.4]} /><meshStandardMaterial color={palette.amber} /></mesh>
   </ThreeCanvas></AbsoluteFill>;
 }`;
+export const manimCut = `from kit import HouseScene, MathTex, Text, VGroup, TransformMatchingTex, Write, FadeIn, colors, fonts, point
+class Cut(HouseScene):
+    def construct(self):
+        title = Text("Winner", font_size=48).move_to(point(960, 180))
+        note = Text("A term moves across the equals sign.", font=fonts["reading"], font_size=32).move_to(point(960, 780))
+        start = MathTex("x + 1 = 2", color=colors["winner"]).scale(2).move_to(point(960, 500))
+        end = MathTex("x = 1", color=colors["winner"]).scale(2).move_to(point(960, 500))
+        self.play(FadeIn(VGroup(title, note)), Write(start), run_time=0.5)
+        self.play(TransformMatchingTex(start, end), run_time=0.5)
+`;
 export const mp4 = Buffer.concat([
   Buffer.from([0, 0, 0, 24]),
   Buffer.from('ftypisom'),
@@ -111,7 +121,7 @@ export async function open(provider, options = {}) {
   };
 }
 
-export async function job(render, mutate, source = composition, count = 1) {
+export async function job(render, mutate, source = composition, count = 1, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-video-job-'));
   const store = observeStore(new Store(join(dir, 'trees.sqlite')));
   const tree = store.create('Video');
@@ -129,9 +139,13 @@ export async function job(render, mutate, source = composition, count = 1) {
     generate: async (t, text, emit) =>
       complete(
         emit,
-        t.instructions.startsWith('You plan') && source.startsWith('// Description:')
-          ? JSON.stringify(planFor(source, count))
-          : source,
+        t.instructions.startsWith('You plan') &&
+          (options.plan || source.startsWith('// Description:'))
+          ? JSON.stringify(options.plan ?? planFor(source, count))
+          : options.plan?.cuts.find((c) => c.purpose === JSON.parse(text).cut.purpose)?.engine ===
+              'manim'
+            ? manimCut
+            : source,
       ),
   };
   const phases = [];
@@ -145,6 +159,7 @@ export async function job(render, mutate, source = composition, count = 1) {
     render,
     narrate: fakeNarration,
     onPhase: (...p) => phases.push(p),
+    manim: options.manim,
   }).then(
     () => null,
     (error) => error.message,
