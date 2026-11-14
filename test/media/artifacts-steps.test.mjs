@@ -80,9 +80,9 @@ test('a complex reply becomes several small ordered diagram steps; each worker g
       ['pending', 'pending', 'pending', 'pending', 'failed'],
       'all step cards appear before workers run; rejected requests fail immediately',
     );
-    const { tutorContext, TUTOR_INSTRUCTIONS } = await import('../../server/media/diagrams.mjs');
+    const { tutorContext, TUTOR_RULES } = await import('../../server/media/diagrams.mjs');
     assert.match(
-      TUTOR_INSTRUCTIONS,
+      TUTOR_RULES,
       /several small visual steps[\s\S]*text stays accurate[\s\S]*text alternative/,
     );
     assert.doesNotMatch(JSON.stringify(tutorContext(saved).messages.at(-1)), /flowchart|Bad step/);

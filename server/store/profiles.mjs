@@ -138,4 +138,15 @@ export const profiles = {
     );
     return this.suggestionSettings();
   },
+  tutorStyle() {
+    return this.db.prepare('SELECT text FROM tutor_style WHERE id=1').get()?.text ?? null;
+  },
+  saveTutorStyle(text) {
+    this.db
+      .prepare(
+        'INSERT INTO tutor_style(id,text) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET text=excluded.text',
+      )
+      .run(text);
+    return this.tutorStyle();
+  },
 };

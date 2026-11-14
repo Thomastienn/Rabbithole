@@ -11,6 +11,7 @@ import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
+import { TUTOR_RULES } from '../../server/media/diagrams.mjs';
 
 test('all six provider switches preserve root and nested history/context, inherit choices, and repeat after restart', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-three-providers-')),
@@ -117,6 +118,7 @@ test('all six provider switches preserve root and nested history/context, inheri
   const fixedChild = await env.get(`/api/trees/${child.id}`),
     initialNested = await env.get(`/api/trees/${nested.id}`);
   const model = { claude: 'sonnet', codex: 'fixture-model', openai: 'second-model' };
+  await env.post('/api/settings/tutor-style', { style: 'Fixture tutor style 59.' });
   for (const phase of ['before restart', 'after restart']) {
     if (phase === 'after restart') {
       const prior = await Promise.all(
@@ -191,6 +193,7 @@ test('all six provider switches preserve root and nested history/context, inheri
           assert.equal(calls.findLast((c) => c.method === 'turn/start').params.input[0].text, text);
           instructions = calls.findLast((c) => c.method === 'thread/start').params.baseInstructions;
         }
+        assert.ok(instructions.startsWith('Fixture tutor style 59.\n\n' + TUTOR_RULES), label);
         if (before.branch) {
           assert.ok(instructions.includes(before.branch.snapshot));
           assert.ok(instructions.includes(before.branch.text));

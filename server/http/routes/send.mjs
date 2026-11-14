@@ -318,7 +318,7 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
     }
     called = true;
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
-      tutorContext(tree),
+      { ...tutorContext(tree), tutorStyle: store.tutorStyle() },
       body.text,
       (event) => {
         if (finished) return;

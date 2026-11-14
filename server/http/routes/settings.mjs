@@ -1,4 +1,5 @@
 import { EndpointError } from '../../providers/openai.mjs';
+import { DEFAULT_TUTOR_STYLE } from '../../media/diagrams.mjs';
 
 // Model profiles, chat, smart and suggestion settings, and custom endpoints.
 export async function settingsRoutes(req, res, url, ctx, body) {
@@ -13,6 +14,8 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     if (url.pathname === '/api/settings/chat') return json(res, 200, chatDefault());
     if (url.pathname === '/api/settings/smart') return json(res, 200, smart());
     if (url.pathname === '/api/profiles') return json(res, 200, profiles());
+    if (url.pathname === '/api/settings/tutor-style')
+      return json(res, 200, { style: store.tutorStyle(), default: DEFAULT_TUTOR_STYLE });
     return false;
   }
   if (req.method !== 'POST') return false;
@@ -59,6 +62,16 @@ export async function settingsRoutes(req, res, url, ctx, body) {
         error: 'Profile not found. Reopen Settings and choose a listed profile.',
       });
     return json(res, 200, profiles());
+  }
+  if (url.pathname === '/api/settings/tutor-style') {
+    if (body?.style !== null && typeof body?.style !== 'string')
+      return json(res, 400, {
+        error: 'Send the tutor style as text, or null to restore the default.',
+      });
+    // Empty or default-equal text stores null so an unedited style follows later defaults.
+    const text = body.style?.trim() || null;
+    store.saveTutorStyle(text === DEFAULT_TUTOR_STYLE ? null : text);
+    return json(res, 200, { style: store.tutorStyle(), default: DEFAULT_TUTOR_STYLE });
   }
   if (url.pathname === '/api/settings/chat') {
     const selection = {

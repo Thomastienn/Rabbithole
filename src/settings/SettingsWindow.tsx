@@ -17,6 +17,7 @@ import SuggestionSettings, { ConceptCost, AutomaticSuggestions } from './Suggest
 import ChatSettings from './ChatSettings';
 import SmartSettings from './SmartSettings';
 import ModelProfiles from './ModelProfiles';
+import TutorStyleSettings from './TutorStyleSettings';
 import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
@@ -222,6 +223,8 @@ export default function SettingsWindow({
             >
               <ConceptCost tokens={conceptNameTokens} />
             </Section>
+            <Divider />
+            <TutorStyleSettings api={api} />
           </>,
         )}
       {tab === 'connections' &&

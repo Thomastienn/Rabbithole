@@ -115,6 +115,10 @@ export function open(path) {
         .some((c) => c.name === 'effort')
     )
       this.db.exec('ALTER TABLE suggestion_settings ADD COLUMN effort TEXT');
+    // Tutor style: no row or NULL text means the built-in default.
+    this.db.exec(
+      'CREATE TABLE IF NOT EXISTS tutor_style (id INTEGER PRIMARY KEY CHECK(id=1), text TEXT)',
+    );
     // Smart role: a NULL model follows the chat default model; follow_effort=1 follows the chat default effort.
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)',
