@@ -7,7 +7,7 @@ import { execFile, fork } from 'node:child_process';
 import { once } from 'node:events';
 import { promisify } from 'node:util';
 import { Store } from '../../../server/store.mjs';
-import { fakeOpenAI, streamReply } from '../../../test/fake-openai.mjs';
+import { fakeOpenAI, streamReply } from '../../../test/support/fake-openai.mjs';
 
 process.umask(0o077);
 const dir = mkdtempSync(join(tmpdir(), 'tt-endpoint-ui-')),

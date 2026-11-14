@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { fakeNarration } from '../../test/fake-narration.mjs';
+import { fakeNarration } from '../../test/support/fake-narration.mjs';
 
 const dir = mkdtempSync(join(tmpdir(), 'tt-different-version-')),
   store = new Store(join(dir, 'trees.sqlite'));

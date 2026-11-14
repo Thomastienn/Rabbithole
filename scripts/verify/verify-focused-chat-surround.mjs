@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { nestedFrames } from '../../test/one-frame.mjs';
+import { nestedFrames } from '../../test/support/one-frame.mjs';
 
 const run = promisify(execFile),
   session = `chat-surround-${process.pid}`;

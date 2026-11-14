@@ -4,7 +4,7 @@ import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { nestedFrames } from '../../test/one-frame.mjs';
+import { nestedFrames } from '../../test/support/one-frame.mjs';
 import {
   b,
   ev,

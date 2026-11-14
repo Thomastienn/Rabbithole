@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import { Store } from '../../../server/store.mjs';
 import { createApp } from '../../../server/app.mjs';
 import { OpenAI } from '../../../server/providers/openai.mjs';
-import { fakeOpenAI } from '../../../test/fake-openai.mjs';
+import { fakeOpenAI } from '../../../test/support/fake-openai.mjs';
 
 const run = promisify(execFile),
   session = `settings-${process.pid}`;

@@ -28,6 +28,14 @@ tests are never the check for a routine ticket.
 Live-provider scripts (the `live` set in `scripts/verify/verify-all.mjs`) need a real sign-in.
 Run them by hand only.
 
+## Layout
+
+Test files live in folders by area: `test/http`, `test/store`, `test/providers`,
+`test/media`, `test/chat`, `test/map`, `test/usage`, `test/shell` and `test/scripts`. Shared
+helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mjs`,
+`video-kit.mjs`, `diagram-kit.mjs` and others) live in `test/support/`; data files live in
+`test/fixtures/`. `npm test` runs `test/**/*.test.mjs`.
+
 ## Commands
 
 - While you work, run only the test files covering the change:

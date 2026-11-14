@@ -455,7 +455,7 @@ try {
     'server/media/diagrams.mjs',
     'server/app.mjs',
     'scripts/verify/verify-diagram-rendering.mjs',
-    'test/artifact-render.test.mjs',
+    'test/media/artifact-render.test.mjs',
     'tsconfig.json',
     'package.json',
     'package-lock.json',

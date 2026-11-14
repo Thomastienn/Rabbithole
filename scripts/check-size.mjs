@@ -16,15 +16,13 @@ export const OVERSIZED = [
   'src/shell/ChatPage.tsx',
   'src/knowledge/KnowledgePage.tsx',
   'src/map/TreeOverview.tsx',
-  'test/artifacts.test.mjs',
-  'test/branch.test.mjs',
-  'test/chat-defaults.test.mjs',
-  'test/chat-management.test.mjs',
-  'test/openai.test.mjs',
-  'test/suggestions.test.mjs',
-  'test/usage.test.mjs',
-  'test/videos.test.mjs',
-  'test/visuals.test.mjs',
+  'test/chat/suggestions.test.mjs',
+  'test/media/visuals.test.mjs',
+  'test/providers/chat-defaults.test.mjs',
+  'test/providers/openai.test.mjs',
+  'test/store/branch.test.mjs',
+  'test/store/chat-management.test.mjs',
+  'test/usage/usage.test.mjs',
 ];
 
 export function checkSize(root, oversized = OVERSIZED) {

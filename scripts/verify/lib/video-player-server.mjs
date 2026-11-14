@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Store } from '../../../server/store.mjs';
 import { createApp } from '../../../server/app.mjs';
 import { sandboxRender } from '../../../server/media/videos.mjs';
-import { fakeNarration } from '../../../test/fake-narration.mjs';
+import { fakeNarration } from '../../../test/support/fake-narration.mjs';
 
 export const task = {
   title: 'Peterson in the tournament tree',

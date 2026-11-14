@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { sandboxRender } from '../../server/media/videos.mjs';
-import { fakeNarration } from '../../test/fake-narration.mjs';
+import { fakeNarration } from '../../test/support/fake-narration.mjs';
 
 const filename = fileURLToPath(import.meta.url);
 const composition = `// Description: A box labelled Winner rises to the top of the tree.

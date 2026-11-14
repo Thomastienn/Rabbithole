@@ -9,8 +9,8 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { fakeNarration } from '../../test/fake-narration.mjs';
-import { nestedFrames } from '../../test/one-frame.mjs';
+import { fakeNarration } from '../../test/support/fake-narration.mjs';
+import { nestedFrames } from '../../test/support/one-frame.mjs';
 
 const run = promisify(execFile),
   dir = mkdtempSync(join(tmpdir(), 'tt-read-'));
