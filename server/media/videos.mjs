@@ -62,6 +62,8 @@ export async function validateOutput(workspace, output) {
 }
 
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
+// A cut plays live once its code and measured narration exist; a Manim cut also needs its rendered clip.
+export const playable = (cut) => !!(cut.code && cut.timing && (cut.engine !== 'manim' || cut.clip));
 
 export async function generateVideo({
   provider,
@@ -99,11 +101,9 @@ export async function generateVideo({
     }
   };
   const deadline = Date.now() + (timeout ?? 600000);
-  const call = (instructions, input) =>
+  const call = (instructions, input, onText) =>
     wait(
-      videoCall(provider, selection, instructions, input, controller.signal, (characters) =>
-        onPhase('planning', undefined, { characters }),
-      ),
+      videoCall(provider, selection, instructions, input, controller.signal, onText),
       Math.max(1, deadline - Date.now()),
       'Video composition timed out.',
     );
@@ -120,6 +120,7 @@ export async function generateVideo({
             ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
             : ''),
         artifact.input,
+        (characters) => onPhase('planning', undefined, { characters }),
       ),
     );
     let runtime;
@@ -132,8 +133,28 @@ export async function generateVideo({
     }
     count = plan.cuts.length;
     onStage('cuts', { cuts: count });
-    onPhase('narrating');
-    let writtenCuts = 0;
+    let writtenCuts = 0,
+      narratedCuts = 0,
+      playableStage = false,
+      live,
+      frames,
+      rendered;
+    // Live phase from real cut state: cut 1 decides when playback can start; saving needs every cut playable.
+    const report = (value = rendered) => {
+      rendered = value;
+      const ready = live.cuts.filter(playable).length;
+      if (rendered !== undefined && ready === count) return onPhase('saving', rendered, frames);
+      if (!playable(live.cuts[0]))
+        return live.cuts[0].code
+          ? onPhase('narrating')
+          : onPhase('writing', undefined, {
+              cut: live.cuts.filter((c) => c.code).length,
+              cuts: count,
+            });
+      if (!playableStage) onStage('playable', { cut: 1, cuts: count });
+      playableStage = true;
+      onPhase('playable', undefined, { cut: ready, cuts: count });
+    };
     const work = await writeCuts({
       plan,
       workspace,
@@ -148,12 +169,17 @@ export async function generateVideo({
         const written = data.cuts.filter((c) => c.status === 'written').length;
         if (written > writtenCuts) onStage('cuts written', { cut: written, cuts: count });
         writtenCuts = Math.max(writtenCuts, written);
+        const narrated = data.cuts.filter((c) => c.timing).length;
+        if (narrated > narratedCuts) onStage('narration', { cut: narrated, cuts: count });
+        narratedCuts = Math.max(narratedCuts, narrated);
         if (!store.videoData(artifact.conversation, artifact.id, artifact.attempt, data))
           throw new Error('Video job no longer owns this output.');
+        live = data;
+        report();
       },
     });
     const { cuts } = work.data;
-    const frames = { frames: cuts.reduce((n, c) => n + c.timing.durationInFrames, 0) };
+    frames = { frames: cuts.reduce((n, c) => n + c.timing.durationInFrames, 0) };
     const outputs = [];
     for (let index = 0; index < cuts.length; index++) {
       const cut = cuts[index];
@@ -163,7 +189,7 @@ export async function generateVideo({
         work.persist();
         const cutDir = await work.stage(index);
         const output = join(cutDir, 'out', randomUUID() + '.mp4');
-        onPhase('rendering', index / cuts.length, frames);
+        report(index / cuts.length);
         try {
           if (cut.engine === 'manim') {
             const clip = join(cutDir, 'out', randomUUID() + '.mp4');
@@ -174,9 +200,10 @@ export async function generateVideo({
               throw new Error('Rendered Manim cut is unreadable.');
             await copyFile(clip, join(cutDir, 'public', 'manim.mp4'));
             cut.clip = `cut-${index}/public/manim.mp4`;
+            work.persist();
           }
           const result = await render(cutDir, output, controller.signal, (p) =>
-            onPhase('rendering', (index + p) / cuts.length, frames),
+            report((index + p) / cuts.length),
           );
           controller.signal.throwIfAborted();
           await validateOutput(cutDir, output);
@@ -185,8 +212,7 @@ export async function generateVideo({
           outputs.push(output);
           cut.status = 'ready';
           work.persist();
-          if (index === 0) onStage('playable', { cut: 1, cuts: count });
-          onPhase('rendering', (index + 1) / cuts.length, frames);
+          report((index + 1) / cuts.length);
           break;
         } catch (error) {
           controller.signal.throwIfAborted();
@@ -225,7 +251,7 @@ export async function generateVideo({
       if (result?.fps !== 30 || result.durationInFrames !== frames.frames)
         throw new Error('Rendered video is unreadable.');
     }
-    onPhase('saving');
+    onPhase('saving', 1, frames);
     const final = mediaPath(dir, artifact.id);
     await mkdir(join(dir, 'videos'), { recursive: true, mode: 0o700 });
     const owner = store.artifact(artifact.conversation, artifact.id);

@@ -1,21 +1,45 @@
-import { stat, lstat } from 'node:fs/promises';
+import { stat, lstat, readFile } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { mediaPath } from '../../media/videos.mjs';
+import { join } from 'node:path';
+import ts from 'typescript';
+import { mediaPath, playable } from '../../media/videos.mjs';
 import { readable } from '../jobs/media.mjs';
+
+// Validated cut TSX becomes a CommonJS function body; the player sandbox supplies require() for the kit and libraries.
+const compileCut = (code) =>
+  ts.transpileModule(code, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      jsx: ts.JsxEmit.ReactJSX,
+      target: ts.ScriptTarget.ES2022,
+      esModuleInterop: true,
+    },
+  }).outputText;
 
 // The video library, media playback, artifact reads and artifact job actions.
 export async function mediaRoutes(req, res, url, ctx, body) {
   const { store, json, dir, live, videos } = ctx;
   if (req.method === 'GET') {
     // The library owns ready videos, independent of any conversation; playback never calls a provider.
+    // A playable video joins the library live until its MP4 is saved; `live` names its conversation for the cut routes.
     if (url.pathname === '/api/videos')
-      return json(
-        res,
-        200,
-        store
+      return json(res, 200, [
+        ...[...videos.values()]
+          .filter((job) => ['playable', 'saving'].includes(job.phase))
+          .map((job) => store.artifact(job.conversation, job.artifact))
+          .filter((a) => a?.kind === 'video' && a.status === 'pending')
+          .map(({ id, title, description, created, conversation }) => ({
+            id,
+            title,
+            description,
+            duration: null,
+            created,
+            live: conversation,
+          })),
+        ...store
           .library()
           .map((v) => (readable(mediaPath(dir, v.id)) ? v : { ...v, available: false })),
-      );
+      ]);
     // Media is located only from the server-issued artifact id, never from a generated path or URL.
     const mediaMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/media$/),
       libraryMatch = url.pathname.match(/^\/api\/videos\/([^/]+)\/media$/);
@@ -51,6 +75,47 @@ export async function mediaRoutes(req, res, url, ctx, body) {
       createReadStream(mediaPath(dir, artifact.id), { start, end })
         .on('error', () => res.destroy())
         .pipe(res);
+      return true;
+    }
+    // Live playback: only a pending cut-format video, only playable cuts, files located from server ids.
+    const cutsMatch = url.pathname.match(
+      /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/cuts(?:\/(\d+)\/(narration|clip))?$/,
+    );
+    if (cutsMatch) {
+      const [, conversation, id, index, file] = cutsMatch,
+        artifact = store.artifact(conversation, id);
+      let data = null;
+      try {
+        if (artifact?.kind === 'video' && artifact.status === 'pending')
+          data = JSON.parse(artifact.source);
+      } catch {}
+      if (!Array.isArray(data?.cuts)) return json(res, 404, { error: 'Live video not available.' });
+      if (!file)
+        return json(res, 200, {
+          paletteRoles: data.plan.styleBrief.paletteRoles,
+          cuts: data.cuts.map((cut) => ({
+            engine: cut.engine,
+            timing: cut.timing,
+            code: playable(cut) && cut.engine !== 'manim' ? compileCut(cut.code) : null,
+            playable: playable(cut),
+          })),
+        });
+      const cut = data.cuts[Number(index)];
+      if (!cut || !playable(cut) || (file === 'clip' && cut.engine !== 'manim'))
+        return json(res, 404, { error: 'Cut not available.' });
+      const path = join(
+        dir,
+        'video-work',
+        artifact.id,
+        artifact.attempt,
+        `cut-${Number(index)}`,
+        'public',
+        file === 'clip' ? 'manim.mp4' : 'narration.mp3',
+      );
+      const bytes = await readFile(path).catch(() => null);
+      if (!bytes) return json(res, 404, { error: 'Cut not available.' });
+      res.writeHead(200, { 'Content-Type': file === 'clip' ? 'video/mp4' : 'audio/mpeg' });
+      res.end(bytes);
       return true;
     }
     const artifactMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)$/);

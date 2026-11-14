@@ -14,6 +14,8 @@ export type LibraryVideo = {
   duration: number | null;
   created: number;
   available?: false;
+  // Conversation of a pending video that plays live until its MP4 is saved.
+  live?: string;
 };
 
 export default function VideoLibrary({
@@ -111,32 +113,38 @@ export default function VideoLibrary({
           {videos.map((v) => (
             <VideoCard
               key={v.id}
-              artifact={{ ...v, status: 'ready', conversation: '' }}
+              artifact={
+                v.live
+                  ? { ...v, status: 'pending', conversation: v.live, phase: 'playable' }
+                  : { ...v, status: 'ready', conversation: '' }
+              }
               media={`/api/videos/${v.id}/media`}
               actions={
-                <>
-                  {v.available !== false && (
+                !v.live && (
+                  <>
+                    {v.available !== false && (
+                      <Button
+                        label="Show in folder"
+                        variant="ghost"
+                        size="sm"
+                        icon={<FolderOpenIcon />}
+                        aria-label={`Show “${v.title}” in folder`}
+                        onClick={() => void reveal(v)}
+                      />
+                    )}
                     <Button
-                      label="Show in folder"
+                      label={v.available === false ? 'Remove from Videos' : 'Move to trash'}
                       variant="ghost"
                       size="sm"
-                      icon={<FolderOpenIcon />}
-                      aria-label={`Show “${v.title}” in folder`}
-                      onClick={() => void reveal(v)}
+                      icon={<TrashIcon />}
+                      aria-label={`${v.available === false ? 'Remove' : 'Move'} “${v.title}” ${v.available === false ? 'from Videos' : 'to the system trash'}`}
+                      onClick={() => {
+                        setTrashError('');
+                        setTrashing(v);
+                      }}
                     />
-                  )}
-                  <Button
-                    label={v.available === false ? 'Remove from Videos' : 'Move to trash'}
-                    variant="ghost"
-                    size="sm"
-                    icon={<TrashIcon />}
-                    aria-label={`${v.available === false ? 'Remove' : 'Move'} “${v.title}” ${v.available === false ? 'from Videos' : 'to the system trash'}`}
-                    onClick={() => {
-                      setTrashError('');
-                      setTrashing(v);
-                    }}
-                  />
-                </>
+                  </>
+                )
               }
             />
           ))}

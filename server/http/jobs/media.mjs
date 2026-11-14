@@ -7,6 +7,7 @@ import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
 
 export const STOPPED = new Error('TreeTutor stopped.');
+const PHASES = ['planning', 'writing', 'narrating', 'playable', 'saving'];
 
 // A crash before commit restores staged files; a crash after commit finishes removing them.
 // The suffix records the owning artifact, including legacy workspaces named only by attempt.
@@ -51,6 +52,7 @@ export function mediaJobs(ctx) {
         ...(job?.progress !== undefined && { progress: job.progress }),
         ...(job?.characters !== undefined && { characters: job.characters }),
         ...(job?.frames !== undefined && { frames: job.frames }),
+        ...(job?.cuts !== undefined && { cut: job.cut, cuts: job.cuts }),
       };
     }
     return a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
@@ -77,7 +79,6 @@ export function mediaJobs(ctx) {
     const stage = (name, detail = {}) =>
       ctx.log(formatLog('info', 'media', name, { ...fields, ...detail }));
     let progressStep = 0;
-    const phases = new Set();
     stage('plan');
     running.done = Promise.resolve()
       .then(async () => {
@@ -123,14 +124,13 @@ export function mediaJobs(ctx) {
           onStage: stage,
           onPhase: (phase, progress, detail = {}) => {
             if (videos.get(job.id) !== running || running.controller.signal.aborted) return;
+            // Phases only advance, so the reported step and bar never move backward.
+            if (PHASES.indexOf(phase) < PHASES.indexOf(running.phase)) return;
             if (running.phase !== phase) {
               running.phaseStartedAt = Date.now();
-              if (phase !== 'planning' && !phases.has(phase)) {
-                phases.add(phase);
-                stage(phase === 'narrating' ? 'narration' : phase);
-              }
+              if (phase === 'saving') stage('saving');
             }
-            if (phase === 'rendering' && Number.isFinite(progress)) {
+            if (phase === 'saving' && Number.isFinite(progress)) {
               const step = Math.min(4, Math.floor(progress * 4));
               while (progressStep < step) stage('render', { progress: ++progressStep * 25 });
             }
@@ -138,9 +138,11 @@ export function mediaJobs(ctx) {
             running.progress = Number.isFinite(progress)
               ? Math.min(1, Math.max(0, progress))
               : undefined;
-            // Counts only: planning reports characters written, rendering the total frame count.
+            // Counts only: planning reports characters written, cut phases n of N, saving the total frame count.
             running.characters = Number.isFinite(detail.characters) ? detail.characters : undefined;
             running.frames = Number.isFinite(detail.frames) ? detail.frames : undefined;
+            running.cut = Number.isFinite(detail.cut) ? detail.cut : undefined;
+            running.cuts = Number.isFinite(detail.cuts) ? detail.cuts : undefined;
           },
         });
       })

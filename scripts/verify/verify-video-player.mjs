@@ -1,4 +1,4 @@
-// Browser fixture for TreeTutor-vm4.10: video status sequence, keyboard playback, no stolen focus or scroll, reload.
+// Browser fixture for TreeTutor-vm4.10 and tob.7: video status sequence, live playback and buffering, keyboard playback, no stolen focus or scroll, reload.
 // Synthetic tutor/worker providers; the composition is rendered for real in the bubblewrap sandbox. Needs `npm run build`.
 import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
@@ -103,7 +103,7 @@ try {
     `(()=>{const c=document.querySelector(${JSON.stringify(card)}),msgs=[...document.querySelectorAll('.focused-chat .astryx-chat-message')],own=c.closest('.astryx-chat-message');return {status:c.querySelector('[role=status]').textContent,before:c.previousElementSibling?.textContent,after:c.nextElementSibling?.textContent,inline:!!c.closest('.reply-md'),lastReply:own===msgs.at(-1),fence:document.querySelector('.focused-chat').textContent.includes('treetutor-video')}})()`,
   );
   assert.deepEqual(placement, {
-    status: `${task.title}: Writing script and scenes…`,
+    status: `${task.title}: Planning cuts…`,
     before: 'Here is how Peterson fits.',
     after: 'Then the winners advance.',
     inline: true,
@@ -187,9 +187,46 @@ try {
   await openFromMap('Tree levels');
   await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='pending'`);
   await wait(
-    `document.querySelector(${JSON.stringify(card)}).querySelector('[role=status]').textContent===${JSON.stringify(`${task.title}: Rendering frames…`)}`,
+    `document.querySelector(${JSON.stringify(card)}).querySelector('[role=status]').textContent===${JSON.stringify(`${task.title}: Playing live…`)}`,
   );
-  pass('inline status shows the existing rendering phase and progress fraction');
+  const liveFrame = await ev(
+    `(()=>{const f=document.querySelector(${JSON.stringify(card + ' iframe')});return {src:f.getAttribute('src'),sandbox:f.getAttribute('sandbox'),title:f.title,live:document.querySelector(${JSON.stringify(card)}).dataset.live}})()`,
+  );
+  assert.deepEqual(liveFrame, {
+    src: '/player.html',
+    sandbox: 'allow-scripts',
+    title: `Live video: ${task.title}`,
+    live: 'true',
+  });
+  // The opaque-origin frame is out of reach of eval; its accessibility snapshot shows what the player renders.
+  const inPlayer = async (check, timeout = 30000) => {
+    for (const end = Date.now() + timeout; ;) {
+      const tree = await b('snapshot');
+      if (check(tree)) return tree;
+      if (Date.now() > end) throw new Error(`live player never matched: ${tree.slice(-2000)}`);
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  };
+  // Cut 1 plays while cut 2 is still being written; the frame has no app access and its policy allows no network.
+  await inPlayer((tree) => tree.includes('A + B → Final'));
+  const isolation = await ev(
+    `(async()=>{const f=document.querySelector(${JSON.stringify(card + ' iframe')});return {appDocument:f.contentDocument===null,policy:await fetch('/player.html').then(r=>r.headers.get('content-security-policy'))}})()`,
+  );
+  assert.equal(isolation.appDocument, true);
+  for (const rule of ["default-src 'none'", "connect-src 'none'", "frame-src 'none'"])
+    assert.ok(isolation.policy.includes(rule), rule);
+  const play = /button "Play video" \[ref=(e\d+)\]/.exec(await b('snapshot'))[1];
+  await b('click', `@${play}`);
+  const buffering = await inPlayer((tree) => tree.includes('Loading the next cut…'));
+  await b('screenshot', resolve('.impeccable/review/video-live-buffering.png'));
+  pass('cut 1 plays live in the opaque-origin player and buffers at the unready cut 2', {
+    liveFrame,
+    isolation,
+    buffering: buffering.includes('Loading the next cut…'),
+  });
+  child_.send('second');
+  await inPlayer((tree) => !tree.includes('Loading the next cut…'));
+  pass('the buffered cut plays once it is written and narrated');
   const frameBefore = await ev(
     `(()=>{const r=document.querySelector(${JSON.stringify(card + ' .video-stage')}).getBoundingClientRect();return {width:r.width,height:r.height}})()`,
   );
@@ -230,7 +267,9 @@ try {
   assert.ok(
     announced.statuses.every(
       (s) =>
-        s === `${task.title}: Video ready.` || s.startsWith(`${task.title}: Rendering frames…`),
+        s === `${task.title}: Video ready.` ||
+        s === `${task.title}: Playing live…` ||
+        s === `${task.title}: Saving video file…`,
     ),
   );
   const frameAfter = await ev(
@@ -257,10 +296,10 @@ try {
     autoplay: false,
     controls: true,
     label: `Video: ${task.title}`,
-    description: 'Two labelled boxes slide together into a final box over two seconds.',
+    description: 'Two labelled boxes slide together into a final box.',
     ratio: 1.78,
     fits: true,
-    duration: 2,
+    duration: 5,
     cardLive: 'off',
     status: `${task.title}: Video ready.`,
   });
@@ -371,7 +410,7 @@ try {
   );
   assert.deepEqual(calls(), callsBefore);
   assert.equal(reloaded.paused, true);
-  assert.equal(reloaded.duration, 2);
+  assert.equal(reloaded.duration, 5);
   pass('reload restores the ready video from the local file with no provider request', {
     ...reloaded,
     providerCalls: callsBefore,
@@ -434,7 +473,7 @@ try {
       {
         checkedAt: new Date().toISOString(),
         evidence:
-          'Synthetic tutor and worker providers; real sandboxed Remotion render, production build, HTTP, SQLite and headless Chrome. No native provider inference.',
+          'Synthetic tutor, plan and cut providers with fixture narration; live @remotion/player in the opaque-origin frame, real sandboxed Remotion cut renders and join, production build, HTTP, SQLite and headless Chrome. No native provider inference or speech.',
         checks,
       },
       null,

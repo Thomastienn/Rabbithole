@@ -268,6 +268,20 @@
   gap: 12px;
   padding: 0;
 }
+/* Live playback: the player fills the stage; status, elapsed time and Cancel sit top right, clear of its controls. */
+.video-card[data-live] .video-controls,
+.video-inline[data-state='pending'][data-live] .video-controls {
+  inset: var(--spacing-2) var(--spacing-2) auto auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  background: var(--color-background-surface);
+  border-radius: var(--radius-element);
+}
+.video-live {
+  border: 0;
+}
 .video-elapsed {
   font: 500 13px/1 var(--font-family-body);
   font-variant-numeric: tabular-nums;

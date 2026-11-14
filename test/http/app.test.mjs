@@ -204,16 +204,24 @@ test('rejects foreign origins, Host rebinding, missing CSRF, malformed JSON and 
       fetch(env.origin + path).then((r) => r.headers.get('Content-Security-Policy'));
     assert.match(
       await policy('/'),
-      new RegExp(`frame-src ${env.origin}/sandbox.html;.*frame-ancestors 'none'`),
+      new RegExp(
+        `frame-src ${env.origin}/sandbox.html ${env.origin}/player.html;.*frame-ancestors 'none'`,
+      ),
     );
-    const sandbox = await policy('/sandbox.html');
-    for (const rule of [
-      "default-src 'none'",
-      "connect-src 'none'",
-      "frame-src 'none'",
-      `frame-ancestors ${env.origin}`,
-    ])
-      assert.ok(sandbox.includes(rule), rule);
+    // The live video player has the visual sandbox's policy; media arrives only as blobs the app hands over.
+    for (const path of ['/sandbox.html', '/player.html']) {
+      const sandbox = await policy(path);
+      for (const rule of [
+        "default-src 'none'",
+        "connect-src 'none'",
+        "frame-src 'none'",
+        "worker-src 'none'",
+        `frame-ancestors ${env.origin}`,
+      ])
+        assert.ok(sandbox.includes(rule), `${path} ${rule}`);
+      assert.equal(sandbox.includes('media-src blob:'), path === '/player.html');
+      assert.doesNotMatch(sandbox, /unsafe-eval|https?:\/\/(?!127\.0\.0\.1)/);
+    }
     assert.equal(
       (await fetch(`${env.origin}/api/state`, { headers: { Origin: 'null' } })).status,
       403,

@@ -1,5 +1,5 @@
 // Fixture server for verify-video-player.mjs, forked with --serve <dir>: synthetic tutor/worker providers,
-// gated compose and render steps (released over IPC), real bubblewrap sandbox render.
+// gated plan, cut 2 and first render steps (released over IPC), real bubblewrap sandbox render.
 import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store } from '../../../server/store.mjs';
@@ -13,14 +13,29 @@ export const task = {
   intent: 'Animate two winners advancing.',
   excerpt: 'Peterson locks guard each node.',
 };
-const composition = `// Description: Two labelled boxes slide together into a final box over two seconds.
-// Narration: "Winners advance."
-import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
-export const durationInFrames = 90;
+// Kit-valid cut code; the plan holds two cuts so cut 1 plays live while cut 2 is still being written.
+const composition = `import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
+import { type } from './kit';
 export default function Video() {
   const frame = useCurrentFrame();
-  return <AbsoluteFill style={{ background: 'white', alignItems: 'center', justifyContent: 'center', fontSize: 40, opacity: interpolate(frame, [0, 30], [0, 1]) }}>A + B → Final</AbsoluteFill>;
+  return <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: interpolate(frame, [0, 20], [0, 1]) }}><span style={type.title}>A + B → Final</span></AbsoluteFill>;
 }`;
+const plan = {
+  title: task.title,
+  description: 'Two labelled boxes slide together into a final box.',
+  styleBrief: {
+    layoutAreas: [{ name: 'stage', description: 'Winner above the final at the centre.' }],
+    paletteRoles: { winner: 'amber' },
+    recurringObjects: [{ name: 'Winner', position: 'centre', colorRole: 'winner' }],
+    exactTerms: ['Winner', 'Final'],
+  },
+  cuts: [1, 2].map((i) => ({
+    purpose: `Step ${i}`,
+    engine: 'remotion',
+    narration: 'Winners advance.',
+    endState: `Winner at position ${i}`,
+  })),
+};
 
 if (process.argv[2] === '--serve') {
   const dir = process.argv[3],
@@ -38,9 +53,14 @@ if (process.argv[2] === '--serve') {
   const provider = {
     models: async () => [{ model: 'fixture-model', label: 'Fixture model', isDefault: true }],
     generate: async (tree, text, emit) => {
-      if (tree.instructions?.includes('Remotion')) {
+      if (tree.instructions?.startsWith('You plan')) {
         log('worker');
         await gate('compose');
+        return done(emit, JSON.stringify(plan));
+      }
+      if (tree.instructions?.startsWith('You write one Remotion cut')) {
+        log('worker');
+        if (JSON.parse(text).cut.purpose === 'Step 2') await gate('second');
         return done(emit, composition);
       }
       log('tutor');
@@ -54,9 +74,12 @@ if (process.argv[2] === '--serve') {
       );
     },
   };
+  let held = false;
   const videoRender = async (workspace, output, signal, onProgress) => {
     onProgress(0.4);
-    await gate('render');
+    // Hold the first cut render only; the second cut and the join run straight through.
+    if (!held) await gate('render');
+    held = true;
     return sandboxRender(workspace, output, signal, onProgress);
   };
   const app = createApp({

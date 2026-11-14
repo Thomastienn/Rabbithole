@@ -166,5 +166,5 @@ export const logRequest = (method, path) =>
   !(
     method === 'GET' &&
     (['/api/state', '/api/previews'].includes(path) ||
-      /^\/api\/trees\/[^/]+(?:\/artifacts\/[^/]+)?$/.test(path))
+      /^\/api\/trees\/[^/]+(?:\/artifacts\/[^/]+(?:\/cuts(?:\/\d+\/\w+)?)?)?$/.test(path))
   );

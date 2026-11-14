@@ -4,7 +4,7 @@ export default defineConfig({
   build: {
     assetsInlineLimit: (file: string) => (/\.woff2?$/.test(file) ? false : undefined),
     rollupOptions: {
-      input: { main: 'index.html', sandbox: 'sandbox.html' },
+      input: { main: 'index.html', sandbox: 'sandbox.html', player: 'player.html' },
       onwarn(warning, warn) {
         if (warning.code === 'MODULE_LEVEL_DIRECTIVE' && warning.message.includes('use client'))
           return;

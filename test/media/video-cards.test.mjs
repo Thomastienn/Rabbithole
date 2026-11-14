@@ -62,8 +62,8 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
   const action = card('stopped').querySelector('button');
   action.focus();
   await act(async () => action.click());
-  await act(async () => set(video('stopped', 'pending', { phase: 'rendering' })));
-  assert.equal(view(card('stopped')).status, 'stopped: Rendering frames…');
+  await act(async () => set(video('stopped', 'pending', { phase: 'writing' })));
+  assert.equal(view(card('stopped')).status, 'stopped: Writing cuts…');
   assert.equal(action.textContent.trim(), 'Cancel video');
   await act(async () => action.click());
   await act(async () => set(video('stopped', 'canceled')));

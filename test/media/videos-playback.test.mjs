@@ -77,7 +77,7 @@ test('inline video exposes bounded live progress and its position, keeps inputs 
     await started;
     const rendering = await artifact(tree.id);
     assert.equal(rendering.status, 'pending');
-    assert.equal(rendering.phase, 'rendering');
+    assert.equal(rendering.phase, 'saving');
     assert.equal(rendering.progress, 0.4);
     assert.equal(rendering.position, pending.position);
     for (const key of ['input', 'attempt']) assert.equal(rendering[key], undefined);
@@ -186,13 +186,18 @@ test(
   async () => {
     const { result, row, published, dir, phases } = await job(undefined);
     assert.equal(result, null);
-    // Phases run in order; planning counts characters, rendering reports real 1% steps of a known frame total, ending at 100%.
+    // Phases run in order; planning counts characters, saving reports real 1% render steps of a known frame total, ending at 100%.
+    const steps = ['planning', 'writing', 'narrating', 'playable', 'saving'];
     const order = phases.map(([phase]) => phase).filter((phase, i, all) => phase !== all[i - 1]);
-    assert.deepEqual(order, ['planning', 'narrating', 'planning', 'rendering', 'saving']);
+    assert.deepEqual(
+      order,
+      [...order].sort((a, b) => steps.indexOf(a) - steps.indexOf(b)),
+    );
+    assert.deepEqual([order[0], order.at(-2), order.at(-1)], ['planning', 'playable', 'saving']);
     assert.ok(phases.find(([phase]) => phase === 'planning')[2].characters > 0);
-    const rendering = phases.filter(([phase]) => phase === 'rendering');
+    const rendering = phases.filter(([phase]) => phase === 'saving');
     assert.ok(rendering.length > 2 && rendering.every(([, , detail]) => detail.frames === 75));
-    assert.deepEqual(rendering.at(-1).slice(0, 2), ['rendering', 1]);
+    assert.deepEqual(rendering.at(-1).slice(0, 2), ['saving', 1]);
     assert.equal(row.status, 'ready');
     assert.equal(row.duration, 2.5);
     assert.equal(published, true);

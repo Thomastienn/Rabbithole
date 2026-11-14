@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import type { Artifact } from './artifacts';
+import LivePlayer from './LivePlayer';
 import { STEPS, elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
 
 const STATUS = {
@@ -24,10 +25,11 @@ const STATUS = {
   unavailable: 'Video unavailable: its saved file is missing or unreadable.',
 };
 const STEP_LABEL = {
-  planning: 'Writing script and scenes',
+  planning: 'Planning cuts',
+  writing: 'Writing cuts',
   narrating: 'Recording narration',
-  rendering: 'Rendering frames',
-  saving: 'Saving video',
+  playable: 'Playing live',
+  saving: 'Saving video file',
 };
 
 // Only known server-authored reasons reach the learner; arbitrary worker errors may contain private output.
@@ -65,6 +67,8 @@ export default function VideoCard({
     | 'progress'
     | 'characters'
     | 'frames'
+    | 'cut'
+    | 'cuts'
     | 'startedAt'
     | 'phaseStartedAt'
   > & { error?: string | null };
@@ -78,6 +82,9 @@ export default function VideoCard({
   const state =
     artifact.status === 'ready' && artifact.available === false ? 'unavailable' : artifact.status;
   const drafting = inline && state === 'pending';
+  // Once cut 1 is ready the pending video plays live until its MP4 is saved.
+  const live =
+    state === 'pending' && (artifact.phase === 'playable' || artifact.phase === 'saving');
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!drafting) return;
@@ -129,13 +136,26 @@ export default function VideoCard({
       aria-describedby={artifact.description ? `${id}-description` : undefined}
       data-artifact={artifact.id}
       data-state={state}
+      data-live={live || undefined}
     >
       <VStack gap={2}>
         <section
           className={`video-stage${!inline || state === 'ready' || drafting ? ' video-frame' : ''}`}
         >
-          {state === 'pending' && !inline && <Skeleton />}
-          {drafting && (
+          {state === 'pending' && !inline && !live && <Skeleton />}
+          {live && (
+            <LivePlayer
+              conversation={artifact.conversation}
+              id={artifact.id}
+              title={artifact.title}
+            />
+          )}
+          {live && drafting && (
+            <span className="video-draft-bar" aria-hidden>
+              <i style={{ transform: `scaleX(${peak.current})` }} />
+            </span>
+          )}
+          {drafting && !live && (
             <div className="video-draft">
               <svg
                 className="video-sketch"
@@ -193,7 +213,7 @@ export default function VideoCard({
               type="supporting"
               color="secondary"
               role="status"
-              className={state === 'ready' || drafting ? 'sr-only' : undefined}
+              className={state === 'ready' || (drafting && !live) ? 'sr-only' : undefined}
             >
               <Text type="inherit" className="sr-only">
                 {artifact.title}:{' '}

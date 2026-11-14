@@ -5,7 +5,7 @@ export function secure(req, res, origin, json) {
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader(
     'Content-Security-Policy',
-    `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src ${origin}/sandbox.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
+    `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src ${origin}/sandbox.html ${origin}/player.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
   );
   // The visual sandbox has an opaque origin, so its bundled scripts and fonts arrive as cross-site CORS loads; only static GETs are opened to it.
   const sandboxAsset =
@@ -14,11 +14,12 @@ export function secure(req, res, origin, json) {
     /^\/assets\/[\w.-]+$/.test(req.url) &&
     req.headers.origin === 'null';
   if (sandboxAsset) res.setHeader('Access-Control-Allow-Origin', 'null');
-  // Visual code: inline only (its own fragment), bundled libraries from this origin, no network, frames, forms or remote media.
-  if (req.method === 'GET' && req.url === '/sandbox.html')
+  // Visual and live video code: inline only, bundled libraries from this origin, no network, frames, forms or remote media.
+  // The live player gets narration and clips from the app as blobs, never by URL.
+  if (req.method === 'GET' && (req.url === '/sandbox.html' || req.url === '/player.html'))
     res.setHeader(
       'Content-Security-Policy',
-      `default-src 'none'; script-src ${origin} 'unsafe-inline'; style-src ${origin} 'unsafe-inline'; font-src ${origin} data:; img-src data: blob:; connect-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors ${origin}`,
+      `default-src 'none'; script-src ${origin} 'unsafe-inline'; style-src ${origin} 'unsafe-inline'; font-src ${origin} data:; img-src data: blob:;${req.url === '/player.html' ? ' media-src blob:;' : ''} connect-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors ${origin}`,
     );
   if (
     !sandboxAsset &&

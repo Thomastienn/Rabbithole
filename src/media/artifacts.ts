@@ -17,7 +17,9 @@ export type Artifact = ArtifactSummary & {
   error: string | null;
   created: number;
   position?: number | null;
-  phase?: 'planning' | 'creating' | 'narrating' | 'rendering' | 'saving';
+  phase?: 'planning' | 'creating' | 'writing' | 'narrating' | 'playable' | 'saving';
+  cut?: number;
+  cuts?: number;
   progress?: number;
   characters?: number;
   frames?: number;
