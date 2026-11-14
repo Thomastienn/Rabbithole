@@ -348,7 +348,7 @@ try {
         issue: 'TreeTutor-2li.13',
         checkedAt: new Date().toISOString(),
         evidence:
-          'Built app, SQLite/HTTP/SSE and Chromium; synthetic providers. Provider protocol/persistence checked separately by test/usage/usage.test.mjs; no native model call.',
+          'Built app, SQLite/HTTP/SSE and Chromium; synthetic providers. Provider protocol/persistence checked separately by test/usage/usage-replies.test.mjs; no native model call.',
         pass: true,
         steps,
         screenshots,
