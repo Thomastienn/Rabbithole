@@ -337,7 +337,20 @@ test('Try a different version replaces a ready visual in place from the frozen r
       { ...artifact, source: undefined },
     );
     assert.match(after.artifacts[0].source, /Bracket view/);
-    assert.deepEqual(after.messages, before.messages);
+    assert.deepEqual(
+      after.messages,
+      before.messages.map((m) =>
+        m.role === 'assistant'
+          ? {
+              ...m,
+              mediaUsage: [
+                ...m.mediaUsage,
+                { task: 'diagram', input: 10, output: 3, cacheRead: 2 },
+              ],
+            }
+          : m,
+      ),
+    );
     assert.deepEqual(
       calls[1].input,
       calls[0].input,

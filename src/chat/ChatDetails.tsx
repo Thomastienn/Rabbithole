@@ -6,7 +6,13 @@ import ChartBarIcon from '@heroicons/react/24/outline/ChartBarIcon';
 import { Button } from '@astryxdesign/core/Button';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { inkStyle } from '../map/treeList';
-import { replyFeedback, replyUsageLine, type Message, type Suggestions } from './turn';
+import {
+  replyFeedback,
+  replyUsageLine,
+  conversationUsageLine,
+  type Message,
+  type Suggestions,
+} from './turn';
 import type { Branch } from './branch';
 
 export function TokenStats({
@@ -31,17 +37,26 @@ export function TokenStats({
           aria-label="Token stats"
         >
           {messages
-            .filter((m) => m.role === 'assistant' && m.status === 'completed')
+            .filter(
+              (m) => m.role === 'assistant' && (m.status === 'completed' || m.mediaUsage?.length),
+            )
             .map((m, i) => (
               <Text key={m.id} type="supporting" color="secondary">
                 Reply {i + 1}:{' '}
                 {replyUsageLine(
                   m.usage ?? null,
                   suggestions?.find((s) => s.message === m.id)?.usage,
+                  m.mediaUsage,
                 )}
               </Text>
             ))}
-          {!messages.some((m) => m.role === 'assistant' && m.status === 'completed') && (
+          {messages.some(
+            (m) => m.role === 'assistant' && (m.status === 'completed' || m.mediaUsage?.length),
+          ) ? (
+            <Text type="supporting" color="secondary">
+              Conversation total: {conversationUsageLine(messages, suggestions)}
+            </Text>
+          ) : (
             <Text type="supporting" color="secondary">
               Token usage appears after a completed reply.
             </Text>

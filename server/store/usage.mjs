@@ -5,8 +5,8 @@ export const usage = {
       .prepare('UPDATE messages SET usage=? WHERE id=?')
       .run(usage && JSON.stringify({ ...usage, at: Date.now() }), id);
   },
-  // One row per logical call id, so repeated finish events cannot double count; usage=null records an unreported measurement.
-  record(id, task, selection, usage, at = Date.now()) {
+  // One row per call: streamed measurements replace its counts; an unreported finish cannot erase them.
+  record(id, task, selection, usage, at = Date.now(), message = null) {
     if (
       usage &&
       !['input', 'output', 'cacheRead'].every(
@@ -16,7 +16,12 @@ export const usage = {
       usage = null;
     this.db
       .prepare(
-        'INSERT OR IGNORE INTO usage_events(id,at,provider,model,task,input,output,cacheRead) VALUES(?,?,?,?,?,?,?,?)',
+        `INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message)
+         VALUES(?,?,?,?,?,?,?,?,(SELECT id FROM messages WHERE id=?))
+         ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,
+           input=coalesce(excluded.input,usage_events.input),
+           output=coalesce(excluded.output,usage_events.output),
+           cacheRead=coalesce(excluded.cacheRead,usage_events.cacheRead)`,
       )
       .run(
         id,
@@ -27,7 +32,20 @@ export const usage = {
         usage?.input ?? null,
         usage?.output ?? null,
         usage?.cacheRead ?? null,
+        message,
       );
+  },
+  replyMediaUsage(message) {
+    return this.db
+      .prepare(
+        `SELECT task,input,output,cacheRead FROM usage_events WHERE message=?
+      UNION ALL SELECT CASE kind WHEN 'video' THEN 'video' ELSE 'diagram' END,NULL,NULL,NULL
+      FROM artifacts a WHERE message=? AND NOT EXISTS (SELECT 1 FROM usage_events u
+        WHERE u.message=a.message AND (
+          (a.kind='video' AND u.id LIKE 'video:'||a.attempt||':%') OR
+          (a.kind!='video' AND (u.id='diagram:'||a.id OR u.id LIKE 'diagram:'||a.id||':%'))))`,
+      )
+      .all(message, message);
   },
   usageEvents(from = 0, to = Number.MAX_SAFE_INTEGER) {
     return {

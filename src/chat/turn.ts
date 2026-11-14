@@ -6,6 +6,12 @@ export type Usage = {
   cacheRead: number;
   context?: { limit: number; provider: string; model: string | null };
 };
+export type MediaUsage = {
+  task: 'diagram' | 'video';
+  input: number | null;
+  output: number | null;
+  cacheRead: number | null;
+};
 export type Message = {
   id: string;
   role: string;
@@ -14,6 +20,7 @@ export type Message = {
   phase?: 'compacting';
   stopped?: 'learner' | 'shutdown';
   usage?: Usage | null;
+  mediaUsage?: MediaUsage[];
   artifacts?: ArtifactSummary[];
 };
 export const usageLine = (u: Usage) =>
@@ -42,14 +49,63 @@ export type Suggestions = {
   passages: { start: number; end: number; text: string; child?: string; concept?: string }[];
   usage: Usage | null;
 };
-// A reply's token line includes its suggestion call, so background cost is never hidden.
-export function replyUsageLine(reply: Usage | null, suggestion?: Usage | null) {
-  if (!suggestion)
-    return reply
-      ? `${usageLine(reply)}${suggestion === null ? ' · suggestion usage unavailable' : ''}`
-      : 'Token usage unavailable';
-  if (!reply) return `Reply usage unavailable · suggestions: ${usageLine(suggestion)}`;
-  return `${usageLine({ input: reply.input + suggestion.input, output: reply.output + suggestion.output, cacheRead: reply.cacheRead + suggestion.cacheRead })}, including suggestions`;
+function taskUsageLine(task: string, calls: (Usage | MediaUsage | null)[]) {
+  const reported = calls.filter((u): u is Usage => u?.input != null),
+    missing = calls.length - reported.length;
+  const counts = reported.length
+    ? usageLine(
+        reported.reduce(
+          (sum, u) => ({
+            input: sum.input + u.input,
+            output: sum.output + u.output,
+            cacheRead: sum.cacheRead + u.cacheRead,
+          }),
+          { input: 0, output: 0, cacheRead: 0 },
+        ),
+      )
+    : 'not reported';
+  return `${task}: ${counts}${reported.length && missing ? ` · ${missing} ${missing === 1 ? 'call' : 'calls'} not reported` : ''}`;
+}
+
+// Every media attempt counts under the reply that requested it, even while its job is running.
+export function replyUsageLine(
+  reply: Usage | null,
+  suggestion?: Usage | null,
+  media: MediaUsage[] = [],
+) {
+  return [
+    taskUsageLine('Chat', [reply]),
+    ...(suggestion !== undefined ? [taskUsageLine('Suggestions', [suggestion])] : []),
+    ...(['diagram', 'video'] as const).flatMap((task) => {
+      const calls = media.filter((u) => u.task === task);
+      return calls.length ? [taskUsageLine(task === 'diagram' ? 'Visuals' : 'Videos', calls)] : [];
+    }),
+  ].join(' · ');
+}
+
+export function conversationUsageLine(messages: Message[], suggestions: Suggestions[] = []) {
+  const replies = messages.filter((m) => m.role === 'assistant'),
+    ids = new Set(replies.map((m) => m.id)),
+    media = replies.flatMap((m) => m.mediaUsage ?? []),
+    calls = suggestions.filter((s) => ids.has(s.message));
+  return [
+    taskUsageLine(
+      'Chat',
+      replies.map((m) => m.usage ?? null),
+    ),
+    ...(calls.length
+      ? [
+          taskUsageLine(
+            'Suggestions',
+            calls.map((s) => s.usage),
+          ),
+        ]
+      : []),
+    ...(['diagram', 'video'] as const).flatMap((task) => {
+      const calls = media.filter((u) => u.task === task);
+      return calls.length ? [taskUsageLine(task === 'diagram' ? 'Visuals' : 'Videos', calls)] : [];
+    }),
+  ].join(' · ');
 }
 // Underline ranges use the same raw UTF-16 offsets as manual selection; only exact, non-overlapping slices draw.
 // Branches from a free selection also draw as explored passages, so every child's source stays marked.
@@ -160,7 +216,7 @@ export function withTurn<T extends { id?: string; messages: Message[]; artifacts
     if (!message) continue;
     const index = messages.findIndex((m) => m.id === message.id);
     if (index < 0) messages.push(message);
-    else messages[index] = message;
+    else messages[index] = { ...messages[index], ...message };
   }
   let artifacts = conversation.artifacts ?? [];
   if (conversation.id)

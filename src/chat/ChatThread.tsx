@@ -69,16 +69,18 @@ export default function ChatThread({
         metadata={
           !overview &&
           message.role === 'assistant' &&
-          message.status === 'completed' && (
+          (message.status === 'completed' || !!message.mediaUsage?.length) && (
             <HStack gap={2} vAlign="center">
-              <CopyButton
-                text={message.text}
-                label={`Copy tutor reply ${index}`}
-                className="reply-copy"
-              />
-              {message.usage !== undefined && (
+              {message.status === 'completed' && (
+                <CopyButton
+                  text={message.text}
+                  label={`Copy tutor reply ${index}`}
+                  className="reply-copy"
+                />
+              )}
+              {(message.usage !== undefined || !!message.mediaUsage?.length) && (
                 <Text type="supporting" color="secondary" className="reply-usage">
-                  {replyUsageLine(message.usage, suggestions?.usage)}
+                  {replyUsageLine(message.usage ?? null, suggestions?.usage, message.mediaUsage)}
                 </Text>
               )}
             </HStack>

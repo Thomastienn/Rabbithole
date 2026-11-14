@@ -216,7 +216,31 @@ test('Stop cancels every queued/running visual, preserves ready visuals, starts 
     chatHold.resolve();
     await env.app.settled();
     assert.equal(signals.length, 4);
-    assert.deepEqual(await env.get(`/api/trees/${env.tree.id}`), saved);
+    assert.deepEqual(await env.get(`/api/trees/${env.tree.id}`), {
+      ...saved,
+      messages: saved.messages.map((m) =>
+        m.role === 'assistant'
+          ? {
+              ...m,
+              // Late provider measurements still count; canceled content and unstarted calls stay unchanged.
+              mediaUsage: [
+                ...Array.from({ length: 4 }, () => ({
+                  task: 'diagram',
+                  input: 10,
+                  output: 3,
+                  cacheRead: 2,
+                })),
+                ...Array.from({ length: 3 }, () => ({
+                  task: 'diagram',
+                  input: null,
+                  output: null,
+                  cacheRead: null,
+                })),
+              ],
+            }
+          : m,
+      ),
+    });
     assert.equal(
       (await env.post(`/api/trees/${env.tree.id}/artifacts/${saved.artifacts[1].id}/retry`)).status,
       409,

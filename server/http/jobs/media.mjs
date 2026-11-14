@@ -98,6 +98,7 @@ export function mediaJobs(ctx) {
             generate: (...args) =>
               metered(provider, 'video', `${job.attempt}:${randomUUID()}`, selection, {
                 stage: args[0].instructions.startsWith('You plan') ? 'plan' : 'cut',
+                message: job.message,
               }).generate(...args),
           },
           selection,
@@ -194,6 +195,7 @@ export function mediaJobs(ctx) {
       generate: (...args) =>
         metered(provider, 'diagram', `${artifact.id}:${randomUUID()}`, selection, {
           stage: 'visual',
+          message: artifact.message,
         }).generate(...args),
     };
     return generateVisual(metering, selection, input, signal, ctx.visualTimeout);
@@ -217,7 +219,9 @@ export function mediaJobs(ctx) {
         artifact.kind === 'visual'
           ? await runVisual(artifact, running.controller.signal)
           : await generateDiagram(
-              metered(pick(tree), 'diagram', `${artifact.id}:${randomUUID()}`, selection),
+              metered(pick(tree), 'diagram', `${artifact.id}:${randomUUID()}`, selection, {
+                message: artifact.message,
+              }),
               selection,
               JSON.parse(artifact.input),
               running.controller.signal,

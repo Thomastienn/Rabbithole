@@ -87,12 +87,25 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     generate: async (tree, text, emit, saveThread, signal) => {
       let usage = null,
         model = selection.model;
+      const record = () =>
+        store.record(
+          `${task}:${id}`,
+          task,
+          { provider: selection.provider, model },
+          usage,
+          undefined,
+          detail?.message,
+        );
+      record();
       try {
         return await logged(provider, task, id, selection, detail).generate(
           tree,
           text,
           (event) => {
-            if (event.type === 'usage') usage = event.usage;
+            if (event.type === 'usage') {
+              usage = event.usage;
+              record();
+            }
             emit(event);
           },
           (thread, actual) => {
@@ -102,7 +115,7 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
           signal,
         );
       } finally {
-        store.record(`${task}:${id}`, task, { provider: selection.provider, model }, usage);
+        record();
       }
     },
   });

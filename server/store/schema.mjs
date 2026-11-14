@@ -88,6 +88,20 @@ export function open(path) {
           INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'chat:'||id,usage->>'at','chat',usage->>'input',usage->>'output',usage->>'cacheRead' FROM messages WHERE usage IS NOT NULL;
           INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'suggestions:'||message,usage->>'at','suggestions',usage->>'input',usage->>'output',usage->>'cacheRead' FROM suggestions WHERE usage IS NOT NULL;`);
     }
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(usage_events)')
+        .all()
+        .some((c) => c.name === 'message')
+    ) {
+      this.db
+        .exec(`ALTER TABLE usage_events ADD COLUMN message TEXT REFERENCES messages(id) ON DELETE SET NULL;
+        CREATE INDEX usage_events_message ON usage_events(message);
+        UPDATE usage_events SET message=(SELECT message FROM artifacts a WHERE
+          usage_events.id='diagram:'||a.id OR usage_events.id LIKE 'diagram:'||a.id||':%' OR
+          usage_events.id LIKE 'video:'||a.attempt||':%' LIMIT 1)
+          WHERE task IN ('diagram','video');`);
+    }
     this.db.exec(
       `CREATE TABLE IF NOT EXISTS suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT)`,
     );

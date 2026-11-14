@@ -144,11 +144,16 @@ export const trees = {
             'SELECT id,role,text,status,stopped,usage FROM messages WHERE tree=? ORDER BY seq',
           )
           .all(id)
-          .map(({ usage, stopped, ...m }) =>
-            m.role === 'assistant'
-              ? { ...m, ...(stopped && { stopped }), usage: JSON.parse(usage) }
-              : m,
-          ),
+          .map(({ usage, stopped, ...m }) => {
+            if (m.role !== 'assistant') return m;
+            const mediaUsage = this.replyMediaUsage(m.id);
+            return {
+              ...m,
+              ...(stopped && { stopped }),
+              usage: JSON.parse(usage),
+              ...(mediaUsage.length && { mediaUsage }),
+            };
+          }),
         artifacts: this.db
           .prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid')
           .all(id),

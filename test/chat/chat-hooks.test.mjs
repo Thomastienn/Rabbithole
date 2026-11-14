@@ -387,3 +387,58 @@ test('deleting the open learning tree discards pending layout and opens the next
   );
   assert.equal(page.current.actions.deletion, undefined);
 });
+
+test('polling refreshes media usage during an owning reply stream while preserving live text', async (t) => {
+  let stream;
+  const page = await mount(t, ({ path }) => {
+    if (path.endsWith('/messages'))
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            stream = controller;
+          },
+        }),
+      );
+  });
+  let sending;
+  await page.act(async () => {
+    sending = page.current.stream.send('Show a visual');
+  });
+  const emit = (event) =>
+    stream.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
+  await page.act(async () => {
+    emit({
+      type: 'saved',
+      id: 'reply',
+      title: 'a',
+      user: { id: 'q', role: 'user', text: 'Show a visual', status: 'completed' },
+    });
+    emit({ type: 'text', text: 'Latest streamed text' });
+  });
+  const mediaUsage = [{ task: 'diagram', input: 50, output: 10, cacheRead: 2 }];
+  page.data.set('a', {
+    ...conversation('a'),
+    messages: [
+      { id: 'q', role: 'user', text: 'Show a visual', status: 'completed' },
+      {
+        id: 'reply',
+        role: 'assistant',
+        text: 'Older checkpoint',
+        status: 'streaming',
+        usage: null,
+        mediaUsage,
+      },
+    ],
+  });
+  await page.act(async () => t.mock.timers.tick(1500));
+  assert.equal(page.current.c.tree.messages.at(-1).text, 'Latest streamed text');
+  assert.deepEqual(page.current.c.tree.messages.at(-1).mediaUsage, mediaUsage);
+  await page.act(async () => {
+    emit({ type: 'text', text: 'Even newer text' });
+  });
+  assert.deepEqual(page.current.c.tree.messages.at(-1).mediaUsage, mediaUsage);
+  await page.act(async () => {
+    stream.close();
+    await sending;
+  });
+});

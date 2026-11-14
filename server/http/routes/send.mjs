@@ -360,7 +360,9 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
           try {
             const selection = { provider: tree.provider, model: store.tree(id).model };
             const source = await generateDiagram(
-              ctx.metered(pick(tree), 'diagram', artifact.id, selection),
+              ctx.metered(pick(tree), 'diagram', artifact.id, selection, {
+                message: artifact.message,
+              }),
               selection,
               JSON.parse(artifact.input),
               controller.signal,

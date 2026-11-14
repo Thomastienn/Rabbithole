@@ -126,6 +126,108 @@ test('chat details keep inherited context collapsed and read-only, show usage, a
   assert.match(container.textContent, /Suggestions unavailable/);
   assert.match(
     container.querySelector('.chat-stats-body').textContent,
-    /Reply 1: 1,200 input · 300 output · 800 cache-read tokens · suggestion usage unavailable/,
+    /Reply 1: Chat: 1,200 input · 300 output · 800 cache-read tokens · Suggestions: not reported/,
+  );
+});
+
+test('chat details show per-reply media and task totals, including running and unreported calls', async (t) => {
+  const counts = { input: 10, output: 2, cacheRead: 1 };
+  const messages = [
+    {
+      id: 'a',
+      role: 'assistant',
+      status: 'completed',
+      usage: counts,
+      mediaUsage: [
+        { task: 'diagram', ...counts },
+        { task: 'diagram', ...counts },
+        { task: 'video', ...counts },
+      ],
+    },
+    {
+      id: 'b',
+      role: 'assistant',
+      status: 'streaming',
+      usage: null,
+      mediaUsage: [
+        { task: 'video', ...counts },
+        { task: 'diagram', input: null, output: null, cacheRead: null },
+      ],
+    },
+  ];
+  const { container, cleanup } = await render(
+    h(TokenStats, {
+      open: true,
+      messages,
+      suggestions: [{ message: 'a', usage: counts }],
+    }),
+    ui,
+  );
+  t.after(cleanup);
+  const rows = [...container.querySelector('.chat-stats-body').children].map((e) => e.textContent);
+  assert.match(
+    rows[0],
+    /^Reply 1: Chat: 10 input.*Suggestions: 10 input.*Visuals: 20 input.*Videos: 10 input/,
+  );
+  assert.match(rows[1], /^Reply 2: Chat: not reported · Visuals: not reported · Videos: 10 input/);
+  assert.match(
+    rows[2],
+    /^Conversation total: Chat: 10 input.*1 call not reported.*Suggestions: 10 input.*Visuals: 20 input.*1 call not reported.*Videos: 20 input · 4 output · 2 cache-read tokens$/,
+  );
+  assert.doesNotMatch(container.textContent, /\$|price/i);
+});
+
+test('the reply line renders task usage while media runs, including when the reply is still streaming', async (t) => {
+  const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
+  const counts = { input: 10, output: 2, cacheRead: 1 };
+  const { container, cleanup } = await render(
+    h(ChatThread, {
+      tree: {
+        id: 'a',
+        artifacts: [],
+        suggestions: [{ message: 'r', usage: counts }],
+        messages: [
+          {
+            id: 'r',
+            role: 'assistant',
+            status: 'completed',
+            text: 'Answer',
+            usage: counts,
+            mediaUsage: [
+              { task: 'diagram', ...counts },
+              { task: 'video', ...counts },
+            ],
+          },
+          {
+            id: 's',
+            role: 'assistant',
+            status: 'streaming',
+            text: 'More',
+            usage: null,
+            mediaUsage: [{ task: 'video', input: null, output: null, cacheRead: null }],
+          },
+        ],
+      },
+      c: { overview: false, addresses: new Map(), state: { trees: [] }, setSelectingMessage() {} },
+      model: { modelLabel: () => 'Fixture' },
+      trees: { openConversation() {} },
+      stream: { send() {} },
+      branchForm: { visualBranches: {} },
+      actions: { videoAction() {} },
+      active: true,
+    }),
+    ui,
+  );
+  t.after(cleanup);
+  const lines = [...container.querySelectorAll('.reply-usage')].map((e) => e.textContent);
+  assert.match(
+    lines[0],
+    /^Chat: 10 input.*Suggestions: 10 input.*Visuals: 10 input.*Videos: 10 input/,
+  );
+  assert.equal(lines[1], 'Chat: not reported · Videos: not reported');
+  assert.equal(
+    container.querySelectorAll('.reply-copy').length,
+    1,
+    'only finished replies can be copied',
   );
 });

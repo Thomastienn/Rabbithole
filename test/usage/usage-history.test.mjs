@@ -20,8 +20,8 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
   // Simulate a database from before durable history: only per-message usage exists.
   await env.close();
   const old = new Store(join(dir, 'trees.sqlite'));
-  old.db.exec('DROP TABLE usage_events');
   const reply = old.tree(tree.id).messages.find((m) => m.role === 'assistant');
+  old.db.exec('DROP TABLE usage_events');
   old.db
     .prepare("UPDATE messages SET usage=json_set(usage,'$.at',?) WHERE id=?")
     .run(new Date(2025, 11, 31, 23, 30).getTime(), reply.id);
@@ -94,7 +94,7 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
   );
   assert.equal((await env.get('/api/usage')).first, events[0].at);
 
-  // Deleting learning trees removes their content but never history; rows hold no conversation text or ids.
+  // Deleting learning trees removes content and reply links, but never usage history.
   for (const id of [tree.id, codex.id])
     assert.equal(
       (
@@ -112,7 +112,7 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
       .prepare('PRAGMA table_info(usage_events)')
       .all()
       .map((c) => c.name),
-    ['id', 'at', 'provider', 'model', 'task', 'input', 'output', 'cacheRead'],
+    ['id', 'at', 'provider', 'model', 'task', 'input', 'output', 'cacheRead', 'message'],
   );
   assert.ok(
     !JSON.stringify(env.store.db.prepare('SELECT * FROM usage_events').all()).match(

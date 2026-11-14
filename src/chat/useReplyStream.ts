@@ -22,17 +22,16 @@ export function useReplyStream(
       void refresh()
         .then(async () => {
           const id = selected.current;
-          if (!id || turns.current.has(id)) return;
+          if (!id) return;
           const version = request.current,
             checkpoint = checkpoints.current;
           const next: Tree = await api(`/api/trees/${id}`);
           if (
             selected.current === id &&
             request.current === version &&
-            checkpoints.current === checkpoint &&
-            !turns.current.has(id)
+            checkpoints.current === checkpoint
           )
-            setTree(next);
+            setTree(withTurn(next, turns.current.get(id)));
         })
         .catch((e) => setError(e.message));
     }, 1500);
