@@ -4,8 +4,6 @@ import mermaid from 'mermaid';
 import * as THREE from 'three';
 import katex from 'katex';
 import * as d3 from 'd3';
-import type { VisualPart } from './artifacts';
-import { activatedPart, tagParts } from './visualParts';
 import { renderVisual } from './visualMarkup';
 import 'katex/dist/katex.min.css';
 import '@fontsource/archivo/400.css';
@@ -18,28 +16,6 @@ const root = document.getElementById('visual')!,
   tokens = document.head.appendChild(document.createElement('style'));
 let rendered = false;
 let complete = false;
-let explored: VisualPart[] = [];
-let reveal: VisualPart | undefined;
-let revealPending = false;
-const tag = () => {
-  if (!complete) return;
-  revealPending = tagParts(root, explored, reveal, revealPending);
-};
-function activate(event: MouseEvent | KeyboardEvent) {
-  if (!complete) return;
-  const part = activatedPart(root, event);
-  if (!part) return;
-  event.preventDefault();
-  parent.postMessage(part, '*');
-}
-root.addEventListener('click', activate);
-root.addEventListener('keydown', activate);
-new MutationObserver(tag).observe(root, {
-  childList: true,
-  subtree: true,
-  attributes: true,
-  attributeFilter: ['data-visual-label', 'data-visual-explanation'],
-});
 
 addEventListener('message', (event) => {
   if (event.source !== parent) return;
@@ -60,17 +36,10 @@ addEventListener('message', (event) => {
     rendered = true;
     complete = data.complete === true;
     renderVisual(root, data.source, complete);
-    tag();
-  }
-  if (data?.type === 'parts' && Array.isArray(data.explored)) {
-    explored = data.explored;
-    reveal = data.reveal;
-    revealPending = !!reveal;
-    tag();
   }
 });
 
-// The host validates these height reports and tagged-part branch requests against this frame's window.
+// The host validates these height reports against this frame's window; it accepts no other frame message.
 new ResizeObserver(() => {
   if (rendered)
     parent.postMessage(

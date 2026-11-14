@@ -15,12 +15,10 @@ starting visual state and one short prediction question. Keep the correct answer
 resulting visual state and a concise explanation inside a native details element
 with no open attribute and a summary labelled "Reveal answer". Do not reveal on
 a timer, hover, focus or answer selection. Keep the outcome out of the initial
-labels, text alternatives and branch tags too; put outcome-specific tags inside
-the closed details. Native Enter/Space must open and close it with visible focus,
+labels and text alternatives too. Native Enter/Space must open and close it with visible focus,
 and the expanded result must fit the frame's automatic height. Let the learner
 think privately and reveal without entering an answer. Do not add grading,
-scores, timers, saved answers or app messages. Never tag the details, summary or
-their enclosing container as a branch control. Other visuals must not add a quiz.
+scores, timers, saved answers or app messages. Other visuals must not add a quiz.
 
 Use only the supplied facts or learner inputs. Mark invented example values as
 illustrative inside the visual. Never suggest that sample values are current
@@ -64,13 +62,9 @@ TreeTutor's fragment contract:
   mermaid, THREE, katex and d3. No imports, external scripts or other libraries.
 - Animations start paused or play once. Honor prefers-reduced-motion, provide
   pause/reset when needed, and stop animation when the page is hidden.
-- All interaction must be keyboard-operable. Tag any part suitable for a follow-up
-  with data-visual-label (short label, at most 120 characters) and
-  data-visual-explanation (one line, at most 280 characters). Do not call the host
-  yourself. Tag standalone explanatory shapes/text or dedicated branch buttons,
-  not sliders, step controls or containers around other controls. The host makes
-  tagged parts keyboard/pointer activatable to ask a follow-up. Preserve native
-  keyboard controls and text alternatives.
+- All interaction must be keyboard-operable. Preserve native keyboard controls
+  and text alternatives. The host provides the Ask follow-up action; do not add
+  ask or branch controls or call the host yourself.
 - A validationError means the previous attempt failed server validation. Correct
   that mistake and return a complete replacement fragment under these same rules.
 

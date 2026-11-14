@@ -82,8 +82,7 @@ test('progressive visual keeps its frame, posts the latest partial on load, then
 });
 
 test('visuals: pending shimmer announces; ready frame is sandboxed; only the frame’s valid branch messages reach onPart', async (t) => {
-  const parts = [],
-    regenerated = [];
+  const parts = [];
   let set;
   function Host() {
     const [artifact, setArtifact] = useState(visual('pending'));
@@ -91,7 +90,6 @@ test('visuals: pending shimmer announces; ready frame is sandboxed; only the fra
     return h(VisualFrame, {
       artifact,
       onPart: (a, part) => parts.push([a.id, part]),
-      onRegenerate: async () => regenerated.push(artifact.id),
     });
   }
   const { container, act, cleanup } = await render(h(Host), ui);
@@ -122,13 +120,11 @@ test('visuals: pending shimmer announces; ready frame is sandboxed; only the fra
   await post({ type: 'branch', label: 'Forged', explanation: 'From the app window.' }, window);
   await post({ type: 'branch', label: '', explanation: 'Empty label' }, frame.contentWindow);
   await post({ type: 'branch', label: ' Tall ', explanation: 'The 7 bar.' }, frame.contentWindow);
-  assert.deepEqual(parts, [['bars', { label: 'Tall', explanation: 'The 7 bar.' }]]);
+  assert.deepEqual(parts, [], 'frame messages never start a branch; only the host Ask button does');
   await post({ type: 'height', height: 120 }, frame.contentWindow);
   assert.equal(frame.dataset.ready, 'true');
   assert.equal(frame.style.height, '120px');
 
-  await act(async () => button(figure(), 'Try a different version of visual: Bar heights').click());
-  assert.deepEqual(regenerated, ['bars']);
   await act(async () => set(visual('canceled')));
   assert.equal(figure(), null, 'canceled visuals leave no figure');
 });

@@ -426,3 +426,12 @@ test('branch compaction keeps passage detail and sees a visual only as one title
     await env.close();
   }
 });
+
+test('the visual prompt no longer asks the smart model to tag parts; the host owns Ask', () => {
+  const prompt = readFileSync('server/media/prompts/visual.md', 'utf8');
+  assert.doesNotMatch(prompt, /data-visual|branch tags?|tagged|\bTag (any|standalone)/i);
+  assert.match(
+    prompt,
+    /host provides the Ask follow-up action; do not add\s+ask or branch controls/,
+  );
+});

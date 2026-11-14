@@ -8,10 +8,10 @@ import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
 import type { ReplyStream } from './useReplyStream';
 
-// Branch form: opening it from a passage or visual part, inherited context preparation and submit.
+// Branch form: opening it from a passage or a visual's Ask button, inherited context preparation and submit.
 export function useBranchForm(
   c: ChatState,
-  { refresh, openConversation }: LearningTrees,
+  { refresh }: LearningTrees,
   { savingModel }: ChatModel,
   { send }: ReplyStream,
 ) {
@@ -82,13 +82,6 @@ export function useBranchForm(
       !tree.messages.some((m) => m.id === visual.message && m.status === 'completed')
     )
       return;
-    const child = visualBranches[visual.id]?.find(
-      (p) => p.label === part.label && p.explanation === part.explanation,
-    )?.child;
-    if (child) {
-      void openConversation(child);
-      return;
-    }
     branchOrigin.current = origin;
     setBranch({
       parent: tree.id,

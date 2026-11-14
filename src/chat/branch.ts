@@ -10,6 +10,11 @@ export type Branch = {
   text: string;
   question: string;
   snapshot: string;
+  start?: number | null;
+  end?: number | null;
+  artifactId?: string;
+  label?: string;
+  explanation?: string;
 };
 
 export function passageAnchor(message: Pick<Message, 'id' | 'text'>, start: number, end: number) {

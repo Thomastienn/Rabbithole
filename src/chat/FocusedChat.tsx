@@ -13,6 +13,7 @@ import {
 import type { Summary } from '../map/TreeOverview';
 import { TokenStats, InheritedContext } from './ChatDetails';
 import TurnRail from './TurnRail';
+import OriginStrip from './OriginStrip';
 import TitleEditor from './TitleEditor';
 import ChatHeadingRow from './ChatHeader';
 import ChatThread from './ChatThread';
@@ -222,6 +223,19 @@ export default function FocusedChat(props: {
             messages={tree.messages}
             suggestions={tree.suggestions}
           />
+          {tree.branch && (
+            <OriginStrip
+              branch={tree.branch}
+              question={tree.messages.find((m) => m.role === 'user')?.text ?? tree.branch.question}
+              parentAddress={addresses.get(tree.branch.parent)?.address ?? ''}
+              parentTitle={
+                state?.trees.find((t) => t.id === tree.branch!.parent)?.title ??
+                'parent conversation'
+              }
+              ink={addresses.get(tree.id)?.ink ?? 0}
+              openParent={(source) => void openConversation(tree.branch!.parent, source)}
+            />
+          )}
           <InheritedContext
             branch={tree.branch}
             parentTitle={

@@ -31,7 +31,7 @@ export type DiagramState =
 
 const KINDS = ['mermaid', 'video', 'visual'];
 
-// Visual frames may only report their height or ask to branch on a tagged part; any other shape is ignored.
+// Visual frames may only report their height; branch shapes validate visual branch requests (label, explanation).
 export type VisualPart = { label: string; explanation: string };
 export type VisualMessage = { type: 'height'; height: number } | ({ type: 'branch' } & VisualPart);
 export function visualPassage(visual: Pick<Artifact, 'title' | 'description'>, part: VisualPart) {

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack } from '@astryxdesign/core/Layout';
 import { useTheme } from '@astryxdesign/core/theme';
 import {
-  ArrowPathIcon,
-  ArrowsPointingOutIcon,
+  EllipsisHorizontalIcon,
   ExclamationTriangleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
@@ -22,29 +22,12 @@ export type PartAction = (
 ) => void;
 
 // Generated code runs only in this frame: scripts without allow-same-origin give it an opaque origin.
-function Frame({
-  artifact,
-  explored = [],
-  reveal,
-  onPart,
-}: {
-  artifact: Artifact;
-  explored?: VisualBranch[];
-  reveal?: VisualPart;
-  onPart?: PartAction;
-}) {
+function Frame({ artifact }: { artifact: Artifact }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState<number>();
   const loaded = useRef(false);
   const { mode, name } = useTheme();
   const post = (data: object) => frame.current?.contentWindow?.postMessage(data, '*');
-  const parts = () =>
-    post({
-      type: 'parts',
-      explored: explored.map(({ label, explanation }) => ({ label, explanation })),
-      ...(reveal && { reveal: { label: reveal.label, explanation: reveal.explanation } }),
-    });
-  const partsKey = JSON.stringify({ explored, reveal });
   // The frame inherits nothing from the app, so it receives the current theme tokens; light-dark() values resolve from the scheme.
   const theme = () => {
     const style = getComputedStyle(frame.current!),
@@ -58,16 +41,13 @@ function Frame({
       if (!frame.current || event.source !== frame.current.contentWindow) return;
       const message = visualMessage(event.data);
       if (message?.type === 'height') setHeight(message.height);
-      else if (message?.type === 'branch' && artifact.status === 'ready')
-        onPart?.(artifact, { label: message.label, explanation: message.explanation }, frame);
     }
     addEventListener('message', receive);
     return () => removeEventListener('message', receive);
-  }, [artifact.status, onPart]);
+  }, []);
   useEffect(() => {
     if (frame.current) theme();
   }, [mode, name]);
-  useEffect(parts, [partsKey]);
   const render = () =>
     post({
       type: 'render',
@@ -93,7 +73,6 @@ function Frame({
           theme();
           loaded.current = true;
           render();
-          parts();
         }}
       />
     </>
@@ -102,14 +81,13 @@ function Frame({
 
 export default function VisualFrame({
   artifact,
-  explored,
   reveal,
   onPart,
   onRetry,
   onRegenerate,
 }: {
   artifact: Artifact;
-  explored?: VisualBranch[];
+  explored?: VisualBranch[]; // shortcut: unused until child chips render under the visual (TreeTutor-3cd.2)
   reveal?: VisualPart;
   onPart?: PartAction;
   onRetry?: () => Promise<void>;
@@ -119,6 +97,17 @@ export default function VisualFrame({
   const [retried, setRetried] = useState(false);
   const figure = useRef<HTMLElement>(null);
   const viewer = useRef<HTMLDialogElement>(null);
+  const revealKey = reveal && JSON.stringify(reveal);
+  // Returning to a visual's source shows the whole figure; tagged parts no longer take focus.
+  useEffect(() => {
+    if (!revealKey) return;
+    figure.current?.scrollIntoView({ block: 'center' });
+    figure.current?.focus();
+  }, [revealKey]);
+  // The whole visual is the source: the existing visual-part request with its title and description.
+  const ask =
+    onPart &&
+    (() => onPart(artifact, { label: artifact.title, explanation: artifact.description }, figure));
   useEffect(() => {
     if (retried && artifact.status === 'ready' && document.activeElement === document.body)
       figure.current?.focus();
@@ -147,34 +136,40 @@ export default function VisualFrame({
         </Text>
       )}
       {(artifact.status === 'pending' || artifact.status === 'ready') && (
-        <Frame
-          key={artifact.id}
-          artifact={artifact}
-          explored={explored}
-          reveal={reveal}
-          onPart={onPart}
-        />
+        <Frame key={artifact.id} artifact={artifact} />
       )}
       {artifact.status === 'ready' && artifact.source && (
         <>
-          <HStack className="visual-actions" gap={1}>
-            {onRegenerate && (
-              <IconButton
-                label={`Try a different version of visual: ${artifact.title}`}
-                tooltip="Try a different version"
-                icon={<ArrowPathIcon />}
+          <HStack className="visual-actions" gap={1} vAlign="center">
+            {ask && (
+              <Button
+                className="visual-ask"
+                label="Ask"
+                aria-label={`Ask about visual: ${artifact.title}`}
                 variant="ghost"
                 size="sm"
-                clickAction={() => run(onRegenerate)}
+                onClick={ask}
               />
             )}
-            <IconButton
-              className="visual-enlarge"
-              label={`Enlarge visual: ${artifact.title}`}
-              icon={<ArrowsPointingOutIcon />}
-              variant="ghost"
-              size="sm"
-              onClick={() => setEnlarged(true)}
+            <DropdownMenu
+              presentation="popover"
+              alignment="end"
+              renderTrigger={(props) => (
+                <IconButton
+                  {...props}
+                  label={`Visual actions: ${artifact.title}`}
+                  tooltip="More actions"
+                  icon={<EllipsisHorizontalIcon />}
+                  variant="ghost"
+                  size="sm"
+                />
+              )}
+              items={[
+                ...(onRegenerate
+                  ? [{ label: 'Try a different version', onClick: () => void run(onRegenerate) }]
+                  : []),
+                { label: 'Enlarge', onClick: () => setEnlarged(true) },
+              ]}
             />
           </HStack>
           {enlarged && (
@@ -205,14 +200,19 @@ export default function VisualFrame({
               />
               <h2>{artifact.title}</h2>
               <p>{artifact.description}</p>
-              <Frame
-                artifact={artifact}
-                explored={explored}
-                onPart={(visual, part) => {
-                  setEnlarged(false);
-                  onPart?.(visual, part, figure);
-                }}
-              />
+              {ask && (
+                <Button
+                  label="Ask"
+                  aria-label={`Ask about visual: ${artifact.title}`}
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setEnlarged(false);
+                    ask();
+                  }}
+                />
+              )}
+              <Frame artifact={artifact} />
               <span
                 tabIndex={0}
                 className="sr-only"
