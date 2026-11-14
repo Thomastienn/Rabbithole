@@ -24,5 +24,6 @@ export type State = {
   active: string[];
   videos: string[];
   suggesting?: string[];
+  titling?: string[];
   conceptNameTokens?: number;
 };

@@ -16,6 +16,7 @@ import { roles } from './http/roles.mjs';
 import { compactionJobs } from './http/jobs/compaction.mjs';
 import { mediaJobs, recoverStaged, STOPPED } from './http/jobs/media.mjs';
 import { suggestionJobs } from './http/jobs/suggestions.mjs';
+import { titleJobs } from './http/jobs/title.mjs';
 import { stateRoutes } from './http/routes/state.mjs';
 import { settingsRoutes } from './http/routes/settings.mjs';
 import { knowledgeRoutes } from './http/routes/knowledge.mjs';
@@ -86,6 +87,7 @@ export function createApp({
     // Parent id -> compaction started when the branch form opened { key, controller, run }; submit reuses it while the key matches.
     prepared: new Map(),
     suggesting: new Map(),
+    titling: new Map(),
     json: (res, status, body) => {
       res.writeHead(status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(body));
@@ -95,8 +97,8 @@ export function createApp({
   };
   Object.assign(ctx, roles(ctx));
   ctx.syncEndpoints();
-  Object.assign(ctx, compactionJobs(ctx), mediaJobs(ctx), suggestionJobs(ctx));
-  const { active, videoJobs, suggesting, compactions, prepared, json } = ctx;
+  Object.assign(ctx, compactionJobs(ctx), mediaJobs(ctx), suggestionJobs(ctx), titleJobs(ctx));
+  const { active, videoJobs, suggesting, titling, compactions, prepared, json } = ctx;
   let stopped;
   recoverStaged(store, dir);
   const server = http.createServer(async (req, res) => {
@@ -168,7 +170,7 @@ export function createApp({
     // Await the existing background jobs without polling their persisted state.
     settled: (artifact) =>
       Promise.allSettled(
-        [...videoJobs, ...suggesting.values(), ...compactions.values()]
+        [...videoJobs, ...suggesting.values(), ...titling.values(), ...compactions.values()]
           .filter((v) => !artifact || v.artifact === artifact)
           .map((v) => v.done),
       ),
@@ -178,6 +180,7 @@ export function createApp({
       for (const controller of active.values()) controller.abort();
       for (const v of videoJobs) v.controller.abort(STOPPED);
       for (const s of suggesting.values()) s.controller.abort();
+      for (const t of titling.values()) t.controller.abort();
       for (const c of compactions.values()) c.controller.abort();
       for (const parent of [...prepared.keys()]) ctx.unprepare(parent);
       store.interrupt();

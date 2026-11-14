@@ -81,6 +81,8 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
   active.set(id, controller);
   const user = retried?.user ?? store.message(id, 'user', body.text, 'completed');
   if (!retried) store.questionEvidence(id, body.text, user);
+  // The placeholder title shows at once; quick thinking may replace it while the title is unrenamed.
+  if (!retried && !tree.messages.length && !tree.title_renamed) ctx.startTitle(id, body.text);
   const reply = store.message(id, 'assistant', '', 'streaming');
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
   const send = (data) => {

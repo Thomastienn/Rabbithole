@@ -114,7 +114,7 @@ for (const repair of [false, true])
     );
     assert.deepEqual(renders, ['cut-0', 'cut-1', 'cut-2', row.attempt]);
     assert.deepEqual(
-      warnings.filter((line) => line.includes(' WARN ')),
+      warnings.filter((line) => line.includes(' WARN media ')),
       [],
     );
     const visible = await (await env.get(`/api/trees/${tree.id}`)).text();
@@ -170,7 +170,7 @@ for (const broken of ['detect', 'runtime'])
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
     );
     assert.equal(row.error, error);
-    const warnings = logs.filter((line) => line.includes(' WARN '));
+    const warnings = logs.filter((line) => line.includes(' WARN media '));
     assert.equal(warnings.length, 1);
     assert.ok(warnings[0].includes(error));
     assert.match(warnings[0], /next=/);

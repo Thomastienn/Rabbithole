@@ -97,7 +97,8 @@ test('off prevents new suggestion calls, persists after restart and keeps saved 
   assert.equal(saved[0].status, 'ready', 'a call already started can finish and save its usage');
   assert.equal(env.suggestionCalls().length, 1);
   const usage = (await env.get('/api/state')).usage;
-  assert.deepEqual(usage, { input: 309, output: 21, cacheRead: 120, replies: 2 });
+  // Two replies, one suggestion call and the first question's title call.
+  assert.deepEqual(usage, { input: 412, output: 28, cacheRead: 160, replies: 2 });
   await env.close();
 
   env = await start(dir);

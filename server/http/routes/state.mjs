@@ -13,6 +13,7 @@ export async function stateRoutes(req, res, url, ctx) {
       usage: store.usageSince(new Date().setHours(0, 0, 0, 0)),
       videos: [...new Set([...ctx.videos.values()].map((v) => v.conversation))],
       suggesting: [...new Set([...ctx.suggesting.values()].map((s) => s.conversation))],
+      titling: [...ctx.titling.keys()],
       compacting: [...ctx.compactions].filter(([, c]) => !c.settled).map(([child]) => child),
       conceptNameTokens: store.nameTokens(),
     });

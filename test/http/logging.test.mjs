@@ -28,14 +28,16 @@ test('chat logs request and model start/finish with actual model, usage and dura
   });
   const tree = env.store.create('PRIVATE title', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: question })).text();
-  assert.equal(env.logs.length, 3);
-  assert.match(env.logs[0], / INFO model started .*task="chat" provider="codex"/);
+  // No quick thinking model: the placeholder title stays and one warning says so.
+  assert.equal(env.logs.length, 4);
+  assert.match(env.logs[0], / WARN title kept placeholder .*task="title"/);
+  assert.match(env.logs[1], / INFO model started .*task="chat" provider="codex"/);
   assert.match(
-    env.logs[1],
+    env.logs[2],
     / INFO model finished .*model="actual-model" input=12 output=7 cacheRead=3 ms=\d+/,
   );
   assert.match(
-    env.logs[2],
+    env.logs[3],
     new RegExp(
       ` INFO http request method="POST" path="/api/trees/${tree.id}/messages" status=200 ms=\\d+`,
     ),
@@ -140,7 +142,7 @@ test('suggestion and compaction calls log their task and selected model at exist
   });
   assert.equal(response.status, 201, await response.text());
   await env.app.settled();
-  for (const task of ['chat', 'suggestions', 'compaction']) {
+  for (const task of ['chat', 'suggestions', 'compaction', 'title']) {
     const finished = env.logs.find(
       (line) => line.includes(' model finished ') && line.includes(`task="${task}"`),
     );
@@ -158,7 +160,7 @@ test('suggestion and compaction calls log their task and selected model at exist
       .usageEvents()
       .events.map((e) => e.task)
       .sort(),
-    ['chat', 'compaction', 'suggestions'],
+    ['chat', 'compaction', 'suggestions', 'title'],
   );
 });
 

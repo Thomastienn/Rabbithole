@@ -68,7 +68,15 @@ test('typed custom endpoint efforts are validated, sent unchanged, remembered pe
     await (await post(`/api/trees/${root.id}/messages`, { text: 'Explain' })).text(),
     /"status":"completed"/,
   );
-  assert.equal(fake.calls.filter((c) => c.body).at(-1).body.reasoning_effort, 'Turbo-9');
+  // The first question also runs the quick thinking title call with its own typed effort.
+  assert.deepEqual(
+    fake.calls
+      .filter((c) => c.body)
+      .slice(-2)
+      .map((c) => c.body.reasoning_effort)
+      .sort(),
+    ['Turbo-9', 'quick_1'],
+  );
 
   // The endpoint's rejection shows in the reply and the selection stays.
   fake.reply = (req, res) => {

@@ -49,6 +49,7 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
     ...(state?.active ?? []),
     ...(state?.videos ?? []),
     ...(state?.suggesting ?? []),
+    ...(state?.titling ?? []),
   ].join(',');
   useEffect(() => {
     let cancelled = false;

@@ -29,6 +29,7 @@ const TASKS: Record<string, string> = {
   compaction: 'Context preparation',
   diagram: 'Visuals and diagrams',
   video: 'Videos',
+  title: 'Conversation titles',
 };
 const n = (v: number) => v.toLocaleString();
 const counts = (t: Totals) =>

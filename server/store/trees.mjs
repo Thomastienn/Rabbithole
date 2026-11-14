@@ -76,6 +76,10 @@ export const trees = {
   position(id, x, y) {
     this.db.prepare('UPDATE trees SET x=?,y=? WHERE id=?').run(x, y, id);
   },
+  // A model-written title never overrides a learner rename.
+  retitle(id, title) {
+    this.db.prepare('UPDATE trees SET title=? WHERE id=? AND title_renamed=0').run(title, id);
+  },
   rename(id, title) {
     this.db.prepare('UPDATE trees SET title=?,title_renamed=1 WHERE id=?').run(title, id);
   },
