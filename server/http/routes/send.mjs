@@ -1,3 +1,4 @@
+import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { diagramReply, generateDiagram, LIMITS, tutorContext } from '../../media/diagrams.mjs';
 import { visualTheme } from '../../media/visuals.mjs';
 import { asksForVideo } from '../../media/videos.mjs';
@@ -310,7 +311,7 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
       if (invalid) throw new Error(invalid.error);
     }
     called = true;
-    await pick(tree).generate(
+    await ctx.logged(pick(tree), 'chat', reply, tree).generate(
       tutorContext(tree),
       body.text,
       (event) => {
@@ -355,6 +356,7 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
         for (let artifact of artifacts.values()) {
           if (finished) break;
           if (artifact.status !== 'pending' || artifact.kind !== 'mermaid') continue;
+          ctx.log(formatLog('info', 'media', 'started', { id: artifact.id, task: 'diagram' }));
           try {
             const selection = { provider: tree.provider, model: store.tree(id).model };
             const source = await generateDiagram(
@@ -365,8 +367,26 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
               ctx.diagramTimeout,
               ctx.diagramParse,
             );
-            if (!finished) artifact = store.finishArtifact(id, artifact.id, source);
+            if (!finished) {
+              artifact = store.finishArtifact(id, artifact.id, source);
+              ctx.log(formatLog('info', 'media', 'saved', { id: artifact.id, task: 'diagram' }));
+            }
           } catch (error) {
+            ctx.log(
+              formatLog(
+                controller.signal.aborted ? 'info' : 'error',
+                'media',
+                controller.signal.aborted ? 'stopped' : 'failed',
+                {
+                  id: artifact.id,
+                  task: 'diagram',
+                  ...(!controller.signal.aborted && {
+                    cause: errorCause(error, privateValues(artifact.input)),
+                    next: 'Check the selected model, then Retry the diagram.',
+                  }),
+                },
+              ),
+            );
             if (!finished) artifact = store.finishArtifact(id, artifact.id, null, error.message);
           }
           if (!finished) send({ type: 'artifact', artifact: live(artifact) });

@@ -1,4 +1,12 @@
 import http from 'node:http';
+import {
+  stdoutLog,
+  formatLog,
+  errorCause,
+  privateValues,
+  requestPath,
+  logRequest,
+} from './log.mjs';
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
@@ -43,7 +51,7 @@ export function createApp({
   videoRender,
   videoNarrate,
   videoManim,
-  log = console.warn,
+  log = stdoutLog,
   suggestions = false,
   suggestionTimeout,
   desktop = systemDesktop,
@@ -92,13 +100,37 @@ export function createApp({
   let stopped;
   recoverStaged(store, dir);
   const server = http.createServer(async (req, res) => {
+    const started = performance.now();
+    const path = new URL(req.url, ctx.origin()).pathname;
+    const logging = logRequest(req.method, path);
+    let cause;
+    if (logging)
+      res.once('finish', () =>
+        log(
+          formatLog(
+            cause || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
+            'http',
+            'request',
+            {
+              method: req.method,
+              path: requestPath(path),
+              status: res.statusCode,
+              ms: Math.round(performance.now() - started),
+              ...((cause || res.statusCode >= 400) && {
+                cause: cause ?? http.STATUS_CODES[res.statusCode],
+                next: 'Check the request or server setup, then retry.',
+              }),
+            },
+          ),
+        ),
+      );
     const origin = ctx.origin();
     if (secure(req, res, origin, json)) return;
     const url = new URL(req.url, origin);
+    let body;
     try {
       if (ctx.stopping)
         return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
-      let body;
       if (req.method === 'POST') {
         if (
           req.headers['x-treetutor-csrf'] !== ctx.csrf ||
@@ -121,6 +153,8 @@ export function createApp({
       }
       for (const route of ROUTES) if (await route(req, res, url, ctx, body)) return;
     } catch (error) {
+      cause =
+        error.code ?? errorCause(error, [...privateValues(body), ...url.searchParams.values()]);
       if (!res.headersSent)
         json(res, error.code === 'ENOENT' ? 404 : 500, {
           error: 'TreeTutor could not finish this request. Reload and try again.',

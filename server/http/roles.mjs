@@ -1,3 +1,4 @@
+import { loggedProvider } from '../log.mjs';
 import { quickDefault } from '../suggestions.mjs';
 
 export const LABELS = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoint' };
@@ -6,7 +7,7 @@ export const LABELS = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoi
 export const isEndpoint = (id) => typeof id === 'string' && /^openai(:|$)/.test(id);
 
 // Model role resolution and metering over the live provider map.
-export function roles({ store, providers, endpoint, defaultProvider }) {
+export function roles({ store, providers, endpoint, defaultProvider, log }) {
   const syncEndpoints = () => {
     if (!endpoint) return;
     for (const id of Object.keys(providers)) if (isEndpoint(id)) delete providers[id];
@@ -80,12 +81,14 @@ export function roles({ store, providers, endpoint, defaultProvider }) {
   };
   // Accounting boundary for background work: each logical call records once under its own id, with any reported
   // counts even when it fails or stops; an unreported call stays unavailable. Rendering and TTS never pass through here.
-  const metered = (provider, task, id, selection) => ({
+  const logged = (provider, task, id, selection, detail) =>
+    loggedProvider(log, provider, task, id, selection, detail);
+  const metered = (provider, task, id, selection, detail) => ({
     generate: async (tree, text, emit, saveThread, signal) => {
       let usage = null,
         model = selection.model;
       try {
-        return await provider.generate(
+        return await logged(provider, task, id, selection, detail).generate(
           tree,
           text,
           (event) => {
@@ -131,5 +134,15 @@ export function roles({ store, providers, endpoint, defaultProvider }) {
     }
     return { quick };
   };
-  return { syncEndpoints, pick, selectionError, chatDefault, smart, profiles, metered, quickFor };
+  return {
+    syncEndpoints,
+    pick,
+    selectionError,
+    chatDefault,
+    smart,
+    profiles,
+    logged,
+    metered,
+    quickFor,
+  };
 }

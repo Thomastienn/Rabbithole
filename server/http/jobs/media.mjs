@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { accessSync, constants, existsSync, renameSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { generateDiagram } from '../../media/diagrams.mjs';
@@ -70,6 +71,12 @@ export function mediaJobs(ctx) {
       selection = input.selection ?? smart().resolved;
     videos.set(job.id, running);
     videoJobs.add(running);
+    const fields = { id: job.id, task: 'video' };
+    const stage = (name, detail = {}) =>
+      ctx.log(formatLog('info', 'media', name, { ...fields, ...detail }));
+    let progressStep = 0;
+    const phases = new Set();
+    stage('plan');
     running.done = Promise.resolve()
       .then(async () => {
         const provider = pick(selection);
@@ -89,9 +96,9 @@ export function mediaJobs(ctx) {
         await generateVideo({
           provider: {
             generate: (...args) =>
-              metered(provider, 'video', `${job.attempt}:${randomUUID()}`, selection).generate(
-                ...args,
-              ),
+              metered(provider, 'video', `${job.attempt}:${randomUUID()}`, selection, {
+                stage: args[0].instructions.startsWith('You plan') ? 'plan' : 'cut',
+              }).generate(...args),
           },
           selection,
           store,
@@ -102,10 +109,28 @@ export function mediaJobs(ctx) {
           render: ctx.videoRender,
           narrate: ctx.videoNarrate,
           manim: ctx.videoManim,
-          onWarning: ctx.log,
+          onWarning: (cause) =>
+            ctx.log(
+              formatLog('warn', 'media', 'warning', {
+                ...fields,
+                cause: errorCause(cause, privateValues(input)),
+                next: 'Run npm start to check or repair the video runtime, then request a new video.',
+              }),
+            ),
+          onStage: stage,
           onPhase: (phase, progress, detail = {}) => {
             if (videos.get(job.id) !== running || running.controller.signal.aborted) return;
-            if (running.phase !== phase) running.phaseStartedAt = Date.now();
+            if (running.phase !== phase) {
+              running.phaseStartedAt = Date.now();
+              if (phase !== 'planning' && !phases.has(phase)) {
+                phases.add(phase);
+                stage(phase === 'narrating' ? 'narration' : phase);
+              }
+            }
+            if (phase === 'rendering' && Number.isFinite(progress)) {
+              const step = Math.min(4, Math.floor(progress * 4));
+              while (progressStep < step) stage('render', { progress: ++progressStep * 25 });
+            }
             running.phase = phase;
             running.progress = Number.isFinite(progress)
               ? Math.min(1, Math.max(0, progress))
@@ -118,6 +143,16 @@ export function mediaJobs(ctx) {
       })
       // A job stopped with the app stays pending, so the next start marks it interrupted.
       .catch((error) => {
+        const stopped = ctx.stopping || running.controller.signal.aborted;
+        ctx.log(
+          formatLog(stopped ? 'info' : 'error', 'media', stopped ? 'stopped' : 'failed', {
+            ...fields,
+            ...(!stopped && {
+              cause: errorCause(error, privateValues(input)),
+              next: 'Check Smart model settings and the video runtime, then request a new video.',
+            }),
+          }),
+        );
         if (!ctx.stopping && running.controller.signal.reason !== STOPPED)
           store.finishVideo(job.conversation, job.id, job.attempt, {}, error.message);
       })
@@ -157,7 +192,9 @@ export function mediaJobs(ctx) {
     // Each automatic attempt is a separate usage event, in the existing diagram category.
     const metering = {
       generate: (...args) =>
-        metered(provider, 'diagram', `${artifact.id}:${randomUUID()}`, selection).generate(...args),
+        metered(provider, 'diagram', `${artifact.id}:${randomUUID()}`, selection, {
+          stage: 'visual',
+        }).generate(...args),
     };
     return generateVisual(metering, selection, input, signal, ctx.visualTimeout);
   };
@@ -172,6 +209,7 @@ export function mediaJobs(ctx) {
     parentSignal?.addEventListener('abort', cancel, { once: true });
     videos.set(artifact.id, running);
     videoJobs.add(running);
+    ctx.log(formatLog('info', 'media', 'started', { id: artifact.id, task: artifact.kind }));
     running.done = (async () => {
       const tree = store.tree(artifact.conversation),
         selection = { provider: tree.provider, model: tree.model };
@@ -186,11 +224,24 @@ export function mediaJobs(ctx) {
               ctx.diagramTimeout,
               ctx.diagramParse,
             );
-      if (!running.controller.signal.aborted)
+      if (!running.controller.signal.aborted) {
         store.finishArtifact(artifact.conversation, artifact.id, source);
+        ctx.log(formatLog('info', 'media', 'saved', { id: artifact.id, task: artifact.kind }));
+      }
     })()
       // Stopping leaves it pending, so startup recovery marks it failed; it never retries by itself.
       .catch((error) => {
+        const stopped = ctx.stopping || running.controller.signal.aborted;
+        ctx.log(
+          formatLog(stopped ? 'info' : 'error', 'media', stopped ? 'stopped' : 'failed', {
+            id: artifact.id,
+            task: artifact.kind,
+            ...(!stopped && {
+              cause: errorCause(error, privateValues(artifact.input)),
+              next: 'Check Smart model settings, then Retry the visual.',
+            }),
+          }),
+        );
         if (!ctx.stopping && running.controller.signal.reason !== STOPPED)
           store.finishArtifact(artifact.conversation, artifact.id, null, error.message);
       })

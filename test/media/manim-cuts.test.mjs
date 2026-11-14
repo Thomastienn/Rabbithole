@@ -113,7 +113,10 @@ for (const repair of [false, true])
       repair ? 5 : 4,
     );
     assert.deepEqual(renders, ['cut-0', 'cut-1', 'cut-2', row.attempt]);
-    assert.deepEqual(warnings, []);
+    assert.deepEqual(
+      warnings.filter((line) => line.includes(' WARN ')),
+      [],
+    );
     const visible = await (await env.get(`/api/trees/${tree.id}`)).text();
     assert.ok(!visible.includes('HouseScene') && !visible.includes('manim.mp4'));
   });
@@ -167,7 +170,11 @@ for (const broken of ['detect', 'runtime'])
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
     );
     assert.equal(row.error, error);
-    assert.deepEqual(logs, [`WARN video ${error}`]);
+    const warnings = logs.filter((line) => line.includes(' WARN '));
+    assert.equal(warnings.length, 1);
+    assert.ok(warnings[0].includes(error));
+    assert.match(warnings[0], /next=/);
+    assert.ok(logs.some((line) => line.includes(' ERROR media failed ')));
     assert.equal(calls, broken === 'detect' ? 0 : 1);
     assert.equal(renders, broken === 'detect' ? 0 : 1);
     assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${row.id}/media`)).status, 404);

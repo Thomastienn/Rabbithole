@@ -76,6 +76,7 @@ export async function generateVideo({
   onPhase = () => {},
   manim = { detect: detectManim, render: sandboxManim },
   onWarning = console.warn,
+  onStage = () => {},
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
   const controller = new AbortController();
@@ -130,7 +131,9 @@ export async function generateVideo({
       }
     }
     count = plan.cuts.length;
+    onStage('cuts', { cuts: count });
     onPhase('narrating');
+    let writtenCuts = 0;
     const work = await writeCuts({
       plan,
       workspace,
@@ -142,6 +145,9 @@ export async function generateVideo({
       wait,
       stop: (error) => controller.abort(error),
       save: (data) => {
+        const written = data.cuts.filter((c) => c.status === 'written').length;
+        if (written > writtenCuts) onStage('cuts written', { cut: written, cuts: count });
+        writtenCuts = Math.max(writtenCuts, written);
         if (!store.videoData(artifact.conversation, artifact.id, artifact.attempt, data))
           throw new Error('Video job no longer owns this output.');
       },
@@ -179,6 +185,8 @@ export async function generateVideo({
           outputs.push(output);
           cut.status = 'ready';
           work.persist();
+          if (index === 0) onStage('playable', { cut: 1, cuts: count });
+          onPhase('rendering', (index + 1) / cuts.length, frames);
           break;
         } catch (error) {
           controller.signal.throwIfAborted();
@@ -237,6 +245,7 @@ export async function generateVideo({
       });
       if (ready?.status !== 'ready') throw new Error();
       published = true;
+      onStage('saved');
       return ready;
     } catch {
       try {

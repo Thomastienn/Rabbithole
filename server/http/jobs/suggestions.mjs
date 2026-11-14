@@ -24,7 +24,7 @@ export function suggestionJobs(ctx) {
       );
       const selection = settings.model ? { ...settings.model, effort: settings.effort } : tree;
       const result = await suggest(
-        pick(selection),
+        ctx.logged(pick(selection), 'suggestions', message, selection),
         selection,
         { inheritedContext, question, answer, knownConcepts: known, familiarity },
         running.controller.signal,
