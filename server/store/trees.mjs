@@ -104,6 +104,8 @@ export const trees = {
       for (const conversation of deleted)
         this.db.prepare('DELETE FROM suggestions WHERE conversation=?').run(conversation);
       for (const conversation of deleted)
+        this.db.prepare('DELETE FROM attachments WHERE conversation=?').run(conversation);
+      for (const conversation of deleted)
         this.db.prepare('DELETE FROM branches WHERE child=?').run(conversation);
       for (const conversation of deleted)
         this.db.prepare('DELETE FROM messages WHERE tree=?').run(conversation);
@@ -149,7 +151,10 @@ export const trees = {
           )
           .all(id)
           .map(({ usage, stopped, ...m }) => {
-            if (m.role !== 'assistant') return m;
+            if (m.role !== 'assistant') {
+              const attachments = this.attachments(id, m.id);
+              return attachments.length ? { ...m, attachments } : m;
+            }
             const mediaUsage = this.replyMediaUsage(m.id);
             return {
               ...m,
@@ -286,18 +291,47 @@ export const trees = {
       .run(id);
   },
   // The first question of an unstarted root replaces its placeholder title, using the branch-title rule.
-  message(tree, role, text, status) {
+  message(tree, role, text, status, title = text) {
     const id = randomUUID();
     if (role === 'user')
       this.db
         .prepare(
           "UPDATE trees SET title=? WHERE id=? AND title='New chat' AND title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=trees.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=trees.id)",
         )
-        .run(text.trim().slice(0, 200), tree);
+        .run(title.trim().slice(0, 200), tree);
     this.db
       .prepare('INSERT INTO messages(id,tree,role,text,status) VALUES(?,?,?,?,?)')
       .run(id, tree, role, text, status);
     return id;
+  },
+  attach(conversation, message, attachments) {
+    const insert = this.db.prepare(
+      'INSERT INTO attachments(id,conversation,message,name,type,size,delivery,text,created) VALUES(?,?,?,?,?,?,?,?,?)',
+    );
+    for (const a of attachments)
+      insert.run(
+        a.id,
+        conversation,
+        message,
+        a.name,
+        a.type,
+        a.size,
+        a.delivery,
+        a.text,
+        Date.now(),
+      );
+  },
+  attachments(conversation, message) {
+    return this.db
+      .prepare(
+        'SELECT id,name,type,size,delivery,text FROM attachments WHERE conversation=? AND message=? ORDER BY created,rowid',
+      )
+      .all(conversation, message);
+  },
+  attachment(conversation, id) {
+    return this.db
+      .prepare('SELECT id,name,type,delivery FROM attachments WHERE conversation=? AND id=?')
+      .get(conversation, id);
   },
   update(id, text, status, stopped = null) {
     this.db

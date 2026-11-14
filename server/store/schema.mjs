@@ -70,6 +70,11 @@ export function open(path) {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS chat_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT NOT NULL, model TEXT NOT NULL, effort TEXT)',
     );
+    // Additive table: attachment files live under the data directory; text holds their prepared text for history and compaction.
+    this.db
+      .exec(`CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, size INTEGER NOT NULL, delivery TEXT NOT NULL, text TEXT, created INTEGER NOT NULL,
+        FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
+      CREATE INDEX IF NOT EXISTS attachments_message ON attachments(conversation, message);`);
     // Additive table: suggestions live beside, never inside, tutor messages; one row per saved reply.
     this.db
       .exec(`CREATE TABLE IF NOT EXISTS suggestions (message TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), passages TEXT, usage TEXT,

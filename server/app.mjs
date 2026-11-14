@@ -133,12 +133,38 @@ export function createApp({
     try {
       if (ctx.stopping)
         return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
+      // A question with attachments arrives as multipart form data; every other POST is JSON.
+      const multipart =
+        req.method === 'POST' &&
+        /^\/api\/trees\/[^/]+\/messages$/.test(url.pathname) &&
+        /^multipart\/form-data;/.test(req.headers['content-type'] ?? '');
       if (req.method === 'POST') {
         if (
           req.headers['x-treetutor-csrf'] !== ctx.csrf ||
-          req.headers['content-type'] !== 'application/json'
+          (req.headers['content-type'] !== 'application/json' && !multipart)
         )
           return json(res, 403, { error: 'Reload TreeTutor before trying again.' });
+      }
+      if (multipart) {
+        try {
+          const form = await new Request(url, {
+            method: 'POST',
+            headers: { 'content-type': req.headers['content-type'] },
+            body: req,
+            duplex: 'half',
+          }).formData();
+          const text = form.get('text') ?? '';
+          if (typeof text === 'string' && text.length > 100000)
+            return json(res, 413, { error: 'Message too long. Shorten it and try again.' });
+          body = {
+            text,
+            ...(form.has('theme') && { theme: JSON.parse(form.get('theme')) }),
+            files: form.getAll('files'),
+          };
+        } catch {
+          return json(res, 400, { error: 'Invalid request.' });
+        }
+      } else if (req.method === 'POST') {
         const chunks = [];
         let bytes = 0;
         for await (const chunk of req) {

@@ -1,4 +1,5 @@
 import { mergeArtifact, type Artifact, type ArtifactSummary } from '../media/artifacts.ts';
+import type { Attachment } from './Attachments';
 
 export type Usage = {
   input: number;
@@ -22,6 +23,7 @@ export type Message = {
   usage?: Usage | null;
   mediaUsage?: MediaUsage[];
   artifacts?: ArtifactSummary[];
+  attachments?: Attachment[];
 };
 export const usageLine = (u: Usage) =>
   `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;

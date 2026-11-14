@@ -1,5 +1,6 @@
 import { Worker } from 'node:worker_threads';
 import { safeDiagramSource } from '../../src/media/diagramSource.ts';
+import { withAttachments } from '../attachments.mjs';
 
 const MAX_SOURCE = 16 * 1024;
 // Resource bound on worker calls per reply, not a node limit inside a diagram.
@@ -121,11 +122,15 @@ export function diagramReply(raw, final = false) {
   };
 }
 
+// Models read a learner message with its attachments' prepared text; the chips' metadata stays out.
+const modelMessage = ({ attachments, ...message }) =>
+  attachments ? { ...message, text: withAttachments(message.text, attachments) } : message;
+
 export function tutorContext(tree) {
   const { artifacts = [], suggestions, ...context } = tree; // suggestions never reach the tutor
   return {
     ...context,
-    messages: tree.messages.map((message) => {
+    messages: tree.messages.map(modelMessage).map((message) => {
       const ready = artifacts.filter(
         (a) => a.message === message.id && a.conversation === tree.id && a.status === 'ready',
       );
@@ -155,6 +160,7 @@ export function compactionMessages(tree) {
   );
   return tree.messages
     .filter((m) => m.status === 'completed')
+    .map(modelMessage)
     .map((message) => {
       const own = media
         .filter((a) => a.message === message.id)

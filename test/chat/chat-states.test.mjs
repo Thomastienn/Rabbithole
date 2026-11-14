@@ -16,6 +16,8 @@ test('first-question focus belongs to the composer frame, never the editor or pl
       h(FirstQuestion, {
         draft: '',
         setDraft() {},
+        files: [],
+        setFiles() {},
         busy: false,
         available: true,
         modelMenu: null,
@@ -62,6 +64,8 @@ test('first question retains its controlled draft, selects a model before sendin
     return h(FirstQuestion, {
       ...value,
       setDraft: (draft) => set((v) => ({ ...v, draft })),
+      files: [],
+      setFiles() {},
       modelMenu: h('button', null, 'Model for next reply'),
       submit: (text) => submitted.push(text),
       loadModels: () => retried.push('models'),
@@ -122,6 +126,8 @@ test('with no chat model chosen, the first question asks for one in Settings', a
   const props = {
     draft: 'Why?',
     setDraft() {},
+    files: [],
+    setFiles() {},
     busy: false,
     available: false,
     modelMenu: null,

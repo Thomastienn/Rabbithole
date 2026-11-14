@@ -3,6 +3,10 @@ import { diagramReply, generateDiagram, LIMITS, tutorContext } from '../../media
 import { visualTheme } from '../../media/visuals.mjs';
 import { asksForVideo } from '../../media/videos.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
+import { prepareAttachment, withAttachments } from '../../attachments.mjs';
+import { randomUUID } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Conversation send and Retry: streams one tutor reply as server-sent events and starts its media jobs.
 export async function sendRoute(res, ctx, id, tree, action, body) {
@@ -57,14 +61,20 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
       thread: null,
       working_thread: null,
     });
-    retried = { user: question.id, replaced: failed.id };
+    retried = { user: question.id, replaced: failed.id, attachments: question.attachments ?? [] };
     body = { text: question.text, theme: body.theme };
   }
   if (['artifactId', 'artifactIds', 'artifacts'].some((key) => Object.hasOwn(body, key)))
     return json(res, 400, {
       error: 'Diagrams are attached by the server to their originating reply.',
     });
-  if (typeof body.text !== 'string' || !body.text.trim())
+  const files = body.files ?? [];
+  if (!Array.isArray(files) || files.some((f) => !(f instanceof File)))
+    return json(res, 400, { error: 'Invalid request.' });
+  if (
+    typeof body.text !== 'string' ||
+    (!body.text.trim() && !files.length && !retried?.attachments.length)
+  )
     return json(res, 400, { error: 'Enter a question.' });
   if (!tree.provider)
     return json(res, 409, { error: 'Choose a chat model in Settings.', code: 'chat_model_unset' });
@@ -77,12 +87,53 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
     return json(res, 409, {
       error: 'This focused chat’s context was not prepared. Retry its reply to prepare it again.',
     });
+  // Every file is prepared before anything is saved, so an unsupported one refuses the whole send.
+  const prepared = [];
+  for (const file of files) {
+    const bytes = new Uint8Array(await file.arrayBuffer()),
+      name = file.name || 'attachment';
+    try {
+      const { delivery, parts } = prepareAttachment({ name, type: file.type, bytes });
+      const text = parts.map((p) => p.text).join('\n\n');
+      prepared.push({
+        id: randomUUID(),
+        name,
+        type: file.type,
+        size: file.size,
+        delivery,
+        text,
+        bytes,
+      });
+    } catch (error) {
+      return json(res, 400, { error: error.message });
+    }
+  }
+  if (prepared.length) {
+    const folder = join(ctx.dir, 'attachments', id);
+    mkdirSync(folder, { recursive: true, mode: 0o700 });
+    for (const a of prepared) writeFileSync(join(folder, a.id), a.bytes, { mode: 0o600 });
+  }
+  const attachments = retried?.attachments ?? prepared;
+  const prompt = withAttachments(body.text, attachments);
   const controller = new AbortController();
   active.set(id, controller);
-  const user = retried?.user ?? store.message(id, 'user', body.text, 'completed');
-  if (!retried) store.questionEvidence(id, body.text, user);
+  const user =
+    retried?.user ??
+    store.message(
+      id,
+      'user',
+      body.text,
+      'completed',
+      body.text.trim() ? body.text : prepared.map((a) => a.name).join(', '),
+    );
+  if (!retried) {
+    store.attach(id, user, prepared);
+    store.questionEvidence(id, body.text, user);
+  }
   // The placeholder title shows at once; quick thinking may replace it while the title is unrenamed.
-  if (!retried && !tree.messages.length && !tree.title_renamed) ctx.startTitle(id, body.text);
+  // An attachment-only question titles from the attachments' text, which starts with each file name.
+  if (!retried && !tree.messages.length && !tree.title_renamed)
+    ctx.startTitle(id, body.text.trim() ? body.text : prompt.slice(0, 4000));
   const reply = store.message(id, 'assistant', '', 'streaming');
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
   const send = (data) => {
@@ -291,7 +342,13 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
     type: 'saved',
     id: reply,
     title: store.tree(id).title,
-    user: { id: user, role: 'user', text: body.text, status: 'completed' },
+    user: {
+      id: user,
+      role: 'user',
+      text: body.text,
+      status: 'completed',
+      ...(attachments.length && { attachments: attachments.map(({ text, bytes, ...a }) => a) }),
+    },
     ...(retried && { replaced: retried.replaced }),
   });
   try {
@@ -321,7 +378,7 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
     called = true;
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
       { ...tutorContext(tree), tutorStyle: store.tutorStyle() },
-      body.text,
+      prompt,
       (event) => {
         if (finished) return;
         if (event.type === 'delta' || event.type === 'item') {

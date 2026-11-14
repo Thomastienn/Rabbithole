@@ -16,6 +16,8 @@ export function useChatState() {
   const addresses = useMemo(() => conversationAddresses(state?.trees ?? []), [state?.trees]);
   const [previews, setPreviews] = useState<Record<string, Preview>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // Pending composer files, keyed like drafts: a conversation id, or 'first' for the first question.
+  const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -178,6 +180,8 @@ export function useChatState() {
     setPreviews,
     drafts,
     setDrafts,
+    pendingFiles,
+    setPendingFiles,
     error,
     setError,
     busy,

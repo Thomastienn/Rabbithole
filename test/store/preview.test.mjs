@@ -50,6 +50,7 @@ test('previews list every message in order, bound each text and survive reload w
     [
       'active_profile',
       'artifacts',
+      'attachments',
       'branches',
       'chat_settings',
       'concept_aliases',

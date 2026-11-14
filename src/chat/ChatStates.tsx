@@ -6,10 +6,13 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { ChatComposer, ChatComposerInput } from '@astryxdesign/core/Chat';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { ArrowUpIcon } from '@heroicons/react/24/outline';
+import { AttachButton, PendingAttachments } from './Attachments';
 
 export function FirstQuestion({
   draft,
   setDraft,
+  files,
+  setFiles,
   busy,
   available,
   modelMenu,
@@ -22,6 +25,8 @@ export function FirstQuestion({
 }: {
   draft: string;
   setDraft: (draft: string) => void;
+  files: File[];
+  setFiles: (files: File[]) => void;
   busy: boolean;
   available: boolean;
   modelMenu: ReactNode;
@@ -40,11 +45,30 @@ export function FirstQuestion({
         elevation="none"
         value={draft}
         onChange={setDraft}
-        footerActions={modelMenu}
+        drawer={
+          <PendingAttachments
+            files={files}
+            remove={(i) => setFiles(files.filter((_, j) => j !== i))}
+          />
+        }
+        footerActions={
+          <>
+            <AttachButton add={(more) => setFiles([...files, ...more])} isDisabled={busy} />
+            {modelMenu}
+          </>
+        }
         isDisabled={busy}
         sendButton={
           !available ? (
             <IconButton label="Send" icon={<ArrowUpIcon />} variant="primary" isDisabled />
+          ) : files.length && !draft.trim() && !busy ? (
+            // The composer's own send needs text; files alone are a question too.
+            <IconButton
+              label="Send"
+              icon={<ArrowUpIcon />}
+              variant="primary"
+              onClick={() => submit('')}
+            />
           ) : undefined
         }
         onSubmit={(text) => {
@@ -56,6 +80,7 @@ export function FirstQuestion({
             maxRows={4}
             value={draft}
             onChange={setDraft}
+            onFiles={(more) => setFiles([...files, ...more])}
             isDisabled={busy || !available}
             placeholder="What would you like to understand?"
           />

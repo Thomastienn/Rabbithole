@@ -1,4 +1,4 @@
-import { existsSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { mediaPath } from '../../media/videos.mjs';
 import { LABELS, isEndpoint } from '../roles.mjs';
@@ -9,6 +9,23 @@ import { sendRoute } from './send.mjs';
 export async function treeRoutes(req, res, url, ctx, body) {
   const { store, json, providers, active, compactions, prepared, pick, selectionError } = ctx;
   if (req.method === 'GET') {
+    // A saved attachment, scoped to its conversation; served as inert text or a download, never as app content.
+    const file = url.pathname.match(/^\/api\/trees\/([^/]+)\/attachments\/([^/]+)$/);
+    const attachment = file && store.attachment(file[1], file[2]);
+    if (file && !attachment) return json(res, 404, { error: 'Attachment not found.' });
+    if (attachment) {
+      const data = readFileSync(join(ctx.dir, 'attachments', file[1], attachment.id));
+      const text = attachment.delivery === 'text';
+      const ascii = attachment.name.replace(/[^\x20-\x7e]|["\\]/g, '_');
+      res.writeHead(200, {
+        'Content-Type': text ? 'text/plain; charset=utf-8' : 'application/octet-stream',
+        'Content-Disposition': `${text ? 'inline' : 'attachment'}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(attachment.name)}`,
+        'Content-Security-Policy': "sandbox; default-src 'none'",
+        'Content-Length': data.length,
+      });
+      res.end(data);
+      return true;
+    }
     const treeMatch = url.pathname.match(/^\/api\/trees\/([^/]+)$/);
     if (!treeMatch) return false;
     const tree = store.tree(treeMatch[1]);
@@ -29,7 +46,15 @@ export async function treeRoutes(req, res, url, ctx, body) {
       res,
       tree ? 200 : 404,
       tree
-        ? { ...tree, artifacts: tree.artifacts.map(ctx.live), ...preparing }
+        ? {
+            ...tree,
+            // Prepared attachment text is for the models; the client shows chips and opens the file.
+            messages: tree.messages.map((m) =>
+              m.attachments ? { ...m, attachments: m.attachments.map(({ text, ...a }) => a) } : m,
+            ),
+            artifacts: tree.artifacts.map(ctx.live),
+            ...preparing,
+          }
         : { error: 'Learning tree not found.' },
     );
   }
@@ -136,6 +161,9 @@ export async function treeRoutes(req, res, url, ctx, body) {
     // A job may have been finishing a filesystem operation while its directory was moved.
     for (const path of files) rmSync(path, { recursive: true, force: true });
     for (const [, moved] of staged) rmSync(moved, { recursive: true, force: true });
+    // shortcut: attachment folders are removed after commit, so a crash in between leaves files behind; stage them like videos if that matters.
+    for (const conversation of result.deleted)
+      rmSync(join(dir, 'attachments', conversation), { recursive: true, force: true });
     return json(res, 200, result);
   }
   if (action === 'position') {

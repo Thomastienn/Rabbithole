@@ -60,6 +60,7 @@ export default function ChatPage({
   const actions = useTreeActions(c, layout, trees, model, stream);
   const branchForm = useBranchForm(c, trees, model, stream);
   const { visibleIds, addresses, previews, drafts, setDrafts, shownMapWidth, workspace } = c;
+  const { pendingFiles, setPendingFiles } = c;
   const { contentsOpen, toggleContents, branch, api } = c;
   const { openTree, openConversation, loadInitial, select, titleSearch, activeKey } = trees;
   const { models, providers, modelError, loadModels, signIn, currentModel } = model;
@@ -193,6 +194,8 @@ export default function ChatPage({
     <FirstQuestion
       draft={drafts.first ?? ''}
       setDraft={(value) => setDrafts((d) => ({ ...d, first: value }))}
+      files={pendingFiles.first ?? []}
+      setFiles={(files) => setPendingFiles((p) => ({ ...p, first: files }))}
       busy={busy}
       available={!!currentModel}
       modelMenu={modelMenu}

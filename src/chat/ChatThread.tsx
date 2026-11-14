@@ -17,6 +17,7 @@ import type { ChatModel } from './useChatModel';
 import type { LearningTrees } from './useLearningTrees';
 import type { ReplyStream } from './useReplyStream';
 import type { BranchFormState } from './useBranchForm';
+import { MessageAttachments } from './Attachments';
 import type { TreeActions } from './useTreeActions';
 
 // The focused chat's questions and replies, with their figures, branch form and feedback.
@@ -151,7 +152,14 @@ export default function ChatThread({
           />
         ) : (
           <ChatMessageBubble variant="ghost" className="question-bubble">
-            <Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.text}</Text>
+            {message.text && (
+              <Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                {message.text}
+              </Text>
+            )}
+            {message.attachments && (
+              <MessageAttachments conversation={tree.id} attachments={message.attachments} />
+            )}
           </ChatMessageBubble>
         )}
 

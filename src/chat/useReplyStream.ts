@@ -13,7 +13,8 @@ export function useReplyStream(
   { savingModel }: ChatModel,
   theme: { name: string; mode: string },
 ) {
-  const { tree, state, setState, setTree, setPreviews, setDrafts, setError, api } = c;
+  const { tree, state, setState, setTree, setPreviews, setDrafts, setPendingFiles, setError, api } =
+    c;
   const { turns, streams, checkpoints, removed, renamed, selected, request } = c;
   // Reopening a page during a turn recovers saved checkpoints without tying work to focus.
   useEffect(() => {
@@ -46,10 +47,11 @@ export function useReplyStream(
     }
   }
   // retry streams over the latest failed reply; the question and composer draft are left alone.
-  async function send(text: string, target = tree, retry = false) {
+  // files go as multipart form data; a question needs text or files (a retry resends the saved ones).
+  async function send(text: string, target = tree, retry = false, files: File[] = []) {
     if (
       !target ||
-      !text.trim() ||
+      (!retry && !text.trim() && !files.length) ||
       savingModel === target.id ||
       state?.active.includes(target.id) ||
       turns.current.has(target.id)
@@ -64,15 +66,28 @@ export function useReplyStream(
     setError('');
     setState((s) => s && { ...s, active: [...s.active, id] });
     try {
+      const form = new FormData();
+      if (!retry && files.length) {
+        form.set('text', text);
+        form.set('theme', JSON.stringify(theme));
+        for (const file of files) form.append('files', file);
+      }
+      const multipart = form.has('text');
       const response = await fetch(`/api/trees/${id}/${retry ? 'retry' : 'messages'}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state?.csrf ?? '' },
-        body: JSON.stringify({ ...(!retry && { text }), theme }),
+        headers: {
+          ...(!multipart && { 'Content-Type': 'application/json' }),
+          'X-TreeTutor-CSRF': state?.csrf ?? '',
+        },
+        body: multipart ? form : JSON.stringify({ ...(!retry && { text }), theme }),
         signal: controller.signal,
       });
       if (removed.current.has(id)) return;
       if (!response.ok) throw new Error((await response.json()).error);
-      if (!retry) setDrafts((d) => ({ ...d, [id]: '' }));
+      if (!retry) {
+        setDrafts((d) => ({ ...d, [id]: '' }));
+        setPendingFiles((p) => ({ ...p, [id]: [] }));
+      }
       const reader = response.body!.getReader(),
         decoder = new TextDecoder();
       let buffer = '';

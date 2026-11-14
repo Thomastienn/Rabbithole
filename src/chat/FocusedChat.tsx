@@ -17,6 +17,7 @@ import OriginStrip from './OriginStrip';
 import TitleEditor from './TitleEditor';
 import ChatHeadingRow from './ChatHeader';
 import ChatThread from './ChatThread';
+import { AttachButton, PendingAttachments } from './Attachments';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { ChatModel } from './useChatModel';
@@ -40,7 +41,9 @@ export default function FocusedChat(props: {
   const { tree, c, model, trees, stream, actions, active, modelMenu } = props;
   const { state, addresses, overview, reveal, drafts, setDrafts, renaming, setRenaming } = c;
   const { expanded, toggleExpanded, returnToTree, statsOpen, setStatsOpen, statsPanel } = c;
-  const { mobile, transitionBox, composer, setMessageTarget } = c;
+  const { mobile, transitionBox, composer, setMessageTarget, pendingFiles, setPendingFiles } = c;
+  const files = pendingFiles[tree.id] ?? [];
+  const setFiles = (next: File[]) => setPendingFiles((p) => ({ ...p, [tree.id]: next }));
   const { modelNotice, unavailableSelection, codexFallback, modelError, models, loadModels } =
     model;
   const { openConversation } = trees;
@@ -159,19 +162,42 @@ export default function FocusedChat(props: {
             sendButton={
               models && !models.length && !active ? (
                 <IconButton label="Send" icon={<ArrowUpIcon />} variant="primary" isDisabled />
+              ) : files.length && !(drafts[tree.id] ?? '').trim() && !active ? (
+                // The composer's own send needs text; files alone are a question too.
+                <IconButton
+                  label="Send"
+                  icon={<ArrowUpIcon />}
+                  variant="primary"
+                  onClick={() => void send('', tree, false, files)}
+                />
               ) : undefined
             }
-            footerActions={modelMenu}
+            drawer={
+              <PendingAttachments
+                files={files}
+                remove={(i) => setFiles(files.filter((_, j) => j !== i))}
+              />
+            }
+            footerActions={
+              <>
+                <AttachButton
+                  add={(more) => setFiles([...files, ...more])}
+                  isDisabled={active || (!!models && !models.length)}
+                />
+                {modelMenu}
+              </>
+            }
             value={drafts[tree.id] ?? ''}
             onChange={(value) => setDrafts((d) => ({ ...d, [tree.id]: value }))}
             onSubmit={(text) => {
-              if (!models || models.length) void send(text);
+              if (!models || models.length) void send(text, tree, false, files);
             }}
             isStopShown={active}
             onStop={() => stream.stop(tree.id)}
             input={
               <ChatComposerInput
                 handleRef={composer}
+                onFiles={(more) => setFiles([...files, ...more])}
                 label="Your question"
                 maxRows={4}
                 value={drafts[tree.id] ?? ''}

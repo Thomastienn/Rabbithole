@@ -20,6 +20,7 @@ export function useTreeActions(
   { send }: ReplyStream,
 ) {
   const { state, setState, setTree, setDrafts, setPreviews, setError, busy, setBusy, api } = c;
+  const { pendingFiles, setPendingFiles } = c;
   const { root, setRoot, setTab, setOverview, setExpanded, setLoading, renaming, setRenaming } = c;
   const { selected, request, checkpoints, turns, streams, removed, renamed } = c;
   const { overviewOrigin, focusComposer, composer, setFolds, setBranch, setReveal } = c;
@@ -88,6 +89,8 @@ export function useTreeActions(
     if (busy) return;
     setBusy(true);
     setError('');
+    // The first question's files move with its draft to the new conversation, and back if unsaved.
+    const files = pendingFiles.first ?? [];
     try {
       const result = await startFirstQuestion<Tree>(
         question,
@@ -95,7 +98,7 @@ export function useTreeActions(
         {
           api,
           refresh,
-          send,
+          send: (question, next) => send(question, next, false, files),
           open: async (next) => {
             overviewOrigin.current = undefined;
             focusComposer.current = true;
@@ -105,6 +108,7 @@ export function useTreeActions(
             setExpanded(false);
             await select(next.id);
             setDrafts((d) => ({ ...d, first: '', [next.id]: question }));
+            setPendingFiles((p) => ({ ...p, first: [], [next.id]: files }));
           },
         },
       );
@@ -115,6 +119,7 @@ export function useTreeActions(
         setTree(undefined);
         setRoot(undefined);
         setDrafts((d) => ({ ...d, first: question }));
+        setPendingFiles((p) => ({ ...p, first: files }));
         return;
       }
       requestAnimationFrame(() => {
@@ -123,6 +128,7 @@ export function useTreeActions(
     } catch (e) {
       setError((e as Error).message);
       setDrafts((d) => ({ ...d, first: d.first || question }));
+      setPendingFiles((p) => ({ ...p, first: p.first?.length ? p.first : files }));
     } finally {
       setBusy(false);
     }
