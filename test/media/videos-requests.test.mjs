@@ -123,8 +123,8 @@ test('mixed and duplicate video blocks each leave a failed artifact of their own
   }
 });
 
-test('provider failure and learner Stop preserve request failures without starting media work', async () => {
-  let mode, kind, entered;
+test('provider failure and learner Stop preserve legacy diagram request failures without starting media work', async () => {
+  let mode, entered;
   let workers = 0;
   const env = await open({
     generate: async (tree, text, emit, save, signal) => {
@@ -135,7 +135,7 @@ test('provider failure and learner Stop preserve request failures without starti
       emit({
         type: 'item',
         item: 'answer',
-        text: `Saved text.\n\`\`\`treetutor-${kind}\n${JSON.stringify(task)}\n\`\`\``,
+        text: `Saved text.\n\`\`\`treetutor-diagram\n${JSON.stringify(task)}\n\`\`\``,
       });
       entered?.();
       if (mode === 'throw') throw new Error('private provider failure');
@@ -143,26 +143,24 @@ test('provider failure and learner Stop preserve request failures without starti
     },
   });
   try {
-    for (mode of ['throw', 'stop'])
-      for (kind of ['diagram', 'video']) {
-        const tree = env.store.create('Interrupted requests');
-        const ready = new Promise((resolve) => {
-          entered = resolve;
-        });
-        const response = env
-          .post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of winners advancing.' })
-          .then((r) => r.text());
-        await ready;
-        if (mode === 'stop')
-          assert.equal((await env.post(`/api/trees/${tree.id}/stop`)).status, 200);
-        await response;
-        const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
-        assert.deepEqual(
-          saved.artifacts.map((a) => [a.kind, a.status, a.error]),
-          [[kind === 'diagram' ? 'mermaid' : kind, 'failed', 'Tutor reply did not complete.']],
-        );
-        assert.equal(saved.messages.at(-1).text, 'Saved text.');
-      }
+    for (mode of ['throw', 'stop']) {
+      const tree = env.store.create('Interrupted requests');
+      const ready = new Promise((resolve) => {
+        entered = resolve;
+      });
+      const response = env
+        .post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of winners advancing.' })
+        .then((r) => r.text());
+      await ready;
+      if (mode === 'stop') assert.equal((await env.post(`/api/trees/${tree.id}/stop`)).status, 200);
+      await response;
+      const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
+      assert.deepEqual(
+        saved.artifacts.map((a) => [a.kind, a.status, a.error]),
+        [['mermaid', 'failed', 'Tutor reply did not complete.']],
+      );
+      assert.equal(saved.messages.at(-1).text, 'Saved text.');
+    }
     assert.equal(workers, 0);
   } finally {
     env.close();

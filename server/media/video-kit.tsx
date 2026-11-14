@@ -67,8 +67,8 @@ export const type: Record<'title' | 'heading' | 'label' | 'caption' | 'reading',
   },
 };
 
-// 1280x720 frame; the bottom band belongs to app subtitles.
-export const frame = { width: 1280, height: 720, margin: 80, top: 64, subtitles: 150 };
+// 1920x1080 frame; the bottom band belongs to app subtitles.
+export const frame = { width: 1920, height: 1080, margin: 80, top: 64, subtitles: 120 };
 
 export const ease = Easing.bezier(0.22, 1, 0.36, 1);
 // 0 to 1 over [start, start + duration] frames, eased and clamped.

@@ -29,7 +29,7 @@ await renderMedia({
   browserExecutable,
   codec: 'h264',
   outputLocation: output,
-  concurrency: 1,
+  concurrency: 2,
   logLevel: 'error',
   onProgress: ({ progress }) => {
     const step = Math.floor(progress * 100) / 100;

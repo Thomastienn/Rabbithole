@@ -90,36 +90,52 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
     usage = null,
     called = false;
   const artifacts = new Map(),
-    visualQueue = [];
-  let runningVisuals = 0;
+    mediaQueue = [];
+  let runningMedia = 0;
   const heartbeat = setInterval(() => {
     if (!res.destroyed) res.write(': keepalive\n\n');
   }, 15000);
-  // Visuals run detached (Stop cancels them only while the reply streams); done never waits for them.
-  const pumpVisuals = () => {
-    while (
-      !ctx.stopping &&
-      !controller.signal.aborted &&
-      runningVisuals < 3 &&
-      visualQueue.length
-    ) {
-      const artifact = visualQueue.shift();
+  // Visuals and videos run detached; Stop cancels them only while the reply streams.
+  const pumpMedia = () => {
+    while (!ctx.stopping && !controller.signal.aborted && runningMedia < 3 && mediaQueue.length) {
+      const artifact = mediaQueue.shift();
       if (store.artifact(id, artifact.id)?.status !== 'pending') continue;
-      runningVisuals++;
-      ctx.startDrawing(artifact, controller.signal).done.finally(() => {
-        runningVisuals--;
-        const current = store.artifact(id, artifact.id);
-        if (!finished && current) send({ type: 'artifact', artifact: live(current) });
-        pumpVisuals();
+      runningMedia++;
+      const start = artifact.kind === 'video' ? ctx.startVideo : ctx.startDrawing;
+      start(artifact, controller.signal).done.finally(() => {
+        runningMedia--;
+        if (!finished) {
+          const current = store.artifact(id, artifact.id);
+          if (current) send({ type: 'artifact', artifact: live(current) });
+        }
+        pumpMedia();
       });
     }
   };
-  // Closed visual requests can start during streaming. Other media retain their completed-reply policy.
+  // Legacy diagrams retain their completed-reply policy.
   const prepareArtifacts = (output, final = false) => {
     if (!store.tree(id)) return;
     for (const [index, request] of (output.requests ?? []).entries()) {
-      if (!final && (request.kind !== 'visual' || !request.closed)) continue;
-      if (artifacts.has(index)) continue;
+      if (
+        !final &&
+        (!request.closed ||
+          (request.kind !== 'visual' && (request.kind !== 'video' || request.error)))
+      )
+        continue;
+      if (artifacts.has(index)) {
+        const artifact = artifacts.get(index);
+        if (
+          request.error &&
+          artifact.kind === 'video' &&
+          store.artifact(id, artifact.id)?.status === 'pending'
+        ) {
+          const failed = store.finishVideo(id, artifact.id, artifact.attempt, {}, request.error);
+          ctx.videos.get(artifact.id)?.controller.abort(new Error(request.error));
+          artifacts.set(index, failed);
+          send({ type: 'artifact', artifact: live(failed) });
+        }
+        continue;
+      }
       const label =
         request.kind === 'video' ? 'Video' : request.kind === 'visual' ? 'Visual' : 'Diagram';
       const task = request.task ?? {
@@ -186,9 +202,10 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
             : store.finishArtifact(id, artifact.id, null, invalid);
       artifacts.set(index, artifact);
       send({ type: 'artifact', artifact: live(artifact) });
-      if (artifact.kind === 'visual' && artifact.status === 'pending') visualQueue.push(artifact);
+      if (['visual', 'video'].includes(artifact.kind) && artifact.status === 'pending')
+        mediaQueue.push(artifact);
     }
-    pumpVisuals();
+    pumpMedia();
   };
   const finish = () => {
     if (finished) return;
@@ -204,7 +221,8 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
     if (controller.signal.aborted && !ctx.stopping) {
       store.cancelVisuals(id, reply);
       for (const artifact of artifacts.values())
-        if (artifact.kind === 'visual') {
+        if (['visual', 'video'].includes(artifact.kind)) {
+          if (artifact.kind === 'video') store.cancelVideo(id, artifact.id);
           const current = store.artifact(id, artifact.id);
           if (current) send({ type: 'artifact', artifact: live(current) });
         }
@@ -333,14 +351,10 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
         store.update(reply, text, status);
         store.forgetThread(id);
         prepareArtifacts(output, true);
-        // Legacy diagrams run in reply order; videos detach from the stream.
+        // Legacy diagrams run in reply order; visuals and videos already run detached.
         for (let artifact of artifacts.values()) {
           if (finished) break;
-          if (artifact.status !== 'pending' || artifact.kind === 'visual') continue;
-          if (artifact.kind === 'video') {
-            ctx.startVideo(artifact);
-            continue;
-          }
+          if (artifact.status !== 'pending' || artifact.kind !== 'mermaid') continue;
           try {
             const selection = { provider: tree.provider, model: store.tree(id).model };
             const source = await generateDiagram(

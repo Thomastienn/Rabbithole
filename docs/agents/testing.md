@@ -76,6 +76,7 @@ cover one again, add it to a smoke script.
 
 <!-- One line per lost check: script, check, reason. -->
 
+- Video subtitles: the reserved band measures 120px at 1080p and shows at most two lines; native browser geometry and text layout (MP4 dimensions and frame rate are checked by `npm run test:render`).
 - `verify-read`: the map is 440px wide and directly to the right of focused chat; responsive CSS geometry.
 - `verify-read`: prose is 640px wide with a 60–76 character measure and Literata at 17px/1.7; loaded fonts and browser text layout.
 - `verify-read`: inherited context has no border or shadow; computed CSS.

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
-import { RenderInternals } from '@remotion/renderer';
+import { RenderInternals, getVideoMetadata } from '@remotion/renderer';
 import { mediaPath, SANDBOX } from '../../server/media/videos.mjs';
 import {
   task,
@@ -193,6 +193,8 @@ test(
     assert.equal(row.duration, 2);
     assert.equal(published, true);
     assert.equal(readFileSync(mediaPath(dir, row.id)).toString('latin1', 4, 8), 'ftyp');
+    const metadata = await getVideoMetadata(mediaPath(dir, row.id));
+    assert.deepEqual([metadata.width, metadata.height, metadata.fps], [1920, 1080, 30]);
   },
 );
 
@@ -203,6 +205,8 @@ test(
     const { result, row, dir } = await job(undefined, undefined, spatial);
     assert.equal(result, null);
     assert.equal(row.status, 'ready');
+    const metadata = await getVideoMetadata(mediaPath(dir, row.id));
+    assert.deepEqual([metadata.width, metadata.height, metadata.fps], [1920, 1080, 30]);
     // A non-blank WebGL frame: the orange cube is drawn, not just the background.
     const ffmpeg = RenderInternals.getExecutablePath({
       type: 'ffmpeg',
@@ -220,7 +224,7 @@ test(
       '-frames:v',
       '1',
       '-vf',
-      'crop=2:2:640:360,format=rgb24',
+      'crop=2:2:960:540,format=rgb24',
       '-f',
       'image2pipe',
       '-c:v',

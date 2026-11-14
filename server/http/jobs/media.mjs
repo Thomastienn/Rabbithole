@@ -52,7 +52,7 @@ export function mediaJobs(ctx) {
     return a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
   };
   // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
-  const startVideo = (job) => {
+  const startVideo = (job, parentSignal) => {
     const running = {
       controller: new AbortController(),
       conversation: job.conversation,
@@ -62,6 +62,9 @@ export function mediaJobs(ctx) {
       startedAt: Date.now(),
       phaseStartedAt: Date.now(),
     };
+    const cancel = () => running.controller.abort(parentSignal.reason);
+    parentSignal?.addEventListener('abort', cancel, { once: true });
+    if (parentSignal?.aborted) cancel();
     const input = JSON.parse(job.input),
       selection = input.selection ?? smart().resolved;
     videos.set(job.id, running);
@@ -111,9 +114,11 @@ export function mediaJobs(ctx) {
           store.finishVideo(job.conversation, job.id, job.attempt, {}, error.message);
       })
       .finally(() => {
+        parentSignal?.removeEventListener('abort', cancel);
         videoJobs.delete(running);
         if (videos.get(job.id) === running) videos.delete(job.id);
       });
+    return running;
   };
   const runVisual = async (artifact, signal) => {
     const input = JSON.parse(artifact.input),

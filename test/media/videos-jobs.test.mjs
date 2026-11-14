@@ -143,8 +143,9 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.match(workers[0].tree.instructions, /"@remotion\/three"/);
     assert.match(
       workers[0].tree.instructions,
-      /1280x720[\s\S]*bottom 150 pixels[\s\S]*"\.\/kit"[\s\S]*never hard cuts[\s\S]*different videos look different/,
+      /1920x1080[\s\S]*bottom 120 pixels[\s\S]*"\.\/kit"[\s\S]*never hard cuts[\s\S]*different videos look different/,
     );
+    assert.match(workers[0].tree.instructions, /ThreeCanvas with width=\{1920\} height=\{1080\}/);
     assert.equal(
       workers[0].tree.model,
       'fixture-model',

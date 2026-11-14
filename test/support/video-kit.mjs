@@ -30,7 +30,7 @@ import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import { ThreeCanvas } from '@remotion/three';
 export default function Video() {
   const frame = useCurrentFrame();
-  return <AbsoluteFill style={{ background: '#102030' }}><ThreeCanvas width={1280} height={720} camera={{ position: [0, 0, 4] }}>
+  return <AbsoluteFill style={{ background: '#102030' }}><ThreeCanvas width={1920} height={1080} camera={{ position: [0, 0, 4] }}>
     <ambientLight intensity={0.5} /><directionalLight position={[2, 2, 3]} />
     <mesh rotation={[frame / 20, frame / 15, 0]}><boxGeometry args={[1.4, 1.4, 1.4]} /><meshStandardMaterial color="orange" /></mesh>
   </ThreeCanvas></AbsoluteFill>;
