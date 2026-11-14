@@ -902,6 +902,13 @@ const browser = join(
   'node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell',
 );
 const sandboxed = spawnSync('bwrap', ['--version']).status === 0 && existsSync(browser);
+// Full Remotion renders take about 15s each; run them with npm run test:render.
+const realRender = sandboxed && process.env.TREETUTOR_REAL_RENDER === '1';
+const renderSkip =
+  !realRender &&
+  (sandboxed
+    ? 'set TREETUTOR_REAL_RENDER=1 (npm run test:render)'
+    : 'bwrap or Remotion browser missing');
 
 test(
   'render sandbox hides home and app data, blocks network and confines writes to the workspace',
@@ -948,7 +955,7 @@ test(
 
 test(
   'one real short sandboxed Remotion render publishes a ready MP4',
-  { skip: !sandboxed && 'bwrap or Remotion browser missing', timeout: 240000 },
+  { skip: renderSkip, timeout: 240000 },
   async () => {
     const { result, row, published, dir, phases } = await job(undefined);
     assert.equal(result, null);
@@ -968,7 +975,7 @@ test(
 
 test(
   'one real short sandboxed Three.js scene renders through the same isolated Remotion path',
-  { skip: !sandboxed && 'bwrap or Remotion browser missing', timeout: 240000 },
+  { skip: renderSkip, timeout: 240000 },
   async () => {
     const { result, row, dir } = await job(undefined, undefined, spatial);
     assert.equal(result, null);
