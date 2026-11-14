@@ -1,6 +1,6 @@
 {
   "kind": "built-app fixture (fake provider)",
-  "date": "2026-11-14T01:02:45.816Z",
+  "date": "2026-11-14T01:26:46.523Z",
   "steps": [
     "Shelf (default): newest first under Today/Yesterday/Previous 7 days/Older; spine ticks 5/1/2/1 match conversation counts in family inks; title, date, conversation and branch counts; current tree marked",
     "Title search filters case-insensitively; no match shows \"No learning tree titles match.\"",

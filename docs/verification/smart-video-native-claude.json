@@ -1,14 +1,13 @@
 {
-  "checkedAt": "2026-11-13T12:02:55.118Z",
+  "checkedAt": "2026-11-14T01:49:08.889Z",
   "evidence": "Native subscription adapter for smart inference; controlled chat handoff; actual sandboxed short 2D render. No narration, subtitle, long-duration or 3D claim.",
   "provider": "claude",
   "effort": "low",
   "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
   "memoryBytes": 16368898048,
-  "data": "/tmp/tt-smart-video-live-5ZebN9",
+  "data": "/tmp/tt-smart-video-live-mkvxPs",
   "model": "sonnet",
-  "renderMs": 17575,
-  "elapsedMs": 25035,
+  "elapsedMs": 8029,
   "pass": false,
-  "error": "The input did not match the regular expression /plan/i. Input:\n\n'// Description: A amber ball rolls smoothly from the left to the right along a line, leaving a fading trail while tick marks show its position changing over time.\\n' +\n  '// Narration: \"Watch the ball move from left to right. Its position changes with time.\"\\n' +\n  'import React from \"react\";\\n' +\n  'import {AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate} from \"remotion\";\\n' +\n  'import {palette, type, progress, enter} from \"./kit\";\\n' +\n  '\\n' +\n  'export default function Video({sentences, durationInFrames}: {sentences: any[]; durationInFrames: number}) {\\n' +\n  '  const frame = useCurrentFrame();\\n' +\n  '  const {durationInFrames: total} = useVideoConfig();\\n' +\n  '  const t = progress(frame, 6, total - 18);\\n' +\n  '  const x0 = 200;\\n' +\n  '  const x1 = 1080;\\n' +\n  '  const y = 330;\\n' +\n  '  const x = x0 + (x1 - x0) * t;\\n' +\n  '  const ticks = [0, 1, 2, 3, 4, 5];\\n' +\n  '  return (\\n' +\n  '    <AbsoluteFill>\\n' +\n  '      <div style={{position: \"absolute\", left: 0, right: 0, top: 80, textAlign: \"center\", ...type.heading, color: palette.paper, opacity: enter(frame, 0).opacity ?? 1}}>\\n' +\n  '        Position changes with time\\n' +\n  '      </div>\\n' +\n  '      <div style={{position: \"absolute\", left: x0 - 20, top: y + 50, width: x1 - x0 + 40, height: 4, background: palette.seam}} />\\n' +\n  '      <div style={{position: \"absolute\", left: x0, top: y + 50, width: x - x0, height: 4, background: palette.amber, opacity: 0.6}} />\\n' +\n  '      {ticks.map((i) => {\\n' +\n  '        const tx = x0 + ((x1 - x0) * i) / 5;\\n' +\n  '        return (\\n' +\n  '          <div key={i} style={{position: \"absolute\", left: tx - 1, top: y + 62, width: 2, height: 24, background: palette.muted}} />\\n' +\n  '        );\\n' +\n  '      })}\\n' +\n  '      <div\\n' +\n  '        style={{\\n' +\n  '          position: \"absolute\",\\n' +\n  '          left: x - 50,\\n' +\n  '          top: y - 50,\\n' +\n  '          width: 100,\\n' +\n  '          height: 100,\\n' +\n  '          borderRadius: 50,\\n' +\n  '          background: palette.amber,\\n' +\n  '          boxShadow: `0 0 40px ${palette.amber}55`,\\n' +\n  '          transform: `rotate(${t * 720}deg)`,\\n' +\n  '        }}\\n' +\n  '      >\\n' +\n  '        <div style={{position: \"absolute\", left: 44, top: 8, width: 12, height: 12, borderRadius: 6, background: palette.ground}} />\\n' +\n  '      </div>\\n' +\n  '    </AbsoluteFill>\\n' +\n  '  );\\n' +\n  '}'\n"
+  "error": "Video composition is missing its narration.\n\n'failed' !== 'ready'\n"
 }

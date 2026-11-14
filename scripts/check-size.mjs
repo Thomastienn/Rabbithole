@@ -11,14 +11,6 @@ const GENERATED = /^src\/themes\/[^/]+\/[^/]+\.(js|css|d\.ts|doc\.mjs)$|^test\/f
 
 // Files waiting for their split ticket; each split removes its entry.
 export const OVERSIZED = [
-  'scripts/verify-custom-endpoint.mjs',
-  'scripts/verify-diagram-rendering.mjs',
-  'scripts/verify-knowledge.mjs',
-  'scripts/verify-release-journey-live.mjs',
-  'scripts/verify-settings-window.mjs',
-  'scripts/verify-states.mjs',
-  'scripts/verify-video-player.mjs',
-  'scripts/verify-visual-workers.mjs',
   'server/app.mjs',
   'server/store.mjs',
   'src/shell/ChatPage.tsx',

@@ -5,11 +5,11 @@
     "TreeTutor-2li.7",
     "TreeTutor-2li.8"
   ],
-  "date": "2026-11-13T21:35:21.693Z",
+  "date": "2026-11-14T01:23:51.852Z",
   "liveEndpointTested": false,
   "serverPids": [
-    2996217,
-    2999336
+    3726116,
+    3729359
   ],
   "checks": [
     "upgrade: the single saved endpoint is listed as \"Custom endpoint\" (provider id openai); old file replaced",
@@ -28,5 +28,5 @@
     "light: list, inline add and edit forms and remove dialog fit desktop and 390px without sideways scroll",
     "dark: list, inline add and edit forms and remove dialog fit desktop and 390px without sideways scroll"
   ],
-  "screenshots": "/tmp/tt-endpoint-ui-XjbE2X"
+  "screenshots": "/tmp/tt-endpoint-ui-qu6xGl"
 }

@@ -1,6 +1,6 @@
 {
   "issue": "TreeTutor-2li.11",
-  "checkedAt": "2026-11-13T22:06:46.425Z",
+  "checkedAt": "2026-11-14T01:36:28.574Z",
   "evidence": "Production build, real app HTTP/SQLite with seeded usage records and fake providers, agent-browser Chromium. No live provider authentication or inference.",
   "steps": [
     "Today: total, split, per-hour/cumulative chart and both breakdowns agree; shares and unreported calls checked",

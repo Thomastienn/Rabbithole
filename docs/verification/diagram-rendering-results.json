@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-13T21:08:09.254Z",
+  "checkedAt": "2026-11-14T01:24:03.556Z",
   "evidence": "Synthetic providers and seeded artifacts; real Chromium, production build, HTTP/SSE, SQLite and separate server process restart. No native media inference or isolation/recovery claim.",
-  "fixtureDirectory": "/tmp/tt-diagram-browser-wCPgG8",
+  "fixtureDirectory": "/tmp/tt-diagram-browser-xgrV3j",
   "checks": [
     {
       "name": "map shows compact owned metadata; renderer remains unloaded",
@@ -36,8 +36,8 @@
       "name": "reply selection retains repeated-emoji UTF-16 anchors and keyboard text; child has no inherited drawing",
       "pass": true,
       "details": {
-        "parent": "fb0ece84-a984-4397-be91-76dedd367cf6",
-        "messageId": "79151d5c-7904-44a9-962d-8c62b8e98878",
+        "parent": "e10ee0a2-800c-44b7-9edb-263d1d279281",
+        "messageId": "7237d295-ec94-4b35-9d1a-409e6f7440fd",
         "start": 10,
         "end": 19,
         "text": "repeat 😀",
@@ -161,8 +161,8 @@
       "pass": true,
       "details": {
         "processes": [
-          2923469,
-          2924068
+          3735116,
+          3736392
         ],
         "providerCalls": 4,
         "restoredArtifacts": 3
@@ -171,7 +171,7 @@
     {
       "name": "original CSP renders without policy violations or unsafe script sources",
       "pass": true,
-      "details": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:42457/sandbox.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+      "details": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src http://127.0.0.1:36591/sandbox.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     }
   ],
   "screenshots": [
@@ -182,23 +182,23 @@
     ".impeccable/review/diagram-steps-dark.png"
   ],
   "sourceHashes": {
-    "src/DiagramCard.tsx": "29f06388690e17c2ff1977551dd475b6f5b2ed52c75220c3af6ddb5457676330",
-    "src/artifacts.ts": "5740d370d532024d7e79706b81d8e5cad30f106d3e9d3994e9e8f8c3673e5fcd",
-    "src/diagramSource.ts": "b104c62451e3e5513fdceca25fc4cbd0ddcaa23129c478782ac12c839ea9373f",
-    "src/mermaid.ts": "1a429e57905f3919ed9d1ee58ba568860872017153e6765a432f9ee1bac97cca",
-    "src/ChatPage.tsx": "eb201b513f9d508ead7a89e4d279806d9b44773c75d0a8779b7ebae07319b774",
-    "src/TreeOverview.tsx": "ef8fe9d026609ee417d6213dc3a017cf8088c9b6467c07d854852048bae8b87a",
-    "src/turn.ts": "897b800644aa38c5aaf8c9f1ccb6b7a62b5a7e4eda78b15de5dc6a6b7ff9109d",
-    "src/layout.ts": "de892521a8dd51b416f89e605832da6d6b0b7f91b336d5e7a5a5c1f8780da062",
-    "server/store.mjs": "a7ab37879a8601266f243cb14fb53a50c80e8f13cc74b2d298d2522bbb0a3b18",
-    "server/diagrams.mjs": "655c53699b83ab162bf95979e7ee3ea3194438aacbeb1fda1f1abd33dca48d6f",
-    "server/app.mjs": "3b28102f66540f297a5929d3f918de7094c3146af031f8f846f514f289c4f07a",
-    "scripts/verify-diagram-rendering.mjs": "96835e4d93ed80f5d8201a28050efbf732cea5b050affe478bb5851dbacb7622",
-    "test/artifact-render.test.mjs": "b0115d63840c80ee037d4889c832b0a6e21d65f65d32d3d0ef8f907b91f9db3b",
+    "src/media/DiagramCard.tsx": "2f8daa1d14f9bb2169cb90d735262253a209a71acdc9084129fc50cdf5629c1e",
+    "src/media/artifacts.ts": "6fa7d8cab5c181f7b50d01c893a916f13cdb11b510eaf75ac4123e27c8d7c565",
+    "src/media/diagramSource.ts": "8b57b8baccb7cebf59d99e505a315bfbf19ed320b1d0eebbc15f0947bf33b3d9",
+    "src/media/mermaid.ts": "3f5ebf925e356ea08e99f08f46182ecaf9897aa4dce63b5c396d84235531d8f2",
+    "src/shell/ChatPage.tsx": "f61e025333e4a920d241c05b02cdd7843ee4b39cb926bc8af912b4f1582bdcc5",
+    "src/map/TreeOverview.tsx": "4ff99a91469ce0c24e673c1f242373f158af9bde64d4277863c73886e2f97157",
+    "src/chat/turn.ts": "137981690fed0e546acabaa2376dd008569625500e14cb64d9a7d3f9bd9dd09d",
+    "src/styles/media.css": "f998b99e45b55e63a896494af63d99e5f21b4d67a67c999c6f2be0afe0b7d8e0",
+    "server/store.mjs": "1af9e468056020aae50157bf4705d425efb2fc4d445d2f19c52652579592073a",
+    "server/media/diagrams.mjs": "33d7481363191e90d3b44a9b0d9f2675836ee5b7db709081112957206cbb6116",
+    "server/app.mjs": "346a61502fc6b55f8393e4d822c57275980d6fcffb7180196b943a33c93c879f",
+    "scripts/verify/verify-diagram-rendering.mjs": "ced7db65059a11b19f2735d4f45de0522e83d466a8edde6b3675168635566888",
+    "test/artifact-render.test.mjs": "2bb90bb125ec39ad54860c98a093f53d0bea647968f210a898c9144048e5ed2d",
     "tsconfig.json": "4b1a7d176738768f8df927b020f1470c6f22cc3696aa79a53d427f2865780e05",
-    "package.json": "a80f051cfd2c3231bcad40e13366312e2887fd6d282b996515f58c6e0b27b424",
-    "package-lock.json": "c5ce28e1c59dfa55429dceb4821a0ba8a8f3708b7fe1aca1943c1a6a6048c325",
+    "package.json": "68683f321a72f896dd7ede50c762a72523105c68cf4f4e01fd5a7ceeee5947af",
+    "package-lock.json": "8572d32090ca644628e8a49ef28afa82896e01781fa9cfa875acbe9aa13c9090",
     "docs/diagram-artifacts.md": "15bfa88bf83b51ee952c2db37a0b863317e477d2c150c32742765ad8304d6181",
-    "dist/index.html": "467aa5dcde277bd50a5e42890d62d8df94cf38b03fd1844385f7ea9aea8d0c35"
+    "dist/index.html": "f82fd90b591fff70e5e175e89a4c0debfa39f09c362c00e2881657ae885e2ea2"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-13T21:11:21.155Z",
+  "checkedAt": "2026-11-14T01:25:07.427Z",
   "evidence": "Built app, SQLite, HTTP and Chromium; synthetic provider, not live inference.",
   "pass": true,
   "steps": [
