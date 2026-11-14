@@ -7,11 +7,13 @@ import {
   symlinkSync,
   writeFileSync,
   appendFileSync,
+  mkdirSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildIsCurrent, recordBuild } from '../../scripts/build-state.mjs';
 import { launch } from '../support/startup-kit.mjs';
+import { MANIM_VERSION } from '../../server/media/manim.mjs';
 
 test('one start command builds absent or changed assets and reuses a current build', async () => {
   const checkout = mkdtempSync(join(tmpdir(), 'treetutor-launcher-'));
@@ -42,11 +44,20 @@ test('one start command builds absent or changed assets and reuses a current bui
   `,
   );
   const env = { PATH: process.env.PATH, CLAUDE_CONFIG_DIR: join(data, 'signed-out-claude') };
+  // Manim/system-library fixtures keep launcher checks offline; native provisioning is checked separately.
+  mkdirSync(join(checkout, '.venv/bin'), { recursive: true });
+  writeFileSync(join(checkout, '.venv/bin/python'), `#!/bin/sh\nprintf '${MANIM_VERSION}\\n'\n`, {
+    mode: 0o700,
+  });
+  for (const tool of ['pkg-config', 'latex', 'dvisvgm'])
+    writeFileSync(join(data, tool), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
+  env.PATH = data + ':' + process.env.PATH;
   async function startAndStop() {
     const running = launch(data, 0, env, checkout, ['scripts/start.mjs', '--port', '0']);
     try {
       const [, origin] = await running.waitFor(/TreeTutor: (http:\/\/127\.0\.0\.1:\d+)/);
       assert.match(await (await fetch(origin)).text(), /TreeTutor build fixture/);
+      assert.match(running.output(), /Manim ready:/);
       return running.output();
     } finally {
       await running.stop();
@@ -78,6 +89,15 @@ test('one start command builds absent or changed assets and reuses a current bui
     assert.doesNotMatch(failed.output(), /TreeTutor: http/);
   } finally {
     await failed.stop();
+  }
+  writeFileSync(join(data, 'latex'), '#!/bin/sh\nexit 1\n', { mode: 0o700 });
+  const missingLatex = launch(data, 0, env, checkout, ['scripts/start.mjs']);
+  try {
+    assert.equal(await missingLatex.exited, 1);
+    assert.match(missingLatex.output(), /sudo apt install texlive-full/);
+    assert.doesNotMatch(missingLatex.output(), /Building|TreeTutor: http/);
+  } finally {
+    await missingLatex.stop();
   }
 });
 

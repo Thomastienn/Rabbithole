@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { buildIsCurrent } from './build-state.mjs';
+import { ensureManim } from './manim-setup.mjs';
 
 if (Number(process.versions.node.split('.')[0]) < 24) {
   console.error(
@@ -44,7 +45,8 @@ try {
     );
     await npm(['ci', '--include=dev']);
   }
-  // Import after installation so a fresh checkout needs only Node and npm.
+  await ensureManim({ run });
+  // Import after npm installation so a fresh checkout can provision its dependencies.
   const { ensureBrowser } = await import('@remotion/renderer');
   try {
     await ensureBrowser({ chromeMode: 'headless-shell', logLevel: 'error' });

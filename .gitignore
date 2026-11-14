@@ -8,6 +8,7 @@
 
 # Local app build and dependencies
 node_modules/
+.venv/
 dist/
 .impeccable/review/
 
