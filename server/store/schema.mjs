@@ -119,6 +119,10 @@ export function open(path) {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS tutor_style (id INTEGER PRIMARY KEY CHECK(id=1), text TEXT)',
     );
+    // Learner-typed efforts for custom endpoint models, listed after the endpoint's advertised efforts.
+    this.db.exec(
+      'CREATE TABLE IF NOT EXISTS endpoint_efforts (endpoint TEXT NOT NULL, model TEXT NOT NULL, effort TEXT NOT NULL, PRIMARY KEY(endpoint, model, effort))',
+    );
     // Smart role: a NULL model follows the chat default model; follow_effort=1 follows the chat default effort.
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)',

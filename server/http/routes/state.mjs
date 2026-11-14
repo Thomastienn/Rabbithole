@@ -64,7 +64,9 @@ export async function stateRoutes(req, res, url, ctx) {
       });
     return json(res, 200, {
       models: results.flatMap((r, i) =>
-        r.status === 'fulfilled' ? r.value.map((m) => ({ provider: ids[i], ...m })) : [],
+        r.status === 'fulfilled'
+          ? ctx.withTyped(ids[i], r.value).map((m) => ({ provider: ids[i], ...m }))
+          : [],
       ),
       providers: named,
       defaultProvider: ctx.defaultProvider,

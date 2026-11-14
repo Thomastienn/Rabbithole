@@ -5,7 +5,8 @@ import { Banner } from '@astryxdesign/core/Banner';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
-import { effortLabel, type Model } from './models';
+import { CUSTOM_EFFORT, effortOptions, effortSupported, type Model } from './models';
+import CustomEffort from './CustomEffort';
 
 type Settings = {
   enabled: boolean;
@@ -30,7 +31,8 @@ export default function SuggestionSettings({
   const [saved, setSaved] = useState<Settings>();
   const [pending, setPending] = useState('loading'),
     [error, setError] = useState(''),
-    [message, setMessage] = useState('');
+    [message, setMessage] = useState(''),
+    [typing, setTyping] = useState(false);
   async function load() {
     setPending('loading');
     setError('');
@@ -65,8 +67,7 @@ export default function SuggestionSettings({
   const available = (models ?? []).filter((m) => providers?.[m.provider]?.connected);
   const selected = saved?.model ? available.find((m) => key(m) === key(saved.model)) : undefined;
   const unavailable = !!saved?.model && !!models && !selected;
-  const incompatible =
-    !!saved?.effort && !!selected && !(selected.efforts ?? []).includes(saved.effort);
+  const incompatible = !!saved?.effort && !!selected && !effortSupported(saved.effort, selected);
   return (
     <>
       <div role="row" className="settings-roles__row">
@@ -133,24 +134,23 @@ export default function SuggestionSettings({
             width="100%"
             isDisabled={!selected || !!pending}
             status={incompatible ? { type: 'error' } : undefined}
-            options={[
-              { value: 'default', label: 'Provider default' },
-              ...(incompatible
-                ? [
-                    {
-                      value: saved!.effort!,
-                      label: `${effortLabel(saved!.effort)} (unavailable)`,
-                      disabled: true,
-                    },
-                  ]
-                : []),
-              ...(selected?.efforts ?? []).map((effort) => ({
-                value: effort,
-                label: effortLabel(effort),
-              })),
-            ]}
-            onChange={(value) => void save({ effort: value === 'default' ? null : value })}
+            options={effortOptions(selected ? saved?.effort : null, selected)}
+            onChange={(value) =>
+              value === CUSTOM_EFFORT
+                ? setTyping(true)
+                : void save({ effort: value === 'default' ? null : value })
+            }
           />
+          {typing && selected && (
+            <CustomEffort
+              label="Custom quick thinking effort"
+              onCancel={() => setTyping(false)}
+              onSave={(effort) => {
+                setTyping(false);
+                void save({ effort });
+              }}
+            />
+          )}
         </div>
       </div>
       <div role="row" className="settings-roles__row">

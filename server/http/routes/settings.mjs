@@ -169,6 +169,7 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     }
     try {
       const status = url.pathname.endsWith('/clear') ? endpoint.clear() : endpoint.save(body);
+      if (url.pathname.endsWith('/clear')) store.forgetEfforts('openai');
       ctx.syncEndpoints();
       return json(res, 200, status);
     } catch {
@@ -197,6 +198,8 @@ export async function settingsRoutes(req, res, url, ctx, body) {
             : action === 'test'
               ? await endpoint.test(body?.id)
               : endpoint.add(body ?? {});
+      // remove throws for an unknown id, so its typed efforts go only with a deleted endpoint.
+      if (action === 'remove') store.forgetEfforts(body.id);
       ctx.syncEndpoints();
       return json(res, 200, list);
     } catch (error) {

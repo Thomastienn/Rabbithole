@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { effortWasReset, type Model } from '../settings/models';
+import { effortSupported, effortWasReset, type Model } from '../settings/models';
 import type { ModelSelection, Providers } from './types';
 import type { ChatState } from './useChatState';
 
@@ -105,7 +105,7 @@ export function useChatModel(c: ChatState) {
     !!models &&
     (!providers?.[tree.provider]?.connected ||
       !currentModel ||
-      (!!tree.effort && !(currentModel.efforts ?? []).includes(tree.effort)));
+      !effortSupported(tree.effort, currentModel));
   const modelLabel = (t: ModelSelection) => {
     if (!t.provider) return 'Not set';
     const label =

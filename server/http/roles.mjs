@@ -5,6 +5,8 @@ export const LABELS = { claude: 'Claude', codex: 'Codex', openai: 'Custom endpoi
 
 // Each saved custom endpoint is its own provider: openai (migrated) or openai:<id>.
 export const isEndpoint = (id) => typeof id === 'string' && /^openai(:|$)/.test(id);
+// Custom endpoint models also accept a learner-typed effort, sent unchanged as reasoning_effort.
+export const TYPED_EFFORT = /^[A-Za-z0-9_-]{1,32}$/;
 
 // Model role resolution and metering over the live provider map.
 export function roles({ store, providers, endpoint, defaultProvider, log }) {
@@ -34,8 +36,10 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
           status: 400,
           error: 'Selected model is unavailable. Refresh models and choose again.',
         };
+      const typed = isEndpoint(provider) && typeof effort === 'string' && TYPED_EFFORT.test(effort);
       if (
         effort !== null &&
+        !typed &&
         (typeof effort !== 'string' || !(selected.efforts ?? []).includes(effort))
       )
         return {
@@ -43,6 +47,9 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
           error:
             'This model does not support the selected effort. Choose a listed effort or Provider default.',
         };
+      // Every save path validates here, so a typed effort is remembered for this endpoint model.
+      if (typed && !(selected.efforts ?? []).includes(effort))
+        store.rememberEffort(provider, model, effort);
     } catch {
       const next = isEndpoint(provider)
         ? 'Check custom endpoint settings in Connections.'
@@ -53,6 +60,14 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
       };
     }
   };
+  // Remembered typed efforts follow the endpoint's advertised ones in its model list.
+  const withTyped = (provider, list) =>
+    isEndpoint(provider)
+      ? list.map((m) => ({
+          ...m,
+          efforts: [...new Set([...(m.efforts ?? []), ...store.typedEfforts(provider, m.model)])],
+        }))
+      : list;
   // A null default provider (fresh install) leaves an unset chat role without a provider.
   const unset = () => ({ provider: defaultProvider, model: null, effort: null });
   const chatDefault = () => store.chatSettings() ?? unset();
@@ -152,6 +167,7 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     syncEndpoints,
     pick,
     selectionError,
+    withTyped,
     chatDefault,
     smart,
     profiles,

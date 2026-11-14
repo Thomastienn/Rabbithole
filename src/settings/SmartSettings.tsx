@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
-import { effortLabel, type Model, type ChatSelection } from './models';
+import {
+  CUSTOM_EFFORT,
+  effortLabel,
+  effortOptions,
+  effortSupported,
+  type Model,
+  type ChatSelection,
+} from './models';
+import CustomEffort from './CustomEffort';
 
 type Smart = {
   model: Pick<Model, 'provider' | 'model'> | null;
@@ -33,7 +41,8 @@ export default function SmartSettings({
   const [saved, setSaved] = useState<Smart>();
   const [pending, setPending] = useState('loading'),
     [error, setError] = useState(''),
-    [message, setMessage] = useState('');
+    [message, setMessage] = useState(''),
+    [typing, setTyping] = useState(false);
   async function load() {
     setPending('loading');
     setError('');
@@ -71,7 +80,7 @@ export default function SmartSettings({
       (m) => m.provider === r.provider && (r.model ? m.model === r.model : m.isDefault),
     );
   const unavailable = !!r?.provider && !!models && !selected;
-  const incompatible = !!r?.effort && !!selected && !(selected.efforts ?? []).includes(r.effort);
+  const incompatible = !!r?.effort && !!selected && !effortSupported(r.effort, selected);
   const followLabel = selected
     ? selected.label
     : r && !r.provider
@@ -162,29 +171,31 @@ export default function SmartSettings({
                   ? `Follow chat default (${effortLabel(r?.effort ?? null)})`
                   : 'Follow chat default',
               },
-              { value: 'default', label: 'Provider default' },
-              ...(saved && !saved.followEffort && saved.effort && incompatible
-                ? [
-                    {
-                      value: saved.effort,
-                      label: `${effortLabel(saved.effort)} (unavailable)`,
-                      disabled: true,
-                    },
-                  ]
-                : []),
-              ...(selected?.efforts ?? []).map((effort) => ({
-                value: effort,
-                label: effortLabel(effort),
-              })),
+              ...effortOptions(
+                saved && !saved.followEffort && selected ? saved.effort : null,
+                selected,
+              ),
             ]}
             onChange={(value) =>
-              void save(
-                value === 'follow'
-                  ? { followEffort: true }
-                  : { followEffort: false, effort: value === 'default' ? null : value },
-              )
+              value === CUSTOM_EFFORT
+                ? setTyping(true)
+                : void save(
+                    value === 'follow'
+                      ? { followEffort: true }
+                      : { followEffort: false, effort: value === 'default' ? null : value },
+                  )
             }
           />
+          {typing && selected && (
+            <CustomEffort
+              label="Custom smart effort"
+              onCancel={() => setTyping(false)}
+              onSave={(effort) => {
+                setTyping(false);
+                void save({ followEffort: false, effort });
+              }}
+            />
+          )}
         </div>
       </div>
       <div role="row" className="settings-roles__row">

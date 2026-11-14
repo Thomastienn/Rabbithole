@@ -138,6 +138,20 @@ export const profiles = {
     );
     return this.suggestionSettings();
   },
+  typedEfforts(endpoint, model) {
+    return this.db
+      .prepare('SELECT effort FROM endpoint_efforts WHERE endpoint=? AND model=? ORDER BY rowid')
+      .all(endpoint, model)
+      .map((r) => r.effort);
+  },
+  rememberEffort(endpoint, model, effort) {
+    this.db
+      .prepare('INSERT OR IGNORE INTO endpoint_efforts VALUES(?,?,?)')
+      .run(endpoint, model, effort);
+  },
+  forgetEfforts(endpoint) {
+    this.db.prepare('DELETE FROM endpoint_efforts WHERE endpoint=?').run(endpoint);
+  },
   tutorStyle() {
     return this.db.prepare('SELECT text FROM tutor_style WHERE id=1').get()?.text ?? null;
   },

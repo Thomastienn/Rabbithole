@@ -3,8 +3,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
-import { ui } from '../support/ui.mjs';
-import { effortOptions, effortWasReset, keptEffort } from '../../src/settings/models.ts';
+import { ui, button, inputValue } from '../support/ui.mjs';
+import {
+  CUSTOM_EFFORT,
+  effortOptions,
+  effortSupported,
+  effortWasReset,
+  keptEffort,
+  typedEffort,
+} from '../../src/settings/models.ts';
 const { default: ChatSettings } = await import('../../src/settings/ChatSettings.tsx');
 
 test('effort carries to a model only when offered; options add a disabled unavailable saved effort', () => {
@@ -12,7 +19,7 @@ test('effort carries to a model only when offered; options add a disabled unavai
   assert.equal(keptEffort('high', { efforts: [] }), null);
   assert.equal(keptEffort('high', undefined), null);
   assert.equal(keptEffort(null, { efforts: ['high'] }), null);
-  assert.deepEqual(effortOptions(null, ['low', 'xhigh']), [
+  assert.deepEqual(effortOptions(null, { provider: 'codex', efforts: ['low', 'xhigh'] }), [
     { value: 'default', label: 'Provider default' },
     { value: 'low', label: 'Low' },
     { value: 'xhigh', label: 'Extra high' },
@@ -29,6 +36,38 @@ test('effort carries to a model only when offered; options add a disabled unavai
     { value: 'default', label: 'Provider default' },
     { value: 'high', label: 'High (unavailable)', disabled: true },
   ]);
+});
+
+test('Custom… is offered only for custom endpoint models, after advertised and remembered efforts', () => {
+  const custom = { value: CUSTOM_EFFORT, label: 'Custom…' };
+  assert.deepEqual(effortOptions(null, { provider: 'openai:gw', efforts: ['low', 'turbo'] }), [
+    { value: 'default', label: 'Provider default' },
+    { value: 'low', label: 'Low' },
+    { value: 'turbo', label: 'Turbo' },
+    custom,
+  ]);
+  // A saved typed effort not yet in a stale list stays selectable on an endpoint.
+  assert.deepEqual(effortOptions('max_2', { provider: 'openai', efforts: [] }), [
+    { value: 'default', label: 'Provider default' },
+    { value: 'max_2', label: 'Max_2' },
+    custom,
+  ]);
+  for (const provider of ['claude', 'codex'])
+    assert.ok(!effortOptions(null, { provider, efforts: ['high'] }).some((o) => o === custom));
+  assert.equal(effortSupported('turbo', { provider: 'openai:gw', efforts: [] }), true);
+  assert.equal(effortSupported('turbo', { provider: 'codex', efforts: ['high'] }), false);
+  assert.equal(effortSupported(null, { provider: 'codex', efforts: [] }), true);
+});
+
+test('typed efforts are trimmed and limited to 1-32 letters, digits, - or _', () => {
+  for (const [text, effort] of [
+    ['  high ', 'high'],
+    ['Vendor_max-2', 'Vendor_max-2'],
+    ['x'.repeat(32), 'x'.repeat(32)],
+  ])
+    assert.equal(typedEffort(text), effort);
+  for (const text of ['', '   ', 'a b', 'bad!', 'é', 'x'.repeat(33), 'default', 'follow'])
+    assert.equal(typedEffort(text), null, JSON.stringify(text));
 });
 
 const models = [
@@ -90,8 +129,8 @@ test('chat defaults save model and effort, keep only offered efforts and flag un
   await act(async () => dom.frames());
   assert.deepEqual(
     shown(trigger(container, 1)).map((e) => e.textContent.trim()),
-    ['Provider default'],
-    'a model without capabilities offers only Provider default',
+    ['Provider default', 'Custom…'],
+    'an endpoint model without advertised efforts offers Provider default and Custom…',
   );
   assert.equal(container.querySelector('[role=alert]'), null);
   // The saved custom model disappears (endpoint disconnected): the choice is kept and flagged.
@@ -125,4 +164,36 @@ test('a fresh install shows Not set for chat and the smart role that follows it,
   assert.equal(chat.textContent.trim(), 'Not set');
   assert.equal(smart.textContent.trim(), 'Follow chat default (Not set)');
   assert.equal(container.querySelector('[role=alert]'), null);
+});
+
+test('Custom… reveals a field that saves a trimmed typed effort and rejects invalid text', async (t) => {
+  let saved = { provider: 'openai', model: 'custom', effort: null };
+  const writes = [];
+  const api = async (path, body) => {
+    if (body) writes.push((saved = body));
+    return saved;
+  };
+  let dom;
+  const { container, act, cleanup } = await render(
+    h('div', { role: 'table' }, h(ChatSettings, { api, models, providers })),
+    (w) => {
+      dom = ui(w);
+    },
+  );
+  t.after(cleanup);
+  await act(async () => {});
+  await pick(container, dom, act, 1, 'Custom…');
+  const input = () => container.querySelector('.custom-effort input');
+  assert.ok(input(), 'custom effort field shown');
+  assert.equal(writes.length, 0, 'choosing Custom… alone saves nothing');
+  await act(async () => inputValue(input(), 'bad value!'));
+  await act(async () => button(container, 'Use effort').click());
+  assert.match(container.textContent, /Use 1–32 letters, digits, - or _/);
+  assert.equal(writes.length, 0);
+  await act(async () => inputValue(input(), '  vendor_max '));
+  await act(async () => button(container, 'Use effort').click());
+  assert.deepEqual(writes.at(-1), { provider: 'openai', model: 'custom', effort: 'vendor_max' });
+  assert.equal(button(container, 'Use effort'), undefined, 'field closes after saving');
+  assert.equal(trigger(container, 1).textContent.trim(), 'Vendor_max');
+  assert.equal(container.querySelector('[role=alert]'), null, 'a typed effort is never flagged');
 });

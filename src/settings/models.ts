@@ -17,14 +17,42 @@ export const effortLabel = (effort: string | null) =>
 // A chosen effort carries to another model only when that model offers it.
 export const keptEffort = (effort: string | null, model?: Pick<Model, 'efforts'>) =>
   effort && model?.efforts?.includes(effort) ? effort : null;
-// Provider default, then a saved effort the model no longer offers (disabled), then the model's efforts.
-export const effortOptions = (effort: string | null | undefined, efforts: string[] = []) => [
-  { value: 'default', label: 'Provider default' },
-  ...(effort && !efforts.includes(effort)
-    ? [{ value: effort, label: `${effortLabel(effort)} (unavailable)`, disabled: true }]
-    : []),
-  ...efforts.map((value) => ({ value, label: effortLabel(value) })),
-];
+export const isCustomEndpoint = (provider?: string | null) => /^openai(:|$)/.test(provider ?? '');
+// Picker value for "Custom…"; the ellipsis can never be part of a typed effort.
+export const CUSTOM_EFFORT = 'custom…';
+// A typed effort is trimmed and limited to 1-32 letters, digits, - or _; picker values stay reserved.
+export const typedEffort = (text: string) => {
+  const effort = text.trim();
+  return /^[A-Za-z0-9_-]{1,32}$/.test(effort) && !['default', 'follow'].includes(effort)
+    ? effort
+    : null;
+};
+// Custom endpoints accept any typed effort, so their saved effort is never flagged unsupported.
+export const effortSupported = (
+  effort: string | null,
+  model: Pick<Model, 'provider' | 'efforts'>,
+) => !effort || isCustomEndpoint(model.provider) || !!model.efforts?.includes(effort);
+// Provider default, then a saved effort the model no longer offers (disabled), then the model's
+// efforts; custom endpoint models keep a saved typed effort selectable and end with "Custom…".
+export const effortOptions = (
+  effort: string | null | undefined,
+  model?: Pick<Model, 'provider' | 'efforts'>,
+) => {
+  const efforts = model?.efforts ?? [],
+    custom = isCustomEndpoint(model?.provider);
+  return [
+    { value: 'default', label: 'Provider default' },
+    ...(effort && !efforts.includes(effort)
+      ? [
+          custom
+            ? { value: effort, label: effortLabel(effort) }
+            : { value: effort, label: `${effortLabel(effort)} (unavailable)`, disabled: true },
+        ]
+      : []),
+    ...efforts.map((value) => ({ value, label: effortLabel(value) })),
+    ...(custom ? [{ value: CUSTOM_EFFORT, label: 'Custom…' }] : []),
+  ];
+};
 // Switching to a model without the chosen effort resets it; the learner is told once.
 export const effortWasReset = (before: ChatSelection, after: ChatSelection) =>
   !!before.effort &&
@@ -54,6 +82,6 @@ export const menuGroups = (
               ...listed.map((m) => ({ value: m.model, label: m.label, disabled: false })),
             ]
           : null,
-      action: /^openai(:|$)/.test(id) ? 'endpoint' : id === 'codex' ? 'codex' : 'check',
+      action: isCustomEndpoint(id) ? 'endpoint' : id === 'codex' ? 'codex' : 'check',
     };
   });

@@ -194,8 +194,8 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
   await choose('Quick thinking model', 'Custom plain');
   assert.deepEqual(
     (await open('Quick thinking effort')).map((e) => e.textContent.trim()),
-    ['Provider default'],
-    'a model without listed efforts offers only Provider default',
+    ['Provider default', 'Custom…'],
+    'an endpoint model without listed efforts offers Provider default and Custom…',
   );
   await choose('Quick thinking model', 'Custom chat');
   await choose('Quick thinking effort', 'High');

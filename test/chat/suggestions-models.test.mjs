@@ -255,9 +255,9 @@ test('quick thinking routes suggestions to its own provider, model and effort, i
     { enabled: true, model: { provider: 'openai', model: 'local-tutor' }, effort: 'high' },
   );
   assert.equal(
-    (await env.request('/api/settings/suggestions', { effort: 'max' })).status,
+    (await env.request('/api/settings/suggestions', { effort: 'max level!' })).status,
     400,
-    'no invented effort',
+    'a typed endpoint effort must be 1-32 letters, digits, - or _',
   );
   assert.equal(quick.length, 0, 'saving quick thinking starts no model call');
   await env.close();

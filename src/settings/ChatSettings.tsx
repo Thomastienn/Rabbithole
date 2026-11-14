@@ -3,12 +3,15 @@ import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
 import {
+  CUSTOM_EFFORT,
   effortOptions,
+  effortSupported,
   effortWasReset,
   keptEffort,
   type Model,
   type ChatSelection,
 } from './models';
+import CustomEffort from './CustomEffort';
 
 const key = (selection: Pick<Model, 'provider' | 'model'>) =>
   JSON.stringify({ provider: selection.provider, model: selection.model });
@@ -27,7 +30,8 @@ export default function ChatSettings({
   const [saved, setSaved] = useState<ChatSelection>();
   const [pending, setPending] = useState('loading'),
     [error, setError] = useState(''),
-    [message, setMessage] = useState('');
+    [message, setMessage] = useState(''),
+    [typing, setTyping] = useState(false);
   async function load() {
     setPending('loading');
     setError('');
@@ -49,8 +53,7 @@ export default function ChatSettings({
       (m) => m.provider === saved.provider && (saved.model ? m.model === saved.model : m.isDefault),
     );
   const unavailable = !!saved?.provider && !!models && !selected;
-  const incompatible =
-    !!saved?.effort && !!selected && !(selected.efforts ?? []).includes(saved.effort);
+  const incompatible = !!saved?.effort && !!selected && !effortSupported(saved.effort, selected);
   async function save(selection: ChatSelection) {
     if (!saved || pending) return;
     setPending('saving');
@@ -129,9 +132,10 @@ export default function ChatSettings({
             width="100%"
             isDisabled={!selected || !!pending}
             status={incompatible ? { type: 'error' } : undefined}
-            options={effortOptions(selected ? saved?.effort : null, selected?.efforts)}
+            options={effortOptions(selected ? saved?.effort : null, selected)}
             onChange={(value) => {
-              if (selected)
+              if (value === CUSTOM_EFFORT) setTyping(true);
+              else if (selected)
                 void save({
                   provider: selected.provider,
                   model: selected.model,
@@ -139,6 +143,16 @@ export default function ChatSettings({
                 });
             }}
           />
+          {typing && selected && (
+            <CustomEffort
+              label="Custom chat default effort"
+              onCancel={() => setTyping(false)}
+              onSave={(effort) => {
+                setTyping(false);
+                void save({ provider: selected.provider, model: selected.model, effort });
+              }}
+            />
+          )}
         </div>
       </div>
       <div role="row" className="settings-roles__row">
