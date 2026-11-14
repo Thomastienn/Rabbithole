@@ -4,9 +4,9 @@ import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { ChevronLeftIcon } from '@heroicons/react/24/outline';
-import type { Preview, Summary } from './TreeOverview';
-import type { Artifact } from './artifacts';
-import { conversationAddresses, inkStyle } from './treeList';
+import type { Preview, Summary } from '../map/TreeOverview';
+import type { Artifact } from '../media/artifacts';
+import { conversationAddresses, inkStyle } from '../map/treeList';
 import { conversationContext, type Message } from './turn';
 
 type Current = {

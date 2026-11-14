@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { foldHierarchy } from '../src/canvas.ts';
+import { foldHierarchy } from '../src/map/canvas.ts';
 
 // root ─ a ─ a1 ─ a1x
 //      │    └ a2

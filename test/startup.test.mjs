@@ -204,14 +204,14 @@ test('one start command builds absent or changed assets and reuses a current bui
   assert.match(await startAndStop(), /Building.*missing or stale/);
   assert.equal(readFileSync(join(checkout, 'builds'), 'utf8'), 'built\n');
   assert.doesNotMatch(await startAndStop(), /Building/);
-  appendFileSync(join(checkout, 'src/main.tsx'), '\n// Changed source fixture\n');
+  appendFileSync(join(checkout, 'src/shell/main.tsx'), '\n// Changed source fixture\n');
   assert.match(await startAndStop(), /Building/);
   assert.equal(readFileSync(join(checkout, 'builds'), 'utf8'), 'built\nbuilt\n');
   writeFileSync(join(checkout, 'dist/index.html'), 'Stale output');
   assert.match(await startAndStop(), /Building/);
   assert.equal(readFileSync(join(checkout, 'builds'), 'utf8'), 'built\nbuilt\nbuilt\n');
   writeFileSync(join(checkout, 'build-fixture.mjs'), 'process.exit(7);');
-  appendFileSync(join(checkout, 'src/main.tsx'), '\n// Requires another build\n');
+  appendFileSync(join(checkout, 'src/shell/main.tsx'), '\n// Requires another build\n');
   const failed = launch(data, 0, env, checkout, ['scripts/start.mjs']);
   try {
     assert.equal(await failed.exited, 1);

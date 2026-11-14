@@ -669,14 +669,14 @@ if (process.argv[2] === '--serve') {
     assert.doesNotMatch(policy, /script-src[^;]*unsafe/);
     pass('original CSP renders without policy violations or unsafe script sources', policy);
     const sources = [
-      'src/DiagramCard.tsx',
-      'src/artifacts.ts',
-      'src/diagramSource.ts',
-      'src/mermaid.ts',
-      'src/ChatPage.tsx',
-      'src/TreeOverview.tsx',
-      'src/turn.ts',
-      'src/layout.ts',
+      'src/media/DiagramCard.tsx',
+      'src/media/artifacts.ts',
+      'src/media/diagramSource.ts',
+      'src/media/mermaid.ts',
+      'src/shell/ChatPage.tsx',
+      'src/map/TreeOverview.tsx',
+      'src/chat/turn.ts',
+      'src/styles/media.css',
       'server/store.mjs',
       'server/media/diagrams.mjs',
       'server/app.mjs',

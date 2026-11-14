@@ -10,7 +10,7 @@ import { Store } from '../server/store.mjs';
 import { Claude } from '../server/providers/claude.mjs';
 import { Codex } from '../server/providers/codex.mjs';
 import { createApp } from '../server/app.mjs';
-import { conversationContext } from '../src/turn.ts';
+import { conversationContext } from '../src/chat/turn.ts';
 
 const launch = (command, args, options) =>
   spawn(

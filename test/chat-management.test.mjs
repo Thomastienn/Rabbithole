@@ -15,7 +15,7 @@ import { join, dirname } from 'node:path';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { mediaPath } from '../server/media/videos.mjs';
-import { layoutSaver } from '../src/layoutSave.ts';
+import { layoutSaver } from '../src/map/layoutSave.ts';
 
 const complete = async (tree, text, emit) => {
   emit({ type: 'item', item: 'a', text: 'Completed answer' });

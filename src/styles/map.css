@@ -1,0 +1,219 @@
+/* Map nodes, edges and fold stubs. Files load in main.tsx order, which is the cascade order. */
+.conversation-box {
+  width: var(--treetutor-map-node-width);
+  border: thin solid var(--color-border);
+  border-radius: var(--radius-element);
+  background: var(--color-background-surface);
+  overflow-wrap: anywhere;
+  transition: border-color var(--duration-fast) ease-out;
+}
+.react-flow__node:hover .conversation-box {
+  border-color: var(--color-text-secondary);
+}
+.conversation-box[data-focused='true'] {
+  outline: var(--focus-outline-width) solid var(--treetutor-paper);
+  outline-offset: var(--focus-outline-offset);
+}
+.conversation-box .node-band {
+  margin: calc(-1 * var(--spacing-3)) calc(-1 * var(--spacing-3)) 0;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: calc(var(--radius-element) - 1px) calc(var(--radius-element) - 1px) 0 0;
+  background: var(--ink);
+  color: var(--ink-on);
+}
+.conversation-box .node-band :is(h2, button, .astryx-icon) {
+  color: var(--ink-on);
+}
+.conversation-box .node-band :focus-visible {
+  outline-color: var(--treetutor-paper);
+  outline-offset: var(--spacing-2);
+}
+.conversation-box .node-band .activity-dot,
+.conversation-box[data-active='true'] .node-band .activity-dot {
+  background: var(--ink-on);
+}
+.node-address {
+  flex: none;
+  color: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+.conversation-box .node-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  justify-content: flex-start;
+  padding-inline: var(--spacing-1);
+  text-align: start;
+}
+.conversation-box .node-title h2 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.node-extra {
+  margin-inline-start: auto;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.react-flow__node:hover .node-extra,
+.react-flow__node:focus-within .node-extra,
+.node-extra:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .node-extra {
+    opacity: 1;
+  }
+}
+.activity-dot {
+  display: inline-block;
+  flex: none;
+  width: var(--spacing-2);
+  height: var(--spacing-2);
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+}
+.conversation-box[data-active='true'] .activity-dot {
+  background: var(--color-accent);
+  animation: pulse var(--duration-slow-max) ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .conversation-box[data-active='true'] .activity-dot,
+  .react-flow__edge .react-flow__edge-path.branch-new,
+  .selection-action,
+  .reply-status::before,
+  .visual-shimmer,
+  .visual-shimmer::after {
+    animation: none;
+  }
+  .chat-divider::after,
+  .conversation-box,
+  .node-extra,
+  .diagram-card .astryx-icon,
+  .reply-usage,
+  .reply-copy,
+  .code-copy {
+    transition: none;
+  }
+}
+.react-flow__node:focus-visible {
+  outline: none;
+}
+.react-flow__node:focus-visible .conversation-box {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+.react-flow__edge:focus-visible {
+  outline: none;
+}
+.react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--focus-outline-color);
+  stroke-width: var(--treetutor-branch-focus-width);
+}
+.conversation-box button {
+  height: auto;
+  white-space: normal;
+}
+.node-message[data-role='user'] {
+  align-items: flex-end;
+}
+.node-message[data-role='user'] .question-bubble {
+  max-width: 85%;
+  padding: var(--spacing-1) var(--spacing-2);
+}
+.node-message {
+  position: relative;
+}
+.node-message .node-bubble {
+  height: auto;
+  max-width: 100%;
+  padding: 0;
+  white-space: normal;
+  text-align: start;
+  justify-content: flex-start;
+}
+.node-message[data-role='user'] .node-bubble {
+  max-width: 85%;
+}
+.node-message[data-role='user'] .node-bubble .question-bubble {
+  max-width: 100%;
+}
+.node-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  color: var(--color-text-secondary);
+}
+.node-status[data-status='failed'] {
+  color: var(--color-error);
+}
+.node-status svg {
+  flex: none;
+  width: var(--spacing-4);
+  height: var(--spacing-4);
+}
+.node-retry {
+  align-self: flex-start;
+}
+.node-message .react-flow__handle {
+  right: calc(-1 * var(--spacing-3));
+}
+.fold-stub {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+}
+.fold-stub::before {
+  content: '';
+  width: var(--spacing-5);
+  border-top: var(--treetutor-branch-width) dashed var(--ink);
+}
+.fold-stub button {
+  background: var(--color-background-body);
+  border: thin dashed var(--color-border-emphasized);
+  padding: var(--spacing-1) var(--spacing-2);
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+.react-flow__edge-path {
+  stroke: var(--ink, var(--treetutor-branch-color));
+  stroke-width: var(--treetutor-branch-width);
+  stroke-linecap: round;
+}
+.react-flow__edge.branch-focused .react-flow__edge-path {
+  stroke: var(--ink, var(--color-accent));
+  stroke-width: var(--treetutor-branch-focus-width);
+}
+.react-flow__edge-path.branch-new {
+  animation: branch-draw var(--treetutor-branch-draw-duration) ease-out;
+}
+@keyframes branch-draw {
+  from {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+}
+.react-flow__handle {
+  background: var(--color-text-secondary);
+  border-color: var(--color-background-surface);
+}
+section[role='alert'] {
+  background: var(--color-background-body);
+}

@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { artifactsAt, mergeArtifact, renderArtifact } from '../src/artifacts.ts';
-import { withTurn } from '../src/turn.ts';
+import { artifactsAt, mergeArtifact, renderArtifact } from '../src/media/artifacts.ts';
+import { withTurn } from '../src/chat/turn.ts';
 
 test('HTTP/SSE artifacts drive client states, owned map metadata and exact anchors; restart never infers', async () => {
   const path = join(mkdtempSync(join(tmpdir(), 'tt-render-')), 'trees.sqlite');

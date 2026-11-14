@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutConcepts, POINT_SPACE } from '../src/knowledgeLayout.ts';
+import { layoutConcepts, POINT_SPACE } from '../src/knowledge/knowledgeLayout.ts';
 
 const names = Array.from({ length: 40 }, (_, i) => `Concept ${i}`);
 const graph = {

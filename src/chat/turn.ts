@@ -1,4 +1,4 @@
-import { mergeArtifact, type Artifact, type ArtifactSummary } from './artifacts.ts';
+import { mergeArtifact, type Artifact, type ArtifactSummary } from '../media/artifacts.ts';
 
 export type Usage = {
   input: number;

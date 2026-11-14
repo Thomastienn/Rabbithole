@@ -21,11 +21,11 @@ import SuggestionSettings from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
 import SmartSettings from './SmartSettings';
 import ModelProfiles, { AutomaticSuggestions } from './ModelProfiles';
-import UsageDashboard from './UsageDashboard';
+import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
-import { appearances, themeChoices, type Appearance, type ThemeChoice } from './appearance';
+import { appearances, themeChoices, type Appearance, type ThemeChoice } from '../shell/appearance';
 import { Theme } from '@astryxdesign/core/theme';
-import { themes } from './astryx-themes';
+import { themes } from '../shell/astryx-themes';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
 // tab: the section to scroll to (undefined opens at the top); focus is a selector to focus once open.

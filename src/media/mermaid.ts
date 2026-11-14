@@ -1,5 +1,5 @@
 import mermaid from 'mermaid';
-import { diagramFontFace } from './themes/paperback/diagramFont';
+import { diagramFontFace } from '../themes/paperback/diagramFont';
 
 // Mermaid has global configuration. Keep each theme initialization with its queued render.
 let queue = Promise.resolve();

@@ -6,7 +6,7 @@ import {
   maxMapWidth,
   resetMapWidth,
   savedMapWidth,
-} from '../src/mapWidth.ts';
+} from '../src/map/mapWidth.ts';
 
 test('map width clamps between 20rem and 60% of the workspace', () => {
   assert.equal(clampMapWidth(10, 100), 20);

@@ -8,7 +8,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
 import { mediaPath } from '../server/media/videos.mjs';
-import { themeChoices } from '../src/appearance.ts';
+import { themeChoices } from '../src/shell/appearance.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'tt-visual-themes-'));
 const store = new Store(join(dir, 'trees.sqlite'));

@@ -47,7 +47,7 @@ import {
   type Point,
   type Viewport,
 } from './canvas';
-import type { ArtifactSummary, VisualPart } from './artifacts';
+import type { ArtifactSummary, VisualPart } from '../media/artifacts';
 import { conversationAddresses, inkStyle } from './treeList';
 
 export type Layout = {

@@ -1,0 +1,442 @@
+/* Focused chat reading column, replies, usage figures and passages. Files load in main.tsx order, which is the cascade order. */
+/* Read (mockup): the focused chat owns the centre at a 640px book measure; header, list and composer share it. */
+.chat-reply,
+.chat-reply > * {
+  max-width: 100%;
+}
+.focused-chat .astryx-chat-message-list {
+  width: 100%;
+  max-width: calc(640px + 6 * var(--treetutor-module));
+  margin-inline: auto;
+  padding: calc(4 * var(--treetutor-module)) calc(3 * var(--treetutor-module))
+    calc(5 * var(--treetutor-module));
+  box-sizing: border-box;
+}
+.focused-chat .astryx-chat-message-list > :first-child {
+  padding: 0;
+}
+.conv-title .rename-title {
+  height: auto;
+  white-space: normal;
+  text-align: start;
+}
+.conv-title h2 {
+  font-size: 34px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.chat-header .chat-heading-row {
+  min-height: calc(5 * var(--treetutor-module));
+}
+.crumbs {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+.crumbs .crumb {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  padding-inline: 4px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+.crumbs .crumb:hover {
+  color: var(--color-text-primary);
+}
+.crumbs strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.crumbs .addr {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+.crumb-sep {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.stats-toggle[aria-pressed='true'] {
+  background: var(--color-overlay-pressed);
+}
+/* Replies: Literata 17px/1.7, no bubble (mockup Read). Code keeps the theme's code face. */
+.reply-md,
+.reply-md .astryx-text {
+  font-family: var(--treetutor-font-reading);
+  font-size: 17px;
+  line-height: 1.7;
+}
+.reply-md pre .astryx-text,
+.reply-md code .astryx-text {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.reply-md :not(pre) > code {
+  padding: 1px 4px;
+  border-radius: var(--radius-inner);
+  background: var(--color-overlay-hover);
+  font-size: 0.82em;
+}
+.reply-md :is(h3, h4, h5, h6),
+.reply-md :is(h3, h4, h5, h6) .astryx-text {
+  font-family: var(--treetutor-font-reading);
+  font-weight: 600;
+}
+.reply-md h3,
+.reply-md h3 .astryx-text {
+  font-size: 20px;
+  line-height: 1.3;
+}
+.reply-md table,
+.reply-md table .astryx-text {
+  font-family: var(--font-family-body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.reply-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.reply-status[data-status='streaming']::before {
+  content: '';
+  flex: none;
+  width: var(--spacing-2);
+  height: var(--spacing-2);
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.reply-status[data-status='failed'] {
+  color: var(--color-text-error);
+  border-inline-start-color: var(--color-border-error);
+}
+.chat-question:not(:first-child) {
+  margin-block-start: calc(3 * var(--treetutor-module));
+}
+/* Streaming: a leaf caret after the last written block (mockup Read). */
+.chat-reply:has(.reply-status[data-status='streaming'])
+  .reply-md
+  > :last-child:is(p, ul, ol, blockquote)::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 1.1em;
+  margin-inline-start: 2px;
+  background: var(--color-accent);
+  vertical-align: -0.2em;
+}
+.usage-total.astryx-text {
+  font-size: 34px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.usage-total small {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text-secondary);
+}
+.usage-legend b {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.usage-section {
+  padding-block-start: var(--spacing-6);
+  border-block-start: 1px solid var(--color-border);
+}
+.usage-section-head h3 {
+  color: var(--color-text-secondary);
+}
+.usage-chart {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--spacing-2) var(--spacing-3);
+}
+.usage-chart svg {
+  width: 100%;
+  height: 11rem;
+  display: block;
+  overflow: visible;
+}
+.usage-scale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 11rem;
+  text-align: end;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.usage-grid {
+  stroke: var(--color-border);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.usage-axis {
+  grid-column: 2;
+}
+.usage-axis .astryx-text {
+  font-size: 11px;
+}
+.usage-bar {
+  outline: none;
+  cursor: default;
+}
+.usage-hit {
+  fill: transparent;
+}
+.usage-bar[data-active='true'] .usage-hit {
+  fill: var(--color-background-muted);
+}
+.usage-bar:focus-visible .usage-hit {
+  stroke: var(--focus-outline-color);
+  stroke-width: var(--focus-outline-width);
+  vector-effect: non-scaling-stroke;
+}
+[data-series='input'] {
+  fill: var(--color-icon-blue);
+  background: var(--color-icon-blue);
+}
+[data-series='output'] {
+  fill: var(--color-icon-green);
+  background: var(--color-icon-green);
+}
+[data-series='cacheRead'] {
+  fill: var(--color-icon-yellow);
+  background: var(--color-icon-yellow);
+}
+.usage-swatch {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: var(--radius-tick);
+  display: inline-block;
+}
+.usage-dashboard {
+  font-variant-numeric: tabular-nums;
+}
+.usage-readout {
+  min-block-size: 1.5em;
+}
+.usage-name {
+  overflow-wrap: anywhere;
+}
+.usage-share {
+  display: block;
+  height: 3px;
+  margin-block-start: var(--spacing-1);
+  border-radius: var(--radius-tick);
+  background: var(--color-border);
+}
+.usage-share i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-text-secondary);
+}
+.usage-unreported {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+@media (max-width: 48rem) {
+  .usage-axis .astryx-text:nth-child(2):not(:last-child) {
+    display: none;
+  }
+}
+.code-copy {
+  position: absolute;
+  inset-block-start: var(--spacing-1);
+  inset-inline-end: var(--spacing-1);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.reply-md pre:is(:hover, :focus-within) .code-copy {
+  opacity: 1;
+}
+@media (hover: none) {
+  .code-copy {
+    opacity: 1;
+  }
+}
+.chat-title .rename-title {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+  padding-inline: 0;
+}
+.focused-chat .model-picker {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 100%;
+  height: 24px;
+  background: var(--color-overlay-hover);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.focused-chat .model-picker .chat-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.passage {
+  position: relative;
+  align-self: stretch;
+}
+.reply-md {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.reply-md > * + * {
+  margin-block-start: calc(2 * var(--treetutor-module));
+}
+.reply-md p,
+.reply-md figure {
+  margin-inline: 0;
+}
+.reply-md :is(h3, h4, h5, h6) {
+  margin-block-start: var(--spacing-5);
+  margin-block-end: var(--spacing-2);
+}
+.reply-md > :first-child {
+  margin-block-start: 0;
+}
+.reply-md :is(ul, ol) {
+  padding-inline-start: var(--spacing-5);
+  list-style-position: outside;
+}
+.reply-md ul {
+  list-style-type: disc;
+}
+.reply-md ol {
+  list-style-type: decimal;
+}
+.reply-md li + li {
+  margin-block-start: var(--spacing-1);
+}
+.reply-md blockquote {
+  margin-inline: 0;
+  padding-inline-start: var(--spacing-3);
+  border-inline-start: thin solid var(--color-border-emphasized);
+  color: var(--color-text-secondary);
+}
+.reply-md pre {
+  position: relative;
+  margin-inline: 0;
+  padding: 12px 48px 12px 16px;
+  background: var(--color-background-muted);
+  border-radius: var(--radius-container);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.reply-md pre > code {
+  display: block;
+  padding: 0;
+  background: transparent;
+  white-space: inherit;
+  font-size: var(--font-size-sm);
+}
+.reply-md code .astryx-text {
+  font-family: inherit;
+  white-space: inherit;
+}
+.reply-md a {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: var(--spacing-1);
+}
+.reply-md .md-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.reply-md table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.reply-md :is(th, td) {
+  padding: 8px 12px;
+  border-bottom: thin solid var(--color-border);
+  text-align: start;
+}
+.reply-md th {
+  border-bottom-color: var(--color-border-emphasized);
+  color: var(--color-text-secondary);
+}
+.reply-md th {
+  background: var(--color-overlay-hover);
+  font-weight: 600;
+}
+.reply-md math[display='block'] {
+  padding-block: var(--spacing-2);
+  max-width: 100%;
+  overflow-x: auto;
+}
+.reply-md [data-reveal],
+mark {
+  background: var(--treetutor-selection);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-inner);
+}
+::highlight(passage) {
+  background-color: var(--treetutor-selection);
+  color: var(--color-text-primary);
+}
+/* Suggestions hint in muted dotted chalk; a branched (explored) passage wears its branch family's ink (--ink, set inline) and address chip, shared with its map line and node band. */
+.reply-md u.suggestion {
+  text-decoration: underline dotted var(--color-text-secondary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.reply-md u.suggestion {
+  cursor: pointer;
+}
+.reply-md u.suggestion.explored {
+  text-decoration-style: solid;
+  text-decoration-color: var(--ink, var(--color-accent));
+  text-decoration-thickness: 2px;
+}
+.reply-md .passage-address {
+  display: inline-block;
+  margin-inline-start: 2px;
+  padding: 0 4px;
+  border-radius: var(--radius-inner);
+  background: var(--ink);
+  color: var(--ink-on);
+  font: var(--font-weight-bold) var(--font-size-xs)/1.45 var(--font-family-body);
+  font-variant-numeric: tabular-nums;
+  vertical-align: 5px;
+  text-decoration: none;
+  user-select: none;
+}
+.reply-md u.suggestion:hover {
+  text-decoration-color: var(--color-text-primary);
+}
+.reply-md u.suggestion.explored:hover {
+  text-decoration-color: var(--ink, var(--color-accent));
+}
+.reply-md u.suggestion:focus-visible {
+  outline: medium solid var(--focus-outline-color);
+  outline-offset: var(--spacing-1);
+  border-radius: var(--radius-element);
+}
+.reply-md .md-source-syntax {
+  white-space: pre-wrap;
+  font-family: monospace;
+}

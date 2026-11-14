@@ -21,7 +21,7 @@ await build({
       name: 'conversation-render-counter',
       enforce: 'pre',
       transform(code, id) {
-        if (!id.endsWith('/src/TreeOverview.tsx')) return;
+        if (!id.endsWith('/src/map/TreeOverview.tsx')) return;
         const marker =
           'const Conversation = memo(function Conversation({ data }: NodeProps<ConversationNode>) {';
         assert.ok(code.includes(marker));

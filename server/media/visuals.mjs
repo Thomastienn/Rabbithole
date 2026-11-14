@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { JSDOM } from 'jsdom';
-import { savedTheme, themeChoices } from '../../src/appearance.ts';
+import { savedTheme, themeChoices } from '../../src/shell/appearance.ts';
 
 const INSTRUCTIONS = readFileSync(new URL('./prompts/visual.md', import.meta.url), 'utf8');
 const MAX_SOURCE = 64 * 1024;

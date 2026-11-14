@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { themeChoices } from '../src/appearance.ts';
+import { themeChoices } from '../src/shell/appearance.ts';
 
 const task = {
   title: 'Rounds',

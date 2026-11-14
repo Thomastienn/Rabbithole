@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { replyUsageLine, underlineRanges, withTurn } from '../src/turn.ts';
+import { replyUsageLine, underlineRanges, withTurn } from '../src/chat/turn.ts';
 
 test('navigation reconciles stale saved checkpoints with latest owning turn without duplicates', () => {
   const user = {

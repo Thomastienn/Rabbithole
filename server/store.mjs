@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, chmodSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { previewText } from '../src/markdownText.ts';
+import { previewText } from '../src/markdown/markdownText.ts';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
         kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),

@@ -351,9 +351,9 @@ if (process.argv[2] === '--serve') {
       'server/store.mjs',
       'server/app.mjs',
       'server/media/videos.mjs',
-      'src/ChatPage.tsx',
-      'src/layout.ts',
-      'src/layoutSave.ts',
+      'src/shell/ChatPage.tsx',
+      'src/styles/states.css',
+      'src/map/layoutSave.ts',
     ];
     writeFileSync(
       'docs/verification/chat-management-results.json',

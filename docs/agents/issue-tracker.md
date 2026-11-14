@@ -6,7 +6,7 @@ Issues and specs for this repo live in Beads (`bd` CLI, data in `.beads/`). Keep
 
 - One feature = one epic (`bd create --type epic`); each implementation ticket is a child (`--parent <epic-id>`), never one combined ticket.
 - Order tickets with dependencies (`--deps blocked-by:<id>` or `bd dep add <blocked> <blocker>`); `bd ready` lists the unblocked frontier.
-- Size each ticket for one Ralph run: 100k–150k context, under one hour. Label `commit-sized` and `context-150k`.
+- Size each ticket for one Ralph run: up to 200k context, under one hour. Label `commit-sized` and `context-200k`. Merge work that fits one run instead of splitting it.
 - Labels: one or more `area:*` (canvas, chat, design, providers, …) and one `phase:*` (`text-release`, `later`, …). Reuse existing labels (`bd label list-all`) before inventing one.
 - Longer specs go in `docs/<feature>-spec.md`; link from the epic with `--spec-id`.
 - Put acceptance checks in `--acceptance`; design notes in `--design`.

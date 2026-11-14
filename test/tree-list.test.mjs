@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { treeGroups } from '../src/treeList.ts';
+import { treeGroups } from '../src/map/treeList.ts';
 
 test('learning trees group by local creation day, newest first, including midnight and week boundaries', () => {
   const previousTZ = process.env.TZ;
@@ -107,7 +107,7 @@ test('branch counts include every descendant, exclude roots and stay separate ac
 });
 
 test('conversation addresses number siblings by creation and each first-level family keeps one repeating series ink', async () => {
-  const { conversationAddresses } = await import('../src/treeList.ts');
+  const { conversationAddresses } = await import('../src/map/treeList.ts');
   const t = (id, parent, created) => ({ id, parent, created });
   const trees = [
     t('b5', 'root', 50),
@@ -147,7 +147,7 @@ test('conversation addresses number siblings by creation and each first-level fa
 });
 
 test('library spine has one tick per conversation in its family ink, matching conversation addresses', async () => {
-  const { conversationAddresses } = await import('../src/treeList.ts');
+  const { conversationAddresses } = await import('../src/map/treeList.ts');
   const trees = [
     { id: 'root', parent: null, created: 0 },
     ...['a', 'b', 'c', 'd', 'e'].map((id, i) => ({ id, parent: 'root', created: 10 - i })),

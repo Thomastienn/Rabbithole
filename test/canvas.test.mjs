@@ -4,10 +4,10 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { parseViewport, placeBox, offsetCoveredBoxes, vimAction } from '../src/canvas.ts';
+import { parseViewport, placeBox, offsetCoveredBoxes, vimAction } from '../src/map/canvas.ts';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { layoutSaver, LAYOUT_SAVE_MS } from '../src/layoutSave.ts';
+import { layoutSaver, LAYOUT_SAVE_MS } from '../src/map/layoutSave.ts';
 
 test('saved viewport accepts exact coordinates and rejects corrupt or unsupported views', () => {
   assert.deepEqual(parseViewport('{"x":-12.125,"y":810.25,"zoom":0.725}'), {

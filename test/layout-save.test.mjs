@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutSaver, LAYOUT_SAVE_MS } from '../src/layoutSave.ts';
+import { layoutSaver, LAYOUT_SAVE_MS } from '../src/map/layoutSave.ts';
 
 // Controlled clock: timers only fire when the test advances them.
 function clock() {

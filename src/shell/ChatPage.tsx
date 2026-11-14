@@ -66,7 +66,7 @@ import TreeOverview, {
   type Preview,
   type MapActions,
   type Layout,
-} from './TreeOverview';
+} from '../map/TreeOverview';
 import {
   replyUsageLine,
   underlineRanges,
@@ -75,14 +75,14 @@ import {
   type Suggestions,
   type Turn,
   type Usage,
-} from './turn';
-import { layoutSaver, type Batch } from './layoutSave';
-import type { Point, Viewport } from './canvas';
-import DiagramCard from './DiagramCard';
-import VideoCard from './VideoCard';
-import VisualFrame, { type PartAction, type VisualBranch } from './VisualFrame';
-import CopyButton from './CopyButton';
-import SettingsWindow, { type SettingsRequest, type SettingsTab } from './SettingsWindow';
+} from '../chat/turn';
+import { layoutSaver, type Batch } from '../map/layoutSave';
+import type { Point, Viewport } from '../map/canvas';
+import DiagramCard from '../media/DiagramCard';
+import VideoCard from '../media/VideoCard';
+import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
+import CopyButton from '../markdown/CopyButton';
+import SettingsWindow, { type SettingsRequest, type SettingsTab } from '../settings/SettingsWindow';
 import type { Appearance, ThemeChoice } from './appearance';
 import {
   DEFAULT_MAP_WIDTH,
@@ -92,20 +92,20 @@ import {
   maxMapWidth,
   resetMapWidth,
   savedMapWidth,
-} from './mapWidth';
-import KnowledgePage, { type Graph } from './KnowledgePage';
-import VideoLibrary from './VideoLibrary';
-import { artifactsAt, mergeArtifact, visualPassage, type Artifact } from './artifacts';
-import { renderMarkdown, rawOffsets, rawRange } from './markdown';
-import { previewText } from './markdownText';
+} from '../map/mapWidth';
+import KnowledgePage, { type Graph } from '../knowledge/KnowledgePage';
+import VideoLibrary from '../media/VideoLibrary';
+import { artifactsAt, mergeArtifact, visualPassage, type Artifact } from '../media/artifacts';
+import { renderMarkdown, rawOffsets, rawRange } from '../markdown/markdown';
+import { previewText } from '../markdown/markdownText';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
-import { conversationAddresses, inkStyle, treeGroups } from './treeList';
+import { conversationAddresses, inkStyle, treeGroups } from '../map/treeList';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
-import { effortLabel, type Model } from './models';
-import Contents from './Contents';
-import TurnRail from './TurnRail';
+import { effortLabel, type Model } from '../settings/models';
+import Contents from '../chat/Contents';
+import TurnRail from '../chat/TurnRail';
 import { useTheme } from '@astryxdesign/core/theme';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.

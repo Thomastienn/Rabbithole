@@ -7,7 +7,7 @@ import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
-import { inkStyle } from './treeList.ts';
+import { inkStyle } from '../map/treeList.ts';
 export { plainText };
 
 type Span = { start: number; end: number };

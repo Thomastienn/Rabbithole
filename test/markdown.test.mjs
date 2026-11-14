@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 import { Store } from '../server/store.mjs';
 import { createApp } from '../server/app.mjs';
-import { renderMarkdown, rawOffsets, rawRange, plainText } from '../src/markdown.ts';
+import { renderMarkdown, rawOffsets, rawRange, plainText } from '../src/markdown/markdown.ts';
 
 const raw = [
   '## Plan **bold** heading',

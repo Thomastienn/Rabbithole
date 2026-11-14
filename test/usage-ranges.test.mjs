@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { span, buckets, totals, breakdown } from '../src/usage.ts';
+import { span, buckets, totals, breakdown } from '../src/usage/usage.ts';
 
 const ev = (d, task = 'chat', counts = [10, 2, 5], model = 'm') => ({
   at: +d,

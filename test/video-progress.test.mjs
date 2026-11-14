@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { estimateVideoProgress, videoStepDetail, elapsed } from '../src/videoProgress.ts';
+import { estimateVideoProgress, videoStepDetail, elapsed } from '../src/media/videoProgress.ts';
 
 test('estimated video progress stays inside each phase share and below 100% until ready', () => {
   const t0 = 1_000_000;
