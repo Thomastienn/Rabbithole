@@ -1,3 +1,4 @@
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -458,9 +459,9 @@ try {
   await click('Reveal source passage for Second emoji passage');
   await browser('wait', '--text', 'Saved source passage is unavailable');
   assert.equal(await evaluate('document.querySelectorAll("mark").length'), 0);
-  mkdirSync('docs/verification', { recursive: true });
+  mkdirSync(verifyOut, { recursive: true });
   writeFileSync(
-    'docs/verification/message-row-branches-results.json',
+    `${verifyOut}/message-row-branches-results.json`,
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),

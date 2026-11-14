@@ -1,3 +1,4 @@
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -462,7 +463,7 @@ try {
     'dist/index.html',
   ];
   writeFileSync(
-    'docs/verification/diagram-rendering-results.json',
+    `${verifyOut}/diagram-rendering-results.json`,
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),

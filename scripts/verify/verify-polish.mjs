@@ -1,5 +1,6 @@
 // Accessibility and visual audit over a seeded fixture tree (synthetic provider, real Chromium and production build).
-// Usage: node scripts/verify/verify-polish.mjs [label]  → docs/verification/polish-<label>.json and .impeccable/review/polish-<label>-*.png
+// Usage: node scripts/verify/verify-polish.mjs [label]  → <verify output>/polish-<label>.json and .impeccable/review/polish-<label>-*.png
+import { verifyOut } from './lib/output.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -211,7 +212,7 @@ try {
     };
     await shot(`${name}-chat`);
   }
-  writeFileSync(`docs/verification/polish-${label}.json`, JSON.stringify(results, null, 2) + '\n');
+  writeFileSync(`${verifyOut}/polish-${label}.json`, JSON.stringify(results, null, 2) + '\n');
   console.log(JSON.stringify(results.checks, null, 1));
 } finally {
   await b('close').catch(() => {});

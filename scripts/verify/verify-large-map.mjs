@@ -1,3 +1,4 @@
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir, cpus, totalmem, release, arch } from 'node:os';
@@ -312,13 +313,13 @@ try {
   await browser('screenshot', `/tmp/treetutor-large-${baseline ? 'before' : 'after'}.png`);
   console.log(JSON.stringify(report, null, 2));
   writeFileSync(
-    `docs/verification/large-map-${baseline ? 'baseline' : 'results'}.json`,
+    `${verifyOut}/large-map-${baseline ? 'baseline' : 'results'}.json`,
     JSON.stringify(report, null, 2) + '\n',
   );
 } catch (error) {
   report.error = error.message;
   writeFileSync(
-    `docs/verification/large-map-${baseline ? 'baseline' : 'results'}.json`,
+    `${verifyOut}/large-map-${baseline ? 'baseline' : 'results'}.json`,
     JSON.stringify(report, null, 2) + '\n',
   );
   throw error;

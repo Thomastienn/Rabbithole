@@ -1,5 +1,6 @@
 // Browser fixture for TreeTutor-zhf.2: rejected tutor request blocks show as failed diagram/video cards with a reason and
 // an explicit Retry that reruns from the stored request, by keyboard, in both appearances. Synthetic provider. Needs `npm run build`.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -67,16 +68,7 @@ assert.deepEqual([worked.status, rejected.status, video.status], ['failed', 'fai
 workerOutput = 'flowchart TD\n  A[Winner A] --> C[Final]\n  B[Winner B] --> C';
 
 const run = promisify(execFile);
-const session = (
-  await run('agent-browser', [
-    'session',
-    'id',
-    '--scope',
-    'worktree',
-    '--prefix',
-    'request-failures',
-  ])
-).stdout.trim();
+const session = `request-failures-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 * 1024 * 1024 }))
     .stdout;
@@ -216,7 +208,7 @@ try {
   store.close();
 }
 writeFileSync(
-  join(process.cwd(), 'docs/verification/request-failures.json'),
+  join(process.cwd(), `${verifyOut}/request-failures.json`),
   JSON.stringify(
     { issue: 'TreeTutor-zhf.2', evidence: 'fixture provider, built UI, agent-browser', checks },
     null,

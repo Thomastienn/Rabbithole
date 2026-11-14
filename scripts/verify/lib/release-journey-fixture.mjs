@@ -1,4 +1,5 @@
 // Arguments, report, server lifecycle, HTTP and agent-browser helpers for verify-release-journey-live.mjs.
+import { verifyOut } from './output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +13,7 @@ const provider = process.argv.find((a) => a.startsWith('--provider='))?.slice(11
 assert.ok(['claude', 'codex'].includes(provider), 'Choose --provider=claude or --provider=codex');
 const out =
   process.argv.slice(2).find((a) => !a.startsWith('--')) ??
-  'docs/verification/release-journey-results.json';
+  `${verifyOut}/release-journey-results.json`;
 const exec = promisify(execFile),
   session = `release-${process.pid}`;
 const b = async (...args) =>

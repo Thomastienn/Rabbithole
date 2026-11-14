@@ -1,3 +1,4 @@
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
@@ -12,7 +13,7 @@ import { Store } from '../../server/store.mjs';
 // no inference, account credential access or claim of native-provider semantic continuity.
 // Uses the documented start launcher (including automatic builds). Usage: node scripts/verify/verify-local-delivery.mjs [report.json]
 process.umask(0o077);
-const out = process.argv[2] ?? 'docs/verification/local-delivery-results.json';
+const out = process.argv[2] ?? `${verifyOut}/local-delivery-results.json`;
 const data = mkdtempSync(join(tmpdir(), 'treetutor-delivery-'));
 const report = {
   date: new Date().toISOString(),

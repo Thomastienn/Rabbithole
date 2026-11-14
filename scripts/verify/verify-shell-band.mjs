@@ -1,6 +1,7 @@
 // Built-app browser fixture (in-process fake provider, not a live model) for the moss shell band:
 // view tabs with aria-current, keyboard order, paper focus ring, AA contrast, search, New chat, Settings,
 // the save-failure state and the Library that replaced the rail. Saves dark and light screenshots.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -57,7 +58,7 @@ const settle = async () => {
 };
 const shot = async (name) => {
   await settle();
-  await b('screenshot', `${process.cwd()}/docs/verification/shell-band-${name}.png`);
+  await b('screenshot', `${process.cwd()}/${verifyOut}/shell-band-${name}.png`);
 };
 // WCAG relative-luminance contrast of two computed CSS colours (opaque, as the band and its text are).
 const contrast = (fg, bg) =>

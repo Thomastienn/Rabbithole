@@ -1,5 +1,6 @@
 // Paperback States: real built UI/HTTP/SQLite; synthetic providers, study and local MP4.
 // Fault injection is at fetch for loading/saving; native inference is not exercised.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -433,7 +434,7 @@ try {
   store.close();
 }
 writeFileSync(
-  'docs/verification/states-results.json',
+  `${verifyOut}/states-results.json`,
   JSON.stringify(
     {
       issue: 'TreeTutor-y36.10',

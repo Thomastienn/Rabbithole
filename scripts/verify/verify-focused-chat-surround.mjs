@@ -1,5 +1,6 @@
 // Built-app browser fixture (in-process fake provider, not a live model) for the focused chat surround
 // (docs/visual-identity-spec.md, Focused chat) and the focused chat reference screenshots in both appearances.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -130,7 +131,7 @@ try {
     await wait(
       `!document.querySelector('.focused-chat .diagram-card').textContent.includes('Rendering diagram')`,
     );
-    const file = join('docs', 'verification', `focused-chat-reference-${mode}.png`);
+    const file = join(verifyOut, `focused-chat-reference-${mode}.png`);
     const t = await look();
     assert.match(t.titleFont, /Archivo/, `${mode}: title in Archivo`);
     assert.equal(t.titleWeight, '700', `${mode}: title weight 700`);
@@ -273,7 +274,7 @@ try {
   steps.push(
     'narrow 390px: chat fills the workspace, composer visible; Shift+Enter newline, Enter sends, Stop ends the reply',
   );
-  await b('screenshot', join('docs', 'verification', 'focused-chat-narrow-light.png'));
+  await b('screenshot', join(verifyOut, 'focused-chat-narrow-light.png'));
   await b('set', 'viewport', '320', '568');
   await b(
     'find',
@@ -288,7 +289,7 @@ try {
     `(() => { const chat = document.querySelector('.focused-chat'), input = chat.querySelector('[contenteditable]'), send = chat.querySelector('[aria-label="Send"]'), r = send.getBoundingClientRect(); return { fits: document.documentElement.scrollWidth <= innerWidth, input: input.getBoundingClientRect().bottom <= innerHeight, action: r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth, height: r.height }; })()`,
   );
   assert.ok(small.fits && small.input && small.action && small.height > 0, JSON.stringify(small));
-  await b('screenshot', join('docs', 'verification', 'focused-chat-narrow-small-light.png'));
+  await b('screenshot', join(verifyOut, 'focused-chat-narrow-small-light.png'));
   steps.push(
     'narrow 320×568: long draft scrolls; input and Send stay reachable without horizontal overflow',
   );
@@ -337,12 +338,12 @@ try {
     placeholder.placeholderBottom <= placeholder.modelTop,
     `wrapped placeholder clears the footer: ${JSON.stringify(placeholder)}`,
   );
-  await b('screenshot', join('docs', 'verification', 'focused-chat-long-parent-light.png'));
+  await b('screenshot', join(verifyOut, 'focused-chat-long-parent-light.png'));
   steps.push(
     'narrow 320×568: long parent title and exact source passage wrap in the inherited context without horizontal overflow; return-to-parent stays in the one-row header; the failed reply banner holds Retry with no second frame',
   );
   writeFileSync(
-    'docs/verification/focused-chat-surround-results.json',
+    `${verifyOut}/focused-chat-surround-results.json`,
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),

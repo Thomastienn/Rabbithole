@@ -55,7 +55,10 @@ try {
   await b('set', 'media', 'light', 'reduced-motion');
   await b('wait', '[aria-label="Open Mutex basics"]');
   await click('Open Mutex basics');
-  await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Mutex basics'`);
+  // The hidden overview chat already shows the root title, so also wait for it to open.
+  await wait(
+    `document.querySelector('.focused-chat h2')?.textContent === 'Mutex basics' && getComputedStyle(document.querySelector('.focused-chat')).display !== 'none'`,
+  );
   assert.equal(await ev(`!!${section}`), false, 'root conversation shows no inherited section');
   steps.push('root conversation: no inherited section');
 

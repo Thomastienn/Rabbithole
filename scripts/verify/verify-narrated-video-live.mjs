@@ -1,5 +1,6 @@
 // Narrated target-length smoke: native selected provider, real isolated Remotion, HTTP and SQLite. Chat handoff is controlled.
 // Modes: 2d (learner asks for 2D), spatial (dimension unspecified; expect the model to pick 3D), ordinary (unspecified; expect 2D).
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir, cpus, totalmem } from 'node:os';
@@ -252,7 +253,7 @@ try {
   store.close();
   await release?.();
   writeFileSync(
-    `docs/verification/narrated-${mode === '2d' ? 'video' : mode}-native-${name}.json`,
+    `${verifyOut}/narrated-${mode === '2d' ? 'video' : mode}-native-${name}.json`,
     JSON.stringify(report, null, 2) + '\n',
   );
 }

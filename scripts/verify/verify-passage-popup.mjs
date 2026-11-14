@@ -1,4 +1,5 @@
 // Focused check for the compact passage popup: built UI, temporary SQLite, fixture provider; no paid inference.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -163,7 +164,7 @@ async function flow(mode, { word, manual, correction, label }) {
   assert.ok(g.boxHeight < 160, `${mode}: popup stays compact (${g.boxHeight}px)`);
   await b(
     'screenshot',
-    `${process.cwd()}/docs/verification/states-passage-${mode.replace(/\W+/g, '-')}.png`,
+    `${process.cwd()}/${verifyOut}/states-passage-${mode.replace(/\W+/g, '-')}.png`,
   );
   check(
     `${mode}: suggested underline opens a ${Math.round(g.boxHeight)}px popup, passage painted in the reply and quoted only for screen readers, question field and square send; no Cancel branch`,
@@ -206,7 +207,7 @@ async function flow(mode, { word, manual, correction, label }) {
   assert.ok(await ev(`document.execCommand('copy')`), `${mode}: the kept selection can be copied`);
   await b(
     'screenshot',
-    `${process.cwd()}/docs/verification/states-passage-ask-${mode.replace(/\W+/g, '-')}.png`,
+    `${process.cwd()}/${verifyOut}/states-passage-ask-${mode.replace(/\W+/g, '-')}.png`,
   );
   await click('Ask about selection');
   await wait(
@@ -220,7 +221,7 @@ async function flow(mode, { word, manual, correction, label }) {
   );
   await b(
     'screenshot',
-    `${process.cwd()}/docs/verification/states-passage-painted-${mode.replace(/\W+/g, '-')}.png`,
+    `${process.cwd()}/${verifyOut}/states-passage-painted-${mode.replace(/\W+/g, '-')}.png`,
   );
   assert.equal(
     await ev(
@@ -272,7 +273,7 @@ async function flow(mode, { word, manual, correction, label }) {
   );
   await b(
     'screenshot',
-    `${process.cwd()}/docs/verification/states-corrections-${mode.replace(/\W+/g, '-')}.png`,
+    `${process.cwd()}/${verifyOut}/states-corrections-${mode.replace(/\W+/g, '-')}.png`,
   );
   await key('Escape');
   await wait(`!(${menuOpen})`);
@@ -384,7 +385,7 @@ try {
     assert.equal(await ev(`${input}.value`), 'Why wait? How long?');
     await b(
       'screenshot',
-      `${process.cwd()}/docs/verification/states-passage-late-suggestions-${mode}.png`,
+      `${process.cwd()}/${verifyOut}/states-passage-late-suggestions-${mode}.png`,
     );
     await key('Escape');
     await wait(`!${popup} && !CSS.highlights.has('passage')`);
@@ -394,7 +395,7 @@ try {
   }
 
   writeFileSync(
-    'docs/verification/passage-popup-ui.json',
+    `${verifyOut}/passage-popup-ui.json`,
     JSON.stringify(
       {
         date: new Date().toISOString(),

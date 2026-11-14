@@ -113,9 +113,7 @@ store.message(other.id, 'assistant', 'No diagram in this conversation.', 'comple
 store.close();
 
 const run = promisify(execFile);
-const session = (
-  await run('agent-browser', ['session', 'id', '--scope', 'worktree', '--prefix', 'diagram-render'])
-).stdout.trim();
+const session = `diagram-render-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 * 1024 * 1024 }))
     .stdout;

@@ -1,4 +1,5 @@
 // Real built UI, HTTP, storage and keyboard focus; provider replies are synthetic fixtures.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -156,7 +157,7 @@ try {
     await browser('wait', '[aria-label="Model for next reply"]');
     await connectionSettings();
     await wait(`${row(gw)}.includes('Test failed')`);
-    await browser('screenshot', `docs/verification/custom-endpoints-test-failed-${scheme}.png`);
+    await browser('screenshot', `${verifyOut}/custom-endpoints-test-failed-${scheme}.png`);
   }
   await evaluate(`localStorage.setItem('treetutor.appearance', 'light'); true`);
   await browser('reload');
@@ -301,7 +302,7 @@ try {
       await browser(
         'screenshot',
         width === 1280
-          ? `docs/verification/custom-endpoints-${scheme}.png`
+          ? `${verifyOut}/custom-endpoints-${scheme}.png`
           : join(dir, `endpoints-${scheme}-${width}.png`),
       );
       await click('Cancel');
@@ -316,7 +317,7 @@ try {
       await browser(
         'screenshot',
         width === 1280
-          ? `docs/verification/custom-endpoints-edit-${scheme}.png`
+          ? `${verifyOut}/custom-endpoints-edit-${scheme}.png`
           : join(dir, `edit-${scheme}-${width}.png`),
       );
       await click('Cancel');
@@ -331,7 +332,7 @@ try {
       await browser(
         'screenshot',
         width === 1280
-          ? `docs/verification/custom-endpoints-remove-${scheme}.png`
+          ? `${verifyOut}/custom-endpoints-remove-${scheme}.png`
           : join(dir, `remove-${scheme}-${width}.png`),
       );
       await click('Cancel');
@@ -353,7 +354,7 @@ try {
     screenshots: dir,
   };
   writeFileSync(
-    'docs/verification/custom-endpoint-settings-results.json',
+    `${verifyOut}/custom-endpoint-settings-results.json`,
     JSON.stringify(result, null, 2) + '\n',
   );
   console.log(JSON.stringify(result, null, 2));

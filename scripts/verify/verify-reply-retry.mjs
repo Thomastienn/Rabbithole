@@ -1,5 +1,6 @@
 // Built-app browser fixture (in-process fake provider, not a live model) for reply Retry.
 // Covers: Retry on a failed latest reply, none after a learner Stop, keyboard activation, in-place replacement, both appearances.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -64,7 +65,7 @@ try {
       await openChat('Retry fixture');
       await wait(retryButton);
     }
-    const file = join('docs', 'verification', `reply-retry-failed-${mode}.png`);
+    const file = join(verifyOut, `reply-retry-failed-${mode}.png`);
     await b('screenshot', file);
     steps.push(`${mode}: failed latest reply shows Retry reply; ${file}`);
   }
@@ -91,7 +92,7 @@ try {
     1,
     'one reply, replaced in place',
   );
-  const file = join('docs', 'verification', 'reply-retry-replaced-dark.png');
+  const file = join(verifyOut, 'reply-retry-replaced-dark.png');
   await b('screenshot', file);
   steps.push(`Completed retry: one question, one completed reply, no Retry; ${file}`);
   assert.deepEqual(
@@ -103,10 +104,7 @@ try {
   );
   await ev(`localStorage.removeItem('treetutor.appearance'); true`);
   const result = { pass: true, fixture: 'in-process fake provider (no paid inference)', steps };
-  writeFileSync(
-    join('docs', 'verification', 'reply-retry-ui.json'),
-    JSON.stringify(result, null, 2) + '\n',
-  );
+  writeFileSync(join(verifyOut, 'reply-retry-ui.json'), JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result, null, 2));
 } catch (e) {
   console.error(steps);

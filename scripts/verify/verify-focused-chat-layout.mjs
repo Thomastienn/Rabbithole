@@ -1,4 +1,5 @@
 // Built-app browser fixture (in-process fake provider, not a live model) for the focused chat turn layout.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -167,7 +168,7 @@ try {
     await wait(
       `!document.querySelector('.focused-chat .diagram-card').textContent.includes('Rendering diagram')`,
     );
-    const file = join('docs', 'verification', `focused-chat-transcript-${mode}.png`);
+    const file = join(verifyOut, `focused-chat-transcript-${mode}.png`);
     await b('screenshot', file);
     steps.push(
       `${mode}: serif reply ${t.replySize}/${t.replyLine.toFixed(2)}, sans question bubble, muted metadata, failed in alert colour, interrupted muted; ${file}`,

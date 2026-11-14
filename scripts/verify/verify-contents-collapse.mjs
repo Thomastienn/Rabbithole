@@ -34,6 +34,10 @@ const expandedAttr = (sel) =>
   ev(`document.querySelector(${JSON.stringify(sel)})?.getAttribute('aria-expanded')`);
 const openChat = async () => {
   await browser('wait', '[aria-label="Open Branch A"]');
+  // Under parallel load the map can still be laying out and covering the control; wait until it is hit-testable.
+  await wait(
+    `(() => { const e = document.querySelector('[aria-label="Open Branch A"]'), r = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })()`,
+  );
   await browser('find', 'role', 'button', 'click', '--name', 'Open Branch A', '--exact');
   await wait(`document.querySelector('.focused-chat h2')?.textContent === 'Branch A'`);
 };

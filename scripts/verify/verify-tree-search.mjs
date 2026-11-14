@@ -1,4 +1,5 @@
 // Built-app browser fixture (in-process fake provider, not a live model) for floating title search in the shell band and the quiet Library list scrollbar.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -166,9 +167,9 @@ try {
     { radius: true, track: true, resting: 'auto' },
     'rounded thumb, transparent track, scroll never disabled',
   );
-  await b('screenshot', join('docs', 'verification', 'tree-search-scroll-rest-dark.png'));
+  await b('screenshot', join(verifyOut, 'tree-search-scroll-rest-dark.png'));
   await b('hover', '.library-panel');
-  await b('screenshot', join('docs', 'verification', 'tree-search-scroll-hover-dark.png'));
+  await b('screenshot', join(verifyOut, 'tree-search-scroll-hover-dark.png'));
   await b('mouse', 'wheel', '600');
   await wait(`${nav}.scrollTop > 0 && 'scrolling' in ${nav}.dataset`);
   await b('mouse', 'move', '1300', '450');
@@ -202,13 +203,13 @@ try {
   await wait(`${palette} && document.activeElement.matches('${input}')`);
   await b('type', input, 'roman');
   await wait(`${palette}.querySelectorAll('[role=option]').length === 1`);
-  await b('screenshot', join('docs', 'verification', 'tree-search-narrow-dark.png'));
+  await b('screenshot', join(verifyOut, 'tree-search-narrow-dark.png'));
   await b('click', `${input.replace(' input', '')} [role=option]`);
   await wait(
     `!${palette} && document.querySelector('.chat-header')?.innerText.includes('Roman roads')`,
   );
   steps.push(
-    'Narrow dark: band search icon opens search; tapping "Roman roads" opens it; docs/verification/tree-search-narrow-dark.png',
+    `Narrow dark: band search icon opens search; tapping "Roman roads" opens it; ${verifyOut}/tree-search-narrow-dark.png`,
   );
 
   for (const [w, h] of [
@@ -224,7 +225,7 @@ try {
       await b('click', '.tree-switcher');
       await b('wait', '.saved-chat-title');
       await b('hover', '.library-panel');
-      await b('screenshot', join('docs', 'verification', 'tree-search-scroll-hover-light.png'));
+      await b('screenshot', join(verifyOut, 'tree-search-scroll-hover-light.png'));
       await b('click', '.tree-search');
     }
     await wait(`${palette}`);
@@ -232,11 +233,7 @@ try {
     await wait(`${palette}.innerText.includes('No learning tree titles match')`);
     await b('fill', input, 'basics');
     await wait(`${palette}.querySelectorAll('[role=option]').length === 1`);
-    const file = join(
-      'docs',
-      'verification',
-      `tree-search-${w === '390' ? 'narrow' : 'wide'}-light.png`,
-    );
+    const file = join(verifyOut, `tree-search-${w === '390' ? 'narrow' : 'wide'}-light.png`);
     await b('screenshot', file);
     await b('press', 'Escape');
     steps.push(`Light ${w}px: "leaves" (message-only) empty state, "basics" one result; ${file}`);

@@ -1,4 +1,5 @@
 // Paperback map reference (family inks since TreeTutor-y36.2). Built app, isolated SQLite, synthetic providers only.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -43,7 +44,7 @@ const app = createApp({
 });
 await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-const out = resolve('docs/verification');
+const out = resolve(verifyOut);
 mkdirSync(out, { recursive: true });
 const results = {
   issue: 'TreeTutor-y36.7',

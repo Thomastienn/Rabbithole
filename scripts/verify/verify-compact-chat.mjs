@@ -1,4 +1,5 @@
 // Focused check for the slim chat header and floating composer: built UI, temporary SQLite, fixture providers; no paid inference.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -308,7 +309,7 @@ try {
   check('390px: focused composer stays visible and clear of the latest reply');
 
   writeFileSync(
-    'docs/verification/compact-chat-ui.json',
+    `${verifyOut}/compact-chat-ui.json`,
     JSON.stringify(
       {
         date: new Date().toISOString(),

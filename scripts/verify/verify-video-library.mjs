@@ -1,5 +1,6 @@
 // Library UI check on a copy of a generated-video database: migration, keyboard navigation, playback,
 // unavailable state and source deletion in both appearances, with no provider or narration calls.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, copyFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -12,7 +13,7 @@ import { mediaPath } from '../../server/media/videos.mjs';
 
 const [
   input = 'docs/verification/narrated-video-native-codex.json',
-  output = 'docs/verification/video-library.json',
+  output = `${verifyOut}/video-library.json`,
 ] = process.argv.slice(2);
 const native = JSON.parse(readFileSync(input)),
   dir = mkdtempSync(join(tmpdir(), 'tt-video-library-'));
@@ -62,16 +63,7 @@ const app = createApp({
 await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
 const run = promisify(execFile),
-  session = (
-    await run('agent-browser', [
-      'session',
-      'id',
-      '--scope',
-      'worktree',
-      '--prefix',
-      'video-library',
-    ])
-  ).stdout.trim();
+  session = `video-library-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 1024 * 1024 })).stdout;
 const ev = async (script) => JSON.parse(await b('eval', script, '--json')).data.result;

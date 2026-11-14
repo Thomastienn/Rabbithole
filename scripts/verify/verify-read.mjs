@@ -1,5 +1,6 @@
 // Read mockup acceptance: built app, SQLite/HTTP/SSE and Chromium, synthetic providers.
 // The tiny playable MP4 is a local ffmpeg fixture; this does not verify native model/media generation.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -13,9 +14,7 @@ import { nestedFrames } from '../../test/one-frame.mjs';
 
 const run = promisify(execFile),
   dir = mkdtempSync(join(tmpdir(), 'tt-read-'));
-const session = (
-  await run('agent-browser', ['session', 'id', '--scope', 'worktree', '--prefix', 'read'])
-).stdout.trim();
+const session = `read-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 8 << 20 })).stdout;
 const ev = async (code) => JSON.parse(await b('eval', code, '--json')).data.result;
@@ -202,7 +201,7 @@ const app = createApp({
 });
 await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
 const shot = async (name) => {
-  const path = `docs/verification/read-${name}.png`;
+  const path = `${verifyOut}/read-${name}.png`;
   await ev(`document.activeElement.blur()`);
   await b('mouse', 'move', '5', '5');
   await wait(`![...document.querySelectorAll('[role=tooltip]')].some(e => e.checkVisibility())`);
@@ -467,7 +466,7 @@ try {
   );
   check('390px: full-width focused chat, composer/Send reachable, no document overflow');
   writeFileSync(
-    'docs/verification/read-results.json',
+    `${verifyOut}/read-results.json`,
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),

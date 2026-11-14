@@ -1,7 +1,8 @@
 // Built-app browser fixture (in-process fake provider, not a live model) for the Library page:
 // volumes with one spine tick per conversation, title search, the Shelf/List switch and its saved choice,
 // opening a volume in Read, Rename/Delete menus, the first-run prompt, AA contrast, keyboard reach and the
-// paper focus ring in dark and light. Saves screenshots under docs/verification.
+// paper focus ring in dark and light. Saves screenshots under the verify output folder (lib/output.mjs).
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -75,7 +76,7 @@ const settle = async () => {
 };
 const shot = async (name) => {
   await settle();
-  await b('screenshot', `${process.cwd()}/docs/verification/library-${name}.png`);
+  await b('screenshot', `${process.cwd()}/${verifyOut}/library-${name}.png`);
 };
 const contrast = (fg, bg) =>
   ev(`(() => {
@@ -353,7 +354,7 @@ try {
     'No trees: the first-run prompt and New chat show instead of an empty shelf or search',
   );
   writeFileSync(
-    'docs/verification/library-results.json',
+    `${verifyOut}/library-results.json`,
     JSON.stringify(
       { kind: 'built-app fixture (fake provider)', date: new Date().toISOString(), steps },
       null,

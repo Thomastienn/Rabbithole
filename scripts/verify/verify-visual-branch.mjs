@@ -1,4 +1,5 @@
 // Focused built-UI check with isolated SQLite and a synthetic provider; no paid inference.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,16 +10,7 @@ import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 
 const run = promisify(execFile),
-  session = (
-    await run('agent-browser', [
-      'session',
-      'id',
-      '--scope',
-      'worktree',
-      '--prefix',
-      'visual-branch',
-    ])
-  ).stdout.trim();
+  session = `visual-branch-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 * 1024 * 1024 }))
     .stdout;
@@ -361,7 +353,7 @@ try {
   report.error = error.message;
   throw error;
 } finally {
-  writeFileSync('docs/verification/visual-branch.json', JSON.stringify(report, null, 2) + '\n');
+  writeFileSync(`${verifyOut}/visual-branch.json`, JSON.stringify(report, null, 2) + '\n');
   await b('close').catch(() => {});
   await app.stop();
   store.close();

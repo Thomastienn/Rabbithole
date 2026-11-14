@@ -150,9 +150,7 @@ const post = (path, body = {}) =>
     body: JSON.stringify(body),
   });
 const run = promisify(execFile),
-  session = (
-    await run('agent-browser', ['session', 'id', '--scope', 'worktree', '--prefix', evidenceName])
-  ).stdout.trim();
+  session = `${evidenceName}-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 << 20 })).stdout;
 const ev = async (expression) => JSON.parse(await b('eval', expression, '--json')).data.result;

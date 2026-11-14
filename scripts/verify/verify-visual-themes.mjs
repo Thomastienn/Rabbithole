@@ -177,6 +177,8 @@ try {
   await ev(`${frame}.scrollIntoView({block:'center'}); true`);
   await b('screenshot', join(dir, 'graphite-dark.png'));
   await b('set', 'viewport', '390', '844');
+  // Let the page reflow to the narrow viewport before measuring; a timeout falls through to the assert.
+  await wait('document.documentElement.scrollWidth<=innerWidth').catch(() => {});
   assert.equal(
     await ev('document.documentElement.scrollWidth<=innerWidth'),
     true,

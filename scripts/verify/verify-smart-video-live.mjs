@@ -1,4 +1,5 @@
 // Bounded 2D smart-worker smoke: native selected provider, real isolated Remotion, HTTP and SQLite. Chat handoff is controlled.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir, cpus, totalmem } from 'node:os';
@@ -201,7 +202,7 @@ try {
   store.close();
   await release?.();
   writeFileSync(
-    `docs/verification/smart-video-native-${name}.json`,
+    `${verifyOut}/smart-video-native-${name}.json`,
     JSON.stringify(report, null, 2) + '\n',
   );
 }

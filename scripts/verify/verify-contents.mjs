@@ -1,4 +1,5 @@
 // Built-app fixture: real SQLite/HTTP/SSE and Chromium, controlled tutor/visual provider. No native-provider claim.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -130,7 +131,7 @@ const check = (name, evidence) => {
   console.log('PASS:', name);
 };
 const shot = async (name) => {
-  const path = `docs/verification/contents-${name}.png`;
+  const path = `${verifyOut}/contents-${name}.png`;
   await b('mouse', 'move', '5', '5');
   await b('screenshot', path);
   screenshots.push(path);
@@ -341,7 +342,7 @@ try {
   assert.equal(await ev(`!!document.querySelector('.contents')`), false);
   check('Map retains its full workspace without Contents');
   writeFileSync(
-    'docs/verification/contents-results.json',
+    `${verifyOut}/contents-results.json`,
     JSON.stringify(
       {
         issue: 'TreeTutor-2li.13',

@@ -1,4 +1,5 @@
 // Built-app browser fixture: real HTTP/SQLite, seeded usage and fake providers; no live inference.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -152,7 +153,7 @@ const chartCounts = async () =>
     return match ? match.slice(1).map(number) : [0, 0, 0];
   });
 const shot = async (name) => {
-  const path = `docs/verification/usage-dashboard-${name}.png`;
+  const path = `${verifyOut}/usage-dashboard-${name}.png`;
   await wait('document.getAnimations().every(a => a.playState !== "running")');
   await b('screenshot', path);
   shots.push(path);
@@ -410,7 +411,7 @@ try {
   assert.equal(calls, 0, 'viewing usage made no model calls');
   step('Empty ranges show zero and no-usage state in both appearances; no provider calls');
   writeFileSync(
-    'docs/verification/usage-dashboard.json',
+    `${verifyOut}/usage-dashboard.json`,
     JSON.stringify(
       {
         issue: 'TreeTutor-2li.11',

@@ -1,6 +1,7 @@
 // Live real-example check: a complex question through a signed-in native provider should yield small diagram steps.
 // Records generated sources and screenshots in both appearances for a human readability review; syntax validity alone proves nothing about comprehension.
 // Usage: TT_PROVIDER=claude|codex node scripts/verify/verify-diagram-steps-live.mjs [out.json] (needs a production build and agent-browser)
+import { verifyOut } from './lib/output.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -93,16 +94,7 @@ const artifacts = saved.artifacts.map(({ id, title, description, status, error, 
   source,
 }));
 const run = promisify(execFile);
-const session = (
-  await run('agent-browser', [
-    'session',
-    'id',
-    '--scope',
-    'worktree',
-    '--prefix',
-    'diagram-steps-live',
-  ])
-).stdout.trim();
+const session = `diagram-steps-live-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 * 1024 * 1024 }))
     .stdout;
@@ -170,7 +162,7 @@ try {
   await b('open', origin);
   await b('set', 'viewport', '1280', '1400');
   await b('eval', "localStorage.setItem('treetutor.appearance', 'system'); true");
-  mkdirSync('docs/verification/diagram-steps', { recursive: true });
+  mkdirSync(`${verifyOut}/diagram-steps`, { recursive: true });
   for (const scheme of ['light', 'dark']) {
     await b('set', 'media', scheme, 'reduced-motion');
     await b('reload');
@@ -199,7 +191,7 @@ try {
         'eval',
         `document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center'}); true`,
       );
-      const file = resolve(`docs/verification/diagram-steps/${scheme}-${i + 1}.png`);
+      const file = resolve(`${verifyOut}/diagram-steps/${scheme}-${i + 1}.png`);
       await b('screenshot', selector, file);
       screenshots.push(file);
     }
@@ -207,7 +199,7 @@ try {
       'eval',
       `document.querySelector('.diagram-card')?.scrollIntoView({block:'start'}); true`,
     );
-    const file = resolve(`docs/verification/diagram-steps/${scheme}.png`);
+    const file = resolve(`${verifyOut}/diagram-steps/${scheme}.png`);
     await b('screenshot', '--full', file);
     screenshots.push(file);
   }

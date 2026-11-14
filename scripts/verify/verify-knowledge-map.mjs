@@ -1,5 +1,6 @@
 // Built-app Knowledge map visual identity, zoom labels, topic regions and topic-only relayout over a seeded local
 // graph (the state verify-knowledge.mjs reaches by keyboard: corrections and Mutex merged into Mutual exclusion).
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -199,7 +200,7 @@ try {
     );
     assert.match(l.reading, /^"?Literata/, `${mode} serif detail text`);
     assert.match(l.ui, /^"?Archivo/, `${mode} Archivo labels`);
-    await b('screenshot', resolve(`docs/verification/knowledge-${mode}.png`));
+    await b('screenshot', resolve(`${verifyOut}/knowledge-${mode}.png`));
     await zoomUntil('Zoom in', (k) => k >= 0.75);
     const names = await conceptNames(),
       allConcepts = store
@@ -251,7 +252,7 @@ try {
       topicsAtMinimum.every((l) => l.visible && l.wordsIntact && Math.abs(l.textScale - 1) < 0.05),
       `${mode} topic labels stay readable when zoomed out`,
     );
-    await b('screenshot', resolve(`docs/verification/knowledge-labels-${mode}.png`));
+    await b('screenshot', resolve(`${verifyOut}/knowledge-labels-${mode}.png`));
     await zoomUntil('Zoom in', (k) => k >= 0.75);
     assert.deepEqual(
       await visibleConceptLabels(),
@@ -329,7 +330,7 @@ try {
     await reach(`${group('Scheduler')} button:nth-of-type(3)`);
     await key('Enter');
     await b('wait', 'dialog[open]');
-    await b('screenshot', resolve(`docs/verification/knowledge-merge-${mode}.png`));
+    await b('screenshot', resolve(`${verifyOut}/knowledge-merge-${mode}.png`));
     await key('Escape');
     await wait(`!document.querySelector('dialog[open]')`);
   }
@@ -354,7 +355,7 @@ try {
     'phone fit keeps accessible concept names',
   );
   writeFileSync(
-    resolve('docs/verification/knowledge-results.json'),
+    resolve(`${verifyOut}/knowledge-results.json`),
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),
@@ -367,7 +368,7 @@ try {
       2,
     ) + '\n',
   );
-  await b('screenshot', resolve('docs/verification/knowledge-mobile-light.png'));
+  await b('screenshot', resolve(`${verifyOut}/knowledge-mobile-light.png`));
   // Topic-only changes must invalidate the layout even with the same concept names and links.
   const priorLayout = await ev(`document.querySelector('.knowledge-map').style.transform`);
   store.addGraph({ concepts: [{ name: 'Scheduler', topics: ['Scheduling'] }], links: [] }, message);
@@ -402,7 +403,7 @@ try {
           'mobile-light',
           'labels-dark',
           'labels-light',
-        ].map((m) => `docs/verification/knowledge-${m}.png`),
+        ].map((m) => `${verifyOut}/knowledge-${m}.png`),
       },
       null,
       2,

@@ -1,4 +1,5 @@
 // Seeded store, synthetic providers, app server and agent-browser helpers for verify-states.mjs.
+import { verifyOut } from './output.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
@@ -10,9 +11,7 @@ import { createApp } from '../../../server/app.mjs';
 
 const run = promisify(execFile),
   dir = mkdtempSync(join(tmpdir(), 'tt-states-'));
-const session = (
-  await run('agent-browser', ['session', 'id', '--scope', 'worktree', '--prefix', 'states'])
-).stdout.trim();
+const session = `states-${process.pid}`;
 const b = async (...args) =>
   (
     await run('agent-browser', ['--session', session, ...args], {
@@ -34,7 +33,7 @@ const shot = async (name) => {
   await wait(
     `document.fonts.status === 'loaded' && !document.documentElement.matches(':active-view-transition')`,
   );
-  const file = `docs/verification/states-${name}.png`;
+  const file = `${verifyOut}/states-${name}.png`;
   await b('screenshot', file);
   shots.push(file);
 };

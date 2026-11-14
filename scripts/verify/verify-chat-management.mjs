@@ -1,4 +1,5 @@
 // Built UI/HTTP/SQLite/focus fixture. Synthetic provider callbacks, no native inference or real learner data.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -79,16 +80,7 @@ if (process.argv[2] === '--serve') {
     store.layout(t.id, { folded: [], selected: t.id, panel: 'beside' });
   store.close();
   const run = promisify(execFile),
-    session = (
-      await run('agent-browser', [
-        'session',
-        'id',
-        '--scope',
-        'worktree',
-        '--prefix',
-        'chat-management',
-      ])
-    ).stdout.trim();
+    session = `chat-management-${process.pid}`;
   const b = async (...args) =>
     (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 * 1024 * 1024 }))
       .stdout;
@@ -356,7 +348,7 @@ if (process.argv[2] === '--serve') {
       'src/map/layoutSave.ts',
     ];
     writeFileSync(
-      'docs/verification/chat-management-results.json',
+      `${verifyOut}/chat-management-results.json`,
       JSON.stringify(
         {
           checkedAt: new Date().toISOString(),

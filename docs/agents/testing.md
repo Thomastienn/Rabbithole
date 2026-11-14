@@ -13,6 +13,13 @@ tests are never the check for a routine ticket.
 2. **Component.** Render a React component into jsdom inside `node --test`, without Chromium.
    Use this to check what the component shows, its aria attributes, its focus target and its
    event handlers. Use the harness in `test/support/`.
+   `test/support/tsx.mjs` (loaded by `npm test` through `node --import`) lets tests import
+   `.tsx`, extensionless relative imports and CSS. `render(element)` from
+   `test/support/render.mjs` mounts into a fresh jsdom with `act` and returns
+   `{ container, act, cleanup }`; pass `cleanup` to `t.after`. Put the test at
+   `test/<area>/<component>.test.mjs`; `test/chat/turn-rail.test.mjs` is the example. Run one
+   with `node --import ./test/support/tsx.mjs --test test/chat/turn-rail.test.mjs`; for a folder
+   pass a quoted glob (`"test/chat/*.test.mjs"`), since `node --test` rejects a bare directory.
 3. **Integration.** Run `createApp` or `Store` in-process with a temp database and fake
    providers. Use this only for behaviour at the HTTP, storage or provider boundary.
 4. **Browser (E2E).** These are the smoke scripts in `scripts/verify/`, which drive a real

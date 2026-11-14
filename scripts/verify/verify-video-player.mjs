@@ -1,5 +1,6 @@
 // Browser fixture for TreeTutor-vm4.10: video status sequence, keyboard playback, no stolen focus or scroll, reload.
 // Synthetic tutor/worker providers; the composition is rendered for real in the bubblewrap sandbox. Needs `npm run build`.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -44,9 +45,7 @@ for (let i = 0; i < 6; i++) {
 store.close();
 
 const run = promisify(execFile);
-const session = (
-  await run('agent-browser', ['session', 'id', '--scope', 'worktree', '--prefix', 'video-player'])
-).stdout.trim();
+const session = `video-player-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 * 1024 * 1024 }))
     .stdout;
@@ -430,7 +429,7 @@ try {
   );
 
   writeFileSync(
-    'docs/verification/smart-video-player.json',
+    `${verifyOut}/smart-video-player.json`,
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),

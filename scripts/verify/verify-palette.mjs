@@ -1,5 +1,6 @@
 // Question bubble colour (TreeTutor-2li.3) and Mermaid palette (TreeTutor-nwx.11), in both appearances.
-// Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to docs/verification/.
+// Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to the verify output folder (lib/output.mjs).
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -19,7 +20,7 @@ const wait = (code) => b('wait', '--fn', `!!(${code})`, '--timeout', '15000');
 const shot = async (name) => {
   await wait('document.getAnimations().every(a => a.playState !== "running")');
   await new Promise((r) => setTimeout(r, 300));
-  return b('screenshot', `${process.cwd()}/docs/verification/palette-${name}.png`);
+  return b('screenshot', `${process.cwd()}/${verifyOut}/palette-${name}.png`);
 };
 const step = (text) => console.log(`ok - ${text}`);
 
@@ -77,7 +78,7 @@ const app = createApp({
 });
 await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-mkdirSync('docs/verification', { recursive: true });
+mkdirSync(verifyOut, { recursive: true });
 
 const ready = `document.querySelectorAll('.diagram-card[data-state=ready]').length === 2`;
 // Rendered question text against its bubble fill composited over the chat surface.
@@ -176,7 +177,7 @@ try {
     await wait(`!document.querySelector('.settings-page:not([hidden])')`);
     step(`${appearance}: no bubble tint control in Settings`);
   }
-  writeFileSync('docs/verification/palette-results.json', JSON.stringify(results, null, 2) + '\n');
+  writeFileSync(`${verifyOut}/palette-results.json`, JSON.stringify(results, null, 2) + '\n');
 } finally {
   await b('close').catch(() => {});
   app.server.close();

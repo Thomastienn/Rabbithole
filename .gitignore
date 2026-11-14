@@ -20,3 +20,6 @@ dist/
 .ralph-tui/progress.md
 
 prompt.txt
+
+# Routine verify output; VERIFY_EVIDENCE=1 writes tracked docs/verification instead.
+.verify-output/

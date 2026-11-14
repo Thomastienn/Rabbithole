@@ -1,4 +1,5 @@
 // Dialogs and menus: production UI/HTTP/SQLite, synthetic saved study and providers only.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -56,7 +57,7 @@ const app = createApp({
 });
 await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${app.server.address().port}`,
-  out = resolve('docs/verification');
+  out = resolve(verifyOut);
 const results = {
   issue: 'TreeTutor-y36.10',
   checkedAt: new Date().toISOString(),

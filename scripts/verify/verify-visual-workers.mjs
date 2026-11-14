@@ -1,4 +1,5 @@
 // Focused built-UI check. Add --check-yourself for predict/reveal. Native: TREETUTOR_LIVE_VISUAL=1 node scripts/verify/verify-visual-workers.mjs --check-yourself --live codex
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -457,5 +458,5 @@ try {
   await app.stop();
   store.close();
   await release?.();
-  writeFileSync(`docs/verification/${evidenceName}.json`, JSON.stringify(report, null, 2) + '\n');
+  writeFileSync(`${verifyOut}/${evidenceName}.json`, JSON.stringify(report, null, 2) + '\n');
 }

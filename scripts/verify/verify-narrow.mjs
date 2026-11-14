@@ -1,4 +1,5 @@
 // Built-app fixture: real SQLite/HTTP and Chromium at 390px, synthetic provider. No native-provider claim.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -67,7 +68,7 @@ const check = (name, evidence) => {
   console.log('PASS:', name);
 };
 const shot = async (name) => {
-  const path = `docs/verification/narrow-${name}.png`;
+  const path = `${verifyOut}/narrow-${name}.png`;
   await b('screenshot', path);
   screenshots.push(path);
 };
@@ -278,7 +279,7 @@ try {
   check('Map layout failure alert and Retry stay in the narrow band without sideways scroll', save);
 
   writeFileSync(
-    'docs/verification/narrow-results.json',
+    `${verifyOut}/narrow-results.json`,
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),

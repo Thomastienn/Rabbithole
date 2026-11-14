@@ -1,4 +1,5 @@
 // Focused Settings/conversation check: built UI, temporary SQLite and controlled providers; no paid inference.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -243,7 +244,7 @@ try {
     'Unavailable saved defaults show actionable recovery, retain values and recover on refresh',
   );
   writeFileSync(
-    'docs/verification/chat-defaults-ui.json',
+    `${verifyOut}/chat-defaults-ui.json`,
     JSON.stringify(
       {
         date: new Date().toISOString(),

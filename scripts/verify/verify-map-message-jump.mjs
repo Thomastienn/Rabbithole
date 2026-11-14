@@ -52,6 +52,10 @@ try {
   await b('open', `http://127.0.0.1:${app.server.address().port}`);
   await b('set', 'media', 'light', 'reduced-motion');
   await b('wait', '[aria-label="Open Roots tree"]');
+  // Under parallel load the bubbles can render after the open control.
+  await wait(
+    `document.querySelectorAll('.conversation-box .node-bubble').length === ${texts.length}`,
+  );
   const names = await ev(
     `[...document.querySelectorAll('.conversation-box .node-bubble')].map(e => e.tagName + ':' + e.getAttribute('aria-label'))`,
   );

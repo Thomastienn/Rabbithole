@@ -1,5 +1,6 @@
 // Settings page (TreeTutor-u7v.3, TreeTutor-y36.9, TreeTutor-2li.2): one page per nav item, deep links, focus handling and narrow layout.
-// Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to docs/verification and .impeccable/review/.
+// Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to the verify output folder (lib/output.mjs) and .impeccable/review/.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { OpenAI } from '../../server/providers/openai.mjs';
@@ -106,7 +107,7 @@ try {
     );
     await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
     await shot(`interface-${mode}`);
-    await b('screenshot', `${process.cwd()}/docs/verification/settings-interface-${mode}.png`);
+    await b('screenshot', `${process.cwd()}/${verifyOut}/settings-interface-${mode}.png`);
   }
   await b('find', 'role', 'radio', 'click', '--name', 'Dark', '--exact');
   await wait(`document.documentElement.getAttribute('data-theme') === 'dark'`);
@@ -122,7 +123,7 @@ try {
   );
   assert.ok(box[0] > 1200 && box[1] > 700, `full page on desktop: ${box}`);
   await shot('models');
-  await b('screenshot', `${process.cwd()}/docs/verification/settings-models-dark.png`);
+  await b('screenshot', `${process.cwd()}/${verifyOut}/settings-models-dark.png`);
   step(
     `Map menu Settings opens a ${Math.round(box[0])}x${Math.round(box[1])} page, title focused; Models page alone with suggestions and concept matching; band holds no settings`,
   );
@@ -146,7 +147,7 @@ try {
   ])
     assert.ok(conn.includes(s), s);
   await shot('connections');
-  await b('screenshot', `${process.cwd()}/docs/verification/settings-connections-light.png`);
+  await b('screenshot', `${process.cwd()}/${verifyOut}/settings-connections-light.png`);
   await b('find', 'role', 'button', 'click', '--name', 'Add endpoint', '--exact');
   await b('find', 'label', 'Name', 'fill', 'Local llama');
   await b('find', 'label', 'Base URL', 'fill', upstream.baseUrl);
@@ -227,7 +228,7 @@ try {
     assert.ok(bars >= 2, `${mode} usage series draw in distinct fills: ${bars}`);
     await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
     await shot(`usage-${mode}`);
-    await b('screenshot', `${process.cwd()}/docs/verification/settings-usage-${mode}.png`);
+    await b('screenshot', `${process.cwd()}/${verifyOut}/settings-usage-${mode}.png`);
   }
   await b('set', 'viewport', '390', '844');
   for (const mode of ['dark', 'light']) {
@@ -244,10 +245,7 @@ try {
     await wait(`document.documentElement.getAttribute('data-theme') === '${mode}'`);
     await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
     await shot(`mobile-interface-${mode}`);
-    await b(
-      'screenshot',
-      `${process.cwd()}/docs/verification/settings-mobile-interface-${mode}.png`,
-    );
+    await b('screenshot', `${process.cwd()}/${verifyOut}/settings-mobile-interface-${mode}.png`);
     await tab('Usage');
     await wait(`${dialog}.querySelector('.usage-bar rect[data-series]')`);
     assert.equal(
@@ -257,7 +255,7 @@ try {
     );
     await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
     await shot(`mobile-usage-${mode}`);
-    await b('screenshot', `${process.cwd()}/docs/verification/settings-mobile-usage-${mode}.png`);
+    await b('screenshot', `${process.cwd()}/${verifyOut}/settings-mobile-usage-${mode}.png`);
   }
   await b('set', 'viewport', '1440', '900');
   await b('eval', `localStorage.removeItem('treetutor.appearance'); true`);
@@ -418,7 +416,7 @@ try {
     'no horizontal overflow',
   );
   await shot('mobile-connections');
-  await b('screenshot', `${process.cwd()}/docs/verification/settings-mobile-connections-dark.png`);
+  await b('screenshot', `${process.cwd()}/${verifyOut}/settings-mobile-connections-dark.png`);
   await b('press', 'Escape');
   await closed();
   await wait(`${active}?.matches('.band-contents')`);
@@ -441,7 +439,7 @@ try {
   step('ChatGPT connect follows the app auth URL (local fixture redirect only)');
 
   writeFileSync(
-    'docs/verification/settings-window.json',
+    `${verifyOut}/settings-window.json`,
     JSON.stringify(
       {
         issue: 'TreeTutor-u7v.3, TreeTutor-nwx.8, TreeTutor-y36.9, TreeTutor-2li.2',
@@ -450,17 +448,15 @@ try {
           'Production build and real app HTTP/storage, agent-browser Chromium. Synthetic Claude sign-in/models, Codex auth failure/redirect, reported usage and loopback OpenAI-compatible upstream. No native provider authentication or inference claimed.',
         steps,
         screenshots: [
-          'docs/verification/settings-interface-dark.png',
-          'docs/verification/settings-models-dark.png',
-          'docs/verification/settings-usage-dark.png',
-          'docs/verification/settings-usage-light.png',
-          'docs/verification/settings-interface-light.png',
-          'docs/verification/settings-connections-light.png',
-          'docs/verification/settings-mobile-connections-dark.png',
+          `${verifyOut}/settings-interface-dark.png`,
+          `${verifyOut}/settings-models-dark.png`,
+          `${verifyOut}/settings-usage-dark.png`,
+          `${verifyOut}/settings-usage-light.png`,
+          `${verifyOut}/settings-interface-light.png`,
+          `${verifyOut}/settings-connections-light.png`,
+          `${verifyOut}/settings-mobile-connections-dark.png`,
           ...['interface', 'usage'].flatMap((section) =>
-            ['dark', 'light'].map(
-              (mode) => `docs/verification/settings-mobile-${section}-${mode}.png`,
-            ),
+            ['dark', 'light'].map((mode) => `${verifyOut}/settings-mobile-${section}-${mode}.png`),
           ),
           ...[
             'models',

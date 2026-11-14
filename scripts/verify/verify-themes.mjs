@@ -1,6 +1,7 @@
 // Themes (TreeTutor-got.14/.15): Paperback default, Forest/Harbor/Dusk change surfaces in light and dark, persist across reload,
 // leaves Appearance alone; question bubbles take each theme's colour and an old saved tint is ignored; unknown saved values open Paperback. Built app, isolated database,
-// synthetic providers, agent-browser Chromium. Screenshots go to docs/verification/.
+// synthetic providers, agent-browser Chromium. Screenshots go to the verify output folder (lib/output.mjs).
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,7 +21,7 @@ const wait = (code) => b('wait', '--fn', `!!(${code})`, '--timeout', '15000');
 const shot = async (name) => {
   await wait('document.getAnimations().every(a => a.playState !== "running")');
   await new Promise((r) => setTimeout(r, 300));
-  return b('screenshot', `${process.cwd()}/docs/verification/themes-${name}.png`);
+  return b('screenshot', `${process.cwd()}/${verifyOut}/themes-${name}.png`);
 };
 const step = (text) => console.log(`ok - ${text}`);
 
@@ -44,7 +45,7 @@ const app = createApp({
 });
 await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-mkdirSync('docs/verification', { recursive: true });
+mkdirSync(verifyOut, { recursive: true });
 
 // Resolved token colour at the app root, and the theme the root wears.
 const color = (token, prop = 'backgroundColor') =>

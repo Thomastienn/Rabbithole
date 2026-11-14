@@ -1,4 +1,5 @@
 // Reopen a native smoke artifact and decode it through the production player; no generation is allowed.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -10,7 +11,7 @@ import { createApp } from '../../server/app.mjs';
 // argv: native smoke report (default: the 2D Codex run) and the output report.
 const [
   input = 'docs/verification/narrated-video-native-codex.json',
-  output = 'docs/verification/narrated-playback.json',
+  output = `${verifyOut}/narrated-playback.json`,
 ] = process.argv.slice(2);
 const native = JSON.parse(readFileSync(input));
 const store = new Store(join(native.data, 'trees.sqlite'));
@@ -37,16 +38,7 @@ const app = createApp({
 });
 await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
 const run = promisify(execFile),
-  session = (
-    await run('agent-browser', [
-      'session',
-      'id',
-      '--scope',
-      'worktree',
-      '--prefix',
-      'narrated-playback',
-    ])
-  ).stdout.trim();
+  session = `narrated-playback-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 1024 * 1024 })).stdout;
 const ev = async (script) => JSON.parse(await b('eval', script, '--json')).data.result;

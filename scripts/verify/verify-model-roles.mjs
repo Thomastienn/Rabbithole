@@ -1,4 +1,5 @@
 // Focused Settings role check: built UI, temporary SQLite and controlled providers; no paid inference.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -364,7 +365,7 @@ try {
     'Dark/light narrow Settings fit without horizontal overflow; naming field error and profile menu captured in both',
   );
   writeFileSync(
-    'docs/verification/model-roles-ui.json',
+    `${verifyOut}/model-roles-ui.json`,
     JSON.stringify(
       {
         date: new Date().toISOString(),

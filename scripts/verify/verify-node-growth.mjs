@@ -1,3 +1,4 @@
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -298,19 +299,13 @@ try {
   await click('Fit tree');
   await browser('screenshot', resolve('.impeccable/review/node-growth-mobile.png'));
   assert.equal(await evaluate('document.documentElement.scrollWidth === innerWidth'), true);
-  writeFileSync(
-    'docs/verification/node-growth-results.json',
-    JSON.stringify(report, null, 2) + '\n',
-  );
+  writeFileSync(`${verifyOut}/node-growth-results.json`, JSON.stringify(report, null, 2) + '\n');
   console.log(
     'PASS: growing node pinned; covered subtree shifts; clear neighbours stay; drag defers then resolves; hidden boxes take no space; unfold clears overlaps; one-minute batch and idle; Fit; exact positions after SQLite/HTTP restart; mobile.',
   );
 } catch (error) {
   report.error = error.message;
-  writeFileSync(
-    'docs/verification/node-growth-results.json',
-    JSON.stringify(report, null, 2) + '\n',
-  );
+  writeFileSync(`${verifyOut}/node-growth-results.json`, JSON.stringify(report, null, 2) + '\n');
   throw error;
 } finally {
   finish?.();

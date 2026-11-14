@@ -1,4 +1,5 @@
 // Full Map and conversation states: production build, isolated SQLite and synthetic provider only.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -127,7 +128,7 @@ const app = createApp({
 });
 await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${app.server.address().port}`,
-  out = resolve('docs/verification');
+  out = resolve(verifyOut);
 mkdirSync(out, { recursive: true });
 const report = {
   issue: 'TreeTutor-y36.7',

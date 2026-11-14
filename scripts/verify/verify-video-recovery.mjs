@@ -1,5 +1,6 @@
 // Browser fixture for TreeTutor-vm4.3: Interrupted and Unavailable after restart, Cancel and Retry by keyboard without losing focus,
 // regeneration as a new attempt. Synthetic providers; renders run for real in the bubblewrap sandbox. Needs `npm run build`.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -131,16 +132,7 @@ if (process.argv[2] === '--serve') {
   writeFileSync(join(dir, 'calls.jsonl'), '');
 
   const run = promisify(execFile);
-  const session = (
-    await run('agent-browser', [
-      'session',
-      'id',
-      '--scope',
-      'worktree',
-      '--prefix',
-      'video-recovery',
-    ])
-  ).stdout.trim();
+  const session = `video-recovery-${process.pid}`;
   const b = async (...args) =>
     (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 4 * 1024 * 1024 }))
       .stdout;
@@ -336,7 +328,7 @@ if (process.argv[2] === '--serve') {
     await b('screenshot', join(process.cwd(), '.impeccable/review/video-recovery.png'));
 
     writeFileSync(
-      'docs/verification/smart-video-recovery.json',
+      `${verifyOut}/smart-video-recovery.json`,
       JSON.stringify(
         {
           checkedAt: new Date().toISOString(),

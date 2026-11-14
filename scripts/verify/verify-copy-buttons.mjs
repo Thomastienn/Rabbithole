@@ -1,5 +1,6 @@
 // Built-app browser fixture (in-process fake provider, not a live model) for reply and code-block Copy.
 // shortcut: navigator.clipboard.writeText is stubbed to record the text, since headless Chrome denies the real clipboard.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -114,7 +115,7 @@ try {
     await wait(
       `getComputedStyle(document.querySelector('.code-copy')).opacity === '1' && getComputedStyle(document.querySelector('.reply-copy')).opacity === '1'`,
     );
-    const file = join('docs', 'verification', `copy-buttons-${mode}.png`);
+    const file = join(verifyOut, `copy-buttons-${mode}.png`);
     await b('screenshot', file);
     steps.push(`${mode}: hover shows Copy code and Copy reply; ${file}`);
   }

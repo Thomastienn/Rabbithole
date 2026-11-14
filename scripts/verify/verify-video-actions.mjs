@@ -1,6 +1,7 @@
 // Live desktop check of library Show in folder and Move to trash on disposable videos, driven by keyboard in the
 // production build. Reveal and trash use the real desktop boundary (FileManager1/xdg-open and gio trash); only the
 // one failed-trash UI check wraps it with an injected failure. Requires a running desktop session.
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import {
   readFileSync,
@@ -20,7 +21,7 @@ import { createApp } from '../../server/app.mjs';
 import { mediaPath } from '../../server/media/videos.mjs';
 import { desktop } from '../../server/desktop.mjs';
 
-const [output = 'docs/verification/video-actions.json'] = process.argv.slice(2);
+const [output = `${verifyOut}/video-actions.json`] = process.argv.slice(2);
 const run = promisify(execFile),
   dir = mkdtempSync(join(tmpdir(), 'tt-video-actions-'));
 const store = new Store(join(dir, 'trees.sqlite')),
@@ -80,9 +81,7 @@ const app = createApp({
 });
 await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-const session = (
-  await run('agent-browser', ['session', 'id', '--scope', 'worktree', '--prefix', 'video-actions'])
-).stdout.trim();
+const session = `video-actions-${process.pid}`;
 const b = async (...args) =>
   (await run('agent-browser', ['--session', session, ...args], { maxBuffer: 1024 * 1024 })).stdout;
 const ev = async (script) => JSON.parse(await b('eval', script, '--json')).data.result;
@@ -210,7 +209,7 @@ try {
       `[...document.querySelectorAll('.view-tabs button')].find(x=>x.textContent.trim()==='Videos').click();true`,
     );
     await b('wait', `.video-library [data-artifact="${failing}"]`);
-    await b('screenshot', resolve(`docs/verification/videos-${mode}.png`));
+    await b('screenshot', resolve(`${verifyOut}/videos-${mode}.png`));
   }
   assert.equal(calls, 0);
   assert.equal(JSON.stringify(store.usageEvents()), usage);

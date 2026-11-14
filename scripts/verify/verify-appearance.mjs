@@ -1,5 +1,6 @@
 // Appearance (TreeTutor-nwx.3): dark default, Light persists, System follows the OS, Mermaid follows the app.
-// Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to docs/verification/.
+// Built app, isolated database, synthetic providers, agent-browser Chromium. Screenshots go to the verify output folder (lib/output.mjs).
+import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -19,7 +20,7 @@ const wait = (code) => b('wait', '--fn', `!!(${code})`, '--timeout', '15000');
 const shot = async (name) => {
   await wait('document.getAnimations().every(a => a.playState !== "running")');
   await new Promise((r) => setTimeout(r, 300));
-  return b('screenshot', `${process.cwd()}/docs/verification/appearance-${name}.png`);
+  return b('screenshot', `${process.cwd()}/${verifyOut}/appearance-${name}.png`);
 };
 // Accessible name of a form control, the parts this app uses.
 const nameOf = `(el => (el?.getAttribute('aria-label') ?? el?.getAttribute('aria-labelledby')?.split(' ').map(id => document.getElementById(id)?.textContent).join(' ') ?? el?.labels?.[0]?.textContent ?? '').trim())`;
@@ -61,7 +62,7 @@ const app = createApp({
 });
 await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-mkdirSync('docs/verification', { recursive: true });
+mkdirSync(verifyOut, { recursive: true });
 
 // Resolved colour of a token on the page, as [r, g, b, a].
 const probe = `(token, prop = 'color') => { const el = document.createElement('i'); el.style[prop] = 'var(' + token + ')'; document.querySelector('.astryx-theme, #root').append(el);
