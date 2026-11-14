@@ -39,7 +39,7 @@ for (const name of ['claude', 'codex'])
       name === 'claude'
         ? new Claude(dir, launch, (cmd, args, opts, cb) => cb(null, '{"loggedIn":true}'))
         : new Codex({ token: async () => 'fixture-subscription-token' }, dir, launch);
-    const { post, store, origin } = await open(t, { [name]: native });
+    const { app, post, store, origin } = await open(t, { [name]: native });
     await post('/api/settings/endpoint', {
       baseUrl: fake.baseUrl,
       apiKey: 'switch-fixture-secret',
@@ -56,6 +56,7 @@ for (const name of ['claude', 'codex'])
           : 'Peterson uses two flags.',
       ]);
     const child = await compacted(
+      app,
       origin,
       (
         await (
@@ -129,6 +130,7 @@ for (const name of ['claude', 'codex'])
     assert.doesNotMatch(JSON.stringify(continued), /LATER ROOT MUST NOT ENTER CHILD/);
     assert.equal(store.tree(child.id).thread, null);
     const nested = await compacted(
+      app,
       origin,
       (
         await (

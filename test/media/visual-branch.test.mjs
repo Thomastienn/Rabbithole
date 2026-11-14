@@ -44,6 +44,7 @@ async function open(path = join(mkdtempSync(join(tmpdir(), 'tt-visual-branch-'))
     });
   return {
     store,
+    app,
     calls,
     app,
     path,
@@ -88,7 +89,7 @@ test('visual branches freeze the visual and part passage, inherit compact contex
       question: 'Why do they meet?',
     });
     assert.equal(response.status, 201);
-    const child = await compacted(env.origin, (await response.json()).id);
+    const child = await compacted(env.app, env.origin, (await response.json()).id);
     assert.deepEqual(child.branch, {
       parent: parent.id,
       messageId,

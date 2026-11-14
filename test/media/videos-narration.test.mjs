@@ -127,7 +127,7 @@ test('TTS failure and invalid returned timing stay final until explicit Retry; c
   const failed = await until(() =>
     env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
   );
-  await new Promise((r) => setTimeout(r, 80));
+  await env.app.settled();
   assert.equal(speech, 1);
   assert.equal(calls, 1);
   assert.equal(renders, 0);
@@ -149,7 +149,7 @@ test('TTS failure and invalid returned timing stay final until explicit Retry; c
     return a.status === 'ready' && a;
   });
   await release();
-  await new Promise((r) => setTimeout(r, 50));
+  await env.app.settled();
   assert.notEqual(ready.attempt, old.attempt);
   assert.equal(ready.input, old.input);
   assert.equal(env.store.artifact(tree.id, failed.id).attempt, ready.attempt);

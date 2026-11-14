@@ -90,6 +90,7 @@ test('off prevents new suggestion calls, persists after restart and keeps saved 
     effort: null,
   });
   await env.post(`/api/trees/${tree.id}/messages`, { text: 'No suggestions for this reply' });
+  env.release();
   await env.settled();
   const saved = (await env.get(`/api/trees/${tree.id}`)).suggestions;
   assert.equal(saved.length, 1);

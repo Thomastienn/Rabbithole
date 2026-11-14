@@ -1,3 +1,4 @@
+import { until, observeProvider } from '../support/events.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
@@ -30,7 +31,11 @@ test('branch-first: the child is saved and listed before a held compaction finis
       emit({ type: 'status', status: 'completed' });
     },
   };
-  const app = createApp({ store, provider, auth: { status: () => ({ connected: true }) } });
+  const app = createApp({
+    store,
+    provider: observeProvider(provider),
+    auth: { status: () => ({ connected: true }) },
+  });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`;
   const { csrf } = await (await fetch(`${origin}/api/state`)).json();
@@ -112,7 +117,11 @@ test('branch-first: a failed compaction keeps the child with a readable error; R
       emit({ type: 'status', status: 'completed' });
     },
   };
-  const app = createApp({ store, provider, auth: { status: () => ({ connected: true }) } });
+  const app = createApp({
+    store,
+    provider: observeProvider(provider),
+    auth: { status: () => ({ connected: true }) },
+  });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`;
   const { csrf } = await (await fetch(`${origin}/api/state`)).json();
@@ -133,6 +142,7 @@ test('branch-first: a failed compaction keeps the child with a readable error; R
     );
     const branch = async () => {
       const child = await compacted(
+        app,
         origin,
         (
           await (
@@ -250,7 +260,11 @@ test('opening the branch form prepares compaction: submit reuses it, cancel abor
       emit({ type: 'status', status: 'completed' });
     },
   };
-  const app = createApp({ store, provider, auth: { status: () => ({ connected: true }) } });
+  const app = createApp({
+    store,
+    provider: observeProvider(provider),
+    auth: { status: () => ({ connected: true }) },
+  });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`;
   const { csrf } = await (await fetch(`${origin}/api/state`)).json();
@@ -260,7 +274,6 @@ test('opening the branch form prepares compaction: submit reuses it, cancel abor
       headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
       body: JSON.stringify(body),
     });
-  const tick = () => new Promise((resolve) => setTimeout(resolve, 20));
   try {
     const parent = store.create('Parent');
     const messageId = store.message(
@@ -282,13 +295,13 @@ test('opening the branch form prepares compaction: submit reuses it, cancel abor
       202,
       'reopening on the same passage keeps the run',
     );
-    await tick();
+    await until(() => calls.length === 1);
     assert.equal(calls.length, 1);
     const child = await (
       await post(`${parent.id}/branches`, { ...anchor, question: 'Why roots?' })
     ).json();
     calls[0].release();
-    assert.equal((await compacted(origin, child.id)).branch.snapshot, 'Prepared context 1.');
+    assert.equal((await compacted(app, origin, child.id)).branch.snapshot, 'Prepared context 1.');
     assert.equal(calls.length, 1);
     assert.match(calls[0].text, /Roots/);
     assert.doesNotMatch(calls[0].text, /Why roots\?/, 'compaction never sees the question');
@@ -296,32 +309,30 @@ test('opening the branch form prepares compaction: submit reuses it, cancel abor
     // Prepare then cancel aborts the call; no child is created.
     const before = store.list().length;
     await post(`${parent.id}/prepare`, anchor);
-    await tick();
+    await until(() => calls.length === 2);
     assert.equal(
       (await post(`${parent.id}/unprepare`, { messageId, start: 6, end: 14, text: 'exchange' }))
         .status,
       200,
     );
-    await tick();
     assert.equal(calls[1].aborted, false, 'closing another passage leaves this run');
     assert.equal((await post(`${parent.id}/unprepare`, anchor)).status, 200);
-    await tick();
     assert.equal(calls[1].aborted, true);
     assert.equal(store.list().length, before);
 
     // Prepare, parent gains a message, submit: the prepared run is discarded and compaction reruns.
     await post(`${parent.id}/prepare`, anchor);
-    await tick();
+    await until(() => calls.length === 3);
     store.message(parent.id, 'user', 'And leaves?', 'completed');
     const rerun = await (
       await post(`${parent.id}/branches`, { ...anchor, question: 'Why roots?' })
     ).json();
-    await tick();
+    await until(() => calls.length === 4);
     assert.equal(calls[2].aborted, true);
     assert.equal(calls.length, 4);
     assert.match(calls[3].text, /And leaves\?/);
     calls[3].release();
-    assert.equal((await compacted(origin, rerun.id)).branch.snapshot, 'Prepared context 4.');
+    assert.equal((await compacted(app, origin, rerun.id)).branch.snapshot, 'Prepared context 4.');
 
     // Usage history records every quick-thinking compaction call, cancelled ones included.
     const events = (await (await fetch(`${origin}/api/usage`)).json()).events.filter(

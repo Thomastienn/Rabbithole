@@ -47,6 +47,7 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
     store = new Store(join(dir, 'trees.sqlite'));
   const app = createApp({
     store,
+    diagramParse: async () => true,
     provider,
     auth: { status: () => ({ connected: true }) },
     dir,

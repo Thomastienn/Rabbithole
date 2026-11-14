@@ -198,7 +198,7 @@ test('failed or timed-out script calls stay final; only explicit Retry calls aga
       const failed = await until(() =>
         env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
       );
-      await new Promise((r) => setTimeout(r, 80));
+      await env.app.settled();
       assert.equal(calls, 1);
       assert.equal(renders, 0);
       assert.equal(
@@ -243,7 +243,7 @@ test('cancel during smart capability lookup prevents inference, including a late
     const job = env.store.tree(tree.id).artifacts[0];
     await env.post(`/api/trees/${tree.id}/artifacts/${job.id}/cancel`);
     release();
-    await new Promise((r) => setTimeout(r, 30));
+    await env.app.settled();
     assert.equal(calls, 0);
     assert.equal(env.store.artifact(tree.id, job.id).status, 'canceled');
     assert.equal(existsSync(mediaPath(env.dir, job.id)), false);

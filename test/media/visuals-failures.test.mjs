@@ -179,7 +179,8 @@ test('provider failures and deadlines do not automatically retry or expose diagn
     assert.ok(signal.aborted);
     complete(late, source);
     hold.resolve();
-    await new Promise((r) => setTimeout(r, 20));
+    await hold.promise;
+    await env.app.settled();
     assert.ok(
       (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every((a) => a.status === 'failed'),
     );
@@ -237,7 +238,8 @@ test('malformed visuals remain visible and retryable; shutdown recovers pending 
     assert.match(recovered.error, /interrupted/);
     assert.equal(calls, count);
     hold.resolve();
-    await new Promise((r) => setTimeout(r, 20));
+    await hold.promise;
+    await env.app.settled();
     assert.equal((await env.get(`/api/trees/${tree.id}`)).artifacts[0].status, 'failed');
   } finally {
     hold.resolve();

@@ -1,12 +1,11 @@
-import { EdgeTTS } from '@andresaya/edge-tts';
-import { RenderInternals } from '@remotion/renderer';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const run = promisify(execFile);
-export async function edgeNarration(script, signal, client = new EdgeTTS()) {
+export async function edgeNarration(script, signal, client) {
+  client ??= new (await import('@andresaya/edge-tts')).EdgeTTS();
   // The pinned client's clock-recovery hook otherwise retries a failed handshake.
   client.recoverHandshake = async () => false;
   try {
@@ -32,6 +31,7 @@ export async function stageNarration(workspace, result, signal) {
   const audio = join(assets, 'narration.mp3');
   await writeFile(audio, result.audio, { mode: 0o600 });
   // Measure the actual file, not word count or the client's bitrate estimate. Remotion ships ffprobe.
+  const { RenderInternals } = await import('@remotion/renderer');
   const binary = RenderInternals.getExecutablePath({
     type: 'ffprobe',
     indent: false,

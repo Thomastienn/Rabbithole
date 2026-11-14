@@ -170,7 +170,15 @@ export function compactionMessages(tree) {
     });
 }
 
-export async function generateDiagram(provider, selection, task, parentSignal, timeout = 300000) {
+// parse(source) resolves true when valid; by default a jsdom+Mermaid worker checks it.
+export async function generateDiagram(
+  provider,
+  selection,
+  task,
+  parentSignal,
+  timeout = 300000,
+  parse,
+) {
   const controller = new AbortController();
   const cancel = () => controller.abort(new Error('Diagram generation cancelled.'));
   const timer = setTimeout(
@@ -222,6 +230,10 @@ export async function generateDiagram(provider, selection, task, parentSignal, t
     if (controller.signal.aborted) throw controller.signal.reason;
     if (status !== 'completed') throw new Error('Diagram generation did not complete.');
     const source = safeDiagramSource([...items.values()].join('\n\n'));
+    if (parse) {
+      if (!(await parse(source))) throw new Error('Invalid Mermaid syntax.');
+      return source;
+    }
     await new Promise((resolve, reject) => {
       parser = new Worker(new URL('./mermaid-parse.mjs', import.meta.url), {
         workerData: source,

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { task, directive, source, complete, open } from '../support/diagram-kit.mjs';
+import { task, directive, source, complete, open, until } from '../support/diagram-kit.mjs';
 
 test('Stop and deadline abort diagram workers, bound uncooperative providers and ignore late results', async () => {
   for (const stop of [true, false]) {
@@ -187,11 +187,11 @@ test('a stopped job cannot publish late results into another conversation runnin
     const streamA = env
       .post(`/api/trees/${a.id}/messages`, { text: 'Draw A.' })
       .then((r) => r.text());
-    while (!workers.has('A')) await new Promise((resolve) => setTimeout(resolve, 5));
+    await until(() => workers.has('A'));
     const streamB = env
       .post(`/api/trees/${b.id}/messages`, { text: 'Draw B.' })
       .then((r) => r.text());
-    while (!workers.has('B')) await new Promise((resolve) => setTimeout(resolve, 5));
+    await until(() => workers.has('B'));
     assert.equal((await env.post(`/api/trees/${a.id}/stop`)).status, 200);
     const textA = await streamA;
     assert.equal(workers.get('A').signal.aborted, true);

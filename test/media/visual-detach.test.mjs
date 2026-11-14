@@ -1,3 +1,4 @@
+import { until, observeStore, observeProvider } from '../support/events.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
@@ -21,13 +22,6 @@ const complete = (emit, text) => {
   emit({ type: 'item', item: 'answer', text });
   emit({ type: 'status', status: 'completed' });
 };
-const until = async (predicate) => {
-  const end = Date.now() + 5000;
-  while (!(await predicate())) {
-    assert.ok(Date.now() < end, 'condition timed out');
-    await new Promise((r) => setTimeout(r, 5));
-  }
-};
 
 async function open(visual, options = {}) {
   const calls = { suggest: [], chat: [] },
@@ -47,10 +41,12 @@ async function open(visual, options = {}) {
       );
     },
   };
-  const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-detach-')), 'trees.sqlite'));
+  const store = observeStore(
+    new Store(join(mkdtempSync(join(tmpdir(), 'tt-detach-')), 'trees.sqlite')),
+  );
   const app = createApp({
     store,
-    providers: { claude },
+    providers: { claude: observeProvider(claude) },
     defaultProvider: 'claude',
     auth: { status: () => ({ connected: true }) },
     suggestions: true,
@@ -74,6 +70,7 @@ async function open(visual, options = {}) {
   const tree = store.create('Rounds', 'claude', 'smart');
   return {
     calls,
+    app,
     get,
     post,
     tree,
@@ -130,7 +127,8 @@ test('done arrives with the text while a held visual is pending; branching and s
     );
     saved = await env.get(`/api/trees/${env.tree.id}`);
     assert.equal(saved.artifacts[0].source, source);
-    await until(async () => !(await env.get('/api/state')).videos.includes(env.tree.id));
+    await env.app.settled();
+    assert.ok(!(await env.get('/api/state')).videos.includes(env.tree.id));
   } finally {
     release();
     await env.close();

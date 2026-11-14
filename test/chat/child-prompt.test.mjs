@@ -100,7 +100,7 @@ for (const name of ['claude', 'codex', 'openai'])
       question: 'what is this',
     });
     assert.equal(created.status, 201);
-    const child = await compacted(origin, (await created.json()).id);
+    const child = await compacted(app, origin, (await created.json()).id);
     assert.ok(child.branch.snapshot, 'compaction settled');
     assert.match(
       await (await post(`/api/trees/${child.id}/messages`, { text: 'what is this' })).text(),

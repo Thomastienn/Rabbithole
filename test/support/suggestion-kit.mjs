@@ -1,13 +1,12 @@
+import { observeStore, observeProvider } from './events.mjs';
+export { until } from './events.mjs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { fixtureLaunch } from './fixture-launch.mjs';
 import { Store } from '../../server/store.mjs';
 import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { OpenAI } from '../../server/providers/openai.mjs';
 import { createApp } from '../../server/app.mjs';
-
-export const fixture = fileURLToPath(new URL('../support/protocol-fixture.mjs', import.meta.url));
 
 export const SAVED = [
   { start: 0, end: 13, text: 'Authoritative' },
@@ -17,13 +16,11 @@ export const SAVED = [
 export async function start(dir, suggestions = true, connected = { claude: true, codex: true }) {
   const calls = [],
     requests = [],
-    turns = [];
-  const launch = (command, args, options) => {
-    const child = spawn(
-      process.execPath,
-      [fixture, ...(command === 'claude' ? args : [])],
-      options,
-    );
+    turns = [],
+    children = [];
+  const launch = (command, args) => {
+    const child = fixtureLaunch(command, args);
+    children.push(child);
     if (command === 'claude') {
       const end = child.stdin.end.bind(child.stdin);
       child.stdin.end = (input) => {
@@ -49,7 +46,7 @@ export async function start(dir, suggestions = true, connected = { claude: true,
     }
     return child;
   };
-  const store = new Store(join(dir, 'trees.sqlite'));
+  const store = observeStore(new Store(join(dir, 'trees.sqlite')));
   const claude = new Claude(dir, launch, (_c, _a, _o, cb) =>
     cb(null, JSON.stringify({ loggedIn: connected.claude })),
   );
@@ -63,6 +60,8 @@ export async function start(dir, suggestions = true, connected = { claude: true,
     dir,
     launch,
   );
+  observeProvider(claude);
+  observeProvider(codex);
   const endpoint = new OpenAI(dir);
   const app = createApp({
     store,
@@ -84,12 +83,12 @@ export async function start(dir, suggestions = true, connected = { claude: true,
       body: JSON.stringify(data),
     });
   const post = async (path, data = {}) => (await request(path, data)).text();
-  const settled = async () => {
-    while ((await get('/api/state')).suggesting.length) await new Promise((r) => setTimeout(r, 20));
-  };
+  const settled = () => app.settled();
   const suggestionCalls = () => calls.filter((c) => c.system.startsWith('You mark'));
   return {
     store,
+    app,
+    release: () => children.forEach((c) => c.release()),
     get,
     post,
     request,

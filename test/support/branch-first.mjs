@@ -1,6 +1,5 @@
-// Branch-first: POST /branches returns before background compaction; poll state until this child's compaction settles.
-export async function compacted(origin, id) {
-  while ((await (await fetch(`${origin}/api/state`)).json()).compacting.includes(id))
-    await new Promise((resolve) => setTimeout(resolve, 5));
+// Compaction already exposes a completion promise inside the in-process app.
+export async function compacted(app, origin, id) {
+  await app.settled();
   return (await fetch(`${origin}/api/trees/${id}`)).json();
 }

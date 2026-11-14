@@ -71,6 +71,7 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     );
     assert.equal(env.store.artifact(b.id, jobB.id).status, 'pending');
 
+    const canceledWork = env.app.settled(jobA.id);
     // Retry: same row, new attempt, same frozen input, no learner message added.
     const response = await (await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).json();
     assert.equal(response.input, undefined);
@@ -98,7 +99,7 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
 
     // The canceled attempt's late output arrives first and is ignored; the retry publishes.
     renders[0]();
-    await new Promise((r) => setTimeout(r, 100));
+    await canceledWork;
     assert.equal(env.store.artifact(a.id, jobA.id).status, 'pending');
     assert.equal(existsSync(mediaPath(env.dir, jobA.id)), false);
     renders[2]();
@@ -266,7 +267,8 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
     assert.equal((await post(kept.id)).status, 409);
     assert.equal((await post(lost.id)).status, 200);
     assert.equal((await post(running.id)).status, 200);
-    await until(() => store.tree(tree.id).artifacts.every((a) => a.status === 'ready'));
+    await app.settled();
+    assert.ok(store.tree(tree.id).artifacts.every((a) => a.status === 'ready'));
     assert.equal(calls.length, 2);
     assert.equal(
       JSON.parse(calls.find((c) => c[1].includes('Make a video.'))?.[1]).request,

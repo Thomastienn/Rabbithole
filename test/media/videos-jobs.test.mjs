@@ -421,7 +421,7 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
     env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
   );
   const count = fake.calls.filter((c) => c.body).length;
-  await new Promise((r) => setTimeout(r, 80));
+  await env.app.settled();
   assert.equal(fake.calls.filter((c) => c.body).length, count);
   await env.post('/api/settings/smart', { model: null, followEffort: true });
   fake.reply = (_req, res) => streamReply(res, [composition]);

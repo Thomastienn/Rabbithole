@@ -253,8 +253,7 @@ test('video worker attempts record their own reported usage, including failed an
     });
   const tree = store.create('Video', 'codex', 'worker-model');
   const settle = async (id, status) => {
-    for (let i = 0; i < 200 && store.artifact(tree.id, id).status !== status; i++)
-      await new Promise((r) => setTimeout(r, 25));
+    await app.settled(id);
     assert.equal(store.artifact(tree.id, id).status, status);
   };
   const video = async (text) => {
@@ -272,12 +271,7 @@ test('video worker attempts record their own reported usage, including failed an
   await settle(hold, 'canceled');
   const silent = await video('Make a video, silent');
   await settle(silent, 'failed');
-  for (
-    let i = 0;
-    i < 200 && store.usageEvents().events.filter((e) => e.task === 'video').length < 4;
-    i++
-  )
-    await new Promise((r) => setTimeout(r, 25));
+  await app.settled();
 
   const videos = store
     .usageEvents()

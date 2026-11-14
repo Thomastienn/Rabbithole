@@ -144,7 +144,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
     fail = true;
     const failed = await post(body);
     assert.equal(failed.status, 201);
-    const orphan = await compacted(origin, (await failed.json()).id);
+    const orphan = await compacted(app, origin, (await failed.json()).id);
     assert.equal(orphan.branch.snapshot, '');
     const stream = await (
       await fetch(`${origin}/api/trees/${orphan.id}/messages`, {
@@ -170,7 +170,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
     store.db.exec('DROP TRIGGER reject_branch');
     const response = await post(body);
     assert.equal(response.status, 201);
-    const child = await compacted(origin, (await response.json()).id);
+    const child = await compacted(app, origin, (await response.json()).id);
     assert.equal(child.model, 'fixture-model');
     assert.equal(child.provider, 'codex');
     assert.equal(child.thread, null);

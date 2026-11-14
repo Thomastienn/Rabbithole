@@ -1,3 +1,4 @@
+import { processOutput } from '../support/process-output.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
@@ -9,7 +10,6 @@ import { Auth } from '../../server/providers/auth.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
-import { compacted } from '../support/branch-first.mjs';
 
 test('credential-bearing auth keeps tokens out of browser state, catalog, replies and reconnect URL', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'treetutor-credentials-'));
@@ -99,25 +99,16 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
       env: { ...process.env, PATH: dir, TREETUTOR_DATA_DIR: dir, TREETUTOR_PORT: '0' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    const exited = new Promise((resolve) => child.once('exit', resolve));
-    let output = '';
+    const { exited, waitFor, output } = processOutput(child);
     for (const pipe of [child.stdout, child.stderr])
-      pipe.on('data', (chunk) => {
-        output += chunk;
-        logs.push(chunk.toString());
-      });
-    const deadline = Date.now() + 10000;
+      pipe.on('data', (chunk) => logs.push(chunk.toString()));
     const stop = async () => {
       if (child.exitCode === null) child.kill('SIGTERM');
       await exited;
     };
     t.after(stop);
-    while (!/Saved trees remain available/.test(output)) {
-      assert.equal(child.exitCode, null, 'server must start');
-      assert.ok(Date.now() < deadline, 'startup timed out');
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    const origin = output.match(/TreeTutor: (http:\/\/127\.0\.0\.1:\d+)/)[1];
+    await waitFor(/Saved trees remain available/);
+    const origin = output().match(/TreeTutor: (http:\/\/127\.0\.0\.1:\d+)/)[1];
     let csrf;
     const request = async (path, body, status = 200) => {
       const response = await fetch(
@@ -201,22 +192,22 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
   assert.equal(saved.messages.at(-1).text, 'Safe: [redacted] [redacted][redacted] End.');
   await app.request(`/api/previews?id=${tree.id}`);
   // Compaction output crosses the same boundary before its snapshot reaches SQLite.
-  const child = await compacted(
-    app.origin,
-    JSON.parse(
-      await app.request(
-        `/api/trees/${tree.id}/branches`,
-        {
-          messageId: saved.messages.at(-1).id,
-          start: 0,
-          end: 4,
-          text: 'Safe',
-          question: 'Branch question',
-        },
-        201,
-      ),
-    ).id,
+  const branch = JSON.parse(
+    await app.request(
+      `/api/trees/${tree.id}/branches`,
+      {
+        messageId: saved.messages.at(-1).id,
+        start: 0,
+        end: 4,
+        text: 'Safe',
+        question: 'Branch question',
+      },
+      201,
+    ),
   );
+  // The first child reply awaits compaction; no readiness polling across the process boundary.
+  await app.request(`/api/trees/${branch.id}/messages`, { text: 'Branch question' });
+  const child = JSON.parse(await app.request(`/api/trees/${branch.id}`));
   assert.equal(child.branch.snapshot, 'Safe: [redacted] [redacted][redacted] End.');
   fake.modelStatus = 401;
   fake.error = { message: apiKey };

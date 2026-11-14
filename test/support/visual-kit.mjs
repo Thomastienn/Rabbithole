@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import { observeStore, observeProvider } from './events.mjs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,24 +32,21 @@ export const deferred = () => {
   return { promise, resolve };
 };
 
-export const until = async (predicate) => {
-  const end = Date.now() + 5000;
-  while (!(await predicate())) {
-    assert.ok(Date.now() < end, 'condition timed out');
-    await new Promise((r) => setTimeout(r, 5));
-  }
-};
+export { until } from './events.mjs';
 
 export const models = async () => [{ model: 'smart', isDefault: true, efforts: ['low', 'high'] }];
 
 export async function open(chat, smart, options = {}) {
   const path = options.path ?? join(mkdtempSync(join(tmpdir(), 'tt-visuals-')), 'trees.sqlite');
   smart.models ??= models;
-  const store = new Store(path),
+  const store = observeStore(new Store(path)),
     smartProvider = options.smartProvider ?? 'claude';
   const app = createApp({
     store,
-    providers: { openai: { models, ...chat }, [smartProvider]: smart },
+    providers: {
+      openai: observeProvider({ models, ...chat }),
+      [smartProvider]: observeProvider(smart),
+    },
     auth: { status: () => ({ connected: true }) },
     ...options,
   });

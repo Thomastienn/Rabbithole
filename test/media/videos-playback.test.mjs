@@ -93,7 +93,7 @@ test('inline video exposes bounded live progress and its position, keeps inputs 
     assert.ok(!previews[other.id].some((m) => m.artifacts));
     gate();
     await until(() => env.store.artifact(tree.id, rendering.id).status === 'ready');
-    await until(async () => !(await state()).videos.length);
+    await env.app.settled();
     assert.deepEqual((await state()).videos, []);
     const ready = await artifact(tree.id);
     assert.equal(ready.status, 'ready');

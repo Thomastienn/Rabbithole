@@ -30,7 +30,7 @@ test('recursive branches compact fixed ancestor context without reading live anc
     const { csrf } = await (await fetch(`${origin}/api/state`)).json();
     return {
       get: async (id) => (await fetch(`${origin}/api/trees/${id}`)).json(),
-      compacted: (id) => compacted(origin, id),
+      compacted: (id) => compacted(app, origin, id),
       post: (route, body) =>
         fetch(`${origin}/api/trees${route}`, {
           method: 'POST',
@@ -167,7 +167,7 @@ test('quick thinking recursively compacts root, child and grandchild context wit
     const { csrf } = await (await fetch(`${origin}/api/state`)).json();
     return {
       get: async (id) => (await fetch(`${origin}/api/trees/${id}`)).json(),
-      compacted: (id) => compacted(origin, id),
+      compacted: (id) => compacted(app, origin, id),
       post: (route, body) =>
         fetch(`${origin}/api/trees${route}`, {
           method: 'POST',

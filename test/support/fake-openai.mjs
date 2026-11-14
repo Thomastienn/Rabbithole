@@ -1,3 +1,4 @@
+import { notify } from './events.mjs';
 import { createServer } from 'node:http';
 
 export function streamReply(res, parts, finish = 'stop') {
@@ -33,7 +34,11 @@ export async function fakeOpenAI(t) {
       res.writeHead(fake.modelStatus, { 'Content-Type': 'application/json', ...fake.modelHeaders });
       return res.end(JSON.stringify(fake.catalogue ?? { data: fake.models, error: fake.error }));
     }
-    if (req.url === '/v1/chat/completions') return fake.reply(req, res, body);
+    if (req.url === '/v1/chat/completions') {
+      const result = fake.reply(req, res, body);
+      notify();
+      return result;
+    }
     res.writeHead(404);
     res.end('Wrong API prefix');
   });

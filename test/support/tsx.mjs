@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 // registerHooks is synchronous, so use the esbuild copy vite ships (transformSync) rather than
 // vite's async transformWithEsbuild wrapper.
 const require = createRequire(import.meta.url);
-const { transformSync } = createRequire(require.resolve('vite'))('esbuild');
+let transformSync;
 
 registerHooks({
   resolve(specifier, context, next) {
@@ -27,6 +27,7 @@ registerHooks({
     if (/\.css(\?|$)/.test(url)) return { format: 'module', source: '', shortCircuit: true };
     if (!url.startsWith('file:') || !url.endsWith('.tsx')) return next(url, context);
     const path = fileURLToPath(url);
+    transformSync ??= createRequire(require.resolve('vite'))('esbuild').transformSync;
     const { code } = transformSync(readFileSync(path, 'utf8'), {
       loader: 'tsx',
       jsx: 'automatic',

@@ -1,3 +1,4 @@
+import { diagramReply } from '../../server/media/diagrams.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
@@ -59,52 +60,34 @@ test('an existing database gains the visual kind in place; saved Mermaid artifac
   }
 });
 
-test('tolerant parsing ignores unknown keys and trims over-long fields instead of rejecting the request', async () => {
-  const workers = [];
-  const env = await open({
-    generate: async (tree, text, emit) => {
-      if (!tree.id) {
-        workers.push(JSON.parse(text));
-        return complete(emit, source);
-      }
-      complete(
-        emit,
-        'Visible answer.\n```treetutor-diagram\n' +
-          JSON.stringify({
-            ...task,
-            thread: 'must-not-pass',
-            color: 'red',
-            title: 'T'.repeat(200),
-            description: 'd'.repeat(400),
-            intent: 'i'.repeat(900),
-            excerpt: '  ' + 'x'.repeat(17000),
-          }) +
-          '\n```',
-      );
+test('tolerant parsing ignores unknown keys and trims over-long fields instead of rejecting the request', () => {
+  const parsed = diagramReply(
+    'Visible answer.\n```treetutor-diagram\n' +
+      JSON.stringify({
+        ...task,
+        thread: 'must-not-pass',
+        color: 'red',
+        title: 'T'.repeat(200),
+        description: 'd'.repeat(400),
+        intent: 'i'.repeat(900),
+        excerpt: '  ' + 'x'.repeat(17000),
+      }) +
+      '\n```',
+    true,
+  );
+  assert.equal(parsed.text, 'Visible answer.');
+  assert.equal(parsed.requests.length, 1);
+  assert.equal(parsed.requests[0].error, undefined);
+  assert.deepEqual(
+    parsed.requests[0].task,
+    {
+      title: 'T'.repeat(120),
+      description: 'd'.repeat(280),
+      intent: 'i'.repeat(600),
+      excerpt: 'x'.repeat(1200),
     },
-  });
-  try {
-    const tree = env.store.create('Slips');
-    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain.' })).text();
-    const [artifact] = (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts;
-    assert.equal(artifact.status, 'ready', artifact.error);
-    assert.equal(artifact.title, 'T'.repeat(120));
-    assert.equal(artifact.input, undefined, 'the stored request stays server-side');
-    assert.deepEqual(
-      workers,
-      [
-        {
-          title: 'T'.repeat(120),
-          description: 'd'.repeat(280),
-          intent: 'i'.repeat(600),
-          excerpt: 'x'.repeat(1200),
-        },
-      ],
-      'unknown keys never reach the worker',
-    );
-  } finally {
-    env.close();
-  }
+    'unknown keys never reach the worker',
+  );
 });
 
 test('failed diagrams offer Retry that reruns the worker from the stored request; a rejected block falls back to the question', async () => {
@@ -162,12 +145,7 @@ test('failed diagrams offer Retry that reruns the worker from the stored request
       409,
       'a pending diagram cannot be retried twice',
     );
-    for (
-      let i = 0;
-      i < 200 && env.store.tree(tree.id).artifacts.some((a) => a.status === 'pending');
-      i++
-    )
-      await new Promise((r) => setTimeout(r, 25));
+    await env.app.settled();
     [worked, rejected] = env.store.tree(tree.id).artifacts;
     assert.deepEqual([worked.status, rejected.status], ['ready', 'ready']);
     assert.equal(worked.message, rejected.message);
@@ -230,6 +208,7 @@ test('shutdown interrupts a running diagram Retry; reopening only recovers state
   const reopened = new Store(env.path);
   const app = createApp({
     store: reopened,
+    diagramParse: async () => true,
     provider: {
       generate: async (tree, text, emit) => {
         calls.push(JSON.parse(text));
@@ -259,12 +238,8 @@ test('shutdown interrupts a running diagram Retry; reopening only recovers state
       ).status,
       200,
     );
-    let saved;
-    for (let i = 0; i < 200; i++) {
-      saved = await (await fetch(`${origin}/api/trees/${tree.id}`)).json();
-      if (saved.artifacts[0].status !== 'pending') break;
-      await new Promise((r) => setTimeout(r, 25));
-    }
+    await app.settled();
+    const saved = await (await fetch(`${origin}/api/trees/${tree.id}`)).json();
     assert.equal(saved.artifacts[0].status, 'ready');
     assert.deepEqual(calls, [{ ...task, intent: 'How do tournaments work?' }]);
     assert.equal(saved.messages.length, 2);

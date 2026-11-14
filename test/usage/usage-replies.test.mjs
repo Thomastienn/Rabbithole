@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { conversationContext } from '../../src/chat/turn.ts';
-import { start } from '../support/usage-kit.mjs';
+import { start, until } from '../support/usage-kit.mjs';
 
 const replies = (tree) =>
   tree.messages
@@ -168,9 +168,7 @@ test('a canceled Codex reply keeps no usage', async (t) => {
   const tree = JSON.parse(await env.post('/api/trees'));
   await env.post(`/api/trees/${tree.id}/model`, { provider: 'codex', model: 'fixture-model' });
   const pending = env.post(`/api/trees/${tree.id}/messages`, { text: 'hold' });
-  while (!(await env.get('/api/state')).active.includes(tree.id))
-    await new Promise((r) => setTimeout(r, 20));
-  await new Promise((r) => setTimeout(r, 200));
+  await until(() => env.app.active.has(tree.id) && env.store.tree(tree.id).thread);
   await env.post(`/api/trees/${tree.id}/stop`);
   await pending;
   assert.deepEqual(replies(await env.get(`/api/trees/${tree.id}`)), [

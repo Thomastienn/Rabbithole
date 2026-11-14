@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { Store } from '../../server/store.mjs';
 import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
-import { task, directive, source, complete, open } from '../support/diagram-kit.mjs';
+import { task, directive, source, complete, open, invalidSyntax } from '../support/diagram-kit.mjs';
 
 test('diagram request saves an owned artifact and keeps directive, worker prompt and source out of tutor history', async () => {
   const calls = [];
@@ -47,6 +47,7 @@ test('diagram request saves an owned artifact and keeps directive, worker prompt
     const [artifact] = saved.artifacts;
     assert.equal(artifact.status, 'ready');
     assert.equal(artifact.kind, 'mermaid');
+    assert.equal(artifact.input, undefined, 'the stored request stays server-side');
     assert.equal(artifact.conversation, reply.id);
     assert.equal(artifact.message, saved.messages.at(-1).id);
     assert.equal(artifact.title, task.title);
@@ -245,32 +246,34 @@ for (const name of ['claude', 'codex'])
 test('invalid, unsafe and oversized worker results save honest failures without retaining source; chat remains usable', async () => {
   let output,
     asked = false;
-  const env = await open({
-    generate: async (tree, text, emit) => {
-      if (tree.id)
-        complete(emit, asked ? 'You can continue learning.' : 'A diagram helps.' + directive);
-      else {
-        if (output === 'provider-error')
-          throw new Error('Private provider diagnostic with credential-canary');
-        if (output === 'not-completed') {
-          emit({ type: 'item', item: 'answer', text: source });
-          emit({ type: 'status', status: 'failed' });
-          return;
+  const env = await open(
+    {
+      generate: async (tree, text, emit) => {
+        if (tree.id)
+          complete(emit, asked ? 'You can continue learning.' : 'A diagram helps.' + directive);
+        else {
+          if (output === 'provider-error')
+            throw new Error('Private provider diagnostic with credential-canary');
+          if (output === 'not-completed') {
+            emit({ type: 'item', item: 'answer', text: source });
+            emit({ type: 'status', status: 'failed' });
+            return;
+          }
+          if (output === 'too-many-items') {
+            for (let i = 0; i < 33; i++) emit({ type: 'item', item: String(i), text: 'A' });
+            return;
+          }
+          if (Array.isArray(output))
+            for (const part of output) emit({ type: 'delta', item: 'answer', text: part });
+          else emit({ type: 'item', item: 'answer', text: output });
+          emit({ type: 'status', status: 'completed' });
         }
-        if (output === 'too-many-items') {
-          for (let i = 0; i < 33; i++) emit({ type: 'item', item: String(i), text: 'A' });
-          return;
-        }
-        if (Array.isArray(output))
-          for (const part of output) emit({ type: 'delta', item: 'answer', text: part });
-        else emit({ type: 'item', item: 'answer', text: output });
-        emit({ type: 'status', status: 'completed' });
-      }
+      },
     },
-  });
+    { diagramParse: async (value) => !invalidSyntax.includes(value) },
+  );
   const rejected = [
-    ['not Mermaid at all', /Invalid Mermaid syntax/],
-    ['flowchart TD\n A[unfinished', /Invalid Mermaid syntax/],
+    ...invalidSyntax.map((value) => [value, /Invalid Mermaid syntax/]),
     ['flowchart TD\n A[Ok] --> B[Ok]\n click A callback', /Unsafe diagram source/],
     ['flowchart TD\n A[Ok]\n click A href "https://example.test"', /Unsafe diagram source/],
     ['flowchart TD\n A["<b>HTML</b>"]', /Unsafe diagram source/],
@@ -326,33 +329,6 @@ test('invalid, unsafe and oversized worker results save honest failures without 
     const tree = env.store.list()[0];
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Continue.' })).text();
     assert.equal(env.store.tree(tree.id).messages.at(-1).text, 'You can continue learning.');
-  } finally {
-    env.close();
-  }
-});
-
-test('plain flowchart, sequence, class, state, ER and pie definitions pass the real parser', async () => {
-  let output;
-  const env = await open({
-    generate: async (tree, text, emit) =>
-      complete(emit, tree.id ? 'Plain diagram.' + directive : output),
-  });
-  try {
-    for (const value of [
-      'graph LR\n A --> B',
-      'sequenceDiagram\n Alice->>Bob: Hello\n Bob-->>Alice: Hi',
-      'classDiagram\n Animal <|-- Duck\n Animal : +int age',
-      'stateDiagram-v2\n [*] --> Learning\n Learning --> [*]',
-      'erDiagram\n TEACHER ||--o{ LESSON : teaches',
-      'pie\n "First round" : 4\n "Final" : 2',
-    ]) {
-      output = value;
-      const tree = env.store.create('Valid source');
-      await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Diagram.' })).text();
-      const artifact = env.store.tree(tree.id).artifacts[0];
-      assert.equal(artifact.status, 'ready', artifact.error + ': ' + value);
-      assert.equal(artifact.source, value);
-    }
   } finally {
     env.close();
   }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { SAVED, start } from '../support/suggestion-kit.mjs';
+import { SAVED, start, until } from '../support/suggestion-kit.mjs';
 
 const strip = (s) =>
   s.map(({ message, status, passages, usage }) => ({
@@ -160,9 +160,7 @@ test('failed, partial and canceled replies run no suggestions; Codex uses its Lu
   await env.post(`/api/trees/${tree.id}/messages`, { text: 'fail' });
   await env.post(`/api/trees/${tree.id}/model`, { provider: 'codex', model: 'fixture-model' });
   const pending = env.post(`/api/trees/${tree.id}/messages`, { text: 'hold' });
-  while (!(await env.get('/api/state')).active.includes(tree.id))
-    await new Promise((r) => setTimeout(r, 20));
-  await new Promise((r) => setTimeout(r, 200));
+  await until(() => env.turns.at(-1)?.input[0].text === 'hold');
   await env.post(`/api/trees/${tree.id}/stop`);
   await pending;
   await env.settled();
@@ -219,6 +217,7 @@ test('two conversations run suggestions concurrently while chat stays usable', a
     await env.post(`/api/trees/${a.id}/messages`, { text: 'Quick follow-up' }),
     /"status":"completed"/,
   );
+  env.release();
   await env.settled();
   for (const tree of [a, b])
     assert.ok(

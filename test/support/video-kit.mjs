@@ -1,3 +1,4 @@
+import { observe, observeStore, observeProvider } from './events.mjs';
 import { fakeNarration } from './fake-narration.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
@@ -47,22 +48,16 @@ export const complete = (emit, text) => {
   emit({ type: 'item', item: 'answer', text });
   emit({ type: 'status', status: 'completed' });
 };
-export const until = async (check) => {
-  for (let i = 0; i < 200; i++) {
-    const value = await check();
-    if (value) return value;
-    await new Promise((r) => setTimeout(r, 25));
-  }
-  throw new Error('timed out');
-};
+export { until } from './events.mjs';
 
 export async function open(provider, options = {}) {
+  observe(options, ['videoRender', 'videoNarrate']);
   provider = { models: async () => [{ model: 'fixture-model', isDefault: true }], ...provider };
   const dir = mkdtempSync(join(tmpdir(), 'tt-videos-'));
-  const store = new Store(join(dir, 'trees.sqlite'));
+  const store = observeStore(new Store(join(dir, 'trees.sqlite')));
   const app = createApp({
     store,
-    provider,
+    provider: observeProvider(provider),
     auth: { status: () => ({ connected: true }) },
     dir,
     videoRender: fakeRender,
@@ -92,7 +87,7 @@ export async function open(provider, options = {}) {
 
 export async function job(render, mutate, source = composition) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-video-job-'));
-  const store = new Store(join(dir, 'trees.sqlite'));
+  const store = observeStore(new Store(join(dir, 'trees.sqlite')));
   const tree = store.create('Video');
   const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
   const artifact = store.pendingArtifact(

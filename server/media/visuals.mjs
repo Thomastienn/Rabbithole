@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
-import { JSDOM } from 'jsdom';
 import { savedTheme, themeChoices } from '../../src/shell/appearance.ts';
 
 const INSTRUCTIONS = readFileSync(new URL('./prompts/visual.md', import.meta.url), 'utf8');
@@ -58,7 +57,7 @@ function paletteFor(theme) {
 }
 
 // A mistake check, not a security boundary: execution stays in the opaque-origin, network-denied sandbox.
-function validate(source) {
+async function validate(source) {
   const invalid = (reason) => {
     throw new Error(`Visual output is invalid: ${reason}.`);
   };
@@ -90,6 +89,8 @@ function validate(source) {
       invalid('a script has invalid JavaScript');
     }
   };
+  // Loaded on first use: jsdom costs about 0.3 s to import.
+  const { JSDOM } = await import('jsdom');
   const fragment = JSDOM.fragment(source);
   if (!fragment.querySelector('*')) invalid('no visual markup was returned');
   for (const element of fragment.querySelectorAll('*')) {
@@ -189,7 +190,7 @@ export async function generateVisual(provider, selection, input, parentSignal, t
         throw new Error('Visual generation did not complete. Retry to try again.');
       try {
         if (overflow) throw new Error(overflow);
-        return validate([...items.values()].join('\n\n'));
+        return await validate([...items.values()].join('\n\n'));
       } catch (error) {
         validationError = error.message;
         if (attempt) throw error;

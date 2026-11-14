@@ -1,3 +1,4 @@
+import { until, observeProvider } from '../support/events.mjs';
 import http from 'node:http';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +18,7 @@ const auth = {
 const dir = mkdtempSync(join(tmpdir(), 'treetutor-tests-'));
 async function open(path, generate) {
   const store = new Store(path);
-  const app = createApp({ store, auth, provider: { generate } });
+  const app = createApp({ store, auth, provider: observeProvider({ generate }) });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`;
   const state = await (await fetch(`${origin}/api/state`)).json();
@@ -300,7 +301,7 @@ test('New chat saves nothing until the first send, which creates one tree titled
     assert.equal(title(), 'New chat');
     const question = '  What is a heap? ' + 'x'.repeat(300);
     const stream = env.post(`/api/trees/${tree.id}/messages`, { text: question });
-    while (!release) await new Promise((r) => setTimeout(r, 5));
+    await until(() => release);
     assert.equal(title(), question.trim().slice(0, 200));
     assert.equal(
       (await env.post(`/api/trees/${tree.id}/messages`, { text: 'First question' })).status,
@@ -314,7 +315,7 @@ test('New chat saves nothing until the first send, which creates one tree titled
     );
     release = undefined;
     const second = env.post(`/api/trees/${tree.id}/messages`, { text: 'Second question' });
-    while (!release) await new Promise((r) => setTimeout(r, 5));
+    await until(() => release);
     release();
     await (await second).text();
     assert.equal(title(), question.trim().slice(0, 200), 'later questions keep the title');

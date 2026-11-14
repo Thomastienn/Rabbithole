@@ -40,6 +40,7 @@ export function createApp({
   defaultProvider = 'codex',
   assets = resolve('dist'),
   diagramTimeout = 300000,
+  diagramParse,
   visualTimeout = 300000,
   dir = join(tmpdir(), 'treetutor'),
   videoTimeout,
@@ -456,6 +457,7 @@ export function createApp({
               JSON.parse(artifact.input),
               running.controller.signal,
               diagramTimeout,
+              diagramParse,
             );
       if (!running.controller.signal.aborted)
         store.finishArtifact(artifact.conversation, artifact.id, source);
@@ -1677,6 +1679,7 @@ export function createApp({
                       JSON.parse(artifact.input),
                       controller.signal,
                       diagramTimeout,
+                      diagramParse,
                     );
                     if (!finished) artifact = store.finishArtifact(id, artifact.id, source);
                   } catch (error) {
@@ -1754,6 +1757,13 @@ export function createApp({
   return {
     server,
     active,
+    // Await the existing background jobs without polling their persisted state.
+    settled: (artifact) =>
+      Promise.allSettled(
+        [...videoJobs, ...suggesting.values(), ...compactions.values()]
+          .filter((v) => !artifact || v.artifact === artifact)
+          .map((v) => v.done),
+      ),
     stop: () => {
       if (stopped) return stopped;
       stopping = true;

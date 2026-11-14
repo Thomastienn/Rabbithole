@@ -11,6 +11,8 @@ test('actual Edge client sends private script once, receives audio/boundaries, d
     mode = 'ready',
     ssml,
     closed;
+  const sent = Promise.withResolvers(),
+    disconnected = Promise.withResolvers();
   const server = createServer((_req, res) => {
     requests++;
     res.writeHead(403);
@@ -26,11 +28,15 @@ test('actual Edge client sends private script once, receives audio/boundaries, d
     wss.handleUpgrade(req, socket, head, (ws) => {
       ws.on('close', () => {
         closed = true;
+        if (mode === 'cancel') disconnected.resolve();
       });
       ws.on('message', async (message) => {
         if (!message.toString().includes('Path:ssml')) return;
         ssml = message.toString();
-        if (mode === 'cancel') return;
+        if (mode === 'cancel') {
+          sent.resolve();
+          return;
+        }
         const { audio, wordBoundaries, sentenceBoundaries } = await fakeNarration();
         const header = Buffer.from('Path:audio\r\n'),
           size = Buffer.alloc(2);
@@ -79,11 +85,11 @@ test('actual Edge client sends private script once, receives audio/boundaries, d
   ssml = null;
   const controller = new AbortController(),
     pending = edgeNarration('Stop this.', controller.signal, client());
-  for (let i = 0; !ssml && i < 100; i++) await new Promise((r) => setTimeout(r, 5));
+  await sent.promise;
   assert.ok(ssml);
   controller.abort();
   await assert.rejects(pending);
-  for (let i = 0; !closed && i < 100; i++) await new Promise((r) => setTimeout(r, 5));
+  await disconnected.promise;
   assert.equal(closed, true);
   assert.equal(requests, 3);
 });

@@ -1,3 +1,4 @@
+import { observe, observeStore, observeProvider } from './events.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -11,13 +12,14 @@ export const complete = async (tree, text, emit) => {
 };
 
 export async function fixture(provider = { generate: complete }, options = {}) {
+  observe(options, ['videoRender', 'videoNarrate']);
   provider = { models: async () => [{ model: 'fixture-model', isDefault: true }], ...provider };
   const dir = mkdtempSync(join(tmpdir(), 'tt-chat-management-')),
     path = join(dir, 'trees.sqlite');
-  const store = new Store(path);
+  const store = observeStore(new Store(path));
   const app = createApp({
     store,
-    provider,
+    provider: observeProvider(provider),
     dir,
     auth: { status: () => ({ connected: true }) },
     ...options,

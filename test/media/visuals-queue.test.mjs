@@ -1,3 +1,5 @@
+import { notify } from '../support/events.mjs';
+import { generateVisual } from '../../server/media/visuals.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { task, block, source, complete, deferred, until, open } from '../support/visual-kit.mjs';
@@ -55,7 +57,10 @@ test('closed blocks start smart workers while text streams, queue in order at th
     });
     let stream = '';
     const consumed = (async () => {
-      for await (const chunk of response.body) stream += Buffer.from(chunk).toString();
+      for await (const chunk of response.body) {
+        stream += Buffer.from(chunk).toString();
+        notify();
+      }
     })();
     assert.equal(calls.length, 0, 'an unclosed block starts no worker');
     first.resolve();
@@ -209,7 +214,7 @@ test('Stop cancels every queued/running visual, preserves ready visuals, starts 
     emissions.forEach((e) => complete(e, '<p>LATE PRIVATE RESULT</p>'));
     workerHolds.forEach((h) => h.resolve());
     chatHold.resolve();
-    await new Promise((r) => setTimeout(r, 30));
+    await env.app.settled();
     assert.equal(signals.length, 4);
     assert.deepEqual(await env.get(`/api/trees/${env.tree.id}`), saved);
     assert.equal(
@@ -228,6 +233,7 @@ test('concurrent replies get separate three-worker queues; deleting one aborts o
   const chatHolds = [],
     workerHolds = [],
     workers = [];
+  let released = false;
   const env = await open(
     {
       generate: async (_tree, text, emit) => {
@@ -248,7 +254,7 @@ test('concurrent replies get separate three-worker queues; deleting one aborts o
         workers.push({ title: JSON.parse(text).request.title, signal });
         const hold = deferred();
         workerHolds.push(hold);
-        await hold.promise;
+        if (!released) await hold.promise;
         complete(emit, source);
       },
     },
@@ -272,11 +278,10 @@ test('concurrent replies get separate three-worker queues; deleting one aborts o
     assert.ok(workers.filter((w) => w.title.startsWith('First')).every((w) => w.signal.aborted));
     assert.ok(workers.filter((w) => w.title.startsWith('Second')).every((w) => !w.signal.aborted));
     chatHolds.forEach((h) => h.resolve());
-    for (let i = 0; i < 10; i++) {
-      workerHolds.forEach((h) => h.resolve());
-      await new Promise((r) => setTimeout(r, 5));
-    }
+    released = true;
+    workerHolds.forEach((h) => h.resolve());
     await second;
+    await env.app.settled();
     assert.equal((await fetch(`${env.origin}/api/trees/${env.tree.id}`)).status, 404);
     assert.ok(
       (await env.get(`/api/trees/${other.id}`)).artifacts.every((a) => a.status === 'ready'),
@@ -293,25 +298,20 @@ test('concurrent replies get separate three-worker queues; deleting one aborts o
   }
 });
 
-test('a slow visual provider within the injected budget still yields a ready visual', async () => {
-  // Scaled stand-in: 100 ms delay outlasts a 60 ms "old" budget but fits the injected 400 ms one.
-  const env = await open(
-    { generate: async (_tree, _text, emit) => complete(emit, 'Look.' + block()) },
-    {
-      generate: async (_tree, _text, emit) => {
-        await new Promise((r) => setTimeout(r, 100));
-        complete(emit, source);
-      },
+test('a slow visual provider within the injected budget still yields a ready visual', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const provider = {
+    generate: async (_tree, _text, emit) => {
+      await new Promise((r) => setTimeout(r, 100));
+      complete(emit, source);
     },
-    { visualTimeout: 400 },
-  );
-  try {
-    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })).text();
-    await until(
-      async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1)?.status === 'ready',
-    );
-    assert.equal((await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1).source, source);
-  } finally {
-    await env.close();
-  }
+  };
+  const start = (budget) =>
+    generateVisual(provider, {}, { request: task }, new AbortController().signal, budget);
+  const rejected = assert.rejects(start(60), /Visual generation timed out/);
+  t.mock.timers.tick(60);
+  await rejected;
+  const ready = start(400);
+  t.mock.timers.tick(100);
+  assert.equal(await ready, source);
 });
