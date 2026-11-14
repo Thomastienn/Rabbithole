@@ -103,7 +103,7 @@ test('failed diagrams offer Retry that reruns the worker from the stored request
     },
   });
   try {
-    const tree = env.store.create('Retry');
+    const tree = env.store.create('Retry', 'codex');
     await (
       await env.post(`/api/trees/${tree.id}/messages`, { text: 'How do tournaments work?' })
     ).text();
@@ -112,7 +112,7 @@ test('failed diagrams offer Retry that reruns the worker from the stored request
     assert.equal(rejected.status, 'failed');
     assert.match(rejected.error, /not valid JSON/);
     assert.equal(workers.length, 1, 'the rejected block never reaches a worker by itself');
-    const other = env.store.create('Other');
+    const other = env.store.create('Other', 'codex');
     assert.equal(
       (await env.post(`/api/trees/${other.id}/artifacts/${worked.id}/retry`)).status,
       404,
@@ -188,7 +188,7 @@ test('shutdown interrupts a running diagram Retry; reopening only recovers state
       await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
     },
   });
-  const tree = env.store.create('Durable Retry');
+  const tree = env.store.create('Durable Retry', 'codex');
   let failed;
   try {
     await (

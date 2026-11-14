@@ -141,7 +141,7 @@ test('app marks a failed job failed without a playable result', async () => {
     },
   });
   try {
-    const tree = env.store.create('Video');
+    const tree = env.store.create('Video', 'codex');
     await (
       await env.post(`/api/trees/${tree.id}/messages`, {
         text: 'Please make an animation of this.',
@@ -189,7 +189,7 @@ test('failed or timed-out script calls stay final; only explicit Retry calls aga
       },
     );
     try {
-      const tree = env.store.create('Script failure');
+      const tree = env.store.create('Script failure', 'codex');
       await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
       const failed = await until(() =>
         env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),

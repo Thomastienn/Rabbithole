@@ -45,8 +45,8 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
   };
   const env = await open(provider, { videoRender });
   try {
-    const a = env.store.create('A'),
-      b = env.store.create('B');
+    const a = env.store.create('A', 'codex'),
+      b = env.store.create('B', 'codex');
     await (await env.post(`/api/trees/${a.id}/messages`, { text: 'Make a video of A.' })).text();
     await until(() => renders.length === 1); // Jobs are detached; renders[0] must be A's.
     await (await env.post(`/api/trees/${b.id}/messages`, { text: 'Make a video of B.' })).text();
@@ -65,7 +65,7 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     assert.equal(canceled.phase, undefined);
     assert.equal(canceled.progress, undefined);
     assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/cancel`)).status, 409);
-    const other = env.store.create('Other');
+    const other = env.store.create('Other', 'codex');
     assert.match(
       await (await env.post(`/api/trees/${other.id}/messages`, { text: 'Hello' })).text(),
       /Answer in another chat/,
@@ -142,7 +142,7 @@ test('render, composition and save failures stay honest and retry the same reque
   };
   const env = await open(provider, { videoRender });
   try {
-    const tree = env.store.create('Video');
+    const tree = env.store.create('Video', 'codex');
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
     const { id } = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
@@ -190,7 +190,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
   old.db
     .exec(`PRAGMA user_version=0; PRAGMA foreign_keys=OFF; DROP TABLE artifacts; CREATE TABLE artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
     kind TEXT NOT NULL CHECK(kind IN ('mermaid','video')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER);`);
-  const tree = old.create('Video');
+  const tree = old.create('Video', 'codex');
   const reply = old.message(tree.id, 'assistant', 'Reply.', 'completed');
   const running = old.pendingArtifact(
     tree.id,
@@ -297,7 +297,7 @@ test('stopping the app during a job marks it interrupted before exit and keeps i
     },
     { videoRender },
   );
-  const tree = env.store.create('Video');
+  const tree = env.store.create('Video', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
   await rendering;
   await env.app.stop();

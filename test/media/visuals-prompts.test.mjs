@@ -300,7 +300,7 @@ test('Try a different version replaces a ready visual in place from the frozen r
     assert.equal(
       (
         await env.post(
-          `/api/trees/${env.store.create('Foreign').id}/artifacts/${artifact.id}/regenerate`,
+          `/api/trees/${env.store.create('Foreign', 'codex').id}/artifacts/${artifact.id}/regenerate`,
         )
       ).status,
       404,

@@ -53,8 +53,9 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
       };
     }
   };
-  const chatDefault = () =>
-    store.chatSettings() ?? { provider: defaultProvider, model: null, effort: null };
+  // A null default provider (fresh install) leaves an unset chat role without a provider.
+  const unset = () => ({ provider: defaultProvider, model: null, effort: null });
+  const chatDefault = () => store.chatSettings() ?? unset();
   // Smart follows the global chat default per field, never a conversation override.
   const smart = () => {
     const saved = store.smartSettings(),
@@ -75,7 +76,7 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
       ...list,
       profiles: list.profiles.map((p) => ({
         ...p,
-        chat: p.chat ?? { provider: defaultProvider, model: null, effort: null },
+        chat: p.chat ?? unset(),
       })),
     };
   };

@@ -29,7 +29,7 @@ test('Stop and deadline abort diagram workers, bound uncooperative providers and
       { diagramTimeout: stop ? 10000 : 30 },
     );
     try {
-      const tree = env.store.create('Abort diagram');
+      const tree = env.store.create('Abort diagram', 'codex');
       const response = await env.post(`/api/trees/${tree.id}/messages`, { text: 'Draw.' });
       const stream = response.text();
       await pending;
@@ -81,7 +81,7 @@ test('stopping a partial directive hides its prefix and discards native session;
     },
   });
   try {
-    const tree = env.store.create('Prefix');
+    const tree = env.store.create('Prefix', 'codex');
     const response = await env.post(`/api/trees/${tree.id}/messages`, { text: 'Stop halfway.' });
     const stream = response.text();
     await env.post(`/api/trees/${tree.id}/stop`);
@@ -107,7 +107,7 @@ test('restart fails orphaned pending artifacts once, without replaying generatio
       complete(emit, 'Ordinary follow-up.');
     },
   });
-  const tree = env.store.create('Crash recovery');
+  const tree = env.store.create('Crash recovery', 'codex');
   env.store.message(tree.id, 'user', 'Draw.', 'completed');
   const reply = env.store.message(tree.id, 'assistant', 'Partial explanation.', 'streaming');
   const orphan = env.store.pendingArtifact(tree.id, reply, 'Rounds', 'Winners meet in the final.');
@@ -182,8 +182,8 @@ test('a stopped job cannot publish late results into another conversation runnin
     },
   });
   try {
-    const a = env.store.create('A'),
-      b = env.store.create('B');
+    const a = env.store.create('A', 'codex'),
+      b = env.store.create('B', 'codex');
     const streamA = env
       .post(`/api/trees/${a.id}/messages`, { text: 'Draw A.' })
       .then((r) => r.text());
@@ -236,7 +236,7 @@ test('artifacts record where their request block was removed; reply text and pas
   const provider = { generate: async (tree, text, emit) => complete(emit, tree.id ? raw : source) };
   const env = await open(provider);
   try {
-    const tree = env.store.create('Positions');
+    const tree = env.store.create('Positions', 'codex');
     await (
       await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain the bracket.' })
     ).text();

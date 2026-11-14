@@ -179,7 +179,12 @@ export const trees = {
   forgetThread(id) {
     this.db.prepare('UPDATE trees SET thread=NULL,working_thread=NULL WHERE id=?').run(id);
   },
-  create(title = 'New chat', provider = 'codex', model = null, effort = null) {
+  create(
+    title = 'New chat',
+    provider = this.assumesProvider ? 'codex' : null,
+    model = null,
+    effort = null,
+  ) {
     const id = randomUUID();
     this.db
       .prepare(

@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
+// With no active profile every role is unset; smart follows the chat effort as a new profile does.
 export function roles(row) {
+  row ??= { smart_follow_effort: 1 };
   return {
     chat: row.chat_model
       ? { provider: row.chat_provider, model: row.chat_model, effort: row.chat_effort }
@@ -20,11 +22,14 @@ export function roles(row) {
 export const profiles = {
   // Role settings read and write the active model profile; only automatic suggestions on/off stays global.
   profileRow() {
-    return this.db
-      .prepare('SELECT p.* FROM profiles p JOIN active_profile a ON a.profile=p.id')
-      .get();
+    return (
+      this.db.prepare('SELECT p.* FROM profiles p JOIN active_profile a ON a.profile=p.id').get() ??
+      null
+    );
   },
+  // A role chosen before any profile exists saves into a new "Default", which becomes active.
   updateProfile(columns, values) {
+    if (!this.profileRow()) this.createProfile('Default');
     this.db
       .prepare(
         `UPDATE profiles SET ${columns.map((c) => `${c}=?`).join(',')} WHERE id=(SELECT profile FROM active_profile WHERE id=1)`,
@@ -33,22 +38,29 @@ export const profiles = {
   },
   profiles() {
     return {
-      active: this.profileRow().id,
+      active: this.profileRow()?.id ?? null,
       profiles: this.db
         .prepare('SELECT * FROM profiles ORDER BY rowid')
         .all()
         .map((row) => ({ id: row.id, name: row.name, ...roles(row) })),
     };
   },
-  // A new profile copies `from` (default: the active one); false when the name is taken.
-  createProfile(name, from = this.profileRow().id) {
+  // A new profile copies `from` (default: the active one, else starts empty); false when the name is taken.
+  // The first profile becomes active.
+  createProfile(name, from = this.profileRow()?.id) {
     if (this.db.prepare('SELECT 1 FROM profiles WHERE name=?').get(name)) return false;
     const id = randomUUID();
-    this.db
-      .prepare(
-        `INSERT INTO profiles SELECT ?,?,chat_provider,chat_model,chat_effort,smart_provider,smart_model,smart_follow_effort,smart_effort,quick_provider,quick_model,quick_effort FROM profiles WHERE id=?`,
-      )
-      .run(id, name, from);
+    if (from)
+      this.db
+        .prepare(
+          `INSERT INTO profiles SELECT ?,?,chat_provider,chat_model,chat_effort,smart_provider,smart_model,smart_follow_effort,smart_effort,quick_provider,quick_model,quick_effort FROM profiles WHERE id=?`,
+        )
+        .run(id, name, from);
+    else
+      this.db
+        .prepare('INSERT INTO profiles(id,name,smart_follow_effort) VALUES(?,?,1)')
+        .run(id, name);
+    this.db.prepare('INSERT OR IGNORE INTO active_profile VALUES(1,?)').run(id);
     return id;
   },
   profileName(id) {

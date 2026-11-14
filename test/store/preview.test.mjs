@@ -8,9 +8,9 @@ import { Store } from '../../server/store.mjs';
 test('previews list every message in order, bound each text and survive reload without copies', () => {
   const path = join(mkdtempSync(join(tmpdir(), 'treetutor-preview-')), 'trees.sqlite');
   let store = new Store(path);
-  const a = store.create('A'),
-    b = store.create('B'),
-    empty = store.create('Empty');
+  const a = store.create('A', 'codex'),
+    b = store.create('B', 'codex'),
+    empty = store.create('Empty', 'codex');
   const q1 = store.message(a.id, 'user', 'old', 'completed');
   const a1 = store.message(a.id, 'assistant', 'old answer', 'completed');
   const q2 = store.message(a.id, 'user', '🌳'.repeat(600), 'completed');
@@ -76,7 +76,7 @@ test('reply previews strip syntax before truncation without changing raw questio
     join(mkdtempSync(join(tmpdir(), 'treetutor-markdown-preview-')), 'trees.sqlite'),
   );
   try {
-    const tree = store.create('Markdown');
+    const tree = store.create('Markdown', 'codex');
     const raw =
       '## Topic\n\n- **bold** item\n- `code` [link](https://example.com)\n\n' +
       '*'.repeat(600) +

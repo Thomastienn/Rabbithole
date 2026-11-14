@@ -29,7 +29,7 @@ test('a complex reply becomes several small ordered diagram steps; each worker g
     },
   });
   try {
-    const tree = env.store.create('Steps');
+    const tree = env.store.create('Steps', 'codex');
     const stream = await (
       await env.post(`/api/trees/${tree.id}/messages`, { text: 'How do plants grow?' })
     ).text();
@@ -117,7 +117,7 @@ test('Stop keeps completed steps, fails active and queued steps, and never start
     },
   });
   try {
-    const tree = env.store.create('Stop steps');
+    const tree = env.store.create('Stop steps', 'codex');
     const stream = env
       .post(`/api/trees/${tree.id}/messages`, { text: 'Explain in steps.' })
       .then((r) => r.text());
@@ -167,8 +167,8 @@ test('artifact reads and message attachments enforce exact conversation ownershi
       complete(emit, tree.id ? 'Rounds advance.' + directive : source),
   });
   try {
-    const owner = env.store.create('Owner'),
-      other = env.store.create('Other');
+    const owner = env.store.create('Owner', 'codex'),
+      other = env.store.create('Other', 'codex');
     await (await env.post(`/api/trees/${owner.id}/messages`, { text: 'Diagram.' })).text();
     const saved = env.store.tree(owner.id),
       artifact = saved.artifacts[0];

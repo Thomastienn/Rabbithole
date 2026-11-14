@@ -46,7 +46,7 @@ test('branch-first: the child is saved and listed before a held compaction finis
       body: JSON.stringify(body),
     });
   try {
-    const parent = store.create('Parent');
+    const parent = store.create('Parent', 'codex');
     const messageId = store.message(
       parent.id,
       'assistant',
@@ -133,7 +133,7 @@ test('branch-first: a failed compaction keeps the child with a readable error; R
     });
   const get = async (id) => (await fetch(`${origin}/api/trees/${id}`)).json();
   try {
-    const parent = store.create('Parent');
+    const parent = store.create('Parent', 'codex');
     const messageId = store.message(
       parent.id,
       'assistant',
@@ -275,7 +275,7 @@ test('opening the branch form prepares compaction: submit reuses it, cancel abor
       body: JSON.stringify(body),
     });
   try {
-    const parent = store.create('Parent');
+    const parent = store.create('Parent', 'codex');
     const messageId = store.message(
       parent.id,
       'assistant',

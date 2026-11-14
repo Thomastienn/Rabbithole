@@ -70,13 +70,15 @@ export default function SmartSettings({
     available.find(
       (m) => m.provider === r.provider && (r.model ? m.model === r.model : m.isDefault),
     );
-  const unavailable = !!saved && !!models && !selected;
+  const unavailable = !!r?.provider && !!models && !selected;
   const incompatible = !!r?.effort && !!selected && !(selected.efforts ?? []).includes(r.effort);
   const followLabel = selected
     ? selected.label
-    : r
-      ? `${providers?.[r.provider]?.label ?? r.provider} · ${r.model ?? 'default model'}`
-      : '';
+    : r && !r.provider
+      ? 'Not set'
+      : r
+        ? `${providers?.[r.provider]?.label ?? r.provider} · ${r.model ?? 'default model'}`
+        : '';
   return (
     <>
       <div role="row" className="settings-roles__row">

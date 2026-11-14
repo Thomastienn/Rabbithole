@@ -107,6 +107,7 @@ export function useChatModel(c: ChatState) {
       !currentModel ||
       (!!tree.effort && !(currentModel.efforts ?? []).includes(tree.effort)));
   const modelLabel = (t: ModelSelection) => {
+    if (!t.provider) return 'Not set';
     const label =
       models?.find((m) => m.provider === t.provider && m.model === t.model)?.label ??
       t.model ??

@@ -7,7 +7,7 @@ import { fixture, snapshot } from '../support/chat-management-kit.mjs';
 test('rename validates the bound, persists across restart, and manually named New chat never auto-retitles', async () => {
   const env = await fixture();
   try {
-    const blank = env.store.create();
+    const blank = env.store.create(undefined, 'codex');
     for (const title of ['', '  ', null, 10, 'x'.repeat(201)])
       assert.equal((await env.post(blank.id, 'rename', { title })).status, 400);
     assert.equal((await env.post('missing', 'rename', { title: 'Title' })).status, 404);

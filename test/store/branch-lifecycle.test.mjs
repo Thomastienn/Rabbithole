@@ -34,7 +34,7 @@ async function fixture(
       headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
       body: JSON.stringify(body),
     });
-  const root = store.create('Root');
+  const root = store.create('Root', 'codex');
   const messageId = store.message(root.id, 'assistant', 'Roots exchange nutrients.', 'completed');
   const branches = ['A', 'B'].map((question) =>
     store.branch(

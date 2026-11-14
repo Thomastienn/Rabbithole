@@ -160,17 +160,17 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
   const tree = JSON.parse(await app.request('/api/trees', {}, 201));
   assert.equal(
     tree.provider,
-    'claude',
-    'configuration never opts a learner into key-backed inference',
+    null,
+    'configuration never opts a learner into key-backed inference; a fresh install assumes no provider',
   );
   assert.match(
-    await app.request(`/api/trees/${tree.id}/messages`, { text: 'Unavailable Claude' }),
-    /not installed/,
+    await app.request(`/api/trees/${tree.id}/messages`, { text: 'No chat model' }, 409),
+    /"code":"chat_model_unset"/,
   );
   assert.equal(
     fake.calls.filter((call) => call.body).length,
     0,
-    'Claude sign-in/installation failure never falls back to the custom endpoint',
+    'an unset chat model never falls back to the custom endpoint',
   );
   await app.request(`/api/trees/${tree.id}/model`, { provider: 'openai', model: 'local-tutor' });
   fake.reply = (req, res) =>

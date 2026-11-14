@@ -48,7 +48,7 @@ export default function ChatSettings({
     available.find(
       (m) => m.provider === saved.provider && (saved.model ? m.model === saved.model : m.isDefault),
     );
-  const unavailable = !!saved && !!models && !selected;
+  const unavailable = !!saved?.provider && !!models && !selected;
   const incompatible =
     !!saved?.effort && !!selected && !(selected.efforts ?? []).includes(saved.effort);
   async function save(selection: ChatSelection) {
@@ -90,9 +90,11 @@ export default function ChatSettings({
                 ? [
                     {
                       value: 'unavailable',
-                      label: saved
-                        ? `${providers?.[saved.provider]?.label ?? saved.provider} · ${saved.model ?? 'default model'}${models ? ' (unavailable)' : ''}`
-                        : 'Loading chat default…',
+                      label: !saved
+                        ? 'Loading chat default…'
+                        : !saved.provider
+                          ? 'Not set'
+                          : `${providers?.[saved.provider]?.label ?? saved.provider} · ${saved.model ?? 'default model'}${models ? ' (unavailable)' : ''}`,
                       disabled: true,
                     },
                   ]

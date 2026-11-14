@@ -22,8 +22,8 @@ test('layout snapshots stay per tree, hold only IDs and survive restart; legacy 
     null,
     'corrupt legacy layout uses defaults',
   );
-  const first = store.create('First'),
-    second = store.create('Second');
+  const first = store.create('First', 'codex'),
+    second = store.create('Second', 'codex');
   const text = 'A long tutor reply that must never be copied into layout.';
   const messageId = store.message(first.id, 'assistant', text, 'completed');
   const child = store.branch(

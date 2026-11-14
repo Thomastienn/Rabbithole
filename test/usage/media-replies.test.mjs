@@ -71,7 +71,7 @@ test('reply API attributes retried visuals and every video call, reports running
     await env.app.stop();
     if (!closed) env.store.close();
   });
-  const root = env.store.create('Media usage');
+  const root = env.store.create('Media usage', 'codex');
   await (
     await env.post(`/api/trees/${root.id}/messages`, { text: 'Show a video and visual' })
   ).text();
@@ -126,7 +126,7 @@ test('reply API attributes retried visuals and every video call, reports running
     undefined,
     'a new reply never borrows prior media usage',
   );
-  const other = env.store.create('Other conversation');
+  const other = env.store.create('Other conversation', 'codex');
   assert.deepEqual(env.store.tree(other.id).messages, []);
 
   regenerating = true;
@@ -168,7 +168,7 @@ test('reply API attributes retried visuals and every video call, reports running
 test('older media events acquire identifiable reply links without inventing unavailable measurements', (t) => {
   const path = join(mkdtempSync(join(tmpdir(), 'tt-media-upgrade-')), 'trees.sqlite');
   let store = new Store(path);
-  const tree = store.create('Older media');
+  const tree = store.create('Older media', 'codex');
   const reply = store.message(tree.id, 'assistant', 'Answer', 'completed');
   const visual = store.pendingArtifact(tree.id, reply, 'Visual', 'Alt', 'visual', '{}');
   const video = store.pendingArtifact(tree.id, reply, 'Video', 'Alt', 'video', '{}');

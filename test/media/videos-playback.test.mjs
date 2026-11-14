@@ -55,8 +55,8 @@ test('inline video exposes bounded live progress and its position, keeps inputs 
   };
   const env = await open(provider, { videoRender });
   try {
-    const tree = env.store.create('Video'),
-      other = env.store.create('Other');
+    const tree = env.store.create('Video', 'codex'),
+      other = env.store.create('Other', 'codex');
     await (
       await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of this.' })
     ).text();

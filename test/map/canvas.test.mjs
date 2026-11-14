@@ -220,7 +220,7 @@ test('clear neighbours keep their manual spacing and equal-height collisions kee
 test('growth positions use the coalesced layout route, persist across SQLite restart, and leave idle layout clean', async () => {
   const path = join(mkdtempSync(join(tmpdir(), 'treetutor-growth-')), 'trees.sqlite');
   let store = new Store(path);
-  const root = store.create('Growing root'),
+  const root = store.create('Growing root', 'codex'),
     source = store.message(root.id, 'assistant', 'Source', 'completed');
   const child = store.branch(
     root,
@@ -303,7 +303,7 @@ test('positions migrate, save during streaming, reject invalid coordinates and s
   );
   legacy.close();
   let store = new Store(path);
-  const root = store.create('Root');
+  const root = store.create('Root', 'codex');
   const text = '🌲 repeated and 🌲 repeated';
   const messageId = store.message(root.id, 'assistant', text, 'completed');
   const anchor = {

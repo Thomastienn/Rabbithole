@@ -123,7 +123,7 @@ test('rendered Markdown selections map to exact raw slices the branches endpoint
       /unsafe-/,
     );
     const { csrf } = await state.json();
-    const parent = store.create('Markdown');
+    const parent = store.create('Markdown', 'codex');
     const messageId = store.message(parent.id, 'assistant', raw, 'completed');
     for (const [span] of cases) {
       const res = await fetch(`${origin}/api/trees/${parent.id}/branches`, {

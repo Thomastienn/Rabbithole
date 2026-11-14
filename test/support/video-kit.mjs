@@ -124,7 +124,7 @@ export async function open(provider, options = {}) {
 export async function job(render, mutate, source = composition, count = 1, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-video-job-'));
   const store = observeStore(new Store(join(dir, 'trees.sqlite')));
-  const tree = store.create('Video');
+  const tree = store.create('Video', 'codex');
   const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
   const artifact = store.pendingArtifact(
     tree.id,

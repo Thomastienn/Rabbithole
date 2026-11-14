@@ -84,6 +84,13 @@ test('every historical schema upgrades without losing saved trees; backup keeps 
       if (before.artifacts)
         assert.equal(store.tree('root').artifacts[0].source, 'flowchart LR; A-->B');
       assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 1);
+      // Existing installs are unchanged by the empty first run: a Default profile and the assumed provider.
+      assert.deepEqual(
+        store.profiles().profiles.map((p) => p.name),
+        ['Default'],
+      );
+      assert.equal(store.assumesProvider, true);
+      assert.equal(store.create('New').provider, 'codex');
       const backups = readdirSync(dir).filter((f) => /backup-.*\.sqlite$/.test(f));
       assert.equal(backups.length, 1);
       assert.match(backups[0], /backup-\d{4}-\d{2}-\d{2}T/);

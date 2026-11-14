@@ -21,7 +21,9 @@ export function open(path) {
         `Database schema ${version} is newer than this TreeTutor supports (1). Use the newer TreeTutor version; your database was not changed.`,
       );
     chmodSync(path, 0o600);
-    if (version < 1 && this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table'").get()) {
+    // A fresh database starts with no model profile and no assumed provider; existing installs keep theirs.
+    const fresh = !this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table'").get();
+    if (version < 1 && !fresh) {
       const backupPath = `${path}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
       // SQLite copies a consistent snapshot, including committed WAL pages, before any upgrade writes.
       writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
@@ -33,7 +35,7 @@ export function open(path) {
     if (version < 1) {
       this.db.exec('BEGIN IMMEDIATE');
       try {
-        this.migrate();
+        this.migrate(fresh);
         this.db.exec('PRAGMA user_version=1; COMMIT');
       } catch (error) {
         this.db.exec('ROLLBACK');
@@ -118,13 +120,14 @@ export function open(path) {
       'CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)',
     );
     // Model profiles: each holds the chat, smart and quick thinking roles; the old role rows seed "Default" once and stay for older builds.
+    // Every existing database seeds "Default" (its trees may need a provider); a fresh one starts with none.
     if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='profiles'").get()) {
       this.db.exec(`BEGIN IMMEDIATE;
           CREATE TABLE profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE, chat_provider TEXT, chat_model TEXT, chat_effort TEXT,
             smart_provider TEXT, smart_model TEXT, smart_follow_effort INTEGER NOT NULL CHECK(smart_follow_effort IN (0,1)), smart_effort TEXT, quick_provider TEXT, quick_model TEXT, quick_effort TEXT);
           CREATE TABLE active_profile (id INTEGER PRIMARY KEY CHECK(id=1), profile TEXT NOT NULL REFERENCES profiles(id));
           INSERT INTO profiles SELECT '${randomUUID()}','Default',c.provider,c.model,c.effort,s.provider,s.model,coalesce(s.follow_effort,1),s.effort,q.provider,q.model,q.effort
-            FROM (SELECT 1) LEFT JOIN chat_settings c ON c.id=1 LEFT JOIN smart_settings s ON s.id=1 LEFT JOIN suggestion_settings q ON q.id=1;
+            FROM (SELECT 1) LEFT JOIN chat_settings c ON c.id=1 LEFT JOIN smart_settings s ON s.id=1 LEFT JOIN suggestion_settings q ON q.id=1 WHERE ${+!fresh};
           INSERT INTO active_profile SELECT 1,id FROM profiles;
           COMMIT;`);
     }
@@ -164,6 +167,11 @@ export function open(path) {
           INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot) SELECT child,parent,messageId,start,end,text,question,snapshot FROM branches_old;
           DROP TABLE branches_old; COMMIT;`);
     }
+    // Trees on a fresh database may have no provider; older databases keep assuming the default provider.
+    this.assumesProvider = !!this.db
+      .prepare('PRAGMA table_info(trees)')
+      .all()
+      .find((c) => c.name === 'provider').notnull;
     this.interrupt();
   } catch (error) {
     error.backupPath = this.backupPath;
@@ -173,7 +181,7 @@ export function open(path) {
 }
 
 export const schema = {
-  migrate() {
+  migrate(fresh) {
     this.db
       .exec(`CREATE TABLE IF NOT EXISTS trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS messages (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, tree TEXT NOT NULL REFERENCES trees(id), role TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL);
@@ -188,7 +196,11 @@ export const schema = {
       .all()
       .map((c) => c.name);
     if (!columns.includes('provider'))
-      this.db.exec("ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'");
+      this.db.exec(
+        fresh
+          ? 'ALTER TABLE trees ADD COLUMN provider TEXT'
+          : "ALTER TABLE trees ADD COLUMN provider TEXT NOT NULL DEFAULT 'codex'",
+      );
     if (!columns.includes('model')) this.db.exec('ALTER TABLE trees ADD COLUMN model TEXT');
     if (!columns.includes('working_model'))
       this.db.exec(

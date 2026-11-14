@@ -7,12 +7,15 @@ import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 
+// Seeds a "Default" profile like an existing install unless `fresh`.
 async function start(
   dir = mkdtempSync(join(tmpdir(), 'tt-profiles-')),
   names = ['claude', 'codex', 'openai'],
+  { fresh = false } = {},
 ) {
   const store = new Store(join(dir, 'trees.sqlite')),
     calls = [];
+  if (!fresh && !store.profiles().profiles.length) store.createProfile('Default');
   const providers = Object.fromEntries(
     names.map((provider) => [
       provider,
@@ -33,7 +36,7 @@ async function start(
   const app = createApp({
     store,
     providers,
-    defaultProvider: 'claude',
+    defaultProvider: fresh ? null : 'claude',
     auth: { status: () => ({ connected: true }) },
     dir,
   });
@@ -95,21 +98,63 @@ test('upgrade turns the saved chat, smart and quick thinking choices into an act
   assert.equal(root.effort, 'high');
 });
 
-test('a fresh install starts with one "Default" profile holding the provider defaults', async (t) => {
-  const env = await start();
+test('a fresh install has no profile and no provider; Send asks for a chat model; the first profile becomes active', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-profiles-fresh-'));
+  const store = new Store(join(dir, 'trees.sqlite'));
+  assert.equal(store.profileRow(), null);
+  assert.deepEqual(store.profiles(), { active: null, profiles: [] });
+  assert.equal(store.assumesProvider, false);
+  const blank = store.create();
+  assert.equal(blank.provider, null);
+  assert.equal(blank.model, null);
+  store.close();
+
+  const env = await start(dir, undefined, { fresh: true });
   t.after(() => env.close());
-  const { profiles } = await env.get('/api/profiles');
+  assert.deepEqual(await env.roles(), {
+    chat: { provider: null, model: null, effort: null },
+    smart: {
+      model: null,
+      followEffort: true,
+      effort: null,
+      resolved: { provider: null, model: null, effort: null },
+    },
+    quick: { enabled: true, model: null, effort: null },
+  });
+  const tree = await (await env.post('/api/trees')).json();
+  assert.equal(tree.provider, null);
+  assert.equal(tree.model, null);
+  const refused = await env.post(`/api/trees/${tree.id}/messages`, { text: 'Hello?' });
+  assert.equal(refused.status, 409);
+  assert.deepEqual(await refused.json(), {
+    error: 'Choose a chat model in Settings.',
+    code: 'chat_model_unset',
+  });
+  assert.equal(env.calls.length, 0);
+  assert.deepEqual((await env.get(`/api/trees/${tree.id}`)).messages, []);
+
+  const created = await (await env.post('/api/profiles', { name: 'Mine' })).json();
+  assert.equal(created.profiles.length, 1);
+  assert.equal(created.active, created.profiles[0].id, 'the first profile becomes active');
+  assert.deepEqual(created.profiles[0].chat, { provider: null, model: null, effort: null });
+  await env.post('/api/settings/chat', { provider: 'codex', model: 'chat', effort: null });
+  assert.equal((await env.post('/api/trees')).status, 201);
+  assert.equal((await env.get('/api/profiles')).profiles.length, 1);
+});
+
+test('choosing a role before any profile exists saves it into an active "Default"', async (t) => {
+  const env = await start(undefined, undefined, { fresh: true });
+  t.after(() => env.close());
+  await env.post('/api/settings/chat', { provider: 'codex', model: 'chat', effort: 'high' });
+  const { active, profiles } = await env.get('/api/profiles');
   assert.deepEqual(
-    profiles.map(({ id, ...p }) => p),
-    [
-      {
-        name: 'Default',
-        chat: { provider: 'claude', model: null, effort: null },
-        smart: { model: null, followEffort: true, effort: null },
-        quick: { model: null, effort: null },
-      },
-    ],
+    profiles.map((p) => [p.name, p.chat]),
+    [['Default', { provider: 'codex', model: 'chat', effort: 'high' }]],
   );
+  assert.equal(active, profiles[0].id);
+  const tree = await (await env.post('/api/trees')).json();
+  assert.equal(tree.provider, 'codex');
+  assert.equal(tree.model, 'chat');
 });
 
 test('activating a profile swaps all three roles; role routes edit only the active profile; conversations and the suggestions switch stay put', async () => {

@@ -63,7 +63,7 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
     { csrf } = await (await fetch(origin + '/api/state')).json();
   const send = async (value, question = 'Explain winners.') => {
     reply = 'Before. ' + value + ' After.';
-    const tree = store.create('Tags');
+    const tree = store.create('Tags', 'codex');
     const stream = await (
       await fetch(`${origin}/api/trees/${tree.id}/messages`, {
         method: 'POST',

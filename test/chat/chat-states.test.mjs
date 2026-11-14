@@ -116,3 +116,29 @@ test('loading tree announces four skeletons; load failure offers its retry handl
   await act(async () => button(container, 'Retry loading tree').click());
   assert.deepEqual(calls, ['tree']);
 });
+
+test('with no chat model chosen, the first question asks for one in Settings', async (t) => {
+  const opened = [];
+  const props = {
+    draft: 'Why?',
+    setDraft() {},
+    busy: false,
+    available: false,
+    modelMenu: null,
+    submit() {},
+    modelError: '',
+    loadModels() {},
+    noModels: false,
+    openSettings: (opener) => opened.push(opener),
+  };
+  const { container, act, cleanup } = await render(
+    h('div', null, h(FirstQuestion, { ...props, needsModel: true })),
+    ui,
+  );
+  t.after(cleanup);
+  assert.match(container.textContent, /Choose a chat model in Settings/);
+  const open = button(container, 'Open Settings');
+  await act(async () => open.click());
+  assert.deepEqual(opened, [open]);
+  assert.equal(button(container, 'Send').disabled, true);
+});

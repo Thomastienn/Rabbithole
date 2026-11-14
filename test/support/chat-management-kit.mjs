@@ -42,11 +42,11 @@ export async function fixture(provider = { generate: complete }, options = {}) {
       'Frozen context',
     );
   };
-  const root = store.create('Main chat'),
+  const root = store.create('Main chat', 'codex'),
     child = branch(root),
     grandchild = branch(child),
     sibling = branch(root),
-    other = store.create('Other chat');
+    other = store.create('Other chat', 'codex');
   for (const t of [root, child, grandchild, sibling, other]) {
     reply(t.id);
     store.position(t.id, 100, 200);

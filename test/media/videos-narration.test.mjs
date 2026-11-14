@@ -50,7 +50,7 @@ test('narration stages measured audio, returned timings and subtitles without ex
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Narration');
+  const tree = env.store.create('Narration', 'codex');
   const stream = await (
     await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a narrated video.' })
   ).text();
@@ -123,7 +123,7 @@ test('TTS failure and invalid returned timing stay final until explicit Retry; c
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Failure');
+  const tree = env.store.create('Failure', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
   const failed = await until(() =>
     env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
@@ -205,7 +205,7 @@ test('duration follows measured narration beyond two minutes rather than the gen
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Longer');
+  const tree = env.store.create('Longer', 'codex');
   await (
     await env.post(`/api/trees/${tree.id}/messages`, {
       text: 'Make a longer video, about two minutes ten seconds.',

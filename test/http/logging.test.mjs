@@ -26,7 +26,7 @@ test('chat logs request and model start/finish with actual model, usage and dura
       complete(emit, reply);
     },
   });
-  const tree = env.store.create('PRIVATE title');
+  const tree = env.store.create('PRIVATE title', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: question })).text();
   assert.equal(env.logs.length, 3);
   assert.match(env.logs[0], / INFO model started .*task="chat" provider="codex"/);
@@ -55,7 +55,7 @@ test('failed provider logs its cause and next step without echoed learner text, 
       throw new Error(`Quota exhausted: ${question} ${reply} Bearer abc123 api_key=xyz456`);
     },
   });
-  const tree = env.store.create('Failure');
+  const tree = env.store.create('Failure', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: question })).text();
   const failed = env.logs.find((line) => line.includes(' ERROR model failed '));
   assert.match(failed, /task="chat".*input=12.*ms=\d+.*cause="Quota exhausted:/);
@@ -70,7 +70,7 @@ test('static assets, media files and polling are silent; API query strings and a
   const asset = await env.get('/asset.js');
   assert.equal(asset.status, 200);
   await asset.text();
-  const tree = env.store.create('Poll');
+  const tree = env.store.create('Poll', 'codex');
   for (const path of [
     '/api/state',
     '/api/previews',
@@ -127,7 +127,7 @@ test('suggestion and compaction calls log their task and selected model at exist
     model: { provider: 'codex', model: 'fixture-model' },
     effort: null,
   });
-  const tree = env.store.create('Parent');
+  const tree = env.store.create('Parent', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'PRIVATE question' })).text();
   await env.app.settled();
   const reply = env.store.tree(tree.id).messages.at(-1);
@@ -178,7 +178,7 @@ test('video logs plan, cuts, narration, playable, 25% rendering steps and saved 
       },
     },
   );
-  const tree = env.store.create('Video');
+  const tree = env.store.create('Video', 'codex');
   await (
     await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video. PRIVATE_QUESTION' })
   ).text();
@@ -237,7 +237,7 @@ for (const kind of ['visual', 'diagram'])
       },
       { diagramParse: async () => true },
     );
-    const tree = env.store.create('Media');
+    const tree = env.store.create('Media', 'codex');
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'PRIVATE question' })).text();
     await env.app.settled();
     assert.equal(env.store.tree(tree.id).artifacts[0].status, 'ready');

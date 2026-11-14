@@ -59,7 +59,8 @@ try {
     auth,
     endpoint,
     providers: { claude, codex: new Codex(auth, dir) },
-    defaultProvider: 'claude',
+    // Existing installs keep assuming Claude for an unset chat role; a fresh install assumes nothing.
+    defaultProvider: store.assumesProvider ? 'claude' : null,
     dir,
     suggestions: true,
   });

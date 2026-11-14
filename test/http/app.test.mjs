@@ -148,7 +148,7 @@ test('provider failure preserves partial text and history, allows next request',
 test('restart marks persisted unfinished replies interrupted', () => {
   const path = join(dir, 'interrupted.sqlite');
   let store = new Store(path);
-  const tree = store.create('Interrupted');
+  const tree = store.create('Interrupted', 'codex');
   store.message(tree.id, 'assistant', 'Checkpoint', 'streaming');
   store.close();
   store = new Store(path);
@@ -368,8 +368,8 @@ test('New chat saves nothing until the first send, which creates one tree titled
 test('startup pruning removes trees with no messages and keeps every tree with a message and its focused chats', async () => {
   const path = join(dir, 'prune.sqlite');
   const store = new Store(path);
-  const empty = store.create(),
-    kept = store.create('Kept');
+  const empty = store.create(undefined, 'codex'),
+    kept = store.create('Kept', 'codex');
   const messageId = store.message(kept.id, 'assistant', 'A reply', 'completed');
   const child = store.branch(
     kept,
@@ -396,5 +396,42 @@ test('startup pruning removes trees with no messages and keeps every tree with a
     assert.equal(env.store.pruneEmpty(), 0);
   } finally {
     env.close();
+  }
+});
+
+test('empty first run: with no chat default or smart model, a chosen chat model replies and its visual request is skipped without errors', async () => {
+  const store = new Store(join(dir, 'empty-first-run.sqlite'));
+  const block =
+    '\n```treetutor-visual\n' +
+    JSON.stringify({ title: 'Rounds', description: 'Final.', intent: 'Show it.', excerpt: 'It.' }) +
+    '\n```';
+  const provider = observeProvider({
+    models: async () => [{ model: 'chat', isDefault: true, efforts: [] }],
+    generate: async (tree, text, emit) => {
+      emit({ type: 'item', item: 'a', text: `Answer.${block}` });
+      emit({ type: 'status', status: 'completed' });
+    },
+  });
+  const app = createApp({ store, auth, providers: { codex: provider }, defaultProvider: null });
+  await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+  const post = (path, body) =>
+    fetch(`${origin}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      body: JSON.stringify(body),
+    });
+  try {
+    const tree = await (await post('/api/trees', { provider: 'codex', model: 'chat' })).json();
+    const stream = await (await post(`/api/trees/${tree.id}/messages`, { text: 'Hi' })).text();
+    assert.match(stream, /"status":"completed"/);
+    assert.doesNotMatch(stream, /"type":"(error|artifact)"/);
+    const saved = store.tree(tree.id);
+    assert.equal(saved.messages.at(-1).status, 'completed');
+    assert.deepEqual(saved.artifacts, []);
+  } finally {
+    await app.stop();
+    store.close();
   }
 });

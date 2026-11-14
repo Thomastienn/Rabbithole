@@ -49,7 +49,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     effort: null,
   });
   try {
-    const parent = env.store.create('Parent');
+    const parent = env.store.create('Parent', 'codex');
     env.store.message(parent.id, 'user', 'UNRELATED SIBLING DISCUSSION', 'completed');
     const parentReply = env.store.message(
       parent.id,

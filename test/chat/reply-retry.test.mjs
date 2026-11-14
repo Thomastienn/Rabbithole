@@ -160,10 +160,10 @@ test('learner Stop is recorded and never offers Retry', async () => {
 test('crash-interrupted reply survives restart as retryable; older databases migrate without guessing', async () => {
   const path = join(dir, 'crash.sqlite');
   let store = new Store(path);
-  const crashed = store.create('Crashed');
+  const crashed = store.create('Crashed', 'codex');
   store.message(crashed.id, 'user', 'Question', 'completed');
   store.message(crashed.id, 'assistant', 'Partial', 'streaming');
-  const legacy = store.create('Legacy');
+  const legacy = store.create('Legacy', 'codex');
   store.message(legacy.id, 'user', 'Old question', 'completed');
   store.message(legacy.id, 'assistant', 'Old partial', 'interrupted');
   store.close();

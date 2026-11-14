@@ -186,45 +186,47 @@ export default function ModelProfiles({
                 setNaming({ mode: 'new', name: '' });
               }}
             />
-            <DropdownMenu
-              presentation="popover"
-              alignment="end"
-              renderTrigger={(props) => (
-                <IconButton
-                  {...props}
-                  label="Profile actions: rename, duplicate, delete"
-                  tooltip="Profile actions"
-                  icon={<EllipsisHorizontalIcon />}
-                  variant="ghost"
-                  size="sm"
-                  isDisabled={pending}
+            {active && (
+              <DropdownMenu
+                presentation="popover"
+                alignment="end"
+                renderTrigger={(props) => (
+                  <IconButton
+                    {...props}
+                    label="Profile actions: rename, duplicate, delete"
+                    tooltip="Profile actions"
+                    icon={<EllipsisHorizontalIcon />}
+                    variant="ghost"
+                    size="sm"
+                    isDisabled={pending}
+                  />
+                )}
+              >
+                <DropdownMenuItem
+                  icon={PencilSquareIcon}
+                  label="Rename"
+                  onClick={() => {
+                    setError('');
+                    setNaming({ mode: 'rename', name: active?.name ?? '' });
+                  }}
                 />
-              )}
-            >
-              <DropdownMenuItem
-                icon={PencilSquareIcon}
-                label="Rename"
-                onClick={() => {
-                  setError('');
-                  setNaming({ mode: 'rename', name: active?.name ?? '' });
-                }}
-              />
-              <DropdownMenuItem
-                icon={RectangleStackIcon}
-                label="Duplicate"
-                onClick={() =>
-                  void run(api(`/api/profiles/${list.active}/duplicate`, {}), activateNewest)
-                }
-              />
-              <DropdownMenuDivider />
-              <DropdownMenuItem
-                icon={TrashIcon}
-                label={`Delete ${active?.name ?? 'profile'}`}
-                description={list.profiles.length < 2 ? 'Keep at least one profile' : undefined}
-                isDisabled={list.profiles.length < 2}
-                onClick={() => void run(api(`/api/profiles/${list.active}/delete`, {}))}
-              />
-            </DropdownMenu>
+                <DropdownMenuItem
+                  icon={RectangleStackIcon}
+                  label="Duplicate"
+                  onClick={() =>
+                    void run(api(`/api/profiles/${list.active}/duplicate`, {}), activateNewest)
+                  }
+                />
+                <DropdownMenuDivider />
+                <DropdownMenuItem
+                  icon={TrashIcon}
+                  label={`Delete ${active?.name ?? 'profile'}`}
+                  description={list.profiles.length < 2 ? 'Keep at least one profile' : undefined}
+                  isDisabled={list.profiles.length < 2}
+                  onClick={() => void run(api(`/api/profiles/${list.active}/delete`, {}))}
+                />
+              </DropdownMenu>
+            )}
           </HStack>
         )}
       </HStack>

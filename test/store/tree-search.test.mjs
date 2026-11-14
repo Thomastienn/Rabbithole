@@ -27,7 +27,7 @@ test('search matches learning-tree titles only, case-insensitively, newest first
       )
     ).json();
   try {
-    const photo = store.create('Photosynthesis basics');
+    const photo = store.create('Photosynthesis basics', 'codex');
     store.message(photo.id, 'user', 'How do leaves make sugar?', 'completed');
     const reply = store.message(
       photo.id,
@@ -47,7 +47,7 @@ test('search matches learning-tree titles only, case-insensitively, newest first
       'completed',
     );
     store.rename(child.id, 'Chlorophyll colour');
-    const rome = store.create('Roman roads');
+    const rome = store.create('Roman roads', 'codex');
     store.message(rome.id, 'user', 'Who built the roads?', 'completed');
 
     assert.deepEqual(

@@ -85,7 +85,7 @@ test('invalid provider context windows are not saved or shown as percentages', a
   });
   const origin = `http://127.0.0.1:${app.server.address().port}`,
     { csrf } = await (await fetch(`${origin}/api/state`)).json();
-  const root = store.create('Unknown window');
+  const root = store.create('Unknown window', 'codex');
   for (contextWindow of [undefined, null, 0, -1, 1.5, '200000', Number.MAX_SAFE_INTEGER + 1]) {
     await (
       await fetch(`${origin}/api/trees/${root.id}/messages`, {

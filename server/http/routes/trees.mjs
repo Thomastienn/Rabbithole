@@ -40,6 +40,8 @@ export async function treeRoutes(req, res, url, ctx, body) {
     const selection = explicit
       ? { provider: body.provider, model: body.model, effort: body.effort ?? null }
       : ctx.chatDefault();
+    // No chat model chosen yet: the tree has no provider and Send asks for one.
+    if (!explicit && !selection.provider) return json(res, 201, store.create());
     if (!Object.hasOwn(providers, selection.provider))
       return json(res, 400, {
         error:

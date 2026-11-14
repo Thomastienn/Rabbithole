@@ -102,3 +102,27 @@ test('chat defaults save model and effort, keep only offered efforts and flag un
   );
   assert.equal(writes.length, 3, 'nothing rewritten while unavailable');
 });
+
+test('a fresh install shows Not set for chat and the smart role that follows it, without an unavailable alert', async (t) => {
+  const { default: SmartSettings } = await import('../../src/settings/SmartSettings.tsx');
+  const unset = { provider: null, model: null, effort: null };
+  const api = async (path) =>
+    path === '/api/settings/chat'
+      ? unset
+      : { model: null, followEffort: true, effort: null, resolved: unset };
+  const { container, act, cleanup } = await render(
+    h(
+      'div',
+      { role: 'table' },
+      h(ChatSettings, { api, models, providers }),
+      h(SmartSettings, { api, models, providers }),
+    ),
+    ui,
+  );
+  t.after(cleanup);
+  await act(async () => {});
+  const [chat, , smart] = container.querySelectorAll('[aria-haspopup=listbox]');
+  assert.equal(chat.textContent.trim(), 'Not set');
+  assert.equal(smart.textContent.trim(), 'Follow chat default (Not set)');
+  assert.equal(container.querySelector('[role=alert]'), null);
+});

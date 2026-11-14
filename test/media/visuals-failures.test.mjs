@@ -35,7 +35,7 @@ test('invalid output gets one automatic retry, then a durable failure with expli
       (await env.get('/api/usage')).events.filter((e) => e.task === 'diagram').length,
       2,
     );
-    const foreign = env.store.create('Foreign');
+    const foreign = env.store.create('Foreign', 'codex');
     assert.equal(
       (await env.post(`/api/trees/${foreign.id}/artifacts/${artifact.id}/retry`)).status,
       404,

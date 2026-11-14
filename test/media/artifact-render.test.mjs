@@ -36,8 +36,8 @@ test('HTTP/SSE artifacts drive client states, owned map metadata and exact ancho
       emit({ type: 'status', status: 'completed' });
     },
   };
-  const root = store.create('Render fixture'),
-    other = store.create('Other');
+  const root = store.create('Render fixture', 'codex'),
+    other = store.create('Other', 'codex');
   let app, origin;
   async function start() {
     app = createApp({ store, provider, auth: { status: () => ({ connected: true }) } });

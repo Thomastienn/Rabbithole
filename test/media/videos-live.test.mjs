@@ -68,7 +68,7 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
   // Phases follow saved cut state, so wake waiters on each save.
   observe(env.store, ['videoData']);
   try {
-    const tree = env.store.create('Video');
+    const tree = env.store.create('Video', 'codex');
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
     const artifact = async () =>
       (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts[0];

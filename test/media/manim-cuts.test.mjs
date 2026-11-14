@@ -88,7 +88,7 @@ for (const repair of [false, true])
       await env.app.stop();
       env.store.close();
     });
-    const tree = env.store.create('Mixed math');
+    const tree = env.store.create('Mixed math', 'codex');
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a math video.' })).text();
     const row = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
@@ -164,7 +164,7 @@ for (const broken of ['detect', 'runtime'])
       await env.app.stop();
       env.store.close();
     });
-    const tree = env.store.create('Unavailable');
+    const tree = env.store.create('Unavailable', 'codex');
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
     const row = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),

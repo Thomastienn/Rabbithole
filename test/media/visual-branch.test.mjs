@@ -149,8 +149,8 @@ test('visual branches freeze the visual and part passage, inherit compact contex
 test('visual branch API rejects invalid parts, foreign or unfinished visuals and forged text offsets before inference', async () => {
   const env = await open();
   try {
-    const root = env.store.create('Root'),
-      other = env.store.create('Other');
+    const root = env.store.create('Root', 'codex'),
+      other = env.store.create('Other', 'codex');
     const messageId = env.store.message(root.id, 'assistant', 'Original answer', 'completed');
     const user = env.store.message(root.id, 'user', 'A question', 'completed');
     const unfinished = env.store.message(root.id, 'assistant', 'Partial answer', 'interrupted');
@@ -236,7 +236,7 @@ test('visual branch API rejects invalid parts, foreign or unfinished visuals and
 test('current databases migrate saved text branches without loss and accept visual branches with null offsets', async () => {
   const path = join(mkdtempSync(join(tmpdir(), 'tt-visual-branch-migration-')), 'trees.sqlite');
   const seed = new Store(path),
-    parent = seed.create('Old parent'),
+    parent = seed.create('Old parent', 'codex'),
     messageId = seed.message(parent.id, 'assistant', 'Original answer', 'completed');
   const existing = seed.branch(
     parent,

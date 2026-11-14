@@ -54,7 +54,7 @@ async function open(
 
 test('saved model changes preserve thread, transcript, fixed context and independent parent/child choices after restart', async () => {
   let env = await open();
-  const root = env.store.create('Root');
+  const root = env.store.create('Root', 'codex');
   await (await env.post(`/api/trees/${root.id}/messages`, { text: 'Original question' })).text();
   const original = env.store.tree(root.id);
   const anchor = {
@@ -123,7 +123,7 @@ test('unsupported selections and catalog failures keep prior model and all saved
       return catalog;
     },
   });
-  const tree = env.store.create('Saved');
+  const tree = env.store.create('Saved', 'codex');
   try {
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Original' })).text();
     const before = env.store.tree(tree.id);
@@ -158,7 +158,7 @@ test('active turn keeps captured model; selection validation serializes with mes
         };
       }),
   });
-  const tree = env.store.create('Busy');
+  const tree = env.store.create('Busy', 'codex');
   env.store.model(tree.id, 'original');
   try {
     const stream = await env.post(`/api/trees/${tree.id}/messages`, { text: 'Question' });
@@ -197,7 +197,7 @@ test('catalog entry without access fails visibly, restores working selection aft
     },
   };
   let env = await open(provider);
-  const tree = env.store.create('Retry');
+  const tree = env.store.create('Retry', 'codex');
   try {
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Original' })).text();
     const before = env.store.tree(tree.id);

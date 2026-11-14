@@ -64,8 +64,8 @@ test('existing ready videos migrate into a global library that survives source d
     path = join(dir, 'trees.sqlite');
   // A pre-library database: ready, failed and missing-file videos saved by an older build.
   let store = new Store(path);
-  const root = store.create('Private discussion title'),
-    other = store.create('Other chat');
+  const root = store.create('Private discussion title', 'codex'),
+    other = store.create('Other chat', 'codex');
   const ids = {};
   for (const [name, tree, status] of [
     ['kept', root, 'ready'],
@@ -162,7 +162,7 @@ test('a newly finished video joins the library in the same transaction as its re
   const dir = mkdtempSync(join(tmpdir(), 'tt-library-')),
     store = new Store(join(dir, 'trees.sqlite'));
   try {
-    const tree = store.create('Chat'),
+    const tree = store.create('Chat', 'codex'),
       message = store.message(tree.id, 'assistant', 'Reply', 'completed');
     const video = store.pendingArtifact(tree.id, message, 'New video', 'Draft', 'video', '{}');
     assert.deepEqual(store.library(), []);
@@ -202,7 +202,7 @@ test('library reveal and trash act only on server-owned media, keep failed entri
   };
   const env = await serve(path, dir, desktop);
   try {
-    const tree = env.store.create('Chat'),
+    const tree = env.store.create('Chat', 'codex'),
       ids = {};
     for (const name of ['kept', 'gone', 'missing', 'linked']) {
       const message = env.store.message(tree.id, 'assistant', 'Reply', 'completed');

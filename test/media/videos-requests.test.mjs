@@ -50,7 +50,7 @@ test('a malformed video block the learner asked for becomes a visible failed vid
       [JSON.stringify(task), /cut off before it closed/, {}, false],
     ]) {
       block = value + (closed ? '\n```' : '');
-      const tree = env.store.create('Bad video');
+      const tree = env.store.create('Bad video', 'codex');
       const stream = await (
         await env.post(`/api/trees/${tree.id}/messages`, { text: request })
       ).text();
@@ -80,7 +80,7 @@ test('a malformed video block the learner asked for becomes a visible failed vid
     }
     // Valid tolerant slip: unknown keys and long fields still start the job directly.
     block = JSON.stringify({ ...task, style: 'fun', intent: 'i'.repeat(17000) }) + '\n```';
-    const tree = env.store.create('Slip');
+    const tree = env.store.create('Slip', 'codex');
     await (
       await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of the final.' })
     ).text();
@@ -111,7 +111,7 @@ test('mixed and duplicate video blocks each leave a failed artifact of their own
       blocks = kinds
         .map((kind) => `\n\`\`\`treetutor-${kind}\n${JSON.stringify(task)}\n\`\`\``)
         .join('');
-      const tree = env.store.create('Multiple requests');
+      const tree = env.store.create('Multiple requests', 'codex');
       const stream = await (
         await env.post(`/api/trees/${tree.id}/messages`, {
           text: 'Make a video of winners advancing.',
@@ -153,7 +153,7 @@ test('provider failure and learner Stop preserve legacy diagram request failures
   });
   try {
     for (mode of ['throw', 'stop']) {
-      const tree = env.store.create('Interrupted requests');
+      const tree = env.store.create('Interrupted requests', 'codex');
       const ready = new Promise((resolve) => {
         entered = resolve;
       });
@@ -189,7 +189,7 @@ test('deleting a conversation while its request block is streaming cannot recrea
     },
   });
   try {
-    const tree = env.store.create('Delete requests');
+    const tree = env.store.create('Delete requests', 'codex');
     const response = env
       .post(`/api/trees/${tree.id}/messages`, { text: 'Make a video of winners advancing.' })
       .then((r) => r.text());
@@ -224,7 +224,7 @@ test('Try a different version gives a ready video a new job; the chat shows only
     },
   });
   try {
-    const tree = env.store.create('Videos');
+    const tree = env.store.create('Videos', 'codex');
     await (
       await env.post(`/api/trees/${tree.id}/messages`, {
         text: 'Make a video of the winners advancing.',
@@ -237,7 +237,7 @@ test('Try a different version gives a ready video a new job; the chat shows only
     assert.equal(
       (
         await env.post(
-          `/api/trees/${env.store.create('Foreign').id}/artifacts/${first.id}/regenerate`,
+          `/api/trees/${env.store.create('Foreign', 'codex').id}/artifacts/${first.id}/regenerate`,
         )
       ).status,
       404,

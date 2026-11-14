@@ -37,7 +37,7 @@ test('a closed video block starts its job mid-reply, completes once and survives
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Early video');
+  const tree = env.store.create('Early video', 'codex');
   const response = await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' });
   const stream = response.text();
   assert.equal(calls, 0, 'an open request block starts no worker');
@@ -93,7 +93,7 @@ test('Stop during the reply cancels its video and rejects late worker output', a
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Stop early video');
+  const tree = env.store.create('Stop early video', 'codex');
   const stream = env
     .post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })
     .then((r) => r.text());
@@ -129,7 +129,7 @@ test('a video ready before the reply finishes is preserved by Stop', async (t) =
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Ready early video');
+  const tree = env.store.create('Ready early video', 'codex');
   const stream = env
     .post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })
     .then((r) => r.text());
@@ -166,7 +166,7 @@ test('a later conflicting media block fails the pending video without publishing
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Conflicting requests');
+  const tree = env.store.create('Conflicting requests', 'codex');
   const stream = env
     .post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })
     .then((r) => r.text());
@@ -206,7 +206,7 @@ test('a tutor failure after request close leaves its detached video running', as
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Detached video');
+  const tree = env.store.create('Detached video', 'codex');
   const stream = await (
     await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })
   ).text();

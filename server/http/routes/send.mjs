@@ -66,6 +66,8 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
     });
   if (typeof body.text !== 'string' || !body.text.trim())
     return json(res, 400, { error: 'Enter a question.' });
+  if (!tree.provider)
+    return json(res, 409, { error: 'Choose a chat model in Settings.', code: 'chat_model_unset' });
   const compaction = tree.branch && !tree.branch.snapshot ? compactions.get(id) : null;
   if (
     tree.branch &&
@@ -139,6 +141,8 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
         }
         continue;
       }
+      // No smart model (and no chat default to follow): visuals and videos are skipped, the reply still arrives.
+      if (['visual', 'video'].includes(request.kind) && !ctx.smart().resolved.provider) continue;
       const label =
         request.kind === 'video' ? 'Video' : request.kind === 'visual' ? 'Visual' : 'Diagram';
       const task = request.task ?? {

@@ -17,6 +17,8 @@ export function FirstQuestion({
   modelError,
   loadModels,
   noModels,
+  needsModel,
+  openSettings,
 }: {
   draft: string;
   setDraft: (draft: string) => void;
@@ -27,6 +29,8 @@ export function FirstQuestion({
   modelError: string;
   loadModels: () => void;
   noModels: boolean;
+  needsModel: boolean;
+  openSettings: (opener: HTMLElement) => void;
 }) {
   return (
     <VStack className="first-question" gap={3} hAlign="center">
@@ -65,6 +69,17 @@ export function FirstQuestion({
             variant="secondary"
             size="sm"
             onClick={() => void loadModels()}
+          />
+        </HStack>
+      )}
+      {needsModel && (
+        <HStack className="failure-banner" role="status" gap={2}>
+          <Text>Choose a chat model in Settings</Text>
+          <Button
+            label="Open Settings"
+            variant="secondary"
+            size="sm"
+            onClick={(e) => openSettings(e.currentTarget)}
           />
         </HStack>
       )}

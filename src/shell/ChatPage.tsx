@@ -200,6 +200,8 @@ export default function ChatPage({
       modelError={modelError}
       loadModels={() => void loadModels()}
       noModels={!!models && !models.length}
+      needsModel={!!model.firstModel && !model.firstModel.provider}
+      openSettings={(opener) => openSettings(undefined, undefined, opener)}
     />
   );
   return (

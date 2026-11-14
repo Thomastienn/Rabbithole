@@ -36,7 +36,7 @@ test('diagram request saves an owned artifact and keeps directive, worker prompt
   };
   env = await open(provider);
   try {
-    reply = env.store.create('Diagrams');
+    reply = env.store.create('Diagrams', 'codex');
     env.store.thread(reply.id, 'tutor-thread-secret', 'fixture-model');
     env.store.message(reply.id, 'user', 'UNRELATED PRIVATE TRANSCRIPT', 'completed');
     const stream = await (
@@ -305,7 +305,7 @@ test('invalid, unsafe and oversized worker results save honest failures without 
   try {
     for (const [value, reason] of rejected) {
       output = value;
-      const tree = env.store.create('Rejected output');
+      const tree = env.store.create('Rejected output', 'codex');
       const stream = await (
         await env.post(`/api/trees/${tree.id}/messages`, { text: 'Draw it.' })
       ).text();
@@ -361,7 +361,7 @@ test('malformed requests are hidden and failed without sending transcript-shaped
       '```treetutor-diagram extra\n' + JSON.stringify(task) + '\n```',
     ]) {
       request = value;
-      const tree = env.store.create('Bad request');
+      const tree = env.store.create('Bad request', 'codex');
       const stream = await (
         await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain.' })
       ).text();

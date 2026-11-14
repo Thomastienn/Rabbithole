@@ -62,7 +62,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
     await env.app.stop();
     env.store.close();
   });
-  const tree = env.store.create('Cuts');
+  const tree = env.store.create('Cuts', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
   await until(() => writing.length === 3 && speaking.length === 3);
   assert.equal(
@@ -170,7 +170,7 @@ for (const failure of ['brief', 'render', 'exhausted'])
       await env.app.stop();
       env.store.close();
     });
-    const tree = env.store.create('Repair');
+    const tree = env.store.create('Repair', 'codex');
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
     const row = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),

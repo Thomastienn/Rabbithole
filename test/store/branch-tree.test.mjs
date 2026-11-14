@@ -33,12 +33,12 @@ test('sibling branches interleave independent saved turns while another tree sub
     });
   const get = async (id) => (await fetch(`${origin}/api/trees/${id}`)).json();
   try {
-    const root = store.create('Root');
+    const root = store.create('Root', 'codex');
     const source = store.message(root.id, 'assistant', 'Roots exchange nutrients.', 'completed');
     const anchor = { messageId: source, start: 0, end: 5, text: 'Roots' };
     const a = store.branch(root, { ...anchor, question: 'Branch A' }, 'Fixed A context');
     const b = store.branch(root, { ...anchor, question: 'Branch B' }, 'Fixed B context');
-    const other = store.create('Other tree');
+    const other = store.create('Other tree', 'codex');
     const owners = [a, b, other];
     const responses = await Promise.all(owners.map((t) => post(t.id, t.title)));
     assert.equal(app.active.size, 3);
@@ -113,7 +113,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`;
   const { csrf } = await (await fetch(`${origin}/api/state`)).json();
-  const parent = store.create('Parent');
+  const parent = store.create('Parent', 'codex');
   store.thread(parent.id, 'parent-thread', 'fixture-model');
   const original = '🌲 same phrase and same phrase';
   const messageId = store.message(parent.id, 'assistant', original, 'completed');
@@ -222,7 +222,7 @@ test('saved overview metadata preserves nested passage connections without trans
   const path = join(mkdtempSync(join(tmpdir(), 'treetutor-overview-')), 'trees.sqlite');
   let store = new Store(path);
   try {
-    const root = store.create('Root');
+    const root = store.create('Root', 'codex');
     const source = store.message(root.id, 'assistant', 'same and same', 'completed');
     const child = store.branch(
       root,
@@ -235,7 +235,7 @@ test('saved overview metadata preserves nested passage connections without trans
       { messageId: nestedSource, start: 0, end: 6, text: 'Nested', question: 'Grandchild' },
       'Other inherited context',
     );
-    const separate = store.create('Separate');
+    const separate = store.create('Separate', 'codex');
     const app = createApp({ store, auth: { status: () => ({ connected: false }) }, provider: {} });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
     let trees;

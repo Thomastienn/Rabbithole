@@ -64,6 +64,14 @@ _Avoid_: OpenAI provider, endpoint (alone)
 **Effort**:
 The supported reasoning setting chosen for a model role or conversation. It is independent of model selection; it does not promise a particular response quality or measured amount of computation.
 
+**Attachment**:
+An image, PDF or text file the learner sends with a question. It belongs to that question's conversation; child conversations learn of it only through their inherited context.
+_Avoid_: Upload, file (alone), document
+
+**Tutor style**:
+The learner-editable teaching guidance every chat model receives: the tutor's purpose and how it explains. It starts as a default the learner can edit or restore, and it never replaces the app's fixed safety and media rules.
+_Avoid_: System prompt, persona, instructions
+
 **Knowledge graph**:
 The single record, across all learning trees, of concepts the learner has met and how they relate.
 _Avoid_: Learner profile, skill map
