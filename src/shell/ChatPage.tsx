@@ -3,13 +3,7 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import {
-  ChevronRightIcon,
-  ShareIcon,
-  FilmIcon,
-  BookOpenIcon,
-  MapIcon,
-} from '@heroicons/react/24/outline';
+import { Bars3Icon, ShareIcon, FilmIcon, BookOpenIcon, MapIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@astryxdesign/core/theme';
 import TreeSearch from './TreeSearch';
 import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
@@ -158,7 +152,11 @@ export default function ChatPage({
       contents={contents()}
       library={() => setTab('library')}
       settings={() =>
-        openSettings(undefined, undefined, document.querySelector<HTMLElement>('.band-contents'))
+        openSettings(
+          undefined,
+          undefined,
+          document.querySelector<HTMLElement>('.band-contents, .contents-reopen'),
+        )
       }
     />
   );
@@ -247,24 +245,7 @@ export default function ChatPage({
             data-expanded={expanded && !overview}
             style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}
           >
-            {!overview &&
-              !mobile &&
-              (contentsOpen ? (
-                contents(() => toggleContents(false))
-              ) : (
-                <aside className="contents-rail" aria-label="Learning tree contents">
-                  <IconButton
-                    className="contents-reopen"
-                    label="Show contents"
-                    tooltip="Show contents"
-                    aria-expanded={false}
-                    icon={<ChevronRightIcon />}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleContents(true)}
-                  />
-                </aside>
-              ))}
+            {!overview && !mobile && contentsOpen && contents(() => toggleContents(false))}
             <section ref={workspace} className="reading-workspace">
               <section
                 id="focused-chat"
@@ -282,6 +263,19 @@ export default function ChatPage({
                   }
                 }}
               >
+                {!overview && (mobile || !contentsOpen) && (
+                  <IconButton
+                    className="contents-reopen"
+                    label="Show contents"
+                    tooltip="Show contents"
+                    aria-expanded={mobile ? drawer : false}
+                    aria-haspopup={mobile ? 'dialog' : undefined}
+                    icon={<Bars3Icon />}
+                    variant="ghost"
+                    size="lg"
+                    onClick={() => (mobile ? setDrawer(true) : toggleContents(true))}
+                  />
+                )}
                 {tree ? (
                   <FocusedChat
                     tree={tree}

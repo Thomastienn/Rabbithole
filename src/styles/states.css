@@ -131,6 +131,22 @@
   width: 100%;
   text-align: left;
 }
+/* Astryx and page-wide focus styles must not add rings inside the composer's frame. */
+.first-question .single-ring-composer > :first-child {
+  outline: none;
+  box-shadow: none;
+}
+.first-question .single-ring-composer > :first-child:focus-within {
+  border-color: var(--treetutor-paper);
+  outline: 2px solid var(--treetutor-paper);
+  outline-offset: 0;
+}
+.first-question .single-ring-composer .astryx-chat-composer-input,
+.first-question .single-ring-composer .astryx-chat-composer-input > [contenteditable],
+.first-question .single-ring-composer .astryx-chat-composer-input > [aria-hidden='true'] {
+  outline: none;
+  box-shadow: none;
+}
 .first-question h2 {
   font-size: 20px;
   font-weight: 700;
@@ -155,7 +171,7 @@
 .turn-rail {
   position: absolute;
   z-index: 3;
-  right: var(--spacing-2);
+  right: calc(3 * var(--treetutor-module));
   top: 50%;
   transform: translateY(-50%);
   display: flex;

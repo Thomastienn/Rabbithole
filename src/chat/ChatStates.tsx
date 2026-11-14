@@ -32,6 +32,7 @@ export function FirstQuestion({
     <VStack className="first-question" gap={3} hAlign="center">
       <Heading level={2}>Your first tree starts with a question.</Heading>
       <ChatComposer
+        className="single-ring-composer"
         elevation="none"
         value={draft}
         onChange={setDraft}

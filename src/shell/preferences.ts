@@ -7,6 +7,14 @@ export function savedVim() {
   }
 }
 
+export function savedFocusMode() {
+  try {
+    return localStorage.getItem('treetutor.focus-mode') === 'on';
+  } catch {
+    return false;
+  }
+}
+
 // Contents starts open; only an explicit collapse is remembered.
 export function savedContentsOpen() {
   try {
@@ -26,7 +34,7 @@ export function savedLibraryLayout(): 'shelf' | 'list' {
 }
 
 export function savePreference(
-  key: 'appearance' | 'theme' | 'vim' | 'contents' | 'library-layout',
+  key: 'appearance' | 'theme' | 'vim' | 'contents' | 'library-layout' | 'focus-mode',
   value: string,
 ) {
   try {

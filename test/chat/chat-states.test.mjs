@@ -1,11 +1,50 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
 const { FirstQuestion, TreeLoading, TreeLoadFailure } =
   await import('../../src/chat/ChatStates.tsx');
+
+test('first-question focus belongs to the composer frame, never the editor or placeholder', async (t) => {
+  const { container, act, cleanup } = await render(
+    h(
+      'div',
+      { className: 'overview library-content' },
+      h(FirstQuestion, {
+        draft: '',
+        setDraft() {},
+        busy: false,
+        available: true,
+        modelMenu: null,
+        submit() {},
+        modelError: '',
+        loadModels() {},
+        noModels: false,
+      }),
+    ),
+    ui,
+  );
+  t.after(cleanup);
+  const style = document.head.appendChild(document.createElement('style'));
+  style.textContent = ['library', 'workspace', 'states']
+    .map((file) => readFileSync(`src/styles/${file}.css`, 'utf8'))
+    .join('\n');
+  const outer = container.querySelector('.astryx-chat-composer');
+  const input = outer.querySelector('.astryx-chat-composer-input');
+  const editor = input.querySelector('[role=textbox]');
+  const placeholder = input.querySelector('[aria-hidden=true]');
+  assert.ok(outer.classList.contains('single-ring-composer'));
+  assert.ok(!input.classList.contains('single-ring-composer'));
+  assert.equal(placeholder.textContent, 'What would you like to understand?');
+  await act(async () => editor.focus());
+  for (const element of [input, editor, placeholder]) {
+    assert.equal(getComputedStyle(element).outline, 'none');
+    assert.equal(getComputedStyle(element).boxShadow, 'none');
+  }
+});
 
 test('first question retains its controlled draft, selects a model before sending, and exposes model recovery', async (t) => {
   let update;

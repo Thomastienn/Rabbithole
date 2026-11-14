@@ -74,6 +74,9 @@ These checks were dropped when their browser scripts were replaced. Each one nee
 browser (pixel geometry, CSS cascade, pointer gestures, scrolling or media playback). To
 cover one again, add it to a smoke script.
 
+- Focused chat polish: the first-question composer paints one solid outer focus ring at least 2px wide, with none around the editor or placeholder; native focus rendering and CSS cascade (component tests cover the outer ring class and inner outline suppression).
+- Focused chat polish: turn-rail quick-jump lines clear the scrollbar with a small gap; native scrollbar width and pixel geometry.
+
 <!-- One line per lost check: script, check, reason. -->
 
 - Video subtitles: the reserved band measures 120px at 1080p and shows at most two lines; native browser geometry and text layout (MP4 dimensions and frame rate are checked by `npm run test:render`).

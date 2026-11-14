@@ -1,4 +1,5 @@
-import type { ReactNode, MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type MouseEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { HStack, Layout as Regions, LayoutContent, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -7,11 +8,13 @@ import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
 import {
   Bars3Icon,
   ChevronDownIcon,
+  ChevronUpIcon,
   Cog6ToothIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   RectangleStackIcon,
 } from '@heroicons/react/24/outline';
+import { savedFocusMode, savePreference } from './preferences';
 
 export const viewTab = (
   label: string,
@@ -132,6 +135,52 @@ export default function ShellBand({
   library: () => void;
   settings: (e: MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const [focusMode, setFocusMode] = useState(savedFocusMode);
+  const focusToggle = useRef<HTMLButtonElement>(null);
+  const toggleFocusMode = useCallback(() => {
+    const restoreFocus = document.activeElement === focusToggle.current;
+    flushSync(() => setFocusMode(!focusMode));
+    savePreference('focus-mode', focusMode ? 'off' : 'on');
+    if (restoreFocus) focusToggle.current?.focus();
+  }, [focusMode]);
+  useEffect(() => {
+    const shortcut = (e: KeyboardEvent) => {
+      if (
+        e.defaultPrevented ||
+        e.repeat ||
+        e.isComposing ||
+        !e.ctrlKey ||
+        !e.shiftKey ||
+        e.altKey ||
+        e.metaKey ||
+        e.key.toLowerCase() !== 'f' ||
+        (e.target instanceof Element &&
+          e.target.closest(
+            'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], .astryx-chat-composer',
+          ))
+      )
+        return;
+      e.preventDefault();
+      toggleFocusMode();
+    };
+    addEventListener('keydown', shortcut);
+    return () => removeEventListener('keydown', shortcut);
+  }, [toggleFocusMode]);
+  const focusButton = (
+    <IconButton
+      ref={focusToggle}
+      className={focusMode ? 'focus-restore' : 'band-focus'}
+      label={focusMode ? 'Show top bar' : 'Hide top bar'}
+      tooltip={`${focusMode ? 'Show' : 'Hide'} top bar (Ctrl+Shift+F)`}
+      aria-expanded={!focusMode}
+      aria-keyshortcuts="Control+Shift+F"
+      icon={focusMode ? <ChevronDownIcon /> : <ChevronUpIcon />}
+      variant="ghost"
+      size="sm"
+      onClick={toggleFocusMode}
+    />
+  );
+  if (focusMode) return focusButton;
   return mobile ? (
     <header className="shell-band">
       <IconButton
@@ -149,6 +198,7 @@ export default function ShellBand({
         TreeTutor
       </Text>
       <HStack gap={1} vAlign="center" className="band-tools">
+        {focusButton}
         <IconButton
           className="tree-search"
           label="Search learning trees"
@@ -196,6 +246,7 @@ export default function ShellBand({
       </nav>
       <HStack gap={1} vAlign="center" className="band-tools">
         {saveAlert}
+        {focusButton}
         <IconButton
           className="tree-search"
           label="Search learning trees"

@@ -30,14 +30,18 @@
   align-self: flex-start;
   margin: calc(-2 * var(--treetutor-module)) 0 0 calc(-1 * var(--treetutor-module));
 }
-.contents-rail {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-block: var(--treetutor-module);
-  border-inline-end: thin solid var(--color-border);
-  background: var(--color-background-muted);
+.focused-chat > .contents-reopen {
+  position: absolute;
+  z-index: 4;
+  top: var(--treetutor-module);
+  inset-inline-start: var(--treetutor-module);
+  width: calc(5 * var(--treetutor-module));
+  height: calc(5 * var(--treetutor-module));
+  background: var(--color-background-body);
+}
+.focused-chat:has(> .contents-reopen) > .chat-header {
+  padding-inline-start: calc(7 * var(--treetutor-module));
+  min-height: calc(7 * var(--treetutor-module));
 }
 .contents-head {
   flex: none;

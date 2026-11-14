@@ -21,6 +21,20 @@ html {
 .workspace {
   position: relative;
 }
+.focus-restore {
+  position: fixed;
+  z-index: 6;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(6 * var(--treetutor-module));
+  height: calc(4 * var(--treetutor-module));
+  background: var(--treetutor-band);
+  color: var(--treetutor-band-ink);
+  --color-overlay-hover: color-mix(in srgb, var(--treetutor-band-ink) 12%, transparent);
+  --color-overlay-pressed: color-mix(in srgb, var(--treetutor-band-ink) 16%, transparent);
+  --focus-outline-color: var(--treetutor-band-ink);
+}
 /* Moss shell band (mockup Read): paper-toned text, focus ring and current tab on moss in both appearances. */
 /* Overrides sit on the controls, not the header: tooltips and the palette render inside the band and keep popover colours. */
 .shell-band :is(button, .band-mark) {
