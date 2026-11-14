@@ -100,6 +100,55 @@ export function replyFeedback(
   };
 }
 
+// The current question is the last one whose top has reached the reading line; before any, the first.
+export function currentQuestion(
+  questions: { id: string }[],
+  top: (id: string) => number | undefined,
+  line: number,
+) {
+  let id = questions[0]?.id;
+  for (const q of questions) {
+    const at = top(q.id);
+    if (at !== undefined && at <= line) id = q.id;
+  }
+  return id;
+}
+
+// Split complete SSE frames off the buffer; the unfinished tail waits for the next chunk.
+export function sseFrames(buffer: string) {
+  const events: any[] = [];
+  let end;
+  while ((end = buffer.indexOf('\n\n')) >= 0) {
+    const frame = buffer.slice(0, end);
+    buffer = buffer.slice(end + 2);
+    if (frame.startsWith('data: ')) events.push(JSON.parse(frame.slice(6)));
+  }
+  return { events, rest: buffer };
+}
+
+// Fold one reply stream event into the live turn; true when the view must redraw.
+export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
+  if (event.type === 'saved') {
+    turn.user = event.user;
+    turn.replaced = event.replaced;
+    turn.reply = { id: event.id, role: 'assistant', text: '', status: 'streaming' };
+  }
+  // A focused chat's first reply waits for its inherited context: "compacting", then "thinking".
+  if (turn.reply && event.type === 'status')
+    turn.reply = { ...turn.reply, phase: event.status === 'compacting' ? 'compacting' : undefined };
+  if (turn.reply && (event.type === 'text' || event.type === 'done'))
+    turn.reply = {
+      ...turn.reply,
+      text: event.text ?? turn.reply.text,
+      status: event.status ?? turn.reply.status,
+    };
+  if (event.type === 'artifact' && turn.reply)
+    turn.artifacts = mergeArtifact(turn.artifacts ?? [], event.artifact, conversation, [
+      turn.reply,
+    ]);
+  return ['saved', 'status', 'text', 'done', 'artifact'].includes(event.type);
+}
+
 // Reconcile saved checkpoints with the latest events for this conversation only.
 export function withTurn<T extends { id?: string; messages: Message[]; artifacts?: Artifact[] }>(
   conversation: T,

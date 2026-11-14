@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { treeGroups } from '../../src/map/treeList.ts';
+import { deletePrompt, subtreeIds, treeGroups } from '../../src/map/treeList.ts';
 
 test('learning trees group by local creation day, newest first, including midnight and week boundaries', () => {
   const previousTZ = process.env.TZ;
@@ -164,4 +164,31 @@ test('library spine has one tick per conversation in its family ink, matching co
     'same inks as the map and contents',
   );
   assert.deepEqual(spine, [0, 1, 2, 3, 4, 1, 1, 1], 'families contiguous in address order');
+});
+
+test('deleting a conversation removes it and every descendant, never its parent or siblings', () => {
+  const trees = [
+    { id: 'root', parent: null },
+    { id: 'child', parent: 'root' },
+    { id: 'grand', parent: 'child' },
+    { id: 'great', parent: 'grand' },
+    { id: 'sibling', parent: 'root' },
+    { id: 'other', parent: null },
+  ];
+  assert.deepEqual(subtreeIds('child', trees), ['child', 'grand', 'great']);
+  assert.deepEqual(subtreeIds('root', trees), ['root', 'child', 'sibling', 'grand', 'great']);
+  assert.deepEqual(subtreeIds('sibling', trees), ['sibling']);
+});
+
+test('delete confirmation names the kind, counts every conversation and appends a failure', () => {
+  assert.deepEqual(deletePrompt({ title: 'Peterson', count: 1, parent: 'root' }), {
+    title: 'Delete branch “Peterson”?',
+    description:
+      '1 conversation and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.',
+    actionLabel: 'Delete branch',
+  });
+  const root = deletePrompt({ title: 'Tournament', count: 3, parent: null }, 'Locked');
+  assert.equal(root.title, 'Delete chat “Tournament”?');
+  assert.equal(root.actionLabel, 'Delete chat');
+  assert.match(root.description, /^3 conversations .* Deletion failed: Locked$/);
 });

@@ -7,7 +7,16 @@ export function savedVim() {
   }
 }
 
-export function savePreference(key: 'appearance' | 'theme' | 'vim', value: string) {
+// Contents starts open; only an explicit collapse is remembered.
+export function savedContentsOpen() {
+  try {
+    return localStorage.getItem('treetutor.contents') !== 'collapsed';
+  } catch {
+    return true;
+  }
+}
+
+export function savePreference(key: 'appearance' | 'theme' | 'vim' | 'contents', value: string) {
   try {
     localStorage.setItem(`treetutor.${key}`, value);
   } catch {

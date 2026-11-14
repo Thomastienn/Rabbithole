@@ -21,6 +21,7 @@ import {
   parseViewport,
   placeBox,
   vimAction,
+  zoomLabel,
   type Point,
   type Viewport,
 } from './canvas';
@@ -500,7 +501,7 @@ export default function TreeOverview({
         />
         <Text className="sr-only">Current zoom</Text>
         <Text data-zoom="" type="supporting" hasTabularNumbers>
-          {zoom < 0.01 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%
+          {zoomLabel(zoom)}
         </Text>
         <IconButton
           label="Zoom in"

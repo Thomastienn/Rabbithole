@@ -56,6 +56,26 @@ export function conversationAddresses(trees: readonly LearningTree[]) {
   }
   return out;
 }
+// A conversation and every descendant: what deleting it removes.
+export function subtreeIds(id: string, trees: readonly { id: string; parent: string | null }[]) {
+  const ids = [id];
+  for (let i = 0; i < ids.length; i++)
+    for (const t of trees) if (t.parent === ids[i] && !ids.includes(t.id)) ids.push(t.id);
+  return ids;
+}
+// Confirmation copy for deleting a chat or branch with its descendants.
+export function deletePrompt(
+  deletion: { title: string; count: number; parent: string | null } | undefined,
+  error = '',
+) {
+  const kind = deletion?.parent ? 'branch' : 'chat',
+    count = deletion?.count ?? 0;
+  return {
+    title: `Delete ${kind} “${deletion?.title ?? ''}”?`,
+    description: `${count} ${count === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.${error ? ` Deletion failed: ${error}` : ''}`,
+    actionLabel: `Delete ${kind}`,
+  };
+}
 export const inkStyle = (ink: number) =>
   ({
     '--ink': ink ? `var(--treetutor-ink-${ink})` : 'var(--treetutor-paper)',

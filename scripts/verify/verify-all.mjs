@@ -23,7 +23,6 @@ const live = new Set([
 ]);
 // Failures already recorded in TreeTutor-cpi (one-line cause each); drop an entry when it is fixed.
 const known = {
-  'verify-compact-chat.mjs': 'TreeTutor-cpi: dark side panel layout assertion (savedText false)',
   'verify-different-version.mjs': 'TreeTutor-cpi: ready visual + video wait times out',
   'verify-narrated-playback.mjs': "TreeTutor-cpi: reads a past native run's deleted /tmp data dir",
   'verify-video-library.mjs':

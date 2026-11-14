@@ -4,7 +4,13 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { parseViewport, placeBox, offsetCoveredBoxes, vimAction } from '../../src/map/canvas.ts';
+import {
+  parseViewport,
+  placeBox,
+  offsetCoveredBoxes,
+  vimAction,
+  zoomLabel,
+} from '../../src/map/canvas.ts';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { layoutSaver, LAYOUT_SAVE_MS } from '../../src/map/layoutSave.ts';
@@ -393,4 +399,14 @@ test('Vim aliases map only the agreed plain keys to existing canvas actions', ()
     { keyCode: 229 },
   ])
     assert.equal(key('f', extra), undefined, JSON.stringify(extra));
+});
+
+test('zoom reads as a whole percent, with one decimal below 1%', () => {
+  assert.deepEqual([1, 1.234, 0.5, 0.01, 0.0042].map(zoomLabel), [
+    '100%',
+    '123%',
+    '50%',
+    '1%',
+    '0.4%',
+  ]);
 });

@@ -9,6 +9,9 @@ export type PlacedBox = Box & {
 export type Viewport = Point & { zoom: number };
 export const MIN_ZOOM = 0.001;
 
+// Whole percent, with one decimal below 1% so extreme zoom-out never reads 0%.
+export const zoomLabel = (zoom: number) =>
+  `${zoom < 0.01 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%`;
 export function parseViewport(value: string | null): Viewport | undefined {
   try {
     const view = JSON.parse(value ?? 'null');

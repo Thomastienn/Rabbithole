@@ -231,3 +231,39 @@ cover one again, add it to a smoke script.
 - `verify-tree-search`: the scrollbar has a rounded thumb and transparent track, quiet at rest and visible on hover/scroll/focus; browser scrollbar CSS.
 - `verify-tree-search`: focusing the oldest saved tree scrolls it fully into view; native focus scrolling (date grouping remains tested).
 - `verify-tree-search`: the floating palette and Library scrollbar fit wide/narrow windows in both appearances; responsive CSS geometry.
+- `verify-chat-defaults`: Settings and the conversation model menu fit 390px without horizontal overflow in both appearances; responsive CSS geometry (saved choices, offered efforts and recovery alert remain tested).
+- `verify-chat-defaults`: native Enter/Home/Enter in the Astryx effort selector and menu radios commit by keyboard; browser keyboard/default actions (option lists and save requests remain component/boundary tested).
+- `verify-chat-divider`: a real pointer drag widens the map by the dragged distance and clamps at 20rem/60%; native pointer capture and measured geometry (clamp, key and reset math plus separator aria remain tested).
+- `verify-chat-divider`: expanded chat fills the workspace, map-only hides chat and the divider, and 390px has no divider with full-width chat; responsive CSS layout.
+- `verify-chat-divider`: the saved width restores the rendered map width after reload; browser storage plus CSS variables (saved-width parsing remains unit tested).
+- `verify-chat-expand`: expand hides the map with chat at full workspace width and collapse restores the exact prior map transform; CSS layout and React Flow transforms (keyboard-journey smoke keeps the toggle focus).
+- `verify-chat-expand`: expanded mode, a live reply and a draft survive resizing across 390px and back; browser resizing with responsive CSS.
+- `verify-chat-expand`: expand runs one View Transition with motion allowed and none under reduced motion; native View Transitions and media queries.
+- `verify-chat-sidebar`: drafts stay per conversation across switches, and a late reply or slow selection response never replaces the conversation now open; ChatPage orchestration that jsdom cannot mount before the ChatPage split (owning-turn reconciliation remains unit tested).
+- `verify-chat-sidebar`: the band, focused chat and map sit side by side, and the opened node stays inside the canvas; CSS geometry.
+- `verify-compact-chat`: the header is one row of at most 57px with all controls visible and level; computed CSS geometry (control names and actions remain component tested).
+- `verify-compact-chat`: Send is 3px-rounded, accent-filled and below the input beside the model button, and the rounded composer clears the latest reply; computed CSS and geometry.
+- `verify-compact-chat`: long titles wrap in the reading measure and Rename shows the full-title tooltip on hover and focus; browser text layout and tooltips.
+- `verify-compact-chat`: the overflow menu opens without movement under reduced motion; native animations and media queries (menu actions remain component tested).
+- `verify-compact-chat`: Shift+Enter inserts a newline, Vim letters type into the composer without moving the map, Enter sends and Stop interrupts; native contenteditable input (Vim exclusions remain unit tested; first-conversation smoke sends).
+- `verify-compact-controls`: Fit encloses every node inside the canvas and Zoom in changes the shown percentage; React Flow geometry (zoom label formatting remains unit tested).
+- `verify-compact-controls`: Escape from the Map menu restores focus to its trigger and Learning trees opens the Library; Astryx menu focus integration (keyboard-journey smoke covers map menus).
+- `verify-contents`: Contents is 264px with AA text, a 3:1 solid focus ring, 8px family dots and no document overflow in both appearances; computed CSS (family ink assignment remains component tested).
+- `verify-contents`: Figures open their owning conversation and scroll/focus visual, diagram and failed-video figures, consumed once; native scrolling and ChatPage focus orchestration (figure callbacks remain component tested).
+- `verify-contents`: a branch made through the passage popup and an SSE visual appear live in Contents; ChatPage orchestration (live turn reconciliation remains unit tested).
+- `verify-contents`: at 390px the drawer opens by keyboard, Settings opens on Interface after it closes, figure navigation closes it and chat is full width; native modal behavior and responsive CSS.
+- `verify-contents-collapse`: collapsing leaves a rail under 64px, widens chat by over 100px (full width with Expand chat) and moves focus between the toggles; CSS geometry and post-unmount focus (toggle aria, callbacks and saved preference remain tested).
+- `verify-contents-collapse`: the narrow drawer shows full contents without a collapse button while collapsed; responsive CSS visibility.
+- `verify-copy-buttons`: reply Copy is visible at rest while code Copy is hidden until hover or keyboard focus, in both appearances; computed opacity and hover CSS (copy text and Copied label remain component tested).
+- `verify-copy-buttons`: native Tab/Shift+Tab reach Copy reply and Copy code with Enter/Space activation; browser focus traversal.
+- `verify-focused-chat-layout`: the question bubble is right-aligned and tinted, replies are 640px Literata 17px, metadata is muted, and the turn gap exceeds twice the question–reply gap; computed CSS and geometry in both appearances.
+- `verify-focused-chat-layout`: passage text, then artifacts, then the usage footer render in order, and the footer stays visible at rest, on hover and on focus; browser layout and hover CSS (footer content remains tested).
+- `verify-focused-chat-layout`: failed and interrupted statuses use the alert and muted colors and suggestion underlines are dotted; computed CSS (status labels remain unit/component tested).
+- `verify-focused-chat-surround`: Archivo 700 title, frameless tonal inherited context and diagram cards, accent Send as the only filled button, hairline opaque composer and no nested frames; computed CSS in both appearances.
+- `verify-focused-chat-surround`: the divider seam paints paper ink on hover; hover CSS.
+- `verify-focused-chat-surround`: at 390px and 320×568 the composer, long drafts, long parent titles and the failure banner fit with Send reachable and no overflow; responsive CSS geometry.
+- `verify-reply-retry`: the failed reply with Retry and its in-place replacement render correctly in both appearances; screenshots and computed CSS (Retry visibility, request and replacement remain tested).
+- `verify-turn-rail`: clicking a tick scrolls its question to the reading-area top and scrolling by hand moves the current tick; native scrolling and measured bounds (tick names, jump callback and current-question choice remain tested).
+- `verify-turn-rail`: the rail hides at narrow widths and returns when wide; responsive media query.
+- `verify-chat-management`: rename and delete confirmations stay inside desktop and narrow viewports with safe focus, and a 200-character unbroken title fits; CSS geometry and native dialog focus (prompt copy and title limits remain tested).
+- `verify-chat-management`: deleting the open chat opens the next saved chat with composer focus, or New chat when none remain, and Library rename never selects another chat; ChatPage orchestration (subtree selection, deletion and rename persistence remain unit/integration tested).

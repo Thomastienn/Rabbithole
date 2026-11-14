@@ -26,3 +26,4 @@ export function savedMapWidth(saved: string | null) {
   const width = Number(saved);
   return saved && Number.isFinite(width) && width >= MIN_MAP_WIDTH ? width : DEFAULT_MAP_WIDTH;
 }
+export const remPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;

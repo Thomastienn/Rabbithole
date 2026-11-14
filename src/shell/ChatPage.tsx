@@ -1,12 +1,4 @@
-import {
-  Fragment,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
@@ -22,10 +14,8 @@ import {
 import {
   AdjustmentsHorizontalIcon,
   EllipsisHorizontalIcon,
-  XMarkIcon,
   ArrowUturnLeftIcon,
   ChevronRightIcon,
-  ViewColumnsIcon,
   ChatBubbleLeftRightIcon,
   PlusIcon,
   PencilSquareIcon,
@@ -38,12 +28,11 @@ import {
   MapIcon,
   RectangleStackIcon,
   ListBulletIcon,
-  CheckIcon,
 } from '@heroicons/react/24/outline';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import TreeSearch from './TreeSearch';
 import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
-import { savedVim, savePreference } from './preferences';
+import { savedContentsOpen, savedVim, savePreference } from './preferences';
 import { treeSearchSource } from './treeSearch';
 import { restoredTree, rootOf } from '../map/mapState';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
@@ -63,7 +52,15 @@ import TreeOverview, {
   type MapActions,
   type Layout,
 } from '../map/TreeOverview';
-import { replyUsageLine, withTurn, type Message, type Suggestions, type Turn } from '../chat/turn';
+import {
+  applyStreamEvent,
+  replyUsageLine,
+  sseFrames,
+  withTurn,
+  type Message,
+  type Suggestions,
+  type Turn,
+} from '../chat/turn';
 import { layoutSaver, type Batch } from '../map/layoutSave';
 import type { Point, Viewport } from '../map/canvas';
 import DiagramCard from '../media/DiagramCard';
@@ -74,23 +71,29 @@ import { FirstQuestion, TreeLoading, TreeLoadFailure } from '../chat/ChatStates'
 import { firstQuestion as startFirstQuestion } from '../chat/firstQuestion';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from '../settings/SettingsWindow';
 import type { Appearance, ThemeChoice } from './appearance';
-import {
-  DEFAULT_MAP_WIDTH,
-  MIN_MAP_WIDTH,
-  clampMapWidth,
-  keyMapWidth,
-  maxMapWidth,
-  resetMapWidth,
-  savedMapWidth,
-} from '../map/mapWidth';
+import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
+import MapDivider from '../map/MapDivider';
 import KnowledgePage from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
-import { artifactsAt, mergeArtifact, visualPassage, type Artifact } from '../media/artifacts';
+import { artifactsAt, visualPassage, type Artifact } from '../media/artifacts';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
-import { conversationAddresses, inkStyle, treeGroups, markLibraryScrolling } from '../map/treeList';
+import {
+  conversationAddresses,
+  inkStyle,
+  deletePrompt,
+  subtreeIds,
+  treeGroups,
+  markLibraryScrolling,
+} from '../map/treeList';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
-import { effortLabel, type Model } from '../settings/models';
-import { TokenStats, TokenStatsToggle, InheritedContext, ReplyFeedback } from '../chat/ChatDetails';
+import {
+  effortLabel,
+  effortOptions,
+  effortWasReset,
+  keptEffort,
+  type Model,
+} from '../settings/models';
+import { TokenStats, InheritedContext, ReplyFeedback } from '../chat/ChatDetails';
 import Passage from '../chat/Passage';
 import BranchForm from '../chat/BranchForm';
 import {
@@ -102,6 +105,8 @@ import {
 } from '../chat/branch';
 import Contents from '../chat/Contents';
 import TurnRail from '../chat/TurnRail';
+import TitleEditor from '../chat/TitleEditor';
+import ChatHeadingRow from '../chat/ChatHeader';
 import { useTheme } from '@astryxdesign/core/theme';
 
 type Tree = {
@@ -127,80 +132,6 @@ type State = {
   suggesting?: string[];
   conceptNameTokens?: number;
 };
-
-function TitleEditor({
-  title,
-  save,
-  cancel,
-}: {
-  title: string;
-  save: (title: string) => Promise<void>;
-  cancel: () => void;
-}) {
-  const [value, setValue] = useState(title),
-    [saving, setSaving] = useState(false),
-    [error, setError] = useState('');
-  const valid = !!value.trim() && value.trim().length <= 200;
-  function submit() {
-    if (!valid || saving) return;
-    setSaving(true);
-    void save(value.trim()).catch((e) => {
-      setError(e.message);
-      setSaving(false);
-    });
-  }
-  return (
-    <VStack
-      gap={2}
-      className="title-editor"
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          e.stopPropagation();
-          if (!saving) cancel();
-        }
-      }}
-    >
-      <TextInput
-        label="Conversation title"
-        isLabelHidden
-        value={value}
-        onChange={setValue}
-        size="sm"
-        hasAutoFocus
-        isDisabled={saving}
-        description="Up to 200 characters."
-        onEnter={submit}
-        status={
-          value.trim().length > 200
-            ? { type: 'error', message: 'Use 200 characters or fewer.' }
-            : undefined
-        }
-      />
-      {error && <Text role="alert">{error}</Text>}
-      <HStack gap={1}>
-        <IconButton
-          label={saving ? 'Saving…' : 'Save title'}
-          icon={<CheckIcon />}
-          variant="primary"
-          size="sm"
-          isDisabled={saving || !valid}
-          onClick={submit}
-        />
-        <IconButton
-          label="Cancel rename"
-          icon={<XMarkIcon />}
-          variant="ghost"
-          size="sm"
-          isDisabled={saving}
-          onClick={cancel}
-        />
-      </HStack>
-    </VStack>
-  );
-}
-
-const remPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
 
 export default function ChatPage({
   appearance,
@@ -287,22 +218,12 @@ export default function ChatPage({
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
   const [expanded, setExpanded] = useState(false);
-  const [contentsOpen, setContentsOpen] = useState(() => {
-    try {
-      return localStorage.getItem('treetutor.contents') !== 'collapsed';
-    } catch {
-      return true;
-    }
-  });
+  const [contentsOpen, setContentsOpen] = useState(savedContentsOpen);
   // The toggle unmounts with its panel, so focus moves to its counterpart.
   function toggleContents(open: boolean) {
     flushSync(() => setContentsOpen(open));
     document.querySelector<HTMLElement>(open ? '.contents-collapse' : '.contents-reopen')?.focus();
-    try {
-      localStorage.setItem('treetutor.contents', open ? 'open' : 'collapsed');
-    } catch {
-      /* Preference stays for this session only. */
-    }
+    savePreference('contents', open ? 'open' : 'collapsed');
   }
   const [statsOpen, setStatsOpen] = useState(false);
   const statsPanel = useRef<HTMLDivElement>(null);
@@ -655,12 +576,7 @@ export default function ChatPage({
           ? { ...t, provider: saved.provider, model: saved.model, effort: saved.effort }
           : t,
       );
-      if (
-        selected.current === id &&
-        tree.effort &&
-        effort === null &&
-        (tree.provider !== provider || tree.model !== model)
-      )
+      if (selected.current === id && effortWasReset(tree, { provider, model, effort }))
         setModelNotice('Effort changed to Provider default for this model.');
     } catch (e) {
       if (selected.current === id) setError((e as Error).message);
@@ -856,12 +772,15 @@ export default function ChatPage({
     const target = state?.trees.find((t) => t.id === id),
       owner = state && rootOf(id, state.trees);
     if (!target || !owner) return;
-    const ids = [id];
-    for (let i = 0; i < ids.length; i++)
-      for (const t of state!.trees) if (t.parent === ids[i] && !ids.includes(t.id)) ids.push(t.id);
     deleteOrigin.current = origin;
     setDeleteError('');
-    setDeletion({ id, root: owner, title: target.title, count: ids.length, parent: target.parent });
+    setDeletion({
+      id,
+      root: owner,
+      title: target.title,
+      count: subtreeIds(id, state!.trees).length,
+      parent: target.parent,
+    });
   }
   function cancelDelete() {
     if (deleting) return;
@@ -1006,46 +925,19 @@ export default function ChatPage({
       while (true) {
         const result = await reader.read();
         buffer += decoder.decode(result.value, { stream: !result.done });
-        let end;
-        while ((end = buffer.indexOf('\n\n')) >= 0) {
-          const frame = buffer.slice(0, end);
-          buffer = buffer.slice(end + 2);
-          if (!frame.startsWith('data: ')) continue;
-          const event = JSON.parse(frame.slice(6));
+        const frames = sseFrames(buffer);
+        buffer = frames.rest;
+        for (const event of frames.events) {
           if (removed.current.has(id)) continue;
           if (event.type === 'error' && selected.current === id) setError(event.error);
           if (event.type === 'saved') {
-            turn.user = event.user;
-            turn.replaced = event.replaced;
             const title: string = renamed.current.get(id) ?? event.title;
             setTree((t) => (t?.id === id ? { ...t, title } : t));
             setState(
               (s) => s && { ...s, trees: s.trees.map((t) => (t.id === id ? { ...t, title } : t)) },
             );
-            turn.reply = { id: event.id, role: 'assistant', text: '', status: 'streaming' };
           }
-          // A focused chat's first reply waits for its inherited context: "compacting", then "thinking".
-          if (turn.reply && event.type === 'status')
-            turn.reply = {
-              ...turn.reply,
-              phase: event.status === 'compacting' ? 'compacting' : undefined,
-            };
-          if (turn.reply && (event.type === 'text' || event.type === 'done')) {
-            turn.reply = {
-              ...turn.reply,
-              text: event.text ?? turn.reply.text,
-              status: event.status ?? turn.reply.status,
-            };
-          }
-          if (event.type === 'artifact' && turn.reply)
-            turn.artifacts = mergeArtifact(turn.artifacts ?? [], event.artifact, id, [turn.reply]);
-          if (
-            event.type === 'saved' ||
-            event.type === 'status' ||
-            event.type === 'text' ||
-            event.type === 'done' ||
-            event.type === 'artifact'
-          ) {
+          if (applyStreamEvent(turn, event, id)) {
             setTree((t) => (t?.id === id ? withTurn(t, turn) : t));
             setPreviews((p) => ({ ...p, [id]: withLiveTurn(p[id], turn) }));
           }
@@ -1415,12 +1307,10 @@ export default function ChatPage({
                   void chooseModel(
                     id,
                     model,
-                    composition.effort &&
-                      models
-                        ?.find((m) => m.provider === id && m.model === model)
-                        ?.efforts?.includes(composition.effort)
-                      ? composition.effort
-                      : null,
+                    keptEffort(
+                      composition.effort,
+                      models?.find((m) => m.provider === id && m.model === model),
+                    ),
                   )
                 }
               >
@@ -1484,20 +1374,13 @@ export default function ChatPage({
               );
           }}
         >
-          <DropdownMenuRadioItem
-            value="default"
-            label="Provider default"
-            isDisabled={!currentModel}
-          />
-          {composition.effort && !currentModel?.efforts?.includes(composition.effort) && (
+          {effortOptions(composition.effort, currentModel?.efforts).map((option) => (
             <DropdownMenuRadioItem
-              value={composition.effort}
-              label={`${effortLabel(composition.effort)} (unavailable)`}
-              isDisabled
+              key={option.value}
+              value={option.value}
+              label={option.label}
+              isDisabled={option.disabled || (option.value === 'default' && !currentModel)}
             />
-          )}
-          {(currentModel?.efforts ?? []).map((effort) => (
-            <DropdownMenuRadioItem key={effort} value={effort} label={effortLabel(effort)} />
           ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuGroup>
@@ -1598,86 +1481,25 @@ export default function ChatPage({
                   <>
                     <header className="chat-header">
                       <VStack paddingInline={2} paddingBlock={1} gap={1}>
-                        <HStack gap={1} vAlign="center" className="chat-heading-row">
-                          {tree.branch && (
-                            <IconButton
-                              label="Return to parent conversation"
-                              tooltip={`Back to ${state?.trees.find((t) => t.id === tree.branch!.parent)?.title ?? 'parent conversation'}`}
-                              icon={<ArrowUturnLeftIcon />}
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openConversation(tree.branch!.parent)}
-                            />
-                          )}
-                          <nav className="crumbs" aria-label="Path in this learning tree">
-                            {ancestors.map((t) => (
-                              <Fragment key={t.id}>
-                                <Button
-                                  className="crumb"
-                                  label={`${addresses.get(t.id)?.address ?? ''} ${t.title}`.trim()}
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openConversation(t.id)}
-                                >
-                                  <span className="addr">{addresses.get(t.id)?.address}</span>{' '}
-                                  {t.title}
-                                </Button>
-                                <ChevronRightIcon className="crumb-sep" aria-hidden />
-                              </Fragment>
-                            ))}
-                            <strong aria-current="location">
-                              <span className="addr">{addresses.get(tree.id)?.address}</span>{' '}
-                              {tree.title}
-                            </strong>
-                          </nav>
-                          <TokenStatsToggle
-                            open={statsOpen}
-                            toggle={() => setStatsOpen((open) => !open)}
-                          />
-                          <IconButton
-                            className="expand-chat"
-                            aria-pressed={!expanded}
-                            aria-controls="learning-tree-map"
-                            label={expanded ? 'Show map beside chat' : 'Expand chat'}
-                            tooltip={expanded ? 'Show map beside chat' : 'Expand chat'}
-                            icon={<ViewColumnsIcon />}
-                            variant="ghost"
-                            size="sm"
-                            onClick={toggleExpanded}
-                          />
-                          <IconButton
-                            label="Return to tree"
-                            tooltip="Back to map (Esc)"
-                            icon={<XMarkIcon />}
-                            variant="ghost"
-                            size="sm"
-                            onClick={returnToTree}
-                          />
-                          <DropdownMenu
-                            presentation="popover"
-                            alignment="end"
-                            renderTrigger={(props) => (
-                              <IconButton
-                                {...props}
-                                label="More conversation options"
-                                tooltip="More"
-                                icon={<EllipsisHorizontalIcon />}
-                                variant="ghost"
-                                size="sm"
-                              />
-                            )}
-                          >
-                            <DropdownMenuItem
-                              label={statsOpen ? 'Hide token stats' : 'Show token stats'}
-                              onClick={() => setStatsOpen((open) => !open)}
-                            />
-                            <DropdownMenuItem
-                              label="Rename conversation"
-                              icon={<PencilSquareIcon />}
-                              onClick={() => setRenaming({ id: tree.id, place: 'header' })}
-                            />
-                          </DropdownMenu>
-                        </HStack>
+                        <ChatHeadingRow
+                          parentTitle={
+                            tree.branch
+                              ? (state?.trees.find((t) => t.id === tree.branch!.parent)?.title ??
+                                'parent conversation')
+                              : undefined
+                          }
+                          ancestors={ancestors}
+                          current={tree}
+                          addresses={addresses}
+                          open={(id) => openConversation(id)}
+                          openParent={() => openConversation(tree.branch!.parent)}
+                          statsOpen={statsOpen}
+                          toggleStats={() => setStatsOpen((open) => !open)}
+                          expanded={expanded}
+                          toggleExpanded={toggleExpanded}
+                          returnToTree={returnToTree}
+                          rename={() => setRenaming({ id: tree.id, place: 'header' })}
+                        />
                         {modelNotice && (
                           <Text type="supporting" role="status">
                             {modelNotice}
@@ -2051,37 +1873,11 @@ export default function ChatPage({
                 )}
               </section>
               {root && state && !overview && !expanded && !mobile && (
-                <div
-                  className="chat-divider"
-                  role="separator"
-                  tabIndex={0}
-                  aria-label="Resize map"
-                  aria-controls="learning-tree-map"
-                  aria-orientation="vertical"
-                  aria-valuemin={MIN_MAP_WIDTH}
-                  aria-valuemax={Math.round(maxMapWidth(workspaceWidth))}
-                  aria-valuenow={Math.round(shownMapWidth)}
-                  aria-valuetext={`Map width ${Math.round(shownMapWidth)} rem`}
-                  title="Drag to resize the map. Double-click to reset."
-                  onPointerDown={(e) => {
-                    if (e.button) return;
-                    e.preventDefault();
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                  }}
-                  onPointerMove={(e) => {
-                    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-                    const box = workspace.current!.getBoundingClientRect();
-                    setMapWidth(
-                      clampMapWidth((box.right - e.clientX) / remPx(), box.width / remPx()),
-                    );
-                  }}
-                  onDoubleClick={() => setMapWidth(resetMapWidth(workspaceWidth))}
-                  onKeyDown={(e) => {
-                    const next = keyMapWidth(shownMapWidth, e.key, workspaceWidth, e.shiftKey);
-                    if (next === undefined) return;
-                    e.preventDefault();
-                    setMapWidth(next);
-                  }}
+                <MapDivider
+                  width={shownMapWidth}
+                  workspaceWidth={workspaceWidth}
+                  workspace={workspace}
+                  setWidth={setMapWidth}
                 />
               )}
               {root && state && (
@@ -2416,9 +2212,7 @@ export default function ChatPage({
         onOpenChange={(open) => {
           if (!open) cancelDelete();
         }}
-        title={`Delete ${deletion?.parent ? 'branch' : 'chat'} “${deletion?.title ?? ''}”?`}
-        description={`${deletion?.count ?? 0} ${(deletion?.count ?? 0) === 1 ? 'conversation' : 'conversations'} and their messages, branches, diagrams and saved layout will be permanently deleted. Ready videos stay in Videos. Active replies and video jobs in these conversations will stop. This cannot be undone.${deleteError ? ` Deletion failed: ${deleteError}` : ''}`}
-        actionLabel={deletion?.parent ? 'Delete branch' : 'Delete chat'}
+        {...deletePrompt(deletion, deleteError)}
         cancelLabel="Keep conversations"
         isActionLoading={deleting}
         onAction={() => void deleteConversation()}

@@ -1,7 +1,7 @@
 import '../support/tsx.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement as h } from 'react';
+import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button, name } from '../support/ui.mjs';
 import { conversationAddresses } from '../../src/map/treeList.ts';
@@ -88,4 +88,66 @@ test('Contents lists nested conversation addresses and figures and routes each a
   await act(async () => button(container, 'Fig 1 Trade loop').click());
   await act(async () => button(container, 'Hide contents').click());
   assert.deepEqual(calls, [['conversation', 'grand'], ['figure', 'root', 'figure'], ['collapse']]);
+});
+
+test('Contents reports the last completed context, drops the meter without a limit, shares family inks and collapses', async (t) => {
+  const trees = [
+    { id: 'root', parent: null, title: 'Fungi', created: 0 },
+    { id: 'child', parent: 'root', title: 'Trade', created: 1 },
+    { id: 'grand', parent: 'child', title: 'Alone', created: 2 },
+    { id: 'sibling', parent: 'root', title: 'Hyphae', created: 3 },
+  ];
+  const reply = (input, context) => ({
+    id: `r${input}`,
+    role: 'assistant',
+    text: 'A',
+    status: 'completed',
+    usage: { input, output: 0, cacheRead: 0, context },
+  });
+  const limit = { limit: 200000, provider: 'codex', model: 'chat' };
+  let update;
+  const collapsed = [];
+  function Fixture() {
+    const [current, set] = useState({
+      id: 'root',
+      provider: 'codex',
+      model: 'chat',
+      artifacts: [],
+      messages: [reply(36000, limit)],
+    });
+    update = set;
+    return h(Contents, {
+      root: 'root',
+      trees,
+      addresses: conversationAddresses(trees),
+      previews: {},
+      active: [],
+      current,
+      open() {},
+      openFigure() {},
+      collapse: () => collapsed.push(true),
+    });
+  }
+  const { container, act, cleanup } = await render(h(Fixture), ui);
+  t.after(cleanup);
+  const context = () => container.querySelector('.contents-context');
+  assert.match(context().textContent, /36,000 tokens · 18% of 200,000/);
+  assert.equal(context().querySelector('meter').value, 36000);
+  await act(async () => update((c) => ({ ...c, messages: [...c.messages, reply(64000, limit)] })));
+  assert.match(context().textContent, /64,000 tokens · 32% of 200,000/);
+  await act(async () => update((c) => ({ ...c, model: 'unknown' })));
+  assert.match(context().textContent, /64,000 tokens · limit unavailable/);
+  assert.doesNotMatch(context().textContent, /%/);
+  assert.equal(context().querySelector('meter'), null);
+  await act(async () => update((c) => ({ ...c, messages: [] })));
+  assert.match(context().textContent, /Context usage unavailable/);
+  const ink = [...container.querySelectorAll('.contents-list > li')].map((li) =>
+    li.style.getPropertyValue('--ink'),
+  );
+  assert.equal(ink[1], ink[2], '1.1 and 1.1.1 share their family ink');
+  assert.notEqual(ink[1], ink[3], 'sibling families differ');
+  const hide = button(container, 'Hide contents');
+  assert.equal(hide.getAttribute('aria-expanded'), 'true');
+  await act(async () => hide.click());
+  assert.deepEqual(collapsed, [true]);
 });

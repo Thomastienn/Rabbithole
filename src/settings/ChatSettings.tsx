@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
-import { effortLabel, type Model, type ChatSelection } from './models';
+import {
+  effortOptions,
+  effortWasReset,
+  keptEffort,
+  type Model,
+  type ChatSelection,
+} from './models';
 
 const key = (selection: Pick<Model, 'provider' | 'model'>) =>
   JSON.stringify({ provider: selection.provider, model: selection.model });
@@ -54,7 +60,7 @@ export default function ChatSettings({
       setSaved(await api('/api/settings/chat', selection));
       onSaved?.();
       setMessage(
-        `Chat defaults saved. Existing conversations keep their choices.${saved.effort && selection.effort === null && selection.model !== saved.model ? ' Effort changed to Provider default for this model.' : ''}`,
+        `Chat defaults saved. Existing conversations keep their choices.${effortWasReset(saved, selection) ? ' Effort changed to Provider default for this model.' : ''}`,
       );
     } catch (e) {
       setError((e as Error).message);
@@ -107,8 +113,7 @@ export default function ChatSettings({
                 void save({
                   provider: model.provider,
                   model: model.model,
-                  effort:
-                    saved.effort && model.efforts?.includes(saved.effort) ? saved.effort : null,
+                  effort: keptEffort(saved.effort, model),
                 });
             }}
           />
@@ -122,22 +127,7 @@ export default function ChatSettings({
             width="100%"
             isDisabled={!selected || !!pending}
             status={incompatible ? { type: 'error' } : undefined}
-            options={[
-              { value: 'default', label: 'Provider default' },
-              ...(incompatible
-                ? [
-                    {
-                      value: saved!.effort!,
-                      label: `${effortLabel(saved!.effort)} (unavailable)`,
-                      disabled: true,
-                    },
-                  ]
-                : []),
-              ...(selected?.efforts ?? []).map((effort) => ({
-                value: effort,
-                label: effortLabel(effort),
-              })),
-            ]}
+            options={effortOptions(selected ? saved?.effort : null, selected?.efforts)}
             onChange={(value) => {
               if (selected)
                 void save({

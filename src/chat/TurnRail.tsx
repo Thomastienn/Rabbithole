@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
+import { currentQuestion } from './turn';
 
 const short = (text: string) => {
   const t = text.replace(/\s+/g, ' ').trim();
@@ -34,14 +35,15 @@ export default function TurnRail({
       if (!scroller) return;
       const box = scroller.getBoundingClientRect(),
         line = box.top + box.height / 3;
-      let id = questions[0]?.id;
-      for (const q of questions) {
-        const top = chat
-          .querySelector(`[data-chat-message="${CSS.escape(q.id)}"]`)
-          ?.getBoundingClientRect().top;
-        if (top !== undefined && top <= line) id = q.id;
-      }
-      setCurrent(id);
+      setCurrent(
+        currentQuestion(
+          questions,
+          (id) =>
+            chat.querySelector(`[data-chat-message="${CSS.escape(id)}"]`)?.getBoundingClientRect()
+              .top,
+          line,
+        ),
+      );
     };
     const schedule = () => {
       frame ||= requestAnimationFrame(update);

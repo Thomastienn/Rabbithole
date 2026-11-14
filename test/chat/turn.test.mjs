@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { replyFeedback, replyUsageLine, underlineRanges, withTurn } from '../../src/chat/turn.ts';
+import {
+  applyStreamEvent,
+  currentQuestion,
+  replyFeedback,
+  replyUsageLine,
+  sseFrames,
+  underlineRanges,
+  withTurn,
+} from '../../src/chat/turn.ts';
 
 test('navigation reconciles stale saved checkpoints with latest owning turn without duplicates', () => {
   const user = {
@@ -169,5 +177,68 @@ test('underline ranges are the exact saved slices, only once the suggestions are
       ],
     ),
     [{ start: emoji.start, end: emoji.end, child: 'c1' }],
+  );
+});
+
+test('reply stream splits SSE frames across chunks and keeps the unfinished tail', () => {
+  const frame = (e) => `data: ${JSON.stringify(e)}\n\n`;
+  const first = sseFrames(frame({ type: 'text', text: 'A' }) + ': ping\n\n' + 'data: {"ty');
+  assert.deepEqual(first.events, [{ type: 'text', text: 'A' }]);
+  assert.equal(first.rest, 'data: {"ty');
+  const second = sseFrames(first.rest + 'pe":"done"}\n\n');
+  assert.deepEqual(second, { events: [{ type: 'done' }], rest: '' });
+});
+
+test('reply stream builds the live turn: saved, compacting, text, done; a retry replaces the failed reply', () => {
+  const turn = {};
+  assert.equal(applyStreamEvent(turn, { type: 'error', error: 'x' }, 'c'), false);
+  assert.equal(applyStreamEvent(turn, { type: 'text', text: 'early' }, 'c'), true);
+  assert.equal(turn.reply, undefined, 'text before saved has no reply to write');
+  const user = { id: 'q', role: 'user', text: 'Why?', status: 'completed' };
+  applyStreamEvent(turn, { type: 'saved', id: 'r2', user, replaced: 'r1' }, 'c');
+  assert.deepEqual(turn.reply, { id: 'r2', role: 'assistant', text: '', status: 'streaming' });
+  applyStreamEvent(turn, { type: 'status', status: 'compacting' }, 'c');
+  assert.equal(turn.reply.phase, 'compacting');
+  applyStreamEvent(turn, { type: 'status', status: 'thinking' }, 'c');
+  assert.equal(turn.reply.phase, undefined);
+  applyStreamEvent(turn, { type: 'text', text: 'Retried' }, 'c');
+  applyStreamEvent(turn, { type: 'done', status: 'completed' }, 'c');
+  assert.deepEqual(
+    { text: turn.reply.text, status: turn.reply.status },
+    { text: 'Retried', status: 'completed' },
+  );
+  const saved = {
+    id: 'c',
+    messages: [user, { id: 'r1', role: 'assistant', text: 'Sunlight', status: 'failed' }],
+  };
+  assert.deepEqual(
+    withTurn(saved, turn).messages.map((m) => [m.id, m.status]),
+    [
+      ['q', 'completed'],
+      ['r2', 'completed'],
+    ],
+    'one question, failed reply replaced in place',
+  );
+});
+
+test('turn rail marks the last question whose top reached the reading line', () => {
+  const questions = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  const tops = { a: -400, b: 120, c: 700 };
+  assert.equal(
+    currentQuestion(questions, (id) => tops[id], 300),
+    'b',
+  );
+  assert.equal(
+    currentQuestion(questions, (id) => tops[id] + 1000, 300),
+    'a',
+    'top of chat',
+  );
+  assert.equal(
+    currentQuestion(questions, (id) => (id === 'c' ? 0 : undefined), 300),
+    'c',
+  );
+  assert.equal(
+    currentQuestion([], () => 0, 300),
+    undefined,
   );
 });
