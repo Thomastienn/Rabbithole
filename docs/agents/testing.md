@@ -52,6 +52,13 @@ helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mj
 - Run `npm test` once at the end.
 - Run `npm run build` when you change TSX or the build.
 - Run `npm run test:render` only when you change video rendering.
+- Real OCR is manual and opt-in: `npm run test:ocr` (never part of `npm test`). It uses
+  `test/fixtures/ocr.png` (printed "Binary heaps"), first refuses a simulated language
+  download failure, then downloads real English data with tesseract.js on the next attempt.
+  It checks the recognised text and the cache under a printed temporary data directory,
+  then starts a new worker with downloads unavailable to prove cached OCR still works.
+  Requires internet for the real first-use download; the app itself caches under
+  `<app data directory>/ocr/`. No provider or model is called by this script.
 - Run `npm run verify` only when the acceptance asks for it. It builds the app and runs the
   smoke set (about a minute); live-provider scripts are skipped and run only by hand. Any
   failure exits non-zero; there is no known-failure list. Run it in the background and read

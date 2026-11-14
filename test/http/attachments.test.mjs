@@ -6,35 +6,46 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { prepareAttachment, withAttachments } from '../../server/attachments.mjs';
+import { OCR_UNAVAILABLE } from '../../server/ocr.mjs';
 import { compactionPrompt } from '../../server/http/jobs/compaction.mjs';
 
 const bytes = (text) => new TextEncoder().encode(text);
 
-test('preparation: a text file becomes one text part with a file-name header', () => {
+test('preparation: a text file becomes one text part with a file-name header', async () => {
   assert.deepEqual(
-    prepareAttachment({ name: 'notes.py', type: 'text/x-python', bytes: bytes('print(1)\n') }),
+    await prepareAttachment({
+      name: 'notes.py',
+      type: 'text/x-python',
+      bytes: bytes('print(1)\n'),
+    }),
     { delivery: 'text', parts: [{ text: '[Attached file: notes.py]\nprint(1)\n' }] },
   );
   // Code files often arrive with no or misleading media types; UTF-8 content decides.
   assert.equal(
-    prepareAttachment({ name: 'a.ts', type: 'video/mp2t', bytes: bytes('let a = 1;') }).parts[0]
-      .text,
+    (await prepareAttachment({ name: 'a.ts', type: 'video/mp2t', bytes: bytes('let a = 1;') }))
+      .parts[0].text,
     '[Attached file: a.ts]\nlet a = 1;',
   );
-  assert.equal(prepareAttachment({ name: 'e.txt', type: '', bytes: bytes('') }).delivery, 'text');
+  assert.equal(
+    (await prepareAttachment({ name: 'e.txt', type: '', bytes: bytes('') })).delivery,
+    'text',
+  );
   for (const file of [
     { name: 'b.bin', type: '', bytes: new Uint8Array([0xff, 0xfe, 0x00, 0x81]) },
     { name: 'z.dat', type: 'application/octet-stream', bytes: bytes('a\0b') },
     { name: 'a.gif', type: 'image/gif', bytes: bytes('GIF') },
   ])
-    assert.throws(() => prepareAttachment(file), new RegExp(`^Error: ${file.name}: .*plain-text`));
+    await assert.rejects(
+      () => prepareAttachment(file),
+      new RegExp(`^Error: ${file.name}: .*plain-text`),
+    );
   assert.equal(
     withAttachments('', [{ text: '[Attached file: a]\nA' }, { text: '[Attached file: b]\nB' }]),
     '[Attached file: a]\nA\n\n[Attached file: b]\nB',
   );
   assert.equal(withAttachments('Why?', []), 'Why?');
   for (const type of ['image/png', 'image/jpeg', 'image/webp'])
-    assert.deepEqual(prepareAttachment({ name: 'p', type, bytes: bytes('IMG') }), {
+    assert.deepEqual(await prepareAttachment({ name: 'p', type, bytes: bytes('IMG') }), {
       delivery: 'image',
       parts: [{ text: '[image: p]', image: true }],
     });
@@ -204,7 +215,7 @@ test('multipart send stores text attachments, delivers them, serves them safely 
   assert.equal((await fetch(`${origin}/api/trees/${id}/attachments/${attachment.id}`)).status, 404);
 });
 
-test('images reach models that read them, are refused for ones that cannot, and become [image: name] in history', async (t) => {
+test('native images reach reading models and become history placeholders; OCR-unavailable refuses atomically', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'treetutor-images-'));
   const store = new Store(join(dir, 'trees.sqlite'));
   const calls = [];
@@ -220,6 +231,9 @@ test('images reach models that read them, are refused for ones that cannot, and 
     store,
     dir,
     providers: { codex: reader(true), claude: reader(false) },
+    recognize: async () => {
+      throw Object.assign(new Error('download failed'), { unavailable: true });
+    },
     auth: { status: () => ({ connected: true }) },
     log: () => {},
   });
@@ -259,7 +273,7 @@ test('images reach models that read them, are refused for ones that cannot, and 
     ['red.png', 'PNG', 'image/png'],
   ]);
   assert.equal(refused.status, 400);
-  assert.match((await refused.json()).error, /^red\.png: this chat model can't read images/);
+  assert.equal((await refused.json()).error, OCR_UNAVAILABLE);
   assert.equal(store.tree(blind).messages.length, 0);
   assert.ok(!existsSync(join(dir, 'attachments', blind)));
   assert.equal(calls.length, 0);

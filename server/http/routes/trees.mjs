@@ -17,7 +17,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
     if (attachment) {
       const data = readFileSync(join(ctx.dir, 'attachments', file[1], attachment.id));
       const text = attachment.delivery === 'text',
-        image = attachment.delivery === 'image' && IMAGE_TYPES.includes(attachment.type);
+        image = IMAGE_TYPES.includes(attachment.type);
       const ascii = attachment.name.replace(/[^\x20-\x7e]|["\\]/g, '_');
       res.writeHead(200, {
         'Content-Type': text
@@ -344,5 +344,11 @@ export async function treeRoutes(req, res, url, ctx, body) {
     }
     return json(res, 201, child);
   }
-  return sendRoute(res, ctx, id, tree, action, body);
+  const controller = new AbortController();
+  active.set(id, controller);
+  try {
+    return await sendRoute(res, ctx, id, tree, action, body, controller);
+  } finally {
+    if (active.get(id) === controller) active.delete(id);
+  }
 }

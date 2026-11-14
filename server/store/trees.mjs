@@ -321,6 +321,12 @@ export const trees = {
         Date.now(),
       );
   },
+  attachmentDelivery(conversation, attachments) {
+    const update = this.db.prepare(
+      'UPDATE attachments SET delivery=?,text=? WHERE conversation=? AND id=?',
+    );
+    for (const a of attachments) update.run(a.delivery, a.text, conversation, a.id);
+  },
   attachments(conversation, message) {
     return this.db
       .prepare(

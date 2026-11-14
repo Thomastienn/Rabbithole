@@ -3,11 +3,21 @@ import { HStack } from '@astryxdesign/core/Layout';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Token } from '@astryxdesign/core/Token';
 import { ChatComposerDrawer } from '@astryxdesign/core/Chat';
-import { DocumentTextIcon, PaperClipIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { Popover } from '@astryxdesign/core/Popover';
+import {
+  DocumentMagnifyingGlassIcon,
+  DocumentTextIcon,
+  PaperClipIcon,
+  PhotoIcon,
+} from '@heroicons/react/24/outline';
 
 export type Attachment = { id: string; name: string; type: string; size: number; delivery: string };
 
-const DELIVERY: Record<string, string> = { text: 'read as text', image: 'sent as image' };
+const DELIVERY: Record<string, string> = {
+  text: 'read as text',
+  image: 'sent as image',
+  ocr: 'OCR',
+};
 const icon = (type: string) => (type.startsWith('image/') ? <PhotoIcon /> : <DocumentTextIcon />);
 
 // The paperclip opens the file picker; paste and drop reach the same add() through the input's onFiles.
@@ -70,7 +80,7 @@ export function PendingAttachments({
 }
 
 export const attachmentLabel = (a: Attachment) =>
-  `${a.delivery === 'image' ? 'Image' : 'Text file'} · ${DELIVERY[a.delivery] ?? a.delivery}`;
+  `${a.type.startsWith('image/') ? 'Image' : 'Text file'} · ${DELIVERY[a.delivery] ?? a.delivery}`;
 
 // A question's files: each chip names the file, its type and how it reached the tutor, and opens it.
 export function MessageAttachments({
@@ -83,19 +93,34 @@ export function MessageAttachments({
   return (
     <HStack gap={1} wrap="wrap" className="message-attachments">
       {attachments.map((a) => (
-        <a
-          key={a.id}
-          href={`/api/trees/${conversation}/attachments/${a.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={`Open ${a.name}`}
-        >
-          <Token
-            label={a.name}
-            icon={icon(a.type)}
-            endContent={<span className="attachment-delivery">{attachmentLabel(a)}</span>}
-          />
-        </a>
+        <HStack key={a.id} gap={0}>
+          <a
+            href={`/api/trees/${conversation}/attachments/${a.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Open ${a.name}`}
+          >
+            <Token
+              label={a.name}
+              icon={icon(a.type)}
+              endContent={<span className="attachment-delivery">{attachmentLabel(a)}</span>}
+            />
+          </a>
+          {a.delivery === 'ocr' && (
+            <Popover
+              label="About OCR"
+              width={280}
+              content="The tutor received text recognised by OCR. OCR can miss handwriting and diagrams. For these, choose a model that reads images, such as Claude or Codex."
+            >
+              <IconButton
+                label={`About OCR for ${a.name}`}
+                icon={<DocumentMagnifyingGlassIcon />}
+                variant="ghost"
+                size="sm"
+              />
+            </Popover>
+          )}
+        </HStack>
       ))}
     </HStack>
   );

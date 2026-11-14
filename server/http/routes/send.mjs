@@ -3,22 +3,18 @@ import { diagramReply, generateDiagram, LIMITS, tutorContext } from '../../media
 import { visualTheme } from '../../media/visuals.mjs';
 import { asksForVideo } from '../../media/videos.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
-import { prepareAttachment, withAttachments } from '../../attachments.mjs';
-import { randomUUID } from 'node:crypto';
+import { withAttachments } from '../../attachments.mjs';
+import { prepareUploads, prepareRetry } from '../attachments.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Until OCR lands, an image for a chat model that cannot read images is refused before anything changes.
-const imageRefusal = (provider, attachments) => {
-  const image = attachments.find((a) => a.delivery === 'image');
-  return image && !provider?.readsImages
-    ? `${image.name}: this chat model can't read images. Choose Claude, Codex or a custom endpoint with Accepts images on, then send again.`
-    : null;
-};
-
 // Conversation send and Retry: streams one tutor reply as server-sent events and starts its media jobs.
-export async function sendRoute(res, ctx, id, tree, action, body) {
+export async function sendRoute(res, ctx, id, tree, action, body, controller) {
   const { store, json, active, compactions, pick, selectionError, live } = ctx;
+  const preparation = {
+    readsImages: !!ctx.providers[tree.provider]?.readsImages,
+    recognize: ctx.recognize,
+  };
   // Retry resends the latest learner message with the current model and effort, replacing the failed reply.
   let retried = null;
   if (action === 'retry') {
@@ -50,19 +46,19 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
           error:
             'This focused chat’s parent is gone, so its context cannot be prepared. Delete it and branch again.',
         });
-      const controller = new AbortController();
-      active.set(id, controller);
-      try {
-        const { quick, status, error } = await ctx.quickFor(tree);
-        if (error) return json(res, status, { error });
-        if (controller.signal.aborted) return json(res, 409, { error: 'Retry cancelled.' });
-        ctx.startCompaction(id, compactionPrompt(parent, tree.branch.text), quick);
-      } finally {
-        active.delete(id);
-      }
+      const { quick, status, error } = await ctx.quickFor(tree);
+      if (error) return json(res, status, { error });
+      if (controller.signal.aborted) return json(res, 409, { error: 'Retry cancelled.' });
+      ctx.startCompaction(id, compactionPrompt(parent, tree.branch.text), quick);
     }
-    const refused = imageRefusal(ctx.providers[tree.provider], question.attachments ?? []);
-    if (refused) return json(res, 400, { error: refused });
+    let attachments;
+    try {
+      attachments = await prepareRetry(question.attachments ?? [], ctx.dir, id, preparation);
+    } catch (error) {
+      return json(res, 400, { error: error.message });
+    }
+    if (controller.signal.aborted) return json(res, 409, { error: 'Retry cancelled.' });
+    store.attachmentDelivery(id, attachments);
     store.discardReply(id, failed.id);
     // The provider session may hold the failed turn; a fresh session receives the saved discussion instead.
     store.forgetThread(id);
@@ -71,7 +67,7 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
       thread: null,
       working_thread: null,
     });
-    retried = { user: question.id, replaced: failed.id, attachments: question.attachments ?? [] };
+    retried = { user: question.id, replaced: failed.id, attachments };
     body = { text: question.text, theme: body.theme };
   }
   if (['artifactId', 'artifactIds', 'artifacts'].some((key) => Object.hasOwn(body, key)))
@@ -98,28 +94,13 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
       error: 'This focused chat’s context was not prepared. Retry its reply to prepare it again.',
     });
   // Every file is prepared before anything is saved, so an unsupported one refuses the whole send.
-  const prepared = [];
-  for (const file of files) {
-    const bytes = new Uint8Array(await file.arrayBuffer()),
-      name = file.name || 'attachment';
-    try {
-      const { delivery, parts } = prepareAttachment({ name, type: file.type, bytes });
-      const text = parts.map((p) => p.text).join('\n\n');
-      prepared.push({
-        id: randomUUID(),
-        name,
-        type: file.type,
-        size: file.size,
-        delivery,
-        text,
-        bytes,
-      });
-    } catch (error) {
-      return json(res, 400, { error: error.message });
-    }
+  let prepared;
+  try {
+    prepared = await prepareUploads(files, preparation);
+  } catch (error) {
+    return json(res, 400, { error: error.message });
   }
-  const refused = imageRefusal(ctx.providers[tree.provider], prepared);
-  if (refused) return json(res, 400, { error: refused });
+  if (controller.signal.aborted) return json(res, 409, { error: 'Send cancelled.' });
   if (prepared.length) {
     const folder = join(ctx.dir, 'attachments', id);
     mkdirSync(folder, { recursive: true, mode: 0o700 });
@@ -131,8 +112,6 @@ export async function sendRoute(res, ctx, id, tree, action, body) {
   const images = attachments
     .filter((a) => a.delivery === 'image')
     .map((a) => ({ name: a.name, type: a.type, path: join(ctx.dir, 'attachments', id, a.id) }));
-  const controller = new AbortController();
-  active.set(id, controller);
   const user =
     retried?.user ??
     store.message(

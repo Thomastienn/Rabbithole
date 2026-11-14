@@ -24,6 +24,7 @@ import { mediaRoutes } from './http/routes/media.mjs';
 import { authRoutes } from './http/routes/auth.mjs';
 import { treeRoutes } from './http/routes/trees.mjs';
 import { assetRoutes } from './http/routes/assets.mjs';
+import { tesseractOcr } from './ocr.mjs';
 
 // Matching order; each route answers only its own method and paths, and assets answers everything left.
 const ROUTES = [
@@ -56,6 +57,7 @@ export function createApp({
   suggestions = false,
   suggestionTimeout,
   desktop = systemDesktop,
+  recognize = tesseractOcr(dir),
 }) {
   // One context for every extracted module; stopping is read from it at call time.
   const ctx = {
@@ -77,6 +79,7 @@ export function createApp({
     suggestions,
     suggestionTimeout,
     desktop,
+    recognize,
     stopping: false,
     csrf: randomBytes(32).toString('hex'),
     active: new Map(),
@@ -219,10 +222,12 @@ export function createApp({
         }, 5000).unref();
         const closed = new Promise((done) => server.close(done));
         server.closeIdleConnections();
-        Promise.allSettled([closed, ...[...videoJobs].map((v) => v.done)]).then(() => {
-          clearTimeout(timer);
-          resolve();
-        });
+        Promise.allSettled([closed, recognize.stop?.(), ...[...videoJobs].map((v) => v.done)]).then(
+          () => {
+            clearTimeout(timer);
+            resolve();
+          },
+        );
       });
       return stopped;
     },

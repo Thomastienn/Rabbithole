@@ -99,3 +99,32 @@ test('a message chip names the file, its type and how it reached the tutor, and 
   assert.equal(image.getAttribute('href'), '/api/trees/c1/attachments/a2');
   assert.match(image.textContent, /red\.png.*Image · sent as image/);
 });
+
+test('OCR chip explains its limits without opening the attachment', async (t) => {
+  const { container, act, cleanup } = await render(
+    h(MessageAttachments, {
+      conversation: 'c1',
+      attachments: [{ id: 'a1', name: 'notes.png', type: 'image/png', size: 20, delivery: 'ocr' }],
+    }),
+    ui,
+  );
+  t.after(cleanup);
+  const link = container.querySelector('a');
+  assert.match(link.textContent, /notes\.png.*Image · OCR/);
+  assert.equal(link.getAttribute('href'), '/api/trees/c1/attachments/a1');
+  const trigger = button(container, 'About OCR for notes.png');
+  assert.ok(trigger.querySelector('svg'), 'OCR help has an icon');
+  assert.ok(!link.contains(trigger), 'opening help cannot navigate to the attachment');
+  assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+  await act(async () => trigger.click());
+  assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+  const popup = document.querySelector('[role=dialog][aria-label="About OCR"]');
+  assert.ok(popup);
+  assert.match(popup.textContent, /text recognised by OCR/);
+  assert.match(popup.textContent, /miss handwriting and diagrams/);
+  assert.match(popup.textContent, /model that reads images.*Claude or Codex/);
+  await act(async () =>
+    popup.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
+  );
+  assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+});

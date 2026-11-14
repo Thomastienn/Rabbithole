@@ -1,5 +1,6 @@
 // Attachment preparation: turns a learner's file into prepared parts the tutor receives.
 // shortcut: PDFs are refused until their preparation lands.
+import { OCR_UNAVAILABLE, ocrText } from './ocr.mjs';
 
 // Images the chat models read natively; their stored text is the placeholder history and compaction see.
 export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -7,9 +8,26 @@ export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 // { name, type, bytes } -> { delivery, parts: [{ text }] }; throws with the learner-facing reason when unsupported.
-export function prepareAttachment({ name, type, bytes }) {
-  if (IMAGE_TYPES.includes(type))
-    return { delivery: 'image', parts: [{ text: `[image: ${name}]`, image: true }] };
+export async function prepareAttachment(
+  { name, type, bytes },
+  { readsImages = true, recognize } = {},
+) {
+  if (IMAGE_TYPES.includes(type)) {
+    if (readsImages)
+      return { delivery: 'image', parts: [{ text: `[image: ${name}]`, image: true }] };
+    if (!recognize) throw new Error(OCR_UNAVAILABLE);
+    let text;
+    try {
+      text = await recognize(bytes);
+    } catch (error) {
+      throw new Error(
+        error.unavailable
+          ? OCR_UNAVAILABLE
+          : `${name}: OCR couldn't read this image. Try another image or a model that reads images.`,
+      );
+    }
+    return { delivery: 'ocr', parts: [{ text: ocrText(name, text) }] };
+  }
   let text = null;
   if (!type.startsWith('image/') && type !== 'application/pdf')
     try {
