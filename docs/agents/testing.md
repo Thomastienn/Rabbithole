@@ -48,12 +48,17 @@ helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mj
 - Run `npm run build` when you change TSX or the build.
 - Run `npm run test:render` only when you change video rendering.
 - Run `npm run verify` only when the acceptance asks for it. It builds the app and runs the
-  browser scripts. Run it in the background and read only the final table.
+  smoke set (about a minute); live-provider scripts are skipped and run only by hand. Any
+  failure exits non-zero; there is no known-failure list. Run it in the background and read
+  only the final table.
 
 Tests must not sleep for real. Inject a clock or a budget, or await the event the code
 already exposes.
 
 ## Smoke set
+
+`scripts/verify/` holds only `verify-all.mjs`, these five fixture scripts, the live-provider
+scripts and their `lib/` helpers:
 
 `verify-first-conversation`, `verify-branch-first`, `verify-keyboard-journey`,
 `verify-settings-window`, `verify-video-player`.
