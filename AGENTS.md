@@ -22,3 +22,7 @@ Issues live in Beads (`bd` CLI, `.beads/`), local only. See `docs/agents/issue-t
 ### Domain docs
 
 Single-context: root `GLOSSARY.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+
+### Testing
+
+Prefer unit tests, then component, then integration; browser scripts only when acceptance names them. See `docs/agents/testing.md`.

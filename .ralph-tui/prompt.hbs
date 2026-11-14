@@ -31,15 +31,14 @@ Prerequisites: {{dependsOn}}
 - Implement the acceptance criteria and run the checks relevant to this issue.
   If already implemented, verify the existing behavior. Fix recoverable failures
   within this task; record actual evidence and distinguish fixtures from live checks.
-- Prefer integration checks. Use browser/E2E checks where acceptance requires
-  them. Run `npm test` plus only the verify scripts named in the acceptance
-  criteria or covering the files you changed; do not run the full
-  `npm run verify` unless the acceptance criteria ask for it. Run long checks
-  in the background and read only the final summary when they finish; do not
-  stream, tail or monitor their output line by line, since every wake-up
-  re-reads the whole context. Compare failures against the `known` map and the
-  previous commit instead of re-running the whole suite. Run
-  `npm run test:render` only when the change touches video rendering. Restore
+- Follow docs/agents/testing.md. Prefer unit tests, then component tests,
+  then integration tests; add or change tests at the cheapest level that
+  proves the acceptance. While working, run only the test files covering the
+  change (`node --test test/<file or folder>`); run `npm test` once at the
+  end. Run a browser verify script or `npm run verify` only when the
+  acceptance criteria name it, in the background, reading only the final
+  summary. Run `npm run test:render` only when the change touches video
+  rendering. Restore
   regenerated `docs/verification/` files the task does not need as evidence. Keep internal steps and acceptance review in this same issue. Split only
   for a separate deliverable, external/user gate or demonstrated context limit;
   record a precise checkpoint before a retry instead of creating microtasks.
