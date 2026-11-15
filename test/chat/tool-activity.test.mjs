@@ -29,6 +29,13 @@ test('tool events fold into the live reply in call order, updating each call in 
     toolLine([tool('a', 'done', 'x'), tool('b', 'failed', 'Error')]),
     'Used 2 tools: read_page · 1 failed',
   );
+  const memo = (status) => ({ ...tool('m', status, 'x'), name: 'update_memory_note' });
+  assert.equal(toolLine([memo('done')]), 'Updated memory note');
+  assert.equal(
+    toolLine([tool('a', 'done', 'x'), memo('done'), memo('done')]),
+    'Used 1 tool: read_page · Updated memory note',
+  );
+  assert.equal(toolLine([memo('failed')]), 'Used 1 tool: update_memory_note · 1 failed');
 });
 
 test('tool activity line starts collapsed and expands to each input and raw output', async (t) => {

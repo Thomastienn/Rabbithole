@@ -51,7 +51,11 @@ test('tutor style saves, normalizes empty or default text to null, restores and 
   assert.equal(store.tutorStyle(), 'Use sports analogies.');
   assert.equal(
     await ask(),
-    tutorSystem({ tutorStyle: 'Use sports analogies.', nativeTools: ['web_search'] }),
+    tutorSystem({
+      tutorStyle: 'Use sports analogies.',
+      nativeTools: ['web_search'],
+      tools: [{ name: 'update_memory_note' }],
+    }),
   );
   for (const style of ['', '   ', ` ${DEFAULT_TUTOR_STYLE}\n`, null]) {
     await save('Edited');

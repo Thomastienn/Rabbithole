@@ -1,12 +1,14 @@
 import { isEndpoint } from '../http/roles.mjs';
 import { readPage } from './readPage.mjs';
 import { pythonWorkspace } from './python.mjs';
+import { editMemoryNote } from './memoryNote.mjs';
 
 export const TUTOR_TOOLS = {
   web_search: 'Web search',
   read_page: 'Read pages',
   find_images: 'Find images',
   run_python: 'Run Python',
+  update_memory_note: 'Update memory note',
 };
 
 // Provider-native equivalents follow the same switches as the app tools.
@@ -95,9 +97,38 @@ const TOOLS = {
     },
     run: (input, turn, options) => options.python.run(input, turn),
   },
+  update_memory_note: {
+    description:
+      'Change the memory note about this learner, shared across all learning trees and shown in every prompt. ' +
+      'One operation per call: add (text, optionally under heading), rewrite (exact old_text replaced by text) or delete (exact old_text). ' +
+      'old_text must match note text exactly once. Keep entries short, one markdown line each.',
+    parameters: {
+      type: 'object',
+      properties: {
+        operation: { type: 'string', enum: ['add', 'rewrite', 'delete'] },
+        text: { type: 'string', description: 'New entry text, for add and rewrite.' },
+        old_text: {
+          type: 'string',
+          description: 'Exact existing entry text, for rewrite and delete.',
+        },
+        heading: {
+          type: 'string',
+          description: 'Optional heading to add the entry under; created if missing.',
+        },
+      },
+      required: ['operation'],
+      additionalProperties: false,
+    },
+    // Synchronous read and save, so concurrent turns cannot interleave an edit.
+    run: (input, turn, options) => {
+      options.memory.saveMemoryNote(editMemoryNote(options.memory.memoryNote(), input));
+      return 'Updated memory note.';
+    },
+  },
 };
 
 // options.readPage passes lookup and address checks through, for tests against local fakes.
+// options.memory is the store holding the memory note (memoryNote, saveMemoryNote).
 // options.python is the sandboxed run_python ({ status, run }); options.dir holds Python workspaces.
 export function toolRunner(options = {}) {
   return {
@@ -113,13 +144,15 @@ export function toolRunner(options = {}) {
       return Object.entries(TOOLS)
         .filter(([name]) => settings[name] !== false)
         .filter(([name]) =>
-          name === 'run_python'
-            ? python
-            : name === 'find_images'
-              ? search
-              : name === 'read_page'
-                ? isEndpoint(provider) || provider === 'codex'
-                : isEndpoint(provider) && search,
+          name === 'update_memory_note'
+            ? !!options.memory
+            : name === 'run_python'
+              ? python
+              : name === 'find_images'
+                ? search
+                : name === 'read_page'
+                  ? isEndpoint(provider) || provider === 'codex'
+                  : isEndpoint(provider) && search,
         )
         .map(([name, { description, parameters }]) => ({
           name,
@@ -136,7 +169,9 @@ export function toolRunner(options = {}) {
       turn.signal?.throwIfAborted();
       if (name === 'run_python' && !options.python)
         throw new Error('Offline Python is unavailable. Check Tutor tools in Settings.');
-      if (!['read_page', 'run_python'].includes(name) && !options.search)
+      if (name === 'update_memory_note' && !options.memory)
+        throw new Error('The memory note is unavailable.');
+      if (!['read_page', 'run_python', 'update_memory_note'].includes(name) && !options.search)
         throw new Error('SearXNG is unavailable. Check Search in Settings.');
       return tool.run(input, turn, options);
     },

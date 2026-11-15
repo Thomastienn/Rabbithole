@@ -25,9 +25,18 @@ export type ToolCall = {
 export function toolLine(tools: ToolCall[]) {
   const running = [...tools].reverse().find((t) => t.status === 'running');
   if (running) return `Running ${running.name}…`;
-  const names = [...new Set(tools.map((t) => t.name))].join(', '),
-    failed = tools.filter((t) => t.status === 'failed').length;
-  return `Used ${tools.length} ${tools.length === 1 ? 'tool' : 'tools'}: ${names}${failed ? ` · ${failed} failed` : ''}`;
+  // Successful memory note edits get their own words so no update is hidden.
+  const memo = (t: ToolCall) => t.name === 'update_memory_note' && t.status === 'done',
+    used = tools.filter((t) => !memo(t)),
+    names = [...new Set(used.map((t) => t.name))].join(', '),
+    failed = used.filter((t) => t.status === 'failed').length;
+  return [
+    used.length &&
+      `Used ${used.length} ${used.length === 1 ? 'tool' : 'tools'}: ${names}${failed ? ` · ${failed} failed` : ''}`,
+    used.length < tools.length && 'Updated memory note',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 export type Message = {
   id: string;

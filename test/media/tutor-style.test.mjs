@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_TUTOR_STYLE, TUTOR_RULES, tutorSystem } from '../../server/media/diagrams.mjs';
+import {
+  DEFAULT_TUTOR_STYLE,
+  MEMORY_RULE,
+  TUTOR_RULES,
+  tutorSystem,
+} from '../../server/media/diagrams.mjs';
 
 test('tutor prompt puts the tutor style first, always keeps the fixed rules and keeps the per-tree override', () => {
   const rules = '\n\n' + TUTOR_RULES;
@@ -53,4 +58,16 @@ test('the chat prompt carries the whole memory note as data, and nothing when it
       tutorSystem({ tutorStyle: 'Mine.', memoryNote: empty }),
       tutorSystem({ tutorStyle: 'Mine.' }),
     );
+});
+
+test('the fixed memory rule appears only when update_memory_note is offered', () => {
+  const tool = (name) => ({ tutorStyle: 'Mine.', tools: [{ name }] });
+  const rule = tutorSystem(tool('update_memory_note'));
+  assert.ok(rule.includes(MEMORY_RULE));
+  assert.match(MEMORY_RULE, /only when you learn something lasting/);
+  assert.match(MEMORY_RULE, /condensed/);
+  assert.match(MEMORY_RULE, /Never store secrets such as keys, passwords/);
+  assert.match(MEMORY_RULE, /sensitive personal details/);
+  assert.ok(!tutorSystem(tool('read_page')).includes(MEMORY_RULE));
+  assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(MEMORY_RULE));
 });

@@ -41,7 +41,7 @@ test('memory note saves through Settings and reaches the next chat prompt as dat
     await (await post(`/api/trees/${tree.id}/messages`, { text: 'q' })).text();
     return prompts.at(-1);
   };
-  assert.doesNotMatch(await ask(), /Memory note/);
+  assert.doesNotMatch(await ask(), /Memory note about this learner/);
   const note = '- Prefers short answers';
   assert.deepEqual(await (await post('/api/settings/memory-note', { note })).json(), { note });
   assert.ok(
