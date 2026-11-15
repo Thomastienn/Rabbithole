@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sidebar · TreeTutor mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+<style>
+/* Rough before/after mockup for epic TreeTutor-pxw (docs/sidebar-spec.md). Layout only; page bodies are placeholders. */
+.sec { margin: 0 16px 48px; }
+.sec h2 { margin: 32px 0 4px; font-size: 20px; }
+.sec > p { margin: 0 0 12px; color: var(--muted); }
+.pair { display: grid; gap: 16px; }
+.lbl { margin: 8px 0 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.lbl--after { color: var(--accent-text); }
+.frame { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 380px; min-width: 1200px; border: 1px solid var(--seam-strong); overflow: hidden; background: var(--ground); }
+.frame--side { grid-template-rows: minmax(0, 1fr); grid-template-columns: 264px minmax(0, 1fr); }
+.frame--bare { grid-template-rows: minmax(0, 1fr); }
+.frame:has(.sb) { height: 620px; }
+.frame .band { height: 56px; }
+.body { display: grid; min-height: 0; }
+.body--read { grid-template-columns: minmax(0, 1fr) 440px; }
+.body--read-toc { grid-template-columns: 264px minmax(0, 1fr) 440px; }
+.ph { position: relative; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--muted); }
+.ph + .ph { border-left: 1px solid var(--seam); }
+.ph--map { background: var(--deep); }
+/* Sidebar */
+.sb { position: relative; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--seam); background: var(--deep); }
+.sb__top { display: grid; gap: 2px; padding: 12px 8px; border-bottom: 1px solid var(--seam); }
+.sb__mark { padding: 4px 8px 8px; font-size: 18px; font-weight: 700; }
+.sb__row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: var(--r-2); font-weight: 600; color: var(--muted); }
+.sb__row[aria-current] { background: var(--surface); color: var(--text); }
+.sb__sep { height: 1px; margin: 6px 8px; background: var(--seam); }
+.sb .toc { flex: 1; min-height: 0; border-right: 0; }
+.sb .toc__head { padding: 12px 16px 4px; }
+.sb .toc__title { font-size: 16px; }
+.sb--overlay { position: absolute; inset: 0 auto 0 0; width: 264px; z-index: 2; box-shadow: 8px 0 24px #0005; }
+/* Change markers */
+.m { position: absolute; z-index: 5; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #d33; color: #fff; font: 700 12px/1 Archivo, sans-serif; box-shadow: 0 0 0 2px var(--ground); }
+.gone { outline: 2px dashed #d33; outline-offset: -2px; }
+.new { outline: 2px solid #3a3; outline-offset: -2px; }
+.strip { position: absolute; inset: 0 auto 0 0; width: 6px; z-index: 3; background: repeating-linear-gradient(0deg, #3a3 0 6px, transparent 6px 12px); }
+.hot { position: absolute; inset: 0 0 auto 0; height: 10px; z-index: 3; background: repeating-linear-gradient(90deg, #d33 0 6px, transparent 6px 12px); }
+.restore { position: absolute; top: 4px; left: 50%; z-index: 4; }
+.fix { margin: 12px 0 0; padding: 12px 16px; list-style: none; border-left: 3px solid #d33; background: var(--deep); }
+.fix li { margin: 6px 0; }
+.fix b.n { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 8px; border-radius: 50%; background: #d33; color: #fff; font-size: 11px; }
+.legend { display: flex; gap: 24px; margin: 8px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i.sw { display: inline-block; width: 20px; height: 12px; }
+</style>
+</head>
+<body>
+<div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="sidebar.html" aria-current="page">Sidebar</a></nav></div>
+<p class="mk-note">Rough before/after mockup for epic <b>TreeTutor-pxw</b>. The spec <code>docs/sidebar-spec.md</code> wins on any difference. "Today" is the current app (<code>src/shell/ShellBand.tsx</code>, <code>src/shell/ChatPage.tsx</code>, <code>src/chat/Contents.tsx</code>). Only the shell changes: the focused chat, the map and every page body keep their current layout. Page bodies here are placeholders.</p>
+<div class="legend"><span><b class="m" style="position:static">1</b> Change, listed in the fix list below the frame</span><span><i class="sw" style="outline:2px dashed #d33"></i> Removed</span><span><i class="sw" style="outline:2px solid #3a3"></i> New or moved here</span></div>
+
+<!-- A. Read view -->
+<section class="sec">
+<h2>A. Learning tree, Read view</h2>
+<p>TreeTutor-pxw.1</p>
+<div class="pair">
+<div><div class="lbl">Today</div>
+<div class="frame">
+ <header class="band gone" style="position:relative"><b class="m" style="left:4px;top:4px">1</b>
+  <span class="band__mark">TreeTutor</span>
+  <span class="band__tree"><span>How do fungi trade?</span><i class="i i--sm i-chevron-down"></i></span>
+  <nav class="band__tabs"><a aria-current="page"><i class="i i--sm i-book-open"></i>Read</a><a><i class="i i--sm i-map"></i>Map</a><a><i class="i i--sm i-share"></i>Knowledge</a><a><i class="i i--sm i-film"></i>Videos</a></nav>
+  <div class="band__tools"><button class="btn btn--icon" aria-label="Hide top bar"><i class="i i-chevron-up"></i></button><button class="btn btn--icon" aria-label="Search"><i class="i i-magnifying-glass"></i></button><button class="btn btn--outline"><i class="i i--sm i-plus"></i>New chat</button><button class="btn btn--icon" aria-label="Settings"><i class="i i-cog-6-tooth"></i></button></div>
+ </header>
+ <div class="body body--read-toc">
+  <aside class="toc" style="position:relative">
+   <div class="toc__head"><span style="float:right;position:relative"><button class="btn btn--sm btn--icon gone" aria-label="Hide contents"><i class="i i--sm i-chevron-left"></i></button><b class="m" style="right:-6px;top:22px">2</b></span><h3 class="toc__title" style="font-size:16px">How do fungi trade?</h3></div>
+   <div class="toc__scroll"><div class="toc__h">Conversations</div><a class="toc__row"><span class="addr">1</span><span>How do fungi trade?</span></a><a class="toc__row" aria-current="true"><span class="addr">1.1</span><span>Why trade at all?</span></a><div class="toc__h">Figures</div><div class="toc__h">Resources</div></div>
+  </aside>
+  <div class="ph">Focused chat</div><div class="ph ph--map">Map</div>
+ </div>
+</div></div>
+<div><div class="lbl lbl--after">After</div>
+<div class="frame frame--side">
+ <nav class="sb new" aria-label="App" data-view="read" data-contents><b class="m" style="right:6px;top:6px">3</b></nav>
+ <div class="body body--read"><div class="ph">Focused chat (full height, unchanged)</div><div class="ph ph--map">Map (unchanged)</div></div>
+</div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">1</b>Remove the desktop shell band (<code>ShellBand</code> desktop branch). That includes the tree switcher: the tree title already heads the Contents, and Library becomes a view button.</li>
+ <li><b class="n">2</b>Remove the Contents' own collapse chevron ("Hide contents"), the <code>contentsOpen</code> preference and the "Show contents" reopen button. The sidebar's only hidden state is Focus mode, and the old preference is ignored.</li>
+ <li><b class="n">3</b>Add one sidebar. Top section, in spec order: app mark (links to the Library), view buttons Read, Map, Knowledge, Videos, Library and Settings (current page uses <code>aria-current</code>), then Search and New chat. Below it is the existing <code>Contents</code> panel (Conversations, Figures, Resources). Make it a labelled navigation landmark, with Contents as its own region.</li>
+</ol>
+</section>
+
+<!-- B. Map view -->
+<section class="sec">
+<h2>B. Learning tree, Map view</h2>
+<p>TreeTutor-pxw.1</p>
+<div class="pair">
+<div><div class="lbl">Today</div>
+<div class="frame">
+ <header class="band"><span class="band__mark">TreeTutor</span><span class="band__tree"><span>How do fungi trade?</span><i class="i i--sm i-chevron-down"></i></span><nav class="band__tabs"><a><i class="i i--sm i-book-open"></i>Read</a><a aria-current="page"><i class="i i--sm i-map"></i>Map</a><a><i class="i i--sm i-share"></i>Knowledge</a><a><i class="i i--sm i-film"></i>Videos</a></nav></header>
+ <div class="body"><div class="ph ph--map"><b class="m" style="left:6px;top:6px">4</b>Full map. No Contents and no "Show contents" button, so conversations and resources cannot be reached.</div></div>
+</div></div>
+<div><div class="lbl lbl--after">After</div>
+<div class="frame frame--side">
+ <nav class="sb" aria-label="App" data-view="map" data-contents data-contents-new><b class="m" style="right:6px;bottom:6px">5</b></nav>
+ <div class="body"><div class="ph ph--map">Full map (unchanged)</div></div>
+</div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">4</b>Stop hiding the Contents on the map view (today <code>!overview &amp;&amp; …</code> in <code>ChatPage</code>).</li>
+ <li><b class="n">5</b>Clicking a conversation row on the map view opens it in the focused chat, the same as selecting its node on the map.</li>
+</ol>
+</section>
+
+<!-- C. Pages without contents -->
+<section class="sec">
+<h2>C. Library, Knowledge, Videos and Settings</h2>
+<p>TreeTutor-pxw.1</p>
+<div class="pair">
+<div><div class="lbl">Today</div>
+<div class="frame">
+ <header class="band"><span class="band__mark">TreeTutor</span><span class="band__tree"><span>Learning trees</span><i class="i i--sm i-chevron-down"></i></span><nav class="band__tabs"><a><i class="i i--sm i-book-open"></i>Read</a><a><i class="i i--sm i-map"></i>Map</a><a><i class="i i--sm i-share"></i>Knowledge</a><a><i class="i i--sm i-film"></i>Videos</a></nav><div class="band__tools"><button class="btn btn--outline"><i class="i i--sm i-plus"></i>New chat</button></div></header>
+ <div class="body"><div class="ph">Library page. Its header has New chat.</div></div>
+</div></div>
+<div><div class="lbl lbl--after">After</div>
+<div class="frame frame--side">
+ <nav class="sb" aria-label="App" data-view="library"><b class="m" style="right:6px;bottom:6px">6</b></nav>
+ <div class="body"><div class="ph"><span>Library page (unchanged). Its header <span class="new" style="padding:6px 12px">keeps New chat</span></span><b class="m" style="right:6px;top:6px">7</b></div></div>
+</div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">6</b>Pages without contents show only the top section. Leave no empty Contents area or padding below it.</li>
+ <li><b class="n">7</b>The Library header keeps its New chat button.</li>
+</ol>
+</section>
+
+<!-- D. Save alert -->
+<section class="sec">
+<h2>D. Layout-save alert</h2>
+<p>TreeTutor-pxw.1</p>
+<div class="pair">
+<div><div class="lbl">Today</div>
+<div class="frame frame--bare" style="height:58px"><header class="band"><span class="band__mark">TreeTutor</span><div class="band__tools" style="position:relative"><span class="band__save is-failed gone" role="alert"><i class="i i--sm i-exclamation-triangle"></i>Layout not saved <button class="btn btn--sm">Retry</button></span><b class="m" style="position:static;margin-left:8px">8</b></div></header></div></div>
+<div><div class="lbl lbl--after">After</div>
+<div class="frame frame--side"><nav class="sb" aria-label="App" data-view="map" data-alert data-contents></nav><div class="body"><div class="ph ph--map">Full map</div></div></div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">8</b>Move <code>SaveAlert</code> from the band into the sidebar and keep <code>role="alert"</code>. It must still be announced in Focus mode, while the sidebar is hidden (story 24).</li>
+</ol>
+</section>
+
+<!-- E. Focus mode -->
+<section class="sec">
+<h2>E. Focus mode</h2>
+<p>TreeTutor-pxw.1 changes what Focus mode hides. TreeTutor-pxw.2 replaces the way to bring it back.</p>
+<div class="pair">
+<div><div class="lbl">Today: hides the top bar. A hot zone along the top edge shows a restore button.</div>
+<div class="frame frame--bare"><div class="hot"></div><button class="btn btn--icon restore gone" aria-label="Show top bar"><i class="i i-chevron-down"></i></button><b class="m" style="left:calc(50% + 40px);top:8px">9</b><div class="body body--read"><div class="ph">Focused chat</div><div class="ph ph--map">Map</div></div></div></div>
+<div><div class="lbl lbl--after">After TreeTutor-pxw.1: hides the sidebar. Today's reveal button stays until pxw.2 lands.</div>
+<div class="frame frame--bare"><button class="btn btn--icon restore" aria-label="Show sidebar"><i class="i i-chevron-right"></i></button><b class="m" style="left:calc(50% + 40px);top:8px">10</b><div class="body body--read"><div class="ph">Focused chat</div><div class="ph ph--map">Map</div></div></div></div>
+<div><div class="lbl lbl--after">After TreeTutor-pxw.2: hidden. An invisible strip runs the full height of the left edge (hatched here only).</div>
+<div class="frame frame--bare"><div class="strip"></div><b class="m" style="left:14px;top:14px">11</b><div class="body body--read"><div class="ph">Focused chat</div><div class="ph ph--map">Map</div></div></div></div>
+<div><div class="lbl lbl--after">After TreeTutor-pxw.2: hover or focus the strip, and the sidebar slides over the page</div>
+<div class="frame frame--bare"><nav class="sb sb--overlay new" aria-label="App" data-view="read" data-contents></nav><b class="m" style="left:274px;top:14px">12</b><div class="body body--read"><div class="ph">Focused chat (does not move)</div><div class="ph ph--map">Map</div></div></div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">9</b>Remove the top-edge hot zone (<code>.focus-hot-zone</code>) and its "Show top bar" restore button. pxw.1 may keep the button as a stopgap; pxw.2 removes it.</li>
+ <li><b class="n">10</b>pxw.1: Focus mode hides the sidebar. Keep the name, the saved <code>focus-mode</code> preference and <code>Ctrl+Shift+F</code>, which still does nothing while typing. Change the labels from "top bar" to "sidebar".</li>
+ <li><b class="n">11</b>pxw.2: add a strip a few pixels wide along the full height of the left edge. It draws nothing and covers no page controls. A keyboard focus target sits in the strip.</li>
+ <li><b class="n">12</b>pxw.2: on hover or focus, the sidebar slides in as an overlay and the page does not move. It hides when the pointer or focus leaves, and focus returns to where it was. It does not slide under <code>prefers-reduced-motion</code>.</li>
+</ol>
+</section>
+
+<!-- F. Shortcut and narrow -->
+<section class="sec">
+<h2>F. Ctrl+Shift+O and narrow screens</h2>
+<ol class="fix">
+ <li><b class="n">13</b>pxw.2: <code>Ctrl+Shift+O</code> runs the existing New chat action from any page, including while typing in the composer, and prevents the browser default. Unlike the <code>Ctrl+Shift+F</code> handler, it skips the input guard. It ignores repeats and IME composition and does nothing while <code>busy</code>. Nothing visible changes.</li>
+ <li><b class="n">14</b>Narrow screens: no layout change. Keep the small header, its menu button and the drawer. The drawer holds the same controls and contents as the sidebar.</li>
+</ol>
+</section>
+
+<template id="sb-top">
+ <div class="sb__top">
+  <a class="sb__mark">TreeTutor</a>
+  <a class="sb__row" data-v="read"><i class="i i--sm i-book-open"></i>Read</a>
+  <a class="sb__row" data-v="map"><i class="i i--sm i-map"></i>Map</a>
+  <a class="sb__row" data-v="knowledge"><i class="i i--sm i-share"></i>Knowledge</a>
+  <a class="sb__row" data-v="videos"><i class="i i--sm i-film"></i>Videos</a>
+  <a class="sb__row" data-v="library"><i class="i i--sm i-rectangle-stack"></i>Library</a>
+  <a class="sb__row" data-v="settings"><i class="i i--sm i-cog-6-tooth"></i>Settings</a>
+  <div class="sb__sep"></div>
+  <a class="sb__row"><i class="i i--sm i-magnifying-glass"></i>Search</a>
+  <a class="sb__row"><i class="i i--sm i-plus"></i>New chat</a>
+ </div>
+</template>
+<template id="sb-contents">
+ <section class="toc" aria-label="Contents">
+  <div class="toc__head"><h3 class="toc__title">How do fungi trade?</h3></div>
+  <div class="toc__scroll"><div class="toc__h">Conversations</div><a class="toc__row"><span class="addr">1</span><span>How do fungi trade?</span></a><a class="toc__row" aria-current="true"><span class="addr">1.1</span><span>Why trade at all?</span></a><div class="toc__h">Figures</div><div class="toc__h">Resources</div></div>
+ </section>
+</template>
+<script>
+const sbTop = document.getElementById('sb-top'), sbContents = document.getElementById('sb-contents');
+document.querySelectorAll('nav.sb').forEach(nav => {
+  nav.append(sbTop.content.cloneNode(true));
+  nav.querySelector(`[data-v="${nav.dataset.view}"]`)?.setAttribute('aria-current', 'page');
+  if (nav.hasAttribute('data-alert')) nav.querySelector('.sb__top').insertAdjacentHTML('beforeend', '<div class="banner new" role="alert" style="margin-top:8px;position:relative"><b class="m" style="right:-8px;top:-8px">8</b><i class="i i--sm i-exclamation-triangle"></i>Layout not saved <button class="btn btn--sm">Retry</button></div>');
+  if (nav.hasAttribute('data-contents')) {
+    const c = sbContents.content.cloneNode(true);
+    if (nav.hasAttribute('data-contents-new')) c.querySelector('.toc').classList.add('new');
+    nav.append(c);
+  }
+});
+</script>
+</body>
+</html>

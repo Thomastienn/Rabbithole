@@ -51,7 +51,7 @@ The previous name for the quick thinking model, describing its suggestion-pickin
 The model that answers learner messages in a conversation. Its Settings default starts new learning trees; children inherit their parent's current model and effort.
 
 **Smart model**:
-The learner-chosen model for visuals and private video scripting, scene planning and animation code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
+The learner-chosen model for planning videos and auditing their cuts; the chat model writes visuals and cut code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
 
 **Model profile**:
 A named set of model choices the learner can swap between: a model and effort for the chat model default, the smart model and the quick thinking model.
@@ -114,6 +114,10 @@ The local collection of generated videos, available independently of their origi
 An action the chat model can take while answering, such as searching the web, reading a page, finding images, running Python or recalling the learner's earlier study. A provider's own tool is used where it has one; the app supplies the rest.
 _Avoid_: Plugin, function, skill
 
+**Skill**:
+Fixed guidance on a craft, such as teaching, natural writing or animation, that the app gives a model for one kind of work. Skills are hidden from the learner and cannot be edited; the tutor style is the learner's own layer on top.
+_Avoid_: Tutor tool, tutor style, prompt
+
 **Resource**:
 A web page, image or document the tutor drew on while answering, kept with its learning tree so the learner can go to the original directly. Replies cite resources rather than unnamed sources.
 _Avoid_: Source (alone), reference, link
@@ -131,8 +135,12 @@ One continuous segment of a video with its own part of the narration and its own
 _Avoid_: Scene, clip, shot
 
 **Set piece**:
-A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut.
+A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut. It takes its colours from the video's palette roles, so it can be reused in another video.
 _Avoid_: Model, asset, prop
+
+**Piece library**:
+The local collection of set pieces from earlier videos, shared across all learning trees. A new video reuses a close match, derives a variant from one, or draws a new piece. A cut audit that finds a saved piece poor replaces it with a better version for future videos; saved videos keep how they looked.
+_Avoid_: Component cache, asset library
 
 **Continuing cut**:
 A cut that carries on the previous cut's scene from exactly where it ended, joined to it by a hard cut so the two play as one unbroken shot.
@@ -142,12 +150,16 @@ A cut that starts a new scene, joined to the previous cut by a transition the vi
 _Avoid_: Cut (for the join itself)
 
 **Cut audit**:
-A single review of one written cut, from its code and still frames, against the video plan, its set pieces and the previous cut's last frame. It fixes layout, consistency, emphasis placement and missing or unnecessary detail before the cut becomes playable.
+A single review of one written cut by the smart model, from its code and still frames, against the video plan, its set pieces and the previous cut's last frame. It reports problems with layout, consistency, emphasis placement and missing or unnecessary detail without rewriting the cut; the chat model fixes a flagged cut before it becomes playable.
 _Avoid_: Final pass, whole-video audit
 
 **Focus mode**:
-The learner's choice to hide the app's top bar on any page, leaving only the current page's content.
+The learner's choice to hide the app's sidebar on any page, leaving only the current page's content. The sidebar slides back over the page from the left edge of the window.
 _Avoid_: Full screen, zen mode, distraction-free mode
+
+**Sidebar**:
+The panel on the left of every page holding the app's own controls (views, search, new chat, settings) above the page's own contents, such as a learning tree's conversations and resources.
+_Avoid_: Top bar, band, nav, drawer (outside narrow screens)
 
 **Theme**:
 A named colour palette for the whole app, such as Paperback or Forest, covering surfaces, ink, accent and the four series inks. Each theme has a light and a dark variant; Appearance chooses between them.
