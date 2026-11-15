@@ -15,6 +15,7 @@ import {
   RectangleStackIcon,
 } from '@heroicons/react/24/outline';
 import { savedFocusMode, savePreference } from './preferences';
+import { Logo } from './Logo';
 
 export const viewTab = (
   label: string,
@@ -211,8 +212,8 @@ export default function ShellBand({
         aria-expanded={drawer}
         onClick={() => setDrawer(true)}
       />
+      <Logo />
       <Text className="band-mark" weight="bold">
-        <img src="/logo.svg" alt="" width={24} height={24} />
         TreeTutor
       </Text>
       <HStack gap={1} vAlign="center" className="band-tools">
@@ -242,8 +243,8 @@ export default function ShellBand({
     </header>
   ) : (
     <header className="shell-band">
+      <Logo />
       <Text className="band-mark" weight="bold">
-        <img src="/logo.svg" alt="" width={24} height={24} />
         TreeTutor
       </Text>
       <Button

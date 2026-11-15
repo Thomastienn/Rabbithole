@@ -157,14 +157,42 @@ export const profiles = {
     const row = this.db
       .prepare('SELECT reads_images FROM endpoint_models WHERE endpoint=? AND model=?')
       .get(endpoint, model);
-    return row ? !!row.reads_images : null;
+    return row?.reads_images == null ? null : !!row.reads_images;
   },
   setReadsImages(endpoint, model, readsImages) {
     this.db
       .prepare(
-        'INSERT INTO endpoint_models VALUES(?,?,?) ON CONFLICT(endpoint, model) DO UPDATE SET reads_images=excluded.reads_images',
+        'INSERT INTO endpoint_models(endpoint,model,reads_images) VALUES(?,?,?) ON CONFLICT(endpoint, model) DO UPDATE SET reads_images=excluded.reads_images',
       )
       .run(endpoint, model, +readsImages);
+  },
+  usesTutorToolsOverride(endpoint, model) {
+    const row = this.db
+      .prepare('SELECT uses_tutor_tools FROM endpoint_models WHERE endpoint=? AND model=?')
+      .get(endpoint, model);
+    return row?.uses_tutor_tools == null ? null : !!row.uses_tutor_tools;
+  },
+  setUsesTutorTools(endpoint, model, on) {
+    this.db
+      .prepare(
+        'INSERT INTO endpoint_models(endpoint,model,uses_tutor_tools) VALUES(?,?,?) ON CONFLICT(endpoint,model) DO UPDATE SET uses_tutor_tools=excluded.uses_tutor_tools',
+      )
+      .run(endpoint, model, +on);
+  },
+  tutorTools() {
+    return Object.fromEntries(
+      this.db
+        .prepare('SELECT name,enabled FROM tutor_tools')
+        .all()
+        .map((r) => [r.name, !!r.enabled]),
+    );
+  },
+  saveTutorTool(name, enabled) {
+    this.db
+      .prepare(
+        'INSERT INTO tutor_tools VALUES(?,?) ON CONFLICT(name) DO UPDATE SET enabled=excluded.enabled',
+      )
+      .run(name, +enabled);
   },
   forgetModels(endpoint) {
     this.db.prepare('DELETE FROM endpoint_models WHERE endpoint=?').run(endpoint);

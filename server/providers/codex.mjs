@@ -42,7 +42,7 @@ export class Codex {
         wire_api: 'responses',
         requires_openai_auth: false,
         supports_websockets: false,
-        ...(this.toolSession && { supports_standalone_web_search: true }),
+        ...(this.toolSession?.webSearch && { supports_standalone_web_search: true }),
       },
       'features.shell_tool': false,
       'features.apply_patch_freeform': false,
@@ -54,8 +54,10 @@ export class Codex {
       'analytics.enabled': false,
       'otel.log_user_prompt': false,
       ...(this.toolSession && {
-        web_search: 'live',
-        'features.standalone_web_search': true,
+        ...(this.toolSession.webSearch && {
+          web_search: 'live',
+          'features.standalone_web_search': true,
+        }),
         'skills.include_instructions': false,
         'skills.bundled.enabled': false,
         'features.skill_search': false,
@@ -189,10 +191,14 @@ export class Codex {
     }));
   }
   async generate(tree, text, emit, saveThread, signal) {
-    if ((tree.nativeTools || tree.tools?.length) && !this.toolSession && !signal.aborted) {
+    if ((tree.nativeTools?.length || tree.tools?.length) && !this.toolSession && !signal.aborted) {
       const mcp = tree.tools?.length ? await tree.mcp.open(tree, emit, signal) : null;
       // A fresh CLI per tool turn reloads its header even on resumed threads; concurrent turns cannot share credentials.
-      const worker = new Codex(this.auth, this.dir, this.launch, { mcp, tools: tree.tools ?? [] });
+      const worker = new Codex(this.auth, this.dir, this.launch, {
+        mcp,
+        tools: tree.tools ?? [],
+        webSearch: !!tree.nativeTools?.includes('web_search'),
+      });
       this.workers.add(worker);
       try {
         return await worker.generate(tree, text, emit, saveThread, signal);

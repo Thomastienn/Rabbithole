@@ -19,6 +19,7 @@ import SmartSettings from './SmartSettings';
 import ModelProfiles from './ModelProfiles';
 import TutorStyleSettings from './TutorStyleSettings';
 import SearchSettings from './SearchSettings';
+import TutorToolsSettings from './TutorToolsSettings';
 import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
 import type { ModelSelection } from '../chat/types';
@@ -228,6 +229,8 @@ export default function SettingsWindow({
             >
               <ConceptCost tokens={conceptNameTokens} />
             </Section>
+            <Divider />
+            <TutorToolsSettings api={api} />
             <Divider />
             <TutorStyleSettings api={api} />
           </>,

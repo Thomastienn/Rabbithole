@@ -197,7 +197,7 @@ test('all six provider switches preserve root and nested history/context, inheri
           instructions.startsWith(
             tutorSystem({
               tutorStyle: 'Fixture tutor style 59.',
-              nativeTools: target !== 'openai',
+              nativeTools: target === 'openai' ? [] : ['web_search'],
             }),
           ),
           label,

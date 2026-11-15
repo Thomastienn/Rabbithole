@@ -61,7 +61,10 @@ export class Claude {
     }
   }
   async reply(tree, text, emit, saveThread, signal, turn) {
-    const toolsOn = tree.nativeTools || tree.tools?.length;
+    const native = (tree.nativeTools ?? []).map((name) =>
+      name === 'web_search' ? 'WebSearch' : 'WebFetch',
+    );
+    const toolsOn = native.length || tree.tools?.length;
     const selectedModel = await this.model(tree);
     mkdirSync(this.cwd, { recursive: true, mode: 0o700 });
     const session = tree.thread ?? randomUUID();
@@ -87,12 +90,11 @@ export class Claude {
       '--include-partial-messages',
       ...(!toolsOn ? ['--max-turns', '1'] : []),
       '--tools',
-      toolsOn ? 'WebSearch,WebFetch' : '',
+      native.join(','),
       ...(toolsOn
         ? [
             '--allowedTools',
-            'WebSearch',
-            'WebFetch',
+            ...native,
             ...(tree.tools ?? []).map((t) => `mcp__treetutor__${t.name}`),
           ]
         : []),

@@ -90,9 +90,6 @@ html {
 }
 .band-mark {
   flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
   margin-inline-end: var(--treetutor-module);
   font-size: 20px;
   letter-spacing: -0.01em;

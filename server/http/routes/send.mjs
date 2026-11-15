@@ -1,3 +1,4 @@
+import { nativeTools as nativeToolsFor } from '../../tools/runner.mjs';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { diagramReply, generateDiagram, LIMITS, tutorContext } from '../../media/diagrams.mjs';
 import { visualTheme } from '../../media/visuals.mjs';
@@ -370,10 +371,12 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       if (invalid) throw new Error(invalid.error);
     }
     const capable = await ctx.toolCapable(tree);
-    const nativeTools = capable && ['claude', 'codex'].includes(tree.provider);
+    const settings = store.tutorTools();
+    const nativeTools = nativeToolsFor({ provider: tree.provider, capable, settings });
     const tools = await ctx.tools.tools({
       provider: tree.provider,
       capable,
+      settings,
       signal: controller.signal,
     });
     if (finished) return true;
@@ -381,7 +384,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
       {
         ...tutorContext(tree),
-        ...(nativeTools && { nativeTools: true, mcp: ctx.mcp }),
+        ...((nativeTools.length || tools.length) && { nativeTools, mcp: ctx.mcp }),
         ...(tools.length && {
           tools,
           runTool: (name, input, signal) =>

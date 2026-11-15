@@ -1,6 +1,20 @@
 import { isEndpoint } from '../http/roles.mjs';
 import { readPage } from './readPage.mjs';
 
+export const TUTOR_TOOLS = {
+  web_search: 'Web search',
+  read_page: 'Read pages',
+  find_images: 'Find images',
+};
+
+// Provider-native equivalents follow the same switches as the app tools.
+export function nativeTools({ provider, capable, settings = {} }) {
+  if (!capable) return [];
+  return (
+    provider === 'claude' ? ['web_search', 'read_page'] : provider === 'codex' ? ['web_search'] : []
+  ).filter((name) => settings[name] !== false);
+}
+
 // Tutor tools: names, model-facing definitions and how each runs with a turn context.
 const TOOLS = {
   web_search: {
@@ -51,10 +65,14 @@ const TOOLS = {
 export function toolRunner(options = {}) {
   return {
     // Native providers keep their own web tools where available.
-    async tools({ provider, capable, signal }) {
+    async tools({ provider, capable, signal, settings = {} }) {
       if (!capable) return [];
-      const search = options.search && (await options.search.status({ signal })).ready;
+      const search =
+        (settings.web_search !== false || settings.find_images !== false) &&
+        options.search &&
+        (await options.search.status({ signal })).ready;
       return Object.entries(TOOLS)
+        .filter(([name]) => settings[name] !== false)
         .filter(([name]) =>
           name === 'find_images'
             ? search

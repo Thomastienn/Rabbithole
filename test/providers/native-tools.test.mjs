@@ -48,7 +48,7 @@ for (const provider of ['claude', 'codex']) {
       client.generate(
         {
           model: 'fixture-model',
-          nativeTools: true,
+          nativeTools: ['web_search', 'read_page'],
           tools: definitions,
           mcp,
           runTool: () => assert.fail('No runner call'),
@@ -80,7 +80,7 @@ for (const provider of ['claude', 'codex']) {
     const running = clients[provider].generate(
       {
         model: 'fixture-model',
-        nativeTools: true,
+        nativeTools: ['web_search', 'read_page'],
         tools: definitions,
         mcp,
         runTool: async (_name, _input, signal) => {
@@ -136,7 +136,7 @@ test('concurrent Codex tool turns get separate subprocesses and runners', async 
       await clients.codex.generate(
         {
           model: 'fixture-model',
-          nativeTools: true,
+          nativeTools: ['web_search', 'read_page'],
           tools: definitions,
           mcp,
           runTool: async () => fact,
@@ -176,7 +176,7 @@ for (const provider of ['claude', 'codex'])
     });
     let saved;
     const tree = {
-      nativeTools: true,
+      nativeTools: ['web_search', 'read_page'],
       mcp,
       tools: definitions,
       model: provider === 'claude' ? 'sonnet' : 'fixture-model',

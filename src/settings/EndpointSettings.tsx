@@ -28,7 +28,7 @@ const when = (at: string) => {
 // Rows rendered at once; search narrows a catalogue of hundreds.
 const SHOWN = 50;
 
-// One endpoint's models with a Reads images switch each; off sends images as OCR text.
+// Each model's image and tool overrides save independently.
 function EndpointModels({
   endpoint,
   models,
@@ -36,7 +36,7 @@ function EndpointModels({
 }: {
   endpoint: Endpoint;
   models: Model[];
-  save: (model: string, readsImages: boolean) => Promise<void>;
+  save: (model: string, field: 'readsImages' | 'usesTutorTools', on: boolean) => Promise<void>;
 }) {
   const [query, setQuery] = useState(''),
     [saving, setSaving] = useState(''),
@@ -48,7 +48,8 @@ function EndpointModels({
     <VStack gap={2} className="endpoint-models" as="section" aria-label={`${endpoint.name} models`}>
       <Text type="supporting" color="secondary">
         Reads images: on sends images to the model; off sends their OCR text. Starts from what the
-        endpoint reports.
+        endpoint reports. Uses tutor tools allows the tools enabled in Settings; starts off unless
+        the endpoint reports tool support.
       </Text>
       <TextInput
         label="Search models"
@@ -60,25 +61,28 @@ function EndpointModels({
         hasClear
       />
       {shown.map((m) => (
-        <Switch
-          key={m.model}
-          label={m.label}
-          description="Reads images"
-          value={!!m.readsImages}
-          isLoading={saving === m.model}
-          isDisabled={!!saving}
-          onChange={async (on) => {
-            setSaving(m.model);
-            setError('');
-            try {
-              await save(m.model, on);
-            } catch (e) {
-              setError((e as Error).message);
-            } finally {
-              setSaving('');
-            }
-          }}
-        />
+        <VStack key={m.model} gap={1} role="group" aria-label={m.label}>
+          {(['readsImages', 'usesTutorTools'] as const).map((field) => (
+            <Switch
+              key={field}
+              label={`${m.label} · ${field === 'readsImages' ? 'Reads images' : 'Uses tutor tools'}`}
+              value={!!m[field]}
+              isLoading={saving === `${m.model}:${field}`}
+              isDisabled={!!saving}
+              onChange={async (on) => {
+                setSaving(`${m.model}:${field}`);
+                setError('');
+                try {
+                  await save(m.model, field, on);
+                } catch (e) {
+                  setError((e as Error).message);
+                } finally {
+                  setSaving('');
+                }
+              }}
+            />
+          ))}
+        </VStack>
       ))}
       <Text type="supporting" color="secondary" role="status">
         {!models.length
@@ -413,8 +417,8 @@ export default function EndpointSettings({
               <EndpointModels
                 endpoint={e}
                 models={(models ?? []).filter((m) => m.provider === e.id)}
-                save={async (model, readsImages) => {
-                  await api('/api/settings/endpoints/model', { id: e.id, model, readsImages });
+                save={async (model, field, on) => {
+                  await api('/api/settings/endpoints/model', { id: e.id, model, [field]: on });
                   await changed();
                 }}
               />

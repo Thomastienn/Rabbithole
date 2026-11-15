@@ -7,6 +7,7 @@ export type Model = {
   efforts?: string[];
   defaultEffort?: string;
   readsImages?: boolean;
+  usesTutorTools?: boolean;
 };
 export type ChatSelection = { provider: string; model: string | null; effort: string | null };
 export const effortLabel = (effort: string | null) =>

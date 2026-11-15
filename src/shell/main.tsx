@@ -12,7 +12,6 @@ import '@fontsource/literata/600.css';
 import { Theme } from '@astryxdesign/core/theme';
 import { themes } from './astryx-themes';
 import ChatPage from './ChatPage';
-import { ThemedFavicon } from './ThemedFavicon';
 import { savedAppearance, savedTheme, type Appearance, type ThemeChoice } from './appearance';
 import { savePreference } from './preferences';
 // Last, so the map and app styles follow every other stylesheet, in this order.
@@ -40,7 +39,6 @@ function App() {
   });
   return (
     <Theme theme={themes[theme]} mode={appearance}>
-      <ThemedFavicon theme={theme} appearance={appearance} />
       <ChatPage
         appearance={appearance}
         setAppearance={(next) => {

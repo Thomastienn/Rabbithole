@@ -1,10 +1,20 @@
+import { TUTOR_TOOLS } from '../../tools/runner.mjs';
 import { EndpointError } from '../../providers/openai.mjs';
 import { DEFAULT_TUTOR_STYLE } from '../../media/diagrams.mjs';
 
 // Model profiles, chat, smart and suggestion settings, and custom endpoints.
 export async function settingsRoutes(req, res, url, ctx, body) {
   const { store, json, endpoint, selectionError, chatDefault, smart, profiles } = ctx;
+  const tutorTools = () => {
+    const settings = store.tutorTools();
+    return Object.entries(TUTOR_TOOLS).map(([name, label]) => ({
+      name,
+      label,
+      enabled: settings[name] !== false,
+    }));
+  };
   if (req.method === 'GET') {
+    if (url.pathname === '/api/settings/tutor-tools') return json(res, 200, tutorTools());
     if (url.pathname === '/api/settings/searxng') return json(res, 200, await ctx.search.status());
     if (url.pathname === '/api/settings/endpoint' && endpoint)
       return json(res, 200, endpoint.status());
@@ -20,6 +30,12 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     return false;
   }
   if (req.method !== 'POST') return false;
+  if (url.pathname === '/api/settings/tutor-tools') {
+    if (!Object.hasOwn(TUTOR_TOOLS, body?.name) || typeof body?.enabled !== 'boolean')
+      return json(res, 400, { error: 'Choose a listed tutor tool and turn it on or off.' });
+    store.saveTutorTool(body.name, body.enabled);
+    return json(res, 200, tutorTools());
+  }
   if (['/api/settings/searxng', '/api/settings/searxng/test'].includes(url.pathname)) {
     try {
       if (url.pathname.endsWith('/test'))
@@ -193,21 +209,30 @@ export async function settingsRoutes(req, res, url, ctx, body) {
       });
     }
   }
-  // Reads images for one model of a saved endpoint; the override survives until the endpoint is removed.
+  // Independent overrides for one model of a saved endpoint; the override survives until the endpoint is removed.
   if (endpoint && url.pathname === '/api/settings/endpoints/model') {
-    const { id, model, readsImages } = body ?? {};
+    const { id, model, readsImages, usesTutorTools } = body ?? {};
+    const has = (key) => Object.hasOwn(body ?? {}, key);
     if (
       !endpoint.list().some((e) => e.id === id) ||
       typeof model !== 'string' ||
       !model.trim() ||
       model.length > 500 ||
-      typeof readsImages !== 'boolean'
+      (!has('readsImages') && !has('usesTutorTools')) ||
+      (has('readsImages') && typeof readsImages !== 'boolean') ||
+      (has('usesTutorTools') && typeof usesTutorTools !== 'boolean')
     )
       return json(res, 400, {
         error: 'Choose a model of a saved endpoint, then try again.',
       });
-    store.setReadsImages(id, model, readsImages);
-    return json(res, 200, { id, model, readsImages });
+    if (has('readsImages')) store.setReadsImages(id, model, readsImages);
+    if (has('usesTutorTools')) store.setUsesTutorTools(id, model, usesTutorTools);
+    return json(res, 200, {
+      id,
+      model,
+      ...(has('readsImages') && { readsImages }),
+      ...(has('usesTutorTools') && { usesTutorTools }),
+    });
   }
   if (
     endpoint &&

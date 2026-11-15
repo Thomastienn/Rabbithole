@@ -146,9 +146,30 @@ export function open(path) {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS endpoint_efforts (endpoint TEXT NOT NULL, model TEXT NOT NULL, effort TEXT NOT NULL, PRIMARY KEY(endpoint, model, effort))',
     );
-    // Learner overrides of reads images per custom endpoint model; a missing row follows the reported capability.
+    // Each nullable override independently follows the reported capability until chosen.
+    const endpointModels =
+      'CREATE TABLE IF NOT EXISTS endpoint_models (endpoint TEXT NOT NULL, model TEXT NOT NULL, reads_images INTEGER CHECK(reads_images IN (0,1)), uses_tutor_tools INTEGER CHECK(uses_tutor_tools IN (0,1)), PRIMARY KEY(endpoint, model))';
+    this.db.exec(endpointModels);
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(endpoint_models)')
+        .all()
+        .some((c) => c.name === 'uses_tutor_tools')
+    ) {
+      this.db.exec('BEGIN IMMEDIATE');
+      try {
+        this.db.exec('ALTER TABLE endpoint_models RENAME TO endpoint_models_old');
+        this.db.exec(endpointModels);
+        this.db.exec(
+          'INSERT INTO endpoint_models(endpoint,model,reads_images) SELECT endpoint,model,reads_images FROM endpoint_models_old; DROP TABLE endpoint_models_old; COMMIT',
+        );
+      } catch (error) {
+        this.db.exec('ROLLBACK');
+        throw error;
+      }
+    }
     this.db.exec(
-      'CREATE TABLE IF NOT EXISTS endpoint_models (endpoint TEXT NOT NULL, model TEXT NOT NULL, reads_images INTEGER NOT NULL CHECK(reads_images IN (0,1)), PRIMARY KEY(endpoint, model))',
+      'CREATE TABLE IF NOT EXISTS tutor_tools (name TEXT PRIMARY KEY, enabled INTEGER NOT NULL CHECK(enabled IN (0,1)))',
     );
     // Tutor tool calls per reply message, in call order; they go with their message.
     this.db.exec(

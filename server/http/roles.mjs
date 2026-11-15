@@ -67,11 +67,16 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
         m.vision ??
         !!providers[provider]?.acceptsImages)
       : !!providers[provider]?.readsImages;
+  const usesTutorTools = (provider, m) =>
+    isEndpoint(provider)
+      ? (store.usesTutorToolsOverride(provider, m.model) ?? m.tools ?? false)
+      : provider === 'claude' || provider === 'codex';
   // Remembered typed efforts follow the endpoint's advertised ones in its model list; every model says whether it reads images.
   const withTyped = (provider, list) =>
     list.map((m) => ({
       ...m,
       readsImages: imageReading(provider, m),
+      usesTutorTools: usesTutorTools(provider, m),
       ...(isEndpoint(provider) && {
         efforts: [...new Set([...(m.efforts ?? []), ...store.typedEfforts(provider, m.model)])],
       }),
@@ -85,11 +90,9 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     isEndpoint(provider)
       ? imageReading(provider, await listed(provider, model))
       : imageReading(provider);
-  // Tutor tools need the endpoint to report tool support for this model; an unlistable endpoint gets none.
+  // Tutor tools: override, else the reported capability, else off for custom endpoint models.
   const toolCapable = async ({ provider, model }) =>
-    provider === 'claude' ||
-    provider === 'codex' ||
-    (isEndpoint(provider) && (await listed(provider, model)).tools === true);
+    usesTutorTools(provider, isEndpoint(provider) ? await listed(provider, model) : {});
   // A null default provider (fresh install) leaves an unset chat role without a provider.
   const unset = () => ({ provider: defaultProvider, model: null, effort: null });
   const chatDefault = () => store.chatSettings() ?? unset();
