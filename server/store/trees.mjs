@@ -345,7 +345,7 @@ export const trees = {
   toolCall(conversation, message, { id, name, input, status, output, elapsed }) {
     this.db
       .prepare(
-        'INSERT INTO tool_calls(id,conversation,message,name,input,output,status,started,elapsed) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(message,id) DO UPDATE SET output=excluded.output,status=excluded.status,elapsed=excluded.elapsed',
+        'INSERT INTO tool_calls(id,conversation,message,name,input,output,status,started,elapsed) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(message,id) DO UPDATE SET input=excluded.input,output=excluded.output,status=excluded.status,elapsed=excluded.elapsed',
       )
       .run(
         id,

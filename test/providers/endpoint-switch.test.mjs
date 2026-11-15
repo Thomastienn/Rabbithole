@@ -11,7 +11,7 @@ import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
-import { TUTOR_RULES } from '../../server/media/diagrams.mjs';
+import { tutorSystem } from '../../server/media/diagrams.mjs';
 
 test('all six provider switches preserve root and nested history/context, inherit choices, and repeat after restart', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-three-providers-')),
@@ -193,7 +193,15 @@ test('all six provider switches preserve root and nested history/context, inheri
           assert.equal(calls.findLast((c) => c.method === 'turn/start').params.input[0].text, text);
           instructions = calls.findLast((c) => c.method === 'thread/start').params.baseInstructions;
         }
-        assert.ok(instructions.startsWith('Fixture tutor style 59.\n\n' + TUTOR_RULES), label);
+        assert.ok(
+          instructions.startsWith(
+            tutorSystem({
+              tutorStyle: 'Fixture tutor style 59.',
+              nativeTools: target !== 'openai',
+            }),
+          ),
+          label,
+        );
         if (before.branch) {
           assert.ok(instructions.includes(before.branch.snapshot));
           assert.ok(instructions.includes(before.branch.text));

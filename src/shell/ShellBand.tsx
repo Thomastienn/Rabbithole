@@ -212,6 +212,7 @@ export default function ShellBand({
         onClick={() => setDrawer(true)}
       />
       <Text className="band-mark" weight="bold">
+        <img src="/logo.svg" alt="" width={24} height={24} />
         TreeTutor
       </Text>
       <HStack gap={1} vAlign="center" className="band-tools">
@@ -242,6 +243,7 @@ export default function ShellBand({
   ) : (
     <header className="shell-band">
       <Text className="band-mark" weight="bold">
+        <img src="/logo.svg" alt="" width={24} height={24} />
         TreeTutor
       </Text>
       <Button

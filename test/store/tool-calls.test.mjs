@@ -20,7 +20,7 @@ test('tool calls are kept per reply in call order, updated in place, survive reo
   const id = store.create('Tools', 'openai', 'm').id;
   store.message(id, 'user', 'Read it', 'completed');
   const reply = store.message(id, 'assistant', '', 'streaming');
-  store.toolCall(id, reply, call('b', 'running'));
+  store.toolCall(id, reply, { ...call('b', 'running'), input: {} });
   store.toolCall(id, reply, call('a', 'running'));
   store.toolCall(id, reply, call('b', 'done', 'Page text'));
   store.stopToolCalls(reply);

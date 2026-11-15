@@ -49,7 +49,10 @@ test('tutor style saves, normalizes empty or default text to null, restores and 
     style: 'Use sports analogies.',
   });
   assert.equal(store.tutorStyle(), 'Use sports analogies.');
-  assert.ok((await ask()).startsWith('Use sports analogies.\n\nDo not use tools'));
+  assert.equal(
+    await ask(),
+    tutorSystem({ tutorStyle: 'Use sports analogies.', nativeTools: true }),
+  );
   for (const style of ['', '   ', ` ${DEFAULT_TUTOR_STYLE}\n`, null]) {
     await save('Edited');
     assert.deepEqual(await save(style), unedited, JSON.stringify(style));

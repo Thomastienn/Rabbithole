@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
+import { toolEvents } from './toolEvents.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [
@@ -48,6 +49,19 @@ export class Claude {
     return tree.model ?? MODELS.find((m) => m.isDefault).model;
   }
   async generate(tree, text, emit, saveThread, signal) {
+    if (signal.aborted) {
+      emit({ type: 'status', status: 'interrupted' });
+      return;
+    }
+    const turn = tree.tools?.length ? await tree.mcp.open(tree, emit, signal) : null;
+    try {
+      return await this.reply(tree, text, emit, saveThread, signal, turn);
+    } finally {
+      turn?.close();
+    }
+  }
+  async reply(tree, text, emit, saveThread, signal, turn) {
+    const toolsOn = tree.nativeTools || tree.tools?.length;
     const selectedModel = await this.model(tree);
     mkdirSync(this.cwd, { recursive: true, mode: 0o700 });
     const session = tree.thread ?? randomUUID();
@@ -71,13 +85,24 @@ export class Claude {
       'stream-json',
       '--verbose',
       '--include-partial-messages',
-      '--max-turns',
-      '1',
+      ...(!toolsOn ? ['--max-turns', '1'] : []),
       '--tools',
-      '',
+      toolsOn ? 'WebSearch,WebFetch' : '',
+      ...(toolsOn
+        ? [
+            '--allowedTools',
+            'WebSearch',
+            'WebFetch',
+            ...(tree.tools ?? []).map((t) => `mcp__treetutor__${t.name}`),
+          ]
+        : []),
       '--strict-mcp-config',
       '--mcp-config',
-      '{"mcpServers":{}}',
+      JSON.stringify({
+        mcpServers: turn
+          ? { treetutor: { type: 'http', url: turn.url, headers: turn.headers } }
+          : {},
+      }),
       '--setting-sources',
       '',
       '--disable-slash-commands',
@@ -130,6 +155,9 @@ export class Claude {
     let item,
       started = session,
       result;
+    const native = toolEvents(emit);
+    const blocks = new Map();
+    const nativeCall = (block) => ['WebSearch', 'WebFetch'].includes(block?.name);
     try {
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -144,18 +172,47 @@ export class Claude {
             return;
           }
           if (m.type === 'system' && m.subtype === 'init') started = m.session_id ?? session;
-          if (m.type === 'stream_event' && m.event?.type === 'message_start')
+          if (m.type === 'stream_event' && m.event?.type === 'message_start') {
             item = m.event.message?.id;
+            blocks.clear();
+          }
+          if (toolsOn && m.type === 'stream_event') {
+            const e = m.event;
+            if (e?.type === 'content_block_start' && nativeCall(e.content_block)) {
+              blocks.set(e.index, { ...e.content_block, json: '' });
+              native.start(e.content_block.id, e.content_block.name, e.content_block.input);
+            }
+            const block = blocks.get(e?.index);
+            if (block && e.delta?.type === 'input_json_delta') block.json += e.delta.partial_json;
+            if (block && e.type === 'content_block_stop' && block.json) {
+              try {
+                native.start(block.id, block.name, JSON.parse(block.json));
+              } catch {
+                /* Full assistant message can supply arguments. */
+              }
+            }
+          }
           if (m.type === 'stream_event' && m.event?.delta?.type === 'text_delta')
             emit({ type: 'delta', item: item ?? 'reply', text: m.event.delta.text });
           // Signed-out runs emit a '<synthetic>' notice, not a tutor reply.
           if (m.type === 'assistant' && m.message?.model !== '<synthetic>') {
+            if (toolsOn)
+              for (const block of m.message?.content ?? [])
+                if (nativeCall(block)) native.start(block.id, block.name, block.input);
             const full = (m.message?.content ?? [])
               .filter((c) => c.type === 'text')
               .map((c) => c.text)
               .join('');
             if (full) emit({ type: 'item', item: m.message.id ?? item ?? 'reply', text: full });
           }
+          if (toolsOn && m.type === 'user')
+            for (const block of m.message?.content ?? [])
+              if (block.type === 'tool_result')
+                native.finish(
+                  block.tool_use_id,
+                  typeof block.content === 'string' ? block.content : JSON.stringify(block.content),
+                  block.is_error,
+                );
           if (m.type === 'result') result = m;
         });
         child.on('error', (error) => {
@@ -172,6 +229,7 @@ export class Claude {
         });
       });
     } finally {
+      native.close();
       signal.removeEventListener('abort', kill);
       this.children.delete(child);
     }

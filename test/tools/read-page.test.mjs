@@ -211,7 +211,7 @@ test('read_page re-resolves a redirect on the same host and refuses a rebound pr
   assert.deepEqual(hits, ['/to-article']);
 });
 
-test('tool runner: custom endpoint models with tool support get read_page; others get no tools', async (t) => {
+test('tool runner: capable custom endpoint and Codex models get read_page; Claude keeps its native fetch', async (t) => {
   const runner = toolRunner();
   assert.deepEqual(
     (await runner.tools({ provider: 'openai:1', capable: true })).map((d) => d.name),
@@ -226,7 +226,11 @@ test('tool runner: custom endpoint models with tool support get read_page; other
   assert.match(definition.description, /cannot read local/);
   assert.deepEqual(await runner.tools({ provider: 'openai:1', capable: false }), []);
   assert.deepEqual(await runner.tools({ provider: 'claude', capable: true }), []);
-  assert.deepEqual(await runner.tools({ provider: 'codex', capable: true }), []);
+  assert.deepEqual(
+    (await runner.tools({ provider: 'codex', capable: true })).map((d) => d.name),
+    ['read_page'],
+  );
+  assert.deepEqual(await runner.tools({ provider: 'codex', capable: false }), []);
 
   const { site, options } = await pageServer(t);
   const local = toolRunner({ readPage: options });

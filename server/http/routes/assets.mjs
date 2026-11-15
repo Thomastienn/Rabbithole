@@ -6,6 +6,7 @@ const TYPES = {
   '.js': 'text/javascript',
   '.css': 'text/css',
   '.woff2': 'font/woff2',
+  '.svg': 'image/svg+xml',
 };
 
 // The last route: unknown API paths, other methods, then the built app's static files.

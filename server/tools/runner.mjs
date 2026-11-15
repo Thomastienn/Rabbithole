@@ -50,7 +50,7 @@ const TOOLS = {
 // options.readPage passes lookup and address checks through, for tests against local fakes.
 export function toolRunner(options = {}) {
   return {
-    // Native providers keep their own web search; app-tool delivery arrives with MCP support.
+    // Native providers keep their own web tools where available.
     async tools({ provider, capable, signal }) {
       if (!capable) return [];
       const search = options.search && (await options.search.status({ signal })).ready;
@@ -58,7 +58,9 @@ export function toolRunner(options = {}) {
         .filter(([name]) =>
           name === 'find_images'
             ? search
-            : isEndpoint(provider) && (name === 'read_page' || search),
+            : name === 'read_page'
+              ? isEndpoint(provider) || provider === 'codex'
+              : isEndpoint(provider) && search,
         )
         .map(([name, { description, parameters }]) => ({
           name,

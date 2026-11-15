@@ -302,7 +302,13 @@ test('video HTTP requests route smart model and effort through the real Claude/C
       assert.equal(worker.args[worker.args.indexOf('--tools') + 1], '');
       assert.equal(JSON.parse(worker.text).cut.narration, 'Each round keeps its winner.');
     } else {
-      const requests = traffic.flatMap((c) => c.input),
+      const requests = traffic.findLast((c) =>
+          c.input.some(
+            (r) =>
+              r.method === 'thread/start' &&
+              /Follow the brief exactly/.test(r.params.baseInstructions),
+          ),
+        ).input,
         worker = requests.findLast((c) => c.method === 'thread/start');
       assert.equal(worker.params.model, model);
       assert.match(worker.params.baseInstructions, /Follow the brief exactly/);

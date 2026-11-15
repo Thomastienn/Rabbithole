@@ -27,6 +27,7 @@ import { assetRoutes } from './http/routes/assets.mjs';
 import { tesseractOcr } from './ocr.mjs';
 import { toolRunner } from './tools/runner.mjs';
 import { searxngSearch } from './tools/searxng.mjs';
+import { toolMcp } from './tools/mcp.mjs';
 
 // Matching order; each route answers only its own method and paths, and assets answers everything left.
 const ROUTES = [
@@ -88,6 +89,7 @@ export function createApp({
     desktop,
     recognize,
     tools: tools ?? toolRunner({ search }),
+    mcp: toolMcp(),
     search,
     stopping: false,
     csrf: randomBytes(32).toString('hex'),
@@ -231,12 +233,15 @@ export function createApp({
         }, 5000).unref();
         const closed = new Promise((done) => server.close(done));
         server.closeIdleConnections();
-        Promise.allSettled([closed, recognize.stop?.(), ...[...videoJobs].map((v) => v.done)]).then(
-          () => {
-            clearTimeout(timer);
-            resolve();
-          },
-        );
+        Promise.allSettled([
+          closed,
+          ctx.mcp.close(),
+          recognize.stop?.(),
+          ...[...videoJobs].map((v) => v.done),
+        ]).then(() => {
+          clearTimeout(timer);
+          resolve();
+        });
       });
       return stopped;
     },

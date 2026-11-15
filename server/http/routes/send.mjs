@@ -369,9 +369,11 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       const invalid = await selectionError(tree);
       if (invalid) throw new Error(invalid.error);
     }
+    const capable = await ctx.toolCapable(tree);
+    const nativeTools = capable && ['claude', 'codex'].includes(tree.provider);
     const tools = await ctx.tools.tools({
       provider: tree.provider,
-      capable: await ctx.toolCapable(tree),
+      capable,
       signal: controller.signal,
     });
     if (finished) return true;
@@ -379,6 +381,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
       {
         ...tutorContext(tree),
+        ...(nativeTools && { nativeTools: true, mcp: ctx.mcp }),
         ...(tools.length && {
           tools,
           runTool: (name, input, signal) =>

@@ -4,16 +4,19 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
+import { toolEvents } from './toolEvents.mjs';
 
 export class Codex {
   readsImages = true;
-  constructor(auth, dir, launch = spawn) {
+  constructor(auth, dir, launch = spawn, toolSession = null) {
     this.auth = auth;
     this.dir = dir;
     this.launch = launch;
     this.pending = new Map();
     this.listeners = new Set();
     this.id = 0;
+    this.toolSession = toolSession;
+    this.workers = new Set();
   }
   async ready() {
     const token = await this.auth.token();
@@ -39,6 +42,7 @@ export class Codex {
         wire_api: 'responses',
         requires_openai_auth: false,
         supports_websockets: false,
+        ...(this.toolSession && { supports_standalone_web_search: true }),
       },
       'features.shell_tool': false,
       'features.apply_patch_freeform': false,
@@ -49,14 +53,31 @@ export class Codex {
       web_search: 'disabled',
       'analytics.enabled': false,
       'otel.log_user_prompt': false,
+      ...(this.toolSession && {
+        web_search: 'live',
+        'features.standalone_web_search': true,
+        'skills.include_instructions': false,
+        'skills.bundled.enabled': false,
+        'features.skill_search': false,
+        ...(this.toolSession.mcp && {
+          'mcp_servers.treetutor': {
+            url: this.toolSession.mcp.url,
+            http_headers: this.toolSession.mcp.headers,
+            enabled_tools: this.toolSession.tools.map((t) => t.name),
+            default_tools_approval_mode: 'approve',
+          },
+        }),
+      }),
     };
     // TOML inline tables use '=' rather than JSON's ':'.
     const toml = (value) =>
-      typeof value === 'object'
-        ? `{${Object.entries(value)
-            .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
-            .join(',')}}`
-        : JSON.stringify(value);
+      Array.isArray(value)
+        ? `[${value.map(toml).join(',')}]`
+        : typeof value === 'object'
+          ? `{${Object.entries(value)
+              .map(([k, v]) => `${/^[A-Za-z0-9_-]+$/.test(k) ? k : JSON.stringify(k)}=${toml(v)}`)
+              .join(',')}}`
+          : JSON.stringify(value);
     const args = [
       'app-server',
       '--listen',
@@ -168,6 +189,19 @@ export class Codex {
     }));
   }
   async generate(tree, text, emit, saveThread, signal) {
+    if ((tree.nativeTools || tree.tools?.length) && !this.toolSession && !signal.aborted) {
+      const mcp = tree.tools?.length ? await tree.mcp.open(tree, emit, signal) : null;
+      // A fresh CLI per tool turn reloads its header even on resumed threads; concurrent turns cannot share credentials.
+      const worker = new Codex(this.auth, this.dir, this.launch, { mcp, tools: tree.tools ?? [] });
+      this.workers.add(worker);
+      try {
+        return await worker.generate(tree, text, emit, saveThread, signal);
+      } finally {
+        mcp?.close();
+        worker.close();
+        this.workers.delete(worker);
+      }
+    }
     const cancelled = () => {
       if (!signal.aborted) return false;
       emit({ type: 'status', status: 'interrupted' });
@@ -210,7 +244,21 @@ export class Codex {
       interrupted = false,
       finishTurn,
       usage,
+      baseline,
       contextWindow;
+    const native = toolEvents(emit);
+    const emitUsage = () => {
+      if (usage)
+        emit({
+          type: 'usage',
+          usage: {
+            input: usage.inputTokens - usage.cachedInputTokens,
+            output: usage.outputTokens,
+            cacheRead: usage.cachedInputTokens,
+            ...(contextWindow && { contextWindow }),
+          },
+        });
+    };
     const earlyEvents = [];
     const interrupt = () => {
       interrupted = true;
@@ -250,23 +298,26 @@ export class Codex {
             emit({ type: 'delta', item: p.itemId, text: p.delta });
           if (message.method === 'item/completed' && p.item?.type === 'agentMessage')
             emit({ type: 'item', item: p.item.id, text: p.item.text });
-          // shortcut: keeps the turn's last model call (tools are off, so one call per turn); sum calls if tools are enabled.
+          if (this.toolSession && p.item?.type === 'webSearch') {
+            const tool = p.item;
+            if (message.method === 'item/started' || message.method === 'item/completed')
+              native.start(tool.id, 'web_search', { query: tool.query, action: tool.action });
+            if (message.method === 'item/completed')
+              native.finish(tool.id, JSON.stringify(tool.results ?? tool.action ?? null));
+          }
           if (message.method === 'thread/tokenUsage/updated') {
-            usage = p.tokenUsage?.last;
+            const { last, total } = p.tokenUsage ?? {};
+            if (this.toolSession && last && total) {
+              const keys = ['inputTokens', 'cachedInputTokens', 'outputTokens'];
+              baseline ??= Object.fromEntries(keys.map((k) => [k, total[k] - last[k]]));
+              usage = Object.fromEntries(keys.map((k) => [k, total[k] - baseline[k]]));
+            } else usage = last;
             contextWindow = p.tokenUsage?.modelContextWindow;
+            if (this.toolSession) emitUsage();
           }
           if (message.method === 'turn/completed') {
             // inputTokens includes cached reads; report them apart like Claude. Failed turns still consumed what they report.
-            if (usage)
-              emit({
-                type: 'usage',
-                usage: {
-                  input: usage.inputTokens - usage.cachedInputTokens,
-                  output: usage.outputTokens,
-                  cacheRead: usage.cachedInputTokens,
-                  ...(contextWindow && { contextWindow }),
-                },
-              });
+            if (!this.toolSession) emitUsage();
             emit({ type: 'status', status: p.turn.status });
             const reason = p.turn.error?.message; // e.g. usage limits; shown like Claude's short results so the learner knows why
             finish(
@@ -301,10 +352,13 @@ export class Codex {
         }, finish);
       });
     } finally {
+      native.close();
       signal.removeEventListener('abort', stop);
     }
   }
   close() {
+    for (const worker of this.workers) worker.close();
+    this.workers.clear();
     const child = this.process;
     if (child) {
       child.kill();

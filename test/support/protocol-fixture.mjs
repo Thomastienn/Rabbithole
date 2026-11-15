@@ -1,10 +1,11 @@
 import { createInterface } from 'node:readline';
+import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { planFor } from './video-kit.mjs';
+import { appTool, codexMcp, claudeSearch } from './tool-protocol.mjs';
 
 export async function protocol(stdin, stdout, argv, exit, wait = async () => {}) {
   const send = (obj) => stdout.write(JSON.stringify(obj) + '\n');
-  let threads = 0;
   const threadModels = new Map();
   const video = `// Description: A winner moves upward.
 // Narration: "Each round keeps its winner."
@@ -155,6 +156,14 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
       : reply(input);
     if (slow(input)) await wait();
     send({ type: 'system', subtype: 'init', session_id: session, model: 'sonnet' });
+    if (input.endsWith('native tools fixture')) {
+      claudeSearch(send);
+      const config = JSON.parse(argv[argv.indexOf('--mcp-config') + 1]).mcpServers.treetutor;
+      send({
+        type: 'assistant',
+        message: { id: 'tool-answer', content: [{ type: 'text', text: await appTool(config) }] },
+      });
+    }
     send({ type: 'assistant', message: { id: 'answer', content: [{ type: 'text', text }] } });
     // A learner text ending 'no usage' simulates a provider that reports none; 'claude fails' a failed run that still reports usage.
     send({
@@ -227,8 +236,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
         else send({ id, result: {} });
       }
       if (method === 'thread/start' || method === 'thread/resume') {
-        const thread =
-            params.threadId ?? (++threads === 1 ? 'thread-fixture' : `thread-fixture-${threads}`),
+        const thread = params.threadId ?? randomUUID(),
           model = method === 'thread/resume' ? 'fixture-model' : (params.model ?? 'fixture-model');
         threadModels.set(thread, model);
         send({ id, result: { thread: { id: thread }, model } });
@@ -236,14 +244,41 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
       if (method === 'turn/start') {
         const text = params.input[0].text;
         if (text === 'disconnect') return exit(1);
-        if (slow(text)) wait().then(() => turn(id, params, text));
-        else turn(id, params, text);
+        if (slow(text))
+          wait()
+            .then(() => turn(id, params, text))
+            .catch(() => exit(1));
+        else turn(id, params, text).catch(() => exit(1));
       }
       if (method === 'turn/interrupt') send({ id, result: {} });
     });
-  function turn(id, params, text) {
+  async function turn(id, params, text) {
     send({ id, result: { turn: { id: 'turn-fixture' } } });
     if (text === 'hold') return;
+    if (text === 'native tools fixture') {
+      const item = {
+        type: 'webSearch',
+        id: 'search-1',
+        query: 'fixture fact',
+        action: { type: 'search', query: 'fixture fact' },
+        results: [{ url: 'https://example.org' }],
+      };
+      send({
+        method: 'item/started',
+        params: { threadId: params.threadId, turnId: 'turn-fixture', item },
+      });
+      send({
+        method: 'item/completed',
+        params: { threadId: params.threadId, turnId: 'turn-fixture', item },
+      });
+      send({
+        method: 'item/completed',
+        params: {
+          threadId: params.threadId,
+          item: { type: 'agentMessage', id: 'tool-answer', text: await appTool(codexMcp(argv)) },
+        },
+      });
+    }
     // A worker turn attempts a command; the client must deny server-initiated tool requests.
     if (text.startsWith('{'))
       send({
@@ -306,6 +341,22 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
           },
         },
       });
+    if (text === 'native tools fixture') {
+      const usage = (inputTokens, cachedInputTokens, outputTokens) => ({
+        inputTokens,
+        cachedInputTokens,
+        outputTokens,
+      });
+      for (const total of [usage(570, 230, 101), usage(570, 230, 101), usage(640, 260, 112)])
+        send({
+          method: 'thread/tokenUsage/updated',
+          params: {
+            threadId: params.threadId,
+            turnId: 'turn-fixture',
+            tokenUsage: { last: usage(70, 30, 11), total },
+          },
+        });
+    }
     send({
       method: 'turn/completed',
       params: {

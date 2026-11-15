@@ -37,7 +37,7 @@ test('runner offers reachable search tools by provider and returns web and image
     (await runner.tools({ provider, capable })).map((d) => d.name);
   assert.deepEqual(await names('openai:123'), ['web_search', 'find_images', 'read_page']);
   assert.deepEqual(await names('claude'), ['find_images']);
-  assert.deepEqual(await names('codex'), ['find_images']);
+  assert.deepEqual(await names('codex'), ['find_images', 'read_page']);
   assert.deepEqual(await names('openai', false), []);
   const turn = { signal: new AbortController().signal };
   assert.deepEqual(
@@ -69,7 +69,7 @@ test('runner offers reachable search tools by provider and returns web and image
   assert.equal(fake.hits.at(-2).searchParams.has('categories'), false);
   fake.status = 503;
   for (const provider of ['openai', 'claude', 'codex']) {
-    assert.deepEqual(await names(provider), provider === 'openai' ? ['read_page'] : []);
+    assert.deepEqual(await names(provider), provider === 'claude' ? [] : ['read_page']);
   }
   fake.status = 200;
   fake.data = { results: [] };

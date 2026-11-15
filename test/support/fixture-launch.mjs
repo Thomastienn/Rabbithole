@@ -27,7 +27,7 @@ export function fixtureLaunch(command, args) {
       await protocol(
         child.stdin,
         { write: (data) => child.exitCode === null && child.stdout.write(data) },
-        command === 'claude' ? args : [],
+        args,
         child.kill,
         () => held.promise,
       );

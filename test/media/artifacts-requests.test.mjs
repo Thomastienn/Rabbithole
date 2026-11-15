@@ -186,7 +186,13 @@ for (const name of ['claude', 'codex'])
             calls[1].args.includes('--disable-slash-commands'),
         );
       } else {
-        const requests = calls[0].input;
+        const requests = calls.flatMap((call) => call.input);
+        const worker = calls.find((call) =>
+          call.input.some(
+            (r) =>
+              r.method === 'thread/start' && /one Mermaid diagram/.test(r.params.baseInstructions),
+          ),
+        );
         const starts = requests.filter((r) => r.method === 'thread/start');
         assert.equal(starts.length, 2);
         assert.match(starts[1].params.baseInstructions, /one Mermaid diagram/);
@@ -214,9 +220,9 @@ for (const name of ['claude', 'codex'])
           'apps',
           'skills',
         ])
-          assert.ok(calls[0].args.includes(`features.${feature}=false`), feature);
-        assert.ok(calls[0].args.includes('web_search="disabled"'));
-        assert.deepEqual(Object.keys(calls[0].options.env).sort(), [
+          assert.ok(worker.args.includes(`features.${feature}=false`), feature);
+        assert.ok(worker.args.includes('web_search="disabled"'));
+        assert.deepEqual(Object.keys(worker.options.env).sort(), [
           'ACCESS_TOKEN',
           'CODEX_HOME',
           'PATH',
@@ -231,7 +237,12 @@ for (const name of ['claude', 'codex'])
       const history =
         name === 'claude'
           ? calls[2].input[0]
-          : JSON.stringify(calls[0].input.filter((r) => r.method === 'thread/inject_items').at(-1));
+          : JSON.stringify(
+              calls
+                .flatMap((call) => call.input)
+                .filter((r) => r.method === 'thread/inject_items')
+                .at(-1),
+            );
       assert.match(history, /Rounds|round winners/);
       assert.ok(history.includes(artifact.id));
       assert.doesNotMatch(
