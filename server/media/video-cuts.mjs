@@ -16,12 +16,12 @@ import {
   MAX_SOURCE,
   videoPalette,
 } from './video-plan.mjs';
-import { MANIM_INSTRUCTIONS, MANIM_COMPONENT } from './manim-cut.mjs';
+import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS, MANIM_COMPONENT } from './manim-cut.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 
 // An audit answers {"change":false} or {"code", "emphasis"?}; null means no change, anything unusable throws.
-export function auditFix(raw, brief, sentences) {
+export function auditFix(raw, brief, sentences, engine = 'remotion') {
   const answer = JSON.parse(raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim());
   if (answer?.change === false) return null;
   if (typeof answer?.code !== 'string') throw new Error('Audit returned no code.');
@@ -35,7 +35,7 @@ export function auditFix(raw, brief, sentences) {
   )
     throw new Error('Audit returned unreadable emphasis.');
   return {
-    code: cutSource(answer.code, brief),
+    code: engine === 'manim' ? answer.code.trim() : cutSource(answer.code, brief),
     ...(answer.emphasis && { emphasis: answer.emphasis }),
   };
 }
@@ -94,6 +94,7 @@ export async function writeCuts({
   narrate,
   snapshot,
   check,
+  clip,
   signal,
   save,
   wait,
@@ -195,6 +196,8 @@ export async function writeCuts({
           );
           continue;
         }
+      // New code makes any earlier Manim clip stale.
+      delete cuts[index].clip;
       persist();
       return;
     }
@@ -246,6 +249,12 @@ export async function writeCuts({
     );
     return dir;
   };
+  // A Manim clip is rendered into the staged cut's public folder, where its wrapper and snapshots read it.
+  const clipOf = async (index) => {
+    await clip(await stage(index), cuts[index].timing.durationInFrames);
+    cuts[index].clip = `cut-${index}/public/manim.mp4`;
+    persist();
+  };
   // Stills at each sentence end and the narration's last frame, rendered from the staged cut.
   const shoot = async (index) => {
     const dir = await stage(index),
@@ -292,12 +301,12 @@ export async function writeCuts({
         signal.throwIfAborted();
         const fix = auditFix(
           await call(
-            AUDIT_INSTRUCTIONS,
+            cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS,
             JSON.stringify({
               styleBrief: plan.styleBrief,
               cut: plan.cuts[index],
               previousEndState: index ? plan.cuts[index - 1].endState : null,
-              ...(data.pieces && { setPieces: data.pieces }),
+              ...(data.pieces && cut.engine !== 'manim' && { setPieces: data.pieces }),
               code: cut.code,
               emphasis: cut.emphasis ?? plan.cuts[index].emphasis ?? [],
               snapshots: own.length,
@@ -308,10 +317,16 @@ export async function writeCuts({
           ),
           plan.styleBrief,
           cut.timing.sentences.length,
+          cut.engine,
         );
         if (fix) {
           Object.assign(cut, fix);
-          await shoot(index);
+          // A Manim fix is checked and rendered to a new clip; the old clip is replaced only on success.
+          if (cut.engine !== 'manim') await shoot(index);
+          else {
+            if (check) await check(await stage(index));
+            await clipOf(index);
+          }
         }
       } catch {
         signal.throwIfAborted();
@@ -357,7 +372,18 @@ export async function writeCuts({
     ];
     try {
       await Promise.all(operations);
-      if (cut.engine !== 'manim' && !cut.audited) await audit(index);
+      // A Manim cut renders before its audit, which sees frames of the clip; a failed render spends the repair.
+      while (cut.engine === 'manim' && !cut.clip)
+        try {
+          await clipOf(index);
+        } catch (e) {
+          signal.throwIfAborted();
+          if (e.manimUnavailable || e.code) throw e;
+          const reason = withoutPaths(e.diagnostic ?? e.message);
+          if (attempts[index] >= CUT_ATTEMPTS) throw cutError(reason, index, plan.cuts.length);
+          await rewrite(index, reason);
+        }
+      if (!cut.audited) await audit(index);
     } catch (error) {
       if (!signal.aborted) {
         cut.status = 'failed';
@@ -381,5 +407,5 @@ export async function writeCuts({
     // Siblings fail with AbortError once one cut stops the job; report the first real cause.
     throw signal.reason ?? error;
   }
-  return { data, attempts, rewrite, stage, persist };
+  return { data, attempts, rewrite, stage, persist, clip: clipOf };
 }

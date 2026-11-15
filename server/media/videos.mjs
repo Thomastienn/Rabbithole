@@ -90,9 +90,9 @@ export async function validateOutput(workspace, output) {
 }
 
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
-// A cut plays live once its code and measured narration exist and, for Remotion, its audit settled; Manim needs its clip.
+// A cut plays live once its code and measured narration exist and its audit settled; Manim also needs its clip.
 export const playable = (cut) =>
-  !!(cut.code && cut.timing && (cut.engine === 'manim' ? cut.clip : cut.audited));
+  !!(cut.code && cut.timing && cut.audited && (cut.engine !== 'manim' || cut.clip));
 
 export async function generateVideo({
   provider,
@@ -201,7 +201,7 @@ export async function generateVideo({
               cut: live.cuts.filter((c) => c.code).length,
               cuts: count,
             })
-          : !live.cuts[0].timing || live.cuts[0].engine === 'manim'
+          : !live.cuts[0].timing
             ? onPhase('narrating')
             : onPhase('auditing', undefined, {
                 cut: live.cuts.filter((c) => c.audited).length,
@@ -220,6 +220,20 @@ export async function generateVideo({
       narrate,
       snapshot,
       check: manim.check && ((cutDir) => manim.check(cutDir, controller.signal, runtime)),
+      clip: async (cutDir, durationInFrames) => {
+        const clip = join(cutDir, 'out', randomUUID() + '.mp4');
+        try {
+          const result = await manim.render(cutDir, clip, controller.signal, () => {}, runtime);
+          controller.signal.throwIfAborted();
+          await validateOutput(cutDir, clip);
+          if (result?.fps !== 30 || result.durationInFrames !== durationInFrames)
+            throw new Error('Rendered Manim cut is unreadable.');
+        } catch (error) {
+          if (error.manimUnavailable) onWarning(`WARN video ${error.message}`);
+          throw error;
+        }
+        await copyFile(clip, join(cutDir, 'public', 'manim.mp4'));
+      },
       signal: controller.signal,
       wait,
       stop: (error) => controller.abort(error),
@@ -251,17 +265,8 @@ export async function generateVideo({
         const output = join(cutDir, 'out', randomUUID() + '.mp4');
         report(index / cuts.length);
         try {
-          if (cut.engine === 'manim') {
-            const clip = join(cutDir, 'out', randomUUID() + '.mp4');
-            const result = await manim.render(cutDir, clip, controller.signal, () => {}, runtime);
-            controller.signal.throwIfAborted();
-            await validateOutput(cutDir, clip);
-            if (result?.fps !== 30 || result.durationInFrames !== cut.timing.durationInFrames)
-              throw new Error('Rendered Manim cut is unreadable.');
-            await copyFile(clip, join(cutDir, 'public', 'manim.mp4'));
-            cut.clip = `cut-${index}/public/manim.mp4`;
-            work.persist();
-          }
+          // A repair after a failed render leaves the Manim cut without a clip.
+          if (cut.engine === 'manim' && !cut.clip) await work.clip(index);
           const result = await render(cutDir, output, controller.signal, (p) =>
             report((index + p) / cuts.length),
           );
@@ -276,7 +281,6 @@ export async function generateVideo({
           break;
         } catch (error) {
           controller.signal.throwIfAborted();
-          if (error.manimUnavailable) onWarning(`WARN video ${error.message}`);
           // Renderer diagnostics can name private directories; models and stored errors see them without paths.
           const reason = withoutPaths(error.diagnostic ?? error.message);
           if (error.manimUnavailable || work.attempts[index] >= CUT_ATTEMPTS) {
