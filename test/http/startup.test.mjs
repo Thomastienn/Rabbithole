@@ -45,6 +45,10 @@ test('main starts an old database without providers; busy port explains how to c
     assert.match(running.output(), /Continue with ChatGPT/);
     assert.ok(running.output().includes(dir));
     const state = await (await fetch(origin + '/api/state')).json();
+    const search = await (await fetch(origin + '/api/settings/searxng')).json();
+    assert.equal(search.ready, false);
+    assert.equal(search.url, null);
+    assert.match(search.error, /Install uv/);
     assert.equal(state.auth.connected, false);
     assert.deepEqual(
       state.trees.map((t) => t.title),

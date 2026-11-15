@@ -9,6 +9,7 @@ import { Codex } from './providers/codex.mjs';
 import { Claude } from './providers/claude.mjs';
 import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
+import { managedSearxng } from './searxng.mjs';
 
 process.umask(0o077);
 const dir = resolve(
@@ -29,10 +30,13 @@ if (
   process.exit(1);
 }
 const port = Number(portText);
-let release, store, app, stopping;
+let release, store, app, stopping, searxng;
+const startup = new AbortController();
 function shutdown(code = 0) {
   return (stopping ??= (async () => {
+    startup.abort();
     await app?.stop();
+    await searxng?.stop();
     store?.close();
     await release?.();
     process.exit(code);
@@ -48,6 +52,7 @@ try {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   // A second instance must not race a rotating OAuth refresh token or mark live replies interrupted.
   release = await lockfile.lock(dir, { realpath: true, stale: 10000 });
+  searxng = await managedSearxng(dir, { signal: startup.signal });
   store = new Store(join(dir, 'trees.sqlite'));
   if (store.backupPath) console.log(`Saved pre-upgrade backup: ${store.backupPath}`);
   store.pruneEmpty();
@@ -63,6 +68,7 @@ try {
     defaultProvider: store.assumesProvider ? 'claude' : null,
     dir,
     suggestions: true,
+    searxng: searxng.status,
   });
   await new Promise((resolve, reject) => {
     app.server.once('error', reject);

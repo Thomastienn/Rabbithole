@@ -5,6 +5,7 @@ import { DEFAULT_TUTOR_STYLE } from '../../media/diagrams.mjs';
 export async function settingsRoutes(req, res, url, ctx, body) {
   const { store, json, endpoint, selectionError, chatDefault, smart, profiles } = ctx;
   if (req.method === 'GET') {
+    if (url.pathname === '/api/settings/searxng') return json(res, 200, ctx.searxng());
     if (url.pathname === '/api/settings/endpoint' && endpoint)
       return json(res, 200, endpoint.status());
     if (url.pathname === '/api/settings/endpoints' && endpoint)

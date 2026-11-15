@@ -61,6 +61,7 @@ export function createApp({
   desktop = systemDesktop,
   recognize = tesseractOcr(dir),
   tools = toolRunner(),
+  searxng = () => ({ ready: false, url: null, error: 'SearXNG is not managed by this server.' }),
 }) {
   // One context for every extracted module; stopping is read from it at call time.
   const ctx = {
@@ -85,6 +86,7 @@ export function createApp({
     desktop,
     recognize,
     tools,
+    searxng,
     stopping: false,
     csrf: randomBytes(32).toString('hex'),
     active: new Map(),

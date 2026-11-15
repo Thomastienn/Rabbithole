@@ -89,6 +89,14 @@ Optional **Settings → Vim canvas bindings** is off by default. With the map or
 
 Startup prints the absolute **Data directory**. By default it is `$XDG_DATA_HOME/treetutor`, or `~/.local/share/treetutor` when XDG_DATA_HOME is unset. Set `TREETUTOR_DATA_DIR` before starting to use another directory. Only one TreeTutor process may use a data directory at a time.
 
+Startup also provisions a pinned SearXNG snapshot with `uv` in `<data directory>/searxng/venv`.
+The first install needs internet access; later starts reuse it without downloading packages.
+Its generated `searxng/settings.yml` enables HTML and JSON with a random secret and loopback-only
+binding. Each app process runs its own child on an available `127.0.0.1` port and stops it on exit.
+`GET /api/settings/searxng` exposes the managed default URL and readiness, or a readable setup/start
+failure. Search setup failure leaves saved trees and the rest of the app available; repair the
+reported prerequisite or connection and restart. Searches themselves still need internet access.
+
 `trees.sqlite` holds trees, original messages, fixed inherited context, positions, layouts and artifact metadata. Videos and workspaces live alongside it. Files are unencrypted; new directories and database/credential files are owner-only. TreeTutor stores its ChatGPT OAuth connection here in `chatgpt.json`; its isolated Codex home and sessions also live here. An optional endpoint's URL/key live in `openai-endpoint.json` (mode `0600`), never in SQLite. Claude manages its own sign-in and sessions outside this directory. Keep backups private too.
 
 Before upgrading the source, stop TreeTutor and make a full directory backup. After replacing the source, run `npm ci --include=dev` to refresh dependencies, then `npm start`. Do not upgrade a running instance. There is no auto-update.
