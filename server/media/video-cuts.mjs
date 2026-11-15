@@ -10,6 +10,11 @@ import {
 } from './video-plan.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_COMPONENT } from './manim-cut.mjs';
 import { stageNarration } from './narration.mjs';
+import { withoutPaths } from './video-sandbox.mjs';
+
+// A cut's final validation or render failure; provider, sign-in and runtime errors keep their own wording.
+export const cutError = (reason, index, count) =>
+  new Error(`Cut ${index + 1} of ${count}: ${withoutPaths(reason).replace(/\.$/, '')}.`);
 
 export async function videoCall(provider, selection, instructions, input, signal, onText) {
   const items = new Map();
@@ -106,7 +111,7 @@ export async function writeCuts({
       persist();
       return;
     }
-    throw error;
+    throw cutError(error.message, index, plan.cuts.length);
   };
   const writing = cuts.map(async (cut, index) => {
     const dir = join(workspace, `cut-${index}`);
@@ -158,7 +163,8 @@ export async function writeCuts({
   } catch (error) {
     stop(error);
     await Promise.allSettled(writing);
-    throw error;
+    // Siblings fail with AbortError once one cut stops the job; report the first real cause.
+    throw signal.reason ?? error;
   }
   const stage = async (index) => {
     const dir = join(workspace, `cut-${index}`);

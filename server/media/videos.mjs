@@ -4,8 +4,8 @@ import { mkdir, writeFile, realpath, lstat, open, rm, copyFile } from 'node:fs/p
 import { join, basename } from 'node:path';
 import { edgeNarration } from './narration.mjs';
 import { videoPlan, PLAN_INSTRUCTIONS, CUT_ATTEMPTS } from './video-plan.mjs';
-import { videoCall, writeCuts } from './video-cuts.mjs';
-import { sandboxProcess, REPO } from './video-sandbox.mjs';
+import { videoCall, writeCuts, cutError } from './video-cuts.mjs';
+import { sandboxProcess, REPO, withoutPaths } from './video-sandbox.mjs';
 import { detectManim } from './manim.mjs';
 import { sandboxManim } from './manim-cut.mjs';
 
@@ -217,19 +217,17 @@ export async function generateVideo({
         } catch (error) {
           controller.signal.throwIfAborted();
           if (error.manimUnavailable) onWarning(`WARN video ${error.message}`);
+          // Renderer diagnostics can name private directories; models and stored errors see them without paths.
+          const reason = withoutPaths(error.diagnostic ?? error.message);
           if (error.manimUnavailable || work.attempts[index] >= CUT_ATTEMPTS) {
             cut.status = 'failed';
             work.persist();
-            throw error;
+            throw error.manimUnavailable || error.code
+              ? error
+              : cutError(reason, index, cuts.length);
           }
           cut.status = 'writing';
-          // Renderer diagnostics can contain private paths or generated text. Send only a fixed repair hint.
-          await work.rewrite(
-            index,
-            cut.engine === 'manim'
-              ? 'The previous Manim cut failed validation or rendering. Rewrite a simpler valid Cut(HouseScene) using only named kit imports, brief colors/fonts and measured narration time.'
-              : 'The previous cut failed rendering. Rewrite a simpler valid component.',
-          );
+          await work.rewrite(index, reason);
         }
       }
     }

@@ -70,8 +70,11 @@ export function sandboxProcess(workspace, command, signal, onProgress, budget, b
         if (value) onProgress(Math.min(1, Number(value)));
       }
     });
-    // Diagnostics stay in the job workspace process; never forwarded to chat or tutor.
-    child.stderr.resume();
+    // Diagnostics stay in the server; only their first error line, paths removed, reaches a repair call.
+    let err = '';
+    child.stderr.on('data', (chunk) => {
+      err = (err + chunk).slice(0, 65536);
+    });
     const kill = () => child.kill('SIGKILL');
     // Rendering scales with narration; retain a finite attempt budget without a short-video duration cap.
     const timer = setTimeout(kill, budget);
@@ -82,17 +85,40 @@ export function sandboxProcess(workspace, command, signal, onProgress, budget, b
       clearTimeout(timer);
       signal.removeEventListener('abort', kill);
       if (signal.aborted) return reject(signal.reason ?? new Error('Video generation cancelled.'));
+      const diagnostic = code === null ? undefined : firstDiagnostic(err);
       try {
         if (code) throw new Error();
         const result = JSON.parse(out.trim().split('\n').at(-1));
         if (result.error)
           return reject(
-            Object.assign(new Error(result.error), { manimUnavailable: result.unavailable }),
+            Object.assign(new Error(result.error), {
+              manimUnavailable: result.unavailable,
+              diagnostic,
+            }),
           );
         resolvePromise(result);
       } catch {
-        reject(new Error(code === null ? 'Video rendering timed out.' : 'Video rendering failed.'));
+        reject(
+          Object.assign(
+            new Error(code === null ? 'Video rendering timed out.' : 'Video rendering failed.'),
+            { diagnostic },
+          ),
+        );
       }
     });
   });
+}
+
+// Absolute paths (and file:// URLs) name private directories; the line and column after them stay.
+export const withoutPaths = (text) =>
+  text.replace(/(?:file:\/\/)?(?<![\w.~-])(?:\/[^\s'"`:()<>,/]+)+\/?/g, '[path]');
+
+// The first line naming an error (Node "TypeError: …", Python "ValueError: …"), else the first non-empty line.
+export function firstDiagnostic(stderr) {
+  const lines = stderr
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const line = lines.find((l) => /\b\w*(?:Error|Exception)\b:/.test(l)) ?? lines[0];
+  return line && withoutPaths(line).slice(0, 500);
 }

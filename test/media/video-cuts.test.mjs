@@ -13,6 +13,7 @@ import {
 } from '../support/video-kit.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { tutorContext } from '../../server/media/diagrams.mjs';
+import { firstDiagnostic } from '../../server/media/video-sandbox.mjs';
 
 const gate = () => Promise.withResolvers();
 
@@ -125,7 +126,8 @@ for (const failure of ['brief', 'render', 'exhausted'])
   test(`${failure}: only the failed cut is rewritten within the repair budget`, async (t) => {
     const plan = planFor(composition, 3),
       writes = [0, 0, 0],
-      renderCounts = [0, 0, 0];
+      renderCounts = [0, 0, 0],
+      repairs = [];
     let plans = 0,
       voices = 0;
     const env = await open(
@@ -140,7 +142,7 @@ for (const failure of ['brief', 'render', 'exhausted'])
           const input = JSON.parse(text),
             i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
           writes[i]++;
-          if (writes[i] > 1) assert.ok(input.validationError);
+          if (writes[i] > 1) repairs.push(input.validationError);
           complete(
             emit,
             i === 1 && (failure === 'exhausted' || (failure === 'brief' && writes[i] === 1))
@@ -160,7 +162,9 @@ for (const failure of ['brief', 'render', 'exhausted'])
             const i = Number(match[1]);
             renderCounts[i]++;
             if (failure === 'render' && i === 1 && renderCounts[i] === 1)
-              throw new Error('Video rendering failed.');
+              throw Object.assign(new Error('Video rendering failed.'), {
+                diagnostic: `TypeError: shape is not a function at ${ws}/Video.tsx:3:4`,
+              });
           }
           return fakeRender(ws, out);
         },
@@ -177,6 +181,12 @@ for (const failure of ['brief', 'render', 'exhausted'])
     );
     assert.equal(row.status, failure === 'exhausted' ? 'failed' : 'ready');
     assert.deepEqual(writes, [1, 2, 1]);
+    assert.equal(repairs.length, 1);
+    assert.ok(repairs[0]);
+    if (failure === 'render')
+      assert.equal(repairs[0], 'TypeError: shape is not a function at [path]:3:4');
+    if (failure === 'exhausted') assert.match(row.error, /^Cut 2 of 3: \S.*\.$/);
+    assert.ok(!JSON.stringify(repairs).includes('/'), 'no absolute path reaches the repair');
     assert.equal(plans, 1);
     assert.equal(voices, 3, 'narration is reused for a rewritten cut');
     assert.equal(env.store.usageEvents().events.filter((e) => e.task === 'video').length, 5);
@@ -185,3 +195,44 @@ for (const failure of ['brief', 'render', 'exhausted'])
     else
       assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${row.id}/media`)).status, 404);
   });
+
+test('a provider failure while writing a cut keeps its own wording', async (t) => {
+  const plan = planFor(composition, 2);
+  const env = await open(
+    {
+      generate: async (tree, text, emit) => {
+        if (tree.id) return complete(emit, 'Watch.' + directive);
+        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        throw new Error('401 from /home/u/secret');
+      },
+    },
+    { videoNarrate: async () => fakeNarration(), videoRender: fakeRender },
+  );
+  t.after(async () => {
+    await env.app.stop();
+    env.store.close();
+  });
+  const tree = env.store.create('Provider', 'codex');
+  await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
+  const row = await until(() =>
+    env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
+  );
+  assert.equal(row.error, 'Video provider failed to generate a composition.');
+});
+
+test('the first diagnostic line names the error without absolute paths', () => {
+  assert.equal(
+    firstDiagnostic(
+      'Traceback (most recent call last):\n  File "/home/u/cut-0/Cut.py", line 3\nNameError: name \'Foo\' is not defined\n',
+    ),
+    "NameError: name 'Foo' is not defined",
+  );
+  assert.equal(
+    firstDiagnostic(
+      "Error: Module not found: Error: Can't resolve './x' in '/home/u/video-work/a/1/cut-0'\nmore",
+    ),
+    "Error: Module not found: Error: Can't resolve './x' in '[path]'",
+  );
+  assert.equal(firstDiagnostic('\n at file:///home/u/a.tsx:12:5 1/2\n'), 'at [path]:12:5 1/2');
+  assert.equal(firstDiagnostic(''), undefined);
+});

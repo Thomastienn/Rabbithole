@@ -147,7 +147,7 @@ test('render, composition and save failures stay honest and retry the same reque
     const { id } = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
     );
-    assert.equal(env.store.artifact(tree.id, id).error, 'Video rendering failed.');
+    assert.equal(env.store.artifact(tree.id, id).error, 'Cut 1 of 1: Video rendering failed.');
     fail = false;
     await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
     await until(() => env.store.artifact(tree.id, id).status === 'failed');

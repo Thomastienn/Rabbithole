@@ -150,7 +150,7 @@ test('app marks a failed job failed without a playable result', async () => {
     const failed = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
     );
-    assert.equal(failed.error, 'Video rendering failed.');
+    assert.equal(failed.error, 'Cut 1 of 1: Video rendering failed.');
     assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${failed.id}/media`)).status, 404);
   } finally {
     env.close();
