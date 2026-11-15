@@ -56,7 +56,11 @@ async function mount(t, intercept = () => {}) {
   };
   const calls = [];
   globalThis.fetch = async (path, init) => {
-    const call = { path, body: init?.body && JSON.parse(init.body), init };
+    const call = {
+      path,
+      body: typeof init?.body === 'string' ? JSON.parse(init.body) : init?.body,
+      init,
+    };
     calls.push(call);
     const response = intercept(call, { data, state });
     if (response !== undefined) return response;
@@ -295,6 +299,24 @@ test('a failed send restores the unsaved question and reports its error', async 
   assert.equal(page.current.c.error, 'Provider unavailable');
   assert.deepEqual(page.current.c.tree.messages, []);
   assert.deepEqual(page.current.c.state.active, []);
+});
+
+test('a send the server refuses keeps the pending files and the question for another try', async (t) => {
+  const reason =
+    'This model can’t read images and OCR language data couldn’t be downloaded. Go online and send again, or pick a model that reads images.';
+  const page = await mount(t, ({ path }) =>
+    path.endsWith('/messages') ? json({ error: reason }, false) : undefined,
+  );
+  const sheet = new File(['x'], 'worksheet.png', { type: 'image/png' });
+  await page.act(async () => page.current.c.setPendingFiles({ a: [sheet] }));
+  await page.act(async () =>
+    page.current.stream.send('Is trial 3 right?', page.current.c.tree, false, [sheet]),
+  );
+  const sent = page.calls.find((call) => call.path.endsWith('/messages'));
+  assert.ok(sent.body instanceof FormData, 'files go as multipart');
+  assert.equal(page.current.c.error, reason, 'the refusal reason reaches the failure banner');
+  assert.deepEqual(page.current.c.pendingFiles.a, [sheet], 'the files stay in the tray');
+  assert.equal(page.current.c.drafts.a, 'Is trial 3 right?', 'the question stays in the field');
 });
 
 test('branch preparation excludes the question and the saved child opens before its reply finishes', async (t) => {

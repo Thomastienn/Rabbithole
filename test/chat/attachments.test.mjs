@@ -77,6 +77,98 @@ test('composer paperclip, paste and drop feed one handler; pending chips are rem
   assert.deepEqual(submitted, ['']);
 });
 
+function firstQuestion(t, { submit = () => {} } = {}) {
+  const state = {};
+  function Fixture() {
+    const [pending, setPending] = useState([]);
+    state.files = pending;
+    return h(FirstQuestion, {
+      draft: '',
+      setDraft() {},
+      files: pending,
+      setFiles: setPending,
+      busy: false,
+      available: true,
+      modelMenu: null,
+      submit,
+      modelError: '',
+      loadModels() {},
+      noModels: false,
+    });
+  }
+  return render(h(Fixture), ui).then((page) => (t.after(page.cleanup), { ...page, state }));
+}
+
+test('dragging files over the composer shows the drop state until leave or drop, without child flicker', async (t) => {
+  const { container, act, state } = await firstQuestion(t);
+  const composer = container.querySelector('.attachment-composer');
+  const field = container.querySelector('[role=textbox]');
+  const dropping = () => composer.classList.contains('is-dropping');
+  const note = () => container.querySelector('.attachment-drop');
+  await act(async () => fire(composer, 'dragenter', 'dataTransfer', []));
+  assert.ok(dropping(), 'files dragged over the composer show the drop state');
+  assert.match(note().textContent, /Drop to attach.*Images, PDFs and text files/);
+  // Crossing into a child fires enter on it before leave on the parent.
+  await act(async () => fire(field, 'dragenter', 'dataTransfer', []));
+  await act(async () => fire(composer, 'dragleave', 'dataTransfer', []));
+  assert.ok(dropping(), 'moving over a child keeps the drop state');
+  await act(async () => fire(field, 'dragleave', 'dataTransfer', []));
+  assert.ok(!dropping() && !note(), 'leaving the composer clears it');
+
+  // Text dragged from the page is not a file drop.
+  await act(async () => {
+    const event = new Event('dragenter', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'dataTransfer', { value: { files: [], types: ['text/plain'] } });
+    composer.dispatchEvent(event);
+  });
+  assert.ok(!dropping(), 'text drags show no drop state');
+
+  await act(async () => fire(composer, 'dragenter', 'dataTransfer', []));
+  const notes = new File(['n'], 'notes.txt', { type: 'text/plain' });
+  let event;
+  await act(async () => (event = fire(note(), 'drop', 'dataTransfer', [notes])));
+  assert.ok(event.defaultPrevented, 'a drop on the note does not navigate away');
+  assert.ok(!dropping(), 'dropping clears the drop state');
+  assert.deepEqual(state.files, [notes]);
+});
+
+test('unsupported files are refused on add with one rose line; supported ones in the batch still join', async (t) => {
+  const submitted = [];
+  const { container, act, state } = await firstQuestion(t, {
+    submit: (text) => submitted.push(text),
+  });
+  const line = () => container.querySelector('.attachment-note[role=alert]')?.textContent ?? '';
+  const sheet = new File(['x'], 'worksheet.png', { type: 'image/png' }),
+    docx = new File(['d'], 'lab-notes.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  const input = container.querySelector('input[type=file]');
+  Object.defineProperty(input, 'files', { configurable: true, value: [sheet, docx] });
+  await act(async () => input.dispatchEvent(new Event('change', { bubbles: true })));
+  assert.deepEqual(state.files, [sheet], 'the supported file is still added');
+  assert.equal(line(), 'lab-notes.docx wasn’t added. Attach images, PDFs or text files.');
+
+  const editor = container.querySelector('[role=textbox]');
+  const zip = new File(['z'], 'data.zip', { type: 'application/zip' }),
+    gif = new File(['g'], 'loop.gif', { type: 'image/gif' });
+  await act(async () => fire(editor, 'paste', 'clipboardData', [zip, gif]));
+  assert.equal(line(), 'data.zip and loop.gif weren’t added. Attach images, PDFs or text files.');
+  await act(async () => fire(editor, 'drop', 'dataTransfer', [docx]));
+  assert.match(line(), /^lab-notes\.docx wasn’t added/, 'drops are checked too');
+  assert.deepEqual(state.files, [sheet], 'refused files are never added');
+
+  const md = new File(['m'], 'notes.md', { type: 'text/markdown' });
+  await act(async () => fire(editor, 'paste', 'clipboardData', [md]));
+  assert.equal(line(), '', 'the next add clears the line');
+  assert.deepEqual(state.files, [sheet, md]);
+
+  await act(async () => fire(editor, 'paste', 'clipboardData', [zip]));
+  assert.ok(line());
+  await act(async () => button(container, 'Send').click());
+  assert.deepEqual(submitted, ['']);
+  assert.equal(line(), '', 'sending clears the line');
+});
+
 test('pending files are tray slips with thumbnail or type, size meta, focus-keeping remove and revoked URLs', async (t) => {
   const made = [],
     revoked = [];
@@ -110,7 +202,7 @@ test('pending files are tray slips with thumbnail or type, size meta, focus-keep
   t.after(cleanup);
   const composer = container.querySelector('.attachment-composer');
   const tray = composer.querySelector('.attachment-tray');
-  assert.ok(tray, 'the tray sits inside the composer');
+  assert.ok(composer.lastElementChild.contains(tray), 'the tray sits inside the composer’s frame');
   assert.equal(
     container.querySelector('.astryx-token, [class*=drawer]'),
     null,

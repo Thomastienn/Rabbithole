@@ -1,8 +1,9 @@
 // Attachment preparation: turns a learner's file into prepared parts the tutor receives.
 import { OCR_UNAVAILABLE, ocrText } from './ocr.mjs';
+import { IMAGE_TYPES } from '../src/chat/attachmentTypes.ts';
 
 // Images the chat models read natively; their stored text is the placeholder history and compaction see.
-export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+export { IMAGE_TYPES };
 
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 

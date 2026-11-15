@@ -7,6 +7,7 @@ import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { prepareAttachment, withAttachments } from '../../server/attachments.mjs';
 import { OCR_UNAVAILABLE } from '../../server/ocr.mjs';
+import { canAttach } from '../../src/chat/attachmentTypes.ts';
 import { compactionPrompt } from '../../server/http/jobs/compaction.mjs';
 
 const bytes = (text) => new TextEncoder().encode(text);
@@ -49,6 +50,29 @@ test('preparation: a text file becomes one text part with a file-name header', a
       delivery: 'image',
       parts: [{ text: '[image: p]', image: true }],
     });
+});
+
+test('the composer’s accepted types agree with what the server prepares', async () => {
+  const accepts = (file) =>
+    prepareAttachment(file).then(
+      () => true,
+      () => false,
+    );
+  const text = bytes('notes\n'),
+    binary = new Uint8Array([0x50, 0x4b, 3, 4, 0, 0, 0xff]);
+  // Browser-accepted text types are read by the server; refused ones are binary in practice.
+  for (const type of ['text/plain', 'text/markdown', 'text/x-python', 'application/json', ''])
+    assert.ok(canAttach(type) && (await accepts({ name: 'f', type, bytes: text })), type);
+  for (const type of ['image/png', 'image/jpeg', 'image/webp'])
+    assert.ok(canAttach(type) && (await accepts({ name: 'f', type, bytes: binary })), type);
+  for (const type of [
+    'image/gif',
+    'image/svg+xml',
+    'application/zip',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ])
+    assert.ok(!canAttach(type) && !(await accepts({ name: 'f', type, bytes: binary })), type);
+  assert.ok(canAttach('application/pdf'), 'PDFs are prepared by pdfParts');
 });
 
 test('multipart send stores text attachments, delivers them, serves them safely and deletes them with the conversation', async (t) => {

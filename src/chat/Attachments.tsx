@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { type DragEvent, useEffect, useRef, useState } from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Popover } from '@astryxdesign/core/Popover';
 import {
   ArrowTopRightOnSquareIcon,
   DocumentMagnifyingGlassIcon,
+  ExclamationTriangleIcon,
   PaperClipIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { canAttach, refusalLine } from './attachmentTypes';
 
 export type Attachment = { id: string; name: string; type: string; size: number; delivery: string };
 
@@ -43,6 +45,60 @@ export function AttachButton({
       />
     </>
   );
+}
+
+// Paperclip, paste and drop all add here: unsupported files are refused on the spot, the rest join the tray.
+// Spread `zone` on the composer; render `notices` (refusal line, drop note) inside its frame.
+export function useAttach(files: File[], setFiles: (files: File[]) => void, isDisabled = false) {
+  const [refused, setRefused] = useState<string[]>([]);
+  const [dropping, setDropping] = useState(false);
+  // Enter/leave fire for every child the drag crosses; count them so the state does not flicker.
+  const depth = useRef(0);
+  const add = (more: File[]) => {
+    const ok = more.filter((f) => canAttach(f.type));
+    setRefused(more.filter((f) => !canAttach(f.type)).map((f) => f.name));
+    if (ok.length) setFiles([...files, ...ok]);
+  };
+  const carriesFiles = (e: DragEvent) => [...e.dataTransfer.types].includes('Files');
+  const zone = {
+    onDragEnter: (e: DragEvent) => {
+      if (!carriesFiles(e) || isDisabled) return;
+      depth.current++;
+      setDropping(true);
+    },
+    onDragLeave: () => {
+      if (depth.current && !--depth.current) setDropping(false);
+    },
+    onDragOver: (e: DragEvent) => {
+      if (carriesFiles(e)) e.preventDefault();
+    },
+    onDrop: (e: DragEvent) => {
+      depth.current = 0;
+      setDropping(false);
+      // The field handles drops on itself; anywhere else in the composer lands here.
+      if (e.defaultPrevented || !e.dataTransfer.files.length) return;
+      e.preventDefault();
+      if (!isDisabled) add([...e.dataTransfer.files]);
+    },
+  };
+  const notices = (
+    <>
+      {refused.length > 0 && (
+        <p className="attachment-note" role="alert">
+          <ExclamationTriangleIcon aria-hidden />
+          {refusalLine(refused)}
+        </p>
+      )}
+      {dropping && (
+        <div className="attachment-drop">
+          <PaperClipIcon aria-hidden />
+          <b>Drop to attach</b>
+          <small>Images, PDFs and text files</small>
+        </div>
+      )}
+    </>
+  );
+  return { add, clear: () => setRefused([]), dropping, zone, notices };
 }
 
 const sizeLabel = (bytes: number) =>

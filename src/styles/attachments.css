@@ -150,16 +150,63 @@
     aspect-ratio: 4 / 3;
   }
 }
-/* Pending files: a grid of slips at the head of the composer, on Deep Panel so the composer stays the only frame. */
+/* Pending files: a grid of slips at the head of the composer, on Deep Panel so the composer stays the only frame.
+   The tray rides in the input slot, so the frame's own padding is its inset. */
 .attachment-tray {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
   gap: 8px;
-  padding: 8px 8px 0;
+  margin-block-end: 8px;
 }
 .attachment-tray .attachment-slip {
   width: auto;
   background: var(--color-background-muted);
+}
+/* A refused file: one rose line inside the composer, cleared on the next add or send. */
+.attachment-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--color-text-error);
+}
+.attachment-note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+/* Drag over: the composer's own stroke turns dashed paper (no focus ring) and a note covers the field. */
+:is(.focused-chat, .first-question)
+  .astryx-chat-composer.attachment-composer.is-dropping
+  > :last-child {
+  border-style: dashed;
+  border-color: var(--treetutor-paper);
+  box-shadow: none;
+  outline: none;
+}
+.attachment-drop {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  border-radius: inherit;
+  background: var(--color-background-surface);
+  text-align: center;
+}
+.attachment-drop svg {
+  width: 20px;
+  height: 20px;
+}
+.attachment-drop b {
+  font-weight: 600;
+}
+.attachment-drop small {
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 @media (max-width: 48rem) {
   .attachment-tray {

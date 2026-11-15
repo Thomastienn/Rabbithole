@@ -17,7 +17,7 @@ import OriginStrip from './OriginStrip';
 import TitleEditor from './TitleEditor';
 import ChatHeadingRow from './ChatHeader';
 import ChatThread from './ChatThread';
-import { AttachButton, PendingAttachments, pendingPlaceholder } from './Attachments';
+import { AttachButton, PendingAttachments, pendingPlaceholder, useAttach } from './Attachments';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { ChatModel } from './useChatModel';
@@ -46,6 +46,7 @@ export default function FocusedChat(props: {
   const setFiles = (next: File[]) => setPendingFiles((p) => ({ ...p, [tree.id]: next }));
   const { modelNotice, unavailableSelection, codexFallback, modelError, models, loadModels } =
     model;
+  const attach = useAttach(files, setFiles, active || (!!models && !models.length));
   const { openConversation } = trees;
   const { send } = stream;
   const { rename, finishRename } = actions;
@@ -158,7 +159,8 @@ export default function FocusedChat(props: {
         density="balanced"
         composer={
           <ChatComposer
-            className="attachment-composer"
+            className={`attachment-composer${attach.dropping ? ' is-dropping' : ''}`}
+            {...attach.zone}
             elevation="none"
             sendButton={
               models && !models.length && !active ? (
@@ -169,20 +171,17 @@ export default function FocusedChat(props: {
                   label="Send"
                   icon={<ArrowUpIcon />}
                   variant="primary"
-                  onClick={() => void send('', tree, false, files)}
+                  onClick={() => {
+                    attach.clear();
+                    void send('', tree, false, files);
+                  }}
                 />
               ) : undefined
-            }
-            drawer={
-              <PendingAttachments
-                files={files}
-                remove={(i) => setFiles(files.filter((_, j) => j !== i))}
-              />
             }
             footerActions={
               <>
                 <AttachButton
-                  add={(more) => setFiles([...files, ...more])}
+                  add={attach.add}
                   isDisabled={active || (!!models && !models.length)}
                 />
                 {modelMenu}
@@ -191,27 +190,37 @@ export default function FocusedChat(props: {
             value={drafts[tree.id] ?? ''}
             onChange={(value) => setDrafts((d) => ({ ...d, [tree.id]: value }))}
             onSubmit={(text) => {
-              if (!models || models.length) void send(text, tree, false, files);
+              if (models && !models.length) return;
+              attach.clear();
+              void send(text, tree, false, files);
             }}
             isStopShown={active}
             onStop={() => stream.stop(tree.id)}
             input={
-              <ChatComposerInput
-                handleRef={composer}
-                onFiles={(more) => setFiles([...files, ...more])}
-                label="Your question"
-                maxRows={4}
-                value={drafts[tree.id] ?? ''}
-                onChange={(value) => setDrafts((d) => ({ ...d, [tree.id]: value }))}
-                isDisabled={active || (!!models && !models.length)}
-                placeholder={
-                  models && !models.length
-                    ? 'Sign in to a provider to ask'
-                    : files.length
-                      ? pendingPlaceholder(files.length)
-                      : 'What would you like to understand?'
-                }
-              />
+              // Tray and notices go in the input slot so they sit inside the composer's frame.
+              <>
+                <PendingAttachments
+                  files={files}
+                  remove={(i) => setFiles(files.filter((_, j) => j !== i))}
+                />
+                {attach.notices}
+                <ChatComposerInput
+                  handleRef={composer}
+                  onFiles={attach.add}
+                  label="Your question"
+                  maxRows={4}
+                  value={drafts[tree.id] ?? ''}
+                  onChange={(value) => setDrafts((d) => ({ ...d, [tree.id]: value }))}
+                  isDisabled={active || (!!models && !models.length)}
+                  placeholder={
+                    models && !models.length
+                      ? 'Sign in to a provider to ask'
+                      : files.length
+                        ? pendingPlaceholder(files.length)
+                        : 'What would you like to understand?'
+                  }
+                />
+              </>
             }
           />
         }

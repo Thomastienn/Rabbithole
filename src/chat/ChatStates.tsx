@@ -6,7 +6,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { ChatComposer, ChatComposerInput } from '@astryxdesign/core/Chat';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { ArrowUpIcon } from '@heroicons/react/24/outline';
-import { AttachButton, PendingAttachments, pendingPlaceholder } from './Attachments';
+import { AttachButton, PendingAttachments, pendingPlaceholder, useAttach } from './Attachments';
 
 export function FirstQuestion({
   draft,
@@ -37,23 +37,19 @@ export function FirstQuestion({
   needsModel: boolean;
   openSettings: (opener: HTMLElement) => void;
 }) {
+  const attach = useAttach(files, setFiles, busy);
   return (
     <VStack className="first-question" gap={3} hAlign="center">
       <Heading level={2}>Your first tree starts with a question.</Heading>
       <ChatComposer
-        className="single-ring-composer attachment-composer"
+        className={`single-ring-composer attachment-composer${attach.dropping ? ' is-dropping' : ''}`}
+        {...attach.zone}
         elevation="none"
         value={draft}
         onChange={setDraft}
-        drawer={
-          <PendingAttachments
-            files={files}
-            remove={(i) => setFiles(files.filter((_, j) => j !== i))}
-          />
-        }
         footerActions={
           <>
-            <AttachButton add={(more) => setFiles([...files, ...more])} isDisabled={busy} />
+            <AttachButton add={attach.add} isDisabled={busy} />
             {modelMenu}
           </>
         }
@@ -67,25 +63,40 @@ export function FirstQuestion({
               label="Send"
               icon={<ArrowUpIcon />}
               variant="primary"
-              onClick={() => submit('')}
+              onClick={() => {
+                attach.clear();
+                submit('');
+              }}
             />
           ) : undefined
         }
         onSubmit={(text) => {
-          if (available) submit(text);
+          if (!available) return;
+          attach.clear();
+          submit(text);
         }}
         input={
-          <ChatComposerInput
-            label="Your question"
-            maxRows={4}
-            value={draft}
-            onChange={setDraft}
-            onFiles={(more) => setFiles([...files, ...more])}
-            isDisabled={busy || !available}
-            placeholder={
-              files.length ? pendingPlaceholder(files.length) : 'What would you like to understand?'
-            }
-          />
+          // Tray and notices go in the input slot so they sit inside the composer's frame.
+          <>
+            <PendingAttachments
+              files={files}
+              remove={(i) => setFiles(files.filter((_, j) => j !== i))}
+            />
+            {attach.notices}
+            <ChatComposerInput
+              label="Your question"
+              maxRows={4}
+              value={draft}
+              onChange={setDraft}
+              onFiles={attach.add}
+              isDisabled={busy || !available}
+              placeholder={
+                files.length
+                  ? pendingPlaceholder(files.length)
+                  : 'What would you like to understand?'
+              }
+            />
+          </>
         }
       />
       {modelError && (
