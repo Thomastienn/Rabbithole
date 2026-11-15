@@ -92,6 +92,10 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
   // Accepts images is off by default and saved with the endpoint.
   const images = () => container.querySelector('.endpoint-form [role=switch]');
   assert.match(images().labels[0].textContent, /Accepts images/);
+  assert.match(
+    container.querySelector('.endpoint-form').textContent,
+    /When off, images are sent as OCR text and their slips say so\./,
+  );
   assert.equal(images().checked, false);
   await act(async () => images().click());
   await submit();

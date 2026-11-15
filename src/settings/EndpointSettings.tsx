@@ -199,7 +199,7 @@ export default function EndpointSettings({
           value={acceptsImages}
           onChange={setAcceptsImages}
           isDisabled={!!pending}
-          description="Turn on only if this endpoint's models read images. Images are sent on the turn they are attached; later turns name them."
+          description="Turn on only if this endpoint's models read images. When off, images are sent as OCR text and their slips say so."
         />
         <HStack gap={2} wrap="wrap" vAlign="center">
           <Button

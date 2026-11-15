@@ -90,6 +90,32 @@ test('with no saved trees the page shows the first-question composer and its mod
   assert.match(container.querySelector('.chat-model').textContent, /Claude · Opus/);
 });
 
+test('files sit above the question bubble, and a files-only question draws no bubble', async (t) => {
+  const file = (id, name) => ({ id, name, type: 'text/plain', size: 1, delivery: 'text' });
+  tree.messages.push(
+    {
+      id: 'q2',
+      role: 'user',
+      text: 'And these?',
+      status: 'completed',
+      attachments: [file('f1', 'a.txt')],
+    },
+    { id: 'a2', role: 'assistant', text: 'Yes.', status: 'completed' },
+    { id: 'q3', role: 'user', text: '', status: 'completed', attachments: [file('f2', 'b.txt')] },
+  );
+  t.after(() => tree.messages.splice(2));
+  const { container } = await mount(t, [summary]);
+  const [, withText, filesOnly] = container.querySelectorAll('.chat-question');
+  const files = withText.querySelector('.message-files');
+  assert.equal(files.nextElementSibling, withText.querySelector('.question-bubble'));
+  assert.ok(
+    !withText.querySelector('.question-bubble .message-files'),
+    'files are outside the bubble',
+  );
+  assert.match(filesOnly.querySelector('.message-files').textContent, /b\.txt/);
+  assert.equal(filesOnly.querySelector('.question-bubble'), null);
+});
+
 test('a saved tree opens its conversation with the thread, title and map', async (t) => {
   const { container, calls } = await mount(t, [summary]);
   assert.ok(calls.includes('/api/trees/t1'));

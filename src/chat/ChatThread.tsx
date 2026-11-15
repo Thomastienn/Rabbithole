@@ -151,16 +151,18 @@ export default function ChatThread({
             onBranch={(anchor, origin) => branchForm.startBranch(tree.id, anchor, origin)}
           />
         ) : (
-          <ChatMessageBubble variant="ghost" className="question-bubble">
-            {message.text && (
-              <Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                {message.text}
-              </Text>
-            )}
-            {message.attachments && (
+          <>
+            {!!message.attachments?.length && (
               <MessageAttachments conversation={tree.id} attachments={message.attachments} />
             )}
-          </ChatMessageBubble>
+            {message.text && (
+              <ChatMessageBubble variant="ghost" className="question-bubble">
+                <Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                  {message.text}
+                </Text>
+              </ChatMessageBubble>
+            )}
+          </>
         )}
 
         {!overview &&

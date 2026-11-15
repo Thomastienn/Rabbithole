@@ -1,0 +1,152 @@
+/* Sent attachments (docs/mockups/attachments.html): files sit right-aligned above the question bubble.
+   Documents are slips, images sent as images are plates; a files-only question draws no bubble. */
+.message-files {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+  max-width: 85%;
+}
+.message-files + .question-bubble {
+  margin-block-start: var(--spacing-2);
+}
+.attachment-slip {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 0 10px;
+  width: 240px;
+  max-width: 100%;
+  height: 48px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--radius-element);
+  background: var(--color-background-surface);
+  text-align: start;
+}
+.attachment-slip:has(.attachment-link:hover) {
+  background: color-mix(in oklab, var(--color-background-surface), var(--color-text-primary) 6%);
+}
+.attachment-link {
+  display: grid;
+  min-width: 0;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+.attachment-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.attachment-link:focus-visible {
+  outline: 0;
+}
+.attachment-slip:has(.attachment-link:focus-visible) {
+  outline: 2px solid var(--treetutor-paper);
+  outline-offset: 2px;
+}
+.attachment-tile {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: var(--radius-inner);
+  background: var(--color-overlay-hover);
+  font: 700 11px/1 var(--font-family-body);
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+}
+.attachment-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.attachment-name,
+.attachment-delivery {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attachment-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.attachment-delivery {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+/* The end slot sits above the link overlay so the OCR magnifier stays its own control. */
+.attachment-end {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+}
+.attachment-open {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+:is(.attachment-slip, .attachment-plate):has(.attachment-link:is(:hover, :focus-visible))
+  .attachment-open {
+  opacity: 1;
+}
+.attachment-plate {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  width: 160px;
+}
+.attachment-plate-image {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-container);
+  background: var(--color-overlay-hover);
+}
+.attachment-plate:has(.attachment-link:hover) .attachment-plate-image {
+  box-shadow: inset 0 0 0 1px var(--color-border-emphasized);
+}
+.attachment-plate:has(.attachment-link:focus-visible) .attachment-plate-image {
+  outline: 2px solid var(--treetutor-paper);
+  outline-offset: 2px;
+}
+.attachment-plate-caption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+/* OCR is a note, not a failure: never rose. */
+.attachment-ocr-note h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.attachment-ocr-note p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+@media (max-width: 48rem) {
+  .message-files {
+    max-width: 100%;
+  }
+  .attachment-plate {
+    width: calc(50% - var(--spacing-2) / 2);
+  }
+  .attachment-plate-image {
+    height: auto;
+    aspect-ratio: 4 / 3;
+  }
+}

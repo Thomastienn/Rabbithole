@@ -21,6 +21,7 @@ import '../styles/library.css';
 import '../styles/knowledge.css';
 import '../styles/workspace.css';
 import '../styles/reading.css';
+import '../styles/attachments.css';
 import '../styles/media.css';
 import '../styles/states.css';
 import '../styles/map.css';

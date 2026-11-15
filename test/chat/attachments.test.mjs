@@ -77,30 +77,54 @@ test('composer paperclip, paste and drop feed one handler; pending chips are rem
   assert.deepEqual(submitted, ['']);
 });
 
-test('a message chip names the file, its type and how it reached the tutor, and opens it', async (t) => {
+test('a sent slip names the file, its type and delivery, and the whole slip opens it in a new tab', async (t) => {
   const { container, cleanup } = await render(
     h(MessageAttachments, {
       conversation: 'c1',
       attachments: [
         { id: 'a1', name: 'heap.py', type: 'text/x-python', size: 20, delivery: 'text' },
-        { id: 'a2', name: 'red.png', type: 'image/png', size: 7, delivery: 'image' },
+        { id: 'a2', name: 'notes.pdf', type: 'application/pdf', size: 9, delivery: 'text' },
       ],
     }),
     ui,
   );
   t.after(cleanup);
-  const link = container.querySelector('a');
+  const [slip, pdf] = container.querySelectorAll('.message-files > .attachment-slip');
+  const link = slip.querySelector('a');
   assert.equal(link.getAttribute('href'), '/api/trees/c1/attachments/a1');
   assert.equal(link.getAttribute('target'), '_blank');
   assert.match(link.getAttribute('rel'), /noopener/);
-  assert.match(link.textContent, /heap\.py/);
-  assert.match(link.textContent, /Text file · read as text/);
-  const image = container.querySelectorAll('a')[1];
-  assert.equal(image.getAttribute('href'), '/api/trees/c1/attachments/a2');
-  assert.match(image.textContent, /red\.png.*Image · sent as image/);
+  assert.equal(link.tabIndex, 0, 'the slip is reachable by keyboard');
+  assert.equal(link.querySelector('.attachment-name').textContent, 'heap.py');
+  assert.equal(link.querySelector('.attachment-delivery').textContent, 'Text · Read as text');
+  assert.equal(slip.querySelector('.attachment-tile').textContent, 'PY');
+  assert.ok(slip.querySelector('.attachment-end svg'), 'the open icon sits in the end slot');
+  assert.equal(pdf.querySelector('.attachment-tile').textContent, 'PDF');
 });
 
-test('OCR chip explains its limits without opening the attachment', async (t) => {
+test('an image sent as an image is a plate showing the real image with its delivery', async (t) => {
+  const { container, cleanup } = await render(
+    h(MessageAttachments, {
+      conversation: 'c1',
+      attachments: [{ id: 'a2', name: 'red.png', type: 'image/png', size: 7, delivery: 'image' }],
+    }),
+    ui,
+  );
+  t.after(cleanup);
+  assert.equal(container.querySelector('.attachment-slip'), null);
+  const plate = container.querySelector('.attachment-plate');
+  assert.equal(
+    plate.querySelector('img.attachment-plate-image').getAttribute('src'),
+    '/api/trees/c1/attachments/a2',
+  );
+  const link = plate.querySelector('a');
+  assert.equal(link.getAttribute('href'), '/api/trees/c1/attachments/a2');
+  assert.equal(link.getAttribute('target'), '_blank');
+  assert.match(link.textContent, /red\.png/);
+  assert.equal(link.querySelector('.attachment-delivery').textContent, 'Sent as image');
+});
+
+test('an OCR slip opens its note from the magnifier by click and keyboard, never the file', async (t) => {
   const { container, act, cleanup } = await render(
     h(MessageAttachments, {
       conversation: 'c1',
@@ -109,27 +133,36 @@ test('OCR chip explains its limits without opening the attachment', async (t) =>
     ui,
   );
   t.after(cleanup);
-  const link = container.querySelector('a');
-  assert.match(link.textContent, /notes\.png.*Image · OCR/);
-  assert.equal(link.getAttribute('href'), '/api/trees/c1/attachments/a1');
+  const slip = container.querySelector('.attachment-slip');
+  assert.ok(slip, 'an OCR image is a slip, not a plate');
+  assert.equal(
+    slip.querySelector('.attachment-tile img').getAttribute('src'),
+    '/api/trees/c1/attachments/a1',
+    'its tile is a thumbnail',
+  );
+  const link = slip.querySelector('a');
+  assert.match(link.textContent, /notes\.png.*Image · OCR text/);
   const trigger = button(container, 'About OCR for notes.png');
   assert.ok(trigger.querySelector('svg'), 'OCR help has an icon');
   assert.ok(!link.contains(trigger), 'opening help cannot navigate to the attachment');
+  assert.ok(slip.querySelector('.attachment-end').contains(trigger));
   assert.equal(trigger.getAttribute('aria-expanded'), 'false');
   await act(async () => trigger.click());
   assert.equal(trigger.getAttribute('aria-expanded'), 'true');
-  const popup = document.querySelector('[role=dialog][aria-label="About OCR"]');
-  assert.ok(popup);
-  assert.match(popup.textContent, /text recognised by OCR/);
-  assert.match(popup.textContent, /miss handwriting and diagrams/);
-  assert.match(popup.textContent, /model that reads images.*Claude or Codex/);
+  const popup = () => document.querySelector('[role=dialog][aria-label="About OCR"]');
+  assert.equal(popup().querySelector('h3').textContent, 'The tutor read recognised text');
+  assert.match(popup().textContent, /This model can’t see images, so the app ran OCR/);
+  assert.match(popup().textContent, /miss handwriting and diagrams/);
+  assert.match(popup().textContent, /model that reads images, such as Claude or Codex/);
   await act(async () =>
-    popup.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
+    popup().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
   );
   assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+  // A native button: Enter and Space open the note from the keyboard.
+  assert.equal(trigger.tagName, 'BUTTON');
 });
 
-test('PDF chips summarise typed, native image, mixed and OCR deliveries with accessible OCR help', async (t) => {
+test('PDF slips summarise typed, native image, mixed and OCR deliveries with OCR help', async (t) => {
   const deliveries = ['text', 'image', 'text,image', 'ocr', 'text,ocr'];
   const { container, act, cleanup } = await render(
     h(MessageAttachments, {
@@ -148,14 +181,14 @@ test('PDF chips summarise typed, native image, mixed and OCR deliveries with acc
   assert.deepEqual(
     [...container.querySelectorAll('.attachment-delivery')].map((e) => e.textContent),
     [
-      'PDF · read as text',
-      'PDF · sent as image',
-      'PDF · read as text, sent as image',
-      'PDF · OCR',
-      'PDF · read as text, OCR',
+      'PDF · Read as text',
+      'PDF · Sent as images',
+      'PDF · Read as text, sent as images',
+      'PDF · OCR text',
+      'PDF · Read as text, OCR text',
     ],
   );
-  assert.equal(container.querySelectorAll('a').length, 5);
+  assert.equal(container.querySelectorAll('.attachment-slip').length, 5, 'PDFs are never plates');
   await act(async () => button(container, 'About OCR for notes-4.pdf').click());
   const popup = document.querySelector('[role=dialog][aria-label="About OCR"]');
   assert.match(popup.textContent, /miss handwriting and diagrams/);
