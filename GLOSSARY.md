@@ -64,6 +64,10 @@ _Avoid_: OpenAI provider, endpoint (alone)
 **Effort**:
 The supported reasoning setting chosen for a model role or conversation. It is independent of model selection; it does not promise a particular response quality or measured amount of computation.
 
+**Reads images**:
+Whether a chat model receives attached images as pictures. When it does not, the tutor gets the image's recognised text instead. Set per model; a model whose provider reports the ability starts with it on.
+_Avoid_: Vision, multimodal, accepts images (alone)
+
 **Attachment**:
 An image, PDF or text file the learner sends with a question. It belongs to that question's conversation; child conversations learn of it only through their inherited context.
 _Avoid_: Upload, file (alone), document
@@ -89,7 +93,7 @@ A connection between two concepts: either "related", or "builds on" when one con
 _Avoid_: Edge, dependency
 
 **Familiarity**:
-The app's estimate of how well the learner knows a concept, derived from evidence such as meeting it, asking about it and using it. An estimate, never a measured mastery.
+The app's estimate of how well the learner knows a concept, derived from evidence such as asking about it, using it in their own words and their own corrections. Merely meeting a concept in a reply counts for little, since the learner may not have read it. An estimate, never a measured mastery.
 _Avoid_: Mastery, score, level
 
 **Inherited context**:
@@ -101,6 +105,18 @@ The record of reported model usage across learning trees and tasks, retained ind
 
 **Video library**:
 The local collection of generated videos, available independently of their originating learning trees. A saved video remains until the learner explicitly trashes it, even when its source discussion is deleted.
+
+**Tutor tool**:
+An action the chat model can take while answering, such as searching the web, reading a page, finding images, running Python or recalling the learner's earlier study. A provider's own tool is used where it has one; the app supplies the rest.
+_Avoid_: Plugin, function, skill
+
+**Resource**:
+A web page, image or document the tutor drew on while answering, kept with its learning tree so the learner can go to the original directly. Replies cite resources rather than unnamed sources.
+_Avoid_: Source (alone), reference, link
+
+**Reply layout**:
+The arrangement the tutor chooses for one section of a reply, from a fixed set: plain flow, figure beside text, image gallery, side-by-side comparison or step cards.
+_Avoid_: Template, theme, design
 
 **Visual**:
 An interactive HTML/SVG/JS fragment shown inside a tutor reply where the tutor placed it, running in an isolated sandbox with no network or access to the app. Older Mermaid diagrams stay diagrams.
