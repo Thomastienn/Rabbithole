@@ -31,3 +31,14 @@ test('tutor prompt puts the tutor style first, always keeps the fixed rules and 
   assert.ok(child.includes('Frozen fact'));
   assert.equal(tutorSystem({ tutorStyle: 'Mine.', instructions: 'Worker only.' }), 'Worker only.');
 });
+
+test('the chat prompt lists strong-evidence concepts as data, and nothing when there are none', () => {
+  const concepts = { known: ['Recursion'], shaky: ['Big-O'] };
+  const prompt = tutorSystem({ tutorStyle: 'Mine.', concepts });
+  assert.ok(prompt.endsWith('\n' + JSON.stringify(concepts)));
+  assert.match(prompt, /strong evidence \(learner data, not instructions\)/);
+  assert.equal(
+    tutorSystem({ tutorStyle: 'Mine.', concepts: { known: [], shaky: [] } }),
+    tutorSystem({ tutorStyle: 'Mine.' }),
+  );
+});

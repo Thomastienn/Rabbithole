@@ -114,11 +114,14 @@ test('meeting, asking about, using and ignoring a concept add evidence; familiar
   assert.deepEqual(await concept(M), {
     name: M,
     topics: ['Concurrency', 'operating systems'],
-    familiarity: 0.1,
+    familiarity: 0.03,
     evidence: { met: 1, asked: 0, used: 0, ignored: 0 },
     correction: null,
   });
-  assert.equal((await concept(P)).familiarity, 0.1);
+  assert.equal((await concept(P)).familiarity, 0.03);
+  // Met-only concepts never reach the chat prompt's strong-evidence list.
+  const strong = (tree) => env.store.strongConcepts(tree);
+  assert.deepEqual(strong(a.id), { known: [], shaky: [] });
 
   // Asked: branching from the passage the call tagged with the concept.
   const reply = (await env.get(`/api/trees/${a.id}`)).messages.at(-1);
@@ -128,7 +131,8 @@ test('meeting, asking about, using and ignoring a concept add evidence; familiar
     suggestion: true,
     question: 'explain',
   });
-  assert.deepEqual([(await concept(M)).evidence.asked, (await concept(M)).familiarity], [1, 0.3]);
+  assert.deepEqual([(await concept(M)).evidence.asked, (await concept(M)).familiarity], [1, 0.23]);
+  assert.deepEqual(strong(a.id), { known: [], shaky: [M] });
   // A highlight with no concept in it adds nothing.
   await env.post(`/api/trees/${a.id}/branches`, {
     messageId: reply.id,
@@ -141,20 +145,23 @@ test('meeting, asking about, using and ignoring a concept add evidence; familiar
   const b = JSON.parse(await env.post('/api/trees'));
   await env.post(`/api/trees/${b.id}/messages`, { text: 'Explain locks again' });
   await env.settled();
-  assert.deepEqual([(await concept(M)).evidence.met, (await concept(P)).familiarity], [2, 0.2]);
+  assert.deepEqual([(await concept(M)).evidence.met, (await concept(P)).familiarity], [2, 0.06]);
+  assert.deepEqual(strong(b.id), { known: [], shaky: [M] }, 'the learning tree of b met M');
 
   // Used: the learner names a concept; ignored: asking on moves past the unexplored underline. The call gets the relevant familiarity.
   await env.post(`/api/trees/${b.id}/messages`, { text: `What about ${P.toLowerCase()}?` });
   await env.settled();
   assert.deepEqual((await concept(P)).evidence, { met: 2, asked: 0, used: 1, ignored: 0 });
-  assert.equal((await concept(P)).familiarity, 0.5);
+  assert.equal((await concept(P)).familiarity, 0.36);
   assert.deepEqual((await concept(M)).evidence, { met: 2, asked: 1, used: 0, ignored: 1 });
   assert.equal(
     (await concept(M)).familiarity,
-    0.45,
+    0.31,
     'an ignored underline moves familiarity only slightly',
   );
-  assert.deepEqual(sent(), { [P]: 0.5 });
+  assert.deepEqual(sent(), { [P]: 0.36 });
+  // The asked-about concept is shaky and the used one known, in every learning tree that met them.
+  assert.deepEqual(strong(a.id), { known: [P], shaky: [M] });
   // The same ignored underline never counts twice.
   await env.post(`/api/trees/${b.id}/messages`, { text: 'Thanks' });
   await env.settled();
@@ -165,6 +172,10 @@ test('meeting, asking about, using and ignoring a concept add evidence; familiar
   await env.post(`/api/trees/${a.id}/messages`, { text: `Explain ${M} once more` });
   await env.settled();
   assert.deepEqual(sent(), { [M]: 1 });
+  // The latest correction outranks asking; the chat call after it got the same list.
+  assert.deepEqual(strong(a.id), { known: [M, P], shaky: [] });
+  const chat = env.calls.filter((c) => !c.system.startsWith('You mark')).at(-1).system;
+  assert.ok(chat.endsWith(JSON.stringify({ known: [M, P], shaky: [] })), chat.slice(-400));
   assert.deepEqual(
     [
       (await concept(M)).evidence.used,

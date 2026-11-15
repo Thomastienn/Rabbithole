@@ -1,4 +1,8 @@
-const WEIGHTS = { met: 0.1, asked: 0.2, used: 0.3, ignored: 0.05 };
+// Meeting a concept in a reply counts for little and stops at MET_CEILING: the learner may not have read it.
+const WEIGHTS = { met: 0.03, asked: 0.2, used: 0.3, ignored: 0.05 };
+const MET_CEILING = 0.12;
+// Bound on each strong-evidence list in the chat prompt.
+const STRONG_LIMIT = 12;
 // Whole-word, case-insensitive name match.
 const mentions = (text, name) =>
   new RegExp(
@@ -68,13 +72,35 @@ export const knowledge = {
         .get(concept)?.kind ?? null;
     const inferred = Math.min(
       1,
-      Object.entries(evidence).reduce((sum, [kind, n]) => sum + WEIGHTS[kind] * n, 0),
+      Object.entries(evidence).reduce(
+        (sum, [kind, n]) =>
+          sum + (kind === 'met' ? Math.min(MET_CEILING, WEIGHTS.met * n) : WEIGHTS[kind] * n),
+        0,
+      ),
     );
     return {
       familiarity: Math.round((correction ? +(correction === 'known') : inferred) * 100) / 100,
       evidence,
       correction,
     };
+  },
+  // The learning tree's concepts with strong evidence, newest first: the latest correction wins, otherwise the latest use (known) or ask (shaky). Met-only concepts never appear.
+  strongConcepts(conversation) {
+    const rows = this.db
+      .prepare(
+        `WITH RECURSIVE up(id) AS (SELECT ? UNION SELECT parent FROM branches JOIN up ON child=up.id),
+        learning(id) AS (SELECT id FROM up WHERE id NOT IN (SELECT child FROM branches) UNION SELECT child FROM branches JOIN learning ON parent=learning.id),
+        here AS (SELECT DISTINCT concept FROM evidence WHERE source IN (SELECT id FROM learning UNION SELECT id FROM messages WHERE tree IN (SELECT id FROM learning))),
+        strong AS (SELECT e.concept, e.kind, e.rowid AS at, ROW_NUMBER() OVER (PARTITION BY e.concept ORDER BY e.kind IN ('known','unknown') DESC, e.rowid DESC) AS n FROM evidence e JOIN here USING(concept) WHERE e.kind IN ('known','unknown','used','asked'))
+        SELECT c.name, s.kind FROM strong s JOIN concepts c ON c.id=s.concept WHERE s.n=1 ORDER BY s.at DESC`,
+      )
+      .all(conversation);
+    const pick = (kinds) =>
+      rows
+        .filter((r) => kinds.includes(r.kind))
+        .slice(0, STRONG_LIMIT)
+        .map((r) => r.name);
+    return { known: pick(['known', 'used']), shaky: pick(['unknown', 'asked']) };
   },
   // Familiarity for concepts named in the given text: the relevant concepts sent to the suggestion call.
   // shortcut: whole-name mentions only, so a reworded concept is missed; upgrade with the embedding pre-filter (TreeTutor-5ut.11).

@@ -373,6 +373,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       {
         ...tutorContext(tree),
         tutorStyle: store.tutorStyle(),
+        concepts: store.strongConcepts(id),
         ...(images.length && { images }),
         ...(attachments.some((a) => a.type === 'application/pdf') && { parts }),
       },
