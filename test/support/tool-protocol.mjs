@@ -70,6 +70,20 @@ export function claudeSearch(send) {
         { type: 'tool_result', tool_use_id: 'web-1', content: 'Search found https://example.org' },
       ],
     },
+    // Shape recorded from Claude Code 2.1.325 stream-json.
+    tool_use_result: {
+      query: 'fixture fact',
+      results: [
+        {
+          tool_use_id: 'srvtoolu-1',
+          content: [
+            { title: 'Example fact', url: 'https://example.org' },
+            { title: 'Second source', url: 'https://www.second.example/fact' },
+          ],
+        },
+      ],
+      durationSeconds: 1,
+    },
   });
   send({
     type: 'assistant',

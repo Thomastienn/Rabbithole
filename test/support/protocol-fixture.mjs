@@ -263,6 +263,12 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
         action: { type: 'search', query: 'fixture fact' },
         results: [{ url: 'https://example.org' }],
       };
+      const open = {
+        type: 'webSearch',
+        id: 'open-1',
+        query: '',
+        action: { type: 'openPage', url: 'https://www.second.example/fact' },
+      };
       send({
         method: 'item/started',
         params: { threadId: params.threadId, turnId: 'turn-fixture', item },
@@ -270,6 +276,10 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
       send({
         method: 'item/completed',
         params: { threadId: params.threadId, turnId: 'turn-fixture', item },
+      });
+      send({
+        method: 'item/completed',
+        params: { threadId: params.threadId, turnId: 'turn-fixture', item: open },
       });
       send({
         method: 'item/completed',

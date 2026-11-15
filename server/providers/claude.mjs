@@ -214,6 +214,7 @@ export class Claude {
                   block.tool_use_id,
                   typeof block.content === 'string' ? block.content : JSON.stringify(block.content),
                   block.is_error,
+                  m.tool_use_result,
                 );
           if (m.type === 'result') result = m;
         });

@@ -309,7 +309,10 @@ export class Codex {
             if (message.method === 'item/started' || message.method === 'item/completed')
               native.start(tool.id, 'web_search', { query: tool.query, action: tool.action });
             if (message.method === 'item/completed')
-              native.finish(tool.id, JSON.stringify(tool.results ?? tool.action ?? null));
+              native.finish(tool.id, JSON.stringify(tool.results ?? tool.action ?? null), false, [
+                tool.action,
+                tool.results,
+              ]);
           }
           if (message.method === 'thread/tokenUsage/updated') {
             const { last, total } = p.tokenUsage ?? {};

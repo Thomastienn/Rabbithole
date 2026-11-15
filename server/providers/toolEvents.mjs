@@ -1,7 +1,7 @@
 // Native web tools run inside the CLI; app tools report directly from the MCP runner.
 export function toolEvents(emit) {
   const pending = new Map();
-  const event = (tool, status, output = null) =>
+  const event = (tool, status, output = null, resources) =>
     emit({
       type: 'tool',
       tool: {
@@ -11,6 +11,7 @@ export function toolEvents(emit) {
         status,
         output,
         elapsed: Math.round(performance.now() - tool.started),
+        ...(resources?.length && { resources }),
       },
     });
   return {
@@ -26,11 +27,12 @@ export function toolEvents(emit) {
       pending.set(id, tool);
       event(tool, 'running');
     },
-    finish(id, output, failed = false) {
+    // result is the provider's structured tool result; the pages it reports become resources.
+    finish(id, output, failed = false, result) {
       const tool = pending.get(id);
       if (!tool) return;
       clearInterval(tool.timer);
-      event(tool, failed ? 'failed' : 'done', output);
+      event(tool, failed ? 'failed' : 'done', output, failed ? [] : pageResources(result));
       pending.delete(id);
     },
     close() {
@@ -41,4 +43,21 @@ export function toolEvents(emit) {
       pending.clear();
     },
   };
+}
+
+// Pages a native search or fetch reports: every { url, title? } inside its structured result, deduplicated.
+export function pageResources(value, found = new Map()) {
+  if (Array.isArray(value)) value.forEach((v) => pageResources(v, found));
+  else if (value && typeof value === 'object') {
+    if (typeof value.url === 'string' && /^https?:\/\//i.test(value.url) && !found.has(value.url))
+      try {
+        const site = new URL(value.url).hostname.replace(/^www\./, '');
+        const title = typeof value.title === 'string' ? value.title : '';
+        found.set(value.url, { url: value.url, title, site, kind: 'page' });
+      } catch {
+        /* Not a URL. */
+      }
+    Object.values(value).forEach((v) => pageResources(v, found));
+  }
+  return [...found.values()];
 }

@@ -343,7 +343,9 @@ export const trees = {
       .get(conversation, id);
   },
   // One row per tool call; later events for the same call update it in place.
-  toolCall(conversation, message, { id, name, input, status, output, elapsed }) {
+  // Pages a native search or fetch reports become resources of the learning tree.
+  toolCall(conversation, message, { id, name, input, status, output, elapsed, resources = [] }) {
+    for (const resource of resources) this.addResource(conversation, resource);
     this.db
       .prepare(
         'INSERT INTO tool_calls(id,conversation,message,name,input,output,status,started,elapsed) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(message,id) DO UPDATE SET input=excluded.input,output=excluded.output,status=excluded.status,elapsed=excluded.elapsed',

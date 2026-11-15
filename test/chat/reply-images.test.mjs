@@ -72,7 +72,7 @@ test('source extraction ignores failed/malformed outputs and unsafe image or sou
     { ...tool({}), output: 'not JSON' },
     tool({ results: {} }),
   ]);
-  assert.deepEqual(sources, { [result.imageUrl]: result.sourceUrl });
+  assert.deepEqual(sources, { [result.imageUrl]: { source: result.sourceUrl } });
 });
 
 test('Reply credits a saved find_images result and replaces a dead image without losing its source', async (t) => {
@@ -105,4 +105,29 @@ test('an empty-alt Markdown image still gives its image link an accessible name'
     container.querySelector('img').closest('a').getAttribute('aria-label'),
     'Open image source',
   );
+});
+
+test('an image found with find_images credits its resource and the credit jumps to the Resources entry', async (t) => {
+  const { container, act, cleanup } = await render(
+    h(
+      'div',
+      null,
+      h('ol', null, h('li', { id: 'resource-4' }, h('a', { href: result.sourceUrl }, 'Heap'))),
+      h(Reply, {
+        text: '![Binary heap](https://images.example.org/heap.png)',
+        underlines: [],
+        tools: [tool({ results: [{ resource: 4, ...result }] })],
+      }),
+    ),
+    ui,
+  );
+  t.after(cleanup);
+  const credit = container.querySelector('.image-source');
+  assert.equal(credit.getAttribute('href'), '#resource-4');
+  assert.equal(credit.textContent, 'Source 4');
+  assert.equal(container.querySelector('img').closest('a').href, result.sourceUrl);
+  const entry = container.querySelector('#resource-4');
+  entry.scrollIntoView = () => {};
+  await act(async () => credit.click());
+  assert.equal(container.ownerDocument.activeElement, entry.querySelector('a'));
 });

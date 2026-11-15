@@ -254,6 +254,25 @@ for (const provider of ['claude', 'codex'])
     assert.ok(tools.some((e) => e.status === 'done' && /Search|example.org/.test(e.output)));
     if (provider === 'claude')
       assert.ok(tools.some((e) => e.name === 'WebFetch' && e.status === 'failed'));
+    // Failed fetches add nothing; reported search results and opened pages do.
+    const title = (t) => (provider === 'claude' ? t : '');
+    assert.deepEqual(
+      new Map(tools.flatMap((e) => e.resources ?? []).map((r) => [r.url, r])).values().toArray(),
+      [
+        {
+          url: 'https://example.org',
+          title: title('Example fact'),
+          site: 'example.org',
+          kind: 'page',
+        },
+        {
+          url: 'https://www.second.example/fact',
+          title: title('Second source'),
+          site: 'second.example',
+          kind: 'page',
+        },
+      ],
+    );
     assert.ok(events.some((e) => e.type === 'item' && e.text === 'App page says forty-two.'));
     const off = [];
     await client.generate(
@@ -340,6 +359,32 @@ for (const provider of ['claude', 'codex'])
     );
     const reply = store.tree(root.id).messages.at(-1);
     assert.match(reply.text, /Reply page fact/);
+    store.update(reply.id, `${reply.text} [2](resource:2)`, 'completed');
+    assert.deepEqual(
+      store.tree(root.id).resources.map(({ number, url, site, kind, conversations }) => ({
+        number,
+        url,
+        site,
+        kind,
+        conversations,
+      })),
+      [
+        {
+          number: 1,
+          url: 'https://example.org',
+          site: 'example.org',
+          kind: 'page',
+          conversations: [],
+        },
+        {
+          number: 2,
+          url: 'https://www.second.example/fact',
+          site: 'second.example',
+          kind: 'page',
+          conversations: [root.id],
+        },
+      ],
+    );
     assert.ok(reply.tools.some((tool) => tool.name === 'read_page' && tool.status === 'done'));
     if (provider === 'claude')
       assert.deepEqual(reply.tools.find((tool) => tool.name === 'WebSearch').input, {

@@ -12,9 +12,19 @@ export function imageUrl(value: string): string | undefined {
   }
 }
 
-// Source pages come from saved tool results, including while the reply is still streaming.
-export function imageSources(tools: ToolCall[]): Record<string, string> {
-  const sources: Record<string, string> = {};
+export type ImageSource = { source: string; resource?: number };
+
+// A citation chip or image credit scrolls to its Resources entry in the contents panel.
+export function jumpToResource(event: { preventDefault(): void }, n: number | string) {
+  event.preventDefault();
+  const entry = document.getElementById(`resource-${n}`);
+  entry?.scrollIntoView({ block: 'nearest' });
+  entry?.querySelector('a')?.focus({ preventScroll: true });
+}
+
+// Source pages and resource numbers come from saved tool results, including while the reply is still streaming.
+export function imageSources(tools: ToolCall[]): Record<string, ImageSource> {
+  const sources: Record<string, ImageSource> = {};
   for (const tool of tools) {
     if (tool.name !== 'find_images' || tool.status !== 'done' || !tool.output) continue;
     try {
@@ -23,7 +33,10 @@ export function imageSources(tools: ToolCall[]): Record<string, string> {
       for (const row of data.results) {
         const image = imageUrl(row?.imageUrl),
           source = imageUrl(row?.sourceUrl);
-        if (image && source) sources[image] = source;
+        if (image && source)
+          sources[image] = Number.isSafeInteger(row.resource)
+            ? { source, resource: row.resource }
+            : { source };
       }
     } catch {
       /* Older or failed tool outputs may not be JSON. */
@@ -36,11 +49,13 @@ export default function ReplyImage({
   src,
   alt,
   source,
+  resource,
   linked = false,
 }: {
   src: string;
   alt: string;
   source: string;
+  resource?: number;
   linked?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
@@ -73,6 +88,15 @@ export default function ReplyImage({
       )}
       {linked ? (
         <span className="image-source">Source</span>
+      ) : resource !== undefined ? (
+        <a
+          className="image-source"
+          href={`#resource-${resource}`}
+          aria-label={`Source: resource ${resource}`}
+          onClick={(event) => jumpToResource(event, resource)}
+        >
+          Source {resource}
+        </a>
       ) : (
         <a className="image-source" href={source} target="_blank" rel="noopener noreferrer">
           Source

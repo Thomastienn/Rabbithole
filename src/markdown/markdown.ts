@@ -7,7 +7,7 @@ import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
-import ReplyImage, { imageUrl } from './ReplyImage.tsx';
+import ReplyImage, { imageUrl, jumpToResource, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
 export { plainText };
 
@@ -98,7 +98,7 @@ export function renderMarkdown(
   reveal?: Span,
   underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
   slots: { at: number; node: ReactNode }[] = [],
-  sources: Record<string, string> = {},
+  sources: Record<string, ImageSource> = {},
 ): ReactNode {
   let revealed = 0;
   let imageLink: string | undefined;
@@ -355,12 +355,7 @@ export function renderMarkdown(
               href: `#resource-${cited}`,
               className: 'citation-chip',
               'aria-label': `Resource ${cited}`,
-              onClick: (event: { preventDefault(): void }) => {
-                event.preventDefault();
-                const entry = document.getElementById(`resource-${cited}`);
-                entry?.scrollIntoView({ block: 'nearest' });
-                entry?.querySelector('a')?.focus({ preventScroll: true });
-              },
+              onClick: (event: { preventDefault(): void }) => jumpToResource(event, cited),
             },
             kids(),
           );
@@ -386,7 +381,8 @@ export function renderMarkdown(
                 key: src,
                 src,
                 alt: n.alt ?? '',
-                source: imageLink ?? imageUrl(sources[src]) ?? src,
+                source: imageLink ?? sources[src]?.source ?? src,
+                resource: sources[src]?.resource,
                 linked: inLink,
               }),
             )
