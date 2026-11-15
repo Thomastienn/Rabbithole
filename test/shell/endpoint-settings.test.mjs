@@ -173,7 +173,7 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
       calls.push(body);
       models = models.map((m) =>
         m.provider === body.id && m.model === body.model
-          ? { ...m, readsImages: body.readsImages }
+          ? { ...m, ...body, id: undefined }
           : m,
       );
       return body;
@@ -213,6 +213,15 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
   await act(async () => target().click());
   assert.deepEqual(calls, [{ id: 'openai:gw', model: 'model-290', readsImages: false }]);
   assert.equal(target().checked, false, 'the reloaded list shows the saved choice');
+  const tools = () =>
+    [...panel().querySelectorAll('[role=switch]')].find((s) =>
+      /model-290 · Uses tutor tools/.test(s.labels[0].textContent),
+    );
+  assert.equal(tools().checked, false);
+  await act(async () => tools().click());
+  assert.deepEqual(calls.at(-1), { id: 'openai:gw', model: 'model-290', usesTutorTools: true });
+  assert.equal(tools().checked, true, 'the tool toggle saves on its own');
+  assert.equal(target().checked, false);
 
   await act(async () => inputValue(search, 'nothing-like-this'));
   assert.match(panel().textContent, /No models match\./);

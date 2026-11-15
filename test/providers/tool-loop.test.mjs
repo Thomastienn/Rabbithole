@@ -382,3 +382,51 @@ test('tool-free endpoint requests do not ask for usage', async (t) => {
   await env.events((await env.ask('plain')).stream);
   assert.equal(Object.hasOwn(env.chats()[0].body, 'stream_options'), false);
 });
+
+test('uses tutor tools: override, else reported tools, else off; tool switches remove tools; all off is tool-free', async (t) => {
+  const env = await launch(t);
+  const uses = async () =>
+    Object.fromEntries(
+      (await (await fetch(`${env.origin}/api/models`)).json()).models
+        .filter((m) => m.provider.startsWith('openai:'))
+        .map((m) => [m.model, m.usesTutorTools]),
+    );
+  const offered = async (model) => {
+    await env.events((await env.ask(model)).stream);
+    return env.chats().at(-1).body.tools?.map((x) => x.function.name) ?? null;
+  };
+  const id = (await (await fetch(`${env.origin}/api/models`)).json()).models.find(
+    (m) => m.model === 'tooled',
+  ).provider;
+  assert.deepEqual(await uses(), { tooled: true, plain: false });
+  assert.deepEqual(await offered('tooled'), ['read_page']);
+  assert.equal(await offered('plain'), null);
+
+  const toggle = async (model, usesTutorTools) =>
+    assert.equal(
+      (await env.post('/api/settings/endpoints/model', { id, model, usesTutorTools })).status,
+      200,
+    );
+  await toggle('tooled', false);
+  await toggle('plain', true);
+  assert.deepEqual(await uses(), { tooled: false, plain: true });
+  assert.equal(await offered('tooled'), null);
+  assert.deepEqual(await offered('plain'), ['read_page']);
+  assert.equal(
+    (await env.post('/api/settings/endpoints/model', { id, model: 'plain', usesTutorTools: 1 }))
+      .status,
+    400,
+  );
+
+  // Switching off the only available tool leaves the old tool-free request and prompt.
+  const switched = await (
+    await env.post('/api/settings/tutor-tools', { name: 'read_page', enabled: false })
+  ).json();
+  assert.equal(switched.find((x) => x.name === 'read_page').enabled, false);
+  assert.equal(await offered('plain'), null);
+  assert.match(env.chats().at(-1).body.messages[0].content, /Do not use tools/);
+  assert.equal(
+    (await env.post('/api/settings/tutor-tools', { name: 'nope', enabled: false })).status,
+    400,
+  );
+});

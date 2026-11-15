@@ -149,3 +149,23 @@ test('store: reads images override is null until chosen, then replaced, and forg
   assert.equal(store.readsImagesOverride('openai:b', 'm'), true);
   store.close();
 });
+
+test('store: uses tutor tools override and tool switches are independent and survive restart', () => {
+  const file = join(mkdtempSync(join(tmpdir(), 'tt-model-tools-store-')), 't.sqlite');
+  let store = new Store(file);
+  assert.equal(store.usesTutorToolsOverride('openai:a', 'm'), null);
+  assert.deepEqual(store.tutorTools(), {});
+  store.setReadsImages('openai:a', 'm', true);
+  assert.equal(store.usesTutorToolsOverride('openai:a', 'm'), null, 'reads images leaves it unset');
+  store.setUsesTutorTools('openai:a', 'm', false);
+  store.saveTutorTool('read_page', false);
+  store.saveTutorTool('web_search', true);
+  store.close();
+  store = new Store(file);
+  assert.equal(store.usesTutorToolsOverride('openai:a', 'm'), false);
+  assert.equal(store.readsImagesOverride('openai:a', 'm'), true);
+  assert.deepEqual(store.tutorTools(), { read_page: false, web_search: true });
+  store.forgetModels('openai:a');
+  assert.equal(store.usesTutorToolsOverride('openai:a', 'm'), null);
+  store.close();
+});
