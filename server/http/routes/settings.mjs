@@ -5,7 +5,7 @@ import { DEFAULT_TUTOR_STYLE } from '../../media/diagrams.mjs';
 export async function settingsRoutes(req, res, url, ctx, body) {
   const { store, json, endpoint, selectionError, chatDefault, smart, profiles } = ctx;
   if (req.method === 'GET') {
-    if (url.pathname === '/api/settings/searxng') return json(res, 200, ctx.searxng());
+    if (url.pathname === '/api/settings/searxng') return json(res, 200, await ctx.search.status());
     if (url.pathname === '/api/settings/endpoint' && endpoint)
       return json(res, 200, endpoint.status());
     if (url.pathname === '/api/settings/endpoints' && endpoint)
@@ -20,6 +20,16 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     return false;
   }
   if (req.method !== 'POST') return false;
+  if (['/api/settings/searxng', '/api/settings/searxng/test'].includes(url.pathname)) {
+    try {
+      if (url.pathname.endsWith('/test'))
+        return json(res, 200, await ctx.search.status({ url: body?.url }));
+      ctx.search.save(body?.url);
+      return json(res, 200, await ctx.search.status());
+    } catch (error) {
+      return json(res, 400, { error: error.message });
+    }
+  }
   const profileMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)\/(rename|duplicate|delete)$/);
   if (url.pathname === '/api/profiles' || profileMatch) {
     const [, id, action = 'create'] = profileMatch ?? [];

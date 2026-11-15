@@ -3,6 +3,8 @@ import { Text } from '@astryxdesign/core/Text';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import type { Source } from '../map/TreeOverview';
 import { renderMarkdown } from '../markdown/markdown';
+import { imageSources } from '../markdown/ReplyImage';
+import type { ToolCall } from './turn';
 import type { Artifact } from '../media/artifacts';
 import VideoCard from '../media/VideoCard';
 import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
@@ -10,6 +12,7 @@ import VisualFrame, { type PartAction, type VisualBranch } from '../media/Visual
 // Parsing is memoised so streaming chunks and selection state changes reuse the rendered tree.
 const Reply = memo(function Reply({
   text,
+  tools = [],
   reveal,
   underlines,
   inlineArtifacts = [],
@@ -19,6 +22,7 @@ const Reply = memo(function Reply({
   onOpenChild,
 }: {
   text: string;
+  tools?: ToolCall[];
   reveal?: Source;
   underlines: { start: number; end: number; child?: string }[];
   inlineArtifacts?: Artifact[];
@@ -35,6 +39,7 @@ const Reply = memo(function Reply({
   action.current = onArtifactAction;
   partAction.current = onVisualPart;
   const key = JSON.stringify(underlines),
+    toolKey = JSON.stringify(tools),
     artifactKey = JSON.stringify(inlineArtifacts),
     visualBranchKey = JSON.stringify(visualBranches);
   return (
@@ -68,6 +73,7 @@ const Reply = memo(function Reply({
                   />
                 ),
             })),
+            imageSources(tools),
           ),
         [
           text,
@@ -75,6 +81,7 @@ const Reply = memo(function Reply({
           reveal?.end,
           reveal?.text,
           key,
+          toolKey,
           artifactKey,
           visualBranchKey,
           reveal?.artifactId,

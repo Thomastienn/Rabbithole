@@ -93,9 +93,17 @@ Startup also provisions a pinned SearXNG snapshot with `uv` in `<data directory>
 The first install needs internet access; later starts reuse it without downloading packages.
 Its generated `searxng/settings.yml` enables HTML and JSON with a random secret and loopback-only
 binding. Each app process runs its own child on an available `127.0.0.1` port and stops it on exit.
-`GET /api/settings/searxng` exposes the managed default URL and readiness, or a readable setup/start
-failure. Search setup failure leaves saved trees and the rest of the app available; repair the
-reported prerequisite or connection and restart. Searches themselves still need internet access.
+**Settings → Connections → Search** shows the managed URL. Save your own instance URL to replace
+it, or choose **Use app-managed instance** to return to the default. **Test search** checks a JSON
+search without saving the draft and explains network, HTTP and disabled-JSON failures. Custom
+instances need `json` in `search.formats` in their `settings.yml`. Search setup failure leaves saved
+trees and the rest of the app available; Settings shows the reason. Search tools are hidden until
+the selected instance can answer JSON searches. Custom endpoint models reporting tool support can
+search pages and find images; Claude/Codex app-tool delivery is a later increment. Searches go to
+the selected SearXNG instance and its upstream engines. Reply images load directly from their remote
+hosts without a referrer, link to their source page, and show a placeholder when unavailable; the
+app does not save copies. `GET /api/settings/searxng` reports the selected and managed URLs,
+readiness and failures. Searches themselves still need internet access.
 
 `trees.sqlite` holds trees, original messages, fixed inherited context, positions, layouts and artifact metadata. Videos and workspaces live alongside it. Files are unencrypted; new directories and database/credential files are owner-only. TreeTutor stores its ChatGPT OAuth connection here in `chatgpt.json`; its isolated Codex home and sessions also live here. An optional endpoint's URL/key live in `openai-endpoint.json` (mode `0600`), never in SQLite. Claude manages its own sign-in and sessions outside this directory. Keep backups private too.
 

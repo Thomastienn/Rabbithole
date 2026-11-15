@@ -139,6 +139,9 @@ export function open(path) {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS tutor_style (id INTEGER PRIMARY KEY CHECK(id=1), text TEXT)',
     );
+    this.db.exec(
+      'CREATE TABLE IF NOT EXISTS searxng_settings (id INTEGER PRIMARY KEY CHECK(id=1), url TEXT)',
+    );
     // Learner-typed efforts for custom endpoint models, listed after the endpoint's advertised efforts.
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS endpoint_efforts (endpoint TEXT NOT NULL, model TEXT NOT NULL, effort TEXT NOT NULL, PRIMARY KEY(endpoint, model, effort))',

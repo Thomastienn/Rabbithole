@@ -369,9 +369,10 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       const invalid = await selectionError(tree);
       if (invalid) throw new Error(invalid.error);
     }
-    const tools = ctx.tools.tools({
+    const tools = await ctx.tools.tools({
       provider: tree.provider,
       capable: await ctx.toolCapable(tree),
+      signal: controller.signal,
     });
     if (finished) return true;
     called = true;

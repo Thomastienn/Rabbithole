@@ -3,6 +3,28 @@ import { readPage } from './readPage.mjs';
 
 // Tutor tools: names, model-facing definitions and how each runs with a turn context.
 const TOOLS = {
+  web_search: {
+    description:
+      'Search the web through SearXNG. Returns up to 10 titles, URLs and snippets, not full pages. Use read_page for page text.',
+    parameters: {
+      type: 'object',
+      properties: { query: { type: 'string', description: 'Web search query.' } },
+      required: ['query'],
+      additionalProperties: false,
+    },
+    run: (input, turn, options) => options.search.run(input, turn),
+  },
+  find_images: {
+    description:
+      'Find images through SearXNG images search. Returns up to 10 imageUrl, thumbnail, title and sourceUrl entries; it cannot inspect image contents. Place useful images using [![descriptive alt text](imageUrl)](sourceUrl) so the reply credits their source page.',
+    parameters: {
+      type: 'object',
+      properties: { query: { type: 'string', description: 'Image search query.' } },
+      required: ['query'],
+      additionalProperties: false,
+    },
+    run: (input, turn, options) => options.search.run(input, turn, true),
+  },
   read_page: {
     description:
       'Fetch a public web page (http or https) and return its readable text, up to 20000 characters per call. ' +
@@ -28,15 +50,21 @@ const TOOLS = {
 // options.readPage passes lookup and address checks through, for tests against local fakes.
 export function toolRunner(options = {}) {
   return {
-    // Custom endpoints get the app tools through function calling when the model reports tool support.
-    // shortcut: Claude and Codex get none yet; the per-model and per-tool switches arrive with tool settings.
-    tools({ provider, capable }) {
-      if (!isEndpoint(provider) || !capable) return [];
-      return Object.entries(TOOLS).map(([name, { description, parameters }]) => ({
-        name,
-        description,
-        parameters,
-      }));
+    // Native providers keep their own web search; app-tool delivery arrives with MCP support.
+    async tools({ provider, capable, signal }) {
+      if (!capable) return [];
+      const search = options.search && (await options.search.status({ signal })).ready;
+      return Object.entries(TOOLS)
+        .filter(([name]) =>
+          name === 'find_images'
+            ? search
+            : isEndpoint(provider) && (name === 'read_page' || search),
+        )
+        .map(([name, { description, parameters }]) => ({
+          name,
+          description,
+          parameters,
+        }));
     },
     // turn: { conversation, reply, signal }; returns the tool's text output or throws a readable error.
     async run(name, input, turn) {
@@ -45,6 +73,8 @@ export function toolRunner(options = {}) {
       if (!input || typeof input !== 'object' || Array.isArray(input))
         throw new Error(`${name} needs its arguments as a JSON object.`);
       turn.signal?.throwIfAborted();
+      if (name !== 'read_page' && !options.search)
+        throw new Error('SearXNG is unavailable. Check Search in Settings.');
       return tool.run(input, turn, options);
     },
   };

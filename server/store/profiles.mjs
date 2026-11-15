@@ -172,6 +172,16 @@ export const profiles = {
   tutorStyle() {
     return this.db.prepare('SELECT text FROM tutor_style WHERE id=1').get()?.text ?? null;
   },
+  searxngUrl() {
+    return this.db.prepare('SELECT url FROM searxng_settings WHERE id=1').get()?.url ?? null;
+  },
+  saveSearxngUrl(url) {
+    this.db
+      .prepare(
+        'INSERT INTO searxng_settings(id,url) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET url=excluded.url',
+      )
+      .run(url);
+  },
   saveTutorStyle(text) {
     this.db
       .prepare(

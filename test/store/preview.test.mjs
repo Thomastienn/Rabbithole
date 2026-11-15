@@ -62,6 +62,7 @@ test('previews list every message in order, bound each text and survive reload w
       'evidence',
       'messages',
       'profiles',
+      'searxng_settings',
       'smart_settings',
       'suggestion_settings',
       'suggestions',

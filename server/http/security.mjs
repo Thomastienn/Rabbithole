@@ -5,7 +5,7 @@ export function secure(req, res, origin, json) {
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader(
     'Content-Security-Policy',
-    `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src ${origin}/sandbox.html ${origin}/player.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
+    `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https: http:; connect-src 'self'; frame-src ${origin}/sandbox.html ${origin}/player.html; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
   );
   // The visual sandbox has an opaque origin, so its bundled scripts and fonts arrive as cross-site CORS loads; only static GETs are opened to it.
   const sandboxAsset =

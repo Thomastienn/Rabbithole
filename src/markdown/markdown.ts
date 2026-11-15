@@ -7,6 +7,7 @@ import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
+import ReplyImage, { imageUrl } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
 export { plainText };
 
@@ -97,8 +98,11 @@ export function renderMarkdown(
   reveal?: Span,
   underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
   slots: { at: number; node: ReactNode }[] = [],
+  sources: Record<string, string> = {},
 ): ReactNode {
   let revealed = 0;
+  let imageLink: string | undefined;
+  let inLink = false;
   const stops = new Set<number>();
   const hit = (s: number, e: number) => !!reveal && s < reveal.end && e > reveal.start;
   const split = (attrs: object, s: number, e: number, cuts: number[], className?: string) =>
@@ -342,13 +346,34 @@ export function renderMarkdown(
       case 'link':
       case 'linkReference': {
         const url = n.url ?? definitions.get(n.identifier!)?.url ?? '';
+        const previous = imageLink;
+        const wasLinked = inLink;
+        imageLink = imageUrl(url);
+        inLink = /^(https?:\/\/|mailto:)/i.test(url);
+        const children = kids();
+        imageLink = previous;
+        inLink = wasLinked;
         return /^(https?:\/\/|mailto:)/i.test(url)
-          ? h('a', { ...attrs, href: url, target: '_blank', rel: 'noopener noreferrer' }, kids())
-          : h(Text, { ...attrs, type: 'inherit', children: kids() });
+          ? h('a', { ...attrs, href: url, target: '_blank', rel: 'noopener noreferrer' }, children)
+          : h(Text, { ...attrs, type: 'inherit', children });
       }
       case 'image':
-      case 'imageReference':
-        return leaf({ start: s, end: e, value: n.alt || raw.slice(s, e), atomic: true });
+      case 'imageReference': {
+        const src = imageUrl(n.url ?? definitions.get(n.identifier!)?.url ?? '');
+        return src
+          ? h(
+              'span',
+              { ...attrs, 'data-o': s, 'data-e': e, 'data-x': '' },
+              h(ReplyImage, {
+                key: src,
+                src,
+                alt: n.alt ?? '',
+                source: imageLink ?? imageUrl(sources[src]) ?? src,
+                linked: inLink,
+              }),
+            )
+          : leaf({ start: s, end: e, value: n.alt || raw.slice(s, e), atomic: true });
+      }
       case 'definition':
         return null;
       default:

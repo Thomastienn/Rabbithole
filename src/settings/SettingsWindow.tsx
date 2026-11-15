@@ -18,6 +18,7 @@ import ChatSettings from './ChatSettings';
 import SmartSettings from './SmartSettings';
 import ModelProfiles from './ModelProfiles';
 import TutorStyleSettings from './TutorStyleSettings';
+import SearchSettings from './SearchSettings';
 import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
 import type { ModelSelection } from '../chat/types';
@@ -288,6 +289,8 @@ export default function SettingsWindow({
             </Section>
             <Divider />
             <EndpointSettings api={api} models={models} changed={loadModels} />
+            <Divider />
+            <SearchSettings api={api} />
           </>,
         )}
     </VStack>
