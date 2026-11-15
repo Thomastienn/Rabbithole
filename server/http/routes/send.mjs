@@ -200,7 +200,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       const input =
         request.kind === 'video'
           ? {
-              selection: ctx.smart().resolved,
+              ...ctx.videoRoles(tree),
               request: body.text,
               intent: task.intent,
               excerpt: task.excerpt,

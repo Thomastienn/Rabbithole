@@ -97,6 +97,8 @@ export const playable = (cut) =>
 export async function generateVideo({
   provider,
   selection,
+  // The chat model writes set pieces, cuts and repairs; the smart model plans and audits (ADR 0004).
+  chat = { provider, selection },
   store,
   dir,
   artifact,
@@ -132,12 +134,14 @@ export async function generateVideo({
     }
   };
   const deadline = Date.now() + (timeout ?? 600000);
-  const call = (instructions, input, onText, images) =>
+  const caller = (base, choice) => (instructions, input, onText, images) =>
     wait(
-      videoCall(provider, selection, instructions, input, controller.signal, onText, images),
+      videoCall(base, choice, instructions, input, controller.signal, onText, images),
       Math.max(1, deadline - Date.now()),
       'Video composition timed out.',
     );
+  const call = caller(provider, selection),
+    write = caller(chat.provider, chat.selection);
   let published = false,
     count = 0;
   try {
@@ -217,6 +221,7 @@ export async function generateVideo({
       kit: KIT,
       manimKit: MANIM_KIT,
       call,
+      write,
       narrate,
       snapshot,
       check: manim.check && ((cutDir) => manim.check(cutDir, controller.signal, runtime)),

@@ -93,6 +93,7 @@ export async function writeCuts({
   kit,
   manimKit,
   call,
+  write = call,
   narrate,
   snapshot,
   check,
@@ -130,7 +131,7 @@ export async function writeCuts({
     if (attempt === CUT_ATTEMPTS) throw piecesError(error.message);
     let raw;
     try {
-      raw = await call(
+      raw = await write(
         PIECES_INSTRUCTIONS,
         JSON.stringify({
           styleBrief: plan.styleBrief,
@@ -165,7 +166,7 @@ export async function writeCuts({
       // Provider/auth failures are final; only validation/render failures spend a repair attempt.
       let raw;
       try {
-        raw = await call(
+        raw = await write(
           (cuts[index].engine === 'manim' ? MANIM_INSTRUCTIONS : CUT_INSTRUCTIONS) +
             (error ? REPAIR_NOTE : ''),
           JSON.stringify({

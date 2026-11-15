@@ -75,7 +75,9 @@ export function mediaJobs(ctx) {
     parentSignal?.addEventListener('abort', cancel, { once: true });
     if (parentSignal?.aborted) cancel();
     const input = JSON.parse(job.input),
-      selection = input.selection ?? smart().resolved;
+      selection = input.selection ?? smart().resolved,
+      // Jobs frozen before ADR 0004 hold one selection, which keeps both roles.
+      chat = input.chat ? { ...input.chat } : selection;
     videos.set(job.id, running);
     videoJobs.add(running);
     const fields = { id: job.id, task: 'video' };
@@ -85,37 +87,46 @@ export function mediaJobs(ctx) {
     stage('plan');
     running.done = Promise.resolve()
       .then(async () => {
-        const provider = pick(selection);
-        selection.model ??=
-          (await provider.model?.({ ...selection, thread: null })) ??
-          (await provider.models()).find((m) => m.isDefault)?.model ??
-          null;
-        const invalid = await selectionError(selection);
-        if (invalid)
-          throw new Error(
-            `${invalid.error} Check Smart in Settings → Models, then request a new video.`,
-          );
-        // Legacy jobs acquire a smart selection only on explicit Retry; newer jobs keep it across attempts.
-        const frozen = JSON.stringify({ ...input, selection });
+        const resolve = async (choice, role, check = true) => {
+          const provider = pick(choice);
+          choice.model ??=
+            (await provider.model?.({ ...choice, thread: null })) ??
+            (await provider.models()).find((m) => m.isDefault)?.model ??
+            null;
+          const invalid = check && (await selectionError(choice));
+          if (invalid) throw new Error(`${invalid.error} Check ${role}, then request a new video.`);
+          return provider;
+        };
+        const provider = await resolve(selection, 'Smart in Settings → Models');
+        const chatProvider =
+          chat === selection
+            ? provider
+            : // Like a reply, the chat selection is checked only when it names an effort.
+              await resolve(chat, 'the conversation’s chat model', chat.effort !== null);
+        // Legacy jobs acquire a smart selection only on explicit Retry; newer jobs keep both across attempts.
+        const frozen = JSON.stringify({ ...input, selection, ...(input.chat && { chat }) });
         const owned = store.videoInput(job.conversation, job.id, job.attempt, frozen);
         if (!owned || running.controller.signal.aborted) return;
+        // Each call is metered under the selection that made it.
+        const meter = (base, choice) => ({
+          generate: (...args) =>
+            metered(base, 'video', `${job.attempt}:${randomUUID()}`, choice, {
+              stage: args[0].instructions.startsWith('You plan')
+                ? 'plan'
+                : args[0].instructions === PIECES_INSTRUCTIONS
+                  ? 'pieces'
+                  : args[0].instructions === AUDIT_INSTRUCTIONS
+                    ? 'audit'
+                    : args[0].instructions.endsWith(REPAIR_NOTE)
+                      ? 'repair'
+                      : 'cut',
+              message: job.message,
+            }).generate(...args),
+        });
         await generateVideo({
-          provider: {
-            generate: (...args) =>
-              metered(provider, 'video', `${job.attempt}:${randomUUID()}`, selection, {
-                stage: args[0].instructions.startsWith('You plan')
-                  ? 'plan'
-                  : args[0].instructions === PIECES_INSTRUCTIONS
-                    ? 'pieces'
-                    : args[0].instructions === AUDIT_INSTRUCTIONS
-                      ? 'audit'
-                      : args[0].instructions.endsWith(REPAIR_NOTE)
-                        ? 'repair'
-                        : 'cut',
-                message: job.message,
-              }).generate(...args),
-          },
+          provider: meter(provider, selection),
           selection,
+          chat: { provider: meter(chatProvider, chat), selection: chat },
           store,
           dir,
           artifact: { ...job, input: frozen },

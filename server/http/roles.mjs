@@ -109,6 +109,11 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
       },
     };
   };
+  // A video freezes both roles at creation: smart plans and audits, the conversation's chat model writes (ADR 0004).
+  const videoRoles = (tree) => ({
+    selection: smart().resolved,
+    chat: { provider: tree.provider, model: tree.model, effort: tree.effort },
+  });
   // The chat role falls back to the default provider exactly as chatDefault does.
   const profiles = () => {
     const list = store.profiles();
@@ -197,6 +202,7 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     toolCapable,
     chatDefault,
     smart,
+    videoRoles,
     profiles,
     logged,
     metered,
