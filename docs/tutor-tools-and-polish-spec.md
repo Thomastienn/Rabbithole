@@ -60,9 +60,9 @@ Smaller fixes:
 13. As a learner, I want to expand the tool activity line to see queries, pages, code and raw output, so that I can check the tutor's work.
 14. As a learner, I want to see which tool is running while a reply streams, so that I know the tutor is working and not stuck.
 15. As a learner, I want one on/off switch per tutor tool in Settings, so that I can turn off tools I don't want.
-16. As a learner, I want to set my own SearXNG URL, so that web and image search are free and need no API key.
-17. As a learner, I want a test button for the SearXNG URL that explains what is wrong, such as JSON output being disabled, so that setup does not fail silently.
-18. As a learner, I want the search tools hidden for custom endpoints until SearXNG is set, so that the tutor never tries tools that cannot work.
+16. As a learner, I want `npm start` to set up and run a local SearXNG for me, so that web and image search work with no setup, no key and no cost.
+17. As a learner, I want to point the SearXNG URL at my own instance instead, with a test button that explains what is wrong, such as JSON output being disabled, so that I can use a SearXNG I already run.
+18. As a learner, I want the search tools hidden while no SearXNG is reachable, and start-up to continue without them, so that a failed setup never blocks the app.
 19. As a learner using Claude, I want Claude's own web search and page fetching used, so that I get the provider's best search.
 20. As a learner using Codex, I want Codex's own web search used, with the app's page reading, so that Codex has both.
 21. As a learner using a custom endpoint, I want the app's search and page reading, so that every model I choose can research.
@@ -184,8 +184,9 @@ Smaller fixes:
 
 ### `web_search` and `find_images` (SearXNG)
 
-- Settings gains an optional SearXNG URL with a Test action. The test runs a JSON search and reports specific failures, including SearXNG's JSON format being disabled. The default SearXNG settings serve HTML only, so JSON must be enabled in its settings.
-- `web_search` returns titles, URLs and snippets. `find_images` uses SearXNG's image category and returns image URL, thumbnail, title and source page. Without a URL, both are hidden for custom endpoints, and `find_images` is hidden for every provider.
+- The app manages its own SearXNG, the same way it manages Manim. On first `npm start` it installs a pinned SearXNG release into a dedicated venv with `uv`, and writes a `settings.yml` with JSON output on (the default serves HTML only), a random secret key and localhost-only binding. Every start runs it as a child process that stops with the app. If setup fails, for example with no internet on first run, start-up continues without search and Settings shows why.
+- The SearXNG URL in Settings fills itself in with the managed instance. The learner can replace it with their own instance. A Test action runs a JSON search and reports specific failures, including JSON format being disabled.
+- `web_search` returns titles, URLs and snippets. `find_images` uses SearXNG's image category and returns image URL, thumbnail, title and source page. While no SearXNG is reachable, both are hidden for custom endpoints, and `find_images` is hidden for every provider.
 
 ### `read_page`
 
@@ -293,6 +294,7 @@ Smaller fixes:
 - Undo or a size cap for the memory note.
 - Other `/teach` features: missions, glossary, HTML lessons, reference sheets, spaced review, communities and a research mode.
 - Hosted search providers such as Brave or Tavily.
+- Docker for SearXNG.
 - Free-form layout or CSS from the tutor.
 - Changes to video progress.
 
