@@ -1,0 +1,33 @@
+/* Reply layouts: comparison columns and numbered step cards; narrow replies get plain flow from Reply. */
+.reply-layout .layout-cards {
+  display: grid;
+  gap: var(--spacing-3);
+  margin: var(--spacing-3) 0;
+  padding: 0;
+}
+.layout-comparison .layout-cards {
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+.layout-steps .layout-cards {
+  list-style: none;
+  counter-reset: step;
+}
+.reply-layout .layout-card {
+  padding: var(--spacing-3) var(--spacing-4);
+  border: thin solid var(--color-border);
+  border-radius: var(--radius-inner);
+}
+.layout-steps .layout-card {
+  counter-increment: step;
+}
+.layout-steps .layout-card > :first-child::before {
+  content: counter(step) '. ';
+  color: var(--color-text-secondary);
+}
+.reply-layout .layout-card > :first-child {
+  margin-top: 0;
+}
+.reply-layout .layout-card > :last-child {
+  margin-bottom: 0;
+}

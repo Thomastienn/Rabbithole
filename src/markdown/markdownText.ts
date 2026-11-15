@@ -3,6 +3,8 @@ import { gfmTable } from 'micromark-extension-gfm-table';
 import { gfmTableFromMarkdown } from 'mdast-util-gfm-table';
 import { math } from 'micromark-extension-math';
 import { mathFromMarkdown } from 'mdast-util-math';
+import { directive } from 'micromark-extension-directive';
+import { directiveFromMarkdown } from 'mdast-util-directive';
 import type { Construct, Code, Effects, State, Extension } from 'micromark-util-types';
 import type { CompileContext, Extension as MdastExtension, Token } from 'mdast-util-from-markdown';
 
@@ -19,6 +21,13 @@ export type MarkdownNode = {
   alt?: string | null;
   identifier?: string;
   align?: ('left' | 'right' | 'center' | null)[];
+  name?: string;
+  data?: { directiveLabel?: boolean };
+};
+// Only container directives (`:::name` fences, the reply layouts): text and leaf forms would eat prose like `a:b` or `::before`.
+// directive().flow[58] is [container, leaf].
+const containerDirective: Extension = {
+  flow: { 58: [(directive().flow![58] as Construct[])[0]] },
 };
 // LaTeX \(…\) and \[…\] as inline/display math at the tokenizer, so node positions stay exact raw offsets.
 // Runs before the core backslash escape; an unclosed opener falls back to it. Inside, \x pairs are skipped.
@@ -88,8 +97,13 @@ const bracketMathFromMarkdown: MdastExtension = {
 };
 export const parse = (text: string) =>
   fromMarkdown(text, {
-    extensions: [gfmTable(), math(), bracketMathSyntax],
-    mdastExtensions: [gfmTableFromMarkdown(), mathFromMarkdown(), bracketMathFromMarkdown],
+    extensions: [gfmTable(), math(), bracketMathSyntax, containerDirective],
+    mdastExtensions: [
+      gfmTableFromMarkdown(),
+      mathFromMarkdown(),
+      bracketMathFromMarkdown,
+      directiveFromMarkdown(),
+    ],
   }) as MarkdownNode;
 
 // Derived display text only. Never replace the canonical message or its offsets with this.
@@ -105,7 +119,15 @@ export function plainText(raw: string): string {
             : (n.children ?? [])
                 .map(walk)
                 .join(
-                  ['root', 'list', 'listItem', 'blockquote', 'table', 'tableRow'].includes(n.type)
+                  [
+                    'root',
+                    'list',
+                    'listItem',
+                    'blockquote',
+                    'table',
+                    'tableRow',
+                    'containerDirective',
+                  ].includes(n.type)
                     ? ' '
                     : '',
                 )));

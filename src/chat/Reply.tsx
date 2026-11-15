@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Text } from '@astryxdesign/core/Text';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import type { Source } from '../map/TreeOverview';
@@ -8,6 +8,9 @@ import type { ToolCall } from './turn';
 import type { Artifact } from '../media/artifacts';
 import VideoCard from '../media/VideoCard';
 import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
+
+// Below this reply width, reply layouts render as plain flow.
+const LAYOUT_MIN_WIDTH = 480;
 
 // Parsing is memoised so streaming chunks and selection state changes reuse the rendered tree.
 const Reply = memo(function Reply({
@@ -32,6 +35,16 @@ const Reply = memo(function Reply({
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
 }) {
   useEffect(ensureHighlightStyles, []);
+  const box = useRef<HTMLElement>(null),
+    [narrow, setNarrow] = useState(false);
+  useLayoutEffect(() => {
+    const el = box.current!,
+      measure = () => setNarrow(el.clientWidth < LAYOUT_MIN_WIDTH);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const action = useRef(onArtifactAction),
     partAction = useRef(onVisualPart),
     openChild = useRef(onOpenChild);
@@ -43,7 +56,7 @@ const Reply = memo(function Reply({
     artifactKey = JSON.stringify(inlineArtifacts),
     visualBranchKey = JSON.stringify(visualBranches);
   return (
-    <Text as="div" type="body" className="reply-md">
+    <Text ref={box} as="div" type="body" className="reply-md">
       {useMemo(
         () =>
           renderMarkdown(
@@ -74,6 +87,7 @@ const Reply = memo(function Reply({
                 ),
             })),
             imageSources(tools),
+            narrow,
           ),
         [
           text,
@@ -86,6 +100,7 @@ const Reply = memo(function Reply({
           visualBranchKey,
           reveal?.artifactId,
           !!onArtifactAction,
+          narrow,
         ],
       )}
     </Text>

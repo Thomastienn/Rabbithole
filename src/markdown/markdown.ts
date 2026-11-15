@@ -9,6 +9,7 @@ import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
 import ReplyImage, { imageUrl, jumpToResource, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
+import './layouts.css';
 export { plainText };
 
 type Span = { start: number; end: number };
@@ -99,6 +100,7 @@ export function renderMarkdown(
   underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
   slots: { at: number; node: ReactNode }[] = [],
   sources: Record<string, ImageSource> = {},
+  flow = false,
 ): ReactNode {
   let revealed = 0;
   let imageLink: string | undefined;
@@ -387,6 +389,36 @@ export function renderMarkdown(
               }),
             )
           : leaf({ start: s, end: e, value: n.alt || raw.slice(s, e), atomic: true });
+      }
+      case 'containerDirective': {
+        // Sections start at headings of the first heading's depth; a bad shape or narrow width stays plain flow.
+        const children = n.children ?? [],
+          first = children.findIndex((c) => c.type === 'heading'),
+          depth = children[first]?.depth,
+          sections: MarkdownNode[][] = [];
+        for (const c of first < 0 ? [] : children.slice(first))
+          if (c.type === 'heading' && c.depth === depth) sections.push([c]);
+          else sections.at(-1)!.push(c);
+        const layout =
+          !flow &&
+          ((n.name === 'comparison' && sections.length >= 2 && sections.length <= 3) ||
+            (n.name === 'steps' && sections.length >= 2)) &&
+          n.name;
+        if (!layout) return kids();
+        const intro = children.slice(0, first).map((c) => node(c, inTable)),
+          cards = sections.map((section) =>
+            h(
+              layout === 'steps' ? 'li' : 'section',
+              { key: pos(section[0]).start, className: 'layout-card' },
+              section.map((c) => node(c, inTable)),
+            ),
+          );
+        return h(
+          'div',
+          { ...attrs, className: `reply-layout layout-${layout}` },
+          intro,
+          h(layout === 'steps' ? 'ol' : 'div', { className: 'layout-cards' }, cards),
+        );
       }
       case 'definition':
         return null;

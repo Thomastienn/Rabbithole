@@ -30,6 +30,10 @@ test('tutor prompt puts the tutor style first, always keeps the fixed rules and 
     TUTOR_RULES,
     /every formula[^\n]*\$\.\.\.\$[^\n]*\$\$\.\.\.\$\$[^\n]*never[^\n]*plain text/,
   );
+  assert.match(
+    TUTOR_RULES,
+    /plain flow unless a layout clearly helps[^\n]*:::comparison[^\n]*two or three[^\n]*:::steps/,
+  );
   const branch = { snapshot: 'Frozen fact', text: 'Passage' };
   const child = tutorSystem({ tutorStyle: 'Mine.', branch });
   assert.ok(child.startsWith('Mine.' + rules + '\nThis is a focused conversation'));
