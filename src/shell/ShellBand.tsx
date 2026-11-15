@@ -136,10 +136,14 @@ export default function ShellBand({
   settings: (e: MouseEvent<HTMLButtonElement>) => void;
 }) {
   const [focusMode, setFocusMode] = useState(savedFocusMode);
+  const [revealed, setRevealed] = useState(false);
   const focusToggle = useRef<HTMLButtonElement>(null);
   const toggleFocusMode = useCallback(() => {
     const restoreFocus = document.activeElement === focusToggle.current;
-    flushSync(() => setFocusMode(!focusMode));
+    flushSync(() => {
+      setFocusMode(!focusMode);
+      setRevealed(false);
+    });
     savePreference('focus-mode', focusMode ? 'off' : 'on');
     if (restoreFocus) focusToggle.current?.focus();
   }, [focusMode]);
@@ -180,7 +184,20 @@ export default function ShellBand({
       onClick={toggleFocusMode}
     />
   );
-  if (focusMode) return focusButton;
+  // Hot zone along the top edge: the restore button stays in the tab order but shows only on hover or focus.
+  if (focusMode)
+    return (
+      <div
+        className="focus-hot-zone"
+        data-revealed={revealed}
+        onMouseEnter={() => setRevealed(true)}
+        onMouseLeave={() => setRevealed(false)}
+        onFocus={() => setRevealed(true)}
+        onBlur={() => setRevealed(false)}
+      >
+        {focusButton}
+      </div>
+    );
   return mobile ? (
     <header className="shell-band">
       <IconButton

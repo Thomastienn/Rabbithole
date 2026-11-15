@@ -126,6 +126,46 @@ test('conversation previews keep every row, accessible message jumps, source-row
   assert.equal(box.querySelector('.activity-dot').hasAttribute('role'), false);
 });
 
+test('clamped conversation rows show no hover text and keep their accessible name', async (t) => {
+  const opens = [];
+  const reply = 'A long reply. '.repeat(60);
+  const data = {
+    conversation: summary('root'),
+    sources: [],
+    preview: [message('question', 'user', 'Why roots?'), message('answer', 'assistant', reply)],
+    open: (...args) => opens.push(args),
+    retry: () => {},
+    toggle: () => {},
+    active: false,
+    focused: false,
+    focus: false,
+    childCount: 0,
+    address: '1',
+    ink: 0,
+    stubs: [],
+    folded: false,
+  };
+  // Every text measures taller than its box, so a truncation tooltip would attach to each row.
+  const { container, act, cleanup } = await render(
+    h(ReactFlowProvider, null, h(Conversation, { id: 'root', data })),
+    (w) => Object.defineProperty(w.HTMLElement.prototype, 'scrollHeight', { get: () => 500 }),
+  );
+  t.after(cleanup);
+  const bubble = container.querySelectorAll('.node-bubble')[1];
+  const text = bubble.querySelector('.astryx-text, span') ?? bubble;
+  for (const type of ['pointerover', 'pointerenter', 'mouseover', 'mouseenter', 'focusin'])
+    await act(async () => text.dispatchEvent(new MouseEvent(type, { bubbles: true })));
+  await act(async () => {
+    bubble.focus();
+    await new Promise((r) => setTimeout(r, 50));
+  });
+  assert.equal(document.querySelector('[role=tooltip]'), null);
+  assert.equal(document.body.textContent.split(reply.trim()).length - 1, 1);
+  assert.equal(bubble.getAttribute('aria-label'), 'Jump to reply: ' + reply.slice(0, 79) + '…');
+  await act(async () => bubble.click());
+  assert.deepEqual(opens.at(-1), ['root', undefined, 'answer']);
+});
+
 test('fold stubs, source reveal and latest-failed-only Retry use distinct controls and preserve focus', async (t) => {
   const opens = [],
     toggles = [],

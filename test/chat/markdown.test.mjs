@@ -9,6 +9,7 @@ import { JSDOM } from 'jsdom';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { renderMarkdown, rawOffsets, rawRange, plainText } from '../../src/markdown/markdown.ts';
+import { parse } from '../../src/markdown/markdownText.ts';
 
 const raw = [
   '## Plan **bold** heading',
@@ -23,6 +24,8 @@ const raw = [
   '| cell 😀 | `c` |',
   '',
   'Inline $x^2$ math and <b>raw</b> html \\* escaped.',
+  '',
+  'Bracket \\(a+b\\) inline and \\[c^2\\] shown.',
   '',
   '$$',
   'y = mx',
@@ -92,6 +95,8 @@ test('rendered Markdown selections map to exact raw slices the branches endpoint
     [select(doc, ['first', 0, 0], ['item', 1, 4]), 'first item\n- second **item'], // across list items
     [select(doc, ['cell', 0, 0], ['cell 😀', 0, 7]), 'cell 😀'],
     [select(doc, ['Inline', 0, 7], ['math', 0, 4]), '$x^2$ math'], // starts inside atomic math
+    [select(doc, ['Bracket', 0, 3], ['inline', 0, 6]), 'cket \\(a+b\\) inline'], // across bracket inline math
+    [select(doc, ['inline and', 0, 7], ['shown', 0, 2]), 'and \\[c^2\\] sh'], // across bracket display math
     [select(doc, ['*', 0, 0], ['escaped', 0, 7]), '\\* escaped'], // decoded escape covers its source token
     [select(doc, ['const', 0, 2], ['let', 0, 3]), 'nst a = 1;\nlet'], // across highlighted code lines
   ];
@@ -414,5 +419,45 @@ test('inline media slots sit between blocks at their recorded raw offsets, unpla
   assert.deepEqual(
     [...doc.getElementById('r').children].map((e) => e.id || e.textContent),
     ['Intro paragraph.', 'chart', 'Middle paragraph.', 'pending', 'Closing paragraph.', 'late'],
+  );
+});
+
+test('LaTeX bracket delimiters parse as math with exact offsets; escaped and unclosed ones stay text', () => {
+  const nodes = (text) => {
+    const out = [];
+    const walk = (n) => (
+      n.type.toLowerCase().includes('math') && out.push(n),
+      n.children?.forEach(walk)
+    );
+    walk(parse(text));
+    return out.map((n) => [
+      n.type,
+      n.value,
+      text.slice(n.position.start.offset, n.position.end.offset),
+    ]);
+  };
+  assert.deepEqual(nodes('A \\(x^2\\) b'), [['inlineMath', 'x^2', '\\(x^2\\)']]);
+  assert.deepEqual(nodes('> see \\[\n> y = mx\n> \\] ok'), [
+    ['math', '\ny = mx\n', '\\[\n> y = mx\n> \\]'],
+  ]);
+  assert.deepEqual(nodes('- a \\(\\frac{1}{2} \\\\ c\\) d'), [
+    ['inlineMath', '\\frac{1}{2} \\\\ c', '\\(\\frac{1}{2} \\\\ c\\)'],
+  ]);
+  assert.deepEqual(nodes('literal \\\\(no\\) and \\(open'), []);
+  assert.equal(plainText('literal \\\\(no\\) and \\(open'), 'literal \\(no) and (open');
+  assert.equal(plainText('`\\(code\\)`'), '\\(code\\)');
+
+  const raw = 'Then \\[E = mc^2\\] and \\(p\\).';
+  const body = dom(renderToStaticMarkup(h('div', null, renderMarkdown(raw)))).getElementById('r');
+  const maths = [...body.querySelectorAll('math')];
+  assert.deepEqual(
+    maths.map((m) => [
+      m.getAttribute('display'),
+      raw.slice(+m.getAttribute('data-o'), +m.getAttribute('data-e')),
+    ]),
+    [
+      ['block', '\\[E = mc^2\\]'],
+      ['inline', '\\(p\\)'],
+    ],
   );
 });

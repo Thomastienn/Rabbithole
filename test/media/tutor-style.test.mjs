@@ -11,6 +11,10 @@ test('tutor prompt puts the tutor style first, always keeps the fixed rules and 
     'Teach with sports analogies.' + rules,
   );
   assert.match(TUTOR_RULES, /^Do not use tools[\s\S]*treetutor-visual[\s\S]*treetutor-video/);
+  assert.match(
+    TUTOR_RULES,
+    /every formula[^\n]*\$\.\.\.\$[^\n]*\$\$\.\.\.\$\$[^\n]*never[^\n]*plain text/,
+  );
   const branch = { snapshot: 'Frozen fact', text: 'Passage' };
   const child = tutorSystem({ tutorStyle: 'Mine.', branch });
   assert.ok(child.startsWith('Mine.' + rules + '\nThis is a focused conversation'));

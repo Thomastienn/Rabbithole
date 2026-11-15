@@ -193,6 +193,26 @@ test('focus mode survives a shell remount and ignores text entry, alternate chor
   await chord(container);
   assert.equal(container.querySelector('.shell-band'), null);
   assert.equal(localStorage.getItem('treetutor.focus-mode'), 'on');
+  const zone = container.querySelector('.focus-hot-zone');
+  const restore = button(zone, 'Show top bar');
+  assert.equal(zone.dataset.revealed, 'false', 'hidden until hovered or focused');
+  assert.notEqual(restore.tabIndex, -1, 'hidden button stays in the tab order');
+  const hover = (type) =>
+    act(async () =>
+      zone.dispatchEvent(new MouseEvent(type, { bubbles: true, relatedTarget: document.body })),
+    );
+  await hover('mouseover');
+  assert.equal(zone.dataset.revealed, 'true');
+  await hover('mouseout');
+  assert.equal(zone.dataset.revealed, 'false');
+  await act(async () => restore.focus());
+  assert.equal(zone.dataset.revealed, 'true');
+  await act(async () => restore.blur());
+  assert.equal(zone.dataset.revealed, 'false');
+  await chord(container);
+  assert.ok(container.querySelector('.shell-band'));
+  await chord(container);
+  assert.equal(container.querySelector('.shell-band'), null);
   await act(async () => mount(false));
   await act(async () => mount(true));
   assert.equal(container.querySelector('.shell-band'), null);

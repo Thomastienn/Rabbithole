@@ -190,6 +190,7 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                       color={m.role === 'user' ? 'primary' : 'secondary'}
                       className={m.role === 'user' ? 'question-bubble' : undefined}
                       maxLines={3}
+                      hasTruncateTooltip={false}
                     >
                       <Text type="inherit" className="sr-only">
                         {m.role === 'user' ? 'Question: ' : 'Answer: '}
