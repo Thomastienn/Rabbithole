@@ -10,6 +10,16 @@ test('tutor prompt puts the tutor style first, always keeps the fixed rules and 
     tutorSystem({ tutorStyle: '  Teach with sports analogies. ' }),
     'Teach with sports analogies.' + rules,
   );
+  for (const rule of [
+    /Answer the question fully first; never hold an answer back behind questions/,
+    /Teach at the learner's level/,
+    /one optional practice step or check-yourself visual/,
+    /Back specific claims with resources, and recommend one primary resource/,
+    /option about the same length and vary the right answer's position/,
+    /at most one question per reply, at the end, and only when it helps/,
+    /Search only for specific facts, figures, dates or recent events, or when you are unsure/,
+  ])
+    assert.match(DEFAULT_TUTOR_STYLE, rule);
   assert.match(TUTOR_RULES, /^Do not use tools[\s\S]*treetutor-visual[\s\S]*treetutor-video/);
   assert.match(
     TUTOR_RULES,
