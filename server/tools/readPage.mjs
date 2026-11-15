@@ -2,11 +2,14 @@ import http from 'node:http';
 import https from 'node:https';
 import { lookup as dnsLookup } from 'node:dns';
 import { BlockList, isIP } from 'node:net';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 
 export const PAGE_SIZE = 20000;
 const MAX_BYTES = 5 * 1024 * 1024,
+  SAVE_BYTES = 20 * 1024 * 1024,
   MAX_REDIRECTS = 5,
   TIMEOUT = 30000;
 
@@ -84,14 +87,14 @@ function request(url, signal, lookup, isPublic) {
   });
 }
 
-async function body(response) {
+async function body(response, limit) {
   const chunks = [];
   let size = 0;
   for await (const chunk of response) {
     size += chunk.length;
-    if (size > MAX_BYTES) {
+    if (size > limit) {
       response.destroy();
-      throw new Error('read_page stopped: the page is larger than 5 MB.');
+      throw new Error(`read_page stopped: the page is larger than ${limit / 1024 / 1024} MB.`);
     }
     chunks.push(chunk);
   }
@@ -114,8 +117,8 @@ function readable(html, url) {
 
 // Fetches a public http(s) page on the server and returns its readable text, PAGE_SIZE characters at a time.
 export async function readPage(
-  { url, offset = 0 },
-  { signal, lookup = dnsLookup, isPublic = publicAddress } = {},
+  { url, offset = 0, save_as },
+  { signal, lookup = dnsLookup, isPublic = publicAddress, workspace } = {},
 ) {
   let target;
   try {
@@ -125,6 +128,16 @@ export async function readPage(
   }
   if (!Number.isSafeInteger(offset) || offset < 0)
     throw new Error('read_page offset must be a whole number of characters, 0 or more.');
+  // Trust boundary: a plain filename only, so a save cannot leave the workspace.
+  if (
+    save_as !== undefined &&
+    (typeof save_as !== 'string' || !/^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99}$/.test(save_as))
+  )
+    throw new Error(
+      'read_page save_as must be a plain filename of letters, digits, dot, dash or underscore.',
+    );
+  if (save_as !== undefined && !workspace)
+    throw new Error('read_page cannot save files: offline Python is unavailable.');
   const timed = AbortSignal.any([AbortSignal.timeout(TIMEOUT), ...(signal ? [signal] : [])]);
   for (let redirects = 0; ; redirects++) {
     if (!['http:', 'https:'].includes(target.protocol))
@@ -143,11 +156,22 @@ export async function readPage(
     }
     const type = String(response.headers['content-type'] ?? '').toLowerCase();
     const html = /html|xml/.test(type);
-    if (!html && !/^text\/|json/.test(type)) {
+    const textual = html || /^text\/|json/.test(type);
+    if (!textual && save_as === undefined) {
       response.destroy();
       throw new Error(`read_page cannot read ${type || 'unknown'} content as text.`);
     }
-    const raw = (await body(response)).toString('utf8');
+    const bytes = await body(response, save_as === undefined ? MAX_BYTES : SAVE_BYTES);
+    let saved = [];
+    if (save_as !== undefined) {
+      await mkdir(workspace, { recursive: true, mode: 0o700 });
+      await writeFile(join(workspace, save_as), bytes);
+      saved = [`Saved ${bytes.length} bytes as ${save_as} in the Python workspace.`];
+      // Binary or very large saves skip text extraction; Python reads the file instead.
+      if (!textual || bytes.length > MAX_BYTES)
+        return [`URL: ${target.href}`, `Content type: ${type || 'unknown'}`, ...saved].join('\n');
+    }
+    const raw = bytes.toString('utf8');
     const page = html ? readable(raw, target.href) : { title: '', text: raw };
     const text = page.text
       .replace(/[ \t\r]+\n/g, '\n')
@@ -157,6 +181,7 @@ export async function readPage(
     return [
       `URL: ${target.href}`,
       ...(page.title ? [`Title: ${page.title.trim()}`] : []),
+      ...saved,
       offset >= text.length
         ? `Offset ${offset} is past the end; the page has ${text.length} characters.`
         : `Characters ${offset}–${end} of ${text.length}.` +

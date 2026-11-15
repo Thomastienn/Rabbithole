@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { mediaPath } from '../../media/videos.mjs';
+import { pythonWorkspace } from '../../tools/python.mjs';
 import { LABELS, isEndpoint } from '../roles.mjs';
 import { anchorOf, compactionPrompt } from '../jobs/compaction.mjs';
 import { sendRoute } from './send.mjs';
@@ -168,8 +169,10 @@ export async function treeRoutes(req, res, url, ctx, body) {
     for (const path of files) rmSync(path, { recursive: true, force: true });
     for (const [, moved] of staged) rmSync(moved, { recursive: true, force: true });
     // shortcut: attachment folders are removed after commit, so a crash in between leaves files behind; stage them like videos if that matters.
-    for (const conversation of result.deleted)
+    for (const conversation of result.deleted) {
       rmSync(join(dir, 'attachments', conversation), { recursive: true, force: true });
+      rmSync(pythonWorkspace(dir, conversation), { recursive: true, force: true });
+    }
     return json(res, 200, result);
   }
   if (action === 'position') {

@@ -50,6 +50,13 @@ Prerequisites: {{dependsOn}}
 {{/if}}
 
 ## Completion
+Before completing, these must all pass; fix any failure first:
+```
+npm run format:check
+npx tsc --noEmit
+find server scripts -name '*.mjs' -print0 | xargs -0 -n1 node --check
+npm test
+```
 After the acceptance checks pass, record the result in the issue notes and
 append it to the end of `.ralph-tui/progress.md`, then run:
 ```

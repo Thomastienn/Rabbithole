@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, get } from 'node:http';
 import { isIP } from 'node:net';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { readPage, publicAddress, PAGE_SIZE } from '../../server/tools/readPage.mjs';
 import { toolRunner } from '../../server/tools/runner.mjs';
 
@@ -35,6 +38,7 @@ async function pageServer(t) {
       '/to-file': () => res.writeHead(302, { Location: 'file:///etc/passwd' }).end(),
       '/loop': () => res.writeHead(302, { Location: '/loop' }).end(),
       '/image': () => res.writeHead(200, { 'Content-Type': 'image/png' }).end('PNG'),
+      '/data.csv': () => res.writeHead(200, { 'Content-Type': 'text/csv' }).end('x,y\n1,2\n'),
       '/missing': () => res.writeHead(404).end(),
       '/slow': () => {},
     };
@@ -245,4 +249,39 @@ test('tool runner: capable custom endpoint and Codex models get read_page; Claud
     local.run('read_page', { url: `${site}/article` }, { ...turn, signal: stopped.signal }),
     { name: 'AbortError' },
   );
+});
+
+test('read_page save_as writes the raw response into the Python workspace, any type, plain filenames only', async (t) => {
+  const { site, options } = await pageServer(t);
+  const workspace = join(mkdtempSync(join(tmpdir(), 'treetutor-save-')), 'python', 'c');
+  const csv = await readPage(
+    { url: `${site}/data.csv`, save_as: 'data.csv' },
+    { ...options, workspace },
+  );
+  assert.match(csv, /Saved 8 bytes as data.csv in the Python workspace/);
+  assert.match(csv, /x,y/);
+  assert.equal(readFileSync(join(workspace, 'data.csv'), 'utf8'), 'x,y\n1,2\n');
+  const png = await readPage(
+    { url: `${site}/image`, save_as: 'img.png' },
+    { ...options, workspace },
+  );
+  assert.match(png, /Content type: image\/png\nSaved 3 bytes as img.png/);
+  assert.equal(readFileSync(join(workspace, 'img.png'), 'utf8'), 'PNG');
+  for (const save_as of ['../escape', '.hidden', 'a/b', '', 'x'.repeat(101), 5])
+    await assert.rejects(
+      readPage({ url: `${site}/data.csv`, save_as }, { ...options, workspace }),
+      /plain filename/,
+      String(save_as),
+    );
+  await assert.rejects(
+    readPage({ url: `${site}/data.csv`, save_as: 'd.csv' }, options),
+    /offline Python is unavailable/,
+  );
+
+  // The runner saves into the conversation's workspace under the data directory.
+  const dir = mkdtempSync(join(tmpdir(), 'treetutor-runner-'));
+  const runner = toolRunner({ readPage: options, dir });
+  const turn = { conversation: 'c7', reply: 'r', signal: new AbortController().signal };
+  await runner.run('read_page', { url: `${site}/data.csv`, save_as: 'd.csv' }, turn);
+  assert.equal(readFileSync(join(dir, 'python', 'c7', 'd.csv'), 'utf8'), 'x,y\n1,2\n');
 });

@@ -157,7 +157,7 @@ export class Claude {
     let item,
       started = session,
       result;
-    const native = toolEvents(emit);
+    const nativeEvents = toolEvents(emit);
     const blocks = new Map();
     const nativeCall = (block) => ['WebSearch', 'WebFetch'].includes(block?.name);
     try {
@@ -182,13 +182,13 @@ export class Claude {
             const e = m.event;
             if (e?.type === 'content_block_start' && nativeCall(e.content_block)) {
               blocks.set(e.index, { ...e.content_block, json: '' });
-              native.start(e.content_block.id, e.content_block.name, e.content_block.input);
+              nativeEvents.start(e.content_block.id, e.content_block.name, e.content_block.input);
             }
             const block = blocks.get(e?.index);
             if (block && e.delta?.type === 'input_json_delta') block.json += e.delta.partial_json;
             if (block && e.type === 'content_block_stop' && block.json) {
               try {
-                native.start(block.id, block.name, JSON.parse(block.json));
+                nativeEvents.start(block.id, block.name, JSON.parse(block.json));
               } catch {
                 /* Full assistant message can supply arguments. */
               }
@@ -200,7 +200,7 @@ export class Claude {
           if (m.type === 'assistant' && m.message?.model !== '<synthetic>') {
             if (toolsOn)
               for (const block of m.message?.content ?? [])
-                if (nativeCall(block)) native.start(block.id, block.name, block.input);
+                if (nativeCall(block)) nativeEvents.start(block.id, block.name, block.input);
             const full = (m.message?.content ?? [])
               .filter((c) => c.type === 'text')
               .map((c) => c.text)
@@ -210,7 +210,7 @@ export class Claude {
           if (toolsOn && m.type === 'user')
             for (const block of m.message?.content ?? [])
               if (block.type === 'tool_result')
-                native.finish(
+                nativeEvents.finish(
                   block.tool_use_id,
                   typeof block.content === 'string' ? block.content : JSON.stringify(block.content),
                   block.is_error,
@@ -231,7 +231,7 @@ export class Claude {
         });
       });
     } finally {
-      native.close();
+      nativeEvents.close();
       signal.removeEventListener('abort', kill);
       this.children.delete(child);
     }

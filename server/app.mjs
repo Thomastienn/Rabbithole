@@ -63,6 +63,7 @@ export function createApp({
   desktop = systemDesktop,
   recognize = tesseractOcr(dir),
   tools,
+  python,
   searxng = () => ({ ready: false, url: null, error: 'SearXNG is not managed by this server.' }),
 }) {
   const search = searxngSearch({ store, managed: searxng });
@@ -88,7 +89,8 @@ export function createApp({
     suggestionTimeout,
     desktop,
     recognize,
-    tools: tools ?? toolRunner({ search }),
+    tools: tools ?? toolRunner({ search, python, dir }),
+    python,
     mcp: toolMcp(),
     search,
     stopping: false,

@@ -1,10 +1,12 @@
 import { isEndpoint } from '../http/roles.mjs';
 import { readPage } from './readPage.mjs';
+import { pythonWorkspace } from './python.mjs';
 
 export const TUTOR_TOOLS = {
   web_search: 'Web search',
   read_page: 'Read pages',
   find_images: 'Find images',
+  run_python: 'Run Python',
 };
 
 // Provider-native equivalents follow the same switches as the app tools.
@@ -53,15 +55,50 @@ const TOOLS = {
           minimum: 0,
           description: 'Character offset to continue from; 0 or omitted for the start.',
         },
+        save_as: {
+          type: 'string',
+          pattern: '^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99}$',
+          description:
+            'Optional plain filename (for example data.csv). Saves the raw response, up to 20 MB and of any type, into the Python workspace so run_python can open it by that name.',
+        },
       },
       required: ['url'],
       additionalProperties: false,
     },
-    run: (input, turn, options) => readPage(input, { signal: turn.signal, ...options.readPage }),
+    run: (input, turn, options) =>
+      readPage(input, {
+        signal: turn.signal,
+        workspace: options.dir && pythonWorkspace(options.dir, turn.conversation),
+        ...options.readPage,
+      }),
+  },
+  run_python: {
+    description:
+      'Run Python 3.12 offline in a fresh sandboxed process with numpy, scipy, sympy and pandas; no other packages can be installed. ' +
+      'Returns the exit code and raw stdout and stderr, each truncated after 20000 characters, so print what you need. ' +
+      'It has no network access and cannot display files, figures or images to the learner. ' +
+      'Files in the working directory persist for this conversation, including files saved by read_page save_as.',
+    parameters: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Python source to run as a script.' },
+        timeout: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 600,
+          description:
+            'Time limit in seconds; 60 if omitted, 600 at most. The run is killed at the limit.',
+        },
+      },
+      required: ['code'],
+      additionalProperties: false,
+    },
+    run: (input, turn, options) => options.python.run(input, turn),
   },
 };
 
 // options.readPage passes lookup and address checks through, for tests against local fakes.
+// options.python is the sandboxed run_python ({ status, run }); options.dir holds Python workspaces.
 export function toolRunner(options = {}) {
   return {
     // Native providers keep their own web tools where available.
@@ -71,14 +108,18 @@ export function toolRunner(options = {}) {
         (settings.web_search !== false || settings.find_images !== false) &&
         options.search &&
         (await options.search.status({ signal })).ready;
+      const python =
+        settings.run_python !== false && options.python && (await options.python.status()).ready;
       return Object.entries(TOOLS)
         .filter(([name]) => settings[name] !== false)
         .filter(([name]) =>
-          name === 'find_images'
-            ? search
-            : name === 'read_page'
-              ? isEndpoint(provider) || provider === 'codex'
-              : isEndpoint(provider) && search,
+          name === 'run_python'
+            ? python
+            : name === 'find_images'
+              ? search
+              : name === 'read_page'
+                ? isEndpoint(provider) || provider === 'codex'
+                : isEndpoint(provider) && search,
         )
         .map(([name, { description, parameters }]) => ({
           name,
@@ -93,7 +134,9 @@ export function toolRunner(options = {}) {
       if (!input || typeof input !== 'object' || Array.isArray(input))
         throw new Error(`${name} needs its arguments as a JSON object.`);
       turn.signal?.throwIfAborted();
-      if (name !== 'read_page' && !options.search)
+      if (name === 'run_python' && !options.python)
+        throw new Error('Offline Python is unavailable. Check Tutor tools in Settings.');
+      if (!['read_page', 'run_python'].includes(name) && !options.search)
         throw new Error('SearXNG is unavailable. Check Search in Settings.');
       return tool.run(input, turn, options);
     },

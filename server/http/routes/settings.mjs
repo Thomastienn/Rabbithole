@@ -5,16 +5,22 @@ import { DEFAULT_TUTOR_STYLE } from '../../media/diagrams.mjs';
 // Model profiles, chat, smart and suggestion settings, and custom endpoints.
 export async function settingsRoutes(req, res, url, ctx, body) {
   const { store, json, endpoint, selectionError, chatDefault, smart, profiles } = ctx;
-  const tutorTools = () => {
+  const tutorTools = async () => {
     const settings = store.tutorTools();
+    const python = await ctx.python?.status();
     return Object.entries(TUTOR_TOOLS).map(([name, label]) => ({
       name,
       label,
       enabled: settings[name] !== false,
+      // Setup steps for a tool that stays hidden until installed.
+      ...(name === 'run_python' &&
+        !python?.ready && {
+          setup: python?.error ?? 'Offline Python is not set up on this server.',
+        }),
     }));
   };
   if (req.method === 'GET') {
-    if (url.pathname === '/api/settings/tutor-tools') return json(res, 200, tutorTools());
+    if (url.pathname === '/api/settings/tutor-tools') return json(res, 200, await tutorTools());
     if (url.pathname === '/api/settings/searxng') return json(res, 200, await ctx.search.status());
     if (url.pathname === '/api/settings/endpoint' && endpoint)
       return json(res, 200, endpoint.status());
@@ -34,7 +40,7 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     if (!Object.hasOwn(TUTOR_TOOLS, body?.name) || typeof body?.enabled !== 'boolean')
       return json(res, 400, { error: 'Choose a listed tutor tool and turn it on or off.' });
     store.saveTutorTool(body.name, body.enabled);
-    return json(res, 200, tutorTools());
+    return json(res, 200, await tutorTools());
   }
   if (['/api/settings/searxng', '/api/settings/searxng/test'].includes(url.pathname)) {
     try {

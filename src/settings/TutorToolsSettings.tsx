@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Switch } from '@astryxdesign/core/Switch';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { Section } from './InterfaceSettings';
 
-type Tool = { name: string; label: string; enabled: boolean };
+type Tool = { name: string; label: string; enabled: boolean; setup?: string };
 
 export default function TutorToolsSettings({
   api,
@@ -34,24 +34,26 @@ export default function TutorToolsSettings({
       description="Tools available to chat models that use tutor tools. Turning a tool off hides it from every provider on the next reply. Quick thinking and smart models stay tool-free."
     >
       {tools?.map((tool) => (
-        <Switch
-          key={tool.name}
-          label={tool.label}
-          value={tool.enabled}
-          isDisabled={!!pending}
-          isLoading={pending === tool.name}
-          onChange={async (enabled) => {
-            setPending(tool.name);
-            setError('');
-            try {
-              setTools(await api('/api/settings/tutor-tools', { name: tool.name, enabled }));
-            } catch (e) {
-              setError((e as Error).message);
-            } finally {
-              setPending('');
-            }
-          }}
-        />
+        <Fragment key={tool.name}>
+          <Switch
+            label={tool.label}
+            value={tool.enabled}
+            isDisabled={!!pending}
+            isLoading={pending === tool.name}
+            onChange={async (enabled) => {
+              setPending(tool.name);
+              setError('');
+              try {
+                setTools(await api('/api/settings/tutor-tools', { name: tool.name, enabled }));
+              } catch (e) {
+                setError((e as Error).message);
+              } finally {
+                setPending('');
+              }
+            }}
+          />
+          {tool.setup && <Text type="supporting">{tool.setup}</Text>}
+        </Fragment>
       ))}
       {pending === 'loading' && (
         <Text type="supporting" role="status">

@@ -1,0 +1,39 @@
+{
+  "issue": "TreeTutor-egp.5",
+  "result": "PASS",
+  "bubblewrapNetworkUnshare": "bwrap --unshare-all on this machine shows only lo in /proc/net/dev; socket connect to 1.1.1.1 fails with ENETUNREACH (errno 101)",
+  "packages": [
+    "numpy==2.5.4",
+    "scipy==1.18.1",
+    "sympy==1.14.0",
+    "pandas==3.1.1"
+  ],
+  "realSandbox": {
+    "command": "npm run test:python",
+    "output": [
+      "PASS: numpy and sympy compute and return raw stdout.",
+      "PASS: internet and host loopback are unreachable.",
+      "PASS: home (.9router) and app data (secret.txt) are invisible.",
+      "PASS: read_page save_as data and earlier files are readable from Python.",
+      "PASS: the time limit and Stop kill a stuck run.",
+      "Real Python sandbox passed."
+    ]
+  },
+  "liveTurn": {
+    "date": "2026-11-15T08:30:38.794Z",
+    "provider": "claude",
+    "model": "haiku",
+    "tools": [
+      {
+        "name": "run_python",
+        "status": "done",
+        "input": {
+          "code": "import numpy as np\nimport sympy as sp\n\nA = np.array([[2, 1], [1, 3]])\nprint(\"numpy det:\", np.linalg.det(A))\n\nx = sp.symbols('x')\nprint(\"sympy integral:\", sp.integrate(x**2, (x, 0, 3)))"
+        },
+        "output": "Exit code: 0\n--- stdout ---\nnumpy det: 5.000000000000001\nsympy integral: 9\n\n--- stderr ---\n"
+      }
+    ],
+    "reply": "Here is the raw output from the tool, verbatim:\n\n```\n--- stdout ---\nnumpy det: 5.000000000000001\nsympy integral: 9\n\n--- stderr ---\n```\n\nThe determinant is exactly $5$. NumPy printed $5.000000000000001$ because it uses floating-point arithmetic, which can introduce tiny rounding errors. For a $2 \\times 2$ matrix $\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$, the determinant is $ad - bc$, so here it is $2 \\cdot 3 - 1 \\cdot 1 = 5$.\n\nThe integral is exactly $9$, since $\\int_0^3 x^2\\,dx = \\left[\\frac{x^3}{3}\\right]_0^3 = \\frac{27}{3} = 9$."
+  },
+  "scope": "Live turn: real Claude Code CLI (haiku) through the app MCP server and real bubblewrap sandbox, synthetic prompt. test:python: real bwrap and .venv-python; read_page served by a local HTTP server with the address check overridden for the test."
+}

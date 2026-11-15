@@ -9,6 +9,7 @@
 # Local app build and dependencies
 node_modules/
 .venv/
+.venv-python/
 dist/
 .impeccable/review/
 

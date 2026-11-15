@@ -10,6 +10,7 @@ import { Claude } from './providers/claude.mjs';
 import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
 import { managedSearxng } from './searxng.mjs';
+import { pythonTool } from './tools/python.mjs';
 
 process.umask(0o077);
 const dir = resolve(
@@ -69,6 +70,7 @@ try {
     dir,
     suggestions: true,
     searxng: searxng.status,
+    python: pythonTool({ dir }),
   });
   await new Promise((resolve, reject) => {
     app.server.once('error', reject);
