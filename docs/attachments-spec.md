@@ -71,6 +71,7 @@ Each chip says how its file reached the tutor: sent as image, read as text, or O
   - Custom endpoints: OpenAI-compatible content arrays with `image_url` data URLs, only on the turn the attachment belongs to; history turns replace each image with `[image: name]`.
 - **Compaction.** The quick thinking model receives attachment text and image names only.
 - **Chip.** A message attachment chip shows name, type icon and delivery label; the OCR state adds an icon with an explanatory popover. The composer shows pending chips with remove buttons. Paste and drop feed the same handler as the paperclip.
+  - Superseded on 2026-11-14 by the attachment layout redesign (epic TreeTutor-ppo, mockup `docs/mockups/attachments.html`, DESIGN.md Attachments). The chip becomes a **slip**. A sent question shows its files above the bubble, with images as **plates**. Pending files sit in a tray inside the composer. Dragging files over the composer shows a drop state. The slip's meta line shows type and size before sending and type and delivery after; it shows no page or image counts. Unsupported types are refused in the browser when added, and the server refusal stays as the backstop.
 - **Dependencies.** Only widely used, actively maintained libraries: `pdfjs-dist` (Mozilla) and `tesseract.js`. Normal semver ranges; no exact pins required.
 
 ## Testing Decisions

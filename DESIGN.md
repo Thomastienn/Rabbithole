@@ -347,6 +347,14 @@ Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%
 - **Composer:** Raised Bark, a 4px container corner and a Seam Strong hairline. On focus, the border and a 1px ring turn Paper. Send is a Leaf Green square at 3px. The model chip and Stop inside it rest on a hover-tone fill with no outline of their own.
 - **Streaming:** an 8px leaf caret after the last written block, and a pulsing 8px leaf dot in the reply status.
 
+### Attachments
+Reference: `docs/mockups/attachments.html`.
+- **Slip:** every file has the same shape. A slip is 48px tall with a 3px corner and no border. It is Raised Bark on the ground and Deep Panel inside the composer, so the composer stays the only frame. It holds a 32px tile, the name and a meta line. The tile shows a thumbnail, or the file type in Archivo 11px bold Paper Muted. The name is 13px weight 600, ellipsised. The meta line is 12px Paper Muted with tabular figures.
+- **Meta line:** before sending, it shows the type and size. After sending, it shows the type and delivery: Sent as image, Read as text, "Read as text, sent as images" for a mixed PDF, or OCR text.
+- **Sent question:** the files sit right-aligned above the question bubble, 8px above it, and wrap within 85% of the column. Images are **plates**: a 160×120 cover-fitted image at the container corner with the name and delivery below. A question made only of files draws no bubble. The whole slip or plate opens the file in a new tab. The focus ring is a paper outline on the slip.
+- **Composer tray:** pending slips sit in a grid at the head of the composer, in columns of at least 208px with an 8px gap. Each slip ends in a 24px ghost remove button. While files are dragged over the composer, its stroke turns dashed Paper and an opaque note reads "Drop to attach".
+- **OCR:** a 24px ghost magnifier on the slip opens a 280px popover that explains OCR. It is never rose, because OCR is not a failure. Only a refused file (one rose line inside the composer) and a refused send (a failure banner above the composer) use rose.
+
 ### Learning tree map (signature)
 - **Conversation node:** a 16rem Raised Bark box at 3px with a seam border, topped by a flat **ink band** (Paper for the trunk) that carries the address and title. On hover the border becomes Paper Muted, and focus draws a paper outline.
 - **Branch lines:** 2px, round-capped, in the family ink (Paper at 75% for the trunk). The focused branch is 2.5px. A new branch draws on over 350ms ease-out and appears at once under reduced motion. Folded branches end in a dashed ink stub with a dashed pill showing the count.
