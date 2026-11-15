@@ -358,6 +358,7 @@ export default function ChatPage({
           providers={providers}
           modelError={modelError}
           loadModels={loadModels}
+          profileActivated={model.profileActivated}
           conceptNameTokens={state?.conceptNameTokens}
           auth={state?.auth}
           signIn={signIn}

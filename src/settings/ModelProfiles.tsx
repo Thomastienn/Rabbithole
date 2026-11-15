@@ -37,6 +37,7 @@ export default function ModelProfiles({
   reloadModels,
   connections,
   version,
+  onActivated,
   children,
 }: {
   api: (path: string, body?: unknown) => Promise<any>;
@@ -46,6 +47,7 @@ export default function ModelProfiles({
   reloadModels: () => Promise<void>;
   connections: () => void;
   version: number;
+  onActivated: (chat: ChatSelection) => void;
   children: ReactNode;
 }) {
   const [list, setList] = useState<{ active: string; profiles: Profile[] }>();
@@ -75,7 +77,13 @@ export default function ModelProfiles({
   }
   // New and Duplicate switch to the created profile (always listed last) so the next edits land in it.
   const activateNewest = (next: { active: string; profiles: Profile[] }) =>
-    api('/api/profiles/active', { id: next.profiles.at(-1)!.id });
+    activate(next.profiles.at(-1)!.id);
+  // The open conversation follows the newly active profile's chat model.
+  const activate = async (id: string) => {
+    const next: { active: string; profiles: Profile[] } = await api('/api/profiles/active', { id });
+    onActivated(next.profiles.find((p) => p.id === next.active)!.chat);
+    return next;
+  };
   async function refresh() {
     setRefreshing(true);
     try {
@@ -164,7 +172,7 @@ export default function ModelProfiles({
               description: summary(p),
             }))}
             onChange={(id) => {
-              if (id !== list?.active) void run(api('/api/profiles/active', { id }));
+              if (id !== list?.active) void run(activate(id));
             }}
           />
         )}

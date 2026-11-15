@@ -79,7 +79,7 @@ function server() {
   return { api, state, active };
 }
 
-function Roles({ api }) {
+function Roles({ api, onActivated = () => {} }) {
   const [chatVersion, setChat] = useState(0),
     [rolesVersion, setRoles] = useState(0);
   return h(
@@ -92,6 +92,7 @@ function Roles({ api }) {
       reloadModels: async () => {},
       connections: () => {},
       version: rolesVersion,
+      onActivated,
     },
     h(ChatSettings, {
       api,
@@ -132,9 +133,14 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
     quick: { enabled: true, model: { provider: 'openai', model: 'retired' }, effort: null },
   });
   let dom;
-  const { container, act, cleanup } = await render(h(Roles, { api: fake.api }), (w) => {
-    dom = ui(w);
-  });
+  const activated = [];
+  const onActivated = (chat) => activated.push(chat);
+  const { container, act, cleanup } = await render(
+    h(Roles, { api: fake.api, onActivated }),
+    (w) => {
+      dom = ui(w);
+    },
+  );
   t.after(cleanup);
   const settle = () => act(async () => dom.frames());
   await settle();
@@ -218,6 +224,7 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
   );
   await settle();
   assert.equal(table().getAttribute('aria-label'), 'Roles in Deep study');
+  assert.deepEqual(activated, [fake.active().chat], 'the open conversation gets the chat default');
   assert.match(container.textContent, /Quick thinking model unavailable/);
   assert.deepEqual(fake.active().quick.model, { provider: 'openai', model: 'retired' });
   await choose('Model profile', 'Default');

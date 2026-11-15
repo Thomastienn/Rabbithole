@@ -20,6 +20,7 @@ import ModelProfiles from './ModelProfiles';
 import TutorStyleSettings from './TutorStyleSettings';
 import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
+import type { ModelSelection } from '../chat/types';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
 import InterfaceSettings, { Section } from './InterfaceSettings';
 
@@ -65,6 +66,7 @@ export default function SettingsWindow({
   providers,
   modelError,
   loadModels,
+  profileActivated,
   conceptNameTokens,
   auth,
   signIn,
@@ -82,6 +84,7 @@ export default function SettingsWindow({
   providers?: Record<string, { label: string; connected: boolean }>;
   modelError: string;
   loadModels: () => Promise<void>;
+  profileActivated: (chat: ModelSelection) => void;
   conceptNameTokens?: number;
   auth?: { connected: boolean; email: string | null };
   signIn: () => Promise<void>;
@@ -188,6 +191,7 @@ export default function SettingsWindow({
               reloadModels={loadModels}
               connections={() => showTab('connections')}
               version={rolesVersion}
+              onActivated={profileActivated}
             >
               <ChatSettings
                 api={api}

@@ -14,6 +14,7 @@ export function useChatModel(c: ChatState) {
   const [savingModel, setSavingModel] = useState<string>();
   const [modelMenuOpen, setModelMenuOpen] = useState(false),
     [openingModels, setOpeningModels] = useState(false);
+  const [profileSwitch, setProfileSwitch] = useState<ModelSelection & { id: string }>();
   const modelRequest = useRef(0);
   async function loadModels() {
     const version = ++modelRequest.current;
@@ -60,7 +61,7 @@ export function useChatModel(c: ChatState) {
     setOpeningModels(false);
     if (selected.current === id) setModelMenuOpen(true);
   }
-  async function changeModel(provider: string, model: string, effort: string | null) {
+  async function changeModel(provider: string, model: string | null, effort: string | null) {
     if (!tree || savingModel) return;
     const id = tree.id;
     setSavingModel(id);
@@ -85,6 +86,18 @@ export function useChatModel(c: ChatState) {
   useEffect(() => {
     setModelNotice('');
   }, [tree?.id]);
+  // A profile switch reaches the conversation open at the time; a streaming reply finishes on its old model first.
+  const profileActivated = (chat: ModelSelection) =>
+    setProfileSwitch(tree ? { ...chat, id: tree.id } : undefined);
+  const streaming = !!tree && !!state?.active.includes(tree.id);
+  useEffect(() => {
+    if (!profileSwitch) return;
+    // shortcut: leaving the conversation before its reply ends drops the switch; apply by id if that matters.
+    if (tree?.id !== profileSwitch.id) return setProfileSwitch(undefined);
+    if (streaming || savingModel) return;
+    setProfileSwitch(undefined);
+    void changeModel(profileSwitch.provider, profileSwitch.model, profileSwitch.effort);
+  }, [profileSwitch, tree?.id, streaming, savingModel]);
   async function signIn() {
     const result = await api('/api/auth', {});
     window.location.assign(result.url);
@@ -131,6 +144,7 @@ export function useChatModel(c: ChatState) {
     loadModels,
     openModels,
     chooseModel,
+    profileActivated,
     signIn,
     codexFallback,
     composition,
