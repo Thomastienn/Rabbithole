@@ -9,7 +9,7 @@ import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
 import ReplyImage, { imageUrl, jumpToResource, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
-import './layouts.css';
+import { layout } from './layouts.ts';
 export { plainText };
 
 type Span = { start: number; end: number };
@@ -180,6 +180,8 @@ export function renderMarkdown(
     n.children?.forEach(findDefinitions);
   }
   findDefinitions(tree);
+  // Shared so a figure or gallery can claim the visuals placed inside it before the root places the rest.
+  const pending = [...slots].sort((a, b) => a.at - b.at);
   function node(n: MarkdownNode, inTable = false): ReactNode {
     const before = revealed,
       result = renderNode(n, inTable),
@@ -208,11 +210,10 @@ export function renderMarkdown(
     const attrs = { key: `${n.type}-${s}` };
     switch (n.type) {
       case 'root': {
-        const pending = [...slots].sort((a, b) => a.at - b.at),
-          take = (until: number) =>
-            pending
-              .splice(0, pending.filter((slot) => slot.at <= until).length)
-              .map((slot) => slot.node);
+        const take = (until: number) =>
+          pending
+            .splice(0, pending.filter((slot) => slot.at <= until).length)
+            .map((slot) => slot.node);
         return [
           ...(n.children ?? []).flatMap((c) => [...take(pos(c).start), node(c)]),
           ...take(Infinity),
@@ -390,36 +391,8 @@ export function renderMarkdown(
             )
           : leaf({ start: s, end: e, value: n.alt || raw.slice(s, e), atomic: true });
       }
-      case 'containerDirective': {
-        // Sections start at headings of the first heading's depth; a bad shape or narrow width stays plain flow.
-        const children = n.children ?? [],
-          first = children.findIndex((c) => c.type === 'heading'),
-          depth = children[first]?.depth,
-          sections: MarkdownNode[][] = [];
-        for (const c of first < 0 ? [] : children.slice(first))
-          if (c.type === 'heading' && c.depth === depth) sections.push([c]);
-          else sections.at(-1)!.push(c);
-        const layout =
-          !flow &&
-          ((n.name === 'comparison' && sections.length >= 2 && sections.length <= 3) ||
-            (n.name === 'steps' && sections.length >= 2)) &&
-          n.name;
-        if (!layout) return kids();
-        const intro = children.slice(0, first).map((c) => node(c, inTable)),
-          cards = sections.map((section) =>
-            h(
-              layout === 'steps' ? 'li' : 'section',
-              { key: pos(section[0]).start, className: 'layout-card' },
-              section.map((c) => node(c, inTable)),
-            ),
-          );
-        return h(
-          'div',
-          { ...attrs, className: `reply-layout layout-${layout}` },
-          intro,
-          h(layout === 'steps' ? 'ol' : 'div', { className: 'layout-cards' }, cards),
-        );
-      }
+      case 'containerDirective':
+        return layout(n, (c) => node(c, inTable), pending, flow) ?? kids();
       case 'definition':
         return null;
       default:

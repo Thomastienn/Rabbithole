@@ -32,7 +32,7 @@ test('tutor prompt puts the tutor style first, always keeps the fixed rules and 
   );
   assert.match(
     TUTOR_RULES,
-    /plain flow unless a layout clearly helps[^\n]*:::comparison[^\n]*two or three[^\n]*:::steps/,
+    /five, plain flow, figure, gallery, comparison and steps[^\n]*plain flow unless a layout clearly helps[^\n]*:::figure[^\n]*:::gallery[^\n]*:::comparison[^\n]*two or three[^\n]*:::steps/,
   );
   const branch = { snapshot: 'Frozen fact', text: 'Passage' };
   const child = tutorSystem({ tutorStyle: 'Mine.', branch });

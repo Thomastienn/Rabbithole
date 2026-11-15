@@ -31,3 +31,24 @@
 .reply-layout .layout-card > :last-child {
   margin-bottom: 0;
 }
+/* Figure beside text: media column beside its explanation; gallery: a grid of images or visuals. */
+.layout-figure {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--spacing-4);
+  align-items: start;
+  margin: var(--spacing-3) 0;
+}
+.layout-gallery .layout-media {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--spacing-3);
+  margin: var(--spacing-3) 0;
+}
+.layout-gallery .reply-image img {
+  max-height: 16rem;
+}
+.layout-figure .layout-item:first-child > *,
+.layout-figure .layout-text > :first-child {
+  margin-top: 0;
+}
