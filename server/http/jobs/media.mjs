@@ -137,6 +137,7 @@ export function mediaJobs(ctx) {
           snapshot: ctx.videoSnapshot,
           narrate: ctx.videoNarrate,
           manim: ctx.videoManim,
+          embed: ctx.videoEmbed,
           onWarning: (cause) =>
             ctx.log(
               formatLog('warn', 'media', 'warning', {

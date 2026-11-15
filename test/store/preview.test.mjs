@@ -63,6 +63,8 @@ test('previews list every message in order, bound each text and survive reload w
       'evidence',
       'memory_note',
       'messages',
+      'piece_videos',
+      'pieces',
       'profiles',
       'resources',
       'searxng_settings',

@@ -12,7 +12,7 @@ import {
   open,
   fakeRender,
 } from '../support/video-kit.mjs';
-import { videoPlan, cutSource, pieceNames } from '../../server/media/video-plan.mjs';
+import { videoPlan, cutSource, pieceNames, libraryPieces } from '../../server/media/video-plan.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top, one third of its height.';
 const pieces = `import { colors, palette } from './kit';
@@ -156,6 +156,103 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
     1,
   );
   assert.equal(env.store.usageEvents().events.filter((e) => e.task === 'video').length, 5);
+  const saved = env.store.db.prepare('SELECT id FROM pieces').all();
+  assert.equal(saved.length, 1, 'without an embedder the piece is still saved');
+  const piece = env.store.piece(saved[0].id);
+  assert.equal(piece.embedding, null);
+  assert.deepEqual(
+    [piece.name, piece.look, piece.roles, piece.videos],
+    ['Winner', look, ['winner'], [row.id]],
+  );
+  assert.deepEqual(piece.props, ['x', 'y', 'scale', 'highlight', 'state']);
+  assert.equal(piece.source, pieces);
+});
+
+test('a new video embeds each accepted set piece look and saves it to the piece library', async (t) => {
+  const plan = videoPlanWithLooks();
+  plan.cuts.pop();
+  const embedded = [];
+  const env = await open(
+    {
+      generate: async (tree, text, emit) => {
+        if (tree.id) return complete(emit, 'Watch.' + directive);
+        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You write the set pieces')) return complete(emit, pieces);
+        complete(emit, usesPieces);
+      },
+    },
+    {
+      videoEmbed: async (texts) => {
+        embedded.push(...texts);
+        return texts.map(() => [0.6, 0.8]);
+      },
+    },
+  );
+  t.after(async () => {
+    await env.app.stop();
+    env.store.close();
+  });
+  const chat = env.store.create('Library', 'codex');
+  await (await env.post(`/api/trees/${chat.id}/messages`, { text: 'Make a video.' })).text();
+  const row = await until(() =>
+    env.store.tree(chat.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
+  );
+  assert.equal(row.status, 'ready', row.error);
+  assert.deepEqual(embedded, [look]);
+  const [match] = env.store.nearestPieces([0.6, 0.8]);
+  assert.equal(match.name, 'Winner');
+  assert.deepEqual(match.videos, [row.id]);
+  assert.ok(Math.abs(match.embedding[0] - 0.6) < 1e-6 && Math.abs(match.score - 1) < 1e-6);
+});
+
+test('library pieces split per export with shared helpers; set pieces colour only through roles', () => {
+  const brief = {
+    paletteRoles: { winner: 'amber', loser: 'rust' },
+    recurringObjects: [
+      { name: 'winner', look: 'crowned box' },
+      { name: 'note', position: 'left' },
+      { name: 'loser', look: 'grey box' },
+    ],
+  };
+  const module = `import { colors, palette } from './kit';
+const box = 240;
+export function Winner({ x, y, glow }) {
+  return <div style={{ left: x, top: y, width: box, background: colors.winner }} />;
+}
+export const Loser = (props) => <div style={{ color: palette.paper }}><Winner x={props.x} y={props.y} /></div>;`;
+  const [winner, loser] = libraryPieces(module, brief, ['Winner', 'Loser']);
+  assert.deepEqual([winner.name, winner.look, winner.roles], ['Winner', 'crowned box', ['winner']]);
+  assert.ok(winner.props.includes('glow') && winner.props.includes('state'));
+  assert.match(
+    winner.source,
+    /^import \{ colors, palette \} from '\.\/kit';\nconst box = 240;\nexport function Winner/,
+  );
+  assert.doesNotMatch(winner.source, /Loser/);
+  assert.match(
+    loser.source,
+    /export function Winner[\s\S]*export const Loser/,
+    'a piece keeps the pieces it draws',
+  );
+  assert.deepEqual(loser.roles, ['winner']);
+  const strict = { ...brief, recurringObjects: [brief.recurringObjects[0]] };
+  const piece = (style) =>
+    `import { colors, palette${style.includes('series') ? ', series' : ''} } from './kit';\nexport function Winner() { return <div style={{ ${style} }} />; }`;
+  assert.throws(() => cutSource(piece("color: '#dfae4e'"), strict, ['Winner']), /#dfae4e/);
+  assert.throws(
+    () => cutSource(piece('color: palette.amber'), strict, ['Winner']),
+    /palette\.amber/,
+  );
+  assert.throws(() => cutSource(piece('color: series[0]'), strict, ['Winner']), /series/);
+  assert.ok(
+    cutSource(piece('color: colors.winner, background: palette.raised'), strict, ['Winner']),
+  );
+  assert.ok(
+    cutSource(
+      `import { palette } from './kit';\nexport default () => <div style={{ color: palette.amber }} />;`,
+      strict,
+    ),
+    'cuts keep hue access',
+  );
 });
 
 test('set pieces get two tries and fail by name; Retry keeps the plan, then keeps set pieces that succeeded', async (t) => {

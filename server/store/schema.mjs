@@ -214,6 +214,10 @@ export function open(path) {
         .exec(`CREATE TABLE videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, duration REAL, created INTEGER NOT NULL);
           INSERT INTO videos(id,title,description,duration,created) SELECT id,title,description,duration,created FROM artifacts WHERE kind='video' AND status='ready';`);
     }
+    // Piece library: one saved Remotion set piece per row, shared across videos; the embedding is a Float32 blob of its look.
+    this.db
+      .exec(`CREATE TABLE IF NOT EXISTS pieces (id TEXT PRIMARY KEY, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, roles TEXT NOT NULL, embedding BLOB, created INTEGER NOT NULL, improved INTEGER NOT NULL);
+        CREATE TABLE IF NOT EXISTS piece_videos (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, video TEXT NOT NULL, PRIMARY KEY(piece, video));`);
     // Visual kind and reply positions migrate in place; existing rows keep a NULL position and render after their reply.
     this.db.exec('BEGIN IMMEDIATE');
     try {

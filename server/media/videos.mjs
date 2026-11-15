@@ -13,7 +13,7 @@ import {
 } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { edgeNarration } from './narration.mjs';
-import { videoPlan, PLAN_INSTRUCTIONS, CUT_ATTEMPTS } from './video-plan.mjs';
+import { videoPlan, libraryPieces, PLAN_INSTRUCTIONS, CUT_ATTEMPTS } from './video-plan.mjs';
 import { videoCall, writeCuts, cutError } from './video-cuts.mjs';
 import { sandboxProcess, REPO, withoutPaths } from './video-sandbox.mjs';
 import { detectManim } from './manim.mjs';
@@ -111,6 +111,8 @@ export async function generateVideo({
   onPhase = () => {},
   manim = { detect: detectManim, render: sandboxManim, check: checkManim },
   onWarning = console.warn,
+  // Texts to look vectors; null saves new pieces without an embedding.
+  embed = null,
   onStage = () => {},
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
@@ -244,6 +246,24 @@ export async function generateVideo({
       stop: (error) => controller.abort(error),
       kept,
       pieces: prior?.pieces,
+      // Accepted set pieces of a new video join the piece library; the library never fails the video.
+      onPieces: async (source, names) => {
+        try {
+          const entries = libraryPieces(source, plan.styleBrief, names);
+          let vectors = [];
+          if (embed)
+            vectors = await embed(entries.map((p) => p.look)).catch((error) => {
+              onWarning(`WARN video piece embeddings unavailable: ${error.message}`);
+              return [];
+            });
+          controller.signal.throwIfAborted();
+          for (const [i, entry] of entries.entries())
+            store.savePiece({ ...entry, embedding: vectors[i] ?? null }, artifact.id);
+        } catch (error) {
+          controller.signal.throwIfAborted();
+          onWarning(`WARN video piece library: ${error.message}`);
+        }
+      },
       save: (data) => {
         const written = data.cuts.filter((c) => c.status === 'written').length;
         if (written > writtenCuts) onStage('cuts written', { cut: written, cuts: count });

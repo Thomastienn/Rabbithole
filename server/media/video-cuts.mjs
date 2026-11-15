@@ -104,6 +104,7 @@ export async function writeCuts({
   stop,
   kept = [],
   pieces = null,
+  onPieces = async () => {},
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
   const cuts = plan.cuts.map((c, i) => ({
@@ -150,7 +151,10 @@ export async function writeCuts({
       error = e;
     }
   }
-  if (data.pieces && !pieces) persist();
+  if (data.pieces && !pieces) {
+    persist();
+    await onPieces(data.pieces, names);
+  }
   // Each audit shares its pre-audit last frame with the next cut's audit, so audits never wait on each other.
   const lastFrames = cuts.map(() => Promise.withResolvers());
   // Narration depends only on the plan, never on a cut writer or a neighbouring cut finishing.

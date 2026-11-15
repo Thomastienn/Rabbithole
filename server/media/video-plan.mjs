@@ -166,7 +166,8 @@ export function cutSource(raw, brief, names) {
         if (module === './kit') bindings.set(e.name.text, e.propertyName?.text ?? e.name.text);
     }
   }
-  const allowed = new Set([...neutrals, ...Object.values(brief.paletteRoles)]);
+  // Set pieces colour only through brief roles and neutrals, so another video's brief can map the roles to its own inks.
+  const allowed = new Set([...neutrals, ...(names ? [] : Object.values(brief.paletteRoles))]);
   const literals = new Set([...allowed].map((k) => videoPalette[k]));
   const styleError = (detail) => {
     throw new Error(
@@ -217,6 +218,8 @@ export function cutSource(raw, brief, names) {
   const check = (n) => {
     if (ts.isExportDeclaration(n) && n.moduleSpecifier)
       throw new Error('Video composition uses a disallowed import or resource.');
+    if (names && ts.isIdentifier(n) && bindings.get(n.text) === 'series')
+      styleError('set pieces colour through colors.<role>, not series');
     const [base, key] = property(n);
     if (bindings.get(base) === 'palette' && !allowed.has(key))
       styleError(`palette.${key} is not in this brief`);
@@ -248,4 +251,63 @@ export function cutSource(raw, brief, names) {
   };
   check(file);
   return source;
+}
+
+const PIECE_PROPS = ['x', 'y', 'scale', 'highlight', 'state'];
+// Splits an accepted set-piece module into one self-contained library entry per export, in names order:
+// the module's imports and private helpers, the export, and any other export it draws.
+export function libraryPieces(source, brief, names) {
+  const file = ts.createSourceFile(
+    'pieces.tsx',
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const exportedName = (s) =>
+    s.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+      ? ts.isFunctionDeclaration(s)
+        ? s.name?.text
+        : ts.isVariableStatement(s)
+          ? s.declarationList.declarations[0]?.name.getText(file)
+          : null
+      : null;
+  const shared = file.statements.filter((s) => !exportedName(s)).map((s) => s.getText(file));
+  const exports = new Map(file.statements.filter(exportedName).map((s) => [exportedName(s), s]));
+  const looks = brief.recurringObjects.filter((o) => o.look);
+  return names.map((name, index) => {
+    const used = [name];
+    for (let i = 0; i < used.length; i++)
+      for (const other of exports.keys())
+        if (
+          !used.includes(other) &&
+          new RegExp(`\\b${RegExp.escape(other)}\\b`).test(exports.get(used[i]).getText(file))
+        )
+          used.push(other);
+    const statement = exports.get(name);
+    const fn = ts.isFunctionDeclaration(statement)
+      ? statement
+      : statement.declarationList.declarations[0].initializer;
+    const binding = fn?.parameters?.[0]?.name;
+    const own =
+      binding && ts.isObjectBindingPattern(binding)
+        ? binding.elements.map((e) => (e.propertyName ?? e.name).getText(file))
+        : [];
+    const pieceSource = [
+      ...shared,
+      ...used.reverse().map((n) => exports.get(n).getText(file)),
+    ].join('\n');
+    const roles = Object.keys(brief.paletteRoles).filter((role) =>
+      new RegExp(
+        `\\bcolors\\s*(?:\\.\\s*${RegExp.escape(role)}\\b|\\[\\s*['"\`]${RegExp.escape(role)}['"\`]\\s*\\])`,
+      ).test(pieceSource),
+    );
+    return {
+      name,
+      look: looks[index].look,
+      props: [...new Set([...PIECE_PROPS, ...own])],
+      source: pieceSource,
+      roles,
+    };
+  });
 }
