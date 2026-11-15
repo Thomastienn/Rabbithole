@@ -5,6 +5,7 @@ import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { Badge } from '@astryxdesign/core/Badge';
 import { HStack } from '@astryxdesign/core/Layout';
 import { useTheme } from '@astryxdesign/core/theme';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { inkStyle } from '../map/treeList';
 import { visualMessage, type Artifact, type VisualPart } from './artifacts';
+import { visualProgress } from './visualProgress';
 
 export type VisualBranch = VisualPart & { child: string; address?: string; ink?: number };
 export type PartAction = (
@@ -70,6 +72,8 @@ function Frame({ artifact }: { artifact: Artifact }) {
         title={artifact.description}
         style={ready ? { height } : undefined}
         data-ready={ready || undefined}
+        // A partly drawn visual takes no pointer or keyboard input until it finishes.
+        inert={artifact.status === 'pending'}
         onLoad={() => {
           theme();
           loaded.current = true;
@@ -99,6 +103,15 @@ export default function VisualFrame({
 }) {
   const [enlarged, setEnlarged] = useState(false);
   const [retried, setRetried] = useState(false);
+  const [now, setNow] = useState(Date.now);
+  const drawing = artifact.status === 'pending';
+  useEffect(() => {
+    if (!drawing) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [drawing]);
+  const progress = visualProgress(artifact, now);
   const figure = useRef<HTMLElement>(null);
   const viewer = useRef<HTMLDialogElement>(null);
   const revealKey = reveal && JSON.stringify(reveal);
@@ -124,7 +137,13 @@ export default function VisualFrame({
         (figure.current?.querySelector<HTMLElement>('button') ?? figure.current)?.focus();
     });
   }
-  if (artifact.status === 'canceled') return null;
+  if (!progress) return null;
+  const announcement =
+    progress.state === 'drawing'
+      ? `Drawing visual: ${artifact.title}`
+      : progress.state === 'interactive'
+        ? `Visual ready: ${artifact.title}`
+        : `Visual unavailable. ${artifact.error ?? ''}`;
   return (
     <figure
       ref={figure}
@@ -133,12 +152,33 @@ export default function VisualFrame({
       aria-label={artifact.description}
       data-artifact={artifact.id}
       data-state={artifact.status}
+      data-partial={progress.partial || undefined}
+      aria-busy={drawing || undefined}
     >
-      {artifact.status === 'pending' && (
-        <Text className="sr-only" role="status">
-          Creating visual: {artifact.title}
-        </Text>
-      )}
+      {/* One persistent live region, so each state change is announced; the visible badge stays quiet. */}
+      <Text className="sr-only" role="status">
+        {announcement}
+      </Text>
+      <Badge
+        className="visual-badge"
+        aria-hidden
+        variant={
+          progress.state === 'interactive'
+            ? 'success'
+            : progress.state === 'drawing'
+              ? 'info'
+              : 'error'
+        }
+        label={
+          progress.state === 'drawing'
+            ? `Drawing… ${progress.elapsed}`
+            : progress.state === 'interactive'
+              ? 'Interactive'
+              : progress.state === 'failed'
+                ? 'Failed'
+                : 'Interrupted'
+        }
+      />
       {(artifact.status === 'pending' || artifact.status === 'ready') && (
         <Frame key={artifact.id} artifact={artifact} />
       )}
@@ -228,7 +268,13 @@ export default function VisualFrame({
         </>
       )}
       {onOpenChild && explored.some((b) => b.address) && (
-        <HStack className="visual-chips" gap={1} wrap="wrap" role="group" aria-label="Branches from this visual">
+        <HStack
+          className="visual-chips"
+          gap={1}
+          wrap="wrap"
+          role="group"
+          aria-label="Branches from this visual"
+        >
           {explored
             .filter((b) => b.address)
             .sort((a, b) => a.address!.localeCompare(b.address!, undefined, { numeric: true }))
@@ -250,7 +296,7 @@ export default function VisualFrame({
         <ExclamationTriangleIcon className="failure-icon" aria-hidden />
       )}
       {(artifact.status === 'failed' || artifact.status === 'interrupted') && (
-        <Text display="block" type="supporting" role="status">
+        <Text display="block" type="supporting" aria-hidden>
           Visual unavailable. {artifact.error ?? ''}
         </Text>
       )}

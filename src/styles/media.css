@@ -483,3 +483,10 @@
   font-weight: 600;
   color: var(--color-text-primary);
 }
+/* Visual progress badge above the figure; a partly drawn visual is dimmed until it finishes. */
+.visual-badge {
+  margin-bottom: 6px;
+}
+.visual[data-partial] .visual-frame[data-ready] {
+  opacity: 0.5;
+}

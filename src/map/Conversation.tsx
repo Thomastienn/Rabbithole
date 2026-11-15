@@ -19,6 +19,7 @@ import type { CSSProperties } from 'react';
 import type { Summary, Preview } from './TreeOverview';
 import { inkStyle } from './treeList';
 import { snippet, sourceOf, type Open } from './mapState';
+import { visualsReady } from '../media/visualProgress';
 
 export type ConversationNode = Node<
   {
@@ -240,6 +241,11 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                         )}
                       </Text>
                     ))}
+                {m.role === 'assistant' && visualsReady(m.artifacts) && (
+                  <Text type="supporting" color="secondary" className="node-visuals">
+                    {visualsReady(m.artifacts)}
+                  </Text>
+                )}
                 {sources.map((child, index) =>
                   handle(child, { top: `${(100 * (index + 1)) / (sources.length + 1)}%` }),
                 )}

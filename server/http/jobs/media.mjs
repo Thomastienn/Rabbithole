@@ -40,8 +40,10 @@ export function mediaJobs(ctx) {
   // Frozen inputs stay server-side for every kind; explicit worker actions reuse them.
   const live = (artifact) => {
     const { input, attempt, ...a } = artifact;
-    if (a.kind === 'visual' && a.status === 'pending')
-      return { ...a, source: videos.get(a.id)?.source ?? null };
+    if (a.kind === 'visual' && a.status === 'pending') {
+      const job = videos.get(a.id);
+      return { ...a, source: job?.source ?? null, ...(job && { startedAt: job.startedAt }) };
+    }
     if (a.kind !== 'video') return a;
     delete a.source;
     if (a.status === 'pending' && a.conversation) {
@@ -221,6 +223,7 @@ export function mediaJobs(ctx) {
       controller: new AbortController(),
       conversation: artifact.conversation,
       artifact: artifact.id,
+      startedAt: Date.now(),
     };
     const cancel = () => running.controller.abort(parentSignal.reason);
     parentSignal?.addEventListener('abort', cancel, { once: true });

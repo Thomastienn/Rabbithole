@@ -7,6 +7,7 @@ import VideoCard from '../media/VideoCard';
 import VisualFrame from '../media/VisualFrame';
 import CopyButton from '../markdown/CopyButton';
 import { artifactsAt } from '../media/artifacts';
+import { visualsReady } from '../media/visualProgress';
 import { replyUsageLine } from './turn';
 import { ReplyFeedback } from './ChatDetails';
 import Passage from './Passage';
@@ -53,7 +54,10 @@ export default function ChatThread({
       index =
         tree.messages
           .filter((m) => m.role === 'assistant' && m.status === 'completed')
-          .indexOf(message) + 1;
+          .indexOf(message) + 1,
+      visualCount =
+        message.role === 'assistant' &&
+        visualsReady(artifactsAt(tree.artifacts ?? [], tree.id, message.id));
     return (
       <ChatMessage
         key={message.id}
@@ -70,7 +74,7 @@ export default function ChatThread({
         metadata={
           !overview &&
           message.role === 'assistant' &&
-          (message.status === 'completed' || !!message.mediaUsage?.length) && (
+          (message.status === 'completed' || !!message.mediaUsage?.length || !!visualCount) && (
             <HStack gap={2} vAlign="center">
               {message.status === 'completed' && (
                 <CopyButton
@@ -82,6 +86,11 @@ export default function ChatThread({
               {(message.usage !== undefined || !!message.mediaUsage?.length) && (
                 <Text type="supporting" color="secondary" className="reply-usage">
                   {replyUsageLine(message.usage ?? null, suggestions?.usage, message.mediaUsage)}
+                </Text>
+              )}
+              {visualCount && (
+                <Text type="supporting" color="secondary" className="reply-visuals">
+                  {visualCount}
                 </Text>
               )}
             </HStack>

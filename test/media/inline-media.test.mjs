@@ -97,7 +97,7 @@ test('visuals: pending shimmer announces; ready frame is sandboxed; only the fra
   const figure = () => container.querySelector('figure.visual');
   assert.equal(figure().querySelectorAll('iframe').length, 1);
   assert.ok(figure().querySelector('.visual-shimmer'));
-  assert.equal(figure().querySelector('[role=status]').textContent, 'Creating visual: Bar heights');
+  assert.equal(figure().querySelector('[role=status]').textContent, 'Drawing visual: Bar heights');
 
   await act(async () => set(visual('ready')));
   const frame = figure().querySelector('iframe');
