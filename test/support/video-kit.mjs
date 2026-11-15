@@ -74,6 +74,7 @@ export const planFor = (source = composition, count = 1) => ({
   cuts: Array.from({ length: count }, (_, i) => ({
     purpose: `Step ${i + 1}`,
     engine: 'remotion',
+    dimension: '2d',
     narration: JSON.parse(/^\/\/ Narration: (.+)$/m.exec(source)?.[1] ?? '"Winners advance."'),
     endState: `Winner at position ${i + 1}`,
   })),

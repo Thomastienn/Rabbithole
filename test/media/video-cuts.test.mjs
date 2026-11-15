@@ -23,7 +23,12 @@ test('three cut writers and narrators start in parallel; reversed completions pe
     c.narration = `Narration ${i}`;
   });
   plan.cuts[1].join = 'continue';
-  Object.assign(plan.cuts[2], { join: 'scene', transition: 'flip', direction: 'from-top' });
+  Object.assign(plan.cuts[2], {
+    join: 'scene',
+    transition: 'flip',
+    direction: 'from-top',
+    dimension: '3d',
+  });
   const writers = plan.cuts.map(gate),
     voices = plan.cuts.map(gate);
   const writing = [],
@@ -108,6 +113,12 @@ test('three cut writers and narrators start in parallel; reversed completions pe
     assert.deepEqual(inputs[i].input.cut, plan.cuts[i]);
     assert.equal(inputs[i].input.previousEndState, i ? plan.cuts[i - 1].endState : null);
     assert.equal(inputs[i].tree.thread, null);
+    // Only the 3D cut's writer gets the 3D guidance.
+    (i === 2 ? assert.match : assert.doesNotMatch)(
+      inputs[i].tree.instructions,
+      /This cut is 3D[\s\S]*"@remotion\/three"/,
+    );
+    assert.doesNotMatch(inputs[i].tree.instructions, /decide the dimension/);
     assert.ok(!('messages' in inputs[i].tree));
   });
   assert.equal(planning, 1);

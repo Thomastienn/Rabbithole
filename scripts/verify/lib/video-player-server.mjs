@@ -32,6 +32,7 @@ const plan = {
   cuts: [1, 2].map((i) => ({
     purpose: `Step ${i}`,
     engine: 'remotion',
+    dimension: '2d',
     narration: 'Winners advance.',
     endState: `Winner at position ${i}`,
   })),

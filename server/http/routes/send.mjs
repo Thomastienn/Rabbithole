@@ -201,7 +201,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         request.kind === 'video'
           ? {
               ...ctx.videoRoles(tree),
-              request: body.text,
+              request: body.text.trim().slice(0, LIMITS.intent),
               intent: task.intent,
               excerpt: task.excerpt,
               inheritedContext: tree.branch

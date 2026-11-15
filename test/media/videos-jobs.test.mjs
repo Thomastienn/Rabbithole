@@ -141,14 +141,15 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.equal(workers[0].tree.thread, null);
     assert.match(
       workers[0].tree.instructions,
-      /2D for ordinary explanations[\s\S]*3D whenever the subject involves spatial relationships[\s\S]*When the learner or intent asks for 2D or 3D, follow it/,
+      /explicitly asks for 2D or 3D, use that dimension for every cut/,
     );
-    assert.match(workers[1].tree.instructions, /"@remotion\/three"/);
+    // planFor cuts are 2D, so the cut writer gets no 3D guidance.
+    assert.match(workers[1].tree.instructions, /planned cut\.dimension/);
+    assert.doesNotMatch(workers[1].tree.instructions, /@remotion\/three|ThreeCanvas/);
     assert.match(
       workers[1].tree.instructions,
       /1920x1080[\s\S]*bottom 120 pixels[\s\S]*"\.\/kit"[\s\S]*never hard cuts[\s\S]*different videos look different/,
     );
-    assert.match(workers[1].tree.instructions, /ThreeCanvas with width=\{1920\} height=\{1080\}/);
     assert.equal(
       workers[0].tree.model,
       'fixture-model',

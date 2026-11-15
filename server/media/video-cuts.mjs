@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   CUT_ENTRY,
   CUT_INSTRUCTIONS,
+  CUT_3D,
   PIECES_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
   REPAIR_NOTE,
@@ -171,7 +172,9 @@ export async function writeCuts({
       let raw;
       try {
         raw = await write(
-          (cuts[index].engine === 'manim' ? MANIM_INSTRUCTIONS : CUT_INSTRUCTIONS) +
+          (cuts[index].engine === 'manim'
+            ? MANIM_INSTRUCTIONS
+            : CUT_INSTRUCTIONS + (plan.cuts[index].dimension === '3d' ? CUT_3D : '')) +
             (error ? REPAIR_NOTE : ''),
           JSON.stringify({
             styleBrief: plan.styleBrief,

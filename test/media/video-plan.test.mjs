@@ -14,6 +14,12 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
   good.cuts[1].engine = 'manim';
   assert.deepEqual(videoPlan('```json\n' + JSON.stringify(good) + '\n```'), good);
+  good.cuts[2].dimension = '3d';
+  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  assert.match(
+    PLAN_INSTRUCTIONS,
+    /request is the learner's own message[\s\S]*dimension of "2d" or "3d"[\s\S]*explicitly asks for 2D or 3D, use that dimension for every cut[\s\S]*"3d" only for a cut whose point is space, depth, rotation or orientation[\s\S]*Manim cuts are always "2d"/,
+  );
   for (const mutate of [
     (p) => {
       p.title = '';
@@ -59,6 +65,16 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
     },
     (p) => {
       p.cuts[0].endState = '';
+    },
+    (p) => {
+      delete p.cuts[0].dimension;
+    },
+    (p) => {
+      p.cuts[0].dimension = '4d';
+    },
+    (p) => {
+      p.cuts[1].engine = 'manim';
+      p.cuts[1].dimension = '3d';
     },
   ]) {
     const bad = structuredClone(good);

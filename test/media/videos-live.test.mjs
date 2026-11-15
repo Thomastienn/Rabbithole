@@ -20,6 +20,7 @@ const plan = {
   cuts: ['First.', 'Second.'].map((narration, i) => ({
     purpose: `Step ${i + 1}`,
     engine: 'remotion',
+    dimension: '2d',
     narration,
     endState: `Winner at position ${i + 1}`,
   })),
