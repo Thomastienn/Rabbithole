@@ -100,6 +100,10 @@ _Avoid_: Mastery, score, level
 The fixed background a child conversation receives at branch creation: the exact passage and a compact paragraph combining its parent's inherited context with the parent conversation, preserving important ideas. It supplies context without answering the child's question; that question is a separate learner message.
 _Avoid_: Summary, compacted context
 
+**Memory note**:
+One short note about the learner that the tutor keeps across all learning trees: background, goals, preferences and notable progress. The tutor sees the whole note in every conversation and changes it only when it learns something lasting, adding, rewriting or removing entries. The learner can read and edit it.
+_Avoid_: Learner profile, memory (alone), notes
+
 **Usage history**:
 The record of reported model usage across learning trees and tasks, retained independently of deleted conversations and media. It contains usage measurements and attribution, not deleted learning content.
 
