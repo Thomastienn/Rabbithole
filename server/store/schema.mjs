@@ -147,6 +147,10 @@ export function open(path) {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS endpoint_models (endpoint TEXT NOT NULL, model TEXT NOT NULL, reads_images INTEGER NOT NULL CHECK(reads_images IN (0,1)), PRIMARY KEY(endpoint, model))',
     );
+    // Tutor tool calls per reply message, in call order; they go with their message.
+    this.db.exec(
+      "CREATE TABLE IF NOT EXISTS tool_calls (id TEXT NOT NULL, conversation TEXT NOT NULL, message TEXT NOT NULL, name TEXT NOT NULL, input TEXT NOT NULL, output TEXT, status TEXT NOT NULL CHECK(status IN ('running','done','failed')), started INTEGER NOT NULL, elapsed INTEGER, PRIMARY KEY(message, id), FOREIGN KEY(message, conversation) REFERENCES messages(id, tree) ON DELETE CASCADE)",
+    );
     // Smart role: a NULL model follows the chat default model; follow_effort=1 follows the chat default effort.
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)',
@@ -273,6 +277,7 @@ export const schema = {
   interrupt() {
     this.db
       .exec(`UPDATE messages SET status='interrupted',stopped='shutdown' WHERE status='streaming';
+      UPDATE tool_calls SET status='failed',output='Tool call was interrupted when TreeTutor stopped.',elapsed=NULL WHERE status='running';
       UPDATE suggestions SET status='failed' WHERE status='pending';
       UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when TreeTutor stopped.' WHERE status='pending' AND kind='video';
       UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);

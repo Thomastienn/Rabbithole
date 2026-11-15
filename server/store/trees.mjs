@@ -155,9 +155,11 @@ export const trees = {
               const attachments = this.attachments(id, m.id);
               return attachments.length ? { ...m, attachments } : m;
             }
-            const mediaUsage = this.replyMediaUsage(m.id);
+            const mediaUsage = this.replyMediaUsage(m.id),
+              tools = this.toolCalls(m.id);
             return {
               ...m,
+              ...(tools.length && { tools }),
               ...(stopped && { stopped }),
               usage: JSON.parse(usage),
               ...(mediaUsage.length && { mediaUsage }),
@@ -338,6 +340,41 @@ export const trees = {
     return this.db
       .prepare('SELECT id,name,type,delivery FROM attachments WHERE conversation=? AND id=?')
       .get(conversation, id);
+  },
+  // One row per tool call; later events for the same call update it in place.
+  toolCall(conversation, message, { id, name, input, status, output, elapsed }) {
+    this.db
+      .prepare(
+        'INSERT INTO tool_calls(id,conversation,message,name,input,output,status,started,elapsed) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(message,id) DO UPDATE SET output=excluded.output,status=excluded.status,elapsed=excluded.elapsed',
+      )
+      .run(
+        id,
+        conversation,
+        message,
+        name,
+        JSON.stringify(input ?? null),
+        output ?? null,
+        status,
+        Date.now(),
+        elapsed ?? null,
+      );
+  },
+  // A reply that ends while a tool runs keeps that call as failed.
+  stopToolCalls(message) {
+    return this.db
+      .prepare(
+        "UPDATE tool_calls SET status='failed',output=coalesce(output,'Stopped before it finished.'),elapsed=max(elapsed,?-started) WHERE message=? AND status='running' RETURNING id,name,input,output,status,elapsed",
+      )
+      .all(Date.now(), message)
+      .map((t) => ({ ...t, input: JSON.parse(t.input) }));
+  },
+  toolCalls(message) {
+    return this.db
+      .prepare(
+        'SELECT id,name,input,output,status,elapsed FROM tool_calls WHERE message=? ORDER BY rowid',
+      )
+      .all(message)
+      .map((t) => ({ ...t, input: JSON.parse(t.input) }));
   },
   update(id, text, status, stopped = null) {
     this.db

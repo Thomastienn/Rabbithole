@@ -65,6 +65,7 @@ test('previews list every message in order, bound each text and survive reload w
       'smart_settings',
       'suggestion_settings',
       'suggestions',
+      'tool_calls',
       'topics',
       'trees',
       'tutor_style',

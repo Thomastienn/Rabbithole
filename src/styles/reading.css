@@ -441,3 +441,31 @@ mark {
   white-space: pre-wrap;
   font-family: monospace;
 }
+.tool-activity {
+  color: var(--color-text-secondary);
+}
+.tool-calls {
+  margin: 0;
+  padding: 0 0 var(--spacing-2);
+  list-style: none;
+  display: grid;
+  gap: var(--spacing-3);
+}
+.tool-calls li {
+  display: grid;
+  gap: var(--spacing-1);
+}
+.tool-calls pre {
+  max-height: 12rem;
+  overflow: auto;
+  margin: 0;
+  padding: var(--spacing-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--color-background-body);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+.tool-calls pre:focus-visible {
+  outline: medium solid var(--color-text-primary);
+}

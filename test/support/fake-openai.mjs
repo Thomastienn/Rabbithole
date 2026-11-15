@@ -50,3 +50,29 @@ export async function fakeOpenAI(t) {
   fake.baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
   return fake;
 }
+
+// One model turn that asks for tool calls, each call's arguments split across two chunks.
+export function streamToolCalls(res, calls, text = '', finish = 'tool_calls') {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+  const chunk = (delta, finish_reason = null) =>
+    res.write(
+      'data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason }] }) + '\n\n',
+    );
+  if (text) chunk({ content: text });
+  calls.forEach(({ name, input }, index) => {
+    const args = JSON.stringify(input);
+    chunk({
+      tool_calls: [
+        {
+          index,
+          id: `call-${index}`,
+          type: 'function',
+          function: { name, arguments: args.slice(0, 5) },
+        },
+      ],
+    });
+    chunk({ tool_calls: [{ index, function: { arguments: args.slice(5) } }] });
+  });
+  chunk({}, finish);
+  res.end('data: [DONE]\n\n');
+}

@@ -77,14 +77,17 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
       }),
     }));
   // A send's attachments follow its model; an unlistable endpoint falls back to the saved choices for that model.
-  const readsImages = async ({ provider, model }) => {
-    if (!isEndpoint(provider)) return imageReading(provider);
+  const listed = async (provider, model) => {
     const list = (await providers[provider]?.models().catch(() => [])) ?? [];
-    return imageReading(
-      provider,
-      list.find((m) => (model == null ? m.isDefault : m.model === model)) ?? { model },
-    );
+    return list.find((m) => (model == null ? m.isDefault : m.model === model)) ?? { model };
   };
+  const readsImages = async ({ provider, model }) =>
+    isEndpoint(provider)
+      ? imageReading(provider, await listed(provider, model))
+      : imageReading(provider);
+  // Tutor tools need the endpoint to report tool support for this model; an unlistable endpoint gets none.
+  const toolCapable = async ({ provider, model }) =>
+    isEndpoint(provider) && (await listed(provider, model)).tools === true;
   // A null default provider (fresh install) leaves an unset chat role without a provider.
   const unset = () => ({ provider: defaultProvider, model: null, effort: null });
   const chatDefault = () => store.chatSettings() ?? unset();
@@ -186,6 +189,7 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     selectionError,
     withTyped,
     readsImages,
+    toolCapable,
     chatDefault,
     smart,
     profiles,

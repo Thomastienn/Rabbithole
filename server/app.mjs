@@ -25,6 +25,7 @@ import { authRoutes } from './http/routes/auth.mjs';
 import { treeRoutes } from './http/routes/trees.mjs';
 import { assetRoutes } from './http/routes/assets.mjs';
 import { tesseractOcr } from './ocr.mjs';
+import { toolRunner } from './tools/runner.mjs';
 
 // Matching order; each route answers only its own method and paths, and assets answers everything left.
 const ROUTES = [
@@ -59,6 +60,7 @@ export function createApp({
   suggestionTimeout,
   desktop = systemDesktop,
   recognize = tesseractOcr(dir),
+  tools = toolRunner(),
 }) {
   // One context for every extracted module; stopping is read from it at call time.
   const ctx = {
@@ -82,6 +84,7 @@ export function createApp({
     suggestionTimeout,
     desktop,
     recognize,
+    tools,
     stopping: false,
     csrf: randomBytes(32).toString('hex'),
     active: new Map(),

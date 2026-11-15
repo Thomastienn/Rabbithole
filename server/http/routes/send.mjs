@@ -278,6 +278,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
           if (current) send({ type: 'artifact', artifact: live(current) });
         }
     }
+    for (const tool of store.stopToolCalls(reply)) send({ type: 'tool', tool });
     for (const artifact of artifacts.values())
       if (artifact.kind === 'mermaid' && store.artifact(id, artifact.id)?.status === 'pending')
         store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
@@ -368,10 +369,20 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       const invalid = await selectionError(tree);
       if (invalid) throw new Error(invalid.error);
     }
+    const tools = ctx.tools.tools({
+      provider: tree.provider,
+      capable: await ctx.toolCapable(tree),
+    });
+    if (finished) return true;
     called = true;
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
       {
         ...tutorContext(tree),
+        ...(tools.length && {
+          tools,
+          runTool: (name, input, signal) =>
+            ctx.tools.run(name, input, { conversation: id, reply, signal }),
+        }),
         tutorStyle: store.tutorStyle(),
         concepts: store.strongConcepts(id),
         ...(images.length && { images }),
@@ -392,6 +403,10 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
           prepareArtifacts(output);
         }
         if (event.type === 'status') status = event.status;
+        if (event.type === 'tool') {
+          if (store.tree(id)) store.toolCall(id, reply, event.tool);
+          send({ type: 'tool', tool: event.tool });
+        }
         if (event.type === 'usage')
           usage = {
             input: event.usage.input,

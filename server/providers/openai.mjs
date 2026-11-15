@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import { EndpointError, endpointName, lastTest, readOwned, settings } from './endpointSettings.mjs';
+import { runTool, streamEvents } from './chatStream.mjs';
 
 export { EndpointError };
 
@@ -326,7 +327,9 @@ class Endpoint {
   async generate(tree, text, emit, saveThread, parentSignal) {
     const saved = this.#saved,
       controller = new AbortController();
-    const signal = AbortSignal.any([parentSignal, controller.signal, AbortSignal.timeout(300000)]);
+    const signal = AbortSignal.any([parentSignal, controller.signal]);
+    // Each model call has its own time limit; tool runs between calls keep their own.
+    let call = signal;
     this.#requests.add(controller);
     try {
       signal.throwIfAborted();
@@ -334,6 +337,7 @@ class Endpoint {
       signal.throwIfAborted();
       const system = tutorSystem(tree);
       const parts = inputParts(tree, text);
+      const tools = tree.tools ?? [];
       const messages = [
         { role: 'system', content: system },
         ...(tree.messages ?? [])
@@ -356,75 +360,107 @@ class Endpoint {
             : text,
         },
       ];
-      const response = await this.#fetch(saved, '/chat/completions', signal, {
-        model,
-        messages,
-        stream: true,
-        ...(tree.effort != null && { reasoning_effort: tree.effort }),
-      });
-      try {
-        if (!response.headers.get('content-type')?.startsWith('text/event-stream'))
-          throw new EndpointError(
-            'Custom endpoint did not return a chat-completion stream. Check compatibility and the base URL.',
-          );
-        const output = redactStream(saved.apiKey, emit);
-        let buffer = '',
-          completed = false,
-          hasText = false;
-        const frame = (data) => {
-          if (data.trim() === '[DONE]')
+      const output = redactStream(saved.apiKey, emit);
+      let hasText = false;
+      // No call cap: the loop ends when the model answers without tool calls, or on Stop.
+      while (true) {
+        call = AbortSignal.any([signal, AbortSignal.timeout(300000)]);
+        const response = await this.#fetch(saved, '/chat/completions', call, {
+          model,
+          messages,
+          stream: true,
+          ...(tree.effort != null && { reasoning_effort: tree.effort }),
+          ...(tools.length && {
+            tools: tools.map((t) => ({ type: 'function', function: t })),
+          }),
+        });
+        const calls = new Map();
+        let completed = false,
+          content = '',
+          separate = hasText;
+        try {
+          if (!response.headers.get('content-type')?.startsWith('text/event-stream'))
             throw new EndpointError(
-              'Custom endpoint ended the stream before completing the reply. Try again.',
+              'Custom endpoint did not return a chat-completion stream. Check compatibility and the base URL.',
             );
-          const chunk = JSON.parse(data);
-          if (chunk.error)
-            throw new EndpointError('Custom endpoint reported a stream error. Try again.');
-          const choice = chunk.choices?.find((c) => c.index === 0);
-          if (!choice) return;
-          if (typeof choice.delta?.content === 'string') {
-            hasText ||= !!choice.delta.content;
-            output(choice.delta.content);
-          }
-          if (choice.finish_reason) {
-            if (choice.finish_reason !== 'stop')
+          await streamEvents(response.body, (data) => {
+            if (data.trim() === '[DONE]')
               throw new EndpointError(
-                choice.finish_reason === 'length'
-                  ? 'Custom endpoint reached its reply limit. Partial reply saved; try again.'
-                  : 'Custom endpoint could not complete a text reply (filtered content or unsupported output). Try another question or model.',
+                'Custom endpoint ended the stream before completing the reply. Try again.',
               );
-            completed = true;
-          }
-        };
-        for await (const part of response.body.pipeThrough(new TextDecoderStream())) {
-          buffer += part;
-          let match;
-          while ((match = /\r?\n\r?\n/.exec(buffer))) {
-            const event = buffer.slice(0, match.index);
-            buffer = buffer.slice(match.index + match[0].length);
-            const data = event
-              .split(/\r?\n/)
-              .filter((line) => line === 'data' || line.startsWith('data:'))
-              .map((line) => line.slice(5).replace(/^ /, ''));
-            if (data.length) frame(data.join('\n'));
-            if (completed) break;
-          }
-          if (completed) break;
-          if (buffer.length > 1024 * 1024)
-            throw new EndpointError(
-              'Custom endpoint returned an oversized stream event. Try another model.',
-            );
+            const chunk = JSON.parse(data);
+            if (chunk.error)
+              throw new EndpointError('Custom endpoint reported a stream error. Try again.');
+            const choice = chunk.choices?.find((c) => c.index === 0);
+            if (!choice) return false;
+            if (typeof choice.delta?.content === 'string' && choice.delta.content) {
+              // Text after a tool round starts a new paragraph.
+              if (separate) output('\n\n');
+              separate = false;
+              hasText = true;
+              content += choice.delta.content;
+              output(choice.delta.content);
+            }
+            for (const t of choice.delta?.tool_calls ?? []) {
+              if (!Number.isSafeInteger(t.index) || t.index < 0)
+                throw new EndpointError('Custom endpoint returned an invalid tool call index.');
+              if (!calls.has(t.index))
+                calls.set(t.index, {
+                  id: '',
+                  name: '',
+                  arguments: '',
+                });
+              const c = calls.get(t.index);
+              if (typeof t.id === 'string') c.id = t.id;
+              if (typeof t.function?.name === 'string') c.name += t.function.name;
+              if (typeof t.function?.arguments === 'string') c.arguments += t.function.arguments;
+            }
+            if (choice.finish_reason) {
+              const tooling = tools.length && calls.size && choice.finish_reason === 'tool_calls';
+              if (choice.finish_reason !== 'stop' && !tooling)
+                throw new EndpointError(
+                  choice.finish_reason === 'length'
+                    ? 'Custom endpoint reached its reply limit. Partial reply saved; try again.'
+                    : 'Custom endpoint could not complete a text reply (filtered content or unsupported output). Try another question or model.',
+                );
+              completed = true;
+            }
+            return completed;
+          });
+        } finally {
+          if (!response.body?.locked) await response.body?.cancel().catch(() => {});
         }
-        signal.throwIfAborted();
-        if (!completed || !hasText)
+        call.throwIfAborted();
+        if (!completed)
           throw new EndpointError(
             'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
           );
-        output('', true);
-        saveThread(null, model);
-        emit({ type: 'status', status: 'completed' });
-      } finally {
-        if (!response.body?.locked) await response.body?.cancel().catch(() => {});
+        const round = tools.length ? [...calls].sort(([a], [b]) => a - b).map(([, c]) => c) : [];
+        if (!round.length) break;
+        round.forEach((c, i) => (c.id ||= `call_${messages.length}_${i}`));
+        messages.push({
+          role: 'assistant',
+          content: content || null,
+          tool_calls: round.map((c) => ({
+            id: c.id,
+            type: 'function',
+            function: { name: c.name, arguments: c.arguments },
+          })),
+        });
+        for (const c of round)
+          messages.push({
+            role: 'tool',
+            tool_call_id: c.id,
+            content: await runTool(tree, c, emit, signal, saved.apiKey),
+          });
       }
+      if (!hasText)
+        throw new EndpointError(
+          'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
+        );
+      output('', true);
+      saveThread(null, model);
+      emit({ type: 'status', status: 'completed' });
     } catch (error) {
       if (signal.aborted && signal.reason?.name !== 'TimeoutError') {
         emit({ type: 'status', status: 'interrupted' });
@@ -434,7 +470,7 @@ class Endpoint {
       throw error instanceof EndpointError
         ? error
         : new EndpointError(
-            signal.reason?.name === 'TimeoutError'
+            call.reason?.name === 'TimeoutError'
               ? 'Custom endpoint response timed out. Partial reply saved; try again.'
               : 'Custom endpoint connection or stream failed. Check compatibility and endpoint settings, then retry.',
           );

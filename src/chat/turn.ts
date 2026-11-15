@@ -13,6 +13,22 @@ export type MediaUsage = {
   output: number | null;
   cacheRead: number | null;
 };
+export type ToolCall = {
+  id: string;
+  name: string;
+  input: unknown;
+  status: 'running' | 'done' | 'failed';
+  output: string | null;
+  elapsed: number | null;
+};
+// Collapsed tool activity line: the running tool while streaming, else what was used.
+export function toolLine(tools: ToolCall[]) {
+  const running = [...tools].reverse().find((t) => t.status === 'running');
+  if (running) return `Running ${running.name}…`;
+  const names = [...new Set(tools.map((t) => t.name))].join(', '),
+    failed = tools.filter((t) => t.status === 'failed').length;
+  return `Used ${tools.length} ${tools.length === 1 ? 'tool' : 'tools'}: ${names}${failed ? ` · ${failed} failed` : ''}`;
+}
 export type Message = {
   id: string;
   role: string;
@@ -24,6 +40,7 @@ export type Message = {
   mediaUsage?: MediaUsage[];
   artifacts?: ArtifactSummary[];
   attachments?: Attachment[];
+  tools?: ToolCall[];
 };
 export const usageLine = (u: Usage) =>
   `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;
@@ -200,11 +217,20 @@ export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
       text: event.text ?? turn.reply.text,
       status: event.status ?? turn.reply.status,
     };
+  if (event.type === 'tool' && turn.reply) {
+    const tools = turn.reply.tools ?? [];
+    const index = tools.findIndex((t) => t.id === event.tool.id);
+    turn.reply = {
+      ...turn.reply,
+      tools:
+        index < 0 ? [...tools, event.tool] : tools.map((t, i) => (i === index ? event.tool : t)),
+    };
+  }
   if (event.type === 'artifact' && turn.reply)
     turn.artifacts = mergeArtifact(turn.artifacts ?? [], event.artifact, conversation, [
       turn.reply,
     ]);
-  return ['saved', 'status', 'text', 'done', 'artifact'].includes(event.type);
+  return ['saved', 'status', 'text', 'done', 'artifact', 'tool'].includes(event.type);
 }
 
 // Reconcile saved checkpoints with the latest events for this conversation only.

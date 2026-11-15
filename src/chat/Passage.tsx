@@ -13,6 +13,7 @@ import { rawOffsets, rawRange } from '../markdown/markdown';
 import type { Artifact } from '../media/artifacts';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import Reply from './Reply';
+import ToolActivity from './ToolActivity';
 
 export default function Passage({
   message,
@@ -266,6 +267,7 @@ export default function Passage({
           onOpenChild={onOpenChild}
         />
       </section>
+      {!!message.tools?.length && <ToolActivity tools={message.tools} />}
       {/* Mounted before suggestions arrive so their arrival is announced once; reopened replies are not re-announced. */}
       <Text role="status" className="sr-only">
         {underlines.length
