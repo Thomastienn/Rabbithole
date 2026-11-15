@@ -17,7 +17,7 @@ import { videoPlan, PLAN_INSTRUCTIONS, CUT_ATTEMPTS } from './video-plan.mjs';
 import { videoCall, writeCuts, cutError } from './video-cuts.mjs';
 import { sandboxProcess, REPO, withoutPaths } from './video-sandbox.mjs';
 import { detectManim } from './manim.mjs';
-import { sandboxManim } from './manim-cut.mjs';
+import { sandboxManim, checkManim } from './manim-cut.mjs';
 
 const MAX_MEDIA = 200 * 1024 * 1024;
 const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
@@ -107,7 +107,7 @@ export async function generateVideo({
   snapshot = sandboxSnapshot,
   narrate = edgeNarration,
   onPhase = () => {},
-  manim = { detect: detectManim, render: sandboxManim },
+  manim = { detect: detectManim, render: sandboxManim, check: checkManim },
   onWarning = console.warn,
   onStage = () => {},
 }) {
@@ -219,6 +219,7 @@ export async function generateVideo({
       call,
       narrate,
       snapshot,
+      check: manim.check && ((cutDir) => manim.check(cutDir, controller.signal, runtime)),
       signal: controller.signal,
       wait,
       stop: (error) => controller.abort(error),

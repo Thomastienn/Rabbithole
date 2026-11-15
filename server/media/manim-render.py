@@ -315,7 +315,25 @@ def render(workspace, output, modules):
     print(json.dumps({"durationInFrames": timing["durationInFrames"], "fps": 30}))
 
 
-if __name__ == "__main__":
+def check():
+    # Check-only mode: validate the staged cut without importing Manim or rendering.
+    try:
+        validate(Path("Cut.py").read_text(), json.loads(Path("brief.json").read_text()))
+    except (ValueError, SyntaxError) as error:
+        traceback.print_exc()
+        message = (
+            f"Manim cut has a syntax error: {error.msg} (line {error.lineno})."
+            if isinstance(error, SyntaxError)
+            else str(error)
+        )
+        print(json.dumps({"error": message}))
+        return
+    print(json.dumps({"ok": True}))
+
+
+if __name__ == "__main__" and sys.argv[1:2] == ["--check"]:
+    check()
+elif __name__ == "__main__":
     try:
         render(*(Path(p) for p in sys.argv[1:]))
     except (ValueError, SyntaxError):

@@ -45,3 +45,14 @@ export function sandboxManim(workspace, output, signal, onProgress, runtime) {
     manimBindings(runtime.python),
   );
 }
+
+// Write-time check: the same sandbox and validator as a render, with no render.
+export const checkManim = (workspace, signal, runtime) =>
+  sandboxProcess(
+    workspace,
+    [runtime.python, '-I', '-B', join(projectRoot, 'server/media/manim-render.py'), '--check'],
+    signal,
+    () => {},
+    30000,
+    manimBindings(runtime.python),
+  );

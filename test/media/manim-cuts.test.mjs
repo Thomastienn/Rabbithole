@@ -186,3 +186,58 @@ for (const broken of ['detect', 'runtime'])
     );
     assert.match(ready.source, /Works/);
   });
+
+for (const invalid of [false, true])
+  test(`a ${invalid ? 'invalid Manim cut is repaired at write time' : 'valid Manim cut is checked once'} before any render`, async (t) => {
+    const plan = planFor(composition, 2);
+    plan.cuts[1].engine = 'manim';
+    const bad = manimCut.replace('colors["winner"]', 'RED');
+    const inputs = [],
+      events = [];
+    const env = await open(
+      {
+        generate: async (tree, text, emit) => {
+          if (tree.id) return complete(emit, 'Watch.' + directive);
+          if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+          if (!tree.instructions.includes('Python source')) return complete(emit, composition);
+          inputs.push(JSON.parse(text));
+          complete(emit, invalid && inputs.length === 1 ? bad : manimCut);
+        },
+      },
+      {
+        videoManim: {
+          detect: () => ({ ready: true, python: 'fake-python' }),
+          // The real check-only entry point, run without the sandbox.
+          check: async (ws) => {
+            events.push('check');
+            const result = spawnSync(
+              'python3',
+              ['-I', '-B', join(process.cwd(), 'server/media/manim-render.py'), '--check'],
+              { cwd: ws, encoding: 'utf8' },
+            );
+            const answer = JSON.parse(result.stdout.trim().split('\n').at(-1));
+            if (answer.error) throw new Error(answer.error);
+          },
+          render: async (ws, out) => {
+            events.push('render');
+            assert.equal(readFileSync(join(ws, 'Cut.py'), 'utf8'), manimCut.trim());
+            return fakeRender(ws, out);
+          },
+        },
+      },
+    );
+    t.after(async () => {
+      await env.app.stop();
+      env.store.close();
+    });
+    const tree = env.store.create('Checked math', 'codex');
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a math video.' })).text();
+    const row = await until(() =>
+      env.store.tree(tree.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
+    );
+    assert.equal(row.status, 'ready', row.error);
+    assert.deepEqual(events, invalid ? ['check', 'check', 'render'] : ['check', 'render']);
+    assert.equal(inputs.length, invalid ? 2 : 1);
+    assert.equal(inputs[0].validationError, undefined);
+    if (invalid) assert.match(inputs[1].validationError, /RED/);
+  });

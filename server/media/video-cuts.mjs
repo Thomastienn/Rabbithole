@@ -93,6 +93,7 @@ export async function writeCuts({
   call,
   narrate,
   snapshot,
+  check,
   signal,
   save,
   wait,
@@ -179,6 +180,21 @@ export async function writeCuts({
         error = e;
         continue;
       }
+      // A Manim cut is validated in the render sandbox as soon as it is written, before narration or render.
+      if (cuts[index].engine === 'manim' && check)
+        try {
+          await mkdir(join(workspace, `cut-${index}`), { recursive: true, mode: 0o700 });
+          await check(await stage(index));
+        } catch (e) {
+          signal.throwIfAborted();
+          if (e.manimUnavailable) throw e;
+          error = new Error(
+            withoutPaths(
+              e.message === 'Video rendering failed.' ? (e.diagnostic ?? e.message) : e.message,
+            ),
+          );
+          continue;
+        }
       persist();
       return;
     }
