@@ -9,6 +9,12 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
+import { fade } from '@remotion/transitions/fade';
+import { slide } from '@remotion/transitions/slide';
+import { wipe } from '@remotion/transitions/wipe';
+import { flip } from '@remotion/transitions/flip';
+import { clockWipe } from '@remotion/transitions/clock-wipe';
+import { iris } from '@remotion/transitions/iris';
 
 export const palette = {
   ground: '#1a1613',
@@ -317,5 +323,103 @@ export function Cursor({ marks = [], sentences }: { marks?: Mark[]; sentences: T
         </div>
       )}
     </div>
+  );
+}
+
+// Joins between cuts (docs/video-consistency-spec.md). A continuing cut is a hard cut; a scene change plays one
+// side of its transition per cut: the outgoing cut exits over its closing pause, then the next cut enters.
+export type Join =
+  | { join: 'continue' }
+  | {
+      join: 'scene';
+      transition?: 'fade' | 'slide' | 'wipe' | 'flip' | 'clockWipe' | 'iris';
+      direction?: string;
+    };
+type JoinTiming = {
+  durationInFrames: number;
+  audioFrames: number;
+  transitionIn?: boolean;
+  entry?: Join | null;
+  exit?: Join | null;
+};
+const SHORT_FADE: Join = { join: 'scene', transition: 'fade' };
+const side = (join: Join | null, reduced: boolean) => {
+  if (join?.join !== 'scene') return null;
+  const transition = reduced ? 'fade' : (join.transition ?? 'fade');
+  return { transition, direction: transition === 'fade' ? undefined : join.direction };
+};
+// Entering progress runs 0 to 1 over the cut's first frames, exiting progress 0 to 1 over its closing pause.
+export function joinAt(timing: JoinTiming, f: number, reduced = false) {
+  // Timings saved before joins only record whether the cut faded in; every cut faded out.
+  const entry = side(
+    timing.entry === undefined ? (timing.transitionIn ? SHORT_FADE : null) : timing.entry,
+    reduced,
+  );
+  const exit = side(timing.exit === undefined ? SHORT_FADE : timing.exit, reduced);
+  return {
+    entry: entry && {
+      ...entry,
+      progress: progress(f, 0, entry.transition === 'fade' ? 8 : 15),
+    },
+    exit: exit && {
+      ...exit,
+      progress: progress(f, timing.audioFrames, timing.durationInFrames - timing.audioFrames),
+    },
+  };
+}
+
+type Side = NonNullable<ReturnType<typeof joinAt>['entry']>;
+const presentation = ({ transition, direction }: Side) => {
+  const options = { direction: direction as never };
+  const size = { width: frame.width, height: frame.height };
+  return (
+    {
+      fade: () => fade({ shouldFadeOutExitingScene: true }),
+      slide: () => slide(options),
+      wipe: () => wipe(options),
+      flip: () => flip(options),
+      clockWipe: () => clockWipe(size),
+      iris: () => iris(size),
+    } as Record<string, () => { component: any; props: Record<string, unknown> }>
+  )[transition]();
+};
+// The presentation stays the same for the whole cut, so the cut underneath never remounts.
+function Played({
+  at,
+  exiting,
+  children,
+}: {
+  at: Side | null;
+  exiting: boolean;
+  children: ReactNode;
+}) {
+  if (!at) return <>{children}</>;
+  const { component: Presentation, props } = presentation(at);
+  // Clock wipe and iris leave their exiting side untouched, so the outgoing cut plays the entering side in reverse.
+  const reverse = exiting && (at.transition === 'clockWipe' || at.transition === 'iris');
+  return (
+    <Presentation
+      presentationDirection={exiting && !reverse ? 'exiting' : 'entering'}
+      presentationProgress={reverse ? 1 - at.progress : at.progress}
+      passedProps={props}
+      presentationDurationInFrames={15}
+      onElementImage={() => {}}
+      onUnmount={() => {}}
+      bothEnteringAndExiting={false}
+    >
+      {children}
+    </Presentation>
+  );
+}
+export function Joined({ timing, children }: { timing: JoinTiming; children: ReactNode }) {
+  const reduced =
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const { entry, exit } = joinAt(timing, useCurrentFrame(), reduced);
+  return (
+    <Played at={entry} exiting={false}>
+      <Played at={exit} exiting>
+        {children}
+      </Played>
+    </Played>
   );
 }

@@ -8,6 +8,7 @@ import {
   AUDIT_INSTRUCTIONS,
 } from './video-cut.mjs';
 import {
+  cutJoin,
   cutSource,
   emphasisMark,
   pieceNames,
@@ -359,7 +360,9 @@ export async function writeCuts({
           ...timing,
           audioFrames: timing.durationInFrames,
           durationInFrames: timing.durationInFrames + CUT_PAUSE_FRAMES,
-          transitionIn: index > 0,
+          entry: index > 0 ? cutJoin(plan.cuts[index]) : null,
+          // The last cut fades out at the end of the video.
+          exit: index < plan.cuts.length - 1 ? cutJoin(plan.cuts[index + 1]) : cutJoin({}),
         };
         await writeFile(join(dir, 'narration.json'), JSON.stringify(cut.timing));
         const publicTiming = JSON.parse(await readFile(join(dir, 'public', 'timing.json')));

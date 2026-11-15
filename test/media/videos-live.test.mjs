@@ -103,6 +103,11 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
     assert.doesNotMatch(live.cuts[0].code, /<AbsoluteFill|^import /m);
     assert.equal(live.cuts[0].timing.durationInFrames, 75);
     assert.deepEqual(
+      [live.cuts[0].timing.entry, live.cuts[0].timing.exit],
+      [null, { join: 'scene', transition: 'fade' }],
+      'live cut data carries the joins into and out of the cut',
+    );
+    assert.deepEqual(
       live.cuts.map((c) => c.emphasis),
       [emphasis, []],
     );

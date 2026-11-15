@@ -22,6 +22,8 @@ test('three cut writers and narrators start in parallel; reversed completions pe
   plan.cuts.forEach((c, i) => {
     c.narration = `Narration ${i}`;
   });
+  plan.cuts[1].join = 'continue';
+  Object.assign(plan.cuts[2], { join: 'scene', transition: 'flip', direction: 'from-top' });
   const writers = plan.cuts.map(gate),
     voices = plan.cuts.map(gate);
   const writing = [],
@@ -91,7 +93,17 @@ test('three cut writers and narrators start in parallel; reversed completions pe
     assert.equal(cut.engine, 'remotion');
     assert.equal(cut.timing.audioFrames, 60, 'ffprobe measured the fixture MP3');
     assert.equal(cut.timing.durationInFrames, 75);
-    assert.equal(cut.timing.transitionIn, i > 0);
+    assert.deepEqual(
+      [cut.timing.entry, cut.timing.exit],
+      [
+        [null, { join: 'continue' }],
+        [{ join: 'continue' }, { join: 'scene', transition: 'flip', direction: 'from-top' }],
+        [
+          { join: 'scene', transition: 'flip', direction: 'from-top' },
+          { join: 'scene', transition: 'fade' },
+        ],
+      ][i],
+    );
     assert.deepEqual(inputs[i].input.styleBrief, plan.styleBrief);
     assert.deepEqual(inputs[i].input.cut, plan.cuts[i]);
     assert.equal(inputs[i].input.previousEndState, i ? plan.cuts[i - 1].endState : null);

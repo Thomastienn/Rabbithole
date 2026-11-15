@@ -13,7 +13,7 @@ import '@fontsource/archivo/700.css';
 import '@fontsource/literata/400.css';
 import '@fontsource/literata/600.css';
 import Video from './Video';
-import { Cursor, Sketch, frame as videoFrame, progress } from './kit';
+import { Cursor, Joined, Sketch, frame as videoFrame } from './kit';
 import timing from './narration.json';
 import emphasis from './emphasis.json';
 const fonts = delayRender('fonts');
@@ -22,8 +22,7 @@ const Narrated = () => {
   const frame = useCurrentFrame();
   const caption = timing.captions.find(c => frame >= c.startFrame && frame < c.endFrame);
   const opacity = caption ? Math.min(interpolate(frame, [caption.startFrame, caption.startFrame + 5], [0, 1], { extrapolateRight: 'clamp' }), interpolate(frame, [caption.endFrame - 4, caption.endFrame], [1, 0], { extrapolateLeft: 'clamp' })) : 0;
-  const fade = (timing.transitionIn ? progress(frame, 0, 8) : 1) * (1 - progress(frame, timing.audioFrames, 15));
-  return <AbsoluteFill style={{background:'#1a1613',color:'#efe6d6',fontFamily:'Archivo, sans-serif'}}><AbsoluteFill style={{opacity:fade}}><Video sentences={timing.sentences} durationInFrames={timing.durationInFrames} /><Sketch marks={emphasis} sentences={timing.sentences} /><Cursor marks={emphasis} sentences={timing.sentences} /></AbsoluteFill><Audio src={staticFile('narration.mp3')} />
+  return <AbsoluteFill style={{background:'#1a1613',color:'#efe6d6',fontFamily:'Archivo, sans-serif'}}><Joined timing={timing}><Video sentences={timing.sentences} durationInFrames={timing.durationInFrames} /><Sketch marks={emphasis} sentences={timing.sentences} /><Cursor marks={emphasis} sentences={timing.sentences} /></Joined><Audio src={staticFile('narration.mp3')} />
     <div style={{position:'absolute',left:0,right:0,bottom:0,height:videoFrame.subtitles,background:'linear-gradient(to top, #1a1613f0 0%, #1a1613cc 55%, #1a161300 100%)',pointerEvents:'none'}} />
     {caption && <div style={{position:'absolute',bottom:12,left:120,right:120,textAlign:'center',fontFamily:'Archivo, sans-serif',fontWeight:500,fontSize:40,lineHeight:1.2,color:'#efe6d6',opacity,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',pointerEvents:'none'}}>{caption.text}</div>}
   </AbsoluteFill>;

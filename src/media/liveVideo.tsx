@@ -1,4 +1,4 @@
-// The live video composition: cuts in order, each with the same ground, fade, narration and subtitles as the
+// The live video composition: cuts in order, each with the same ground, join, narration and subtitles as the
 // rendered cut (CUT_ENTRY in server/media/video-cut.mjs); an unready cut holds playback in a buffering state.
 import { Component, useEffect, type ComponentType, type ReactNode } from 'react';
 import {
@@ -12,11 +12,12 @@ import {
 } from 'remotion';
 import {
   Cursor,
+  Joined,
   Sketch,
   fonts,
   frame as videoFrame,
   palette,
-  progress,
+  type Join,
   type Mark,
 } from '../../server/media/video-kit';
 
@@ -27,7 +28,9 @@ export type LiveCut = {
   timing: {
     durationInFrames: number;
     audioFrames: number;
-    transitionIn: boolean;
+    transitionIn?: boolean;
+    entry?: Join | null;
+    exit?: Join | null;
     sentences: Sentence[];
     captions: Caption[];
   } | null;
@@ -94,15 +97,12 @@ function Narrated({ cut }: { cut: LiveCut }) {
         }),
       )
     : 0;
-  const fade =
-    (timing.transitionIn ? progress(frame, 0, 8) : 1) *
-    (1 - progress(frame, timing.audioFrames, 15));
   const Cut = cut.Component;
   return (
     <AbsoluteFill
       style={{ background: palette.ground, color: palette.paper, fontFamily: fonts.heading }}
     >
-      <AbsoluteFill style={{ opacity: fade }}>
+      <Joined timing={timing}>
         <Contained>
           {cut.clip ? (
             <AbsoluteFill style={{ clipPath: 'inset(64px 80px 120px)' }}>
@@ -114,7 +114,7 @@ function Narrated({ cut }: { cut: LiveCut }) {
         </Contained>
         <Sketch marks={cut.emphasis} sentences={timing.sentences} />
         <Cursor marks={cut.emphasis} sentences={timing.sentences} />
-      </AbsoluteFill>
+      </Joined>
       <Audio src={cut.audio!} />
       <div
         style={{

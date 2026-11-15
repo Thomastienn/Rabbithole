@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { videoPlan, cutSource, CUT_PAUSE_FRAMES } from '../../server/media/video-plan.mjs';
+import {
+  videoPlan,
+  cutSource,
+  cutJoin,
+  CUT_PAUSE_FRAMES,
+  PLAN_INSTRUCTIONS,
+} from '../../server/media/video-plan.mjs';
 import { planFor, composition, spatial, styleBrief } from '../support/video-kit.mjs';
 
 test('compact plan validates the brief and ordered cuts, including the Manim engine', () => {
@@ -62,6 +68,44 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   for (const raw of ['not json', 'null', '[]', '{}']) assert.throws(() => videoPlan(raw));
   assert.throws(() => videoPlan(' '.repeat(65537)), /64 KiB/);
   assert.equal(CUT_PAUSE_FRAMES, 15);
+});
+
+test('plan joins accept continue and scene transitions, reject unknown values, and old plans read as scene with fade', () => {
+  const good = planFor(composition, 4);
+  Object.assign(good.cuts[0], { join: 'scene', transition: 'iris' });
+  good.cuts[1].join = 'continue';
+  Object.assign(good.cuts[2], { join: 'scene', transition: 'wipe', direction: 'from-top-left' });
+  Object.assign(good.cuts[3], { transition: 'slide', direction: 'from-right' });
+  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  assert.deepEqual(good.cuts.map(cutJoin), [
+    { join: 'scene', transition: 'iris' },
+    { join: 'continue' },
+    { join: 'scene', transition: 'wipe', direction: 'from-top-left' },
+    { join: 'scene', transition: 'slide', direction: 'from-right' },
+  ]);
+  const old = planFor(composition, 2);
+  assert.deepEqual(videoPlan(JSON.stringify(old)), old);
+  assert.deepEqual(old.cuts.map(cutJoin), [
+    { join: 'scene', transition: 'fade' },
+    { join: 'scene', transition: 'fade' },
+  ]);
+  for (const cut of [
+    { join: 'cut' },
+    { join: 'scene', transition: 'dissolve' },
+    { join: 'scene', transition: 'slide', direction: 'from-top-left' },
+    { join: 'scene', transition: 'fade', direction: 'from-left' },
+    { join: 'continue', transition: 'fade' },
+  ]) {
+    const bad = structuredClone(old);
+    Object.assign(bad.cuts[1], cut);
+    assert.throws(() => videoPlan(JSON.stringify(bad)), /malformed/, JSON.stringify(cut));
+  }
+  const first = structuredClone(old);
+  first.cuts[0].join = 'continue';
+  assert.throws(() => videoPlan(JSON.stringify(first)), /malformed/, 'cut 1 is always a scene');
+  assert.match(PLAN_INSTRUCTIONS, /"join":"scene","transition":"slide","direction":"from-right"/);
+  assert.match(PLAN_INSTRUCTIONS, /"continue" .*hard cut.*cut 1 is always "scene"/);
+  assert.match(PLAN_INSTRUCTIONS, /"fade", "slide", "wipe", "flip", "clockWipe" or "iris"/);
 });
 
 test('cut validation enforces kit imports, brief inks and house fonts before rendering', () => {
