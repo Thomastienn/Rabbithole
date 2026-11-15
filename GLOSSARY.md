@@ -110,6 +110,21 @@ _Avoid_: Widget, canvas, artifact (in UI copy)
 One continuous segment of a video with its own part of the narration and its own animation. A video is a planned sequence of cuts sharing one look, joined by transitions under a single narration track.
 _Avoid_: Scene, clip, shot
 
+**Set piece**:
+A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut.
+_Avoid_: Model, asset, prop
+
+**Continuing cut**:
+A cut that carries on the previous cut's scene from exactly where it ended, joined to it by a hard cut so the two play as one unbroken shot.
+
+**Scene change**:
+A cut that starts a new scene, joined to the previous cut by a transition the video plan chooses.
+_Avoid_: Cut (for the join itself)
+
+**Cut audit**:
+A single review of one written cut, from its code and still frames, against the video plan, its set pieces and the previous cut's last frame. It fixes layout, consistency, emphasis placement and missing or unnecessary detail before the cut becomes playable.
+_Avoid_: Final pass, whole-video audit
+
 **Focus mode**:
 The learner's choice to hide the app's top bar on any page, leaving only the current page's content.
 _Avoid_: Full screen, zen mode, distraction-free mode
