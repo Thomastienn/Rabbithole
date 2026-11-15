@@ -308,3 +308,77 @@ test('escaped endpoint credentials in tool arguments are refused without leaking
   assert.doesNotMatch(JSON.stringify(events), /sk-test/);
   assert.equal(events.at(-1).tool.status, 'failed');
 });
+
+test('a follow-up turn replays earlier tool calls with their saved outputs instead of re-running them', async (t) => {
+  const env = await launch(t);
+  env.fake.reply = (req, res, body) =>
+    body.messages.at(-1).role === 'tool'
+      ? streamReply(res, ['It says forty-two.'])
+      : body.messages.at(-1).content === 'And again?'
+        ? streamReply(res, ['Still forty-two.'])
+        : streamToolCalls(res, [{ name: 'read_page', input: { url: `${env.site}/heaps` } }]);
+  const { id, stream } = await env.ask('tooled');
+  await env.events(stream);
+  const [saved] = env.store.tree(id).messages.at(-1).tools;
+
+  await env.events((await env.post(`/api/trees/${id}/messages`, { text: 'And again?' })).body);
+  assert.deepEqual(env.hits, ['/heaps']);
+  const followUp = env.chats().at(-1).body.messages;
+  assert.deepEqual(followUp.slice(1), [
+    { role: 'user', content: 'What does the page say?' },
+    {
+      role: 'assistant',
+      content: null,
+      tool_calls: [
+        {
+          id: saved.id,
+          type: 'function',
+          function: { name: 'read_page', arguments: JSON.stringify(saved.input) },
+        },
+      ],
+    },
+    { role: 'tool', tool_call_id: saved.id, content: saved.output },
+    { role: 'assistant', content: 'It says forty-two.' },
+    { role: 'user', content: 'And again?' },
+  ]);
+  assert.match(saved.output, /forty-two/);
+});
+
+test('usage of every model call in a tool turn is summed into the reply and usage history', async (t) => {
+  const env = await launch(t);
+  env.fake.reply = (req, res, body) =>
+    body.messages.at(-1).role === 'tool'
+      ? streamReply(res, ['Done.'], 'stop', {
+          prompt_tokens: 300,
+          completion_tokens: 20,
+          prompt_tokens_details: { cached_tokens: 100 },
+        })
+      : streamToolCalls(
+          res,
+          [{ name: 'read_page', input: { url: `${env.site}/heaps` } }],
+          '',
+          'tool_calls',
+          {
+            prompt_tokens: 120,
+            completion_tokens: 15,
+          },
+        );
+  const { id, stream } = await env.ask('tooled');
+  const events = await env.events(stream);
+  assert.deepEqual(events.at(-1), { type: 'done', status: 'completed' });
+  assert.ok(env.chats().every((c) => c.body.stream_options?.include_usage === true));
+  const total = { input: 320, output: 35, cacheRead: 100 };
+  const { at, ...usage } = env.store.tree(id).messages.at(-1).usage;
+  assert.deepEqual(usage, total);
+  const [event] = env.store.usageEvents().events;
+  assert.deepEqual(
+    { input: event.input, output: event.output, cacheRead: event.cacheRead, task: event.task },
+    { ...total, task: 'chat' },
+  );
+});
+
+test('tool-free endpoint requests do not ask for usage', async (t) => {
+  const env = await launch(t);
+  await env.events((await env.ask('plain')).stream);
+  assert.equal(Object.hasOwn(env.chats()[0].body, 'stream_options'), false);
+});

@@ -192,7 +192,11 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
   assert.equal(container.querySelector('.endpoint-models'), null, 'the list starts closed');
   await act(async () => button(container, 'Show Gateway models').click());
   const panel = () => container.querySelector('.endpoint-models');
-  const switches = () => [...panel().querySelectorAll('[role=switch]')];
+  // Each model row also has a Uses tutor tools switch; this test covers Reads images.
+  const switches = () =>
+    [...panel().querySelectorAll('[role=switch]')].filter((s) =>
+      /Reads images/.test(s.labels[0].textContent),
+    );
   assert.equal(switches().length, 50, 'only the first rows render');
   assert.match(panel().textContent, /Showing 50 of 300 models\. Search to narrow\./);
   assert.doesNotMatch(panel().textContent, /Sonnet/, 'other providers stay out');

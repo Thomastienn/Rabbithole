@@ -1,7 +1,11 @@
 import { notify } from './events.mjs';
 import { createServer } from 'node:http';
 
-export function streamReply(res, parts, finish = 'stop') {
+// An optional usage report goes in its own chunk after the finish, as with stream_options.include_usage.
+const usageChunk = (usage) =>
+  usage ? 'data: ' + JSON.stringify({ choices: [], usage }) + '\n\n' : '';
+
+export function streamReply(res, parts, finish = 'stop', usage) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream' });
   res.write(': heartbeat\r\n\r\n');
   for (const text of parts)
@@ -13,7 +17,9 @@ export function streamReply(res, parts, finish = 'stop') {
   res.end(
     'data: ' +
       JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: finish }] }) +
-      '\r\n\r\ndata: [DONE]\r\n\r\n',
+      '\r\n\r\n' +
+      usageChunk(usage) +
+      'data: [DONE]\r\n\r\n',
   );
 }
 
@@ -52,7 +58,7 @@ export async function fakeOpenAI(t) {
 }
 
 // One model turn that asks for tool calls, each call's arguments split across two chunks.
-export function streamToolCalls(res, calls, text = '', finish = 'tool_calls') {
+export function streamToolCalls(res, calls, text = '', finish = 'tool_calls', usage) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream' });
   const chunk = (delta, finish_reason = null) =>
     res.write(
@@ -74,5 +80,5 @@ export function streamToolCalls(res, calls, text = '', finish = 'tool_calls') {
     chunk({ tool_calls: [{ index, function: { arguments: args.slice(5) } }] });
   });
   chunk({}, finish);
-  res.end('data: [DONE]\n\n');
+  res.end(usageChunk(usage) + 'data: [DONE]\n\n');
 }

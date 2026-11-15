@@ -39,6 +39,7 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
       isDefault: true,
       efforts: [],
       readsImages: false,
+      usesTutorTools: false,
     },
     {
       provider: 'openai',
@@ -47,6 +48,7 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
       isDefault: false,
       efforts: [],
       readsImages: false,
+      usesTutorTools: false,
     },
   ]);
   assert.equal(catalogue.defaultProvider, 'claude');

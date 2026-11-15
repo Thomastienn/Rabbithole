@@ -23,6 +23,38 @@ export async function streamEvents(body, frame) {
   }
 }
 
+// Saved completed turns; with tools offered, earlier tool calls replay with their saved outputs so the model never re-runs them.
+export const history = (messages, replayTools) =>
+  messages
+    .filter((m) => m.status === 'completed')
+    .flatMap((m) => [
+      ...(replayTools && m.tools?.length
+        ? [
+            {
+              role: 'assistant',
+              content: null,
+              tool_calls: m.tools.map((t) => ({
+                id: t.id,
+                type: 'function',
+                function: { name: t.name, arguments: JSON.stringify(t.input ?? {}) },
+              })),
+            },
+            ...m.tools.map((t) => ({ role: 'tool', tool_call_id: t.id, content: t.output ?? '' })),
+          ]
+        : []),
+      { role: m.role, content: m.text },
+    ]);
+
+// One call's reported usage in TreeTutor's counts (cache reads apart from input), or null.
+export function chunkUsage(u) {
+  if (![u?.prompt_tokens, u?.completion_tokens].every((n) => Number.isSafeInteger(n) && n >= 0))
+    return null;
+  const cached = u.prompt_tokens_details?.cached_tokens;
+  const cacheRead =
+    Number.isSafeInteger(cached) && cached >= 0 ? Math.min(cached, u.prompt_tokens) : 0;
+  return { input: u.prompt_tokens - cacheRead, output: u.completion_tokens, cacheRead };
+}
+
 // Runs one model tool call through the turn's runner and emits its tool events; a failure goes back to the model as text.
 export async function runTool(tree, call, emit, signal, key) {
   const id = randomUUID(),

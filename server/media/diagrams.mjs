@@ -168,6 +168,7 @@ export function tutorContext(tree) {
 }
 
 // Compaction sees each pending or ready media request only as one "[Visual: title — description]" line at its place in the reply, never code or JSON.
+// Tool calls go in full, without their display-only ids and timings.
 export function compactionMessages(tree) {
   const media = (tree.artifacts ?? []).filter(
     (a) => a.conversation === tree.id && (a.status === 'ready' || a.status === 'pending'),
@@ -175,6 +176,11 @@ export function compactionMessages(tree) {
   return tree.messages
     .filter((m) => m.status === 'completed')
     .map(modelMessage)
+    .map(({ tools, ...message }) =>
+      tools
+        ? { ...message, tools: tools.map(({ name, input, output }) => ({ name, input, output })) }
+        : message,
+    )
     .map((message) => {
       const own = media
         .filter((a) => a.message === message.id)

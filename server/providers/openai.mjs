@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import { EndpointError, endpointName, lastTest, readOwned, settings } from './endpointSettings.mjs';
-import { runTool, streamEvents } from './chatStream.mjs';
+import { chunkUsage, history, runTool, streamEvents } from './chatStream.mjs';
 
 export { EndpointError };
 
@@ -340,9 +340,7 @@ class Endpoint {
       const tools = tree.tools ?? [];
       const messages = [
         { role: 'system', content: system },
-        ...(tree.messages ?? [])
-          .filter((m) => m.status === 'completed')
-          .map((m) => ({ role: m.role, content: m.text })),
+        ...history(tree.messages ?? [], tools.length > 0),
         // This turn's images go as data URLs; history turns carry only their [image: name] text.
         {
           role: 'user',
@@ -362,6 +360,8 @@ class Endpoint {
       ];
       const output = redactStream(saved.apiKey, emit);
       let hasText = false;
+      // Tool turns sum every model call's reported usage; tool-free requests stay as before.
+      const total = { input: 0, output: 0, cacheRead: 0 };
       // No call cap: the loop ends when the model answers without tool calls, or on Stop.
       while (true) {
         call = AbortSignal.any([signal, AbortSignal.timeout(300000)]);
@@ -372,10 +372,13 @@ class Endpoint {
           ...(tree.effort != null && { reasoning_effort: tree.effort }),
           ...(tools.length && {
             tools: tools.map((t) => ({ type: 'function', function: t })),
+            stream_options: { include_usage: true },
           }),
         });
         const calls = new Map();
-        let completed = false,
+        // This call's latest usage report; some endpoints repeat it on several chunks.
+        let used = null,
+          completed = false,
           content = '',
           separate = hasText;
         try {
@@ -384,13 +387,23 @@ class Endpoint {
               'Custom endpoint did not return a chat-completion stream. Check compatibility and the base URL.',
             );
           await streamEvents(response.body, (data) => {
-            if (data.trim() === '[DONE]')
+            if (data.trim() === '[DONE]') {
+              if (completed) return true;
               throw new EndpointError(
                 'Custom endpoint ended the stream before completing the reply. Try again.',
               );
+            }
             const chunk = JSON.parse(data);
             if (chunk.error)
               throw new EndpointError('Custom endpoint reported a stream error. Try again.');
+            const reported = tools.length && chunkUsage(chunk.usage);
+            if (reported) {
+              used = reported;
+              emit({
+                type: 'usage',
+                usage: Object.fromEntries(Object.entries(total).map(([k, v]) => [k, v + used[k]])),
+              });
+            }
             const choice = chunk.choices?.find((c) => c.index === 0);
             if (!choice) return false;
             if (typeof choice.delta?.content === 'string' && choice.delta.content) {
@@ -425,11 +438,13 @@ class Endpoint {
                 );
               completed = true;
             }
-            return completed;
+            // With usage requested, its chunk follows the finish; read on to [DONE] or the stream's end.
+            return completed && !tools.length;
           });
         } finally {
           if (!response.body?.locked) await response.body?.cancel().catch(() => {});
         }
+        if (used) for (const k in total) total[k] += used[k];
         call.throwIfAborted();
         if (!completed)
           throw new EndpointError(

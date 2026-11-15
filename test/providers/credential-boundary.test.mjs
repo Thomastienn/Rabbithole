@@ -154,6 +154,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
       isDefault: true,
       efforts: [],
       readsImages: false,
+      usesTutorTools: false,
     },
   ]);
   assert.equal(catalogue.providers.openai.connected, true);
