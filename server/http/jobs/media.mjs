@@ -58,7 +58,7 @@ export function mediaJobs(ctx) {
     return a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
   };
   // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
-  const startVideo = (job, parentSignal) => {
+  const startVideo = (job, parentSignal, previous) => {
     const running = {
       controller: new AbortController(),
       conversation: job.conversation,
@@ -108,6 +108,7 @@ export function mediaJobs(ctx) {
           store,
           dir,
           artifact: { ...job, input: frozen },
+          previous,
           signal: running.controller.signal,
           timeout: ctx.videoTimeout,
           render: ctx.videoRender,

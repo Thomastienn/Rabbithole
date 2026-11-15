@@ -238,6 +238,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     return json(res, 409, { error: 'This video does not need to be regenerated.' });
   const job = store.retryVideo(id, artifactId);
   if (!job) return json(res, 409, { error: 'This video does not need to be regenerated.' });
-  ctx.startVideo(job);
+  // A failed attempt has settled its workspace, so its plan and good cuts can be copied.
+  ctx.startVideo(job, undefined, artifact.status === 'failed' ? artifact : undefined);
   return json(res, 200, live(job));
 }

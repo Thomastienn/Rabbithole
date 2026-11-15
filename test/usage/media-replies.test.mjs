@@ -28,11 +28,9 @@ test('reply API attributes retried visuals and every video call, reports running
             text === 'More' ? 'Another answer.' : 'Explanation.' + block() + directive,
           );
         }
+        // A failed explicit Retry (it reuses the plan, so this is its cut call) reports no measurement.
+        if (regenerating) throw new Error('Fixture unavailable');
         if (tree.instructions.startsWith('You plan')) {
-          if (regenerating) {
-            // A failed explicit new version reports no measurement.
-            throw new Error('Fixture unavailable');
-          }
           emit({ type: 'usage', usage: counts(20) });
           await planGate.promise;
           return complete(emit, JSON.stringify(planFor()));

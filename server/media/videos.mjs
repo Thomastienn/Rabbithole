@@ -1,6 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { renameSync, unlinkSync, readFileSync } from 'node:fs';
-import { mkdir, writeFile, realpath, lstat, open, rm, copyFile } from 'node:fs/promises';
+import {
+  mkdir,
+  writeFile,
+  realpath,
+  lstat,
+  open,
+  rm,
+  copyFile,
+  cp,
+  access,
+} from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { edgeNarration } from './narration.mjs';
 import { videoPlan, PLAN_INSTRUCTIONS, CUT_ATTEMPTS } from './video-plan.mjs';
@@ -71,6 +81,7 @@ export async function generateVideo({
   store,
   dir,
   artifact,
+  previous,
   signal,
   timeout,
   render = sandboxRender,
@@ -113,16 +124,35 @@ export async function generateVideo({
     controller.signal.throwIfAborted();
     await mkdir(join(workspace, 'out'), { recursive: true, mode: 0o700 });
     await mkdir(join(workspace, 'tmp'), { recursive: true, mode: 0o700 });
-    const plan = videoPlan(
-      await call(
-        PLAN_INSTRUCTIONS +
-          (JSON.parse(artifact.input).differentVersion
-            ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
-            : ''),
-        artifact.input,
-        (characters) => onPhase('planning', undefined, { characters }),
-      ),
-    );
+    const prior = previous?.source ? JSON.parse(previous.source) : null;
+    const kept = [];
+    if (prior?.plan)
+      for (const [i, cut] of prior.cuts.entries()) {
+        const from = join(dir, 'video-work', artifact.id, previous.attempt, `cut-${i}`),
+          to = join(workspace, `cut-${i}`);
+        // Copy, never share, the old cut folder; timing counts only if its audio came along.
+        const timing =
+          cut.timing &&
+          (await cp(from, to, { recursive: true })
+            .then(() => access(join(to, 'public', 'narration.mp3')))
+            .then(
+              () => cut.timing,
+              () => rm(to, { recursive: true, force: true }).then(() => null),
+            ));
+        kept.push({ ...cut, timing });
+      }
+    const plan =
+      prior?.plan ??
+      videoPlan(
+        await call(
+          PLAN_INSTRUCTIONS +
+            (JSON.parse(artifact.input).differentVersion
+              ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
+              : ''),
+          artifact.input,
+          (characters) => onPhase('planning', undefined, { characters }),
+        ),
+      );
     let runtime;
     if (plan.cuts.some((c) => c.engine === 'manim')) {
       runtime = manim.detect();
@@ -165,6 +195,7 @@ export async function generateVideo({
       signal: controller.signal,
       wait,
       stop: (error) => controller.abort(error),
+      kept,
       save: (data) => {
         const written = data.cuts.filter((c) => c.status === 'written').length;
         if (written > writtenCuts) onStage('cuts written', { cut: written, cuts: count });
@@ -283,7 +314,8 @@ export async function generateVideo({
   } finally {
     signal.removeEventListener('abort', cancel);
     controller.signal.removeEventListener('abort', rejectAbort);
-    // Keep private code and timing; discard bundles, temporary clips and unpublished audio.
+    // Keep private code and timing; discard bundles, temporary clips, and audio of canceled or stopped attempts.
+    // A failed attempt keeps its audio so Retry can reuse the narration.
     await Promise.all(
       [workspace, ...Array.from({ length: count }, (_, i) => join(workspace, `cut-${i}`))].flatMap(
         (folder) =>
@@ -291,7 +323,7 @@ export async function generateVideo({
             'bundle',
             'tmp',
             'out',
-            ...(!published ? ['public', 'narration.json'] : []),
+            ...(!published && signal.aborted ? ['public', 'narration.json'] : []),
             '.remotion',
           ].map((name) => rm(join(folder, name), { recursive: true, force: true })),
       ),

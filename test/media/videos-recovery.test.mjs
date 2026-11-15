@@ -137,7 +137,7 @@ test('render, composition and save failures stay honest and retry the same reque
     generate: async (tree, text, emit) => {
       if (tree.id) return complete(emit, 'Sure.' + directive);
       if (tree.instructions.startsWith('You plan')) compose++;
-      complete(emit, compose === 2 ? 'not a composition' : videoResponse(tree));
+      complete(emit, compose === 1 ? 'not a composition' : videoResponse(tree));
     },
   };
   const env = await open(provider, { videoRender });
@@ -147,11 +147,14 @@ test('render, composition and save failures stay honest and retry the same reque
     const { id } = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
     );
-    assert.equal(env.store.artifact(tree.id, id).error, 'Cut 1 of 1: Video rendering failed.');
-    fail = false;
+    assert.equal(env.store.artifact(tree.id, id).error, 'Video plan or style brief is malformed.');
     await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
     await until(() => env.store.artifact(tree.id, id).status === 'failed');
-    assert.equal(env.store.artifact(tree.id, id).error, 'Video plan or style brief is malformed.');
+    assert.equal(
+      env.store.artifact(tree.id, id).error,
+      'Cut 1 of 1: Video rendering failed. Retry keeps the other cuts.',
+    );
+    fail = false;
     const finish = env.store.finishVideo.bind(env.store);
     env.store.finishVideo = (c, i, at, result, error) => {
       if (!error) throw new Error('disk full');
@@ -164,6 +167,7 @@ test('render, composition and save failures stay honest and retry the same reque
     env.store.finishVideo = finish;
     await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
     await until(() => env.store.artifact(tree.id, id).status === 'ready');
+    assert.equal(compose, 2, 'retries after a saved plan make no plan call');
     assert.deepEqual(
       env.store.tree(tree.id).messages.map((m) => m.role),
       ['user', 'assistant'],

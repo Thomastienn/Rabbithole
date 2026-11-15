@@ -185,7 +185,8 @@ for (const failure of ['brief', 'render', 'exhausted'])
     assert.ok(repairs[0]);
     if (failure === 'render')
       assert.equal(repairs[0], 'TypeError: shape is not a function at [path]:3:4');
-    if (failure === 'exhausted') assert.match(row.error, /^Cut 2 of 3: \S.*\.$/);
+    if (failure === 'exhausted')
+      assert.match(row.error, /^Cut 2 of 3: \S.*\. Retry keeps the other cuts\.$/);
     assert.ok(!JSON.stringify(repairs).includes('/'), 'no absolute path reaches the repair');
     assert.equal(plans, 1);
     assert.equal(voices, 3, 'narration is reused for a rewritten cut');
@@ -195,6 +196,125 @@ for (const failure of ['brief', 'render', 'exhausted'])
     else
       assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${row.id}/media`)).status, 404);
   });
+
+test('Retry after a failed cut rewrites only that cut, keeps the rest and publishes; a different version plans fresh; cancel and late output stay rejected', async (t) => {
+  const plan = planFor(composition, 3);
+  plan.cuts.forEach((c, i) => {
+    c.narration = `Narration ${i}`;
+  });
+  const writes = [0, 0, 0],
+    voices = [0, 0, 0];
+  let plans = 0,
+    broken = true,
+    hold;
+  const env = await open(
+    {
+      generate: async (tree, text, emit) => {
+        if (tree.id) return complete(emit, 'Watch.' + directive);
+        if (tree.instructions.startsWith('You plan')) {
+          plans++;
+          return complete(emit, JSON.stringify(plan));
+        }
+        const i = plan.cuts.findIndex((c) => c.purpose === JSON.parse(text).cut.purpose);
+        writes[i]++;
+        if (i === 1 && hold) await hold.promise;
+        // The failing cut gives up only after its siblings are written and every cut is narrated.
+        if (i === 1 && broken)
+          for (;;) {
+            const row = env.store.tree(chat.id).artifacts.find((a) => a.status === 'pending');
+            const cuts = JSON.parse(row?.source ?? '{"cuts":[]}').cuts;
+            if (
+              cuts.filter((c) => c.status === 'written').length === 2 &&
+              cuts.every((c) => c.timing)
+            )
+              break;
+            await new Promise((r) => setTimeout(r, 5));
+          }
+        complete(
+          emit,
+          i === 1 && broken
+            ? composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
+            : composition.replace('PRIVATE_SOURCE_MARKER', `CUT_${i}_W${writes[i]}`),
+        );
+      },
+    },
+    {
+      videoNarrate: async (script) => {
+        voices[plan.cuts.findIndex((c) => c.narration === script)]++;
+        return fakeNarration();
+      },
+      videoRender: fakeRender,
+    },
+  );
+  t.after(async () => {
+    await env.app.stop();
+    env.store.close();
+  });
+  const chat = env.store.create('Retry', 'codex');
+  await (await env.post(`/api/trees/${chat.id}/messages`, { text: 'Make a video.' })).text();
+  const failed = await until(() =>
+    env.store.tree(chat.id).artifacts.find((a) => a.status === 'failed'),
+  );
+  assert.match(failed.error, /^Cut 2 of 3: .+\. Retry keeps the other cuts\.$/);
+  await env.app.settled();
+  const before = JSON.parse(failed.source);
+  assert.deepEqual(writes, [1, 2, 1]);
+
+  // Cancel the retry while its one cut write is held; the released late output must not publish.
+  hold = Promise.withResolvers();
+  await env.post(`/api/trees/${chat.id}/artifacts/${failed.id}/retry`);
+  await until(() => writes[1] === 3);
+  await env.post(`/api/trees/${chat.id}/artifacts/${failed.id}/cancel`);
+  broken = false;
+  hold.resolve();
+  await env.app.settled();
+  assert.equal(env.store.artifact(chat.id, failed.id).status, 'canceled');
+  assert.equal((await env.get(`/api/trees/${chat.id}/artifacts/${failed.id}/media`)).status, 404);
+  assert.deepEqual(writes, [1, 3, 1]);
+  assert.equal(plans, 1);
+
+  // Retry from the canceled attempt has nothing settled to keep, so it fails again with a fresh plan.
+  hold = null;
+  broken = true;
+  await env.post(`/api/trees/${chat.id}/artifacts/${failed.id}/retry`);
+  const again = await until(
+    () =>
+      ['failed'].includes(env.store.artifact(chat.id, failed.id).status) &&
+      env.store.artifact(chat.id, failed.id),
+  );
+  await env.app.settled();
+  assert.equal(plans, 2);
+  assert.deepEqual(writes, [2, 5, 2]);
+  assert.deepEqual(voices, [2, 2, 2]);
+  const prior = JSON.parse(again.source);
+
+  broken = false;
+  await env.post(`/api/trees/${chat.id}/artifacts/${failed.id}/retry`);
+  const ready = await until(() => {
+    const row = env.store.artifact(chat.id, failed.id);
+    return row.status === 'ready' && row;
+  });
+  assert.equal(plans, 2, 'Retry makes no plan call');
+  assert.deepEqual(writes, [2, 6, 2], 'exactly one cut call');
+  assert.deepEqual(voices, [2, 2, 2], 'narration and timing are reused');
+  assert.notEqual(ready.attempt, again.attempt);
+  const data = JSON.parse(ready.source);
+  assert.deepEqual(data.plan, prior.plan);
+  for (const i of [0, 2]) {
+    assert.equal(data.cuts[i].code, prior.cuts[i].code);
+    assert.deepEqual(data.cuts[i].timing, prior.cuts[i].timing);
+  }
+  assert.match(data.cuts[1].code, /CUT_1_W6/);
+  assert.ok(before.cuts[1].status === 'failed');
+  assert.equal((await env.get(`/api/trees/${chat.id}/artifacts/${ready.id}/media`)).status, 200);
+
+  await env.post(`/api/trees/${chat.id}/artifacts/${ready.id}/regenerate`);
+  await until(() =>
+    env.store.tree(chat.id).artifacts.some((a) => a.id !== ready.id && a.status === 'ready'),
+  );
+  assert.equal(plans, 3, 'a different version plans fresh');
+  assert.deepEqual(writes, [3, 7, 3]);
+});
 
 test('a provider failure while writing a cut keeps its own wording', async (t) => {
   const plan = planFor(composition, 2);

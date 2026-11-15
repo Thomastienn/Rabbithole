@@ -14,7 +14,9 @@ import { withoutPaths } from './video-sandbox.mjs';
 
 // A cut's final validation or render failure; provider, sign-in and runtime errors keep their own wording.
 export const cutError = (reason, index, count) =>
-  new Error(`Cut ${index + 1} of ${count}: ${withoutPaths(reason).replace(/\.$/, '')}.`);
+  new Error(
+    `Cut ${index + 1} of ${count}: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the other cuts.`,
+  );
 
 export async function videoCall(provider, selection, instructions, input, signal, onText) {
   const items = new Map();
@@ -63,12 +65,14 @@ export async function writeCuts({
   save,
   wait,
   stop,
+  kept = [],
 }) {
-  const cuts = plan.cuts.map((c) => ({
+  // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
+  const cuts = plan.cuts.map((c, i) => ({
     engine: c.engine,
     status: 'pending',
-    code: null,
-    timing: null,
+    code: (kept[i]?.status !== 'failed' && kept[i]?.code) || null,
+    timing: kept[i]?.timing ?? null,
   }));
   const data = { plan, cuts };
   const persist = () => {
@@ -118,8 +122,12 @@ export async function writeCuts({
     cut.status = 'writing';
     persist();
     const operations = [
-      rewrite(index),
+      cut.code ? null : rewrite(index),
       (async () => {
+        if (cut.timing) {
+          await mkdir(join(dir, 'out'), { recursive: true, mode: 0o700 });
+          return mkdir(join(dir, 'tmp'), { recursive: true, mode: 0o700 });
+        }
         const narration = await wait(
           narrate(plan.cuts[index].narration, signal),
           120000 + plan.cuts[index].narration.length * 30,

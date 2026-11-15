@@ -154,7 +154,8 @@ test('TTS failure and invalid returned timing stay final until explicit Retry; c
   assert.notEqual(ready.attempt, old.attempt);
   assert.equal(ready.input, old.input);
   assert.equal(env.store.artifact(tree.id, failed.id).attempt, ready.attempt);
-  assert.equal(calls, 8);
+  // Retries after a failure reuse the plan; the retry after Cancel plans fresh.
+  assert.equal(calls, 6);
   assert.equal(speech, 4);
   assert.equal(renders, 1);
   assert.equal(existsSync(join(env.dir, 'video-work', failed.id, old.attempt, 'public')), false);
