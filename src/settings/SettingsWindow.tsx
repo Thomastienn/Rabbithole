@@ -18,6 +18,7 @@ import ChatSettings from './ChatSettings';
 import SmartSettings from './SmartSettings';
 import ModelProfiles from './ModelProfiles';
 import TutorStyleSettings from './TutorStyleSettings';
+import MemoryNoteSettings from './MemoryNoteSettings';
 import SearchSettings from './SearchSettings';
 import TutorToolsSettings from './TutorToolsSettings';
 import UsageDashboard from '../usage/UsageDashboard';
@@ -233,6 +234,8 @@ export default function SettingsWindow({
             <TutorToolsSettings api={api} />
             <Divider />
             <TutorStyleSettings api={api} />
+            <Divider />
+            <MemoryNoteSettings api={api} />
           </>,
         )}
       {tab === 'connections' &&

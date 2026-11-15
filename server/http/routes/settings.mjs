@@ -33,6 +33,8 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     if (url.pathname === '/api/profiles') return json(res, 200, profiles());
     if (url.pathname === '/api/settings/tutor-style')
       return json(res, 200, { style: store.tutorStyle(), default: DEFAULT_TUTOR_STYLE });
+    if (url.pathname === '/api/settings/memory-note')
+      return json(res, 200, { note: store.memoryNote() });
     return false;
   }
   if (req.method !== 'POST') return false;
@@ -105,6 +107,11 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     const text = body.style?.trim() || null;
     store.saveTutorStyle(text === DEFAULT_TUTOR_STYLE ? null : text);
     return json(res, 200, { style: store.tutorStyle(), default: DEFAULT_TUTOR_STYLE });
+  }
+  if (url.pathname === '/api/settings/memory-note') {
+    if (typeof body?.note !== 'string')
+      return json(res, 400, { error: 'Send the memory note as text; empty text clears it.' });
+    return json(res, 200, { note: store.saveMemoryNote(body.note) });
   }
   if (url.pathname === '/api/settings/chat') {
     const selection = {

@@ -391,6 +391,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             ctx.tools.run(name, input, { conversation: id, reply, signal }),
         }),
         tutorStyle: store.tutorStyle(),
+        memoryNote: store.memoryNote(),
         concepts: store.strongConcepts(id),
         ...(images.length && { images }),
         ...(attachments.some((a) => a.type === 'application/pdf') && { parts }),

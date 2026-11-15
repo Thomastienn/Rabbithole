@@ -60,6 +60,7 @@ test('previews list every message in order, bound each text and survive reload w
       'endpoint_efforts',
       'endpoint_models',
       'evidence',
+      'memory_note',
       'messages',
       'profiles',
       'searxng_settings',

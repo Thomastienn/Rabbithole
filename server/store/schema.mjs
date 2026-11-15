@@ -139,6 +139,10 @@ export function open(path) {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS tutor_style (id INTEGER PRIMARY KEY CHECK(id=1), text TEXT)',
     );
+    // Memory note: one learner-editable markdown text sent whole with every chat prompt.
+    this.db.exec(
+      'CREATE TABLE IF NOT EXISTS memory_note (id INTEGER PRIMARY KEY CHECK(id=1), text TEXT NOT NULL)',
+    );
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS searxng_settings (id INTEGER PRIMARY KEY CHECK(id=1), url TEXT)',
     );

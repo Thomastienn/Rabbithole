@@ -200,6 +200,17 @@ export const profiles = {
   tutorStyle() {
     return this.db.prepare('SELECT text FROM tutor_style WHERE id=1').get()?.text ?? null;
   },
+  memoryNote() {
+    return this.db.prepare('SELECT text FROM memory_note WHERE id=1').get()?.text ?? '';
+  },
+  saveMemoryNote(text) {
+    this.db
+      .prepare(
+        'INSERT INTO memory_note(id,text) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET text=excluded.text',
+      )
+      .run(text);
+    return this.memoryNote();
+  },
   searxngUrl() {
     return this.db.prepare('SELECT url FROM searxng_settings WHERE id=1').get()?.url ?? null;
   },
