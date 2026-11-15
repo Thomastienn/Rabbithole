@@ -245,3 +245,30 @@ test('instructions ask for looks, require set pieces in Remotion cuts and looks 
     /Draw each recurring object exactly as its styleBrief look describes/,
   );
 });
+
+test('cut and Manim instructions state the validator rule block', async () => {
+  const { CUT_INSTRUCTIONS } = await import('../../server/media/video-cut.mjs');
+  const { MANIM_INSTRUCTIONS } = await import('../../server/media/manim-cut.mjs');
+  for (const [text, color, font, imports] of [
+    [
+      CUT_INSTRUCTIONS,
+      /colors\.<role>.*palette\.<neutral>.*or series/,
+      /fonts\.heading or fonts\.reading/,
+      /Imports come only from "react", "remotion", "\.\/kit"/,
+    ],
+    [
+      MANIM_INSTRUCTIONS,
+      /colors\['<role>'\].*palette\['<neutral>'\]/,
+      /fonts\['heading'\] or fonts\['reading'\]/,
+      /Imports come only as named objects from kit/,
+    ],
+  ]) {
+    assert.match(
+      text,
+      /Validator rules, checked before rendering: colour and font literals are checked/,
+    );
+    assert.match(text, color);
+    assert.match(text, font);
+    assert.match(text, imports);
+  }
+});

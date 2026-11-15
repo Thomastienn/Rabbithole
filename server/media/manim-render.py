@@ -35,11 +35,31 @@ def font_ttf(source, target):
     target.write_bytes(header + records + tables)
 
 
+# shortcut: common CSS colour names only, not all 148; extend if models slip others through.
+NAMED = re.compile(
+    r"\b[a-z]*(?:white|black|red|green|blue|yellow|orange|purple|pink|gr[ae]y|silver|gold|cyan|magenta|lime|navy|teal|maroon|olive|aqua|fuchsia|violet|indigo|brown|crimson|coral|salmon|tomato|turquoise|beige|ivory|khaki|lavender|plum|orchid)\b",
+    re.I,
+)
+# Manim's own colour constants (RED, BLUE_E, PURE_GREEN, LIGHT_GRAY, ...); the kit exports none.
+MANIM_COLOR = re.compile(
+    r"^[A-Z_]*(?:WHITE|BLACK|GR[AE]Y|RED|GREEN|BLUE|YELLOW|GOLD|TEAL|MAROON|PURPLE|PINK|ORANGE|BROWN)[A-Z_]*$"
+)
+HOUSE_FONT = re.compile(r"archivo|literata", re.I)
+
+
 def validate(source, brief):
     tree = ast.parse(source)
-    bindings, locals_ = {}, {}
+    bindings, locals_, stored = {}, {}, set()
     allowed = set(brief["palette"])
-    style_error = "Manim cut breaks the style brief colors or fonts."
+
+    def style_error(name, node):
+        raise ValueError(
+            f"Manim cut breaks the style brief colors or fonts: {name}={ast.get_source_segment(source, node) or ast.unparse(node)}"[
+                :160
+            ]
+            + ". Use colors['<role>'], palette['<neutral>'], fonts['heading'] or fonts['reading']."
+        )
+
     for node in ast.walk(tree):
         if (
             isinstance(node, ast.Import)
@@ -60,28 +80,49 @@ def validate(source, brief):
             and isinstance(node.targets[0], ast.Name)
         ):
             locals_[node.targets[0].id] = node.value
+        if isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
+            stored.add(node.id)
+        if isinstance(node, ast.arg):
+            stored.add(node.arg)
+    stored |= set(bindings)
 
-    def style(node, font=False, seen=None):
-        seen = set() if seen is None else seen
+    # Only literal text can introduce a foreign hue or font; any expression built from kit values passes.
+    def style(node, font=False, seen=frozenset()):
+        if isinstance(node, ast.Constant):
+            return not isinstance(node.value, str) or bool(
+                font and HOUSE_FONT.fullmatch(node.value)
+            )
+        if isinstance(node, ast.JoinedStr):
+            parts = [
+                v.value
+                for v in node.values
+                if isinstance(v, ast.Constant) and v.value.strip()
+            ]
+            return all(
+                HOUSE_FONT.fullmatch(t) if font else not NAMED.search(t) for t in parts
+            )
         if isinstance(node, ast.Name) and node.id in locals_ and node.id not in seen:
             return style(locals_[node.id], font, seen | {node.id})
-        if (
-            isinstance(node, ast.Subscript)
-            and isinstance(node.value, ast.Name)
-            and isinstance(node.slice, ast.Constant)
-        ):
-            base, key = bindings.get(node.value.id), node.slice.value
-            if font:
-                return base == "fonts" and key in ("heading", "reading")
-            return (
-                base == "palette"
-                and key in allowed
-                or base == "colors"
-                and key in brief["colors"]
-            )
-        if isinstance(node, ast.IfExp):
-            return style(node.body, font) and style(node.orelse, font)
-        return False
+        if isinstance(node, ast.Subscript):
+            return bindings.get(getattr(node.value, "id", None)) in (
+                "palette",
+                "colors",
+                "fonts",
+            ) or style(node.value, font, seen)
+        if isinstance(node, ast.Dict):
+            return all(style(v, font, seen) for v in node.values)
+        children = (
+            [node.body, node.orelse]
+            if isinstance(node, ast.IfExp)
+            else node.values
+            if isinstance(node, ast.BoolOp)
+            else [node.left, node.right]
+            if isinstance(node, ast.BinOp)
+            else node.elts
+            if isinstance(node, (ast.Tuple, ast.List))
+            else []
+        )
+        return all(style(c, font, seen) for c in children)
 
     def style_key(key):
         return isinstance(key, str) and (
@@ -92,17 +133,27 @@ def validate(source, brief):
         if (
             isinstance(node, ast.Constant)
             and isinstance(node.value, str)
-            and re.search(r"#[\da-fA-F]{3,8}\b", node.value)
+            and re.search(r"#[\da-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\(", node.value, re.I)
         ):
-            raise ValueError(style_error)
+            raise ValueError(
+                f"Manim cut breaks the style brief colors or fonts: {node.value[:60]!r} is not a kit color. Use colors['<role>'] or palette['<neutral>']."
+            )
+        if (
+            isinstance(node, ast.Name)
+            and node.id not in stored
+            and MANIM_COLOR.match(node.id)
+        ):
+            raise ValueError(
+                f"Manim cut breaks the style brief colors or fonts: {node.id} is a Manim color, not a kit color. Use colors['<role>'] or palette['<neutral>']."
+            )
         if isinstance(node, ast.Dict):
             for key, value in zip(node.keys, node.values):
                 if (
                     isinstance(key, ast.Constant)
                     and style_key(key.value)
-                    and not style(value, key.value == "font")
+                    and not style(value, key.value in ("font", "t2f"))
                 ):
-                    raise ValueError(style_error)
+                    style_error(key.value, value)
         if isinstance(node, ast.Assign):
             for target in node.targets:
                 if (
@@ -114,9 +165,9 @@ def validate(source, brief):
                 if (
                     isinstance(target, ast.Attribute)
                     and style_key(target.attr)
-                    and not style(node.value, target.attr == "font")
+                    and not style(node.value, target.attr in ("font", "t2f"))
                 ):
-                    raise ValueError(style_error)
+                    style_error(target.attr, node.value)
         if isinstance(node, ast.Call):
             name = (
                 node.func.id
@@ -151,19 +202,31 @@ def validate(source, brief):
                     if name == "set_color_by_gradient"
                     else node.args[:1]
                 )
-                if any(not style(v) for v in values):
-                    raise ValueError(style_error)
+                for value in values:
+                    if not style(value):
+                        style_error(name, value)
             for keyword in node.keywords:
                 if style_key(keyword.arg) and not style(
-                    keyword.value, keyword.arg == "font"
+                    keyword.value, keyword.arg in ("font", "t2f")
                 ):
-                    raise ValueError(style_error)
-        if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name):
-            base = bindings.get(node.value.id)
-            if base in ("palette", "colors", "fonts") and not style(
-                node, base == "fonts"
+                    style_error(keyword.arg, keyword.value)
+        if (
+            isinstance(node, ast.Subscript)
+            and isinstance(node.value, ast.Name)
+            and isinstance(node.slice, ast.Constant)
+        ):
+            base, key = bindings.get(node.value.id), node.slice.value
+            if (
+                base == "palette"
+                and key not in allowed
+                or base == "colors"
+                and key not in brief["colors"]
+                or base == "fonts"
+                and key not in ("heading", "reading")
             ):
-                raise ValueError(style_error)
+                raise ValueError(
+                    f"Manim cut breaks the style brief colors or fonts: {node.value.id}[{key!r}] is not in this brief."
+                )
         if (
             isinstance(node, ast.Attribute)
             and node.attr in ("camera", "renderer", "config")

@@ -1,6 +1,7 @@
 """Cheap AST checks: no Manim import, scene execution or real render."""
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 import unittest
@@ -35,6 +36,37 @@ class Validation(unittest.TestCase):
             brief,
         )
 
+    def test_kit_expressions(self):
+        for body in [
+            "for c in [colors['winner'], palette['paper']]:\n            self.add(Dot(color=c))",
+            "def tint(i, c=palette['paper']):\n            return Dot(color=c if i else colors['winner'])\n        self.add(tint(1))",
+            "self.add(MathTex('x', 'y', t2c={'x': colors['winner'], 'y': palette['amber']}))",
+            "key = 'winner'\n        self.add(Dot(color=colors[key]))",
+            "inks = {k: colors[k] for k in colors}\n        self.add(Dot().set_color(inks['winner']))",
+            "self.add(Text('a', t2f={'a': fonts['reading']}, font='Archivo'))",
+            "RED_SHIFT = 2\n        self.add(Dot(point(RED_SHIFT, 0)))",
+        ]:
+            with self.subTest(body=body):
+                renderer.validate(source + "        " + body + "\n", brief)
+
+    def test_named_errors(self):
+        for code, named in [
+            (source.replace('colors["winner"]', '"#ff0000"'), "'#ff0000'"),
+            (source.replace('colors["winner"]', "RED"), "RED"),
+            (source + '\nText("a", font="Arial")', 'font="Arial"'),
+            (source + '\nText("a", t2c={"a": "red"})', 't2c={"a": "red"}'),
+            (source + '\nDot().set_fill("blue")', 'set_fill="blue"'),
+            (
+                source.replace('colors["winner"]', 'colors["missing"]'),
+                "colors['missing']",
+            ),
+        ]:
+            with (
+                self.subTest(code=code),
+                self.assertRaisesRegex(ValueError, re.escape(named)),
+            ):
+                renderer.validate(code, brief)
+
     def test_invalid(self):
         for code in [
             source.replace('colors["winner"]', 'palette["leaf"]'),
@@ -58,6 +90,9 @@ class Validation(unittest.TestCase):
             source + '\ncolors["winner"] = "red"',
             source + '\nText("label").color = "red"',
             source + '\nred = "#ff0000"',
+            source + '\nText("label", color=BLUE_E)',
+            source + '\nText("label", color="rgb(255, 0, 0)")',
+            source + '\nText("label", font=f"Comic {1}")',
             source + "\nclass",
         ]:
             with self.subTest(code=code), self.assertRaises((ValueError, SyntaxError)):
