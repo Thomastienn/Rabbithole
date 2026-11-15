@@ -305,7 +305,7 @@ test(
 );
 
 test(
-  'one real short sandboxed cut draws the cursor and sketch overlay timed to its sentence',
+  'one real short sandboxed cut draws the cursor, sketch and lifting pen tip timed to its sentence',
   { skip: renderSkip, timeout: 240000 },
   async () => {
     const plan = planFor(composition);
@@ -329,6 +329,21 @@ test(
       pen = pixel(video, 1, 960, 799),
       cursor = pixel(video, 1, 406, 322),
       faded = pixel(video, 2.2, 960, 799);
+    await import('../support/tsx.mjs');
+    const { penAt } = await import('../../server/media/video-kit.tsx');
+    const tip = penAt(plan.cuts[0].emphasis[1], [{ startFrame: 0, endFrame: 54 }], 6);
+    const x = Math.round(tip.x + 20),
+      y = Math.round(tip.y - 24);
+    const drawing = pixel(video, 0.2, x, y),
+      lifted = pixel(video, 1, x, y);
+    assert.ok(
+      drawing.every((c) => c > 180),
+      `expected paper pen tip while drawing: ${drawing}`,
+    );
+    assert.ok(
+      lifted.every((c) => c < 60),
+      `expected pen tip to lift away: ${lifted}`,
+    );
     assert.ok(pen[0] > 150 && pen[2] < 120, `expected amber underline: ${pen}`);
     assert.ok(
       cursor.every((c) => c > 180),

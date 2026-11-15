@@ -168,6 +168,7 @@ export type Mark =
 const GLIDE = 15,
   DRAW = 20,
   FADE = 10;
+const drawDuration = (s: Timed) => Math.max(1, Math.min(DRAW, s.endFrame - s.startFrame));
 
 // Cursor position, visibility and label at frame f: it glides to each target as its sentence starts,
 // shows that target's label once it arrives, and fades after the last target's sentence ends.
@@ -198,13 +199,13 @@ export function sketchAt(mark: Mark, sentences: Timed[], f: number) {
   const s = sentences[mark.sentence];
   if (!s || f < s.startFrame) return { draw: 0, opacity: 0 };
   return {
-    draw: progress(f, s.startFrame, Math.max(1, Math.min(DRAW, s.endFrame - s.startFrame))),
+    draw: progress(f, s.startFrame, drawDuration(s)),
     opacity: 1 - progress(f, s.endFrame, FADE),
   };
 }
 
 // Hand-drawn wobble, deterministic per mark so every frame and render draws the same stroke.
-export function sketchPath(mark: Extract<Mark, { tool: 'sketch' }>) {
+function sketchPoints(mark: Extract<Mark, { tool: 'sketch' }>) {
   const seed = mark.points.flat().reduce((n, v) => n + v, 0);
   const wobble = (i: number, k: number) => Math.sin(seed * 12.9898 + i * 78.233) * k;
   const [[ax, ay], [bx, by]] = mark.points;
@@ -234,43 +235,97 @@ export function sketchPath(mark: Extract<Mark, { tool: 'sketch' }>) {
       ]);
     }
   }
-  let d = 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L');
   if (mark.shape === 'arrow') {
     const [px, py] = pts.at(-3)!,
       angle = Math.atan2(by - py, bx - px);
-    const head = (turn: number) =>
-      `${(bx - Math.cos(angle + turn) * 34).toFixed(1)} ${(by - Math.sin(angle + turn) * 34).toFixed(1)}`;
-    d += ` M${head(0.5)} L${bx} ${by} L${head(-0.5)}`;
+    const head = (turn: number): Point => [
+      bx - Math.cos(angle + turn) * 34,
+      by - Math.sin(angle + turn) * 34,
+    ];
+    // One continuous stroke lets the pen draw the shaft before the arrowhead.
+    pts.push([bx, by], head(0.5), [bx, by], head(-0.5));
   }
-  return d;
+  return pts.map(([x, y]): Point => [Number(x.toFixed(1)), Number(y.toFixed(1))]);
+}
+export function sketchPath(mark: Extract<Mark, { tool: 'sketch' }>) {
+  return (
+    'M' +
+    sketchPoints(mark)
+      .map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`)
+      .join(' L')
+  );
+}
+
+// Match SVG dash progress by arc length, then lift the nib away over eight frames.
+export function penAt(
+  mark: Extract<Mark, { tool: 'sketch' }>,
+  sentences: Timed[],
+  f: number,
+  reduced = false,
+) {
+  const s = sentences[mark.sentence];
+  if (reduced || !s || f < s.startFrame) return null;
+  const lift = progress(f, s.startFrame + drawDuration(s), 8);
+  if (lift >= 1) return null;
+  const { draw, opacity } = sketchAt(mark, sentences, f),
+    pts = sketchPoints(mark);
+  const lengths = pts.slice(1).map(([x, y], i) => Math.hypot(x - pts[i][0], y - pts[i][1]));
+  let remaining = draw * lengths.reduce((a, b) => a + b, 0),
+    i = 0;
+  while (i < lengths.length - 1 && remaining > lengths[i]) remaining -= lengths[i++];
+  const [x, y] = pts[i],
+    [bx, by] = pts[i + 1],
+    t = lengths[i] ? remaining / lengths[i] : 0;
+  return {
+    x: x + (bx - x) * t + lift * 12,
+    y: y + (by - y) * t - lift * 24,
+    opacity: opacity * (1 - lift),
+  };
 }
 
 export function Sketch({ marks = [], sentences }: { marks?: Mark[]; sentences: Timed[] }) {
   const f = useCurrentFrame();
+  const reduced =
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   return (
     <svg
       width={frame.width}
       height={frame.height}
       viewBox={`0 0 ${frame.width} ${frame.height}`}
+      aria-hidden="true"
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
     >
       {marks.map((mark, i) => {
         if (mark.tool !== 'sketch') return null;
         const { draw, opacity } = sketchAt(mark, sentences, f);
+        const tip = penAt(mark, sentences, f, reduced);
         return opacity > 0 ? (
-          <path
-            key={i}
-            d={sketchPath(mark)}
-            pathLength={1}
-            strokeDasharray="1 1"
-            strokeDashoffset={1 - draw}
-            fill="none"
-            stroke={palette.amber}
-            strokeWidth={7}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity={opacity}
-          />
+          <g key={i}>
+            <path
+              d={sketchPath(mark)}
+              pathLength={1}
+              strokeDasharray="1 1"
+              strokeDashoffset={1 - draw}
+              fill="none"
+              stroke={palette.amber}
+              strokeWidth={7}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={opacity}
+            />
+            {tip && (
+              <g data-pen-tip transform={`translate(${tip.x} ${tip.y})`} opacity={tip.opacity}>
+                <path
+                  d="M0 0 L4 -16 L29 -41 Q34 -46 39 -41 L43 -37 Q48 -32 43 -27 L18 -2 Z"
+                  fill={palette.paper}
+                  stroke={palette.ground}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                />
+                <path d="M0 0 L4 -16 L18 -2 Z" fill={palette.amber} />
+              </g>
+            )}
+          </g>
         ) : null;
       })}
     </svg>

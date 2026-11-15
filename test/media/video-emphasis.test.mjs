@@ -1,9 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cursorAt, sketchAt, sketchPath } from '../../server/media/video-kit.tsx';
+import '../support/tsx.mjs';
+import { createElement as h, useState } from 'react';
+import { Thumbnail } from '@remotion/player';
+import { render } from '../support/render.mjs';
+import { ui } from '../support/ui.mjs';
+const { cursorAt, penAt, Sketch, sketchAt, sketchPath } =
+  await import('../../server/media/video-kit.tsx');
 import { videoPlan } from '../../server/media/video-plan.mjs';
 import { PLAN_INSTRUCTIONS } from '../../server/media/video-plan.mjs';
 import { CUT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
+import { MANIM_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 import { planFor } from '../support/video-kit.mjs';
 
 const sentences = [
@@ -143,6 +150,107 @@ test('plan accepts timed emphasis marks in frame space and rejects malformed one
   }
 });
 
+const penMark = (shape = 'underline') => ({
+  tool: 'sketch',
+  shape,
+  sentence: 1,
+  points: [
+    [100, 300],
+    [500, 300],
+    [510, 600],
+  ],
+});
+
+test('pen tip follows the revealed stroke by length for every tool, including the arrowhead', () => {
+  for (const shape of ['circle', 'underline', 'arrow', 'freehand']) {
+    const mark = penMark(shape);
+    const points = sketchPath(mark)
+      .slice(1)
+      .split(' L')
+      .map((p) => p.split(' ').map(Number));
+    const lengths = points
+      .slice(1)
+      .map(([x, y], i) => Math.hypot(x - points[i][0], y - points[i][1]));
+    const total = lengths.reduce((a, b) => a + b, 0);
+    for (const f of [60, 62, 65, 70, 79, 80]) {
+      let remaining = sketchAt(mark, sentences, f).draw * total;
+      let i = 0;
+      while (i < lengths.length - 1 && remaining > lengths[i]) remaining -= lengths[i++];
+      const [x, y] = points[i],
+        [bx, by] = points[i + 1];
+      const at = penAt(mark, sentences, f);
+      assert.ok(Math.abs(at.x - (x + ((bx - x) * remaining) / lengths[i])) < 0.001, shape);
+      assert.ok(Math.abs(at.y - (y + ((by - y) * remaining) / lengths[i])) < 0.001, shape);
+      assert.equal(at.opacity, 1);
+    }
+    assert.equal(penAt(mark, sentences, 59), null);
+    const end = penAt(mark, sentences, 80),
+      lift = penAt(mark, sentences, 83);
+    assert.ok(lift.x > end.x && lift.y < end.y && lift.opacity > 0 && lift.opacity < 1);
+    assert.equal(penAt(mark, sentences, 88), null);
+    assert.equal(penAt(mark, sentences, 65, true), null);
+    assert.equal(penAt({ ...mark, sentence: 9 }, sentences, 80), null);
+  }
+});
+
+test('pen handles a stationary freehand and a sentence shorter than the normal draw time', () => {
+  const mark = {
+    ...penMark('freehand'),
+    sentence: 0,
+    points: [
+      [100, 100],
+      [100, 100],
+    ],
+  };
+  for (const f of [0, 1, 2, 3]) {
+    const at = penAt(mark, [{ startFrame: 0, endFrame: 3 }], f);
+    assert.ok(Number.isFinite(at.x) && Number.isFinite(at.y));
+  }
+  assert.equal(penAt(mark, [{ startFrame: 0, endFrame: 3 }], 11), null);
+});
+
+test('overlay renders a pen during drawing, lifts it, then leaves only the mark; reduced motion hides it', async (t) => {
+  const mark = penMark();
+  const media = Object.getOwnPropertyDescriptor(globalThis, 'matchMedia');
+  let reduced = false;
+  globalThis.matchMedia = () => ({ matches: reduced });
+  t.after(() =>
+    media ? Object.defineProperty(globalThis, 'matchMedia', media) : delete globalThis.matchMedia,
+  );
+  let show;
+  function Frame() {
+    const [frameToDisplay, setFrame] = useState(65);
+    show = setFrame;
+    return h(Thumbnail, {
+      component: Sketch,
+      inputProps: { marks: [mark], sentences },
+      compositionWidth: 1920,
+      compositionHeight: 1080,
+      fps: 30,
+      durationInFrames: 200,
+      frameToDisplay,
+    });
+  }
+  const { container, act, cleanup } = await render(h(Frame), ui);
+  t.after(cleanup);
+  const tip = () => container.querySelector('[data-pen-tip]');
+  assert.ok(tip());
+  assert.equal(container.querySelector('svg').getAttribute('aria-hidden'), 'true');
+  assert.equal(
+    tip().getAttribute('transform'),
+    `translate(${penAt(mark, sentences, 65).x} ${penAt(mark, sentences, 65).y})`,
+  );
+  await act(async () => show(83));
+  assert.ok(Number(tip().getAttribute('opacity')) < 1);
+  await act(async () => show(90));
+  assert.equal(tip(), null);
+  assert.ok(container.querySelector('path[stroke-dasharray]'));
+  reduced = true;
+  await act(async () => show(65));
+  assert.equal(tip(), null);
+  assert.ok(container.querySelector('path[stroke-dasharray]'));
+});
+
 test('prompts document cursor and sketch usage', () => {
   for (const words of [
     'cursor',
@@ -155,4 +263,10 @@ test('prompts document cursor and sketch usage', () => {
   ])
     assert.ok(PLAN_INSTRUCTIONS.includes(words), words);
   assert.match(CUT_INSTRUCTIONS, /cut\.emphasis/);
+  for (const prompt of [PLAN_INSTRUCTIONS, CUT_INSTRUCTIONS, MANIM_INSTRUCTIONS]) {
+    assert.match(prompt, /pen.*emphasise.*narration is currently about/);
+    assert.match(prompt, /presenter marking a slide/);
+    assert.match(prompt, /never draw content/);
+  }
+  assert.doesNotMatch(PLAN_INSTRUCTIONS, /scribble over or trace something/);
 });

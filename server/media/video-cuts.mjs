@@ -6,6 +6,7 @@ import {
   CUT_INSTRUCTIONS,
   PIECES_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
+  REPAIR_NOTE,
 } from './video-cut.mjs';
 import {
   cutJoin,
@@ -149,30 +150,45 @@ export async function writeCuts({
     }
   }
   if (data.pieces && !pieces) persist();
+  // Each audit shares its pre-audit last frame with the next cut's audit, so audits never wait on each other.
+  const lastFrames = cuts.map(() => Promise.withResolvers());
   // Narration depends only on the plan, never on a cut writer or a neighbouring cut finishing.
   const attempts = cuts.map(() => 0);
   const rewrite = async (index, reason) => {
-    let error = reason && new Error(reason);
+    let error = reason && new Error(reason),
+      failed = reason && cuts[index].code;
     while (attempts[index] < CUT_ATTEMPTS) {
       attempts[index]++;
+      // A repair is also the cut's audit, so it sees the failed code and the previous cut's last frame.
+      const previous = error && index ? await lastFrames[index - 1].promise : null;
+      signal.throwIfAborted();
       // Provider/auth failures are final; only validation/render failures spend a repair attempt.
       let raw;
       try {
         raw = await call(
-          cuts[index].engine === 'manim' ? MANIM_INSTRUCTIONS : CUT_INSTRUCTIONS,
+          (cuts[index].engine === 'manim' ? MANIM_INSTRUCTIONS : CUT_INSTRUCTIONS) +
+            (error ? REPAIR_NOTE : ''),
           JSON.stringify({
             styleBrief: plan.styleBrief,
             cut: plan.cuts[index],
             previousEndState: index ? plan.cuts[index - 1].endState : null,
             ...(data.pieces && cuts[index].engine !== 'manim' && { setPieces: data.pieces }),
-            ...(error && { validationError: error.message }),
+            ...(error && {
+              validationError: error.message,
+              ...(failed && { failedCode: failed }),
+              previousLastFrame: !!previous,
+            }),
           }),
+          undefined,
+          previous ? [previous] : undefined,
         );
       } catch (e) {
         if (!e.invalidOutput) throw e;
         error = e;
+        failed = null;
         continue;
       }
+      failed = raw;
       try {
         cuts[index].code =
           cuts[index].engine === 'manim'
@@ -199,6 +215,7 @@ export async function writeCuts({
         }
       // New code makes any earlier Manim clip stale.
       delete cuts[index].clip;
+      if (error) cuts[index].audited = true;
       persist();
       return;
     }
@@ -282,8 +299,6 @@ export async function writeCuts({
     }
     return stills.map(({ file }) => ({ path: file, type: 'image/jpeg' }));
   };
-  // Each audit shares its pre-audit last frame with the next cut's audit, so audits never wait on each other.
-  const lastFrames = cuts.map(() => Promise.withResolvers());
   const audit = async (index) => {
     const cut = cuts[index];
     let own = null;
@@ -296,7 +311,7 @@ export async function writeCuts({
     }
     const before = { code: cut.code, emphasis: cut.emphasis };
     // An audit only improves a cut: no frames, an unusable answer or a fix that will not render keeps the cut as it was.
-    if (own?.length)
+    if (own?.length && !cut.audited)
       try {
         const previous = index ? await lastFrames[index - 1].promise : null;
         signal.throwIfAborted();
@@ -386,7 +401,7 @@ export async function writeCuts({
           if (attempts[index] >= CUT_ATTEMPTS) throw cutError(reason, index, plan.cuts.length);
           await rewrite(index, reason);
         }
-      if (!cut.audited) await audit(index);
+      await audit(index);
     } catch (error) {
       if (!signal.aborted) {
         cut.status = 'failed';

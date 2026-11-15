@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { generateDiagram } from '../../media/diagrams.mjs';
 import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
-import { PIECES_INSTRUCTIONS, AUDIT_INSTRUCTIONS } from '../../media/video-cut.mjs';
+import { PIECES_INSTRUCTIONS, AUDIT_INSTRUCTIONS, REPAIR_NOTE } from '../../media/video-cut.mjs';
 
 export const STOPPED = new Error('TreeTutor stopped.');
 const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
@@ -107,7 +107,9 @@ export function mediaJobs(ctx) {
                     ? 'pieces'
                     : args[0].instructions === AUDIT_INSTRUCTIONS
                       ? 'audit'
-                      : 'cut',
+                      : args[0].instructions.endsWith(REPAIR_NOTE)
+                        ? 'repair'
+                        : 'cut',
                 message: job.message,
               }).generate(...args),
           },
