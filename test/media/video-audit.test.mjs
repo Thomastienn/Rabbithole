@@ -12,8 +12,8 @@ import {
   job,
   fakeRender,
 } from '../support/video-kit.mjs';
-import { AUDIT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
-import { auditFix } from '../../server/media/video-cuts.mjs';
+import { AUDIT_INSTRUCTIONS, FIX_NOTE } from '../../server/media/video-cut.mjs';
+import { auditFix, auditIssues } from '../../server/media/video-cuts.mjs';
 
 const twoCuts = () => {
   const plan = planFor(composition, 2);
@@ -27,6 +27,8 @@ const cutOf = (plan, text) =>
 const written = (i) => composition.replace('PRIVATE_SOURCE_MARKER', `CUT_${i}`);
 const fixed = composition.replace('PRIVATE_SOURCE_MARKER', 'AUDITED');
 const moved = [{ tool: 'cursor', sentence: 0, x: 700, y: 300 }];
+const issues = [{ what: 'Label overlaps the box', where: 'sentence 1, centre' }];
+const flagged = JSON.stringify({ issues });
 // Stills record the staged code they were taken from.
 const stills = (shots) => async (dir, list) => {
   shots.push([basename(dir), readFileSync(join(dir, 'Video.tsx'), 'utf8'), list.length]);
@@ -44,9 +46,10 @@ const settledRow = (env, chat) =>
       .artifacts.find((a) => ['ready', 'failed', 'canceled'].includes(a.status)),
   );
 
-test('audits start together, see code, stills and the previous last frame; a fix with moved marks replaces the cut before it plays; usage stage audit', async (t) => {
+test('audits start together, see code, stills and the previous last frame; issues get one chat-model fix whose moved marks replace the cut before it plays; ok makes no extra call; usage stages audit and fix', async (t) => {
   const plan = twoCuts();
   const audits = [],
+    fixes = [],
     shots = [],
     logs = [],
     finalMarks = {};
@@ -57,6 +60,10 @@ test('audits start together, see code, stills and the previous last frame; a fix
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         const i = cutOf(plan, text);
+        if (tree.instructions.endsWith(FIX_NOTE)) {
+          fixes.push({ i, tree, input: JSON.parse(text) });
+          return complete(emit, JSON.stringify({ code: fixed, emphasis: moved }));
+        }
         if (tree.instructions !== AUDIT_INSTRUCTIONS) return complete(emit, written(i));
         audits.push({ i, input: JSON.parse(text), images: tree.images });
         // Both audits are in flight at once; sequential audits would never get here.
@@ -69,10 +76,10 @@ test('audits start together, see code, stills and the previous last frame; a fix
           phaseDuringAudit = (
             await (await env.get(`/api/trees/${chat.id}/artifacts/${row.id}`)).json()
           ).phase;
-          return complete(emit, JSON.stringify({ code: fixed, emphasis: moved }));
+          return complete(emit, flagged);
         }
         await until(() => liveDuringAudit);
-        complete(emit, '{"change":false}');
+        complete(emit, '{"ok":true}');
       },
     },
     {
@@ -139,10 +146,19 @@ test('audits start together, see code, stills and the previous last frame; a fix
   assert.equal(saved.cuts[1].code, written(1));
   assert.deepEqual(finalMarks['cut-0'], [fixed, moved], 'the MP4 uses the fix and moved marks');
   assert.deepEqual(liveAtRender.cuts[0].emphasis, moved, 'live player draws moved marks');
-  assert.equal(
-    logs.filter((l) => l.includes(' model finished ') && l.includes('stage="audit"')).length,
-    2,
-  );
+  // Only the flagged cut gets a fix: one chat-model rewrite carrying the issues, plan, set pieces and code.
+  assert.equal(fixes.length, 1);
+  assert.equal(fixes[0].i, 0);
+  assert.deepEqual(fixes[0].input.issues, issues);
+  assert.deepEqual(fixes[0].input.cut, plan.cuts[0]);
+  assert.deepEqual(fixes[0].input.styleBrief, plan.styleBrief);
+  assert.equal(fixes[0].input.code, written(0));
+  assert.equal(fixes[0].input.previousLastFrame, false);
+  assert.equal(fixes[0].tree.images, undefined);
+  const stage = (name) =>
+    logs.filter((l) => l.includes(' model finished ') && l.includes(`stage="${name}"`)).length;
+  assert.equal(stage('audit'), 2);
+  assert.equal(stage('fix'), 1);
   await env.app.settled();
   const dir = join(env.dir, 'video-work', row.id, row.attempt);
   assert.ok(!existsSync(join(dir, 'cut-0', 'out')), 'snapshots are removed');
@@ -152,13 +168,16 @@ test('a fix that breaks the check or the render falls back to the cut from befor
   const plan = twoCuts();
   const shots = [],
     final = {};
+  let fixCalls = 0;
   const env = await open(
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         const i = cutOf(plan, text);
-        if (tree.instructions !== AUDIT_INSTRUCTIONS) return complete(emit, written(i));
+        if (tree.instructions === AUDIT_INSTRUCTIONS) return complete(emit, flagged);
+        if (!tree.instructions.endsWith(FIX_NOTE)) return complete(emit, written(i));
+        fixCalls++;
         complete(
           emit,
           JSON.stringify({
@@ -203,6 +222,7 @@ test('a fix that breaks the check or the render falls back to the cut from befor
     ],
   );
   assert.deepEqual(final, { 'cut-0': [written(0), []], 'cut-1': [written(1), []] });
+  assert.equal(fixCalls, 2, 'each flagged cut gets exactly one fix and no retry');
 });
 
 test('cancel stops a running snapshot and a running audit', async (t) => {
@@ -280,9 +300,19 @@ test('phases advance through auditing before playable; an unusable audit answer 
   assert.ok(phases.lastIndexOf('auditing') < phases.indexOf('playable'));
 });
 
-test('audit answers parse to no change, a validated fix or an error', () => {
+test('audit answers parse to ok or issues, fix answers to a validated fix, anything else to an error', () => {
   const { styleBrief } = planFor();
-  assert.equal(auditFix('{"change":false}', styleBrief, 1), null);
+  assert.equal(auditIssues('{"ok":true}'), null);
+  assert.deepEqual(auditIssues('```json\n' + flagged + '\n```'), issues);
+  for (const bad of [
+    '{}',
+    '{"issues":[]}',
+    '{"issues":[{"what":"x"}]}',
+    JSON.stringify({ code: fixed }),
+    JSON.stringify({ issues: Array(9).fill(issues[0]) }),
+    fixed,
+  ])
+    assert.throws(() => auditIssues(bad), bad.slice(0, 40));
   assert.deepEqual(auditFix(JSON.stringify({ code: fixed }), styleBrief, 1), { code: fixed });
   assert.deepEqual(auditFix(JSON.stringify({ code: fixed, emphasis: moved }), styleBrief, 1), {
     code: fixed,
@@ -290,5 +320,5 @@ test('audit answers parse to no change, a validated fix or an error', () => {
   });
   assert.throws(() => auditFix(JSON.stringify({ code: fixed, emphasis: moved }), styleBrief, 0));
   assert.throws(() => auditFix(fixed, styleBrief, 1));
-  assert.throws(() => auditFix('{}', styleBrief, 1));
+  assert.throws(() => auditFix('{"change":false}', styleBrief, 1));
 });

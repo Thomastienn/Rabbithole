@@ -45,7 +45,7 @@ test('a failed cut gets one repair with the failed code, set pieces and the prev
           i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
         if (tree.instructions === AUDIT_INSTRUCTIONS) {
           audits.push({ i, images: tree.images });
-          return complete(emit, '{"change":false}');
+          return complete(emit, '{"ok":true}');
         }
         if (tree.instructions.endsWith(REPAIR_NOTE)) {
           repairs.push({ i, input, images: tree.images });
@@ -107,7 +107,7 @@ test('adjacent repaired cuts share the repaired last frame; the first cut needs 
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         if (tree.instructions === AUDIT_INSTRUCTIONS) {
           audits++;
-          return complete(emit, '{"change":false}');
+          return complete(emit, '{"ok":true}');
         }
         if (tree.instructions.endsWith(REPAIR_NOTE)) {
           repairs.push({ input: JSON.parse(text), images: tree.images });
@@ -162,7 +162,7 @@ test('a render repair sees the stripped diagnostic and failed code and gets no f
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         if (tree.instructions === AUDIT_INSTRUCTIONS) {
           events.push('audit');
-          return complete(emit, '{"change":false}');
+          return complete(emit, '{"ok":true}');
         }
         if (tree.instructions.endsWith(REPAIR_NOTE)) {
           events.push('repair');

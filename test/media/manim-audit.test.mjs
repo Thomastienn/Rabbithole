@@ -14,6 +14,7 @@ import {
   until,
 } from '../support/video-kit.mjs';
 import { MANIM_AUDIT_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
+import { FIX_NOTE } from '../../server/media/video-cut.mjs';
 
 const original = manimCut.trim();
 const fixes = {
@@ -29,6 +30,7 @@ for (const [name, fix] of Object.entries(fixes))
     const plan = planFor(composition);
     plan.cuts[0].engine = 'manim';
     const audits = [],
+      fixes = [],
       shots = [],
       events = [];
     let finalClip;
@@ -37,9 +39,18 @@ for (const [name, fix] of Object.entries(fixes))
         generate: async (tree, text, emit) => {
           if (tree.id) return complete(emit, 'Watch.' + directive);
           if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+          if (tree.instructions.endsWith(FIX_NOTE)) {
+            fixes.push(JSON.parse(text));
+            return complete(emit, JSON.stringify({ code: fix }));
+          }
           if (tree.instructions !== MANIM_AUDIT_INSTRUCTIONS) return complete(emit, manimCut);
           audits.push({ input: JSON.parse(text), images: tree.images });
-          complete(emit, JSON.stringify(fix ? { code: fix } : { change: false }));
+          complete(
+            emit,
+            JSON.stringify(
+              fix ? { issues: [{ what: 'Label clipped', where: 'top left' }] } : { ok: true },
+            ),
+          );
         },
       },
       {
@@ -94,6 +105,9 @@ for (const [name, fix] of Object.entries(fixes))
     assert.equal(audits[0].input.code, original);
     assert.equal(audits[0].input.setPieces, undefined);
     assert.equal(audits[0].images.length, 2);
+    // Issues produce exactly one chat-model fix carrying them; ok makes no extra call.
+    assert.equal(fixes.length, fix ? 1 : 0);
+    if (fix) assert.deepEqual(fixes[0].issues, [{ what: 'Label clipped', where: 'top left' }]);
     const accepted = name === 'changed';
     assert.deepEqual(
       events,

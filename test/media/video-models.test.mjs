@@ -11,7 +11,7 @@ import {
   open,
   fakeRender,
 } from '../support/video-kit.mjs';
-import { AUDIT_INSTRUCTIONS, REPAIR_NOTE } from '../../server/media/video-cut.mjs';
+import { AUDIT_INSTRUCTIONS, REPAIR_NOTE, FIX_NOTE } from '../../server/media/video-cut.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top.';
 const pieces = `import { colors, palette } from './kit';
@@ -33,11 +33,14 @@ const stageOf = (instructions) =>
         ? 'audit'
         : instructions.endsWith(REPAIR_NOTE)
           ? 'repair'
-          : 'cut';
+          : instructions.endsWith(FIX_NOTE)
+            ? 'fix'
+            : 'cut';
 
-test('a video freezes smart and chat selections: smart plans and audits, chat writes pieces, cuts and repairs; Retry keeps both; legacy jobs use one for both; usage follows each call', async (t) => {
+test('a video freezes smart and chat selections: smart plans and audits, chat writes pieces, cuts, repairs and fixes; Retry keeps both; legacy jobs use one for both; usage follows each call', async (t) => {
   const calls = [];
-  let renderFails = Infinity;
+  let renderFails = Infinity,
+    audits = 0;
   const env = await open(
     {
       models: async () => [
@@ -51,7 +54,15 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
         calls.push([stage, tree.model, tree.effort]);
         if (stage === 'plan') return complete(emit, JSON.stringify(plan));
         if (stage === 'pieces') return complete(emit, pieces);
-        if (stage === 'audit') return complete(emit, '{"change":false}');
+        // The first audit flags its cut, so one fix runs; later audits pass.
+        if (stage === 'audit')
+          return complete(
+            emit,
+            ++audits === 1
+              ? '{"issues":[{"what":"Label overlaps","where":"centre"}]}'
+              : '{"ok":true}',
+          );
+        if (stage === 'fix') return complete(emit, JSON.stringify({ code: composition }));
         complete(emit, composition);
       },
     },
@@ -91,6 +102,7 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
     cut: 'chat-model/low',
     audit: 'smart-model/high',
     repair: 'chat-model/low',
+    fix: 'chat-model/low',
   });
   assert.ok(calls.filter(([s]) => s === 'repair').length >= 1);
 

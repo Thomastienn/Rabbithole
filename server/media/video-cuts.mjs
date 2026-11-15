@@ -8,6 +8,7 @@ import {
   PIECES_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
   REPAIR_NOTE,
+  FIX_NOTE,
 } from './video-cut.mjs';
 import {
   cutJoin,
@@ -23,11 +24,29 @@ import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS, MANIM_COMPONENT } from '.
 import { stageNarration } from './narration.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 
-// An audit answers {"change":false} or {"code", "emphasis"?}; null means no change, anything unusable throws.
+const unfenced = (raw) => raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim();
+
+// An audit answers {"ok":true} or {"issues":[{what, where}]}, never code; null means ok, anything unusable throws.
+export function auditIssues(raw) {
+  const answer = JSON.parse(unfenced(raw));
+  if (answer?.ok === true && !answer.issues) return null;
+  const issues = answer?.issues;
+  if (
+    !Array.isArray(issues) ||
+    !issues.length ||
+    issues.length > 8 ||
+    !issues.every((i) =>
+      [i?.what, i?.where].every((v) => typeof v === 'string' && v.trim() && v.length <= 500),
+    )
+  )
+    throw new Error('Audit returned unreadable issues.');
+  return issues;
+}
+
+// A fix answers {"code", "emphasis"?}; anything unusable throws.
 export function auditFix(raw, brief, sentences, engine = 'remotion') {
-  const answer = JSON.parse(raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim());
-  if (answer?.change === false) return null;
-  if (typeof answer?.code !== 'string') throw new Error('Audit returned no code.');
+  const answer = JSON.parse(unfenced(raw));
+  if (typeof answer?.code !== 'string') throw new Error('Fix returned no code.');
   if (
     answer.emphasis !== undefined &&
     !(
@@ -36,7 +55,7 @@ export function auditFix(raw, brief, sentences, engine = 'remotion') {
       answer.emphasis.every((m) => emphasisMark(m) && m.sentence < sentences)
     )
   )
-    throw new Error('Audit returned unreadable emphasis.');
+    throw new Error('Fix returned unreadable emphasis.');
   return {
     code: engine === 'manim' ? answer.code.trim() : cutSource(answer.code, brief),
     ...(answer.emphasis && { emphasis: answer.emphasis }),
@@ -160,6 +179,10 @@ export async function writeCuts({
   const lastFrames = cuts.map(() => Promise.withResolvers());
   // Narration depends only on the plan, never on a cut writer or a neighbouring cut finishing.
   const attempts = cuts.map(() => 0);
+  const writerInstructions = (index) =>
+    cuts[index].engine === 'manim'
+      ? MANIM_INSTRUCTIONS
+      : CUT_INSTRUCTIONS + (plan.cuts[index].dimension === '3d' ? CUT_3D : '');
   const rewrite = async (index, reason) => {
     let error = reason && new Error(reason),
       failed = reason && cuts[index].code;
@@ -172,10 +195,7 @@ export async function writeCuts({
       let raw;
       try {
         raw = await write(
-          (cuts[index].engine === 'manim'
-            ? MANIM_INSTRUCTIONS
-            : CUT_INSTRUCTIONS + (plan.cuts[index].dimension === '3d' ? CUT_3D : '')) +
-            (error ? REPAIR_NOTE : ''),
+          writerInstructions(index) + (error ? REPAIR_NOTE : ''),
           JSON.stringify({
             styleBrief: plan.styleBrief,
             cut: plan.cuts[index],
@@ -199,9 +219,7 @@ export async function writeCuts({
       failed = raw;
       try {
         cuts[index].code =
-          cuts[index].engine === 'manim'
-            ? raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim()
-            : cutSource(raw, plan.styleBrief);
+          cuts[index].engine === 'manim' ? unfenced(raw) : cutSource(raw, plan.styleBrief);
       } catch (e) {
         error = e;
         continue;
@@ -323,28 +341,39 @@ export async function writeCuts({
       try {
         const previous = index ? await lastFrames[index - 1].promise : null;
         signal.throwIfAborted();
-        const fix = auditFix(
+        const task = {
+          styleBrief: plan.styleBrief,
+          cut: plan.cuts[index],
+          previousEndState: index ? plan.cuts[index - 1].endState : null,
+          ...(data.pieces && cut.engine !== 'manim' && { setPieces: data.pieces }),
+          code: cut.code,
+          emphasis: cut.emphasis ?? plan.cuts[index].emphasis ?? [],
+          previousLastFrame: !!previous,
+        };
+        const issues = auditIssues(
           await call(
             cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS,
-            JSON.stringify({
-              styleBrief: plan.styleBrief,
-              cut: plan.cuts[index],
-              previousEndState: index ? plan.cuts[index - 1].endState : null,
-              ...(data.pieces && cut.engine !== 'manim' && { setPieces: data.pieces }),
-              code: cut.code,
-              emphasis: cut.emphasis ?? plan.cuts[index].emphasis ?? [],
-              snapshots: own.length,
-              previousLastFrame: !!previous,
-            }),
+            JSON.stringify({ ...task, snapshots: own.length }),
             undefined,
             previous ? [...own, previous] : own,
           ),
-          plan.styleBrief,
-          cut.timing.sentences.length,
-          cut.engine,
         );
-        if (fix) {
-          Object.assign(cut, fix);
+        if (issues) {
+          // The chat model rewrites the flagged cut once; the fix is kept only if it validates and renders.
+          Object.assign(
+            cut,
+            auditFix(
+              await write(
+                writerInstructions(index) + FIX_NOTE,
+                JSON.stringify({ ...task, issues }),
+                undefined,
+                previous ? [previous] : undefined,
+              ),
+              plan.styleBrief,
+              cut.timing.sentences.length,
+              cut.engine,
+            ),
+          );
           // A Manim fix is checked and rendered to a new clip; the old clip is replaced only on success.
           if (cut.engine !== 'manim') await shoot(index);
           else {

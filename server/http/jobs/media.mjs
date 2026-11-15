@@ -5,7 +5,13 @@ import { join } from 'node:path';
 import { generateDiagram } from '../../media/diagrams.mjs';
 import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
-import { PIECES_INSTRUCTIONS, AUDIT_INSTRUCTIONS, REPAIR_NOTE } from '../../media/video-cut.mjs';
+import {
+  PIECES_INSTRUCTIONS,
+  AUDIT_INSTRUCTIONS,
+  REPAIR_NOTE,
+  FIX_NOTE,
+} from '../../media/video-cut.mjs';
+import { MANIM_AUDIT_INSTRUCTIONS } from '../../media/manim-cut.mjs';
 
 export const STOPPED = new Error('TreeTutor stopped.');
 const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
@@ -115,11 +121,13 @@ export function mediaJobs(ctx) {
                 ? 'plan'
                 : args[0].instructions === PIECES_INSTRUCTIONS
                   ? 'pieces'
-                  : args[0].instructions === AUDIT_INSTRUCTIONS
+                  : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].includes(args[0].instructions)
                     ? 'audit'
                     : args[0].instructions.endsWith(REPAIR_NOTE)
                       ? 'repair'
-                      : 'cut',
+                      : args[0].instructions.endsWith(FIX_NOTE)
+                        ? 'fix'
+                        : 'cut',
               message: job.message,
             }).generate(...args),
         });
