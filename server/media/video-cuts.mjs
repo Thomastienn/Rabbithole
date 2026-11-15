@@ -1,8 +1,9 @@
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { CUT_ENTRY, CUT_INSTRUCTIONS } from './video-cut.mjs';
+import { CUT_ENTRY, CUT_INSTRUCTIONS, PIECES_INSTRUCTIONS } from './video-cut.mjs';
 import {
   cutSource,
+  pieceNames,
   CUT_ATTEMPTS,
   CUT_PAUSE_FRAMES,
   MAX_SOURCE,
@@ -17,6 +18,9 @@ export const cutError = (reason, index, count) =>
   new Error(
     `Cut ${index + 1} of ${count}: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the other cuts.`,
   );
+
+export const piecesError = (reason) =>
+  new Error(`Set pieces: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the plan.`);
 
 export async function videoCall(provider, selection, instructions, input, signal, onText) {
   const items = new Map();
@@ -66,6 +70,7 @@ export async function writeCuts({
   wait,
   stop,
   kept = [],
+  pieces = null,
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
   const cuts = plan.cuts.map((c, i) => ({
@@ -74,12 +79,38 @@ export async function writeCuts({
     code: (kept[i]?.status !== 'failed' && kept[i]?.code) || null,
     timing: kept[i]?.timing ?? null,
   }));
-  const data = { plan, cuts };
+  const names = pieceNames(plan);
+  const data = { plan, cuts, ...(names.length && { pieces }) };
   const persist = () => {
     signal.throwIfAborted();
     save(data);
   };
   persist();
+  // One call writes the shared set pieces before any cut; the plan is already saved, so Retry keeps it.
+  for (let attempt = 0, error; names.length && !data.pieces; attempt++) {
+    if (attempt === CUT_ATTEMPTS) throw piecesError(error.message);
+    let raw;
+    try {
+      raw = await call(
+        PIECES_INSTRUCTIONS,
+        JSON.stringify({
+          styleBrief: plan.styleBrief,
+          names,
+          ...(error && { validationError: error.message }),
+        }),
+      );
+    } catch (e) {
+      if (!e.invalidOutput) throw e;
+      error = e;
+      continue;
+    }
+    try {
+      data.pieces = cutSource(raw, plan.styleBrief, names);
+    } catch (e) {
+      error = e;
+    }
+  }
+  if (data.pieces && !pieces) persist();
   // Narration depends only on the plan, never on a cut writer or a neighbouring cut finishing.
   const attempts = cuts.map(() => 0);
   const rewrite = async (index, reason) => {
@@ -95,6 +126,7 @@ export async function writeCuts({
             styleBrief: plan.styleBrief,
             cut: plan.cuts[index],
             previousEndState: index ? plan.cuts[index - 1].endState : null,
+            ...(data.pieces && cuts[index].engine !== 'manim' && { setPieces: data.pieces }),
             ...(error && { validationError: error.message }),
           }),
         );
@@ -203,6 +235,8 @@ export async function writeCuts({
       cuts[index].engine === 'manim' ? MANIM_COMPONENT : cuts[index].code,
     );
     await writeFile(join(dir, 'index.tsx'), CUT_ENTRY);
+    if (data.pieces && cuts[index].engine !== 'manim')
+      await writeFile(join(dir, 'pieces.tsx'), data.pieces);
     await writeFile(join(dir, 'emphasis.json'), JSON.stringify(plan.cuts[index].emphasis ?? []));
     await writeFile(
       join(dir, 'kit.tsx'),

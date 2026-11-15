@@ -174,6 +174,7 @@ export async function generateVideo({
       rendered = value;
       const ready = live.cuts.filter(playable).length;
       if (rendered !== undefined && ready === count) return onPhase('saving', rendered, frames);
+      if (live.pieces === null) return onPhase('pieces');
       if (!playable(live.cuts[0]))
         return live.cuts[0].code
           ? onPhase('narrating')
@@ -196,6 +197,7 @@ export async function generateVideo({
       wait,
       stop: (error) => controller.abort(error),
       kept,
+      pieces: prior?.pieces,
       save: (data) => {
         const written = data.cuts.filter((c) => c.status === 'written').length;
         if (written > writtenCuts) onStage('cuts written', { cut: written, cuts: count });

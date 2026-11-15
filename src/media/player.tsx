@@ -32,20 +32,25 @@ const libraries: Record<string, unknown> = {
 };
 const loaded: { code?: string; Component?: LiveCut['Component']; audio?: string; clip?: string }[] =
   [];
+let pieces: { code?: string; exports?: unknown } = {};
 
 // The server compiled each cut to a CommonJS body; an inline script (allowed by this frame's CSP) defines it.
 function compile(code: string, colors: Record<string, string>) {
+  return load(code, colors)?.default as LiveCut['Component'] | undefined;
+}
+function load(code: string, colors: Record<string, string>) {
   let factory: ((...args: unknown[]) => void) | undefined;
   Object.assign(window, { __cut: (f: typeof factory) => (factory = f) });
   const script = document.createElement('script');
   script.textContent = `__cut(function (require, module, exports) {\n${code}\n})`;
   document.head.append(script);
   script.remove();
-  const module = { exports: {} as { default?: LiveCut['Component'] } };
+  const module = { exports: {} as Record<string, unknown> };
   try {
     factory?.(
       (name: string) => {
         if (name === './kit') return { ...kit, colors };
+        if (name === './pieces' && pieces.exports) return pieces.exports;
         if (name in libraries) return libraries[name];
         throw new Error(`Cut import is outside the kit: ${name}`);
       },
@@ -55,7 +60,7 @@ function compile(code: string, colors: Record<string, string>) {
   } catch {
     return undefined;
   }
-  return module.exports.default;
+  return module.exports;
 }
 
 const root = createRoot(document.getElementById('player')!);
@@ -85,6 +90,12 @@ addEventListener('message', (event) => {
       kit.palette[ink as keyof typeof kit.palette],
     ]),
   );
+  // Set pieces load before the cuts that import them; new set pieces recompile every cut.
+  const shared = typeof event.data.pieces === 'string' ? event.data.pieces : undefined;
+  if (shared !== pieces.code) {
+    pieces = { code: shared, exports: shared ? load(shared, roles) : undefined };
+    loaded.forEach((own) => delete own.code);
+  }
   show(
     (event.data.cuts as Incoming[]).map((cut, i) => {
       const own = (loaded[i] ??= {});

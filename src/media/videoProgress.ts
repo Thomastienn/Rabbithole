@@ -1,7 +1,7 @@
 // Estimated overall progress for a pending video (docs/focus-and-live-media-spec.md, progress phases).
 // Step names and counts are real; only the bar position between real signals is estimated.
 export type VideoJob = {
-  phase?: 'planning' | 'creating' | 'writing' | 'narrating' | 'playable' | 'saving';
+  phase?: 'planning' | 'pieces' | 'creating' | 'writing' | 'narrating' | 'playable' | 'saving';
   progress?: number;
   characters?: number;
   frames?: number;
@@ -11,10 +11,11 @@ export type VideoJob = {
   phaseStartedAt?: number;
 };
 
-export const STEPS = ['planning', 'writing', 'narrating', 'playable', 'saving'] as const;
+export const STEPS = ['planning', 'pieces', 'writing', 'narrating', 'playable', 'saving'] as const;
 // Share of the bar each phase owns, and how fast its estimate creeps (seconds to ~63% of its share; 0 = counted).
 const SPAN = {
-  planning: [0, 0.3, 30],
+  planning: [0, 0.25, 30],
+  pieces: [0.25, 0.3, 20],
   writing: [0.3, 0.55, 0],
   narrating: [0.55, 0.6, 8],
   playable: [0.6, 0.7, 0],

@@ -93,6 +93,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
       if (!file)
         return json(res, 200, {
           paletteRoles: data.plan.styleBrief.paletteRoles,
+          pieces: data.pieces ? compileCut(data.pieces) : null,
           cuts: data.cuts.map((cut, i) => ({
             engine: cut.engine,
             emphasis: data.plan.cuts[i].emphasis ?? [],

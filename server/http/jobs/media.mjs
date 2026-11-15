@@ -5,9 +5,10 @@ import { join } from 'node:path';
 import { generateDiagram } from '../../media/diagrams.mjs';
 import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
+import { PIECES_INSTRUCTIONS } from '../../media/video-cut.mjs';
 
 export const STOPPED = new Error('TreeTutor stopped.');
-const PHASES = ['planning', 'writing', 'narrating', 'playable', 'saving'];
+const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'playable', 'saving'];
 
 // A crash before commit restores staged files; a crash after commit finishes removing them.
 // The suffix records the owning artifact, including legacy workspaces named only by attempt.
@@ -100,7 +101,11 @@ export function mediaJobs(ctx) {
           provider: {
             generate: (...args) =>
               metered(provider, 'video', `${job.attempt}:${randomUUID()}`, selection, {
-                stage: args[0].instructions.startsWith('You plan') ? 'plan' : 'cut',
+                stage: args[0].instructions.startsWith('You plan')
+                  ? 'plan'
+                  : args[0].instructions === PIECES_INSTRUCTIONS
+                    ? 'pieces'
+                    : 'cut',
                 message: job.message,
               }).generate(...args),
           },

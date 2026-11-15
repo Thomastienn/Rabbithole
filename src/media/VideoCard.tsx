@@ -26,6 +26,7 @@ const STATUS = {
 };
 const STEP_LABEL = {
   planning: 'Planning cuts',
+  pieces: 'Writing set pieces',
   writing: 'Writing cuts',
   narrating: 'Recording narration',
   playable: 'Playing live',

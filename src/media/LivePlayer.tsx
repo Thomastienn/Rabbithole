@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 type LiveCuts = {
   paletteRoles: Record<string, string>;
+  pieces: string | null;
   cuts: {
     engine: string;
     playable: boolean;
@@ -58,6 +59,7 @@ export default function LivePlayer({
                 {
                   type: 'cuts',
                   paletteRoles: data.paletteRoles,
+                  pieces: data.pieces,
                   cuts: data.cuts.map((cut, i) => ({
                     ...cut,
                     audio: blobs.get(`${i}/narration`),
