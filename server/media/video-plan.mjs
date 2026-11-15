@@ -42,7 +42,7 @@ Keep brief and cuts short but specific. Plan several ordered cuts with distinct 
 const inFrame = (x, y) =>
   Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 1920 && y >= 0 && y <= 1080;
 const sketchPoints = { circle: [2, 2], underline: [2, 2], arrow: [2, 2], freehand: [2, 64] };
-const mark = (m) =>
+export const emphasisMark = (m) =>
   Number.isInteger(m?.sentence) &&
   m.sentence >= 0 &&
   (m.tool === 'cursor'
@@ -91,7 +91,7 @@ export function videoPlan(raw) {
         ['remotion', 'manim'].includes(c.engine) &&
         text(c.endState) &&
         (c.emphasis === undefined ||
-          (Array.isArray(c.emphasis) && c.emphasis.length <= 12 && c.emphasis.every(mark))),
+          (Array.isArray(c.emphasis) && c.emphasis.length <= 12 && c.emphasis.every(emphasisMark))),
     )
   )
     throw new Error('Video plan or style brief is malformed.');

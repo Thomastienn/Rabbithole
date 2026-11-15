@@ -5,10 +5,10 @@ import { join } from 'node:path';
 import { generateDiagram } from '../../media/diagrams.mjs';
 import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
-import { PIECES_INSTRUCTIONS } from '../../media/video-cut.mjs';
+import { PIECES_INSTRUCTIONS, AUDIT_INSTRUCTIONS } from '../../media/video-cut.mjs';
 
 export const STOPPED = new Error('TreeTutor stopped.');
-const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'playable', 'saving'];
+const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
 
 // A crash before commit restores staged files; a crash after commit finishes removing them.
 // The suffix records the owning artifact, including legacy workspaces named only by attempt.
@@ -105,7 +105,9 @@ export function mediaJobs(ctx) {
                   ? 'plan'
                   : args[0].instructions === PIECES_INSTRUCTIONS
                     ? 'pieces'
-                    : 'cut',
+                    : args[0].instructions === AUDIT_INSTRUCTIONS
+                      ? 'audit'
+                      : 'cut',
                 message: job.message,
               }).generate(...args),
           },
@@ -117,6 +119,7 @@ export function mediaJobs(ctx) {
           signal: running.controller.signal,
           timeout: ctx.videoTimeout,
           render: ctx.videoRender,
+          snapshot: ctx.videoSnapshot,
           narrate: ctx.videoNarrate,
           manim: ctx.videoManim,
           onWarning: (cause) =>

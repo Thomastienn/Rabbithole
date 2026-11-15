@@ -1,11 +1,12 @@
-// Runs inside the bubblewrap sandbox from videos.mjs; argv: workspace, output file, dependency directory.
+// Runs inside the bubblewrap sandbox from videos.mjs; argv: workspace, output file, dependency directory,
+// and for snapshots a JSON list of {frame, file} stills instead of a video.
 import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { bundle } from '@remotion/bundler';
-import { selectComposition, renderMedia, RenderInternals } from '@remotion/renderer';
+import { selectComposition, renderMedia, renderStill, RenderInternals } from '@remotion/renderer';
 
-const [workspace, output, modules] = process.argv.slice(2);
+const [workspace, output, modules, stills] = process.argv.slice(2);
 if (existsSync(join(workspace, 'cuts.json'))) {
   const cuts = JSON.parse(readFileSync(join(workspace, 'cuts.json'), 'utf8'));
   const durationInFrames = cuts.reduce((n, c) => n + c.durationInFrames, 0);
@@ -61,13 +62,29 @@ const browserExecutable = join(
   modules,
   '.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell',
 );
-let reported = 0;
 const composition = await selectComposition({
   serveUrl,
   id: 'Video',
   browserExecutable,
   logLevel: 'error',
 });
+if (stills) {
+  // Audit frames go at 960x540 to keep image tokens modest.
+  for (const { frame, file } of JSON.parse(stills))
+    await renderStill({
+      serveUrl,
+      composition,
+      browserExecutable,
+      output: file,
+      frame,
+      imageFormat: 'jpeg',
+      scale: 0.5,
+      logLevel: 'error',
+    });
+  console.log(JSON.stringify({ stills: JSON.parse(stills).length }));
+  process.exit(0);
+}
+let reported = 0;
 await renderMedia({
   serveUrl,
   composition,

@@ -203,10 +203,15 @@ test(
   'one real short sandboxed Remotion render publishes a ready MP4',
   { skip: renderSkip, timeout: 240000 },
   async () => {
-    const { result, row, published, dir, phases } = await job(undefined);
+    const { result, row, published, dir, phases, audits } = await job(undefined);
     assert.equal(result, null);
+    // Real stills from the sandbox reach the audit: one per sentence end plus the last frame.
+    assert.deepEqual(
+      audits.map((images) => images.map((i) => i.type)),
+      [['image/jpeg', 'image/jpeg']],
+    );
     // Phases run in order; planning counts characters, saving reports real 1% render steps of a known frame total, ending at 100%.
-    const steps = ['planning', 'writing', 'narrating', 'playable', 'saving'];
+    const steps = ['planning', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
     const order = phases.map(([phase]) => phase).filter((phase, i, all) => phase !== all[i - 1]);
     assert.deepEqual(
       order,

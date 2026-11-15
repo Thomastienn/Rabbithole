@@ -14,6 +14,7 @@ import {
   videoResponse,
   mp4,
   fakeRender,
+  noSnapshot,
   complete,
   until,
   open,
@@ -227,6 +228,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
     auth: { status: () => ({ connected: true }) },
     dir,
     videoRender: fakeRender,
+    videoSnapshot: noSnapshot,
     videoNarrate: fakeNarration,
   });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));

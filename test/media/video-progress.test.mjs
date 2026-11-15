@@ -23,7 +23,8 @@ test('estimated video progress stays inside each phase share and below 100% unti
     at({ phase: 'writing', cut: 2, cuts: 4 }, 0) > at({ phase: 'writing', cut: 1, cuts: 4 }, 0),
   );
   assert.ok(at({ phase: 'narrating' }, 0) >= 0.55 && at({ phase: 'narrating' }, 999) < 0.6);
-  assert.ok(Math.abs(at({ phase: 'playable', cut: 1, cuts: 2 }, 0) - 0.65) < 1e-9);
+  assert.ok(at({ phase: 'auditing' }, 0) >= 0.6 && at({ phase: 'auditing' }, 999) < 0.65);
+  assert.ok(Math.abs(at({ phase: 'playable', cut: 1, cuts: 2 }, 0) - 0.675) < 1e-9);
   // Saving maps real render progress into its share and stays below 100% until ready.
   assert.equal(at({ phase: 'saving', progress: 0 }, 99), 0.7);
   assert.ok(at({ phase: 'saving', progress: 1 }, 999) < 1);
@@ -42,6 +43,7 @@ test('video step detail shows only real counts', () => {
   );
   assert.equal(videoStepDetail({ phase: 'writing', cut: 1, cuts: 3 }), '1 of 3 cuts written');
   assert.equal(videoStepDetail({ phase: 'playable', cut: 2, cuts: 3 }), '2 of 3 cuts ready');
+  assert.equal(videoStepDetail({ phase: 'auditing', cut: 1, cuts: 3 }), '1 of 3 cuts audited');
   assert.equal(videoStepDetail({ phase: 'narrating' }), '');
   assert.equal(elapsed({ startedAt: 0 }, 75_000), '1:15');
 });

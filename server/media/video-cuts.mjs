@@ -1,8 +1,15 @@
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, lstat, realpath } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { CUT_ENTRY, CUT_INSTRUCTIONS, PIECES_INSTRUCTIONS } from './video-cut.mjs';
+import {
+  CUT_ENTRY,
+  CUT_INSTRUCTIONS,
+  PIECES_INSTRUCTIONS,
+  AUDIT_INSTRUCTIONS,
+} from './video-cut.mjs';
 import {
   cutSource,
+  emphasisMark,
   pieceNames,
   CUT_ATTEMPTS,
   CUT_PAUSE_FRAMES,
@@ -13,6 +20,26 @@ import { MANIM_INSTRUCTIONS, MANIM_COMPONENT } from './manim-cut.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 
+// An audit answers {"change":false} or {"code", "emphasis"?}; null means no change, anything unusable throws.
+export function auditFix(raw, brief, sentences) {
+  const answer = JSON.parse(raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim());
+  if (answer?.change === false) return null;
+  if (typeof answer?.code !== 'string') throw new Error('Audit returned no code.');
+  if (
+    answer.emphasis !== undefined &&
+    !(
+      Array.isArray(answer.emphasis) &&
+      answer.emphasis.length <= 12 &&
+      answer.emphasis.every((m) => emphasisMark(m) && m.sentence < sentences)
+    )
+  )
+    throw new Error('Audit returned unreadable emphasis.');
+  return {
+    code: cutSource(answer.code, brief),
+    ...(answer.emphasis && { emphasis: answer.emphasis }),
+  };
+}
+
 // A cut's final validation or render failure; provider, sign-in and runtime errors keep their own wording.
 export const cutError = (reason, index, count) =>
   new Error(
@@ -22,12 +49,12 @@ export const cutError = (reason, index, count) =>
 export const piecesError = (reason) =>
   new Error(`Set pieces: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the plan.`);
 
-export async function videoCall(provider, selection, instructions, input, signal, onText) {
+export async function videoCall(provider, selection, instructions, input, signal, onText, images) {
   const items = new Map();
   let status, overflow;
   try {
     await provider.generate(
-      { ...selection, thread: null, instructions },
+      { ...selection, thread: null, instructions, ...(images && { images }) },
       input,
       (event) => {
         if (signal.aborted) return;
@@ -65,6 +92,7 @@ export async function writeCuts({
   manimKit,
   call,
   narrate,
+  snapshot,
   signal,
   save,
   wait,
@@ -78,6 +106,13 @@ export async function writeCuts({
     status: 'pending',
     code: (kept[i]?.status !== 'failed' && kept[i]?.code) || null,
     timing: kept[i]?.timing ?? null,
+    // A kept cut keeps its settled audit and the marks it chose.
+    ...(kept[i]?.status !== 'failed' &&
+      kept[i]?.code &&
+      kept[i].audited && {
+        audited: true,
+        ...(kept[i].emphasis && { emphasis: kept[i].emphasis }),
+      }),
   }));
   const names = pieceNames(plan);
   const data = { plan, cuts, ...(names.length && { pieces }) };
@@ -149,6 +184,127 @@ export async function writeCuts({
     }
     throw cutError(error.message, index, plan.cuts.length);
   };
+  const stage = async (index) => {
+    const dir = join(workspace, `cut-${index}`);
+    if (cuts[index].engine === 'manim') {
+      await writeFile(join(dir, 'Cut.py'), cuts[index].code);
+      await writeFile(join(dir, 'kit.py'), manimKit);
+      await writeFile(
+        join(dir, 'brief.json'),
+        JSON.stringify({
+          palette: Object.fromEntries(
+            Object.entries(videoPalette).filter(
+              ([ink]) =>
+                !['amber', 'leaf', 'rust', 'lichen'].includes(ink) ||
+                Object.values(plan.styleBrief.paletteRoles).includes(ink),
+            ),
+          ),
+          colors: Object.fromEntries(
+            Object.entries(plan.styleBrief.paletteRoles).map(([role, ink]) => [
+              role,
+              videoPalette[ink],
+            ]),
+          ),
+        }),
+      );
+    }
+    await writeFile(
+      join(dir, 'Video.tsx'),
+      cuts[index].engine === 'manim' ? MANIM_COMPONENT : cuts[index].code,
+    );
+    await writeFile(join(dir, 'index.tsx'), CUT_ENTRY);
+    if (data.pieces && cuts[index].engine !== 'manim')
+      await writeFile(join(dir, 'pieces.tsx'), data.pieces);
+    await writeFile(
+      join(dir, 'emphasis.json'),
+      JSON.stringify(cuts[index].emphasis ?? plan.cuts[index].emphasis ?? []),
+    );
+    await writeFile(
+      join(dir, 'kit.tsx'),
+      kit +
+        '\nexport const colors = {\n' +
+        Object.entries(plan.styleBrief.paletteRoles)
+          .map(([role, ink]) => `  ${JSON.stringify(role)}: palette.${ink},`)
+          .join('\n') +
+        '\n};\n',
+    );
+    return dir;
+  };
+  // Stills at each sentence end and the narration's last frame, rendered from the staged cut.
+  const shoot = async (index) => {
+    const dir = await stage(index),
+      { sentences, audioFrames } = cuts[index].timing;
+    const frames = [
+      ...new Set([...sentences.map((s) => Math.min(s.endFrame, audioFrames)), audioFrames]),
+    ].map((f) => Math.max(0, f - 1));
+    const stills = frames.map((frame) => ({
+      frame,
+      file: join(dir, 'out', randomUUID() + '.jpg'),
+    }));
+    await snapshot(dir, stills, signal);
+    signal.throwIfAborted();
+    const out = await realpath(join(dir, 'out'));
+    for (const { file } of stills) {
+      const stat = await lstat(file).catch(() => null);
+      if (
+        !stat?.isFile() ||
+        !stat.size ||
+        stat.size > 2 * 1024 * 1024 ||
+        (await realpath(file)) !== join(out, file.slice(file.lastIndexOf('/') + 1))
+      )
+        throw new Error('Video snapshot is unreadable.');
+    }
+    return stills.map(({ file }) => ({ path: file, type: 'image/jpeg' }));
+  };
+  // Each audit shares its pre-audit last frame with the next cut's audit, so audits never wait on each other.
+  const lastFrames = cuts.map(() => Promise.withResolvers());
+  const audit = async (index) => {
+    const cut = cuts[index];
+    let own = null;
+    try {
+      own = await shoot(index);
+    } catch {
+      signal.throwIfAborted();
+    } finally {
+      lastFrames[index].resolve(own?.at(-1) ?? null);
+    }
+    const before = { code: cut.code, emphasis: cut.emphasis };
+    // An audit only improves a cut: no frames, an unusable answer or a fix that will not render keeps the cut as it was.
+    if (own?.length)
+      try {
+        const previous = index ? await lastFrames[index - 1].promise : null;
+        signal.throwIfAborted();
+        const fix = auditFix(
+          await call(
+            AUDIT_INSTRUCTIONS,
+            JSON.stringify({
+              styleBrief: plan.styleBrief,
+              cut: plan.cuts[index],
+              previousEndState: index ? plan.cuts[index - 1].endState : null,
+              ...(data.pieces && { setPieces: data.pieces }),
+              code: cut.code,
+              emphasis: cut.emphasis ?? plan.cuts[index].emphasis ?? [],
+              snapshots: own.length,
+              previousLastFrame: !!previous,
+            }),
+            undefined,
+            previous ? [...own, previous] : own,
+          ),
+          plan.styleBrief,
+          cut.timing.sentences.length,
+        );
+        if (fix) {
+          Object.assign(cut, fix);
+          await shoot(index);
+        }
+      } catch {
+        signal.throwIfAborted();
+        Object.assign(cut, before);
+        if (before.emphasis === undefined) delete cut.emphasis;
+      }
+    cut.audited = true;
+    persist();
+  };
   const writing = cuts.map(async (cut, index) => {
     const dir = join(workspace, `cut-${index}`);
     cut.status = 'writing';
@@ -185,6 +341,7 @@ export async function writeCuts({
     ];
     try {
       await Promise.all(operations);
+      if (cut.engine !== 'manim' && !cut.audited) await audit(index);
     } catch (error) {
       if (!signal.aborted) {
         cut.status = 'failed';
@@ -194,6 +351,8 @@ export async function writeCuts({
       // A failed writer may race with audio staging. Drain both before removing private files.
       await Promise.allSettled(operations);
       throw error;
+    } finally {
+      lastFrames[index].resolve(null);
     }
     cut.status = 'written';
     persist();
@@ -206,48 +365,5 @@ export async function writeCuts({
     // Siblings fail with AbortError once one cut stops the job; report the first real cause.
     throw signal.reason ?? error;
   }
-  const stage = async (index) => {
-    const dir = join(workspace, `cut-${index}`);
-    if (cuts[index].engine === 'manim') {
-      await writeFile(join(dir, 'Cut.py'), cuts[index].code);
-      await writeFile(join(dir, 'kit.py'), manimKit);
-      await writeFile(
-        join(dir, 'brief.json'),
-        JSON.stringify({
-          palette: Object.fromEntries(
-            Object.entries(videoPalette).filter(
-              ([ink]) =>
-                !['amber', 'leaf', 'rust', 'lichen'].includes(ink) ||
-                Object.values(plan.styleBrief.paletteRoles).includes(ink),
-            ),
-          ),
-          colors: Object.fromEntries(
-            Object.entries(plan.styleBrief.paletteRoles).map(([role, ink]) => [
-              role,
-              videoPalette[ink],
-            ]),
-          ),
-        }),
-      );
-    }
-    await writeFile(
-      join(dir, 'Video.tsx'),
-      cuts[index].engine === 'manim' ? MANIM_COMPONENT : cuts[index].code,
-    );
-    await writeFile(join(dir, 'index.tsx'), CUT_ENTRY);
-    if (data.pieces && cuts[index].engine !== 'manim')
-      await writeFile(join(dir, 'pieces.tsx'), data.pieces);
-    await writeFile(join(dir, 'emphasis.json'), JSON.stringify(plan.cuts[index].emphasis ?? []));
-    await writeFile(
-      join(dir, 'kit.tsx'),
-      kit +
-        '\nexport const colors = {\n' +
-        Object.entries(plan.styleBrief.paletteRoles)
-          .map(([role, ink]) => `  ${JSON.stringify(role)}: palette.${ink},`)
-          .join('\n') +
-        '\n};\n',
-    );
-    return dir;
-  };
   return { data, attempts, rewrite, stage, persist };
 }

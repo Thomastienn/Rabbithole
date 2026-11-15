@@ -87,6 +87,8 @@ if (process.argv[2] === '--serve') {
     provider,
     dir,
     videoRender,
+    // No stills from the fake renderer, so cut audits are skipped.
+    videoSnapshot: async () => {},
     videoNarrate: fakeNarration,
     auth: { status: () => ({ connected: true }) },
   });

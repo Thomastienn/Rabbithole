@@ -52,6 +52,8 @@ export const mp4 = Buffer.concat([
   Buffer.from('ftypisom'),
   Buffer.alloc(4096, 1),
 ]);
+// Writes no stills, so the cut audit is skipped; audit tests inject their own snapshot.
+export const noSnapshot = async () => {};
 export const fakeRender = async (workspace, output) => {
   writeFileSync(output, mp4);
   return {
@@ -87,7 +89,7 @@ export const complete = (emit, text) => {
 export { until } from './events.mjs';
 
 export async function open(provider, options = {}) {
-  observe(options, ['videoRender', 'videoNarrate']);
+  observe(options, ['videoRender', 'videoNarrate', 'videoSnapshot']);
   provider = { models: async () => [{ model: 'fixture-model', isDefault: true }], ...provider };
   const dir = mkdtempSync(join(tmpdir(), 'tt-videos-'));
   const store = observeStore(new Store(join(dir, 'trees.sqlite')));
@@ -97,6 +99,7 @@ export async function open(provider, options = {}) {
     auth: { status: () => ({ connected: true }) },
     dir,
     videoRender: fakeRender,
+    videoSnapshot: noSnapshot,
     videoNarrate: fakeNarration,
     ...options,
   });
@@ -135,8 +138,10 @@ export async function job(render, mutate, source = composition, count = 1, optio
     '{"request":"Make a video."}',
   );
   mutate?.(store, artifact, dir);
+  const audits = [];
   const provider = {
-    generate: async (t, text, emit) =>
+    generate: async (t, text, emit) => {
+      if (t.images) audits.push(t.images);
       complete(
         emit,
         t.instructions.startsWith('You plan') &&
@@ -146,7 +151,8 @@ export async function job(render, mutate, source = composition, count = 1, optio
               'manim'
             ? manimCut
             : source,
-      ),
+      );
+    },
   };
   const phases = [];
   const result = await generateVideo({
@@ -157,6 +163,8 @@ export async function job(render, mutate, source = composition, count = 1, optio
     artifact,
     signal: new AbortController().signal,
     render,
+    // A real render also takes real snapshots.
+    snapshot: options.snapshot ?? (render ? noSnapshot : undefined),
     narrate: fakeNarration,
     onPhase: (...p) => phases.push(p),
     manim: options.manim,
@@ -171,5 +179,6 @@ export async function job(render, mutate, source = composition, count = 1, optio
     published: existsSync(mediaPath(dir, artifact.id)),
     dir,
     phases,
+    audits,
   };
 }

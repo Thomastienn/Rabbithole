@@ -235,6 +235,7 @@ test('video worker attempts record their own reported usage, including failed an
     store,
     provider,
     dir,
+    videoSnapshot: async () => {},
     videoRender: render,
     videoNarrate: fakeNarration,
     auth: { status: () => ({ connected: true }) },

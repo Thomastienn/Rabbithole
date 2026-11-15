@@ -56,6 +56,7 @@ test('reply API attributes retried visuals and every video call, reports running
       },
     },
     {
+      videoSnapshot: async () => {},
       videoRender: async () => {
         await renderGate.promise;
         throw new Error('Fixture render failed');

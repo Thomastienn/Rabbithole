@@ -174,6 +174,7 @@ test('video logs plan, cuts, narration, playable, 25% rendering steps and saved 
       },
     },
     {
+      videoSnapshot: async () => {},
       videoRender: async (workspace, output, signal, progress) => {
         for (const value of [0.1, 0.26, 0.29, 0.2, 0.8, 0.99, 1, 1]) progress(value);
         return fakeRender(workspace, output, signal);

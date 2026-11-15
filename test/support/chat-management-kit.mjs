@@ -22,6 +22,7 @@ export async function fixture(provider = { generate: complete }, options = {}) {
     provider: observeProvider(provider),
     dir,
     auth: { status: () => ({ connected: true }) },
+    videoSnapshot: async () => {},
     ...options,
   });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));

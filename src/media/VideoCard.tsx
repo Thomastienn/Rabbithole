@@ -29,6 +29,7 @@ const STEP_LABEL = {
   pieces: 'Writing set pieces',
   writing: 'Writing cuts',
   narrating: 'Recording narration',
+  auditing: 'Auditing cuts',
   playable: 'Playing live',
   saving: 'Saving video file',
 };

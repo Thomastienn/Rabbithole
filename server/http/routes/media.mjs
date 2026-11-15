@@ -96,7 +96,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
           pieces: data.pieces ? compileCut(data.pieces) : null,
           cuts: data.cuts.map((cut, i) => ({
             engine: cut.engine,
-            emphasis: data.plan.cuts[i].emphasis ?? [],
+            emphasis: cut.emphasis ?? data.plan.cuts[i].emphasis ?? [],
             timing: cut.timing,
             code: playable(cut) && cut.engine !== 'manim' ? compileCut(cut.code) : null,
             playable: playable(cut),

@@ -54,6 +54,24 @@ export function sandboxRender(workspace, output, signal, onProgress = () => {}, 
   );
 }
 
+// Stills of a staged cut for its audit: server-chosen JPEG files inside the cut's private output.
+export function sandboxSnapshot(workspace, stills, signal) {
+  return sandboxProcess(
+    workspace,
+    [
+      process.execPath,
+      join(REPO, 'server/media/video-render.mjs'),
+      workspace,
+      '',
+      join(REPO, 'node_modules'),
+      JSON.stringify(stills),
+    ],
+    signal,
+    () => {},
+    120000 + stills.length * 15000,
+  );
+}
+
 // Accept only the server-chosen file inside this attempt's private output, as a regular readable MP4.
 export async function validateOutput(workspace, output) {
   const expected = join(await realpath(workspace), 'out', basename(output));
@@ -72,8 +90,9 @@ export async function validateOutput(workspace, output) {
 }
 
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
-// A cut plays live once its code and measured narration exist; a Manim cut also needs its rendered clip.
-export const playable = (cut) => !!(cut.code && cut.timing && (cut.engine !== 'manim' || cut.clip));
+// A cut plays live once its code and measured narration exist and, for Remotion, its audit settled; Manim needs its clip.
+export const playable = (cut) =>
+  !!(cut.code && cut.timing && (cut.engine === 'manim' ? cut.clip : cut.audited));
 
 export async function generateVideo({
   provider,
@@ -85,6 +104,7 @@ export async function generateVideo({
   signal,
   timeout,
   render = sandboxRender,
+  snapshot = sandboxSnapshot,
   narrate = edgeNarration,
   onPhase = () => {},
   manim = { detect: detectManim, render: sandboxManim },
@@ -112,9 +132,9 @@ export async function generateVideo({
     }
   };
   const deadline = Date.now() + (timeout ?? 600000);
-  const call = (instructions, input, onText) =>
+  const call = (instructions, input, onText, images) =>
     wait(
-      videoCall(provider, selection, instructions, input, controller.signal, onText),
+      videoCall(provider, selection, instructions, input, controller.signal, onText, images),
       Math.max(1, deadline - Date.now()),
       'Video composition timed out.',
     );
@@ -176,12 +196,17 @@ export async function generateVideo({
       if (rendered !== undefined && ready === count) return onPhase('saving', rendered, frames);
       if (live.pieces === null) return onPhase('pieces');
       if (!playable(live.cuts[0]))
-        return live.cuts[0].code
-          ? onPhase('narrating')
-          : onPhase('writing', undefined, {
+        return !live.cuts[0].code
+          ? onPhase('writing', undefined, {
               cut: live.cuts.filter((c) => c.code).length,
               cuts: count,
-            });
+            })
+          : !live.cuts[0].timing || live.cuts[0].engine === 'manim'
+            ? onPhase('narrating')
+            : onPhase('auditing', undefined, {
+                cut: live.cuts.filter((c) => c.audited).length,
+                cuts: count,
+              });
       if (!playableStage) onStage('playable', { cut: 1, cuts: count });
       playableStage = true;
       onPhase('playable', undefined, { cut: ready, cuts: count });
@@ -193,6 +218,7 @@ export async function generateVideo({
       manimKit: MANIM_KIT,
       call,
       narrate,
+      snapshot,
       signal: controller.signal,
       wait,
       stop: (error) => controller.abort(error),

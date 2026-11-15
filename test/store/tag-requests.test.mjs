@@ -53,6 +53,7 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
     auth: { status: () => ({ connected: true }) },
     dir,
     videoNarrate: fakeNarration,
+    videoSnapshot: async () => {},
     videoRender: async (w, out) => {
       writeFileSync(out, mp4);
       return { durationInFrames: 75, fps: 30 };
