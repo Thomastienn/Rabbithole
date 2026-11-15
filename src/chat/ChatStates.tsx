@@ -6,7 +6,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { ChatComposer, ChatComposerInput } from '@astryxdesign/core/Chat';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { ArrowUpIcon } from '@heroicons/react/24/outline';
-import { AttachButton, PendingAttachments } from './Attachments';
+import { AttachButton, PendingAttachments, pendingPlaceholder } from './Attachments';
 
 export function FirstQuestion({
   draft,
@@ -41,7 +41,7 @@ export function FirstQuestion({
     <VStack className="first-question" gap={3} hAlign="center">
       <Heading level={2}>Your first tree starts with a question.</Heading>
       <ChatComposer
-        className="single-ring-composer"
+        className="single-ring-composer attachment-composer"
         elevation="none"
         value={draft}
         onChange={setDraft}
@@ -82,7 +82,9 @@ export function FirstQuestion({
             onChange={setDraft}
             onFiles={(more) => setFiles([...files, ...more])}
             isDisabled={busy || !available}
-            placeholder="What would you like to understand?"
+            placeholder={
+              files.length ? pendingPlaceholder(files.length) : 'What would you like to understand?'
+            }
           />
         }
       />

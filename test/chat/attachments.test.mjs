@@ -77,6 +77,91 @@ test('composer paperclip, paste and drop feed one handler; pending chips are rem
   assert.deepEqual(submitted, ['']);
 });
 
+test('pending files are tray slips with thumbnail or type, size meta, focus-keeping remove and revoked URLs', async (t) => {
+  const made = [],
+    revoked = [];
+  const { createObjectURL, revokeObjectURL } = URL;
+  URL.createObjectURL = () => (made.push(`blob:${made.length}`), made.at(-1));
+  URL.revokeObjectURL = (u) => revoked.push(u);
+  t.after(() => Object.assign(URL, { createObjectURL, revokeObjectURL }));
+  let setDraftFiles;
+  function Fixture() {
+    const [pending, setPending] = useState([
+      new File(['x'.repeat(1.8 * 1024 * 1024)], 'worksheet.jpg', { type: 'image/jpeg' }),
+      new File(['x'.repeat(2048)], 'notes.pdf', { type: 'application/pdf' }),
+      new File(['y'], 'heap.py', { type: 'text/x-python' }),
+    ]);
+    setDraftFiles = setPending;
+    return h(FirstQuestion, {
+      draft: '',
+      setDraft() {},
+      files: pending,
+      setFiles: setPending,
+      busy: false,
+      available: true,
+      modelMenu: null,
+      submit() {},
+      modelError: '',
+      loadModels() {},
+      noModels: false,
+    });
+  }
+  const { container, act, cleanup } = await render(h(Fixture), ui);
+  t.after(cleanup);
+  const composer = container.querySelector('.attachment-composer');
+  const tray = composer.querySelector('.attachment-tray');
+  assert.ok(tray, 'the tray sits inside the composer');
+  assert.equal(
+    container.querySelector('.astryx-token, [class*=drawer]'),
+    null,
+    'no drawer or Tokens',
+  );
+  const slips = () => [...tray.querySelectorAll('.attachment-slip')];
+  const meta = () => slips().map((s) => s.querySelector('.attachment-delivery').textContent);
+  assert.deepEqual(meta(), ['Image · 1.8 MB', 'PDF · 2 KB', 'Text · 1 B']);
+  assert.ok(
+    slips()[0].querySelector('.attachment-tile img').getAttribute('src').startsWith('blob:'),
+  );
+  assert.deepEqual(
+    slips()
+      .slice(1)
+      .map((s) => s.querySelector('.attachment-tile').textContent),
+    ['PDF', 'PY'],
+  );
+  const field = container.querySelector('[role=textbox]');
+  const placeholder = () =>
+    container.textContent +
+    (field.getAttribute('aria-placeholder') ?? '') +
+    (field.dataset.placeholder ?? '');
+  assert.match(placeholder(), /Ask about these files, or just send them/);
+
+  const firstUrl = slips()[0].querySelector('img').getAttribute('src');
+  await act(async () => button(container, 'Remove worksheet.jpg').click());
+  assert.ok(revoked.includes(firstUrl), 'a removed image’s object URL is revoked');
+  assert.equal(
+    document.activeElement,
+    button(container, 'Remove notes.pdf'),
+    'focus moves to the next slip',
+  );
+  await act(async () => button(container, 'Remove heap.py').click());
+  assert.equal(
+    document.activeElement,
+    button(container, 'Remove notes.pdf'),
+    'else the previous slip',
+  );
+  assert.match(placeholder(), /Ask about this file, or just send it/);
+  await act(async () => button(container, 'Remove notes.pdf').click());
+  assert.equal(container.querySelector('.attachment-tray'), null);
+  assert.equal(document.activeElement, field, 'with no slips left, focus goes to the field');
+  assert.doesNotMatch(placeholder(), /just send/);
+
+  // Sending clears the files, which revokes the remaining thumbnails.
+  await act(async () => setDraftFiles([new File(['z'], 'red.png', { type: 'image/png' })]));
+  const last = made.at(-1);
+  await act(async () => setDraftFiles([]));
+  assert.ok(revoked.includes(last), 'object URLs are revoked on send');
+});
+
 test('a sent slip names the file, its type and delivery, and the whole slip opens it in a new tab', async (t) => {
   const { container, cleanup } = await render(
     h(MessageAttachments, {

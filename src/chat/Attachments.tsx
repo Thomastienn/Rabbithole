@@ -1,20 +1,14 @@
-import { useRef } from 'react';
-import { HStack } from '@astryxdesign/core/Layout';
+import { useEffect, useRef, useState } from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { Token } from '@astryxdesign/core/Token';
-import { ChatComposerDrawer } from '@astryxdesign/core/Chat';
 import { Popover } from '@astryxdesign/core/Popover';
 import {
   ArrowTopRightOnSquareIcon,
   DocumentMagnifyingGlassIcon,
-  DocumentTextIcon,
   PaperClipIcon,
-  PhotoIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 export type Attachment = { id: string; name: string; type: string; size: number; delivery: string };
-
-const icon = (type: string) => (type.startsWith('image/') ? <PhotoIcon /> : <DocumentTextIcon />);
 
 // The paperclip opens the file picker; paste and drop reach the same add() through the input's onFiles.
 export function AttachButton({
@@ -51,6 +45,17 @@ export function AttachButton({
   );
 }
 
+const sizeLabel = (bytes: number) =>
+  bytes < 1024
+    ? `${bytes} B`
+    : bytes < 1024 * 1024
+      ? `${Math.round(bytes / 1024)} KB`
+      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+export const pendingPlaceholder = (count: number) =>
+  count === 1 ? 'Ask about this file, or just send it' : 'Ask about these files, or just send them';
+
+// Files chosen for the next question, as slips at the head of the composer (inside its frame).
 export function PendingAttachments({
   files,
   remove,
@@ -58,20 +63,57 @@ export function PendingAttachments({
   files: File[];
   remove: (index: number) => void;
 }) {
+  const tray = useRef<HTMLDivElement>(null);
+  const focusAfter = useRef<number | null>(null);
+  const [urls, setUrls] = useState(new Map<File, string>());
+  // Thumbnails are object URLs, revoked whenever the files change (remove, send) or the tray unmounts.
+  useEffect(() => {
+    const made = new Map(
+      files.filter((f) => f.type.startsWith('image/')).map((f) => [f, URL.createObjectURL(f)]),
+    );
+    setUrls(made);
+    return () => made.forEach((u) => URL.revokeObjectURL(u));
+  }, [files]);
+  // After a remove, focus the next slip's ×, else the previous one, else the question field.
+  useEffect(() => {
+    const i = focusAfter.current;
+    if (i === null) return;
+    focusAfter.current = null;
+    const buttons = tray.current?.querySelectorAll<HTMLElement>('.attachment-end button');
+    const target = buttons?.[Math.min(i, buttons.length - 1)];
+    if (target) target.focus();
+    else
+      // The tray is gone once empty, so find the field through the composer.
+      document.querySelector<HTMLElement>('.attachment-composer [role=textbox]')?.focus();
+  }, [files]);
   if (!files.length) return null;
   return (
-    <ChatComposerDrawer label="Attachments">
-      <HStack gap={1} wrap="wrap">
-        {files.map((file, i) => (
-          <Token
-            key={`${i}-${file.name}`}
-            label={file.name}
-            icon={icon(file.type)}
-            onRemove={() => remove(i)}
-          />
-        ))}
-      </HStack>
-    </ChatComposerDrawer>
+    <div ref={tray} className="attachment-tray" role="group" aria-label="Files to send">
+      {files.map((file, i) => {
+        const url = urls.get(file);
+        return (
+          <div key={`${i}-${file.name}`} className="attachment-slip">
+            <span className="attachment-tile">{url ? <img src={url} alt="" /> : tile(file)}</span>
+            <span className="attachment-link">
+              <span className="attachment-name">{file.name}</span>
+              <span className="attachment-delivery">{`${kind(file)} · ${sizeLabel(file.size)}`}</span>
+            </span>
+            <span className="attachment-end">
+              <IconButton
+                label={`Remove ${file.name}`}
+                icon={<XMarkIcon />}
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  focusAfter.current = i;
+                  remove(i);
+                }}
+              />
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -80,8 +122,8 @@ const DELIVERY: Record<string, string> = {
   image: 'sent as image',
   ocr: 'OCR text',
 };
-const isImage = (a: Attachment) => a.type.startsWith('image/');
-const kind = (a: Attachment) =>
+const isImage = (a: { type: string }) => a.type.startsWith('image/');
+const kind = (a: { type: string }) =>
   a.type === 'application/pdf' ? 'PDF' : isImage(a) ? 'Image' : 'Text';
 // A PDF sends its pages, so its image delivery reads in the plural.
 const delivery = (a: Attachment) => {
@@ -93,7 +135,7 @@ const delivery = (a: Attachment) => {
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 export const attachmentLabel = (a: Attachment) => `${kind(a)} · ${delivery(a)}`;
-const tile = (a: Attachment) =>
+const tile = (a: { type: string; name: string }) =>
   a.type === 'application/pdf' ? 'PDF' : (/\.(\w{1,4})$/.exec(a.name)?.[1] ?? 'TXT').toUpperCase();
 
 const openIcon = <ArrowTopRightOnSquareIcon className="attachment-open" aria-hidden />;

@@ -17,7 +17,7 @@ import OriginStrip from './OriginStrip';
 import TitleEditor from './TitleEditor';
 import ChatHeadingRow from './ChatHeader';
 import ChatThread from './ChatThread';
-import { AttachButton, PendingAttachments } from './Attachments';
+import { AttachButton, PendingAttachments, pendingPlaceholder } from './Attachments';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { ChatModel } from './useChatModel';
@@ -158,6 +158,7 @@ export default function FocusedChat(props: {
         density="balanced"
         composer={
           <ChatComposer
+            className="attachment-composer"
             elevation="none"
             sendButton={
               models && !models.length && !active ? (
@@ -206,7 +207,9 @@ export default function FocusedChat(props: {
                 placeholder={
                   models && !models.length
                     ? 'Sign in to a provider to ask'
-                    : 'What would you like to understand?'
+                    : files.length
+                      ? pendingPlaceholder(files.length)
+                      : 'What would you like to understand?'
                 }
               />
             }

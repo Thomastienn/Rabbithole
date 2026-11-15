@@ -150,3 +150,19 @@
     aspect-ratio: 4 / 3;
   }
 }
+/* Pending files: a grid of slips at the head of the composer, on Deep Panel so the composer stays the only frame. */
+.attachment-tray {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+  gap: 8px;
+  padding: 8px 8px 0;
+}
+.attachment-tray .attachment-slip {
+  width: auto;
+  background: var(--color-background-muted);
+}
+@media (max-width: 48rem) {
+  .attachment-tray {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
