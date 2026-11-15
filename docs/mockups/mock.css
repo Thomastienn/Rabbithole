@@ -514,3 +514,50 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .phone .conv-title { font-size: 26px; }
 .phone .composer { padding: 0 12px 12px; }
 .phone .read__head { padding: 8px 8px 8px 16px; min-height: 48px; }
+
+/* ---------- Attachments (docs/attachments-spec.md, attachments.html) ---------- */
+/* A file is a slip: one tonal step, no border, on the 8px module. Images sent with a question also get a plate.
+   Raised Bark on the ground, Deep Panel inside the composer, so the composer stays the only frame. */
+.att { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) 24px; align-items: center; gap: 0 10px; width: 240px; height: 48px; padding: 0 4px 0 8px; border-radius: var(--r-2); background: var(--surface); text-align: left; }
+.att:has(.att__link:hover) { background: color-mix(in oklab, var(--surface), var(--text) 6%); }
+.att__link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.att__link:focus-visible { outline: 0; }
+.att:has(.att__link:focus-visible) { outline: 2px solid var(--paper); outline-offset: 2px; }
+.att__tile { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-1); background: var(--hover) center/cover var(--img, none); font: 700 11px/1 var(--font-ui); letter-spacing: .03em; color: var(--muted); }
+.att__text { display: grid; min-width: 0; }
+.att__name, .att__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att__name { font-size: 13px; font-weight: 600; line-height: 1.35; }
+.att__meta { font-size: 12px; line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums; }
+.att__end { position: relative; z-index: 1; display: grid; place-items: center; }
+.att__end > .i { color: var(--muted); opacity: 0; transition: opacity 120ms var(--ease); }
+.att:has(.att__link:hover) .att__end > .i, .att:has(.att__link:focus-visible) .att__end > .i { opacity: 1; }
+.att .btn--sm.btn--icon { color: var(--muted); }
+.att .btn--sm.btn--icon:hover { color: var(--text); }
+/* Pending files sit in a tray at the head of the composer. */
+.att-tray { display: grid; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 8px; padding: 8px 8px 0; }
+.att-tray .att { width: auto; }
+.composer__box .att { background: var(--deep); }
+.composer__box .att:hover { background: color-mix(in oklab, var(--deep), var(--text) 6%); }
+.att-note { display: flex; align-items: center; gap: 8px; padding: 8px 16px 0; font-size: 12px; color: var(--alert); }
+/* Drag over: the composer's own stroke turns dashed paper; nothing else frames it. */
+.composer__box { position: relative; }
+.composer__box.is-drop { border-style: dashed; border-color: var(--paper); box-shadow: none; }
+.att-drop { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 4px; border-radius: inherit; background: var(--surface); text-align: center; }
+.att-drop b { font-weight: 600; }
+.att-drop small { font-size: 12px; color: var(--muted); }
+/* Sent with a question: files sit right-aligned above the bubble, images as plates. A files-only question has no bubble. */
+.q-files { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 8px; max-width: 85%; margin-left: auto; }
+.col > .q-files + .q { margin-top: 8px; }
+.att-plate { position: relative; display: grid; gap: 6px; width: 160px; }
+.att-plate__img { display: block; height: 120px; border-radius: var(--r-3); background: var(--hover) center/cover var(--img); }
+.att-plate:has(.att__link:hover) .att-plate__img { box-shadow: inset 0 0 0 1px var(--seam-strong); }
+.att-plate:has(.att__link:focus-visible) .att-plate__img { outline: 2px solid var(--paper); outline-offset: 2px; }
+.att-plate__cap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; }
+.att-plate__cap .att__end { justify-self: end; }
+/* OCR: the tutor got recognised text. An explanation, not a failure, so never rose. */
+.att-pop { width: 280px; padding: 12px; }
+.att-pop h3 { font-size: 13px; font-weight: 600; }
+.att-pop p { margin-top: 4px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+/* Sample images for the mock only. */
+.img-worksheet { --img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'%3E%3Crect width='160' height='120' fill='%23d9cfbb'/%3E%3Crect x='14' y='6' width='136' height='118' fill='%23f4eee1' transform='rotate(-3 80 60)'/%3E%3Cg fill='none' stroke='%2333374f' stroke-width='1.6' stroke-linecap='round' transform='rotate(-3 80 60)'%3E%3Cpath d='M26 22c8-3 14 2 22-1s12 2 20-1'/%3E%3Cpath d='M26 40c6-2 10 1 16 0m6 0c5-2 9 1 15-1m6 1c6-1 10 1 16-1'/%3E%3Cpath d='M26 56c7-2 12 1 18 0s10 1 15-1'/%3E%3Crect x='96' y='48' width='38' height='30' stroke-width='1.2'/%3E%3Cpath d='M100 72l8-10 8 6 8-14 6 4'/%3E%3Cpath d='M26 74c6-2 11 1 17 0s9 1 14-1'/%3E%3Cpath d='M26 92c8-2 13 1 21 0s12 1 18-1 10 2 18 0'/%3E%3C/g%3E%3Cpath d='M30 104h40' stroke='%23b3263a' stroke-width='1.4' transform='rotate(-3 80 60)'/%3E%3C/svg%3E"); }
+.img-slide { --img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'%3E%3Crect width='160' height='120' fill='%23fbfaf7'/%3E%3Crect x='12' y='12' width='88' height='8' rx='1' fill='%232b3a24'/%3E%3Crect x='12' y='26' width='56' height='4' rx='1' fill='%238a8f84'/%3E%3Ccircle cx='46' cy='76' r='20' fill='none' stroke='%2346642a' stroke-width='2'/%3E%3Ccircle cx='116' cy='76' r='20' fill='none' stroke='%2385600c' stroke-width='2'/%3E%3Cpath d='M66 70h30' stroke='%23333' stroke-width='1.5'/%3E%3Cpath d='M96 84H66' stroke='%23333' stroke-width='1.5' stroke-dasharray='4 3'/%3E%3C/svg%3E"); }

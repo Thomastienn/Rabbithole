@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attachments · TreeTutor mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mk-bar"><strong>TreeTutor mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="knowledge.html">Knowledge</a><a href="videos.html">Videos</a><a href="settings.html">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="attachments.html" aria-current="page">Attachments</a><a href="narrow.html">Narrow</a></nav>
+ <div class="mk-right"><label><input type="checkbox" id="mk-labels"> Component labels</label><label><input type="checkbox" id="mk-light"> Light</label></div></div>
+
+<p class="mk-note">Proposal, not built. <b>One shape for every file:</b> a 48px slip with a type tile, the name, and one line that says what kind of file it is, how big, and how it reached the tutor. Slips use a tonal step and no border, so the composer stays the only frame. Images sent with a question get a plate. Rounded tokens, the drawer, and the label squeezed into the chip are all gone.</p>
+
+<main class="page" style="max-width:1280px">
+<header class="page__head"><div><h1>Attachments</h1><p>Every place a file appears: the composer before sending, the question after sending, the OCR note, refusals, the first question, and the endpoint setting. Source: src/chat/Attachments.tsx, FocusedChat.tsx, ChatStates.tsx, ChatThread.tsx, settings/EndpointSettings.tsx.</p></div></header>
+
+<section class="spec spec--wide" style="margin-bottom:40px"><h2>In the reading column</h2><p>A sent question with an image and a PDF, the reply, and the composer holding three files for the next question.</p>
+<div class="stage" data-c="FocusedChat · attachments" style="justify-items:stretch;padding:32px 24px;background:var(--ground)">
+ <div class="col" style="width:100%">
+  <div class="q-files" data-c="MessageAttachments">
+   <div class="att-plate">
+    <span class="att-plate__img img-worksheet"></span>
+    <div class="att-plate__cap"><div class="att__text"><a class="att__link att__name" href="#" title="Open soil-trial-worksheet.jpg">soil-trial-worksheet.jpg</a><span class="att__meta">Sent as image</span></div><span class="att__end"><i class="i i--sm i-arrow-top-right-on-square"></i></span></div>
+   </div>
+   <div class="att">
+    <span class="att__tile">PDF</span>
+    <span class="att__text"><a class="att__link att__name" href="#" title="Open Week 6 – Mycorrhizae.pdf">Week 6 – Mycorrhizae.pdf</a><span class="att__meta">PDF · Read as text, sent as images</span></span>
+    <span class="att__end"><i class="i i--sm i-arrow-top-right-on-square"></i></span>
+   </div>
+  </div>
+  <p class="q" data-c="QuestionBubble">What does the dashed arrow on slide 14 mean, and does my worksheet match it?</p>
+  <div class="prose"><p>The dashed arrow is phosphorus moving back to the root. It is dashed because the slide means it is <em>conditional</em>: the fungus sends it only while sugar keeps arriving. Your worksheet’s third trial fits this. Sugar uptake drops after day 9, and phosphorus falls with it.</p></div>
+  <div class="composer__box" data-c="Composer · pending files" style="max-width:none;margin-top:40px">
+   <div class="att-tray" data-c="PendingAttachments" aria-label="Files to send">
+    <div class="att"><span class="att__tile img-slide"></span><span class="att__text"><span class="att__name">slide-14.png</span><span class="att__meta">Image · 412 KB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove slide-14.png"><i class="i i--sm i-xmark"></i></button></div>
+    <div class="att"><span class="att__tile">PDF</span><span class="att__text"><span class="att__name">Liebig – soil phosphorus review.pdf</span><span class="att__meta">PDF · 2.4 MB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove Liebig – soil phosphorus review.pdf"><i class="i i--sm i-xmark"></i></button></div>
+    <div class="att"><span class="att__tile">CSV</span><span class="att__text"><span class="att__name">root_counts.csv</span><span class="att__meta">Text · 6 KB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove root_counts.csv"><i class="i i--sm i-xmark"></i></button></div>
+   </div>
+   <textarea rows="1" aria-label="Your question">Do these counts back up the review’s claim?</textarea>
+   <div class="composer__row"><button class="btn btn--icon" aria-label="Attach files" data-c="AttachButton" title="Attach files (or paste, or drop)"><i class="i i-paper-clip"></i></button><button class="model">Claude · Opus 4 · High <i class="i i--sm i-chevron-down"></i></button><button class="btn btn--primary">Send<i class="i i--sm i-arrow-up"></i></button></div>
+  </div>
+ </div>
+</div></section>
+
+<div class="sheet">
+<section class="spec"><h2>Pending files, before sending</h2><p>The tray sits at the head of the composer, inside its frame. Meta gives type and size; nothing is prepared yet. × removes a file and keeps focus in the tray.</p><div class="stage" data-c="PendingAttachments">
+ <div class="composer__box is-focus" style="width:100%">
+  <div class="att-tray">
+   <div class="att" ><span class="att__tile img-worksheet"></span><span class="att__text"><span class="att__name">soil-trial-worksheet.jpg</span><span class="att__meta">Image · 1.8 MB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove soil-trial-worksheet.jpg"><i class="i i--sm i-xmark"></i></button></div>
+   <div class="att" ><span class="att__tile">PY</span><span class="att__text"><span class="att__name">simulate_trade.py</span><span class="att__meta">Text · 3 KB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove simulate_trade.py"><i class="i i--sm i-xmark"></i></button></div>
+  </div>
+  <textarea rows="1" placeholder="Ask about these files, or just send them" aria-label="Your question"></textarea>
+  <div class="composer__row"><button class="btn btn--icon" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="model">Claude · Opus 4 · High <i class="i i--sm i-chevron-down"></i></button><button class="btn btn--primary">Send<i class="i i--sm i-arrow-up"></i></button></div>
+ </div>
+ <p class="muted" style="font-size:12px">Files only, no text: Send stays enabled and the placeholder says so.</p>
+</div></section>
+
+<section class="spec"><h2>Dropping files</h2><p>While files are dragged over the composer, its stroke turns dashed paper and a note replaces the field. Paste and the paperclip use the same handler.</p><div class="stage" data-c="Composer · drop">
+ <div class="composer__box is-drop" style="width:100%">
+  <div class="att-drop"><i class="i i-paper-clip"></i><b>Drop to attach</b><small>Images, PDFs and text files</small></div>
+  <textarea rows="1" aria-label="Your question"></textarea>
+  <div class="composer__row"><button class="btn btn--icon" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="model">Claude · Opus 4 · High <i class="i i--sm i-chevron-down"></i></button><button class="btn btn--primary">Send<i class="i i--sm i-arrow-up"></i></button></div>
+ </div>
+</div></section>
+
+<section class="spec"><h2>Unsupported file</h2><p>Refused at once, never added. One rose line inside the composer names the file and what works instead. It clears when the next file is added or the question is sent.</p><div class="stage" data-c="Composer · refused file">
+ <div class="composer__box" style="width:100%">
+  <div class="att-tray"><div class="att" ><span class="att__tile img-worksheet"></span><span class="att__text"><span class="att__name">soil-trial-worksheet.jpg</span><span class="att__meta">Image · 1.8 MB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove soil-trial-worksheet.jpg"><i class="i i--sm i-xmark"></i></button></div></div>
+  <p class="att-note" role="alert"><i class="i i--sm i-exclamation-triangle"></i>lab-notes.docx wasn’t added. Attach images, PDFs or text files.</p>
+  <textarea rows="1" aria-label="Your question"></textarea>
+  <div class="composer__row"><button class="btn btn--icon" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="model">Claude · Opus 4 · High <i class="i i--sm i-chevron-down"></i></button><button class="btn btn--primary">Send<i class="i i--sm i-arrow-up"></i></button></div>
+ </div>
+</div></section>
+
+<section class="spec"><h2>Send refused</h2><p>Preparation failed on the server, for example OCR could not start. The banner sits above the composer. Files and text stay where they were, ready to send again.</p><div class="stage" data-c="Send refused">
+ <div class="banner" role="alert" style="width:100%"><i class="i i-exclamation-triangle"></i><span>This model can’t read images and OCR language data couldn’t be downloaded. Go online and send again, or pick a model that reads images.</span></div>
+ <div class="composer__box" style="width:100%">
+  <div class="att-tray"><div class="att" ><span class="att__tile img-worksheet"></span><span class="att__text"><span class="att__name">soil-trial-worksheet.jpg</span><span class="att__meta">Image · 1.8 MB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove soil-trial-worksheet.jpg"><i class="i i--sm i-xmark"></i></button></div></div>
+  <textarea rows="1" aria-label="Your question">Is my handwriting on trial 3 right?</textarea>
+  <div class="composer__row"><button class="btn btn--icon" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="model">Local · llama3.1 <i class="i i--sm i-chevron-down"></i></button><button class="btn btn--primary">Send<i class="i i--sm i-arrow-up"></i></button></div>
+ </div>
+</div></section>
+
+<section class="spec"><h2>Sent: how each file reached the tutor</h2><p>The meta line ends with the delivery: Sent as image, Read as text, both for a mixed PDF, or OCR text. The whole slip opens the file in a new tab.</p><div class="stage" data-c="MessageAttachments · delivery" style="justify-items:end">
+ <div class="att"><span class="att__tile">TXT</span><span class="att__text"><a class="att__link att__name" href="#">lecture-notes.md</a><span class="att__meta">Text · Read as text</span></span><span class="att__end"><i class="i i--sm i-arrow-top-right-on-square"></i></span></div>
+ <div class="att"><span class="att__tile">PDF</span><span class="att__text"><a class="att__link att__name" href="#">Week 6 – Mycorrhizae.pdf</a><span class="att__meta">PDF · Read as text, sent as images</span></span><span class="att__end"><i class="i i--sm i-arrow-top-right-on-square"></i></span></div>
+ <div class="att"><span class="att__tile">PDF</span><span class="att__text"><a class="att__link att__name" href="#">scanned-homework.pdf</a><span class="att__meta">PDF · Sent as images</span></span><span class="att__end"><i class="i i--sm i-arrow-top-right-on-square"></i></span></div>
+ <div class="att"><span class="att__tile img-worksheet"></span><span class="att__text"><a class="att__link att__name" href="#">soil-trial-worksheet.jpg</a><span class="att__meta">Image · OCR text</span></span><span class="att__end"><button class="btn btn--sm btn--icon" aria-label="About OCR for soil-trial-worksheet.jpg"><i class="i i--sm i-document-magnifying-glass"></i></button></span></div>
+</div></section>
+
+<section class="spec"><h2>OCR note, open</h2><p>Opens from the magnifier on an OCR slip, by click or keyboard. A note, not a failure: never rose.</p><div class="stage" data-c="OCR popover" style="justify-items:end">
+ <div class="att"><span class="att__tile img-worksheet"></span><span class="att__text"><a class="att__link att__name" href="#">soil-trial-worksheet.jpg</a><span class="att__meta">Image · OCR text</span></span><span class="att__end"><button class="btn btn--sm btn--icon" aria-expanded="true" aria-label="About OCR for soil-trial-worksheet.jpg" style="background:var(--pressed);color:var(--text)"><i class="i i--sm i-document-magnifying-glass"></i></button></span></div>
+ <div class="pop att-pop" role="dialog" aria-label="About OCR"><h3>The tutor read recognised text</h3><p>This model can’t see images, so the app ran OCR on this file. OCR can miss handwriting and diagrams. A model that reads images, such as Claude or Codex, sees the page itself.</p></div>
+</div></section>
+
+<section class="spec"><h2>Files only, no text</h2><p>The question is its files. No empty bubble is drawn under them.</p><div class="stage" data-c="Question · files only" style="justify-items:stretch">
+ <div class="q-files" style="max-width:100%">
+  <div class="att-plate"><span class="att-plate__img img-worksheet"></span><div class="att-plate__cap"><div class="att__text"><a class="att__link att__name" href="#">page-1.jpg</a><span class="att__meta">Sent as image</span></div><span class="att__end"><i class="i i--sm i-arrow-top-right-on-square"></i></span></div></div>
+  <div class="att-plate"><span class="att-plate__img img-slide"></span><div class="att-plate__cap"><div class="att__text"><a class="att__link att__name" href="#">page-2.png</a><span class="att__meta">Sent as image</span></div><span class="att__end"><i class="i i--sm i-arrow-top-right-on-square"></i></span></div></div>
+ </div>
+</div></section>
+
+<section class="spec"><h2>First question</h2><p>src/chat/ChatStates.tsx · FirstQuestion. Same composer, same tray; no second design.</p><div class="stage" data-c="FirstQuestion · files">
+ <div class="empty" style="width:100%;padding:24px 0"><h2>Your first tree starts with a question.</h2>
+  <div class="composer__box" style="width:100%;text-align:left">
+   <div class="att-tray"><div class="att" ><span class="att__tile">PDF</span><span class="att__text"><span class="att__name">Week 6 – Mycorrhizae.pdf</span><span class="att__meta">PDF · 5.1 MB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove Week 6 – Mycorrhizae.pdf"><i class="i i--sm i-xmark"></i></button></div></div>
+   <textarea rows="1" placeholder="Ask about this file, or just send it" aria-label="Your question"></textarea>
+   <div class="composer__row"><button class="btn btn--icon" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="model">Claude · Opus 4 · High <i class="i i--sm i-chevron-down"></i></button><button class="btn btn--primary">Send<i class="i i--sm i-arrow-up"></i></button></div>
+  </div>
+ </div>
+</div></section>
+
+<section class="spec"><h2>Endpoint setting</h2><p>src/settings/EndpointSettings.tsx. One row in the endpoint form, worded around what the learner will see on the slip.</p><div class="stage" data-c="EndpointSettings · Accepts images" style="justify-items:stretch">
+ <label class="row" style="padding:8px 0"><span class="row__text"><b>Accepts images</b><small>Turn on only if this endpoint’s models read images. When off, images are sent as OCR text and their slips say so.</small></span><input type="checkbox" aria-label="Accepts images"></label>
+</div></section>
+
+<section class="spec"><h2>Narrow</h2><p>Below 48rem slips take the full composer width, one per row; plates sit two across.</p><div class="stage" data-c="Narrow · attachments" style="justify-items:stretch">
+ <div style="width:320px;display:grid;gap:12px;justify-self:center">
+  <div class="q-files" style="max-width:100%"><div class="att-plate" style="width:132px"><span class="att-plate__img img-worksheet" style="height:99px"></span><div class="att-plate__cap"><div class="att__text"><a class="att__link att__name" href="#">soil-trial-worksheet.jpg</a><span class="att__meta">Sent as image</span></div></div></div><div class="att-plate" style="width:132px"><span class="att-plate__img img-slide" style="height:99px"></span><div class="att-plate__cap"><div class="att__text"><a class="att__link att__name" href="#">slide-14.png</a><span class="att__meta">Sent as image</span></div></div></div></div>
+  <div class="composer__box" style="width:100%">
+   <div class="att-tray"><div class="att" ><span class="att__tile">PDF</span><span class="att__text"><span class="att__name">Liebig – soil phosphorus review.pdf</span><span class="att__meta">PDF · 2.4 MB</span></span><button class="btn btn--sm btn--icon" aria-label="Remove Liebig – soil phosphorus review.pdf"><i class="i i--sm i-xmark"></i></button></div></div>
+   <textarea rows="1" aria-label="Your question"></textarea>
+   <div class="composer__row"><button class="btn btn--icon" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="btn btn--primary">Send<i class="i i--sm i-arrow-up"></i></button></div>
+  </div>
+ </div>
+</div></section>
+</div>
+</main>
+</body>
+</html>
