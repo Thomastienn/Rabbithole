@@ -3,6 +3,16 @@ import type { Artifact } from '../media/artifacts';
 import type { Branch } from './branch';
 import type { Message, Suggestions } from './turn';
 
+// A page, image or file the tutor drew on, numbered within its learning tree.
+export type Resource = {
+  number: number;
+  url: string;
+  title: string;
+  site: string;
+  kind: 'page' | 'image' | 'file';
+  firstSeen: number;
+  conversations: string[];
+};
 export type Tree = {
   id: string;
   title: string;
@@ -12,6 +22,7 @@ export type Tree = {
   messages: Message[];
   branch: Branch | null;
   artifacts: Artifact[];
+  resources?: Resource[];
   suggestions?: Suggestions[];
   compaction?: { status: 'compacting' | 'failed'; error?: string };
 };

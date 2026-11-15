@@ -71,3 +71,13 @@ test('the fixed memory rule appears only when update_memory_note is offered', ()
   assert.ok(!tutorSystem(tool('read_page')).includes(MEMORY_RULE));
   assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(MEMORY_RULE));
 });
+
+test('the chat prompt lists the learning tree resources with the citation form, and nothing when there are none', () => {
+  const resources = [{ number: 1, title: 'Heaps', site: 'example.com' }];
+  const prompt = tutorSystem({ tutorStyle: 'Mine.', resources });
+  assert.ok(prompt.endsWith('[3](resource:3):\n' + JSON.stringify(resources)));
+  assert.equal(
+    tutorSystem({ tutorStyle: 'Mine.', resources: [] }),
+    tutorSystem({ tutorStyle: 'Mine.' }),
+  );
+});

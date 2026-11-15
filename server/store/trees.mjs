@@ -168,6 +168,7 @@ export const trees = {
         artifacts: this.db
           .prepare('SELECT * FROM artifacts WHERE conversation=? ORDER BY created,rowid')
           .all(id),
+        resources: this.resources(id),
         suggestions: this.db
           .prepare(
             'SELECT message,status,passages,usage FROM suggestions WHERE conversation=? ORDER BY rowid',
@@ -380,6 +381,7 @@ export const trees = {
     this.db
       .prepare('UPDATE messages SET text=?,status=?,stopped=? WHERE id=?')
       .run(text, status, stopped, id);
+    this.cite(id, text);
   },
   // Retry drops the failed reply and its artifacts; library videos live in their own table and are kept.
   discardReply(conversation, message) {

@@ -8,6 +8,7 @@ import type { Preview, Summary } from '../map/TreeOverview';
 import type { Artifact } from '../media/artifacts';
 import { conversationAddresses, inkStyle } from '../map/treeList';
 import { conversationContext, type Message } from './turn';
+import type { Resource } from './types';
 
 type Current = {
   id: string;
@@ -15,6 +16,7 @@ type Current = {
   model: string | null;
   messages: Message[];
   artifacts: Artifact[];
+  resources?: Resource[];
 };
 
 export default function Contents({
@@ -54,6 +56,7 @@ export default function Contents({
         .map((a) => ({ ...a, conversation: t.id })),
     ),
   );
+  const resources = current?.resources ?? [];
   const context = current && conversationContext(current);
   const used = context?.used.toLocaleString();
   const percentage = context?.limit
@@ -158,6 +161,48 @@ export default function Contents({
             {!figures.length && (
               <Text type="supporting" color="secondary" className="contents-empty">
                 No figures yet.
+              </Text>
+            )}
+          </nav>
+          <nav aria-label="Resources">
+            <Heading level={3} className="contents-label">
+              Resources
+            </Heading>
+            <ol className="contents-list">
+              {resources.map((r) => (
+                <li key={r.number} id={`resource-${r.number}`}>
+                  <a
+                    className="contents-row contents-resource"
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Text as="span" type="inherit" className="contents-row-body">
+                      <Text type="supporting" className="contents-address">
+                        {r.number}
+                      </Text>
+                      <Text as="span" className="contents-name">
+                        {r.title || r.url}
+                      </Text>
+                      <Text type="supporting" color="secondary">
+                        {r.kind}
+                      </Text>
+                    </Text>
+                    <Text type="supporting" color="secondary" className="contents-resource-meta">
+                      {r.site}
+                      {r.conversations.length > 0 &&
+                        ` · Cited in ${r.conversations
+                          .map((id) => addresses.get(id)?.address ?? '')
+                          .filter(Boolean)
+                          .join(', ')}`}
+                    </Text>
+                  </a>
+                </li>
+              ))}
+            </ol>
+            {!resources.length && (
+              <Text type="supporting" color="secondary" className="contents-empty">
+                No resources yet.
               </Text>
             )}
           </nav>

@@ -346,6 +346,24 @@ export function renderMarkdown(
       case 'link':
       case 'linkReference': {
         const url = n.url ?? definitions.get(n.identifier!)?.url ?? '';
+        const cited = /^resource:(\d+)$/.exec(url)?.[1];
+        if (cited)
+          return h(
+            'a',
+            {
+              ...attrs,
+              href: `#resource-${cited}`,
+              className: 'citation-chip',
+              'aria-label': `Resource ${cited}`,
+              onClick: (event: { preventDefault(): void }) => {
+                event.preventDefault();
+                const entry = document.getElementById(`resource-${cited}`);
+                entry?.scrollIntoView({ block: 'nearest' });
+                entry?.querySelector('a')?.focus({ preventScroll: true });
+              },
+            },
+            kids(),
+          );
         const previous = imageLink;
         const wasLinked = inLink;
         imageLink = imageUrl(url);

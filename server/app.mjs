@@ -89,7 +89,7 @@ export function createApp({
     suggestionTimeout,
     desktop,
     recognize,
-    tools: tools ?? toolRunner({ search, python, dir, memory: store }),
+    tools: tools ?? toolRunner({ search, python, dir, memory: store, resources: store }),
     python,
     mcp: toolMcp(),
     search,

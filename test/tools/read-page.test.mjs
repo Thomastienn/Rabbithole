@@ -285,3 +285,64 @@ test('read_page save_as writes the raw response into the Python workspace, any t
   await runner.run('read_page', { url: `${site}/data.csv`, save_as: 'd.csv' }, turn);
   assert.equal(readFileSync(join(dir, 'python', 'c7', 'd.csv'), 'utf8'), 'x,y\n1,2\n');
 });
+
+test('read_page and find_images record resources of the learning tree and tell the model their numbers', async (t) => {
+  const { site, options } = await pageServer(t);
+  const dir = mkdtempSync(join(tmpdir(), 'tt-resource-tools-'));
+  const added = [];
+  const resources = {
+    addResource: (conversation, r) => {
+      const known = added.findIndex((a) => a.url === r.url);
+      if (known >= 0) return known + 1;
+      added.push({ conversation, ...r });
+      return added.length;
+    },
+  };
+  const search = {
+    run: async () =>
+      JSON.stringify({
+        results: [
+          {
+            imageUrl: 'https://img.example/heap.png',
+            thumbnail: null,
+            title: 'Heap diagram',
+            sourceUrl: 'https://www.wiki.example/Heap',
+          },
+        ],
+      }),
+  };
+  const runner = toolRunner({ readPage: options, dir, resources, search });
+  const turn = { conversation: 'c1', reply: 'r1' };
+  const read = await runner.run('read_page', { url: `${site}/article` }, turn);
+  assert.match(read, /^Resource 1; cite it as \[1\]\(resource:1\)\.\nURL: /);
+  assert.match(
+    await runner.run('read_page', { url: `${site}/article`, offset: 10 }, turn),
+    /^Resource 1;/,
+  );
+  await runner.run('read_page', { url: `${site}/image`, save_as: 'heap.png' }, turn);
+  const images = JSON.parse(await runner.run('find_images', { query: 'heap' }, turn));
+  assert.equal(images.results[0].resource, 3);
+  assert.deepEqual(added, [
+    {
+      conversation: 'c1',
+      url: `${site}/article`,
+      title: 'Binary heaps',
+      site: 'site.test',
+      kind: 'page',
+    },
+    {
+      conversation: 'c1',
+      url: `${site}/image`,
+      title: 'heap.png',
+      site: 'site.test',
+      kind: 'file',
+    },
+    {
+      conversation: 'c1',
+      url: 'https://img.example/heap.png',
+      title: 'Heap diagram',
+      site: 'wiki.example',
+      kind: 'image',
+    },
+  ]);
+});

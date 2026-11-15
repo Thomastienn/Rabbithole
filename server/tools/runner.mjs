@@ -34,7 +34,7 @@ const TOOLS = {
   },
   find_images: {
     description:
-      'Find images through SearXNG images search. Returns up to 10 imageUrl, thumbnail, title and sourceUrl entries; it cannot inspect image contents. Place useful images using [![descriptive alt text](imageUrl)](sourceUrl) so the reply credits their source page.',
+      'Find images through SearXNG images search. Returns up to 10 imageUrl, thumbnail, title and sourceUrl entries; it cannot inspect image contents. Place useful images using [![descriptive alt text](imageUrl)](sourceUrl) so the reply credits their source page. Each result has its resource number; cite it as [n](resource:n).',
     parameters: {
       type: 'object',
       properties: { query: { type: 'string', description: 'Image search query.' } },
@@ -46,7 +46,7 @@ const TOOLS = {
   read_page: {
     description:
       'Fetch a public web page (http or https) and return its readable text, up to 20000 characters per call. ' +
-      'Returns the final URL, the title and a slice of text; call again with the given offset for more. ' +
+      'Returns its resource number, the final URL, the title and a slice of text; call again with the given offset for more. ' +
       'It cannot read local, private-network or login-only pages, run scripts, or see images.',
     parameters: {
       type: 'object',
@@ -127,6 +127,48 @@ const TOOLS = {
   },
 };
 
+const site = (url) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+};
+const cite = (n) => `Resource ${n}; cite it as [${n}](resource:${n}).`;
+
+// Pages, saved files and found images become resources of the learning tree; the model learns their numbers.
+function withResources(name, input, output, { conversation }, store) {
+  if (name === 'read_page') {
+    const head = output.split('\n\n')[0],
+      url = head.match(/^URL: (.+)$/m)?.[1];
+    if (!url) return output;
+    const file = input.save_as !== undefined;
+    const n = store.addResource(conversation, {
+      url,
+      title: head.match(/^Title: (.+)$/m)?.[1] ?? (file ? input.save_as : url),
+      site: site(url),
+      kind: file ? 'file' : 'page',
+    });
+    return `${cite(n)}\n${output}`;
+  }
+  if (name === 'find_images') {
+    const { results } = JSON.parse(output);
+    return JSON.stringify({
+      results: results.map((r) => ({
+        resource: store.addResource(conversation, {
+          url: r.imageUrl,
+          title: r.title,
+          site: site(r.sourceUrl),
+          kind: 'image',
+        }),
+        ...r,
+      })),
+    });
+  }
+  return output;
+}
+
+// options.resources is the store keeping the learning tree's resources (addResource).
 // options.readPage passes lookup and address checks through, for tests against local fakes.
 // options.memory is the store holding the memory note (memoryNote, saveMemoryNote).
 // options.python is the sandboxed run_python ({ status, run }); options.dir holds Python workspaces.
@@ -173,7 +215,10 @@ export function toolRunner(options = {}) {
         throw new Error('The memory note is unavailable.');
       if (!['read_page', 'run_python', 'update_memory_note'].includes(name) && !options.search)
         throw new Error('SearXNG is unavailable. Check Search in Settings.');
-      return tool.run(input, turn, options);
+      const output = await tool.run(input, turn, options);
+      return options.resources
+        ? withResources(name, input, output, turn, options.resources)
+        : output;
     },
   };
 }

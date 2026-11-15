@@ -151,3 +151,70 @@ test('Contents reports the last completed context, drops the meter without a lim
   await act(async () => hide.click());
   assert.deepEqual(collapsed, [true]);
 });
+
+test('Resources lists title, site, kind and citing conversations, opens the original, and a citation chip jumps to its entry', async (t) => {
+  const { renderMarkdown } = await import('../../src/markdown/markdown.ts');
+  const trees = [
+    { id: 'root', parent: null, title: 'Heaps', created: 0 },
+    { id: 'child', parent: 'root', title: 'Why arrays?', created: 1 },
+  ];
+  const resource = (number, kind, conversations) => ({
+    number,
+    url: `https://example.com/${number}`,
+    title: `Source ${number}`,
+    site: 'example.com',
+    kind,
+    firstSeen: 1,
+    conversations,
+  });
+  const scrolled = [];
+  const { container, act, cleanup } = await render(
+    h(
+      'div',
+      null,
+      h(
+        'div',
+        { className: 'reply' },
+        renderMarkdown('Heaps sift [2](resource:2) and a[2] is prose.'),
+      ),
+      h(Contents, {
+        root: 'root',
+        trees,
+        addresses: conversationAddresses(trees),
+        previews: {},
+        active: [],
+        current: {
+          id: 'child',
+          messages: [],
+          artifacts: [],
+          resources: [resource(1, 'page', []), resource(2, 'image', ['root', 'child'])],
+        },
+        open: () => {},
+        openFigure: () => {},
+      }),
+    ),
+    (window) => {
+      window.HTMLElement.prototype.scrollIntoView = function () {
+        scrolled.push(this.id);
+      };
+    },
+  );
+  t.after(cleanup);
+  const list = container.querySelector('nav[aria-label="Resources"]');
+  const entries = [...list.querySelectorAll('li')];
+  assert.deepEqual(
+    entries.map((li) => li.textContent),
+    ['1Source 1pageexample.com', '2Source 2imageexample.com · Cited in 1, 1.1'],
+  );
+  const link = entries[1].querySelector('a');
+  assert.deepEqual(
+    [link.getAttribute('href'), link.target, link.rel],
+    ['https://example.com/2', '_blank', 'noopener noreferrer'],
+  );
+  const chips = [...container.querySelectorAll('.reply .citation-chip')];
+  assert.equal(chips.length, 1, 'prose a[2] is not a citation');
+  assert.equal(chips[0].getAttribute('aria-label'), 'Resource 2');
+  await act(async () => chips[0].click());
+  assert.deepEqual(scrolled, ['resource-2']);
+  assert.equal(container.ownerDocument.activeElement, link);
+});

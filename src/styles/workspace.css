@@ -122,6 +122,38 @@
   flex: none;
   color: var(--color-text-secondary);
 }
+.contents .contents-resource {
+  flex-direction: column;
+  gap: 2px;
+  border-radius: var(--radius-inner);
+  color: inherit;
+  text-decoration: none;
+}
+.contents-resource:hover {
+  background: var(--color-background-surface);
+}
+.contents-resource-meta {
+  padding-inline-start: calc(34px + var(--treetutor-module));
+  overflow-wrap: anywhere;
+}
+.citation-chip {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 0.4em;
+  border-radius: var(--radius-full);
+  background: var(--color-background-surface);
+  border: thin solid var(--color-border);
+  font-size: 0.75em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: 0.15em;
+  color: inherit;
+}
+.citation-chip:hover {
+  border-color: var(--color-accent);
+}
 .contents-empty {
   display: block;
   padding-inline: var(--treetutor-module);
