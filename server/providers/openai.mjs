@@ -84,14 +84,9 @@ export class OpenAI {
       this.#list = previous;
       throw error;
     }
-    // Any change to name, URL, key or Accepts images replaces the adapter and aborts its in-flight requests; a test result alone does not.
+    // Any change to name, URL or key replaces the adapter and aborts its in-flight requests; a test result alone does not.
     const same = (a, b) =>
-      a &&
-      b &&
-      a.name === b.name &&
-      a.baseUrl === b.baseUrl &&
-      a.apiKey === b.apiKey &&
-      !!a.acceptsImages === !!b.acceptsImages;
+      a && b && a.name === b.name && a.baseUrl === b.baseUrl && a.apiKey === b.apiKey;
     for (const [id, adapter] of this.#adapters)
       if (
         !same(
@@ -105,11 +100,10 @@ export class OpenAI {
     for (const e of list) if (!this.#adapters.has(e.id)) this.#adapters.set(e.id, new Endpoint(e));
   }
   list() {
-    return this.#list.map(({ id, name, baseUrl, acceptsImages, lastTest }) => ({
+    return this.#list.map(({ id, name, baseUrl, lastTest }) => ({
       id,
       name,
       baseUrl,
-      acceptsImages: !!acceptsImages,
       lastTest: lastTest ?? null,
     }));
   }
@@ -126,7 +120,6 @@ export class OpenAI {
         id: `openai:${randomUUID()}`,
         name,
         ...saved,
-        ...(body.acceptsImages === true && { acceptsImages: true }),
       },
     ]);
     return this.list();
@@ -151,11 +144,12 @@ export class OpenAI {
       );
     const name = endpointName(body.name, saved.apiKey);
     this.#unique(name, old.id);
-    const acceptsImages =
-      typeof body.acceptsImages === 'boolean' ? body.acceptsImages : !!old.acceptsImages;
+    // The old Accepts images flag is no longer editable; it is kept as the fallback.
     this.#set(
       this.#list.map((e) =>
-        e === old ? { id: old.id, name, ...saved, ...(acceptsImages && { acceptsImages }) } : e,
+        e === old
+          ? { id: old.id, name, ...saved, ...(old.acceptsImages && { acceptsImages: true }) }
+          : e,
       ),
     );
     return this.list();
@@ -232,7 +226,8 @@ class Endpoint {
   constructor(saved) {
     this.#saved = saved;
     this.label = saved?.name;
-    this.readsImages = !!saved?.acceptsImages;
+    // The old endpoint-wide Accepts images flag: only the fallback for models that report no vision.
+    this.acceptsImages = !!saved?.acceptsImages;
   }
   async #fetch(saved, path, signal, body) {
     if (!saved) throw new EndpointError('Configure a custom endpoint in settings before using it.');
@@ -291,11 +286,16 @@ class Endpoint {
         );
       return ids.map((model, i) => {
         // shortcut: /models has no standard effort discovery; only accept explicitly advertised levels, never guess by model name.
-        const levels = models.find((m) => m.id === model).supported_reasoning_efforts;
+        const { supported_reasoning_efforts: levels, capabilities } = models.find(
+          (m) => m.id === model,
+        );
         return {
           model,
           label: model,
           isDefault: i === 0,
+          // Reported capabilities are kept only when the endpoint states them as booleans.
+          ...(typeof capabilities?.vision === 'boolean' && { vision: capabilities.vision }),
+          ...(typeof capabilities?.tools === 'boolean' && { tools: capabilities.tools }),
           efforts: Array.isArray(levels)
             ? [
                 ...new Set(

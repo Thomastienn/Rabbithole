@@ -7,7 +7,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from '@astryxdesign/core/DropdownMenu';
-import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import {
   CUSTOM_EFFORT,
   effortLabel,
@@ -96,6 +96,19 @@ export default function ModelMenu({
                       value={m.value}
                       label={m.label}
                       isDisabled={m.disabled}
+                      endContent={
+                        m.readsImages ? (
+                          <PhotoIcon
+                            className="model-reads-images"
+                            role="img"
+                            aria-hidden={false}
+                            aria-label="Reads images"
+                            title="Reads images"
+                            width={16}
+                            height={16}
+                          />
+                        ) : undefined
+                      }
                     />
                   ))}
                 </DropdownMenuRadioGroup>

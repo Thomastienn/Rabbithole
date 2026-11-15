@@ -152,6 +152,23 @@ export const profiles = {
   forgetEfforts(endpoint) {
     this.db.prepare('DELETE FROM endpoint_efforts WHERE endpoint=?').run(endpoint);
   },
+  // true, false, or null when the learner never chose.
+  readsImagesOverride(endpoint, model) {
+    const row = this.db
+      .prepare('SELECT reads_images FROM endpoint_models WHERE endpoint=? AND model=?')
+      .get(endpoint, model);
+    return row ? !!row.reads_images : null;
+  },
+  setReadsImages(endpoint, model, readsImages) {
+    this.db
+      .prepare(
+        'INSERT INTO endpoint_models VALUES(?,?,?) ON CONFLICT(endpoint, model) DO UPDATE SET reads_images=excluded.reads_images',
+      )
+      .run(endpoint, model, +readsImages);
+  },
+  forgetModels(endpoint) {
+    this.db.prepare('DELETE FROM endpoint_models WHERE endpoint=?').run(endpoint);
+  },
   tutorStyle() {
     return this.db.prepare('SELECT text FROM tutor_style WHERE id=1').get()?.text ?? null;
   },

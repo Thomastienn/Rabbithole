@@ -169,7 +169,10 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     }
     try {
       const status = url.pathname.endsWith('/clear') ? endpoint.clear() : endpoint.save(body);
-      if (url.pathname.endsWith('/clear')) store.forgetEfforts('openai');
+      if (url.pathname.endsWith('/clear')) {
+        store.forgetEfforts('openai');
+        store.forgetModels('openai');
+      }
       ctx.syncEndpoints();
       return json(res, 200, status);
     } catch {
@@ -178,6 +181,22 @@ export async function settingsRoutes(req, res, url, ctx, body) {
           'Endpoint settings could not be saved. Check the HTTP(S) base URL, API key and local data-directory write access.',
       });
     }
+  }
+  // Reads images for one model of a saved endpoint; the override survives until the endpoint is removed.
+  if (endpoint && url.pathname === '/api/settings/endpoints/model') {
+    const { id, model, readsImages } = body ?? {};
+    if (
+      !endpoint.list().some((e) => e.id === id) ||
+      typeof model !== 'string' ||
+      !model.trim() ||
+      model.length > 500 ||
+      typeof readsImages !== 'boolean'
+    )
+      return json(res, 400, {
+        error: 'Choose a model of a saved endpoint, then try again.',
+      });
+    store.setReadsImages(id, model, readsImages);
+    return json(res, 200, { id, model, readsImages });
   }
   if (
     endpoint &&
@@ -199,7 +218,10 @@ export async function settingsRoutes(req, res, url, ctx, body) {
               ? await endpoint.test(body?.id)
               : endpoint.add(body ?? {});
       // remove throws for an unknown id, so its typed efforts go only with a deleted endpoint.
-      if (action === 'remove') store.forgetEfforts(body.id);
+      if (action === 'remove') {
+        store.forgetEfforts(body.id);
+        store.forgetModels(body.id);
+      }
       ctx.syncEndpoints();
       return json(res, 200, list);
     } catch (error) {

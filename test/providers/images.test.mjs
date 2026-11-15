@@ -142,28 +142,51 @@ test('Codex: image parts follow the text item as localImage inputs with the stor
   ]);
 });
 
-test('custom endpoint: Accepts images defaults off, persists, and sends only this turn as image_url data URLs', async (t) => {
+test('custom endpoint: models keep reported vision and tools; the old Accepts images flag survives edits only as the fallback', async (t) => {
   const fake = await fakeOpenAI(t);
+  fake.models = [
+    { id: 'seeing', capabilities: { vision: true, tools: false } },
+    { id: 'blind', capabilities: { vision: false, tools: true } },
+    { id: 'quiet', capabilities: { vision: 'yes' } },
+  ];
   const folder = dir();
+  // An endpoint saved by an older build with Accepts images on.
+  writeFileSync(
+    join(folder, 'openai-endpoints.json'),
+    JSON.stringify([
+      {
+        id: 'openai:00000000-0000-4000-8000-000000000000',
+        name: 'Vision',
+        baseUrl: fake.baseUrl,
+        apiKey: 'key-2',
+        acceptsImages: true,
+      },
+    ]),
+    { mode: 0o600 },
+  );
   const endpoints = new OpenAI(folder);
-  const [plain] = endpoints.add({ name: 'Plain', baseUrl: fake.baseUrl, apiKey: 'key-1' });
-  assert.equal(plain.acceptsImages, false);
-  assert.equal(endpoints.providers()[plain.id].readsImages, false);
-  const list = endpoints.add({
-    name: 'Vision',
-    baseUrl: fake.baseUrl,
-    apiKey: 'key-2',
-    acceptsImages: true,
-  });
-  const vision = list.find((e) => e.name === 'Vision');
-  assert.equal(vision.acceptsImages, true);
-  // Reloaded from the owner-only file; editing without the field keeps it, false turns it off.
-  assert.equal(new OpenAI(folder).list().find((e) => e.id === vision.id).acceptsImages, true);
-  endpoints.edit({ id: vision.id, name: 'Vision', baseUrl: fake.baseUrl });
-  assert.equal(endpoints.providers()[vision.id].readsImages, true);
-  endpoints.edit({ id: plain.id, name: 'Plain', baseUrl: fake.baseUrl, acceptsImages: true });
-  endpoints.edit({ id: plain.id, name: 'Plain', baseUrl: fake.baseUrl, acceptsImages: false });
-  assert.equal(endpoints.providers()[plain.id].readsImages, false);
+  const [vision] = endpoints.list();
+  assert.equal(Object.hasOwn(vision, 'acceptsImages'), false);
+  assert.deepEqual(
+    (await endpoints.providers()[vision.id].models()).map(({ model, vision, tools }) => ({
+      model,
+      vision,
+      tools,
+    })),
+    [
+      { model: 'seeing', vision: true, tools: false },
+      { model: 'blind', vision: false, tools: true },
+      { model: 'quiet', vision: undefined, tools: undefined },
+    ],
+  );
+  // The form no longer sends the flag: an edit keeps it, and a new endpoint cannot set it.
+  endpoints.edit({ id: vision.id, name: 'Vision', baseUrl: fake.baseUrl, acceptsImages: false });
+  assert.equal(endpoints.providers()[vision.id].acceptsImages, true);
+  assert.equal(new OpenAI(folder).providers()[vision.id].acceptsImages, true);
+  const plain = endpoints
+    .add({ name: 'Plain', baseUrl: fake.baseUrl, apiKey: 'key-1', acceptsImages: true })
+    .find((e) => e.name === 'Plain');
+  assert.equal(endpoints.providers()[plain.id].acceptsImages, false);
 
   const img = image(folder);
   await endpoints.providers()[vision.id].generate(

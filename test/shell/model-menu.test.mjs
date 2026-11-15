@@ -39,7 +39,25 @@ test('model menu groups each provider’s models under its name; disconnected pr
     value: 'fixture-missing',
     label: 'fixture-missing (saved)',
     disabled: true,
+    readsImages: false,
   });
+
+  // Models that read images (Claude and Codex always; endpoint models per model) carry the image icon flag.
+  const reading = menuGroups(
+    providers,
+    [
+      { provider: 'claude', model: 'sonnet', label: 'Sonnet', readsImages: true },
+      { provider: 'openai', model: 'text-only', label: 'text-only', readsImages: false },
+    ],
+    { provider: 'claude', model: null, effort: null },
+  );
+  assert.deepEqual(
+    reading.flatMap((g) => g.items ?? []).map((i) => [i.value, i.readsImages]),
+    [
+      ['sonnet', true],
+      ['text-only', false],
+    ],
+  );
 
   // A failed catalogue lists no models, so every provider shows only its action.
   assert.ok(

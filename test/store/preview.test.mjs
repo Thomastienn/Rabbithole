@@ -58,6 +58,7 @@ test('previews list every message in order, bound each text and survive reload w
       'concept_topics',
       'concepts',
       'endpoint_efforts',
+      'endpoint_models',
       'evidence',
       'messages',
       'profiles',

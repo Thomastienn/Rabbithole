@@ -287,7 +287,7 @@ export default function SettingsWindow({
               )}
             </Section>
             <Divider />
-            <EndpointSettings api={api} changed={() => void loadModels()} />
+            <EndpointSettings api={api} models={models} changed={loadModels} />
           </>,
         )}
     </VStack>

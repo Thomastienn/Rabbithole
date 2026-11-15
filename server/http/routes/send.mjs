@@ -11,7 +11,8 @@ import { join } from 'node:path';
 export async function sendRoute(res, ctx, id, tree, action, body, controller) {
   const { store, json, active, compactions, pick, selectionError, live } = ctx;
   const preparation = {
-    readsImages: !!ctx.providers[tree.provider]?.readsImages,
+    // Only a send with files lists the endpoint's models to learn whether this model reads images.
+    readsImages: action === 'retry' || body.files?.length ? await ctx.readsImages(tree) : false,
     recognize: ctx.recognize,
   };
   // Retry resends the latest learner message with the current model and effort, replacing the failed reply.

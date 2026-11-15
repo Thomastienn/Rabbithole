@@ -13,7 +13,6 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
       id: 'openai',
       name: 'Custom endpoint',
       baseUrl: 'http://a/v1',
-      acceptsImages: false,
       lastTest: null,
     },
   ];
@@ -29,7 +28,6 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
           id: 'openai:gw',
           name: body.name,
           baseUrl: body.baseUrl,
-          acceptsImages: body.acceptsImages,
           lastTest: null,
         },
       ];
@@ -47,9 +45,7 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
           : e,
       );
     if (path.endsWith('/edit'))
-      list = list.map((e) =>
-        e.id === body.id ? { ...e, name: body.name, acceptsImages: body.acceptsImages } : e,
-      );
+      list = list.map((e) => (e.id === body.id ? { ...e, name: body.name } : e));
     if (path.endsWith('/remove')) list = list.filter((e) => e.id !== body.id);
     return list;
   };
@@ -89,19 +85,12 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
     inputValue(field('Name'), 'Work gateway');
     inputValue(field('API key'), 'secret');
   });
-  // Accepts images is off by default and saved with the endpoint.
-  const images = () => container.querySelector('.endpoint-form [role=switch]');
-  assert.match(images().labels[0].textContent, /Accepts images/);
-  assert.match(
-    container.querySelector('.endpoint-form').textContent,
-    /When off, images are sent as OCR text and their slips say so\./,
-  );
-  assert.equal(images().checked, false);
-  await act(async () => images().click());
+  // The form no longer offers the endpoint-wide Accepts images switch; reads images is per model.
+  assert.equal(container.querySelector('.endpoint-form [role=switch]'), null);
   await submit();
   assert.deepEqual(calls.at(-1), [
     '/api/settings/endpoints',
-    { name: 'Work gateway', baseUrl: 'http://gw/v1', apiKey: 'secret', acceptsImages: true },
+    { name: 'Work gateway', baseUrl: 'http://gw/v1', apiKey: 'secret' },
   ]);
   assert.equal(container.querySelector('.endpoint-form'), null, 'the form closes after saving');
   assert.match(container.textContent, /Work gateway added\. Choose its models in any model menu\./);
@@ -118,8 +107,6 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
   // Edit: a URL change warns and needs the key; restoring it (trailing slash ignored) clears that.
   await act(async () => button(container, 'Edit Work gateway').click());
   assert.equal(field('API key').value, '');
-  assert.equal(images().checked, true, 'editing shows the saved switch');
-  await act(async () => images().click());
   const save = () => button(container.querySelector('.endpoint-form'), 'Save');
   await act(async () => inputValue(field('Base URL'), 'http://a/v1'));
   assert.match(container.textContent, /URL changed: enter the key again/);
@@ -134,7 +121,7 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
   assert.deepEqual(calls.slice(-2), [
     [
       '/api/settings/endpoints/edit',
-      { id: 'openai:gw', name: 'Team gateway', baseUrl: 'http://gw/v1/', acceptsImages: false },
+      { id: 'openai:gw', name: 'Team gateway', baseUrl: 'http://gw/v1/' },
     ],
     ['/api/settings/endpoints/test', { id: 'openai:gw' }],
   ]);
@@ -166,4 +153,65 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
   await act(async () => button(dialog(), 'Remove').click());
   assert.match(container.textContent, /No custom endpoints yet/);
   assert.ok(changed > 0, 'every change notifies the model menus');
+});
+
+test('each endpoint lists its models; search filters hundreds and Reads images saves per model', async (t) => {
+  const { useState } = await import('react');
+  const list = [{ id: 'openai:gw', name: 'Gateway', baseUrl: 'http://gw/v1', lastTest: null }];
+  let models = [
+    ...Array.from({ length: 300 }, (_, i) => ({
+      provider: 'openai:gw',
+      model: `model-${i}`,
+      label: `model-${i}`,
+      readsImages: i % 2 === 0,
+    })),
+    { provider: 'claude', model: 'sonnet', label: 'Sonnet', readsImages: true },
+  ];
+  const calls = [];
+  const api = async (path, body) => {
+    if (path === '/api/settings/endpoints/model') {
+      calls.push(body);
+      models = models.map((m) =>
+        m.provider === body.id && m.model === body.model
+          ? { ...m, readsImages: body.readsImages }
+          : m,
+      );
+      return body;
+    }
+    return list;
+  };
+  let reload;
+  function Harness() {
+    const [shown, setShown] = useState(models);
+    reload = async () => setShown(models);
+    return h(EndpointSettings, { api, models: shown, changed: () => reload() });
+  }
+  const { container, act, cleanup } = await render(h(Harness), ui);
+  t.after(cleanup);
+  await act(async () => {});
+  assert.equal(container.querySelector('.endpoint-models'), null, 'the list starts closed');
+  await act(async () => button(container, 'Show Gateway models').click());
+  const panel = () => container.querySelector('.endpoint-models');
+  const switches = () => [...panel().querySelectorAll('[role=switch]')];
+  assert.equal(switches().length, 50, 'only the first rows render');
+  assert.match(panel().textContent, /Showing 50 of 300 models\. Search to narrow\./);
+  assert.doesNotMatch(panel().textContent, /Sonnet/, 'other providers stay out');
+
+  const search = panel().querySelector('input:not([role=switch])');
+  await act(async () => inputValue(search, 'model-29'));
+  assert.deepEqual(
+    switches().map((s) => s.labels[0].textContent.match(/model-\d+/)[0]),
+    ['model-29', ...Array.from({ length: 10 }, (_, i) => `model-${290 + i}`)],
+  );
+  assert.match(panel().textContent, /11 models/);
+  const target = () => switches().find((s) => /model-290/.test(s.labels[0].textContent));
+  assert.equal(target().checked, true);
+  await act(async () => target().click());
+  assert.deepEqual(calls, [{ id: 'openai:gw', model: 'model-290', readsImages: false }]);
+  assert.equal(target().checked, false, 'the reloaded list shows the saved choice');
+
+  await act(async () => inputValue(search, 'nothing-like-this'));
+  assert.match(panel().textContent, /No models match\./);
+  await act(async () => button(container, 'Hide Gateway models').click());
+  assert.equal(panel(), null);
 });

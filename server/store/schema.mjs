@@ -143,6 +143,10 @@ export function open(path) {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS endpoint_efforts (endpoint TEXT NOT NULL, model TEXT NOT NULL, effort TEXT NOT NULL, PRIMARY KEY(endpoint, model, effort))',
     );
+    // Learner overrides of reads images per custom endpoint model; a missing row follows the reported capability.
+    this.db.exec(
+      'CREATE TABLE IF NOT EXISTS endpoint_models (endpoint TEXT NOT NULL, model TEXT NOT NULL, reads_images INTEGER NOT NULL CHECK(reads_images IN (0,1)), PRIMARY KEY(endpoint, model))',
+    );
     // Smart role: a NULL model follows the chat default model; follow_effort=1 follows the chat default effort.
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)',

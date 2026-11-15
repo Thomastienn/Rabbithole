@@ -67,7 +67,7 @@ test('saved model changes preserve thread, transcript, fixed context and indepen
   try {
     assert.deepEqual(
       (await (await fetch(`${env.origin}/api/models`)).json()).models,
-      catalog.map((m) => ({ provider: 'codex', ...m })),
+      catalog.map((m) => ({ provider: 'codex', ...m, readsImages: false })),
     );
     assert.equal(
       (await env.post(`/api/trees/${root.id}/model`, { model: 'alternate' })).status,

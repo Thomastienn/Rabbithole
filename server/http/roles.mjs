@@ -60,14 +60,31 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
       };
     }
   };
-  // Remembered typed efforts follow the endpoint's advertised ones in its model list.
-  const withTyped = (provider, list) =>
+  // Reads images: the learner's override, else the endpoint-reported vision, else the old endpoint flag; Claude and Codex say for themselves.
+  const imageReading = (provider, m) =>
     isEndpoint(provider)
-      ? list.map((m) => ({
-          ...m,
-          efforts: [...new Set([...(m.efforts ?? []), ...store.typedEfforts(provider, m.model)])],
-        }))
-      : list;
+      ? (store.readsImagesOverride(provider, m.model) ??
+        m.vision ??
+        !!providers[provider]?.acceptsImages)
+      : !!providers[provider]?.readsImages;
+  // Remembered typed efforts follow the endpoint's advertised ones in its model list; every model says whether it reads images.
+  const withTyped = (provider, list) =>
+    list.map((m) => ({
+      ...m,
+      readsImages: imageReading(provider, m),
+      ...(isEndpoint(provider) && {
+        efforts: [...new Set([...(m.efforts ?? []), ...store.typedEfforts(provider, m.model)])],
+      }),
+    }));
+  // A send's attachments follow its model; an unlistable endpoint falls back to the saved choices for that model.
+  const readsImages = async ({ provider, model }) => {
+    if (!isEndpoint(provider)) return imageReading(provider);
+    const list = (await providers[provider]?.models().catch(() => [])) ?? [];
+    return imageReading(
+      provider,
+      list.find((m) => (model == null ? m.isDefault : m.model === model)) ?? { model },
+    );
+  };
   // A null default provider (fresh install) leaves an unset chat role without a provider.
   const unset = () => ({ provider: defaultProvider, model: null, effort: null });
   const chatDefault = () => store.chatSettings() ?? unset();
@@ -168,6 +185,7 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     pick,
     selectionError,
     withTyped,
+    readsImages,
     chatDefault,
     smart,
     profiles,

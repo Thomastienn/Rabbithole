@@ -7,12 +7,12 @@ import { Switch } from '@astryxdesign/core/Switch';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { PlusIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import type { Model } from './models';
 
 type Endpoint = {
   id: string;
   name: string;
   baseUrl: string;
-  acceptsImages: boolean;
   lastTest:
     null | { ok: true; models: number; at: string } | { ok: false; error: string; at: string };
 };
@@ -25,21 +25,96 @@ const when = (at: string) => {
     : `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}, ${time}`;
 };
 
+// Rows rendered at once; search narrows a catalogue of hundreds.
+const SHOWN = 50;
+
+// One endpoint's models with a Reads images switch each; off sends images as OCR text.
+function EndpointModels({
+  endpoint,
+  models,
+  save,
+}: {
+  endpoint: Endpoint;
+  models: Model[];
+  save: (model: string, readsImages: boolean) => Promise<void>;
+}) {
+  const [query, setQuery] = useState(''),
+    [saving, setSaving] = useState(''),
+    [error, setError] = useState('');
+  const q = query.trim().toLowerCase(),
+    found = models.filter((m) => m.model.toLowerCase().includes(q)),
+    shown = found.slice(0, SHOWN);
+  return (
+    <VStack gap={2} className="endpoint-models" as="section" aria-label={`${endpoint.name} models`}>
+      <Text type="supporting" color="secondary">
+        Reads images: on sends images to the model; off sends their OCR text. Starts from what the
+        endpoint reports.
+      </Text>
+      <TextInput
+        label="Search models"
+        isLabelHidden
+        placeholder="Search models"
+        value={query}
+        onChange={setQuery}
+        autoComplete="off"
+        hasClear
+      />
+      {shown.map((m) => (
+        <Switch
+          key={m.model}
+          label={m.label}
+          description="Reads images"
+          value={!!m.readsImages}
+          isLoading={saving === m.model}
+          isDisabled={!!saving}
+          onChange={async (on) => {
+            setSaving(m.model);
+            setError('');
+            try {
+              await save(m.model, on);
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setSaving('');
+            }
+          }}
+        />
+      ))}
+      <Text type="supporting" color="secondary" role="status">
+        {!models.length
+          ? 'No models listed. Test the endpoint, then try again.'
+          : !found.length
+            ? 'No models match.'
+            : found.length > shown.length
+              ? `Showing ${shown.length} of ${found.length} models. Search to narrow.`
+              : `${found.length} ${found.length === 1 ? 'model' : 'models'}`}
+      </Text>
+      {error && (
+        <Text type="supporting" role="alert">
+          {error}
+        </Text>
+      )}
+    </VStack>
+  );
+}
+
 export default function EndpointSettings({
   api,
+  models,
   changed,
 }: {
-  api: (path: string, body?: unknown) => Promise<Endpoint[]>;
-  changed: () => void;
+  api: (path: string, body?: unknown) => Promise<any>;
+  models?: Model[];
+  changed: () => void | Promise<void>;
 }) {
   const [list, setList] = useState<Endpoint[]>();
   const [adding, setAdding] = useState(false),
     [editing, setEditing] = useState<Endpoint>(),
-    [removing, setRemoving] = useState<Endpoint>();
+    [removing, setRemoving] = useState<Endpoint>(),
+    [browsing, setBrowsing] = useState('');
   const [name, setName] = useState(''),
     [baseUrl, setBaseUrl] = useState(''),
-    [apiKey, setApiKey] = useState(''),
-    [acceptsImages, setAcceptsImages] = useState(false);
+    [apiKey, setApiKey] = useState('');
   const [testing, setTesting] = useState(''),
     [pending, setPending] = useState('loading'),
     [error, setError] = useState(''),
@@ -103,7 +178,6 @@ export default function EndpointSettings({
     setName('');
     setBaseUrl('');
     setApiKey('');
-    setAcceptsImages(false);
     setError('');
     setMessage('');
   };
@@ -113,7 +187,6 @@ export default function EndpointSettings({
     setName(e.name);
     setBaseUrl(e.baseUrl);
     setApiKey('');
-    setAcceptsImages(e.acceptsImages);
     setError('');
     setMessage('');
   };
@@ -131,12 +204,12 @@ export default function EndpointSettings({
           void (editing
             ? act(
                 'edit',
-                { id: editing.id, name, baseUrl, acceptsImages, ...(apiKey && { apiKey }) },
+                { id: editing.id, name, baseUrl, ...(apiKey && { apiKey }) },
                 `${name.trim()} saved.`,
               )
             : act(
                 'add',
-                { name, baseUrl, apiKey, acceptsImages },
+                { name, baseUrl, apiKey },
                 `${name.trim()} added. Choose its models in any model menu.`,
               ));
       }}
@@ -193,13 +266,6 @@ export default function EndpointSettings({
           isReadOnly={!!pending}
           autoComplete="new-password"
           isRequired={keyNeeded}
-        />
-        <Switch
-          label="Accepts images"
-          value={acceptsImages}
-          onChange={setAcceptsImages}
-          isDisabled={!!pending}
-          description="Turn on only if this endpoint's models read images. When off, images are sent as OCR text and their slips say so."
         />
         <HStack gap={2} wrap="wrap" vAlign="center">
           <Button
@@ -270,70 +336,90 @@ export default function EndpointSettings({
         editing?.id === e.id ? (
           <div key={e.id}>{form}</div>
         ) : (
-          <HStack
-            key={e.id}
-            gap={2}
-            vAlign="center"
-            hAlign="between"
-            wrap="wrap"
-            className="endpoint-row"
-            data-endpoint={e.id}
-          >
-            <VStack gap={0}>
-              <Text weight="bold">{e.name}</Text>
-              <Text type="supporting" color="secondary">
-                {e.baseUrl}
-              </Text>
-              <Text
-                type="supporting"
-                className="endpoint-test"
-                role={e.lastTest?.ok === false ? 'alert' : undefined}
-                color={e.lastTest?.ok === false ? undefined : 'secondary'}
-              >
-                {pending === 'test' && testing === e.id
-                  ? 'Testing…'
-                  : !e.lastTest
-                    ? 'Not tested'
-                    : e.lastTest.ok
-                      ? `${e.lastTest.models} ${e.lastTest.models === 1 ? 'model' : 'models'} listed · tested ${when(e.lastTest.at)}`
-                      : `Test failed · ${e.lastTest.error} · ${when(e.lastTest.at)}`}
-              </Text>
-            </VStack>
-            <HStack gap={1} vAlign="center">
-              <Button
-                label={e.lastTest?.ok === false ? `Test ${e.name} again` : `Test ${e.name}`}
-                variant="secondary"
-                size="sm"
-                isDisabled={!!pending}
-                onClick={() => {
-                  setTesting(e.id);
-                  void act('test', { id: e.id }, '');
-                }}
-              >
-                {e.lastTest?.ok === false ? 'Test again' : 'Test'}
-              </Button>
-              <Button
-                label={`Edit ${e.name}`}
-                variant="ghost"
-                size="sm"
-                icon={<PencilSquareIcon />}
-                isDisabled={!!pending}
-                onClick={() => openEdit(e)}
-              >
-                Edit
-              </Button>
-              <Button
-                label={`Remove ${e.name}`}
-                variant="ghost"
-                size="sm"
-                icon={<TrashIcon />}
-                isDisabled={!!pending}
-                onClick={() => setRemoving(e)}
-              >
-                Remove
-              </Button>
+          <VStack key={e.id} gap={2}>
+            <HStack
+              gap={2}
+              vAlign="center"
+              hAlign="between"
+              wrap="wrap"
+              className="endpoint-row"
+              data-endpoint={e.id}
+            >
+              <VStack gap={0}>
+                <Text weight="bold">{e.name}</Text>
+                <Text type="supporting" color="secondary">
+                  {e.baseUrl}
+                </Text>
+                <Text
+                  type="supporting"
+                  className="endpoint-test"
+                  role={e.lastTest?.ok === false ? 'alert' : undefined}
+                  color={e.lastTest?.ok === false ? undefined : 'secondary'}
+                >
+                  {pending === 'test' && testing === e.id
+                    ? 'Testing…'
+                    : !e.lastTest
+                      ? 'Not tested'
+                      : e.lastTest.ok
+                        ? `${e.lastTest.models} ${e.lastTest.models === 1 ? 'model' : 'models'} listed · tested ${when(e.lastTest.at)}`
+                        : `Test failed · ${e.lastTest.error} · ${when(e.lastTest.at)}`}
+                </Text>
+              </VStack>
+              <HStack gap={1} vAlign="center">
+                <Button
+                  label={e.lastTest?.ok === false ? `Test ${e.name} again` : `Test ${e.name}`}
+                  variant="secondary"
+                  size="sm"
+                  isDisabled={!!pending}
+                  onClick={() => {
+                    setTesting(e.id);
+                    void act('test', { id: e.id }, '');
+                  }}
+                >
+                  {e.lastTest?.ok === false ? 'Test again' : 'Test'}
+                </Button>
+                <Button
+                  label={`${browsing === e.id ? 'Hide' : 'Show'} ${e.name} models`}
+                  variant="ghost"
+                  size="sm"
+                  aria-expanded={browsing === e.id}
+                  onClick={() => setBrowsing(browsing === e.id ? '' : e.id)}
+                >
+                  Models
+                </Button>
+                <Button
+                  label={`Edit ${e.name}`}
+                  variant="ghost"
+                  size="sm"
+                  icon={<PencilSquareIcon />}
+                  isDisabled={!!pending}
+                  onClick={() => openEdit(e)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  label={`Remove ${e.name}`}
+                  variant="ghost"
+                  size="sm"
+                  icon={<TrashIcon />}
+                  isDisabled={!!pending}
+                  onClick={() => setRemoving(e)}
+                >
+                  Remove
+                </Button>
+              </HStack>
             </HStack>
-          </HStack>
+            {browsing === e.id && (
+              <EndpointModels
+                endpoint={e}
+                models={(models ?? []).filter((m) => m.provider === e.id)}
+                save={async (model, readsImages) => {
+                  await api('/api/settings/endpoints/model', { id: e.id, model, readsImages });
+                  await changed();
+                }}
+              />
+            )}
+          </VStack>
         ),
       )}
       {message && (

@@ -6,6 +6,7 @@ export type Model = {
   defaultFallback?: boolean;
   efforts?: string[];
   defaultEffort?: string;
+  readsImages?: boolean;
 };
 export type ChatSelection = { provider: string; model: string | null; effort: string | null };
 export const effortLabel = (effort: string | null) =>
@@ -77,9 +78,21 @@ export const menuGroups = (
         p.connected && listed.length
           ? [
               ...(current && selection.model && !listed.some((m) => m.model === selection.model)
-                ? [{ value: selection.model, label: `${selection.model} (saved)`, disabled: true }]
+                ? [
+                    {
+                      value: selection.model,
+                      label: `${selection.model} (saved)`,
+                      disabled: true,
+                      readsImages: false,
+                    },
+                  ]
                 : []),
-              ...listed.map((m) => ({ value: m.model, label: m.label, disabled: false })),
+              ...listed.map((m) => ({
+                value: m.model,
+                label: m.label,
+                disabled: false,
+                readsImages: !!m.readsImages,
+              })),
             ]
           : null,
       action: isCustomEndpoint(id) ? 'endpoint' : id === 'codex' ? 'codex' : 'check',
