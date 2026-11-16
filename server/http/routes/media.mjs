@@ -40,6 +40,24 @@ export async function mediaRoutes(req, res, url, ctx, body) {
           .library()
           .map((v) => (readable(mediaPath(dir, v.id)) ? v : { ...v, available: false })),
       ]);
+    // The read-only piece library; the source compiles for the player frame like live cut code.
+    if (url.pathname === '/api/pieces') return json(res, 200, store.pieceList());
+    const pieceMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
+    if (pieceMatch) {
+      const piece = store.piece(pieceMatch[1]);
+      if (!piece) return json(res, 404, { error: 'Piece not found.' });
+      const { id, name, look, props, roles, source, improved } = piece;
+      return json(res, 200, {
+        id,
+        name,
+        look,
+        props,
+        roles,
+        source,
+        improved,
+        code: compileCut(source),
+      });
+    }
     // Media is located only from the server-issued artifact id, never from a generated path or URL.
     const mediaMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/media$/),
       libraryMatch = url.pathname.match(/^\/api\/videos\/([^/]+)\/media$/);

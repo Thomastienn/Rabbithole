@@ -3,8 +3,10 @@ import { VStack, HStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { TabList, Tab } from '@astryxdesign/core/TabList';
 import { ArrowPathIcon, FolderOpenIcon, TrashIcon } from '@heroicons/react/24/outline';
 import VideoCard from './VideoCard';
+import PieceLibrary from './PieceLibrary';
 
 // Library rows carry no conversation, discussion text or production details.
 export type LibraryVideo = {
@@ -25,6 +27,7 @@ export default function VideoLibrary({
   api: (path: string, body?: unknown) => Promise<any>;
   activity: string;
 }) {
+  const [view, setView] = useState('videos');
   const [videos, setVideos] = useState<LibraryVideo[]>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -89,66 +92,84 @@ export default function VideoLibrary({
               conversation they came from.
             </Text>
           </VStack>
-          <Button
-            id="refresh-videos"
-            label="Refresh Videos"
-            variant="secondary"
-            icon={<ArrowPathIcon />}
-            onClick={() => void load()}
-          />
-        </HStack>
-        {error && <Text role="alert">{error}</Text>}
-        <Text role="status" color="secondary">
-          {notice}
-        </Text>
-        {!videos && !error && <Text role="status">Loading videos…</Text>}
-        {videos && !videos.length && (
-          <Text color="secondary">
-            No saved videos yet. Ask the tutor for a video in any conversation.
-          </Text>
-        )}
-      </VStack>
-      {!!videos?.length && (
-        <section className="video-library" aria-label="Saved videos">
-          {videos.map((v) => (
-            <VideoCard
-              key={v.id}
-              artifact={
-                v.live
-                  ? { ...v, status: 'pending', conversation: v.live, phase: 'playable' }
-                  : { ...v, status: 'ready', conversation: '' }
-              }
-              media={`/api/videos/${v.id}/media`}
-              actions={
-                !v.live && (
-                  <>
-                    {v.available !== false && (
-                      <Button
-                        label="Show in folder"
-                        variant="ghost"
-                        size="sm"
-                        icon={<FolderOpenIcon />}
-                        aria-label={`Show “${v.title}” in folder`}
-                        onClick={() => void reveal(v)}
-                      />
-                    )}
-                    <Button
-                      label={v.available === false ? 'Remove from Videos' : 'Move to trash'}
-                      variant="ghost"
-                      size="sm"
-                      icon={<TrashIcon />}
-                      aria-label={`${v.available === false ? 'Remove' : 'Move'} “${v.title}” ${v.available === false ? 'from Videos' : 'to the system trash'}`}
-                      onClick={() => {
-                        setTrashError('');
-                        setTrashing(v);
-                      }}
-                    />
-                  </>
-                )
-              }
+          {view === 'videos' && (
+            <Button
+              id="refresh-videos"
+              label="Refresh Videos"
+              variant="secondary"
+              icon={<ArrowPathIcon />}
+              onClick={() => void load()}
             />
-          ))}
-        </section>
+          )}
+        </HStack>
+        <TabList value={view} onChange={setView} role="tablist" aria-label="Library" hasDivider>
+          <Tab value="videos" label="Videos" panelId="videos-panel" />
+          <Tab value="pieces" label="Pieces" panelId="pieces-panel" />
+        </TabList>
+      </VStack>
+      {view === 'pieces' ? (
+        <div id="pieces-panel" role="tabpanel" aria-label="Pieces">
+          <PieceLibrary api={api} />
+        </div>
+      ) : (
+        <div id="videos-panel" role="tabpanel" aria-label="Videos">
+          <VStack gap={5}>
+            <VStack gap={2}>
+              {error && <Text role="alert">{error}</Text>}
+              <Text role="status" color="secondary">
+                {notice}
+              </Text>
+              {!videos && !error && <Text role="status">Loading videos…</Text>}
+              {videos && !videos.length && (
+                <Text color="secondary">
+                  No saved videos yet. Ask the tutor for a video in any conversation.
+                </Text>
+              )}
+            </VStack>
+            {!!videos?.length && (
+              <section className="video-library" aria-label="Saved videos">
+                {videos.map((v) => (
+                  <VideoCard
+                    key={v.id}
+                    artifact={
+                      v.live
+                        ? { ...v, status: 'pending', conversation: v.live, phase: 'playable' }
+                        : { ...v, status: 'ready', conversation: '' }
+                    }
+                    media={`/api/videos/${v.id}/media`}
+                    actions={
+                      !v.live && (
+                        <>
+                          {v.available !== false && (
+                            <Button
+                              label="Show in folder"
+                              variant="ghost"
+                              size="sm"
+                              icon={<FolderOpenIcon />}
+                              aria-label={`Show “${v.title}” in folder`}
+                              onClick={() => void reveal(v)}
+                            />
+                          )}
+                          <Button
+                            label={v.available === false ? 'Remove from Videos' : 'Move to trash'}
+                            variant="ghost"
+                            size="sm"
+                            icon={<TrashIcon />}
+                            aria-label={`${v.available === false ? 'Remove' : 'Move'} “${v.title}” ${v.available === false ? 'from Videos' : 'to the system trash'}`}
+                            onClick={() => {
+                              setTrashError('');
+                              setTrashing(v);
+                            }}
+                          />
+                        </>
+                      )
+                    }
+                  />
+                ))}
+              </section>
+            )}
+          </VStack>
+        </div>
       )}
       <AlertDialog
         isOpen={!!trashing}

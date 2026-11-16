@@ -56,6 +56,16 @@ export const pieces = {
       videos,
     };
   },
+  // The Pieces tab: newest improvement first, with the saved library videos that use each piece.
+  pieceList() {
+    const used = this.db.prepare(
+      'SELECT v.id, v.title FROM piece_videos p JOIN videos v ON v.id=p.video WHERE p.piece=? ORDER BY p.rowid',
+    );
+    return this.db
+      .prepare('SELECT id, name, look, improved FROM pieces ORDER BY improved DESC, rowid DESC')
+      .all()
+      .map((p) => ({ ...p, videos: used.all(p.id).map((v) => ({ ...v })) }));
+  },
   // Pieces saved while no embedder was usable, to embed when one is.
   unembeddedPieces() {
     return this.db

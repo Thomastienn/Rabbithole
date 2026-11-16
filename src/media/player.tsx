@@ -80,16 +80,48 @@ function show(cuts: LiveCut[]) {
   );
 }
 
-addEventListener('message', (event) => {
-  if (event.source !== parent || event.data?.type !== 'cuts' || !Array.isArray(event.data.cuts))
-    return;
-  const colors = event.data.paletteRoles ?? {};
-  const roles = Object.fromEntries(
+const inks = (colors: Record<string, string>) =>
+  Object.fromEntries(
     Object.entries(colors).map(([role, ink]) => [
       role,
       kit.palette[ink as keyof typeof kit.palette],
     ]),
   );
+
+// A library piece previewed alone and still (pieces never animate themselves), centred on the ground.
+function showPiece(code: string, name: string, colors: Record<string, string>) {
+  pieces = {};
+  const Piece = load(code, inks(colors))?.[name] as
+    React.ComponentType<{ x: number; y: number; scale: number }> | undefined;
+  const Stage = () => (
+    <remotion.AbsoluteFill style={{ background: kit.palette.ground }}>
+      {Piece && <Piece x={kit.frame.width / 2} y={kit.frame.height / 2} scale={1} />}
+    </remotion.AbsoluteFill>
+  );
+  root.render(
+    <Player
+      component={Stage}
+      durationInFrames={1}
+      compositionWidth={kit.frame.width}
+      compositionHeight={kit.frame.height}
+      fps={30}
+      errorFallback={() => null}
+      acknowledgeRemotionLicense
+      style={{ width: '100%', height: '100%' }}
+    />,
+  );
+}
+
+addEventListener('message', (event) => {
+  if (event.source !== parent) return;
+  if (
+    event.data?.type === 'piece' &&
+    typeof event.data.code === 'string' &&
+    typeof event.data.name === 'string'
+  )
+    return showPiece(event.data.code, event.data.name, event.data.paletteRoles ?? {});
+  if (event.data?.type !== 'cuts' || !Array.isArray(event.data.cuts)) return;
+  const roles = inks(event.data.paletteRoles ?? {});
   // Set pieces load before the cuts that import them; new set pieces recompile every cut.
   const shared = typeof event.data.pieces === 'string' ? event.data.pieces : undefined;
   if (shared !== pieces.code) {

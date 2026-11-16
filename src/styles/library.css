@@ -238,3 +238,15 @@
     calc(8 * var(--treetutor-module));
   overflow-wrap: anywhere;
 }
+.piece-library {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 16px;
+  overflow-wrap: anywhere;
+}
+.piece-detail .video-frame {
+  max-width: 960px;
+}
+.piece-detail > .astryx-button {
+  align-self: start;
+}
