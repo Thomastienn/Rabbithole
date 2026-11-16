@@ -312,3 +312,99 @@ export function libraryPieces(source, brief, names) {
     };
   });
 }
+
+const USES = ['reuse', 'variant', 'new'];
+// The set-piece answer when library matches were offered: {"pieces":[{name, use, id?, roles?}], "code"}.
+// Reuse and variant must name one of that object's matches; code holds only variant and new pieces.
+export function pieceChoices(raw, names, matches, brief) {
+  let answer;
+  try {
+    answer = JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
+  } catch {}
+  if (typeof answer?.code !== 'string' || !Array.isArray(answer.pieces))
+    throw new Error('set pieces answer is not {"pieces", "code"} JSON.');
+  const choices = names.map((name, i) => {
+    const c = answer.pieces.find((p) => p?.name === name);
+    if (!c || !USES.includes(c.use))
+      throw new Error(`no reuse, variant or new choice for ${name}.`);
+    const piece = c.use === 'new' ? null : matches[i]?.find((m) => m.id === c.id);
+    if (c.use !== 'new' && !piece) throw new Error(`${name} names a piece that was not offered.`);
+    if (
+      c.roles !== undefined &&
+      !(
+        c.roles &&
+        typeof c.roles === 'object' &&
+        Object.values(c.roles).every((r) => Object.hasOwn(brief.paletteRoles, r))
+      )
+    )
+      throw new Error(`${name} maps roles outside the brief.`);
+    if (
+      c.use === 'reuse' &&
+      new RegExp(`\\b(?:function|const|let|var|class)\\s+${RegExp.escape(name)}\\b`).test(
+        answer.code,
+      )
+    )
+      throw new Error(`reused piece ${name} must not be written again.`);
+    return { name, use: c.use, ...(piece && { piece }), ...(c.roles && { roles: c.roles }) };
+  });
+  return { code: answer.code, choices };
+}
+
+// A reused piece takes the new video's palette roles: kept when the brief has them, else the object's colorRole.
+export function remapRoles(source, from, colorRole, brief, roles = {}) {
+  if (!from.length) return source;
+  const to = (r) => roles[r] ?? (Object.hasOwn(brief.paletteRoles, r) ? r : colorRole);
+  const alt = from.map(RegExp.escape).join('|');
+  return source.replace(
+    new RegExp(`\\bcolors\\s*(?:\\.\\s*(${alt})\\b|\\[\\s*['"\`](${alt})['"\`]\\s*\\])`, 'g'),
+    (_, a, b) => `colors.${to(a ?? b)}`,
+  );
+}
+
+// One set-piece module: merged imports, the written code, then each reused piece scoped so its helpers cannot clash.
+export function assemblePieces(code, reused) {
+  const imports = new Map(),
+    bodies = [];
+  const split = (source) => {
+    const file = ts.createSourceFile(
+      'p.tsx',
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    const rest = [];
+    for (const s of file.statements) {
+      if (!ts.isImportDeclaration(s) || !s.importClause) {
+        rest.push(s.getText(file));
+        continue;
+      }
+      const m = imports.get(s.moduleSpecifier.text) ?? { named: new Set(), other: new Set() };
+      imports.set(s.moduleSpecifier.text, m);
+      const { name, namedBindings } = s.importClause;
+      if (name) m.other.add(name.text);
+      if (namedBindings && ts.isNamespaceImport(namedBindings))
+        m.other.add(`* as ${namedBindings.name.text}`);
+      else for (const e of namedBindings?.elements ?? []) m.named.add(e.getText(file));
+    }
+    return rest;
+  };
+  const written = split(code);
+  for (const { name, inner, source } of reused) {
+    const body = split(source).map((s) => s.replace(/^export\s+(?!default\b)/, ''));
+    bodies.push(`export const ${name} = (() => {\n${body.join('\n')}\nreturn ${inner};\n})();`);
+  }
+  const head = [...imports].flatMap(([module, { named, other }]) => {
+    const spec = JSON.stringify(module).replace(/"/g, "'");
+    const defaults = [...other].filter((o) => !o.startsWith('*'));
+    const lines = [...other]
+      .filter((o) => o.startsWith('*'))
+      .map((o) => `import ${o} from ${spec};`);
+    if (defaults.length || named.size)
+      lines.push(
+        `import ${[defaults[0], named.size && `{ ${[...named].join(', ')} }`].filter(Boolean).join(', ')} from ${spec};`,
+      );
+    return lines;
+  });
+  return [...head, ...written, ...bodies].join('\n');
+}

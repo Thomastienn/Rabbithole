@@ -56,6 +56,15 @@ export const pieces = {
       videos,
     };
   },
+  // Pieces saved while no embedder was usable, to embed when one is.
+  unembeddedPieces() {
+    return this.db
+      .prepare('SELECT id, look FROM pieces WHERE embedding IS NULL ORDER BY rowid')
+      .all();
+  },
+  embedPiece(id, embedding) {
+    this.db.prepare('UPDATE pieces SET embedding=? WHERE id=?').run(blob(embedding), id);
+  },
   // shortcut: a plain cosine scan over every embedded piece; fine for a personal library of hundreds.
   nearestPieces(query, limit = 5) {
     return this.db

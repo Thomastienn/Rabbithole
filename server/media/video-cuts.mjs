@@ -5,7 +5,6 @@ import {
   CUT_ENTRY,
   CUT_INSTRUCTIONS,
   CUT_3D,
-  PIECES_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
   REPAIR_NOTE,
   FIX_NOTE,
@@ -23,6 +22,7 @@ import {
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS, MANIM_COMPONENT } from './manim-cut.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
+import { writeSetPieces } from './video-pieces.mjs';
 
 const unfenced = (raw) => raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim();
 
@@ -67,9 +67,6 @@ export const cutError = (reason, index, count) =>
   new Error(
     `Cut ${index + 1} of ${count}: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the other cuts.`,
   );
-
-export const piecesError = (reason) =>
-  new Error(`Set pieces: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the plan.`);
 
 export async function videoCall(provider, selection, instructions, input, signal, onText, images) {
   const items = new Map();
@@ -125,6 +122,8 @@ export async function writeCuts({
   kept = [],
   pieces = null,
   onPieces = async () => {},
+  // Looks to each one's top library matches; [] when no embedder is usable.
+  matches = async () => [],
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
   const cuts = plan.cuts.map((c, i) => ({
@@ -147,33 +146,18 @@ export async function writeCuts({
     save(data);
   };
   persist();
-  // One call writes the shared set pieces before any cut; the plan is already saved, so Retry keeps it.
-  for (let attempt = 0, error; names.length && !data.pieces; attempt++) {
-    if (attempt === CUT_ATTEMPTS) throw piecesError(error.message);
-    let raw;
-    try {
-      raw = await write(
-        PIECES_INSTRUCTIONS,
-        JSON.stringify({
-          styleBrief: plan.styleBrief,
-          names,
-          ...(error && { validationError: error.message }),
-        }),
-      );
-    } catch (e) {
-      if (!e.invalidOutput) throw e;
-      error = e;
-      continue;
-    }
-    try {
-      data.pieces = cutSource(raw, plan.styleBrief, names);
-    } catch (e) {
-      error = e;
-    }
-  }
+  let choices = null;
+  if (names.length && !data.pieces)
+    ({ source: data.pieces, choices } = await writeSetPieces({
+      plan,
+      names,
+      write,
+      matches,
+      signal,
+    }));
   if (data.pieces && !pieces) {
     persist();
-    await onPieces(data.pieces, names);
+    await onPieces(data.pieces, names, choices);
   }
   // Each audit shares its pre-audit last frame with the next cut's audit, so audits never wait on each other.
   const lastFrames = cuts.map(() => Promise.withResolvers());

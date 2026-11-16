@@ -189,6 +189,7 @@ export async function generateVideo({
     }
     count = plan.cuts.length;
     onStage('cuts', { cuts: count });
+    let vectors = [];
     let writtenCuts = 0,
       narratedCuts = 0,
       playableStage = false,
@@ -246,19 +247,32 @@ export async function generateVideo({
       stop: (error) => controller.abort(error),
       kept,
       pieces: prior?.pieces,
-      // Accepted set pieces of a new video join the piece library; the library never fails the video.
-      onPieces: async (source, names) => {
+      // Each look's top library matches; the same call embeds pieces saved while no embedder was usable.
+      matches: async (looks) => {
+        if (!embed) return [];
         try {
-          const entries = libraryPieces(source, plan.styleBrief, names);
-          let vectors = [];
-          if (embed)
-            vectors = await embed(entries.map((p) => p.look)).catch((error) => {
-              onWarning(`WARN video piece embeddings unavailable: ${error.message}`);
-              return [];
-            });
+          const pending = store.unembeddedPieces();
+          const out = await embed([...looks, ...pending.map((p) => p.look)]);
           controller.signal.throwIfAborted();
+          for (const [i, p] of pending.entries())
+            if (out[looks.length + i]) store.embedPiece(p.id, out[looks.length + i]);
+          vectors = out.slice(0, looks.length);
+          return vectors.map((v) => (v ? store.nearestPieces(v) : []));
+        } catch (error) {
+          controller.signal.throwIfAborted();
+          onWarning(`WARN video piece library unavailable: ${error.message}`);
+          return [];
+        }
+      },
+      // Accepted variant and new pieces join the piece library, reused ones record this video; the library never fails the video.
+      onPieces: async (source, names, choices) => {
+        try {
+          const reused = choices?.filter((c) => c.use === 'reuse') ?? [];
+          const entries = libraryPieces(source, plan.styleBrief, names);
           for (const [i, entry] of entries.entries())
-            store.savePiece({ ...entry, embedding: vectors[i] ?? null }, artifact.id);
+            if (!reused.some((c) => c.name === entry.name))
+              store.savePiece({ ...entry, embedding: vectors[i] ?? null }, artifact.id);
+          for (const c of reused) store.usePiece(c.piece.id, artifact.id);
         } catch (error) {
           controller.signal.throwIfAborted();
           onWarning(`WARN video piece library: ${error.message}`);

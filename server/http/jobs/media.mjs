@@ -119,7 +119,7 @@ export function mediaJobs(ctx) {
             metered(base, 'video', `${job.attempt}:${randomUUID()}`, choice, {
               stage: args[0].instructions.startsWith('You plan')
                 ? 'plan'
-                : args[0].instructions === PIECES_INSTRUCTIONS
+                : args[0].instructions.startsWith(PIECES_INSTRUCTIONS)
                   ? 'pieces'
                   : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].includes(args[0].instructions)
                     ? 'audit'

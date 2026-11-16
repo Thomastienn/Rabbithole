@@ -139,6 +139,7 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
   assert.equal(calls.filter((c) => c === 'pieces').length, 1);
   assert.deepEqual(calls.slice(2).sort(), ['cut 0', 'cut 1', 'cut 2']);
   assert.deepEqual(inputs.pieces.names, ['Winner']);
+  assert.ok(!('library' in inputs.pieces), 'without an embedder the step gets no matches');
   assert.equal(inputs.pieces.styleBrief.recurringObjects[0].look, look);
   assert.equal(phaseAtPieces, 'pieces');
   assert.match(livePieces, /function Winner/, 'live player receives compiled set pieces');
