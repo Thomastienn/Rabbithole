@@ -1,6 +1,6 @@
-# TreeTutor
+# Rabbithole
 
-A local learning app where a learner explores a topic as a tree of connected conversations with an LLM tutor.
+A local app where a curious learner follows their own questions down a tree of connected conversations with an LLM tutor.
 
 ## Language
 
@@ -11,10 +11,6 @@ _Avoid_: Student, user (in specifications), explorer
 **Tutor**:
 The role the chat model plays for the learner in a conversation: explaining, answering and following the learner's curiosity. Never shown as a persona in UI copy.
 _Avoid_: Assistant, bot, guide
-
-**Self-check**:
-Questions the tutor puts to the learner to confirm an idea has stuck, only when the learner asks for them. The app never starts one on its own.
-_Avoid_: Quiz, test, review
 
 **Learning tree**:
 One saved topic of study: a root conversation and every conversation branched from it. The UI may label it "chat".

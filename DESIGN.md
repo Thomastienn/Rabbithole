@@ -1,5 +1,5 @@
 ---
-name: TreeTutor
+name: Rabbithole
 description: A learning tree as a volume in a paperback series, read at a book measure and inked by branch family.
 colors:
   leaf-action: "#9dba6e"
@@ -208,7 +208,7 @@ components:
     height: "24px"
 ---
 
-# Design System: TreeTutor
+# Design System: Rabbithole
 
 ## Overview
 
@@ -331,7 +331,7 @@ Circles are reserved for meaning-bearing dots. The full radius (rendered as `50%
 - **Focus:** a paper outline everywhere, and a band-ink outline on the moss band.
 
 ### Navigation (shell band)
-- The Moss Band holds, in order, the TreeTutor wordmark (20px), the learning-tree switcher (32px, outlined in band ink at 22% alpha, max 280px, ellipsised), the view tabs (Read, Map, Knowledge, Videos, each with a 16px Heroicons outline icon), and then search, New chat and Settings, pushed to the end.
+- The Moss Band holds, in order, the Rabbithole wordmark (20px), the learning-tree switcher (32px, outlined in band ink at 22% alpha, max 280px, ellipsised), the view tabs (Read, Map, Knowledge, Videos, each with a 16px Heroicons outline icon), and then search, New chat and Settings, pushed to the end.
 - **Tabs:** Band Muted at rest and Band Ink on hover. The current tab is a Band Ink fill with Moss text.
 - **Idle save state:** there is none. Map layout batches once a minute, and only a failure shows: a 24px Rose Failure pill reading "Map layout not saved." with an underlined Retry.
 

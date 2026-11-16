@@ -1,6 +1,6 @@
-# TreeTutor
+# Rabbithole
 
-TreeTutor is a local learning workspace. Ask a question, highlight an unfamiliar passage in the answer, and explore it in a connected child conversation. Your map, messages and branch context save on your computer.
+Rabbithole is a local learning workspace. Ask a question, highlight an unfamiliar passage in the answer, and explore it in a connected child conversation. Your map, messages and branch context save on your computer.
 
 ## Install and start
 
@@ -36,7 +36,7 @@ Startup reports the Node requirement, whether each CLI can run, Claude's native 
 curl -fsSL https://claude.ai/install.sh | bash
 ```
 
-Run `claude` in a terminal and sign in with your Claude plan. Reload TreeTutor to recheck sign-in. Where **Check Claude sign-in** is shown in Settings or the model menu, it also refreshes the connection. TreeTutor uses the CLI's native login, strips `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from its environment, and does not read or copy Claude credentials.
+Run `claude` in a terminal and sign in with your Claude plan. Reload Rabbithole to recheck sign-in. Where **Check Claude sign-in** is shown in Settings or the model menu, it also refreshes the connection. Rabbithole uses the CLI's native login, strips `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from its environment, and does not read or copy Claude credentials.
 
 **Codex:** Install the official [Codex CLI](https://developers.openai.com/codex/cli/):
 
@@ -44,7 +44,7 @@ Run `claude` in a terminal and sign in with your Claude plan. Reload TreeTutor t
 npm install -g @openai/codex
 ```
 
-In TreeTutor, open **Map menu → Settings → Continue with ChatGPT** and approve TreeTutor's use of your ChatGPT plan in the official sign-in page. A terminal Codex login alone does not connect TreeTutor: it uses its own consent and isolated Codex home. If the connection expires, choose **Reconnect ChatGPT**. Account or workspace policy can prevent consent; quota and model access can still prevent a reply after sign-in. The Codex app-server protocol was checked with CLI 0.167.0 and is experimental.
+In Rabbithole, open **Map menu → Settings → Continue with ChatGPT** and approve Rabbithole's use of your ChatGPT plan in the official sign-in page. A terminal Codex login alone does not connect Rabbithole: it uses its own consent and isolated Codex home. If the connection expires, choose **Reconnect ChatGPT**. Account or workspace policy can prevent consent; quota and model access can still prevent a reply after sign-in. The Codex app-server protocol was checked with CLI 0.167.0 and is experimental.
 
 Use the compact model button in the chat header to select a provider and model for that conversation. Switching keeps the saved discussion and passes it to the new provider in a fresh session. A failed reply restores the last working selection. Children start with their parent's provider and model.
 
@@ -87,7 +87,7 @@ Optional **Settings → Vim canvas bindings** is off by default. With the map or
 
 ## Saved data, upgrades, backup and restore
 
-Startup prints the absolute **Data directory**. By default it is `$XDG_DATA_HOME/treetutor`, or `~/.local/share/treetutor` when XDG_DATA_HOME is unset. Set `TREETUTOR_DATA_DIR` before starting to use another directory. Only one TreeTutor process may use a data directory at a time.
+Startup prints the absolute **Data directory**. By default it is `$XDG_DATA_HOME/treetutor`, or `~/.local/share/treetutor` when XDG_DATA_HOME is unset. Set `TREETUTOR_DATA_DIR` before starting to use another directory. Only one Rabbithole process may use a data directory at a time.
 
 Startup also provisions a pinned SearXNG snapshot with `uv` in `<data directory>/searxng/venv`.
 The first install needs internet access; later starts reuse it without downloading packages.
@@ -105,9 +105,9 @@ hosts without a referrer, link to their source page, and show a placeholder when
 app does not save copies. `GET /api/settings/searxng` reports the selected and managed URLs,
 readiness and failures. Searches themselves still need internet access.
 
-`trees.sqlite` holds trees, original messages, fixed inherited context, positions, layouts and artifact metadata. Videos and workspaces live alongside it. Files are unencrypted; new directories and database/credential files are owner-only. TreeTutor stores its ChatGPT OAuth connection here in `chatgpt.json`; its isolated Codex home and sessions also live here. An optional endpoint's URL/key live in `openai-endpoint.json` (mode `0600`), never in SQLite. Claude manages its own sign-in and sessions outside this directory. Keep backups private too.
+`trees.sqlite` holds trees, original messages, fixed inherited context, positions, layouts and artifact metadata. Videos and workspaces live alongside it. Files are unencrypted; new directories and database/credential files are owner-only. Rabbithole stores its ChatGPT OAuth connection here in `chatgpt.json`; its isolated Codex home and sessions also live here. An optional endpoint's URL/key live in `openai-endpoint.json` (mode `0600`), never in SQLite. Claude manages its own sign-in and sessions outside this directory. Keep backups private too.
 
-Before upgrading the source, stop TreeTutor and make a full directory backup. After replacing the source, run `npm ci --include=dev` to refresh dependencies, then `npm start`. Do not upgrade a running instance. There is no auto-update.
+Before upgrading the source, stop Rabbithole and make a full directory backup. After replacing the source, run `npm ci --include=dev` to refresh dependencies, then `npm start`. Do not upgrade a running instance. There is no auto-update.
 
 The database records its schema version in SQLite's `user_version`. An older, unversioned database is copied to **trees.sqlite.backup-<UTC date>-<unique suffix>.sqlite** in the same directory before migration writes. The backup includes committed WAL data and stays at its original schema. Migration commits atomically; a failed migration rolls back. Startup prints the backup path. If backup or migration fails, startup stops so you can fix storage access or free disk space and retry. A newer, unsupported schema is refused without rewriting it. Ordinary restart/shutdown recovery marks unfinished jobs interrupted without creating a migration backup.
 
@@ -130,9 +130,9 @@ To restore only an automatic migration backup, stop the server, move the current
 
 ## Privacy: what leaves your machine
 
-TreeTutor serves the browser from loopback and bundles its fonts locally. It adds no telemetry or hosted storage. Opening saved trees does not require inference; startup runs local CLI/version/sign-in checks. The provider CLIs can perform their own authentication or other network activity, so this is not an enforced offline mode.
+Rabbithole serves the browser from loopback and bundles its fonts locally. It adds no telemetry or hosted storage. Opening saved trees does not require inference; startup runs local CLI/version/sign-in checks. The provider CLIs can perform their own authentication or other network activity, so this is not an enforced offline mode.
 
-A question sends the conversation's content, inherited branch snapshot and selected passage to the selected provider (Claude, Codex or your custom endpoint). Branch preparation sends relevant parent history for summarization. Switching providers shares the saved discussion with the new provider. Diagram/video generation sends a separate bounded task and relevant excerpts to the selected worker provider; generation working messages and source stay out of the tutor's conversation. Video narration text goes to Microsoft's online Edge TTS service; its availability and quotas are outside TreeTutor's control. Audio, subtitle timing and VTT files remain locally in the private video workspace. No transcription-model call is needed. Videos render locally with network disabled in the sandbox; only owned, read-only narration assets are staged there. Ready playback uses the saved local MP4 without new provider or TTS calls. Dependency installation and provider sign-in also use the network. Provider retention and plan policies apply to what you send.
+A question sends the conversation's content, inherited branch snapshot and selected passage to the selected provider (Claude, Codex or your custom endpoint). Branch preparation sends relevant parent history for summarization. Switching providers shares the saved discussion with the new provider. Diagram/video generation sends a separate bounded task and relevant excerpts to the selected worker provider; generation working messages and source stay out of the tutor's conversation. Video narration text goes to Microsoft's online Edge TTS service; its availability and quotas are outside Rabbithole's control. Audio, subtitle timing and VTT files remain locally in the private video workspace. No transcription-model call is needed. Videos render locally with network disabled in the sandbox; only owned, read-only narration assets are staged there. Ready playback uses the saved local MP4 without new provider or TTS calls. Dependency installation and provider sign-in also use the network. Provider retention and plan policies apply to what you send.
 
 Saved credentials are never returned to browser JavaScript. A custom key you type is sent to the local settings route, cleared from the form, and sent upstream only to that endpoint for model listing and inference. Host, Origin and CSRF checks protect local operations. Claude runs with tools, MCP servers, settings sources and slash commands disabled in a dedicated workspace. Codex uses an isolated configuration with tools and web search disabled, a read-only sandbox and no tool approval handler. These settings are not an audited operating-system isolation boundary. Local saved data remains accessible to your account and other software with permission to read it.
 
@@ -141,11 +141,11 @@ Saved credentials are never returned to browser JavaScript. A custom key you typ
 - **Node too old:** Install Node 24+ with npm, reopen the terminal and run `node --version`, then `npm start`.
 - **Install or build failed:** Read the terminal error, check network access and disk space, run `npm ci --include=dev` in the project folder and retry `npm start`. Do not use `--omit=dev`: the first run needs the build tools. Saved trees are in the separate data directory.
 - **Port already in use:** Use `npm start -- --port 4318` or `--port 0`. This does not change the data directory.
-- **Data directory already in use:** Stop the other TreeTutor process, then restart. After a crash, wait about ten seconds for stale-lock recovery. Do not remove a live process's lock; a separate `TREETUTOR_DATA_DIR` opens separate saved trees.
+- **Data directory already in use:** Stop the other Rabbithole process, then restart. After a crash, wait about ten seconds for stale-lock recovery. Do not remove a live process's lock; a separate `TREETUTOR_DATA_DIR` opens separate saved trees.
 - **Wrong address or forbidden request:** Open the exact printed `http://127.0.0.1:PORT` address. A `localhost` alias, proxy or different port will fail the local boundary checks. Reload after a restart to refresh the browser's request token.
-- **Claude missing or signed out:** Install Claude Code, ensure `claude --version` works in the terminal that starts TreeTutor, run `claude` to sign in, then reload TreeTutor (or choose **Check Claude sign-in** where shown).
-- **Codex missing, consent declined or session expired:** Ensure `codex --version` works, then choose **Continue with ChatGPT** or **Reconnect ChatGPT**. Confirm your account/workspace permits plan sharing. Terminal sign-in and API keys do not replace TreeTutor consent.
-- **Custom endpoint unavailable:** Use **Custom endpoint settings** and check the API root/path prefix and key; to change them, remove the endpoint and add it again. If you removed it, add it again or choose another model; TreeTutor never silently falls back.
+- **Claude missing or signed out:** Install Claude Code, ensure `claude --version` works in the terminal that starts Rabbithole, run `claude` to sign in, then reload Rabbithole (or choose **Check Claude sign-in** where shown).
+- **Codex missing, consent declined or session expired:** Ensure `codex --version` works, then choose **Continue with ChatGPT** or **Reconnect ChatGPT**. Confirm your account/workspace permits plan sharing. Terminal sign-in and API keys do not replace Rabbithole consent.
+- **Custom endpoint unavailable:** Use **Custom endpoint settings** and check the API root/path prefix and key; to change them, remove the endpoint and add it again. If you removed it, add it again or choose another model; Rabbithole never silently falls back.
 - **Usage limit, unavailable model or failed reply:** The partial text and original question remain saved. Wait for quota, choose an available provider/model, then ask again. Sign-in success alone does not prove inference access.
 - **No saved trees:** Check the printed data directory and the account/environment used to launch the app. A different `TREETUTOR_DATA_DIR` or XDG_DATA_HOME opens a different store.
 - **Backup/migration error or newer schema:** Stop other instances, check ownership and free disk space, and use the backup/restore steps above or the matching newer app. Keep the original files.

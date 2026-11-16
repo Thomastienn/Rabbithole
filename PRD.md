@@ -1,6 +1,6 @@
-# TreeTutor — Product Requirements
+# Rabbithole — Product Requirements
 
-Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The owner clarified on 2026-11-09 that New chat opens a map with one visible root conversation, map nodes show the whole conversation, and branch lines attach beside their source message. On the same day the owner accepted three additions for after the text release (rich reply rendering, rename and delete, and a custom OpenAI-compatible endpoint) and the optional Vim canvas mapping in docs/vim-bindings-proposal.md. Later on 2026-11-09 the owner replaced the branch-suggestion design with Break down, token stats and a knowledge graph, specified in docs/break-down-spec.md for a new epic after Product 1.0. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion.
+Status: Map-first requirements agreed on 2026-11-08; Claude made the default provider alongside Codex on 2026-11-09. The owner clarified on 2026-11-09 that New chat opens a map with one visible root conversation, map nodes show the whole conversation, and branch lines attach beside their source message. On the same day the owner accepted three additions for after the text release (rich reply rendering, rename and delete, and a custom OpenAI-compatible endpoint) and the optional Vim canvas mapping in docs/vim-bindings-proposal.md. Later on 2026-11-09 the owner replaced the branch-suggestion design with Break down, token stats and a knowledge graph, specified in docs/break-down-spec.md for a new epic after Product 1.0. The user subsequently authorized autonomous backlog implementation; see AGENTS.md for standing authorization. Existing implementation and verification are recorded in Beads and docs/verification; this document defines the target behavior, not current completion. On 2026-11-15 the owner renamed the product Rabbithole and refocused it on curious self-learners (see PRODUCT.md); the code, package, data directory, `TREETUTOR_*` variables and Beads IDs still use TreeTutor until a separate rename.
 
 Design authority: the [visual identity spec](docs/visual-identity-spec.md) owns the general visual direction. The owner's 2026-11-11 [workspace and media refinement spec](docs/workspace-media-refinement-spec.md) supersedes its conflicting focused-chat, passage-popup, rail/search, usage and media rules within that scope. Behavior and acceptance criteria in this PRD stay binding.
 
@@ -14,7 +14,7 @@ Curious self-learners exploring ideas for their own sake, with no technical back
 
 ## Delivery
 
-TreeTutor is a local web app only. Hosted deployment and an installed desktop app are outside the product scope. The local app server binds to loopback by default.
+Rabbithole is a local web app only. Hosted deployment and an installed desktop app are outside the product scope. The local app server binds to loopback by default.
 
 ## Providers
 
