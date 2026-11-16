@@ -22,6 +22,11 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   assert.deepEqual(videoPlan('```json\n' + JSON.stringify(good) + '\n```'), good);
   good.cuts[2].dimension = '3d';
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  // A neutral object needs no colorRole; models send null or omit it.
+  good.styleBrief.recurringObjects[0].colorRole = null;
+  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  delete good.styleBrief.recurringObjects[0].colorRole;
+  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
   assert.match(
     PLAN_INSTRUCTIONS,
     /request is the learner's own message[\s\S]*dimension of "2d" or "3d"[\s\S]*explicitly asks for 2D, use "2d" for every cut[\s\S]*explicitly asks for 3D, use "3d" for most cuts[\s\S]*"3d" only for a cut whose point is space, depth, rotation or orientation[\s\S]*Manim cuts are always "2d"/,

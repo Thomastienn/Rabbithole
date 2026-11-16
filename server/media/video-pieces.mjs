@@ -1,6 +1,7 @@
 import {
   PIECES_INSTRUCTIONS,
   PIECES_LIBRARY_NOTE,
+  PIECES_3D,
   PIECE_IMPROVE_INSTRUCTIONS,
 } from './video-cut.mjs';
 import { REMOTION_SKILL } from './skills.mjs';
@@ -36,6 +37,9 @@ export async function fetchStock(stock, id) {
 // after a retry withdraws that object's stock offers and asks again, without spending a repair attempt.
 export async function writeSetPieces({ plan, names, write, matches, stock = null, signal }) {
   const objects = plan.styleBrief.recurringObjects.filter((o) => o.look);
+  // A 3D cut draws each object with its <Name>3D mesh group; only the 2D names go to the library.
+  const solidNames = plan.cuts.some((c) => c.dimension === '3d') ? names.map((n) => `${n}3D`) : [];
+  const exported = [...names, ...solidNames];
   const library = await matches(objects.map((o) => o.look));
   const dimension = plan.cuts.some((c) => c.engine === 'remotion') ? undefined : '2D';
   const shortlist = stock
@@ -59,10 +63,15 @@ export async function writeSetPieces({ plan, names, write, matches, stock = null
     let raw;
     try {
       raw = await write(
-        PIECES_INSTRUCTIONS + '\n\n' + REMOTION_SKILL + (offered ? PIECES_LIBRARY_NOTE : ''),
+        PIECES_INSTRUCTIONS +
+          '\n\n' +
+          REMOTION_SKILL +
+          (offered ? PIECES_LIBRARY_NOTE : '') +
+          (solidNames.length ? PIECES_3D : ''),
         JSON.stringify({
           styleBrief: plan.styleBrief,
           names,
+          ...(solidNames.length && { solidNames }),
           ...(offered && {
             library: names.map((name, i) => ({
               name,
@@ -97,7 +106,7 @@ export async function writeSetPieces({ plan, names, write, matches, stock = null
       if (!offered) {
         if (/\b(?:StockPiece|setStock)\b/.test(raw))
           throw new Error('No stock pieces were offered.');
-        return { source: cutSource(raw, plan.styleBrief, names), choices: null };
+        return { source: cutSource(raw, plan.styleBrief, exported), choices: null };
       }
       const { code, choices } = pieceChoices(raw, names, library, plan.styleBrief, shortlist);
       const selected = choices.filter((c) => c.use === 'stock');
@@ -136,7 +145,7 @@ export async function writeSetPieces({ plan, names, write, matches, stock = null
           source: remapRoles(c.piece.source, c.piece.roles, c.colorRole, plan.styleBrief, c.roles),
         }));
       return {
-        source: cutSource(assemblePieces(code, reused, placed), plan.styleBrief, names),
+        source: cutSource(assemblePieces(code, reused, placed), plan.styleBrief, exported),
         choices,
       };
     } catch (e) {

@@ -59,6 +59,34 @@ test('the writer sees stock beside library matches and accepts stock without mod
   assert.deepEqual(libraryPieces(result.source, plan().styleBrief, ['Horse']), []);
 });
 
+test('a plan with a 3D cut also gets a <Name>3D mesh group per object, kept out of the library', async () => {
+  const solid = `import { colors } from './kit';
+export function Horse3D({position = [0, 0, 0]}) { return <group position={position}><mesh><boxGeometry args={[3, 2, 1]} /><meshStandardMaterial color={colors.winner} /></mesh></group>; }`;
+  const p = plan();
+  p.cuts[0].dimension = '3d';
+  const inputs = [];
+  let instructions;
+  const result = await writeSetPieces({
+    ...options(),
+    plan: p,
+    stock: {
+      match: async () => [{ object: 'horse', pieces: [horse] }],
+      piece: async () => svg,
+    },
+    write: async (rules, text) => {
+      instructions = rules;
+      inputs.push(JSON.parse(text));
+      return answer('stock', horse.id, inputs.length === 1 ? '' : solid);
+    },
+  });
+  assert.match(instructions, /export function <Name>3D\(props\)[\s\S]*even when its 2D piece is stock/);
+  assert.deepEqual(inputs[0].solidNames, ['Horse3D']);
+  assert.match(inputs[1].validationError, /missing export Horse3D/);
+  assert.match(result.source, /export function Horse3D/);
+  assert.deepEqual(stockPieces(result.source), [{ name: 'Horse', id: horse.id }]);
+  assert.deepEqual(libraryPieces(result.source, p.styleBrief, ['Horse']), []);
+});
+
 test('stock choices must name offered IDs, never derive stock variants or write stock code', () => {
   const choose = (raw) => pieceChoices(raw, ['Horse'], [[library]], plan().styleBrief, [[horse]]);
   assert.throws(() => choose(answer('stock', 'unoffered')), /not offered/);
