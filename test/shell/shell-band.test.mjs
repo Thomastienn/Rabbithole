@@ -62,19 +62,24 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
   t.after(cleanup);
   assert.equal(container.querySelector('.shell-band, header'), null, 'no desktop top bar');
   let band = () => container.querySelector('nav.sidebar');
-  assert.equal(band().previousElementSibling, button(container, 'Hide sidebar'));
+  // The toggle sits outside and before the sidebar; its tooltip renders between them.
+  assert.ok(
+    button(container, 'Hide sidebar').compareDocumentPosition(band()) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    'sidebar toggle precedes the sidebar',
+  );
   assert.deepEqual([...band().querySelectorAll('button')].map(name), [
     'Rabbithole',
+    'New chat',
+    'Search learning trees',
     'Read',
     'Map',
     'Knowledge',
     'Videos',
     'Library',
-    'Settings',
-    'Search',
-    'New chat',
     'Retry saving layout',
     '1 Fungi',
+    'Settings',
   ]);
   assert.ok(
     band().querySelector('.sidebar-top + .contents'),
@@ -89,7 +94,7 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
     assert.equal(band().querySelector('[aria-current=page]').textContent, label);
   }
   for (const [label, expected] of [
-    ['Search', 'search'],
+    ['Search learning trees', 'search'],
     ['New chat', 'new'],
     ['Settings', 'settings'],
     ['Rabbithole', 'library'],
