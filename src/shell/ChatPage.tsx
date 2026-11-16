@@ -2,7 +2,7 @@ import { useRef, useState, type CSSProperties } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
-import { ShareIcon, FilmIcon, BookOpenIcon, MapIcon } from '@heroicons/react/24/outline';
+import { ShareIcon, FilmIcon, BookOpenIcon, MapIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@astryxdesign/core/theme';
 import TreeSearch from './TreeSearch';
 import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
@@ -16,6 +16,7 @@ import MapView from '../map/MapView';
 import { useLayoutSaving } from '../map/useLayoutSaving';
 import KnowledgePage from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
+import PieceLibrary from '../media/PieceLibrary';
 import SettingsWindow, { type SettingsRequest, type SettingsTab } from '../settings/SettingsWindow';
 import { FirstQuestion, TreeLoading, TreeLoadFailure } from '../chat/ChatStates';
 import Contents from '../chat/Contents';
@@ -119,6 +120,7 @@ export default function ChatPage({
     ),
     viewTab('Knowledge', <ShareIcon />, tab === 'knowledge', () => setTab('knowledge')),
     viewTab('Videos', <FilmIcon />, tab === 'videos', () => setTab('videos')),
+    viewTab('Pieces', <CubeIcon />, tab === 'pieces', () => setTab('pieces')),
   ];
   const contents = () =>
     root &&
@@ -341,6 +343,15 @@ export default function ChatPage({
             back={() => setTab('learning')}
           >
             <VideoLibrary api={c.api} activity={activeKey} />
+          </ReturnPanel>
+          <ReturnPanel
+            label="Pieces"
+            returnId="return-from-pieces"
+            shown={tab === 'pieces'}
+            overview={overview}
+            back={() => setTab('learning')}
+          >
+            <PieceLibrary api={c.api} />
           </ReturnPanel>
           <SettingsWindow
             request={tab === 'settings' ? settings : undefined}

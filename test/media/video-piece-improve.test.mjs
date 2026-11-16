@@ -59,7 +59,7 @@ async function run(t, rewrite, why = 'No crown on top') {
     env.store.tree(chat.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
   );
   assert.equal(row.status, 'ready', row.error);
-  const [saved] = env.store.pieceList().map((p) => env.store.piece(p.id));
+  const [saved] = env.store.pieceList().pieces.map((p) => env.store.piece(p.id));
   return { row, saved, calls, logs };
 }
 

@@ -42,3 +42,34 @@ test('the piece library saves pieces, reads embeddings back, ranks the top 5 by 
   assert.deepEqual(store.piece(ids[0]).videos, ['video-a', 'video-b']);
 });
 
+test('the piece list pages newest-improved first and searches by meaning or, without a vector, by name and look text', (t) => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-pieces-')), 'trees.sqlite'));
+  t.after(() => store.close());
+  assert.deepEqual(store.pieceList(), { total: 0, pieces: [] });
+  const save = (name, look, embedding) => {
+    const id = store.savePiece({ ...entry(name, embedding), look });
+    store.db.prepare('UPDATE pieces SET improved=? WHERE id=?').run(store.pieceList().total, id);
+    return id;
+  };
+  save('Rocket', 'A tall launch vehicle', [1, 0]);
+  save('Tree', 'An OAK with green leaves', [0, 1]);
+  save('Ship', 'A rusty cargo vessel', [0.8, 0.6]);
+  save('Old', 'Saved before embeddings', null);
+  const names = (list) => list.pieces.map((p) => p.name);
+  assert.deepEqual(names(store.pieceList()), ['Old', 'Ship', 'Tree', 'Rocket']);
+  const page = store.pieceList({ offset: 1, limit: 2 });
+  assert.deepEqual([page.total, names(page)], [4, ['Ship', 'Tree']], 'one page, total of all');
+  assert.deepEqual(names(store.pieceList({ query: 'oak' })), ['Tree'], 'case-insensitive look');
+  assert.deepEqual(names(store.pieceList({ query: 'SHIP' })), ['Ship'], 'case-insensitive name');
+  assert.deepEqual(store.pieceList({ query: 'zebra' }), { total: 0, pieces: [] });
+  assert.deepEqual(
+    names(store.pieceList({ query: 'spacecraft', vector: [1, 0] })),
+    ['Rocket', 'Ship'],
+    'ranked by cosine; distant and unembedded pieces drop out',
+  );
+  assert.deepEqual(
+    names(store.pieceList({ query: 'old', vector: [1, 0] })),
+    ['Old', 'Rocket', 'Ship'],
+    'a text match still counts, and ranks first, under semantic search',
+  );
+});

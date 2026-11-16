@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { mediaPath, playable } from '../../media/videos.mjs';
 import { readable } from '../jobs/media.mjs';
+import { formatLog, errorCause } from '../../log.mjs';
 
 // Validated cut TSX becomes a CommonJS function body; the player sandbox supplies require() for the kit and libraries.
 const compileCut = (code) =>
@@ -41,7 +42,30 @@ export async function mediaRoutes(req, res, url, ctx, body) {
           .map((v) => (readable(mediaPath(dir, v.id)) ? v : { ...v, available: false })),
       ]);
     // The read-only piece library; the source compiles for the player frame like live cut code.
-    if (url.pathname === '/api/pieces') return json(res, 200, store.pieceList());
+    // Paged and searchable; the query is embedded with any pieces saved while no embedder was usable.
+    if (url.pathname === '/api/pieces') {
+      const query = (url.searchParams.get('q') ?? '').trim().slice(0, 200),
+        number = (name, fallback, max) =>
+          Math.min(max, Math.max(0, Math.floor(Number(url.searchParams.get(name)) || fallback))),
+        offset = number('offset', 0, Number.MAX_SAFE_INTEGER),
+        limit = Math.max(1, number('limit', 24, 100));
+      let vector = null;
+      if (query && ctx.videoEmbed)
+        try {
+          const pending = store.unembeddedPieces();
+          const [q, ...out] = await ctx.videoEmbed([query, ...pending.map((p) => p.look)]);
+          for (const [i, p] of pending.entries()) if (out[i]) store.embedPiece(p.id, out[i]);
+          vector = q ?? null;
+        } catch (error) {
+          ctx.log(
+            formatLog('warn', 'media', 'piece search fell back to text', {
+              task: 'pieces',
+              cause: errorCause(error, [query]),
+            }),
+          );
+        }
+      return json(res, 200, store.pieceList({ query, vector, offset, limit }));
+    }
     const pieceMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
     if (pieceMatch) {
       const piece = store.piece(pieceMatch[1]);
@@ -130,7 +154,14 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         const bytes =
           exhibit?.file &&
           (await readFile(
-            join(dir, 'video-work', artifact.id, artifact.attempt, `cut-${exhibit.cut}`, exhibit.file),
+            join(
+              dir,
+              'video-work',
+              artifact.id,
+              artifact.attempt,
+              `cut-${exhibit.cut}`,
+              exhibit.file,
+            ),
           ).catch(() => null));
         if (!bytes) return json(res, 404, { error: 'Exhibit not available.' });
         res.writeHead(200, { 'Content-Type': exhibit.type });

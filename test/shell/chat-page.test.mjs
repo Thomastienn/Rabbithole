@@ -322,10 +322,17 @@ test('the sidebar holds Contents on the reading and map views, and a map-view ro
   await act(async () => {});
   assert.equal(chat().style.display, 'flex');
   assert.equal(sidebar().querySelector('[aria-current=page]').textContent, 'Read');
-  for (const label of ['Knowledge', 'Videos', 'Library']) {
+  for (const label of ['Knowledge', 'Videos', 'Pieces', 'Library']) {
     await act(async () => button(sidebar(), label).click());
     assert.equal(sidebar().querySelector('.contents'), null, label);
     assert.ok(sidebar().querySelector('.sidebar-top'), label);
+    if (label === 'Pieces') {
+      const panel = container.querySelector('main[aria-label=Pieces]');
+      assert.equal(sidebar().querySelector('[aria-current=page]').textContent, 'Pieces');
+      assert.ok(panel.querySelector('#return-from-pieces'), 'returns like the other views');
+      await act(async () => {});
+      assert.equal(panel.querySelector('h1').textContent, 'Pieces');
+    }
   }
   assert.ok(
     button(container.querySelector('.library-panel'), 'New chat'),
@@ -381,7 +388,7 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   assert.equal((await key(canvas)).defaultPrevented, true);
   assert.equal(band(), null);
   await key(canvas);
-  for (const label of ['Knowledge', 'Videos', 'Settings']) {
+  for (const label of ['Knowledge', 'Videos', 'Pieces', 'Settings']) {
     await act(async () => button(band(), label).click());
     await act(async () => button(container, 'Hide sidebar').click());
     assert.equal(band(), null, label);

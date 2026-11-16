@@ -123,7 +123,7 @@ test('a video with exhibits fetches them, drops a failed one, hands the rest to 
       { url: 'https://archive.example/notes', title: 'Notes', site: 'archive.example', kind: 'quote' },
     ],
   );
-  assert.deepEqual(store.pieceList(), []);
+  assert.deepEqual(store.pieceList().pieces, []);
 });
 
 test('without web search ready and switched on the planner gets no exhibit option and a plan naming exhibits is rejected', async () => {

@@ -4,24 +4,88 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
+const { default: PieceLibrary } = await import('../../src/media/PieceLibrary.tsx');
 const { default: VideoLibrary } = await import('../../src/media/VideoLibrary.tsx');
 
-const tab = (c, value) => c.querySelector(`[role=tab][data-tab-value=${value}]`);
-const settle = (act) => act(async () => new Promise((r) => setTimeout(r, 5)));
+const settle = (act, ms = 5) => act(async () => new Promise((r) => setTimeout(r, ms)));
+const list = (path) => path.startsWith('/api/pieces?');
 
-test('the Pieces tab shows an empty state when the library is empty', async (t) => {
-  const api = async (path) =>
-    path === '/api/videos' ? [] : path === '/api/pieces' ? [] : assert.fail(path);
+test('the Videos view has no Pieces tab', async (t) => {
+  const api = async (path) => (path === '/api/videos' ? [] : assert.fail(path));
   const { container, act, cleanup } = await render(h(VideoLibrary, { api, activity: '' }), ui);
   t.after(cleanup);
-  await act(async () => tab(container, 'pieces').click());
   await settle(act);
-  assert.equal(tab(container, 'pieces').getAttribute('aria-selected'), 'true');
-  assert.match(container.querySelector('#pieces-panel').textContent, /No saved pieces yet/);
-  assert.equal(container.querySelector('#refresh-videos'), null);
+  assert.equal(container.querySelector('[role=tab]'), null);
+  assert.doesNotMatch(container.textContent, /Pieces/);
 });
 
-test('the Pieces tab lists pieces and opens a read-only source with a preview in the isolated player frame', async (t) => {
+test('the Pieces view shows an empty state without a search bar when the library is empty', async (t) => {
+  const api = async (path) => (list(path) ? { total: 0, pieces: [] } : assert.fail(path));
+  const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+  t.after(cleanup);
+  await settle(act);
+  assert.equal(container.querySelector('h1').textContent, 'Pieces');
+  assert.match(container.textContent, /No saved pieces yet/);
+  assert.equal(container.querySelector('input'), null);
+});
+
+test('the Pieces view searches and pages, with a no-results message', async (t) => {
+  const calls = [];
+  const row = (i) => ({ id: `p${i}`, name: `Piece ${i}`, look: 'l', improved: 1, videos: [] });
+  const api = async (path) => {
+    calls.push(path);
+    const q = new URL(path, 'http://x').searchParams;
+    if (q.get('q') === 'zebra') return { total: 0, pieces: [] };
+    if (q.get('q')) return { total: 1, pieces: [row(99)] };
+    const offset = Number(q.get('offset'));
+    return {
+      total: 30,
+      pieces: Array.from({ length: offset ? 6 : 24 }, (_, i) => row(offset + i)),
+    };
+  };
+  const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+  t.after(cleanup);
+  await settle(act);
+  assert.equal(calls[0], '/api/pieces?offset=0&limit=24');
+  const cards = () =>
+    [...container.querySelectorAll('.piece-library h3')].map((e) => e.textContent);
+  const button = (label) =>
+    [...container.querySelectorAll('button')].find((b) => b.textContent === label);
+  assert.equal(cards().length, 24);
+  const pages = container.querySelector('nav[aria-label="Piece pages"]');
+  assert.match(pages.textContent, /Page 1 of 2/);
+  assert.ok(button('Previous page').disabled);
+  await act(async () => button('Next page').click());
+  await settle(act);
+  assert.equal(calls.at(-1), '/api/pieces?offset=24&limit=24');
+  assert.deepEqual([cards().length, cards()[0]], [6, 'Piece 24']);
+  assert.ok(button('Next page').disabled);
+
+  const status = () =>
+    [...container.querySelectorAll('[role=status]')].map((e) => e.textContent).join(' ');
+  const input = container.querySelector('input[aria-label="Search pieces"], #piece-search');
+  assert.ok(input, 'a labelled search bar');
+  const type = async (value) => {
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      set.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    await settle(act, 300);
+  };
+  await type('rocket');
+  assert.equal(calls.at(-1), '/api/pieces?offset=0&limit=24&q=rocket', 'search restarts at page 1');
+  assert.deepEqual(cards(), ['Piece 99']);
+  assert.match(status(), /1 piece matches “rocket”/);
+  assert.equal(container.querySelector('nav[aria-label="Piece pages"]'), null);
+  await type('zebra');
+  assert.deepEqual(cards(), []);
+  assert.match(status(), /No pieces match “zebra”/);
+  assert.doesNotMatch(container.textContent, /No saved pieces yet/, 'not the empty-library state');
+  assert.ok(container.querySelector('#piece-search'), 'the search bar stays to edit the query');
+});
+
+test('the Pieces view lists pieces and opens a read-only source with a preview in the isolated player frame', async (t) => {
   const calls = [];
   const piece = {
     id: 'p1',
@@ -32,8 +96,8 @@ test('the Pieces tab lists pieces and opens a read-only source with a preview in
   };
   const api = async (path, body) => {
     calls.push([path, body]);
-    if (path === '/api/videos') return [];
-    if (path === '/api/pieces') return [piece, { ...piece, id: 'p2', name: 'Loser', videos: [] }];
+    if (list(path))
+      return { total: 2, pieces: [piece, { ...piece, id: 'p2', name: 'Loser', videos: [] }] };
     if (path === '/api/pieces/p1')
       return {
         ...piece,
@@ -43,9 +107,8 @@ test('the Pieces tab lists pieces and opens a read-only source with a preview in
       };
     assert.fail(path);
   };
-  const { container, act, cleanup } = await render(h(VideoLibrary, { api, activity: '' }), ui);
+  const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
   t.after(cleanup);
-  await act(async () => tab(container, 'pieces').click());
   await settle(act);
   const cards = [...container.querySelectorAll('.piece-library h3')].map((e) =>
     e.closest('.piece-library > *'),
@@ -58,10 +121,7 @@ test('the Pieces tab lists pieces and opens a read-only source with a preview in
   assert.match(cards[0].textContent, /Used in Elections/);
   assert.match(cards[0].textContent, /Last improved .*2026/);
   assert.match(cards[1].textContent, /Not in a saved video/);
-  assert.equal(
-    container.querySelector('#pieces-panel').textContent.match(/Delete|Edit|trash/i),
-    null,
-  );
+  assert.equal(container.textContent.match(/Delete|Edit|trash/i), null);
 
   await act(async () => container.querySelector('[aria-label="Open Winner"]').click());
   await settle(act);

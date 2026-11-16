@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { blob, vector, cosine } from './embeddings.mjs';
 
+// shortcut: a fixed cosine floor tuned by eye for all-MiniLM-L6-v2; revisit if the embedder changes.
+const MIN_SCORE = 0.25;
+
 export const pieces = {
   // Saves one piece used by a video; returns its id.
   savePiece({ name, look, props, source, roles, embedding = null }, video) {
@@ -48,15 +51,32 @@ export const pieces = {
       videos,
     };
   },
-  // The Pieces tab: newest improvement first, with the saved library videos that use each piece.
-  pieceList() {
+  // The Pieces view, one page at a time. Without a query: newest improvement first. With a query
+  // vector: embedded pieces ranked by cosine, keeping close matches and name/look text matches;
+  // without one: a case-insensitive text match on name and look.
+  pieceList({ query = '', vector = null, offset = 0, limit = 24 } = {}) {
     const used = this.db.prepare(
       'SELECT v.id, v.title FROM piece_videos p JOIN videos v ON v.id=p.video WHERE p.piece=? ORDER BY p.rowid',
     );
-    return this.db
+    const q = query.trim().toLocaleLowerCase(),
+      matches = (p) => `${p.name}\n${p.look}`.toLocaleLowerCase().includes(q);
+    let rows = this.db
       .prepare('SELECT id, name, look, improved FROM pieces ORDER BY improved DESC, rowid DESC')
-      .all()
-      .map((p) => ({ ...p, videos: used.all(p.id).map((v) => ({ ...v })) }));
+      .all();
+    if (q && vector) {
+      const score = new Map(this.nearestPieces(vector, Infinity).map((p) => [p.id, p.score]));
+      rows = rows
+        .map((p) => ({ p, s: (score.get(p.id) ?? 0) + (matches(p) ? 1 : 0) }))
+        .filter(({ s }) => s >= MIN_SCORE)
+        .sort((a, b) => b.s - a.s)
+        .map(({ p }) => p);
+    } else if (q) rows = rows.filter(matches);
+    return {
+      total: rows.length,
+      pieces: rows
+        .slice(offset, offset + limit)
+        .map((p) => ({ ...p, videos: used.all(p.id).map((v) => ({ ...v })) })),
+    };
   },
   // Pieces saved while no embedder was usable, to embed when one is.
   unembeddedPieces() {
