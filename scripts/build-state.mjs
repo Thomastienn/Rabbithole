@@ -33,6 +33,9 @@ const inputs = () =>
     'tsconfig.json',
     'vite.config.ts',
     'scripts/build-state.mjs',
+    // The live video player bundles the video kit from server/.
+    'server/media/video-kit.tsx',
+    'server/media/video-stock.tsx',
   ]);
 export function recordBuild() {
   writeFileSync(stamp, JSON.stringify({ inputs: inputs(), outputs: fingerprint(['dist']) }) + '\n');
