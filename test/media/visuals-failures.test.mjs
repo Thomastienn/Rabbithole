@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { block, source, complete, deferred, until, models, open } from '../support/visual-kit.mjs';
+import {
+  task,
+  block,
+  source,
+  complete,
+  deferred,
+  until,
+  models,
+  open,
+} from '../support/visual-kit.mjs';
 
 test('invalid output gets one automatic retry, then a durable failure with explicit Retry from the same frozen request', async () => {
   const calls = [],
@@ -269,6 +278,51 @@ test('a missing smart model no longer skips visuals; they run on the conversatio
       calls.map((t) => [t.provider, t.model, t.effort, t.thread]),
       [['claude', 'smart', 'high', null]],
     );
+  } finally {
+    await env.close();
+  }
+});
+
+test('a stockPiece ID that was not offered gets the validationError retry; an offered one is accepted', async () => {
+  const calls = [],
+    piece = (id) => `<svg viewBox="0 0 10 10"></svg><script>stockPiece('${id}')</script>`;
+  const outputs = [piece('fluent-emoji:unicorn'), piece('fluent-emoji:horse')];
+  const env = await open(
+    {
+      generate: async (_tree, _text, emit) =>
+        complete(
+          emit,
+          '\n```rabbithole-visual\n' + JSON.stringify({ ...task, objects: ['horse'] }) + '\n```',
+        ),
+    },
+    {
+      generate: async (_tree, text, emit) => {
+        calls.push(JSON.parse(text));
+        complete(emit, outputs[calls.length - 1]);
+      },
+    },
+    {
+      stock: {
+        match: async (names) =>
+          names.map((object) => ({
+            object,
+            pieces: [{ id: 'fluent-emoji:horse', title: 'Horse', type: 'emoji' }],
+          })),
+      },
+    },
+  );
+  try {
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw a horse' })).text();
+    await until(async () =>
+      (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every((a) => a.status !== 'pending'),
+    );
+    const [artifact] = (await env.get(`/api/trees/${env.tree.id}`)).artifacts;
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].validationError, undefined);
+    assert.match(calls[1].validationError, /stock piece fluent-emoji:unicorn was not offered/);
+    assert.deepEqual(calls[1].stockPieces, calls[0].stockPieces);
+    assert.equal(artifact.status, 'ready');
+    assert.match(artifact.source, /stockPiece\('fluent-emoji:horse'\)/);
   } finally {
     await env.close();
   }

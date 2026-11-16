@@ -38,6 +38,10 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
   assert.match(TUTOR_RULES, /^Do not use tools[\s\S]*rabbithole-visual[\s\S]*rabbithole-video/);
   assert.match(
     TUTOR_RULES,
+    /add objects, a list of up to 6 concrete object names[^.]*60 characters/,
+  );
+  assert.match(
+    TUTOR_RULES,
     /every formula[^\n]*\$\.\.\.\$[^\n]*\$\$\.\.\.\$\$[^\n]*never[^\n]*plain text/,
   );
   assert.match(

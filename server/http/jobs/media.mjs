@@ -241,7 +241,30 @@ export function mediaJobs(ctx) {
           message: artifact.message,
         }).generate(...args),
     };
-    return generateVisual(metering, selection, input, signal, ctx.visualTimeout, onPartial);
+    // An unavailable catalog only means no shortlist; the visual is still drawn.
+    const objects = input.request?.objects ?? [];
+    const stockPieces =
+      objects.length && ctx.stock
+        ? await ctx.stock.match(objects).catch((error) => {
+            ctx.log(
+              formatLog('warn', 'media', 'warning', {
+                id: artifact.id,
+                task: 'visual',
+                cause: errorCause(error, privateValues(input)),
+              }),
+            );
+            return [];
+          })
+        : [];
+    if (signal.aborted) throw signal.reason;
+    return generateVisual(
+      metering,
+      selection,
+      { ...input, stockPieces },
+      signal,
+      ctx.visualTimeout,
+      onPartial,
+    );
   };
   // Explicit Retry runs detached like a video job, with the same stop/delete/polling lifecycle.
   const startDrawing = (artifact, parentSignal, onUpdate = () => {}) => {
