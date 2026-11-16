@@ -49,6 +49,7 @@ export default function ChatThread({
   const { overview, addresses, state, branch, setBranch, selectingMessage, setSelectingMessage } =
     c;
   const { branching, submitBranch, closeBranch, openVisualPart, visualBranches } = branchForm;
+  const { discussionBranches } = branchForm;
   return tree.messages.map((message) => {
     const suggestions = tree.suggestions?.find((s) => s.message === message.id),
       index =
@@ -105,6 +106,7 @@ export default function ChatThread({
             suggestions={suggestions}
             onVisualPart={openVisualPart}
             visualBranches={visualBranches}
+            discussionBranches={discussionBranches}
             onArtifactAction={(artifactId, action) => videoAction(tree.id, artifactId, action)}
             onDiscussionReply={replyDiscussion}
             inlineArtifacts={
@@ -118,6 +120,7 @@ export default function ChatThread({
               state?.trees.flatMap((t) =>
                 t.parent === tree.id &&
                 t.messageId === message.id &&
+                !t.artifactId &&
                 t.start !== null &&
                 t.end !== null &&
                 t.passage !== null
@@ -148,8 +151,9 @@ export default function ChatThread({
                         setQuestion={(question) => setBranch((b) => b && { ...b, question })}
                       />
                     ),
-                    start: branch.anchor.start,
-                    end: branch.anchor.end,
+                    // Discussion offsets are inside a card line, not the reply text.
+                    start: branch.anchor.artifactId === undefined ? branch.anchor.start : undefined,
+                    end: branch.anchor.artifactId === undefined ? branch.anchor.end : undefined,
                   }
                 : undefined
             }
@@ -187,7 +191,11 @@ export default function ChatThread({
                   artifact={artifact}
                   explored={visualBranches[artifact.id]}
                   onOpenChild={(id) => void openConversation(id)}
-                  reveal={validSource && source?.artifactId === artifact.id ? source : undefined}
+                  reveal={
+                    validSource && source?.artifactId === artifact.id && source.line === undefined
+                      ? source
+                      : undefined
+                  }
                   onPart={openVisualPart}
                   onRetry={() => videoAction(tree.id, artifact.id, 'retry')}
                   onRegenerate={() => videoAction(tree.id, artifact.id, 'regenerate')}

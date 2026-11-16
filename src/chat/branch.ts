@@ -13,6 +13,9 @@ export type Branch = {
   start?: number | null;
   end?: number | null;
   artifactId?: string;
+  line?: number;
+  speaker?: string;
+  discussion?: string;
   label?: string;
   explanation?: string;
 };

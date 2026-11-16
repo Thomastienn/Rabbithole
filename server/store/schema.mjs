@@ -8,7 +8,7 @@ const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, co
         title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
-const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT);`;
+const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
 
 // The Store constructor body: opens, backs up and migrates the database; called with the Store as this.
 export function open(path) {
@@ -262,6 +262,15 @@ export function open(path) {
           INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot) SELECT child,parent,messageId,start,end,text,question,snapshot FROM branches_old;
           DROP TABLE branches_old; COMMIT;`);
     }
+    // Discussion passages keep their line index, its speaker and the discussion context fixed at branch time.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(branches)')
+        .all()
+        .some((c) => c.name === 'line')
+    )
+      this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE branches ADD COLUMN line INTEGER;
+          ALTER TABLE branches ADD COLUMN speaker TEXT; ALTER TABLE branches ADD COLUMN discussion TEXT; COMMIT;`);
     // Trees on a fresh database may have no provider; older databases keep assuming the default provider.
     this.assumesProvider = !!this.db
       .prepare('PRAGMA table_info(trees)')

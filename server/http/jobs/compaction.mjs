@@ -27,7 +27,44 @@ export const anchorOf = (tree, body) => {
     (m) => m.id === body?.messageId && m.role === 'assistant' && m.status === 'completed',
   );
   let anchor = body;
-  if (body && 'artifactId' in body) {
+  if (body && 'line' in body) {
+    const card = tree.artifacts.find(
+      (a) =>
+        a.id === body.artifactId &&
+        a.message === body.messageId &&
+        a.kind === 'discussion' &&
+        a.status === 'ready',
+    );
+    const data = card && JSON.parse(card.source),
+      line = Number.isInteger(body.line) && data?.lines?.[body.line],
+      { start, end } = body;
+    if (
+      !line ||
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start < 0 ||
+      end <= start ||
+      line.text.slice(start, end) !== body.text ||
+      'suggestion' in body
+    )
+      return { error: 'Select text in one discussion line.' };
+    // Fixed at branch time: the closed discussion's paragraph, or its lines while still open.
+    const discussion =
+      data.closed && data.summary
+        ? data.summary
+        : data.lines.map((l) => `${l.speaker}: ${l.text}`).join('\n');
+    anchor = {
+      messageId: body.messageId,
+      artifactId: card.id,
+      line: body.line,
+      start,
+      end,
+      text: body.text,
+      speaker: line.speaker,
+      discussion,
+      question: body.question,
+    };
+  } else if (body && 'artifactId' in body) {
     const visual = tree.artifacts.find(
       (a) =>
         a.id === body.artifactId &&

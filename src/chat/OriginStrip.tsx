@@ -10,20 +10,29 @@ import type { Branch } from './branch';
 const isLong = (text: string) => text.length > 160 || text.split('\n').length > 2;
 
 export function originSource(branch: Branch): Source {
-  return branch.artifactId
+  return branch.line !== undefined
     ? {
         messageId: branch.messageId,
         text: branch.text,
-        artifactId: branch.artifactId,
-        label: branch.label ?? '',
-        explanation: branch.explanation ?? '',
-      }
-    : {
-        messageId: branch.messageId,
+        artifactId: branch.artifactId!,
+        line: branch.line,
         start: branch.start ?? -1,
         end: branch.end ?? -1,
-        text: branch.text,
-      };
+      }
+    : branch.artifactId
+      ? {
+          messageId: branch.messageId,
+          text: branch.text,
+          artifactId: branch.artifactId,
+          label: branch.label ?? '',
+          explanation: branch.explanation ?? '',
+        }
+      : {
+          messageId: branch.messageId,
+          start: branch.start ?? -1,
+          end: branch.end ?? -1,
+          text: branch.text,
+        };
 }
 
 // The top of a child conversation: parent chip (jumps to the source), the source and the first question.

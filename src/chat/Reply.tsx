@@ -7,7 +7,7 @@ import { imageSources } from '../markdown/ReplyImage';
 import type { ToolCall } from './turn';
 import type { Resource } from './types';
 import type { Artifact, DiscussionReply } from '../media/artifacts';
-import DiscussionCard from '../media/DiscussionCard';
+import DiscussionCard, { type DiscussionBranch } from '../media/DiscussionCard';
 import VideoCard from '../media/VideoCard';
 import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
 
@@ -25,6 +25,7 @@ const Reply = memo(function Reply({
   onDiscussionReply,
   onVisualPart,
   visualBranches,
+  discussionBranches,
   onOpenChild,
   resources = [],
 }: {
@@ -35,6 +36,7 @@ const Reply = memo(function Reply({
   inlineArtifacts?: Artifact[];
   onVisualPart?: PartAction;
   visualBranches?: Record<string, VisualBranch[]>;
+  discussionBranches?: Record<string, DiscussionBranch[]>;
   onOpenChild?: (id: string) => void;
   resources?: Resource[];
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
@@ -63,6 +65,7 @@ const Reply = memo(function Reply({
     toolKey = JSON.stringify(tools),
     artifactKey = JSON.stringify(inlineArtifacts),
     visualBranchKey = JSON.stringify(visualBranches),
+    discussionBranchKey = JSON.stringify(discussionBranches),
     links = Object.fromEntries(resources.map((r) => [r.number, r.url])),
     linkKey = JSON.stringify(links);
   return (
@@ -81,6 +84,8 @@ const Reply = memo(function Reply({
                     key={v.id}
                     artifact={v}
                     onReply={onDiscussionReply && ((a, text) => discussionReply.current!(a, text))}
+                    explored={discussionBranches?.[v.id]}
+                    onOpenChild={(id) => openChild.current?.(id)}
                   />
                 ) : v.kind === 'video' ? (
                   <VideoCard
@@ -95,7 +100,9 @@ const Reply = memo(function Reply({
                     artifact={v}
                     explored={visualBranches?.[v.id]}
                     onOpenChild={(id) => openChild.current?.(id)}
-                    reveal={reveal?.artifactId === v.id ? reveal : undefined}
+                    reveal={
+                      reveal?.artifactId === v.id && reveal.line === undefined ? reveal : undefined
+                    }
                     onPart={(...args) => partAction.current?.(...args)}
                     onRetry={onArtifactAction && (() => action.current!(v.id, 'retry'))}
                     onRegenerate={onArtifactAction && (() => action.current!(v.id, 'regenerate'))}
@@ -115,6 +122,7 @@ const Reply = memo(function Reply({
           toolKey,
           artifactKey,
           visualBranchKey,
+          discussionBranchKey,
           linkKey,
           reveal?.artifactId,
           !!onArtifactAction,

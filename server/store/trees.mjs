@@ -14,11 +14,15 @@ export const trees = {
   list() {
     return this.db
       .prepare(
-        'SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage,b.artifactId,b.label,b.explanation FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC',
+        'SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage,b.artifactId,b.label,b.explanation,b.line FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC',
       )
       .all()
-      .map(({ artifactId, label, explanation, ...t }) => {
-        const visual = artifactId ? { artifactId, label, explanation } : {};
+      .map(({ artifactId, label, explanation, line, ...t }) => {
+        const visual = !artifactId
+          ? {}
+          : line !== null
+            ? { artifactId, line }
+            : { artifactId, label, explanation };
         try {
           return { ...t, ...visual, layout: JSON.parse(t.layout) };
         } catch {
@@ -142,15 +146,22 @@ export const trees = {
     const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
     const savedBranch = this.db
       .prepare(
-        'SELECT parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation FROM branches WHERE child=?',
+        'SELECT parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation,line,speaker,discussion FROM branches WHERE child=?',
       )
       .get(id);
-    const { artifactId, label, explanation, ...branch } = savedBranch ?? {};
+    const { artifactId, label, explanation, line, speaker, discussion, ...branch } =
+      savedBranch ?? {};
     return (
       tree.id && {
         ...tree,
         branch: savedBranch
-          ? { ...branch, ...(artifactId && { artifactId, label, explanation }) }
+          ? {
+              ...branch,
+              ...(artifactId &&
+                (line !== null
+                  ? { artifactId, line, speaker, discussion }
+                  : { artifactId, label, explanation })),
+            }
           : null,
         messages: this.db
           .prepare(
@@ -223,7 +234,7 @@ export const trees = {
       );
       this.db
         .prepare(
-          'INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+          'INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation,line,speaker,discussion) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         )
         .run(
           child.id,
@@ -237,6 +248,9 @@ export const trees = {
           anchor.artifactId ?? null,
           anchor.label ?? null,
           anchor.explanation ?? null,
+          anchor.line ?? null,
+          anchor.speaker ?? null,
+          anchor.discussion ?? null,
         );
       // Branching from a suggestion marks it explored, in the same transaction as the saved child.
       const row =

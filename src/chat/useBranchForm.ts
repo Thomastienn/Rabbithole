@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { branchRequest, prepareBranch, type Anchor } from './branch';
 import { visualPassage } from '../media/artifacts';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
+import type { DiscussionBranch } from '../media/DiscussionCard';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { LearningTrees } from './useLearningTrees';
@@ -74,6 +75,22 @@ export function useBranchForm(
         label: t.label,
         explanation: t.explanation,
       });
+  const discussionBranches: Record<string, DiscussionBranch[]> = {};
+  for (const t of state?.trees ?? [])
+    if (
+      t.parent === tree?.id &&
+      t.artifactId &&
+      t.line !== undefined &&
+      t.start !== null &&
+      t.end !== null
+    )
+      (discussionBranches[t.artifactId] ??= []).push({
+        child: t.id,
+        ...c.addresses.get(t.id),
+        line: t.line,
+        start: t.start,
+        end: t.end,
+      });
   const openVisualPart: PartAction = (visual, part, origin) => {
     if (
       !tree ||
@@ -110,6 +127,7 @@ export function useBranchForm(
     closeBranch,
     submitBranch,
     visualBranches,
+    discussionBranches,
     openVisualPart,
     startBranch,
   };

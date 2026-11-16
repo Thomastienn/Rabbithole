@@ -86,8 +86,16 @@ export function InheritedContext({
           trigger={<Text weight="medium">Inherited from {parentTitle}</Text>}
         >
           <dl className="inherited-body">
-            <dt>Passage</dt>
+            <dt>
+              {branch.speaker ? `Passage, from ${branch.speaker} in the discussion` : 'Passage'}
+            </dt>
             <dd>{branch.text}</dd>
+            {branch.discussion && (
+              <>
+                <dt>The discussion</dt>
+                <dd className="inherited-discussion">{branch.discussion}</dd>
+              </>
+            )}
             <dt>Your question</dt>
             <dd>{branch.question}</dd>
             <dt>Context the tutor received</dt>

@@ -50,6 +50,7 @@ export type Summary = {
   end: number | null;
   passage: string | null;
   artifactId?: string;
+  line?: number;
   label?: string;
   explanation?: string;
   x: number | null;
@@ -58,7 +59,9 @@ export type Summary = {
 };
 export type Source = { messageId: string; text: string } & (
   | { start: number; end: number; artifactId?: undefined }
-  | ({ artifactId: string; start?: undefined; end?: undefined } & VisualPart)
+  // A discussion passage: offsets inside one line of a discussion card.
+  | { artifactId: string; line: number; start: number; end: number }
+  | ({ artifactId: string; line?: undefined; start?: undefined; end?: undefined } & VisualPart)
 );
 export type Preview = {
   id: string;

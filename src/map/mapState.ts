@@ -11,15 +11,24 @@ export const snippet = (text: string) => {
 };
 
 export const sourceOf = (t: Summary): Source =>
-  t.artifactId
+  t.line !== undefined
     ? {
         messageId: t.messageId!,
         text: t.passage!,
-        artifactId: t.artifactId,
-        label: t.label!,
-        explanation: t.explanation!,
+        artifactId: t.artifactId!,
+        line: t.line,
+        start: t.start!,
+        end: t.end!,
       }
-    : { messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! };
+    : t.artifactId
+      ? {
+          messageId: t.messageId!,
+          text: t.passage!,
+          artifactId: t.artifactId,
+          label: t.label!,
+          explanation: t.explanation!,
+        }
+      : { messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! };
 
 export function revealAddedBranches(
   previous: ReadonlySet<string>,

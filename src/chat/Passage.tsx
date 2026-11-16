@@ -11,6 +11,7 @@ import { underlineRanges, type Message, type Suggestions } from './turn';
 import { passageAnchor, type Anchor } from './branch';
 import { rawOffsets, rawRange } from '../markdown/markdown';
 import type { Artifact, DiscussionReply } from '../media/artifacts';
+import { discussionSelection, type DiscussionBranch } from '../media/DiscussionCard';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import Reply from './Reply';
 import type { Resource } from './types';
@@ -35,6 +36,7 @@ export default function Passage({
   onDiscussionReply,
   onVisualPart,
   visualBranches,
+  discussionBranches,
 }: {
   message: Message;
   addresses: ReturnType<typeof conversationAddresses>;
@@ -43,6 +45,7 @@ export default function Passage({
   resources?: Resource[];
   onVisualPart?: PartAction;
   visualBranches?: Record<string, VisualBranch[]>;
+  discussionBranches?: Record<string, DiscussionBranch[]>;
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
   onDiscussionReply?: DiscussionReply;
   suggestions?: Suggestions;
@@ -129,8 +132,8 @@ export default function Passage({
       if (CSS.highlights.get('passage') === mine) CSS.highlights.delete('passage');
     };
   }, [form?.start, form?.end, formOpen, message.text, underlines, reveal]);
-  function capture(start: number, end: number, at?: Point, place?: Anchor['at']) {
-    const picked = passageAnchor(message, start, end);
+  function capture(start: number, end: number, at?: Point, place?: Anchor['at'], line?: Anchor) {
+    const picked = line ?? passageAnchor(message, start, end);
     setAnchor(picked && { ...picked, at, place });
   }
   function captureSelection(e: React.MouseEvent | React.KeyboardEvent) {
@@ -147,7 +150,8 @@ export default function Passage({
       setAnchor(undefined);
       return;
     }
-    const span = rawOffsets(root, range);
+    const said = discussionSelection(range);
+    const span = said ?? rawOffsets(root, range);
     if (!span) {
       setAnchor(undefined);
       return;
@@ -164,6 +168,7 @@ export default function Passage({
       span.end,
       last && { x: Math.min(last.right - box.left, box.width), y: last.bottom - box.top },
       pointer ? { x: 0, y: rects[0].top - box.top, below: last.bottom - box.top } : undefined,
+      said && { messageId: message.id, ...said },
     );
   }
   // An unexplored underline opens the passage textbox; an explored one opens its existing child.
@@ -271,6 +276,7 @@ export default function Passage({
           onDiscussionReply={onDiscussionReply}
           onVisualPart={onVisualPart}
           visualBranches={visualBranches}
+          discussionBranches={discussionBranches}
           onOpenChild={onOpenChild}
           resources={resources}
         />

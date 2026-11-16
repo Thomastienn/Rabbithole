@@ -16,13 +16,103 @@ import {
   ArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import type { Artifact, DiscussionReply } from './artifacts';
+import { inkStyle } from '../map/treeList';
+
+export type DiscussionBranch = {
+  child: string;
+  line: number;
+  start: number;
+  end: number;
+  address?: string;
+  ink?: number;
+};
+
+// A selection inside one line's text: its card, line index and offsets in that line, ignoring address chips.
+export function discussionSelection(range: Range) {
+  const lineOf = (n: Node) =>
+    (n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest<HTMLElement>('[data-line]');
+  const el = lineOf(range.startContainer),
+    card = el?.closest<HTMLElement>('[data-artifact]');
+  if (!el || !card || el !== lineOf(range.endContainer)) return;
+  const text = (r: Range) => {
+    const part = r.cloneContents();
+    part.querySelectorAll('.passage-address').forEach((chip) => chip.remove());
+    return part.textContent ?? '';
+  };
+  const before = range.cloneRange();
+  before.selectNodeContents(el);
+  before.setEnd(range.startContainer, range.startOffset);
+  const start = text(before).length,
+    picked = text(range);
+  if (!picked) return;
+  return {
+    artifactId: card.dataset.artifact!,
+    line: +el.dataset.line!,
+    start,
+    end: start + picked.length,
+    text: picked,
+  };
+}
+
+// One line's text with its explored passages underlined in their branch ink, each followed by its address chip.
+function LineText({
+  text,
+  marks,
+  onOpenChild,
+}: {
+  text: string;
+  marks: DiscussionBranch[];
+  onOpenChild?: (id: string) => void;
+}) {
+  const out: React.ReactNode[] = [];
+  let at = 0;
+  for (const m of [...marks].sort((a, b) => a.start - b.start)) {
+    if (m.start < at || m.end > text.length) continue;
+    out.push(text.slice(at, m.start));
+    const ink = m.ink !== undefined ? inkStyle(m.ink) : undefined,
+      passage = text.slice(m.start, m.end),
+      open = () => onOpenChild?.(m.child);
+    out.push(
+      <u
+        key={m.child}
+        className="suggestion explored"
+        style={ink}
+        tabIndex={0}
+        role="button"
+        aria-label={`Explored passage: ${passage}. Opens its chat${m.address ? `, ${m.address}` : ''}`}
+        onClick={open}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            open();
+          }
+        }}
+      >
+        {passage}
+      </u>,
+    );
+    if (m.address)
+      out.push(
+        <sup key={m.child + ':chip'} className="passage-address" aria-hidden style={ink}>
+          {m.address}
+        </sup>,
+      );
+    at = m.end;
+  }
+  out.push(text.slice(at));
+  return <>{out}</>;
+}
 
 export default function DiscussionCard({
   artifact,
   onReply,
+  explored = [],
+  onOpenChild,
 }: {
   artifact: Artifact;
   onReply?: DiscussionReply;
+  explored?: DiscussionBranch[];
+  onOpenChild?: (id: string) => void;
 }) {
   const [draft, setDraft] = useState(''),
     [sending, setSending] = useState(false),
@@ -149,11 +239,18 @@ export default function DiscussionCard({
                 >
                   {line.speaker === 'Learner' ? (
                     <ChatMessageBubble variant="ghost" className="question-bubble">
-                      <Text>{line.text}</Text>
+                      <Text data-line={index < discussion.lines.length ? index : undefined}>
+                        <LineText
+                          text={line.text}
+                          marks={explored.filter((b) => b.line === index)}
+                          onOpenChild={onOpenChild}
+                        />
+                      </Text>
                     </ChatMessageBubble>
                   ) : (
                     <Text
                       className="discussion-card__text"
+                      data-line={index}
                       data-streaming={
                         (busy &&
                           index === lines.length - 1 &&
@@ -162,7 +259,11 @@ export default function DiscussionCard({
                         undefined
                       }
                     >
-                      {line.text}
+                      <LineText
+                        text={line.text}
+                        marks={explored.filter((b) => b.line === index)}
+                        onOpenChild={onOpenChild}
+                      />
                     </Text>
                   )}
                 </ChatMessage>

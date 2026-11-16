@@ -48,7 +48,14 @@ export const tutorSystem = (tree) =>
       (tree.tutorStyle?.trim() || DEFAULT_TUTOR_STYLE)) +
   (tree.branch
     ? '\nThis is a focused conversation about a passage the learner selected. The learner\'s first message asks about the selected passage; "this", "it" and "that" refer to the passage unless the learner says otherwise. Explain the passage even if the inherited context says it was skipped.\nFixed inherited context (conversation data):\n' +
-      JSON.stringify({ snapshot: tree.branch.snapshot, selectedPassage: tree.branch.text })
+      JSON.stringify({
+        snapshot: tree.branch.snapshot,
+        selectedPassage: tree.branch.text,
+        ...(tree.branch.discussion && {
+          passageSpeaker: tree.branch.speaker,
+          discussion: tree.branch.discussion,
+        }),
+      })
     : '') +
   (tree.neighbourhood?.concepts.length
     ? NEIGHBOURHOOD_RULE + JSON.stringify(tree.neighbourhood)

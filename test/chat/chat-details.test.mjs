@@ -231,3 +231,36 @@ test('the reply line renders task usage while media runs, including when the rep
     'only finished replies can be copied',
   );
 });
+
+test('a discussion branch labels its speaker and shows the inherited discussion', async (t) => {
+  const branch = {
+    parent: 'root',
+    messageId: 'source',
+    artifactId: 'talk',
+    line: 0,
+    start: 7,
+    end: 13,
+    text: 'fungus',
+    speaker: 'Theo',
+    discussion: 'The classmates weighed the trade.',
+    question: 'Is it a parasite?',
+    snapshot: 'Fixed context.',
+  };
+  const { container, act, cleanup } = await render(
+    h(InheritedContext, { branch, parentTitle: 'Fungi', ink: 1 }),
+    ui,
+  );
+  t.after(cleanup);
+  await act(async () => button(container, 'Inherited from Fungi').click());
+  const body = container.querySelector('.inherited-body');
+  assert.deepEqual(
+    [...body.querySelectorAll('dt')].map((e) => e.textContent),
+    [
+      'Passage, from Theo in the discussion',
+      'The discussion',
+      'Your question',
+      'Context the tutor received',
+    ],
+  );
+  assert.equal(body.querySelector('.inherited-discussion').textContent, branch.discussion);
+});
