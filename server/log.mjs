@@ -150,7 +150,7 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
 }
 
 const SEGMENTS = new Set(
-  'api state usage search previews models trees messages retry stop branches prepare unprepare position layout model rename delete artifacts media videos reveal trash generate suggestions knowledge settings auth codex claude openai endpoints profiles test connect disconnect login logout status smart chat interface graph concepts roles endpoint duplicate active default clear remove edit correct merge cancel regenerate'.split(
+  'api state usage search previews models trees messages retry stop branches prepare unprepare position layout model rename delete artifacts media videos reveal trash generate suggestions knowledge settings auth codex claude openai endpoints profiles test connect disconnect login logout status smart chat interface graph concepts roles endpoint duplicate active default clear remove edit merge cancel regenerate'.split(
     ' ',
   ),
 );

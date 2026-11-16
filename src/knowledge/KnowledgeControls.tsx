@@ -14,8 +14,8 @@ export function KnowledgeHeader({ graph, error, status, busy, merge, load }: Kno
         <VStack gap={2}>
           <Heading level={1}>Knowledge</Heading>
           <Text color="secondary" className="library-intro">
-            Concepts from all your learning trees. Familiarity is an estimate, not measured mastery.
-            Your corrections take precedence.
+            Concepts from all your learning trees. Familiarity is an estimate from what you write,
+            not measured mastery.
           </Text>
         </VStack>
         <Button
@@ -30,9 +30,7 @@ export function KnowledgeHeader({ graph, error, status, busy, merge, load }: Kno
       {error && !merge && <Text role="alert">{error}</Text>}
       {!graph && !error && <Text role="status">Loading knowledge…</Text>}
       {graph && !graph.concepts.length && (
-        <Text>
-          No concepts yet. Concepts appear here after suggestions find them in a saved tutor reply.
-        </Text>
+        <Text>No concepts yet. Concepts appear here as you explore ideas in your chats.</Text>
       )}
     </VStack>
   );
@@ -42,7 +40,6 @@ export function KnowledgeActions({
   selected,
   graph,
   busy,
-  correct,
   beginMerge,
 }: KnowledgeState & { selected: Concept }) {
   return (
@@ -50,25 +47,9 @@ export function KnowledgeActions({
       gap={2}
       wrap="wrap"
       role="group"
-      aria-label={`Corrections for ${selected.name}`}
+      aria-label={`Actions for ${selected.name}`}
       className="knowledge-actions"
     >
-      <Button
-        label="I know this"
-        size="sm"
-        variant="secondary"
-        aria-pressed={selected.correction === 'known'}
-        isDisabled={busy}
-        onClick={() => void correct(selected.name, 'known')}
-      />
-      <Button
-        label="I don't get this"
-        size="sm"
-        variant="secondary"
-        aria-pressed={selected.correction === 'unknown'}
-        isDisabled={busy}
-        onClick={() => void correct(selected.name, 'unknown')}
-      />
       <Button
         label={`Merge ${selected.name}…`}
         size="sm"
@@ -106,9 +87,8 @@ export function KnowledgeMerge({
       <form onSubmit={submitMerge}>
         <VStack padding={5} gap={4}>
           <Text>
-            Merge “{merge}” into another concept. Keep the chosen name and combine topics, evidence
-            and links. The latest correction from either concept takes precedence. This cannot be
-            undone.
+            Merge “{merge}” into another concept. Keep the chosen name and combine topics,
+            observations and links. This cannot be undone.
           </Text>
           <Selector
             label="Concept to keep"

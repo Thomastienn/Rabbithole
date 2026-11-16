@@ -63,6 +63,7 @@ test('previews list every message in order, bound each text and survive reload w
       'evidence',
       'memory_note',
       'messages',
+      'observations',
       'piece_videos',
       'pieces',
       'profiles',

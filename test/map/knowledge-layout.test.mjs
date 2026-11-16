@@ -110,7 +110,7 @@ test('topics attract their concepts and a shared concept sits between its topics
   );
 });
 
-test('familiarity labels and ring forms agree at thresholds; explicit corrections win', () => {
+test('familiarity labels and ring forms agree at thresholds', () => {
   for (const [score, label, form] of [
     [0, 'Unfamiliar', 'none'],
     [0.349, 'Unfamiliar', 'none'],
@@ -119,24 +119,18 @@ test('familiarity labels and ring forms agree at thresholds; explicit correction
     [0.8, 'Familiar', 'full'],
     [1, 'Familiar', 'full'],
   ]) {
-    const c = { familiarity: score, correction: null };
+    const c = { familiarity: score };
     assert.equal(level(c), label);
     assert.equal(fill(c), form);
     assert.equal(familiarity(c), `Estimated familiarity: ${label.toLowerCase()}`);
-    assert.equal(level({ ...c, correction: 'known' }), 'Marked known');
-    assert.equal(fill({ ...c, correction: 'known' }), 'full');
-    assert.equal(familiarity({ ...c, correction: 'known' }), 'You marked this as known');
-    assert.equal(level({ ...c, correction: 'unknown' }), 'Marked not understood');
-    assert.equal(fill({ ...c, correction: 'unknown' }), 'none');
-    assert.equal(familiarity({ ...c, correction: 'unknown' }), 'You marked this as not understood');
   }
 });
 
-test('corrections preserve map shape; topic-only changes and new links invalidate it', () => {
+test('familiarity changes preserve map shape; topic-only changes and new links invalidate it', () => {
   const g = { concepts: [{ name: 'Mutex', topics: ['Concurrency'], familiarity: 0 }], links: [] };
   assert.equal(
     graphShape(g),
-    graphShape({ ...g, concepts: [{ ...g.concepts[0], familiarity: 1, correction: 'known' }] }),
+    graphShape({ ...g, concepts: [{ ...g.concepts[0], familiarity: 1 }] }),
   );
   assert.notEqual(
     graphShape(g),

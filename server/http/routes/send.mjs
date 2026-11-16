@@ -118,10 +118,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       'completed',
       body.text.trim() ? body.text : prepared.map((a) => a.name).join(', '),
     );
-  if (!retried) {
-    store.attach(id, user, prepared);
-    store.questionEvidence(id, body.text, user);
-  }
+  if (!retried) store.attach(id, user, prepared);
   // The placeholder title shows at once; quick thinking may replace it while the title is unrenamed.
   // An attachment-only question titles from the attachments' text, which starts with each file name.
   if (!retried && !tree.messages.length && !tree.title_renamed)
@@ -320,6 +317,9 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       );
     if (status === 'completed' || status === 'failed')
       store.finishModel(id, status === 'completed');
+    // The verdict judges the learner message, so a retried reply replaces that message's observations.
+    if ((status === 'completed' || output.verdicts) && store.tree(id))
+      store.observe(user, output.verdicts ?? []);
     if (status === 'completed' && text.trim()) ctx.startSuggestions(id, reply, body.text, text);
     if (output.requested || output.hidden) store.forgetThread(id);
     if (active.get(id) === controller) active.delete(id);

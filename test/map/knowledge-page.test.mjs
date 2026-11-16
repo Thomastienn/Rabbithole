@@ -25,7 +25,20 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
     });
   };
   const detail = () => container.querySelector('#concept-detail');
-  assert.match(detail().textContent, /Mutex.*Topics: Concurrency.*Met in replies2Asked about1/s);
+  // Read-only: observation counts by level in level order with zeros, and no correction controls.
+  assert.match(
+    detail().textContent,
+    /Mutex.*Estimated familiarity: unfamiliar\..*Topics: Concurrency.*Met in replies2From your messagesMisconception1Heard of it0Partial2Explains it1Applies it0Teaches it0/s,
+  );
+  assert.equal(detail().querySelector('[aria-label="Evidence for Mutex"]').tagName, 'DL');
+  assert.deepEqual(
+    [...detail().querySelectorAll('button')].map((b) => b.textContent),
+    ['Merge…'],
+  );
+  assert.equal(
+    detail().querySelector('[role=group]').getAttribute('aria-label'),
+    'Actions for Mutex',
+  );
   assert.equal(
     container.querySelector('[data-concept=Mutex]').getAttribute('aria-controls'),
     'concept-detail',

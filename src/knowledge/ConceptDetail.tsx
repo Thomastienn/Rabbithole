@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
-import { familiarity, type Concept, type Graph } from './knowledge';
+import { familiarity, LEVELS, type Concept, type Graph } from './knowledge';
 
 export default function ConceptDetail({
   selected,
@@ -22,15 +22,16 @@ export default function ConceptDetail({
         <Text className="knowledge-reading" color="secondary">
           Topics: {selected.topics.join(', ')}
         </Text>
-        <dl className="knowledge-evidence">
+        <dl className="knowledge-evidence" aria-label={`Evidence for ${selected.name}`}>
           <dt>Met in replies</dt>
-          <dd>{selected.evidence.met}</dd>
-          <dt>Asked about</dt>
-          <dd>{selected.evidence.asked}</dd>
-          <dt>Used in your questions</dt>
-          <dd>{selected.evidence.used}</dd>
-          <dt>Underlines ignored (weak hint)</dt>
-          <dd>{selected.evidence.ignored}</dd>
+          <dd>{selected.met}</dd>
+          <dt className="knowledge-evidence-head">From your messages</dt>
+          {LEVELS.map((label, i) => (
+            <Fragment key={label}>
+              <dt>{label}</dt>
+              <dd>{selected.observations[i]}</dd>
+            </Fragment>
+          ))}
         </dl>
         {graph.links
           .filter((l) => l.from === selected.name || l.to === selected.name)

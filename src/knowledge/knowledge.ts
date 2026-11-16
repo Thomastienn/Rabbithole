@@ -4,42 +4,29 @@ export type Concept = {
   name: string;
   topics: string[];
   familiarity: number;
-  correction: 'known' | 'unknown' | null;
-  evidence: { met: number; asked: number; used: number; ignored: number };
+  met: number;
+  // Observation counts by level, 0 (misconception) to 5 (teaches it).
+  observations: number[];
 };
 export type Graph = {
   topics: string[];
   concepts: Concept[];
   links: { from: string; to: string; kind: 'related' | 'builds on' }[];
 };
-export const familiarity = (c: Concept) =>
-  c.correction === 'known'
-    ? 'You marked this as known'
-    : c.correction === 'unknown'
-      ? 'You marked this as not understood'
-      : `Estimated familiarity: ${c.familiarity >= 0.8 ? 'familiar' : c.familiarity >= 0.35 ? 'some familiarity' : 'unfamiliar'}`;
-
+export const LEVELS = [
+  'Misconception',
+  'Heard of it',
+  'Partial',
+  'Explains it',
+  'Applies it',
+  'Teaches it',
+];
 export const level = (c: Concept) =>
-  c.correction === 'known'
-    ? 'Marked known'
-    : c.correction === 'unknown'
-      ? 'Marked not understood'
-      : c.familiarity >= 0.8
-        ? 'Familiar'
-        : c.familiarity >= 0.35
-          ? 'Some familiarity'
-          : 'Unfamiliar';
+  c.familiarity >= 0.8 ? 'Familiar' : c.familiarity >= 0.35 ? 'Some familiarity' : 'Unfamiliar';
+export const familiarity = (c: Concept) => `Estimated familiarity: ${level(c).toLowerCase()}`;
 // Familiarity is drawn by form (empty, half, full ring), never hue alone.
 export const fill = (c: Concept) =>
-  c.correction === 'known'
-    ? 'full'
-    : c.correction === 'unknown'
-      ? 'none'
-      : c.familiarity >= 0.8
-        ? 'full'
-        : c.familiarity >= 0.35
-          ? 'some'
-          : 'none';
+  c.familiarity >= 0.8 ? 'full' : c.familiarity >= 0.35 ? 'some' : 'none';
 export const MIN_SCALE = 0.2;
 export const LABEL_SCALE = 0.75;
 export const graphShape = (graph: Graph) =>

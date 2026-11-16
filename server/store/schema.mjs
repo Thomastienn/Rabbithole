@@ -207,6 +207,14 @@ export function open(path) {
         CREATE TABLE IF NOT EXISTS concept_topics (concept INTEGER NOT NULL REFERENCES concepts(id), topic INTEGER NOT NULL REFERENCES topics(id), PRIMARY KEY(concept, topic));
         CREATE TABLE IF NOT EXISTS concept_links (concept INTEGER NOT NULL REFERENCES concepts(id), target INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('related','builds on')), PRIMARY KEY(concept, target, kind), CHECK(concept <> target));
         CREATE TABLE IF NOT EXISTS evidence (concept INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('met','asked','used','ignored','known','unknown')), source TEXT, at INTEGER NOT NULL, UNIQUE(concept, kind, source));`);
+    // Observations: the tutor's verdict on what one learner message showed about a concept; familiarity derives from them.
+    // Created once: the old familiarity evidence (asked, used, ignored and corrections) was test data and goes; met stays.
+    if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='observations'").get())
+      this.db.exec(`BEGIN IMMEDIATE;
+          CREATE TABLE observations (concept INTEGER NOT NULL REFERENCES concepts(id), message TEXT NOT NULL, level INTEGER NOT NULL CHECK(level BETWEEN 0 AND 5), confidence TEXT NOT NULL CHECK(confidence IN ('low','high')), at INTEGER NOT NULL, PRIMARY KEY(concept, message));
+          CREATE INDEX observations_message ON observations(message);
+          DELETE FROM evidence WHERE kind<>'met';
+          COMMIT;`);
     // Library ownership: ready videos outlive their source conversation; only title, description and timing are kept.
     // Created once, so existing ready videos migrate without generation and later library removals stay removed.
     if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='videos'").get()) {

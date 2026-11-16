@@ -1,6 +1,7 @@
-// Meeting a concept in a reply counts for little and stops at MET_CEILING: the learner may not have read it.
-const WEIGHTS = { met: 0.03, asked: 0.2, used: 0.3, ignored: 0.05 };
-const MET_CEILING = 0.12;
+import { familiarity } from '../familiarity.mjs';
+
+// Familiarity at or above this counts as known in the chat prompt's strong-evidence lists.
+const KNOWN = 0.6;
 // Bound on each strong-evidence list in the chat prompt.
 const STRONG_LIMIT = 12;
 // Whole-word, case-insensitive name match.
@@ -55,52 +56,38 @@ export const knowledge = {
       links: links.map((l) => ({ ...l })),
     };
   },
-  // Familiarity is derived, never stored: the latest correction outranks all inference; otherwise weighted evidence, capped at 1.
+  // Familiarity is derived from observations, never stored; "met" is counted for display and never moves it.
   familiarity(concept) {
-    const evidence = { met: 0, asked: 0, used: 0, ignored: 0 };
-    for (const r of this.db
-      .prepare(
-        "SELECT kind, COUNT(*) AS n FROM evidence WHERE concept=? AND kind IN ('met','asked','used','ignored') GROUP BY kind",
-      )
-      .all(concept))
-      evidence[r.kind] = r.n;
-    const correction =
-      this.db
-        .prepare(
-          "SELECT kind FROM evidence WHERE concept=? AND kind IN ('known','unknown') ORDER BY rowid DESC LIMIT 1",
-        )
-        .get(concept)?.kind ?? null;
-    const inferred = Math.min(
-      1,
-      Object.entries(evidence).reduce(
-        (sum, [kind, n]) =>
-          sum + (kind === 'met' ? Math.min(MET_CEILING, WEIGHTS.met * n) : WEIGHTS[kind] * n),
-        0,
-      ),
-    );
+    const observations = this.db
+      .prepare('SELECT level, confidence, at FROM observations WHERE concept=?')
+      .all(concept);
+    const counts = [0, 0, 0, 0, 0, 0];
+    for (const o of observations) counts[o.level]++;
     return {
-      familiarity: Math.round((correction ? +(correction === 'known') : inferred) * 100) / 100,
-      evidence,
-      correction,
+      familiarity: Math.round(familiarity(observations, Date.now()) * 100) / 100,
+      met: this.db
+        .prepare("SELECT COUNT(*) AS n FROM evidence WHERE concept=? AND kind='met'")
+        .get(concept).n,
+      observations: counts,
     };
   },
-  // The learning tree's concepts with strong evidence, newest first: the latest correction wins, otherwise the latest use (known) or ask (shaky). Met-only concepts never appear.
+  // The learning tree's observed concepts, latest observation first: "known" at KNOWN familiarity or above, otherwise "shaky".
   strongConcepts(conversation) {
     const rows = this.db
       .prepare(
         `WITH RECURSIVE up(id) AS (SELECT ? UNION SELECT parent FROM branches JOIN up ON child=up.id),
-        learning(id) AS (SELECT id FROM up WHERE id NOT IN (SELECT child FROM branches) UNION SELECT child FROM branches JOIN learning ON parent=learning.id),
-        here AS (SELECT DISTINCT concept FROM evidence WHERE source IN (SELECT id FROM learning UNION SELECT id FROM messages WHERE tree IN (SELECT id FROM learning))),
-        strong AS (SELECT e.concept, e.kind, e.rowid AS at, ROW_NUMBER() OVER (PARTITION BY e.concept ORDER BY e.kind IN ('known','unknown') DESC, e.rowid DESC) AS n FROM evidence e JOIN here USING(concept) WHERE e.kind IN ('known','unknown','used','asked'))
-        SELECT c.name, s.kind FROM strong s JOIN concepts c ON c.id=s.concept WHERE s.n=1 ORDER BY s.at DESC`,
+        learning(id) AS (SELECT id FROM up WHERE id NOT IN (SELECT child FROM branches) UNION SELECT child FROM branches JOIN learning ON parent=learning.id)
+        SELECT c.id, c.name, MAX(o.at) AS at FROM observations o JOIN concepts c ON c.id=o.concept
+        WHERE o.message IN (SELECT id FROM messages WHERE tree IN (SELECT id FROM learning)) GROUP BY c.id ORDER BY at DESC, c.name`,
       )
-      .all(conversation);
-    const pick = (kinds) =>
+      .all(conversation)
+      .map((r) => ({ name: r.name, known: this.familiarity(r.id).familiarity >= KNOWN }));
+    const pick = (known) =>
       rows
-        .filter((r) => kinds.includes(r.kind))
+        .filter((r) => r.known === known)
         .slice(0, STRONG_LIMIT)
         .map((r) => r.name);
-    return { known: pick(['known', 'used']), shaky: pick(['unknown', 'asked']) };
+    return { known: pick(true), shaky: pick(false) };
   },
   // Familiarity for concepts named in the given text: the relevant concepts sent to the suggestion call.
   // shortcut: whole-name mentions only, so a reworded concept is missed; upgrade with the embedding pre-filter (TreeTutor-5ut.11).
@@ -130,14 +117,30 @@ export const knowledge = {
       .prepare('INSERT OR IGNORE INTO evidence(concept,kind,source,at) VALUES (?,?,?,?)')
       .run(concept, kind, source, Date.now());
   },
-  // Repeated corrections are all kept and the latest wins.
-  correct(name, kind) {
-    const concept = this.concept(name)?.id;
-    if (concept)
-      this.db
-        .prepare('INSERT INTO evidence(concept,kind,source,at) VALUES (?,?,NULL,?)')
-        .run(concept, kind, Date.now());
-    return !!concept;
+  // One observation per concept per learner message; saving again (a retried reply) replaces that message's set.
+  // Names resolve like reply concepts; an unknown name becomes a new concept with no topic.
+  observe(message, verdicts) {
+    const at = Date.now();
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.db.prepare('DELETE FROM observations WHERE message=?').run(message);
+      for (const v of verdicts) {
+        let concept = this.concept(v.concept)?.id;
+        if (!concept)
+          concept = this.db
+            .prepare('INSERT INTO concepts(name) VALUES (?)')
+            .run(v.concept).lastInsertRowid;
+        this.db
+          .prepare(
+            'INSERT OR REPLACE INTO observations(concept,message,level,confidence,at) VALUES (?,?,?,?,?)',
+          )
+          .run(concept, message, v.level, v.confidence, at);
+      }
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
   },
   mergeConcepts(from, into) {
     const source = this.concept(from),
@@ -159,13 +162,20 @@ export const knowledge = {
         )
         .run(a, b, a, b, a, a, a, b, a, b);
       this.db.prepare('DELETE FROM concept_links WHERE concept=? OR target=?').run(a, a);
-      // Preserve row order for corrections; only events with the same source are duplicates.
+      // Only events with the same source are duplicates.
       this.db
         .prepare(
           'DELETE FROM evidence WHERE concept=? AND source IS NOT NULL AND EXISTS (SELECT 1 FROM evidence kept WHERE kept.concept=? AND kept.kind=evidence.kind AND kept.source=evidence.source)',
         )
         .run(a, b);
       this.db.prepare('UPDATE evidence SET concept=? WHERE concept=?').run(b, a);
+      // A learner message observed under both names keeps the kept concept's verdict.
+      this.db
+        .prepare(
+          'DELETE FROM observations WHERE concept=? AND message IN (SELECT message FROM observations WHERE concept=?)',
+        )
+        .run(a, b);
+      this.db.prepare('UPDATE observations SET concept=? WHERE concept=?').run(b, a);
       for (const row of this.db
         .prepare('SELECT message,passages FROM suggestions WHERE passages IS NOT NULL')
         .all()) {
@@ -190,53 +200,6 @@ export const knowledge = {
       this.db.exec('ROLLBACK');
       throw error;
     }
-  },
-  // A passage's concepts: the one the suggestion call tagged, plus concepts met in that reply whose name the passage contains.
-  passageConcepts(conversation, message, passage) {
-    const row = this.db
-      .prepare(
-        "SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'",
-      )
-      .get(conversation, message);
-    const tagged = JSON.parse(row?.passages ?? '[]').find(
-      (p) => p.start === passage.start && p.end === passage.end,
-    )?.concept;
-    const met = new Set(
-      this.db
-        .prepare("SELECT concept FROM evidence WHERE kind='met' AND source=?")
-        .all(message)
-        .map((e) => e.concept),
-    );
-    const ids = this.names()
-      .filter((c) => met.has(c.id) && mentions(passage.text, c.name))
-      .map((c) => c.id);
-    const own = tagged && this.concept(tagged)?.id;
-    return [...new Set(own ? [own, ...ids] : ids)];
-  },
-  // A saved question identifies each use so duplicate concepts can share one evidence event after a merge.
-  questionEvidence(conversation, text, message) {
-    for (const id of new Set(
-      this.names()
-        .filter((c) => mentions(text, c.name))
-        .map((c) => c.id),
-    ))
-      this.evidence(id, 'used', message);
-    const last = this.db
-      .prepare(
-        "SELECT id FROM messages WHERE tree=? AND role='assistant' ORDER BY seq DESC LIMIT 1",
-      )
-      .get(conversation)?.id;
-    const row =
-      last &&
-      this.db
-        .prepare(
-          "SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'",
-        )
-        .get(conversation, last);
-    for (const p of JSON.parse(row?.passages ?? '[]'))
-      if (!this.live(p.child))
-        for (const c of this.passageConcepts(conversation, last, p))
-          this.evidence(c, 'ignored', last);
   },
   // Names resolve case-insensitively to existing rows; a link needs both ends in the graph after this reply's concepts are added.
   // Every concept in the reply was met there; the message id makes it count once per reply.

@@ -55,27 +55,5 @@ test('knowledge loading, empty/error states and refresh ignore stale activity re
   });
   assert.equal(document.querySelector('dialog[open]'), null);
   assert.equal(document.activeElement, trigger);
-  await act(async () => button(container, 'I know this').click());
-  assert.equal(button(container, 'I know this').disabled, true);
-  assert.deepEqual(calls.at(-1), ['/api/graph/correct', { name: 'Mutex', kind: 'known' }]);
-  const corrected = {
-    ...initial(),
-    concepts: initial()
-      .concepts.slice(0, 2)
-      .map((c) => (c.name === 'Mutex' ? { ...c, correction: 'known' } : c)),
-    links: [],
-  };
-  await act(async () => loads[4].resolve(corrected));
-  assert.equal(button(container, 'I know this').getAttribute('aria-pressed'), 'true');
-  await act(async () => button(container, "I don't get this").click());
-  assert.deepEqual(calls.at(-1), ['/api/graph/correct', { name: 'Mutex', kind: 'unknown' }]);
-  await act(async () =>
-    loads[5].resolve({
-      ...corrected,
-      concepts: corrected.concepts.map((c) =>
-        c.name === 'Mutex' ? { ...c, correction: 'unknown' } : c,
-      ),
-    }),
-  );
-  assert.equal(button(container, "I don't get this").getAttribute('aria-pressed'), 'true');
+  assert.equal(button(container, 'I know this'), undefined, 'no correction controls');
 });

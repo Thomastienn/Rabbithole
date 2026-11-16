@@ -8,9 +8,9 @@ import { ui } from './ui.mjs';
 const concept = (name, topics = ['Concurrency']) => ({
   name,
   topics,
-  familiarity: 0,
-  correction: null,
-  evidence: { met: 2, asked: 1, used: 0, ignored: 3 },
+  familiarity: 0.3,
+  met: 2,
+  observations: [1, 0, 2, 1, 0, 0],
 });
 export const initial = () => ({
   topics: ['Concurrency', 'Operating systems'],

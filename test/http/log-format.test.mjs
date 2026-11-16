@@ -145,7 +145,6 @@ test('request paths retain route actions and UUIDs while masking arbitrary conte
     '/api/settings/endpoints/remove',
     '/api/profiles/active',
     `/api/profiles/${id}/duplicate`,
-    '/api/graph/correct',
     '/api/graph/merge',
     `/api/trees/${id}/artifacts/${id}/regenerate`,
     `/api/trees/${id}/artifacts/${id}/cancel`,

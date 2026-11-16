@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { branchRequest, branchConcept, prepareBranch, type Anchor } from './branch';
+import { branchRequest, prepareBranch, type Anchor } from './branch';
 import { visualPassage } from '../media/artifacts';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import type { Tree } from './types';
@@ -105,7 +105,6 @@ export function useBranchForm(
     setBranch({ parent, anchor, question: '' });
     setError('');
   }
-  const concept = branch && branchConcept(branch.anchor, tree?.suggestions);
   return {
     branching,
     closeBranch,
@@ -113,7 +112,6 @@ export function useBranchForm(
     visualBranches,
     openVisualPart,
     startBranch,
-    concept,
   };
 }
 

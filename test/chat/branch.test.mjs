@@ -1,11 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  passageAnchor,
-  branchRequest,
-  branchConcept,
-  prepareBranch,
-} from '../../src/chat/branch.ts';
+import { passageAnchor, branchRequest, prepareBranch } from '../../src/chat/branch.ts';
 
 test('passage anchors keep exact UTF-16 offsets, including repeated emoji and raw Markdown', () => {
   const message = { id: 'reply', text: 'repeat 😀 repeat 😀 **bold**' };
@@ -48,24 +43,6 @@ test('branch and preparation bodies omit popup coordinates, retain exact passage
       'request creation leaves UI state alone',
     );
   }
-});
-
-test('only the exact tagged suggestion supplies a correction concept; manual passages never guess', () => {
-  const anchor = { messageId: 'm', start: 2, end: 7, text: 'mutex', suggestion: true };
-  const suggestions = [
-    { message: 'other', passages: [{ start: 2, end: 7, concept: 'Wrong message' }] },
-    {
-      message: 'm',
-      passages: [
-        { start: 2, end: 6, concept: 'Wrong end' },
-        { start: 2, end: 7, concept: 'Mutual exclusion' },
-      ],
-    },
-  ];
-  assert.equal(branchConcept(anchor, suggestions), 'Mutual exclusion');
-  assert.equal(branchConcept({ ...anchor, suggestion: false }, suggestions), undefined);
-  assert.equal(branchConcept({ ...anchor, end: 9 }, suggestions), undefined);
-  assert.equal(branchConcept(anchor), undefined);
 });
 
 test('form preparation and cancellation use the same passage without a question and defer errors to submit', async () => {

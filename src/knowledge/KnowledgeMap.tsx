@@ -24,7 +24,7 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
   const [view, setView] = useState(zoomIdentity);
   const selected = graph?.concepts.find((c) => c.name === chosen) ?? graph?.concepts[0];
   const hasMap = !!(graph && selected);
-  // Corrections refetch the graph; only concepts, topic membership or links move points or refit the view.
+  // Familiarity refreshes leave points in place; only concepts, topic membership or links refit the view.
   const shape = graph ? graphShape(graph) : '';
   const { points: places, regions } = useMemo(
     () => (graph ? layoutConcepts(graph) : { points: [], regions: [] }),

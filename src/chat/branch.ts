@@ -1,6 +1,6 @@
 import type { Source } from '../map/TreeOverview.tsx';
 import type { Point } from '../map/canvas.ts';
-import type { Message, Suggestions } from './turn.ts';
+import type { Message } from './turn.ts';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
 export type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
@@ -25,14 +25,6 @@ export function passageAnchor(message: Pick<Message, 'id' | 'text'>, start: numb
 
 export function branchRequest({ at: _at, ...anchor }: Anchor, question?: string) {
   return { ...anchor, ...(question !== undefined && { question }) };
-}
-
-export function branchConcept(anchor: Anchor, suggestions?: Suggestions[]) {
-  return anchor.suggestion
-    ? suggestions
-        ?.find((s) => s.message === anchor.messageId)
-        ?.passages.find((p) => p.start === anchor.start && p.end === anchor.end)?.concept
-    : undefined;
 }
 
 export function prepareBranch(

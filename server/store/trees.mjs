@@ -249,9 +249,6 @@ export const trees = {
           .prepare('UPDATE suggestions SET passages=? WHERE conversation=? AND message=?')
           .run(JSON.stringify(passages), parent.id, anchor.messageId);
       }
-      // Any branch, suggested or highlighted, asks about the passage's concepts.
-      for (const c of this.passageConcepts(parent.id, anchor.messageId, anchor))
-        this.evidence(c, 'asked', child.id);
       this.db.exec('COMMIT');
       return this.tree(child.id);
     } catch (error) {

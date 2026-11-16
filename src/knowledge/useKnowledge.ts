@@ -43,24 +43,6 @@ export function useKnowledge({ api, activity }: { api: Api; activity: string }) 
       version.current++;
     };
   }, [activity]);
-  async function correct(name: string, kind: 'known' | 'unknown') {
-    version.current++;
-    setBusy(true);
-    setError('');
-    setStatus('');
-    try {
-      const data = await api('/api/graph/correct', { name, kind });
-      version.current++;
-      setGraph(data);
-      setStatus(
-        `${name}: ${kind === 'known' ? 'marked as known' : 'marked as not understood'}. Your correction overrides the estimate.`,
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
   function closeMerge() {
     if (busy) return;
     setMerge(undefined);
@@ -80,9 +62,7 @@ export function useKnowledge({ api, activity }: { api: Api; activity: string }) 
       setChosen(into);
       setGraph(data);
       setMerge(undefined);
-      setStatus(
-        `Merged ${merge} into ${into}. Topics, evidence and concept links combined; the latest correction takes precedence.`,
-      );
+      setStatus(`Merged ${merge} into ${into}. Topics, observations and concept links combined.`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -107,7 +87,6 @@ export function useKnowledge({ api, activity }: { api: Api; activity: string }) 
     setChosen,
     beginMerge,
     load,
-    correct,
     closeMerge,
     submitMerge,
   };

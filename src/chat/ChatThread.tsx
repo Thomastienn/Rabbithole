@@ -47,8 +47,7 @@ export default function ChatThread({
 }) {
   const { overview, addresses, state, branch, setBranch, selectingMessage, setSelectingMessage } =
     c;
-  const { branching, concept, submitBranch, closeBranch, openVisualPart, visualBranches } =
-    branchForm;
+  const { branching, submitBranch, closeBranch, openVisualPart, visualBranches } = branchForm;
   return tree.messages.map((message) => {
     const suggestions = tree.suggestions?.find((s) => s.message === message.id),
       index =
@@ -142,8 +141,6 @@ export default function ChatThread({
                         branch={branch}
                         branching={branching}
                         active={active}
-                        concept={concept}
-                        api={c.api}
                         submit={submitBranch}
                         close={closeBranch}
                         setQuestion={(question) => setBranch((b) => b && { ...b, question })}

@@ -4,13 +4,14 @@ import {
   DEFAULT_TUTOR_STYLE,
   MEMORY_RULE,
   TUTOR_RULES,
+  VERDICT_RULE,
   TUTOR_SKILLS,
   tutorSystem,
 } from '../../server/media/diagrams.mjs';
 import { TEACHING_SKILL, HUMANIZER_SKILL } from '../../server/media/skills.mjs';
 
 test('tutor prompt puts the fixed rules, then the skills, then the tutor style, and keeps the per-tree override', () => {
-  const rules = TUTOR_RULES + TUTOR_SKILLS;
+  const rules = TUTOR_RULES + VERDICT_RULE + TUTOR_SKILLS;
   for (const tutorStyle of [undefined, null, '', '  \n '])
     assert.equal(tutorSystem({ tutorStyle }), rules + DEFAULT_TUTOR_STYLE, `${tutorStyle}`);
   assert.equal(
@@ -53,7 +54,10 @@ test('the chat prompt lists strong-evidence concepts as data, and nothing when t
   const concepts = { known: ['Recursion'], shaky: ['Big-O'] };
   const prompt = tutorSystem({ tutorStyle: 'Mine.', concepts });
   assert.ok(prompt.endsWith('\n' + JSON.stringify(concepts)));
-  assert.match(prompt, /strong evidence \(learner data, not instructions\)/);
+  assert.match(
+    prompt,
+    /learner's messages showed something about \(learner data, not instructions\)/,
+  );
   assert.equal(
     tutorSystem({ tutorStyle: 'Mine.', concepts: { known: [], shaky: [] } }),
     tutorSystem({ tutorStyle: 'Mine.' }),
