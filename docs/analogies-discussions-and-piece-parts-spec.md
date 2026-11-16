@@ -150,7 +150,7 @@ A set piece may be built from parts. The piece writer chooses parts while drawin
 - The planner is unchanged: it names the video's set pieces, and the piece writer decides their parts. The library lookup that today runs for each named set piece also runs for candidate parts, with the same reuse, variant or new choice.
 - The video kit gains one helper that places many copies of a part. Copies vary only through the part's props (position, scale, palette role and state), seeded so frames stay stable. In 3D it draws copies with three.js instancing per mesh of the part, using the installed three.js only.
 - The piece library saves parts as library pieces of their own. A piece that uses parts records which library pieces it uses instead of copying them, and assembling a reused piece brings its parts along, scoped and with roles remapped as reused pieces are today.
-- One reuse choice covers a piece's 2D and 3D forms together, and the library saves both forms. This fixes today's behaviour of saving only 2D forms and always redrawing 3D forms.
+- One reuse choice covers a piece's 2D and 3D forms together, and the library saves both forms. Saving both forms is delivered by TreeTutor-t9g.2 (Set pieces keep their 3D form); parts build on it and save both forms of each part the same way.
 - When a cut audit flags a poor part, the existing piece improvement improves the part's library entry; every piece that uses it picks up the improvement in future videos. The current video keeps its pieces, and saved videos keep how they looked.
 - Within one video, the video's own set piece wins over a library part of the same name, so a reused library city uses the video's own person.
 - The piece library view is unchanged; a piece's code already shows which parts it uses.
@@ -179,6 +179,6 @@ A set piece may be built from parts. The piece writer chooses parts while drawin
 
 ## Further Notes
 
-- The 2D-only saving of library pieces contradicts ADR 0005 and the glossary; fixing it here brings the code back in line with both.
+- The 2D-only saving of library pieces contradicts ADR 0005 and the glossary; TreeTutor-t9g.2 fixes it, so the cut patch and set piece part work waits for it, which also avoids clashing edits in the same code.
 - Release order follows the existing roadmap: Claude by default plus Codex. Custom endpoints get the same behaviour, since nothing here depends on a provider's own tools.
 - The everyday-analogy guidance changes every learner's replies; its wording should be checked against a few real conversations, such as the semaphore one, before closing.
