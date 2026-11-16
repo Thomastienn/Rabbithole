@@ -13,11 +13,12 @@ import lockfile from 'proper-lockfile';
 import { createApp } from '../../server/app.mjs';
 import { tutorContext } from '../../server/media/diagrams.mjs';
 import { mediaPath, sandboxRender } from '../../server/media/videos.mjs';
+import { liveModel, liveProvider } from './lib/live-provider.mjs';
 
 process.umask(0o077);
 const dir = mkdtempSync(join(tmpdir(), 'tt-smart-video-live-')),
   path = join(dir, 'trees.sqlite');
-const name = process.argv[2] ?? 'claude';
+const name = process.argv[2] ?? liveProvider;
 assert.ok(['claude', 'codex'].includes(name), 'choose claude or codex explicitly; no fallback');
 let release;
 if (name === 'codex')
@@ -110,7 +111,7 @@ const serve = async () => {
 };
 try {
   let { get, post } = await serve();
-  const model = (await smart.models()).find((m) => m.isDefault)?.model;
+  const model = liveModel(name, await smart.models());
   report.model = model;
   assert.equal(
     (

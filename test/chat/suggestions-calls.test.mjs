@@ -4,6 +4,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SAVED, start, until } from '../support/suggestion-kit.mjs';
+import { TEST_PROVIDER } from '../support/test-provider.mjs';
 
 const strip = (s) =>
   s.map(({ message, status, passages, usage }) => ({
@@ -16,7 +17,7 @@ const strip = (s) =>
 test('phrase-only suggestions anchor in order, then anywhere, then across whitespace; overlaps, missing phrases and split surrogates drop', async (t) => {
   const env = await start(mkdtempSync(join(tmpdir(), 'tt-phrases-')));
   t.after(() => env.close());
-  for (const provider of ['claude', 'codex']) {
+  for (const provider of [TEST_PROVIDER]) {
     const tree = JSON.parse(await env.post('/api/trees'));
     await env.post(`/api/trees/${tree.id}/model`, {
       provider,

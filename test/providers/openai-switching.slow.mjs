@@ -10,8 +10,9 @@ import { Codex } from '../../server/providers/codex.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 import { compacted } from '../support/branch-first.mjs';
 import { open } from '../support/openai-kit.mjs';
+import { TEST_PROVIDER } from '../support/test-provider.mjs';
 
-for (const name of ['claude', 'codex'])
+for (const name of [TEST_PROVIDER])
   test(`custom endpoint compaction and nested switching to/from ${name} preserve history through real adapters with protocol fixtures`, async (t) => {
     const fake = await fakeOpenAI(t),
       dir = mkdtempSync(join(tmpdir(), 'tt-openai-native-')),

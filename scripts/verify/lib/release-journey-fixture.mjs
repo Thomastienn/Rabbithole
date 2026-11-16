@@ -7,9 +7,10 @@ import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { execFile, execFileSync, spawn } from 'node:child_process';
+import { liveProvider } from './live-provider.mjs';
 
 process.umask(0o077);
-const provider = process.argv.find((a) => a.startsWith('--provider='))?.slice(11) ?? 'claude';
+const provider = process.argv.find((a) => a.startsWith('--provider='))?.slice(11) ?? liveProvider;
 assert.ok(['claude', 'codex'].includes(provider), 'Choose --provider=claude or --provider=codex');
 const out =
   process.argv.slice(2).find((a) => !a.startsWith('--')) ??

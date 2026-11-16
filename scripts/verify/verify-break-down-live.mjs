@@ -1,6 +1,7 @@
 // Explicit native-provider check. Synthetic learning data; existing sign-ins stay in place.
 // Stop the app first so its ChatGPT refresh token is not used concurrently.
 // Usage: node scripts/verify/verify-break-down-live.mjs [out.json] [--codex-only|--claude-only]
+// Without a flag it checks RABBITHOLE_TEST_PROVIDER (default claude) only.
 // --claude-only needs no ChatGPT token, so RABBITHOLE_DATA_DIR may point at an empty dir while the app runs.
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -12,6 +13,7 @@ import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
+import { liveModel, liveProvider } from './lib/live-provider.mjs';
 
 process.umask(0o077);
 const dir = mkdtempSync(join(tmpdir(), 'tt-break-down-'));
@@ -35,7 +37,7 @@ const providers = process.argv.includes('--codex-only')
   ? ['codex']
   : process.argv.includes('--claude-only')
     ? ['claude']
-    : ['claude', 'codex'];
+    : [liveProvider];
 const check = (name, pass, detail) => {
   checks.push({ name, pass: !!pass, ...(detail !== undefined && { detail }) });
   console.error(`${pass ? 'ok' : 'FAIL'} - ${name}`);
@@ -129,10 +131,10 @@ try {
   for (const provider of providers) {
     const result = (report.providers[provider] = {});
     try {
-      const model =
-        provider === 'claude'
-          ? 'haiku'
-          : catalog.models?.find((m) => m.provider === provider && m.isDefault)?.model;
+      const model = liveModel(
+        provider,
+        (catalog.models ?? []).filter((m) => m.provider === provider),
+      );
       assert.ok(model, `${provider} model available`);
       result.tutorModel = model;
       const root = await (await post('/api/trees', {})).json();

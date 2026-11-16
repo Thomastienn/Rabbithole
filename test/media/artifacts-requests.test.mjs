@@ -9,6 +9,7 @@ import { Store } from '../../server/store.mjs';
 import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { task, directive, source, complete, open, invalidSyntax } from '../support/diagram-kit.mjs';
+import { TEST_PROVIDER } from '../support/test-provider.mjs';
 
 test('diagram request saves an owned artifact and keeps directive, worker prompt and source out of tutor history', async () => {
   const calls = [];
@@ -111,7 +112,7 @@ test('diagram request saves an owned artifact and keeps directive, worker prompt
   }
 });
 
-for (const name of ['claude', 'codex'])
+for (const name of [TEST_PROVIDER])
   test(`${name} adapter generates diagrams in a fresh native session and imports only artifact metadata on continuation`, async () => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-media-adapter-'));
     const calls = [];

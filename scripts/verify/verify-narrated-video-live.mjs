@@ -15,11 +15,12 @@ import { createApp } from '../../server/app.mjs';
 import { tutorContext } from '../../server/media/diagrams.mjs';
 import { mediaPath, sandboxRender } from '../../server/media/videos.mjs';
 import { edgeNarration } from '../../server/media/narration.mjs';
+import { liveModel, liveProvider } from './lib/live-provider.mjs';
 
 process.umask(0o077);
 const dir = mkdtempSync(join(tmpdir(), 'tt-narrated-video-live-')),
   path = join(dir, 'trees.sqlite');
-const name = process.argv[2] ?? 'claude',
+const name = process.argv[2] ?? liveProvider,
   mode = process.argv[3] ?? '2d';
 assert.ok(['2d', 'spatial', 'ordinary'].includes(mode));
 assert.ok(['claude', 'codex'].includes(name), 'choose claude or codex explicitly; no fallback');
@@ -144,7 +145,7 @@ const serve = async () => {
 };
 try {
   let { get, post } = await serve();
-  const model = (await smart.models()).find((m) => m.isDefault)?.model;
+  const model = liveModel(name, await smart.models());
   report.model = model;
   assert.equal(
     (

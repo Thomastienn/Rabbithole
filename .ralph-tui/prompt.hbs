@@ -35,7 +35,10 @@ Prerequisites: {{dependsOn}}
   then integration tests; add or change tests at the cheapest level that
   proves the acceptance. While working, run only the test files covering the
   change (`node --test test/<file or folder>`); run `npm test` once at the
-  end. Run a browser verify script or `npm run verify` only when the
+  end, and `npm run test:slow` only when the change touches the areas
+  testing.md lists. Test shared provider behaviour on one provider; if a
+  live script hits a usage limit, rerun it with the other provider
+  (`RABBITHOLE_TEST_PROVIDER`). Run a browser verify script or `npm run verify` only when the
   acceptance criteria name it, in the background, reading only the final
   summary. Run `npm run test:render` only when the change touches video
   rendering. Restore

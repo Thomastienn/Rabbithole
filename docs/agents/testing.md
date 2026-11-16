@@ -38,7 +38,40 @@ Test files live in folders by area: `test/http`, `test/store`, `test/providers`,
 `test/media`, `test/chat`, `test/map`, `test/usage`, `test/shell` and `test/scripts`. Shared
 helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mjs`,
 `video-kit.mjs`, `diagram-kit.mjs` and the other `*-kit.mjs` setup files) live in `test/support/`; data files live in
-`test/fixtures/`. `npm test` runs `test/**/*.test.mjs`.
+`test/fixtures/`. `npm test` runs `test/**/*.test.mjs` on 15 workers.
+
+## Tiers
+
+- **Fast (`npm test`).** Unit, component and in-process integration tests, in
+  `test/**/*.test.mjs`.
+- **Slow (`npm run test:slow`).** Tests that start real provider adapters, server or launcher
+  subprocesses, in `test/**/*.slow.mjs`. Put a new test of that kind in a `.slow.mjs` file.
+  Run `npm run test:slow` at the end of a ticket only when it changed `server/providers/`,
+  `server/http/`, `scripts/start*` or `scripts/build-state.mjs`.
+
+## One provider
+
+Behaviour shared by the Claude and Codex adapters is tested on one of them. Loop over
+`[TEST_PROVIDER]` from `test/support/test-provider.mjs` (default `claude`), not over
+`['claude', 'codex']`. Set `RABBITHOLE_TEST_PROVIDER=codex` to run them on Codex. Test a
+provider by name only for behaviour that belongs to that adapter.
+
+Live scripts that take a provider read `RABBITHOLE_TEST_PROVIDER` too. They use the
+provider's cheapest model, or `RABBITHOLE_TEST_MODEL` when it is set
+(`scripts/verify/lib/live-provider.mjs`). If a live script fails on a usage limit, rerun it
+with the other provider. `verify-diagram-live` (Claude), `verify-branch-streaming-live`
+(Codex), `verify-media-nested-live` and `verify-provider-continuity-live` (both) keep fixed
+providers.
+
+## Writing a test
+
+- Search for an existing test of the behaviour first. Extend it instead of adding a near
+  copy.
+- Test the plain function. Use HTTP, a subprocess or a real adapter only when the boundary
+  itself is the behaviour.
+- Run shared behaviour on one provider (see above).
+- Assert what the code does for the learner or caller, not how it is built.
+- Put tests that start real adapters or subprocesses in `test:slow`.
 
 ## Commands
 

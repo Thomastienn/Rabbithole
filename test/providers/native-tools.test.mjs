@@ -11,6 +11,7 @@ import { fixtureLaunch } from '../support/fixture-launch.mjs';
 import { codexMcp } from '../support/tool-protocol.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
+import { TEST_PROVIDER } from '../support/test-provider.mjs';
 
 const definitions = await toolRunner().tools({ provider: 'codex', capable: true });
 const auth = { token: async () => 'synthetic-token', status: () => ({ connected: true }) };
@@ -32,7 +33,7 @@ const configFor = (call) =>
     ? codexMcp(call.args)
     : JSON.parse(call.args[call.args.indexOf('--mcp-config') + 1]).mcpServers.rabbithole;
 
-for (const provider of ['claude', 'codex']) {
+for (const provider of [TEST_PROVIDER]) {
   test(`${provider} revokes its token when CLI startup fails`, async (t) => {
     const mcp = toolMcp();
     t.after(() => mcp.close());
@@ -163,7 +164,7 @@ test('concurrent Codex tool turns get separate subprocesses and runners', async 
     );
 });
 
-for (const provider of ['claude', 'codex'])
+for (const provider of [TEST_PROVIDER])
   test(`${provider} tools: CLI config, native events, runner results, token rotation and tools-off arguments`, async (t) => {
     const launches = [],
       dir = mkdtempSync(join(tmpdir(), 'tt-native-tools-'));
@@ -305,7 +306,7 @@ for (const provider of ['claude', 'codex'])
     );
   });
 
-for (const provider of ['claude', 'codex'])
+for (const provider of [TEST_PROVIDER])
   test(`${provider} tool events reach the reply stream and persisted activity`, async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-native-reply-')),
       launches = [],

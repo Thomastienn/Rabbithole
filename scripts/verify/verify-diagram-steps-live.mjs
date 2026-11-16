@@ -1,6 +1,6 @@
 // Live real-example check: a complex question through a signed-in native provider should yield small diagram steps.
 // Records generated sources and screenshots in both appearances for a human readability review; syntax validity alone proves nothing about comprehension.
-// Usage: TT_PROVIDER=claude|codex node scripts/verify/verify-diagram-steps-live.mjs [out.json] (needs a production build and agent-browser)
+// Usage: RABBITHOLE_TEST_PROVIDER=claude|codex [RABBITHOLE_TEST_MODEL=<model>] node scripts/verify/verify-diagram-steps-live.mjs [out.json] (needs a production build and agent-browser)
 import { verifyOut } from './lib/output.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
@@ -13,13 +13,12 @@ import { Codex } from '../../server/providers/codex.mjs';
 import { Auth } from '../../server/providers/auth.mjs';
 import lockfile from 'proper-lockfile';
 import { createApp } from '../../server/app.mjs';
+import { liveModel, liveProvider } from './lib/live-provider.mjs';
 
 // TT_DIR reuses an earlier run's store to redo only the screenshots, with no new inference.
 const dir = process.env.TT_DIR ?? mkdtempSync(join(tmpdir(), 'tt-diagram-steps-live-'));
 const store = new Store(join(dir, 'trees.sqlite'));
-const providerName = process.env.TT_PROVIDER ?? 'claude';
-if (!['claude', 'codex'].includes(providerName))
-  throw new Error('Choose claude or codex with TT_PROVIDER.');
+const providerName = liveProvider;
 let releaseAuth,
   auth = { status: () => ({ connected: false }) };
 if (providerName === 'codex') {
@@ -61,9 +60,9 @@ const { csrf } = await (await fetch(origin + '/api/state')).json();
 const reused = process.env.TT_DIR && store.list()[0];
 const tree = reused || store.create('A raindrop takes a round trip', providerName);
 const model =
-  process.env.TT_MODEL ??
+  process.env.RABBITHOLE_TEST_MODEL ??
   store.tree(tree.id).model ??
-  (providerName === 'claude' ? 'sonnet' : await provider.model(tree));
+  liveModel(providerName, await provider.models());
 if (!reused) store.model(tree.id, model);
 const started = Date.now();
 const stream = reused

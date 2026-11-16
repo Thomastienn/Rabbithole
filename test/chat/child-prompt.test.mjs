@@ -12,11 +12,12 @@ import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI } from '../support/fake-openai.mjs';
 import { compacted } from '../support/branch-first.mjs';
+import { TEST_PROVIDER } from '../support/test-provider.mjs';
 
 const ANCHOR =
   /first message asks about the selected passage; "this", "it" and "that" refer to the passage unless the learner says otherwise\. Explain the passage even if the inherited context says it was skipped/;
 
-for (const name of ['claude', 'codex', 'openai'])
+for (const name of [TEST_PROVIDER, 'openai'])
   test(`${name}: a child's first turn is anchored to its passage; the root is not`, async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-child-prompt-')),
       store = new Store(join(dir, 'trees.sqlite')),

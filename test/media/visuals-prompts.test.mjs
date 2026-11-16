@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { themeChoices } from '../../src/shell/appearance.ts';
 import { task, block, source, complete, deferred, until, open } from '../support/visual-kit.mjs';
+import { TEST_PROVIDER } from '../support/test-provider.mjs';
 
 test('visual prompts receive the requested theme palette in light and dark, with a safe legacy fallback', async () => {
   const calls = [];
@@ -170,7 +171,7 @@ test('predict-then-reveal uses the ordinary inline worker, persists without repl
   }
 });
 
-for (const name of ['claude', 'codex'])
+for (const name of [TEST_PROVIDER])
   test(`${name} visual workers retain the native no-tool boundary, fresh session and selected effort`, async () => {
     const launches = [],
       dir = mkdtempSync(join(tmpdir(), 'tt-visual-adapter-'));
