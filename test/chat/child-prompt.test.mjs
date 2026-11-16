@@ -83,7 +83,7 @@ for (const name of ['claude', 'codex', 'openai'])
               .flatMap((c) => c.input)
               .filter((r) => r.method === 'thread/start' || r.method === 'thread/resume')
               .map((r) => r.params.baseInstructions);
-    const tutor = () => prompts().filter((p) => p.startsWith('You are TreeTutor'));
+    const tutor = () => prompts().filter((p) => p.includes('You are TreeTutor'));
 
     const root = store.create('Root', name);
     store.model(root.id, { claude: 'sonnet', codex: 'fixture-model', openai: 'local-tutor' }[name]);

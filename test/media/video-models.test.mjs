@@ -12,6 +12,11 @@ import {
   fakeRender,
 } from '../support/video-kit.mjs';
 import { AUDIT_INSTRUCTIONS, REPAIR_NOTE, FIX_NOTE } from '../../server/media/video-cut.mjs';
+import {
+  TEACHING_SKILL,
+  HUMANIZER_SKILL,
+  MANIM_TEACHING_SKILL,
+} from '../../server/media/skills.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top.';
 const pieces = `import { colors, palette } from './kit';
@@ -38,7 +43,8 @@ const stageOf = (instructions) =>
             : 'cut';
 
 test('a video freezes smart and chat selections: smart plans and audits, chat writes pieces, cuts, repairs and fixes; Retry keeps both; legacy jobs use one for both; usage follows each call', async (t) => {
-  const calls = [];
+  const calls = [],
+    skills = {};
   let renderFails = Infinity,
     audits = 0;
   const env = await open(
@@ -52,6 +58,9 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
         if (tree.id) return complete(emit, 'Watch.' + directive);
         const stage = stageOf(tree.instructions);
         calls.push([stage, tree.model, tree.effort]);
+        skills[stage] = [TEACHING_SKILL, HUMANIZER_SKILL, MANIM_TEACHING_SKILL].map((skill) =>
+          tree.instructions.includes(skill),
+        );
         if (stage === 'plan') return complete(emit, JSON.stringify(plan));
         if (stage === 'pieces') return complete(emit, pieces);
         // The first audit flags its cut, so one fix runs; later audits pass.
@@ -105,6 +114,9 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
     fix: 'chat-model/low',
   });
   assert.ok(calls.filter(([s]) => s === 'repair').length >= 1);
+  // The planner writes the narration, so only it gets the teaching and humanizer skills (Manim notes scoped to Manim cuts).
+  for (const [stage, present] of Object.entries(skills))
+    assert.deepEqual(present, Array(3).fill(stage === 'plan'), stage);
 
   // Usage history attributes each call to its own model.
   const usage = () =>

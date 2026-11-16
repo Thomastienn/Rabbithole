@@ -4,17 +4,25 @@ import {
   DEFAULT_TUTOR_STYLE,
   MEMORY_RULE,
   TUTOR_RULES,
+  TUTOR_SKILLS,
   tutorSystem,
 } from '../../server/media/diagrams.mjs';
+import { TEACHING_SKILL, HUMANIZER_SKILL } from '../../server/media/skills.mjs';
 
-test('tutor prompt puts the tutor style first, always keeps the fixed rules and keeps the per-tree override', () => {
-  const rules = '\n\n' + TUTOR_RULES;
+test('tutor prompt puts the fixed rules, then the skills, then the tutor style, and keeps the per-tree override', () => {
+  const rules = TUTOR_RULES + TUTOR_SKILLS;
   for (const tutorStyle of [undefined, null, '', '  \n '])
-    assert.equal(tutorSystem({ tutorStyle }), DEFAULT_TUTOR_STYLE + rules, `${tutorStyle}`);
+    assert.equal(tutorSystem({ tutorStyle }), rules + DEFAULT_TUTOR_STYLE, `${tutorStyle}`);
   assert.equal(
     tutorSystem({ tutorStyle: '  Teach with sports analogies. ' }),
-    'Teach with sports analogies.' + rules,
+    rules + 'Teach with sports analogies.',
   );
+  const prompt = tutorSystem({ tutorStyle: 'Mine.' });
+  const at = [TEACHING_SKILL, HUMANIZER_SKILL, 'Mine.'].map((part) => prompt.indexOf(part));
+  assert.ok(at[0] > TUTOR_RULES.length && at[0] < at[1] && at[1] < at[2], `${at}`);
+  assert.match(TEACHING_SKILL, /asks for an explanation or an answer, give it directly/);
+  assert.match(TEACHING_SKILL, /facts, your own inferences and what is unknown/);
+  assert.equal(HUMANIZER_SKILL.match(/^\d+\. /gm).length, 26);
   for (const rule of [
     /Answer the question fully first; never hold an answer back behind questions/,
     /Teach at the learner's level/,
@@ -36,7 +44,7 @@ test('tutor prompt puts the tutor style first, always keeps the fixed rules and 
   );
   const branch = { snapshot: 'Frozen fact', text: 'Passage' };
   const child = tutorSystem({ tutorStyle: 'Mine.', branch });
-  assert.ok(child.startsWith('Mine.' + rules + '\nThis is a focused conversation'));
+  assert.ok(child.startsWith(rules + 'Mine.\nThis is a focused conversation'));
   assert.ok(child.includes('Frozen fact'));
   assert.equal(tutorSystem({ tutorStyle: 'Mine.', instructions: 'Worker only.' }), 'Worker only.');
 });

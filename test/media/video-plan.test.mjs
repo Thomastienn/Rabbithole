@@ -8,6 +8,12 @@ import {
   PLAN_INSTRUCTIONS,
 } from '../../server/media/video-plan.mjs';
 import { planFor, composition, spatial, styleBrief } from '../support/video-kit.mjs';
+import { MANIM_TEACHING_SKILL } from '../../server/media/skills.mjs';
+
+test('the planner carries Manim teaching notes scoped to Manim cuts only', () => {
+  assert.ok(PLAN_INSTRUCTIONS.endsWith(MANIM_TEACHING_SKILL));
+  assert.match(MANIM_TEACHING_SKILL, /^Manim teaching notes[^\n]*engine "manim"[^\n]*ignore them when the plan has none/);
+});
 
 test('compact plan validates the brief and ordered cuts, including the Manim engine', () => {
   const good = planFor(composition, 3);
