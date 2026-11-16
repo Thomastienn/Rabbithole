@@ -78,7 +78,9 @@ export const knowledge = {
         `WITH RECURSIVE up(id) AS (SELECT ? UNION SELECT parent FROM branches JOIN up ON child=up.id),
         learning(id) AS (SELECT id FROM up WHERE id NOT IN (SELECT child FROM branches) UNION SELECT child FROM branches JOIN learning ON parent=learning.id)
         SELECT c.id, c.name, MAX(o.at) AS at FROM observations o JOIN concepts c ON c.id=o.concept
-        WHERE o.message IN (SELECT id FROM messages WHERE tree IN (SELECT id FROM learning)) GROUP BY c.id ORDER BY at DESC, c.name`,
+        WHERE o.message IN (SELECT id FROM messages WHERE tree IN (SELECT id FROM learning)
+          UNION ALL SELECT json_extract(line.value,'$.id') FROM artifacts a, json_each(CASE WHEN a.kind='discussion' AND a.status='ready' THEN a.source END,'$.lines') line
+          WHERE a.kind='discussion' AND a.status='ready' AND a.conversation IN (SELECT id FROM learning) AND json_extract(line.value,'$.speaker')='Learner') GROUP BY c.id ORDER BY at DESC, c.name`,
       )
       .all(conversation)
       .map((r) => ({ name: r.name, known: this.familiarity(r.id).familiarity >= KNOWN }));

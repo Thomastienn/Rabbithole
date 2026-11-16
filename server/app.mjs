@@ -14,6 +14,8 @@ import { desktop as systemDesktop } from './desktop.mjs';
 import { secure } from './http/security.mjs';
 import { roles } from './http/roles.mjs';
 import { compactionJobs } from './http/jobs/compaction.mjs';
+import { discussionJobs } from './http/jobs/discussions.mjs';
+import { discussionRoutes } from './http/routes/discussions.mjs';
 import { mediaJobs, recoverStaged, STOPPED } from './http/jobs/media.mjs';
 import { suggestionJobs } from './http/jobs/suggestions.mjs';
 import { titleJobs } from './http/jobs/title.mjs';
@@ -36,6 +38,7 @@ const ROUTES = [
   knowledgeRoutes,
   mediaRoutes,
   authRoutes,
+  discussionRoutes,
   treeRoutes,
   assetRoutes,
 ];
@@ -98,6 +101,7 @@ export function createApp({
     stopping: false,
     csrf: randomBytes(32).toString('hex'),
     active: new Map(),
+    discussing: new Map(),
     videos: new Map(),
     videoJobs: new Set(),
     // Branch-first: child id -> background compaction { controller, done, settled, error }; kept after failure, removed on success.
@@ -115,7 +119,14 @@ export function createApp({
   };
   Object.assign(ctx, roles(ctx));
   ctx.syncEndpoints();
-  Object.assign(ctx, compactionJobs(ctx), mediaJobs(ctx), suggestionJobs(ctx), titleJobs(ctx));
+  Object.assign(
+    ctx,
+    compactionJobs(ctx),
+    discussionJobs(ctx),
+    mediaJobs(ctx),
+    suggestionJobs(ctx),
+    titleJobs(ctx),
+  );
   const { active, videoJobs, suggesting, titling, compactions, prepared, json } = ctx;
   let stopped;
   recoverStaged(store, dir);
@@ -214,7 +225,13 @@ export function createApp({
     // Await the existing background jobs without polling their persisted state.
     settled: (artifact) =>
       Promise.allSettled(
-        [...videoJobs, ...suggesting.values(), ...titling.values(), ...compactions.values()]
+        [
+          ...videoJobs,
+          ...suggesting.values(),
+          ...titling.values(),
+          ...compactions.values(),
+          ...ctx.discussing.values(),
+        ]
           .filter((v) => !artifact || v.artifact === artifact)
           .map((v) => v.done),
       ),
@@ -222,6 +239,7 @@ export function createApp({
       if (stopped) return stopped;
       ctx.stopping = true;
       for (const controller of active.values()) controller.abort();
+      for (const job of ctx.discussing.values()) job.controller.abort();
       for (const v of videoJobs) v.controller.abort(STOPPED);
       for (const s of suggesting.values()) s.controller.abort();
       for (const t of titling.values()) t.controller.abort();
@@ -242,6 +260,8 @@ export function createApp({
           ctx.mcp.close(),
           recognize.stop?.(),
           ...[...videoJobs].map((v) => v.done),
+          ...[...ctx.discussing.values()].map((v) => v.done),
+          ...[...compactions.values()].map((v) => v.done),
         ]).then(() => {
           clearTimeout(timer);
           resolve();

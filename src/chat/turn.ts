@@ -238,6 +238,10 @@ export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
   if (event.type === 'artifact' && turn.reply)
     turn.artifacts = mergeArtifact(turn.artifacts ?? [], event.artifact, conversation, [
       turn.reply,
+      // Main-thread sends also close discussion cards attached to earlier replies.
+      ...(event.artifact.kind === 'discussion'
+        ? [{ id: event.artifact.message, role: 'assistant' }]
+        : []),
     ]);
   return ['saved', 'status', 'text', 'done', 'artifact', 'tool'].includes(event.type);
 }

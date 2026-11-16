@@ -33,6 +33,7 @@ export type State = {
   auth: { connected: boolean; email: string | null };
   trees: Summary[];
   active: string[];
+  discussing?: string[];
   videos: string[];
   suggesting?: string[];
   titling?: string[];

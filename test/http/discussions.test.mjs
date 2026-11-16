@@ -129,3 +129,28 @@ test('a provider failure finishes a pending discussion and retry replaces it wit
     'classmate and Tutor lines create no familiarity evidence',
   );
 });
+
+test('retrying a failed main reply cannot discard learner messages inside its discussion', async (t) => {
+  const env = await open(
+    {
+      generate: async () => {
+        throw new Error('should not call');
+      },
+    },
+    { log: () => {} },
+  );
+  t.after(env.close);
+  const { id } = await (await env.post('/api/trees')).json();
+  env.store.message(id, 'user', 'Discuss.', 'completed');
+  const reply = env.store.message(id, 'assistant', 'Partial reply.', 'failed');
+  const artifact = env.store.pendingArtifact(id, reply, 'Discussion', '', 'discussion');
+  env.store.finishArtifact(id, artifact.id, JSON.stringify(discussion));
+  const saved = env.store.replyDiscussion(id, artifact.id, 'My contribution.');
+  const turn = JSON.parse(saved.source).turn;
+  env.store.updateDiscussion(id, artifact.id, turn.id, [], 'failed', 'Fixture failure');
+  const response = await env.post(`/api/trees/${id}/retry`);
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /Send a new question/);
+  assert.equal(env.store.discussion(id, artifact.id).lines.at(-1).text, 'My contribution.');
+  assert.equal(env.store.tree(id).messages.at(-1).id, reply);
+});

@@ -325,5 +325,8 @@ export const schema = {
       UPDATE suggestions SET status='failed' WHERE status='pending';
       UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when Rabbithole stopped.' WHERE status='pending' AND kind='video';
       UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'discussion' THEN 'Discussion' WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when Rabbithole stopped.' WHERE status='pending';`);
+    this.db.exec(
+      `UPDATE artifacts SET source=json_set(source,'$.turn.status','failed'),error='The discussion was interrupted when Rabbithole stopped.' WHERE kind='discussion' AND status='ready' AND json_extract(source,'$.turn.status')='streaming';`,
+    );
   },
 };

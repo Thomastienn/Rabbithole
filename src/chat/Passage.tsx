@@ -10,7 +10,7 @@ import type { conversationAddresses } from '../map/treeList';
 import { underlineRanges, type Message, type Suggestions } from './turn';
 import { passageAnchor, type Anchor } from './branch';
 import { rawOffsets, rawRange } from '../markdown/markdown';
-import type { Artifact } from '../media/artifacts';
+import type { Artifact, DiscussionReply } from '../media/artifacts';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import Reply from './Reply';
 import type { Resource } from './types';
@@ -32,6 +32,7 @@ export default function Passage({
   inlineArtifacts,
   resources,
   onArtifactAction,
+  onDiscussionReply,
   onVisualPart,
   visualBranches,
 }: {
@@ -43,6 +44,7 @@ export default function Passage({
   onVisualPart?: PartAction;
   visualBranches?: Record<string, VisualBranch[]>;
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
+  onDiscussionReply?: DiscussionReply;
   suggestions?: Suggestions;
   branched: { start: number; end: number; text: string; child: string }[];
   onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void;
@@ -266,6 +268,7 @@ export default function Passage({
           underlines={underlines}
           inlineArtifacts={inlineArtifacts}
           onArtifactAction={onArtifactAction}
+          onDiscussionReply={onDiscussionReply}
           onVisualPart={onVisualPart}
           visualBranches={visualBranches}
           onOpenChild={onOpenChild}

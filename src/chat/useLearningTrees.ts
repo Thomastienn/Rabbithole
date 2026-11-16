@@ -47,6 +47,7 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
   // Running video jobs and suggestion calls poll like replies until they settle.
   const activeKey = [
     ...(state?.active ?? []),
+    ...(state?.discussing ?? []),
     ...(state?.videos ?? []),
     ...(state?.suggesting ?? []),
     ...(state?.titling ?? []),

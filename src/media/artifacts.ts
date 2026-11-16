@@ -15,7 +15,12 @@ export type Artifact = ArtifactSummary & {
   kind: 'mermaid' | 'video' | 'visual' | 'discussion';
   description: string;
   source?: string | null;
-  discussion?: { classmates: string[]; lines: { speaker: string; text: string }[] };
+  discussion?: {
+    classmates: string[];
+    lines: { speaker: string; text: string }[];
+    closed?: true;
+    turn?: { start: number; status: 'streaming' | 'completed' | 'failed' };
+  };
   error: string | null;
   created: number;
   position?: number | null;
@@ -36,6 +41,7 @@ export type Artifact = ArtifactSummary & {
   startedAt?: number;
   phaseStartedAt?: number;
 };
+export type DiscussionReply = (artifact: Artifact, text: string) => Promise<void>;
 export type DiagramState =
   { status: 'pending' } | { status: 'ready'; url: string } | { status: 'failed' };
 
@@ -92,6 +98,9 @@ export function mergeArtifact(
   )
     return artifacts;
   const index = artifacts.findIndex((a) => a.id === incoming.id);
+  // Separate reply streams can arrive out of order; closing a discussion is permanent.
+  if (index >= 0 && artifacts[index].discussion?.closed && !incoming.discussion?.closed)
+    return artifacts;
   return index < 0
     ? [...artifacts, incoming]
     : artifacts.map((a, i) => (i === index ? incoming : a));

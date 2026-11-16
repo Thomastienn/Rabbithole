@@ -28,13 +28,15 @@ const tree = {
 async function mount(
   t,
   trees,
-  { mobile = false, contents = 'open', focus = 'off', vim = false, artifacts = [] } = {},
+  { mobile = false, contents = 'open', focus = 'off', vim = false, artifacts = [], respond } = {},
 ) {
   const calls = [];
   const scrolls = [];
   const saved = globalThis.fetch;
-  globalThis.fetch = async (path) => {
+  globalThis.fetch = async (path, options) => {
     calls.push(path);
+    const response = await respond?.(path, options);
+    if (response) return response;
     const body =
       path === '/api/state'
         ? { csrf: 'c', auth: { connected: true, email: null }, trees, active: [], videos: [] }
@@ -88,6 +90,113 @@ const summary = {
   parent: null,
   layout: { folded: [], selected: 't1', panel: 'beside' },
 };
+
+test('inline discussion replies reach their card endpoint and main-thread closing removes the reply box live', async (t) => {
+  let artifact = {
+    id: 'd',
+    conversation: 't1',
+    message: 'a1',
+    kind: 'discussion',
+    status: 'ready',
+    title: 'Discussion',
+    description: '',
+    position: 7,
+    discussion: publicDiscussion,
+    error: null,
+  };
+  let stream, mainStream, request;
+  const wire = (event) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
+  const { container, act } = await mount(t, [summary], {
+    artifacts: [artifact],
+    respond: (path, options) => {
+      if (path === '/api/trees/t1')
+        return { ok: true, json: async () => ({ ...tree, artifacts: [artifact] }) };
+      if (path === '/api/trees/t1/discussions/d/replies') {
+        request = options;
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              stream = controller;
+            },
+          }),
+        );
+      }
+      if (path === '/api/trees/t1/messages') {
+        artifact = { ...artifact, discussion: { ...artifact.discussion, closed: true } };
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              mainStream = controller;
+              controller.enqueue(
+                wire({
+                  type: 'saved',
+                  id: 'a2',
+                  title: 'Fungi',
+                  user: { id: 'q2', role: 'user', text: 'Continue', status: 'completed' },
+                }),
+              );
+              controller.enqueue(wire({ type: 'artifact', artifact }));
+            },
+          }),
+        );
+      }
+    },
+  });
+  const card = () => container.querySelector('.discussion-card');
+  const reply = card().querySelector('[role=textbox]');
+  await act(async () => {
+    reply.textContent = 'Theo, both benefit.';
+    reply.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => button(card(), 'Send to the discussion').click());
+  assert.equal(request.headers['X-Rabbithole-CSRF'], 'c');
+  assert.deepEqual(JSON.parse(request.body), { text: 'Theo, both benefit.' });
+  artifact = {
+    ...artifact,
+    discussion: {
+      ...publicDiscussion,
+      lines: [...publicDiscussion.lines, { speaker: 'Learner', text: 'Theo, both benefit.' }],
+      turn: { start: 5, status: 'streaming' },
+    },
+  };
+  await act(async () => stream.enqueue(wire({ type: 'artifact', artifact })));
+  assert.equal(card().querySelectorAll('[data-speaker=learner]').length, 1);
+  artifact = {
+    ...artifact,
+    discussion: {
+      ...artifact.discussion,
+      lines: [...artifact.discussion.lines, { speaker: 'Theo', text: 'That makes sense.' }],
+      turn: { start: 5, status: 'completed' },
+    },
+  };
+  await act(async () => {
+    stream.enqueue(wire({ type: 'artifact', artifact }));
+    stream.close();
+  });
+  assert.ok(card().textContent.includes('That makes sense.'));
+  assert.equal(container.querySelectorAll('[data-chat-message]').length, 2);
+  const mainInput = [...container.querySelectorAll('#focused-chat [role=textbox]')].find(
+    (e) => !e.closest('.discussion-card'),
+  );
+  await act(async () => {
+    mainInput.textContent = 'Continue';
+    mainInput.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () =>
+    mainInput.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    ),
+  );
+  assert.ok(card().getAttribute('aria-label').endsWith(', closed'));
+  assert.ok(
+    !card().querySelector('[role=textbox]'),
+    'closed state arrives before the main stream ends',
+  );
+  await act(async () => {
+    mainStream.enqueue(wire({ type: 'done', status: 'completed' }));
+    mainStream.close();
+  });
+});
 
 test('with no saved trees the page shows the first-question composer and its model menu', async (t) => {
   const { container, calls } = await mount(t, []);

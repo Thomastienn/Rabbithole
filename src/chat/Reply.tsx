@@ -6,7 +6,7 @@ import { renderMarkdown } from '../markdown/markdown';
 import { imageSources } from '../markdown/ReplyImage';
 import type { ToolCall } from './turn';
 import type { Resource } from './types';
-import type { Artifact } from '../media/artifacts';
+import type { Artifact, DiscussionReply } from '../media/artifacts';
 import DiscussionCard from '../media/DiscussionCard';
 import VideoCard from '../media/VideoCard';
 import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
@@ -22,6 +22,7 @@ const Reply = memo(function Reply({
   underlines,
   inlineArtifacts = [],
   onArtifactAction,
+  onDiscussionReply,
   onVisualPart,
   visualBranches,
   onOpenChild,
@@ -37,6 +38,7 @@ const Reply = memo(function Reply({
   onOpenChild?: (id: string) => void;
   resources?: Resource[];
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
+  onDiscussionReply?: DiscussionReply;
 }) {
   useEffect(ensureHighlightStyles, []);
   const box = useRef<HTMLElement>(null),
@@ -50,10 +52,12 @@ const Reply = memo(function Reply({
     return () => observer.disconnect();
   }, []);
   const action = useRef(onArtifactAction),
+    discussionReply = useRef(onDiscussionReply),
     partAction = useRef(onVisualPart),
     openChild = useRef(onOpenChild);
   openChild.current = onOpenChild;
   action.current = onArtifactAction;
+  discussionReply.current = onDiscussionReply;
   partAction.current = onVisualPart;
   const key = JSON.stringify(underlines),
     toolKey = JSON.stringify(tools),
@@ -73,7 +77,11 @@ const Reply = memo(function Reply({
               at: v.position!,
               node:
                 v.kind === 'discussion' ? (
-                  <DiscussionCard key={v.id} artifact={v} />
+                  <DiscussionCard
+                    key={v.id}
+                    artifact={v}
+                    onReply={onDiscussionReply && ((a, text) => discussionReply.current!(a, text))}
+                  />
                 ) : v.kind === 'video' ? (
                   <VideoCard
                     key={v.id}
@@ -110,6 +118,7 @@ const Reply = memo(function Reply({
           linkKey,
           reveal?.artifactId,
           !!onArtifactAction,
+          !!onDiscussionReply,
           narrow,
         ],
       )}

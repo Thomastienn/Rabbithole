@@ -10,6 +10,7 @@ export async function stateRoutes(req, res, url, ctx) {
       auth: ctx.auth.status(),
       trees: store.list(),
       active: [...ctx.active.keys()],
+      discussing: [...new Set([...ctx.discussing.values()].map((j) => j.conversation))],
       usage: store.usageSince(new Date().setHours(0, 0, 0, 0)),
       videos: [...new Set([...ctx.videos.values()].map((v) => v.conversation))],
       suggesting: [...new Set([...ctx.suggesting.values()].map((s) => s.conversation))],

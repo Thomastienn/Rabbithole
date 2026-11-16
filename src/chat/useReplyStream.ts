@@ -5,6 +5,7 @@ import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
+import { mergeArtifact, type DiscussionReply } from '../media/artifacts';
 
 // Reply stream: sends a question or retry, applies SSE events live, then reloads the saved tree.
 export function useReplyStream(
@@ -143,7 +144,53 @@ export function useReplyStream(
   function stop(id: string) {
     void api(`/api/trees/${id}/stop`, {}).catch((e) => setError(e.message));
   }
-  return { send, stop, retryFromMap };
+  const replyDiscussion: DiscussionReply = async (artifact, text) => {
+    const id = artifact.conversation;
+    const response = await fetch(`/api/trees/${id}/discussions/${artifact.id}/replies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': state?.csrf ?? '' },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) throw new Error((await response.json()).error);
+    const reader = response.body!.getReader(),
+      decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      while (true) {
+        const result = await reader.read();
+        buffer += decoder.decode(result.value, { stream: !result.done });
+        const frames = sseFrames(buffer);
+        buffer = frames.rest;
+        for (const event of frames.events) {
+          if (event.type !== 'artifact' || removed.current.has(id)) continue;
+          ++checkpoints.current;
+          setTree((t) =>
+            t?.id === id
+              ? withTurn(
+                  { ...t, artifacts: mergeArtifact(t.artifacts, event.artifact, id, t.messages) },
+                  turns.current.get(id),
+                )
+              : t,
+          );
+        }
+        if (result.done) break;
+      }
+    } finally {
+      reader.releaseLock();
+      const version = request.current,
+        checkpoint = checkpoints.current;
+      const saved = await api(`/api/trees/${id}`);
+      if (
+        !removed.current.has(id) &&
+        selected.current === id &&
+        request.current === version &&
+        checkpoints.current === checkpoint
+      )
+        setTree(withTurn(saved, turns.current.get(id)));
+      await refresh();
+    }
+  };
+  return { send, stop, retryFromMap, replyDiscussion };
 }
 
 export type ReplyStream = ReturnType<typeof useReplyStream>;

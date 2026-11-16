@@ -96,8 +96,86 @@
 .discussion-card[data-state='failed'] .discussion-card__head > svg {
   color: var(--color-text-error);
 }
+.discussion-card__reply {
+  display: grid;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  background: var(--color-background-body);
+}
+.discussion-card .astryx-chat-composer {
+  padding: 0;
+  max-width: none;
+}
+.discussion-card .astryx-chat-composer > :first-child {
+  flex-direction: row;
+  align-items: flex-end;
+  border: 0;
+  border-radius: var(--radius-none);
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+.discussion-card .astryx-chat-composer > :first-child:focus-within {
+  box-shadow: none;
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: var(--spacing-1);
+}
+.discussion-card .astryx-chat-composer > :first-child > :first-child {
+  flex: 1;
+}
+.discussion-card .astryx-chat-composer > :first-child > :last-child {
+  flex: none;
+  padding: 0;
+}
+.discussion-card .astryx-chat-composer-input,
+.discussion-card .astryx-chat-composer-input > [contenteditable] {
+  outline: none;
+  box-shadow: none;
+}
+.discussion-card__busy,
+.discussion-card__failure,
+.discussion-card__closed {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin: 0 var(--spacing-3) var(--spacing-3);
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+}
+.discussion-card__failure {
+  align-items: flex-start;
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--color-error-muted);
+}
+.discussion-card__failure > svg {
+  flex: none;
+  width: var(--spacing-4);
+  height: var(--spacing-4);
+  color: var(--color-text-error);
+}
+.discussion-card__busy::before {
+  content: '';
+  width: var(--spacing-2);
+  height: var(--spacing-2);
+  border-radius: var(--radius-full);
+  background: var(--color-text-accent);
+  animation: pulse var(--duration-slow-max) ease-in-out infinite;
+}
+.discussion-card__text[data-streaming]::after {
+  content: '';
+  display: inline-block;
+  width: var(--spacing-2);
+  height: 1.1em;
+  margin-inline-start: 2px;
+  background: var(--color-text-accent);
+  vertical-align: -0.2em;
+}
+.discussion-card__line[data-speaker='learner'] .question-bubble {
+  white-space: pre-wrap;
+}
 @media (prefers-reduced-motion: reduce) {
-  .discussion-card .astryx-skeleton {
+  .discussion-card .astryx-skeleton,
+  .discussion-card__busy::before {
     animation: none;
   }
 }

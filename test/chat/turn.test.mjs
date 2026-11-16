@@ -9,6 +9,57 @@ import {
   underlineRanges,
   withTurn,
 } from '../../src/chat/turn.ts';
+import { mergeArtifact } from '../../src/media/artifacts.ts';
+
+test('main-thread events close older discussion cards and stale card events cannot reopen them', () => {
+  const artifact = {
+    id: 'd',
+    kind: 'discussion',
+    status: 'ready',
+    conversation: 'c',
+    message: 'old',
+    discussion: { classmates: ['Maya'], lines: [] },
+  };
+  const tree = {
+    id: 'c',
+    messages: [{ id: 'old', role: 'assistant', text: 'Discussion', status: 'completed' }],
+    artifacts: [artifact],
+  };
+  const turn = {};
+  applyStreamEvent(
+    turn,
+    {
+      type: 'saved',
+      id: 'new',
+      user: { id: 'q', role: 'user', text: 'Continue', status: 'completed' },
+    },
+    'c',
+  );
+  applyStreamEvent(
+    turn,
+    {
+      type: 'artifact',
+      artifact: { ...artifact, discussion: { ...artifact.discussion, closed: true } },
+    },
+    'c',
+  );
+  const updated = withTurn(tree, turn);
+  assert.equal(updated.artifacts[0].discussion.closed, true);
+  assert.equal(
+    mergeArtifact(updated.artifacts, artifact, 'c', updated.messages)[0].discussion.closed,
+    true,
+  );
+  applyStreamEvent(
+    turn,
+    { type: 'artifact', artifact: { ...artifact, id: 'foreign', message: 'unowned' } },
+    'c',
+  );
+  assert.equal(
+    withTurn(tree, turn).artifacts.length,
+    1,
+    'unknown originating messages never attach',
+  );
+});
 
 test('navigation reconciles stale saved checkpoints with latest owning turn without duplicates', () => {
   const user = {

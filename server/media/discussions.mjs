@@ -51,7 +51,11 @@ export function discussionArtifact({ source, ...artifact }) {
     ...(discussion && {
       discussion: {
         classmates: discussion.classmates.map((c) => c.name),
-        lines: discussion.lines,
+        lines: discussion.lines.map(({ speaker, text }) => ({ speaker, text })),
+        ...(discussion.closed && { closed: true }),
+        ...(discussion.turn && {
+          turn: { start: discussion.turn.start, status: discussion.turn.status },
+        }),
       },
     }),
   };

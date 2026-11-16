@@ -156,6 +156,13 @@ export async function treeRoutes(req, res, url, ctx, body) {
       throw error;
     }
     for (const conversation of result.deleted) {
+      for (const job of ctx.discussing.values())
+        if (job.conversation === conversation) job.controller.abort();
+      for (const [key, job] of compactions)
+        if (key.startsWith('discussion:') && job.conversation === conversation) {
+          job.controller.abort();
+          compactions.delete(key);
+        }
       active.get(conversation)?.abort();
       active.delete(conversation);
       compactions.get(conversation)?.controller.abort();

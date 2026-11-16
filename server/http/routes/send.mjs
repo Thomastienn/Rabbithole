@@ -34,6 +34,18 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       return json(res, 409, {
         error: 'Wait for this reply’s media to finish, then retry.',
       });
+    if (
+      tree.artifacts.some(
+        (a) =>
+          a.message === failed.id &&
+          a.kind === 'discussion' &&
+          store.discussion(id, a.id)?.lines.some((l) => l.speaker === 'Learner'),
+      )
+    )
+      return json(res, 409, {
+        error:
+          'This reply has discussion messages. Send a new question in the conversation to keep them.',
+      });
     // A focused chat whose context preparation failed (or was lost on restart) compacts again before the reply.
     if (
       tree.branch &&
@@ -238,6 +250,30 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     ...(retried && { replaced: retried.replaced }),
   });
   try {
+    const closed = ctx.closeDiscussions(id);
+    for (const artifact of closed) send({ type: 'artifact', artifact: live(artifact) });
+    if (closed.length) {
+      tree.thread = null;
+      tree.working_thread = null;
+    }
+    if (
+      store
+        .tree(id)
+        .artifacts.some(
+          (a) =>
+            a.kind === 'discussion' &&
+            store.discussion(id, a.id)?.closed &&
+            !store.discussion(id, a.id).summary,
+        )
+    ) {
+      send({ type: 'status', status: 'compacting' });
+      try {
+        await ctx.compactDiscussions(tree, controller, send);
+      } catch (error) {
+        throw Object.assign(error, { compaction: true });
+      }
+      if (finished) return true;
+    }
     // The child's first reply waits for its inherited context; the stream shows each phase.
     if (compaction) {
       send({ type: 'status', status: 'compacting' });

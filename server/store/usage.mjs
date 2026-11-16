@@ -40,7 +40,7 @@ export const usage = {
       .prepare(
         `SELECT task,input,output,cacheRead FROM usage_events WHERE message=?
       UNION ALL SELECT CASE kind WHEN 'video' THEN 'video' ELSE 'diagram' END,NULL,NULL,NULL
-      FROM artifacts a WHERE message=? AND NOT EXISTS (SELECT 1 FROM usage_events u
+      FROM artifacts a WHERE message=? AND kind!='discussion' AND NOT EXISTS (SELECT 1 FROM usage_events u
         WHERE u.message=a.message AND (
           (a.kind='video' AND u.id LIKE 'video:'||a.attempt||':%') OR
           (a.kind!='video' AND (u.id='diagram:'||a.id OR u.id LIKE 'diagram:'||a.id||':%'))))`,

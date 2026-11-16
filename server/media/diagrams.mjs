@@ -1,4 +1,5 @@
 import { DISCUSSION_RULE, readDiscussion } from './discussions.mjs';
+import { discussionText } from './discussion-context.mjs';
 import { Worker } from 'node:worker_threads';
 import { safeDiagramSource } from '../../src/media/diagramSource.ts';
 import { withAttachments } from '../attachments.mjs';
@@ -239,9 +240,20 @@ export function tutorContext(tree) {
   return {
     ...context,
     messages: tree.messages.map(modelMessage).map((message) => {
-      const ready = artifacts.filter(
-        (a) => a.message === message.id && a.conversation === tree.id && a.status === 'ready',
+      const discussions = artifacts.filter(
+        (a) =>
+          a.message === message.id &&
+          a.conversation === tree.id &&
+          a.kind === 'discussion' &&
+          a.status === 'ready',
       );
+      const ready = artifacts
+        .filter(
+          (a) => a.message === message.id && a.conversation === tree.id && a.status === 'ready',
+        )
+        .filter((a) => a.kind !== 'discussion');
+      if (discussions.length)
+        message = { ...message, text: message.text + discussions.map(discussionText).join('') };
       return ready.length
         ? {
             ...message,
@@ -286,7 +298,9 @@ export function compactionMessages(tree) {
         const at = Math.min(a.position ?? message.text.length, message.text.length);
         text +=
           message.text.slice(cursor, at) +
-          `\n[${a.kind === 'video' ? 'Video' : a.kind === 'visual' ? 'Visual' : 'Diagram'}: ${a.title} — ${a.description}]\n`;
+          (a.kind === 'discussion'
+            ? discussionText(a)
+            : `\n[${a.kind === 'video' ? 'Video' : a.kind === 'visual' ? 'Visual' : 'Diagram'}: ${a.title} — ${a.description}]\n`);
         cursor = at;
       }
       return { ...message, text: text + message.text.slice(cursor) };

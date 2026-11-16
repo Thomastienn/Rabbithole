@@ -28,7 +28,7 @@ export default function ChatThread({
   c,
   model: { modelLabel },
   trees: { openConversation },
-  stream: { send },
+  stream: { send, replyDiscussion },
   branchForm,
   actions: { videoAction },
   active,
@@ -106,6 +106,7 @@ export default function ChatThread({
             onVisualPart={openVisualPart}
             visualBranches={visualBranches}
             onArtifactAction={(artifactId, action) => videoAction(tree.id, artifactId, action)}
+            onDiscussionReply={replyDiscussion}
             inlineArtifacts={
               overview
                 ? undefined
@@ -179,7 +180,7 @@ export default function ChatThread({
             .filter((a) => a.kind === 'mermaid' || a.position == null)
             .map((artifact, _, all) =>
               artifact.kind === 'discussion' ? (
-                <DiscussionCard key={artifact.id} artifact={artifact} />
+                <DiscussionCard key={artifact.id} artifact={artifact} onReply={replyDiscussion} />
               ) : artifact.kind === 'visual' ? (
                 <VisualFrame
                   key={artifact.id}
