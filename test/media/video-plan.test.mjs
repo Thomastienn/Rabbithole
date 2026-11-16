@@ -88,6 +88,12 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
     assert.throws(() => videoPlan(JSON.stringify(bad)), /malformed/);
   }
   for (const raw of ['not json', 'null', '[]', '{}']) assert.throws(() => videoPlan(raw));
+  const undimensioned = structuredClone(good);
+  delete undimensioned.cuts[1].dimension;
+  assert.throws(() => videoPlan(JSON.stringify(undimensioned)), /malformed: cut 2 dimension\.$/);
+  assert.throws(() => videoPlan('not json'), /malformed: not a JSON object\.$/);
+  assert.match(PLAN_INSTRUCTIONS, /"engine":"remotion","dimension":"2d"/);
+  assert.match(PLAN_INSTRUCTIONS, /explicit 3D request makes every cut "remotion"/);
   assert.throws(() => videoPlan(' '.repeat(65537)), /64 KiB/);
   assert.equal(CUT_PAUSE_FRAMES, 15);
 });

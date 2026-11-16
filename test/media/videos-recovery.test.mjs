@@ -148,7 +148,7 @@ test('render, composition and save failures stay honest and retry the same reque
     const { id } = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
     );
-    assert.equal(env.store.artifact(tree.id, id).error, 'Video plan or style brief is malformed.');
+    assert.equal(env.store.artifact(tree.id, id).error, 'Video plan or style brief is malformed: not a JSON object.');
     await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
     await until(() => env.store.artifact(tree.id, id).status === 'failed');
     assert.equal(
