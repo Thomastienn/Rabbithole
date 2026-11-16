@@ -26,8 +26,16 @@ const setup = (reduce = false) => {
 
 test('steps run in order with Previous, Next and a Step n of m indicator, bounded at both ends', () => {
   const { root, calls, previous, next, indicator } = setup();
-  assert.equal(root.nextElementSibling.getAttribute('role'), 'group');
-  assert.deepEqual([previous.textContent, next.textContent], ['Previous', 'Next']);
+  assert.equal(root.parentElement.getAttribute('role'), 'group');
+  assert.deepEqual(
+    [...root.parentElement.children],
+    [previous, root, next, indicator],
+    'Previous and Next flank root',
+  );
+  assert.deepEqual(
+    [previous.getAttribute('aria-label'), next.getAttribute('aria-label')],
+    ['Previous', 'Next'],
+  );
   assert.equal(previous.type, 'button');
   assert.deepEqual(calls, [{ n: 0, index: 0, duration: 0 }], 'first render does not animate');
   assert.equal(indicator.textContent, 'Step 1 of 3');
@@ -72,6 +80,13 @@ test('Enter, Space and arrow keys step once each and keep focus on an enabled co
     calls.map((c) => c.n),
     [0, 1, 2, 1, 0, 1, 2, 2],
   );
+});
+
+test('keys inside the visual itself do not step', () => {
+  const { window, root, indicator, key } = setup();
+  const slider = root.appendChild(window.document.createElement('input'));
+  assert.equal(key(slider, 'ArrowRight'), false);
+  assert.equal(indicator.textContent, 'Step 1 of 3');
 });
 
 test('reduced motion switches steps without transitions', () => {

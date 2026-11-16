@@ -1,6 +1,7 @@
 // Shared step-through helper the visual frame installs before any fragment runs.
 // A fragment calls stepThrough(root, steps); each step moves the visual to that state.
 // A plain function continues the scene; { scene: true, show } fades root out, shows, fades in.
+// Previous and Next sit beside root, not below it, so a step that resizes root does not push them away.
 type Show = (state: { index: number; duration: number }) => void;
 type Step = Show | { scene: true; show: Show };
 
@@ -16,16 +17,18 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
   controls.className = 'tt-steps';
   controls.setAttribute('role', 'group');
   controls.setAttribute('aria-label', 'Steps');
-  for (const [button, label] of [
-    [previous, 'Previous'],
-    [next, 'Next'],
+  for (const [button, label, path] of [
+    [previous, 'Previous', 'M10 3 5 8l5 5'],
+    [next, 'Next', 'm6 3 5 5-5 5'],
   ] as const) {
     button.type = 'button';
-    button.textContent = label;
+    button.setAttribute('aria-label', label);
+    button.title = label;
+    button.innerHTML = `<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path d="${path}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
   indicator.setAttribute('aria-live', 'polite');
-  controls.append(previous, indicator, next);
-  root.after(controls);
+  root.replaceWith(controls);
+  controls.append(previous, root, next, indicator);
 
   const show = (target: number, animate = true) => {
     index = Math.max(0, Math.min(steps.length - 1, target));
@@ -68,6 +71,7 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
       ArrowDown: 1,
     };
     const button = event.target === previous ? -1 : event.target === next ? 1 : 0;
+    if (!button) return; // keys inside the visual itself, such as a slider, are its own
     const step = arrows[event.key] ?? (event.key === 'Enter' || event.key === ' ' ? button : 0);
     if (!step) return;
     event.preventDefault(); // stops the native click so Enter and Space step once

@@ -27,6 +27,7 @@ const root = document.getElementById('visual')!,
   tokens = document.head.appendChild(document.createElement('style'));
 let rendered = false;
 let complete = false;
+let room = Infinity;
 
 addEventListener('message', async (event) => {
   if (event.source !== parent) return;
@@ -43,6 +44,10 @@ addEventListener('message', async (event) => {
     tokens.textContent = `:root{color-scheme:${data.scheme};${rules.join(';')}}`;
     dispatchEvent(new Event('rabbithole-theme'));
   }
+  if (data?.type === 'fit' && typeof data.room === 'number' && data.room > 0) {
+    room = data.room;
+    report();
+  }
   if (data?.type === 'render' && typeof data.source === 'string' && !complete) {
     rendered = true;
     complete = data.complete === true;
@@ -52,10 +57,12 @@ addEventListener('message', async (event) => {
 });
 
 // The host validates these height reports against this frame's window; it accepts no other frame message.
-new ResizeObserver(() => {
-  if (rendered)
-    parent.postMessage(
-      { type: 'height', height: Math.ceil(document.body.getBoundingClientRect().height) },
-      '*',
-    );
-}).observe(document.body);
+// A visual taller than the host's room scales down to fit, but never below half size.
+function report() {
+  if (!rendered) return;
+  const natural = document.body.offsetHeight,
+    scale = Math.max(0.5, Math.min(1, room / natural));
+  document.body.style.transform = scale < 1 ? `scale(${scale})` : '';
+  parent.postMessage({ type: 'height', height: Math.ceil(natural * scale) }, '*');
+}
+new ResizeObserver(report).observe(document.body);

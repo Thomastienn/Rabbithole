@@ -51,6 +51,33 @@ function Frame({ artifact }: { artifact: Artifact }) {
   useEffect(() => {
     if (frame.current) theme();
   }, [mode, name]);
+  // The frame scales its visual down to the room it has: the viewer's free height, else its scroll area's.
+  const room = useRef(0);
+  const fit = () => {
+    const el = frame.current;
+    if (!el || height === undefined) return;
+    const dialog = el.closest('dialog'),
+      { innerHeight } = el.ownerDocument.defaultView!;
+    let box = el.parentElement;
+    while (box && !/auto|scroll/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+    // Sticky bars such as the composer cover part of the scroll area; 48px leaves the badge row in view.
+    const covered = [...(box?.children ?? [])]
+      .filter((child) => getComputedStyle(child).position === 'sticky')
+      .reduce((sum, child) => sum + child.getBoundingClientRect().height, 0);
+    const next = Math.floor(
+      dialog
+        ? innerHeight - 32 - (dialog.offsetHeight - el.offsetHeight)
+        : (box?.clientHeight ?? innerHeight) - covered - 48,
+    );
+    if (next === room.current) return;
+    room.current = next;
+    post({ type: 'fit', room: next });
+  };
+  useEffect(fit, [height]);
+  useEffect(() => {
+    addEventListener('resize', fit);
+    return () => removeEventListener('resize', fit);
+  });
   // A finished visual gets the stock pieces it names from the app; the frame itself makes no request.
   const render = async () => {
     const source = artifact.source ?? '',

@@ -25,9 +25,9 @@ it. Use a scene change only when the layout really changes: the helper fades
 root out, runs show, which redraws root, and fades it back in. Mixing
 continuing steps and scene changes is allowed. For CSS transitions read the
 --step-duration CSS variable it sets on root; duration is 0 under
-prefers-reduced-motion and on first render. The helper renders Previous, Next
-and "Step n of m" below root and wires Enter, Space and arrow keys; do not add
-your own step controls or indicator.
+prefers-reduced-motion and on first render. The helper places Previous and Next
+on either side of root, "Step n of m" below it, and wires Enter, Space and arrow
+keys; do not add your own step controls or indicator.
 
 The frame holds only this visual, so CSS selectors need no id scoping.
 
