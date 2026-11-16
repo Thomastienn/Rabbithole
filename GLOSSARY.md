@@ -146,6 +146,10 @@ _Avoid_: Template, theme, design
 An interactive HTML/SVG/JS fragment shown inside a tutor reply where the tutor placed it, running in an isolated sandbox with no network or access to the app. Older Mermaid diagrams stay diagrams.
 _Avoid_: Widget, canvas, artifact (in UI copy)
 
+**Step**:
+One stage of a visual that the learner moves through with Previous and Next. Each step either continues the previous step's scene, changing what is already drawn in place, or changes to a new scene; one visual may mix both. A visual that shows every stage at once has no steps.
+_Avoid_: Slide, frame, page
+
 **Cut**:
 One continuous segment of a video with its own part of the narration and its own animation. A video is a planned sequence of cuts sharing one look, joined by transitions under a single narration track.
 _Avoid_: Scene, clip, shot
@@ -157,6 +161,10 @@ _Avoid_: Model, asset, prop
 **Piece library**:
 The local collection of set pieces from earlier videos, shared across all learning trees. A new video reuses a close match, derives a variant from one, or draws a new piece. A cut audit that finds a saved piece poor replaces it with a better version for future videos; saved videos keep how they looked.
 _Avoid_: Component cache, asset library
+
+**Stock piece**:
+A ready-made 2D or 3D object from an outside catalog that a visual or video uses as it is, instead of drawing its own. Stock pieces are read-only: unlike set pieces, Rabbithole never draws, replaces or saves them in the piece library.
+_Avoid_: Asset, model, prop
 
 **Continuing cut**:
 A cut that carries on the previous cut's scene from exactly where it ended, joined to it by a hard cut so the two play as one unbroken shot.
