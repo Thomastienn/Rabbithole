@@ -77,6 +77,11 @@ errors in words. Keep a single animation loop and dispose of resources on pagehi
 Rabbithole's fragment contract:
 - Return only the fragment, optionally including style and classic script tags.
   No Markdown fences, commentary, doctype, html, head or body tags. At most 64 KiB.
+- The fragment renders while it streams, so write the visible markup first and
+  style it with inline style attributes, so it looks finished from the first
+  element. After the markup, add one style block only for what inline styles
+  cannot express (keyframes, :hover, :focus-visible, media queries such as
+  prefers-reduced-motion), then scripts last.
 - Keep the background transparent, with no surrounding card, border or visible
   title; the host supplies the accessible description. Use only injected CSS theme variables and
   fonts. Text is var(--color-text-primary), secondary text

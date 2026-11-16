@@ -153,6 +153,8 @@ export default function VisualFrame({
   const [enlarged, setEnlarged] = useState(false);
   const [retried, setRetried] = useState(false);
   const [now, setNow] = useState(Date.now);
+  // Where a click on a still-drawing visual landed, to say there why it does not respond.
+  const [nudge, setNudge] = useState<number | null>(null);
   const drawing = artifact.status === 'pending';
   useEffect(() => {
     if (!drawing) return;
@@ -160,6 +162,11 @@ export default function VisualFrame({
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [drawing]);
+  useEffect(() => {
+    if (nudge === null) return;
+    const timer = setTimeout(() => setNudge(null), 2400);
+    return () => clearTimeout(timer);
+  }, [nudge]);
   const progress = visualProgress(artifact, now);
   const figure = useRef<HTMLElement>(null);
   const viewer = useRef<HTMLDialogElement>(null);
@@ -203,6 +210,12 @@ export default function VisualFrame({
       data-state={artifact.status}
       data-partial={progress.partial || undefined}
       aria-busy={drawing || undefined}
+      // The inert frame passes clicks through to the figure.
+      onClick={
+        drawing
+          ? (event) => setNudge(event.clientY - event.currentTarget.getBoundingClientRect().top)
+          : undefined
+      }
     >
       {/* One persistent live region, so each state change is announced; the visible badge stays quiet. */}
       <Text className="sr-only" role="status">
@@ -228,8 +241,14 @@ export default function VisualFrame({
                 : 'Interrupted'
         }
       />
+      {drawing && <span className="visual-drawing-bar" aria-hidden />}
       {(artifact.status === 'pending' || artifact.status === 'ready') && (
         <Frame key={artifact.id} artifact={artifact} />
+      )}
+      {drawing && nudge !== null && (
+        <Text className="visual-nudge" aria-hidden style={{ top: nudge }}>
+          Still drawing. Its controls work once it finishes.
+        </Text>
       )}
       {artifact.status === 'ready' && artifact.source && (
         <>
