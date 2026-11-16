@@ -101,7 +101,7 @@ Media works, but it costs too much and feels slow and uneven:
 
 - Each planned cut carries a required dimension of `2d` or `3d`. The plan parser rejects a plan without it, like any other invalid plan field.
 - The planner's task gains the learner's own message text (trimmed to the existing intent limit) alongside the request and intent.
-- Planner rule: an explicit learner request for 2D or 3D applies to every cut; otherwise 3D only where space, depth, rotation or orientation is the point of the cut, and 2D for everything else. Manim cuts are always 2D; 3D cuts use the Remotion engine.
+- Planner rule: an explicit learner request for 2D applies to every cut; an explicit request for 3D makes most cuts 3D, keeping 2D for cuts that are clearer flat (such as Manim math); otherwise 3D only where space, depth, rotation or orientation is the point of the cut, and 2D for everything else. Manim cuts are always 2D; 3D cuts use the Remotion engine.
 - The cut writer instruction drops its own dimension decision and follows the cut's stated dimension. 3D guidance in the cut writer's instructions and skill is included only for 3D cuts.
 
 ### Model roles in a video
