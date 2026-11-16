@@ -1,0 +1,10 @@
+# Set pieces are built from parts that the piece library saves on their own
+
+Every set piece was drawn whole, so a city drew each person, car and house itself, a stadium drew its people again, and improving a poor person in one piece left every other person as it was. We decided that a set piece may be built from other set pieces, its parts, and that the piece writer (the chat model) chooses the parts while drawing, checking the piece library for each one and drawing anything with no fitting part itself. Parts are saved in the piece library as set pieces of their own, and a piece that uses them refers to them rather than copying them, so improving a part once reaches every piece that uses it in future videos; saved videos keep how they looked. One reuse choice covers a piece's 2D and 3D forms together, and the library saves both. Within one video, the video's own set piece wins over a library part of the same name, so every person in a video looks alike. Many copies of a part are placed with one helper that varies them only through their props and, in 3D, draws them with instancing, because cuts play live in the browser. We accepted library entries that depend on each other and a piece writer prompt that must weigh reuse against drawing, in exchange for fewer tokens per video, one place to fix a common object and crowds of hundreds that still play smoothly.
+
+## Considered Options
+
+- Keep every set piece self-contained and let the writer copy parts inline. Simple, but a common object is drawn again in every piece and an improvement never spreads.
+- Let the planner name the parts in the video plan. The planner would have to know how each object is drawn, and the plan's job is teaching, not drawing.
+- Save a snapshot of each part inside the piece that uses it. Pieces stay independent, but the library fills with diverging copies and an improved part reaches nothing.
+- Draw many 3D copies as separate meshes. Simplest to write, but hundreds of copies stutter when a cut plays live.

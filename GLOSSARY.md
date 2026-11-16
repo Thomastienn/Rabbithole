@@ -162,6 +162,10 @@ _Avoid_: Scene, clip, shot
 A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut. It has a 2D form and a 3D form of the same object, both in the house style, and takes its colours from the video's palette roles, so it can be reused in another video. A set piece may be built from other set pieces, its parts, such as a city drawn from many people, cars and houses, so a common object is drawn once and reused wherever it appears. A piece with no fitting part draws everything itself.
 _Avoid_: Model, asset, prop, stock piece
 
+**Part**:
+A set piece used inside another set piece, such as the person in a city. It is a set piece of its own, saved and reused like any other; improving it improves every piece that uses it in future videos.
+_Avoid_: Child piece, sub-piece, component
+
 **Piece library**:
 The local collection of set pieces from earlier videos, each with its 2D and 3D forms, shared across all learning trees and browsable from its own view. A new video reuses a close match, derives a variant from one, or draws a new piece; that choice covers the 2D and 3D forms together, and parts are saved and reused as set pieces of their own. A cut audit that finds a saved piece poor or off the house style replaces it with a better version for future videos; saved videos keep how they looked. It holds only drawn set pieces, never exhibits.
 _Avoid_: Component cache, asset library
