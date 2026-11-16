@@ -98,6 +98,11 @@ test('reads images per endpoint model: override, else reported vision, else the 
     'new/unreported': false,
   });
 
+  const listings = () =>
+    fake.calls.filter(
+      (c) => c.path.endsWith('/models') && c.headers.authorization === 'Bearer key-2',
+    ).length;
+  const listed = listings();
   // Without any setup a reported vision model receives the image; a non-vision one receives OCR text.
   assert.equal(await env.upload(added.id, 'seeing'), 'image');
   assert.match(JSON.stringify(fake.calls.at(-1).body.messages.at(-1)), /image_url/);
@@ -106,6 +111,8 @@ test('reads images per endpoint model: override, else reported vision, else the 
   // Unreported models follow the endpoint's old flag; a conversation without a model uses the default one.
   assert.equal(await env.upload(LEGACY, 'unreported'), 'image');
   assert.equal(await env.upload(added.id, 'unreported'), 'ocr');
+  // Sends reuse the catalogue the first send fetched instead of listing models before every reply.
+  assert.equal(listings() - listed, 1);
   assert.equal(await env.upload(added.id, null), 'image');
 
   // An override wins over the reported capability.

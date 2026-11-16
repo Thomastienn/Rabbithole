@@ -198,7 +198,7 @@ Smaller fixes:
 
 - It runs in bubblewrap, following the video sandbox's pattern: no network (network namespace unshared), a read-only system, an empty home, and app data hidden. Only the conversation's Python workspace is writable.
 - A dedicated virtual environment, separate from Manim's, holds numpy, scipy, sympy and pandas. A setup step like Manim's creates it, and there is no runtime package install.
-- The model passes a time limit in seconds: 60 by default, 600 at most. The process is killed at the limit or on abort. Each run is a fresh process; files in the workspace persist for the conversation. Stdout and stderr are returned raw, truncated to a fixed size with a marker.
+- The model passes a time limit in seconds: 60 by default, 240 at most, so one run fits inside the provider idle timeout. The process is killed at the limit or on abort. Each run is a fresh process; files in the workspace persist for the conversation. Stdout and stderr are returned raw, truncated to a fixed size with a marker.
 - If bubblewrap or the venv is missing, the tool is hidden, and Settings shows how to set it up, the same way Manim does.
 
 ### Memory note

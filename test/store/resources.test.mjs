@@ -69,3 +69,19 @@ test('resources are numbered per learning tree, shared by branches, cited by rep
   assert.equal(store.db.prepare('SELECT count(*) n FROM resources').get().n, 1);
   store.close();
 });
+
+test('streaming saves skip citations; a restart after a crash cites the cut-off reply', () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'tt-resources-')), 'trees.sqlite');
+  let store = new Store(path);
+  const root = store.create('Root', 'openai', 'm');
+  store.message(root.id, 'user', 'Q', 'completed');
+  const reply = store.message(root.id, 'assistant', '', 'streaming');
+  store.addResource(root.id, page('a'));
+  store.update(reply, 'See [1](resource:1)', 'streaming');
+  assert.deepEqual(store.resources(root.id)[0].conversations, []);
+  store.close();
+  store = new Store(path);
+  assert.equal(store.tree(root.id).messages[1].status, 'interrupted');
+  assert.deepEqual(store.resources(root.id)[0].conversations, [root.id]);
+  store.close();
+});

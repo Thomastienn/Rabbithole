@@ -82,9 +82,19 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
       }),
     }));
   // A send's attachments follow its model; an unlistable endpoint falls back to the saved choices for that model.
+  // Each send reads the catalogue; a settings change replaces the adapter, which drops its cached copy.
+  // shortcut: a changed capability on an already listed model shows only after a restart or settings edit.
+  const catalogues = new WeakMap();
   const listed = async (provider, model) => {
-    const list = (await providers[provider]?.models().catch(() => [])) ?? [];
-    return list.find((m) => (model == null ? m.isDefault : m.model === model)) ?? { model };
+    const adapter = providers[provider],
+      match = (list) => list?.find((m) => (model == null ? m.isDefault : m.model === model));
+    let found = match(catalogues.get(adapter));
+    if (!found && adapter) {
+      const list = await adapter.models().catch(() => null);
+      if (list) catalogues.set(adapter, list);
+      found = match(list);
+    }
+    return found ?? { model };
   };
   const readsImages = async ({ provider, model }) =>
     isEndpoint(provider)

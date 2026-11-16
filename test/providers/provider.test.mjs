@@ -105,6 +105,46 @@ test('Claude CLI: fresh session receives saved history once, resume does not, no
   }
 });
 
+test('Claude CLI: the time limit counts silence, so steady output past 5 minutes still finishes', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const children = [];
+  const claude = new Claude(mkdtempSync(join(tmpdir(), 'tt-claude-')), () => {
+    const child = new EventEmitter();
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
+    child.stdin = { end: () => {} };
+    child.kill = () => setImmediate(() => child.emit('close', null));
+    children.push(child);
+    return child;
+  });
+  const turn = () =>
+    claude.generate(
+      { thread: null, messages: [] },
+      'Q',
+      () => {},
+      () => {},
+      new AbortController().signal,
+    );
+  const settle = async () => {
+    for (let i = 0; i < 5; i++) await new Promise(setImmediate);
+  };
+  const long = turn();
+  await settle();
+  // A tool call every 200 s: 600 s in total, never 300 s of silence.
+  for (const line of ok()) {
+    children[0].stdout.write(JSON.stringify(line) + '\n');
+    await settle();
+    t.mock.timers.tick(200000);
+  }
+  children[0].stdout.end();
+  children[0].emit('close', 0);
+  await long;
+  const silent = turn();
+  await settle();
+  t.mock.timers.tick(300000);
+  await assert.rejects(silent, /Response timed out/);
+});
+
 test('Claude CLI: error result fails visibly with the CLI reason', async () => {
   const calls = [],
     events = [];

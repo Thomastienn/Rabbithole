@@ -95,9 +95,9 @@ test('run_python validates code and time limit, kills at the limit and on abort,
   for (const [input, message] of [
     [{ code: '' }, /needs Python code/],
     [{ code: 1 }, /needs Python code/],
-    [{ code: 'x', timeout: 0 }, /1 to 600/],
-    [{ code: 'x', timeout: 601 }, /1 to 600/],
-    [{ code: 'x', timeout: 1.5 }, /1 to 600/],
+    [{ code: 'x', timeout: 0 }, /1 to 240/],
+    [{ code: 'x', timeout: 241 }, /1 to 240/],
+    [{ code: 'x', timeout: 1.5 }, /1 to 240/],
   ])
     await assert.rejects(runPython(input, { ...base, spawn }), message);
 
@@ -172,7 +172,7 @@ test('run_python is listed for every capable provider only when ready and switch
   assert.deepEqual(await runner.tools({ provider: 'claude', capable: false }), []);
   const [definition] = await runner.tools({ provider: 'claude', capable: true });
   assert.match(definition.description, /cannot display files, figures or images/);
-  assert.equal(definition.parameters.properties.timeout.maximum, 600);
+  assert.equal(definition.parameters.properties.timeout.maximum, 240);
   assert.equal(await runner.run('run_python', { code: '1' }, { conversation: 'c' }), 'ran 1');
   await assert.rejects(
     toolRunner().run('run_python', { code: '1' }, {}),

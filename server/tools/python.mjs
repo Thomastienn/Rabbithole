@@ -82,8 +82,8 @@ export async function runPython(
   { workspace, python, dataDir, signal, spawn = spawnProcess },
 ) {
   if (typeof code !== 'string' || !code.trim()) throw new Error('run_python needs Python code.');
-  if (!Number.isInteger(timeout) || timeout < 1 || timeout > 600)
-    throw new Error('run_python timeout must be a whole number of seconds from 1 to 600.');
+  if (!Number.isInteger(timeout) || timeout < 1 || timeout > 240)
+    throw new Error('run_python timeout must be a whole number of seconds from 1 to 240.');
   signal?.throwIfAborted();
   mkdirSync(workspace, { recursive: true, mode: 0o700 });
   const child = spawn('bwrap', pythonSandbox(workspace, python, dataDir), {

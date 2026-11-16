@@ -401,7 +401,8 @@ export const trees = {
     this.db
       .prepare('UPDATE messages SET text=?,status=?,stopped=?,embedding=NULL WHERE id=?')
       .run(text, status, stopped, id);
-    this.cite(id, text);
+    // Citations are rebuilt once the reply settles, not on every streamed save.
+    if (status !== 'streaming') this.cite(id, text);
   },
   // Retry drops the failed reply and its artifacts; library videos live in their own table and are kept.
   discardReply(conversation, message) {

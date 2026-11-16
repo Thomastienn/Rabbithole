@@ -160,7 +160,9 @@ export function createApp({
   recoverStaged(store, dir);
   const server = http.createServer(async (req, res) => {
     const started = performance.now();
-    const path = new URL(req.url, ctx.origin()).pathname;
+    const url = URL.parse(req.url, ctx.origin());
+    if (!url) return res.writeHead(400).end();
+    const path = url.pathname;
     const logging = logRequest(req.method, path);
     let cause;
     if (logging)
@@ -185,7 +187,6 @@ export function createApp({
       );
     const origin = ctx.origin();
     if (secure(req, res, origin, json)) return;
-    const url = new URL(req.url, origin);
     let body;
     try {
       if (ctx.stopping)
@@ -203,6 +204,9 @@ export function createApp({
           return json(res, 403, { error: 'Reload Rabbithole before trying again.' });
       }
       if (multipart) {
+        // formData() buffers the whole body, so refuse oversized or unsized uploads before reading it.
+        if (!(Number(req.headers['content-length']) <= 50 * 1024 * 1024))
+          return json(res, 413, { error: 'Attachments too large. Attach under 50 MB in total.' });
         try {
           const form = await new Request(url, {
             method: 'POST',

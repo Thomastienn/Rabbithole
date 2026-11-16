@@ -1,5 +1,6 @@
 import { until, observeProvider, observeStore } from '../support/events.mjs';
 import http from 'node:http';
+import net from 'node:net';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, statSync } from 'node:fs';
@@ -118,6 +119,27 @@ test('two trees stream independent replies, preserve originals, resume saved thr
   }
 });
 
+test('a fast stream saves the reply a few times, not once per delta, and keeps the full text', async () => {
+  const env = await open(join(dir, 'throttle.sqlite'), async (tree, text, emit) => {
+    for (let i = 0; i < 500; i++) emit({ type: 'delta', item: 'a', text: `w${i} ` });
+    emit({ type: 'status', status: 'completed' });
+  });
+  try {
+    const tree = await (await env.post('/api/trees', {})).json();
+    const update = env.store.update;
+    let saves = 0;
+    env.store.update = function (...args) {
+      saves++;
+      return update.apply(this, args);
+    };
+    await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Q' })).text();
+    assert.ok(saves < 10, `${saves} saves`);
+    assert.match(env.store.tree(tree.id).messages[1].text, /^w0 .* w499 $/);
+  } finally {
+    env.close();
+  }
+});
+
 test('provider failure preserves partial text and history, allows next request', async () => {
   let fail = true;
   const env = await open(join(dir, 'failure.sqlite'), async (...args) => {
@@ -189,6 +211,17 @@ test('rejects foreign origins, Host rebinding, missing CSRF, malformed JSON and 
       });
     });
     assert.equal(rebound, 403);
+    // Node accepts this absolute-form request line, but it is not a URL; the server must answer, not exit.
+    const malformed = await new Promise((resolve, reject) => {
+      const socket = net.connect(env.app.server.address().port, '127.0.0.1', () =>
+        socket.end(`GET http://[ HTTP/1.1\r\nHost: ${new URL(env.origin).host}\r\n\r\n`),
+      );
+      let reply = '';
+      socket.on('data', (chunk) => (reply += chunk)).on('end', () => resolve(reply));
+      socket.on('error', reject);
+    });
+    assert.match(malformed, /^HTTP\/1\.1 400 /);
+    assert.equal((await fetch(`${env.origin}/api/state`)).status, 200);
     assert.equal((await env.post('/api/trees/missing/messages', { text: 'Question' })).status, 404);
     assert.equal((await fetch(`${env.origin}/api/trees/missing`)).status, 404);
     assert.equal(

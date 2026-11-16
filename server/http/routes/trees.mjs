@@ -196,15 +196,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
   if (action === 'layout') {
     const { folded, selected, panel, viewport, positions = {} } = body;
     const coordinate = (n) => Number.isFinite(n) && Math.abs(n) <= 1000000;
-    const owned = new Set(); // positions may only move conversations inside this root's tree
-    for (let grew = true, trees = store.list(); grew;) {
-      grew = false;
-      for (const t of trees)
-        if (!owned.has(t.id) && (t.id === id || owned.has(t.parent))) {
-          owned.add(t.id);
-          grew = true;
-        }
-    }
+    const owned = new Set(store.descendants(id)); // positions may only move conversations inside this root's tree
     if (
       tree.branch ||
       !Array.isArray(folded) ||

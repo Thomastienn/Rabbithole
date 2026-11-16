@@ -286,15 +286,22 @@ export class Codex {
           emit({ type: 'status', status: 'interrupted' });
           finish();
         };
-        const timeout = setTimeout(() => {
-          interrupt();
-          finish(new Error('Response timed out. Partial reply saved; try again.'));
-        }, 300000);
+        // Times silence, not the whole turn, so a reply with several long tool calls can finish.
+        let timeout;
+        const idle = () => {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => {
+            interrupt();
+            finish(new Error('Response timed out. Partial reply saved; try again.'));
+          }, 300000);
+        };
+        idle();
         const listener = (message) => {
           const p = message.params;
           if (message.method === 'rabbithole/disconnected')
             return finish(new Error('Codex disconnected. Partial reply saved; try again.'));
           if (p?.threadId !== threadId) return;
+          idle();
           if (!turnId) {
             earlyEvents.push(message);
             return;

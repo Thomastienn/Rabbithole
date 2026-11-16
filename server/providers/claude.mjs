@@ -162,11 +162,18 @@ export class Claude {
     const nativeCall = (block) => ['WebSearch', 'WebFetch'].includes(block?.name);
     try {
       await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          kill();
-          reject(new Error('Response timed out. Partial reply saved; try again.'));
-        }, 300000);
+        // Times silence, not the whole turn, so a reply with several long tool calls can finish.
+        let timeout;
+        const idle = () => {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => {
+            kill();
+            reject(new Error('Response timed out. Partial reply saved; try again.'));
+          }, 300000);
+        };
+        idle();
         createInterface({ input: child.stdout }).on('line', (line) => {
+          idle();
           let m;
           try {
             m = JSON.parse(line);

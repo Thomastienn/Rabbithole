@@ -93,9 +93,9 @@ const TOOLS = {
         timeout: {
           type: 'integer',
           minimum: 1,
-          maximum: 600,
+          maximum: 240,
           description:
-            'Time limit in seconds; 60 if omitted, 600 at most. The run is killed at the limit.',
+            'Time limit in seconds; 60 if omitted, 240 at most. The run is killed at the limit.',
         },
       },
       required: ['code'],

@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,6 +44,11 @@ test('preparation: a text file becomes one text part with a file-name header', a
   assert.equal(
     withAttachments('', [{ text: '[Attached file: a]\nA' }, { text: '[Attached file: b]\nB' }]),
     '[Attached file: a]\nA\n\n[Attached file: b]\nB',
+  );
+  await assert.rejects(
+    () =>
+      prepareAttachment({ name: 'big.csv', type: 'text/csv', bytes: bytes('x'.repeat(1048577)) }),
+    /^Error: big\.csv: this text file is over 1 MB/,
   );
   assert.equal(withAttachments('Why?', []), 'Why?');
   for (const type of ['image/png', 'image/jpeg', 'image/webp'])
@@ -146,6 +152,27 @@ test('multipart send stores text attachments, delivers them, serves them safely 
   assert.equal(store.tree(refused).messages.length, 0);
   assert.equal(calls.length, 1);
   assert.ok(!existsSync(join(dir, 'attachments', refused)));
+  // An oversized or unsized upload is refused from its headers, before the body is buffered.
+  for (const length of [String(50 * 1024 * 1024 + 1), undefined]) {
+    const status = await new Promise((resolve, reject) => {
+      const request = http.request(`${origin}/api/trees/${refused}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data; boundary=x',
+          'X-Rabbithole-CSRF': csrf,
+          ...(length ? { 'Content-Length': length } : { 'Transfer-Encoding': 'chunked' }),
+        },
+      });
+      request
+        .on('response', (response) => {
+          resolve(response.statusCode);
+          request.destroy();
+        })
+        .on('error', reject);
+      request.flushHeaders();
+    });
+    assert.equal(status, 413, length);
+  }
 
   // Multipart send stores the file and delivers its text after the question.
   store.saveSuggestionSettings({

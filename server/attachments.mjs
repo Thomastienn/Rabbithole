@@ -54,6 +54,9 @@ export async function prepareAttachment(
     throw new Error(
       `${name}: this file type can't be attached. Attach a PDF, plain-text file or a PNG, JPEG or WebP image.`,
     );
+  // The whole file goes into the prompt; beyond this it fills the model's context.
+  if (bytes.length > 1024 * 1024)
+    throw new Error(`${name}: this text file is over 1 MB. Attach a shorter excerpt.`);
   return { delivery: 'text', parts: [{ text: `[Attached file: ${name}]\n${text}` }] };
 }
 
