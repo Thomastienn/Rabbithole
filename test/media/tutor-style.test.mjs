@@ -44,15 +44,29 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
     TUTOR_RULES,
     /every formula[^\n]*\$\.\.\.\$[^\n]*\$\$\.\.\.\$\$[^\n]*never[^\n]*plain text/,
   );
-  assert.match(
-    TUTOR_RULES,
-    /five, plain flow, figure, gallery, comparison and steps[^\n]*plain flow unless a layout clearly helps[^\n]*:::figure[^\n]*:::gallery[^\n]*:::comparison[^\n]*two or three[^\n]*:::steps/,
-  );
   const branch = { snapshot: 'Frozen fact', text: 'Passage' };
   const child = tutorSystem({ tutorStyle: 'Mine.', branch });
   assert.ok(child.startsWith(rules + 'Mine.\nThis is a focused conversation'));
   assert.ok(child.includes('Frozen fact'));
   assert.equal(tutorSystem({ tutorStyle: 'Mine.', instructions: 'Worker only.' }), 'Worker only.');
+});
+
+test('tutor chooses layouts by section shape without a reply cap or example replies', () => {
+  const layouts = tutorSystem({}).split('Reply layouts: ')[1].split('\n\n')[0];
+  assert.match(layouts, /for each section, choose the layout that fits its shape/i);
+  assert.match(layouts, /plain flow for running prose/);
+  assert.match(layouts, /most sections stay plain flow/);
+  assert.match(layouts, /no cap on layouts per reply/i);
+  assert.doesNotMatch(layouts, /plain flow unless|layout clearly helps|```|for example|e\.g\./i);
+  for (const shape of [
+    /five, plain flow, figure, gallery, comparison and steps/,
+    /:::figure[^\n]*image[^\n]*explanation/,
+    /:::gallery[^\n]*each image as its own line/,
+    /:::comparison[^\n]*one ### heading per column title \(two or three columns\)/,
+    /:::steps[^\n]*one ### heading per step title/,
+    /Do not nest layouts or use other ::: names/,
+  ])
+    assert.match(layouts, shape);
 });
 
 test('the chat prompt carries the whole-graph neighbourhood as data and omits an empty set', () => {
