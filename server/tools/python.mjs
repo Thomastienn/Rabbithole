@@ -14,7 +14,11 @@ export const PYTHON_SETUP =
 
 function probe(command, args) {
   return new Promise((resolve) => {
-    const child = spawnProcess(command, args, { stdio: 'ignore', timeout: 30000 });
+    // AbortSignal, not `timeout`: spawn keeps its timeout timer alive after ENOENT, delaying exit 30 s.
+    const child = spawnProcess(command, args, {
+      stdio: 'ignore',
+      signal: AbortSignal.timeout(30000),
+    });
     child.once('error', () => resolve(false));
     child.once('close', (code) => resolve(code === 0));
   });
