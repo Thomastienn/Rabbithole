@@ -42,3 +42,22 @@ export function renderVisual(root: HTMLElement, source: string, complete: boolea
     old.replaceWith(script);
   }
 }
+
+// The frame's stockPiece(id): a fresh SVG element from piece data the host delivered with the render
+// message, so the frame itself never fetches. A missing piece shows its ID in words instead.
+export function stockPiece(document: Document, pieces: Record<string, unknown>, id: string) {
+  const data = Object.hasOwn(pieces, id) ? pieces[id] : undefined;
+  const svg =
+    typeof data === 'string' &&
+    new document.defaultView!.DOMParser().parseFromString(data, 'image/svg+xml').documentElement;
+  if (svg && svg.localName === 'svg' && !svg.getElementsByTagName('parsererror').length)
+    return document.importNode(svg, true) as unknown as SVGSVGElement;
+  const missing = document.createElementNS('http://www.w3.org/2000/svg', 'svg'),
+    text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  missing.setAttribute('viewBox', '0 0 240 24');
+  text.setAttribute('y', '16');
+  text.setAttribute('fill', 'currentColor');
+  text.textContent = `Stock piece ${id} is missing`;
+  missing.append(text);
+  return missing;
+}

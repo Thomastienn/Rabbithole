@@ -68,12 +68,28 @@ test('progressive visual keeps its frame, posts the latest partial on load, then
     source: '<p>First Second</p>',
     complete: false,
   });
-  await act(async () => set(visual('ready', { source: '<p>Final</p><script>run()</script>' })));
+  const requested = [];
+  const savedFetch = globalThis.fetch;
+  t.after(() => (globalThis.fetch = savedFetch));
+  globalThis.fetch = async (url) => {
+    requested.push(url);
+    return url.endsWith('horse')
+      ? { ok: true, json: async () => ({ svg: '<svg id="horse"></svg>' }) }
+      : { ok: false };
+  };
+  const final =
+    "<p>Final</p><script>run(stockPiece('fluent-emoji:horse'), stockPiece('fluent-emoji:horse'), stockPiece(\"fluent-emoji:gone\"))</script>";
+  await act(async () => set(visual('ready', { source: final })));
   assert.equal(container.querySelector('iframe'), frame, 'completion never remounts the frame');
+  assert.deepEqual(requested, [
+    '/api/stock/fluent-emoji%3Ahorse',
+    '/api/stock/fluent-emoji%3Agone',
+  ]);
   assert.deepEqual(posted.at(-1), {
     type: 'render',
-    source: '<p>Final</p><script>run()</script>',
+    source: final,
     complete: true,
+    pieces: { 'fluent-emoji:horse': '<svg id="horse"></svg>', 'fluent-emoji:gone': null },
   });
   await act(async () => set(visual('failed', { error: 'Visual generation canceled.' })));
   assert.equal(container.querySelector('iframe'), null);

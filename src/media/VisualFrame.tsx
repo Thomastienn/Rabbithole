@@ -51,14 +51,29 @@ function Frame({ artifact }: { artifact: Artifact }) {
   useEffect(() => {
     if (frame.current) theme();
   }, [mode, name]);
-  const render = () =>
-    post({
-      type: 'render',
-      source: artifact.source ?? '',
-      complete: artifact.status === 'ready',
-    });
+  // A finished visual gets the stock pieces it names from the app; the frame itself makes no request.
+  const render = async () => {
+    const source = artifact.source ?? '',
+      complete = artifact.status === 'ready';
+    const ids = complete
+      ? [
+          ...new Set(
+            [...source.matchAll(/\bstockPiece\s*\(\s*(["'`])([^"'`]*)\1\s*\)/g)].map((m) => m[2]),
+          ),
+        ]
+      : [];
+    const pieces = Object.fromEntries(
+      await Promise.all(
+        ids.map(async (id) => {
+          const response = await fetch(`/api/stock/${encodeURIComponent(id)}`).catch(() => null);
+          return [id, response?.ok ? (await response.json()).svg : null];
+        }),
+      ),
+    );
+    post({ type: 'render', source, complete, ...(complete && { pieces }) });
+  };
   useEffect(() => {
-    if (loaded.current) render();
+    if (loaded.current) void render();
   }, [artifact.source, artifact.status]);
   const ready = height !== undefined && (artifact.status === 'ready' || !!artifact.source);
   return (
@@ -77,7 +92,7 @@ function Frame({ artifact }: { artifact: Artifact }) {
         onLoad={() => {
           theme();
           loaded.current = true;
-          render();
+          void render();
         }}
       />
     </>

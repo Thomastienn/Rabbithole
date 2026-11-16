@@ -260,7 +260,7 @@ export function mediaJobs(ctx) {
     return generateVisual(
       metering,
       selection,
-      { ...input, stockPieces },
+      { ...input, stockPieces, piece: ctx.stock?.piece },
       signal,
       ctx.visualTimeout,
       onPartial,

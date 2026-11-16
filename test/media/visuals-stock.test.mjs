@@ -71,3 +71,26 @@ test('visual objects within their limits get a top-3 stock shortlist in the mode
     await env.close();
   }
 });
+
+test('the stock route returns piece data for an ID and refuses an unknown ID', async () => {
+  const env = await open(
+    { generate: async (_tree, _text, emit) => complete(emit, 'Hi') },
+    { generate: async () => {} },
+    {
+      stock: {
+        match: async () => [],
+        piece: async (id) => (id === 'fluent-emoji:horse' ? '<svg id="horse"></svg>' : null),
+      },
+    },
+  );
+  try {
+    const ok = await fetch(`${env.origin}/api/stock/${encodeURIComponent('fluent-emoji:horse')}`);
+    assert.equal(ok.status, 200);
+    assert.match(ok.headers.get('content-type'), /json/);
+    assert.deepEqual(await ok.json(), { svg: '<svg id="horse"></svg>' });
+    const unknown = await fetch(`${env.origin}/api/stock/fluent-emoji%3Aunicorn`);
+    assert.equal(unknown.status, 404);
+  } finally {
+    await env.close();
+  }
+});

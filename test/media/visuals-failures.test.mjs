@@ -308,6 +308,7 @@ test('a stockPiece ID that was not offered gets the validationError retry; an of
             object,
             pieces: [{ id: 'fluent-emoji:horse', title: 'Horse', type: 'emoji' }],
           })),
+        piece: async () => '<svg></svg>',
       },
     },
   );
@@ -323,6 +324,51 @@ test('a stockPiece ID that was not offered gets the validationError retry; an of
     assert.deepEqual(calls[1].stockPieces, calls[0].stockPieces);
     assert.equal(artifact.status, 'ready');
     assert.match(artifact.source, /stockPiece\('fluent-emoji:horse'\)/);
+  } finally {
+    await env.close();
+  }
+});
+
+test('a stock piece that cannot be fetched gets the validationError retry', async () => {
+  const calls = [],
+    piece = (id) => `<svg viewBox="0 0 10 10"></svg><script>stockPiece('${id}')</script>`;
+  const outputs = [piece('fluent-emoji:horse'), '<svg viewBox="0 0 10 10"></svg>'];
+  const env = await open(
+    {
+      generate: async (_tree, _text, emit) =>
+        complete(
+          emit,
+          '\n```rabbithole-visual\n' + JSON.stringify({ ...task, objects: ['horse'] }) + '\n```',
+        ),
+    },
+    {
+      generate: async (_tree, text, emit) => {
+        calls.push(JSON.parse(text));
+        complete(emit, outputs[calls.length - 1]);
+      },
+    },
+    {
+      stock: {
+        match: async (names) =>
+          names.map((object) => ({
+            object,
+            pieces: [{ id: 'fluent-emoji:horse', title: 'Horse', type: 'emoji' }],
+          })),
+        piece: async () => {
+          throw new Error('offline');
+        },
+      },
+    },
+  );
+  try {
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw a horse' })).text();
+    await until(async () =>
+      (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every((a) => a.status !== 'pending'),
+    );
+    const [artifact] = (await env.get(`/api/trees/${env.tree.id}`)).artifacts;
+    assert.equal(calls.length, 2);
+    assert.match(calls[1].validationError, /stock piece fluent-emoji:horse could not be fetched/);
+    assert.equal(artifact.status, 'ready');
   } finally {
     await env.close();
   }

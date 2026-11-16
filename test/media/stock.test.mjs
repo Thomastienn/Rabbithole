@@ -4,7 +4,13 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { FLUENT, fluentIndex, keywordMatch, stockIndex } from '../../server/media/stock.mjs';
+import {
+  FLUENT,
+  fluentIndex,
+  keywordMatch,
+  stockCatalog,
+  stockIndex,
+} from '../../server/media/stock.mjs';
 
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 const listing = {
@@ -82,4 +88,39 @@ test('keyword matching returns at most the top 3 pieces per name, closest title 
     { id: 'fluent-emoji:coin', title: 'Coin', type: 'emoji' },
   ]);
   assert.deepEqual(keywordMatch(index, 'server'), []);
+});
+
+test('a piece fetches once at the pinned revision, then comes from the cache; an unknown ID is null', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-stock-')),
+    urls = [];
+  const svg = '<svg viewBox="0 0 32 32"><path d="M0 0h32v32z" fill="#8B5E3C"/></svg>';
+  const fetchPiece = async (url) => (urls.push(url), svg);
+  const stock = stockCatalog(dir, async () => structuredClone(listing), fetchPiece, catalog);
+  assert.equal(await stock.piece('fluent-emoji:horse_racing'), svg);
+  assert.equal(await stock.piece('fluent-emoji:horse_racing'), svg);
+  assert.deepEqual(urls, [
+    `https://raw.githubusercontent.com/${FLUENT.repo}/${FLUENT.revision}/assets/Horse%20racing/Default/Flat/horse_racing_flat_default.svg`,
+  ]);
+  const again = stockCatalog(dir, async () => structuredClone(listing), fetchPiece, catalog);
+  assert.equal(await again.piece('fluent-emoji:horse_racing'), svg);
+  assert.equal(urls.length, 1, 'a new process reads the cached file');
+  assert.equal(await stock.piece('fluent-emoji:unicorn'), null);
+  assert.equal(urls.length, 1);
+  const failing = stockCatalog(
+    dir,
+    async () => structuredClone(listing),
+    async () => {
+      throw new Error('offline');
+    },
+    catalog,
+  );
+  await assert.rejects(failing.piece('fluent-emoji:coin'), /coin download failed: offline/);
+  const html = stockCatalog(
+    dir,
+    async () => structuredClone(listing),
+    async () => '<html>',
+    catalog,
+  );
+  await assert.rejects(html.piece('fluent-emoji:coin'), /not an SVG/);
+  assert.ok(!existsSync(join(dir, 'stock', 'pieces', 'fluent-emoji%3Acoin.svg')));
 });

@@ -60,7 +60,7 @@ function paletteFor(theme) {
 }
 
 // A mistake check, not a security boundary: execution stays in the opaque-origin, network-denied sandbox.
-async function validate(source, offered = new Set()) {
+async function validate(source, offered = new Set(), piece) {
   const invalid = (reason) => {
     throw new Error(`Visual output is invalid: ${reason}.`);
   };
@@ -84,6 +84,10 @@ async function validate(source, offered = new Set()) {
     invalid('call stockPiece only with an offered ID as a quoted string');
   for (const [, , id] of named)
     if (!offered.has(id)) invalid(`stock piece ${id} was not offered; use an offered ID or none`);
+  // Fetching here fills the cache the frame's pieces are read from.
+  for (const id of new Set(named.map(([, , id]) => id)))
+    if (!(await Promise.resolve(piece?.(id)).catch(() => null)))
+      invalid(`stock piece ${id} could not be fetched; use another offered ID or none`);
   const javascript = (code) => {
     if (
       /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|Worker|SharedWorker|RTCPeerConnection|serviceWorker)\s*[.(\[]|\b(?:import|require)\s*\(|\bgsap\s*\.|\bnew\s+Chart\b|\bLeaflet\s*\./.test(
@@ -211,7 +215,7 @@ export async function generateVisual(
         throw new Error('Visual generation did not complete. Retry to try again.');
       try {
         if (overflow) throw new Error(overflow);
-        return await validate([...items.values()].join('\n\n'), offered);
+        return await validate([...items.values()].join('\n\n'), offered, input.piece);
       } catch (error) {
         validationError = error.message;
         if (attempt) throw error;

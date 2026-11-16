@@ -24,6 +24,24 @@ async function fetchJson(url) {
   return response.json();
 }
 
+async function fetchText(url) {
+  const response = await fetch(url, {
+    redirect: 'follow',
+    headers: { 'User-Agent': 'Rabbithole' },
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.text();
+}
+
+// A rename publishes the file whole; a failed write leaves no partial file behind.
+async function writeAtomic(path, text) {
+  const part = `${path}.part-${randomUUID()}`;
+  await writeFile(part, text);
+  await rename(part, path).catch((error) =>
+    rm(part, { force: true }).then(() => Promise.reject(error)),
+  );
+}
+
 // One entry per emoji: its plain Flat file, or the default skin tone's when it has tones.
 export function fluentIndex(listing) {
   if (!Array.isArray(listing?.tree) || listing.truncated)
@@ -57,11 +75,7 @@ export async function stockIndex(dir, download = fetchJson, catalog = FLUENT) {
   if (sha256(text) !== catalog.hash)
     throw new Error('Stock catalog index (Fluent Emoji) does not match its recorded hash.');
   await mkdir(join(dir, 'stock'), { recursive: true, mode: 0o700 });
-  const part = `${path}.part-${randomUUID()}`;
-  await writeFile(part, text);
-  await rename(part, path).catch((error) =>
-    rm(part, { force: true }).then(() => Promise.reject(error)),
-  );
+  await writeAtomic(path, text);
   return JSON.parse(text);
 }
 
@@ -89,17 +103,41 @@ export function keywordMatch(index, name, count = 3) {
     .map(({ entry: { id, title, type } }) => ({ id, title, type }));
 }
 
-// Object names in, top 3 pieces per name out. The index loads on first use; a failure is retried next call.
-export function stockCatalog(dir, download) {
+// Object names in, top 3 pieces per name out; an ID in, its SVG text out (null for an unknown ID).
+// The index loads on first use; a failure is retried next call.
+export function stockCatalog(dir, download, downloadPiece = fetchText, catalog = FLUENT) {
   let loading;
+  const load = () =>
+    (loading ??= stockIndex(dir, download, catalog).catch((error) => {
+      loading = undefined;
+      throw error;
+    }));
   return {
     async match(names) {
-      loading ??= stockIndex(dir, download).catch((error) => {
-        loading = undefined;
-        throw error;
-      });
-      const index = await loading;
+      const index = await load();
       return names.map((object) => ({ object, pieces: keywordMatch(index, object) }));
+    },
+    // shortcut: the piece cache is never evicted, add eviction when real usage shows it grows.
+    async piece(id) {
+      const entry = (await load()).find((e) => e.id === id);
+      if (!entry) return null;
+      const folder = join(dir, 'stock', 'pieces'),
+        path = join(folder, `${encodeURIComponent(entry.id)}.svg`);
+      const cached = await readFile(path, 'utf8').catch(() => null);
+      if (cached) return cached;
+      let text;
+      try {
+        text = await downloadPiece(
+          `https://raw.githubusercontent.com/${catalog.repo}/${catalog.revision}/${encodeURI(entry.path)}`,
+        );
+      } catch (error) {
+        throw new Error(`Stock piece ${id} download failed: ${error.message}`);
+      }
+      if (typeof text !== 'string' || !/^\s*(?:<\?xml[^>]*>\s*)?<svg[\s>]/.test(text))
+        throw new Error(`Stock piece ${id} download is not an SVG file`);
+      await mkdir(folder, { recursive: true, mode: 0o700 });
+      await writeAtomic(path, text);
+      return text;
     },
   };
 }
