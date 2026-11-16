@@ -31,6 +31,132 @@ const sources = { [cat]: { source: 'https://cats.example/page', resource: 2 } };
 const doc = (markup) => new JSDOM(`<section id="r">${markup}</section>`).window.document;
 const shown = (...args) => doc(renderToStaticMarkup(h('div', null, renderMarkdown(...args))));
 
+test('wide shows exactly one linked or reference image at full reply width with its source', () => {
+  for (const image of [
+    `![A cat](${cat})`,
+    `[![A cat](${cat})](https://cats.example/page)`,
+    `![A cat][cat]\n\n[cat]: ${cat}`,
+  ]) {
+    const source = `:::wide\n${image}\n:::`,
+      d = shown(source, undefined, [], [], sources),
+      wide = d.querySelector('.layout-wide');
+    assert.ok(wide, image);
+    assert.equal(wide.querySelectorAll('img').length, 1);
+    assert.equal(wide.querySelector('img').getAttribute('src'), cat);
+    assert.equal(wide.querySelector('a').getAttribute('href'), 'https://cats.example/page');
+    const style = d.createElement('style');
+    style.textContent = readFileSync(
+      new URL('../../src/markdown/layouts.css', import.meta.url),
+      'utf8',
+    );
+    d.head.append(style);
+    assert.equal(d.defaultView.getComputedStyle(wide.querySelector('.layout-media')).width, '100%');
+    assert.equal(d.defaultView.getComputedStyle(wide.querySelector('img')).width, '100%');
+    assert.equal(d.defaultView.getComputedStyle(wide.querySelector('img')).maxHeight, 'none');
+    d.defaultView.close();
+  }
+});
+
+test('wide claims one visual once and leaves outside media in plain flow', () => {
+  const source = 'Before.\n\n:::wide\n\n:::\n\nAfter.',
+    at = source.lastIndexOf('\n:::') + 1,
+    visual = h(
+      'figure',
+      { key: 'inside', className: 'visual', id: 'inside' },
+      'Visual description',
+    );
+  for (const flow of [false, true]) {
+    const d = shown(
+      source,
+      undefined,
+      [],
+      [
+        {
+          at: source.indexOf('Before.'),
+          kind: 'visual',
+          node: h('figure', { key: 'before', id: 'before' }),
+        },
+        { at, kind: 'visual', node: visual },
+        {
+          at: source.indexOf('After.'),
+          kind: 'visual',
+          node: h('figure', { key: 'after', id: 'after' }),
+        },
+      ],
+      {},
+      flow,
+    );
+    assert.equal(d.querySelectorAll('#inside').length, 1);
+    assert.equal(d.querySelectorAll('.layout-wide #inside').length, flow ? 0 : 1);
+    assert.equal(d.querySelector('#before').closest('.reply-layout'), null);
+    assert.equal(d.querySelector('#after').closest('.reply-layout'), null);
+  }
+});
+
+test('bad wide shapes preserve all text, images and unclaimed media in plain flow', () => {
+  const empty = ':::wide\n\n:::';
+  const image = `![A cat](${cat})`;
+  for (const [source, kinds] of [
+    [empty, []],
+    [':::wide\nProse.\n:::', []],
+    [`:::wide\n${image}\n\nExplanation.\n:::`, []],
+    [`:::wide\n${image}\n${image}\n:::`, []],
+    [empty, ['visual', 'visual']],
+    [`:::wide\n${image}\n\n:::`, ['visual']],
+    [empty, ['video']],
+    [empty, ['discussion']],
+  ]) {
+    const slots = kinds.map((kind, i) => ({
+        at: source.lastIndexOf('\n:::') + 1,
+        kind,
+        node: h('figure', { key: `m${i}`, id: `m${i}` }, kind),
+      })),
+      d = shown(source, undefined, [], slots),
+      flow = shown(source, undefined, [], slots, {}, true);
+    assert.equal(d.querySelector('.reply-layout'), null, source);
+    assert.equal(d.getElementById('r').textContent, flow.getElementById('r').textContent);
+    assert.equal(d.querySelectorAll('img').length, flow.querySelectorAll('img').length);
+    assert.equal(d.querySelectorAll('figure').length, kinds.length);
+  }
+});
+
+test('Reply places its visual in wide and restores it across the narrow fallback', async (t) => {
+  const source = ':::wide\n\n:::',
+    artifact = {
+      id: 'v1',
+      kind: 'visual',
+      title: 'A loop',
+      description: 'A loop runs twice.',
+      status: 'ready',
+      position: source.lastIndexOf('\n:::') + 1,
+    };
+  let width = 700,
+    resize;
+  const { container, act, cleanup } = await render(
+    h(Reply, { text: source, underlines: [], inlineArtifacts: [artifact] }),
+    (w) => {
+      ui(w);
+      w.ResizeObserver = class {
+        constructor(fn) {
+          resize = fn;
+        }
+        observe() {}
+        disconnect() {}
+      };
+      Object.defineProperty(w.HTMLElement.prototype, 'clientWidth', { get: () => width });
+    },
+  );
+  t.after(cleanup);
+  assert.equal(container.querySelectorAll('.layout-wide .visual').length, 1);
+  width = 479;
+  await act(async () => resize());
+  assert.equal(container.querySelector('.reply-layout'), null);
+  assert.equal(container.querySelectorAll('.visual').length, 1);
+  width = 480;
+  await act(async () => resize());
+  assert.equal(container.querySelectorAll('.layout-wide .visual').length, 1);
+});
+
 test('figure puts its image beside the text and gallery grids images with their source links', () => {
   const d = shown(raw, undefined, [], [], sources);
   const figure = d.querySelector('.layout-figure');

@@ -59,13 +59,16 @@ test('tutor chooses layouts by section shape without a reply cap or example repl
   assert.match(layouts, /no cap on layouts per reply/i);
   assert.doesNotMatch(layouts, /plain flow unless|layout clearly helps|```|for example|e\.g\./i);
   for (const shape of [
-    /five, plain flow, figure, gallery, comparison and steps/,
+    /eight, plain flow, figure, gallery, comparison, steps, callout, timeline and wide/,
     /:::figure[^\n]*image[^\n]*explanation/,
     /Figure media side:[^\n]*:::figure\{side=left\}[^\n]*:::figure\{side=right\}[^\n]*default/,
     /Figure media ratio:[^\n]*ratio=wide[^\n]*same braces[^\n]*twice[^\n]*equal/,
     /:::gallery[^\n]*each image as its own line/,
     /:::comparison[^\n]*one ### heading per column title \(two or three columns\)/,
     /:::steps[^\n]*one ### heading per step title/,
+    /:::callout[^\n]*highlighted block[^\n]*key idea, warning or takeaway/,
+    /:::timeline[^\n]*ordered or dated entries[^\n]*one ### heading per entry/,
+    /:::wide[^\n]*one visual or image[^\n]*full reply width/,
     /Do not nest layouts or use other ::: names/,
   ])
     assert.match(layouts, shape);

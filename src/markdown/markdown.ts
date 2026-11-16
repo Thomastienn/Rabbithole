@@ -18,6 +18,8 @@ const pos = (n: MarkdownNode) => ({
   start: n.position?.start.offset ?? 0,
   end: n.position?.end.offset ?? 0,
 });
+const hasDirective = (n: MarkdownNode): boolean =>
+  n.type === 'containerDirective' || !!n.children?.some(hasDirective);
 
 // Decode only Markdown's escapes/entities. Each transformed token retains its entire source span.
 function decoded(raw: string, start: number, prose: boolean): Run[] {
@@ -98,7 +100,7 @@ export function renderMarkdown(
   raw: string,
   reveal?: Span,
   underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
-  slots: { at: number; node: ReactNode }[] = [],
+  slots: { at: number; node: ReactNode; kind?: string }[] = [],
   sources: Record<string, ImageSource> = {},
   flow = false,
   resources: Record<string, string> = {},
@@ -181,7 +183,7 @@ export function renderMarkdown(
     n.children?.forEach(findDefinitions);
   }
   findDefinitions(tree);
-  // Shared so a figure or gallery can claim the visuals placed inside it before the root places the rest.
+  // Shared so media layouts can claim visuals before the root places the rest.
   const pending = [...slots].sort((a, b) => a.at - b.at);
   function node(n: MarkdownNode, inTable = false): ReactNode {
     const before = revealed,
@@ -395,8 +397,14 @@ export function renderMarkdown(
             )
           : leaf({ start: s, end: e, value: n.alt || raw.slice(s, e), atomic: true });
       }
-      case 'containerDirective':
-        return layout(n, (c) => node(c, inTable), pending, flow) ?? kids();
+      case 'containerDirective': {
+        // A nested directive tree stays entirely in plain flow.
+        const previous = flow;
+        flow ||= !!n.children?.some(hasDirective);
+        const content = layout(n, (c) => node(c, inTable), pending, flow) ?? kids();
+        flow = previous;
+        return content;
+      }
       case 'definition':
         return null;
       default:

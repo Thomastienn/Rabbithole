@@ -78,6 +78,7 @@ const Reply = memo(function Reply({
             underlines,
             inlineArtifacts.map((v) => ({
               at: v.position!,
+              kind: v.kind,
               node:
                 v.kind === 'discussion' ? (
                   <DiscussionCard
