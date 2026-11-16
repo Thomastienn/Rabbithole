@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { discussionNeighbourhood, discussionText } from '../../server/media/discussion-context.mjs';
+import { discussionText } from '../../server/media/discussion-context.mjs';
+import { conceptNeighbourhood } from '../../server/neighbourhood.mjs';
 import { compactionMessages, tutorContext } from '../../server/media/diagrams.mjs';
 import { discussion } from '../fixtures/discussion.mjs';
 
-test('discussion neighbourhood uses whole names and aliases, nearest hops, guesses and unknowns with bounds', () => {
+test('concept neighbourhood uses whole names and aliases, nearest hops, guesses and unknowns with bounds', () => {
   const concept = (name, observed = false) => ({
     name,
     familiarity: 0.8,
@@ -23,7 +24,7 @@ test('discussion neighbourhood uses whole names and aliases, nearest hops, guess
     ...graph.concepts.map((c, id) => ({ id, name: c.name })),
     { id: 0, name: 'Plant roots' },
   ];
-  const result = discussionNeighbourhood(graph, names, 'Plant roots?');
+  const result = conceptNeighbourhood(graph, names, 'Plant roots?');
   assert.deepEqual(
     result.concepts.map((c) => c.name),
     ['Root', 'Hyphae', 'Fungus'],
@@ -31,17 +32,66 @@ test('discussion neighbourhood uses whole names and aliases, nearest hops, guess
   assert.equal(result.concepts[0].guess, 0.8);
   assert.equal(result.concepts[1].familiarity, 0.8);
   assert.deepEqual(result.links, [graph.links[0]]);
-  assert.equal(discussionNeighbourhood(graph, names, 'Soil').concepts[0].familiarity, 'unknown');
-  assert.deepEqual(discussionNeighbourhood(graph, names, 'Uproot').concepts, []);
+  assert.equal(conceptNeighbourhood(graph, names, 'Soil').concepts[0].familiarity, 'unknown');
+  assert.deepEqual(conceptNeighbourhood(graph, names, 'Uproot').concepts, []);
   for (let i = 0; i < 100; i++) {
     graph.concepts.push(concept(`Connected ${i}`));
     graph.links.push({ from: 'Root', to: `Connected ${i}`, kind: 'builds on' });
   }
-  const bounded = discussionNeighbourhood(graph, names, 'Root');
+  const bounded = conceptNeighbourhood(graph, names, 'Root');
   assert.equal(bounded.concepts[0].name, 'Root');
-  assert.equal(bounded.concepts.length, 24);
+  assert.equal(bounded.concepts.length, 15);
   assert.ok(bounded.links.every((l) => bounded.concepts.some((c) => c.name === l.to)));
   assert.ok(JSON.stringify(bounded).length < 12000);
+});
+
+test('neighbourhood guesses average unique directly observed neighbours, including outside the selected set', () => {
+  const graph = {
+    concepts: [
+      { name: 'Centre', topics: [], familiarity: 0.3, observations: [0] },
+      { name: 'Low', topics: [], familiarity: 0.2, observations: [1] },
+      { name: 'High', topics: [], familiarity: 0.8, observations: [1] },
+      { name: 'Unobserved', topics: [], familiarity: 0.3, observations: [0] },
+    ],
+    links: [
+      { from: 'Centre', to: 'Low', kind: 'related' },
+      { from: 'Low', to: 'Centre', kind: 'builds on' },
+      { from: 'High', to: 'Centre', kind: 'related' },
+      { from: 'Centre', to: 'Unobserved', kind: 'related' },
+    ],
+  };
+  const names = graph.concepts.map((c, id) => ({ id, name: c.name }));
+  const result = conceptNeighbourhood(graph, names, 'Centre');
+  assert.equal(result.concepts[0].guess, 0.5, 'two links to Low count that concept only once');
+  assert.deepEqual(result.links, [graph.links[1]], 'builds-on direction stays intact');
+  graph.concepts[0].topics = ['x'.repeat(7880)];
+  const trimmed = conceptNeighbourhood(graph, names, 'Centre');
+  assert.deepEqual(
+    trimmed.concepts.map((c) => c.name),
+    ['Centre'],
+  );
+  assert.equal(trimmed.concepts[0].guess, 0.5, 'a guess still uses neighbours outside the budget');
+  assert.deepEqual(trimmed.links, []);
+  assert.ok(JSON.stringify(trimmed).length <= 8000);
+});
+
+test('direct matches precede ranked semantic matches and neither is displaced by neighbours', () => {
+  const graph = {
+    concepts: ['Exact', 'Semantic best', 'Semantic next', 'Linked', 'Distant', 'Too far'].map(
+      (name) => ({ name, topics: [], familiarity: 0.3, observations: [0] }),
+    ),
+    links: [
+      { from: 'Linked', to: 'Distant', kind: 'related' },
+      { from: 'Distant', to: 'Too far', kind: 'related' },
+      { from: 'Semantic best', to: 'Linked', kind: 'builds on' },
+    ],
+  };
+  const names = graph.concepts.map((c, id) => ({ id, name: c.name }));
+  const result = conceptNeighbourhood(graph, names, 'Exact', ['Semantic best', 'Semantic next']);
+  assert.deepEqual(
+    result.concepts.map((c) => c.name),
+    ['Exact', 'Semantic best', 'Semantic next', 'Linked', 'Distant'],
+  );
 });
 
 test('open discussion context has lines without levels; closed context and branch compaction use its paragraph', () => {

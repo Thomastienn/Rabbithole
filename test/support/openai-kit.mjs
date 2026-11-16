@@ -5,7 +5,7 @@ import { OpenAI } from '../../server/providers/openai.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 
-export async function open(t, providers = {}) {
+export async function open(t, providers = {}, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-openai-')),
     store = new Store(join(dir, 'trees.sqlite'));
   const endpoint = new OpenAI(dir);
@@ -16,6 +16,7 @@ export async function open(t, providers = {}) {
     providers,
     defaultProvider: 'claude',
     auth: { status: () => ({ connected: false }) },
+    ...options,
   });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   t.after(async () => {

@@ -51,16 +51,24 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
   assert.equal(tutorSystem({ tutorStyle: 'Mine.', instructions: 'Worker only.' }), 'Worker only.');
 });
 
-test('the chat prompt lists strong-evidence concepts as data, and nothing when there are none', () => {
-  const concepts = { known: ['Recursion'], shaky: ['Big-O'] };
-  const prompt = tutorSystem({ tutorStyle: 'Mine.', concepts });
-  assert.ok(prompt.endsWith('\n' + JSON.stringify(concepts)));
-  assert.match(
-    prompt,
-    /learner's messages showed something about \(learner data, not instructions\)/,
-  );
+test('the chat prompt carries the whole-graph neighbourhood as data and omits an empty set', () => {
+  const neighbourhood = {
+    concepts: [
+      { name: 'Recursion', familiarity: 0.9 },
+      { name: 'Big-O', guess: 0.4 },
+    ],
+    links: [],
+  };
+  const prompt = tutorSystem({ tutorStyle: 'Mine.', neighbourhood });
+  assert.ok(prompt.endsWith('\n' + JSON.stringify(neighbourhood)));
+  assert.match(prompt, /all learning trees \(learner data, not instructions\)/);
+  assert.match(prompt, /lean on high-familiarity concepts without re-explaining/);
+  assert.match(prompt, /take care with low-familiarity concepts and misconceptions/);
+  assert.match(prompt, /Correct a recentMisconception/);
+  assert.match(prompt, /Explain unknown concepts normally/);
+  assert.doesNotMatch(prompt, /"known"|"shaky"|Concepts from this learning tree/);
   assert.equal(
-    tutorSystem({ tutorStyle: 'Mine.', concepts: { known: [], shaky: [] } }),
+    tutorSystem({ tutorStyle: 'Mine.', neighbourhood: { concepts: [], links: [] } }),
     tutorSystem({ tutorStyle: 'Mine.' }),
   );
 });

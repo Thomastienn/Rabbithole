@@ -102,13 +102,10 @@ test('met evidence has no effect; observations replace per message and unknown n
   store.observe(ask, [{ concept: 'Met', level: 0, confidence: 'low' }]);
   assert.deepEqual(of('Met').observations, [1, 0, 0, 0, 0, 0]);
   assert.deepEqual(of('Brand new').observations, [0, 0, 0, 0, 0, 0]);
-  // Strong-evidence prompt lists come from this learning tree's observations.
+  // Merging moves observations to the kept concept.
   store.observe(store.message(tree, 'user', 'q2', 'completed'), [
     { concept: 'Brand new', level: 5, confidence: 'high' },
   ]);
-  assert.deepEqual(store.strongConcepts(tree), { known: ['Brand new'], shaky: ['Met'] });
-  assert.deepEqual(store.strongConcepts(store.create().id), { known: [], shaky: [] });
-  // Merging moves observations to the kept concept.
   store.mergeConcepts('Met', 'Brand new');
   assert.deepEqual(of('Brand new').observations, [1, 0, 0, 0, 0, 1]);
 });

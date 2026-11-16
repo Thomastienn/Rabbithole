@@ -105,7 +105,6 @@ test('card replies stream saved named lines, carry context and hidden levels, an
     graph.concepts.find((c) => c.name === 'Hyphae').observations.reduce((a, b) => a + b),
     2,
   );
-  assert.deepEqual(env.store.strongConcepts(id).known, ['Hyphae']);
   assert.equal(
     env.store.tree(id).messages.length,
     2,

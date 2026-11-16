@@ -30,6 +30,7 @@ import { tesseractOcr } from './ocr.mjs';
 import { toolRunner } from './tools/runner.mjs';
 import { searxngSearch } from './tools/searxng.mjs';
 import { toolMcp } from './tools/mcp.mjs';
+import { retrieveNeighbourhood } from './neighbourhood.mjs';
 
 // Matching order; each route answers only its own method and paths, and assets answers everything left.
 const ROUTES = [
@@ -89,6 +90,7 @@ export function createApp({
     videoNarrate,
     videoManim,
     videoEmbed,
+    neighbourhood: (text, signal) => retrieveNeighbourhood(store, videoEmbed, text, signal),
     log,
     suggestions,
     suggestionTimeout,

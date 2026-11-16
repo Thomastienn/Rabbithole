@@ -207,6 +207,13 @@ export function open(path) {
         CREATE TABLE IF NOT EXISTS concept_topics (concept INTEGER NOT NULL REFERENCES concepts(id), topic INTEGER NOT NULL REFERENCES topics(id), PRIMARY KEY(concept, topic));
         CREATE TABLE IF NOT EXISTS concept_links (concept INTEGER NOT NULL REFERENCES concepts(id), target INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('related','builds on')), PRIMARY KEY(concept, target, kind), CHECK(concept <> target));
         CREATE TABLE IF NOT EXISTS evidence (concept INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('met','asked','used','ignored','known','unknown')), source TEXT, at INTEGER NOT NULL, UNIQUE(concept, kind, source));`);
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(concepts)')
+        .all()
+        .some((c) => c.name === 'embedding')
+    )
+      this.db.exec('ALTER TABLE concepts ADD COLUMN embedding BLOB');
     // Observations: the tutor's verdict on what one learner message showed about a concept; familiarity derives from them.
     // Created once: the old familiarity evidence (asked, used, ignored and corrections) was test data and goes; met stays.
     if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='observations'").get())

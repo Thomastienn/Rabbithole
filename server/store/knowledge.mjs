@@ -1,9 +1,5 @@
 import { familiarity } from '../familiarity.mjs';
-
-// Familiarity at or above this counts as known in the chat prompt's strong-evidence lists.
-const KNOWN = 0.6;
-// Bound on each strong-evidence list in the chat prompt.
-const STRONG_LIMIT = 12;
+import { blob, vector } from './embeddings.mjs';
 // Whole-word, case-insensitive name match.
 const mentions = (text, name) =>
   new RegExp(
@@ -71,25 +67,20 @@ export const knowledge = {
       observations: counts,
     };
   },
-  // The learning tree's observed concepts, latest observation first: "known" at KNOWN familiarity or above, otherwise "shaky".
-  strongConcepts(conversation) {
-    const rows = this.db
+  conceptEmbeddings() {
+    return this.db
       .prepare(
-        `WITH RECURSIVE up(id) AS (SELECT ? UNION SELECT parent FROM branches JOIN up ON child=up.id),
-        learning(id) AS (SELECT id FROM up WHERE id NOT IN (SELECT child FROM branches) UNION SELECT child FROM branches JOIN learning ON parent=learning.id)
-        SELECT c.id, c.name, MAX(o.at) AS at FROM observations o JOIN concepts c ON c.id=o.concept
-        WHERE o.message IN (SELECT id FROM messages WHERE tree IN (SELECT id FROM learning)
-          UNION ALL SELECT json_extract(line.value,'$.id') FROM artifacts a, json_each(CASE WHEN a.kind='discussion' AND a.status='ready' THEN a.source END,'$.lines') line
-          WHERE a.kind='discussion' AND a.status='ready' AND a.conversation IN (SELECT id FROM learning) AND json_extract(line.value,'$.speaker')='Learner') GROUP BY c.id ORDER BY at DESC, c.name`,
+        `SELECT c.id, c.name, c.embedding, o.level, o.at FROM concepts c LEFT JOIN observations o
+        ON o.rowid=(SELECT rowid FROM observations WHERE concept=c.id ORDER BY at DESC, rowid DESC LIMIT 1) ORDER BY c.name`,
       )
-      .all(conversation)
-      .map((r) => ({ name: r.name, known: this.familiarity(r.id).familiarity >= KNOWN }));
-    const pick = (known) =>
-      rows
-        .filter((r) => r.known === known)
-        .slice(0, STRONG_LIMIT)
-        .map((r) => r.name);
-    return { known: pick(true), shaky: pick(false) };
+      .all()
+      .map((c) => ({ ...c, embedding: vector(c.embedding) }));
+  },
+  embedConcept(id, name, embedding) {
+    // A merge can delete a pending concept and SQLite can reuse its integer id.
+    this.db
+      .prepare('UPDATE concepts SET embedding=? WHERE id=? AND name=?')
+      .run(blob(embedding), id, name);
   },
   // Familiarity for concepts named in the given text: the relevant concepts sent to the suggestion call.
   // shortcut: whole-name mentions only, so a reworded concept is missed; upgrade with the embedding pre-filter (TreeTutor-5ut.11).

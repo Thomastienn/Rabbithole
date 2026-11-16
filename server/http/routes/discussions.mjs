@@ -1,5 +1,4 @@
 import { DISCUSSION_TURN_RULE, discussionTurn } from '../../media/discussion-turn.mjs';
-import { discussionNeighbourhood } from '../../media/discussion-context.mjs';
 import { tutorContext } from '../../media/diagrams.mjs';
 
 export async function discussionRoutes(req, res, url, ctx, body) {
@@ -82,18 +81,14 @@ export async function discussionRoutes(req, res, url, ctx, body) {
         instructions: DISCUSSION_TURN_RULE,
         memoryNote: store.memoryNote(),
       });
+      const neighbourhood = await ctx.neighbourhood(body.text.trim(), controller.signal);
+      if (finished) return;
       const prompt = JSON.stringify({
         discussion: {
           classmates: current.classmates,
           lines: current.lines.map(({ speaker, text }) => ({ speaker, text })),
         },
-        neighbourhood: discussionNeighbourhood(
-          store.graph(),
-          store.names(),
-          [...current.lines.map((l) => l.text), tree.messages.at(-2)?.text]
-            .filter(Boolean)
-            .join('\n'),
-        ),
+        neighbourhood,
       });
       await ctx.metered(ctx.pick(tree), 'chat', turn.id, tree).generate(
         context,

@@ -106,7 +106,6 @@ test('meeting replies, naming concepts, branching and ignored suggestions do not
     met: 1,
     observations: [0, 0, 0, 0, 0, 0],
   });
-  assert.deepEqual(env.store.strongConcepts(tree.id), { known: [], shaky: [] });
   const reply = (await env.get(`/api/trees/${tree.id}`)).messages.at(-1);
   for (const passage of SAVED) {
     const child = JSON.parse(
@@ -142,7 +141,6 @@ test('meeting replies, naming concepts, branching and ignored suggestions do not
     env.suggestionCalls().at(-1).input.split('\n').slice(1).join('\n'),
   ).familiarity;
   assert.equal(sent[P], estimate);
-  assert.deepEqual(env.store.strongConcepts(tree.id), { known: [P], shaky: [] });
 });
 
 test('the removed familiarity correction route returns not found and changes nothing', async (t) => {

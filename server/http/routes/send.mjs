@@ -306,6 +306,10 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       settings,
       signal: controller.signal,
     });
+    const neighbourhood = await ctx.neighbourhood(
+      [prompt, tree.branch?.text].filter(Boolean).join('\n'),
+      controller.signal,
+    );
     if (finished) return true;
     called = true;
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
@@ -319,7 +323,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         }),
         tutorStyle: store.tutorStyle(),
         memoryNote: store.memoryNote(),
-        concepts: store.strongConcepts(id),
+        neighbourhood,
         resources: store.resources(id).map(({ number, title, site }) => ({ number, title, site })),
         ...(images.length && { images }),
         ...(attachments.some((a) => a.type === 'application/pdf') && { parts }),
