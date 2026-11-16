@@ -293,6 +293,11 @@ test('map media chips open focused chat, focus and center the chosen artifact', 
     assert.ok(document.activeElement === target, `focus lands on ${artifact.kind}`);
     assert.ok(scrolls.some((s) => s.element === target && s.options.block === 'center'));
     assert.ok(scrolls.at(-1).element === target, 'scroll lands in chat, not the map chip');
+    // ChatLayout jumps to the bottom on the frame after mount, so the centering must hold past it.
+    const before = scrolls.length;
+    await settle();
+    assert.ok(scrolls.length > before, `centering on ${artifact.kind} holds past the first frame`);
+    assert.ok(scrolls.at(-1).element === target);
   }
 });
 

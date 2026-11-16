@@ -13,14 +13,19 @@ export function useChatTargets(c: ChatState) {
   }, [tree?.id, overview]);
   useLayoutEffect(() => {
     if (!figureTarget || overview || tree?.id !== figureTarget.conversation) return;
-    const frame = requestAnimationFrame(() => {
+    // Held like a message target below, so ChatLayout's jump to the bottom does not win.
+    let frame = 0,
+      frames = 0;
+    const tick = () => {
       const figure = document.querySelector<HTMLElement>(
         `.focused-chat [data-artifact="${CSS.escape(figureTarget.artifact)}"]`,
       );
-      figure?.focus({ preventScroll: true });
+      if (figure && document.activeElement !== figure) figure.focus({ preventScroll: true });
       figure?.scrollIntoView({ block: 'center' });
-      setFigureTarget(undefined);
-    });
+      if (++frames < 12) frame = requestAnimationFrame(tick);
+      else setFigureTarget(undefined);
+    };
+    frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [tree?.id, overview, figureTarget]);
   // A bubble picked on the map opens with that message's top at the reading area top.
