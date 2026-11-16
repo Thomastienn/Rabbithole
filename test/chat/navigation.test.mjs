@@ -63,7 +63,6 @@ test('Contents lists nested conversation addresses and figures and routes each a
       },
       open: (id) => calls.push(['conversation', id]),
       openFigure: (id, artifact) => calls.push(['figure', id, artifact]),
-      collapse: () => calls.push(['collapse']),
     }),
     ui,
   );
@@ -86,11 +85,13 @@ test('Contents lists nested conversation addresses and figures and routes each a
   );
   await act(async () => button(container, '1.1.1 Could a plant go alone?').click());
   await act(async () => button(container, 'Fig 1 Trade loop').click());
-  await act(async () => button(container, 'Hide contents').click());
-  assert.deepEqual(calls, [['conversation', 'grand'], ['figure', 'root', 'figure'], ['collapse']]);
+  assert.deepEqual(calls, [
+    ['conversation', 'grand'],
+    ['figure', 'root', 'figure'],
+  ]);
 });
 
-test('Contents reports the last completed context, drops the meter without a limit, shares family inks and collapses', async (t) => {
+test('Contents reports the last completed context, drops the meter without a limit, shares family inks and has no collapse control', async (t) => {
   const trees = [
     { id: 'root', parent: null, title: 'Fungi', created: 0 },
     { id: 'child', parent: 'root', title: 'Trade', created: 1 },
@@ -106,7 +107,6 @@ test('Contents reports the last completed context, drops the meter without a lim
   });
   const limit = { limit: 200000, provider: 'codex', model: 'chat' };
   let update;
-  const collapsed = [];
   function Fixture() {
     const [current, set] = useState({
       id: 'root',
@@ -125,7 +125,6 @@ test('Contents reports the last completed context, drops the meter without a lim
       current,
       open() {},
       openFigure() {},
-      collapse: () => collapsed.push(true),
     });
   }
   const { container, act, cleanup } = await render(h(Fixture), ui);
@@ -146,10 +145,7 @@ test('Contents reports the last completed context, drops the meter without a lim
   );
   assert.equal(ink[1], ink[2], '1.1 and 1.1.1 share their family ink');
   assert.notEqual(ink[1], ink[3], 'sibling families differ');
-  const hide = button(container, 'Hide contents');
-  assert.equal(hide.getAttribute('aria-expanded'), 'true');
-  await act(async () => hide.click());
-  assert.deepEqual(collapsed, [true]);
+  assert.equal(button(container, 'Hide contents'), undefined);
 });
 
 test('Resources lists title, site, kind and citing conversations, opens the original, and a citation chip opens its resource page in a new tab', async (t) => {

@@ -11,7 +11,7 @@ const {
   viewTab,
 } = await import('../../src/shell/ShellBand.tsx');
 
-test('desktop and narrow bands keep control order, current views, drawer actions and layout Retry', async (t) => {
+test('desktop sidebar and narrow band keep control order, current views, drawer actions and layout Retry', async (t) => {
   let update;
   const calls = [];
   function Fixture() {
@@ -29,7 +29,6 @@ test('desktop and narrow bands keep control order, current views, drawer actions
       null,
       h(ShellBand, {
         ...value,
-        rootTitle: 'Fungi',
         busy: false,
         views,
         saveAlert:
@@ -40,6 +39,7 @@ test('desktop and narrow bands keep control order, current views, drawer actions
               set((v) => ({ ...v, failed: false }));
             },
           }),
+        contents: h('aside', { className: 'contents' }, h('button', null, '1 Fungi')),
         setDrawer,
         newChat: () => calls.push('new'),
         search: () => calls.push('search'),
@@ -60,19 +60,26 @@ test('desktop and narrow bands keep control order, current views, drawer actions
   }
   const { container, act, cleanup } = await render(h(Fixture), ui);
   t.after(cleanup);
-  const band = () => container.querySelector('.shell-band');
+  assert.equal(container.querySelector('.shell-band, header'), null, 'no desktop top bar');
+  let band = () => container.querySelector('nav.sidebar');
   assert.deepEqual([...band().querySelectorAll('button')].map(name), [
-    'Fungi · Learning trees',
+    'Rabbithole',
+    'Hide sidebar',
     'Read',
     'Map',
     'Knowledge',
     'Videos',
-    'Retry saving layout',
-    'Hide top bar',
-    'Search learning trees',
-    'New chat',
+    'Library',
     'Settings',
+    'Search',
+    'New chat',
+    'Retry saving layout',
+    '1 Fungi',
   ]);
+  assert.ok(
+    band().querySelector('.sidebar-top + .contents'),
+    'page contents sit below the controls',
+  );
   assert.match(
     band().querySelector('[role=alert]').textContent,
     /Map layout not saved.*retries every minute/s,
@@ -82,10 +89,11 @@ test('desktop and narrow bands keep control order, current views, drawer actions
     assert.equal(band().querySelector('[aria-current=page]').textContent, label);
   }
   for (const [label, expected] of [
-    ['Search learning trees', 'search'],
+    ['Search', 'search'],
     ['New chat', 'new'],
     ['Settings', 'settings'],
-    ['Fungi · Learning trees', 'library'],
+    ['Rabbithole', 'library'],
+    ['Library', 'library'],
     ['Retry saving layout', 'retry'],
   ]) {
     await act(async () => button(band(), label).click());
@@ -93,6 +101,8 @@ test('desktop and narrow bands keep control order, current views, drawer actions
   }
   assert.equal(band().querySelector('[role=alert]'), null);
   await act(async () => update({ mobile: true, drawer: false, tab: 'Map', failed: false }));
+  band = () => container.querySelector('.shell-band');
+  assert.equal(container.querySelector('nav.sidebar'), null);
   assert.deepEqual([...band().querySelectorAll('button, .band-mark')].map(name), [
     'Contents',
     'Rabbithole',
@@ -116,7 +126,7 @@ test('desktop and narrow bands keep control order, current views, drawer actions
   assert.equal(button(band(), 'Contents').getAttribute('aria-expanded'), 'false');
 });
 
-test('focus mode survives a shell remount and ignores text entry, alternate chords and held keys', async (t) => {
+test('focus mode hides the sidebar, survives a shell remount, keeps the save alert and ignores text entry, alternate chords and held keys', async (t) => {
   let mount;
   function Fixture() {
     const [mounted, setMounted] = useState(true);
@@ -131,7 +141,7 @@ test('focus mode survives a shell remount and ignores text entry, alternate chor
           busy: false,
           drawer: false,
           views: [],
-          saveAlert: null,
+          saveAlert: h(SaveAlert, { retry() {} }),
           setDrawer() {},
           search() {},
           newChat() {},
@@ -166,7 +176,7 @@ test('focus mode survives a shell remount and ignores text entry, alternate chor
     'input, textarea, select, [contenteditable] span',
   )) {
     assert.equal((await chord(target)).defaultPrevented, false);
-    assert.ok(container.querySelector('.shell-band'));
+    assert.ok(container.querySelector('.sidebar'));
   }
   for (const options of [
     { ctrlKey: false },
@@ -178,7 +188,7 @@ test('focus mode survives a shell remount and ignores text entry, alternate chor
     { key: 'G' },
   ]) {
     assert.equal((await chord(container, options)).defaultPrevented, false);
-    assert.ok(container.querySelector('.shell-band'));
+    assert.ok(container.querySelector('.sidebar'));
   }
   const handled = new KeyboardEvent('keydown', {
     key: 'F',
@@ -189,12 +199,17 @@ test('focus mode survives a shell remount and ignores text entry, alternate chor
   });
   handled.preventDefault();
   await act(async () => container.dispatchEvent(handled));
-  assert.ok(container.querySelector('.shell-band'));
+  assert.ok(container.querySelector('.sidebar'));
   await chord(container);
-  assert.equal(container.querySelector('.shell-band'), null);
+  assert.equal(container.querySelector('.sidebar'), null);
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'on');
+  assert.match(
+    container.querySelector('.focus-save [role=alert]').textContent,
+    /Map layout not saved/,
+    'save alert still announces while the sidebar is hidden',
+  );
   const zone = container.querySelector('.focus-hot-zone');
-  const restore = button(zone, 'Show top bar');
+  const restore = button(zone, 'Show sidebar');
   assert.equal(zone.dataset.revealed, 'false', 'hidden until hovered or focused');
   assert.notEqual(restore.tabIndex, -1, 'hidden button stays in the tab order');
   const hover = (type) =>
@@ -210,16 +225,16 @@ test('focus mode survives a shell remount and ignores text entry, alternate chor
   await act(async () => restore.blur());
   assert.equal(zone.dataset.revealed, 'false');
   await chord(container);
-  assert.ok(container.querySelector('.shell-band'));
+  assert.ok(container.querySelector('.sidebar'));
   await chord(container);
-  assert.equal(container.querySelector('.shell-band'), null);
+  assert.equal(container.querySelector('.sidebar'), null);
   await act(async () => mount(false));
   await act(async () => mount(true));
-  assert.equal(container.querySelector('.shell-band'), null);
-  assert.equal(button(container, 'Show top bar').getAttribute('aria-expanded'), 'false');
-  await act(async () => button(container, 'Show top bar').click());
+  assert.equal(container.querySelector('.sidebar'), null);
+  assert.equal(button(container, 'Show sidebar').getAttribute('aria-expanded'), 'false');
+  await act(async () => button(container, 'Show sidebar').click());
   await act(async () => mount(false));
   await act(async () => mount(true));
-  assert.ok(container.querySelector('.shell-band'));
+  assert.ok(container.querySelector('.sidebar'));
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
 });

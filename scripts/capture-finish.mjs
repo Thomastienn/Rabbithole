@@ -138,7 +138,7 @@ const page = async (name) => {
 };
 const nav = async () => {
   if (width === 'narrow') await page('Library');
-  else await b('click', '.tree-switcher');
+  else await b('click', '.sidebar-mark');
   await wait(
     `!!document.querySelector('.library-panel:not([hidden]) .saved-chat-title') && ${idle}`,
   );

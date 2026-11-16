@@ -253,7 +253,7 @@ export function useTreeActions(
         if (!next || (next.layout?.panel !== 'beside' && next.layout?.panel !== 'expanded'))
           requestAnimationFrame(() =>
             document
-              .querySelector<HTMLElement>(next ? '.map-toolbar button' : '.shell-band .new-chat')
+              .querySelector<HTMLElement>(next ? '.map-toolbar button' : ':is(.sidebar, .shell-band) .new-chat')
               ?.focus(),
           );
       } else

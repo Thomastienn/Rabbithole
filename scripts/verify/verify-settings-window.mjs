@@ -43,7 +43,7 @@ try {
 
   // 1. Map menu Settings opens on Interface (Appearance first, spec) with the title focused; sidebar no longer holds settings.
   assert.equal(
-    await ev(`!!document.querySelector('.shell-band')?.textContent.includes('Connections')`),
+    await ev(`!!document.querySelector('.sidebar')?.textContent.includes('Connections')`),
     false,
     'band has no Connections',
   );
@@ -362,7 +362,7 @@ try {
   await b('find', 'role', 'button', 'click', '--name', 'Settings', '--exact');
   await wait(`${active}?.id === 'settings-heading'`);
   assert.equal(
-    await ev(`document.querySelector('.band-settings').getAttribute('aria-current')`),
+    await ev(`document.querySelector('.sidebar [aria-current=page]').textContent === 'Settings' && 'page'`),
     'page',
     'gear shows the current page',
   );

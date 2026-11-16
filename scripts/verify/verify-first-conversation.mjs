@@ -13,7 +13,7 @@ const b = async (...args) => (await run('agent-browser', ['--session', session, 
 const ev = async (expression) => JSON.parse(await b('eval', expression, '--json')).data.result;
 const wait = (expression) => b('wait', '--fn', expression);
 const click = (name) => b('find', 'role', 'button', 'click', '--name', name, '--exact');
-const openNavigation = () => b('click', '.tree-switcher');
+const openNavigation = () => b('click', '.sidebar-mark');
 const idle = "!document.documentElement.matches(':active-view-transition')";
 const nodes = () =>
   ev(`[...document.querySelectorAll('.react-flow__node')].map(n => n.dataset.id)`);
@@ -92,7 +92,7 @@ try {
   await b('wait', '--text', 'Fixture response 21');
   const fresh = store.list().find((t) => t.title === 'Why are leaves green?');
   await wait(
-    `document.querySelector('.focused-chat h2')?.textContent === 'Why are leaves green?' && document.querySelector('[data-id="${fresh.id}"] h2')?.textContent === 'Why are leaves green?' && document.querySelector('.tree-switcher-title')?.textContent === 'Why are leaves green?'`,
+    `document.querySelector('.focused-chat h2')?.textContent === 'Why are leaves green?' && document.querySelector('[data-id="${fresh.id}"] h2')?.textContent === 'Why are leaves green?' && document.querySelector('.contents-head h2')?.textContent === 'Why are leaves green?'`,
   );
   assert.deepEqual(await nodes(), [fresh.id]);
   assert.equal(store.list().filter((t) => !t.parent).length, 2);

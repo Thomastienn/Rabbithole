@@ -7,7 +7,6 @@ import type { Anchor } from './branch';
 import type { State, Tree } from './types';
 import { conversationAddresses } from '../map/treeList';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
-import { savedContentsOpen, savePreference } from '../shell/preferences';
 
 // State and refs shared by the ChatPage hooks and regions; each hook takes this object.
 export function useChatState() {
@@ -53,13 +52,6 @@ export function useChatState() {
   const [root, setRoot] = useState<string>();
   const [overview, setOverview] = useState(true);
   const [expanded, setExpanded] = useState(false);
-  const [contentsOpen, setContentsOpen] = useState(savedContentsOpen);
-  // The toggle unmounts with its panel, so focus moves to its counterpart.
-  function toggleContents(open: boolean) {
-    flushSync(() => setContentsOpen(open));
-    document.querySelector<HTMLElement>(open ? '.contents-collapse' : '.contents-reopen')?.focus();
-    savePreference('contents', open ? 'open' : 'collapsed');
-  }
   const [statsOpen, setStatsOpen] = useState(false);
   const statsPanel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -209,8 +201,6 @@ export function useChatState() {
     setOverview,
     expanded,
     setExpanded,
-    contentsOpen,
-    toggleContents,
     statsOpen,
     setStatsOpen,
     statsPanel,

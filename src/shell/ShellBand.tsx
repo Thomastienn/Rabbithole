@@ -8,6 +8,8 @@ import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
 import {
   Bars3Icon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ChevronUpIcon,
   Cog6ToothIcon,
   MagnifyingGlassIcon,
@@ -21,7 +23,7 @@ export const viewTab = (
   label: string,
   icon: React.ReactNode,
   current: boolean,
-  onClick: () => void,
+  onClick: (e: MouseEvent<HTMLButtonElement>) => void,
   disabled = false,
 ) => (
   <Button
@@ -65,7 +67,9 @@ export function ContentsDrawer({
     >
       <Regions
         padding={2}
-        header={<DrawerHeader className="drawer-head" title="Rabbithole" onOpenChange={setDrawer} />}
+        header={
+          <DrawerHeader className="drawer-head" title="Rabbithole" onOpenChange={setDrawer} />
+        }
         content={
           <LayoutContent padding={0}>
             <VStack
@@ -111,12 +115,12 @@ export function SaveAlert({ retry }: { retry: () => void }) {
 
 export default function ShellBand({
   mobile,
-  rootTitle,
   tab,
   busy,
   drawer,
   views,
   saveAlert,
+  contents,
   setDrawer,
   search,
   newChat,
@@ -124,12 +128,12 @@ export default function ShellBand({
   settings,
 }: {
   mobile: boolean;
-  rootTitle?: string;
   tab: string;
   busy: boolean;
   drawer: boolean;
   views: ReactNode[];
   saveAlert: ReactNode;
+  contents?: ReactNode;
   setDrawer: (open: boolean) => void;
   search: () => void;
   newChat: () => void;
@@ -171,33 +175,51 @@ export default function ShellBand({
     addEventListener('keydown', shortcut);
     return () => removeEventListener('keydown', shortcut);
   }, [toggleFocusMode]);
+  // Narrow screens keep their header; Focus mode hides that header there.
+  const bar = mobile ? 'top bar' : 'sidebar';
   const focusButton = (
     <IconButton
       ref={focusToggle}
       className={focusMode ? 'focus-restore' : 'band-focus'}
-      label={focusMode ? 'Show top bar' : 'Hide top bar'}
-      tooltip={`${focusMode ? 'Show' : 'Hide'} top bar (Ctrl+Shift+F)`}
+      label={`${focusMode ? 'Show' : 'Hide'} ${bar}`}
+      tooltip={`${focusMode ? 'Show' : 'Hide'} ${bar} (Ctrl+Shift+F)`}
       aria-expanded={!focusMode}
       aria-keyshortcuts="Control+Shift+F"
-      icon={focusMode ? <ChevronDownIcon /> : <ChevronUpIcon />}
+      icon={
+        mobile ? (
+          focusMode ? (
+            <ChevronDownIcon />
+          ) : (
+            <ChevronUpIcon />
+          )
+        ) : focusMode ? (
+          <ChevronRightIcon />
+        ) : (
+          <ChevronLeftIcon />
+        )
+      }
       variant="ghost"
       size="sm"
       onClick={toggleFocusMode}
     />
   );
   // Hot zone along the top edge: the restore button stays in the tab order but shows only on hover or focus.
+  // The save alert stays mounted outside it so its alert role is still announced while hidden.
   if (focusMode)
     return (
-      <div
-        className="focus-hot-zone"
-        data-revealed={revealed}
-        onMouseEnter={() => setRevealed(true)}
-        onMouseLeave={() => setRevealed(false)}
-        onFocus={() => setRevealed(true)}
-        onBlur={() => setRevealed(false)}
-      >
-        {focusButton}
-      </div>
+      <>
+        <div
+          className="focus-hot-zone"
+          data-revealed={revealed}
+          onMouseEnter={() => setRevealed(true)}
+          onMouseLeave={() => setRevealed(false)}
+          onFocus={() => setRevealed(true)}
+          onBlur={() => setRevealed(false)}
+        >
+          {focusButton}
+        </div>
+        {saveAlert && <div className="focus-save">{saveAlert}</div>}
+      </>
     );
   return mobile ? (
     <header className="shell-band">
@@ -242,61 +264,51 @@ export default function ShellBand({
       {saveAlert}
     </header>
   ) : (
-    <header className="shell-band">
-      <Logo />
-      <Text className="band-mark" weight="bold">
-        Rabbithole
-      </Text>
-      <Button
-        className="tree-switcher"
-        label={rootTitle ? `${rootTitle} · Learning trees` : 'Learning trees'}
-        tooltip="Open the library of learning trees"
-        variant="ghost"
-        size="sm"
-        aria-current={tab === 'library' ? 'page' : undefined}
-        onClick={library}
-      >
-        <span className="tree-switcher-content">
-          <span className="tree-switcher-title">{rootTitle ?? 'Learning trees'}</span>
-          <ChevronDownIcon className="tree-switcher-icon" aria-hidden />
-        </span>
-      </Button>
-      <nav aria-label="Views" className="view-tabs">
-        {views}
-      </nav>
-      <HStack gap={1} vAlign="center" className="band-tools">
+    <nav className="sidebar" aria-label="App">
+      <VStack gap={0} className="sidebar-top">
+        <HStack gap={1} vAlign="center" className="sidebar-head">
+          <Button
+            className="sidebar-mark"
+            label="Rabbithole"
+            tooltip="Open the Library"
+            variant="ghost"
+            size="sm"
+            onClick={library}
+          >
+            <Logo />
+            <span className="band-mark">Rabbithole</span>
+          </Button>
+          {focusButton}
+        </HStack>
+        <VStack gap={0} className="sidebar-views">
+          {views}
+          {viewTab('Library', <RectangleStackIcon />, tab === 'library', library)}
+          {viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings)}
+        </VStack>
+        <VStack gap={0} className="sidebar-tools">
+          <Button
+            className="view-tab tree-search"
+            label="Search"
+            tooltip="Search learning trees"
+            variant="ghost"
+            size="sm"
+            icon={<MagnifyingGlassIcon />}
+            aria-haspopup="dialog"
+            onClick={search}
+          />
+          <Button
+            className="view-tab new-chat"
+            label={busy ? 'Opening…' : 'New chat'}
+            variant="ghost"
+            size="sm"
+            icon={<PlusIcon />}
+            isDisabled={busy}
+            onClick={newChat}
+          />
+        </VStack>
         {saveAlert}
-        {focusButton}
-        <IconButton
-          className="tree-search"
-          label="Search learning trees"
-          tooltip="Search learning trees"
-          icon={<MagnifyingGlassIcon />}
-          variant="ghost"
-          size="sm"
-          aria-haspopup="dialog"
-          onClick={search}
-        />
-        <Button
-          className="new-chat"
-          label={busy ? 'Opening…' : 'New chat'}
-          variant="ghost"
-          size="sm"
-          icon={<PlusIcon />}
-          isDisabled={busy}
-          onClick={newChat}
-        />
-        <IconButton
-          className="band-settings"
-          label="Settings"
-          tooltip="Settings"
-          icon={<Cog6ToothIcon />}
-          variant="ghost"
-          size="sm"
-          aria-current={tab === 'settings' ? 'page' : undefined}
-          onClick={settings}
-        />
-      </HStack>
-    </header>
+      </VStack>
+      {contents}
+    </nav>
   );
 }

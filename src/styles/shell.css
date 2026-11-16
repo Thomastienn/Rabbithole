@@ -95,51 +95,50 @@ html {
   letter-spacing: -0.01em;
   color: var(--rabbithole-band-ink);
 }
-.tree-switcher {
-  flex: 0 1 auto;
-  max-width: 280px;
-  min-width: 0;
-  height: 32px;
-  border: 1px solid color-mix(in srgb, var(--rabbithole-band-ink) 22%, transparent);
-  font-weight: 600;
-}
-.tree-switcher[aria-current='page'] {
-  background: color-mix(in srgb, var(--rabbithole-band-ink) 16%, transparent);
-}
-.tree-switcher-content {
+/* Desktop sidebar (mockup sidebar.html A-D): app controls above the page's contents, full height. */
+.sidebar {
+  /* The logo paints in band ink; on the muted sidebar it takes the text colour instead. */
+  --rabbithole-band-ink: var(--color-text-primary);
+  --rabbithole-band: var(--color-background-muted);
   display: flex;
-  align-items: center;
-  min-width: 0;
+  flex: 0 0 calc(33 * var(--rabbithole-module));
+  flex-direction: column;
+  width: calc(33 * var(--rabbithole-module));
+  min-height: 0;
+  border-inline-end: thin solid var(--color-border);
+  background: var(--color-background-muted);
 }
-.tree-switcher-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tree-switcher-icon {
+.sidebar-top {
   flex: none;
-  width: 16px;
-  height: 16px;
-  margin-inline-start: var(--rabbithole-module);
+  padding: var(--rabbithole-module);
 }
-.view-tabs {
-  display: flex;
-  flex: none;
-  gap: 2px;
-  margin-inline-start: calc(2 * var(--rabbithole-module));
+.sidebar:has(.contents) .sidebar-top {
+  border-block-end: thin solid var(--color-border);
 }
-.shell-band .view-tab {
-  height: 32px;
-  padding-inline: 12px;
-  font-weight: 600;
-  color: var(--rabbithole-band-muted);
+.sidebar-head {
+  justify-content: space-between;
+  padding-block-end: var(--rabbithole-module);
 }
-.shell-band .view-tab:hover {
-  color: var(--rabbithole-band-ink);
+.sidebar-mark {
+  justify-content: flex-start;
+  gap: var(--rabbithole-module);
 }
-.shell-band .view-tab[aria-current='page'] {
-  background: var(--rabbithole-band-ink);
-  color: var(--rabbithole-band);
+.sidebar-tools {
+  margin-block-start: var(--rabbithole-module);
+  padding-block-start: var(--rabbithole-module);
+  border-block-start: thin solid var(--color-border);
+}
+.sidebar .band-save {
+  height: auto;
+  flex-wrap: wrap;
+  margin-block-start: var(--rabbithole-module);
+  padding-block: 2px;
+}
+.focus-save {
+  position: fixed;
+  z-index: 6;
+  bottom: var(--rabbithole-module);
+  inset-inline-start: var(--rabbithole-module);
 }
 .band-tools {
   flex: none;
@@ -159,7 +158,7 @@ html {
   --color-text-primary: var(--color-on-error);
   --color-text-secondary: var(--color-on-error);
 }
-.shell-band .band-save button {
+.band-save button {
   height: 20px;
   color: var(--color-on-error);
   text-decoration: underline;

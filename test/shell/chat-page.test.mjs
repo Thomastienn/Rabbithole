@@ -126,28 +126,36 @@ test('a saved tree opens its conversation with the thread, title and map', async
   assert.ok(button(container, 'Copy tutor reply 1'));
 });
 
-test('collapsed contents is one floating control; opening and closing transfers focus', async (t) => {
-  const { container, act } = await mount(t, [summary], { contents: 'collapsed' });
-  const floating = () => container.querySelector('.focused-chat > .contents-reopen');
-  assert.equal(container.querySelector('aside[aria-label="Learning tree contents"]'), null);
-  assert.equal(container.querySelector('.contents-rail'), null);
-  assert.equal(container.querySelectorAll('[aria-label="Show contents"]').length, 1);
-  assert.equal(name(floating()), 'Show contents');
-  assert.equal(floating().getAttribute('aria-expanded'), 'false');
-  await act(async () => {
-    floating().focus();
-    floating().click();
+test('the sidebar holds Contents on the reading and map views, and a map-view row opens the focused chat', async (t) => {
+  // The old Contents preference is ignored: the panel shows even when it was saved collapsed.
+  const { container, act } = await mount(t, [{ ...summary, created: '2026-11-15T00:00:00Z' }], {
+    contents: 'collapsed',
   });
-  assert.equal(floating(), null);
-  assert.ok(container.querySelector('.contents'));
-  assert.equal(document.activeElement, button(container, 'Hide contents'));
-  await act(async () => button(container, 'Hide contents').click());
-  assert.equal(document.activeElement, floating());
-  await act(async () => button(container, 'Hide top bar').click());
-  assert.ok(floating());
-  assert.equal(container.querySelector('.shell-band'), null);
-  await act(async () => floating().click());
-  assert.ok(container.querySelector('.contents'));
+  const sidebar = () => container.querySelector('nav.sidebar');
+  const chat = () => container.querySelector('#focused-chat');
+  assert.equal(container.querySelector('.shell-band'), null, 'no desktop top bar');
+  assert.ok(sidebar().querySelector('aside[aria-label="Learning tree contents"]'));
+  assert.equal(
+    container.querySelector('[aria-label="Show contents"], [aria-label="Hide contents"]'),
+    null,
+  );
+  assert.equal(sidebar().querySelector('[aria-current=page]').textContent, 'Read');
+  await act(async () => button(sidebar(), 'Map').click());
+  assert.equal(chat().style.display, 'none');
+  assert.ok(sidebar().querySelector('.contents'), 'contents stay on the map view');
+  await act(async () => sidebar().querySelector('.contents-row').click());
+  await act(async () => {});
+  assert.equal(chat().style.display, 'flex');
+  assert.equal(sidebar().querySelector('[aria-current=page]').textContent, 'Read');
+  for (const label of ['Knowledge', 'Videos', 'Library']) {
+    await act(async () => button(sidebar(), label).click());
+    assert.equal(sidebar().querySelector('.contents'), null, label);
+    assert.ok(sidebar().querySelector('.sidebar-top'), label);
+  }
+  assert.ok(
+    button(container.querySelector('.library-panel'), 'New chat'),
+    'Library header keeps New chat',
+  );
 });
 
 test('focus mode toggles from chat, map and non-chat pages without consuming composer or Vim keys', async (t) => {
@@ -164,8 +172,8 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
     await act(async () => target.dispatchEvent(event));
     return event;
   };
-  const band = () => container.querySelector('.shell-band');
-  const hide = button(container, 'Hide top bar');
+  const band = () => container.querySelector('.sidebar');
+  const hide = button(container, 'Hide sidebar');
   assert.equal(hide.getAttribute('aria-expanded'), 'true');
   await act(async () => {
     hide.focus();
@@ -173,12 +181,12 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   });
   assert.equal(band(), null);
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'on');
-  let restore = button(container, 'Show top bar');
+  let restore = button(container, 'Show sidebar');
   assert.equal(restore.getAttribute('aria-expanded'), 'false');
   assert.equal(document.activeElement, restore);
   await act(async () => restore.click());
   assert.ok(band());
-  assert.equal(document.activeElement, button(container, 'Hide top bar'));
+  assert.equal(document.activeElement, button(container, 'Hide sidebar'));
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
   for (const target of [
     container.querySelector('[role=textbox]'),
@@ -199,9 +207,9 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   await key(canvas);
   for (const label of ['Knowledge', 'Videos', 'Settings']) {
     await act(async () => button(band(), label).click());
-    await act(async () => button(band(), 'Hide top bar').click());
+    await act(async () => button(band(), 'Hide sidebar').click());
     assert.equal(band(), null, label);
-    await act(async () => button(container, 'Show top bar').click());
+    await act(async () => button(container, 'Show sidebar').click());
     assert.ok(band());
     assert.equal((await key(container)).defaultPrevented, true);
     assert.equal(band(), null, label);
@@ -209,10 +217,13 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   }
 });
 
-test('narrow focused chat keeps its contents drawer usable in saved focus mode', async (t) => {
+test('narrow screens keep the header and contents drawer, also after saved focus mode', async (t) => {
   const { container, act } = await mount(t, [summary], { mobile: true, focus: 'on' });
   assert.equal(container.querySelector('.shell-band'), null);
-  const show = button(container, 'Show contents');
+  assert.equal(container.querySelector('.sidebar'), null);
+  assert.equal(container.querySelector('[aria-label="Show contents"]'), null);
+  await act(async () => button(container, 'Show top bar').click());
+  const show = button(container.querySelector('header.shell-band'), 'Contents');
   assert.equal(show.getAttribute('aria-expanded'), 'false');
   assert.equal(show.getAttribute('aria-haspopup'), 'dialog');
   await act(async () => {
@@ -231,7 +242,4 @@ test('narrow focused chat keeps its contents drawer usable in saved focus mode',
   Object.defineProperty(exit, 'propertyName', { value: 'transform' });
   await act(async () => drawer.dispatchEvent(exit));
   assert.ok(!document.querySelector('dialog[open]'));
-  assert.equal(container.querySelector('.shell-band'), null);
-  await act(async () => button(container, 'Show top bar').click());
-  assert.ok(button(container.querySelector('.shell-band'), 'Contents'));
 });

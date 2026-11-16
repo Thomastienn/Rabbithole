@@ -26,23 +26,6 @@
   flex: 1;
   min-height: 0;
 }
-.contents-collapse {
-  align-self: flex-start;
-  margin: calc(-2 * var(--rabbithole-module)) 0 0 calc(-1 * var(--rabbithole-module));
-}
-.focused-chat > .contents-reopen {
-  position: absolute;
-  z-index: 4;
-  top: var(--rabbithole-module);
-  inset-inline-start: var(--rabbithole-module);
-  width: calc(5 * var(--rabbithole-module));
-  height: calc(5 * var(--rabbithole-module));
-  background: var(--color-background-body);
-}
-.focused-chat:has(> .contents-reopen) > .chat-header {
-  padding-inline-start: calc(7 * var(--rabbithole-module));
-  min-height: calc(7 * var(--rabbithole-module));
-}
 .contents-head {
   flex: none;
   padding: calc(3 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module))
@@ -202,16 +185,16 @@
   padding: var(--rabbithole-module);
   border-block-end: thin solid var(--color-border);
 }
-.band-drawer .view-tab {
+:is(.band-drawer, .sidebar) .view-tab {
   width: 100%;
   justify-content: flex-start;
   font-weight: 400;
 }
-.band-drawer .view-tab[aria-current='page'] {
+:is(.band-drawer, .sidebar) .view-tab[aria-current='page'] {
   background: var(--color-background-surface);
   font-weight: 600;
 }
-.band-drawer .contents {
+:is(.band-drawer, .sidebar) .contents {
   flex: 1;
   width: 100%;
   border: 0;
@@ -221,7 +204,7 @@
   margin: var(--rabbithole-module);
   width: auto;
 }
-.band-drawer :focus-visible,
+:is(.band-drawer, .sidebar) :focus-visible,
 .contents :focus-visible,
 .focused-chat [data-artifact]:focus-visible {
   outline: var(--focus-outline-width) solid var(--rabbithole-paper);

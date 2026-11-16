@@ -7,12 +7,7 @@ import {
   savedTheme,
   themeChoices,
 } from '../../src/shell/appearance.ts';
-import {
-  savePreference,
-  savedContentsOpen,
-  savedLibraryLayout,
-  savedVim,
-} from '../../src/shell/preferences.ts';
+import { savePreference, savedLibraryLayout, savedVim } from '../../src/shell/preferences.ts';
 import { DIAGRAM_HUES, diagramTheme } from '../../src/media/diagramTheme.ts';
 const { themes } = await import('../../src/shell/astryx-themes.ts');
 
@@ -31,11 +26,6 @@ test('browser preferences restore valid choices independently, fall back safely 
   assert.equal(savedAppearance(), 'dark');
   assert.equal(savedTheme(null), 'paperback');
   assert.equal(savedVim(), false);
-  assert.equal(savedContentsOpen(), true);
-  savePreference('contents', 'collapsed');
-  assert.equal(savedContentsOpen(), false);
-  savePreference('contents', 'open');
-  assert.equal(savedContentsOpen(), true);
   assert.equal(savedLibraryLayout(), 'shelf', 'Shelf is the default');
   savePreference('library-layout', 'list');
   assert.equal(savedLibraryLayout(), 'list');
@@ -72,7 +62,6 @@ test('browser preferences restore valid choices independently, fall back safely 
   });
   assert.equal(savedAppearance(), 'dark');
   assert.equal(savedVim(), false);
-  assert.equal(savedContentsOpen(), true);
   assert.equal(savedLibraryLayout(), 'shelf');
   assert.doesNotThrow(() => savePreference('theme', 'forest'));
 });

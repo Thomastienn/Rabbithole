@@ -15,15 +15,6 @@ export function savedFocusMode() {
   }
 }
 
-// Contents starts open; only an explicit collapse is remembered.
-export function savedContentsOpen() {
-  try {
-    return localStorage.getItem('rabbithole.contents') !== 'collapsed';
-  } catch {
-    return true;
-  }
-}
-
 // Library opens as a shelf unless List was chosen.
 export function savedLibraryLayout(): 'shelf' | 'list' {
   try {
@@ -34,7 +25,7 @@ export function savedLibraryLayout(): 'shelf' | 'list' {
 }
 
 export function savePreference(
-  key: 'appearance' | 'theme' | 'vim' | 'contents' | 'library-layout' | 'focus-mode',
+  key: 'appearance' | 'theme' | 'vim' | 'library-layout' | 'focus-mode',
   value: string,
 ) {
   try {

@@ -2,8 +2,7 @@ import { useRef, useState, type CSSProperties } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
-import { IconButton } from '@astryxdesign/core/IconButton';
-import { Bars3Icon, ShareIcon, FilmIcon, BookOpenIcon, MapIcon } from '@heroicons/react/24/outline';
+import { ShareIcon, FilmIcon, BookOpenIcon, MapIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@astryxdesign/core/theme';
 import TreeSearch from './TreeSearch';
 import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
@@ -61,7 +60,7 @@ export default function ChatPage({
   const branchForm = useBranchForm(c, trees, model, stream);
   const { visibleIds, addresses, previews, drafts, setDrafts, shownMapWidth, workspace } = c;
   const { pendingFiles, setPendingFiles } = c;
-  const { contentsOpen, toggleContents, branch, api } = c;
+  const { branch, api } = c;
   const { openTree, openConversation, loadInitial, select, titleSearch, activeKey } = trees;
   const { models, providers, modelError, loadModels, signIn, currentModel } = model;
   const { cancelDelete } = actions;
@@ -98,7 +97,6 @@ export default function ChatPage({
       askDelete={askDelete}
     />
   );
-  const rootTitle = state?.trees.find((t) => t.id === root)?.title;
   const reading = tab === 'learning' && (!overview || !root),
     mapping = tab === 'learning' && overview && !!root;
   const views = [
@@ -122,11 +120,10 @@ export default function ChatPage({
     viewTab('Knowledge', <ShareIcon />, tab === 'knowledge', () => setTab('knowledge')),
     viewTab('Videos', <FilmIcon />, tab === 'videos', () => setTab('videos')),
   ];
-  const contents = (collapse?: () => void) =>
+  const contents = () =>
     root &&
     state && (
       <Contents
-        collapse={collapse}
         root={root}
         trees={state.trees.filter((t) => visibleIds.includes(t.id))}
         addresses={addresses}
@@ -153,18 +150,13 @@ export default function ChatPage({
       contents={contents()}
       library={() => setTab('library')}
       settings={() =>
-        openSettings(
-          undefined,
-          undefined,
-          document.querySelector<HTMLElement>('.band-contents, .contents-reopen'),
-        )
+        openSettings(undefined, undefined, document.querySelector<HTMLElement>('.band-contents'))
       }
     />
   );
   const band = (
     <ShellBand
       mobile={mobile}
-      rootTitle={rootTitle}
       tab={tab}
       busy={busy}
       drawer={drawer}
@@ -174,6 +166,7 @@ export default function ChatPage({
         state &&
         layout.layoutFailed && <SaveAlert retry={() => void layout.saver.current?.flush()} />
       }
+      contents={tab === 'learning' && contents()}
       setDrawer={setDrawer}
       search={() => setSearching(true)}
       newChat={newChat}
@@ -226,7 +219,7 @@ export default function ChatPage({
         }
       }}
     >
-      {band}
+      {mobile && band}
       {mobile && narrowDrawer}
       {/* Outside the band so the palette keeps popover colours. */}
       <TreeSearch
@@ -235,143 +228,143 @@ export default function ChatPage({
         searchSource={titleSearch}
         onValueChange={(id) => id && openTree(id)}
       />
-      <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
-        <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
-          <Heading level={1} className="sr-only">
-            Rabbithole
-          </Heading>
-          {error && (
-            <section role="alert" className="failure-banner workspace-failure">
-              <Text>{error}</Text>
-            </section>
-          )}
-          <section
-            className="tree-workspace"
-            data-expanded={expanded && !overview}
-            style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}
+      <HStack gap={0} style={{ flex: 1, minHeight: 0 }}>
+        {!mobile && band}
+        <HStack gap={0} style={{ flex: 1, minHeight: 0, minWidth: 0 }} className="workspace">
+          <main
+            className="conversation"
+            hidden={tab !== 'learning'}
+            aria-label="Learning workspace"
           >
-            {!overview && !mobile && contentsOpen && contents(() => toggleContents(false))}
-            <section ref={workspace} className="reading-workspace">
-              <section
-                id="focused-chat"
-                className="focused-chat"
-                style={{ display: overview && root ? 'none' : 'flex' }}
-                onKeyDown={(e) => {
-                  if (
-                    e.key === 'Escape' &&
-                    !branch &&
-                    !e.defaultPrevented &&
-                    !(e.target as Element).closest('[role=menu], video, dialog')
-                  ) {
-                    e.preventDefault();
-                    returnToTree();
-                  }
-                }}
-              >
-                {!overview && (mobile || !contentsOpen) && (
-                  <IconButton
-                    className="contents-reopen"
-                    label="Show contents"
-                    tooltip="Show contents"
-                    aria-expanded={mobile ? drawer : false}
-                    aria-haspopup={mobile ? 'dialog' : undefined}
-                    icon={<Bars3Icon />}
-                    variant="ghost"
-                    size="lg"
-                    onClick={() => (mobile ? setDrawer(true) : toggleContents(true))}
-                  />
-                )}
-                {tree ? (
-                  <FocusedChat
-                    tree={tree}
-                    c={c}
-                    model={model}
-                    trees={trees}
-                    stream={stream}
-                    branchForm={branchForm}
-                    actions={actions}
-                    active={active}
-                    modelMenu={modelMenu}
-                  />
-                ) : (
-                  <VStack gap={0} className="overview">
-                    <HStack
-                      padding={1}
-                      className="map-toolbar"
-                      role="group"
-                      aria-label="Tree view controls"
-                    >
-                      {menu()}
-                    </HStack>
-                    <VStack
-                      padding={6}
-                      gap={3}
-                      hAlign="center"
-                      vAlign="center"
-                      className="empty-map"
-                    >
-                      {!state && error ? (
-                        <Button
-                          label="Retry loading learning trees"
-                          variant="secondary"
-                          onClick={loadInitial}
-                        />
-                      ) : loading || !state ? (
-                        <TreeLoading />
-                      ) : selected.current ? (
-                        <TreeLoadFailure retry={() => void select(selected.current!)} />
-                      ) : (
-                        tab === 'learning' && firstQuestion
-                      )}
-                    </VStack>
-                  </VStack>
-                )}
+            <Heading level={1} className="sr-only">
+              Rabbithole
+            </Heading>
+            {error && (
+              <section role="alert" className="failure-banner workspace-failure">
+                <Text>{error}</Text>
               </section>
-              <MapView c={c} layout={layout} trees={trees} stream={stream} vim={vim} menu={menu} />
+            )}
+            <section
+              className="tree-workspace"
+              data-expanded={expanded && !overview}
+              style={{ '--map-width': `${shownMapWidth}rem` } as CSSProperties}
+            >
+              <section ref={workspace} className="reading-workspace">
+                <section
+                  id="focused-chat"
+                  className="focused-chat"
+                  style={{ display: overview && root ? 'none' : 'flex' }}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === 'Escape' &&
+                      !branch &&
+                      !e.defaultPrevented &&
+                      !(e.target as Element).closest('[role=menu], video, dialog')
+                    ) {
+                      e.preventDefault();
+                      returnToTree();
+                    }
+                  }}
+                >
+                  {tree ? (
+                    <FocusedChat
+                      tree={tree}
+                      c={c}
+                      model={model}
+                      trees={trees}
+                      stream={stream}
+                      branchForm={branchForm}
+                      actions={actions}
+                      active={active}
+                      modelMenu={modelMenu}
+                    />
+                  ) : (
+                    <VStack gap={0} className="overview">
+                      <HStack
+                        padding={1}
+                        className="map-toolbar"
+                        role="group"
+                        aria-label="Tree view controls"
+                      >
+                        {menu()}
+                      </HStack>
+                      <VStack
+                        padding={6}
+                        gap={3}
+                        hAlign="center"
+                        vAlign="center"
+                        className="empty-map"
+                      >
+                        {!state && error ? (
+                          <Button
+                            label="Retry loading learning trees"
+                            variant="secondary"
+                            onClick={loadInitial}
+                          />
+                        ) : loading || !state ? (
+                          <TreeLoading />
+                        ) : selected.current ? (
+                          <TreeLoadFailure retry={() => void select(selected.current!)} />
+                        ) : (
+                          tab === 'learning' && firstQuestion
+                        )}
+                      </VStack>
+                    </VStack>
+                  )}
+                </section>
+                <MapView
+                  c={c}
+                  layout={layout}
+                  trees={trees}
+                  stream={stream}
+                  vim={vim}
+                  menu={menu}
+                />
+              </section>
             </section>
-          </section>
-        </main>
-        <LibraryPanel c={c} trees={trees} actions={actions} firstQuestion={firstQuestion} />
-        <ReturnPanel
-          label="Knowledge"
-          returnId="return-to-learning"
-          shown={tab === 'knowledge'}
-          overview={overview}
-          back={() => setTab('learning')}
-        >
-          <KnowledgePage api={c.api} activity={activeKey} />
-        </ReturnPanel>
-        <ReturnPanel
-          label="Videos"
-          returnId="return-from-videos"
-          shown={tab === 'videos'}
-          overview={overview}
-          back={() => setTab('learning')}
-        >
-          <VideoLibrary api={c.api} activity={activeKey} />
-        </ReturnPanel>
-        <SettingsWindow
-          request={tab === 'settings' ? settings : undefined}
-          close={closeSettings}
-          api={api}
-          models={models}
-          providers={providers}
-          modelError={modelError}
-          loadModels={loadModels}
-          profileActivated={model.profileActivated}
-          conceptNameTokens={state?.conceptNameTokens}
-          auth={state?.auth}
-          signIn={signIn}
-          vim={vim}
-          setVim={(on) => {
-            setVim(on);
-            savePreference('vim', on ? 'on' : 'off');
-          }}
-          appearance={appearance}
-          setAppearance={setAppearance}
-          theme={theme}
-          setTheme={setTheme}
-        />
+          </main>
+          <LibraryPanel c={c} trees={trees} actions={actions} firstQuestion={firstQuestion} />
+          <ReturnPanel
+            label="Knowledge"
+            returnId="return-to-learning"
+            shown={tab === 'knowledge'}
+            overview={overview}
+            back={() => setTab('learning')}
+          >
+            <KnowledgePage api={c.api} activity={activeKey} />
+          </ReturnPanel>
+          <ReturnPanel
+            label="Videos"
+            returnId="return-from-videos"
+            shown={tab === 'videos'}
+            overview={overview}
+            back={() => setTab('learning')}
+          >
+            <VideoLibrary api={c.api} activity={activeKey} />
+          </ReturnPanel>
+          <SettingsWindow
+            request={tab === 'settings' ? settings : undefined}
+            close={closeSettings}
+            api={api}
+            models={models}
+            providers={providers}
+            modelError={modelError}
+            loadModels={loadModels}
+            profileActivated={model.profileActivated}
+            conceptNameTokens={state?.conceptNameTokens}
+            auth={state?.auth}
+            signIn={signIn}
+            vim={vim}
+            setVim={(on) => {
+              setVim(on);
+              savePreference('vim', on ? 'on' : 'off');
+            }}
+            appearance={appearance}
+            setAppearance={setAppearance}
+            theme={theme}
+            setTheme={setTheme}
+          />
+        </HStack>
       </HStack>
       <DeleteDialog actions={actions} />
     </VStack>
