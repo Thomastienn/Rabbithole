@@ -1,9 +1,14 @@
-import { PIECES_INSTRUCTIONS, PIECES_LIBRARY_NOTE } from './video-cut.mjs';
+import {
+  PIECES_INSTRUCTIONS,
+  PIECES_LIBRARY_NOTE,
+  PIECE_IMPROVE_INSTRUCTIONS,
+} from './video-cut.mjs';
 import {
   cutSource,
   pieceChoices,
   remapRoles,
   assemblePieces,
+  libraryPieces,
   CUT_ATTEMPTS,
 } from './video-plan.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
@@ -67,4 +72,19 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
       error = e;
     }
   }
+}
+
+// One smart-model rewrite of a saved piece an audit flagged; returns the validated library entry or throws.
+export async function improvePiece({ piece, why, call }) {
+  const { name, look, props, roles, source } = piece;
+  // The piece colours through its own saved roles; the ink is irrelevant to validation.
+  const brief = {
+    paletteRoles: Object.fromEntries(roles.map((r) => [r, 'amber'])),
+    recurringObjects: [{ look }],
+  };
+  const raw = await call(
+    PIECE_IMPROVE_INSTRUCTIONS,
+    JSON.stringify({ name, look, props, roles, source, why }),
+  );
+  return libraryPieces(cutSource(raw, brief, [name]), brief, [name])[0];
 }

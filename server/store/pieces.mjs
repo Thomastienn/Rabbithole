@@ -38,6 +38,12 @@ export const pieces = {
     if (video) this.usePiece(id, video);
     return id;
   },
+  // A validated rewrite replaces the entry for future videos; saved videos are rendered files and never change.
+  improvePiece(id, { source, props, roles }) {
+    this.db
+      .prepare('UPDATE pieces SET source=?, props=?, roles=?, improved=? WHERE id=?')
+      .run(source, JSON.stringify(props), JSON.stringify(roles), Date.now(), id);
+  },
   usePiece(id, video) {
     this.db.prepare('INSERT OR IGNORE INTO piece_videos(piece,video) VALUES (?,?)').run(id, video);
   },

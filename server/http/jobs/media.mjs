@@ -10,6 +10,7 @@ import {
   AUDIT_INSTRUCTIONS,
   REPAIR_NOTE,
   FIX_NOTE,
+  PIECE_IMPROVE_INSTRUCTIONS,
 } from '../../media/video-cut.mjs';
 import { MANIM_AUDIT_INSTRUCTIONS } from '../../media/manim-cut.mjs';
 
@@ -121,13 +122,15 @@ export function mediaJobs(ctx) {
                 ? 'plan'
                 : args[0].instructions.startsWith(PIECES_INSTRUCTIONS)
                   ? 'pieces'
-                  : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].includes(args[0].instructions)
-                    ? 'audit'
-                    : args[0].instructions.endsWith(REPAIR_NOTE)
-                      ? 'repair'
-                      : args[0].instructions.endsWith(FIX_NOTE)
-                        ? 'fix'
-                        : 'cut',
+                  : args[0].instructions === PIECE_IMPROVE_INSTRUCTIONS
+                    ? 'improve'
+                    : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].includes(args[0].instructions)
+                      ? 'audit'
+                      : args[0].instructions.endsWith(REPAIR_NOTE)
+                        ? 'repair'
+                        : args[0].instructions.endsWith(FIX_NOTE)
+                          ? 'fix'
+                          : 'cut',
               message: job.message,
             }).generate(...args),
         });

@@ -10,7 +10,7 @@ IDEA.md remains the original vision: connected subproblem conversations that bra
 
 ## Audience
 
-Anyone learning with LLMs, including students and independent learners exploring unfamiliar topics.
+Curious self-learners exploring ideas for their own sake, with no technical background assumed. The owner set this on 2026-11-15, replacing the earlier student framing: no exam, syllabus or deadline pressure; understanding checks happen only when the learner asks. See PRODUCT.md.
 
 ## Delivery
 

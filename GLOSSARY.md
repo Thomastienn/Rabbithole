@@ -4,6 +4,18 @@ A local learning app where a learner explores a topic as a tree of connected con
 
 ## Language
 
+**Learner**:
+The person exploring in the app: a curious self-learner following their own questions, not a student working to a syllabus. UI copy addresses them as "you".
+_Avoid_: Student, user (in specifications), explorer
+
+**Tutor**:
+The role the chat model plays for the learner in a conversation: explaining, answering and following the learner's curiosity. Never shown as a persona in UI copy.
+_Avoid_: Assistant, bot, guide
+
+**Self-check**:
+Questions the tutor puts to the learner to confirm an idea has stuck, only when the learner asks for them. The app never starts one on its own.
+_Avoid_: Quiz, test, review
+
 **Learning tree**:
 One saved topic of study: a root conversation and every conversation branched from it. The UI may label it "chat".
 _Avoid_: Tree (alone), map, chat (outside UI copy)

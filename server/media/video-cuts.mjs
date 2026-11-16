@@ -43,6 +43,23 @@ export function auditIssues(raw) {
   return issues;
 }
 
+// Saved pieces an audit flags as poor, limited to the offered names; anything unusable flags none.
+export function poorPieces(raw, offered) {
+  let list;
+  try {
+    list = JSON.parse(unfenced(raw))?.pieces;
+  } catch {}
+  return Array.isArray(list)
+    ? list.filter(
+        (p) =>
+          offered.includes(p?.name) &&
+          typeof p.why === 'string' &&
+          p.why.trim() &&
+          p.why.length <= 500,
+      )
+    : [];
+}
+
 // A fix answers {"code", "emphasis"?}; anything unusable throws.
 export function auditFix(raw, brief, sentences, engine = 'remotion') {
   const answer = JSON.parse(unfenced(raw));
@@ -124,6 +141,8 @@ export async function writeCuts({
   onPieces = async () => {},
   // Looks to each one's top library matches; [] when no embedder is usable.
   matches = async () => [],
+  // Library id and audit reason of a saved piece flagged as poor; improves it for future videos only.
+  onPoorPiece = async () => {},
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
   const cuts = plan.cuts.map((c, i) => ({
@@ -146,7 +165,8 @@ export async function writeCuts({
     save(data);
   };
   persist();
-  let choices = null;
+  let choices = null,
+    library = {};
   if (names.length && !data.pieces)
     ({ source: data.pieces, choices } = await writeSetPieces({
       plan,
@@ -157,10 +177,12 @@ export async function writeCuts({
     }));
   if (data.pieces && !pieces) {
     persist();
-    await onPieces(data.pieces, names, choices);
+    library = (await onPieces(data.pieces, names, choices)) ?? {};
   }
   // Each audit shares its pre-audit last frame with the next cut's audit, so audits never wait on each other.
   const lastFrames = cuts.map(() => Promise.withResolvers());
+  const improving = [],
+    flagged = new Set();
   // Narration depends only on the plan, never on a cut writer or a neighbouring cut finishing.
   const attempts = cuts.map(() => 0);
   const writerInstructions = (index) =>
@@ -334,14 +356,29 @@ export async function writeCuts({
           emphasis: cut.emphasis ?? plan.cuts[index].emphasis ?? [],
           previousLastFrame: !!previous,
         };
-        const issues = auditIssues(
-          await call(
-            cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS,
-            JSON.stringify({ ...task, snapshots: own.length }),
-            undefined,
-            previous ? [...own, previous] : own,
-          ),
+        const offered =
+          cut.engine === 'manim'
+            ? []
+            : Object.keys(library).filter((n) =>
+                new RegExp(`\\b${RegExp.escape(n)}\\b`).test(cut.code),
+              );
+        const answer = await call(
+          cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS,
+          JSON.stringify({
+            ...task,
+            ...(offered.length && { libraryPieces: offered }),
+            snapshots: own.length,
+          }),
+          undefined,
+          previous ? [...own, previous] : own,
         );
+        // The video keeps the pieces it started with; a flagged piece is improved in the library alongside.
+        for (const { name, why } of poorPieces(answer, offered))
+          if (!flagged.has(library[name])) {
+            flagged.add(library[name]);
+            improving.push(onPoorPiece(library[name], why).catch(() => {}));
+          }
+        const issues = auditIssues(answer);
         if (issues) {
           // The chat model rewrites the flagged cut once; the fix is kept only if it validates and renders.
           Object.assign(
@@ -446,5 +483,5 @@ export async function writeCuts({
     // Siblings fail with AbortError once one cut stops the job; report the first real cause.
     throw signal.reason ?? error;
   }
-  return { data, attempts, rewrite, stage, persist, clip: clipOf };
+  return { data, attempts, rewrite, stage, persist, clip: clipOf, improving };
 }

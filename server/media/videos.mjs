@@ -15,6 +15,7 @@ import { join, basename } from 'node:path';
 import { edgeNarration } from './narration.mjs';
 import { videoPlan, libraryPieces, PLAN_INSTRUCTIONS, CUT_ATTEMPTS } from './video-plan.mjs';
 import { videoCall, writeCuts, cutError } from './video-cuts.mjs';
+import { improvePiece } from './video-pieces.mjs';
 import { sandboxProcess, REPO, withoutPaths } from './video-sandbox.mjs';
 import { detectManim } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
@@ -267,17 +268,36 @@ export async function generateVideo({
         }
       },
       // Accepted variant and new pieces join the piece library, reused ones record this video; the library never fails the video.
+      // Returns each set piece's library id, so audits can flag a poor one.
       onPieces: async (source, names, choices) => {
+        const ids = {};
         try {
           const reused = choices?.filter((c) => c.use === 'reuse') ?? [];
           const entries = libraryPieces(source, plan.styleBrief, names);
           for (const [i, entry] of entries.entries())
             if (!reused.some((c) => c.name === entry.name))
-              store.savePiece({ ...entry, embedding: vectors[i] ?? null }, artifact.id);
-          for (const c of reused) store.usePiece(c.piece.id, artifact.id);
+              ids[entry.name] = store.savePiece(
+                { ...entry, embedding: vectors[i] ?? null },
+                artifact.id,
+              );
+          for (const c of reused) {
+            store.usePiece(c.piece.id, artifact.id);
+            ids[c.name] = c.piece.id;
+          }
         } catch (error) {
           controller.signal.throwIfAborted();
           onWarning(`WARN video piece library: ${error.message}`);
+        }
+        return ids;
+      },
+      // The smart model rewrites a flagged piece; only a rewrite that validates replaces the library entry.
+      onPoorPiece: async (id, why) => {
+        try {
+          const piece = store.piece(id);
+          if (piece) store.improvePiece(id, await improvePiece({ piece, why, call }));
+        } catch (error) {
+          controller.signal.throwIfAborted();
+          onWarning(`WARN video piece improvement kept the saved piece: ${error.message}`);
         }
       },
       save: (data) => {
@@ -354,6 +374,8 @@ export async function generateVideo({
       if (result?.fps !== 30 || result.durationInFrames !== frames.frames)
         throw new Error('Rendered video is unreadable.');
     }
+    // Piece improvements run alongside rendering and never fail the video.
+    await Promise.all(work.improving);
     onPhase('saving', 1, frames);
     const final = mediaPath(dir, artifact.id);
     await mkdir(join(dir, 'videos'), { recursive: true, mode: 0o700 });

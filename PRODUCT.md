@@ -16,15 +16,19 @@ React, TypeScript, Vite, Astryx (the component library; the visual world ships a
 
 ## Users
 
-Anyone learning with LLMs: students and independent learners exploring unfamiliar topics, often in long reading sessions.
+Curious self-learners of any age or background who explore ideas for their own sake, often in long reading sessions. The product is not built around students: no syllabus, exams, grades or deadlines, because that pressure is what makes people stop wanting to learn.
 
 ## Product Purpose
 
-An LLM explanation introduces concepts the learner does not yet understand. TreeTutor lets them branch a focused child conversation from the exact passage, keep the original thread intact, and see every conversation as a node on a learning tree map. Success: first, a place to think, where long tutor replies are comfortable to read for an evening; second, a learning tree map that is recognisable at a glance as TreeTutor.
+Curiosity first, understanding as the payoff. The hook: follow every side question without losing your place. The payoff: when the learner wants it, the tutor works to make the idea truly understood and stick, never by pushing tests or schedules on them. An LLM explanation introduces concepts the learner does not yet understand. TreeTutor lets them branch a focused child conversation from the exact passage, keep the original thread intact, and see every conversation as a node on a learning tree map. Success: first, a place to think, where long tutor replies are comfortable to read for an evening; second, a learning tree map that is recognisable at a glance as TreeTutor.
 
 ## Positioning
 
 Conversations are a tree, not a list: each child conversation is anchored to the passage it came from and inherits its ancestors' context, and the map shows that structure.
+
+What the big chat apps do not do well, and TreeTutor leads with: side questions stay clean, anchored to their passage without polluting the main thread; and the tutor remembers what the learner has already explored and understood across every learning tree (knowledge graph, familiarity, memory note). Supporting strengths: visuals more interactive than a general chat app's, easy movement between branches and recursive depth, and narrated videos, whose cost is to come down over time.
+
+Open source and local-first: learners run it themselves with their own Claude or ChatGPT subscription. Anyone may use it; no technical audience is assumed, but `npm start` stays the install path for now.
 
 ## Operating Context
 
@@ -39,7 +43,7 @@ Operate mode on a desktop browser: frequent reading and asking, often in the eve
 
 ## Brand Commitments
 
-Name: TreeTutor. Feels wrong (anti-references): childish or gamified; generic SaaS dashboard; neon hacker-dark; decoration that competes with reply text; cramped or tool-dense.
+Name: TreeTutor. Feels wrong (anti-references): childish or gamified; school-like pressure (grades, streaks, deadlines, unrequested quizzes); generic SaaS dashboard; neon hacker-dark; decoration that competes with reply text; cramped or tool-dense.
 
 ## Evidence on Hand
 
