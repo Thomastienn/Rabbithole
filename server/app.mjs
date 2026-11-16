@@ -19,6 +19,7 @@ import { discussionRoutes } from './http/routes/discussions.mjs';
 import { mediaJobs, recoverStaged, STOPPED } from './http/jobs/media.mjs';
 import { suggestionJobs } from './http/jobs/suggestions.mjs';
 import { titleJobs } from './http/jobs/title.mjs';
+import { verdictJobs } from './http/jobs/verdicts.mjs';
 import { stateRoutes } from './http/routes/state.mjs';
 import { settingsRoutes } from './http/routes/settings.mjs';
 import { knowledgeRoutes } from './http/routes/knowledge.mjs';
@@ -65,6 +66,8 @@ export function createApp({
   videoEmbed = null,
   log = stdoutLog,
   suggestions = false,
+  // Off in tests like suggestions, so fake replies without a verdict block make no extra calls.
+  verdicts = false,
   suggestionTimeout,
   desktop = systemDesktop,
   recognize = tesseractOcr(dir),
@@ -94,6 +97,7 @@ export function createApp({
     neighbourhood: (text, signal) => retrieveNeighbourhood(store, videoEmbed, text, signal),
     log,
     suggestions,
+    verdicts,
     suggestionTimeout,
     desktop,
     recognize,
@@ -131,6 +135,8 @@ export function createApp({
     prepared: new Map(),
     suggesting: new Map(),
     titling: new Map(),
+    // Learner message id -> verdict fallback job.
+    verdicting: new Map(),
     json: (res, status, body) => {
       res.writeHead(status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(body));
@@ -147,6 +153,7 @@ export function createApp({
     mediaJobs(ctx),
     suggestionJobs(ctx),
     titleJobs(ctx),
+    verdictJobs(ctx),
   );
   const { active, videoJobs, suggesting, titling, compactions, prepared, json } = ctx;
   let stopped;
@@ -250,6 +257,7 @@ export function createApp({
           ...videoJobs,
           ...suggesting.values(),
           ...titling.values(),
+          ...ctx.verdicting.values(),
           ...compactions.values(),
           ...ctx.discussing.values(),
         ]
@@ -264,6 +272,7 @@ export function createApp({
       for (const v of videoJobs) v.controller.abort(STOPPED);
       for (const s of suggesting.values()) s.controller.abort();
       for (const t of titling.values()) t.controller.abort();
+      for (const v of ctx.verdicting.values()) v.controller.abort();
       for (const c of compactions.values()) c.controller.abort();
       for (const parent of [...prepared.keys()]) ctx.unprepare(parent);
       store.interrupt();

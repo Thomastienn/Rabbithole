@@ -70,6 +70,7 @@ try {
     defaultProvider: store.assumesProvider ? 'claude' : null,
     dir,
     suggestions: true,
+    verdicts: true,
     searxng: searxng.status,
     python: pythonTool({ dir }),
     videoEmbed: localEmbedder(dir),

@@ -89,7 +89,7 @@ export function open(path) {
     // Durable usage: counts, time and attribution only, so deleting content never shrinks history. NULL counts = not reported.
     if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='usage_events'").get()) {
       this.db
-        .exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title')),
+        .exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict')),
           input INTEGER, output INTEGER, cacheRead INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
           CREATE INDEX usage_events_at ON usage_events(at);
           INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'chat:'||id,usage->>'at','chat',usage->>'input',usage->>'output',usage->>'cacheRead' FROM messages WHERE usage IS NOT NULL;
@@ -109,15 +109,15 @@ export function open(path) {
           usage_events.id LIKE 'video:'||a.attempt||':%' LIMIT 1)
           WHERE task IN ('diagram','video');`);
     }
-    // Title usage widens the task check; SQLite needs a rebuild to change it.
+    // Title and verdict usage widen the task check; SQLite needs a rebuild to change it.
     if (
       !this.db
         .prepare("SELECT sql FROM sqlite_master WHERE name='usage_events'")
         .get()
-        .sql.includes("'title'")
+        .sql.includes("'verdict'")
     )
       this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE usage_events RENAME TO usage_events_old;
-          CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title')),
+          CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict')),
             input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
           INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message) SELECT id,at,provider,model,task,input,output,cacheRead,message FROM usage_events_old;
           DROP TABLE usage_events_old;
