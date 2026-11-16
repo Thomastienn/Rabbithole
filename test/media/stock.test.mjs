@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -200,4 +200,134 @@ test('matches mix both catalogs marked 2D or 3D; a 3D piece fetches its GLB once
     '2D',
     'a failed catalog leaves the other usable',
   );
+});
+
+const embeddings = {
+  'Carousel horse emoji': [100, 100],
+  'Coin emoji': [100, 0],
+  'Horse emoji': [2, 1],
+  'Horse face emoji': [1000, -10000],
+  'Horse racing emoji': [-1, 0],
+  'Horse animal': [20, 1],
+  steed: [3, 0],
+  rider: [-2, 0],
+  horses: [3, 0],
+};
+
+test('stock matches each object by cosine, keeps the top 3 and reuses catalog embeddings across calls and restarts', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-stock-')),
+    texts = [];
+  const embed = async (input) => {
+    texts.push(...input);
+    return input.map((text) => {
+      assert.ok(embeddings[text], `unexpected embedding text: ${text}`);
+      return embeddings[text];
+    });
+  };
+  const stock = stockCatalog(dir, both, undefined, [catalog, polyfork], embed);
+  assert.deepEqual(await stock.match([]), []);
+  assert.equal(texts.length, 0, 'an empty request does not prepare embeddings');
+  const [result, concurrent] = await Promise.all([
+    stock.match(['steed', 'rider']),
+    stock.match(['steed']),
+  ]);
+  assert.deepEqual(result, [
+    {
+      object: 'steed',
+      pieces: [
+        { id: 'fluent-emoji:coin', title: 'Coin', type: 'emoji', dimension: '2D' },
+        { id: 'horse-3d-a1b2c3', title: 'Horse', type: 'animal', dimension: '3D' },
+        { id: 'fluent-emoji:horse', title: 'Horse', type: 'emoji', dimension: '2D' },
+      ],
+    },
+    {
+      object: 'rider',
+      pieces: [
+        { id: 'fluent-emoji:horse_racing', title: 'Horse racing', type: 'emoji', dimension: '2D' },
+        { id: 'fluent-emoji:horse_face', title: 'Horse face', type: 'emoji', dimension: '2D' },
+        {
+          id: 'fluent-emoji:carousel_horse',
+          title: 'Carousel horse',
+          type: 'emoji',
+          dimension: '2D',
+        },
+      ],
+    },
+  ]);
+  assert.deepEqual(concurrent, [result[0]]);
+  assert.deepEqual(await stock.match(['steed', 'rider']), result);
+  const fresh = stockCatalog(
+    dir,
+    async () => assert.fail('cached indexes need no network'),
+    undefined,
+    [catalog, polyfork],
+    embed,
+  );
+  assert.deepEqual(await fresh.match(['steed', 'rider']), result);
+  assert.deepEqual(
+    (await fresh.match(['steed'], '2D'))[0].pieces.map((p) => p.title),
+    ['Coin', 'Horse', 'Carousel horse'],
+    'dimension filtering happens before picking the top 3',
+  );
+  for (const text of Object.keys(embeddings).filter((t) => t.includes(' ')))
+    assert.equal(texts.filter((t) => t === text).length, 1, `${text} is embedded once`);
+});
+
+test('stock falls back to keywords without an embedder or on preparation/query failure, and recovers later', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-stock-'));
+  const plain = stockCatalog(dir, both, undefined, [catalog, polyfork]);
+  const keywords = await plain.match(['horses']);
+  assert.equal(keywords[0].pieces.length, 3);
+  assert.equal(keywords[0].pieces[0].id, 'fluent-emoji:horse');
+  let available = false;
+  const texts = [];
+  const embed = async (input) => {
+    if (!available) throw new Error('model unavailable');
+    texts.push(...input);
+    return input.map((text) => embeddings[text]);
+  };
+  const stock = stockCatalog(dir, both, undefined, [catalog, polyfork], embed);
+  assert.deepEqual(await stock.match(['horses']), keywords, 'preparation failure');
+  available = true;
+  assert.equal((await stock.match(['steed']))[0].pieces[0].title, 'Coin');
+  available = false;
+  assert.deepEqual(await stock.match(['horses']), keywords, 'query failure with prepared entries');
+  available = true;
+  assert.equal((await stock.match(['steed']))[0].pieces[0].title, 'Coin');
+  for (const text of Object.keys(embeddings).filter((t) => t.includes(' ')))
+    assert.equal(texts.filter((t) => t === text).length, 1, `${text} is not prepared twice`);
+});
+
+test('a corrupt vector cache or changed catalog is prepared again instead of returning stale matches', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-stock-')),
+    path = join(dir, 'stock', `${catalog.file}-${catalog.revision}-embeddings.json`),
+    texts = [];
+  const embed = async (input) => {
+    texts.push(...input);
+    return input.map((text) => (text === 'Mare emoji' ? [0, 1] : embeddings[text]));
+  };
+  const fresh = (data = listing, spec = catalog) =>
+    stockCatalog(dir, async () => data, undefined, [spec], embed);
+  const result = await fresh().match(['steed']);
+  for (const corrupt of [
+    '{',
+    JSON.stringify({ ...JSON.parse(readFileSync(path, 'utf8')), vectors: [[1, null]] }),
+    JSON.stringify({ ...JSON.parse(readFileSync(path, 'utf8')), key: 'old-model' }),
+  ]) {
+    writeFileSync(path, corrupt);
+    assert.deepEqual(await fresh().match(['steed']), result);
+  }
+  const changed = {
+    tree: listing.tree.map(({ path }) => ({ path: path.replace('assets/Horse/', 'assets/Mare/') })),
+  };
+  assert.deepEqual(
+    (
+      await fresh(changed, { ...catalog, hash: sha(JSON.stringify(fluentIndex(changed))) }).match([
+        'steed',
+      ])
+    )[0].pieces.map((p) => p.title),
+    ['Coin', 'Carousel horse', 'Horse face'],
+  );
+  assert.equal(texts.filter((t) => t === 'Horse emoji').length, 4);
+  assert.equal(texts.filter((t) => t === 'Mare emoji').length, 1);
 });

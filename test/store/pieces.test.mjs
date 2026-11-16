@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
+import { FLUENT, fluentIndex, stockCatalog } from '../../server/media/stock.mjs';
 
 const entry = (name, embedding) => ({
   name,
@@ -40,4 +42,33 @@ test('the piece library saves pieces, reads embeddings back, ranks the top 5 by 
   store.usePiece(ids[0], 'video-b');
   store.usePiece(ids[0], 'video-b');
   assert.deepEqual(store.piece(ids[0]).videos, ['video-a', 'video-b']);
+});
+
+test('preparing and matching stock entries leaves the piece library and its nearest pieces unchanged', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-pieces-')),
+    store = new Store(join(dir, 'trees.sqlite'));
+  t.after(() => store.close());
+  const id = store.savePiece(entry('Drawn', [1, 0]), 'video-a'),
+    before = store.pieceList(),
+    listing = { tree: [{ path: 'assets/Horse/Flat/horse_flat.svg' }] };
+  const catalog = {
+    ...FLUENT,
+    hash: createHash('sha256')
+      .update(JSON.stringify(fluentIndex(listing)))
+      .digest('hex'),
+  };
+  const stock = stockCatalog(
+    dir,
+    async () => listing,
+    undefined,
+    [catalog],
+    async (texts) => texts.map(() => [1, 0]),
+  );
+  assert.equal((await stock.match(['horse']))[0].pieces[0].id, 'fluent-emoji:horse');
+  assert.deepEqual(store.pieceList(), before);
+  assert.deepEqual(store.unembeddedPieces(), []);
+  assert.deepEqual(
+    store.nearestPieces([1, 0]).map((p) => p.id),
+    [id],
+  );
 });

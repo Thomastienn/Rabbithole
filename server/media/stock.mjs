@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { MODEL, REVISION } from './embedder.mjs';
+import { cosine } from '../store/embeddings.mjs';
 
 // The catalog name prefixes each asset name, so 2D IDs never collide with the 3D catalog's slugs.
 const PREFIX = 'fluent-emoji:';
@@ -63,6 +65,34 @@ export async function stockIndex(dir, download = fetchJson, catalog = FLUENT) {
   await mkdir(join(dir, 'stock'), { recursive: true, mode: 0o700 });
   await writeAtomic(path, text);
   return JSON.parse(text);
+}
+
+const validVectors = (vectors, count) =>
+  Array.isArray(vectors) &&
+  vectors.length === count &&
+  vectors.every(
+    (v) =>
+      Array.isArray(v) &&
+      v.length > 0 &&
+      v.length === vectors[0].length &&
+      v.every(Number.isFinite),
+  );
+
+// Stock vectors stay beside the catalog index, separate from the piece library's database.
+async function stockEmbeddings(dir, catalog, index, embed) {
+  const path = join(dir, 'stock', `${catalog.file}-${catalog.revision}-embeddings.json`),
+    key = `${MODEL}@${REVISION}:${catalog.hash}`;
+  const cached = await readFile(path, 'utf8')
+    .then(JSON.parse)
+    .catch(() => null);
+  if (cached?.key === key && validVectors(cached.vectors, index.length)) return cached.vectors;
+  const vectors = [];
+  // Bound inference memory for catalogs with thousands of entries.
+  for (let i = 0; i < index.length; i += 32)
+    vectors.push(...(await embed(index.slice(i, i + 32).map((e) => `${e.title} ${e.type}`))));
+  if (!validVectors(vectors, index.length)) throw new Error('Stock embeddings are invalid.');
+  await writeAtomic(path, JSON.stringify({ key, vectors }));
+  return vectors;
 }
 
 // One entry per Polyfork model; only its GLB mesh is ever fetched, never the .mjs source.
@@ -144,6 +174,7 @@ export function stockCatalog(
   download,
   downloadPiece = fetchBytes,
   catalogs = [FLUENT, POLYFORK],
+  embed = null,
 ) {
   const loaders = catalogs.map((catalog) => {
     let loading;
@@ -161,9 +192,51 @@ export function stockCatalog(
     if (results.every((r) => r.status === 'rejected')) throw results[0].reason;
     return results.flatMap((r) => r.value ?? []);
   };
+  const preparations = new Map();
+  const prepare = async (index) =>
+    (
+      await Promise.all(
+        catalogs.map((catalog) => {
+          const entries = index.filter((e) => e.catalog === catalog);
+          if (!entries.length) return [];
+          if (!preparations.has(catalog))
+            preparations.set(
+              catalog,
+              stockEmbeddings(dir, catalog, entries, embed)
+                .then((vectors) => entries.map((e, i) => ({ ...e, embedding: vectors[i] })))
+                .catch((error) => {
+                  preparations.delete(catalog);
+                  throw error;
+                }),
+            );
+          return preparations.get(catalog);
+        }),
+      )
+    ).flat();
   return {
     async match(names, dimension) {
+      if (!names.length) return [];
       const index = (await load()).filter((p) => !dimension || p.dimension === dimension);
+      if (embed && index.length)
+        try {
+          const entries = await prepare(index),
+            queries = await embed(names);
+          if (
+            !validVectors(queries, names.length) ||
+            entries.some((e) => e.embedding.length !== queries[0].length)
+          )
+            throw new Error('Stock query embeddings are invalid.');
+          return names.map((object, i) => ({
+            object,
+            pieces: entries
+              .map((entry) => ({ entry, score: cosine(queries[i], entry.embedding) }))
+              .sort((a, b) => b.score - a.score || (a.entry.id < b.entry.id ? -1 : 1))
+              .slice(0, 3)
+              .map(({ entry: { id, title, type, dimension } }) => ({ id, title, type, dimension })),
+          }));
+        } catch {
+          // A missing model or failed query leaves keyword matching usable; later calls retry.
+        }
       return names.map((object) => ({ object, pieces: keywordMatch(index, object) }));
     },
     // shortcut: the piece cache is never evicted, add eviction when real usage shows it grows.

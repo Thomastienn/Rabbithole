@@ -61,7 +61,8 @@ try {
   store.pruneEmpty();
   const auth = new Auth(dir),
     claude = new Claude(dir),
-    endpoint = new OpenAI(dir);
+    endpoint = new OpenAI(dir),
+    embed = localEmbedder(dir);
   app = createApp({
     store,
     auth,
@@ -74,8 +75,8 @@ try {
     verdicts: true,
     searxng: searxng.status,
     python: pythonTool({ dir }),
-    videoEmbed: localEmbedder(dir),
-    stock: stockCatalog(dir),
+    videoEmbed: embed,
+    stock: stockCatalog(dir, undefined, undefined, undefined, embed),
   });
   await new Promise((resolve, reject) => {
     app.server.once('error', reject);
