@@ -66,11 +66,11 @@ const exhibitPlanned = (e, clips) =>
       e.end > e.start &&
       e.end - e.start <= MAX_CLIP_SECONDS
     : e.kind === 'image'
-    ? text(e.show) && e.show.length <= 300
-    : e.kind === 'quote' &&
-      text(e.text) &&
-      e.text.length <= 280 &&
-      (e.by === undefined || (text(e.by) && e.by.length <= 120)));
+      ? text(e.show) && e.show.length <= 300
+      : e.kind === 'quote' &&
+        text(e.text) &&
+        e.text.length <= 280 &&
+        (e.by === undefined || (text(e.by) && e.by.length <= 120)));
 
 const sides = ['from-left', 'from-right', 'from-top', 'from-bottom'];
 const transitions = {
@@ -338,7 +338,8 @@ export function libraryPieces(source, brief, names) {
   const shared = file.statements.filter((s) => !exportedName(s)).map((s) => s.getText(file));
   const exports = new Map(file.statements.filter(exportedName).map((s) => [exportedName(s), s]));
   const looks = brief.recurringObjects.filter((o) => o.look);
-  return names.flatMap((name, index) => {
+  // An export with every other export it draws, after the module's imports and private helpers.
+  const split = (name) => {
     const used = [name];
     for (let i = 0; i < used.length; i++)
       for (const other of exports.keys())
@@ -347,6 +348,9 @@ export function libraryPieces(source, brief, names) {
           new RegExp(`\\b${RegExp.escape(other)}\\b`).test(exports.get(used[i]).getText(file))
         )
           used.push(other);
+    return [...shared, ...used.reverse().map((n) => exports.get(n).getText(file))].join('\n');
+  };
+  return names.flatMap((name, index) => {
     const statement = exports.get(name);
     const fn = ts.isFunctionDeclaration(statement)
       ? statement
@@ -356,14 +360,13 @@ export function libraryPieces(source, brief, names) {
       binding && ts.isObjectBindingPattern(binding)
         ? binding.elements.map((e) => (e.propertyName ?? e.name).getText(file))
         : [];
-    const pieceSource = [
-      ...shared,
-      ...used.reverse().map((n) => exports.get(n).getText(file)),
-    ].join('\n');
+    const pieceSource = split(name);
+    // The optional 3D form travels with its 2D piece in one library entry.
+    const source3d = exports.has(`${name}3D`) ? split(`${name}3D`) : null;
     const roles = Object.keys(brief.paletteRoles).filter((role) =>
       new RegExp(
         `\\bcolors\\s*(?:\\.\\s*${RegExp.escape(role)}\\b|\\[\\s*['"\`]${RegExp.escape(role)}['"\`]\\s*\\])`,
-      ).test(pieceSource),
+      ).test(pieceSource + '\n' + (source3d ?? '')),
     );
     return [
       {
@@ -371,6 +374,7 @@ export function libraryPieces(source, brief, names) {
         look: looks[index].look,
         props: [...new Set([...PIECE_PROPS, ...own])],
         source: pieceSource,
+        ...(source3d && { source3d }),
         roles,
       },
     ];
@@ -380,7 +384,8 @@ export function libraryPieces(source, brief, names) {
 const USES = ['reuse', 'variant', 'new'];
 // The set-piece answer when library matches were offered: {"pieces":[{name, use, id?, roles?}], "code"}.
 // Reuse and variant name one of that object's library matches; code holds only variant and new pieces.
-export function pieceChoices(raw, names, matches, brief) {
+// With solid, a reused piece's saved 3D form is added by the app too, so it must not be written either.
+export function pieceChoices(raw, names, matches, brief, solid = false) {
   let answer;
   try {
     answer = JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
@@ -389,7 +394,8 @@ export function pieceChoices(raw, names, matches, brief) {
     throw new Error('set pieces answer is not {"pieces", "code"} JSON.');
   const choices = names.map((name, i) => {
     const c = answer.pieces.find((p) => p?.name === name);
-    if (!c || !USES.includes(c.use)) throw new Error(`no reuse, variant or new choice for ${name}.`);
+    if (!c || !USES.includes(c.use))
+      throw new Error(`no reuse, variant or new choice for ${name}.`);
     const piece = c.use === 'new' ? null : matches[i]?.find((m) => m.id === c.id);
     if (c.use !== 'new' && !piece) throw new Error(`${name} names a piece that was not offered.`);
     if (
@@ -401,12 +407,9 @@ export function pieceChoices(raw, names, matches, brief) {
       )
     )
       throw new Error(`${name} maps roles outside the brief.`);
-    if (
-      c.use === 'reuse' &&
-      new RegExp(`\\b(?:function|const|let|var|class)\\s+${RegExp.escape(name)}\\b`).test(
-        answer.code,
-      )
-    )
+    const written = (n) =>
+      new RegExp(`\\b(?:function|const|let|var|class)\\s+${RegExp.escape(n)}\\b`).test(answer.code);
+    if (c.use === 'reuse' && (written(name) || (solid && piece.source3d && written(`${name}3D`))))
       throw new Error(`reused piece ${name} must not be written again.`);
     return { name, use: c.use, ...(piece && { piece }), ...(c.roles && { roles: c.roles }) };
   });

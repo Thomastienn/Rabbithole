@@ -4,6 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { planFor, composition, directive, complete, until, open } from '../support/video-kit.mjs';
 import { AUDIT_INSTRUCTIONS, PIECE_IMPROVE_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { poorPieces } from '../../server/media/video-cuts.mjs';
+import { improvePiece } from '../../server/media/video-pieces.mjs';
 import { REMOTION_SKILL, HOUSE_STYLE_SKILL } from '../../server/media/skills.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top';
@@ -106,4 +107,37 @@ test('only offered pieces with a reason are flagged', () => {
   );
   assert.deepEqual(poorPieces('{"ok":true}', ['Winner']), []);
   assert.deepEqual(poorPieces('not json', ['Winner']), []);
+});
+
+test('improving a piece with a 3D form rewrites both together; a rewrite missing or breaking a form is rejected', async () => {
+  const solid = (label) =>
+    `export function Winner3D() { return <group><mesh><meshStandardMaterial color={${label}} /></mesh></group>; }`;
+  const piece = {
+    name: 'Winner',
+    look,
+    props: ['x', 'y'],
+    roles: ['winner'],
+    source: pieces,
+    source3d: `import { colors } from './kit';\n${solid('colors.winner')}`,
+  };
+  let input;
+  const improve = (rewrite) =>
+    improvePiece({
+      piece,
+      why: 'No crown',
+      call: async (_rules, text) => ((input = JSON.parse(text)), rewrite),
+    });
+  const entry = await improve(`${better}\n${solid('palette.raised')}`);
+  assert.equal(input.source3d, piece.source3d, 'the rewrite starts from both saved forms');
+  assert.match(entry.source, /Crowned winner/);
+  assert.doesNotMatch(entry.source, /Winner3D/);
+  assert.match(entry.source3d, /export function Winner3D[\s\S]*palette\.raised/);
+  await assert.rejects(improve(better), /missing export Winner3D/);
+  await assert.rejects(improve(`${better}\n${solid("'red'")}`), /style brief colors/);
+  const flat = await improvePiece({
+    piece: { ...piece, source3d: undefined },
+    why: 'x',
+    call: async (_rules, text) => ((input = JSON.parse(text)), better),
+  });
+  assert.ok(!('source3d' in input) && !flat.source3d, 'a 2D-only piece stays 2D-only');
 });

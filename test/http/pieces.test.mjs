@@ -60,6 +60,10 @@ test('the piece routes list the library with its saved videos and read one piece
   assert.match(piece.code, /exports\.Winner = Winner/);
   assert.match(piece.code, /require\("\.\/kit"\)/);
   assert.doesNotMatch(piece.code, /<div/, 'JSX is compiled away');
+  assert.equal(piece.source3d, null, 'a 2D-only piece has no 3D source');
+  const source3d = 'export function Winner3D() { return <group />; }';
+  const solid = store.savePiece({ ...store.piece(id), source3d });
+  assert.equal((await get(`/api/pieces/${solid}`))[1].source3d, source3d, 'the 3D source');
   assert.equal((await get('/api/pieces/missing'))[0], 404);
 });
 

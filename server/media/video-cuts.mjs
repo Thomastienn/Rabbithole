@@ -339,7 +339,7 @@ export async function writeCuts({
           cut.engine === 'manim'
             ? []
             : Object.keys(library).filter((n) =>
-                new RegExp(`\\b${RegExp.escape(n)}\\b`).test(cut.code),
+                new RegExp(`\\b${RegExp.escape(n)}(?:3D)?\\b`).test(cut.code),
               );
         const answer = await call(
           cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS,

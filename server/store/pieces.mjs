@@ -6,12 +6,12 @@ const MIN_SCORE = 0.25;
 
 export const pieces = {
   // Saves one piece used by a video; returns its id.
-  savePiece({ name, look, props, source, roles, embedding = null }, video) {
+  savePiece({ name, look, props, source, source3d = null, roles, embedding = null }, video) {
     const id = randomUUID(),
       now = Date.now();
     this.db
       .prepare(
-        'INSERT INTO pieces(id,name,look,props,source,roles,embedding,created,improved) VALUES (?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO pieces(id,name,look,props,source,source3d,roles,embedding,created,improved) VALUES (?,?,?,?,?,?,?,?,?,?)',
       )
       .run(
         id,
@@ -19,6 +19,7 @@ export const pieces = {
         look,
         JSON.stringify(props),
         source,
+        source3d,
         JSON.stringify(roles),
         blob(embedding),
         now,
@@ -28,10 +29,11 @@ export const pieces = {
     return id;
   },
   // A validated rewrite replaces the entry for future videos; saved videos are rendered files and never change.
-  improvePiece(id, { source, props, roles }) {
+  // Both forms are replaced together so they never drift apart.
+  improvePiece(id, { source, source3d = null, props, roles }) {
     this.db
-      .prepare('UPDATE pieces SET source=?, props=?, roles=?, improved=? WHERE id=?')
-      .run(source, JSON.stringify(props), JSON.stringify(roles), Date.now(), id);
+      .prepare('UPDATE pieces SET source=?, source3d=?, props=?, roles=?, improved=? WHERE id=?')
+      .run(source, source3d, JSON.stringify(props), JSON.stringify(roles), Date.now(), id);
   },
   usePiece(id, video) {
     this.db.prepare('INSERT OR IGNORE INTO piece_videos(piece,video) VALUES (?,?)').run(id, video);

@@ -254,6 +254,14 @@ export function open(path) {
     this.db
       .exec(`CREATE TABLE IF NOT EXISTS pieces (id TEXT PRIMARY KEY, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, roles TEXT NOT NULL, embedding BLOB, created INTEGER NOT NULL, improved INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS piece_videos (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, video TEXT NOT NULL, PRIMARY KEY(piece, video));`);
+    // A piece's optional 3D form; pieces saved before it have none and stay 2D-only.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(pieces)')
+        .all()
+        .some((c) => c.name === 'source3d')
+    )
+      this.db.exec('ALTER TABLE pieces ADD COLUMN source3d TEXT');
     // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
     this.db.exec('BEGIN IMMEDIATE');
     try {

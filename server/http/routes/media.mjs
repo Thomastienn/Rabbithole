@@ -70,7 +70,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     if (pieceMatch) {
       const piece = store.piece(pieceMatch[1]);
       if (!piece) return json(res, 404, { error: 'Piece not found.' });
-      const { id, name, look, props, roles, source, improved } = piece;
+      const { id, name, look, props, roles, source, source3d, improved } = piece;
       return json(res, 200, {
         id,
         name,
@@ -78,6 +78,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         props,
         roles,
         source,
+        source3d,
         improved,
         code: compileCut(source),
       });

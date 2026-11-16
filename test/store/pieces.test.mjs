@@ -73,3 +73,29 @@ test('the piece list pages newest-improved first and searches by meaning or, wit
     'a text match still counts, and ranks first, under semantic search',
   );
 });
+
+test('a piece keeps an optional 3D form, improved together with its 2D form; older pieces load 2D-only', (t) => {
+  const file = join(mkdtempSync(join(tmpdir(), 'tt-pieces-')), 'trees.sqlite');
+  let store = new Store(file);
+  const source3d = 'export function Solid3D() { return <group />; }';
+  const solid = store.savePiece({ ...entry('Solid', null), source3d });
+  assert.equal(store.piece(solid).source3d, source3d);
+  assert.equal(store.piece(store.savePiece(entry('Flat', null))).source3d, null);
+  store.improvePiece(solid, { source: 'two', source3d: 'three', props: ['x'], roles: [] });
+  assert.deepEqual(
+    [store.piece(solid).source, store.piece(solid).source3d],
+    ['two', 'three'],
+    'both forms are replaced together',
+  );
+  // A library saved before 3D forms has no source3d column.
+  store.db.exec('DELETE FROM pieces; ALTER TABLE pieces DROP COLUMN source3d');
+  store.db
+    .prepare(
+      "INSERT INTO pieces(id,name,look,props,source,roles,created,improved) VALUES ('old','Old','old look','[]','src','[]',1,1)",
+    )
+    .run();
+  store.close();
+  store = new Store(file);
+  t.after(() => store.close());
+  assert.deepEqual([store.piece('old').source, store.piece('old').source3d], ['src', null]);
+});

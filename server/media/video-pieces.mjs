@@ -45,14 +45,17 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
           ...(offered && {
             library: names.map((name, i) => ({
               name,
-              matches: (library[i] ?? []).map(({ id, name, look, props, roles, source }) => ({
-                id,
-                name,
-                look,
-                props,
-                roles,
-                source,
-              })),
+              matches: (library[i] ?? []).map(
+                ({ id, name, look, props, roles, source, source3d }) => ({
+                  id,
+                  name,
+                  look,
+                  props,
+                  roles,
+                  source,
+                  ...(source3d && { source3d }),
+                }),
+              ),
             })),
           }),
           ...(error && { validationError: error.message }),
@@ -64,17 +67,27 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
       continue;
     }
     try {
-      if (!offered)
-        return { source: cutSource(raw, plan.styleBrief, exported), choices: null };
-      const { code, choices } = pieceChoices(raw, names, library, plan.styleBrief);
+      if (!offered) return { source: cutSource(raw, plan.styleBrief, exported), choices: null };
+      const solid = solidNames.length > 0;
+      const { code, choices } = pieceChoices(raw, names, library, plan.styleBrief, solid);
+      const remap = (c, source) =>
+        remapRoles(source, c.piece.roles, c.colorRole, plan.styleBrief, c.roles);
+      // A reused piece brings its 3D form when a 3D cut needs it; 2D-only pieces get one written.
       const reused = choices
         .map((c, i) => ({ ...c, colorRole: objects[i].colorRole }))
         .filter((c) => c.use === 'reuse')
-        .map((c) => ({
-          name: c.name,
-          inner: c.piece.name,
-          source: remapRoles(c.piece.source, c.piece.roles, c.colorRole, plan.styleBrief, c.roles),
-        }));
+        .flatMap((c) => [
+          { name: c.name, inner: c.piece.name, source: remap(c, c.piece.source) },
+          ...(solid && c.piece.source3d
+            ? [
+                {
+                  name: `${c.name}3D`,
+                  inner: `${c.piece.name}3D`,
+                  source: remap(c, c.piece.source3d),
+                },
+              ]
+            : []),
+        ]);
       return {
         source: cutSource(assemblePieces(code, reused), plan.styleBrief, exported),
         choices,
@@ -87,8 +100,10 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
 }
 
 // One smart-model rewrite of a saved piece an audit flagged; returns the validated library entry or throws.
+// A piece with a 3D form is rewritten in both forms; the module must export and validate both.
 export async function improvePiece({ piece, why, call }) {
-  const { name, look, props, roles, source } = piece;
+  const { name, look, props, roles, source, source3d } = piece;
+  const names = source3d ? [name, `${name}3D`] : [name];
   // The piece colours through its own saved roles; the ink is irrelevant to validation.
   const brief = {
     paletteRoles: Object.fromEntries(roles.map((r) => [r, 'amber'])),
@@ -96,7 +111,7 @@ export async function improvePiece({ piece, why, call }) {
   };
   const raw = await call(
     PIECE_IMPROVE_INSTRUCTIONS + '\n\n' + REMOTION_SKILL,
-    JSON.stringify({ name, look, props, roles, source, why }),
+    JSON.stringify({ name, look, props, roles, source, ...(source3d && { source3d }), why }),
   );
-  return libraryPieces(cutSource(raw, brief, [name]), brief, [name])[0];
+  return libraryPieces(cutSource(raw, brief, names), brief, [name])[0];
 }

@@ -42,7 +42,7 @@ test('the set-piece writer is offered only library matches: reuse, variant or ne
   assert.equal(result.choices[0].use, 'reuse');
 });
 
-test('a plan with a 3D cut also gets a <Name>3D mesh group per object, kept out of the library', async () => {
+test('a plan with a 3D cut also gets a <Name>3D mesh group per object, written for a 2D-only reused piece', async () => {
   const solid = `import { colors } from './kit';
 export function Horse3D({position = [0, 0, 0]}) { return <group position={position}><mesh><boxGeometry args={[3, 2, 1]} /><meshStandardMaterial color={colors.winner} /></mesh></group>; }`;
   const p = plan();
@@ -59,10 +59,9 @@ export function Horse3D({position = [0, 0, 0]}) { return <group position={positi
   assert.deepEqual(inputs[0].solidNames, ['Horse3D']);
   assert.match(inputs[1].validationError, /missing export Horse3D/);
   assert.match(result.source, /export function Horse3D/);
-  assert.deepEqual(
-    libraryPieces(result.source, p.styleBrief, ['Horse']).map((e) => e.name),
-    ['Horse'],
-  );
+  const [entry] = libraryPieces(result.source, p.styleBrief, ['Horse']);
+  assert.equal(entry.name, 'Horse');
+  assert.match(entry.source3d, /export function Horse3D/, 'the 3D form joins its 2D entry');
 });
 
 test('a stock choice is no longer accepted', () => {

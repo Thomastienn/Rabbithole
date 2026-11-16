@@ -11,7 +11,8 @@ import {
   open,
   fakeRender,
 } from '../support/video-kit.mjs';
-import { pieceChoices, assemblePieces } from '../../server/media/video-plan.mjs';
+import { pieceChoices, assemblePieces, libraryPieces } from '../../server/media/video-plan.mjs';
+import { writeSetPieces } from '../../server/media/video-pieces.mjs';
 
 const pieces = `import { colors, palette } from './kit';
 export function Winner({ x, y, scale = 1, highlight = false }) {
@@ -174,4 +175,88 @@ test('library choices must name offered pieces and never rewrite a reused one', 
     module,
     /^import \{ colors, palette \} from '\.\/kit';\nconst a = 1;\nexport const Champ/,
   );
+});
+
+test('a 3D video reuses a piece with both its forms, derives both in a variant and saves both per entry', async () => {
+  const solid = (name, role) =>
+    `export function ${name}3D({ position = [0, 0, 0] }) { return <group position={position}><mesh><boxGeometry args={[3, 2, 1]} /><meshStandardMaterial color={colors.${role}} /></mesh></group>; }`;
+  const saved = {
+    id: 'w',
+    name: 'Winner',
+    look: 'crowned box',
+    props: ['x', 'y'],
+    roles: ['winner'],
+    source: pieces,
+    source3d: `import { colors } from './kit';\n${solid('Winner', 'winner')}`,
+  };
+  const plan = planFor(composition, 1);
+  plan.cuts[0].dimension = '3d';
+  plan.styleBrief = {
+    ...plan.styleBrief,
+    paletteRoles: { champ: 'leaf', loser: 'rust' },
+    recurringObjects: [
+      { name: 'champ', position: 'centre', colorRole: 'champ', look: 'crowned box' },
+      { name: 'loser', position: 'left', colorRole: 'loser', look: 'grey box' },
+    ],
+  };
+  const variant = `import { colors } from './kit';
+export function Loser({ x, y }) { return <div style={{ left: x, top: y, background: colors.loser }} />; }
+${solid('Loser', 'loser')}`;
+  const inputs = [];
+  const answers = [
+    {
+      pieces: [
+        { name: 'Champ', use: 'reuse', id: 'w' },
+        { name: 'Loser', use: 'variant', id: 'w' },
+      ],
+      code: variant + '\n' + solid('Champ', 'champ'),
+    },
+    {
+      pieces: [
+        { name: 'Champ', use: 'reuse', id: 'w' },
+        { name: 'Loser', use: 'variant', id: 'w' },
+      ],
+      code: variant,
+    },
+  ];
+  const { source, choices } = await writeSetPieces({
+    plan,
+    names: ['Champ', 'Loser'],
+    matches: async () => [[saved], [saved]],
+    signal: new AbortController().signal,
+    write: async (_rules, text) => {
+      inputs.push(JSON.parse(text));
+      return JSON.stringify(answers[inputs.length - 1]);
+    },
+  });
+  assert.equal(
+    inputs[0].library[0].matches[0].source3d,
+    saved.source3d,
+    'matches offer the 3D form',
+  );
+  assert.match(
+    inputs[1].validationError,
+    /reused piece Champ must not be written again/,
+    'a reused 3D form is not rewritten',
+  );
+  assert.match(source, /export const Champ = \(\(\) => \{[\s\S]*return Winner;/);
+  assert.match(source, /export const Champ3D = \(\(\) => \{[\s\S]*return Winner3D;/);
+  assert.doesNotMatch(source, /colors\.winner/, 'both reused forms take the new roles');
+  assert.equal(choices[0].use, 'reuse');
+  const [, loser] = libraryPieces(source, plan.styleBrief, ['Champ', 'Loser']);
+  assert.match(loser.source, /export function Loser\(/);
+  assert.doesNotMatch(loser.source, /Loser3D/);
+  assert.match(loser.source3d, /^import \{ colors[^}]*\} from '\.\/kit';\nexport function Loser3D/);
+  assert.deepEqual(loser.roles, ['loser']);
+});
+
+test('a 2D-only video reusing a piece leaves its 3D form out; a saved 2D-only piece may be reused in a 3D video', () => {
+  const brief = { paletteRoles: { champ: 'leaf' } };
+  const flat = [[{ id: 'a', name: 'Winner', roles: ['winner'], source: pieces }]];
+  const code = 'export function Champ3D() { return <group />; }';
+  const answer = JSON.stringify({ pieces: [{ name: 'Champ', use: 'reuse', id: 'a' }], code });
+  assert.equal(pieceChoices(answer, ['Champ'], flat, brief, true).choices[0].use, 'reuse');
+  const solid = [[{ ...flat[0][0], source3d: 'export function Winner3D() {}' }]];
+  assert.throws(() => pieceChoices(answer, ['Champ'], solid, brief, true), /written again/);
+  assert.ok(pieceChoices(answer, ['Champ'], solid, brief, false), 'no 3D cut, no 3D reuse');
 });
