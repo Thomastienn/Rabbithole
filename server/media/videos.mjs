@@ -114,6 +114,7 @@ export async function generateVideo({
   onWarning = console.warn,
   // Texts to look vectors; null saves new pieces without an embedding.
   embed = null,
+  stock = null,
   onStage = () => {},
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
@@ -250,6 +251,7 @@ export async function generateVideo({
       stop: (error) => controller.abort(error),
       kept,
       pieces: prior?.pieces,
+      stock,
       // Each look's top library matches; the same call embeds pieces saved while no embedder was usable.
       matches: async (looks) => {
         if (!embed) return [];
@@ -274,10 +276,10 @@ export async function generateVideo({
         try {
           const reused = choices?.filter((c) => c.use === 'reuse') ?? [];
           const entries = libraryPieces(source, plan.styleBrief, names);
-          for (const [i, entry] of entries.entries())
+          for (const entry of entries)
             if (!reused.some((c) => c.name === entry.name))
               ids[entry.name] = store.savePiece(
-                { ...entry, embedding: vectors[i] ?? null },
+                { ...entry, embedding: vectors[names.indexOf(entry.name)] ?? null },
                 artifact.id,
               );
           for (const c of reused) {

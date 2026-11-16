@@ -176,6 +176,11 @@ test('the live player applies the outgoing transition over the pause', async (t)
 test('a playable video plays live in the isolated frame, gets cut data as blobs, then switches to the saved MP4', async (t) => {
   const requests = [],
     posted = [];
+  const delivered = Promise.withResolvers();
+  const stock = {
+    'fluent-emoji:horse': { svg: '<svg></svg>' },
+    'cube-123456': { glb: 'Z2xURg==' },
+  };
   const fetch = async (url) => {
     requests.push(url);
     if (url.endsWith('/cuts'))
@@ -183,6 +188,7 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
         ok: true,
         json: async () => ({
           paletteRoles: { winner: 'amber' },
+          stock: Object.keys(stock),
           cuts: [
             {
               engine: 'remotion',
@@ -193,6 +199,11 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
             { engine: 'remotion', playable: false, code: null, timing: null },
           ],
         }),
+      };
+    if (url.startsWith('/api/stock/'))
+      return {
+        ok: true,
+        json: async () => stock[decodeURIComponent(url.slice('/api/stock/'.length))],
       };
     return { ok: true, blob: async () => new Blob(['audio'], { type: 'audio/mpeg' }) };
   };
@@ -211,12 +222,12 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
     set = setArtifact;
     return h(VideoCard, { artifact, inline: true, onAction: async () => {} });
   }
+  const realFetch = globalThis.fetch;
   const { container, act, cleanup } = await render(h(Card), (w) => {
     ui(w);
     w.fetch = fetch;
     globalThis.fetch = fetch;
   });
-  const realFetch = globalThis.fetch;
   t.after(async () => {
     await cleanup();
     globalThis.fetch = realFetch;
@@ -230,17 +241,23 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
   );
   assert.equal(card.querySelector('video'), null);
   assert.equal(card.querySelector('[role=status]').textContent, 'Winners: Playing live…');
-  frame.contentWindow.postMessage = (data) => posted.push(data);
+  frame.contentWindow.postMessage = (data) => {
+    posted.push(data);
+    delivered.resolve();
+  };
   await act(async () => frame.dispatchEvent(new window.Event('load')));
   await act(async () => {
-    for (let i = 0; i < 20 && !posted.length; i++) await new Promise((r) => setTimeout(r, 5));
+    await delivered.promise;
   });
   assert.deepEqual(requests, [
     '/api/trees/root/artifacts/v1/cuts',
+    '/api/stock/fluent-emoji%3Ahorse',
+    '/api/stock/cube-123456',
     '/api/trees/root/artifacts/v1/cuts/0/narration',
   ]);
   assert.equal(posted[0].type, 'cuts');
   assert.deepEqual(posted[0].paletteRoles, { winner: 'amber' });
+  assert.deepEqual(posted[0].stock, stock);
   assert.ok(posted[0].cuts[0].audio instanceof Blob);
   assert.equal(posted[0].cuts[1].audio, undefined);
   await act(async () => set((a) => ({ ...a, phase: undefined, status: 'ready' })));

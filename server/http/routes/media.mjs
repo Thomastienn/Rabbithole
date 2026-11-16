@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { mediaPath, playable } from '../../media/videos.mjs';
 import { readable } from '../jobs/media.mjs';
+import { pieceJson } from '../../media/stock.mjs';
+import { stockPieces } from '../../media/video-plan.mjs';
 
 // Validated cut TSX becomes a CommonJS function body; the player sandbox supplies require() for the kit and libraries.
 const compileCut = (code) =>
@@ -46,11 +48,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     if (stockMatch) {
       const data = await ctx.stock?.piece(decodeURIComponent(stockMatch[1]));
       if (!data) return json(res, 404, { error: 'Stock piece not found.' });
-      return json(
-        res,
-        200,
-        Buffer.isBuffer(data) ? { glb: data.toString('base64') } : { svg: data },
-      );
+      return json(res, 200, pieceJson(data));
     }
     // The read-only piece library; the source compiles for the player frame like live cut code.
     if (url.pathname === '/api/pieces') return json(res, 200, store.pieceList());
@@ -124,6 +122,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         return json(res, 200, {
           paletteRoles: data.plan.styleBrief.paletteRoles,
           pieces: data.pieces ? compileCut(data.pieces) : null,
+          stock: [...new Set(stockPieces(data.pieces).map((p) => p.id))],
           cuts: data.cuts.map((cut, i) => ({
             engine: cut.engine,
             emphasis: cut.emphasis ?? data.plan.cuts[i].emphasis ?? [],

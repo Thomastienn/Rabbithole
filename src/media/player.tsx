@@ -122,6 +122,7 @@ addEventListener('message', (event) => {
     return showPiece(event.data.code, event.data.name, event.data.paletteRoles ?? {});
   if (event.data?.type !== 'cuts' || !Array.isArray(event.data.cuts)) return;
   const roles = inks(event.data.paletteRoles ?? {});
+  kit.setStock(event.data.stock ?? {});
   // Set pieces load before the cuts that import them; new set pieces recompile every cut.
   const shared = typeof event.data.pieces === 'string' ? event.data.pieces : undefined;
   if (shared !== pieces.code) {

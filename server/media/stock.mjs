@@ -132,6 +132,10 @@ export function keywordMatch(index, name, count = 3) {
     .map(({ entry: { id, title, type, dimension } }) => ({ id, title, type, dimension }));
 }
 
+// A piece as JSON for the frames and the render: {svg} for 2D, {glb: base64} for 3D, null when absent.
+export const pieceJson = (data) =>
+  data == null ? null : Buffer.isBuffer(data) ? { glb: data.toString('base64') } : { svg: data };
+
 // Object names in, top 3 pieces per name out, each marked 2D or 3D. An ID in, its SVG text (2D) or GLB
 // bytes (3D) out; null for an unknown ID. Each index loads on first use and a failure is retried next
 // call; match uses the catalogs that loaded and fails only when none did.
@@ -158,8 +162,8 @@ export function stockCatalog(
     return results.flatMap((r) => r.value ?? []);
   };
   return {
-    async match(names) {
-      const index = await load();
+    async match(names, dimension) {
+      const index = (await load()).filter((p) => !dimension || p.dimension === dimension);
       return names.map((object) => ({ object, pieces: keywordMatch(index, object) }));
     },
     // shortcut: the piece cache is never evicted, add eviction when real usage shows it grows.

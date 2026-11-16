@@ -10,6 +10,7 @@ import {
   remapRoles,
   assemblePieces,
   libraryPieces,
+  stockSource,
   CUT_ATTEMPTS,
 } from './video-plan.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
@@ -17,13 +18,42 @@ import { withoutPaths } from './video-sandbox.mjs';
 export const piecesError = (reason) =>
   new Error(`Set pieces: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the plan.`);
 
-// One call writes the shared set pieces before any cut, offered the library's closest pieces for each look.
-// Returns the accepted module and, when matches were offered, each name's reuse/variant/new choice.
-export async function writeSetPieces({ plan, names, write, matches, signal }) {
+// A stock piece fetch retried once; null (unknown ID) counts as a failure.
+export async function fetchStock(stock, id) {
+  for (let attempt = 0; ; attempt++)
+    try {
+      const data = await stock.piece(id);
+      if (data == null) throw new Error(`Stock piece ${id} is unknown`);
+      return data;
+    } catch (error) {
+      if (attempt) throw error;
+    }
+}
+
+// One call writes the shared set pieces before any cut, offered the library's closest pieces for each look
+// and stock pieces matched by each object's name. Returns the accepted module and, when anything was offered,
+// each name's stock/reuse/variant/new choice. Stock pieces are fetched before acceptance; one that still fails
+// after a retry withdraws that object's stock offers and asks again, without spending a repair attempt.
+export async function writeSetPieces({ plan, names, write, matches, stock = null, signal }) {
   const objects = plan.styleBrief.recurringObjects.filter((o) => o.look);
   const library = await matches(objects.map((o) => o.look));
+  const dimension = plan.cuts.some((c) => c.engine === 'remotion') ? undefined : '2D';
+  const shortlist = stock
+    ? await stock
+        .match(
+          objects.map((o) => o.name),
+          dimension,
+        )
+        .then(
+          (matches) =>
+            matches.map(({ pieces }) =>
+              pieces.filter((p) => !dimension || p.dimension === dimension),
+            ),
+          () => [],
+        )
+    : [];
   signal.throwIfAborted();
-  const offered = library.some((m) => m?.length);
+  const offered = library.some((m) => m?.length) || shortlist.some((m) => m?.length);
   for (let attempt = 0, error; ; attempt++) {
     if (attempt === CUT_ATTEMPTS) throw piecesError(error.message);
     let raw;
@@ -45,6 +75,15 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
                 source,
               })),
             })),
+            stock: names.map((name, i) => ({
+              name,
+              pieces: (shortlist[i] ?? []).map(({ id, title, type, dimension }) => ({
+                id,
+                title,
+                type,
+                dimension,
+              })),
+            })),
           }),
           ...(error && { validationError: error.message }),
         }),
@@ -55,8 +94,39 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
       continue;
     }
     try {
-      if (!offered) return { source: cutSource(raw, plan.styleBrief, names), choices: null };
-      const { code, choices } = pieceChoices(raw, names, library, plan.styleBrief);
+      if (!offered) {
+        if (/\b(?:StockPiece|setStock)\b/.test(raw))
+          throw new Error('No stock pieces were offered.');
+        return { source: cutSource(raw, plan.styleBrief, names), choices: null };
+      }
+      const { code, choices } = pieceChoices(raw, names, library, plan.styleBrief, shortlist);
+      const selected = choices.filter((c) => c.use === 'stock');
+      const missing = new Set();
+      for (const id of new Set(selected.map((c) => c.stock.id)))
+        await fetchStock(stock, id).catch(() => missing.add(id));
+      const failed = selected.filter((c) => missing.has(c.stock.id));
+      signal.throwIfAborted();
+      if (failed.length) {
+        for (const [i, offers] of shortlist.entries())
+          shortlist[i] = failed.some((c) => c.name === names[i])
+            ? []
+            : offers.filter((p) => !missing.has(p.id));
+        error = new Error(
+          `stock ${failed.map((c) => `${c.stock.id} for ${c.name}`).join(', ')} could not be fetched and is no longer offered; choose reuse or new for ${failed.map((c) => c.name).join(', ')}.`,
+        );
+        attempt--;
+        continue;
+      }
+      const placed = choices
+        .map((c, i) => ({ ...c, colorRole: objects[i].colorRole }))
+        .filter((c) => c.use === 'stock')
+        .map((c) =>
+          stockSource(
+            c.name,
+            c.stock.id,
+            Object.hasOwn(plan.styleBrief.paletteRoles, c.colorRole) && c.colorRole,
+          ),
+        );
       const reused = choices
         .map((c, i) => ({ ...c, colorRole: objects[i].colorRole }))
         .filter((c) => c.use === 'reuse')
@@ -66,10 +136,11 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
           source: remapRoles(c.piece.source, c.piece.roles, c.colorRole, plan.styleBrief, c.roles),
         }));
       return {
-        source: cutSource(assemblePieces(code, reused), plan.styleBrief, names),
+        source: cutSource(assemblePieces(code, reused, placed), plan.styleBrief, names),
         choices,
       };
     } catch (e) {
+      signal.throwIfAborted();
       error = e;
     }
   }

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 type LiveCuts = {
   paletteRoles: Record<string, string>;
   pieces: string | null;
+  stock?: string[];
   cuts: {
     engine: string;
     playable: boolean;
@@ -30,7 +31,8 @@ export default function LivePlayer({
     let stopped = false,
       last = '';
     const base = `/api/trees/${conversation}/artifacts/${id}/cuts`,
-      blobs = new Map<string, Blob>();
+      blobs = new Map<string, Blob>(),
+      stock: Record<string, { svg?: string; glb?: string } | null> = {};
     const blob = async (key: string) => {
       if (blobs.has(key)) return;
       const response = await fetch(`${base}/${key}`);
@@ -42,8 +44,13 @@ export default function LivePlayer({
           const response = await fetch(base);
           if (response.ok) {
             const data: LiveCuts = await response.json();
-            await Promise.all(
-              data.cuts.flatMap((cut, i) =>
+            await Promise.all([
+              ...(data.stock ?? []).map(async (id) => {
+                if (Object.hasOwn(stock, id)) return;
+                const response = await fetch(`/api/stock/${encodeURIComponent(id)}`);
+                stock[id] = response.ok ? await response.json() : null;
+              }),
+              ...data.cuts.flatMap((cut, i) =>
                 !cut.playable
                   ? []
                   : [
@@ -51,7 +58,7 @@ export default function LivePlayer({
                       ...(cut.engine === 'manim' ? [blob(`${i}/clip`)] : []),
                     ],
               ),
-            );
+            ]);
             const key = JSON.stringify(data) + [...blobs.keys()].join();
             if (!stopped && key !== last) {
               last = key;
@@ -60,6 +67,7 @@ export default function LivePlayer({
                   type: 'cuts',
                   paletteRoles: data.paletteRoles,
                   pieces: data.pieces,
+                  stock,
                   cuts: data.cuts.map((cut, i) => ({
                     ...cut,
                     audio: blobs.get(`${i}/narration`),

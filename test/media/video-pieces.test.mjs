@@ -50,8 +50,8 @@ test('plan looks are validated; set-piece modules must export every named piece 
   );
   assert.deepEqual(
     pieceNames({ ...plan, cuts: [{ ...plan.cuts[2] }] }),
-    [],
-    'Manim-only videos get no set pieces',
+    ['Winner'],
+    'Manim-only videos can select stock pieces',
   );
   assert.deepEqual(
     pieceNames(planFor()),

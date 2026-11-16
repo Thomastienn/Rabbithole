@@ -22,17 +22,15 @@ const modules = ['react', 'remotion', './kit', '@remotion/three', 'three', '@rea
 
 // Recurring objects with a look become set pieces: one exported component each, named from the object.
 export const pieceNames = (plan) =>
-  plan.cuts.some((c) => c.engine === 'remotion')
-    ? plan.styleBrief.recurringObjects
-        .filter((o) => o.look)
-        .map((o) => {
-          const name = o.name
-            .replace(/[^A-Za-z0-9]+/g, ' ')
-            .trim()
-            .replace(/(?:^|\s)(\w)/g, (_, c) => c.toUpperCase());
-          return /^[A-Z]/.test(name) ? name : `Piece${name}`;
-        })
-    : [];
+  plan.styleBrief.recurringObjects
+    .filter((o) => o.look)
+    .map((o) => {
+      const name = o.name
+        .replace(/[^A-Za-z0-9]+/g, ' ')
+        .trim()
+        .replace(/(?:^|\s)(\w)/g, (_, c) => c.toUpperCase());
+      return /^[A-Z]/.test(name) ? name : `Piece${name}`;
+    });
 const text = (v) => typeof v === 'string' && !!v.trim();
 const list = (v, check) => Array.isArray(v) && v.length > 0 && v.every(check);
 
@@ -162,6 +160,16 @@ export function cutSource(raw, brief, names) {
     )
   )
     throw new Error('Video composition uses a disallowed import or resource.');
+  // Only the app places stock pieces: one ./kit import and the wrappers assemblePieces writes.
+  const placed = stockPieces(source).length;
+  if (
+    (!names && placed) ||
+    (source.match(/\bStockPiece\b/g) ?? []).length !== (placed && placed + 1) ||
+    /\bsetStock\b/.test(source)
+  )
+    throw new Error(
+      'Video composition places stock pieces only through the set pieces in ./pieces.',
+    );
   const bindings = new Map(),
     locals = new Map();
   for (const statement of file.statements) {
@@ -251,7 +259,7 @@ export function cutSource(raw, brief, names) {
         : null;
     if (
       value &&
-      /^(?:color|background|backgroundColor|backgroundImage|fill|stroke|stopColor|border|borderColor|borderTop|borderRight|borderBottom|borderLeft|outline|outlineColor|boxShadow|textShadow|fontFamily|font)$/.test(
+      /^(?:color|background|backgroundColor|backgroundImage|fill|stroke|stopColor|tint|glow|border|borderColor|borderTop|borderRight|borderBottom|borderLeft|outline|outlineColor|boxShadow|textShadow|fontFamily|font)$/.test(
         name,
       ) &&
       !styleValue(value, name)
@@ -282,10 +290,32 @@ export function libraryPieces(source, brief, names) {
           ? s.declarationList.declarations[0]?.name.getText(file)
           : null
       : null;
-  const shared = file.statements.filter((s) => !exportedName(s)).map((s) => s.getText(file));
+  const stocked = new Set(stockPieces(source).map((p) => p.name));
+  const shared = file.statements
+    .filter((s) => !exportedName(s))
+    .flatMap((s) => {
+      if (
+        stocked.size &&
+        ts.isImportDeclaration(s) &&
+        s.importClause?.namedBindings &&
+        ts.isNamedImports(s.importClause.namedBindings)
+      ) {
+        const kept = s.importClause.namedBindings.elements.filter(
+          (e) => e.name.text !== 'StockPiece',
+        );
+        return kept.length
+          ? [
+              s
+                .getText(file)
+                .replace(/\{[^}]*\}/, `{ ${kept.map((e) => e.getText(file)).join(', ')} }`),
+            ]
+          : [];
+      }
+      return [s.getText(file)];
+    });
   const exports = new Map(file.statements.filter(exportedName).map((s) => [exportedName(s), s]));
   const looks = brief.recurringObjects.filter((o) => o.look);
-  return names.map((name, index) => {
+  return names.flatMap((name, index) => {
     const used = [name];
     for (let i = 0; i < used.length; i++)
       for (const other of exports.keys())
@@ -294,6 +324,7 @@ export function libraryPieces(source, brief, names) {
           new RegExp(`\\b${RegExp.escape(other)}\\b`).test(exports.get(used[i]).getText(file))
         )
           used.push(other);
+    if (used.some((n) => stocked.has(n))) return [];
     const statement = exports.get(name);
     const fn = ts.isFunctionDeclaration(statement)
       ? statement
@@ -307,35 +338,58 @@ export function libraryPieces(source, brief, names) {
       ...shared,
       ...used.reverse().map((n) => exports.get(n).getText(file)),
     ].join('\n');
+    if ([...stocked].some((n) => new RegExp(`\\b${RegExp.escape(n)}\\b`).test(pieceSource)))
+      return [];
     const roles = Object.keys(brief.paletteRoles).filter((role) =>
       new RegExp(
         `\\bcolors\\s*(?:\\.\\s*${RegExp.escape(role)}\\b|\\[\\s*['"\`]${RegExp.escape(role)}['"\`]\\s*\\])`,
       ).test(pieceSource),
     );
-    return {
-      name,
-      look: looks[index].look,
-      props: [...new Set([...PIECE_PROPS, ...own])],
-      source: pieceSource,
-      roles,
-    };
+    return [
+      {
+        name,
+        look: looks[index].look,
+        props: [...new Set([...PIECE_PROPS, ...own])],
+        source: pieceSource,
+        roles,
+      },
+    ];
   });
 }
 
-const USES = ['reuse', 'variant', 'new'];
-// The set-piece answer when library matches were offered: {"pieces":[{name, use, id?, roles?}], "code"}.
-// Reuse and variant must name one of that object's matches; code holds only variant and new pieces.
-export function pieceChoices(raw, names, matches, brief) {
+const USES = ['stock', 'reuse', 'variant', 'new'];
+// The set-piece answer when library or stock matches were offered: {"pieces":[{name, use, id?, roles?}], "code"}.
+// Stock names one of that object's stock offers, reuse and variant one of its library matches (never a stock
+// piece); code holds only variant and new pieces.
+export function pieceChoices(raw, names, matches, brief, stock = []) {
   let answer;
   try {
     answer = JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
   } catch {}
   if (typeof answer?.code !== 'string' || !Array.isArray(answer.pieces))
     throw new Error('set pieces answer is not {"pieces", "code"} JSON.');
+  if (/\b(?:StockPiece|setStock)\b/.test(answer.code))
+    throw new Error('stock pieces are chosen with "use":"stock", never written in code.');
   const choices = names.map((name, i) => {
     const c = answer.pieces.find((p) => p?.name === name);
     if (!c || !USES.includes(c.use))
-      throw new Error(`no reuse, variant or new choice for ${name}.`);
+      throw new Error(`no stock, reuse, variant or new choice for ${name}.`);
+    const offered = stock[i] ?? [];
+    if (c.use === 'variant' && offered.some((p) => p.id === c.id))
+      throw new Error(
+        `${name} is a variant of stock piece ${c.id}; use it as stock, or choose reuse or new.`,
+      );
+    if (c.use === 'stock') {
+      const piece = offered.find((p) => p.id === c.id);
+      if (!piece) throw new Error(`${name} names a stock piece that was not offered.`);
+      if (
+        new RegExp(`\\b(?:function|const|let|var|class)\\s+${RegExp.escape(name)}\\b`).test(
+          answer.code,
+        )
+      )
+        throw new Error(`stock piece ${name} must not be written.`);
+      return { name, use: 'stock', stock: piece };
+    }
     const piece = c.use === 'new' ? null : matches[i]?.find((m) => m.id === c.id);
     if (c.use !== 'new' && !piece) throw new Error(`${name} names a piece that was not offered.`);
     if (
@@ -359,6 +413,17 @@ export function pieceChoices(raw, names, matches, brief) {
   return { code: answer.code, choices };
 }
 
+// The app's wrapper for a stock set piece: the kit places it by ID with the set-piece props.
+export const stockSource = (name, id, glow) =>
+  `import { StockPiece${glow ? ', colors' : ''} } from './kit';\nexport function ${name}(props) {\n  return <StockPiece id={${JSON.stringify(id)}}${glow ? ` glow={colors.${glow}}` : ''} {...props} />;\n}`;
+// The stock pieces a set-piece module places, [{name, id}] in module order.
+export const stockPieces = (source) =>
+  [
+    ...(source ?? '').matchAll(
+      /export function (\w+)\(props\) \{\n {2}return <StockPiece id=\{("(?:[^"\\]|\\.)*")\}/g,
+    ),
+  ].map((m) => ({ name: m[1], id: JSON.parse(m[2]) }));
+
 // A reused piece takes the new video's palette roles: kept when the brief has them, else the object's colorRole.
 export function remapRoles(source, from, colorRole, brief, roles = {}) {
   if (!from.length) return source;
@@ -371,7 +436,7 @@ export function remapRoles(source, from, colorRole, brief, roles = {}) {
 }
 
 // One set-piece module: merged imports, the written code, then each reused piece scoped so its helpers cannot clash.
-export function assemblePieces(code, reused) {
+export function assemblePieces(code, reused, stocked = []) {
   const imports = new Map(),
     bodies = [];
   const split = (source) => {
@@ -398,7 +463,7 @@ export function assemblePieces(code, reused) {
     }
     return rest;
   };
-  const written = split(code);
+  const written = [code, ...stocked].flatMap(split);
   for (const { name, inner, source } of reused) {
     const body = split(source).map((s) => s.replace(/^export\s+(?!default\b)/, ''));
     bodies.push(`export const ${name} = (() => {\n${body.join('\n')}\nreturn ${inner};\n})();`);

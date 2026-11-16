@@ -6,6 +6,7 @@ from pathlib import Path
 
 from manim import (
     Scene,
+    SVGMobject,
     Text,
     MathTex,
     Tex,
@@ -73,6 +74,15 @@ NumberPlane.set_default(
 
 def point(x, y):
     return (x - 960) / 135 * RIGHT + (540 - y) / 135 * UP
+
+
+def stockPiece(id):
+    """An offered 2D piece from the host's cache, with its original colours."""
+    path = json.loads(Path("brief.json").read_text()).get("stock", {}).get(id)
+    if not path:
+        raise ValueError(f"Stock piece {id} is missing")
+    piece = SVGMobject(path)
+    return piece.scale((200 / 135) / max(piece.width, piece.height))
 
 
 class HouseScene(Scene):
