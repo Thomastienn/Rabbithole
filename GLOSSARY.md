@@ -135,7 +135,7 @@ Fixed guidance on a craft, such as teaching, natural writing or animation, that 
 _Avoid_: Tutor tool, tutor style, prompt
 
 **Resource**:
-A web page, image or document the tutor drew on while answering, kept with its learning tree so the learner can go to the original directly. Replies cite resources rather than unnamed sources.
+A web page, image, video or document the tutor drew on while answering or making a video, kept with its learning tree so the learner can go to the original directly. Replies cite resources rather than unnamed sources.
 _Avoid_: Source (alone), reference, link
 
 **Reply layout**:
@@ -155,16 +155,28 @@ One continuous segment of a video with its own part of the narration and its own
 _Avoid_: Scene, clip, shot
 
 **Set piece**:
-A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut. It takes its colours from the video's palette roles, so it can be reused in another video.
-_Avoid_: Model, asset, prop
+A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut. It has a 2D form and a 3D form of the same object, both in the house style, and takes its colours from the video's palette roles, so it can be reused in another video.
+_Avoid_: Model, asset, prop, stock piece
 
 **Piece library**:
-The local collection of set pieces from earlier videos, shared across all learning trees. A new video reuses a close match, derives a variant from one, or draws a new piece. A cut audit that finds a saved piece poor replaces it with a better version for future videos; saved videos keep how they looked.
+The local collection of set pieces from earlier videos, each with its 2D and 3D forms, shared across all learning trees and browsable from its own view. A new video reuses a close match, derives a variant from one, or draws a new piece. A cut audit that finds a saved piece poor or off the house style replaces it with a better version for future videos; saved videos keep how they looked. It holds only drawn set pieces, never exhibits.
 _Avoid_: Component cache, asset library
 
 **Stock piece**:
-A ready-made 2D or 3D object from an outside catalog that a visual or video uses as it is, instead of drawing its own. Stock pieces are read-only: unlike set pieces, Rabbithole never draws, replaces or saves them in the piece library.
+A ready-made 2D or 3D object from an outside catalog, used as it is instead of drawing its own. Retired: outside catalogs do not match the house style, so visuals and videos now draw every object themselves.
 _Avoid_: Asset, model, prop
+
+**House style**:
+The one look every drawn object in a visual or video shares, across all videos. In 2D it is detailed flat illustration: recognisable shapes and parts, a few shades for form, clean edges. In 3D it is stylised modelling like a clean Blender scene: believable proportions, smooth shading, simple materials, moderate detail. Hand-drawn, cartoon, emoji, faceted low-poly and photoreal looks are outside it. Manim math cuts keep their own look.
+_Avoid_: Theme, art style (alone), look (alone)
+
+**Focal object**:
+The one thing a cut directs the viewer's attention to at a given moment, while the narration explains it. On-screen labels are attention cues for the focal object that fade once the point lands; an overview may show the whole scene with no focal object.
+_Avoid_: Focus (that is focus mode), highlight, subject
+
+**Exhibit**:
+A real image, short quote or video clip from the web that a video shows inside a cut, framed so it reads as real rather than drawn, with a short dim source line. It is a resource of its learning tree, never a set piece, and it does not have to match the house style.
+_Avoid_: Stock piece, embed, asset, reference
 
 **Continuing cut**:
 A cut that carries on the previous cut's scene from exactly where it ended, joined to it by a hard cut so the two play as one unbroken shot.
@@ -174,7 +186,7 @@ A cut that starts a new scene, joined to the previous cut by a transition the vi
 _Avoid_: Cut (for the join itself)
 
 **Cut audit**:
-A single review of one written cut by the smart model, from its code and still frames, against the video plan, its set pieces and the previous cut's last frame. It reports problems with layout, consistency, emphasis placement and missing or unnecessary detail without rewriting the cut; the chat model fixes a flagged cut before it becomes playable.
+A single review of one written cut by the smart model, from its code and still frames, against the video plan, its set pieces and the previous cut's last frame. It reports problems with layout, consistency, house style, emphasis placement, labels crowding the focal object and missing or unnecessary detail without rewriting the cut; the chat model fixes a flagged cut before it becomes playable.
 _Avoid_: Final pass, whole-video audit
 
 **Focus mode**:
