@@ -15,12 +15,12 @@ import { pythonTool } from './tools/python.mjs';
 
 process.umask(0o077);
 const dir = resolve(
-  process.env.TREETUTOR_DATA_DIR ??
-    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor'),
+  process.env.RABBITHOLE_DATA_DIR ??
+    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole'),
 );
 const args = process.argv.slice(2);
 const portText =
-  args[0] === '--port' && args.length === 2 ? args[1] : (process.env.TREETUTOR_PORT ?? '4317');
+  args[0] === '--port' && args.length === 2 ? args[1] : (process.env.RABBITHOLE_PORT ?? '4317');
 if (
   (args.length && !(args[0] === '--port' && args.length === 2)) ||
   !/^\d+$/.test(portText) ||
@@ -78,7 +78,7 @@ try {
     app.server.once('error', reject);
     app.server.listen(port, '127.0.0.1', resolve);
   });
-  console.log(`TreeTutor: http://127.0.0.1:${app.server.address().port}`);
+  console.log(`Rabbithole: http://127.0.0.1:${app.server.address().port}`);
   // Local diagnostics only. Start listening first so a missing or slow CLI cannot prevent reading saved trees.
   const installed = (command) =>
     new Promise((resolve) =>
@@ -96,7 +96,7 @@ try {
       ? 'Claude Code: not installed or could not run. Next: curl -fsSL https://claude.ai/install.sh | bash; then run claude and sign in with your Claude plan.'
       : signedIn
         ? 'Claude Code: installed and signed in. Next: choose New chat to ask a question.'
-        : 'Claude Code: installed; signed out or sign-in could not be checked. Next: run claude in a terminal and sign in with your Claude plan; then reload TreeTutor to check sign-in again.',
+        : 'Claude Code: installed; signed out or sign-in could not be checked. Next: run claude in a terminal and sign in with your Claude plan; then reload Rabbithole to check sign-in again.',
   );
   console.log(
     !hasCodex
@@ -105,17 +105,17 @@ try {
         ? 'Codex: installed; ChatGPT connection saved. Next: send a question to verify access, or Map menu > Settings > Reconnect ChatGPT if it fails.'
         : 'Codex: installed; ChatGPT not connected. Next: Map menu > Settings > Continue with ChatGPT and approve plan usage.',
   );
-  console.log('Saved trees remain available without a provider. Press Ctrl+C to stop TreeTutor.');
+  console.log('Saved trees remain available without a provider. Press Ctrl+C to stop Rabbithole.');
 } catch (error) {
   if (error.backupPath) console.error(`Saved pre-upgrade backup: ${error.backupPath}`);
   console.error(
     error.code === 'EADDRINUSE'
       ? `Port ${port} on 127.0.0.1 is already in use. Stop the other app or choose another port: npm start -- --port ${port === 65535 ? 4317 : port + 1} (use --port 0 for an available port).`
       : error.code === 'ELOCKED'
-        ? `TreeTutor is already using data directory ${dir}. Stop that instance before restarting, or choose a different TREETUTOR_DATA_DIR.`
+        ? `Rabbithole is already using data directory ${dir}. Stop that instance before restarting, or choose a different RABBITHOLE_DATA_DIR.`
         : error.message.startsWith('Database schema ')
           ? error.message
-          : `TreeTutor could not start. Check write access and free disk space in ${dir}, then retry. See README.md for backup and restore.`,
+          : `Rabbithole could not start. Check write access and free disk space in ${dir}, then retry. See README.md for backup and restore.`,
   );
   await shutdown(1);
 }

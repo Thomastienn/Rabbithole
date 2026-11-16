@@ -99,7 +99,7 @@ export default function InterfaceSettings({
                   <span className="theme-tile-inks">
                     <i style={{ background: 'var(--color-accent)' }} />
                     {[1, 2, 3, 4].map((n) => (
-                      <i key={n} style={{ background: `var(--treetutor-ink-${n})` }} />
+                      <i key={n} style={{ background: `var(--rabbithole-ink-${n})` }} />
                     ))}
                   </span>
                 </span>

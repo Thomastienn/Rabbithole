@@ -13,8 +13,8 @@ export function launch(
     env: {
       ...process.env,
       PATH: dir,
-      TREETUTOR_DATA_DIR: dir,
-      TREETUTOR_PORT: String(port),
+      RABBITHOLE_DATA_DIR: dir,
+      RABBITHOLE_PORT: String(port),
       ...env,
     },
     stdio: ['ignore', 'pipe', 'pipe'],

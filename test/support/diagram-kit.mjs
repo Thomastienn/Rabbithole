@@ -12,7 +12,7 @@ export const task = {
   intent: 'Show two winners combining.',
   excerpt: 'A and B advance to the final.',
 };
-export const directive = '\n```treetutor-diagram\n' + JSON.stringify(task) + '\n```';
+export const directive = '\n```rabbithole-diagram\n' + JSON.stringify(task) + '\n```';
 export const source = 'flowchart TD\n  A[Winner A] --> C[Final]\n  B[Winner B] --> C';
 // diagram-parser.test.mjs proves the real parser rejects these; HTTP tests fake that result.
 export const invalidSyntax = ['not Mermaid at all', 'flowchart TD\n A[unfinished'];
@@ -43,7 +43,7 @@ export async function open(provider, options = {}) {
     post: (path, body = {}) =>
       fetch(origin + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify(body),
       }),
     close: () => {

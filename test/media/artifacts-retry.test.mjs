@@ -62,7 +62,7 @@ test('an existing database gains the visual kind in place; saved Mermaid artifac
 
 test('tolerant parsing ignores unknown keys and trims over-long fields instead of rejecting the request', () => {
   const parsed = diagramReply(
-    'Visible answer.\n```treetutor-diagram\n' +
+    'Visible answer.\n```rabbithole-diagram\n' +
       JSON.stringify({
         ...task,
         thread: 'must-not-pass',
@@ -99,7 +99,7 @@ test('failed diagrams offer Retry that reruns the worker from the stored request
         workers.push(JSON.parse(text));
         return complete(emit, fail ? 'not mermaid at all <script>' : source);
       }
-      complete(emit, 'Answer.' + directive + '\n```treetutor-diagram\n{"title": "Broken",\n```');
+      complete(emit, 'Answer.' + directive + '\n```rabbithole-diagram\n{"title": "Broken",\n```');
     },
   });
   try {
@@ -182,7 +182,7 @@ test('shutdown interrupts a running diagram Retry; reopening only recovers state
       if (tree.id)
         return complete(
           emit,
-          'Answer.\n```treetutor-diagram\n' + JSON.stringify({ ...task, intent: '' }) + '\n```',
+          'Answer.\n```rabbithole-diagram\n' + JSON.stringify({ ...task, intent: '' }) + '\n```',
         );
       entered();
       await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
@@ -225,14 +225,14 @@ test('shutdown interrupts a running diagram Retry; reopening only recovers state
     const [recovered] = (await (await fetch(`${origin}/api/trees/${tree.id}`)).json()).artifacts;
     assert.equal(recovered.id, failed.id);
     assert.equal(recovered.status, 'failed');
-    assert.match(recovered.error, /interrupted when TreeTutor stopped/);
+    assert.match(recovered.error, /interrupted when Rabbithole stopped/);
     assert.equal(recovered.input, undefined);
     assert.deepEqual(calls, [], 'startup and reads never start a worker');
     assert.equal(
       (
         await fetch(`${origin}/api/trees/${tree.id}/artifacts/${failed.id}/retry`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+          headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
           body: '{}',
         })
       ).status,

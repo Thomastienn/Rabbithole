@@ -7,16 +7,16 @@ import { join } from 'node:path';
 import { pythonTool, pythonWorkspace } from '../server/tools/python.mjs';
 import { readPage } from '../server/tools/readPage.mjs';
 
-if (process.env.TREETUTOR_REAL_PYTHON !== '1') {
+if (process.env.RABBITHOLE_REAL_PYTHON !== '1') {
   console.log('Real Python sandbox skipped. Opt in with npm run test:python.');
   process.exit(0);
 }
 
 // App data lives under home like the real data directory, holding a secret the sandbox must not see.
-const dir = mkdtempSync(join(homedir(), '.treetutor-test-python-'));
+const dir = mkdtempSync(join(homedir(), '.rabbithole-test-python-'));
 writeFileSync(join(dir, 'secret.txt'), 'app data');
 const homeEntry = readdirSync(homedir()).find(
-  (name) => !name.startsWith('.treetutor-test-python-'),
+  (name) => !name.startsWith('.rabbithole-test-python-'),
 );
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/csv' }).end('x,y\n1,2\n3,4\n');

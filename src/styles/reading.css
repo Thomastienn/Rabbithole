@@ -6,10 +6,10 @@
 }
 .focused-chat .astryx-chat-message-list {
   width: 100%;
-  max-width: calc(640px + 6 * var(--treetutor-module));
+  max-width: calc(640px + 6 * var(--rabbithole-module));
   margin-inline: auto;
-  padding: calc(4 * var(--treetutor-module)) calc(3 * var(--treetutor-module))
-    calc(5 * var(--treetutor-module));
+  padding: calc(4 * var(--rabbithole-module)) calc(3 * var(--rabbithole-module))
+    calc(5 * var(--rabbithole-module));
   box-sizing: border-box;
 }
 .focused-chat .astryx-chat-message-list > :first-child {
@@ -28,7 +28,7 @@
   text-wrap: balance;
 }
 .chat-header .chat-heading-row {
-  min-height: calc(5 * var(--treetutor-module));
+  min-height: calc(5 * var(--rabbithole-module));
 }
 .crumbs {
   display: flex;
@@ -74,7 +74,7 @@
 /* Replies: Literata 17px/1.7, no bubble (mockup Read). Code keeps the theme's code face. */
 .reply-md,
 .reply-md .astryx-text {
-  font-family: var(--treetutor-font-reading);
+  font-family: var(--rabbithole-font-reading);
   font-size: 17px;
   line-height: 1.7;
 }
@@ -91,7 +91,7 @@
 }
 .reply-md :is(h3, h4, h5, h6),
 .reply-md :is(h3, h4, h5, h6) .astryx-text {
-  font-family: var(--treetutor-font-reading);
+  font-family: var(--rabbithole-font-reading);
   font-weight: 600;
 }
 .reply-md h3,
@@ -126,7 +126,7 @@
   border-inline-start-color: var(--color-border-error);
 }
 .chat-question:not(:first-child) {
-  margin-block-start: calc(3 * var(--treetutor-module));
+  margin-block-start: calc(3 * var(--rabbithole-module));
 }
 /* Streaming: a leaf caret after the last written block (mockup Read). */
 .chat-reply:has(.reply-status[data-status='streaming'])
@@ -305,7 +305,7 @@
   overflow-wrap: anywhere;
 }
 .reply-md > * + * {
-  margin-block-start: calc(2 * var(--treetutor-module));
+  margin-block-start: calc(2 * var(--rabbithole-module));
 }
 .reply-md p,
 .reply-md figure {
@@ -390,12 +390,12 @@
 }
 .reply-md [data-reveal],
 mark {
-  background: var(--treetutor-selection);
+  background: var(--rabbithole-selection);
   color: var(--color-text-primary);
   border-radius: var(--radius-inner);
 }
 ::highlight(passage) {
-  background-color: var(--treetutor-selection);
+  background-color: var(--rabbithole-selection);
   color: var(--color-text-primary);
 }
 /* Suggestions hint in muted dotted chalk; a branched (explored) passage wears its branch family's ink (--ink, set inline) and address chip, shared with its map line and node band. */

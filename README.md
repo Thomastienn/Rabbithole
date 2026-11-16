@@ -10,7 +10,7 @@ Install [Node.js 24 or newer](https://nodejs.org/) with npm. Download or copy th
 npm start
 ```
 
-On first run this installs missing dependencies with `npm ci --include=dev`, installs Manim 0.22.1 into the project's git-ignored `.venv` using [uv](https://docs.astral.sh/uv/getting-started/installation/), provisions Remotion's headless browser and bundled audio tools, and builds the app. uv provisions Python 3.12 if needed; activate no environment by hand. Install uv first (`brew install uv` on macOS, or `curl -LsSf https://astral.sh/uv/install.sh | sh` on Linux), then reopen the terminal. Startup checks Cairo/Pango development headers and LaTeX/dvisvgm, stopping with the exact apt or Homebrew command if missing; it never installs system packages. See [Manim's installation guide](https://docs.manim.community/en/stable/installation/uv.html). Later starts reuse usable Manim and rebuild the app when source, build configuration, the dependency lockfile or built assets change. Installation may need internet access. Keep the terminal open and open the address printed after **TreeTutor:**, normally **http://127.0.0.1:4317**. No provider is required to open saved trees.
+On first run this installs missing dependencies with `npm ci --include=dev`, installs Manim 0.22.1 into the project's git-ignored `.venv` using [uv](https://docs.astral.sh/uv/getting-started/installation/), provisions Remotion's headless browser and bundled audio tools, and builds the app. uv provisions Python 3.12 if needed; activate no environment by hand. Install uv first (`brew install uv` on macOS, or `curl -LsSf https://astral.sh/uv/install.sh | sh` on Linux), then reopen the terminal. Startup checks Cairo/Pango development headers and LaTeX/dvisvgm, stopping with the exact apt or Homebrew command if missing; it never installs system packages. See [Manim's installation guide](https://docs.manim.community/en/stable/installation/uv.html). Later starts reuse usable Manim and rebuild the app when source, build configuration, the dependency lockfile or built assets change. Installation may need internet access. Keep the terminal open and open the address printed after **Rabbithole:**, normally **http://127.0.0.1:4317**. No provider is required to open saved trees.
 
 The Edge TTS narration client is included; it needs no voice-model download or paid narration account/API key. Manim is used only for videos; chat and visuals have no Python dependency. If repairing Manim later prevents `npm start`, `node server/main.mjs` serves an already-built app while you fix the printed setup problem.
 
@@ -22,7 +22,7 @@ npm start -- --port 4318
 npm start -- --port 0
 ```
 
-`TREETUTOR_PORT` also sets the port; `--port` takes precedence. Use the printed address, including its port. Keep the app on loopback; hosted deployment and a desktop installer are outside its scope.
+`RABBITHOLE_PORT` also sets the port; `--port` takes precedence. Use the printed address, including its port. Keep the app on loopback; hosted deployment and a desktop installer are outside its scope.
 
 Stop with **Ctrl+C** and wait for the terminal command to exit. Active replies end as interrupted, keeping their partial text; unfinished videos also become interrupted. Closing a browser tab leaves the server and its work running. Reopening never automatically restarts an interrupted or failed generation.
 
@@ -87,7 +87,7 @@ Optional **Settings → Vim canvas bindings** is off by default. With the map or
 
 ## Saved data, upgrades, backup and restore
 
-Startup prints the absolute **Data directory**. By default it is `$XDG_DATA_HOME/treetutor`, or `~/.local/share/treetutor` when XDG_DATA_HOME is unset. Set `TREETUTOR_DATA_DIR` before starting to use another directory. Only one Rabbithole process may use a data directory at a time.
+Startup prints the absolute **Data directory**. By default it is `$XDG_DATA_HOME/rabbithole`, or `~/.local/share/rabbithole` when XDG_DATA_HOME is unset. Set `RABBITHOLE_DATA_DIR` before starting to use another directory. Only one Rabbithole process may use a data directory at a time.
 
 Startup also provisions a pinned SearXNG snapshot with `uv` in `<data directory>/searxng/venv`.
 The first install needs internet access; later starts reuse it without downloading packages.
@@ -114,7 +114,7 @@ The database records its schema version in SQLite's `user_version`. An older, un
 For a full backup, stop the server and use the actual directory printed at startup:
 
 ```sh
-DATA_DIR="$HOME/.local/share/treetutor"  # Replace if your printed location differs.
+DATA_DIR="$HOME/.local/share/rabbithole"  # Replace if your printed location differs.
 cp -a -- "$DATA_DIR" "$DATA_DIR.backup-$(date -u +%Y%m%dT%H%M%SZ)"
 ```
 
@@ -122,7 +122,7 @@ To restore that full backup, stop the server, move the current directory aside, 
 
 ```sh
 mv -- "$DATA_DIR" "$DATA_DIR.before-restore-$(date -u +%Y%m%dT%H%M%SZ)"
-cp -a -- /path/to/your/treetutor.backup-DATE "$DATA_DIR"
+cp -a -- /path/to/your/rabbithole.backup-DATE "$DATA_DIR"
 npm start
 ```
 
@@ -141,13 +141,13 @@ Saved credentials are never returned to browser JavaScript. A custom key you typ
 - **Node too old:** Install Node 24+ with npm, reopen the terminal and run `node --version`, then `npm start`.
 - **Install or build failed:** Read the terminal error, check network access and disk space, run `npm ci --include=dev` in the project folder and retry `npm start`. Do not use `--omit=dev`: the first run needs the build tools. Saved trees are in the separate data directory.
 - **Port already in use:** Use `npm start -- --port 4318` or `--port 0`. This does not change the data directory.
-- **Data directory already in use:** Stop the other Rabbithole process, then restart. After a crash, wait about ten seconds for stale-lock recovery. Do not remove a live process's lock; a separate `TREETUTOR_DATA_DIR` opens separate saved trees.
+- **Data directory already in use:** Stop the other Rabbithole process, then restart. After a crash, wait about ten seconds for stale-lock recovery. Do not remove a live process's lock; a separate `RABBITHOLE_DATA_DIR` opens separate saved trees.
 - **Wrong address or forbidden request:** Open the exact printed `http://127.0.0.1:PORT` address. A `localhost` alias, proxy or different port will fail the local boundary checks. Reload after a restart to refresh the browser's request token.
 - **Claude missing or signed out:** Install Claude Code, ensure `claude --version` works in the terminal that starts Rabbithole, run `claude` to sign in, then reload Rabbithole (or choose **Check Claude sign-in** where shown).
 - **Codex missing, consent declined or session expired:** Ensure `codex --version` works, then choose **Continue with ChatGPT** or **Reconnect ChatGPT**. Confirm your account/workspace permits plan sharing. Terminal sign-in and API keys do not replace Rabbithole consent.
 - **Custom endpoint unavailable:** Use **Custom endpoint settings** and check the API root/path prefix and key; to change them, remove the endpoint and add it again. If you removed it, add it again or choose another model; Rabbithole never silently falls back.
 - **Usage limit, unavailable model or failed reply:** The partial text and original question remain saved. Wait for quota, choose an available provider/model, then ask again. Sign-in success alone does not prove inference access.
-- **No saved trees:** Check the printed data directory and the account/environment used to launch the app. A different `TREETUTOR_DATA_DIR` or XDG_DATA_HOME opens a different store.
+- **No saved trees:** Check the printed data directory and the account/environment used to launch the app. A different `RABBITHOLE_DATA_DIR` or XDG_DATA_HOME opens a different store.
 - **Backup/migration error or newer schema:** Stop other instances, check ownership and free disk space, and use the backup/restore steps above or the matching newer app. Keep the original files.
 - **Video unavailable:** Text and saved trees remain usable. A missing render sandbox, renderer/browser dependency or missing media file cannot be fixed by replaying a paid request automatically; use the video's explicit retry/regenerate control once the dependency or file problem is resolved.
 

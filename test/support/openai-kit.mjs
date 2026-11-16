@@ -28,7 +28,7 @@ export async function open(t, providers = {}) {
   const post = (path, body = {}, headers = {}) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf, ...headers },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf, ...headers },
       body: JSON.stringify(body),
     });
   return { dir, store, endpoint, app, origin, get, post };

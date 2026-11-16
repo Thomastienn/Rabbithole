@@ -31,7 +31,7 @@ export function useChatState() {
   const streams = useRef(new Map<string, AbortController>());
   const [mapWidth, setMapWidth] = useState(() => {
     try {
-      return savedMapWidth(localStorage.getItem('treetutor.map-width'));
+      return savedMapWidth(localStorage.getItem('rabbithole.map-width'));
     } catch {
       return DEFAULT_MAP_WIDTH;
     }
@@ -39,7 +39,7 @@ export function useChatState() {
   const [workspaceWidth, setWorkspaceWidth] = useState(() => window.innerWidth / remPx());
   useEffect(() => {
     try {
-      localStorage.setItem('treetutor.map-width', String(mapWidth));
+      localStorage.setItem('rabbithole.map-width', String(mapWidth));
     } catch {}
   }, [mapWidth]);
   const workspace = useRef<HTMLElement>(null);
@@ -157,7 +157,7 @@ export function useChatState() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-TreeTutor-CSRF': state?.csrf ?? '',
+              'X-Rabbithole-CSRF': state?.csrf ?? '',
             },
             body: JSON.stringify(body),
           },

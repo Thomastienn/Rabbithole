@@ -12,7 +12,7 @@ threading.Thread(target=parent_closed, daemon=True).start()
 from searx.webapp import app
 from werkzeug.serving import make_server
 server = make_server('127.0.0.1', 0, app, threaded=True)
-print('TREETUTOR_SEARXNG=' + str(server.server_port), flush=True)
+print('RABBITHOLE_SEARXNG=' + str(server.server_port), flush=True)
 server.serve_forever()
 `;
 
@@ -75,7 +75,7 @@ export async function managedSearxng(
         fail(new Error(`SearXNG stopped (${signal ?? code}). ${stderr.trim().slice(-2000)}`)),
       );
       lines.on('line', (line) => {
-        const match = line.match(/^TREETUTOR_SEARXNG=(\d+)$/);
+        const match = line.match(/^RABBITHOLE_SEARXNG=(\d+)$/);
         if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) return;
         cancel(timer);
         state = { ready: true, url: `http://127.0.0.1:${match[1]}`, error: null };

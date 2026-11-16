@@ -5,7 +5,7 @@ primary_target: "docs/mockups/index.html"
 related_targets: ["docs/mockups/mock.css"]
 ---
 
-# TreeTutor redesign mockup (all screens, static)
+# Rabbithole redesign mockup (all screens, static)
 
 Mode: Operate. Build path: code-led. Scope: a non-functional mockup of every screen and component, for handoff to implementing agents. The shipped app now follows this world; its surface contract is `.impeccable/surfaces/index-html.md` (Paperback Series, finish-reviewed 2026-11-13).
 

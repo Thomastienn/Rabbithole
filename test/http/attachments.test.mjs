@@ -76,7 +76,7 @@ test('the composer’s accepted types agree with what the server prepares', asyn
 });
 
 test('multipart send stores text attachments, delivers them, serves them safely and deletes them with the conversation', async (t) => {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-attachments-'));
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-attachments-'));
   const store = new Store(join(dir, 'trees.sqlite'));
   const calls = [],
     titles = [];
@@ -112,7 +112,7 @@ test('multipart send stores text attachments, delivers them, serves them safely 
   const post = (route, body) =>
     fetch(`${origin}/api/trees${route}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const upload = (route, text, files) => {
@@ -123,7 +123,7 @@ test('multipart send stores text attachments, delivers them, serves them safely 
       form.append('files', new File([content], name, { type }));
     return fetch(`${origin}/api/trees${route}`, {
       method: 'POST',
-      headers: { 'X-TreeTutor-CSRF': csrf },
+      headers: { 'X-Rabbithole-CSRF': csrf },
       body: form,
     });
   };
@@ -240,7 +240,7 @@ test('multipart send stores text attachments, delivers them, serves them safely 
 });
 
 test('native images reach reading models and become history placeholders; OCR-unavailable refuses atomically', async (t) => {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-images-'));
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-images-'));
   const store = new Store(join(dir, 'trees.sqlite'));
   const calls = [];
   const reader = (readsImages) => ({
@@ -271,7 +271,7 @@ test('native images reach reading models and become history placeholders; OCR-un
   const post = (route, body) =>
     fetch(`${origin}/api/trees${route}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const upload = (route, text, files) => {
@@ -281,7 +281,7 @@ test('native images reach reading models and become history placeholders; OCR-un
       form.append('files', new File([content], name, { type }));
     return fetch(`${origin}/api/trees${route}`, {
       method: 'POST',
-      headers: { 'X-TreeTutor-CSRF': csrf },
+      headers: { 'X-Rabbithole-CSRF': csrf },
       body: form,
     });
   };

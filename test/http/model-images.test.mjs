@@ -36,7 +36,7 @@ async function launch(t, dir) {
   const post = (path, body) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const upload = async (provider, model) => {
@@ -47,7 +47,7 @@ async function launch(t, dir) {
     const stream = await (
       await fetch(`${origin}/api/trees/${id}/messages`, {
         method: 'POST',
-        headers: { 'X-TreeTutor-CSRF': csrf },
+        headers: { 'X-Rabbithole-CSRF': csrf },
         body: form,
       })
     ).text();

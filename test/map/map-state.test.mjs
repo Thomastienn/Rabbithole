@@ -152,10 +152,10 @@ test('legend names only this trunk and its first-level families, repeating inks 
     5,
   );
   assert.deepEqual(inkStyle(0), {
-    '--ink': 'var(--treetutor-paper)',
-    '--ink-on': 'var(--treetutor-paper-ink)',
+    '--ink': 'var(--rabbithole-paper)',
+    '--ink-on': 'var(--rabbithole-paper-ink)',
   });
-  assert.equal(inkStyle(2)['--ink'], 'var(--treetutor-ink-2)');
+  assert.equal(inkStyle(2)['--ink'], 'var(--rabbithole-ink-2)');
 });
 
 test('branches retain source message/offsets, exact passage label, focus ink and creation time through folds', () => {

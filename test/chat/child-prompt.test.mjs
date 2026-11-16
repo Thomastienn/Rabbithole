@@ -68,7 +68,7 @@ for (const name of ['claude', 'codex', 'openai'])
     const post = (path, body) =>
       fetch(origin + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify(body),
       });
     if (fake)
@@ -83,7 +83,7 @@ for (const name of ['claude', 'codex', 'openai'])
               .flatMap((c) => c.input)
               .filter((r) => r.method === 'thread/start' || r.method === 'thread/resume')
               .map((r) => r.params.baseInstructions);
-    const tutor = () => prompts().filter((p) => p.includes('You are TreeTutor'));
+    const tutor = () => prompts().filter((p) => p.includes('You are Rabbithole'));
 
     const root = store.create('Root', name);
     store.model(root.id, { claude: 'sonnet', codex: 'fixture-model', openai: 'local-tutor' }[name]);

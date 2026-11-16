@@ -15,7 +15,7 @@ const auth = {
     throw new Error('denied');
   },
 };
-const dir = mkdtempSync(join(tmpdir(), 'treetutor-tests-'));
+const dir = mkdtempSync(join(tmpdir(), 'rabbithole-tests-'));
 async function open(path, generate) {
   const store = new Store(path);
   const app = createApp({ store, auth, provider: observeProvider({ generate }) });
@@ -25,7 +25,7 @@ async function open(path, generate) {
   const post = (path, body) =>
     fetch(`${origin}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state.csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': state.csrf },
       body: JSON.stringify(body),
     });
   return {
@@ -280,7 +280,7 @@ test('UTF-8 split across HTTP chunks preserves original text; malformed JSON rej
         `${env.origin}/api/trees/${tree.id}/messages`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state.csrf },
+          headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': state.csrf },
         },
         (response) => {
           response.resume();
@@ -295,7 +295,7 @@ test('UTF-8 split across HTTP chunks preserves original text; malformed JSON rej
     assert.equal(env.store.tree(tree.id).messages[0].text, 'Learn 🌲 trees');
     const bad = await fetch(`${env.origin}/api/trees`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state.csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': state.csrf },
       body: '{',
     });
     assert.equal(bad.status, 400);
@@ -402,7 +402,7 @@ test('startup pruning removes trees with no messages and keeps every tree with a
 test('empty first run: with no chat default or smart model, a chosen chat model replies and also draws its visual', async () => {
   const store = observeStore(new Store(join(dir, 'empty-first-run.sqlite')));
   const block =
-    '\n```treetutor-visual\n' +
+    '\n```rabbithole-visual\n' +
     JSON.stringify({ title: 'Rounds', description: 'Final.', intent: 'Show it.', excerpt: 'It.' }) +
     '\n```';
   const provider = observeProvider({
@@ -424,7 +424,7 @@ test('empty first run: with no chat default or smart model, a chosen chat model 
   const post = (path, body) =>
     fetch(`${origin}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   try {

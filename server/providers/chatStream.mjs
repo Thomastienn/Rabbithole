@@ -45,7 +45,7 @@ export const history = (messages, replayTools) =>
       { role: m.role, content: m.text },
     ]);
 
-// One call's reported usage in TreeTutor's counts (cache reads apart from input), or null.
+// One call's reported usage in Rabbithole's counts (cache reads apart from input), or null.
 export function chunkUsage(u) {
   if (![u?.prompt_tokens, u?.completion_tokens].every((n) => Number.isSafeInteger(n) && n >= 0))
     return null;

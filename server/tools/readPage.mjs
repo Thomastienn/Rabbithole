@@ -77,7 +77,7 @@ function request(url, signal, lookup, isPublic) {
         agent: false,
         lookup: checkedLookup,
         headers: {
-          'User-Agent': 'TreeTutor read_page',
+          'User-Agent': 'Rabbithole read_page',
           Accept: 'text/html,text/*;q=0.9,*/*;q=0.5',
         },
       },

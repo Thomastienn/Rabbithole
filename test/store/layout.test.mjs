@@ -8,7 +8,7 @@ import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 
 test('layout snapshots stay per tree, hold only IDs and survive restart; legacy trees still open', async () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-layout-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-layout-')), 'trees.sqlite');
   const legacy = new DatabaseSync(path);
   legacy.exec(
     "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL); INSERT INTO trees VALUES ('old','Old tree',NULL,1)",
@@ -38,7 +38,7 @@ test('layout snapshots stay per tree, hold only IDs and survive restart; legacy 
   const post = (id, body) =>
     fetch(`${origin}/api/trees/${id}/layout`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   try {

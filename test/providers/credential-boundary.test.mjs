@@ -12,7 +12,7 @@ import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 
 test('credential-bearing auth keeps tokens out of browser state, catalog, replies and reconnect URL', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-credentials-'));
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-credentials-'));
   const auth = new Auth(dir),
     store = new Store(join(dir, 'trees.sqlite'));
   const canaries = ['canary-access-secret', 'canary-refresh-secret', 'canary-id-secret'];
@@ -53,7 +53,7 @@ test('credential-bearing auth keeps tokens out of browser state, catalog, replie
         ? {}
         : {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+            headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
             body: JSON.stringify(body),
           },
     );
@@ -96,7 +96,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
   fake.models = [{ id: 'local-tutor', api_key: apiKey, owned_by: apiKey }, { id: apiKey }];
   const launch = async () => {
     const child = spawn(process.execPath, ['server/main.mjs'], {
-      env: { ...process.env, PATH: dir, TREETUTOR_DATA_DIR: dir, TREETUTOR_PORT: '0' },
+      env: { ...process.env, PATH: dir, RABBITHOLE_DATA_DIR: dir, RABBITHOLE_PORT: '0' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     const { exited, waitFor, output } = processOutput(child);
@@ -108,7 +108,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
     };
     t.after(stop);
     await waitFor(/Saved trees remain available/);
-    const origin = output().match(/TreeTutor: (http:\/\/127\.0\.0\.1:\d+)/)[1];
+    const origin = output().match(/Rabbithole: (http:\/\/127\.0\.0\.1:\d+)/)[1];
     let csrf;
     const request = async (path, body, status = 200) => {
       const response = await fetch(
@@ -117,7 +117,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
           ? {}
           : {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+              headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
               body: JSON.stringify(body),
             },
       );

@@ -63,7 +63,7 @@ test('deletion stops only owned active replies and ignores late deltas, thread s
     );
     for (const turn of turns.slice(0, 2)) {
       assert.equal(turn.signal.aborted, true);
-      turn.emit({ type: 'item', item: 'a', text: 'Late text with ```treetutor-video' });
+      turn.emit({ type: 'item', item: 'a', text: 'Late text with ```rabbithole-video' });
       turn.save('late-thread', 'late-model');
       turn.emit({ type: 'status', status: 'completed' });
       turn.reject(new Error('Late failure'));
@@ -132,7 +132,7 @@ test('a deleted parent cannot publish an in-flight compaction or model change', 
 test('delete cancels a video worker that ignores abort, removes all work files and cannot publish late media', async () => {
   let worker;
   const directive =
-    '\n```treetutor-video\n' +
+    '\n```rabbithole-video\n' +
     JSON.stringify({
       title: 'Title',
       description: 'Description',
@@ -227,7 +227,7 @@ test('deleted dirty layouts and failed in-flight writes never requeue, while sur
 test('delete stops an active video render and removes its partial files without interrupting a sibling render', async () => {
   const renders = [];
   const directive =
-    '\n```treetutor-video\n' +
+    '\n```rabbithole-video\n' +
     JSON.stringify({
       title: 'Video',
       description: 'Description',

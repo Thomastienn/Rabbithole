@@ -4,11 +4,11 @@
   --color-border-emphasized: var(--color-text-secondary);
   max-width: 1120px;
   margin-inline: auto;
-  padding: calc(5 * var(--treetutor-module)) calc(4 * var(--treetutor-module))
-    calc(8 * var(--treetutor-module));
+  padding: calc(5 * var(--rabbithole-module)) calc(4 * var(--rabbithole-module))
+    calc(8 * var(--rabbithole-module));
 }
 .settings-content :focus-visible {
-  outline: var(--focus-outline-width) solid var(--treetutor-paper);
+  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
   outline-offset: var(--focus-outline-offset);
 }
 .settings-head h1 {
@@ -32,7 +32,7 @@
   border: 0;
 }
 .settings-content :is(h1, h2) {
-  scroll-margin-top: calc(5 * var(--treetutor-module));
+  scroll-margin-top: calc(5 * var(--rabbithole-module));
 }
 .settings-group > :first-child h2 {
   font-size: 20px;
@@ -150,19 +150,19 @@
   .shell-band {
     flex-wrap: wrap;
     height: auto;
-    min-height: calc(7 * var(--treetutor-module));
-    padding-inline: var(--treetutor-module);
+    min-height: calc(7 * var(--rabbithole-module));
+    padding-inline: var(--rabbithole-module);
     overflow-x: visible;
   }
   .shell-band .band-mark {
-    margin-inline-start: var(--treetutor-module);
+    margin-inline-start: var(--rabbithole-module);
     font-size: 17px;
   }
   .shell-band .band-save {
     flex-basis: 100%;
     flex-wrap: wrap;
     height: auto;
-    margin-block-end: var(--treetutor-module);
+    margin-block-end: var(--rabbithole-module);
   }
   .workspace {
     flex-direction: column;
@@ -183,8 +183,8 @@
     display: none;
   }
   .settings-content {
-    padding: calc(3 * var(--treetutor-module)) calc(2 * var(--treetutor-module))
-      calc(6 * var(--treetutor-module));
+    padding: calc(3 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module))
+      calc(6 * var(--rabbithole-module));
   }
   .settings-layout {
     grid-template-columns: minmax(0, 1fr);

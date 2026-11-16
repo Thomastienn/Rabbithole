@@ -32,7 +32,7 @@ test('memory note saves through Settings and reaches the next chat prompt as dat
   const post = (path, body) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   assert.deepEqual(await (await fetch(`${origin}/api/settings/memory-note`)).json(), { note: '' });

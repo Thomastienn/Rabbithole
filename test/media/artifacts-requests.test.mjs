@@ -75,7 +75,7 @@ test('diagram request saves an owned artifact and keeps directive, worker prompt
       [saved.model, saved.working_model, saved.working_thread],
       ['fixture-model', 'fixture-model', null],
     );
-    assert.doesNotMatch(stream, /treetutor-diagram|\"intent\"|\"excerpt\"|worker-thread-secret/);
+    assert.doesNotMatch(stream, /rabbithole-diagram|\"intent\"|\"excerpt\"|worker-thread-secret/);
     for (const frame of stream.trim().split('\n\n')) {
       if (!frame.startsWith('data: ')) continue;
       const event = JSON.parse(frame.slice(6));
@@ -87,7 +87,7 @@ test('diagram request saves an owned artifact and keeps directive, worker prompt
     assert.ok(JSON.stringify(next.tree.messages).includes(artifact.id));
     assert.doesNotMatch(
       JSON.stringify(next),
-      /flowchart|Winner A|worker-thread-secret|treetutor-diagram|Show two winners|A and B advance/,
+      /flowchart|Winner A|worker-thread-secret|rabbithole-diagram|Show two winners|A and B advance/,
     );
     assert.equal(next.tree.artifacts, undefined);
     const reopened = new Store(env.path);
@@ -159,13 +159,13 @@ for (const name of ['claude', 'codex'])
       assert.equal(artifact.status, 'ready', artifact.error);
       assert.equal(artifact.title, 'Rounds');
       assert.equal(artifact.source, 'flowchart TD\n  W1[Round one] --> W2[Final]');
-      assert.doesNotMatch(saved.messages.at(-1).text, /treetutor-diagram/);
-      assert.doesNotMatch(stream, /treetutor-diagram/);
+      assert.doesNotMatch(saved.messages.at(-1).text, /rabbithole-diagram/);
+      assert.doesNotMatch(stream, /rabbithole-diagram/);
       assert.equal(saved.thread, null);
       if (name === 'claude') {
         assert.equal(calls.length, 2);
         const system = (call) => call.args[call.args.indexOf('--system-prompt') + 1];
-        assert.match(system(calls[0]), /treetutor-visual/);
+        assert.match(system(calls[0]), /rabbithole-visual/);
         assert.match(system(calls[1]), /one Mermaid diagram/);
         assert.doesNotMatch(
           calls[1].input[0] + system(calls[1]),
@@ -247,7 +247,7 @@ for (const name of ['claude', 'codex'])
       assert.ok(history.includes(artifact.id));
       assert.doesNotMatch(
         history,
-        /flowchart|W1\[|Show each round|Frozen round excerpt|treetutor-diagram/,
+        /flowchart|W1\[|Show each round|Frozen round excerpt|rabbithole-diagram/,
       );
     } finally {
       env.close();
@@ -358,18 +358,18 @@ test('malformed requests are hidden and failed without sending transcript-shaped
   });
   try {
     for (const value of [
-      '```treetutor-diagram\n{broken json}\n```',
-      '```treetutor-diagram\n' +
+      '```rabbithole-diagram\n{broken json}\n```',
+      '```rabbithole-diagram\n' +
         JSON.stringify({ ...task, intent: '  ', thread: 'must-not-pass' }) +
         '\n```',
-      '```treetutor-diagram\n' +
+      '```rabbithole-diagram\n' +
         JSON.stringify({ title: 'No intent', description: 'd', excerpt: 'e' }) +
         '\n```',
-      '```treetutor-diagram\n' + JSON.stringify({ ...task, excerpt: null }) + '\n```',
-      '```treetutor-diagram\n' + JSON.stringify(task),
-      directive + '\n```treetutor-video\n' + JSON.stringify(task) + '\n```',
+      '```rabbithole-diagram\n' + JSON.stringify({ ...task, excerpt: null }) + '\n```',
+      '```rabbithole-diagram\n' + JSON.stringify(task),
+      directive + '\n```rabbithole-video\n' + JSON.stringify(task) + '\n```',
       directive.repeat(7),
-      '```treetutor-diagram extra\n' + JSON.stringify(task) + '\n```',
+      '```rabbithole-diagram extra\n' + JSON.stringify(task) + '\n```',
     ]) {
       request = value;
       const tree = env.store.create('Bad request', 'codex');
@@ -377,11 +377,11 @@ test('malformed requests are hidden and failed without sending transcript-shaped
         await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain.' })
       ).text();
       const saved = env.store.tree(tree.id);
-      assert.doesNotMatch(stream, /treetutor-diagram|broken json|must-not-pass/);
+      assert.doesNotMatch(stream, /rabbithole-diagram|broken json|must-not-pass/);
       assert.equal(saved.messages.at(-1).text.trim(), 'Visible answer.');
       assert.equal(
         saved.artifacts.length,
-        (value.match(/treetutor-(diagram|video)/g) ?? []).length,
+        (value.match(/rabbithole-(diagram|video)/g) ?? []).length,
         'every rejected block gets its own artifact',
       );
       for (const artifact of saved.artifacts) {

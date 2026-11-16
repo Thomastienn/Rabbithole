@@ -16,7 +16,7 @@ import { createApp } from '../../server/app.mjs';
 // so the server, store and both provider subprocesses really restart in between. Stop the app first (lock).
 const [phase, dir] = process.argv.slice(2);
 if (!phase) {
-  const data = mkdtempSync(join(tmpdir(), 'treetutor-continuity-'));
+  const data = mkdtempSync(join(tmpdir(), 'rabbithole-continuity-'));
   const run = (p) =>
     JSON.parse(
       execFileSync(process.execPath, [process.argv[1], p, data], {
@@ -33,8 +33,8 @@ if (!phase) {
 
 process.umask(0o077);
 const authDir =
-  process.env.TREETUTOR_DATA_DIR ??
-  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor');
+  process.env.RABBITHOLE_DATA_DIR ??
+  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole');
 const release = await lockfile.lock(authDir, { realpath: true, stale: 10000 });
 const store = new Store(join(dir, 'trees.sqlite'));
 const auth = new Auth(authDir);
@@ -47,7 +47,7 @@ const app = createApp({
 const ids = phase === 'after' ? JSON.parse(readFileSync(join(dir, 'ids.json'), 'utf8')) : {};
 const report = { phase, pid: process.pid, date: new Date().toISOString(), turns: [] };
 const exec = promisify(execFile);
-const session = `treetutor-continuity-${process.pid}`;
+const session = `rabbithole-continuity-${process.pid}`;
 const browser = async (...args) =>
   (await exec('agent-browser', ['--session', session, ...args])).stdout;
 const evaluate = async (expression) =>
@@ -56,7 +56,7 @@ let origin, csrf;
 const post = (path, body) =>
   fetch(origin + path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+    headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
     body: JSON.stringify(body),
   });
 const switchTo = async (id, provider, model) => {
@@ -132,7 +132,7 @@ async function branch(parent, word, question) {
 }
 const signedOut = async (fn) => {
   const saved = process.env.CLAUDE_CONFIG_DIR;
-  process.env.CLAUDE_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'treetutor-signed-out-'));
+  process.env.CLAUDE_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'rabbithole-signed-out-'));
   try {
     return await fn();
   } finally {

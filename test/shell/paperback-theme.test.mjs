@@ -31,19 +31,19 @@ const map = {
   '--accent-ink': '--color-on-accent',
   '--accent-text': '--color-text-accent',
   '--accent-soft': '--color-accent-muted',
-  '--selection': '--treetutor-selection',
+  '--selection': '--rabbithole-selection',
   '--alert': '--color-error',
   '--alert-soft': '--color-error-muted',
   '--alert-ink': '--color-on-error',
-  '--paper': '--treetutor-paper',
-  '--paper-ink': '--treetutor-paper-ink',
-  '--band-ink': '--treetutor-band-ink',
-  '--band-muted': '--treetutor-band-muted',
-  '--ink-1': '--treetutor-ink-1',
-  '--ink-2': '--treetutor-ink-2',
-  '--ink-3': '--treetutor-ink-3',
-  '--ink-4': '--treetutor-ink-4',
-  '--ink-on': '--treetutor-ink-on',
+  '--paper': '--rabbithole-paper',
+  '--paper-ink': '--rabbithole-paper-ink',
+  '--band-ink': '--rabbithole-band-ink',
+  '--band-muted': '--rabbithole-band-muted',
+  '--ink-1': '--rabbithole-ink-1',
+  '--ink-2': '--rabbithole-ink-2',
+  '--ink-3': '--rabbithole-ink-3',
+  '--ink-4': '--rabbithole-ink-4',
+  '--ink-on': '--rabbithole-ink-on',
   // Series inks also fill the hue slots that diagrams and badges read.
   '--ink-1 ': '--color-text-yellow',
   '--ink-2 ': '--color-text-green',
@@ -55,12 +55,12 @@ test('every mockup colour token is a theme token with the same light and dark va
   for (const [from, to] of Object.entries(map))
     assert.equal(theme[to], mock[from.trim()], `${from.trim()} -> ${to}`);
   assert.equal(theme['--focus-outline-color'], mock['--paper'], 'focus is paper');
-  assert.match(css, /--treetutor-band: #33432a/);
+  assert.match(css, /--rabbithole-band: #33432a/);
 });
 
 test('type faces, soft corners and the 8px module', () => {
   assert.match(css, /--font-family-body: Archivo,/);
-  assert.match(css, /--treetutor-font-reading: Literata,/);
+  assert.match(css, /--rabbithole-font-reading: Literata,/);
   for (const [token, value] of Object.entries({
     inner: '6px',
     element: '8px',
@@ -70,5 +70,5 @@ test('type faces, soft corners and the 8px module', () => {
     full: '9999px',
   }))
     assert.match(css, new RegExp(`--radius-${token}: ${value};`), `--radius-${token}`);
-  assert.match(css, /--treetutor-module: 8px/);
+  assert.match(css, /--rabbithole-module: 8px/);
 });

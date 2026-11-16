@@ -133,7 +133,7 @@ test('rendered Markdown selections map to exact raw slices the branches endpoint
     for (const [span] of cases) {
       const res = await fetch(`${origin}/api/trees/${parent.id}/branches`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ messageId, ...span, text: slice(span), question: 'Why?' }),
       });
       assert.equal(res.status, 201, slice(span));
@@ -342,7 +342,7 @@ test('an explored passage wears its family ink and ends in an address chip outsi
     ),
   ).getElementById('r');
   const u = body.querySelector('u.suggestion');
-  assert.match(u.getAttribute('style'), /--ink:var\(--treetutor-ink-2\)/);
+  assert.match(u.getAttribute('style'), /--ink:var\(--rabbithole-ink-2\)/);
   assert.equal(u.getAttribute('aria-label'), 'Explored passage: x = 1. Opens its chat, 1.2');
   const chip = body.querySelectorAll('sup.passage-address');
   assert.equal(chip.length, 1);

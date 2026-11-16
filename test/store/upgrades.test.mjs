@@ -12,7 +12,7 @@ const schemas = JSON.parse(
 
 test('every historical schema upgrades without losing saved trees; backup keeps pre-migration data', () => {
   for (const { commits, sql } of schemas) {
-    const dir = mkdtempSync(join(tmpdir(), 'treetutor-upgrade-')),
+    const dir = mkdtempSync(join(tmpdir(), 'rabbithole-upgrade-')),
       path = join(dir, 'trees.sqlite');
     const old = new DatabaseSync(path);
     // Fixture setup is one committed snapshot; keep the separate WAL write below.
@@ -122,7 +122,7 @@ test('every historical schema upgrades without losing saved trees; backup keeps 
 });
 
 test('failed upgrade rolls back and retains its backup; newer schemas are refused without changing data', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-migration-failure-')),
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-migration-failure-')),
     path = join(dir, 'trees.sqlite');
   const old = new DatabaseSync(path);
   old.exec(schemas[0].sql.join(';'));

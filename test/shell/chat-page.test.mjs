@@ -55,9 +55,9 @@ async function mount(
     h(ChatPage, { appearance: 'light', setAppearance() {}, theme: 'neutral', setTheme() {} }),
     (w) => {
       stubs = ui(w, { mobile });
-      w.localStorage.setItem('treetutor.contents', contents);
-      w.localStorage.setItem('treetutor.focus-mode', focus);
-      w.localStorage.setItem('treetutor.vim', vim ? 'on' : 'off');
+      w.localStorage.setItem('rabbithole.contents', contents);
+      w.localStorage.setItem('rabbithole.focus-mode', focus);
+      w.localStorage.setItem('rabbithole.vim', vim ? 'on' : 'off');
       w.DOMMatrixReadOnly = class {
         m22 = 1;
       };
@@ -172,14 +172,14 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
     hide.click();
   });
   assert.equal(band(), null);
-  assert.equal(localStorage.getItem('treetutor.focus-mode'), 'on');
+  assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'on');
   let restore = button(container, 'Show top bar');
   assert.equal(restore.getAttribute('aria-expanded'), 'false');
   assert.equal(document.activeElement, restore);
   await act(async () => restore.click());
   assert.ok(band());
   assert.equal(document.activeElement, button(container, 'Hide top bar'));
-  assert.equal(localStorage.getItem('treetutor.focus-mode'), 'off');
+  assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
   for (const target of [
     container.querySelector('[role=textbox]'),
     button(container.querySelector('.astryx-chat-composer'), 'Model for next reply'),

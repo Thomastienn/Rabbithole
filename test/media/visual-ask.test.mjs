@@ -107,7 +107,7 @@ test('child chips sit under the visual in address order and family ink, and a ch
   assert.ok(chips.every((c) => c.classList.contains('passage-address')), 'reuses the passage chip');
   assert.deepEqual(
     chips.map((c) => c.style.getPropertyValue('--ink')),
-    ['var(--treetutor-ink-2)', 'var(--treetutor-ink-3)', 'var(--treetutor-ink-2)'],
+    ['var(--rabbithole-ink-2)', 'var(--rabbithole-ink-3)', 'var(--rabbithole-ink-2)'],
   );
   assert.equal(chips[0].getAttribute('aria-label'), 'Open branch 1.2: Final');
   await act(async () => chips[0].click());

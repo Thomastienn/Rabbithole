@@ -126,7 +126,7 @@ test('interleaved replies update their own previews and retry preserves the comp
   });
   const retryCall = page.calls.find((c) => c.path.endsWith('/retry'));
   assert.deepEqual(retryCall.body, { theme: { name: 'paperback', mode: 'light' } });
-  assert.equal(retryCall.init.headers['X-TreeTutor-CSRF'], 'csrf');
+  assert.equal(retryCall.init.headers['X-Rabbithole-CSRF'], 'csrf');
   await page.act(async () => {
     streams.get('b').close();
     await retry;
@@ -153,7 +153,7 @@ test('layout changes survive stale refreshes and batch into one write with the l
   await page.act(async () => t.mock.timers.tick(60_000));
   const writes = page.calls.filter((c) => c.path.endsWith('/layout'));
   assert.equal(writes.length, 1);
-  assert.equal(writes[0].init.headers['X-TreeTutor-CSRF'], 'latest-csrf');
+  assert.equal(writes[0].init.headers['X-Rabbithole-CSRF'], 'latest-csrf');
   assert.deepEqual(writes[0].body.positions, { a: { x: 120, y: 70 } });
   assert.deepEqual(writes[0].body.viewport, root.layout.viewport);
   await page.act(async () => t.mock.timers.tick(60_000));

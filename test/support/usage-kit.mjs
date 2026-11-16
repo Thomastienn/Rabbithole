@@ -31,7 +31,7 @@ export async function start(dir) {
     (
       await fetch(origin + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify(data),
       })
     ).text();
@@ -41,7 +41,7 @@ export async function start(dir) {
     get,
     post,
     origin,
-    headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+    headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
     close: async () => {
       await app.stop();
       store.close();

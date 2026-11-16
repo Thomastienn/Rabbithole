@@ -11,8 +11,8 @@ test('a complex reply becomes several small ordered diagram steps; each worker g
     excerpt: 'Plants grow in stages.',
   }));
   const blocks =
-    steps.map((step) => '\n```treetutor-diagram\n' + JSON.stringify(step) + '\n```').join('') +
-    '\n```treetutor-diagram\n{broken}\n```';
+    steps.map((step) => '\n```rabbithole-diagram\n' + JSON.stringify(step) + '\n```').join('') +
+    '\n```rabbithole-diagram\n{broken}\n```';
   const workers = [];
   const env = await open({
     generate: async (tree, text, emit) => {
@@ -33,7 +33,7 @@ test('a complex reply becomes several small ordered diagram steps; each worker g
     const stream = await (
       await env.post(`/api/trees/${tree.id}/messages`, { text: 'How do plants grow?' })
     ).text();
-    assert.doesNotMatch(stream, /treetutor-diagram|broken/);
+    assert.doesNotMatch(stream, /rabbithole-diagram|broken/);
     const saved = env.store.tree(tree.id);
     assert.equal(saved.messages.at(-1).text, 'Plants grow: a seed absorbs water, then sprouts.');
     assert.deepEqual(
@@ -95,7 +95,7 @@ test('a complex reply becomes several small ordered diagram steps; each worker g
 test('Stop keeps completed steps, fails active and queued steps, and never starts the next worker or publishes late output', async () => {
   const steps = ['Ready', 'Running', 'Queued'].map((title) => ({ ...task, title }));
   const blocks = steps
-    .map((step) => '\n```treetutor-diagram\n' + JSON.stringify(step) + '\n```')
+    .map((step) => '\n```rabbithole-diagram\n' + JSON.stringify(step) + '\n```')
     .join('');
   const workers = [];
   let release, lateEmit, workerSignal, started;

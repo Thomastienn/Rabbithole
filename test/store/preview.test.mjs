@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 
 test('previews list every message in order, bound each text and survive reload without copies', () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-preview-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-preview-')), 'trees.sqlite');
   let store = new Store(path);
   const a = store.create('A', 'codex'),
     b = store.create('B', 'codex'),
@@ -85,7 +85,7 @@ test('previews list every message in order, bound each text and survive reload w
 
 test('reply previews strip syntax before truncation without changing raw questions or replies', () => {
   const store = new Store(
-    join(mkdtempSync(join(tmpdir(), 'treetutor-markdown-preview-')), 'trees.sqlite'),
+    join(mkdtempSync(join(tmpdir(), 'rabbithole-markdown-preview-')), 'trees.sqlite'),
   );
   try {
     const tree = store.create('Markdown', 'codex');

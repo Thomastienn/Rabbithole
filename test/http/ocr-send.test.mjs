@@ -9,7 +9,7 @@ import { OCR_UNAVAILABLE } from '../../server/ocr.mjs';
 import { compactionPrompt } from '../../server/http/jobs/compaction.mjs';
 
 async function start(t, recognize) {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-ocr-send-')),
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-ocr-send-')),
     store = new Store(join(dir, 'trees.sqlite')),
     calls = [];
   const provider = {
@@ -40,7 +40,7 @@ async function start(t, recognize) {
   const post = (id, action, body = {}) =>
     fetch(`${origin}/api/trees/${id}/${action}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const upload = (id) => {
@@ -50,7 +50,7 @@ async function start(t, recognize) {
     form.append('files', new File(['PNG'], 'scan.png', { type: 'image/png' }));
     return fetch(`${origin}/api/trees/${id}/messages`, {
       method: 'POST',
-      headers: { 'X-TreeTutor-CSRF': csrf },
+      headers: { 'X-Rabbithole-CSRF': csrf },
       body: form,
     });
   };

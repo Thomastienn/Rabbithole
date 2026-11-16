@@ -13,7 +13,7 @@ export const task = {
 };
 
 export const block = (title = task.title) =>
-  '\n```treetutor-visual\n' + JSON.stringify({ ...task, title }) + '\n```';
+  '\n```rabbithole-visual\n' + JSON.stringify({ ...task, title }) + '\n```';
 
 export const source =
   '<svg viewBox="0 0 200 80" role="img" aria-label="Two winners"><text x="10" y="35" fill="var(--color-text-primary)">A → Final ← B</text></svg>';
@@ -65,7 +65,7 @@ export async function open(chat, smart, options = {}) {
   const post = (path, body = {}) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   await post('/api/settings/smart', {

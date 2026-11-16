@@ -114,7 +114,7 @@ export function searxngSearch({ store, managed }) {
       if (url !== undefined) state.url = searxngUrl(url) ?? state.managedUrl;
       if (!state.url) return { ...state, ready: false };
       try {
-        const results = await search(state.url, 'TreeTutor', false, signal);
+        const results = await search(state.url, 'Rabbithole', false, signal);
         return { ...state, ready: true, error: null, results: results.length };
       } catch (error) {
         signal?.throwIfAborted();

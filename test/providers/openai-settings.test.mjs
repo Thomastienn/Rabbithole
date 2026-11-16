@@ -24,7 +24,7 @@ test('settings enforce CSRF, loopback and URL boundaries; clear unregisters with
     '/api/settings/endpoint/clear',
   ]) {
     for (const headers of [
-      { 'X-TreeTutor-CSRF': '' },
+      { 'X-Rabbithole-CSRF': '' },
       { 'Content-Type': 'text/plain' },
       { Origin: 'https://attacker.test' },
       { 'Sec-Fetch-Site': 'cross-site' },

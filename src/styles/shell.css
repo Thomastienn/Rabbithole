@@ -15,7 +15,7 @@ html {
   view-transition-name: none;
 }
 ::selection {
-  background: var(--treetutor-selection);
+  background: var(--rabbithole-selection);
   color: var(--color-text-primary);
 }
 .workspace {
@@ -27,7 +27,7 @@ html {
   top: 0;
   left: 0;
   right: 0;
-  height: calc(var(--treetutor-module) / 2);
+  height: calc(var(--rabbithole-module) / 2);
 }
 .focus-restore {
   position: fixed;
@@ -38,13 +38,13 @@ html {
   transition:
     opacity 120ms ease-out,
     transform 120ms ease-out;
-  width: calc(6 * var(--treetutor-module));
-  height: calc(4 * var(--treetutor-module));
-  background: var(--treetutor-band);
-  color: var(--treetutor-band-ink);
-  --color-overlay-hover: color-mix(in srgb, var(--treetutor-band-ink) 12%, transparent);
-  --color-overlay-pressed: color-mix(in srgb, var(--treetutor-band-ink) 16%, transparent);
-  --focus-outline-color: var(--treetutor-band-ink);
+  width: calc(6 * var(--rabbithole-module));
+  height: calc(4 * var(--rabbithole-module));
+  background: var(--rabbithole-band);
+  color: var(--rabbithole-band-ink);
+  --color-overlay-hover: color-mix(in srgb, var(--rabbithole-band-ink) 12%, transparent);
+  --color-overlay-pressed: color-mix(in srgb, var(--rabbithole-band-ink) 16%, transparent);
+  --focus-outline-color: var(--rabbithole-band-ink);
 }
 .focus-hot-zone[data-revealed='false'] .focus-restore {
   opacity: 0;
@@ -59,52 +59,52 @@ html {
 /* Moss shell band (mockup Read): paper-toned text, focus ring and current tab on moss in both appearances. */
 /* Overrides sit on the controls, not the header: tooltips and the palette render inside the band and keep popover colours. */
 .shell-band :is(button, .band-mark) {
-  --color-text-primary: var(--treetutor-band-ink);
-  --color-text-secondary: var(--treetutor-band-muted);
-  --color-icon-primary: var(--treetutor-band-ink);
-  --color-icon-secondary: var(--treetutor-band-muted);
-  --color-text-disabled: var(--treetutor-band-muted);
-  --color-icon-disabled: var(--treetutor-band-muted);
-  --color-overlay-hover: color-mix(in srgb, var(--treetutor-band-ink) 12%, transparent);
-  --color-overlay-pressed: color-mix(in srgb, var(--treetutor-band-ink) 16%, transparent);
-  --focus-outline-color: var(--treetutor-band-ink);
+  --color-text-primary: var(--rabbithole-band-ink);
+  --color-text-secondary: var(--rabbithole-band-muted);
+  --color-icon-primary: var(--rabbithole-band-ink);
+  --color-icon-secondary: var(--rabbithole-band-muted);
+  --color-text-disabled: var(--rabbithole-band-muted);
+  --color-icon-disabled: var(--rabbithole-band-muted);
+  --color-overlay-hover: color-mix(in srgb, var(--rabbithole-band-ink) 12%, transparent);
+  --color-overlay-pressed: color-mix(in srgb, var(--rabbithole-band-ink) 16%, transparent);
+  --focus-outline-color: var(--rabbithole-band-ink);
 }
 .shell-band {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--treetutor-module);
-  height: calc(7 * var(--treetutor-module));
-  padding-inline: calc(2 * var(--treetutor-module));
+  gap: var(--rabbithole-module);
+  height: calc(7 * var(--rabbithole-module));
+  padding-inline: calc(2 * var(--rabbithole-module));
   overflow-x: auto;
   scrollbar-width: none;
-  background: var(--treetutor-band);
-  color: var(--treetutor-band-ink);
+  background: var(--rabbithole-band);
+  color: var(--rabbithole-band-ink);
 }
 .shell-band button {
-  color: var(--treetutor-band-ink);
+  color: var(--rabbithole-band-ink);
 }
 .shell-band :focus-visible {
-  outline: var(--focus-outline-width) solid var(--treetutor-band-ink);
+  outline: var(--focus-outline-width) solid var(--rabbithole-band-ink);
   outline-offset: var(--focus-outline-offset);
 }
 .band-mark {
   flex: none;
-  margin-inline-end: var(--treetutor-module);
+  margin-inline-end: var(--rabbithole-module);
   font-size: 20px;
   letter-spacing: -0.01em;
-  color: var(--treetutor-band-ink);
+  color: var(--rabbithole-band-ink);
 }
 .tree-switcher {
   flex: 0 1 auto;
   max-width: 280px;
   min-width: 0;
   height: 32px;
-  border: 1px solid color-mix(in srgb, var(--treetutor-band-ink) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rabbithole-band-ink) 22%, transparent);
   font-weight: 600;
 }
 .tree-switcher[aria-current='page'] {
-  background: color-mix(in srgb, var(--treetutor-band-ink) 16%, transparent);
+  background: color-mix(in srgb, var(--rabbithole-band-ink) 16%, transparent);
 }
 .tree-switcher-content {
   display: flex;
@@ -120,26 +120,26 @@ html {
   flex: none;
   width: 16px;
   height: 16px;
-  margin-inline-start: var(--treetutor-module);
+  margin-inline-start: var(--rabbithole-module);
 }
 .view-tabs {
   display: flex;
   flex: none;
   gap: 2px;
-  margin-inline-start: calc(2 * var(--treetutor-module));
+  margin-inline-start: calc(2 * var(--rabbithole-module));
 }
 .shell-band .view-tab {
   height: 32px;
   padding-inline: 12px;
   font-weight: 600;
-  color: var(--treetutor-band-muted);
+  color: var(--rabbithole-band-muted);
 }
 .shell-band .view-tab:hover {
-  color: var(--treetutor-band-ink);
+  color: var(--rabbithole-band-ink);
 }
 .shell-band .view-tab[aria-current='page'] {
-  background: var(--treetutor-band-ink);
-  color: var(--treetutor-band);
+  background: var(--rabbithole-band-ink);
+  color: var(--rabbithole-band);
 }
 .band-tools {
   flex: none;
@@ -147,12 +147,12 @@ html {
 }
 .shell-band .new-chat {
   height: 32px;
-  border: 1px solid color-mix(in srgb, var(--treetutor-band-ink) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rabbithole-band-ink) 35%, transparent);
   font-weight: 600;
 }
 .band-save {
   height: 24px;
-  padding-inline: var(--treetutor-module);
+  padding-inline: var(--rabbithole-module);
   border-radius: var(--radius-element);
   background: var(--color-error);
   color: var(--color-on-error);

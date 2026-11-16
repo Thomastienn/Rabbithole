@@ -125,7 +125,7 @@ const shot = async (screen) => {
 const sizes = { desktop: [1440, 900], narrow: [390, 844] };
 async function home() {
   await b('open', origin);
-  await ev(`localStorage.setItem('treetutor.appearance', ${JSON.stringify(scheme)}); true`);
+  await ev(`localStorage.setItem('rabbithole.appearance', ${JSON.stringify(scheme)}); true`);
   await b('reload');
   await wait(`!!document.querySelector('[aria-label="Open How do fungi trade?"]')`);
 }

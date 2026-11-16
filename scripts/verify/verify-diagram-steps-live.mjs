@@ -24,8 +24,8 @@ let releaseAuth,
   auth = { status: () => ({ connected: false }) };
 if (providerName === 'codex') {
   const authDir =
-    process.env.TREETUTOR_DATA_DIR ??
-    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor');
+    process.env.RABBITHOLE_DATA_DIR ??
+    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole');
   releaseAuth = await lockfile.lock(authDir, { realpath: true, stale: 10000 });
   auth = new Auth(authDir); // Credentials stay in the original app-owned directory.
 }
@@ -71,7 +71,7 @@ const stream = reused
   : await (
       await fetch(`${origin}/api/trees/${tree.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({
           text: 'Explain how sun, clouds, rain and rivers form the water cycle. Use several simple diagram steps alongside an accurate explanation for a curious beginner.',
         }),
@@ -111,7 +111,7 @@ check(
 check(
   'reply retains explanatory text without directives or generated source',
   saved.messages.at(-1).text.length > 200 &&
-    !/treetutor-diagram|flowchart/.test(saved.messages.at(-1).text),
+    !/rabbithole-diagram|flowchart/.test(saved.messages.at(-1).text),
 );
 if (!reused) {
   const workers = calls.filter((c) =>
@@ -161,7 +161,7 @@ if (!reused) {
 try {
   await b('open', origin);
   await b('set', 'viewport', '1280', '1400');
-  await b('eval', "localStorage.setItem('treetutor.appearance', 'system'); true");
+  await b('eval', "localStorage.setItem('rabbithole.appearance', 'system'); true");
   mkdirSync(`${verifyOut}/diagram-steps`, { recursive: true });
   for (const scheme of ['light', 'dark']) {
     await b('set', 'media', scheme, 'reduced-motion');

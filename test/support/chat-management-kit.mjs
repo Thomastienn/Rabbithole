@@ -31,7 +31,7 @@ export async function fixture(provider = { generate: complete }, options = {}) {
   const post = (id, action, body = {}, headers = {}) =>
     fetch(`${origin}/api/trees/${id}/${action}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state.csrf, ...headers },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': state.csrf, ...headers },
       body: JSON.stringify(body),
     });
   const reply = (id) => store.message(id, 'assistant', 'Roots exchange nutrients.', 'completed');

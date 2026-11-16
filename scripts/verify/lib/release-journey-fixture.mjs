@@ -27,7 +27,7 @@ const ev = async (s) => JSON.parse(await b('eval', s, '--json')).data.result;
 const wait = (s, ms = 240000) => b('wait', '--fn', s, '--timeout', String(ms));
 const click = (name) => b('find', 'role', 'button', 'click', '--name', name, '--exact');
 const hash = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12);
-const data = mkdtempSync(join(tmpdir(), 'treetutor-release-'));
+const data = mkdtempSync(join(tmpdir(), 'rabbithole-release-'));
 const report = {
   date: new Date().toISOString(),
   data,
@@ -62,7 +62,7 @@ async function start(port = 0) {
     {
       env:
         provider === 'claude'
-          ? { ...process.env, TREETUTOR_DATA_DIR: data, TREETUTOR_PORT: String(port) }
+          ? { ...process.env, RABBITHOLE_DATA_DIR: data, RABBITHOLE_PORT: String(port) }
           : process.env,
       stdio: ['ignore', 'pipe', 'inherit'],
     },
@@ -106,7 +106,7 @@ const get = async (path) => {
 const post = (path, body) =>
   fetch(origin + path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+    headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
     body: JSON.stringify(body),
   });
 const seen = []; // every browser-visible response body, scanned for credentials at the end

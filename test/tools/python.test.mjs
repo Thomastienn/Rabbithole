@@ -10,7 +10,7 @@ import { toolRunner } from '../../server/tools/runner.mjs';
 
 // A fake venv whose python is a symlink, like uv's, so the sandbox can resolve its runtime.
 function fakeRoot() {
-  const root = mkdtempSync(join(tmpdir(), 'treetutor-py-'));
+  const root = mkdtempSync(join(tmpdir(), 'rabbithole-py-'));
   mkdirSync(join(root, 'runtime', 'bin'), { recursive: true });
   mkdirSync(join(root, '.venv-python', 'bin'), { recursive: true });
   writeFileSync(join(root, 'runtime', 'bin', 'python3.12'), '');
@@ -89,7 +89,7 @@ test('run_python sends code to a fresh bwrap sandbox with no network, hidden hom
 });
 
 test('run_python validates code and time limit, kills at the limit and on abort, truncates output', async (t) => {
-  const workspace = mkdtempSync(join(tmpdir(), 'treetutor-pyws-'));
+  const workspace = mkdtempSync(join(tmpdir(), 'rabbithole-pyws-'));
   const base = { workspace, python: '/usr/bin/python3', dataDir: workspace };
   const { spawn } = fakeSpawn();
   for (const [input, message] of [

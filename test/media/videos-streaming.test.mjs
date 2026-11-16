@@ -56,7 +56,7 @@ test('a closed video block starts its job mid-reply, completes once and survives
   finishReply.resolve();
   const events = await stream;
   assert.match(events, /"type":"artifact"/);
-  assert.doesNotMatch(events, /treetutor-video|PRIVATE_SOURCE_MARKER|"selection"|"attempt"/);
+  assert.doesNotMatch(events, /rabbithole-video|PRIVATE_SOURCE_MARKER|"selection"|"attempt"/);
   assert.match(events, /"type":"done","status":"completed"/);
   assert.equal(workerSignal.aborted, false);
   assert.equal((await env.post(`/api/trees/${tree.id}/stop`)).status, 200);

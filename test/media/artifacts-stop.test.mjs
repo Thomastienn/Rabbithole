@@ -70,7 +70,7 @@ test('stopping a partial directive hides its prefix and discards native session;
     generate: async (tree, text, emit, save) => {
       save('native-with-raw-prefix', 'fixture-model');
       if (text === 'Stop halfway.') {
-        emit({ type: 'delta', item: 'answer', text: 'A useful reply.\n```treetutor-diag' });
+        emit({ type: 'delta', item: 'answer', text: 'A useful reply.\n```rabbithole-diag' });
         await new Promise((resolve) => {
           release = resolve;
         });
@@ -85,7 +85,7 @@ test('stopping a partial directive hides its prefix and discards native session;
     const response = await env.post(`/api/trees/${tree.id}/messages`, { text: 'Stop halfway.' });
     const stream = response.text();
     await env.post(`/api/trees/${tree.id}/stop`);
-    assert.doesNotMatch(await stream, /treetutor-diag/);
+    assert.doesNotMatch(await stream, /rabbithole-diag/);
     const stopped = env.store.tree(tree.id);
     assert.equal(stopped.thread, null);
     assert.equal(stopped.messages.at(-1).text.trim(), 'A useful reply.');
@@ -149,7 +149,7 @@ test('restart fails orphaned pending artifacts once, without replaying generatio
     await (
       await fetch(`${origin}/api/trees/${tree.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ text: 'Continue.' }),
       })
     ).text();
@@ -228,9 +228,9 @@ test('a stopped job cannot publish late results into another conversation runnin
 test('artifacts record where their request block was removed; reply text and passage offsets stay unchanged', async () => {
   const second = { ...task, title: 'Final round' };
   const raw =
-    'Winners pair up.\n\n```treetutor-diagram\n' +
+    'Winners pair up.\n\n```rabbithole-diagram\n' +
     JSON.stringify(task) +
-    '\n```\n\nThen the last two meet.\n```treetutor-diagram\n' +
+    '\n```\n\nThen the last two meet.\n```rabbithole-diagram\n' +
     JSON.stringify(second) +
     '\n```\nDone.';
   const provider = { generate: async (tree, text, emit) => complete(emit, tree.id ? raw : source) };

@@ -77,7 +77,7 @@ export function useReplyStream(
         method: 'POST',
         headers: {
           ...(!multipart && { 'Content-Type': 'application/json' }),
-          'X-TreeTutor-CSRF': state?.csrf ?? '',
+          'X-Rabbithole-CSRF': state?.csrf ?? '',
         },
         body: multipart ? form : JSON.stringify({ ...(!retry && { text }), theme }),
         signal: controller.signal,

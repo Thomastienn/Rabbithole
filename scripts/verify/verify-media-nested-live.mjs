@@ -18,8 +18,8 @@ import { mediaPath } from '../../server/media/videos.mjs';
 process.umask(0o077);
 const dir = mkdtempSync(join(tmpdir(), 'tt-media-nested-'));
 const authDir =
-  process.env.TREETUTOR_DATA_DIR ??
-  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor');
+  process.env.RABBITHOLE_DATA_DIR ??
+  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole');
 const release = await lockfile.lock(authDir, { realpath: true, stale: 10000 });
 const canary = 'PRIVATE-CANARY-' + Date.now();
 const calls = [],
@@ -89,7 +89,7 @@ const serve = async (store) => {
   const post = (path, body) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const ask = async (id, text) => {

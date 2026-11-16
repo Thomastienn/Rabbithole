@@ -181,7 +181,7 @@ export default function VideoLibrary({
             ? `Remove “${trashing?.title ?? ''}” from Videos?`
             : `Move “${trashing?.title ?? ''}” to the trash?`
         }
-        description={`${trashing?.available === false ? 'Its saved file is already missing, so only the library entry is removed.' : 'The video file moves to your system trash, where you can restore it.'} Your usage history is kept, and TreeTutor will not regenerate it.${trashError ? ` ${trashError}` : ''}`}
+        description={`${trashing?.available === false ? 'Its saved file is already missing, so only the library entry is removed.' : 'The video file moves to your system trash, where you can restore it.'} Your usage history is kept, and Rabbithole will not regenerate it.${trashError ? ` ${trashError}` : ''}`}
         actionLabel={trashing?.available === false ? 'Remove from Videos' : 'Move to trash'}
         cancelLabel="Keep video"
         isActionLoading={busy}

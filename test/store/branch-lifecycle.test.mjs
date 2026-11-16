@@ -9,7 +9,7 @@ import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 
 async function fixture(
-  path = join(mkdtempSync(join(tmpdir(), 'treetutor-lifecycle-')), 'trees.sqlite'),
+  path = join(mkdtempSync(join(tmpdir(), 'rabbithole-lifecycle-')), 'trees.sqlite'),
 ) {
   const store = new Store(path),
     turns = [];
@@ -31,7 +31,7 @@ async function fixture(
   const post = (id, action, body = {}) =>
     fetch(`${origin}/api/trees/${id}/${action}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const root = store.create('Root', 'codex');
@@ -213,7 +213,7 @@ test('process crash during two branch turns recovers persisted partials without 
     for (const branch of [a, b]) {
       const response = await fetch(`${origin}/api/trees/${branch.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ text: branch.title }),
       });
       response.text().catch(() => {});

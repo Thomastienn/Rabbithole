@@ -26,7 +26,7 @@ export async function appTool(config) {
 }
 
 export function codexMcp(argv) {
-  const config = argv.find((s) => s.startsWith('mcp_servers.treetutor='));
+  const config = argv.find((s) => s.startsWith('mcp_servers.rabbithole='));
   return config
     ? {
         url: /url="([^"]+)"/.exec(config)[1],

@@ -40,7 +40,7 @@ async function launch(t) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-TreeTutor-CSRF': csrf,
+        'X-Rabbithole-CSRF': csrf,
       },
       body: JSON.stringify(body),
     });

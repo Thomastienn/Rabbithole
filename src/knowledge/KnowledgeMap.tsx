@@ -103,7 +103,7 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                     cx={r.x}
                     cy={r.y}
                     r={r.radius}
-                    style={{ color: `var(--treetutor-ink-${(i % 4) + 1})` }}
+                    style={{ color: `var(--rabbithole-ink-${(i % 4) + 1})` }}
                   />
                 ))}
               </svg>

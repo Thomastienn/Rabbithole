@@ -12,7 +12,7 @@ const schemas = JSON.parse(
 );
 
 test('main starts an old database without providers; busy port explains how to choose another', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-start-')),
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-start-')),
     path = join(dir, 'trees.sqlite');
   const old = new DatabaseSync(path);
   old.exec(schemas[0].sql.join(';'));
@@ -35,7 +35,7 @@ test('main starts an old database without providers; busy port explains how to c
   }
   const running = launch(dir);
   try {
-    const [, origin] = await running.waitFor(/TreeTutor: (http:\/\/127\.0\.0\.1:\d+)/);
+    const [, origin] = await running.waitFor(/Rabbithole: (http:\/\/127\.0\.0\.1:\d+)/);
     await running.waitFor(/Saved trees remain available/);
     assert.match(running.output(), /Node.*24/);
     assert.match(running.output(), /Claude Code: not installed/);
@@ -70,14 +70,14 @@ test('main starts an old database without providers; busy port explains how to c
   assert.equal(readdirSync(dir).filter((f) => /backup-.*\.sqlite$/.test(f)).length, 1);
   const restarted = launch(dir);
   try {
-    await restarted.waitFor(/TreeTutor: http:/);
+    await restarted.waitFor(/Rabbithole: http:/);
   } finally {
     await restarted.stop();
   }
 });
 
 test('preflight distinguishes installed sign-out from saved connections without exposing account details', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-preflight-'));
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-preflight-'));
   writeFileSync(join(dir, 'codex'), '#!/bin/sh\nprintf "codex-cli fixture\\n"\n', { mode: 0o700 });
   for (const connected of [false, true]) {
     writeFileSync(
@@ -100,7 +100,7 @@ test('preflight distinguishes installed sign-out from saved connections without 
           ? /Codex: installed; ChatGPT connection saved/
           : /Codex: installed; ChatGPT not connected/,
       );
-      if (!connected) assert.match(running.output(), /reload TreeTutor/);
+      if (!connected) assert.match(running.output(), /reload Rabbithole/);
       assert.doesNotMatch(running.output(), /private@example.com/);
     } finally {
       await running.stop();

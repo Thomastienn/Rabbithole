@@ -1,4 +1,4 @@
-// Paperback Series, Seasonal Inks: TreeTutor's world (docs/mockups/mock.css root tokens,
+// Paperback Series, Seasonal Inks: Rabbithole's world (docs/mockups/mock.css root tokens,
 // .impeccable/surfaces/docs-mockups-index-html.md). Every colour is a [light, dark] tuple; dark is the default.
 import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
@@ -44,28 +44,28 @@ export const paperbackTheme = defineTheme({
   ),
   localTokens: {
     // Reply and question reading face.
-    '--treetutor-font-reading': 'Literata, Georgia, "Times New Roman", serif',
-    '--treetutor-selection': ['#c9dba8', '#9dba6e59'],
+    '--rabbithole-font-reading': 'Literata, Georgia, "Times New Roman", serif',
+    '--rabbithole-selection': ['#c9dba8', '#9dba6e59'],
     // The 8px cover-grid module: every gap, band and column is a multiple.
-    '--treetutor-module': '8px',
+    '--rabbithole-module': '8px',
     // Moss shell band and its text.
-    '--treetutor-band': '#33432a',
-    '--treetutor-band-ink': ['#eef3e0', '#e9efd9'],
-    '--treetutor-band-muted': ['#b9c7a4', '#b3c19d'],
+    '--rabbithole-band': '#33432a',
+    '--rabbithole-band-ink': ['#eef3e0', '#e9efd9'],
+    '--rabbithole-band-muted': ['#b9c7a4', '#b3c19d'],
     // Paper: the trunk ink and focus. Series inks cycle per first-level branch family.
-    '--treetutor-paper': [bark, paper],
-    '--treetutor-paper-ink': ['#faf7f0', '#1a1613'],
-    '--treetutor-ink-1': amber,
-    '--treetutor-ink-2': leaf,
-    '--treetutor-ink-3': rust,
-    '--treetutor-ink-4': lichen,
-    '--treetutor-ink-on': ['#ffffff', '#1a1613'],
-    '--treetutor-map-node-width': '16rem',
-    '--treetutor-sidebar-width': '14.5rem',
-    '--treetutor-branch-color': ['#1f1a15bf', '#efe6d6bf'],
-    '--treetutor-branch-width': '2px',
-    '--treetutor-branch-focus-width': '2.5px',
-    '--treetutor-branch-draw-duration': '350ms',
+    '--rabbithole-paper': [bark, paper],
+    '--rabbithole-paper-ink': ['#faf7f0', '#1a1613'],
+    '--rabbithole-ink-1': amber,
+    '--rabbithole-ink-2': leaf,
+    '--rabbithole-ink-3': rust,
+    '--rabbithole-ink-4': lichen,
+    '--rabbithole-ink-on': ['#ffffff', '#1a1613'],
+    '--rabbithole-map-node-width': '16rem',
+    '--rabbithole-sidebar-width': '14.5rem',
+    '--rabbithole-branch-color': ['#1f1a15bf', '#efe6d6bf'],
+    '--rabbithole-branch-width': '2px',
+    '--rabbithole-branch-focus-width': '2.5px',
+    '--rabbithole-branch-draw-duration': '350ms',
   },
   tokens: {
     '--radius-element': '8px',

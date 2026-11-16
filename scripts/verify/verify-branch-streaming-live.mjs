@@ -12,10 +12,10 @@ import { createApp } from '../../server/app.mjs';
 // Stop the app first: this lock protects its rotating OAuth refresh token.
 process.umask(0o077);
 const authDir =
-  process.env.TREETUTOR_DATA_DIR ??
-  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor');
+  process.env.RABBITHOLE_DATA_DIR ??
+  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole');
 const release = await lockfile.lock(authDir, { realpath: true, stale: 10000 });
-const dir = mkdtempSync(join(tmpdir(), 'treetutor-live-streaming-'));
+const dir = mkdtempSync(join(tmpdir(), 'rabbithole-live-streaming-'));
 const store = new Store(join(dir, 'trees.sqlite'));
 const auth = new Auth(authDir);
 const provider = new Codex(auth, dir);
@@ -52,7 +52,7 @@ try {
       const started = performance.now();
       const response = await fetch(`${origin}/api/trees/${tree.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ text: question }),
         signal: AbortSignal.timeout(120000),
       });

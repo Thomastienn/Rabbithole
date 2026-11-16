@@ -69,7 +69,7 @@ test('runtime detection returns project-local Python and pinned version; broken 
 });
 
 test('first run provisions a local Python environment and pinned Manim; later starts need no uv', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'treetutor-manim-'));
+  const root = mkdtempSync(join(tmpdir(), 'rabbithole-manim-'));
   const python = join(root, '.venv/bin/python');
   let installed = false;
   const probe = (command) => probes(installed ? [] : [python])(command);
@@ -98,7 +98,7 @@ test('first run provisions a local Python environment and pinned Manim; later st
 });
 
 test('an interrupted or wrong-version install repairs the existing environment without replacing it', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'treetutor-manim-repair-'));
+  const root = mkdtempSync(join(tmpdir(), 'rabbithole-manim-repair-'));
   mkdirSync(join(root, '.venv/bin'), { recursive: true });
   writeFileSync(join(root, '.venv/bin/python'), 'existing environment fixture');
   let version = '0.19.0';
@@ -116,7 +116,7 @@ test('an interrupted or wrong-version install repairs the existing environment w
 });
 
 test('startup stops for missing prerequisites, failed installation or an unusable installed Manim', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'treetutor-manim-failure-'));
+  const root = mkdtempSync(join(tmpdir(), 'rabbithole-manim-failure-'));
   const python = join(root, '.venv/bin/python');
   await assert.rejects(
     ensureManim({ root, probe: probes(['latex']), run: assert.fail }),

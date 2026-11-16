@@ -18,8 +18,8 @@ assert.ok(process.argv[2] && process.argv[3], 'Supply output path and the old re
 process.umask(0o077);
 const dir = mkdtempSync(join(tmpdir(), 'tt-phrase-comparison-'));
 const source = join(
-  process.env.TREETUTOR_DATA_DIR ??
-    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor'),
+  process.env.RABBITHOLE_DATA_DIR ??
+    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole'),
   'trees.sqlite',
 );
 const live = new DatabaseSync(source, { readOnly: true });

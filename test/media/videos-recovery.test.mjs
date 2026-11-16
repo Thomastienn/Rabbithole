@@ -265,7 +265,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
     const post = (id) =>
       fetch(`${origin}/api/trees/${tree.id}/artifacts/${id}/retry`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: '{}',
       });
     assert.equal((await post(kept.id)).status, 409);

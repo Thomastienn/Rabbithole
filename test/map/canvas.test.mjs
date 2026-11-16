@@ -218,7 +218,7 @@ test('clear neighbours keep their manual spacing and equal-height collisions kee
 });
 
 test('growth positions use the coalesced layout route, persist across SQLite restart, and leave idle layout clean', async () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-growth-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-growth-')), 'trees.sqlite');
   let store = new Store(path);
   const root = store.create('Growing root', 'codex'),
     source = store.message(root.id, 'assistant', 'Source', 'completed');
@@ -240,7 +240,7 @@ test('growth positions use the coalesced layout route, persist across SQLite res
       writes++;
       const res = await fetch(`${origin}/api/trees/${id}/layout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ ...batch.layout, positions: batch.positions }),
       });
       assert.equal(res.status, 200);
@@ -296,7 +296,7 @@ test('growth positions use the coalesced layout route, persist across SQLite res
 });
 
 test('positions migrate, save during streaming, reject invalid coordinates and survive restart with anchors intact', async () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-position-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-position-')), 'trees.sqlite');
   const legacy = new DatabaseSync(path);
   legacy.exec(
     'CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL)',
@@ -322,7 +322,7 @@ test('positions migrate, save during streaming, reject invalid coordinates and s
   const post = (id, body) =>
     fetch(`${origin}/api/trees/${id}/position`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   try {

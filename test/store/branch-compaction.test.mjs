@@ -8,7 +8,7 @@ import { createApp } from '../../server/app.mjs';
 import { compacted } from '../support/branch-first.mjs';
 
 test('recursive branches compact fixed ancestor context without reading live ancestors or descendants', async () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-nested-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-nested-')), 'trees.sqlite');
   let store = new Store(path),
     app;
   const calls = [];
@@ -34,7 +34,7 @@ test('recursive branches compact fixed ancestor context without reading live anc
       post: (route, body) =>
         fetch(`${origin}/api/trees${route}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+          headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
           body: JSON.stringify(body),
         }),
     };
@@ -125,7 +125,7 @@ test('recursive branches compact fixed ancestor context without reading live anc
 });
 
 test('quick thinking recursively compacts root, child and grandchild context without the new question, truncation or partial branches', async () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-quick-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-quick-')), 'trees.sqlite');
   let store = new Store(path),
     app;
   const compactions = [],
@@ -171,7 +171,7 @@ test('quick thinking recursively compacts root, child and grandchild context wit
       post: (route, body) =>
         fetch(`${origin}/api/trees${route}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+          headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
           body: JSON.stringify(body),
         }),
     };

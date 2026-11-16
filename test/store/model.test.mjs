@@ -14,7 +14,7 @@ const catalog = [
 ];
 async function open(
   provider = {},
-  path = join(mkdtempSync(join(tmpdir(), 'treetutor-model-')), 'trees.sqlite'),
+  path = join(mkdtempSync(join(tmpdir(), 'rabbithole-model-')), 'trees.sqlite'),
 ) {
   const store = new Store(path);
   const app = createApp({
@@ -36,7 +36,7 @@ async function open(
   const post = (path, body) =>
     fetch(`${origin}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   return {
@@ -224,7 +224,7 @@ test('catalog entry without access fails visibly, restores working selection aft
 });
 
 test('existing saved models survive working-model migration', () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-migration-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-migration-')), 'trees.sqlite');
   const db = new DatabaseSync(path);
   db.exec(
     "CREATE TABLE trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL, model TEXT); INSERT INTO trees VALUES ('saved','Saved','thread',1,'existing-model')",

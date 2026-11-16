@@ -42,7 +42,7 @@ export default function TutorStyleSettings({
   return (
     <Section
       title="Tutor style"
-      description="How the tutor teaches. Every chat model receives it first, then TreeTutor's fixed safety, visual and video rules, which it cannot change. Applies to your next message in every learning tree; empty text uses the default."
+      description="How the tutor teaches. Every chat model receives it first, then Rabbithole's fixed safety, visual and video rules, which it cannot change. Applies to your next message in every learning tree; empty text uses the default."
     >
       <TextArea
         label="Tutor style"

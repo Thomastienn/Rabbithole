@@ -10,7 +10,7 @@ import { compacted } from '../support/branch-first.mjs';
 
 test('branch-first: the child is saved and listed before a held compaction finishes; its first reply waits for the inherited context', async () => {
   const store = new Store(
-    join(mkdtempSync(join(tmpdir(), 'treetutor-branch-first-')), 'trees.sqlite'),
+    join(mkdtempSync(join(tmpdir(), 'rabbithole-branch-first-')), 'trees.sqlite'),
   );
   let release,
     replied = false,
@@ -42,7 +42,7 @@ test('branch-first: the child is saved and listed before a held compaction finis
   const post = (path, body) =>
     fetch(`${origin}/api/trees/${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   try {
@@ -99,7 +99,7 @@ test('branch-first: the child is saved and listed before a held compaction finis
 
 test('branch-first: a failed compaction keeps the child with a readable error; Retry compacts again then replies', async () => {
   const store = new Store(
-    join(mkdtempSync(join(tmpdir(), 'treetutor-compaction-retry-')), 'trees.sqlite'),
+    join(mkdtempSync(join(tmpdir(), 'rabbithole-compaction-retry-')), 'trees.sqlite'),
   );
   let fail = true,
     compactions = 0,
@@ -128,7 +128,7 @@ test('branch-first: a failed compaction keeps the child with a readable error; R
   const post = (path, body = {}) =>
     fetch(`${origin}/api/trees/${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const get = async (id) => (await fetch(`${origin}/api/trees/${id}`)).json();
@@ -236,7 +236,7 @@ test('branch-first: a failed compaction keeps the child with a readable error; R
 });
 
 test('opening the branch form prepares compaction: submit reuses it, cancel aborts it, a changed parent reruns it; every run is in Usage history', async () => {
-  const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-prepare-')), 'trees.sqlite'));
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'rabbithole-prepare-')), 'trees.sqlite'));
   const calls = [];
   const provider = {
     generate: async (tree, text, emit, save, signal) => {
@@ -271,7 +271,7 @@ test('opening the branch form prepares compaction: submit reuses it, cancel abor
   const post = (path, body = {}) =>
     fetch(`${origin}/api/trees/${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   try {

@@ -5,7 +5,7 @@ primary_target: "index.html"
 related_targets: ["src/main.tsx","src/ChatPage.tsx","src/Contents.tsx","src/TreeOverview.tsx","src/KnowledgePage.tsx","src/VideoLibrary.tsx","src/SettingsWindow.tsx","src/layout.ts","src/themes/paperback/paperbackTheme.ts"]
 ---
 
-# TreeTutor workspace (shipped app)
+# Rabbithole workspace (shipped app)
 
 Mode: Operate. Build path: code-led. Design authority: DESIGN.md (written from the shipped build on 2026-11-13) and the static mockup in docs/mockups/ with its brief `.impeccable/surfaces/docs-mockups-index-html.md`. Lecture-hall Slate (2026-11-10) is superseded and kept only in Git history.
 
@@ -19,7 +19,7 @@ OWN-WORLD: Dark default: bark-black ground (#1a1613), raised bark (#241f1a), dee
 
 STORY: The learner opens a volume from the Library, reads the reply at a book measure in the centre, sees where they are in the numbered contents on the left, and watches a branch they create appear on the docked map in its family's ink.
 
-FIRST VIEWPORT: Desktop 1440x900. Moss band: TreeTutor wordmark, learning-tree switcher (opens the Library), view tabs Read, Map, Knowledge, Videos, then search, New chat, Settings; a map-layout save failure joins the band with Retry. Below, Read is three columns: Contents (264px: tree title and counts, numbered addresses with ink dots, Figures, context meter), the reading column (640px Literata measure, breadcrumbs, 34px title, composer at the foot with the model menu and the leaf-green Send), and the docked learning tree map (440px default, draggable seam, nodes with ink bands). Signature move: one ink per branch family from passage underline and address chip to branch line and node band; a new branch draws on in 350ms and shows at once under reduced motion.
+FIRST VIEWPORT: Desktop 1440x900. Moss band: Rabbithole wordmark, learning-tree switcher (opens the Library), view tabs Read, Map, Knowledge, Videos, then search, New chat, Settings; a map-layout save failure joins the band with Retry. Below, Read is three columns: Contents (264px: tree title and counts, numbered addresses with ink dots, Figures, context meter), the reading column (640px Literata measure, breadcrumbs, 34px title, composer at the foot with the model menu and the leaf-green Send), and the docked learning tree map (440px default, draggable seam, nodes with ink bands). Signature move: one ink per branch family from passage underline and address chip to branch line and node band; a new branch draws on in 350ms and shows at once under reduced motion.
 
 FORM: Paperback Series, position 7 of seven grounded candidates. seed:ed446011afd27ce7. Raises kept: one module for every alignment; the reply owns the centre; figures numbered and listed in the contents; spine ticks per conversation; context budget as a running length.
 

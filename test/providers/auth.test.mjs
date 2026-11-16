@@ -4,7 +4,7 @@ import { mkdtempSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Auth } from '../../server/providers/auth.mjs';
-const make = () => new Auth(mkdtempSync(join(tmpdir(), 'treetutor-auth-')));
+const make = () => new Auth(mkdtempSync(join(tmpdir(), 'rabbithole-auth-')));
 
 test('OAuth uses fresh state/PKCE/nonce, stable host, issued client and protected storage', () => {
   const auth = make();

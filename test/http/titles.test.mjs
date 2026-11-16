@@ -34,7 +34,7 @@ test('clean title keeps one plain line of about 60 characters at most', () => {
 });
 
 test('first question saves the placeholder, then quick thinking replaces it unless renamed, failed or unset', async (t) => {
-  const store = new Store(join(mkdtempSync(join(tmpdir(), 'treetutor-titles-')), 'trees.sqlite'));
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'rabbithole-titles-')), 'trees.sqlite'));
   const logs = [],
     prompts = [];
   let reply = async (emit) => {
@@ -71,7 +71,7 @@ test('first question saves the placeholder, then quick thinking replaces it unle
   const post = (route, body) =>
     fetch(`${origin}/api/trees${route}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const ask = async (text, id) => {
@@ -171,7 +171,7 @@ test('first question saves the placeholder, then quick thinking replaces it unle
 });
 
 test('an older usage table gains the title task and keeps its rows', () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-titles-upgrade-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-titles-upgrade-')), 'trees.sqlite');
   let store = new Store(path);
   store.record(
     'chat:old',

@@ -161,7 +161,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     // Only a regular file in the library folder is owned media; symlinks and directories are refused.
     if (info && !info.isFile())
       return json(res, 409, {
-        error: 'This video’s saved file is not a regular file, so TreeTutor will not touch it.',
+        error: 'This video’s saved file is not a regular file, so Rabbithole will not touch it.',
       });
     if (action === 'reveal') {
       if (!info)

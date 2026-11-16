@@ -3,12 +3,12 @@
 .library-content {
   max-width: 70rem;
   margin-inline: auto;
-  padding: calc(5 * var(--treetutor-module)) calc(4 * var(--treetutor-module))
-    calc(8 * var(--treetutor-module));
+  padding: calc(5 * var(--rabbithole-module)) calc(4 * var(--rabbithole-module))
+    calc(8 * var(--rabbithole-module));
 }
 .library-content :focus-visible,
 .volume:has(.saved-chat-title:focus-visible) {
-  outline: var(--focus-outline-width) solid var(--treetutor-paper);
+  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
   outline-offset: var(--focus-outline-offset);
 }
 .library-panel {
@@ -39,7 +39,7 @@
   }
 }
 .library-head {
-  margin-bottom: calc(4 * var(--treetutor-module));
+  margin-bottom: calc(4 * var(--rabbithole-module));
 }
 .library-head > :first-child {
   flex: 1 1 24rem;
@@ -55,10 +55,10 @@
 }
 .library-tools {
   justify-content: space-between;
-  margin-bottom: var(--treetutor-module);
+  margin-bottom: var(--rabbithole-module);
 }
 .tree-date-heading {
-  margin: calc(4 * var(--treetutor-module)) 0 12px;
+  margin: calc(4 * var(--rabbithole-module)) 0 12px;
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-secondary);
@@ -72,7 +72,7 @@
 .shelf {
   display: grid;
   grid-template-columns: repeat(auto-fill, 176px);
-  gap: calc(4 * var(--treetutor-module)) calc(3 * var(--treetutor-module));
+  gap: calc(4 * var(--rabbithole-module)) calc(3 * var(--rabbithole-module));
 }
 .shelf .volume {
   position: relative;
@@ -88,7 +88,7 @@
 .shelf .volume[data-current='true'] {
   box-shadow:
     0 0 0 3px var(--color-background-body),
-    0 0 0 5px var(--treetutor-paper);
+    0 0 0 5px var(--rabbithole-paper);
 }
 .shelf .volume[data-renaming='true'] {
   grid-column: span 2;
@@ -101,12 +101,12 @@
   min-height: 0;
   padding: 12px;
   border-radius: calc(var(--radius-element) - 1px) calc(var(--radius-element) - 1px) 0 0;
-  background: var(--treetutor-paper);
-  --color-text-primary: var(--treetutor-paper-ink);
-  --color-text-secondary: var(--treetutor-paper-ink);
+  background: var(--rabbithole-paper);
+  --color-text-primary: var(--rabbithole-paper-ink);
+  --color-text-secondary: var(--rabbithole-paper-ink);
   --color-overlay-hover: transparent;
   --color-overlay-pressed: transparent;
-  color: var(--treetutor-paper-ink);
+  color: var(--rabbithole-paper-ink);
 }
 /* The title button covers the whole volume, so the spine and date open it too; the menu sits above it. */
 .shelf .saved-chat-title {
@@ -124,7 +124,7 @@
   text-align: start;
   justify-content: flex-start;
   align-items: flex-start;
-  color: var(--treetutor-paper-ink);
+  color: var(--rabbithole-paper-ink);
 }
 .shelf .saved-chat-title::after {
   content: '';
@@ -138,11 +138,11 @@
 .shelf .volume-date {
   margin-top: auto;
   font-weight: 600;
-  color: var(--treetutor-paper-ink);
+  color: var(--rabbithole-paper-ink);
 }
 .volume-meta {
   display: grid;
-  gap: var(--treetutor-module);
+  gap: var(--rabbithole-module);
   padding: 10px 12px 12px;
 }
 .volume-spine {
@@ -161,7 +161,7 @@
   top: 4px;
   right: 4px;
   z-index: 1;
-  color: var(--treetutor-paper-ink);
+  color: var(--rabbithole-paper-ink);
 }
 .library-list {
   border-top: 1px solid var(--color-border);
@@ -170,7 +170,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
-  gap: calc(2 * var(--treetutor-module));
+  gap: calc(2 * var(--rabbithole-module));
   min-height: 48px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -179,7 +179,7 @@
 }
 .library-list .volume[data-renaming='true'] {
   display: block;
-  padding-block: var(--treetutor-module);
+  padding-block: var(--rabbithole-module);
 }
 .library-list .volume-band,
 .library-list .volume-meta {
@@ -234,8 +234,8 @@
 .knowledge-content {
   max-width: 70rem;
   margin-inline: auto;
-  padding: calc(5 * var(--treetutor-module)) calc(4 * var(--treetutor-module))
-    calc(8 * var(--treetutor-module));
+  padding: calc(5 * var(--rabbithole-module)) calc(4 * var(--rabbithole-module))
+    calc(8 * var(--rabbithole-module));
   overflow-wrap: anywhere;
 }
 .piece-library {

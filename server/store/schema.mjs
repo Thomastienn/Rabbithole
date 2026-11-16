@@ -18,7 +18,7 @@ export function open(path) {
     const version = this.db.prepare('PRAGMA user_version').get().user_version;
     if (version > 1)
       throw new Error(
-        `Database schema ${version} is newer than this TreeTutor supports (1). Use the newer TreeTutor version; your database was not changed.`,
+        `Database schema ${version} is newer than this Rabbithole supports (1). Use the newer Rabbithole version; your database was not changed.`,
       );
     chmodSync(path, 0o600);
     // A fresh database starts with no model profile and no assumed provider; existing installs keep theirs.
@@ -42,7 +42,7 @@ export function open(path) {
         throw error;
       }
     }
-    // Additive nullable column: older TreeTutor builds still open the database.
+    // Additive nullable column: older Rabbithole builds still open the database.
     if (
       !this.db
         .prepare('PRAGMA table_info(messages)')
@@ -313,9 +313,9 @@ export const schema = {
   interrupt() {
     this.db
       .exec(`UPDATE messages SET status='interrupted',stopped='shutdown' WHERE status='streaming';
-      UPDATE tool_calls SET status='failed',output='Tool call was interrupted when TreeTutor stopped.',elapsed=NULL WHERE status='running';
+      UPDATE tool_calls SET status='failed',output='Tool call was interrupted when Rabbithole stopped.',elapsed=NULL WHERE status='running';
       UPDATE suggestions SET status='failed' WHERE status='pending';
-      UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when TreeTutor stopped.' WHERE status='pending' AND kind='video';
-      UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when TreeTutor stopped.' WHERE status='pending';`);
+      UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when Rabbithole stopped.' WHERE status='pending' AND kind='video';
+      UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when Rabbithole stopped.' WHERE status='pending';`);
   },
 };

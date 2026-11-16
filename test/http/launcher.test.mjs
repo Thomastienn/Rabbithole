@@ -16,8 +16,8 @@ import { launch } from '../support/startup-kit.mjs';
 import { MANIM_VERSION } from '../../server/media/manim.mjs';
 
 test('one start command builds absent or changed assets and reuses a current build', async () => {
-  const checkout = mkdtempSync(join(tmpdir(), 'treetutor-launcher-'));
-  const data = mkdtempSync(join(tmpdir(), 'treetutor-launcher-data-'));
+  const checkout = mkdtempSync(join(tmpdir(), 'rabbithole-launcher-'));
+  const data = mkdtempSync(join(tmpdir(), 'rabbithole-launcher-data-'));
   for (const path of ['scripts', 'server', 'src'])
     cpSync(path, join(checkout, path), { recursive: true });
   for (const path of ['index.html', 'package-lock.json', 'tsconfig.json', 'vite.config.ts'])
@@ -39,7 +39,7 @@ test('one start command builds absent or changed assets and reuses a current bui
     `
     import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
     mkdirSync('dist', { recursive: true });
-    writeFileSync('dist/index.html', '<!doctype html><title>TreeTutor build fixture</title>');
+    writeFileSync('dist/index.html', '<!doctype html><title>Rabbithole build fixture</title>');
     appendFileSync('builds', 'built\\n');
   `,
   );
@@ -61,8 +61,8 @@ test('one start command builds absent or changed assets and reuses a current bui
   async function startAndStop() {
     const running = launch(data, 0, env, checkout, ['scripts/start.mjs', '--port', '0']);
     try {
-      const [, origin] = await running.waitFor(/TreeTutor: (http:\/\/127\.0\.0\.1:\d+)/);
-      assert.match(await (await fetch(origin)).text(), /TreeTutor build fixture/);
+      const [, origin] = await running.waitFor(/Rabbithole: (http:\/\/127\.0\.0\.1:\d+)/);
+      assert.match(await (await fetch(origin)).text(), /Rabbithole build fixture/);
       assert.match(running.output(), /Manim ready:/);
       const search = await (await fetch(origin + '/api/settings/searxng')).json();
       assert.equal(search.ready, false);
@@ -96,7 +96,7 @@ test('one start command builds absent or changed assets and reuses a current bui
   try {
     assert.equal(await failed.exited, 1);
     assert.match(failed.output(), /npm run build failed.*npm start again/);
-    assert.doesNotMatch(failed.output(), /TreeTutor: http/);
+    assert.doesNotMatch(failed.output(), /Rabbithole: http/);
   } finally {
     await failed.stop();
   }
@@ -105,14 +105,14 @@ test('one start command builds absent or changed assets and reuses a current bui
   try {
     assert.equal(await missingLatex.exited, 1);
     assert.match(missingLatex.output(), /sudo apt install texlive-full/);
-    assert.doesNotMatch(missingLatex.output(), /Building|TreeTutor: http/);
+    assert.doesNotMatch(missingLatex.output(), /Building|Rabbithole: http/);
   } finally {
     await missingLatex.stop();
   }
 });
 
 test('unsupported Node gives an actionable requirement before trying to load the app', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-old-node-'));
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-old-node-'));
   // Runtime-version fixture; this verifies the diagnostic branch, not execution on an installed Node 22.
   const running = launch(dir, 0, {}, process.cwd(), [
     '--input-type=module',

@@ -15,7 +15,7 @@ export const task = {
   intent: 'Animate two winners advancing.',
   excerpt: 'A and B advance to the final.',
 };
-export const directive = '\n```treetutor-video\n' + JSON.stringify(task) + '\n```';
+export const directive = '\n```rabbithole-video\n' + JSON.stringify(task) + '\n```';
 export const composition = `// Description: Two labelled boxes slide together into a final box.
 // Narration: "Winners advance."
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
@@ -115,7 +115,7 @@ export async function open(provider, options = {}) {
     post: (path, body = {}) =>
       fetch(origin + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify(body),
       }),
     close: () => {

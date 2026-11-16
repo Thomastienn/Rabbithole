@@ -24,7 +24,7 @@ export function useMapViewport({
     try {
       return (
         trees.find((t) => t.id === root)?.layout?.viewport ??
-        parseViewport(localStorage.getItem(`treetutor.viewport.${root}`))
+        parseViewport(localStorage.getItem(`rabbithole.viewport.${root}`))
       );
     } catch {
       return undefined;

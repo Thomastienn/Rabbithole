@@ -14,7 +14,7 @@ const auth = {
     throw new Error('denied');
   },
 };
-const dir = mkdtempSync(join(tmpdir(), 'treetutor-retry-'));
+const dir = mkdtempSync(join(tmpdir(), 'rabbithole-retry-'));
 async function open(path, generate) {
   const store = new Store(path);
   const app = createApp({ store, auth, provider: { generate } });
@@ -24,7 +24,7 @@ async function open(path, generate) {
   const post = (path, body, headers = {}) =>
     fetch(`${origin}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': state.csrf, ...headers },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': state.csrf, ...headers },
       body: JSON.stringify(body),
     });
   return {
@@ -92,7 +92,7 @@ test('failed latest reply retries in place with the current model; no duplicate 
     });
     assert.ok(env.store.libraryVideo(video.id));
     assert.equal(
-      (await env.post(`/api/trees/${tree.id}/retry`, {}, { 'X-TreeTutor-CSRF': 'wrong' })).status,
+      (await env.post(`/api/trees/${tree.id}/retry`, {}, { 'X-Rabbithole-CSRF': 'wrong' })).status,
       403,
     );
     env.store.model(tree.id, 'model-now', null);

@@ -51,7 +51,7 @@ export function createApp({
   diagramTimeout = 300000,
   diagramParse,
   visualTimeout = 300000,
-  dir = join(tmpdir(), 'treetutor'),
+  dir = join(tmpdir(), 'rabbithole'),
   videoTimeout,
   videoRender,
   videoSnapshot,
@@ -150,7 +150,7 @@ export function createApp({
     let body;
     try {
       if (ctx.stopping)
-        return json(res, 503, { error: 'TreeTutor is stopping. Your partial replies are saved.' });
+        return json(res, 503, { error: 'Rabbithole is stopping. Your partial replies are saved.' });
       // A question with attachments arrives as multipart form data; every other POST is JSON.
       const multipart =
         req.method === 'POST' &&
@@ -158,10 +158,10 @@ export function createApp({
         /^multipart\/form-data;/.test(req.headers['content-type'] ?? '');
       if (req.method === 'POST') {
         if (
-          req.headers['x-treetutor-csrf'] !== ctx.csrf ||
+          req.headers['x-rabbithole-csrf'] !== ctx.csrf ||
           (req.headers['content-type'] !== 'application/json' && !multipart)
         )
-          return json(res, 403, { error: 'Reload TreeTutor before trying again.' });
+          return json(res, 403, { error: 'Reload Rabbithole before trying again.' });
       }
       if (multipart) {
         try {
@@ -203,7 +203,7 @@ export function createApp({
         error.code ?? errorCause(error, [...privateValues(body), ...url.searchParams.values()]);
       if (!res.headersSent)
         json(res, error.code === 'ENOENT' ? 404 : 500, {
-          error: 'TreeTutor could not finish this request. Reload and try again.',
+          error: 'Rabbithole could not finish this request. Reload and try again.',
         });
       else res.end();
     }

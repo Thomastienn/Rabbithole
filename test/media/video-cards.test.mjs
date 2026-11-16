@@ -48,7 +48,7 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
   const card = (id) => container.querySelector(`[data-artifact=${id}]`);
   assert.deepEqual(view(card('stopped')), {
     state: 'interrupted',
-    status: 'stopped: Video generation interrupted when TreeTutor stopped.',
+    status: 'stopped: Video generation interrupted when Rabbithole stopped.',
     buttons: ['Retry video'],
     video: false,
   });

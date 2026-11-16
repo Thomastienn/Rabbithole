@@ -8,13 +8,13 @@ import { Codex } from '../../server/providers/codex.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 
-// Explicit live evaluation. Stop TreeTutor first; never run as part of npm test.
+// Explicit live evaluation. Stop Rabbithole first; never run as part of npm test.
 process.umask(0o077);
 const dir =
-  process.env.TREETUTOR_DATA_DIR ??
-  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor');
+  process.env.RABBITHOLE_DATA_DIR ??
+  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole');
 const release = await lockfile.lock(dir, { realpath: true, stale: 10000 });
-const work = mkdtempSync(join(tmpdir(), 'treetutor-compaction-'));
+const work = mkdtempSync(join(tmpdir(), 'rabbithole-compaction-'));
 const client = new Codex(new Auth(dir), work);
 const path = join(work, 'trees.sqlite');
 let store = new Store(path),
@@ -52,7 +52,7 @@ const get = async (id) => (await fetch(`${origin}/api/trees/${id}`)).json();
 const post = (route, body) =>
   fetch(`${origin}/api/trees${route}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+    headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
     body: JSON.stringify(body),
   });
 async function ask(id, text) {

@@ -9,7 +9,7 @@ import { Codex } from '../../server/providers/codex.mjs';
 const fixture = (inspect = () => {}) =>
   new Codex(
     { token: async () => 'synthetic-token' },
-    mkdtempSync(join(tmpdir(), 'treetutor-codex-')),
+    mkdtempSync(join(tmpdir(), 'rabbithole-codex-')),
     (_command, args, options) => {
       assert.ok(args.includes('model_provider="openai_chatgpt_plan"'));
       assert.equal(options.env.OPENAI_API_KEY, undefined);

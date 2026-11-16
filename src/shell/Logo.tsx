@@ -1,6 +1,6 @@
 // The brand mark from public/logo.svg without its tile, painted in the band ink and the active theme's accent.
 // The band is dark in every appearance, so the accent is lifted toward the band ink to stay visible.
-const accentInk = 'color-mix(in srgb, var(--color-accent) 65%, var(--treetutor-band-ink))';
+const accentInk = 'color-mix(in srgb, var(--color-accent) 65%, var(--rabbithole-band-ink))';
 
 export function Logo() {
   const accent = { stroke: accentInk, fill: 'none' };
@@ -18,7 +18,7 @@ export function Logo() {
         width="19"
         height="16"
         rx="3"
-        style={{ fill: 'var(--treetutor-band-ink)' }}
+        style={{ fill: 'var(--rabbithole-band-ink)' }}
       />
       {[7, 26, 45].map((y) => (
         <rect key={y} x="33" y={y} width="25" height="12" rx="3" style={{ fill: accentInk }} />
@@ -28,7 +28,7 @@ export function Logo() {
         strokeWidth="3"
         strokeLinecap="round"
         strokeOpacity=".55"
-        style={{ stroke: 'var(--treetutor-band)' }}
+        style={{ stroke: 'var(--rabbithole-band)' }}
       />
     </svg>
   );

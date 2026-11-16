@@ -154,7 +154,7 @@ test('only signed-in subscription models can be pinned; stale pins fail without 
     });
   }
   assert.equal(
-    (await env.request('/api/settings/suggestions', { enabled: false }, { 'X-TreeTutor-CSRF': '' }))
+    (await env.request('/api/settings/suggestions', { enabled: false }, { 'X-Rabbithole-CSRF': '' }))
       .status,
     403,
   );

@@ -110,7 +110,7 @@ test('predict-then-reveal uses the ordinary inline worker, persists without repl
           emit,
           text === 'Continue'
             ? 'Next idea.'
-            : 'Compare the target with the midpoint.\n```treetutor-visual\n' +
+            : 'Compare the target with the midpoint.\n```rabbithole-visual\n' +
                 JSON.stringify(prediction) +
                 '\n```\n\nContinue whenever you like.',
         );
@@ -423,7 +423,7 @@ test('branch compaction keeps passage detail and sees a visual only as one title
     );
     assert.doesNotMatch(
       text,
-      /treetutor-visual|"intent"|Show the winners advancing|<svg|A → Final|SECRET BRANCH QUESTION/,
+      /rabbithole-visual|"intent"|Show the winners advancing|<svg|A → Final|SECRET BRANCH QUESTION/,
     );
   } finally {
     await env.close();

@@ -47,7 +47,7 @@ test('browser preferences restore valid choices independently, fall back safely 
   }
   for (const { id } of themeChoices) {
     savePreference('theme', id);
-    assert.equal(savedTheme(values.get('treetutor.theme')), id);
+    assert.equal(savedTheme(values.get('rabbithole.theme')), id);
     assert.equal(savedAppearance(), 'system');
   }
   for (const [value, on] of [
@@ -58,12 +58,12 @@ test('browser preferences restore valid choices independently, fall back safely 
     savePreference('vim', value);
     assert.equal(savedVim(), on);
     assert.equal(savedAppearance(), 'system');
-    assert.equal(savedTheme(values.get('treetutor.theme')), 'graphite');
+    assert.equal(savedTheme(values.get('rabbithole.theme')), 'graphite');
   }
   savePreference('appearance', 'sepia');
   assert.equal(savedAppearance(), 'dark');
   assert.equal(savedTheme('ocean'), 'paperback');
-  assert.equal(values.has('treetutor.bubble-tint'), false);
+  assert.equal(values.has('rabbithole.bubble-tint'), false);
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
     get() {
@@ -109,11 +109,11 @@ test('all six authored and shipped theme modules agree on surfaces, neutral bubb
     assert.deepEqual(theme.tokens, authored.tokens);
     assert.deepEqual(theme.localTokens, authored.localTokens);
     assert.deepEqual(pair(theme.tokens['--color-background-surface']), expected);
-    assert.equal(theme.tokens['--focus-outline-color'], theme.localTokens['--treetutor-paper']);
+    assert.equal(theme.tokens['--focus-outline-color'], theme.localTokens['--rabbithole-paper']);
     for (const [n, hue] of ['yellow', 'green', 'pink', 'blue'].entries())
       assert.equal(
         theme.tokens[`--color-text-${hue}`],
-        theme.localTokens[`--treetutor-ink-${n + 1}`],
+        theme.localTokens[`--rabbithole-ink-${n + 1}`],
       );
     tiles.push(
       JSON.stringify(
@@ -149,7 +149,7 @@ test('Paperback token text, selection, action, focus and neutral question bubble
         const minimum = key === '--color-accent' || key === '--focus-outline-color' ? 3 : 4.5;
         assert.ok(contrast(rgb(color(key)), bg) >= minimum, `${mode}: ${key} on ${ground}`);
       }
-      const sel = color('--treetutor-selection'),
+      const sel = color('--rabbithole-selection'),
         alpha = sel.length === 9 ? parseInt(sel.slice(7), 16) / 255 : 1;
       assert.ok(
         contrast(

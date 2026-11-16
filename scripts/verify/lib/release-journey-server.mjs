@@ -18,8 +18,8 @@ if (process.argv[2] === '--serve') {
   let release;
   try {
     const authDir =
-      process.env.TREETUTOR_DATA_DIR ??
-      join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor');
+      process.env.RABBITHOLE_DATA_DIR ??
+      join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole');
     release = await lockfile.lock(authDir, { realpath: true, stale: 10000 });
     const auth = new Auth(authDir),
       store = new Store(join(dir, 'trees.sqlite'));
@@ -30,7 +30,7 @@ if (process.argv[2] === '--serve') {
       defaultProvider: 'claude',
     });
     app.server.listen(Number(port), '127.0.0.1', () =>
-      console.log(`TreeTutor: http://127.0.0.1:${app.server.address().port}`),
+      console.log(`Rabbithole: http://127.0.0.1:${app.server.address().port}`),
     );
     for (const signal of ['SIGINT', 'SIGTERM'])
       process.on(signal, () => {

@@ -90,7 +90,7 @@ test('invalid provider context windows are not saved or shown as percentages', a
     await (
       await fetch(`${origin}/api/trees/${root.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ text: 'Question' }),
       })
     ).text();

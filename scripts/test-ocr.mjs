@@ -6,12 +6,12 @@ import { join } from 'node:path';
 import http from 'node:http';
 import { tesseractOcr, OCR_UNAVAILABLE } from '../server/ocr.mjs';
 
-if (process.env.TREETUTOR_REAL_OCR !== '1') {
+if (process.env.RABBITHOLE_REAL_OCR !== '1') {
   console.log('Real OCR skipped. Opt in with npm run test:ocr (downloads English language data).');
   process.exit(0);
 }
 
-const dir = mkdtempSync(join(tmpdir(), 'treetutor-real-ocr-'));
+const dir = mkdtempSync(join(tmpdir(), 'rabbithole-real-ocr-'));
 const image = readFileSync(new URL('../test/fixtures/ocr.png', import.meta.url));
 let requests = 0;
 const offline = http.createServer((req, res) => {

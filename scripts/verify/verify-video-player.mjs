@@ -100,7 +100,7 @@ try {
   await ask('Make a video explaining how Peterson fits into this tournament tree.');
   await wait(`document.querySelector(${JSON.stringify(card)})?.dataset.state==='pending'`);
   const placement = await ev(
-    `(()=>{const c=document.querySelector(${JSON.stringify(card)}),msgs=[...document.querySelectorAll('.focused-chat .astryx-chat-message')],own=c.closest('.astryx-chat-message');return {status:c.querySelector('[role=status]').textContent,before:c.previousElementSibling?.textContent,after:c.nextElementSibling?.textContent,inline:!!c.closest('.reply-md'),lastReply:own===msgs.at(-1),fence:document.querySelector('.focused-chat').textContent.includes('treetutor-video')}})()`,
+    `(()=>{const c=document.querySelector(${JSON.stringify(card)}),msgs=[...document.querySelectorAll('.focused-chat .astryx-chat-message')],own=c.closest('.astryx-chat-message');return {status:c.querySelector('[role=status]').textContent,before:c.previousElementSibling?.textContent,after:c.nextElementSibling?.textContent,inline:!!c.closest('.reply-md'),lastReply:own===msgs.at(-1),fence:document.querySelector('.focused-chat').textContent.includes('rabbithole-video')}})()`,
   );
   assert.deepEqual(placement, {
     status: `${task.title}: Planning cuts…`,
@@ -125,7 +125,7 @@ try {
   ]) {
     await b('set', 'viewport', String(width), '800');
     await ev(
-      `localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); location.reload(); true`,
+      `localStorage.setItem('rabbithole.appearance', ${JSON.stringify(mode)}); location.reload(); true`,
     );
     await b('wait', '[aria-label="Open Mutual exclusion"]');
     await openFromMap('Tree levels');
@@ -424,7 +424,7 @@ try {
   ]) {
     await b('set', 'viewport', String(width), '800');
     await ev(
-      `localStorage.setItem('treetutor.appearance', ${JSON.stringify(mode)}); location.reload(); true`,
+      `localStorage.setItem('rabbithole.appearance', ${JSON.stringify(mode)}); location.reload(); true`,
     );
     await b('wait', '[aria-label="Open Mutual exclusion"]');
     await openFromMap('Tree levels');

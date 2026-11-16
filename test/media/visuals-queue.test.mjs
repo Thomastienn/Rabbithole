@@ -17,7 +17,7 @@ test('closed blocks start chat-model workers while text streams, queue in order 
         chatCalls.push({ tree, text });
         save('private-tutor-thread', 'smart');
         if (text === 'Continue') return complete(emit, 'More about rounds.');
-        emit({ type: 'delta', item: 'answer', text: 'First paragraph.\n```treetutor-vis' });
+        emit({ type: 'delta', item: 'answer', text: 'First paragraph.\n```rabbithole-vis' });
         await first.promise;
         emit({
           type: 'delta',
@@ -80,7 +80,7 @@ test('closed blocks start chat-model workers while text streams, queue in order 
     assert.equal(saved.messages.at(-1).text, 'First paragraph.\n\nLast paragraph.');
     assert.doesNotMatch(
       stream,
-      /treetutor-|DO NOT FORWARD|private-worker|private-tutor|intent|excerpt/,
+      /rabbithole-|DO NOT FORWARD|private-worker|private-tutor|intent|excerpt/,
     );
     assert.equal(
       (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Duplicate' })).status,
@@ -145,7 +145,7 @@ test('closed blocks start chat-model workers while text streams, queue in order 
     assert.ok(history.includes(saved.artifacts[0].id));
     assert.doesNotMatch(
       history,
-      /<svg|Show the winners advancing|Winners advance\.|private-worker|earlierTitles|treetutor-visual/,
+      /<svg|Show the winners advancing|Winners advance\.|private-worker|earlierTitles|rabbithole-visual/,
     );
     assert.equal(chatCalls.at(-1).tree.thread, null);
     assert.equal(

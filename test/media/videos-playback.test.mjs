@@ -130,11 +130,11 @@ const browser = join(
 );
 const sandboxed = spawnSync('bwrap', ['--version']).status === 0 && existsSync(browser);
 // Full Remotion renders take about 15s each; run them with npm run test:render.
-const realRender = sandboxed && process.env.TREETUTOR_REAL_RENDER === '1';
+const realRender = sandboxed && process.env.RABBITHOLE_REAL_RENDER === '1';
 const renderSkip =
   !realRender &&
   (sandboxed
-    ? 'set TREETUTOR_REAL_RENDER=1 (npm run test:render)'
+    ? 'set RABBITHOLE_REAL_RENDER=1 (npm run test:render)'
     : 'bwrap or Remotion browser missing');
 
 // One RGB pixel of an MP4 frame, read with Remotion's bundled ffmpeg.

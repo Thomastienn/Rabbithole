@@ -1,7 +1,7 @@
 // Stored per browser and app origin; unreadable storage means off.
 export function savedVim() {
   try {
-    return localStorage.getItem('treetutor.vim') === 'on';
+    return localStorage.getItem('rabbithole.vim') === 'on';
   } catch {
     return false;
   }
@@ -9,7 +9,7 @@ export function savedVim() {
 
 export function savedFocusMode() {
   try {
-    return localStorage.getItem('treetutor.focus-mode') === 'on';
+    return localStorage.getItem('rabbithole.focus-mode') === 'on';
   } catch {
     return false;
   }
@@ -18,7 +18,7 @@ export function savedFocusMode() {
 // Contents starts open; only an explicit collapse is remembered.
 export function savedContentsOpen() {
   try {
-    return localStorage.getItem('treetutor.contents') !== 'collapsed';
+    return localStorage.getItem('rabbithole.contents') !== 'collapsed';
   } catch {
     return true;
   }
@@ -27,7 +27,7 @@ export function savedContentsOpen() {
 // Library opens as a shelf unless List was chosen.
 export function savedLibraryLayout(): 'shelf' | 'list' {
   try {
-    return localStorage.getItem('treetutor.library-layout') === 'list' ? 'list' : 'shelf';
+    return localStorage.getItem('rabbithole.library-layout') === 'list' ? 'list' : 'shelf';
   } catch {
     return 'shelf';
   }
@@ -38,7 +38,7 @@ export function savePreference(
   value: string,
 ) {
   try {
-    localStorage.setItem(`treetutor.${key}`, value);
+    localStorage.setItem(`rabbithole.${key}`, value);
   } catch {
     /* Preference stays for this session only. */
   }

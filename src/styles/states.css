@@ -2,7 +2,7 @@
 /* Raised paper surfaces and a paper passage border (mockup States). */
 .branch-form {
   margin-top: var(--spacing-2);
-  border: thin solid var(--treetutor-paper);
+  border: thin solid var(--rabbithole-paper);
   border-radius: var(--radius-container);
   background: var(--color-background-popover);
 }
@@ -14,7 +14,7 @@
   -webkit-line-clamp: 2;
   overflow: hidden;
   overflow-wrap: anywhere;
-  font-family: var(--treetutor-font-reading);
+  font-family: var(--rabbithole-font-reading);
 }
 .branch-question {
   flex: 1;
@@ -45,9 +45,9 @@
   margin-inline-start: 32px;
 }
 .astryx-alert-dialog .astryx-button[data-variant='destructive']:focus-visible {
-  background: var(--treetutor-paper);
-  color: var(--treetutor-paper-ink);
-  outline-color: var(--treetutor-paper);
+  background: var(--rabbithole-paper);
+  color: var(--rabbithole-paper-ink);
+  outline-color: var(--rabbithole-paper);
 }
 .delete-dialog[data-failed='true'] [id$='description'] {
   color: var(--color-text-error);
@@ -137,8 +137,8 @@
   box-shadow: none;
 }
 .first-question .single-ring-composer > :first-child:focus-within {
-  border-color: var(--treetutor-paper);
-  outline: 2px solid var(--treetutor-paper);
+  border-color: var(--rabbithole-paper);
+  outline: 2px solid var(--rabbithole-paper);
   outline-offset: 0;
 }
 .first-question .single-ring-composer .astryx-chat-composer-input,
@@ -171,7 +171,7 @@
 .turn-rail {
   position: absolute;
   z-index: 3;
-  right: calc(3 * var(--treetutor-module));
+  right: calc(3 * var(--rabbithole-module));
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -243,7 +243,7 @@
 .chat-divider:hover::after,
 .chat-divider:active::after,
 .chat-divider:focus-visible::after {
-  background: var(--treetutor-paper);
+  background: var(--rabbithole-paper);
 }
 .chat-divider:focus-visible {
   outline: medium solid var(--focus-outline-color);
@@ -277,9 +277,9 @@
 }
 .focused-chat .astryx-chat-composer {
   width: 100%;
-  max-width: calc(640px + 6 * var(--treetutor-module));
+  max-width: calc(640px + 6 * var(--rabbithole-module));
   margin-inline: auto;
-  padding-inline: calc(3 * var(--treetutor-module));
+  padding-inline: calc(3 * var(--rabbithole-module));
   box-sizing: border-box;
 }
 .focused-chat .astryx-chat-composer > :first-child {
@@ -292,8 +292,8 @@
   padding-block: var(--spacing-2);
 }
 .focused-chat .astryx-chat-composer > :first-child:focus-within {
-  border-color: var(--treetutor-paper);
-  box-shadow: 0 0 0 1px var(--treetutor-paper);
+  border-color: var(--rabbithole-paper);
+  box-shadow: 0 0 0 1px var(--rabbithole-paper);
 }
 .focused-chat .astryx-chat-composer > :first-child > :first-child {
   min-width: 0;

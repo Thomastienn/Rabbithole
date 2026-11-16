@@ -197,7 +197,7 @@ test('malformed visuals remain visible and retryable; shutdown recovers pending 
   let env = await open(
     {
       generate: async (_tree, _text, emit) =>
-        complete(emit, 'Look.\n```treetutor-visual\n{broken}\n```'),
+        complete(emit, 'Look.\n```rabbithole-visual\n{broken}\n```'),
     },
     {
       generate: async (_tree, text, emit) => {

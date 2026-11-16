@@ -89,8 +89,8 @@ export function deletePrompt(
 }
 export const inkStyle = (ink: number) =>
   ({
-    '--ink': ink ? `var(--treetutor-ink-${ink})` : 'var(--treetutor-paper)',
-    '--ink-on': ink ? 'var(--treetutor-ink-on)' : 'var(--treetutor-paper-ink)',
+    '--ink': ink ? `var(--rabbithole-ink-${ink})` : 'var(--rabbithole-paper)',
+    '--ink-on': ink ? 'var(--rabbithole-ink-on)' : 'var(--rabbithole-paper-ink)',
   }) as CSSProperties;
 
 export function markLibraryScrolling(

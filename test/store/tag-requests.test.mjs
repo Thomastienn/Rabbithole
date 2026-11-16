@@ -68,12 +68,12 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
     const stream = await (
       await fetch(`${origin}/api/trees/${tree.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ text: question }),
       })
     ).text();
     const saved = store.tree(tree.id);
-    assert.doesNotMatch(stream, /treetutor-|intent/);
+    assert.doesNotMatch(stream, /rabbithole-|intent/);
     assert.equal(saved.messages.at(-1).text, 'Before.  After.');
     assert.equal(saved.artifacts.length, 1);
     assert.equal(saved.artifacts[0].position, 'Before. '.length);
@@ -81,8 +81,8 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
   };
   try {
     for (const [value, kind] of [
-      ['<treetutor-visual>' + JSON.stringify(task) + '</treetutor-visual>', 'visual'],
-      ['< "treetutor-diagram" >\n' + JSON.stringify(task) + '\n</treetutor-diagram>', 'mermaid'],
+      ['<rabbithole-visual>' + JSON.stringify(task) + '</rabbithole-visual>', 'visual'],
+      ['< "rabbithole-diagram" >\n' + JSON.stringify(task) + '\n</rabbithole-diagram>', 'mermaid'],
     ]) {
       const artifact = await send(value);
       assert.deepEqual(
@@ -91,13 +91,13 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
       );
     }
     const video = await send(
-      '<treetutor-video">' + JSON.stringify(task) + '</treetutor-video>',
+      '<rabbithole-video">' + JSON.stringify(task) + '</rabbithole-video>',
       'Make a video of winners advancing.',
     );
     assert.deepEqual([video.kind, video.title, video.error ?? null], ['video', task.title, null]);
     await app.settled();
     assert.equal(store.artifact(video.conversation, video.id).status, 'ready');
-    const broken = await send('<treetutor-visual>{broken json}</treetutor-visual>');
+    const broken = await send('<rabbithole-visual>{broken json}</rabbithole-visual>');
     assert.equal(broken.status, 'failed');
     assert.match(broken.error, /^Visual request could not be read: the request was not valid JSON/);
   } finally {

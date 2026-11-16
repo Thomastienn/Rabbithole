@@ -10,7 +10,7 @@ import { OCR_UNAVAILABLE } from '../../server/ocr.mjs';
 
 const fixture = (name) => readFileSync(new URL(`../fixtures/pdf/${name}.pdf`, import.meta.url));
 async function start(t) {
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-pdf-send-')),
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-pdf-send-')),
     store = new Store(join(dir, 'trees.sqlite')),
     calls = [];
   let unavailable = false;
@@ -47,7 +47,7 @@ async function start(t) {
   const post = (action, body = {}) =>
     fetch(`${origin}/api/trees/${id}/${action}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const upload = (name = 'ordered') => {
@@ -63,7 +63,7 @@ async function start(t) {
     );
     return fetch(`${origin}/api/trees/${id}/messages`, {
       method: 'POST',
-      headers: { 'X-TreeTutor-CSRF': csrf },
+      headers: { 'X-Rabbithole-CSRF': csrf },
       body: form,
     });
   };

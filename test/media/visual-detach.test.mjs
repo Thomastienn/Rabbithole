@@ -15,7 +15,7 @@ const task = {
   excerpt: 'Winners advance.',
 };
 const reply =
-  'Winners advance to the final.\n```treetutor-visual\n' + JSON.stringify(task) + '\n```';
+  'Winners advance to the final.\n```rabbithole-visual\n' + JSON.stringify(task) + '\n```';
 const source =
   '<svg viewBox="0 0 200 80" role="img" aria-label="Two winners"><text x="10" y="35">A → Final ← B</text></svg>';
 const complete = (emit, text) => {
@@ -59,7 +59,7 @@ async function open(visual, options = {}) {
   const post = (path, body = {}) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   await post('/api/settings/smart', {
@@ -104,7 +104,7 @@ test('done arrives with the text while a held visual is pending; branching and s
     await until(() => env.calls.suggest.length === 1);
     assert.doesNotMatch(
       env.calls.suggest[0],
-      /treetutor-visual|Two winners meet/,
+      /rabbithole-visual|Two winners meet/,
       'suggestions ignore visual content',
     );
     const branch = await env.post(`/api/trees/${env.tree.id}/branches`, {

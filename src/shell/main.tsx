@@ -32,7 +32,7 @@ function App() {
   // Read before the first render, so the saved theme is the first one painted.
   const [theme, setTheme] = useState<ThemeChoice>(() => {
     try {
-      return savedTheme(localStorage.getItem('treetutor.theme'));
+      return savedTheme(localStorage.getItem('rabbithole.theme'));
     } catch {
       return 'paperback';
     }

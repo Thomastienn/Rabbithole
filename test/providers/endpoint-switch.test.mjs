@@ -64,7 +64,7 @@ test('all six provider switches preserve root and nested history/context, inheri
     const post = async (path, data = {}) => {
       const response = await fetch(origin + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify(data),
       });
       assert.ok(response.ok, `${path}: ${response.status}`);

@@ -65,7 +65,7 @@ export function ContentsDrawer({
     >
       <Regions
         padding={2}
-        header={<DrawerHeader className="drawer-head" title="TreeTutor" onOpenChange={setDrawer} />}
+        header={<DrawerHeader className="drawer-head" title="Rabbithole" onOpenChange={setDrawer} />}
         content={
           <LayoutContent padding={0}>
             <VStack
@@ -214,7 +214,7 @@ export default function ShellBand({
       />
       <Logo />
       <Text className="band-mark" weight="bold">
-        TreeTutor
+        Rabbithole
       </Text>
       <HStack gap={1} vAlign="center" className="band-tools">
         {focusButton}
@@ -245,7 +245,7 @@ export default function ShellBand({
     <header className="shell-band">
       <Logo />
       <Text className="band-mark" weight="bold">
-        TreeTutor
+        Rabbithole
       </Text>
       <Button
         className="tree-switcher"

@@ -22,8 +22,8 @@ assert.ok(['claude', 'codex'].includes(name), 'choose claude or codex explicitly
 let release;
 if (name === 'codex')
   release = await lockfile.lock(
-    process.env.TREETUTOR_DATA_DIR ??
-      join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor'),
+    process.env.RABBITHOLE_DATA_DIR ??
+      join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole'),
     { realpath: true, stale: 10000 },
   );
 const smart =
@@ -31,8 +31,8 @@ const smart =
     ? new Claude(dir)
     : new Codex(
         new Auth(
-          process.env.TREETUTOR_DATA_DIR ??
-            join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor'),
+          process.env.RABBITHOLE_DATA_DIR ??
+            join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole'),
         ),
         dir,
       );
@@ -61,7 +61,7 @@ const tutor = {
       type: 'item',
       item: 'reply',
       text:
-        'Watch how position changes with time.\n```treetutor-video\n' +
+        'Watch how position changes with time.\n```rabbithole-video\n' +
         JSON.stringify(task) +
         '\n```',
     });
@@ -103,7 +103,7 @@ const serve = async () => {
     post: (p, body) =>
       fetch(origin + p, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify(body),
       }),
   };

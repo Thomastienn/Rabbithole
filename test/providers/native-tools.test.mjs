@@ -30,7 +30,7 @@ function adapters(dir, launches) {
 const configFor = (call) =>
   call.command === 'codex'
     ? codexMcp(call.args)
-    : JSON.parse(call.args[call.args.indexOf('--mcp-config') + 1]).mcpServers.treetutor;
+    : JSON.parse(call.args[call.args.indexOf('--mcp-config') + 1]).mcpServers.rabbithole;
 
 for (const provider of ['claude', 'codex']) {
   test(`${provider} revokes its token when CLI startup fails`, async (t) => {
@@ -215,7 +215,7 @@ for (const provider of ['claude', 'codex'])
             call.args.indexOf('--allowedTools') + 1,
             call.args.indexOf('--strict-mcp-config'),
           ),
-          ['WebSearch', 'WebFetch', 'mcp__treetutor__read_page'],
+          ['WebSearch', 'WebFetch', 'mcp__rabbithole__read_page'],
         );
         assert.equal(call.args[call.args.indexOf('--setting-sources') + 1], '');
         assert.ok(call.args.includes('--disable-slash-commands'));
@@ -225,7 +225,7 @@ for (const provider of ['claude', 'codex'])
         assert.ok(call.args.includes('skills.include_instructions=false'));
         assert.ok(call.args.includes('skills.bundled.enabled=false'));
         assert.match(
-          call.args.find((arg) => arg.startsWith('mcp_servers.treetutor=')),
+          call.args.find((arg) => arg.startsWith('mcp_servers.rabbithole=')),
           /default_tools_approval_mode="approve"/,
         );
         for (const feature of [
@@ -343,7 +343,7 @@ for (const provider of ['claude', 'codex'])
     );
     const response = await fetch(`${origin}/api/trees/${root.id}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify({ text: 'native tools fixture' }),
     });
     const events = (await response.text())

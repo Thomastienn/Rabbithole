@@ -49,7 +49,7 @@ export class Auth {
       code_challenge_method: 'S256',
       code_challenge: createHash('sha256').update(verifier).digest('base64url'),
     });
-    if (client === 'dynamic_agent_client') params.set('agent_name_hint', 'TreeTutor');
+    if (client === 'dynamic_agent_client') params.set('agent_name_hint', 'Rabbithole');
     return `${issuer}/api/accounts/authorize?${params}`;
   }
   async exchange(fields) {

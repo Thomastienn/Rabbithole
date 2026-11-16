@@ -45,7 +45,7 @@ async function serve(path, dir, desktop) {
     post: (p, body, token = csrf) =>
       fetch(origin + p, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': token },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': token },
         body: JSON.stringify(body),
       }),
     close: () => {

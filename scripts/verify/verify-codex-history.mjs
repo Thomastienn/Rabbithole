@@ -10,10 +10,10 @@ import { Codex } from '../../server/providers/codex.mjs';
 // Stop the app first: the lock protects its rotating OAuth refresh token.
 process.umask(0o077);
 const dir =
-  process.env.TREETUTOR_DATA_DIR ??
-  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'treetutor');
+  process.env.RABBITHOLE_DATA_DIR ??
+  join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole');
 const release = await lockfile.lock(dir, { realpath: true, stale: 10000 });
-const client = new Codex(new Auth(dir), mkdtempSync(join(tmpdir(), 'treetutor-history-')));
+const client = new Codex(new Auth(dir), mkdtempSync(join(tmpdir(), 'rabbithole-history-')));
 const report = { date: new Date().toISOString(), models: [], turns: [] };
 const history = (name) => [
   { role: 'user', text: 'Assign our fictional learning tree a name.', status: 'completed' },

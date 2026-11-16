@@ -294,25 +294,25 @@
     --color-border-warning: var(--color-text-warning);
     --duration-exit: var(--duration-fast);
     --astryx-theme-neutral-color-status-fill-accent: light-dark(#0074e2, #6d9cfe);
-    --treetutor-font-reading: Literata, Georgia, "Times New Roman", serif;
-    --treetutor-module: 8px;
-    --treetutor-band-ink: light-dark(#e6edf5, #e1e9f2);
-    --treetutor-band-muted: light-dark(#a7b6c9, #a1b1c6);
-    --treetutor-map-node-width: 16rem;
-    --treetutor-sidebar-width: 14.5rem;
-    --treetutor-branch-width: 2px;
-    --treetutor-branch-focus-width: 2.5px;
-    --treetutor-branch-draw-duration: 350ms;
-    --treetutor-selection: light-dark(#c2d4e6, #7fd0c859);
-    --treetutor-band: #1d2a3a;
-    --treetutor-paper: light-dark(#1a2433, #dde5ee);
-    --treetutor-paper-ink: light-dark(#f3f6f9, #121821);
-    --treetutor-ink-1: light-dark(#7a5c10, #d9b25a);
-    --treetutor-ink-2: light-dark(#2c6a4c, #8cc7a5);
-    --treetutor-ink-3: light-dark(#9a3f45, #e8948f);
-    --treetutor-ink-4: light-dark(#3a5a8c, #9ab4e0);
-    --treetutor-ink-on: light-dark(#ffffff, #121821);
-    --treetutor-branch-color: light-dark(#1a2433bf, #dde5eebf);
+    --rabbithole-font-reading: Literata, Georgia, "Times New Roman", serif;
+    --rabbithole-module: 8px;
+    --rabbithole-band-ink: light-dark(#e6edf5, #e1e9f2);
+    --rabbithole-band-muted: light-dark(#a7b6c9, #a1b1c6);
+    --rabbithole-map-node-width: 16rem;
+    --rabbithole-sidebar-width: 14.5rem;
+    --rabbithole-branch-width: 2px;
+    --rabbithole-branch-focus-width: 2.5px;
+    --rabbithole-branch-draw-duration: 350ms;
+    --rabbithole-selection: light-dark(#c2d4e6, #7fd0c859);
+    --rabbithole-band: #1d2a3a;
+    --rabbithole-paper: light-dark(#1a2433, #dde5ee);
+    --rabbithole-paper-ink: light-dark(#f3f6f9, #121821);
+    --rabbithole-ink-1: light-dark(#7a5c10, #d9b25a);
+    --rabbithole-ink-2: light-dark(#2c6a4c, #8cc7a5);
+    --rabbithole-ink-3: light-dark(#9a3f45, #e8948f);
+    --rabbithole-ink-4: light-dark(#3a5a8c, #9ab4e0);
+    --rabbithole-ink-on: light-dark(#ffffff, #121821);
+    --rabbithole-branch-color: light-dark(#1a2433bf, #dde5eebf);
   }
 
   :scope {

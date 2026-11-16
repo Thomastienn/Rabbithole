@@ -79,7 +79,7 @@ export async function start(dir, suggestions = true, connected = { claude: true,
   const request = (path, data = {}, headers = {}) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf, ...headers },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf, ...headers },
       body: JSON.stringify(data),
     });
   const post = async (path, data = {}) => (await request(path, data)).text();

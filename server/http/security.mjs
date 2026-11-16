@@ -33,7 +33,7 @@ export function secure(req, res, origin, json) {
       req.url.startsWith('/auth/callback?') &&
       req.headers.host === new URL(origin).host
     )) {
-      json(res, 403, { error: 'Open TreeTutor using its loopback address.' });
+      json(res, 403, { error: 'Open Rabbithole using its loopback address.' });
       return true;
     }
   }

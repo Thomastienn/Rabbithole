@@ -21,7 +21,7 @@ const STATUS = {
   ready: 'Video ready.',
   failed: 'Video could not be generated. Retry, or check Smart in Settings.',
   canceled: 'Video generation canceled.',
-  interrupted: 'Video generation interrupted when TreeTutor stopped.',
+  interrupted: 'Video generation interrupted when Rabbithole stopped.',
   unavailable: 'Video unavailable: its saved file is missing or unreadable.',
 };
 const STEP_LABEL = {

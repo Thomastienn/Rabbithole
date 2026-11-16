@@ -84,7 +84,7 @@ try {
         const bg = solid(s(e).backgroundColor, ground), border = solid(s(e).borderTopColor, bg);
         return { control: e.classList[0], ratio: ratio(border, ground) };
       });
-      const probe = document.createElement('i'); probe.style.color = 'var(--treetutor-paper)'; document.body.append(probe); const paper = s(probe).color; probe.remove();
+      const probe = document.createElement('i'); probe.style.color = 'var(--rabbithole-paper)'; document.body.append(probe); const paper = s(probe).color; probe.remove();
       return { dialogs: document.querySelectorAll('dialog[open]').length, font: s(d.querySelector('p, span')).fontFamily, caps: h.fontVariantCaps, paper, controls,
         contrast: { title: ratio(s(d.querySelector('h1')).color, ground), label: ratio(h.color, ground), text: ratio(s(d.querySelector('.settings-group p, .settings-group span')).color, ground), nav: ratio(s(d.querySelector('nav [aria-current]')).color, ground), muted: ratio(s(d.querySelector('nav a:not([aria-current]), nav button:not([aria-current])')).color, ground) } }; })()`);
     assert.equal(look[mode].dialogs, 0, `${mode} settings is a page, not a dialog`);
@@ -172,7 +172,7 @@ try {
   );
   await b('find', 'role', 'button', 'click', '--name', 'Continue with ChatGPT', '--exact');
   await wait(
-    `[...${dialog}.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('TreeTutor could not finish this request.'))`,
+    `[...${dialog}.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Rabbithole could not finish this request.'))`,
   );
   assert.equal(authRequests, 1);
   step('ChatGPT connection failure is announced inside Connections');
@@ -194,7 +194,7 @@ try {
   await ev(`${dialog}.querySelector('input[type=checkbox]').scrollIntoView({ block: 'center' })`);
   await b('find', 'label', 'Vim canvas bindings', 'check');
   await wait(
-    `localStorage.getItem('treetutor.vim') === 'on' && ${dialog}.querySelector('input[type=checkbox]').checked`,
+    `localStorage.getItem('rabbithole.vim') === 'on' && ${dialog}.querySelector('input[type=checkbox]').checked`,
   );
   await shot('interface');
   await tab('Usage');
@@ -258,7 +258,7 @@ try {
     await b('screenshot', `${process.cwd()}/${verifyOut}/settings-mobile-usage-${mode}.png`);
   }
   await b('set', 'viewport', '1440', '900');
-  await b('eval', `localStorage.removeItem('treetutor.appearance'); true`);
+  await b('eval', `localStorage.removeItem('rabbithole.appearance'); true`);
   await tab('Models');
   const before = (await (await fetch(`${origin}/api/settings/suggestions`)).json()).enabled;
   await b('find', 'role', 'switch', 'click', '--name', 'Automatic suggestions');

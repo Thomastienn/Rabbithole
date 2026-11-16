@@ -95,14 +95,14 @@ export class Claude {
         ? [
             '--allowedTools',
             ...native,
-            ...(tree.tools ?? []).map((t) => `mcp__treetutor__${t.name}`),
+            ...(tree.tools ?? []).map((t) => `mcp__rabbithole__${t.name}`),
           ]
         : []),
       '--strict-mcp-config',
       '--mcp-config',
       JSON.stringify({
         mcpServers: turn
-          ? { treetutor: { type: 'http', url: turn.url, headers: turn.headers } }
+          ? { rabbithole: { type: 'http', url: turn.url, headers: turn.headers } }
           : {},
       }),
       '--setting-sources',

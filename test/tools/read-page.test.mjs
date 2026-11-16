@@ -253,7 +253,7 @@ test('tool runner: capable custom endpoint and Codex models get read_page; Claud
 
 test('read_page save_as writes the raw response into the Python workspace, any type, plain filenames only', async (t) => {
   const { site, options } = await pageServer(t);
-  const workspace = join(mkdtempSync(join(tmpdir(), 'treetutor-save-')), 'python', 'c');
+  const workspace = join(mkdtempSync(join(tmpdir(), 'rabbithole-save-')), 'python', 'c');
   const csv = await readPage(
     { url: `${site}/data.csv`, save_as: 'data.csv' },
     { ...options, workspace },
@@ -279,7 +279,7 @@ test('read_page save_as writes the raw response into the Python workspace, any t
   );
 
   // The runner saves into the conversation's workspace under the data directory.
-  const dir = mkdtempSync(join(tmpdir(), 'treetutor-runner-'));
+  const dir = mkdtempSync(join(tmpdir(), 'rabbithole-runner-'));
   const runner = toolRunner({ readPage: options, dir });
   const turn = { conversation: 'c7', reply: 'r', signal: new AbortController().signal };
   await runner.run('read_page', { url: `${site}/data.csv`, save_as: 'd.csv' }, turn);

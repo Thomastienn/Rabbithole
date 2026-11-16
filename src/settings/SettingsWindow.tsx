@@ -35,7 +35,7 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
   {
     id: 'interface',
     label: 'Interface',
-    description: 'How TreeTutor looks and how you move around it. Saved in this browser.',
+    description: 'How Rabbithole looks and how you move around it. Saved in this browser.',
     icon: SwatchIcon,
   },
   {

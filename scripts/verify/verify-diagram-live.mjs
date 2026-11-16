@@ -42,7 +42,7 @@ const serve = async (store) => {
   const post = (path, body) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     }).then((r) => r.text());
   return { app, origin, post };
@@ -85,7 +85,7 @@ check(
 );
 check(
   'visible reply and SSE contain no directive',
-  !/treetutor-diagram/.test(saved.messages.at(-1).text + sse),
+  !/rabbithole-diagram/.test(saved.messages.at(-1).text + sse),
 );
 check(
   'worker launched once with fresh session',

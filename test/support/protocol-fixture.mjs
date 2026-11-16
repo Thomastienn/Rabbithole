@@ -16,7 +16,7 @@ export const durationInFrames = 30;
 export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</AbsoluteFill>;`;
   const reply = (text) =>
     text.endsWith('visual fixture request')
-      ? 'See the rounds.\n```treetutor-visual\n' +
+      ? 'See the rounds.\n```rabbithole-visual\n' +
         JSON.stringify({
           title: 'Rounds',
           description: 'The round winners meet in the final.',
@@ -29,7 +29,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
         : text.startsWith('{') && typeof JSON.parse(text).request === 'object'
           ? '<p>Round winners meet in the final.</p>'
           : text.endsWith('video fixture request')
-            ? 'A winner advances.\n```treetutor-video\n' +
+            ? 'A winner advances.\n```rabbithole-video\n' +
               JSON.stringify({
                 title: 'Winner',
                 description: 'A winner advances.',
@@ -40,7 +40,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
             : text.startsWith('{') && JSON.parse(text).request?.endsWith('video fixture request')
               ? JSON.stringify(planFor(video))
               : text.endsWith('diagram fixture request')
-                ? 'A bracket shows each round.\n```treetutor-diagram\n' +
+                ? 'A bracket shows each round.\n```rabbithole-diagram\n' +
                   JSON.stringify({
                     title: 'Rounds',
                     description: 'The round winners meet in the final.',
@@ -158,7 +158,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
     send({ type: 'system', subtype: 'init', session_id: session, model: 'sonnet' });
     if (input.endsWith('native tools fixture')) {
       claudeSearch(send);
-      const config = JSON.parse(argv[argv.indexOf('--mcp-config') + 1]).mcpServers.treetutor;
+      const config = JSON.parse(argv[argv.indexOf('--mcp-config') + 1]).mcpServers.rabbithole;
       send({
         type: 'assistant',
         message: { id: 'tool-answer', content: [{ type: 'text', text: await appTool(config) }] },

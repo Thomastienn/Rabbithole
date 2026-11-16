@@ -11,7 +11,7 @@ const projectSandbox = spawnSync('codex', ['sandbox', '-c', 'sandbox_mode="works
   cwd: join(import.meta.dir, '..'), encoding: 'utf8',
 });
 assert.equal(projectSandbox.status, 0, `Actual project sandbox must start: ${projectSandbox.stderr}`);
-const cwd = mkdtempSync(join(tmpdir(), 'treetutor-ralph-test-'));
+const cwd = mkdtempSync(join(tmpdir(), 'rabbithole-ralph-test-'));
 const cli = realpathSync(Bun.which('ralph-tui'));
 const bd = (...args) => execFileSync('bd', args, { cwd, encoding: 'utf8' }).trim();
 console.log(`Fixture directory: ${cwd}`);

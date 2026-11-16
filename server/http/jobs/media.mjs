@@ -14,7 +14,7 @@ import {
 } from '../../media/video-cut.mjs';
 import { MANIM_AUDIT_INSTRUCTIONS } from '../../media/manim-cut.mjs';
 
-export const STOPPED = new Error('TreeTutor stopped.');
+export const STOPPED = new Error('Rabbithole stopped.');
 const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
 
 // A crash before commit restores staged files; a crash after commit finishes removing them.

@@ -1,4 +1,4 @@
-"""TreeTutor math building blocks, staged privately as kit.py beside each cut."""
+"""Rabbithole math building blocks, staged privately as kit.py beside each cut."""
 
 import json
 from math import sin, cos

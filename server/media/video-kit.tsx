@@ -1,4 +1,4 @@
-// TreeTutor video kit: copied beside each generated composition as ./kit. Building blocks only, no scene templates.
+// Rabbithole video kit: copied beside each generated composition as ./kit. Building blocks only, no scene templates.
 // Fixed dark-paper identity (docs/video-quality-spec.md); inks are the Paperback dark series values.
 import type { CSSProperties, ReactNode } from 'react';
 import {

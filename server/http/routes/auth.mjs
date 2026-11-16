@@ -8,7 +8,7 @@ export async function authRoutes(req, res, url, ctx) {
     } catch {
       res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end(
-        'ChatGPT sign-in failed or was declined. Return to TreeTutor and continue with ChatGPT to retry. Your saved trees are available.',
+        'ChatGPT sign-in failed or was declined. Return to Rabbithole and continue with ChatGPT to retry. Your saved trees are available.',
       );
     }
     return true;

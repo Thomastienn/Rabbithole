@@ -30,7 +30,7 @@ const scripts = readdirSync(import.meta.dirname)
   )
   .sort();
 if (spawnSync('npm', ['run', 'build'], { stdio: 'inherit' }).status !== 0) process.exit(1);
-const logs = mkdtempSync(join(tmpdir(), 'treetutor-verify-'));
+const logs = mkdtempSync(join(tmpdir(), 'rabbithole-verify-'));
 const jobs = Math.max(
   1,
   Number(process.env.VERIFY_JOBS) || Math.min(4, availableParallelism() >> 1),

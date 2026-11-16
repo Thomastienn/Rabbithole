@@ -8,7 +8,7 @@ import { createApp } from '../../server/app.mjs';
 import { compacted } from '../support/branch-first.mjs';
 
 test('sibling branches interleave independent saved turns while another tree submits', async () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-interleaving-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-interleaving-')), 'trees.sqlite');
   const store = new Store(path);
   const turns = new Map();
   const app = createApp({
@@ -28,7 +28,7 @@ test('sibling branches interleave independent saved turns while another tree sub
   const post = (id, text) =>
     fetch(`${origin}/api/trees/${id}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify({ text }),
     });
   const get = async (id) => (await fetch(`${origin}/api/trees/${id}`)).json();
@@ -97,7 +97,7 @@ test('sibling branches interleave independent saved turns while another tree sub
 });
 
 test('branch validates exact UTF-16 anchors, saves atomically, inherits model and stays isolated after reopen', async () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-branch-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-branch-')), 'trees.sqlite');
   const store = new Store(path);
   let fail = false,
     captured;
@@ -128,7 +128,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
   const post = (body) =>
     fetch(`${origin}/api/trees/${parent.id}/branches`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   try {
@@ -149,7 +149,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
     const stream = await (
       await fetch(`${origin}/api/trees/${orphan.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ text: body.question }),
       })
     ).text();
@@ -157,7 +157,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
     assert.equal(store.tree(orphan.id).messages.at(-1).status, 'failed');
     await fetch(`${origin}/api/trees/${parent.id}/delete`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify({ conversation: orphan.id }),
     });
     assert.equal(store.list().length, 1);
@@ -193,7 +193,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
     await (
       await fetch(`${origin}/api/trees/${child.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify({ text: body.question }),
       })
     ).text();
@@ -219,7 +219,7 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
 });
 
 test('saved overview metadata preserves nested passage connections without transcripts or inherited context', async () => {
-  const path = join(mkdtempSync(join(tmpdir(), 'treetutor-overview-')), 'trees.sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-overview-')), 'trees.sqlite');
   let store = new Store(path);
   try {
     const root = store.create('Root', 'codex');

@@ -31,7 +31,7 @@ addEventListener('message', (event) => {
       .filter(([k, v]) => /^--[\w-]+$/.test(k) && typeof v === 'string' && !/[;{}<]/.test(v))
       .map(([k, v]) => `${k}:${v}`);
     tokens.textContent = `:root{color-scheme:${data.scheme};${rules.join(';')}}`;
-    dispatchEvent(new Event('treetutor-theme'));
+    dispatchEvent(new Event('rabbithole-theme'));
   }
   if (data?.type === 'render' && typeof data.source === 'string' && !complete) {
     rendered = true;

@@ -20,7 +20,7 @@ test('a malformed video block the learner asked for becomes a visible failed vid
         if (tree.instructions.startsWith('You plan')) workers.push(JSON.parse(text));
         return complete(emit, videoResponse(tree));
       }
-      complete(emit, 'Sure.\n```treetutor-video\n' + block);
+      complete(emit, 'Sure.\n```rabbithole-video\n' + block);
     },
   };
   const env = await open(provider);
@@ -54,7 +54,7 @@ test('a malformed video block the learner asked for becomes a visible failed vid
       const stream = await (
         await env.post(`/api/trees/${tree.id}/messages`, { text: request })
       ).text();
-      assert.ok(!stream.includes('treetutor-video'));
+      assert.ok(!stream.includes('rabbithole-video'));
       const [failed] = (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts;
       assert.equal(failed.kind, 'video');
       assert.equal(failed.status, 'failed');
@@ -109,7 +109,7 @@ test('mixed and duplicate video blocks each leave a failed artifact of their own
       ['video', 'video'],
     ]) {
       blocks = kinds
-        .map((kind) => `\n\`\`\`treetutor-${kind}\n${JSON.stringify(task)}\n\`\`\``)
+        .map((kind) => `\n\`\`\`rabbithole-${kind}\n${JSON.stringify(task)}\n\`\`\``)
         .join('');
       const tree = env.store.create('Multiple requests', 'codex');
       const stream = await (
@@ -119,7 +119,7 @@ test('mixed and duplicate video blocks each leave a failed artifact of their own
       ).text();
       const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
       assert.equal(saved.messages.at(-1).text, 'Visible answer.');
-      assert.doesNotMatch(stream, /treetutor-(diagram|video)/);
+      assert.doesNotMatch(stream, /rabbithole-(diagram|video)/);
       assert.deepEqual(
         saved.artifacts.map((a) => [a.kind, a.status]),
         kinds.map((kind) => [kind === 'diagram' ? 'mermaid' : kind, 'failed']),
@@ -144,7 +144,7 @@ test('provider failure and learner Stop preserve legacy diagram request failures
       emit({
         type: 'item',
         item: 'answer',
-        text: `Saved text.\n\`\`\`treetutor-diagram\n${JSON.stringify(task)}\n\`\`\``,
+        text: `Saved text.\n\`\`\`rabbithole-diagram\n${JSON.stringify(task)}\n\`\`\``,
       });
       entered?.();
       if (mode === 'throw') throw new Error('private provider failure');

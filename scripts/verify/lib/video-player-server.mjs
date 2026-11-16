@@ -68,7 +68,7 @@ if (process.argv[2] === '--serve') {
       done(
         emit,
         /video/i.test(text)
-          ? 'Here is how Peterson fits.\n\n```treetutor-video\n' +
+          ? 'Here is how Peterson fits.\n\n```rabbithole-video\n' +
               JSON.stringify(task) +
               '\n```\n\nThen the winners advance.'
           : 'Continuing elsewhere.',

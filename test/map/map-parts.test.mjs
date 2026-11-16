@@ -72,7 +72,7 @@ test('conversation previews keep every row, accessible message jumps, source-row
   const box = container.querySelector('.conversation-box');
   assert.equal(box.dataset.focused, 'true');
   assert.equal(box.dataset.active, 'true');
-  assert.equal(box.style.getPropertyValue('--ink'), 'var(--treetutor-paper)');
+  assert.equal(box.style.getPropertyValue('--ink'), 'var(--rabbithole-paper)');
   assert.equal(container.querySelector('h2').style.viewTransitionName, 'conversation');
   assert.equal(container.querySelector('.activity-dot[role=status]').textContent, 'Responding');
   const rows = [...box.querySelectorAll('.node-message')];
@@ -229,7 +229,7 @@ test('fold stubs, source reveal and latest-failed-only Retry use distinct contro
   assert.deepEqual(opens[0], ['parent', { messageId: 'answer', start: 2, end: 7, text: 'Roots' }]);
   assert.equal(
     container.querySelector('.conversation-box').style.getPropertyValue('--ink'),
-    'var(--treetutor-ink-2)',
+    'var(--rabbithole-ink-2)',
   );
   assert.equal(container.querySelector('.node-status').dataset.status, 'failed');
   const retry = container.querySelector('.node-retry');
@@ -351,7 +351,7 @@ test('legend exposes trunk/family labels, accessible focus target and ink variab
   );
   assert.equal(
     legend.querySelector('li:last-child').style.getPropertyValue('--ink'),
-    'var(--treetutor-ink-1)',
+    'var(--rabbithole-ink-1)',
   );
   assert.ok(
     [...legend.querySelectorAll('.contents-dot')].every(

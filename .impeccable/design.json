@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-11-13T08:52:06+00:00",
-  "title": "Design System: TreeTutor",
+  "title": "Design System: Rabbithole",
   "extensions": {
     "colorMeta": {
       "leaf-action": {
@@ -408,12 +408,12 @@
       },
       {
         "name": "current-volume-ring",
-        "value": "0 0 0 3px var(--color-background-body), 0 0 0 5px var(--treetutor-paper)",
+        "value": "0 0 0 3px var(--color-background-body), 0 0 0 5px var(--rabbithole-paper)",
         "purpose": "Selection ring on the current Library volume; not elevation."
       },
       {
         "name": "composer-focus",
-        "value": "0 0 0 1px var(--treetutor-paper)",
+        "value": "0 0 0 1px var(--rabbithole-paper)",
         "purpose": "Composer focus ring alongside a paper border."
       }
     ],
@@ -486,7 +486,7 @@
       "kind": "nav",
       "refersTo": "band",
       "description": "Moss band: wordmark, tree switcher, view tabs, tools.",
-      "html": "<nav class=\"ds-band\"><span class=\"ds-mark\">TreeTutor</span><button class=\"ds-switch\">How do fungi trade?</button><button class=\"ds-tab\" aria-current=\"page\">Read</button><button class=\"ds-tab\">Map</button><button class=\"ds-tab\">Knowledge</button><button class=\"ds-tab\">Videos</button><button class=\"ds-new\">New chat</button></nav>",
+      "html": "<nav class=\"ds-band\"><span class=\"ds-mark\">Rabbithole</span><button class=\"ds-switch\">How do fungi trade?</button><button class=\"ds-tab\" aria-current=\"page\">Read</button><button class=\"ds-tab\">Map</button><button class=\"ds-tab\">Knowledge</button><button class=\"ds-tab\">Videos</button><button class=\"ds-new\">New chat</button></nav>",
       "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-band { display:flex; align-items:center; gap:8px; height:56px; padding:0 16px; background:var(--moss); color:var(--band-ink); font:600 14px/1 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; } .ds-mark { font-size:20px; font-weight:400; letter-spacing:-.01em; margin-inline-end:8px; } .ds-band button { height:32px; padding:0 12px; border:0; border-radius:3px; background:none; color:var(--band-ink); font:inherit; cursor:pointer; } .ds-switch { box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--band-ink) 22%, transparent); margin-inline-end:16px; } .ds-band .ds-tab { color:var(--band-muted); } .ds-band .ds-tab:hover { color:var(--band-ink); } .ds-band .ds-tab[aria-current=page] { background:var(--band-ink); color:var(--moss); } .ds-new { margin-inline-start:auto; box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--band-ink) 35%, transparent); } .ds-band button:focus-visible { outline:2px solid var(--band-ink); outline-offset:2px; }"
     },
     {

@@ -7,7 +7,7 @@ import { ensurePython } from './python-setup.mjs';
 
 if (Number(process.versions.node.split('.')[0]) < 24) {
   console.error(
-    `TreeTutor requires Node 24 or newer; found ${process.versions.node}. Install Node 24+ from https://nodejs.org/, reopen your terminal, then run npm start.`,
+    `Rabbithole requires Node 24 or newer; found ${process.versions.node}. Install Node 24+ from https://nodejs.org/, reopen your terminal, then run npm start.`,
   );
   process.exit(1);
 }
@@ -58,7 +58,7 @@ try {
     );
   }
   if (!buildIsCurrent()) {
-    console.log('Building TreeTutor: built assets are missing or stale.');
+    console.log('Building Rabbithole: built assets are missing or stale.');
     await npm(['run', 'build']);
   }
   process.exitCode = await run(process.execPath, ['server/main.mjs', ...process.argv.slice(2)]);

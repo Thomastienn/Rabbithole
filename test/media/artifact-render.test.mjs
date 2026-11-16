@@ -31,7 +31,7 @@ test('HTTP/SSE artifacts drive client states, owned map metadata and exact ancho
       emit({
         type: 'item',
         item: 'answer',
-        text: tree.id ? text + '\n```treetutor-diagram\n' + JSON.stringify(task) + '\n```' : source,
+        text: tree.id ? text + '\n```rabbithole-diagram\n' + JSON.stringify(task) + '\n```' : source,
       });
       emit({ type: 'status', status: 'completed' });
     },
@@ -50,7 +50,7 @@ test('HTTP/SSE artifacts drive client states, owned map metadata and exact ancho
     const post = (url, body) =>
       fetch(origin + url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
         body: JSON.stringify(body),
       });
     const response = await post(`/api/trees/${root.id}/messages`, { text: 'Explain rounds' });

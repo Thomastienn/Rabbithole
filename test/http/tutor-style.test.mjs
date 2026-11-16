@@ -32,7 +32,7 @@ test('tutor style saves, normalizes empty or default text to null, restores and 
   const post = (path, body) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const save = async (style) => (await post('/api/settings/tutor-style', { style })).json();

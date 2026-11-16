@@ -8,7 +8,7 @@ import { PassThrough } from 'node:stream';
 import { ensureSearxng, SEARXNG_SOURCE } from '../../scripts/searxng-setup.mjs';
 import { managedSearxng } from '../../server/searxng.mjs';
 
-const directory = () => mkdtempSync(join(tmpdir(), 'treetutor-searxng-unit-'));
+const directory = () => mkdtempSync(join(tmpdir(), 'rabbithole-searxng-unit-'));
 const quiet = () => {};
 
 test('first setup uses dedicated venv and pinned source; settings enable JSON and private binding', async () => {
@@ -191,7 +191,7 @@ test('runtime reports child readiness, stops with app, and updates status if chi
     const { child, timers, options } = runtime();
     const starting = managedSearxng('/data', options);
     await Promise.resolve();
-    child.stdout.write('engine log\nTREETUTOR_SEARXNG=41234\n');
+    child.stdout.write('engine log\nRABBITHOLE_SEARXNG=41234\n');
     const service = await starting;
     assert.deepEqual(service.status(), { ready: true, url: 'http://127.0.0.1:41234', error: null });
     assert.equal(timers.size, 0);
@@ -250,7 +250,7 @@ test('shutdown escalates an unresponsive child; cancelled setup never launches a
   };
   const starting = managedSearxng('/data', options);
   await Promise.resolve();
-  child.stdout.write('TREETUTOR_SEARXNG=41234\n');
+  child.stdout.write('RABBITHOLE_SEARXNG=41234\n');
   const service = await starting;
   const stopping = service.stop();
   timers.get(5000)();

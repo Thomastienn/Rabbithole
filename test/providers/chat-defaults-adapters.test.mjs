@@ -56,7 +56,7 @@ test('HTTP settings and conversation effort reach real Claude/Codex adapters and
   const post = (path, body = {}) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const previous = process.env.CLAUDE_CODE_EFFORT_LEVEL;

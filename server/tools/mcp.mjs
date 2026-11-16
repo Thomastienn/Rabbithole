@@ -24,7 +24,7 @@ export function toolMcp() {
       maxRequestBodySize: 1024 * 1024,
     });
     const mcp = new Server(
-      { name: 'TreeTutor', version: '1.0.0' },
+      { name: 'Rabbithole', version: '1.0.0' },
       { capabilities: { tools: {} } },
     );
     const close = () => {

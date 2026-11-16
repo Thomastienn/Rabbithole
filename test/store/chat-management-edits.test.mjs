@@ -142,7 +142,7 @@ test('rename and delete enforce CSRF, origin, content type and root ownership wi
     const before = snapshot(env.store);
     for (const action of ['rename', 'delete'])
       for (const headers of [
-        { 'X-TreeTutor-CSRF': '' },
+        { 'X-Rabbithole-CSRF': '' },
         { Origin: 'https://foreign.example' },
         { 'Sec-Fetch-Site': 'cross-site' },
         { 'Content-Type': 'text/plain' },

@@ -1,6 +1,6 @@
 /* Map nodes, edges and fold stubs. Files load in main.tsx order, which is the cascade order. */
 .conversation-box {
-  width: var(--treetutor-map-node-width);
+  width: var(--rabbithole-map-node-width);
   border: thin solid var(--color-border);
   border-radius: var(--radius-element);
   background: var(--color-background-surface);
@@ -11,7 +11,7 @@
   border-color: var(--color-text-secondary);
 }
 .conversation-box[data-focused='true'] {
-  outline: var(--focus-outline-width) solid var(--treetutor-paper);
+  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
   outline-offset: var(--focus-outline-offset);
 }
 .conversation-box .node-band {
@@ -25,7 +25,7 @@
   color: var(--ink-on);
 }
 .conversation-box .node-band :focus-visible {
-  outline-color: var(--treetutor-paper);
+  outline-color: var(--rabbithole-paper);
   outline-offset: var(--spacing-2);
 }
 .conversation-box .node-band .activity-dot,
@@ -117,7 +117,7 @@
 }
 .react-flow__edge:focus-visible .react-flow__edge-path {
   stroke: var(--focus-outline-color);
-  stroke-width: var(--treetutor-branch-focus-width);
+  stroke-width: var(--rabbithole-branch-focus-width);
 }
 .conversation-box button {
   height: auto;
@@ -179,7 +179,7 @@
 .fold-stub::before {
   content: '';
   width: var(--spacing-5);
-  border-top: var(--treetutor-branch-width) dashed var(--ink);
+  border-top: var(--rabbithole-branch-width) dashed var(--ink);
 }
 .fold-stub button {
   background: var(--color-background-body);
@@ -189,16 +189,16 @@
   color: var(--color-text-secondary);
 }
 .react-flow__edge-path {
-  stroke: var(--ink, var(--treetutor-branch-color));
-  stroke-width: var(--treetutor-branch-width);
+  stroke: var(--ink, var(--rabbithole-branch-color));
+  stroke-width: var(--rabbithole-branch-width);
   stroke-linecap: round;
 }
 .react-flow__edge.branch-focused .react-flow__edge-path {
   stroke: var(--ink, var(--color-accent));
-  stroke-width: var(--treetutor-branch-focus-width);
+  stroke-width: var(--rabbithole-branch-focus-width);
 }
 .react-flow__edge-path.branch-new {
-  animation: branch-draw var(--treetutor-branch-draw-duration) ease-out;
+  animation: branch-draw var(--rabbithole-branch-draw-duration) ease-out;
 }
 @keyframes branch-draw {
   from {

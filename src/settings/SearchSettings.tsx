@@ -68,7 +68,7 @@ export default function SearchSettings({
   return (
     <Section
       title="Search"
-      description="Web search and image finding use SearXNG. Starts with the instance TreeTutor runs on this computer; you can use your own instead. Search tools are hidden while it is unavailable."
+      description="Web search and image finding use SearXNG. Starts with the instance Rabbithole runs on this computer; you can use your own instead. Search tools are hidden while it is unavailable."
     >
       <TextInput
         label="SearXNG URL"

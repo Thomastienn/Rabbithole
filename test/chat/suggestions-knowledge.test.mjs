@@ -215,7 +215,7 @@ test('Knowledge and tagged passage corrections validate over HTTP, persist, and 
     404,
   );
   assert.equal(
-    (await env.request('/api/graph/correct', { name, kind: 'known' }, { 'X-TreeTutor-CSRF': '' }))
+    (await env.request('/api/graph/correct', { name, kind: 'known' }, { 'X-Rabbithole-CSRF': '' }))
       .status,
     403,
   );
@@ -344,7 +344,7 @@ test('Knowledge merge combines cross-tree topics, evidence, links and latest cor
     404,
   );
   assert.equal(
-    (await env.request('/api/graph/merge', { from: mutex, into: from }, { 'X-TreeTutor-CSRF': '' }))
+    (await env.request('/api/graph/merge', { from: mutex, into: from }, { 'X-Rabbithole-CSRF': '' }))
       .status,
     403,
   );

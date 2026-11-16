@@ -238,7 +238,7 @@ export default function ChatPage({
       <HStack gap={0} style={{ flex: 1, minHeight: 0 }} className="workspace">
         <main className="conversation" hidden={tab !== 'learning'} aria-label="Learning workspace">
           <Heading level={1} className="sr-only">
-            TreeTutor
+            Rabbithole
           </Heading>
           {error && (
             <section role="alert" className="failure-banner workspace-failure">

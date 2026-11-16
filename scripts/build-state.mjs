@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const stamp = 'dist/.treetutor-build.json';
+const stamp = 'dist/.rabbithole-build.json';
 function fingerprint(paths) {
   const hash = createHash('sha256');
   function visit(path) {

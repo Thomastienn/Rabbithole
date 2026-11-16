@@ -32,7 +32,7 @@ test('the chat prompt lists the tree resources and a reply citing one shows as i
   const post = (path, body) =>
     fetch(origin + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TreeTutor-CSRF': csrf },
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
       body: JSON.stringify(body),
     });
   const tree = await (await post('/api/trees', {})).json();

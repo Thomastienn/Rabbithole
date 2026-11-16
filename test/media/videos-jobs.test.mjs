@@ -95,7 +95,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     const stream = await (
       await env.post(`/api/trees/${child.id}/messages`, { text: request })
     ).text();
-    assert.ok(!stream.includes('treetutor-video'));
+    assert.ok(!stream.includes('rabbithole-video'));
     const ready = await until(() =>
       env.store.tree(child.id).artifacts.find((a) => a.status === 'ready'),
     );

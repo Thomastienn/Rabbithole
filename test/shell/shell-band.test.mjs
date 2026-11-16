@@ -95,7 +95,7 @@ test('desktop and narrow bands keep control order, current views, drawer actions
   await act(async () => update({ mobile: true, drawer: false, tab: 'Map', failed: false }));
   assert.deepEqual([...band().querySelectorAll('button, .band-mark')].map(name), [
     'Contents',
-    'TreeTutor',
+    'Rabbithole',
     'Hide top bar',
     'Search learning trees',
     'New chat',
@@ -192,7 +192,7 @@ test('focus mode survives a shell remount and ignores text entry, alternate chor
   assert.ok(container.querySelector('.shell-band'));
   await chord(container);
   assert.equal(container.querySelector('.shell-band'), null);
-  assert.equal(localStorage.getItem('treetutor.focus-mode'), 'on');
+  assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'on');
   const zone = container.querySelector('.focus-hot-zone');
   const restore = button(zone, 'Show top bar');
   assert.equal(zone.dataset.revealed, 'false', 'hidden until hovered or focused');
@@ -221,5 +221,5 @@ test('focus mode survives a shell remount and ignores text entry, alternate chor
   await act(async () => mount(false));
   await act(async () => mount(true));
   assert.ok(container.querySelector('.shell-band'));
-  assert.equal(localStorage.getItem('treetutor.focus-mode'), 'off');
+  assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
 });

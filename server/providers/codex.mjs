@@ -62,7 +62,7 @@ export class Codex {
         'skills.bundled.enabled': false,
         'features.skill_search': false,
         ...(this.toolSession.mcp && {
-          'mcp_servers.treetutor': {
+          'mcp_servers.rabbithole': {
             url: this.toolSession.mcp.url,
             http_headers: this.toolSession.mcp.headers,
             enabled_tools: this.toolSession.tools.map((t) => t.name),
@@ -115,7 +115,7 @@ export class Codex {
         child.stdin.write(
           JSON.stringify({
             id: message.id,
-            error: { code: -32601, message: 'Tools are unavailable in TreeTutor.' },
+            error: { code: -32601, message: 'Tools are unavailable in Rabbithole.' },
           }) + '\n',
         );
       } else for (const listener of this.listeners) listener(message);
@@ -128,12 +128,12 @@ export class Codex {
         reject(new Error('Codex disconnected. Your saved history is available; try again.'));
       }
       this.pending.clear();
-      for (const listener of this.listeners) listener({ method: 'treetutor/disconnected' });
+      for (const listener of this.listeners) listener({ method: 'rabbithole/disconnected' });
     };
     child.on('error', fail);
     child.on('exit', fail);
     this.initialized = this.rpc('initialize', {
-      clientInfo: { name: 'TreeTutor', title: 'TreeTutor', version: '0.1.0' },
+      clientInfo: { name: 'Rabbithole', title: 'Rabbithole', version: '0.1.0' },
     }).then(() => {
       child.stdin.write(JSON.stringify({ method: 'initialized' }) + '\n');
     });
@@ -292,7 +292,7 @@ export class Codex {
         }, 300000);
         const listener = (message) => {
           const p = message.params;
-          if (message.method === 'treetutor/disconnected')
+          if (message.method === 'rabbithole/disconnected')
             return finish(new Error('Codex disconnected. Partial reply saved; try again.'));
           if (p?.threadId !== threadId) return;
           if (!turnId) {
@@ -379,6 +379,6 @@ export class Codex {
     }
     this.pending.clear();
     if (child)
-      for (const listener of this.listeners) listener({ method: 'treetutor/disconnected' });
+      for (const listener of this.listeners) listener({ method: 'rabbithole/disconnected' });
   }
 }
