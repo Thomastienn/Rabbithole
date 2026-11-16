@@ -10,6 +10,7 @@ import * as fiber from '@react-three/fiber';
 import * as remotionThree from '@remotion/three';
 import * as kit from '../../server/media/video-kit';
 import LiveVideo, { liveDuration, type LiveCut } from './liveVideo';
+import { Turntable } from './turntable';
 import '@fontsource/archivo/400.css';
 import '@fontsource/archivo/500.css';
 import '@fontsource/archivo/600.css';
@@ -89,27 +90,40 @@ const inks = (colors: Record<string, string>) =>
     ]),
   );
 
-// A library piece previewed alone and still (pieces never animate themselves), centred on the ground.
-function showPiece(code: string, name: string, colors: Record<string, string>) {
+// A library piece previewed alone and still (pieces never animate themselves), centred on the ground;
+// its 3D form, when sent, turns beside it.
+function showPiece(code: string, name: string, colors: Record<string, string>, code3d?: string) {
   pieces = {};
   const Piece = load(code, inks(colors))?.[name] as
     React.ComponentType<{ x: number; y: number; scale: number }> | undefined;
+  const Solid = code3d
+    ? (load(code3d, inks(colors))?.[`${name}3D`] as React.ComponentType | undefined)
+    : undefined;
   const Stage = () => (
     <remotion.AbsoluteFill style={{ background: kit.palette.ground }}>
       {Piece && <Piece x={kit.frame.width / 2} y={kit.frame.height / 2} scale={1} />}
     </remotion.AbsoluteFill>
   );
   root.render(
-    <Player
-      component={Stage}
-      durationInFrames={1}
-      compositionWidth={kit.frame.width}
-      compositionHeight={kit.frame.height}
-      fps={30}
-      errorFallback={() => null}
-      acknowledgeRemotionLicense
-      style={{ width: '100%', height: '100%' }}
-    />,
+    <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Player
+          component={Stage}
+          durationInFrames={1}
+          compositionWidth={kit.frame.width}
+          compositionHeight={kit.frame.height}
+          fps={30}
+          errorFallback={() => null}
+          acknowledgeRemotionLicense
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
+      {Solid && (
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Turntable Piece={Solid} label={`${name} in 3D, drag to turn`} />
+        </div>
+      )}
+    </div>,
   );
 }
 
@@ -120,7 +134,12 @@ addEventListener('message', (event) => {
     typeof event.data.code === 'string' &&
     typeof event.data.name === 'string'
   )
-    return showPiece(event.data.code, event.data.name, event.data.paletteRoles ?? {});
+    return showPiece(
+      event.data.code,
+      event.data.name,
+      event.data.paletteRoles ?? {},
+      typeof event.data.code3d === 'string' ? event.data.code3d : undefined,
+    );
   if (event.data?.type !== 'cuts' || !Array.isArray(event.data.cuts)) return;
   const roles = inks(event.data.paletteRoles ?? {});
   // Exhibits arrive as data; an image's or clip's blob URL is made once and kept for the frame's life.

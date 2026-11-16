@@ -81,6 +81,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         source3d,
         improved,
         code: compileCut(source),
+        code3d: source3d ? compileCut(source3d) : null,
       });
     }
     // Media is located only from the server-issued artifact id, never from a generated path or URL.

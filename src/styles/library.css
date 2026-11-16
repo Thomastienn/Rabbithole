@@ -247,6 +247,11 @@
 .piece-detail .video-frame {
   max-width: 960px;
 }
+/* The 2D stage and the 3D turntable side by side, each 16:9. */
+.piece-detail .video-frame.piece-forms {
+  aspect-ratio: 32 / 9;
+  max-width: 1280px;
+}
 .piece-detail > .astryx-button {
   align-self: start;
 }

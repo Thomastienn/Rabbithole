@@ -104,6 +104,8 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
         roles: ['winner', 'loser'],
         source: 'export function Winner() {}',
         code: 'exports.Winner = 1',
+        source3d: null,
+        code3d: null,
       };
     assert.fail(path);
   };
@@ -137,10 +139,13 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
     {
       type: 'piece',
       code: 'exports.Winner = 1',
+      code3d: null,
       name: 'Winner',
       paletteRoles: { winner: 'amber', loser: 'leaf' },
     },
   ]);
+  assert.match(container.textContent, /2D only/, 'a 2D-only piece says so plainly');
+  assert.doesNotMatch(frame.className, /piece-forms/, 'one form fills the frame');
   const source = container.querySelector('pre');
   assert.match(source.textContent, /export function Winner\(\) \{\}/);
   assert.equal(
@@ -153,4 +158,54 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
     calls.every(([, body]) => body === undefined),
     'only reads, no writes',
   );
+});
+
+test('opening a piece with a 3D form sends both forms to the isolated player frame', async (t) => {
+  const row = { id: 'p1', name: 'Winner', look: 'A gold trophy', improved: 1, videos: [] };
+  const api = async (path, body) => {
+    assert.equal(body, undefined, 'only reads, no writes');
+    if (list(path)) return { total: 1, pieces: [row] };
+    if (path === '/api/pieces/p1')
+      return {
+        ...row,
+        roles: ['winner'],
+        source: 'export function Winner() {}',
+        code: 'exports.Winner = 1',
+        source3d: 'export function Winner3D() { return <group />; }',
+        code3d: 'exports.Winner3D = 1',
+      };
+    assert.fail(path);
+  };
+  const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+  t.after(cleanup);
+  await settle(act);
+  await act(async () => container.querySelector('[aria-label="Open Winner"]').click());
+  await settle(act);
+  const frames = container.querySelectorAll('iframe');
+  assert.equal(frames.length, 1, 'both forms share one frame');
+  const [frame] = frames;
+  assert.deepEqual(
+    [frame.getAttribute('src'), frame.getAttribute('sandbox'), frame.className],
+    ['/player.html', 'allow-scripts', 'video-frame video-live piece-forms'],
+  );
+  const posted = [];
+  frame.contentWindow.postMessage = (data) => posted.push(data);
+  await act(async () => frame.dispatchEvent(new window.Event('load')));
+  assert.deepEqual(posted, [
+    {
+      type: 'piece',
+      code: 'exports.Winner = 1',
+      code3d: 'exports.Winner3D = 1',
+      name: 'Winner',
+      paletteRoles: { winner: 'amber' },
+    },
+  ]);
+  assert.doesNotMatch(container.textContent, /2D only/);
+  assert.deepEqual(
+    [...container.querySelectorAll('pre')].map((p) => /Winner3D/.test(p.textContent)),
+    [false, true],
+    'both sources, read-only',
+  );
+  assert.match(container.textContent, /3D source \(read-only\)/);
+  assert.equal(container.querySelector('textarea, [contenteditable=true]'), null);
 });

@@ -15,7 +15,13 @@ type PieceRow = {
   improved: number;
   videos: { id: string; title: string }[];
 };
-type Piece = PieceRow & { roles: string[]; source: string; code: string };
+type Piece = PieceRow & {
+  roles: string[];
+  source: string;
+  code: string;
+  source3d: string | null;
+  code3d: string | null;
+};
 
 // Pieces colour only through roles; the preview lends each role a house hue in order.
 const HUES = ['amber', 'leaf', 'rust', 'lichen'];
@@ -91,7 +97,16 @@ export default function PieceLibrary({
             <Text color="secondary">{open.look}</Text>
           </VStack>
           <PiecePreview piece={open} />
+          {!open.source3d && <Text color="secondary">2D only: this piece has no 3D form.</Text>}
           <CodeBlock code={open.source} language="tsx" title="Source (read-only)" hasLineNumbers />
+          {open.source3d && (
+            <CodeBlock
+              code={open.source3d}
+              language="tsx"
+              title="3D source (read-only)"
+              hasLineNumbers
+            />
+          )}
         </VStack>
       ) : (
         <VStack gap={3}>
@@ -178,7 +193,7 @@ export default function PieceLibrary({
   );
 }
 
-// The same opaque-origin, network-denied player frame live videos play in; the piece arrives as data.
+// The same opaque-origin, network-denied player frame live videos play in; both forms arrive as data.
 function PiecePreview({ piece }: { piece: Piece }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
@@ -188,6 +203,7 @@ function PiecePreview({ piece }: { piece: Piece }) {
       {
         type: 'piece',
         code: piece.code,
+        code3d: piece.code3d,
         name: piece.name,
         paletteRoles: Object.fromEntries(piece.roles.map((r, i) => [r, HUES[i % HUES.length]])),
       },
@@ -197,7 +213,7 @@ function PiecePreview({ piece }: { piece: Piece }) {
   return (
     <iframe
       ref={frame}
-      className="video-frame video-live"
+      className={`video-frame video-live${piece.code3d ? ' piece-forms' : ''}`}
       src="/player.html"
       sandbox="allow-scripts"
       title={`Preview: ${piece.name}`}
