@@ -67,7 +67,9 @@ export default function MapView({
             trees={state.trees}
             previews={previews}
             active={state.active}
-            open={(id, source, message) => void openConversation(id, source, undefined, message)}
+            open={(id, source, message, artifact) =>
+              void openConversation(id, source, artifact, message)
+            }
             retry={retryFromMap}
             save={savePositions}
             saveViewport={saveViewport}

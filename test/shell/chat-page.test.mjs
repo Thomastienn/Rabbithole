@@ -27,9 +27,10 @@ const tree = {
 async function mount(
   t,
   trees,
-  { mobile = false, contents = 'open', focus = 'off', vim = false } = {},
+  { mobile = false, contents = 'open', focus = 'off', vim = false, artifacts = [] } = {},
 ) {
   const calls = [];
+  const scrolls = [];
   const saved = globalThis.fetch;
   globalThis.fetch = async (path) => {
     calls.push(path);
@@ -45,8 +46,10 @@ async function mount(
               : path === '/api/videos'
                 ? []
                 : path === '/api/trees/t1'
-                  ? tree
-                  : {};
+                  ? { ...tree, artifacts }
+                  : path.startsWith('/api/previews?') && artifacts.length
+                    ? { t1: [{ ...tree.messages[1], artifacts }] }
+                    : {};
     return { ok: true, json: async () => body };
   };
   const { default: ChatPage } = await import('../../src/shell/ChatPage.tsx');
@@ -55,6 +58,9 @@ async function mount(
     h(ChatPage, { appearance: 'light', setAppearance() {}, theme: 'neutral', setTheme() {} }),
     (w) => {
       stubs = ui(w, { mobile });
+      w.Element.prototype.scrollIntoView = function (options) {
+        scrolls.push({ element: this, options });
+      };
       w.localStorage.setItem('rabbithole.contents', contents);
       w.localStorage.setItem('rabbithole.focus-mode', focus);
       w.localStorage.setItem('rabbithole.vim', vim ? 'on' : 'off');
@@ -72,7 +78,7 @@ async function mount(
       stubs.frames();
     });
   await settle();
-  return { ...page, calls, settle };
+  return { ...page, calls, settle, scrolls };
 }
 
 const summary = {
@@ -124,6 +130,43 @@ test('a saved tree opens its conversation with the thread, title and map', async
   assert.match(container.querySelector('.chat-reply').textContent, /Thin threads\./);
   assert.ok(container.querySelector('#learning-tree-map'));
   assert.ok(button(container, 'Copy tutor reply 1'));
+});
+
+test('map media chips open focused chat, focus and center the chosen artifact', async (t) => {
+  const artifacts = [
+    {
+      id: 'visual:1',
+      kind: 'visual',
+      title: 'Reach',
+      status: 'ready',
+      source: '<p>Roots</p>',
+      position: 0,
+    },
+    { id: 'diagram:2', kind: 'mermaid', title: 'Trade loop', status: 'pending' },
+    { id: 'video:3', kind: 'video', title: 'Trade narrated', status: 'ready', available: false },
+  ].map((a) => ({ conversation: 't1', message: 'a1', description: a.title, source: null, ...a }));
+  const { container, act, settle, scrolls } = await mount(t, [summary], { artifacts });
+  for (const artifact of artifacts) {
+    await act(async () => button(container.querySelector('nav.sidebar'), 'Map').click());
+    const chip = [...container.querySelectorAll('.node-chip')].find(
+      (c) => c.dataset.artifact === artifact.id,
+    );
+    assert.ok(chip, artifact.kind);
+    await act(async () => {
+      chip.focus();
+      chip.click();
+    });
+    await settle();
+    const chat = container.querySelector('#focused-chat');
+    const target = [...chat.querySelectorAll('[data-artifact]')].find(
+      (a) => a.dataset.artifact === artifact.id,
+    );
+    assert.equal(chat.style.display, 'flex');
+    assert.ok(target, artifact.kind);
+    assert.ok(document.activeElement === target, `focus lands on ${artifact.kind}`);
+    assert.ok(scrolls.some((s) => s.element === target && s.options.block === 'center'));
+    assert.ok(scrolls.at(-1).element === target, 'scroll lands in chat, not the map chip');
+  }
 });
 
 test('the sidebar holds Contents on the reading and map views, and a map-view row opens the focused chat', async (t) => {

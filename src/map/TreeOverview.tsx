@@ -121,7 +121,7 @@ export default function TreeOverview({
   const callbacks = useRef({ open, retry, save });
   callbacks.current = { open, retry, save };
   const openNode = useCallback<Open>(
-    (id, source, message) => callbacks.current.open(id, source, message),
+    (id, source, message, artifact) => callbacks.current.open(id, source, message, artifact),
     [],
   );
   const retryNode = useCallback((id: string) => callbacks.current.retry(id), []);

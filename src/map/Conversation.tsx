@@ -15,6 +15,9 @@ import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
+import PhotoIcon from '@heroicons/react/24/outline/PhotoIcon';
+import RectangleStackIcon from '@heroicons/react/24/outline/RectangleStackIcon';
+import FilmIcon from '@heroicons/react/24/outline/FilmIcon';
 import type { CSSProperties } from 'react';
 import type { Summary, Preview } from './TreeOverview';
 import { inkStyle } from './treeList';
@@ -163,6 +166,8 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
         <VStack gap={1} className="node-preview">
           {preview.map((m) => {
             const sources = data.sources.filter((child) => child.messageId === m.id);
+            const artifacts =
+              m.artifacts?.filter((a) => a.kind !== 'visual' || a.status !== 'canceled') ?? [];
             return (
               <VStack
                 key={m.id}
@@ -222,25 +227,77 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                       }}
                     />
                   )}
-                {m.role === 'assistant' &&
-                  m.artifacts
-                    ?.filter((a) => a.kind !== 'visual' || a.status !== 'canceled')
-                    .map((a) => (
-                      <Text key={a.id} type="supporting" color="secondary">
-                        {a.kind === 'video' ? (
-                          `Video: ${a.title} · ${a.status === 'pending' ? 'creating…' : a.status === 'ready' ? (a.available === false ? 'unavailable' : 'ready') : a.status}`
-                        ) : (
-                          <>
-                            {a.kind === 'visual' ? 'Visual' : 'Diagram'}: {a.title}
-                            {a.status === 'pending'
-                              ? ' · creating…'
-                              : a.status === 'failed'
-                                ? ' · unavailable'
-                                : ''}
-                          </>
-                        )}
-                      </Text>
-                    ))}
+                {m.role === 'assistant' && !!artifacts.length && (
+                  <HStack
+                    gap={1}
+                    wrap="wrap"
+                    role="group"
+                    aria-label="Media in this reply"
+                    className="node-chips"
+                  >
+                    {artifacts.map((a) => {
+                      const kind =
+                        a.kind === 'visual' ? 'visual' : a.kind === 'video' ? 'video' : 'diagram';
+                      const unavailable =
+                        a.status === 'failed' || (a.status === 'ready' && a.available === false);
+                      const status =
+                        a.status === 'pending'
+                          ? 'creating'
+                          : (a.kind !== 'video' && a.status === 'failed') ||
+                              (a.status === 'ready' && a.available === false)
+                            ? 'unavailable'
+                            : a.status;
+                      const label = `Open ${kind} ${a.title}, ${status}`;
+                      const Icon = unavailable
+                        ? ExclamationTriangleIcon
+                        : a.kind === 'visual'
+                          ? PhotoIcon
+                          : a.kind === 'video'
+                            ? FilmIcon
+                            : RectangleStackIcon;
+                      return (
+                        <Button
+                          key={a.id}
+                          id={`media-${a.id}`}
+                          className="node-chip nodrag nopan"
+                          data-artifact={a.id}
+                          data-status={a.status}
+                          label={label}
+                          tooltip={label}
+                          variant="ghost"
+                          size="sm"
+                          icon={
+                            <Icon
+                              aria-hidden
+                              className={unavailable ? 'node-chip__error' : undefined}
+                            />
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            data.open(t.id, undefined, undefined, a.id);
+                          }}
+                        >
+                          <HStack gap={1} className="node-chip__content">
+                            <Text type="supporting" className="node-chip__title">
+                              {a.title}
+                            </Text>
+                            {(a.kind === 'video' ||
+                              a.status === 'pending' ||
+                              a.status === 'failed') && (
+                              <Text
+                                type="supporting"
+                                color="secondary"
+                                className="node-chip__status"
+                              >
+                                {status === 'creating' ? 'creating…' : status}
+                              </Text>
+                            )}
+                          </HStack>
+                        </Button>
+                      );
+                    })}
+                  </HStack>
+                )}
                 {m.role === 'assistant' && visualsReady(m.artifacts) && (
                   <Text type="supporting" color="secondary" className="node-visuals">
                     {visualsReady(m.artifacts)}

@@ -164,6 +164,59 @@
 .node-retry {
   align-self: flex-start;
 }
+.node-chips {
+  min-width: 0;
+}
+.node-message .node-chip {
+  max-width: 100%;
+  height: var(--spacing-6);
+  gap: var(--spacing-1);
+  padding: 0 var(--spacing-2);
+  border: 0;
+  border-radius: var(--radius-element);
+  background: var(--color-background-muted);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.node-chip:hover {
+  background: var(--color-overlay-hover);
+}
+.node-chip svg {
+  flex: none;
+  width: var(--font-size-base);
+  height: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+.node-chip svg.node-chip__error {
+  color: var(--color-text-error);
+}
+.node-chip__content {
+  min-width: 0;
+}
+.node-chip__title {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.node-chip__status {
+  flex: none;
+}
+.node-chip[data-status='pending'] .node-chip__status::before {
+  content: '';
+  display: inline-block;
+  width: calc(var(--spacing-1) * 1.5);
+  height: calc(var(--spacing-1) * 1.5);
+  margin-inline-end: var(--spacing-1);
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: pulse var(--duration-slow-max) ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .node-chip[data-status='pending'] .node-chip__status::before {
+    animation: none;
+  }
+}
 .node-message .react-flow__handle {
   right: calc(-1 * var(--spacing-3));
 }

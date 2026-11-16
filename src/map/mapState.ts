@@ -3,7 +3,7 @@ import type { ConversationNode } from './Conversation';
 import type { Box, Viewport } from './canvas';
 import { conversationAddresses } from './treeList.ts';
 
-export type Open = (id: string, source?: Source, message?: string) => void;
+export type Open = (id: string, source?: Source, message?: string, artifact?: string) => void;
 
 export const snippet = (text: string) => {
   const flat = text.replace(/\s+/g, ' ').trim();
