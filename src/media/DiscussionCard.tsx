@@ -319,9 +319,6 @@ export default function DiscussionCard({
                   />
                 }
               />
-              <Text type="supporting" color="secondary">
-                Enter to send · Asking in the conversation closes this discussion
-              </Text>
             </div>
           )}
         </>
