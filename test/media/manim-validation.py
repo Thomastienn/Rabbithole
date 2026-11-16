@@ -27,14 +27,11 @@ class Cut(HouseScene):
 
 
 class Validation(unittest.TestCase):
-    def test_stock_ids_and_loader_ban(self):
+    def test_stock_retired_and_loader_ban(self):
         code = source.replace("HouseScene,", "HouseScene, stockPiece as stock,")
         code += '\nstock("fluent-emoji:horse")'
-        offered = {**brief, "stock": {"fluent-emoji:horse": "stock-0.svg"}}
-        renderer.validate(code, offered)
-        for bad in [code, code.replace('"fluent-emoji:horse"', '"horse-3d"'), code.replace('"fluent-emoji:horse"', 'id')]:
-            with self.assertRaisesRegex(ValueError, "offered 2D"):
-                renderer.validate(bad, brief if bad == code else offered)
+        with self.assertRaisesRegex(ValueError, "stock pieces are retired"):
+            renderer.validate(code, {**brief, "stock": {"fluent-emoji:horse": "stock-0.svg"}})
         for name in ("SVGMobject", "ImageMobject"):
             with self.assertRaisesRegex(ValueError, "disallowed resource"):
                 renderer.validate(source + f'\nfrom kit import {name} as load\nload("horse.svg")', brief)

@@ -22,7 +22,7 @@ import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL } from './skills.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
-import { cutStock, stageCut } from './video-stage.mjs';
+import { stageCut } from './video-stage.mjs';
 
 const unfenced = (raw) => raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim();
 
@@ -143,8 +143,6 @@ export async function writeCuts({
   matches = async () => [],
   // Library id and audit reason of a saved piece flagged as poor; improves it for future videos only.
   onPoorPiece = async () => {},
-  // {match(names) -> per-name stock offers, piece(id) -> SVG text or GLB bytes from the local cache}.
-  stock = null,
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
   const cuts = plan.cuts.map((c, i) => ({
@@ -160,7 +158,7 @@ export async function writeCuts({
         ...(kept[i].emphasis && { emphasis: kept[i].emphasis }),
       }),
   }));
-  const names = stock || plan.cuts.some((c) => c.engine === 'remotion') ? pieceNames(plan) : [];
+  const names = plan.cuts.some((c) => c.engine === 'remotion') ? pieceNames(plan) : [];
   const data = { plan, cuts, ...(names.length && { pieces }) };
   const persist = () => {
     signal.throwIfAborted();
@@ -175,7 +173,6 @@ export async function writeCuts({
       names,
       write,
       matches,
-      stock,
       signal,
     }));
   if (data.pieces && !pieces) {
@@ -188,9 +185,6 @@ export async function writeCuts({
     flagged = new Set();
   // Narration depends only on the plan, never on a cut writer or a neighbouring cut finishing.
   const attempts = cuts.map(() => 0);
-  // Manim cuts place only the 2D stock set pieces, as SVG; Remotion cuts get every stock piece through ./pieces.
-  const manimStock = (index) =>
-    cuts[index].engine === 'manim' ? { stockPieces: cutStock(data.pieces, 'manim') } : {};
   const writerInstructions = (index) =>
     cuts[index].engine === 'manim'
       ? MANIM_INSTRUCTIONS + '\n\n' + MANIM_SKILL
@@ -216,8 +210,7 @@ export async function writeCuts({
             cut: plan.cuts[index],
             previousEndState: index ? plan.cuts[index - 1].endState : null,
             ...(data.pieces && cuts[index].engine !== 'manim' && { setPieces: data.pieces }),
-            ...manimStock(index),
-            ...(error && {
+              ...(error && {
               validationError: error.message,
               ...(failed && { failedCode: failed }),
               previousLastFrame: !!previous,
@@ -269,7 +262,6 @@ export async function writeCuts({
       cut: cuts[index],
       plan,
       pieces: data.pieces,
-      stock,
       kit,
       manimKit,
       emphasis: cuts[index].emphasis ?? plan.cuts[index].emphasis ?? [],
@@ -327,7 +319,6 @@ export async function writeCuts({
           cut: plan.cuts[index],
           previousEndState: index ? plan.cuts[index - 1].endState : null,
           ...(data.pieces && cut.engine !== 'manim' && { setPieces: data.pieces }),
-          ...manimStock(index),
           code: cut.code,
           emphasis: cut.emphasis ?? plan.cuts[index].emphasis ?? [],
           previousLastFrame: !!previous,

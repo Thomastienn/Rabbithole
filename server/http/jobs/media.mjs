@@ -151,7 +151,6 @@ export function mediaJobs(ctx) {
           narrate: ctx.videoNarrate,
           manim: ctx.videoManim,
           embed: ctx.videoEmbed,
-          stock: ctx.stock,
           onWarning: (cause) =>
             ctx.log(
               formatLog('warn', 'media', 'warning', {
@@ -242,26 +241,10 @@ export function mediaJobs(ctx) {
           message: artifact.message,
         }).generate(...args),
     };
-    // An unavailable catalog only means no shortlist; the visual is still drawn.
-    const objects = input.request?.objects ?? [];
-    const stockPieces =
-      objects.length && ctx.stock
-        ? await ctx.stock.match(objects).catch((error) => {
-            ctx.log(
-              formatLog('warn', 'media', 'warning', {
-                id: artifact.id,
-                task: 'visual',
-                cause: errorCause(error, privateValues(input)),
-              }),
-            );
-            return [];
-          })
-        : [];
-    if (signal.aborted) throw signal.reason;
     return generateVisual(
       metering,
       selection,
-      { ...input, stockPieces, piece: ctx.stock?.piece },
+      input,
       signal,
       ctx.visualTimeout,
       onPartial,

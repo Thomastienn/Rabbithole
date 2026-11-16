@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { visualMarkup, renderVisual, stockPiece } from '../../src/media/visualMarkup.ts';
+import { visualMarkup, renderVisual } from '../../src/media/visualMarkup.ts';
 
 test('partial sanitizer keeps incomplete HTML/SVG but strips scripts, handlers and unsafe resources', () => {
   const document = JSDOM.fragment('').ownerDocument;
@@ -56,29 +56,4 @@ test('partial DOM writes are inert; final replacement executes complete scripts 
   } finally {
     dom.window.close();
   }
-});
-
-test('stockPiece returns a fresh SVG element from delivered data and names a missing ID in words', () => {
-  const { window } = new JSDOM('<div id="visual"></div>');
-  const document = window.document,
-    pieces = {
-      'fluent-emoji:horse':
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M0 0h32v32z"/></svg>',
-    };
-  const horse = stockPiece(document, pieces, 'fluent-emoji:horse');
-  assert.equal(horse.localName, 'svg');
-  assert.equal(horse.ownerDocument, document);
-  assert.ok(horse instanceof window.SVGSVGElement);
-  assert.equal(horse.querySelector('path').getAttribute('d'), 'M0 0h32v32z');
-  assert.notEqual(
-    stockPiece(document, pieces, 'fluent-emoji:horse'),
-    horse,
-    'each call is a new element',
-  );
-  for (const id of ['fluent-emoji:unicorn', 'toString'])
-    assert.equal(stockPiece(document, pieces, id).textContent, `Stock piece ${id} is missing`);
-  assert.equal(
-    stockPiece(document, { bad: '<svg><g></svg>' }, 'bad').textContent,
-    'Stock piece bad is missing',
-  );
 });

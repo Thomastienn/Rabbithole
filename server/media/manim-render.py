@@ -175,14 +175,8 @@ def validate(source, brief):
                 else getattr(node.func, "attr", "")
             )
             name = bindings.get(name, name)
-            if name == "stockPiece" and (
-                len(node.args) != 1
-                or not isinstance(node.args[0], ast.Constant)
-                or not isinstance(node.args[0].value, str)
-                or node.args[0].value not in brief.get("stock", {})
-                or node.keywords
-            ):
-                raise ValueError("Manim stockPiece must name an offered 2D stock ID.")
+            if name == "stockPiece":
+                raise ValueError("Manim stock pieces are retired; draw math only.")
             if name in (
                 "open",
                 "exec",

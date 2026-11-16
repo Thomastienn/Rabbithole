@@ -144,7 +144,7 @@ test('library choices must name offered pieces and never rewrite a reused one', 
   );
   assert.throws(
     () => pieceChoices(answer([]), ['Champ'], matches, brief),
-    /no stock, reuse, variant or new/,
+    /no reuse, variant or new/,
   );
   assert.throws(
     () =>

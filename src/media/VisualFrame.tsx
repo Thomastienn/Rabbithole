@@ -78,36 +78,15 @@ function Frame({ artifact }: { artifact: Artifact }) {
     addEventListener('resize', fit);
     return () => removeEventListener('resize', fit);
   });
-  // A finished visual gets the stock pieces it names from the app; the frame itself makes no request.
-  const render = async () => {
-    const source = artifact.source ?? '',
-      complete = artifact.status === 'ready';
-    const ids = complete
-      ? [
-          ...new Set(
-            [...source.matchAll(/\bstockPiece\s*\(\s*(["'`])([^"'`]*)\1\s*\)/g)].map((m) => m[2]),
-          ),
-        ]
-      : [];
-    const pieces = Object.fromEntries(
-      await Promise.all(
-        ids.map(async (id) => {
-          const response = await fetch(`/api/stock/${encodeURIComponent(id)}`).catch(() => null);
-          const data = response?.ok ? await response.json() : {};
-          // A 3D piece goes to the frame as GLB bytes; its loader turns them into an object there.
-          return [
-            id,
-            data.glb
-              ? Uint8Array.from(atob(data.glb), (c) => c.charCodeAt(0)).buffer
-              : (data.svg ?? null),
-          ];
-        }),
-      ),
-    );
-    post({ type: 'render', source, complete, ...(complete && { pieces }) });
+  const render = () => {
+    post({
+      type: 'render',
+      source: artifact.source ?? '',
+      complete: artifact.status === 'ready',
+    });
   };
   useEffect(() => {
-    if (loaded.current) void render();
+    if (loaded.current) render();
   }, [artifact.source, artifact.status]);
   const ready = height !== undefined && (artifact.status === 'ready' || !!artifact.source);
   return (
@@ -126,7 +105,7 @@ function Frame({ artifact }: { artifact: Artifact }) {
         onLoad={() => {
           theme();
           loaded.current = true;
-          void render();
+          render();
         }}
       />
     </>

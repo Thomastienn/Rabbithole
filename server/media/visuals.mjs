@@ -64,7 +64,7 @@ function paletteFor(theme) {
 }
 
 // A mistake check, not a security boundary: execution stays in the opaque-origin, network-denied sandbox.
-async function validate(source, offered = new Set(), piece) {
+async function validate(source) {
   const invalid = (reason) => {
     throw new Error(`Visual output is invalid: ${reason}.`);
   };
@@ -83,15 +83,9 @@ async function validate(source, offered = new Set(), piece) {
     if (!/^(["']?)#[\w-]+\1$/.test(target.trim()))
       invalid('CSS resources must be local fragment references');
   if (/@import\b/i.test(checked)) invalid('use only inline code and the preloaded libraries');
-  const named = [...source.matchAll(/\bstockPiece\s*\(\s*(["'`])([^"'`]*)\1\s*\)/g)];
-  if (named.length !== (source.match(/\bstockPiece\b/g) ?? []).length)
-    invalid('call stockPiece only with an offered ID as a quoted string');
-  for (const [, , id] of named)
-    if (!offered.has(id)) invalid(`stock piece ${id} was not offered; use an offered ID or none`);
-  // Fetching here fills the cache the frame's pieces are read from.
-  for (const id of new Set(named.map(([, , id]) => id)))
-    if (!(await Promise.resolve(piece?.(id)).catch(() => null)))
-      invalid(`stock piece ${id} could not be fetched; use another offered ID or none`);
+  // Stock catalogs are retired (ADR 0005); every object is drawn in the house style.
+  if (/\bstockPiece\b|fluent-emoji:/.test(source))
+    invalid('stock pieces are retired; draw every object yourself in the house style');
   const javascript = (code) => {
     if (
       /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|Worker|SharedWorker|RTCPeerConnection|serviceWorker)\s*[.(\[]|\b(?:import|require)\s*\(|\bgsap\s*\.|\bnew\s+Chart\b|\bLeaflet\s*\.|\w*Loader\b/.test(
@@ -163,7 +157,6 @@ export async function generateVisual(
     const { JSDOM } = await import('jsdom');
     const document = JSDOM.fragment('').ownerDocument;
     let validationError;
-    const offered = new Set(input.stockPieces?.flatMap((o) => o.pieces.map((p) => p.id)));
     for (let attempt = 0; attempt < 2; attempt++) {
       if (controller.signal.aborted) throw controller.signal.reason;
       const items = new Map();
@@ -185,7 +178,6 @@ export async function generateVisual(
           JSON.stringify({
             request: input.request,
             earlierTitles: input.earlierTitles,
-            ...(offered.size && { stockPieces: input.stockPieces.filter((o) => o.pieces.length) }),
             ...(validationError && { validationError }),
           }),
           (event) => {
@@ -219,7 +211,7 @@ export async function generateVisual(
         throw new Error('Visual generation did not complete. Retry to try again.');
       try {
         if (overflow) throw new Error(overflow);
-        return await validate([...items.values()].join('\n\n'), offered, input.piece);
+        return await validate([...items.values()].join('\n\n'));
       } catch (error) {
         validationError = error.message;
         if (attempt) throw error;

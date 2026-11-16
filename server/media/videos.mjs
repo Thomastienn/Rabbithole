@@ -114,7 +114,6 @@ export async function generateVideo({
   onWarning = console.warn,
   // Texts to look vectors; null saves new pieces without an embedding.
   embed = null,
-  stock = null,
   onStage = () => {},
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
@@ -251,7 +250,6 @@ export async function generateVideo({
       stop: (error) => controller.abort(error),
       kept,
       pieces: prior?.pieces,
-      stock,
       // Each look's top library matches; the same call embeds pieces saved while no embedder was usable.
       matches: async (looks) => {
         if (!embed) return [];

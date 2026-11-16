@@ -64,7 +64,6 @@ export function createApp({
   videoNarrate,
   videoManim,
   videoEmbed = null,
-  stock = null,
   log = stdoutLog,
   suggestions = false,
   // Off in tests like suggestions, so fake replies without a verdict block make no extra calls.
@@ -95,7 +94,6 @@ export function createApp({
     videoNarrate,
     videoManim,
     videoEmbed,
-    stock,
     neighbourhood: (text, signal) => retrieveNeighbourhood(store, videoEmbed, text, signal),
     log,
     suggestions,

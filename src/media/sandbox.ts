@@ -4,8 +4,7 @@ import mermaid from 'mermaid';
 import * as THREE from 'three';
 import katex from 'katex';
 import * as d3 from 'd3';
-import { renderVisual, stockPiece } from './visualMarkup';
-import { loadModels, modelPiece } from './stockModel';
+import { renderVisual } from './visualMarkup';
 import { reflectSvgHidden, stepThrough } from './stepThrough';
 import 'katex/dist/katex.min.css';
 import '@fontsource/archivo/400.css';
@@ -13,14 +12,12 @@ import '@fontsource/archivo/600.css';
 import '@fontsource/literata/400.css';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
-let pieces: Record<string, unknown> = {};
 Object.assign(window, {
   mermaid,
   THREE,
   katex,
   d3,
   stepThrough,
-  stockPiece: (id: string) => modelPiece(root, pieces, id) ?? stockPiece(document, pieces, id),
 });
 reflectSvgHidden(window);
 const root = document.getElementById('visual')!,
@@ -29,7 +26,7 @@ let rendered = false;
 let complete = false;
 let room = Infinity;
 
-addEventListener('message', async (event) => {
+addEventListener('message', (event) => {
   if (event.source !== parent) return;
   const data = event.data;
   if (
@@ -51,7 +48,6 @@ addEventListener('message', async (event) => {
   if (data?.type === 'render' && typeof data.source === 'string' && !complete) {
     rendered = true;
     complete = data.complete === true;
-    if (data.pieces && typeof data.pieces === 'object') pieces = await loadModels(data.pieces);
     renderVisual(root, data.source, complete);
   }
 });

@@ -36,10 +36,7 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
   ])
     assert.match(DEFAULT_TUTOR_STYLE, rule);
   assert.match(TUTOR_RULES, /^Do not use tools[\s\S]*rabbithole-visual[\s\S]*rabbithole-video/);
-  assert.match(
-    TUTOR_RULES,
-    /add objects, a list of up to 6 concrete object names[^.]*60 characters/,
-  );
+  assert.doesNotMatch(TUTOR_RULES, /stock|add objects/, 'visuals get no stock offers');
   assert.match(
     TUTOR_RULES,
     /every formula[^\n]*\$\.\.\.\$[^\n]*\$\$\.\.\.\$\$[^\n]*never[^\n]*plain text/,

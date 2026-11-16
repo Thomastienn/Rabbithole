@@ -10,7 +10,6 @@ import { Claude } from './providers/claude.mjs';
 import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
 import { localEmbedder } from './media/embedder.mjs';
-import { stockCatalog } from './media/stock.mjs';
 import { managedSearxng } from './searxng.mjs';
 import { pythonTool } from './tools/python.mjs';
 
@@ -76,7 +75,6 @@ try {
     searxng: searxng.status,
     python: pythonTool({ dir }),
     videoEmbed: embed,
-    stock: stockCatalog(dir, undefined, undefined, undefined, embed),
   });
   await new Promise((resolve, reject) => {
     app.server.once('error', reject);
