@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import katex from 'katex';
 import * as d3 from 'd3';
 import { renderVisual, stockPiece } from './visualMarkup';
+import { loadModels, modelPiece } from './stockModel';
 import { reflectSvgHidden, stepThrough } from './stepThrough';
 import 'katex/dist/katex.min.css';
 import '@fontsource/archivo/400.css';
@@ -19,7 +20,7 @@ Object.assign(window, {
   katex,
   d3,
   stepThrough,
-  stockPiece: (id: string) => stockPiece(document, pieces, id),
+  stockPiece: (id: string) => modelPiece(root, pieces, id) ?? stockPiece(document, pieces, id),
 });
 reflectSvgHidden(window);
 const root = document.getElementById('visual')!,
@@ -27,7 +28,7 @@ const root = document.getElementById('visual')!,
 let rendered = false;
 let complete = false;
 
-addEventListener('message', (event) => {
+addEventListener('message', async (event) => {
   if (event.source !== parent) return;
   const data = event.data;
   if (
@@ -45,7 +46,7 @@ addEventListener('message', (event) => {
   if (data?.type === 'render' && typeof data.source === 'string' && !complete) {
     rendered = true;
     complete = data.complete === true;
-    if (data.pieces && typeof data.pieces === 'object') pieces = data.pieces;
+    if (data.pieces && typeof data.pieces === 'object') pieces = await loadModels(data.pieces);
     renderVisual(root, data.source, complete);
   }
 });

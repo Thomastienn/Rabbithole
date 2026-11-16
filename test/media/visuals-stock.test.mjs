@@ -79,7 +79,12 @@ test('the stock route returns piece data for an ID and refuses an unknown ID', a
     {
       stock: {
         match: async () => [],
-        piece: async (id) => (id === 'fluent-emoji:horse' ? '<svg id="horse"></svg>' : null),
+        piece: async (id) =>
+          id === 'fluent-emoji:horse'
+            ? '<svg id="horse"></svg>'
+            : id === 'horse-3d-a1b2c3'
+              ? Buffer.from('glTF')
+              : null,
       },
     },
   );
@@ -88,6 +93,8 @@ test('the stock route returns piece data for an ID and refuses an unknown ID', a
     assert.equal(ok.status, 200);
     assert.match(ok.headers.get('content-type'), /json/);
     assert.deepEqual(await ok.json(), { svg: '<svg id="horse"></svg>' });
+    const model = await fetch(`${env.origin}/api/stock/horse-3d-a1b2c3`);
+    assert.deepEqual(await model.json(), { glb: Buffer.from('glTF').toString('base64') });
     const unknown = await fetch(`${env.origin}/api/stock/fluent-emoji%3Aunicorn`);
     assert.equal(unknown.status, 404);
   } finally {

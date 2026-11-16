@@ -66,7 +66,14 @@ function Frame({ artifact }: { artifact: Artifact }) {
       await Promise.all(
         ids.map(async (id) => {
           const response = await fetch(`/api/stock/${encodeURIComponent(id)}`).catch(() => null);
-          return [id, response?.ok ? (await response.json()).svg : null];
+          const data = response?.ok ? await response.json() : {};
+          // A 3D piece goes to the frame as GLB bytes; its loader turns them into an object there.
+          return [
+            id,
+            data.glb
+              ? Uint8Array.from(atob(data.glb), (c) => c.charCodeAt(0)).buffer
+              : (data.svg ?? null),
+          ];
         }),
       ),
     );

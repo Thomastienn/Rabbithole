@@ -75,21 +75,28 @@ test('progressive visual keeps its frame, posts the latest partial on load, then
     requested.push(url);
     return url.endsWith('horse')
       ? { ok: true, json: async () => ({ svg: '<svg id="horse"></svg>' }) }
-      : { ok: false };
+      : url.endsWith('cabin-6cb550')
+        ? { ok: true, json: async () => ({ glb: btoa('glTF') }) }
+        : { ok: false };
   };
   const final =
-    "<p>Final</p><script>run(stockPiece('fluent-emoji:horse'), stockPiece('fluent-emoji:horse'), stockPiece(\"fluent-emoji:gone\"))</script>";
+    "<p>Final</p><script>run(stockPiece('fluent-emoji:horse'), stockPiece('fluent-emoji:horse'), stockPiece(\"fluent-emoji:gone\"), stockPiece('cabin-6cb550'))</script>";
   await act(async () => set(visual('ready', { source: final })));
   assert.equal(container.querySelector('iframe'), frame, 'completion never remounts the frame');
   assert.deepEqual(requested, [
     '/api/stock/fluent-emoji%3Ahorse',
     '/api/stock/fluent-emoji%3Agone',
+    '/api/stock/cabin-6cb550',
   ]);
   assert.deepEqual(posted.at(-1), {
     type: 'render',
     source: final,
     complete: true,
-    pieces: { 'fluent-emoji:horse': '<svg id="horse"></svg>', 'fluent-emoji:gone': null },
+    pieces: {
+      'fluent-emoji:horse': '<svg id="horse"></svg>',
+      'fluent-emoji:gone': null,
+      'cabin-6cb550': new TextEncoder().encode('glTF').buffer,
+    },
   });
   await act(async () => set(visual('failed', { error: 'Visual generation canceled.' })));
   assert.equal(container.querySelector('iframe'), null);

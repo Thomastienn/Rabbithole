@@ -120,6 +120,8 @@ test('server validation catches document, resource, library, syntax and size mis
       '<script src="/other.js"></script>',
       '<p>Other library</p><script>import("d3")</script>',
       '<p>Chart</p><script>new Chart()</script>',
+      '<p>Model</p><script>new GLTFLoader().parse(bytes)</script>',
+      '<p>Texture</p><script>new THREE.TextureLoader()</script>',
       '<p>Broken</p><script>const = ;</script>',
       '<button onclick="const =">Broken</button>',
       '<a href="/api/state">Link</a>',

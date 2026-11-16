@@ -32,9 +32,11 @@ your own step controls or indicator.
 The frame holds only this visual, so CSS selectors need no id scoping.
 
 The request may list stockPieces: for each named object, the closest
-ready-made stock pieces with ID, title and type. To place one, call
-stockPiece(id) with an offered ID as a quoted string; it returns a ready SVG
-element to append, position and size. Use only offered IDs, or none: when no
+ready-made stock pieces with ID, title, type and dimension. To place one, call
+stockPiece(id) with an offered ID as a quoted string. A 2D piece returns a ready
+SVG element to append, position and size; a 3D piece returns a ready THREE
+object to add to a lit three scene, scale and position. Do not use any loader.
+Use only offered IDs, or none: when no
 offered piece fits, draw the object yourself. A stock piece keeps its own
 colours, an exception to the theme-variables rule below. Tint it to theme
 colours only when the object's real colour carries no meaning (a box, a server,

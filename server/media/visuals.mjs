@@ -90,7 +90,7 @@ async function validate(source, offered = new Set(), piece) {
       invalid(`stock piece ${id} could not be fetched; use another offered ID or none`);
   const javascript = (code) => {
     if (
-      /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|Worker|SharedWorker|RTCPeerConnection|serviceWorker)\s*[.(\[]|\b(?:import|require)\s*\(|\bgsap\s*\.|\bnew\s+Chart\b|\bLeaflet\s*\./.test(
+      /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|Worker|SharedWorker|RTCPeerConnection|serviceWorker)\s*[.(\[]|\b(?:import|require)\s*\(|\bgsap\s*\.|\bnew\s+Chart\b|\bLeaflet\s*\.|\w*Loader\b/.test(
         code,
       )
     )

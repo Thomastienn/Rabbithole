@@ -40,12 +40,17 @@ export async function mediaRoutes(req, res, url, ctx, body) {
           .library()
           .map((v) => (readable(mediaPath(dir, v.id)) ? v : { ...v, available: false })),
       ]);
-    // Stock piece SVG for the visual frame's host, as JSON so the app origin never serves it as a document.
+    // Stock piece SVG or base64 GLB for the visual frame's host, as JSON so the app origin never serves
+    // it as a document.
     const stockMatch = url.pathname.match(/^\/api\/stock\/([^/]+)$/);
     if (stockMatch) {
-      const svg = await ctx.stock?.piece(decodeURIComponent(stockMatch[1]));
-      if (!svg) return json(res, 404, { error: 'Stock piece not found.' });
-      return json(res, 200, { svg });
+      const data = await ctx.stock?.piece(decodeURIComponent(stockMatch[1]));
+      if (!data) return json(res, 404, { error: 'Stock piece not found.' });
+      return json(
+        res,
+        200,
+        Buffer.isBuffer(data) ? { glb: data.toString('base64') } : { svg: data },
+      );
     }
     // The read-only piece library; the source compiles for the player frame like live cut code.
     if (url.pathname === '/api/pieces') return json(res, 200, store.pieceList());
