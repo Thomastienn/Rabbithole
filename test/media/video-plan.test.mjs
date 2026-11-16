@@ -24,7 +24,7 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
   assert.match(
     PLAN_INSTRUCTIONS,
-    /request is the learner's own message[\s\S]*dimension of "2d" or "3d"[\s\S]*explicitly asks for 2D or 3D, use that dimension for every cut[\s\S]*"3d" only for a cut whose point is space, depth, rotation or orientation[\s\S]*Manim cuts are always "2d"/,
+    /request is the learner's own message[\s\S]*dimension of "2d" or "3d"[\s\S]*explicitly asks for 2D, use "2d" for every cut[\s\S]*explicitly asks for 3D, use "3d" for most cuts[\s\S]*"3d" only for a cut whose point is space, depth, rotation or orientation[\s\S]*Manim cuts are always "2d"/,
   );
   for (const mutate of [
     (p) => {
@@ -93,7 +93,6 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   assert.throws(() => videoPlan(JSON.stringify(undimensioned)), /malformed: cut 2 dimension\.$/);
   assert.throws(() => videoPlan('not json'), /malformed: not a JSON object\.$/);
   assert.match(PLAN_INSTRUCTIONS, /"engine":"remotion","dimension":"2d"/);
-  assert.match(PLAN_INSTRUCTIONS, /explicit 3D request makes every cut "remotion"/);
   assert.throws(() => videoPlan(' '.repeat(65537)), /64 KiB/);
   assert.equal(CUT_PAUSE_FRAMES, 15);
 });

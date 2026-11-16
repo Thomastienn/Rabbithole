@@ -141,7 +141,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.equal(workers[0].tree.thread, null);
     assert.match(
       workers[0].tree.instructions,
-      /explicitly asks for 2D or 3D, use that dimension for every cut/,
+      /explicitly asks for 3D, use "3d" for most cuts/,
     );
     // planFor cuts are 2D, so the cut writer gets no 3D guidance.
     assert.match(workers[1].tree.instructions, /planned cut\.dimension/);
