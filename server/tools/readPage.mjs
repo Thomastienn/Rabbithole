@@ -57,7 +57,7 @@ const refused = (host) =>
   new Error(`read_page refuses ${host}: only public internet addresses can be read.`);
 
 // Validate the socket's DNS answers, without borrowing unchecked sockets from the global pool.
-function request(url, signal, lookup, isPublic) {
+export function request(url, signal, lookup, isPublic) {
   const host = url.hostname.replace(/^\[|\]$/g, '');
   if (isIP(host) && !isPublic(host)) return Promise.reject(refused(host));
   const checkedLookup = (name, options, callback) =>
@@ -87,7 +87,7 @@ function request(url, signal, lookup, isPublic) {
   });
 }
 
-async function body(response, limit) {
+export async function body(response, limit) {
   const chunks = [];
   let size = 0;
   for await (const chunk of response) {

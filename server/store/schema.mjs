@@ -181,8 +181,21 @@ export function open(path) {
     );
     // Resources per learning tree (keyed by its root), numbered within the tree; one URL is one resource. Citations go with their reply.
     this.db
-      .exec(`CREATE TABLE IF NOT EXISTS resources (tree TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE, number INTEGER NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL, site TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('page','image','file')), first_seen INTEGER NOT NULL, PRIMARY KEY(tree, number), UNIQUE(tree, url));
+      .exec(`CREATE TABLE IF NOT EXISTS resources (tree TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE, number INTEGER NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL, site TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('page','image','file','quote','clip')), first_seen INTEGER NOT NULL, PRIMARY KEY(tree, number), UNIQUE(tree, url));
       CREATE TABLE IF NOT EXISTS citations (tree TEXT NOT NULL, number INTEGER NOT NULL, message TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, PRIMARY KEY(tree, number, message), FOREIGN KEY(tree, number) REFERENCES resources(tree, number) ON DELETE CASCADE);`);
+    // Video exhibits widen the kind check (quotes and clips). SQLite's table rebuild with foreign keys off,
+    // so dropping the old table cannot cascade into citations.
+    if (
+      !this.db
+        .prepare("SELECT sql FROM sqlite_master WHERE name='resources'")
+        .get()
+        .sql.includes("'quote'")
+    )
+      this.db.exec(`PRAGMA foreign_keys=OFF; BEGIN IMMEDIATE;
+          CREATE TABLE resources_new (tree TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE, number INTEGER NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL, site TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('page','image','file','quote','clip')), first_seen INTEGER NOT NULL, PRIMARY KEY(tree, number), UNIQUE(tree, url));
+          INSERT INTO resources_new SELECT tree,number,url,title,site,kind,first_seen FROM resources;
+          DROP TABLE resources; ALTER TABLE resources_new RENAME TO resources;
+          COMMIT; PRAGMA foreign_keys=ON;`);
     // Smart role: a NULL model follows the chat default model; follow_effort=1 follows the chat default effort.
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)',

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 type LiveCuts = {
   paletteRoles: Record<string, string>;
   pieces: string | null;
+  exhibits?: { id: string; image: boolean }[];
   cuts: {
     engine: string;
     playable: boolean;
@@ -51,6 +52,7 @@ export default function LivePlayer({
                       ...(cut.engine === 'manim' ? [blob(`${i}/clip`)] : []),
                     ],
               ),
+              ...(data.exhibits ?? []).flatMap((e, i) => (e.image ? [blob(`${i}/exhibit`)] : [])),
             ]);
             const key = JSON.stringify(data) + [...blobs.keys()].join();
             if (!stopped && key !== last) {
@@ -60,6 +62,10 @@ export default function LivePlayer({
                   type: 'cuts',
                   paletteRoles: data.paletteRoles,
                   pieces: data.pieces,
+                  exhibits: (data.exhibits ?? []).map((e, i) => ({
+                    ...e,
+                    blob: blobs.get(`${i}/exhibit`),
+                  })),
                   cuts: data.cuts.map((cut, i) => ({
                     ...cut,
                     audio: blobs.get(`${i}/narration`),

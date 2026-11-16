@@ -6,6 +6,7 @@ import {
   cutJoin,
   CUT_PAUSE_FRAMES,
   PLAN_INSTRUCTIONS,
+  EXHIBITS_NOTE,
 } from '../../server/media/video-plan.mjs';
 import { planFor, composition, spatial, styleBrief } from '../support/video-kit.mjs';
 import {
@@ -18,6 +19,7 @@ import {
   PIECES_INSTRUCTIONS,
   PIECE_IMPROVE_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
+  EXHIBIT_NOTE,
 } from '../../server/media/video-cut.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 
@@ -221,4 +223,44 @@ export default () => <div style={{background:palette.ground,color:colors.winner,
     code + '\n<',
   ])
     assert.throws(() => cutSource(source, styleBrief));
+});
+
+test('plans may name image and quote exhibits on Remotion cuts only when web search is set up', () => {
+  const plan = planFor();
+  plan.cuts[0].exhibits = [
+    { kind: 'image', query: 'Ada Lovelace portrait', show: 'The person who wrote the notes' },
+    { kind: 'quote', query: 'Lovelace algebraic patterns', text: 'It weaves algebraic patterns.', by: 'Ada Lovelace' },
+  ];
+  const raw = JSON.stringify(plan);
+  assert.deepEqual(videoPlan(raw, { exhibits: true }).cuts[0].exhibits, plan.cuts[0].exhibits);
+  assert.throws(() => videoPlan(raw), /cut 1 exhibits/);
+  for (const bad of [
+    { kind: 'clip', query: 'x', show: 'x' },
+    { kind: 'image', query: 'x' },
+    { kind: 'quote', query: 'x', text: 'x'.repeat(281) },
+  ])
+    assert.throws(
+      () => videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), { exhibits: true }),
+      /cut 1 exhibits/,
+    );
+  const manim = { ...plan.cuts[0], engine: 'manim' };
+  assert.throws(() => videoPlan(JSON.stringify({ ...plan, cuts: [manim] }), { exhibits: true }), /cut 1 exhibits/);
+  assert.match(EXHIBITS_NOTE, /"kind":"image"/);
+  assert.ok(!PLAN_INSTRUCTIONS.includes(EXHIBITS_NOTE));
+});
+
+test('cuts may place the kit Exhibit component; raw image tags and URLs are still rejected', () => {
+  const cut = `import { AbsoluteFill } from 'remotion';
+import { Exhibit, palette } from './kit';
+export default function Video() {
+  return <AbsoluteFill style={{ background: palette.ground }}><Exhibit id="exhibit1" x={1300} y={460} width={560} scale={1.1} rotation={-3} /></AbsoluteFill>;
+}`;
+  assert.equal(cutSource(cut, styleBrief), cut);
+  assert.match(CUT_INSTRUCTIONS + EXHIBIT_NOTE, /<Exhibit id=/);
+  for (const bad of [
+    cut.replace('<Exhibit', '<img src={x} /><Exhibit'),
+    cut.replace('"exhibit1"', '"https://museum.example/ada.png"'),
+    cut.replace('<Exhibit', '<Img src={x} /><Exhibit'),
+  ])
+    assert.throws(() => cutSource(bad, styleBrief), /disallowed import or resource/);
 });

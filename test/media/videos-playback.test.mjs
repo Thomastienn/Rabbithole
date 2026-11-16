@@ -23,6 +23,9 @@ import {
   open,
   job,
   planFor,
+  sandboxed,
+  renderSkip,
+  pixel,
 } from '../support/video-kit.mjs';
 
 test('inline video exposes bounded live progress and its position, keeps inputs private, then serves seekable media', async () => {
@@ -124,37 +127,6 @@ test('inline video exposes bounded live progress and its position, keeps inputs 
 });
 
 const repo = fileURLToPath(new URL('../..', import.meta.url));
-const browser = join(
-  repo,
-  'node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell',
-);
-const sandboxed = spawnSync('bwrap', ['--version']).status === 0 && existsSync(browser);
-// Full Remotion renders take about 15s each; run them with npm run test:render.
-const realRender = sandboxed && process.env.RABBITHOLE_REAL_RENDER === '1';
-const renderSkip =
-  !realRender &&
-  (sandboxed
-    ? 'set RABBITHOLE_REAL_RENDER=1 (npm run test:render)'
-    : 'bwrap or Remotion browser missing');
-
-// One RGB pixel of an MP4 frame, read with Remotion's bundled ffmpeg.
-const pixel = (video, seconds, x = 960, y = 540) => {
-  const ffmpeg = RenderInternals.getExecutablePath({
-    type: 'ffmpeg',
-    indent: false,
-    logLevel: 'error',
-    binariesDirectory: null,
-  });
-  const png = execFileSync(ffmpeg, [
-    ...['-v', 'error', '-ss', String(seconds), '-i', video, '-frames:v', '1'],
-    ...['-vf', `crop=2:2:${x}:${y},format=rgb24`, '-f', 'image2pipe', '-c:v', 'png', '-'],
-  ]);
-  const idat = png.indexOf('IDAT');
-  return [...inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)))].slice(
-    1,
-    4,
-  );
-};
 
 test(
   'render sandbox hides home and app data, blocks network and confines writes to the workspace',

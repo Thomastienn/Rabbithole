@@ -97,7 +97,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     }
     // Live playback: only a pending cut-format video, only playable cuts, files located from server ids.
     const cutsMatch = url.pathname.match(
-      /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/cuts(?:\/(\d+)\/(narration|clip))?$/,
+      /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/cuts(?:\/(\d+)\/(narration|clip|exhibit))?$/,
     );
     if (cutsMatch) {
       const [, conversation, id, index, file] = cutsMatch,
@@ -112,6 +112,11 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         return json(res, 200, {
           paletteRoles: data.plan.styleBrief.paletteRoles,
           pieces: data.pieces ? compileCut(data.pieces) : null,
+          // Exhibit metadata only; an image's bytes come from /cuts/<exhibit index>/exhibit.
+          exhibits: (data.exhibits ?? []).map(({ file, type, url, show, ...e }) => ({
+            ...e,
+            image: !!file,
+          })),
           cuts: data.cuts.map((cut, i) => ({
             engine: cut.engine,
             emphasis: cut.emphasis ?? data.plan.cuts[i].emphasis ?? [],
@@ -120,6 +125,18 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             playable: playable(cut),
           })),
         });
+      if (file === 'exhibit') {
+        const exhibit = data.exhibits?.[Number(index)];
+        const bytes =
+          exhibit?.file &&
+          (await readFile(
+            join(dir, 'video-work', artifact.id, artifact.attempt, `cut-${exhibit.cut}`, exhibit.file),
+          ).catch(() => null));
+        if (!bytes) return json(res, 404, { error: 'Exhibit not available.' });
+        res.writeHead(200, { 'Content-Type': exhibit.type });
+        res.end(bytes);
+        return true;
+      }
       const cut = data.cuts[Number(index)];
       if (!cut || !playable(cut) || (file === 'clip' && cut.engine !== 'manim'))
         return json(res, 404, { error: 'Cut not available.' });

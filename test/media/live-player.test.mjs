@@ -279,3 +279,43 @@ test('the library shows a pending video live, with no file actions until its MP4
     [],
   );
 });
+
+test('a live exhibit draws its delivered image or quote in a frame with a dim source line, and nothing when missing', async (t) => {
+  const { setStock, Exhibit } = await import('../../server/media/video-kit.tsx');
+  setStock({
+    exhibit1: { kind: 'image', title: 'Ada portrait', site: 'museum.example', src: 'blob:ada' },
+    exhibit2: {
+      kind: 'quote',
+      title: 'Notes',
+      site: 'archive.example',
+      text: 'It weaves.',
+      by: 'Ada',
+    },
+  });
+  t.after(() => setStock({}));
+  const frame = (id) =>
+    h(Thumbnail, {
+      component: () => h(Exhibit, { id, x: 1200, y: 400, rotation: -3 }),
+      durationInFrames: 30,
+      compositionWidth: 1920,
+      compositionHeight: 1080,
+      fps: 30,
+      frameToDisplay: 0,
+    });
+  // Remotion's browser bootstrap and image decode, which Img needs and jsdom lacks.
+  const remotion = (w) => {
+    ui(w);
+    Object.assign(w, { remotion_delayRenderHandles: [], remotion_delayRenderTimeouts: {} });
+    w.HTMLImageElement.prototype.decode = async () => {};
+  };
+  const image = await render(frame('exhibit1'), remotion);
+  assert.equal(image.container.querySelector('img').getAttribute('src'), 'blob:ada');
+  assert.match(image.container.textContent, /Ada portrait · museum\.example/);
+  await image.cleanup();
+  const quote = await render(frame('exhibit2'), ui);
+  assert.match(quote.container.textContent, /“It weaves\.”— AdaNotes · archive\.example/);
+  await quote.cleanup();
+  const missing = await render(frame('exhibit3'), ui);
+  assert.equal(missing.container.textContent, '');
+  await missing.cleanup();
+});

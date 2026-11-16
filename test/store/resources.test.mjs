@@ -70,6 +70,36 @@ test('resources are numbered per learning tree, shared by branches, cited by rep
   store.close();
 });
 
+test('an older database gains quote resources for video exhibits and keeps its citations', async () => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const path = join(mkdtempSync(join(tmpdir(), 'tt-resources-')), 'trees.sqlite');
+  let store = new Store(path);
+  const tree = store.create('Root', 'openai', 'm');
+  store.addResource(tree.id, page('a'));
+  const reply = store.message(tree.id, 'assistant', '', 'streaming');
+  store.update(reply, 'See [1](resource:1).', 'completed');
+  assert.equal(store.resources(tree.id)[0].conversations.length, 1);
+  store.close();
+  // Rebuild the resources table with the check older builds created.
+  const db = new DatabaseSync(path);
+  db.exec(`PRAGMA foreign_keys=OFF;
+    CREATE TABLE r_old (tree TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE, number INTEGER NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL, site TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('page','image','file')), first_seen INTEGER NOT NULL, PRIMARY KEY(tree, number), UNIQUE(tree, url));
+    INSERT INTO r_old SELECT * FROM resources; DROP TABLE resources; ALTER TABLE r_old RENAME TO resources;`);
+  assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name='citations'").get().sql, /REFERENCES resources\(/);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM citations').get().n, 1);
+  db.close();
+  store = new Store(path);
+  try {
+    assert.equal(store.addResource(tree.id, { url: 'https://q.example', title: 'Q', site: 'q.example', kind: 'quote' }), 2);
+    assert.deepEqual(
+      store.resources(tree.id).map((r) => [r.kind, r.conversations.length]),
+      [['page', 1], ['quote', 0]],
+    );
+  } finally {
+    store.close();
+  }
+});
+
 test('streaming saves skip citations; a restart after a crash cites the cut-off reply', () => {
   const path = join(mkdtempSync(join(tmpdir(), 'tt-resources-')), 'trees.sqlite');
   let store = new Store(path);

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   CUT_INSTRUCTIONS,
   CUT_3D,
+  EXHIBIT_NOTE,
   AUDIT_INSTRUCTIONS,
   REPAIR_NOTE,
   FIX_NOTE,
@@ -143,6 +144,8 @@ export async function writeCuts({
   matches = async () => [],
   // Library id and audit reason of a saved piece flagged as poor; improves it for future videos only.
   onPoorPiece = async () => {},
+  // Fetched exhibits ({id, cut, kind, title, site, url, text?, by?, show?, file?, type?}); files live in their cut folder.
+  exhibits = [],
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
   const cuts = plan.cuts.map((c, i) => ({
@@ -159,7 +162,20 @@ export async function writeCuts({
       }),
   }));
   const names = plan.cuts.some((c) => c.engine === 'remotion') ? pieceNames(plan) : [];
-  const data = { plan, cuts, ...(names.length && { pieces }) };
+  const data = { plan, cuts, ...(names.length && { pieces }), ...(exhibits.length && { exhibits }) };
+  const exhibitsOf = (index) => exhibits.filter((e) => e.cut === index);
+  // Writers and audits see the cut's fetched exhibits, never the planned ones that may have been dropped.
+  const task = (index) => {
+    const { exhibits: _planned, ...cut } = plan.cuts[index];
+    const shown = exhibitsOf(index).map(({ file, type, url, cut, ...e }) => e);
+    return {
+      styleBrief: plan.styleBrief,
+      cut,
+      previousEndState: index ? plan.cuts[index - 1].endState : null,
+      ...(data.pieces && cuts[index].engine !== 'manim' && { setPieces: data.pieces }),
+      ...(shown.length && { exhibits: shown }),
+    };
+  };
   const persist = () => {
     signal.throwIfAborted();
     save(data);
@@ -191,7 +207,8 @@ export async function writeCuts({
       : CUT_INSTRUCTIONS +
         '\n\n' +
         REMOTION_SKILL +
-        (plan.cuts[index].dimension === '3d' ? CUT_3D + '\n\n' + REMOTION_3D_SKILL : '');
+        (plan.cuts[index].dimension === '3d' ? CUT_3D + '\n\n' + REMOTION_3D_SKILL : '') +
+        (exhibitsOf(index).length ? EXHIBIT_NOTE : '');
   const rewrite = async (index, reason) => {
     let error = reason && new Error(reason),
       failed = reason && cuts[index].code;
@@ -206,11 +223,8 @@ export async function writeCuts({
         raw = await write(
           writerInstructions(index) + (error ? REPAIR_NOTE : ''),
           JSON.stringify({
-            styleBrief: plan.styleBrief,
-            cut: plan.cuts[index],
-            previousEndState: index ? plan.cuts[index - 1].endState : null,
-            ...(data.pieces && cuts[index].engine !== 'manim' && { setPieces: data.pieces }),
-              ...(error && {
+            ...task(index),
+            ...(error && {
               validationError: error.message,
               ...(failed && { failedCode: failed }),
               previousLastFrame: !!previous,
@@ -265,6 +279,7 @@ export async function writeCuts({
       kit,
       manimKit,
       emphasis: cuts[index].emphasis ?? plan.cuts[index].emphasis ?? [],
+      exhibits: exhibitsOf(index),
     });
   // A Manim clip is rendered into the staged cut's public folder, where its wrapper and snapshots read it.
   const clipOf = async (index) => {
@@ -314,11 +329,8 @@ export async function writeCuts({
       try {
         const previous = index ? await lastFrames[index - 1].promise : null;
         signal.throwIfAborted();
-        const task = {
-          styleBrief: plan.styleBrief,
-          cut: plan.cuts[index],
-          previousEndState: index ? plan.cuts[index - 1].endState : null,
-          ...(data.pieces && cut.engine !== 'manim' && { setPieces: data.pieces }),
+        const audited = {
+          ...task(index),
           code: cut.code,
           emphasis: cut.emphasis ?? plan.cuts[index].emphasis ?? [],
           previousLastFrame: !!previous,
@@ -332,7 +344,7 @@ export async function writeCuts({
         const answer = await call(
           cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS,
           JSON.stringify({
-            ...task,
+            ...audited,
             ...(offered.length && { libraryPieces: offered }),
             snapshots: own.length,
           }),
@@ -353,7 +365,7 @@ export async function writeCuts({
             auditFix(
               await write(
                 writerInstructions(index) + FIX_NOTE,
-                JSON.stringify({ ...task, issues }),
+                JSON.stringify({ ...audited, issues }),
                 undefined,
                 previous ? [previous] : undefined,
               ),

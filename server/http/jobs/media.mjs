@@ -151,6 +151,7 @@ export function mediaJobs(ctx) {
           narrate: ctx.videoNarrate,
           manim: ctx.videoManim,
           embed: ctx.videoEmbed,
+          search: ctx.search,
           onWarning: (cause) =>
             ctx.log(
               formatLog('warn', 'media', 'warning', {

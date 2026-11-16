@@ -1,7 +1,7 @@
 import { CUT_ENTRY } from './video-cut.mjs';
 import { MANIM_COMPONENT } from './manim-cut.mjs';
 import { readFileSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { videoPalette } from './video-plan.mjs';
 
@@ -10,16 +10,23 @@ const runtime = readFileSync(new URL('./video-stock.tsx', import.meta.url), 'utf
   "from './kit'",
 );
 
-// The host's data path into a Remotion cut: stock.json beside the cut, read by setStock in the kit.
-// Stock catalogs are retired (ADR 0005), so it delivers nothing yet; exhibits will reuse it.
-async function stageHostData(dir, engine) {
+// The host's data path into a Remotion cut: stock.json beside the cut, read by setStock in the kit. It carries
+// the cut's exhibits by id, images inlined as data URLs read from the cut folder; a missing file drops one.
+async function stageHostData(dir, engine, exhibits = []) {
   await writeFile(join(dir, 'video-stock.tsx'), runtime);
-  if (engine !== 'manim') await writeFile(join(dir, 'stock.json'), '{}');
+  if (engine === 'manim') return;
+  const data = {};
+  for (const { id, file, type, url, cut, ...shown } of exhibits) {
+    const bytes = file && (await readFile(join(dir, file)).catch(() => null));
+    if (file && !bytes) continue;
+    data[id] = { ...shown, ...(bytes && { src: `data:${type};base64,${bytes.toString('base64')}` }) };
+  }
+  await writeFile(join(dir, 'stock.json'), JSON.stringify(data));
 }
 
 // Stage the same host runtime and host data for audits and the final render.
-export async function stageCut({ dir, cut, plan, pieces, kit, manimKit, emphasis }) {
-  await stageHostData(dir, cut.engine);
+export async function stageCut({ dir, cut, plan, pieces, kit, manimKit, emphasis, exhibits }) {
+  await stageHostData(dir, cut.engine, exhibits);
   if (cut.engine === 'manim') {
     await writeFile(join(dir, 'Cut.py'), cut.code);
     await writeFile(join(dir, 'kit.py'), manimKit);

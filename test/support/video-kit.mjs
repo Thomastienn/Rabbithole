@@ -8,6 +8,10 @@ import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { generateVideo, mediaPath } from '../../server/media/videos.mjs';
 import { readFileSync } from 'node:fs';
+import { spawnSync, execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { inflateSync } from 'node:zlib';
+import { RenderInternals } from '@remotion/renderer';
 
 export const task = {
   title: 'Winners advance',
@@ -169,6 +173,8 @@ export async function job(render, mutate, source = composition, count = 1, optio
     narrate: fakeNarration,
     onPhase: (...p) => phases.push(p),
     manim: options.manim,
+    search: options.search,
+    exhibit: options.exhibit,
   }).then(
     () => null,
     (error) => error.message,
@@ -183,3 +189,36 @@ export async function job(render, mutate, source = composition, count = 1, optio
     audits,
   };
 }
+
+const repo = fileURLToPath(new URL('../..', import.meta.url));
+const browser = join(
+  repo,
+  'node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell',
+);
+export const sandboxed = spawnSync('bwrap', ['--version']).status === 0 && existsSync(browser);
+// Full Remotion renders take about 15s each; run them with npm run test:render.
+const realRender = sandboxed && process.env.RABBITHOLE_REAL_RENDER === '1';
+export const renderSkip =
+  !realRender &&
+  (sandboxed
+    ? 'set RABBITHOLE_REAL_RENDER=1 (npm run test:render)'
+    : 'bwrap or Remotion browser missing');
+
+// One RGB pixel of an MP4 frame, read with Remotion's bundled ffmpeg.
+export const pixel = (video, seconds, x = 960, y = 540) => {
+  const ffmpeg = RenderInternals.getExecutablePath({
+    type: 'ffmpeg',
+    indent: false,
+    logLevel: 'error',
+    binariesDirectory: null,
+  });
+  const png = execFileSync(ffmpeg, [
+    ...['-v', 'error', '-ss', String(seconds), '-i', video, '-frames:v', '1'],
+    ...['-vf', `crop=2:2:${x}:${y},format=rgb24`, '-f', 'image2pipe', '-c:v', 'png', '-'],
+  ]);
+  const idat = png.indexOf('IDAT');
+  return [...inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)))].slice(
+    1,
+    4,
+  );
+};

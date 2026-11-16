@@ -13,7 +13,14 @@ import {
 } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { edgeNarration } from './narration.mjs';
-import { videoPlan, libraryPieces, PLAN_INSTRUCTIONS, CUT_ATTEMPTS } from './video-plan.mjs';
+import {
+  videoPlan,
+  libraryPieces,
+  PLAN_INSTRUCTIONS,
+  EXHIBITS_NOTE,
+  CUT_ATTEMPTS,
+} from './video-plan.mjs';
+import { fetchExhibit } from './exhibits.mjs';
 import { videoCall, writeCuts, cutError } from './video-cuts.mjs';
 import { improvePiece } from './video-pieces.mjs';
 import { sandboxProcess, REPO, withoutPaths } from './video-sandbox.mjs';
@@ -95,6 +102,41 @@ export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
 export const playable = (cut) =>
   !!(cut.code && cut.timing && cut.audited && (cut.engine !== 'manim' || cut.clip));
 
+// Fetches every planned exhibit; a failed one is dropped with a warning and its cut is written without it.
+// Image bytes are saved in their cut folder, where staging inlines them into the cut's host data.
+export async function fetchExhibits(
+  plan,
+  { fetch, workspace, signal, wait, onWarning, onExhibit },
+) {
+  const planned = plan.cuts.flatMap((c, cut) => (c.exhibits ?? []).map((e) => ({ ...e, cut })));
+  const fetched = await wait(
+    Promise.all(
+      planned.map((p) =>
+        fetch(p).catch((error) => {
+          signal.throwIfAborted();
+          onWarning(`WARN video exhibit dropped: ${error.message}`);
+          return null;
+        }),
+      ),
+    ),
+  );
+  const exhibits = [];
+  for (const [n, e] of fetched.entries()) {
+    if (!e) continue;
+    const { bytes, ...meta } = e,
+      { cut, show } = planned[n],
+      id = `exhibit${n + 1}`;
+    const file = bytes && `exhibits/${id}`;
+    if (bytes) {
+      await mkdir(join(workspace, `cut-${cut}`, 'exhibits'), { recursive: true, mode: 0o700 });
+      await writeFile(join(workspace, `cut-${cut}`, file), bytes);
+    }
+    exhibits.push({ id, cut, ...meta, ...(show && { show }), ...(file && { file }) });
+    onExhibit(exhibits.at(-1));
+  }
+  return exhibits;
+}
+
 export async function generateVideo({
   provider,
   selection,
@@ -115,6 +157,9 @@ export async function generateVideo({
   // Texts to look vectors; null saves new pieces without an embedding.
   embed = null,
   onStage = () => {},
+  // The SearXNG web search tool; when it is ready and switched on the planner may name exhibits (ADR 0005).
+  search = null,
+  exhibit = fetchExhibit,
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
   const controller = new AbortController();
@@ -168,18 +213,44 @@ export async function generateVideo({
             ));
         kept.push({ ...cut, timing });
       }
+    const searching =
+      !prior?.plan &&
+      !!search &&
+      store.tutorTools().web_search !== false &&
+      (await search.status({ signal: controller.signal })).ready;
     const plan =
       prior?.plan ??
       videoPlan(
         await call(
           PLAN_INSTRUCTIONS +
+            (searching ? EXHIBITS_NOTE : '') +
             (JSON.parse(artifact.input).differentVersion
               ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
               : ''),
           artifact.input,
           (characters) => onPhase('planning', undefined, { characters }),
         ),
+        { exhibits: searching },
       );
+    // Retry keeps the exhibits the first attempt fetched; their files came along with the cut folders.
+    const exhibits = prior?.plan
+      ? (prior.exhibits ?? [])
+      : await fetchExhibits(plan, {
+          fetch: (planned) => exhibit(planned, { search, signal: controller.signal }),
+          workspace,
+          signal: controller.signal,
+          wait: (promise) =>
+            wait(promise, Math.max(1, deadline - Date.now()), 'Video composition timed out.'),
+          onWarning,
+          // Each exhibit is credited as a resource of the video's learning tree, never a set piece.
+          onExhibit: (e) =>
+            store.addResource(artifact.conversation, {
+              url: e.url,
+              title: e.title,
+              site: e.site,
+              kind: e.kind,
+            }),
+        });
     let runtime;
     if (plan.cuts.some((c) => c.engine === 'manim')) {
       runtime = manim.detect();
@@ -249,6 +320,7 @@ export async function generateVideo({
       wait,
       stop: (error) => controller.abort(error),
       kept,
+      exhibits,
       pieces: prior?.pieces,
       // Each look's top library matches; the same call embeds pieces saved while no embedder was usable.
       matches: async (looks) => {
