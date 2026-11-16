@@ -170,7 +170,7 @@ A single review of one written cut by the smart model, from its code and still f
 _Avoid_: Final pass, whole-video audit
 
 **Focus mode**:
-The learner's choice to hide the app's sidebar on any page, leaving only the current page's content. The sidebar slides back over the page from the left edge of the window.
+The learner's choice to hide the app's sidebar on any page, leaving only the current page's content. One button at the top left hides and shows the sidebar: a menu icon while it is hidden, a close icon while it is shown.
 _Avoid_: Full screen, zen mode, distraction-free mode
 
 **Sidebar**:

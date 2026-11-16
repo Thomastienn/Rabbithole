@@ -65,7 +65,8 @@
   line-height: 1.3;
   font-weight: var(--font-weight-semibold);
   text-align: center;
-  overflow-wrap: break-word;
+  /* break-word split words when the 1/k scale rounds a min-content line a hair short. */
+  overflow-wrap: normal;
 }
 .knowledge-links line {
   stroke: var(--color-border-emphasized);

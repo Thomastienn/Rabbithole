@@ -34,3 +34,4 @@ Single-context: root `GLOSSARY.md` plus `docs/adr/`. See `docs/agents/domain.md`
 ### Testing
 
 Prefer unit tests, then component, then integration; browser scripts only when acceptance names them. See `docs/agents/testing.md`.
+To run the app yourself, use `npm run serve`; `npm start` opens the owner's browser.

@@ -342,7 +342,7 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
     await act(async () => target.dispatchEvent(event));
     return event;
   };
-  const band = () => container.querySelector('.sidebar:not([data-peek])');
+  const band = () => container.querySelector('.sidebar');
   const hide = button(container, 'Hide sidebar');
   assert.equal(hide.getAttribute('aria-expanded'), 'true');
   await act(async () => {
@@ -353,12 +353,8 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'on');
   let restore = button(container, 'Show sidebar');
   assert.equal(restore.getAttribute('aria-expanded'), 'false');
+  assert.equal(restore, hide, 'the focused toggle stays put');
   assert.equal(document.activeElement, restore);
-  assert.equal(
-    container.querySelector('.sidebar').dataset.revealed,
-    'true',
-    'the focused toggle stays reachable as a peek',
-  );
   await act(async () => restore.click());
   assert.ok(band());
   assert.equal(document.activeElement, button(container, 'Hide sidebar'));
@@ -382,7 +378,7 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   await key(canvas);
   for (const label of ['Knowledge', 'Videos', 'Settings']) {
     await act(async () => button(band(), label).click());
-    await act(async () => button(band(), 'Hide sidebar').click());
+    await act(async () => button(container, 'Hide sidebar').click());
     assert.equal(band(), null, label);
     await act(async () => button(container, 'Show sidebar').click());
     assert.ok(band());

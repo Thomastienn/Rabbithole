@@ -108,36 +108,37 @@ html {
   border-inline-end: thin solid var(--color-border);
   background: var(--color-background-muted);
 }
-/* Focus mode peek (mockup sidebar.html E, 11-12): an invisible left-edge strip slides the sidebar over the page. */
-.peek-target {
+/* The sidebar toggle stays put: a raised menu button over the page in Focus mode, a plain close button in the sidebar head. */
+.sidebar-toggle {
   position: fixed;
-  z-index: 6;
-  inset-block: 0;
-  left: 0;
-  width: 6px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  outline: none;
+  z-index: 8;
+  /* Centred on the chat heading row and in line with the header's side padding. */
+  top: calc(1.25 * var(--rabbithole-module));
+  left: calc(2 * var(--rabbithole-module));
+  /* Opaque so the scrolled sidebar passes under it cleanly. */
+  background: var(--color-background-muted);
 }
-.sidebar[data-peek] {
-  position: fixed;
-  z-index: 7;
-  inset-block: 0;
-  left: 0;
+.sidebar-toggle[aria-expanded='false'] {
+  border: thin solid var(--color-border);
   box-shadow: var(--shadow-high);
-  transition:
-    transform 160ms ease-out,
-    visibility 160ms;
 }
-.sidebar[data-revealed='false'] {
-  visibility: hidden;
-  transform: translateX(-100%);
+.sidebar-toggle svg {
+  animation: sidebar-toggle-in 160ms ease-out;
+}
+@keyframes sidebar-toggle-in {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sidebar[data-peek] {
-    transition: none;
+  .sidebar-toggle svg {
+    animation: none;
   }
+}
+/* The chat title starts past the floating menu button. */
+body:has(.sidebar-toggle[aria-expanded='false']) .chat-heading-row {
+  padding-inline-start: calc(5 * var(--rabbithole-module));
 }
 .sidebar-top {
   flex: none;
@@ -148,10 +149,18 @@ html {
 }
 .sidebar-head {
   justify-content: space-between;
-  padding-block-end: var(--rabbithole-module);
+  /* The logo sits beside the sidebar toggle. */
+  padding-block: calc(0.75 * var(--rabbithole-module)) var(--rabbithole-module);
+  padding-inline-start: calc(6 * var(--rabbithole-module));
 }
 .sidebar-mark {
   justify-content: flex-start;
+  gap: var(--rabbithole-module);
+}
+/* The button wraps its children in a block span; lay the logo and name out in one row. */
+.sidebar-mark span:has(> svg) {
+  display: flex;
+  align-items: center;
   gap: var(--rabbithole-module);
 }
 .sidebar-tools {

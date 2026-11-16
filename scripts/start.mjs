@@ -61,7 +61,11 @@ try {
     console.log('Building Rabbithole: built assets are missing or stale.');
     await npm(['run', 'build']);
   }
-  process.exitCode = await run(process.execPath, ['server/main.mjs', ...process.argv.slice(2)]);
+  // npm start opens the browser; `npm run serve` (--no-open) and non-interactive runs (agents, tests, CI) do not.
+  const args = process.argv.slice(2).filter((a) => a !== '--no-open');
+  if (process.stdout.isTTY && !process.argv.includes('--no-open'))
+    process.env.RABBITHOLE_OPEN = '1';
+  process.exitCode = await run(process.execPath, ['server/main.mjs', ...args]);
 } catch (error) {
   console.error(
     error.code === 'ENOENT'

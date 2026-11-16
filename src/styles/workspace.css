@@ -200,6 +200,14 @@
   border: 0;
   background: none;
 }
+/* The whole sidebar scrolls as one; the outline grows to fit instead of scrolling on its own. */
+.sidebar {
+  overflow-y: auto;
+}
+.sidebar :is(.contents, .contents-panel, .contents-scroll) {
+  flex: 1 0 auto;
+  overflow: visible;
+}
 .band-drawer .drawer-settings {
   margin: var(--rabbithole-module);
   width: auto;

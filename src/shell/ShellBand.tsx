@@ -8,13 +8,12 @@ import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
 import {
   Bars3Icon,
   ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   ChevronUpIcon,
   Cog6ToothIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   RectangleStackIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { savedFocusMode, savePreference } from './preferences';
 import { Logo } from './Logo';
@@ -143,13 +142,11 @@ export default function ShellBand({
   const [focusMode, setFocusMode] = useState(savedFocusMode);
   const [revealed, setRevealed] = useState(false);
   const focusToggle = useRef<HTMLButtonElement>(null);
-  const peekNav = useRef<HTMLElement>(null);
-  const returnFocus = useRef<HTMLElement | null>(null);
   const toggleFocusMode = useCallback(() => {
     const restoreFocus = document.activeElement === focusToggle.current;
     flushSync(() => {
       setFocusMode(!focusMode);
-      // Hiding from the focused toggle leaves the sidebar peeking so focus has somewhere to stay.
+      // Hiding the top bar from its focused toggle leaves the restore button showing so focus has somewhere to stay.
       setRevealed(!focusMode && restoreFocus);
     });
     savePreference('focus-mode', focusMode ? 'off' : 'on');
@@ -197,11 +194,12 @@ export default function ShellBand({
     return () => removeEventListener('keydown', shortcut);
   }, [busy, newChat]);
   // Narrow screens keep their header; Focus mode hides that header there.
+  // Desktop: one toggle stays at the top left, a menu button while the sidebar is hidden and a close button beside its logo.
   const bar = mobile ? 'top bar' : 'sidebar';
   const focusButton = (
     <IconButton
       ref={focusToggle}
-      className={focusMode ? 'focus-restore' : 'band-focus'}
+      className={mobile ? (focusMode ? 'focus-restore' : 'band-focus') : 'sidebar-toggle'}
       label={`${focusMode ? 'Show' : 'Hide'} ${bar}`}
       tooltip={`${focusMode ? 'Show' : 'Hide'} ${bar} (Ctrl+Shift+F)`}
       aria-expanded={!focusMode}
@@ -214,13 +212,13 @@ export default function ShellBand({
             <ChevronUpIcon />
           )
         ) : focusMode ? (
-          <ChevronRightIcon />
+          <Bars3Icon />
         ) : (
-          <ChevronLeftIcon />
+          <XMarkIcon />
         )
       }
       variant="ghost"
-      size="sm"
+      size={mobile ? 'sm' : 'lg'}
       onClick={toggleFocusMode}
     />
   );
@@ -243,13 +241,7 @@ export default function ShellBand({
       </>
     );
   const sidebar = (
-    <nav
-      ref={peekNav}
-      className="sidebar"
-      aria-label="App"
-      data-peek={focusMode || undefined}
-      data-revealed={focusMode ? revealed : undefined}
-    >
+    <nav className="sidebar" aria-label="App">
       <VStack gap={0} className="sidebar-top">
         <HStack gap={1} vAlign="center" className="sidebar-head">
           <Button
@@ -263,7 +255,6 @@ export default function ShellBand({
             <Logo />
             <span className="band-mark">Rabbithole</span>
           </Button>
-          {focusButton}
         </HStack>
         <VStack gap={0} className="sidebar-views">
           {views}
@@ -291,53 +282,19 @@ export default function ShellBand({
             onClick={newChat}
           />
         </VStack>
-        {!focusMode && saveAlert}
+        {saveAlert}
       </VStack>
       {contents}
     </nav>
   );
-  // Desktop peek: an invisible left-edge strip reveals the sidebar as an overlay while the pointer or focus is inside.
-  // The save alert sits outside the hidden sidebar so its alert role is still announced.
-  if (focusMode) {
-    const hide = () => {
-      setRevealed(false);
-      returnFocus.current?.focus();
-      returnFocus.current = null;
-    };
+  // The save alert stays mounted while the sidebar is hidden so its alert role is still announced.
+  if (focusMode)
     return (
       <>
-        <div
-          className="sidebar-peek"
-          onMouseEnter={() => {
-            returnFocus.current = null;
-            setRevealed(true);
-          }}
-          onMouseLeave={() => setRevealed(false)}
-          onFocus={(e) => {
-            if (!e.target.classList.contains('peek-target')) return;
-            // Shift+Tab out of the sidebar lands on the strip: close and go back.
-            if (peekNav.current?.contains(e.relatedTarget)) return hide();
-            returnFocus.current = e.relatedTarget as HTMLElement | null;
-            flushSync(() => setRevealed(true));
-            peekNav.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
-          }}
-          onBlur={(e) => {
-            const next = e.relatedTarget;
-            if (e.target.classList.contains('peek-target') || e.currentTarget.contains(next))
-              return;
-            if (next) {
-              setRevealed(false);
-              returnFocus.current = null;
-            } else hide();
-          }}
-        >
-          <button type="button" className="peek-target" aria-label="Show sidebar overlay" />
-          {sidebar}
-        </div>
+        {focusButton}
         {saveAlert && <div className="focus-save">{saveAlert}</div>}
       </>
     );
-  }
   return mobile ? (
     <header className="shell-band">
       <IconButton
@@ -381,6 +338,9 @@ export default function ShellBand({
       {saveAlert}
     </header>
   ) : (
-    sidebar
+    <>
+      {focusButton}
+      {sidebar}
+    </>
   );
 }

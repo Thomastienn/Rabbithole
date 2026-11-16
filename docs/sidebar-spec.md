@@ -14,7 +14,7 @@ The learner usually works with everything hidden: Focus mode hides the top bar, 
 ## Solution
 
 - The desktop top bar goes away. Every page has one **sidebar** on the left. Its top section holds the app's own controls: the app mark (to the Library), the views, Search, New chat and Settings. Below them is the page's own contents; inside a learning tree that is the tree's Contents (conversations and Resources), on the map view as well as the reading view. Pages without contents show only the top section.
-- **Focus mode** now hides the sidebar. A thin strip along the full left edge of the window slides the sidebar out over the page when the mouse reaches it, and slides it away when the mouse leaves. `Ctrl+Shift+F` turns Focus mode on and off, so it pins the sidebar open or hides it again.
+- **Focus mode** now hides the sidebar. One button at the top left turns Focus mode on and off: a menu icon while the sidebar is hidden, a close icon beside the sidebar's logo while it is shown. `Ctrl+Shift+F` does the same.
 - `Ctrl+Shift+O` starts a new learning tree from any page, even while typing in the composer.
 - Narrow screens keep today's small header with a menu button that opens a drawer holding the same controls and contents.
 
@@ -32,7 +32,7 @@ The learner usually works with everything hidden: Focus mode hides the top bar, 
 10. As a learner, I want to bring the hidden sidebar back by moving the mouse to the left edge of the window, so that I can reach it without aiming at a thin target.
 11. As a learner, I want the revealed sidebar to slide over the page rather than push it, so that the map and chat do not jump.
 12. As a learner, I want the revealed sidebar to slide away when my mouse leaves it, so that it gets out of the way by itself.
-13. As a learner, I want the left-edge strip to cover nothing on the page, so that it never blocks a button I am trying to click.
+13. As a learner, I want the sidebar button to cover nothing on the page, so that it never blocks a button I am trying to click.
 14. As a learner, I want `Ctrl+Shift+F` to keep toggling Focus mode, so that my habit still works.
 15. As a learner, I want Focus mode remembered between visits, so that the app opens the way I left it.
 16. As a learner, I want `Ctrl+Shift+O` to start a new learning tree from any page, so that I can begin a new topic with everything hidden.
@@ -53,7 +53,7 @@ The learner usually works with everything hidden: Focus mode hides the top bar, 
 - Focus mode keeps its name, its saved preference and `Ctrl+Shift+F`, with the existing guard that the shortcut does nothing while typing in inputs and the composer. It now hides the sidebar instead of the top bar.
 - Peek: while Focus mode is on, a strip a few pixels wide along the full height of the window's left edge reveals the sidebar as an overlay above the page when hovered. The sidebar hides again when the pointer leaves the overlay. Keyboard focus entering the strip's focus target reveals it the same way, and focus leaving the sidebar hides it. The strip renders nothing visible and covers no page controls. Under `prefers-reduced-motion` the sidebar appears and disappears without sliding.
 - `Ctrl+Shift+O` runs the existing New chat action from any page, including while typing in the composer and other inputs, and prevents the browser's default. It ignores repeats and IME composition, like the Focus mode shortcut. It is disabled while a new tree is already opening.
-- The layout-save alert moves into the sidebar. In Focus mode it still announces through its alert role; the peek does not need to be open for the alert to be read.
+- The layout-save alert moves into the sidebar. In Focus mode it still announces through its alert role; the sidebar does not need to be shown for the alert to be read.
 - Narrow screens keep today's header with the menu button and drawer; the drawer holds the same controls and contents as the sidebar.
 - The Sidebar and Focus mode terms in the glossary describe the result.
 

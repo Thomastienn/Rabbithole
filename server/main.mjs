@@ -1,7 +1,7 @@
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { mkdirSync } from 'node:fs';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import lockfile from 'proper-lockfile';
 import { Store } from './store.mjs';
 import { Auth } from './providers/auth.mjs';
@@ -78,7 +78,16 @@ try {
     app.server.once('error', reject);
     app.server.listen(port, '127.0.0.1', resolve);
   });
-  console.log(`Rabbithole: http://127.0.0.1:${app.server.address().port}`);
+  const url = `http://127.0.0.1:${app.server.address().port}`;
+  console.log(`Rabbithole: ${url}`);
+  // Set by npm start in an interactive terminal; a missing opener only leaves the printed address.
+  if (process.env.RABBITHOLE_OPEN === '1')
+    spawn(process.platform === 'darwin' ? 'open' : 'xdg-open', [url], {
+      stdio: 'ignore',
+      detached: true,
+    })
+      .on('error', () => {})
+      .unref();
   // Local diagnostics only. Start listening first so a missing or slow CLI cannot prevent reading saved trees.
   const installed = (command) =>
     new Promise((resolve) =>

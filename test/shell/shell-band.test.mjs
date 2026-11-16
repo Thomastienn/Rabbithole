@@ -62,9 +62,9 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
   t.after(cleanup);
   assert.equal(container.querySelector('.shell-band, header'), null, 'no desktop top bar');
   let band = () => container.querySelector('nav.sidebar');
+  assert.equal(band().previousElementSibling, button(container, 'Hide sidebar'));
   assert.deepEqual([...band().querySelectorAll('button')].map(name), [
     'Rabbithole',
-    'Hide sidebar',
     'Read',
     'Map',
     'Knowledge',
@@ -160,7 +160,7 @@ test('focus mode hides the sidebar, survives a shell remount, keeps the save ale
   }
   const { container, act, cleanup } = await render(h(Fixture), ui);
   t.after(cleanup);
-  const shown = 'nav.sidebar:not([data-peek])';
+  const shown = 'nav.sidebar';
   const chord = async (target, options = {}) => {
     const e = new KeyboardEvent('keydown', {
       key: 'F',
@@ -210,7 +210,6 @@ test('focus mode hides the sidebar, survives a shell remount, keeps the save ale
     'save alert still announces while the sidebar is hidden',
   );
   assert.equal(container.querySelector('.focus-hot-zone'), null, 'desktop has no top hot zone');
-  assert.equal(container.querySelector('.sidebar').dataset.revealed, 'false');
   await chord(container);
   assert.ok(container.querySelector(shown));
   await chord(container);
@@ -218,89 +217,67 @@ test('focus mode hides the sidebar, survives a shell remount, keeps the save ale
   await act(async () => mount(false));
   await act(async () => mount(true));
   assert.equal(container.querySelector(shown), null);
-  assert.equal(
-    button(container.querySelector('.sidebar'), 'Show sidebar').getAttribute('aria-expanded'),
-    'false',
-  );
-  await act(async () => button(container.querySelector('.sidebar'), 'Show sidebar').click());
+  assert.equal(button(container, 'Show sidebar').getAttribute('aria-expanded'), 'false');
+  await act(async () => button(container, 'Show sidebar').click());
   await act(async () => mount(false));
   await act(async () => mount(true));
   assert.ok(container.querySelector(shown));
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
 });
 
-test('focus mode peek: the left-edge strip reveals the sidebar on hover and focus, hides on leave and returns focus', async (t) => {
+test('the desktop sidebar toggle stays one button: a menu icon while hidden, a close icon while shown', async (t) => {
   const { container, act, cleanup } = await render(
-    h(
-      'div',
-      null,
-      h(ShellBand, {
-        mobile: false,
-        tab: 'learning',
-        busy: false,
-        drawer: false,
-        views: [viewTab('Read', null, true, () => {})],
-        saveAlert: null,
-        contents: h('aside', { className: 'contents' }, h('button', null, '1 Fungi')),
-        setDrawer() {},
-        search() {},
-        newChat() {},
-        library() {},
-        settings() {},
-      }),
-      h('textarea', { 'aria-label': 'Composer' }),
-    ),
-    (w) => {
-      w.localStorage.setItem('rabbithole.focus-mode', 'on');
-      return ui(w);
-    },
+    h(ShellBand, {
+      mobile: false,
+      tab: 'learning',
+      busy: false,
+      drawer: false,
+      views: [viewTab('Read', null, true, () => {})],
+      saveAlert: null,
+      contents: h('aside', { className: 'contents' }, h('button', null, '1 Fungi')),
+      setDrawer() {},
+      search() {},
+      newChat() {},
+      library() {},
+      settings() {},
+    }),
+    ui,
   );
   t.after(() => {
     localStorage.removeItem('rabbithole.focus-mode');
     cleanup();
   });
-  const nav = container.querySelector('nav.sidebar');
-  const strip = container.querySelector('.peek-target');
-  const composer = container.querySelector('textarea');
-  const revealed = () => nav.dataset.revealed;
-  assert.equal(revealed(), 'false');
-  assert.equal(strip.textContent, '', 'strip draws nothing');
-  assert.equal(nav.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_PRECEDING, 2);
-  const pointer = (target, type, relatedTarget) =>
-    act(async () => target.dispatchEvent(new MouseEvent(type, { bubbles: true, relatedTarget })));
-  await pointer(strip, 'mouseover', document.body);
-  assert.equal(revealed(), 'true', 'hovering the strip reveals the overlay');
-  await pointer(nav.querySelector('button'), 'mouseout', document.body);
-  assert.equal(revealed(), 'false', 'leaving the overlay hides it');
-
-  await act(async () => composer.focus());
-  await act(async () => strip.focus());
-  assert.equal(revealed(), 'true', 'focus on the strip reveals the overlay');
-  assert.equal(document.activeElement, button(nav, 'Rabbithole'), 'focus moves into the sidebar');
-  await act(async () => button(nav, 'Read').focus());
-  assert.equal(revealed(), 'true', 'moving inside keeps it open');
-  await act(async () => strip.focus());
-  assert.equal(revealed(), 'false', 'Shift+Tab back to the strip hides it');
-  assert.equal(document.activeElement, composer, 'focus returns to where it was');
-
-  await act(async () => strip.focus());
-  await act(async () => document.activeElement.blur());
-  assert.equal(revealed(), 'false', 'focus leaving to nowhere hides it');
-  assert.equal(document.activeElement, composer);
-
-  await act(async () => strip.focus());
-  await act(async () => composer.focus());
-  assert.equal(revealed(), 'false', 'focus moving to the page hides it');
-  assert.equal(document.activeElement, composer);
+  const toggle = container.querySelector('.sidebar-toggle');
+  const icon = () => toggle.querySelector('svg path').getAttribute('d');
+  assert.equal(name(toggle), 'Hide sidebar');
+  assert.equal(
+    container.querySelectorAll('nav.sidebar button[aria-expanded]').length,
+    0,
+    'no second toggle in the sidebar',
+  );
+  const close = icon();
+  await act(async () => {
+    toggle.focus();
+    toggle.click();
+  });
+  assert.equal(container.querySelector('nav.sidebar'), null);
+  assert.equal(container.querySelector('.sidebar-toggle'), toggle, 'same button, not remounted');
+  assert.equal(name(toggle), 'Show sidebar');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.notEqual(icon(), close, 'the icon changes');
+  assert.equal(document.activeElement, toggle);
+  await act(async () => toggle.click());
+  assert.ok(container.querySelector('nav.sidebar'));
+  assert.equal(icon(), close);
 });
 
-test('the peek does not slide under prefers-reduced-motion', async () => {
+test('the sidebar toggle icon does not spin under prefers-reduced-motion', async () => {
   const { readFile } = await import('node:fs/promises');
   const css = await readFile(new URL('../../src/styles/shell.css', import.meta.url), 'utf8');
-  assert.match(css, /\.sidebar\[data-peek\] \{[^}]*transition:[^}]*transform/);
+  assert.match(css, /\.sidebar-toggle svg \{\s*animation:/);
   assert.match(
     css,
-    /@media \(prefers-reduced-motion: reduce\) \{\s*\.sidebar\[data-peek\] \{\s*transition: none;/,
+    /@media \(prefers-reduced-motion: reduce\) \{\s*\.sidebar-toggle svg \{\s*animation: none;/,
   );
 });
 
