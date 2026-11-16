@@ -256,15 +256,20 @@ export default function ShellBand({
             <span className="band-mark">Rabbithole</span>
           </Button>
         </HStack>
-        <VStack gap={0} className="sidebar-views">
-          {views}
-          {viewTab('Library', <RectangleStackIcon />, tab === 'library', library)}
-          {viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings)}
-        </VStack>
-        <VStack gap={0} className="sidebar-tools">
+        <HStack gap={1} vAlign="center" className="sidebar-tools">
           <Button
-            className="view-tab tree-search"
-            label="Search"
+            className="new-chat"
+            label={busy ? 'Opening…' : 'New chat'}
+            tooltip="New chat (Ctrl+Shift+O)"
+            variant="primary"
+            size="sm"
+            icon={<PlusIcon />}
+            isDisabled={busy}
+            onClick={newChat}
+          />
+          <IconButton
+            className="tree-search"
+            label="Search learning trees"
             tooltip="Search learning trees"
             variant="ghost"
             size="sm"
@@ -272,19 +277,17 @@ export default function ShellBand({
             aria-haspopup="dialog"
             onClick={search}
           />
-          <Button
-            className="view-tab new-chat"
-            label={busy ? 'Opening…' : 'New chat'}
-            variant="ghost"
-            size="sm"
-            icon={<PlusIcon />}
-            isDisabled={busy}
-            onClick={newChat}
-          />
+        </HStack>
+        <VStack gap={0} className="sidebar-views">
+          {views}
+          {viewTab('Library', <RectangleStackIcon />, tab === 'library', library)}
         </VStack>
         {saveAlert}
       </VStack>
       {contents}
+      <div className="sidebar-foot">
+        {viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings)}
+      </div>
     </nav>
   );
   // The save alert stays mounted while the sidebar is hidden so its alert role is still announced.

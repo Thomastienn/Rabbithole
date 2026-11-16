@@ -163,10 +163,26 @@ body:has(.sidebar-toggle[aria-expanded='false']) .chat-heading-row {
   align-items: center;
   gap: var(--rabbithole-module);
 }
+/* New chat leads the sidebar; search sits beside it as a quiet icon. */
 .sidebar-tools {
-  margin-block-start: var(--rabbithole-module);
+  padding-block-end: var(--rabbithole-module);
+}
+.sidebar-tools .new-chat {
+  flex: 1;
+  justify-content: flex-start;
+}
+.sidebar-views {
   padding-block-start: var(--rabbithole-module);
   border-block-start: thin solid var(--color-border);
+}
+/* Settings stays reachable at the foot while the outline scrolls under it. */
+.sidebar-foot {
+  position: sticky;
+  bottom: 0;
+  margin-block-start: auto;
+  padding: var(--rabbithole-module);
+  border-block-start: thin solid var(--color-border);
+  background: var(--color-background-muted);
 }
 .sidebar .band-save {
   height: auto;
