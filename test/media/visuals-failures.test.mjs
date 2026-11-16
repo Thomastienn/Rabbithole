@@ -247,39 +247,28 @@ test('malformed visuals remain visible and retryable; shutdown recovers pending 
   }
 });
 
-test('smart default resolution fails with a safe actionable reason and an explicit Retry can resolve it later', async () => {
-  let calls = 0;
-  const smart = {
-    models,
-    model: async () => {
-      throw new Error('PRIVATE MODEL DIAGNOSTIC');
-    },
-    generate: async (_tree, _text, emit) => {
-      calls++;
-      complete(emit, source);
-    },
-  };
+test('a missing smart model no longer skips visuals; they run on the conversation chat model and effort', async () => {
+  const calls = [];
   const env = await open(
     { generate: async (_tree, _text, emit) => complete(emit, 'Look.' + block()) },
-    smart,
-    { defaultProvider: 'claude' },
+    {
+      models,
+      generate: async (tree, _text, emit) => {
+        calls.push(tree);
+        complete(emit, source);
+      },
+    },
   );
   try {
     await env.post('/api/settings/smart', { model: null, followEffort: true });
-    const stream = await (
-      await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })
-    ).text();
-    const a = (await env.get(`/api/trees/${env.tree.id}`)).artifacts[0];
-    assert.equal(a.status, 'failed');
-    assert.equal(calls, 0);
-    assert.match(a.error, /Could not choose the smart model/);
-    assert.doesNotMatch(stream, /PRIVATE MODEL DIAGNOSTIC/);
-    smart.model = async () => 'smart';
-    assert.equal((await env.post(`/api/trees/${env.tree.id}/artifacts/${a.id}/retry`)).status, 200);
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })).text();
     await until(
-      async () => (await env.get(`/api/trees/${env.tree.id}/artifacts/${a.id}`)).status === 'ready',
+      async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts?.[0]?.status === 'ready',
     );
-    assert.equal(calls, 1);
+    assert.deepEqual(
+      calls.map((t) => [t.provider, t.model, t.effort, t.thread]),
+      [['claude', 'smart', 'high', null]],
+    );
   } finally {
     await env.close();
   }

@@ -463,12 +463,24 @@ test('LaTeX bracket delimiters parse as math with exact offsets; escaped and unc
 });
 
 test('resource links render as citation chips that keep raw offsets; bracketed prose stays text', () => {
-  const raw = 'Heaps [3](resource:3), a[3], [x](resource:abc) and [4] here.';
-  const doc = new JSDOM(renderToStaticMarkup(h('div', null, renderMarkdown(raw)))).window.document;
+  const raw = 'Heaps [3](resource:3), [5](resource:5), a[3], [x](resource:abc) and [4] here.';
+  const links = { 3: 'https://example.com/3', 5: 'javascript:alert(1)' };
+  const doc = new JSDOM(
+    renderToStaticMarkup(h('div', null, renderMarkdown(raw, undefined, [], [], {}, false, links))),
+  ).window.document;
   const chips = [...doc.querySelectorAll('.citation-chip')];
   assert.deepEqual(
-    chips.map((a) => [a.getAttribute('href'), a.getAttribute('aria-label'), a.textContent]),
-    [['#resource-3', 'Resource 3', '3']],
+    chips.map((a) => [
+      a.getAttribute('href'),
+      a.getAttribute('target'),
+      a.getAttribute('rel'),
+      a.getAttribute('aria-label'),
+      a.textContent,
+    ]),
+    [
+      ['https://example.com/3', '_blank', 'noopener noreferrer', 'Resource 3', '3'],
+      [null, null, null, 'Resource 5', '5'],
+    ],
   );
   const leaf = chips[0].querySelector('[data-o]');
   assert.equal(raw.slice(+leaf.dataset.o, +leaf.dataset.e), '3');

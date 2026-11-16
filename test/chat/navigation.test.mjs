@@ -152,8 +152,8 @@ test('Contents reports the last completed context, drops the meter without a lim
   assert.deepEqual(collapsed, [true]);
 });
 
-test('Resources lists title, site, kind and citing conversations, opens the original, and a citation chip jumps to its entry', async (t) => {
-  const { renderMarkdown } = await import('../../src/markdown/markdown.ts');
+test('Resources lists title, site, kind and citing conversations, opens the original, and a citation chip opens its resource page in a new tab', async (t) => {
+  const { default: Reply } = await import('../../src/chat/Reply.tsx');
   const trees = [
     { id: 'root', parent: null, title: 'Heaps', created: 0 },
     { id: 'child', parent: 'root', title: 'Why arrays?', created: 1 },
@@ -167,6 +167,7 @@ test('Resources lists title, site, kind and citing conversations, opens the orig
     firstSeen: 1,
     conversations,
   });
+  const resources = [resource(1, 'page', []), resource(2, 'image', ['root', 'child'])];
   const scrolled = [];
   const { container, act, cleanup } = await render(
     h(
@@ -175,7 +176,11 @@ test('Resources lists title, site, kind and citing conversations, opens the orig
       h(
         'div',
         { className: 'reply' },
-        renderMarkdown('Heaps sift [2](resource:2) and a[2] is prose.'),
+        h(Reply, {
+          text: 'Heaps sift [2](resource:2) and a[2] is prose.',
+          underlines: [],
+          resources,
+        }),
       ),
       h(Contents, {
         root: 'root',
@@ -187,13 +192,14 @@ test('Resources lists title, site, kind and citing conversations, opens the orig
           id: 'child',
           messages: [],
           artifacts: [],
-          resources: [resource(1, 'page', []), resource(2, 'image', ['root', 'child'])],
+          resources,
         },
         open: () => {},
         openFigure: () => {},
       }),
     ),
     (window) => {
+      ui(window);
       window.HTMLElement.prototype.scrollIntoView = function () {
         scrolled.push(this.id);
       };
@@ -214,7 +220,10 @@ test('Resources lists title, site, kind and citing conversations, opens the orig
   const chips = [...container.querySelectorAll('.reply .citation-chip')];
   assert.equal(chips.length, 1, 'prose a[2] is not a citation');
   assert.equal(chips[0].getAttribute('aria-label'), 'Resource 2');
-  await act(async () => chips[0].click());
-  assert.deepEqual(scrolled, ['resource-2']);
-  assert.equal(container.ownerDocument.activeElement, link);
+  assert.deepEqual(
+    [chips[0].getAttribute('href'), chips[0].target, chips[0].rel],
+    ['https://example.com/2', '_blank', 'noopener noreferrer'],
+  );
+  chips[0].click();
+  assert.deepEqual(scrolled, [], 'a chip no longer scrolls to Contents');
 });

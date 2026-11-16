@@ -13,6 +13,7 @@ import { rawOffsets, rawRange } from '../markdown/markdown';
 import type { Artifact } from '../media/artifacts';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import Reply from './Reply';
+import type { Resource } from './types';
 import ToolActivity from './ToolActivity';
 
 export default function Passage({
@@ -29,6 +30,7 @@ export default function Passage({
   suggestions,
   branched,
   inlineArtifacts,
+  resources,
   onArtifactAction,
   onVisualPart,
   visualBranches,
@@ -37,6 +39,7 @@ export default function Passage({
   addresses: ReturnType<typeof conversationAddresses>;
   index: number;
   inlineArtifacts?: Artifact[];
+  resources?: Resource[];
   onVisualPart?: PartAction;
   visualBranches?: Record<string, VisualBranch[]>;
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
@@ -266,6 +269,7 @@ export default function Passage({
           onVisualPart={onVisualPart}
           visualBranches={visualBranches}
           onOpenChild={onOpenChild}
+          resources={resources}
         />
       </section>
       {!!message.tools?.length && <ToolActivity tools={message.tools} />}

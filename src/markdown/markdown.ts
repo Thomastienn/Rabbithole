@@ -7,7 +7,7 @@ import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
-import ReplyImage, { imageUrl, jumpToResource, type ImageSource } from './ReplyImage.tsx';
+import ReplyImage, { imageUrl, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
 import { layout } from './layouts.ts';
 export { plainText };
@@ -101,6 +101,7 @@ export function renderMarkdown(
   slots: { at: number; node: ReactNode }[] = [],
   sources: Record<string, ImageSource> = {},
   flow = false,
+  resources: Record<string, string> = {},
 ): ReactNode {
   let revealed = 0;
   let imageLink: string | undefined;
@@ -355,10 +356,13 @@ export function renderMarkdown(
             'a',
             {
               ...attrs,
-              href: `#resource-${cited}`,
+              ...(imageUrl(resources[cited] ?? '') && {
+                href: imageUrl(resources[cited]),
+                target: '_blank',
+                rel: 'noopener noreferrer',
+              }),
               className: 'citation-chip',
               'aria-label': `Resource ${cited}`,
-              onClick: (event: { preventDefault(): void }) => jumpToResource(event, cited),
             },
             kids(),
           );

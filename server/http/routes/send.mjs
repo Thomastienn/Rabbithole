@@ -186,8 +186,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         }
         continue;
       }
-      // No smart model (and no chat default to follow): visuals and videos are skipped, the reply still arrives.
-      if (['visual', 'video'].includes(request.kind) && !ctx.smart().resolved.provider) continue;
+      // No smart model (and no chat default to follow): videos are skipped; visuals use the chat model.
+      if (request.kind === 'video' && !ctx.smart().resolved.provider) continue;
       const label =
         request.kind === 'video' ? 'Video' : request.kind === 'visual' ? 'Visual' : 'Diagram';
       const task = request.task ?? {
@@ -223,7 +223,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             }
           : request.kind === 'visual'
             ? {
-                selection: ctx.smart().resolved,
+                selection: ctx.videoRoles(tree).chat,
                 theme: visualTheme(body.theme),
                 request: task,
                 earlierTitles: output.requests

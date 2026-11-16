@@ -259,7 +259,10 @@ for (const name of ['claude', 'codex'])
           earlierTitles: [],
         });
       }
-      assert.equal((await env.get(`/api/trees/${env.tree.id}`)).model, 'chat');
+      assert.equal(
+        (await env.get(`/api/trees/${env.tree.id}`)).model,
+        name === 'claude' ? 'haiku' : 'fixture-model',
+      );
     } finally {
       await env.close();
     }
@@ -389,7 +392,7 @@ test('branch compaction keeps passage detail and sees a visual only as one title
           compactions.push(text);
           return complete(emit, 'Rounds summary.');
         }
-        save('chat-thread', 'chat');
+        save('chat-thread', 'smart');
         complete(emit, 'Rounds pair winners.' + block() + '\nThe final decides.');
       },
     },
@@ -436,9 +439,11 @@ test('the visual prompt no longer asks the smart model to tag parts; the host ow
   );
 });
 
-test('the visual prompt prefers the step helper for staged ideas, bans prose paragraphs and keeps predict-then-reveal', () => {
+test('the visual prompt prefers the step helper only for stages over time, bans prose paragraphs and keeps predict-then-reveal', () => {
   const prompt = readFileSync('server/media/prompts/visual.md', 'utf8');
   assert.match(prompt, /When the idea has stages[\s\S]*prefer[\s\S]*stepThrough\(root, steps\)/);
+  assert.match(prompt, /replace or build on each other in the same place\s+over time/);
+  assert.match(prompt, /shows\s+every stage at once uses no step helper/);
   assert.match(prompt, /prefers-reduced-motion/);
   assert.match(prompt, /do not add\s+your own step controls/);
   assert.match(prompt, /Do not put explanatory paragraphs inside the fragment/);

@@ -5,6 +5,7 @@ import type { Source } from '../map/TreeOverview';
 import { renderMarkdown } from '../markdown/markdown';
 import { imageSources } from '../markdown/ReplyImage';
 import type { ToolCall } from './turn';
+import type { Resource } from './types';
 import type { Artifact } from '../media/artifacts';
 import VideoCard from '../media/VideoCard';
 import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
@@ -23,6 +24,7 @@ const Reply = memo(function Reply({
   onVisualPart,
   visualBranches,
   onOpenChild,
+  resources = [],
 }: {
   text: string;
   tools?: ToolCall[];
@@ -32,6 +34,7 @@ const Reply = memo(function Reply({
   onVisualPart?: PartAction;
   visualBranches?: Record<string, VisualBranch[]>;
   onOpenChild?: (id: string) => void;
+  resources?: Resource[];
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
 }) {
   useEffect(ensureHighlightStyles, []);
@@ -54,7 +57,9 @@ const Reply = memo(function Reply({
   const key = JSON.stringify(underlines),
     toolKey = JSON.stringify(tools),
     artifactKey = JSON.stringify(inlineArtifacts),
-    visualBranchKey = JSON.stringify(visualBranches);
+    visualBranchKey = JSON.stringify(visualBranches),
+    links = Object.fromEntries(resources.map((r) => [r.number, r.url])),
+    linkKey = JSON.stringify(links);
   return (
     <Text ref={box} as="div" type="body" className="reply-md">
       {useMemo(
@@ -88,6 +93,7 @@ const Reply = memo(function Reply({
             })),
             imageSources(tools),
             narrow,
+            links,
           ),
         [
           text,
@@ -98,6 +104,7 @@ const Reply = memo(function Reply({
           toolKey,
           artifactKey,
           visualBranchKey,
+          linkKey,
           reveal?.artifactId,
           !!onArtifactAction,
           narrow,

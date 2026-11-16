@@ -39,6 +39,14 @@ export const models = async () => [{ model: 'smart', isDefault: true, efforts: [
 export async function open(chat, smart, options = {}) {
   const path = options.path ?? join(mkdtempSync(join(tmpdir(), 'tt-visuals-')), 'trees.sqlite');
   smart.models ??= models;
+  // Visuals run on the conversation's chat model: the conversation uses the worker provider, whose
+  // visual calls reach the `smart` fixture and whose tutor calls reach the `chat` fixture.
+  const visual = smart.generate;
+  smart.generate = function (tree, ...rest) {
+    return tree.instructions?.startsWith('You create one self-contained visual')
+      ? visual.call(this, tree, ...rest)
+      : chat.generate(tree, ...rest);
+  };
   const store = observeStore(new Store(path)),
     smartProvider = options.smartProvider ?? 'claude';
   const app = createApp({
@@ -65,7 +73,7 @@ export async function open(chat, smart, options = {}) {
     followEffort: false,
     effort: 'high',
   });
-  const tree = store.create('Visuals', 'openai', 'chat');
+  const tree = store.create('Visuals', smartProvider, options.smartModel ?? 'smart', 'high');
   return {
     store,
     app,

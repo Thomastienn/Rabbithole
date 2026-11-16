@@ -101,6 +101,7 @@ export default function ChatThread({
           <Passage
             message={message}
             addresses={addresses}
+            resources={tree.resources}
             suggestions={suggestions}
             onVisualPart={openVisualPart}
             visualBranches={visualBranches}

@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { task, block, source, complete, deferred, until, open } from '../support/visual-kit.mjs';
 
-test('closed blocks start smart workers while text streams, queue in order at three, freeze requests and record every call', async () => {
+test('closed blocks start chat-model workers while text streams, queue in order at three, freeze requests and record every call', async () => {
   const first = deferred(),
     more = deferred(),
     finish = deferred(),
@@ -15,7 +15,7 @@ test('closed blocks start smart workers while text streams, queue in order at th
     {
       generate: async (tree, text, emit, save) => {
         chatCalls.push({ tree, text });
-        save('private-tutor-thread', 'chat');
+        save('private-tutor-thread', 'smart');
         if (text === 'Continue') return complete(emit, 'More about rounds.');
         emit({ type: 'delta', item: 'answer', text: 'First paragraph.\n```treetutor-vis' });
         await first.promise;
@@ -150,7 +150,7 @@ test('closed blocks start smart workers while text streams, queue in order at th
     assert.equal(chatCalls.at(-1).tree.thread, null);
     assert.equal(
       (await env.get(`/api/trees/${env.tree.id}`)).model,
-      'chat',
+      'smart',
       'worker sessions never replace the tutor session/model',
     );
   } finally {
@@ -289,7 +289,7 @@ test('concurrent replies get separate three-worker queues; deleting one aborts o
     },
   );
   try {
-    const other = env.store.create('Other', 'openai', 'chat');
+    const other = env.store.create('Other', 'claude', 'smart', 'high');
     const first = env
       .post(`/api/trees/${env.tree.id}/messages`, { text: 'First' })
       .then((r) => r.text());

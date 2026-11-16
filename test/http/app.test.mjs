@@ -1,4 +1,4 @@
-import { until, observeProvider } from '../support/events.mjs';
+import { until, observeProvider, observeStore } from '../support/events.mjs';
 import http from 'node:http';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -399,8 +399,8 @@ test('startup pruning removes trees with no messages and keeps every tree with a
   }
 });
 
-test('empty first run: with no chat default or smart model, a chosen chat model replies and its visual request is skipped without errors', async () => {
-  const store = new Store(join(dir, 'empty-first-run.sqlite'));
+test('empty first run: with no chat default or smart model, a chosen chat model replies and also draws its visual', async () => {
+  const store = observeStore(new Store(join(dir, 'empty-first-run.sqlite')));
   const block =
     '\n```treetutor-visual\n' +
     JSON.stringify({ title: 'Rounds', description: 'Final.', intent: 'Show it.', excerpt: 'It.' }) +
@@ -408,7 +408,12 @@ test('empty first run: with no chat default or smart model, a chosen chat model 
   const provider = observeProvider({
     models: async () => [{ model: 'chat', isDefault: true, efforts: [] }],
     generate: async (tree, text, emit) => {
-      emit({ type: 'item', item: 'a', text: `Answer.${block}` });
+      const visual = tree.instructions?.startsWith('You create one self-contained visual');
+      emit({
+        type: 'item',
+        item: 'a',
+        text: visual ? '<svg viewBox="0 0 9 9"></svg>' : `Answer.${block}`,
+      });
       emit({ type: 'status', status: 'completed' });
     },
   });
@@ -426,10 +431,14 @@ test('empty first run: with no chat default or smart model, a chosen chat model 
     const tree = await (await post('/api/trees', { provider: 'codex', model: 'chat' })).json();
     const stream = await (await post(`/api/trees/${tree.id}/messages`, { text: 'Hi' })).text();
     assert.match(stream, /"status":"completed"/);
-    assert.doesNotMatch(stream, /"type":"(error|artifact)"/);
+    assert.doesNotMatch(stream, /"type":"error"/);
+    await until(() => store.tree(tree.id).artifacts[0]?.status === 'ready');
     const saved = store.tree(tree.id);
     assert.equal(saved.messages.at(-1).status, 'completed');
-    assert.deepEqual(saved.artifacts, []);
+    assert.deepEqual(
+      saved.artifacts.map((a) => [a.kind, a.status]),
+      [['visual', 'ready']],
+    );
   } finally {
     await app.stop();
     store.close();

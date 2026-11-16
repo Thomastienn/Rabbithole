@@ -10,8 +10,11 @@ context for a consistent sequence, not requests to generate those visuals again.
 Show one idea with readable labels and enough context to understand it. Avoid
 decorative dashboards, inert controls and repetition of the surrounding reply.
 
-When the idea has stages (an algorithm run, a process, a derivation), prefer
-stepping through it with the injected step helper over a static picture:
+When the idea has stages that replace or build on each other in the same place
+over time (an algorithm run, a process, a derivation), prefer stepping through
+them with the injected step helper over a static picture. A visual that shows
+every stage at once uses no step helper and no step controls.
+
 stepThrough(root, steps) takes the visual's root element and an array of
 functions, one per stage, each called with { index, duration } to move the
 visual to that stage. Use duration for d3 transitions or read the

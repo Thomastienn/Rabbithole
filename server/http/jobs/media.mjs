@@ -212,13 +212,14 @@ export function mediaJobs(ctx) {
         null;
     } catch {
       throw new Error(
-        'Could not choose the smart model. Check Smart in Settings → Models, then Retry.',
+        'Could not choose the conversation’s chat model. Check the chat model, then Retry.',
       );
     }
     if (signal.aborted) throw signal.reason;
     const invalid = await selectionError(selection);
     if (signal.aborted) throw signal.reason;
-    if (invalid) throw new Error(`${invalid.error} Check Smart in Settings → Models, then Retry.`);
+    if (invalid)
+      throw new Error(`${invalid.error} Check the conversation’s chat model, then Retry.`);
     if (
       !store.visualInput(
         artifact.conversation,
