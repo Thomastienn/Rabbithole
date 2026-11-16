@@ -21,6 +21,13 @@ and continue independent ready work. Preserve unrelated edits. Keep Git local:
 no push, pull or remote sync. Authorization comes from the project owner and
 does not represent approval from a third-party provider.
 
+## Branches
+
+Work directly on `master` in the main checkout; do not create worktrees or
+feature branches unless the owner asks. When session tooling forces a worktree
+anyway, rebase its branch onto `master` and fast-forward `master` to it as soon
+as the work is committed, before creating tickets.
+
 ## Agent skills
 
 ### Issue tracker
