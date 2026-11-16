@@ -105,11 +105,11 @@ The app's estimate of how well the learner knows a concept, derived silently fro
 _Avoid_: Mastery, score, level
 
 **Discussion**:
-A group chat the learner asks for, placed inside a tutor reply like a visual. Three or four classmates and the tutor talk an idea through: classmates ask each other and the learner, and the tutor steps in to untangle or confirm. The learner can reply inside it until they next ask in the conversation itself; the discussion then closes for good and stays readable. Only the learner's own messages count as familiarity evidence.
+A group chat the learner asks for, placed inside a tutor reply like a visual. Three or four classmates and the tutor talk an idea through: classmates ask each other and the learner, and the tutor steps in to untangle or confirm. New lines arrive one at a time, at the pace of people typing, never all at once; lines the learner has already seen show at once when the discussion is reopened. The learner can reply inside it until they next ask in the conversation itself; the discussion then closes for good and stays readable. Only the learner's own messages count as familiarity evidence.
 _Avoid_: Classroom, group chat, debate
 
 **Classmate**:
-A simulated fellow learner in a discussion, played by the chat model; only classmates relevant to the moment speak. A discussion's classmates sit at different levels around the learner's estimated familiarity, so it still fits if the estimate is wrong. Their mistakes are honest misunderstandings, never planted errors. Classmates do not learn or carry over between discussions.
+A simulated fellow learner in a discussion, played by the chat model; only classmates relevant to the moment speak. A discussion's classmates sit at different levels around the learner's estimated familiarity, so it still fits if the estimate is wrong. Their mistakes are honest misunderstandings, never planted errors. Each classmate has their own way of talking, like a real person in a casual online chat: everyday words, contractions and light slang, short lines, never buzzwords or a performed eagerness. Voices differ within a discussion; the tutor stays plain and clear. Classmates do not learn or carry over between discussions.
 _Avoid_: Student, peer, persona
 
 **Inherited context**:
@@ -125,6 +125,10 @@ The record of reported model usage across learning trees and tasks, retained ind
 
 **Video library**:
 The local collection of generated videos, available independently of their originating learning trees. A saved video remains until the learner explicitly trashes it, even when its source discussion is deleted.
+
+**Everyday analogy**:
+A familiar real-life situation used to open an explanation of a concept that is new or abstract to the learner, such as traffic police letting a set number of cars through for a semaphore. The formal idea is then mapped onto it, and where the analogy breaks down is said plainly. Replies, visuals and videos use one when it helps, not always; a video carries one analogy through its cuts.
+_Avoid_: Metaphor (alone), real-life example, story
 
 **Tutor tool**:
 An action the chat model can take while answering, such as searching the web, reading a page, finding images, running Python or recalling the learner's earlier study. A provider's own tool is used where it has one; the app supplies the rest.
@@ -155,11 +159,11 @@ One continuous segment of a video with its own part of the narration and its own
 _Avoid_: Scene, clip, shot
 
 **Set piece**:
-A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut. It has a 2D form and a 3D form of the same object, both in the house style, and takes its colours from the video's palette roles, so it can be reused in another video.
+A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut. It has a 2D form and a 3D form of the same object, both in the house style, and takes its colours from the video's palette roles, so it can be reused in another video. A set piece may be built from other set pieces, its parts, such as a city drawn from many people, cars and houses, so a common object is drawn once and reused wherever it appears. A piece with no fitting part draws everything itself.
 _Avoid_: Model, asset, prop, stock piece
 
 **Piece library**:
-The local collection of set pieces from earlier videos, each with its 2D and 3D forms, shared across all learning trees and browsable from its own view. A new video reuses a close match, derives a variant from one, or draws a new piece. A cut audit that finds a saved piece poor or off the house style replaces it with a better version for future videos; saved videos keep how they looked. It holds only drawn set pieces, never exhibits.
+The local collection of set pieces from earlier videos, each with its 2D and 3D forms, shared across all learning trees and browsable from its own view. A new video reuses a close match, derives a variant from one, or draws a new piece; that choice covers the 2D and 3D forms together, and parts are saved and reused as set pieces of their own. A cut audit that finds a saved piece poor or off the house style replaces it with a better version for future videos; saved videos keep how they looked. It holds only drawn set pieces, never exhibits.
 _Avoid_: Component cache, asset library
 
 **Stock piece**:
