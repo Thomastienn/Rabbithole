@@ -17,8 +17,8 @@ const timing = (durationInFrames) => ({
   captions: [{ text: 'First caption.', startFrame: 0, endFrame: 40 }],
 });
 
-test('the live player shows cut 1 and buffers at an unready cut', async (t) => {
-  const cuts = [
+test('the live player holds an unready cut on the previous last frame and resumes when it is ready', async (t) => {
+  let cuts = [
     {
       playable: true,
       timing: timing(75),
@@ -48,8 +48,31 @@ test('the live player shows cut 1 and buffers at an unready cut', async (t) => {
   assert.match(container.textContent, /First caption\./);
   assert.equal(container.querySelector('[data-buffering]'), null);
   await act(async () => show(100));
-  assert.equal(container.querySelector('[data-buffering]')?.textContent, 'Loading the next cut…');
-  assert.doesNotMatch(container.textContent, /Cut one/);
+  // Cut 1's last frame stays on screen (its caption has ended) under a small corner mark, not a separate screen.
+  const held = container.querySelector('[data-buffering]');
+  assert.match(held.textContent, /Cut one/);
+  assert.doesNotMatch(held.textContent, /First caption\./);
+  const mark = held.querySelector('[role=status]');
+  assert.equal(mark.textContent, 'Loading the next cut…');
+  assert.equal(container.querySelectorAll('[role=status]').length, 1);
+  // A poll with unchanged cuts keeps the same live region, so it is announced once.
+  cuts = [...cuts];
+  await act(async () => show(101));
+  assert.equal(container.querySelector('[role=status]'), mark);
+  // The cut arrives: the hold lifts and cut 2 plays in place.
+  cuts = [
+    cuts[0],
+    {
+      playable: true,
+      timing: timing(75),
+      audio: 'blob:narration',
+      Component: () => h('p', null, 'Cut two'),
+    },
+  ];
+  await act(async () => show(102));
+  assert.equal(container.querySelector('[data-buffering]'), null);
+  assert.equal(container.querySelector('[role=status]'), null);
+  assert.match(container.textContent, /Cut two/);
 });
 
 test('joins: a continuing cut has no exit or entry, a scene change plays one side at a time, reduced motion fades', () => {

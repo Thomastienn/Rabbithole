@@ -17,7 +17,7 @@ const plan = {
   title: task.title,
   description: task.description,
   styleBrief,
-  cuts: ['First.', 'Second.'].map((narration, i) => ({
+  cuts: ['First.', 'Second.', 'Third.'].map((narration, i) => ({
     purpose: `Step ${i + 1}`,
     engine: 'remotion',
     dimension: '2d',
@@ -28,7 +28,7 @@ const plan = {
 const emphasis = [{ tool: 'cursor', sentence: 0, x: 960, y: 400, label: 'Winner' }];
 plan.cuts[0].emphasis = emphasis;
 
-test('a video plays live once cut 1 is ready while later cuts are pending, with phases in order and real counts', async () => {
+test('a video plays live once cuts 1 and 2 are ready while later cuts are pending, with phases in order and real counts', async () => {
   const gates = {},
     opened = {};
   const gate = (name) => {
@@ -47,7 +47,8 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
         return complete(emit, JSON.stringify(plan));
       }
       if (tree.instructions?.startsWith('You write one Remotion cut')) {
-        await gate(JSON.parse(text).cut.purpose === 'Step 1' ? 'first' : 'second');
+        const step = JSON.parse(text).cut.purpose;
+        await gate({ 'Step 1': 'first', 'Step 2': 'second' }[step] ?? 'third');
         return complete(emit, composition);
       }
       complete(emit, 'Before.\n' + directive + '\n\nAfter.');
@@ -88,14 +89,19 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
     await release('first');
     await at('narrating');
     await release('voice');
+    // Cut 1 alone is not enough while cut 2 is still being written.
+    await until(async () => (await (await env.get(cuts)).json()).cuts[0].playable);
+    assert.notEqual((await artifact()).phase, 'playable', 'one playable cut is not enough');
+    await release('second');
     const playable = await at('playable');
     assert.equal(playable.status, 'pending');
-    // Cut 1 is live: compiled code (no TypeScript or JSX left), timing and narration; cut 2 is still being written.
+    // Cuts 1 and 2 are live: compiled code (no TypeScript or JSX left), timing and narration; cut 3 is still being written.
     const live = await (await env.get(cuts)).json();
     assert.deepEqual(live.paletteRoles, styleBrief.paletteRoles);
     assert.deepEqual(
       live.cuts.map((c) => [c.engine, c.playable, typeof c.code]),
       [
+        ['remotion', true, 'string'],
         ['remotion', true, 'string'],
         ['remotion', false, 'object'],
       ],
@@ -110,7 +116,7 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
     );
     assert.deepEqual(
       live.cuts.map((c) => c.emphasis),
-      [emphasis, []],
+      [emphasis, [], []],
     );
     const voice = await env.get(`${cuts}/0/narration`);
     assert.equal(voice.headers.get('content-type'), 'audio/mpeg');
@@ -118,7 +124,7 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
       Buffer.from(await voice.arrayBuffer()),
       Buffer.from((await fakeNarration()).audio),
     );
-    for (const path of ['1/narration', '0/clip', '9/narration'])
+    for (const path of ['2/narration', '0/clip', '9/narration'])
       assert.equal((await env.get(`${cuts}/${path}`)).status, 404, path);
     assert.equal((await env.get(`/api/trees/other/artifacts/${id}/cuts`)).status, 404);
     // The library plays the live version until the MP4 is saved.
@@ -126,10 +132,10 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
       (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.live]),
       [[id, tree.id]],
     );
-    await release('second');
+    await release('third');
     const saving = await at('saving');
-    assert.equal(saving.progress, 0.2, 'cut 1 of 2 at 40%');
-    assert.equal(saving.frames, 150);
+    assert.equal(saving.progress, 0.4 / 3, 'cut 1 of 3 at 40%');
+    assert.equal(saving.frames, 225);
     renderProgress(0.1);
     assert.equal((await artifact()).phase, 'saving', 'the phase never moves backward');
     await release('render');
@@ -137,9 +143,9 @@ test('a video plays live once cut 1 is ready while later cuts are pending, with 
     await env.app.settled();
     assert.deepEqual(seen, [
       ['planning', undefined, undefined],
-      ['writing', 0, 2],
+      ['writing', 0, 3],
       ['narrating', undefined, undefined],
-      ['playable', 1, 2],
+      ['playable', 2, 3],
       ['saving', undefined, undefined],
     ]);
     assert.equal((await env.get(cuts)).status, 404, 'the saved MP4 replaces the live cuts');

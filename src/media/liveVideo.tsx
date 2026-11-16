@@ -1,9 +1,11 @@
 // The live video composition: cuts in order, each with the same ground, join, narration and subtitles as the
-// rendered cut (CUT_ENTRY in server/media/video-cut.mjs); an unready cut holds playback in a buffering state.
+// rendered cut (CUT_ENTRY in server/media/video-cut.mjs); an unready cut holds playback on the previous cut's
+// last frame until it is ready.
 import { Component, useEffect, type ComponentType, type ReactNode } from 'react';
 import {
   AbsoluteFill,
   Audio,
+  Freeze,
   Series,
   Video,
   interpolate,
@@ -50,24 +52,35 @@ export const liveDuration = (cuts: LiveCut[]) =>
 const ready = (cut: LiveCut) =>
   cut.playable && !!cut.timing && !!cut.audio && !!(cut.Component || cut.clip);
 
-export function Buffering() {
+// Holds the timeline (the Player resumes by itself once the cut is ready and this unmounts) over the previous
+// cut's frozen last frame, with a corner mark announced once as it mounts.
+export function Buffering({ previous }: { previous?: LiveCut }) {
   const buffer = useBufferState();
   useEffect(() => {
     const handle = buffer.delayPlayback();
     return () => handle.unblock();
   }, []);
   return (
-    <AbsoluteFill
-      data-buffering
-      style={{
-        background: palette.ground,
-        color: palette.muted,
-        alignItems: 'center',
-        justifyContent: 'center',
-        font: `500 36px ${fonts.heading}`,
-      }}
-    >
-      Loading the next cut…
+    <AbsoluteFill data-buffering style={{ background: palette.ground }}>
+      {previous && ready(previous) && (
+        <Freeze frame={previous.timing!.durationInFrames - 1}>
+          <Narrated cut={previous} />
+        </Freeze>
+      )}
+      <div
+        role="status"
+        style={{
+          position: 'absolute',
+          top: 32,
+          right: 40,
+          padding: '6px 16px',
+          background: `${palette.ground}cc`,
+          color: palette.muted,
+          font: `500 24px ${fonts.heading}`,
+        }}
+      >
+        Loading the next cut…
+      </div>
     </AbsoluteFill>
   );
 }
@@ -160,7 +173,7 @@ export default function LiveVideo({ cuts }: { cuts: LiveCut[] }) {
     <Series>
       {cuts.map((cut, i) => (
         <Series.Sequence key={i} durationInFrames={cut.timing?.durationInFrames ?? PLACEHOLDER}>
-          {ready(cut) ? <Narrated cut={cut} /> : <Buffering />}
+          {ready(cut) ? <Narrated cut={cut} /> : <Buffering previous={cuts[i - 1]} />}
         </Series.Sequence>
       ))}
     </Series>

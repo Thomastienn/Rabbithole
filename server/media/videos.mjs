@@ -196,25 +196,27 @@ export async function generateVideo({
       live,
       frames,
       rendered;
-    // Live phase from real cut state: cut 1 decides when playback can start; saving needs every cut playable.
+    // Live phase from real cut state: cuts 1 and 2 (every cut when there are two or fewer) decide when playback
+    // can start, so the learner rarely waits at the first join; saving needs every cut playable.
     const report = (value = rendered) => {
       rendered = value;
       const ready = live.cuts.filter(playable).length;
       if (rendered !== undefined && ready === count) return onPhase('saving', rendered, frames);
       if (live.pieces === null) return onPhase('pieces');
-      if (!playable(live.cuts[0]))
-        return !live.cuts[0].code
+      const waiting = live.cuts.slice(0, 2).find((c) => !playable(c));
+      if (waiting)
+        return !waiting.code
           ? onPhase('writing', undefined, {
               cut: live.cuts.filter((c) => c.code).length,
               cuts: count,
             })
-          : !live.cuts[0].timing
+          : !waiting.timing
             ? onPhase('narrating')
             : onPhase('auditing', undefined, {
                 cut: live.cuts.filter((c) => c.audited).length,
                 cuts: count,
               });
-      if (!playableStage) onStage('playable', { cut: 1, cuts: count });
+      if (!playableStage) onStage('playable', { cut: ready, cuts: count });
       playableStage = true;
       onPhase('playable', undefined, { cut: ready, cuts: count });
     };
