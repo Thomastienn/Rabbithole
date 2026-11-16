@@ -10,18 +10,26 @@ context for a consistent sequence, not requests to generate those visuals again.
 Show one idea with readable labels and enough context to understand it. Avoid
 decorative dashboards, inert controls and repetition of the surrounding reply.
 
+Show every stage at once when the stages belong side by side.
 When the idea has stages that replace or build on each other in the same place
 over time (an algorithm run, a process, a derivation), prefer stepping through
 them with the injected step helper over a static picture. A visual that shows
 every stage at once uses no step helper and no step controls.
 
-stepThrough(root, steps) takes the visual's root element and an array of
-functions, one per stage, each called with { index, duration } to move the
-visual to that stage. Use duration for d3 transitions or read the
---step-duration CSS variable it sets on root for CSS transitions; it is 0 under
+stepThrough(root, steps) takes the visual's root element and an array with one
+entry per stage. Each entry is either a function, which continues the scene, or
+{ scene: true, show } to change scene. Both are called with { index, duration }.
+A continuing step keeps the same elements and animates their attributes with d3
+transitions using duration; never rebuild the graphic or toggle near-copies of
+it. Use a scene change only when the layout really changes: the helper fades
+root out, runs show, which redraws root, and fades it back in. Mixing
+continuing steps and scene changes is allowed. For CSS transitions read the
+--step-duration CSS variable it sets on root; duration is 0 under
 prefers-reduced-motion and on first render. The helper renders Previous, Next
 and "Step n of m" below root and wires Enter, Space and arrow keys; do not add
 your own step controls or indicator.
+
+The frame holds only this visual, so CSS selectors need no id scoping.
 
 Do not put explanatory paragraphs inside the fragment (a predict-then-reveal
 answer below is the one exception); the reply text carries the explanation.

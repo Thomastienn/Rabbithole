@@ -85,6 +85,62 @@ test('reduced motion switches steps without transitions', () => {
   assert.equal(root.style.getPropertyValue('--step-duration'), '0ms');
 });
 
+test('a scene step fades root out, runs its show function, fades back in; controls and focus unchanged', async (t) => {
+  const { window } = new JSDOM('<div id="visual"><div id="root"></div></div>');
+  window.matchMedia = () => ({ matches: false });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  window.setTimeout = setTimeout;
+  window.clearTimeout = clearTimeout;
+  const root = window.document.getElementById('root'),
+    calls = [],
+    scene = (n) => ({
+      scene: true,
+      show: (state) => {
+        calls.push({ n, ...state });
+        root.textContent = `Scene ${n}`;
+      },
+    });
+  stepThrough(root, [scene(0), (state) => calls.push({ n: 1, ...state }), scene(2)]);
+  const [previous, next] = window.document.querySelectorAll('.tt-steps button');
+  const indicator = window.document.querySelector('.tt-steps [aria-live="polite"]');
+  assert.deepEqual(calls, [{ n: 0, index: 0, duration: 0 }], 'first render switches instantly');
+  assert.equal(root.style.opacity, '');
+  next.click();
+  next.focus();
+  next.click();
+  assert.equal(root.style.opacity, '0', 'fading out');
+  assert.equal(root.style.transition, 'opacity 150ms');
+  assert.equal(calls.length, 2, 'show waits for the fade out');
+  assert.equal(indicator.textContent, 'Step 3 of 3');
+  assert.ok(next.disabled && !previous.disabled);
+  assert.equal(window.document.activeElement, previous, 'focus leaves the disabled Next');
+  t.mock.timers.tick(150);
+  assert.deepEqual(calls.at(-1), { n: 2, index: 2, duration: 300 });
+  assert.equal(root.textContent, 'Scene 2');
+  assert.equal(root.style.opacity, '', 'fades back in');
+  previous.click();
+  previous.click();
+  assert.equal(root.style.opacity, '0', 'fading toward scene 0');
+  next.click(); // a step during the fade finishes the pending scene first
+  assert.deepEqual(
+    calls.map((c) => c.n),
+    [0, 1, 2, 1, 0, 1],
+  );
+  assert.equal(root.style.opacity, '');
+});
+
+test('a scene step under reduced motion switches instantly', () => {
+  const { window } = new JSDOM('<div id="visual"><div id="root"></div></div>');
+  window.matchMedia = (query) => ({ matches: query.includes('reduce') });
+  const root = window.document.getElementById('root'),
+    durations = [],
+    scene = { scene: true, show: ({ duration }) => durations.push(duration) };
+  const control = stepThrough(root, [scene, scene]);
+  control.show(1);
+  assert.deepEqual(durations, [0, 0]);
+  assert.equal(root.style.opacity, '');
+});
+
 test('the frame installs the helper as a global before fragments render, with no messaging', () => {
   const sandbox = readFileSync('src/media/sandbox.ts', 'utf8');
   assert.match(sandbox, /Object\.assign\(window, \{[^}]*stepThrough/);

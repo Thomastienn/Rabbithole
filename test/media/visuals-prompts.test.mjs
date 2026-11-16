@@ -450,6 +450,16 @@ test('the visual prompt prefers the step helper only for stages over time, bans 
   assert.match(prompt, /shows\s+every stage at once uses no step helper/);
   assert.match(prompt, /prefers-reduced-motion/);
   assert.match(prompt, /do not add\s+your own step controls/);
+  assert.match(prompt, /Show every stage at once when the stages belong side by side/);
+  assert.match(prompt, /\{ scene: true, show \}/);
+  assert.match(
+    prompt,
+    /keeps the same elements and animates their attributes with d3\s+transitions using duration; never rebuild[\s\S]*toggle near-copies/,
+  );
+  assert.match(prompt, /scene change only when the layout really changes/);
+  assert.match(prompt, /Mixing\s+continuing steps and scene changes is allowed/);
+  assert.match(prompt, /frame holds only this visual, so CSS selectors need no id scoping/);
+  assert.doesNotMatch(prompt, /for example|e\.g\./i, 'no worked examples');
   assert.match(prompt, /Do not put explanatory paragraphs inside the fragment/);
   assert.match(
     prompt,

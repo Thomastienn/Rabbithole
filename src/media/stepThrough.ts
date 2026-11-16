@@ -1,6 +1,8 @@
 // Shared step-through helper the visual frame installs before any fragment runs.
 // A fragment calls stepThrough(root, steps); each step moves the visual to that state.
-type Step = (state: { index: number; duration: number }) => void;
+// A plain function continues the scene; { scene: true, show } fades root out, shows, fades in.
+type Show = (state: { index: number; duration: number }) => void;
+type Step = Show | { scene: true; show: Show };
 
 export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
   const document = root.ownerDocument,
@@ -9,7 +11,8 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
     previous = document.createElement('button'),
     next = document.createElement('button'),
     indicator = document.createElement('span');
-  let index = 0;
+  let index = 0,
+    pending: { timer: number; run: () => void } | undefined;
   controls.className = 'tt-steps';
   controls.setAttribute('role', 'group');
   controls.setAttribute('aria-label', 'Steps');
@@ -29,7 +32,25 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
     const ms =
       animate && !view.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? duration : 0;
     root.style.setProperty('--step-duration', `${ms}ms`);
-    steps[index]({ index, duration: ms });
+    // A step during a fade first finishes the pending scene so later steps start from it.
+    if (pending) {
+      view.clearTimeout(pending.timer);
+      pending.run();
+    }
+    const step = steps[index],
+      state = { index, duration: ms };
+    if (typeof step === 'function') step(state);
+    else if (!ms) step.show(state);
+    else {
+      root.style.transition = `opacity ${ms / 2}ms`;
+      root.style.opacity = '0';
+      const run = () => {
+        pending = undefined;
+        step.show(state);
+        root.style.opacity = '';
+      };
+      pending = { timer: view.setTimeout(run, ms / 2), run };
+    }
     indicator.textContent = `Step ${index + 1} of ${steps.length}`;
     previous.disabled = index === 0;
     next.disabled = index === steps.length - 1;
