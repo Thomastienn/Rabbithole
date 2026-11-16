@@ -51,7 +51,7 @@ test('the visual badge, dimming, input lock and live announcements follow its st
   await act(async () => set(visual('v', 'pending', { source: '<p>half</p>' })));
   assert.equal(figure().dataset.partial, 'true', 'partly drawn visual is dimmed');
   assert.ok(figure().querySelector('iframe').hasAttribute('inert'), 'and takes no input');
-  assert.ok(figure().querySelector('.visual-drawing-bar'), 'drawing shows the progress bar');
+  assert.ok(figure().querySelector('.visual-drawing-ring'), 'drawing shows the progress ring');
   await act(async () => figure().dispatchEvent(new MouseEvent('click', { bubbles: true })));
   assert.equal(
     figure().querySelector('.visual-nudge')?.textContent,
@@ -64,7 +64,7 @@ test('the visual badge, dimming, input lock and live announcements follow its st
   assert.equal(figure().dataset.partial, undefined);
   assert.equal(figure().hasAttribute('aria-busy'), false);
   assert.equal(figure().querySelector('iframe').hasAttribute('inert'), false);
-  assert.equal(figure().querySelector('.visual-drawing-bar, .visual-nudge'), null);
+  assert.equal(figure().querySelector('.visual-drawing-ring, .visual-nudge'), null);
   assert.equal(status(), live, 'one persistent live region announces each change');
   assert.equal(status().textContent, 'Visual ready: Visual v');
 

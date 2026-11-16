@@ -241,7 +241,7 @@ export default function VisualFrame({
                 : 'Interrupted'
         }
       />
-      {drawing && <span className="visual-drawing-bar" aria-hidden />}
+      {drawing && <span className="visual-drawing-ring" aria-hidden />}
       {(artifact.status === 'pending' || artifact.status === 'ready') && (
         <Frame key={artifact.id} artifact={artifact} />
       )}

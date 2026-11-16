@@ -353,31 +353,38 @@
     animation: none;
   }
 }
-/* Still drawing: the pending-video amber bar sweeps over the figure, and the pointer shows work in progress. */
+/* Still drawing: an amber sweep circles the whole figure, so it shows from any scroll position, and the pointer shows work in progress. */
 .visual[data-state='pending'] {
   cursor: progress;
 }
-.visual-drawing-bar {
-  display: block;
-  height: 3px;
-  margin-bottom: 6px;
-  overflow: hidden;
-  background: var(--color-border);
+@property --visual-sweep {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
 }
-.visual-drawing-bar::after {
-  content: '';
-  display: block;
-  width: 30%;
-  height: 100%;
-  background: var(--rabbithole-ink-1);
-  animation: visual-drawing 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+.visual-drawing-ring {
+  position: absolute;
+  inset: -6px;
+  padding: 2px;
+  border-radius: var(--radius-container);
+  background:
+    conic-gradient(
+      from var(--visual-sweep),
+      transparent 0 62%,
+      var(--rabbithole-ink-1) 88%,
+      transparent 100%
+    ),
+    var(--color-border);
+  /* Only the 2px padding ring shows; the figure inside stays clear. */
+  mask:
+    linear-gradient(currentColor 0 0) content-box exclude,
+    linear-gradient(currentColor 0 0);
+  pointer-events: none;
+  animation: visual-sweep 2.4s linear infinite;
 }
-@keyframes visual-drawing {
-  from {
-    transform: translateX(-100%);
-  }
+@keyframes visual-sweep {
   to {
-    transform: translateX(340%);
+    --visual-sweep: 360deg;
   }
 }
 /* A click on a still-drawing visual says, where it landed, why nothing happened. */
@@ -403,9 +410,9 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .visual-drawing-bar::after {
-    width: 100%;
+  .visual-drawing-ring {
     animation: none;
+    background: var(--rabbithole-ink-1);
   }
   .visual-nudge {
     animation: none;
