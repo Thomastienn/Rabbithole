@@ -57,3 +57,16 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
   show(0, false);
   return { show };
 }
+
+// SVG elements have no hidden property; reflect it to the attribute the frame's base style hides.
+export function reflectSvgHidden(view: Window & typeof globalThis) {
+  Object.defineProperty(view.SVGElement.prototype, 'hidden', {
+    configurable: true,
+    get(this: SVGElement) {
+      return this.hasAttribute('hidden');
+    },
+    set(this: SVGElement, value: unknown) {
+      this.toggleAttribute('hidden', Boolean(value));
+    },
+  });
+}

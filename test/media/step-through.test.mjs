@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { stepThrough } from '../../src/media/stepThrough.ts';
+import { readFileSync } from 'node:fs';
+import { reflectSvgHidden, stepThrough } from '../../src/media/stepThrough.ts';
 
 const setup = (reduce = false) => {
   const { window } = new JSDOM('<div id="visual"><div id="root"></div></div>');
@@ -84,14 +85,34 @@ test('reduced motion switches steps without transitions', () => {
   assert.equal(root.style.getPropertyValue('--step-duration'), '0ms');
 });
 
-test('the frame installs the helper as a global before fragments render, with no messaging', async () => {
-  const { readFileSync } = await import('node:fs');
-  assert.match(
-    readFileSync('src/media/sandbox.ts', 'utf8'),
-    /Object\.assign\(window, \{[^}]*stepThrough/,
-  );
+test('the frame installs the helper as a global before fragments render, with no messaging', () => {
+  const sandbox = readFileSync('src/media/sandbox.ts', 'utf8');
+  assert.match(sandbox, /Object\.assign\(window, \{[^}]*stepThrough/);
+  assert.match(sandbox, /reflectSvgHidden\(window\)/);
   assert.doesNotMatch(
     readFileSync('src/media/stepThrough.ts', 'utf8'),
     /postMessage|fetch|XMLHttpRequest|WebSocket|parent\./,
+  );
+});
+
+test('hidden on an SVG group hides and shows it; HTML keeps native hidden', () => {
+  const style = readFileSync('sandbox.html', 'utf8').match(/<style>(.*?)<\/style>/s)[1];
+  const { window } = new JSDOM(
+    `<style>${style}</style><div id="visual"><p id="p"></p><svg><g id="g"><rect/></g></svg></div>`,
+  );
+  reflectSvgHidden(window);
+  const g = window.document.getElementById('g'),
+    p = window.document.getElementById('p');
+  g.hidden = true;
+  assert.ok(g.hasAttribute('hidden') && g.hidden);
+  assert.equal(window.getComputedStyle(g).display, 'none');
+  g.hidden = false;
+  assert.ok(!g.hasAttribute('hidden') && !g.hidden);
+  assert.notEqual(window.getComputedStyle(g).display, 'none');
+  p.hidden = true;
+  assert.ok(p.hasAttribute('hidden'));
+  assert.ok(
+    Object.getOwnPropertyDescriptor(window.HTMLElement.prototype, 'hidden'),
+    'native HTML property untouched',
   );
 });

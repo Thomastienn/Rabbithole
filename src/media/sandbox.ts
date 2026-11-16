@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import katex from 'katex';
 import * as d3 from 'd3';
 import { renderVisual } from './visualMarkup';
-import { stepThrough } from './stepThrough';
+import { reflectSvgHidden, stepThrough } from './stepThrough';
 import 'katex/dist/katex.min.css';
 import '@fontsource/archivo/400.css';
 import '@fontsource/archivo/600.css';
@@ -13,6 +13,7 @@ import '@fontsource/literata/400.css';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
 Object.assign(window, { mermaid, THREE, katex, d3, stepThrough });
+reflectSvgHidden(window);
 const root = document.getElementById('visual')!,
   tokens = document.head.appendChild(document.createElement('style'));
 let rendered = false;
