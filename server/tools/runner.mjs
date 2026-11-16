@@ -9,7 +9,13 @@ export const TUTOR_TOOLS = {
   find_images: 'Find images',
   run_python: 'Run Python',
   update_memory_note: 'Update memory note',
+  look_up_concept: 'Look up concepts',
+  search_conversations: 'Search earlier conversations',
+  read_conversation: 'Read earlier conversations',
 };
+const RECALL = ['look_up_concept', 'search_conversations', 'read_conversation'];
+const CONTEXT_ONLY =
+  ' The result is background for you only: never cite, link or mention it as a source.';
 
 // Provider-native equivalents follow the same switches as the app tools.
 export function nativeTools({ provider, capable, settings = {} }) {
@@ -125,6 +131,51 @@ const TOOLS = {
       return 'Updated memory note.';
     },
   },
+  look_up_concept: {
+    description:
+      "Look up the learner's familiarity with concepts across all learning trees. Returns up to 5 nearest concepts to the description, each with familiarity from 0 to 1 (or a guess from linked concepts, or unknown), topics and links." +
+      CONTEXT_ONLY,
+    parameters: {
+      type: 'object',
+      properties: {
+        description: { type: 'string', description: 'Concept name or a short description of it.' },
+      },
+      required: ['description'],
+      additionalProperties: false,
+    },
+    run: (input, turn, options) => options.recall.lookUpConcept(input, turn),
+  },
+  search_conversations: {
+    description:
+      "Search the learner's earlier conversations in every learning tree by meaning and keywords. Returns about 5 candidates, each with conversation_id, learning_tree, address, title and one matching line; use read_conversation for the content." +
+      CONTEXT_ONLY,
+    parameters: {
+      type: 'object',
+      properties: {
+        description: {
+          type: 'string',
+          description: 'What the earlier conversation was about.',
+        },
+      },
+      required: ['description'],
+      additionalProperties: false,
+    },
+    run: (input, turn, options) => options.recall.searchConversations(input, turn),
+  },
+  read_conversation: {
+    description:
+      'Read an earlier conversation by conversation_id: its inherited context and messages, or one compact paragraph when it is long.' +
+      CONTEXT_ONLY,
+    parameters: {
+      type: 'object',
+      properties: {
+        conversation_id: { type: 'string', description: 'An id from search_conversations.' },
+      },
+      required: ['conversation_id'],
+      additionalProperties: false,
+    },
+    run: (input, turn, options) => options.recall.readConversation(input, turn),
+  },
 };
 
 const site = (url) => {
@@ -171,6 +222,7 @@ function withResources(name, input, output, { conversation }, store) {
 // options.resources is the store keeping the learning tree's resources (addResource).
 // options.readPage passes lookup and address checks through, for tests against local fakes.
 // options.memory is the store holding the memory note (memoryNote, saveMemoryNote).
+// options.recall runs the lookup and recall tools (recallTools); their results add no resources.
 // options.python is the sandboxed run_python ({ status, run }); options.dir holds Python workspaces.
 export function toolRunner(options = {}) {
   return {
@@ -186,15 +238,17 @@ export function toolRunner(options = {}) {
       return Object.entries(TOOLS)
         .filter(([name]) => settings[name] !== false)
         .filter(([name]) =>
-          name === 'update_memory_note'
-            ? !!options.memory
-            : name === 'run_python'
-              ? python
-              : name === 'find_images'
-                ? search
-                : name === 'read_page'
-                  ? isEndpoint(provider) || provider === 'codex'
-                  : isEndpoint(provider) && search,
+          RECALL.includes(name)
+            ? !!options.recall
+            : name === 'update_memory_note'
+              ? !!options.memory
+              : name === 'run_python'
+                ? python
+                : name === 'find_images'
+                  ? search
+                  : name === 'read_page'
+                    ? isEndpoint(provider) || provider === 'codex'
+                    : isEndpoint(provider) && search,
         )
         .map(([name, { description, parameters }]) => ({
           name,
@@ -213,7 +267,11 @@ export function toolRunner(options = {}) {
         throw new Error('Offline Python is unavailable. Check Tutor tools in Settings.');
       if (name === 'update_memory_note' && !options.memory)
         throw new Error('The memory note is unavailable.');
-      if (!['read_page', 'run_python', 'update_memory_note'].includes(name) && !options.search)
+      if (RECALL.includes(name) && !options.recall) throw new Error('Recall is unavailable.');
+      if (
+        !['read_page', 'run_python', 'update_memory_note', ...RECALL].includes(name) &&
+        !options.search
+      )
         throw new Error('SearXNG is unavailable. Check Search in Settings.');
       const output = await tool.run(input, turn, options);
       return options.resources

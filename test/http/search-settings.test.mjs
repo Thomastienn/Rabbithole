@@ -113,7 +113,15 @@ test('custom model searches and finds images through the default runner, stores 
     if (count === 1) {
       assert.deepEqual(
         body.tools.map((d) => d.function.name),
-        ['web_search', 'find_images', 'read_page', 'update_memory_note'],
+        [
+          'web_search',
+          'find_images',
+          'read_page',
+          'update_memory_note',
+          'look_up_concept',
+          'search_conversations',
+          'read_conversation',
+        ],
       );
       streamToolCalls(res, [
         { name: 'web_search', input: { query: 'heap' } },
@@ -150,7 +158,13 @@ test('custom model searches and finds images through the default runner, stores 
   env.model.reply = (req, res, body) => {
     assert.deepEqual(
       body.tools.map((d) => d.function.name),
-      ['read_page', 'update_memory_note'],
+      [
+        'read_page',
+        'update_memory_note',
+        'look_up_concept',
+        'search_conversations',
+        'read_conversation',
+      ],
     );
     streamReply(res, ['Search is unavailable.']);
   };

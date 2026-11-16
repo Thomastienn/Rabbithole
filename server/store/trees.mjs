@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { previewText } from '../../src/markdown/markdownText.ts';
+import { blob, vector } from './embeddings.mjs';
 
 export const trees = {
   // Run once at startup: removes learning trees never sent a message (older New chat saved them eagerly); focused chats are kept.
@@ -384,7 +385,7 @@ export const trees = {
   },
   update(id, text, status, stopped = null) {
     this.db
-      .prepare('UPDATE messages SET text=?,status=?,stopped=? WHERE id=?')
+      .prepare('UPDATE messages SET text=?,status=?,stopped=?,embedding=NULL WHERE id=?')
       .run(text, status, stopped, id);
     this.cite(id, text);
   },
@@ -406,5 +407,28 @@ export const trees = {
       this.db.exec('ROLLBACK');
       throw error;
     }
+  },
+  // Completed messages across every learning tree, newest first, for search_conversations.
+  recallMessages() {
+    return this.db
+      .prepare(
+        "SELECT id, tree, role, text, embedding FROM messages WHERE status='completed' ORDER BY seq DESC",
+      )
+      .all()
+      .map((m) => ({ ...m, embedding: vector(m.embedding) }));
+  },
+  // Every conversation with its parent and inherited context, for recall search and addresses.
+  recallConversations() {
+    return this.db
+      .prepare(
+        'SELECT t.id,t.title,t.created,b.parent,b.text AS passage,b.question,b.snapshot FROM trees t LEFT JOIN branches b ON b.child=t.id',
+      )
+      .all();
+  },
+  // The text guard skips a message rewritten while the embedder ran.
+  embedMessage(id, text, embedding) {
+    this.db
+      .prepare('UPDATE messages SET embedding=? WHERE id=? AND text=?')
+      .run(blob(embedding), id, text);
   },
 };

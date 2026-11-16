@@ -28,6 +28,7 @@ import { treeRoutes } from './http/routes/trees.mjs';
 import { assetRoutes } from './http/routes/assets.mjs';
 import { tesseractOcr } from './ocr.mjs';
 import { toolRunner } from './tools/runner.mjs';
+import { recallTools } from './tools/recall.mjs';
 import { searxngSearch } from './tools/searxng.mjs';
 import { toolMcp } from './tools/mcp.mjs';
 import { retrieveNeighbourhood } from './neighbourhood.mjs';
@@ -96,7 +97,25 @@ export function createApp({
     suggestionTimeout,
     desktop,
     recognize,
-    tools: tools ?? toolRunner({ search, python, dir, memory: store, resources: store }),
+    tools:
+      tools ??
+      toolRunner({
+        search,
+        python,
+        dir,
+        memory: store,
+        resources: store,
+        recall: recallTools({
+          store,
+          embed: videoEmbed,
+          // The reading conversation's quick thinking model writes the paragraph; ctx.compact is assigned below.
+          compact: async (prompt, conversation) => {
+            const { quick, error } = await ctx.quickFor(store.tree(conversation));
+            if (error) throw new Error(error);
+            return ctx.compact(prompt, quick, new AbortController());
+          },
+        }),
+      }),
     python,
     mcp: toolMcp(),
     search,

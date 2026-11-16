@@ -14,27 +14,16 @@ const mentions = (text, name) =>
     'iu',
   ).test(text);
 
-export function conceptNeighbourhood(graph, names, text, matches = []) {
+// Each concept's familiarity, a guess from directly linked observed concepts, or unknown.
+function estimates(graph) {
   const byName = new Map(graph.concepts.map((c) => [c.name, c]));
-  const canonical = new Map(names.filter((n) => byName.has(n.name)).map((n) => [n.id, n.name]));
-  const selected = new Set([
-    ...names.filter((n) => mentions(text, n.name)).map((n) => canonical.get(n.id)),
-    ...matches,
-  ]);
-  selected.delete(undefined);
   const neighbours = new Map(graph.concepts.map((c) => [c.name, new Set()]));
   for (const l of graph.links) {
     neighbours.get(l.from)?.add(l.to);
     neighbours.get(l.to)?.add(l.from);
   }
-  // One hop always; only a sparse first hop expands again. A snapshot prevents deeper traversal.
-  for (let hop = 0; hop < 2; hop++) {
-    for (const name of [...selected])
-      for (const next of neighbours.get(name) ?? []) selected.add(next);
-    if (selected.size >= CONCEPT_BUDGET) break;
-  }
   const observed = (c) => c.observations.some(Boolean);
-  const concepts = [...selected].slice(0, CONCEPT_BUDGET).map((name) => {
+  const estimate = (name) => {
     const c = byName.get(name);
     const known = [...neighbours.get(name)].map((n) => byName.get(n)).filter(observed);
     const value = observed(c)
@@ -43,7 +32,32 @@ export function conceptNeighbourhood(graph, names, text, matches = []) {
         ? { guess: known.reduce((sum, c) => sum + c.familiarity, 0) / known.length }
         : { familiarity: 'unknown' };
     return { name, topics: c.topics, ...value };
-  });
+  };
+  return { neighbours, estimate };
+}
+
+// Concepts the text names (whole names and aliases) first, then embedding matches.
+function direct(graph, names, text, matches) {
+  const known = new Set(graph.concepts.map((c) => c.name));
+  const canonical = new Map(names.filter((n) => known.has(n.name)).map((n) => [n.id, n.name]));
+  const selected = new Set([
+    ...names.filter((n) => mentions(text, n.name)).map((n) => canonical.get(n.id)),
+    ...matches,
+  ]);
+  selected.delete(undefined);
+  return selected;
+}
+
+export function conceptNeighbourhood(graph, names, text, matches = []) {
+  const { neighbours, estimate } = estimates(graph);
+  const selected = direct(graph, names, text, matches);
+  // One hop always; only a sparse first hop expands again. A snapshot prevents deeper traversal.
+  for (let hop = 0; hop < 2; hop++) {
+    for (const name of [...selected])
+      for (const next of neighbours.get(name) ?? []) selected.add(next);
+    if (selected.size >= CONCEPT_BUDGET) break;
+  }
+  const concepts = [...selected].slice(0, CONCEPT_BUDGET).map(estimate);
   const result = { concepts, links: [] };
   do {
     const included = new Set(concepts.map((c) => c.name));
@@ -57,7 +71,7 @@ export function conceptNeighbourhood(graph, names, text, matches = []) {
 }
 
 // Like piece-library retrieval, one successful call backfills names saved while the embedder was down.
-export async function retrieveNeighbourhood(store, embed, text, signal) {
+async function matched(store, embed, text, signal) {
   let rows = store.conceptEmbeddings();
   let matches = [];
   if (embed && rows.length) {
@@ -89,5 +103,22 @@ export async function retrieveNeighbourhood(store, embed, text, signal) {
     rows.filter((c) => c.level === 0 && Date.now() - c.at <= 7 * 86400000).map((c) => c.name),
   );
   for (const c of graph.concepts) c.recentMisconception = recent.has(c.name);
-  return conceptNeighbourhood(graph, store.names(), text, matches);
+  return { graph, names: store.names(), matches };
+}
+
+export async function retrieveNeighbourhood(store, embed, text, signal) {
+  const { graph, names, matches } = await matched(store, embed, text, signal);
+  return conceptNeighbourhood(graph, names, text, matches);
+}
+
+// look_up_concept: the nearest concepts to a description, each with its estimate and every link it has.
+export async function lookUpConcept(store, embed, text, signal) {
+  const { graph, names, matches } = await matched(store, embed, text, signal);
+  const { estimate } = estimates(graph);
+  return {
+    concepts: [...direct(graph, names, text, matches)].slice(0, SEMANTIC_MATCHES).map((name) => ({
+      ...estimate(name),
+      links: graph.links.filter((l) => l.from === name || l.to === name),
+    })),
+  };
 }
