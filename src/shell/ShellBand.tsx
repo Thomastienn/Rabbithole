@@ -143,11 +143,14 @@ export default function ShellBand({
   const [focusMode, setFocusMode] = useState(savedFocusMode);
   const [revealed, setRevealed] = useState(false);
   const focusToggle = useRef<HTMLButtonElement>(null);
+  const peekNav = useRef<HTMLElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
   const toggleFocusMode = useCallback(() => {
     const restoreFocus = document.activeElement === focusToggle.current;
     flushSync(() => {
       setFocusMode(!focusMode);
-      setRevealed(false);
+      // Hiding from the focused toggle leaves the sidebar peeking so focus has somewhere to stay.
+      setRevealed(!focusMode && restoreFocus);
     });
     savePreference('focus-mode', focusMode ? 'off' : 'on');
     if (restoreFocus) focusToggle.current?.focus();
@@ -175,6 +178,24 @@ export default function ShellBand({
     addEventListener('keydown', shortcut);
     return () => removeEventListener('keydown', shortcut);
   }, [toggleFocusMode]);
+  // Ctrl+Shift+O skips the typing guard so it works from the composer too.
+  useEffect(() => {
+    const shortcut = (e: KeyboardEvent) => {
+      if (
+        e.isComposing ||
+        !e.ctrlKey ||
+        !e.shiftKey ||
+        e.altKey ||
+        e.metaKey ||
+        e.key.toLowerCase() !== 'o'
+      )
+        return;
+      e.preventDefault();
+      if (!e.repeat && !busy) newChat();
+    };
+    addEventListener('keydown', shortcut);
+    return () => removeEventListener('keydown', shortcut);
+  }, [busy, newChat]);
   // Narrow screens keep their header; Focus mode hides that header there.
   const bar = mobile ? 'top bar' : 'sidebar';
   const focusButton = (
@@ -203,9 +224,9 @@ export default function ShellBand({
       onClick={toggleFocusMode}
     />
   );
-  // Hot zone along the top edge: the restore button stays in the tab order but shows only on hover or focus.
+  // Narrow screens: a hot zone along the top edge; the restore button stays in the tab order but shows only on hover or focus.
   // The save alert stays mounted outside it so its alert role is still announced while hidden.
-  if (focusMode)
+  if (focusMode && mobile)
     return (
       <>
         <div
@@ -221,6 +242,102 @@ export default function ShellBand({
         {saveAlert && <div className="focus-save">{saveAlert}</div>}
       </>
     );
+  const sidebar = (
+    <nav
+      ref={peekNav}
+      className="sidebar"
+      aria-label="App"
+      data-peek={focusMode || undefined}
+      data-revealed={focusMode ? revealed : undefined}
+    >
+      <VStack gap={0} className="sidebar-top">
+        <HStack gap={1} vAlign="center" className="sidebar-head">
+          <Button
+            className="sidebar-mark"
+            label="Rabbithole"
+            tooltip="Open the Library"
+            variant="ghost"
+            size="sm"
+            onClick={library}
+          >
+            <Logo />
+            <span className="band-mark">Rabbithole</span>
+          </Button>
+          {focusButton}
+        </HStack>
+        <VStack gap={0} className="sidebar-views">
+          {views}
+          {viewTab('Library', <RectangleStackIcon />, tab === 'library', library)}
+          {viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings)}
+        </VStack>
+        <VStack gap={0} className="sidebar-tools">
+          <Button
+            className="view-tab tree-search"
+            label="Search"
+            tooltip="Search learning trees"
+            variant="ghost"
+            size="sm"
+            icon={<MagnifyingGlassIcon />}
+            aria-haspopup="dialog"
+            onClick={search}
+          />
+          <Button
+            className="view-tab new-chat"
+            label={busy ? 'Opening…' : 'New chat'}
+            variant="ghost"
+            size="sm"
+            icon={<PlusIcon />}
+            isDisabled={busy}
+            onClick={newChat}
+          />
+        </VStack>
+        {!focusMode && saveAlert}
+      </VStack>
+      {contents}
+    </nav>
+  );
+  // Desktop peek: an invisible left-edge strip reveals the sidebar as an overlay while the pointer or focus is inside.
+  // The save alert sits outside the hidden sidebar so its alert role is still announced.
+  if (focusMode) {
+    const hide = () => {
+      setRevealed(false);
+      returnFocus.current?.focus();
+      returnFocus.current = null;
+    };
+    return (
+      <>
+        <div
+          className="sidebar-peek"
+          onMouseEnter={() => {
+            returnFocus.current = null;
+            setRevealed(true);
+          }}
+          onMouseLeave={() => setRevealed(false)}
+          onFocus={(e) => {
+            if (!e.target.classList.contains('peek-target')) return;
+            // Shift+Tab out of the sidebar lands on the strip: close and go back.
+            if (peekNav.current?.contains(e.relatedTarget)) return hide();
+            returnFocus.current = e.relatedTarget as HTMLElement | null;
+            flushSync(() => setRevealed(true));
+            peekNav.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
+          }}
+          onBlur={(e) => {
+            const next = e.relatedTarget;
+            if (e.target.classList.contains('peek-target') || e.currentTarget.contains(next))
+              return;
+            if (next) {
+              setRevealed(false);
+              returnFocus.current = null;
+            } else hide();
+          }}
+        >
+          <button type="button" className="peek-target" aria-label="Show sidebar overlay" />
+          {sidebar}
+        </div>
+        {saveAlert && <div className="focus-save">{saveAlert}</div>}
+      </>
+    );
+  }
   return mobile ? (
     <header className="shell-band">
       <IconButton
@@ -264,51 +381,6 @@ export default function ShellBand({
       {saveAlert}
     </header>
   ) : (
-    <nav className="sidebar" aria-label="App">
-      <VStack gap={0} className="sidebar-top">
-        <HStack gap={1} vAlign="center" className="sidebar-head">
-          <Button
-            className="sidebar-mark"
-            label="Rabbithole"
-            tooltip="Open the Library"
-            variant="ghost"
-            size="sm"
-            onClick={library}
-          >
-            <Logo />
-            <span className="band-mark">Rabbithole</span>
-          </Button>
-          {focusButton}
-        </HStack>
-        <VStack gap={0} className="sidebar-views">
-          {views}
-          {viewTab('Library', <RectangleStackIcon />, tab === 'library', library)}
-          {viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings)}
-        </VStack>
-        <VStack gap={0} className="sidebar-tools">
-          <Button
-            className="view-tab tree-search"
-            label="Search"
-            tooltip="Search learning trees"
-            variant="ghost"
-            size="sm"
-            icon={<MagnifyingGlassIcon />}
-            aria-haspopup="dialog"
-            onClick={search}
-          />
-          <Button
-            className="view-tab new-chat"
-            label={busy ? 'Opening…' : 'New chat'}
-            variant="ghost"
-            size="sm"
-            icon={<PlusIcon />}
-            isDisabled={busy}
-            onClick={newChat}
-          />
-        </VStack>
-        {saveAlert}
-      </VStack>
-      {contents}
-    </nav>
+    sidebar
   );
 }

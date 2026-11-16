@@ -172,7 +172,7 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
     await act(async () => target.dispatchEvent(event));
     return event;
   };
-  const band = () => container.querySelector('.sidebar');
+  const band = () => container.querySelector('.sidebar:not([data-peek])');
   const hide = button(container, 'Hide sidebar');
   assert.equal(hide.getAttribute('aria-expanded'), 'true');
   await act(async () => {
@@ -184,6 +184,11 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   let restore = button(container, 'Show sidebar');
   assert.equal(restore.getAttribute('aria-expanded'), 'false');
   assert.equal(document.activeElement, restore);
+  assert.equal(
+    container.querySelector('.sidebar').dataset.revealed,
+    'true',
+    'the focused toggle stays reachable as a peek',
+  );
   await act(async () => restore.click());
   assert.ok(band());
   assert.equal(document.activeElement, button(container, 'Hide sidebar'));

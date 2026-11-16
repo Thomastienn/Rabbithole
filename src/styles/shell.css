@@ -108,6 +108,37 @@ html {
   border-inline-end: thin solid var(--color-border);
   background: var(--color-background-muted);
 }
+/* Focus mode peek (mockup sidebar.html E, 11-12): an invisible left-edge strip slides the sidebar over the page. */
+.peek-target {
+  position: fixed;
+  z-index: 6;
+  inset-block: 0;
+  left: 0;
+  width: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+.sidebar[data-peek] {
+  position: fixed;
+  z-index: 7;
+  inset-block: 0;
+  left: 0;
+  box-shadow: var(--shadow-high);
+  transition:
+    transform 160ms ease-out,
+    visibility 160ms;
+}
+.sidebar[data-revealed='false'] {
+  visibility: hidden;
+  transform: translateX(-100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar[data-peek] {
+    transition: none;
+  }
+}
 .sidebar-top {
   flex: none;
   padding: var(--rabbithole-module);
