@@ -29,7 +29,9 @@ const httpUrl = (value) => {
   }
 };
 
-async function search(url, query, images, signal) {
+// category: 'images' (image rows), 'videos' (video pages as plain rows) or none.
+async function search(url, query, category, signal) {
+  const images = category === 'images';
   if (typeof query !== 'string' || !query.trim() || query.length > 2000)
     throw new Error('Search needs a nonempty query of up to 2000 characters.');
   if (!url) throw new Error('SearXNG is unavailable. Check Search in Settings.');
@@ -37,7 +39,7 @@ async function search(url, query, images, signal) {
   target.search = new URLSearchParams({
     q: query.trim(),
     format: 'json',
-    ...(images && { categories: 'images' }),
+    ...(category && { categories: category }),
   });
   const timed = AbortSignal.any([AbortSignal.timeout(30000), ...(signal ? [signal] : [])]);
   try {
@@ -125,8 +127,8 @@ export function searxngSearch({ store, managed }) {
       const url = searxngUrl(value);
       store.saveSearxngUrl(url === managed().url ? null : url);
     },
-    async run(input, { signal }, images = false) {
-      return JSON.stringify({ results: await search(config().url, input.query, images, signal) });
+    async run(input, { signal }, category) {
+      return JSON.stringify({ results: await search(config().url, input.query, category, signal) });
     },
   };
 }

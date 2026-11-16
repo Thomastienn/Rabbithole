@@ -73,3 +73,50 @@ export default function Video() { return <AbsoluteFill><Exhibit id="exhibit1" x=
     );
   },
 );
+
+test(
+  'one real short sandboxed cut plays a muted clip exhibit inside its frame',
+  { skip: renderSkip, timeout: 240000 },
+  async () => {
+    // A 3-second solid red H.264 clip stands in for a downloaded and trimmed web video.
+    const { execFileSync } = await import('node:child_process');
+    const { mkdtempSync, readFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const file = join(mkdtempSync(join(tmpdir(), 'tt-clip-')), 'red.mp4');
+    execFileSync('ffmpeg', [
+      ...['-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=1280x720:d=3:r=30'],
+      ...['-c:v', 'libx264', '-pix_fmt', 'yuv420p', file],
+    ]);
+    const cut = `import { AbsoluteFill } from 'remotion';
+import { Exhibit } from './kit';
+export default function Video() { return <AbsoluteFill><Exhibit id="exhibit1" x={960} y={480} width={640} from={0} /></AbsoluteFill>; }`;
+    const plan = planFor(composition);
+    plan.cuts[0].exhibits = [
+      { kind: 'clip', query: 'red footage', show: 'Red footage', start: 0, end: 3 },
+    ];
+    const { result, row, dir } = await job(undefined, undefined, cut, 1, {
+      plan,
+      search: { status: async () => ({ ready: true }) },
+      clips: () => ({ ready: true, ytDlp: 'yt-dlp', ffmpeg: 'ffmpeg' }),
+      exhibit: async () => ({
+        kind: 'clip',
+        url: 'https://video.example/watch?v=red',
+        title: 'Red footage',
+        site: 'video.example',
+        seconds: 3,
+        bytes: readFileSync(file),
+        type: 'video/mp4',
+      }),
+    });
+    assert.equal(result, null);
+    const video = mediaPath(dir, row.id);
+    const centre = pixel(video, 1, 960, 480),
+      ground = pixel(video, 1, 300, 480);
+    assert.ok(centre[0] > 200 && centre[1] < 60 && centre[2] < 60, `expected the red clip: ${centre}`);
+    assert.ok(
+      ground.every((c) => c < 50),
+      `expected the ground outside: ${ground}`,
+    );
+  },
+);

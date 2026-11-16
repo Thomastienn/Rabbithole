@@ -1,5 +1,6 @@
 import ts from 'typescript';
 import * as skills from './skills.mjs';
+import { MAX_CLIP_SECONDS } from './clips.mjs';
 
 export const CUT_PAUSE_FRAMES = 15;
 export const CUT_ATTEMPTS = 2;
@@ -49,10 +50,22 @@ ${skills.MANIM_TEACHING_SKILL}`;
 // Appended to the plan instructions only when web search is set up; without it plans name no exhibits.
 export const EXHIBITS_NOTE = `\nExhibits: a Remotion cut may show up to two exhibits, real web media framed as real with a short source line, never standing in for a drawn object. Give that cut "exhibits":[{"kind":"image","query":"web image search words","show":"what the image shows and why it helps"},{"kind":"quote","query":"web search words that find the quote's source","text":"the short quote, at most 280 characters","by":"who said or wrote it"}]. Use one only where a real photo, artwork, document or someone's own words teaches better than a drawing, such as a historical figure, a real place or a primary source; most cuts need none. The app searches the web, downloads the image or credits the quote's source and gives the cut writer the result; an exhibit that cannot be found is left out, so the cut must also work without it. Manim cuts have no exhibits.`;
 
-const exhibitPlanned = (e) =>
+// Appended after EXHIBITS_NOTE only when the clip downloader is also ready.
+export const CLIPS_NOTE = `\nA third kind is a muted clip, a few seconds of a real web video playing silently under the narration: {"kind":"clip","query":"web video search words","show":"what the clip shows and why it helps","start":<seconds into the video>,"end":<seconds>}, at most ${MAX_CLIP_SECONDS} seconds long. Use one only for real motion a drawing cannot show, such as footage of an event or a real process, and only when you know the moment, from a well-known video the search will find.`;
+
+const exhibitPlanned = (e, clips) =>
   text(e?.query) &&
   e.query.length <= 200 &&
-  (e.kind === 'image'
+  (e.kind === 'clip'
+    ? clips &&
+      text(e.show) &&
+      e.show.length <= 300 &&
+      Number.isFinite(e.start) &&
+      Number.isFinite(e.end) &&
+      e.start >= 0 &&
+      e.end > e.start &&
+      e.end - e.start <= MAX_CLIP_SECONDS
+    : e.kind === 'image'
     ? text(e.show) && e.show.length <= 300
     : e.kind === 'quote' &&
       text(e.text) &&
@@ -100,20 +113,20 @@ export const emphasisMark = (m) =>
       m.points.length <= sketchPoints[m.shape][1] &&
       m.points.every((p) => Array.isArray(p) && p.length === 2 && inFrame(p[0], p[1])));
 
-// exhibits: web search is set up, so cuts may plan exhibits.
-export function videoPlan(raw, { exhibits = false } = {}) {
+// exhibits: web search is set up, so cuts may plan exhibits; clips: the clip downloader is ready too.
+export function videoPlan(raw, { exhibits = false, clips = false } = {}) {
   if (Buffer.byteLength(raw) > MAX_SOURCE) throw new Error('Video plan exceeds 64 KiB.');
   let plan;
   try {
     plan = JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
   } catch {}
-  const problem = planProblem(plan, exhibits);
+  const problem = planProblem(plan, exhibits, clips);
   if (problem) throw new Error(`Video plan or style brief is malformed: ${problem}.`);
   return plan;
 }
 
 // The first failing field, named so a failed video says what the planner got wrong.
-function planProblem(plan, exhibits) {
+function planProblem(plan, exhibits, clips) {
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return 'not a JSON object';
   if (!text(plan.title) || plan.title.length > 160) return 'title';
   if (!text(plan.description) || plan.description.length > 280) return 'description';
@@ -163,7 +176,7 @@ function planProblem(plan, exhibits) {
             c.engine === 'remotion' &&
             Array.isArray(c.exhibits) &&
             c.exhibits.length <= 2 &&
-            c.exhibits.every(exhibitPlanned)),
+            c.exhibits.every((e) => exhibitPlanned(e, clips))),
       ],
     ].find(([, ok]) => !ok)?.[0];
     if (field) return `cut ${i + 1} ${field}`;

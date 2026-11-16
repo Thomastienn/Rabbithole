@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { buildIsCurrent } from './build-state.mjs';
 import { ensureManim } from './manim-setup.mjs';
 import { ensurePython } from './python-setup.mjs';
+import { ensureClips } from './clips-setup.mjs';
 
 if (Number(process.versions.node.split('.')[0]) < 24) {
   console.error(
@@ -47,6 +48,7 @@ try {
     await npm(['ci', '--include=dev']);
   }
   await ensureManim({ run });
+  await ensureClips({ run });
   await ensurePython({ run });
   // Import after npm installation so a fresh checkout can provision its dependencies.
   const { ensureBrowser } = await import('@remotion/renderer');

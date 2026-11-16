@@ -123,13 +123,13 @@ addEventListener('message', (event) => {
     return showPiece(event.data.code, event.data.name, event.data.paletteRoles ?? {});
   if (event.data?.type !== 'cuts' || !Array.isArray(event.data.cuts)) return;
   const roles = inks(event.data.paletteRoles ?? {});
-  // Exhibits arrive as data; an image's blob URL is made once and kept for the frame's life.
+  // Exhibits arrive as data; an image's or clip's blob URL is made once and kept for the frame's life.
   const exhibits: Parameters<typeof kit.setStock>[0] = {};
-  for (const { id, blob, image, ...e } of Array.isArray(event.data.exhibits)
+  for (const { id, blob, media, ...e } of Array.isArray(event.data.exhibits)
     ? event.data.exhibits
     : [])
     if (blob instanceof Blob) exhibits[id] = { ...e, src: (exhibitUrls[id] ??= URL.createObjectURL(blob)) };
-    else if (!image) exhibits[id] = e;
+    else if (!media) exhibits[id] = e;
   kit.setStock(exhibits);
   // Set pieces load before the cuts that import them; new set pieces recompile every cut.
   const shared = typeof event.data.pieces === 'string' ? event.data.pieces : undefined;

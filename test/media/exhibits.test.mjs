@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import { writeFile } from 'node:fs/promises';
 import { fetchExhibit, imageType } from '../../server/media/exhibits.mjs';
+import { downloadClip } from '../../server/media/clips.mjs';
 
 const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]), Buffer.alloc(64, 7)]);
 
@@ -23,8 +25,8 @@ async function host(run) {
 }
 const local = { isPublic: () => true };
 const searching = (results, seen = []) => ({
-  run: async (input, _options, images) => {
-    seen.push({ query: input.query, images });
+  run: async (input, _options, category) => {
+    seen.push({ query: input.query, category });
     return JSON.stringify({ results });
   },
 });
@@ -41,7 +43,7 @@ test('an image exhibit is image-searched, downloaded and recorded with its URL, 
       seen,
     );
     const e = await fetchExhibit({ kind: 'image', query: 'Ada Lovelace portrait', show: 'Ada' }, { search, ...local });
-    assert.deepEqual(seen, [{ query: 'Ada Lovelace portrait', images: true }]);
+    assert.deepEqual(seen, [{ query: 'Ada Lovelace portrait', category: 'images' }]);
     assert.equal(e.kind, 'image');
     assert.equal(e.url, `${origin}/moved`);
     assert.equal(e.title, 'Ada Lovelace portrait');
@@ -76,7 +78,7 @@ test('a quote exhibit credits the web result that shows it, else the top result'
   const seen = [];
   const quote = { kind: 'quote', query: 'Lovelace weaves algebraic patterns', text: 'The Analytical Engine weaves algebraic patterns', by: 'Ada Lovelace' };
   const e = await fetchExhibit(quote, { search: searching(results, seen) });
-  assert.deepEqual(seen, [{ query: quote.query, images: false }]);
+  assert.deepEqual(seen, [{ query: quote.query, category: undefined }]);
   assert.deepEqual(e, {
     kind: 'quote',
     text: quote.text,
@@ -95,4 +97,83 @@ test('image types come from the bytes, never SVG', () => {
   assert.equal(imageType(Buffer.from('GIF89a')), 'image/gif');
   assert.equal(imageType(Buffer.from('RIFF0000WEBPVP8 ')), 'image/webp');
   assert.equal(imageType(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')), null);
+});
+
+const clips = { ready: true, ytDlp: '/venv/bin/yt-dlp', ffmpeg: 'ffmpeg' };
+const publicLookup = (_host, _options, callback) => callback(null, [{ address: '93.184.215.14', family: 4 }]);
+const clipPlan = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36 };
+
+test('a clip exhibit is video-searched, downloaded and trimmed by the downloader, and recorded with its source', async () => {
+  const seen = [],
+    asked = [];
+  const search = searching(
+    [
+      { title: 'Broken', url: 'https://broken.example/v', snippet: '' },
+      { title: 'Apollo 11 landing', url: 'https://www.video.example/watch?v=1', snippet: '' },
+    ],
+    seen,
+  );
+  const clip = async (wanted, options) => {
+    asked.push(wanted);
+    assert.equal(options.clips, clips);
+    if (wanted.url.includes('broken')) throw new Error('downloader exited 1');
+    return Buffer.from('mp4 bytes');
+  };
+  const e = await fetchExhibit(clipPlan, { search, clips, clip, lookup: publicLookup });
+  assert.deepEqual(seen, [{ query: clipPlan.query, category: 'videos' }]);
+  assert.deepEqual(asked, [
+    { url: 'https://broken.example/v', start: 30, end: 36 },
+    { url: 'https://www.video.example/watch?v=1', start: 30, end: 36 },
+  ]);
+  assert.deepEqual(e, {
+    kind: 'clip',
+    url: 'https://www.video.example/watch?v=1',
+    title: 'Apollo 11 landing',
+    site: 'video.example',
+    seconds: 6,
+    bytes: Buffer.from('mp4 bytes'),
+    type: 'video/mp4',
+  });
+});
+
+test('a clip exhibit fails, so the caller drops it, when downloads fail, the host is private or there is no downloader', async () => {
+  const search = searching([{ title: 'V', url: 'https://v.example/1', snippet: '' }]);
+  const failing = async () => {
+    throw new Error('downloader exited 1');
+  };
+  await assert.rejects(
+    fetchExhibit(clipPlan, { search, clips, clip: failing, lookup: publicLookup }),
+    /downloader exited 1/,
+  );
+  const privateLookup = (_h, _o, callback) => callback(null, [{ address: '127.0.0.1', family: 4 }]);
+  await assert.rejects(
+    fetchExhibit(clipPlan, { search, clips, clip: assert.fail, lookup: privateLookup }),
+    /non-public clip host/,
+  );
+  await assert.rejects(
+    fetchExhibit(clipPlan, { search, clips: { ready: false, error: 'yt-dlp missing' }, clip: assert.fail }),
+    /yt-dlp missing/,
+  );
+});
+
+test('the downloader fetches the planned section with yt-dlp, then ffmpeg trims it muted to those seconds', async () => {
+  const calls = [];
+  const run = async (command, args) => {
+    calls.push([command, args]);
+    if (command === clips.ytDlp)
+      await writeFile(args[args.indexOf('-o') + 1].replace('%(ext)s', 'webm'), 'source');
+    else await writeFile(args.at(-1), 'trimmed');
+  };
+  const bytes = await downloadClip({ url: 'https://v.example/1', start: 30, end: 36 }, { clips, run });
+  assert.equal(bytes.toString(), 'trimmed');
+  const [[yt, ytArgs], [ff, ffArgs]] = calls;
+  assert.equal(yt, clips.ytDlp);
+  assert.deepEqual(ytArgs.slice(ytArgs.indexOf('--download-sections'), ytArgs.indexOf('--download-sections') + 2), ['--download-sections', '*30-36']);
+  assert.deepEqual(ytArgs.slice(-2), ['--', 'https://v.example/1']);
+  assert.equal(ff, 'ffmpeg');
+  assert.match(ffArgs[ffArgs.indexOf('-i') + 1], /source\.webm$/);
+  assert.equal(ffArgs[ffArgs.indexOf('-t') + 1], '6');
+  assert.ok(ffArgs.includes('-an'));
+  // The download leaves nothing behind, and a downloader that saves nothing is a failure.
+  await assert.rejects(downloadClip({ url: 'https://v.example/1', start: 0, end: 2 }, { clips, run: async () => {} }), /saved no video/);
 });

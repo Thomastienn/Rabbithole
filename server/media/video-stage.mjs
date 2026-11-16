@@ -1,7 +1,7 @@
 import { CUT_ENTRY } from './video-cut.mjs';
 import { MANIM_COMPONENT } from './manim-cut.mjs';
-import { readFileSync } from 'node:fs';
-import { writeFile, readFile } from 'node:fs/promises';
+import { readFileSync, existsSync } from 'node:fs';
+import { writeFile, readFile, copyFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { videoPalette } from './video-plan.mjs';
 
@@ -12,11 +12,19 @@ const runtime = readFileSync(new URL('./video-stock.tsx', import.meta.url), 'utf
 
 // The host's data path into a Remotion cut: stock.json beside the cut, read by setStock in the kit. It carries
 // the cut's exhibits by id, images inlined as data URLs read from the cut folder; a missing file drops one.
+// A clip is copied into the public folder for staticFile; before narration staging makes that folder only the
+// write-time check runs, which renders nothing.
 async function stageHostData(dir, engine, exhibits = []) {
   await writeFile(join(dir, 'video-stock.tsx'), runtime);
   if (engine === 'manim') return;
   const data = {};
   for (const { id, file, type, url, cut, ...shown } of exhibits) {
+    if (shown.kind === 'clip') {
+      if (!existsSync(join(dir, file))) continue;
+      await copyFile(join(dir, file), join(dir, 'public', `${id}.mp4`)).catch(() => {});
+      data[id] = { ...shown, clip: `${id}.mp4` };
+      continue;
+    }
     const bytes = file && (await readFile(join(dir, file)).catch(() => null));
     if (file && !bytes) continue;
     data[id] = { ...shown, ...(bytes && { src: `data:${type};base64,${bytes.toString('base64')}` }) };

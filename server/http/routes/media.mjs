@@ -112,10 +112,10 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         return json(res, 200, {
           paletteRoles: data.plan.styleBrief.paletteRoles,
           pieces: data.pieces ? compileCut(data.pieces) : null,
-          // Exhibit metadata only; an image's bytes come from /cuts/<exhibit index>/exhibit.
+          // Exhibit metadata only; image and clip bytes come from /cuts/<exhibit index>/exhibit.
           exhibits: (data.exhibits ?? []).map(({ file, type, url, show, ...e }) => ({
             ...e,
-            image: !!file,
+            media: !!file,
           })),
           cuts: data.cuts.map((cut, i) => ({
             engine: cut.engine,

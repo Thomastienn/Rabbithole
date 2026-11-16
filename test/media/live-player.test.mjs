@@ -280,7 +280,7 @@ test('the library shows a pending video live, with no file actions until its MP4
   );
 });
 
-test('a live exhibit draws its delivered image or quote in a frame with a dim source line, and nothing when missing', async (t) => {
+test('a live exhibit draws its delivered image, quote or muted clip in a frame with a dim source line, and nothing when missing', async (t) => {
   const { setStock, Exhibit } = await import('../../server/media/video-kit.tsx');
   setStock({
     exhibit1: { kind: 'image', title: 'Ada portrait', site: 'museum.example', src: 'blob:ada' },
@@ -291,6 +291,7 @@ test('a live exhibit draws its delivered image or quote in a frame with a dim so
       text: 'It weaves.',
       by: 'Ada',
     },
+    exhibit4: { kind: 'clip', title: 'Landing', site: 'video.example', src: 'blob:clip', seconds: 2 },
   });
   t.after(() => setStock({}));
   const frame = (id) =>
@@ -315,6 +316,12 @@ test('a live exhibit draws its delivered image or quote in a frame with a dim so
   const quote = await render(frame('exhibit2'), ui);
   assert.match(quote.container.textContent, /“It weaves\.”— AdaNotes · archive\.example/);
   await quote.cleanup();
+  const clip = await render(frame('exhibit4'), ui);
+  const video = clip.container.querySelector('video');
+  assert.match(video.getAttribute('src'), /^blob:clip/);
+  assert.equal(video.muted, true);
+  assert.match(clip.container.textContent, /Landing · video\.example/);
+  await clip.cleanup();
   const missing = await render(frame('exhibit3'), ui);
   assert.equal(missing.container.textContent, '');
   await missing.cleanup();

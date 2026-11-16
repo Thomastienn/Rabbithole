@@ -18,9 +18,11 @@ import {
   libraryPieces,
   PLAN_INSTRUCTIONS,
   EXHIBITS_NOTE,
+  CLIPS_NOTE,
   CUT_ATTEMPTS,
 } from './video-plan.mjs';
-import { fetchExhibit } from './exhibits.mjs';
+import { fetchExhibit, fetchExhibits } from './exhibits.mjs';
+import { detectClips } from './clips.mjs';
 import { videoCall, writeCuts, cutError } from './video-cuts.mjs';
 import { improvePiece } from './video-pieces.mjs';
 import { sandboxProcess, REPO, withoutPaths } from './video-sandbox.mjs';
@@ -102,41 +104,6 @@ export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
 export const playable = (cut) =>
   !!(cut.code && cut.timing && cut.audited && (cut.engine !== 'manim' || cut.clip));
 
-// Fetches every planned exhibit; a failed one is dropped with a warning and its cut is written without it.
-// Image bytes are saved in their cut folder, where staging inlines them into the cut's host data.
-export async function fetchExhibits(
-  plan,
-  { fetch, workspace, signal, wait, onWarning, onExhibit },
-) {
-  const planned = plan.cuts.flatMap((c, cut) => (c.exhibits ?? []).map((e) => ({ ...e, cut })));
-  const fetched = await wait(
-    Promise.all(
-      planned.map((p) =>
-        fetch(p).catch((error) => {
-          signal.throwIfAborted();
-          onWarning(`WARN video exhibit dropped: ${error.message}`);
-          return null;
-        }),
-      ),
-    ),
-  );
-  const exhibits = [];
-  for (const [n, e] of fetched.entries()) {
-    if (!e) continue;
-    const { bytes, ...meta } = e,
-      { cut, show } = planned[n],
-      id = `exhibit${n + 1}`;
-    const file = bytes && `exhibits/${id}`;
-    if (bytes) {
-      await mkdir(join(workspace, `cut-${cut}`, 'exhibits'), { recursive: true, mode: 0o700 });
-      await writeFile(join(workspace, `cut-${cut}`, file), bytes);
-    }
-    exhibits.push({ id, cut, ...meta, ...(show && { show }), ...(file && { file }) });
-    onExhibit(exhibits.at(-1));
-  }
-  return exhibits;
-}
-
 export async function generateVideo({
   provider,
   selection,
@@ -160,6 +127,8 @@ export async function generateVideo({
   // The SearXNG web search tool; when it is ready and switched on the planner may name exhibits (ADR 0005).
   search = null,
   exhibit = fetchExhibit,
+  // Probes yt-dlp and ffmpeg; when they are not ready the planner gets no clip option.
+  clips = detectClips,
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
   const controller = new AbortController();
@@ -218,25 +187,28 @@ export async function generateVideo({
       !!search &&
       store.tutorTools().web_search !== false &&
       (await search.status({ signal: controller.signal })).ready;
+    const clipping = searching && clips();
     const plan =
       prior?.plan ??
       videoPlan(
         await call(
           PLAN_INSTRUCTIONS +
             (searching ? EXHIBITS_NOTE : '') +
+            (clipping?.ready ? CLIPS_NOTE : '') +
             (JSON.parse(artifact.input).differentVersion
               ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
               : ''),
           artifact.input,
           (characters) => onPhase('planning', undefined, { characters }),
         ),
-        { exhibits: searching },
+        { exhibits: searching, clips: !!clipping?.ready },
       );
     // Retry keeps the exhibits the first attempt fetched; their files came along with the cut folders.
     const exhibits = prior?.plan
       ? (prior.exhibits ?? [])
       : await fetchExhibits(plan, {
-          fetch: (planned) => exhibit(planned, { search, signal: controller.signal }),
+          fetch: (planned) =>
+            exhibit(planned, { search, signal: controller.signal, clips: clipping }),
           workspace,
           signal: controller.signal,
           wait: (promise) =>

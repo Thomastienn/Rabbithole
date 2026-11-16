@@ -175,6 +175,7 @@ export async function job(render, mutate, source = composition, count = 1, optio
     manim: options.manim,
     search: options.search,
     exhibit: options.exhibit,
+    clips: options.clips,
   }).then(
     () => null,
     (error) => error.message,

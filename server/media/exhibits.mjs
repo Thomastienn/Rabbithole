@@ -1,7 +1,10 @@
 // The exhibit fetcher: turns a planned exhibit into data for its cut (ADR 0005). Images are downloaded on the
 // server through the public-address checks read_page uses, so cut code and its sandbox stay offline.
 import { lookup as dnsLookup } from 'node:dns';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { request, body, publicAddress } from '../tools/readPage.mjs';
+import { downloadClip } from './clips.mjs';
 
 const MAX_IMAGE = 3 * 1024 * 1024,
   TRIES = 3;
@@ -48,15 +51,25 @@ async function download(url, { signal, lookup, isPublic }) {
   }
 }
 
-// One planned exhibit to {kind, url, title, site, text?, by?, bytes?, type?}; any failure throws, and the
-// caller drops the exhibit. search is the SearXNG tool (run(input, options, images)).
+// The downloader fetches whatever a page links to, so at least the page's own host must be public.
+async function publicHost(url, lookup, isPublic) {
+  const host = new URL(url).hostname.replace(/^\[|\]$/g, '');
+  const addresses = await new Promise((resolve, reject) =>
+    lookup(host, { all: true }, (error, all) => (error ? reject(error) : resolve(all))),
+  );
+  if (!addresses.length || !addresses.every((a) => isPublic(a.address)))
+    throw new Error(`refused non-public clip host ${host}`);
+}
+
+// One planned exhibit to {kind, url, title, site, text?, by?, bytes?, type?, seconds?}; any failure throws, and
+// the caller drops the exhibit. search is the SearXNG tool (run(input, options, category)); clips is the
+// detected downloader and clip the function that downloads and trims (a fake in tests).
 export async function fetchExhibit(
   planned,
-  { search, signal, lookup = dnsLookup, isPublic = publicAddress },
+  { search, signal, clips, clip = downloadClip, lookup = dnsLookup, isPublic = publicAddress },
 ) {
-  const { results } = JSON.parse(
-    await search.run({ query: planned.query }, { signal }, planned.kind === 'image'),
-  );
+  const category = { image: 'images', clip: 'videos' }[planned.kind];
+  const { results } = JSON.parse(await search.run({ query: planned.query }, { signal }, category));
   if (!results.length) throw new Error(`no search results for "${planned.query}"`);
   if (planned.kind === 'quote') {
     // Credit the result that shows the quote when one does; otherwise the top result for its query.
@@ -74,6 +87,27 @@ export async function fetchExhibit(
     };
   }
   let last;
+  if (planned.kind === 'clip') {
+    if (!clips?.ready) throw new Error(clips?.error ?? 'clip downloader unavailable');
+    for (const r of results.slice(0, TRIES))
+      try {
+        await publicHost(r.url, lookup, isPublic);
+        const { start, end } = planned;
+        return {
+          kind: 'clip',
+          url: r.url,
+          title: r.title,
+          site: site(r.url),
+          seconds: end - start,
+          bytes: await clip({ url: r.url, start, end }, { clips, signal }),
+          type: 'video/mp4',
+        };
+      } catch (error) {
+        signal?.throwIfAborted();
+        last = error;
+      }
+    throw last;
+  }
   for (const r of results.slice(0, TRIES))
     try {
       return {
@@ -88,4 +122,39 @@ export async function fetchExhibit(
       last = error;
     }
   throw last;
+}
+
+// Fetches every planned exhibit; a failed one is dropped with a warning and its cut is written without it.
+// Image and clip bytes are saved in their cut folder, where staging inlines them into the cut's host data.
+export async function fetchExhibits(
+  plan,
+  { fetch, workspace, signal, wait, onWarning, onExhibit },
+) {
+  const planned = plan.cuts.flatMap((c, cut) => (c.exhibits ?? []).map((e) => ({ ...e, cut })));
+  const fetched = await wait(
+    Promise.all(
+      planned.map((p) =>
+        fetch(p).catch((error) => {
+          signal.throwIfAborted();
+          onWarning(`WARN video exhibit dropped: ${error.message}`);
+          return null;
+        }),
+      ),
+    ),
+  );
+  const exhibits = [];
+  for (const [n, e] of fetched.entries()) {
+    if (!e) continue;
+    const { bytes, ...meta } = e,
+      { cut, show } = planned[n],
+      id = `exhibit${n + 1}`;
+    const file = bytes && `exhibits/${id}`;
+    if (bytes) {
+      await mkdir(join(workspace, `cut-${cut}`, 'exhibits'), { recursive: true, mode: 0o700 });
+      await writeFile(join(workspace, `cut-${cut}`, file), bytes);
+    }
+    exhibits.push({ id, cut, ...meta, ...(show && { show }), ...(file && { file }) });
+    onExhibit(exhibits.at(-1));
+  }
+  return exhibits;
 }

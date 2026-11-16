@@ -1,17 +1,27 @@
 // The host's data path into a cut and the 3D camera, shared by live playback and the background render.
-import { Img, interpolate, useCurrentFrame } from 'remotion';
+import {
+  Img,
+  Loop,
+  OffthreadVideo,
+  Sequence,
+  interpolate,
+  staticFile,
+  useCurrentFrame,
+} from 'remotion';
 import { useThree } from '@react-three/fiber';
 import { ease, fonts, palette } from './video-kit';
 
 // Exhibits the host delivered by id (ADR 0005): the render reads them from stock.json beside the cut, with
-// images as data URLs; live playback from the frame's message, with images as blob URLs.
+// images as data URLs and clips as public files; live playback from the frame's message, with blob URLs.
 type ExhibitData = {
-  kind: 'image' | 'quote';
+  kind: 'image' | 'quote' | 'clip';
   title: string;
   site: string;
   src?: string;
   text?: string;
   by?: string;
+  clip?: string;
+  seconds?: number;
 };
 export let hostData: Record<string, ExhibitData> = {};
 export const setStock = (data: typeof hostData) => {
@@ -20,6 +30,7 @@ export const setStock = (data: typeof hostData) => {
 
 // A real web image or quote, framed like a mounted print so it reads as real rather than drawn, with a short
 // dim source line. x and y are its centre in frame pixels, width its unscaled width, rotation in degrees.
+// A clip plays muted from frame `from`, looping if shown longer than it lasts.
 // An exhibit the host did not deliver draws nothing, so the cut still works without it.
 export function Exhibit({
   id,
@@ -29,6 +40,7 @@ export function Exhibit({
   scale = 1,
   rotation = 0,
   opacity = 1,
+  from = 0,
 }: {
   id: string;
   x?: number;
@@ -37,9 +49,10 @@ export function Exhibit({
   scale?: number;
   rotation?: number;
   opacity?: number;
+  from?: number;
 }) {
   const e = hostData[id];
-  if (!e || (e.kind === 'image' ? !e.src : !e.text)) return null;
+  if (!e || (e.kind === 'quote' ? !e.text : !(e.src || e.clip))) return null;
   const source = [e.title, e.site].filter(Boolean).join(' · ');
   return (
     <div
@@ -55,7 +68,19 @@ export function Exhibit({
         boxShadow: '0 18px 40px #0000008c',
       }}
     >
-      {e.kind === 'image' ? (
+      {e.kind === 'clip' ? (
+        <div style={{ width: '100%', aspectRatio: '16 / 9', background: '#000' }}>
+          <Sequence from={Math.round(from)} layout="none">
+            <Loop durationInFrames={Math.max(1, Math.round((e.seconds ?? 1) * 30))} layout="none">
+              <OffthreadVideo
+                src={e.src ?? staticFile(e.clip!)}
+                muted
+                style={{ display: 'block', width: '100%', height: '100%' }}
+              />
+            </Loop>
+          </Sequence>
+        </div>
+      ) : e.kind === 'image' ? (
         <Img src={e.src!} style={{ display: 'block', width: '100%' }} />
       ) : (
         <div style={{ padding: '18px 22px', color: palette.ground }}>

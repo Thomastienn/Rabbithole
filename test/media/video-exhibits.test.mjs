@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { generateVideo } from '../../server/media/videos.mjs';
-import { EXHIBITS_NOTE } from '../../server/media/video-plan.mjs';
+import { EXHIBITS_NOTE, CLIPS_NOTE } from '../../server/media/video-plan.mjs';
 import { EXHIBIT_NOTE } from '../../server/media/video-cut.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { planFor, complete, fakeRender, noSnapshot, open } from '../support/video-kit.mjs';
@@ -28,6 +28,15 @@ const fetched = {
     bytes: png,
     type: 'image/png',
   },
+  'Apollo 11 landing footage': {
+    kind: 'clip',
+    url: 'https://video.example/watch?v=1',
+    title: 'Apollo 11 landing',
+    site: 'video.example',
+    seconds: 6,
+    bytes: Buffer.from('mp4 clip'),
+    type: 'video/mp4',
+  },
   'Lovelace patterns': {
     kind: 'quote',
     text: 'It weaves algebraic patterns.',
@@ -38,7 +47,7 @@ const fetched = {
   },
 };
 
-async function run({ ready = true, off = false, plan } = {}) {
+async function run({ ready = true, off = false, plan, clips = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-video-exhibits-'));
   const store = new Store(join(dir, 'trees.sqlite'));
   if (off) store.saveTutorTool('web_search', false);
@@ -75,15 +84,17 @@ async function run({ ready = true, off = false, plan } = {}) {
     narrate: fakeNarration,
     onWarning: (w) => warnings.push(w),
     search: { status: async () => ({ ready }) },
-    exhibit: async (p) => {
+    exhibit: async (p, options) => {
+      if (p.kind === 'clip') assert.equal(options.clips.ready, true);
       if (!fetched[p.query]) throw new Error('image returned HTTP 404');
       return fetched[p.query];
     },
+    clips: () => (clips ? { ready: true, ytDlp: 'yt-dlp', ffmpeg: 'ffmpeg' } : { ready: false, error: 'no yt-dlp' }),
   }).then(
     () => null,
     (error) => error.message,
   );
-  return { result, calls, staged, warnings, store, tree, row: store.artifact(tree.id, artifact.id) };
+  return { result, calls, staged, warnings, store, tree, dir, artifact, row: store.artifact(tree.id, artifact.id) };
 }
 
 test('a video with exhibits fetches them, drops a failed one, hands the rest to the cut as data and credits them as resources', async () => {
@@ -146,8 +157,8 @@ test('live playback serves exhibit metadata and image bytes, never the private f
     const base = `/api/trees/${tree.id}/artifacts/${a.id}/cuts`;
     const data = await (await env.get(base)).json();
     assert.deepEqual(data.exhibits, [
-      { id: 'exhibit1', cut: 0, kind: 'image', title: 'A', site: 'm.example', image: true },
-      { id: 'exhibit2', cut: 0, kind: 'quote', title: 'Q', site: 'q.example', text: 'Words.', image: false },
+      { id: 'exhibit1', cut: 0, kind: 'image', title: 'A', site: 'm.example', media: true },
+      { id: 'exhibit2', cut: 0, kind: 'quote', title: 'Q', site: 'q.example', text: 'Words.', media: false },
     ]);
     const image = await env.get(`${base}/0/exhibit`);
     assert.equal(image.headers.get('content-type'), 'image/png');
@@ -156,4 +167,32 @@ test('live playback serves exhibit metadata and image bytes, never the private f
   } finally {
     env.close();
   }
+});
+
+test('a muted clip exhibit is planned only with the downloader, staged for the MP4 render as a public file and credited as a resource', async () => {
+  const clip = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36 };
+  const plan = planFor();
+  plan.cuts[0].exhibits = [clip, { ...clip, query: 'missing footage' }];
+  const { result, calls, staged, warnings, store, tree, dir, artifact } = await run({ plan, clips: true });
+  assert.equal(result, null);
+  assert.ok(calls[0].instructions.includes(CLIPS_NOTE));
+  const writer = calls.find((c) => c.input.cut);
+  assert.deepEqual(writer.input.exhibits, [
+    { id: 'exhibit1', kind: 'clip', title: 'Apollo 11 landing', site: 'video.example', seconds: 6, show: 'The landing' },
+  ]);
+  assert.deepEqual(warnings, ['WARN video exhibit dropped: image returned HTTP 404']);
+  assert.deepEqual(staged, [
+    { exhibit1: { kind: 'clip', title: 'Apollo 11 landing', site: 'video.example', seconds: 6, show: 'The landing', clip: 'exhibit1.mp4' } },
+  ]);
+  const work = join(dir, 'video-work', artifact.id, artifact.attempt, 'cut-0');
+  assert.equal(readFileSync(join(work, 'public', 'exhibit1.mp4'), 'utf8'), 'mp4 clip');
+  assert.deepEqual(
+    store.resources(tree.id).map(({ url, kind }) => ({ url, kind })),
+    [{ url: 'https://video.example/watch?v=1', kind: 'clip' }],
+  );
+  // Without the downloader the planner gets no clip option and a clip plan is rejected.
+  const without = await run({ plan, clips: false });
+  assert.ok(without.calls[0].instructions.includes(EXHIBITS_NOTE));
+  assert.ok(!without.calls[0].instructions.includes(CLIPS_NOTE));
+  assert.match(without.result, /cut 1 exhibits/);
 });

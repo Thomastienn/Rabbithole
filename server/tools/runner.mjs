@@ -47,7 +47,7 @@ const TOOLS = {
       required: ['query'],
       additionalProperties: false,
     },
-    run: (input, turn, options) => options.search.run(input, turn, true),
+    run: (input, turn, options) => options.search.run(input, turn, 'images'),
   },
   read_page: {
     description:

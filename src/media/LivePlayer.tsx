@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 type LiveCuts = {
   paletteRoles: Record<string, string>;
   pieces: string | null;
-  exhibits?: { id: string; image: boolean }[];
+  exhibits?: { id: string; media: boolean }[];
   cuts: {
     engine: string;
     playable: boolean;
@@ -52,7 +52,7 @@ export default function LivePlayer({
                       ...(cut.engine === 'manim' ? [blob(`${i}/clip`)] : []),
                     ],
               ),
-              ...(data.exhibits ?? []).flatMap((e, i) => (e.image ? [blob(`${i}/exhibit`)] : [])),
+              ...(data.exhibits ?? []).flatMap((e, i) => (e.media ? [blob(`${i}/exhibit`)] : [])),
             ]);
             const key = JSON.stringify(data) + [...blobs.keys()].join();
             if (!stopped && key !== last) {

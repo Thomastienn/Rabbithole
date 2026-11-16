@@ -7,6 +7,7 @@ import {
   CUT_PAUSE_FRAMES,
   PLAN_INSTRUCTIONS,
   EXHIBITS_NOTE,
+  CLIPS_NOTE,
 } from '../../server/media/video-plan.mjs';
 import { planFor, composition, spatial, styleBrief } from '../support/video-kit.mjs';
 import {
@@ -22,6 +23,7 @@ import {
   EXHIBIT_NOTE,
 } from '../../server/media/video-cut.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
+import { MAX_CLIP_SECONDS } from '../../server/media/clips.mjs';
 
 test('the planner carries Manim teaching notes scoped to Manim cuts only', () => {
   assert.ok(PLAN_INSTRUCTIONS.endsWith(MANIM_TEACHING_SKILL));
@@ -247,6 +249,28 @@ test('plans may name image and quote exhibits on Remotion cuts only when web sea
   assert.throws(() => videoPlan(JSON.stringify({ ...plan, cuts: [manim] }), { exhibits: true }), /cut 1 exhibits/);
   assert.match(EXHIBITS_NOTE, /"kind":"image"/);
   assert.ok(!PLAN_INSTRUCTIONS.includes(EXHIBITS_NOTE));
+});
+
+test('plans may name muted clip exhibits with the wanted seconds only when the clip downloader is ready', () => {
+  const plan = planFor();
+  const clip = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36.5 };
+  plan.cuts[0].exhibits = [clip];
+  const raw = JSON.stringify(plan);
+  assert.deepEqual(videoPlan(raw, { exhibits: true, clips: true }).cuts[0].exhibits, [clip]);
+  assert.throws(() => videoPlan(raw, { exhibits: true }), /cut 1 exhibits/);
+  for (const bad of [
+    { ...clip, start: undefined },
+    { ...clip, end: 30 },
+    { ...clip, start: -1 },
+    { ...clip, end: 30 + MAX_CLIP_SECONDS + 1 },
+    { ...clip, show: undefined },
+  ])
+    assert.throws(
+      () => videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), { exhibits: true, clips: true }),
+      /cut 1 exhibits/,
+    );
+  assert.match(CLIPS_NOTE, /"kind":"clip"/);
+  assert.ok(!EXHIBITS_NOTE.includes(CLIPS_NOTE));
 });
 
 test('cuts may place the kit Exhibit component; raw image tags and URLs are still rejected', () => {
