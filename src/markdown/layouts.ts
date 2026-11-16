@@ -55,12 +55,20 @@ export function layout(
           h('div', { key: `slot-${i}`, className: 'layout-item' }, slot.node),
         ),
       ];
+      const right = n.name === 'figure' && n.attributes?.side === 'right',
+        explanation = n.name === 'figure' && h('div', { className: 'layout-text' }, text.map(node));
       return h(
         'div',
-        { key: `${n.type}-${s}`, className: `reply-layout layout-${n.name}` },
+        {
+          key: `${n.type}-${s}`,
+          className: `reply-layout layout-${n.name}`,
+          'data-side': right ? 'right' : undefined,
+          'data-ratio': n.name === 'figure' && n.attributes?.ratio === 'wide' ? 'wide' : undefined,
+        },
         n.name === 'gallery' && text.map(node),
+        right && explanation,
         h('div', { className: 'layout-media' }, items),
-        n.name === 'figure' && h('div', { className: 'layout-text' }, text.map(node)),
+        !right && explanation,
       );
     }
   }

@@ -22,6 +22,7 @@ export type MarkdownNode = {
   identifier?: string;
   align?: ('left' | 'right' | 'center' | null)[];
   name?: string;
+  attributes?: Record<string, string | null | undefined>;
   data?: { directiveLabel?: boolean };
 };
 // Only container directives (`:::name` fences, the reply layouts): text and leaf forms would eat prose like `a:b` or `::before`.

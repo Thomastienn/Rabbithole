@@ -39,6 +39,12 @@
   align-items: start;
   margin: var(--spacing-3) 0;
 }
+.layout-figure[data-ratio='wide'] {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+.layout-figure[data-ratio='wide'][data-side='right'] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
 .layout-gallery .layout-media {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));

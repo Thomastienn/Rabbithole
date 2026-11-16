@@ -61,6 +61,8 @@ test('tutor chooses layouts by section shape without a reply cap or example repl
   for (const shape of [
     /five, plain flow, figure, gallery, comparison and steps/,
     /:::figure[^\n]*image[^\n]*explanation/,
+    /Figure media side:[^\n]*:::figure\{side=left\}[^\n]*:::figure\{side=right\}[^\n]*default/,
+    /Figure media ratio:[^\n]*ratio=wide[^\n]*same braces[^\n]*twice[^\n]*equal/,
     /:::gallery[^\n]*each image as its own line/,
     /:::comparison[^\n]*one ### heading per column title \(two or three columns\)/,
     /:::steps[^\n]*one ### heading per step title/,

@@ -1,6 +1,7 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
@@ -33,6 +34,10 @@ const shown = (...args) => doc(renderToStaticMarkup(h('div', null, renderMarkdow
 test('figure puts its image beside the text and gallery grids images with their source links', () => {
   const d = shown(raw, undefined, [], [], sources);
   const figure = d.querySelector('.layout-figure');
+  assert.deepEqual(
+    [...figure.children].map((el) => el.className),
+    ['layout-media', 'layout-text'],
+  );
   assert.equal(figure.querySelector('.layout-media img').getAttribute('src'), cat);
   assert.equal(figure.querySelector('.layout-media .image-source').textContent, 'Source 2');
   assert.equal(figure.querySelector('.layout-text').textContent, 'Cats have retractable claws.');
@@ -48,6 +53,52 @@ test('figure puts its image beside the text and gallery grids images with their 
     assert.equal(raw.slice(+el.dataset.o, +el.dataset.e), el.textContent);
   for (const el of d.querySelectorAll('.layout-item > [data-x]'))
     assert.match(raw.slice(+el.dataset.o, +el.dataset.e), /^!\[A (cat|dog)\]/);
+});
+
+test('a right-side figure puts its explanation before its media and preserves raw passages', () => {
+  const source = raw.replace(':::figure', ':::figure{side=right}');
+  const d = shown(source, undefined, [], [], sources);
+  const figure = d.querySelector('.layout-figure');
+  assert.deepEqual(
+    [...figure.children].map((el) => el.className),
+    ['layout-text', 'layout-media'],
+  );
+  assert.equal(figure.querySelector('.layout-media img').getAttribute('src'), cat);
+  assert.equal(figure.querySelector('.image-source').textContent, 'Source 2');
+  const text = [...figure.querySelectorAll('[data-o]')].find(
+    (el) => el.textContent === 'retractable',
+  ).firstChild;
+  const range = d.createRange();
+  range.setStart(text, 0);
+  range.setEnd(text, 7);
+  const span = rawOffsets(d.getElementById('r'), range);
+  assert.equal(source.slice(span.start, span.end), 'retract');
+});
+
+test('wide figures give media twice the text width on either side; other ratios stay equal', () => {
+  const css = readFileSync(new URL('../../src/markdown/layouts.css', import.meta.url), 'utf8');
+  for (const [options, columns, order] of [
+    ['', 'minmax(0, 1fr) minmax(0, 1fr)', ['layout-media', 'layout-text']],
+    ['{side=left}', 'minmax(0, 1fr) minmax(0, 1fr)', ['layout-media', 'layout-text']],
+    ['{side=right}', 'minmax(0, 1fr) minmax(0, 1fr)', ['layout-text', 'layout-media']],
+    ['{ratio=wide}', 'minmax(0, 2fr) minmax(0, 1fr)', ['layout-media', 'layout-text']],
+    ['{side=left ratio=wide}', 'minmax(0, 2fr) minmax(0, 1fr)', ['layout-media', 'layout-text']],
+    ['{side=right ratio=wide}', 'minmax(0, 1fr) minmax(0, 2fr)', ['layout-text', 'layout-media']],
+    ['{side=above ratio=huge}', 'minmax(0, 1fr) minmax(0, 1fr)', ['layout-media', 'layout-text']],
+  ]) {
+    const d = shown(raw.replace(':::figure', `:::figure${options}`));
+    const style = d.createElement('style');
+    style.textContent = css;
+    d.head.append(style);
+    const figure = d.querySelector('.layout-figure');
+    assert.equal(d.defaultView.getComputedStyle(figure).gridTemplateColumns, columns, options);
+    assert.deepEqual(
+      [...figure.children].map((el) => el.className),
+      order,
+      options,
+    );
+    d.defaultView.close();
+  }
 });
 
 test('a selection in figure text maps to the exact raw passage and reveals mark it', () => {
@@ -67,8 +118,9 @@ test('a selection in figure text maps to the exact raw passage and reveals mark 
   );
 });
 
-test('visuals placed inside a figure or gallery join its media; others stay in the flow', () => {
-  const source = ':::figure\nThe loop runs twice.\n\n:::\n\nAfter.\n\n:::gallery\n\n:::';
+test('visuals placed inside a right-side wide figure or gallery join its media; others stay in the flow', () => {
+  const source =
+    ':::figure{side=right ratio=wide}\nThe loop runs twice.\n\n:::\n\nAfter.\n\n:::gallery\n\n:::';
   const inFigure = source.indexOf('\n\n:::') + 1,
     inGallery = source.lastIndexOf('\n:::'),
     after = source.indexOf('After.');
@@ -86,6 +138,7 @@ test('visuals placed inside a figure or gallery join its media; others stay in t
   );
   assert.ok(d.querySelector('.layout-figure .layout-media #v1'));
   assert.equal(d.querySelector('.layout-figure .layout-text').textContent, 'The loop runs twice.');
+  assert.equal(d.querySelector('.layout-figure').firstElementChild.className, 'layout-text');
   assert.equal(d.querySelector('#v2').closest('.reply-layout'), null);
   assert.equal(d.querySelectorAll('.layout-gallery .layout-item .visual').length, 2);
 });
@@ -108,31 +161,45 @@ test('wrong shapes and flow mode render plain flow; previews show plain text', (
   );
 });
 
-test('Reply shows the dead-image placeholder inside a gallery and falls back to plain flow when narrow', async (t) => {
-  let width = 700,
-    resize;
-  const { container, act, cleanup } = await render(h(Reply, { text: raw, underlines: [] }), (w) => {
-    ui(w);
-    w.ResizeObserver = class {
-      constructor(fn) {
-        resize = fn;
-      }
-      observe() {}
-      disconnect() {}
-    };
-    Object.defineProperty(w.HTMLElement.prototype, 'clientWidth', { get: () => width });
+for (const options of ['', '{side=right}', '{ratio=wide}', '{side=right ratio=wide}'])
+  test(`Reply keeps images and narrow plain flow for figure${options}`, async (t) => {
+    const source = raw.replace(':::figure', `:::figure${options}`);
+    let width = 700,
+      resize;
+    const { container, act, cleanup } = await render(
+      h(Reply, { text: source, underlines: [] }),
+      (w) => {
+        ui(w);
+        w.ResizeObserver = class {
+          constructor(fn) {
+            resize = fn;
+          }
+          observe() {}
+          disconnect() {}
+        };
+        Object.defineProperty(w.HTMLElement.prototype, 'clientWidth', { get: () => width });
+      },
+    );
+    t.after(cleanup);
+    assert.equal(container.querySelectorAll('.reply-layout').length, 2);
+    const img = container.querySelector('.layout-gallery img');
+    await act(async () => img.dispatchEvent(new img.ownerDocument.defaultView.Event('error')));
+    assert.equal(
+      container.querySelector('.layout-gallery .image-unavailable').textContent,
+      'Image is no longer available. A cat',
+    );
+    width = 479;
+    await act(async () => resize());
+    assert.equal(container.querySelector('.reply-layout'), null);
+    assert.equal(container.querySelectorAll('img').length, 3);
+    assert.match(container.textContent, /Cats have retractable claws\./);
+    assert.equal(container.querySelector('[data-side], [data-ratio]'), null);
+    assert.equal(previewText(source, 'assistant'), previewText(raw, 'assistant'));
+    width = 480;
+    await act(async () => resize());
+    assert.equal(container.querySelectorAll('.reply-layout').length, 2);
+    assert.equal(
+      container.querySelector('.layout-figure').firstElementChild.className,
+      options.includes('side=right') ? 'layout-text' : 'layout-media',
+    );
   });
-  t.after(cleanup);
-  assert.equal(container.querySelectorAll('.reply-layout').length, 2);
-  const img = container.querySelector('.layout-gallery img');
-  await act(async () => img.dispatchEvent(new img.ownerDocument.defaultView.Event('error')));
-  assert.equal(
-    container.querySelector('.layout-gallery .image-unavailable').textContent,
-    'Image is no longer available. A cat',
-  );
-  width = 320;
-  await act(async () => resize());
-  assert.equal(container.querySelector('.reply-layout'), null);
-  assert.equal(container.querySelectorAll('img').length, 3);
-  assert.match(container.textContent, /Cats have retractable claws\./);
-});
