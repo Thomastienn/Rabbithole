@@ -1,8 +1,7 @@
+import { replyArtifacts } from '../reply-artifacts.mjs';
 import { nativeTools as nativeToolsFor } from '../../tools/runner.mjs';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
-import { diagramReply, generateDiagram, LIMITS, tutorContext } from '../../media/diagrams.mjs';
-import { visualTheme } from '../../media/visuals.mjs';
-import { asksForVideo } from '../../media/videos.mjs';
+import { diagramReply, generateDiagram, tutorContext } from '../../media/diagrams.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
 import { withAttachments } from '../../attachments.mjs';
 import { attachmentParts, prepareUploads, prepareRetry, savePrepared } from '../attachments.mjs';
@@ -134,128 +133,20 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     finished = false,
     usage = null,
     called = false;
-  const artifacts = new Map(),
-    mediaQueue = [];
-  let runningMedia = 0;
   const heartbeat = setInterval(() => {
     if (!res.destroyed) res.write(': keepalive\n\n');
   }, 15000);
-  // Visuals and videos run detached; Stop cancels them only while the reply streams.
-  const pumpMedia = () => {
-    while (!ctx.stopping && !controller.signal.aborted && runningMedia < 3 && mediaQueue.length) {
-      const artifact = mediaQueue.shift();
-      if (store.artifact(id, artifact.id)?.status !== 'pending') continue;
-      runningMedia++;
-      const start = artifact.kind === 'video' ? ctx.startVideo : ctx.startDrawing;
-      start(artifact, controller.signal, (updated) => {
-        if (!finished) send({ type: 'artifact', artifact: updated });
-      }).done.finally(() => {
-        runningMedia--;
-        if (!finished) {
-          const current = store.artifact(id, artifact.id);
-          if (current) send({ type: 'artifact', artifact: live(current) });
-        }
-        pumpMedia();
-      });
-    }
-  };
-  // Legacy diagrams retain their completed-reply policy.
-  const prepareArtifacts = (output, final = false) => {
-    if (!store.tree(id)) return;
-    for (const [index, request] of (output.requests ?? []).entries()) {
-      if (
-        !final &&
-        (!request.closed ||
-          (request.kind !== 'visual' && (request.kind !== 'video' || request.error)))
-      )
-        continue;
-      if (artifacts.has(index)) {
-        const artifact = artifacts.get(index);
-        if (
-          request.error &&
-          artifact.kind === 'video' &&
-          store.artifact(id, artifact.id)?.status === 'pending'
-        ) {
-          const failed = store.finishVideo(id, artifact.id, artifact.attempt, {}, request.error);
-          ctx.videos.get(artifact.id)?.controller.abort(new Error(request.error));
-          artifacts.set(index, failed);
-          send({ type: 'artifact', artifact: live(failed) });
-        }
-        continue;
-      }
-      // No smart model (and no chat default to follow): videos are skipped; visuals use the chat model.
-      if (request.kind === 'video' && !ctx.smart().resolved.provider) continue;
-      const label =
-        request.kind === 'video' ? 'Video' : request.kind === 'visual' ? 'Visual' : 'Diagram';
-      const task = request.task ?? {
-        title: label,
-        description: `The tutor’s ${label.toLowerCase()} request could not be read.`,
-        intent: body.text.trim().slice(0, LIMITS.intent),
-        excerpt: '',
-        ...request.partial,
-      };
-      const input =
-        request.kind === 'video'
-          ? {
-              ...ctx.videoRoles(tree),
-              request: body.text.trim().slice(0, LIMITS.intent),
-              intent: task.intent,
-              excerpt: task.excerpt,
-              inheritedContext: tree.branch
-                ? {
-                    snapshot: tree.branch.snapshot,
-                    selectedPassage: tree.branch.text,
-                    question: tree.branch.question,
-                  }
-                : null,
-              sources: {
-                conversation: id,
-                requestMessage: user,
-                replyMessage: reply,
-                ...(tree.branch && {
-                  parentConversation: tree.branch.parent,
-                  parentMessage: tree.branch.messageId,
-                }),
-              },
-            }
-          : request.kind === 'visual'
-            ? {
-                selection: ctx.videoRoles(tree).chat,
-                theme: visualTheme(body.theme),
-                request: task,
-                earlierTitles: output.requests
-                  .slice(0, index)
-                  .filter((r) => r.kind === 'visual')
-                  .map((r) => (r.task ?? r.partial)?.title ?? 'Visual'),
-              }
-            : task;
-      let artifact = store.pendingArtifact(
-        id,
-        reply,
-        task.title,
-        task.description,
-        request.kind,
-        JSON.stringify(input),
-        request.position,
-      );
-      const invalid =
-        request.error ??
-        (final && status !== 'completed' ? 'Tutor reply did not complete.' : null) ??
-        (request.kind === 'video' && !asksForVideo(body.text)
-          ? 'Video request could not be read: the learner did not ask for a video. Retry to create it.'
-          : null);
-      if (invalid)
-        artifact =
-          request.kind === 'video'
-            ? store.finishVideo(id, artifact.id, artifact.attempt, {}, invalid)
-            : store.finishArtifact(id, artifact.id, null, invalid);
-      artifacts.set(index, artifact);
-      send({ type: 'artifact', artifact: live(artifact) });
-      if (['visual', 'video'].includes(artifact.kind) && artifact.status === 'pending')
-        mediaQueue.push(artifact);
-    }
-    pumpMedia();
-  };
+  const { artifacts, prepareArtifacts } = replyArtifacts(ctx, {
+    id,
+    tree,
+    user,
+    reply,
+    body,
+    send,
+    controller,
+    isFinished: () => finished,
+    getStatus: () => status,
+  });
   const finish = () => {
     if (finished) return;
     finished = true;

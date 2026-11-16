@@ -4,7 +4,7 @@ import { mkdirSync, chmodSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
+        kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual','discussion')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
         title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
@@ -226,10 +226,10 @@ export function open(path) {
     this.db
       .exec(`CREATE TABLE IF NOT EXISTS pieces (id TEXT PRIMARY KEY, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, roles TEXT NOT NULL, embedding BLOB, created INTEGER NOT NULL, improved INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS piece_videos (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, video TEXT NOT NULL, PRIMARY KEY(piece, video));`);
-    // Visual kind and reply positions migrate in place; existing rows keep a NULL position and render after their reply.
+    // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
     this.db.exec('BEGIN IMMEDIATE');
     try {
-      this.rebuildArtifacts("'visual'");
+      this.rebuildArtifacts("'discussion'");
       this.db.exec('COMMIT');
     } catch (error) {
       this.db.exec('ROLLBACK');
@@ -324,6 +324,6 @@ export const schema = {
       UPDATE tool_calls SET status='failed',output='Tool call was interrupted when Rabbithole stopped.',elapsed=NULL WHERE status='running';
       UPDATE suggestions SET status='failed' WHERE status='pending';
       UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when Rabbithole stopped.' WHERE status='pending' AND kind='video';
-      UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when Rabbithole stopped.' WHERE status='pending';`);
+      UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'discussion' THEN 'Discussion' WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when Rabbithole stopped.' WHERE status='pending';`);
   },
 };

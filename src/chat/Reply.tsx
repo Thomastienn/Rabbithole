@@ -7,6 +7,7 @@ import { imageSources } from '../markdown/ReplyImage';
 import type { ToolCall } from './turn';
 import type { Resource } from './types';
 import type { Artifact } from '../media/artifacts';
+import DiscussionCard from '../media/DiscussionCard';
 import VideoCard from '../media/VideoCard';
 import VisualFrame, { type PartAction, type VisualBranch } from '../media/VisualFrame';
 
@@ -71,7 +72,9 @@ const Reply = memo(function Reply({
             inlineArtifacts.map((v) => ({
               at: v.position!,
               node:
-                v.kind === 'video' ? (
+                v.kind === 'discussion' ? (
+                  <DiscussionCard key={v.id} artifact={v} />
+                ) : v.kind === 'video' ? (
                   <VideoCard
                     key={v.id}
                     inline

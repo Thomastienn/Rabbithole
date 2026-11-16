@@ -1,3 +1,4 @@
+import { DISCUSSION_RULE, readDiscussion } from './discussions.mjs';
 import { Worker } from 'node:worker_threads';
 import { safeDiagramSource } from '../../src/media/diagramSource.ts';
 import { withAttachments } from '../attachments.mjs';
@@ -39,6 +40,7 @@ export const tutorSystem = (tree) =>
         )
       : TUTOR_RULES) +
       VERDICT_RULE +
+      DISCUSSION_RULE +
       (tree.tools?.some((t) => t.name === 'update_memory_note') ? MEMORY_RULE : '') +
       TUTOR_SKILLS +
       (tree.tutorStyle?.trim() || DEFAULT_TUTOR_STYLE)) +
@@ -65,7 +67,7 @@ const WORKER_INSTRUCTIONS =
 export function diagramReply(raw, final = false) {
   // Fenced form, or tag form <rabbithole-visual>{json}</rabbithole-visual> whose opening tag may carry stray quotes or spaces.
   const open =
-    /(^|\n)[ \t]*(`{3,}|~{3,})[ \t]*rabbithole-(diagram|video|visual|verdict)\b([^\r\n]*)(?:\r?\n|$)|<[\s"']*rabbithole-(diagram|video|visual|verdict)[\s"']*>/g;
+    /(^|\r?\n)[ \t]*(`{3,}|~{3,})[ \t]*rabbithole-(diagram|video|visual|verdict|discussion)\b([^\r\n]*)(?:\r?\n|$)|<[\s"']*rabbithole-(diagram|video|visual|verdict|discussion)[\s"']*>/g;
   let text = '',
     cursor = 0,
     match;
@@ -98,6 +100,7 @@ export function diagramReply(raw, final = false) {
     'rabbithole-video',
     'rabbithole-visual',
     'rabbithole-verdict',
+    'rabbithole-discussion',
   ];
   const tag = /<[\s"']*([\w-]*)[\s"']*$/.exec(text); // a streamed tag-form opening may still be arriving
   const fenceHidden =
@@ -122,7 +125,13 @@ export function diagramReply(raw, final = false) {
   // A rejected request keeps whatever fields were readable (partial) so an explicit Retry can rerun from it.
   const parse = (request) => {
     const label =
-      request.kind === 'video' ? 'Video' : request.kind === 'visual' ? 'Visual' : 'Diagram';
+      request.kind === 'discussion'
+        ? 'Discussion'
+        : request.kind === 'video'
+          ? 'Video'
+          : request.kind === 'visual'
+            ? 'Visual'
+            : 'Diagram';
     const reject = (reason, partial = {}) => ({
       kind: request.kind,
       error: `${label} request could not be read: ${reason}.`,
@@ -139,6 +148,12 @@ export function diagramReply(raw, final = false) {
     }
     if (!task || typeof task !== 'object' || Array.isArray(task))
       return reject('the request was not a JSON object');
+    if (request.kind === 'discussion') {
+      const parsed = readDiscussion(task);
+      return parsed.error
+        ? reject(parsed.error)
+        : { kind: 'discussion', task: parsed.task, position: request.position };
+    }
     const partial = Object.fromEntries(
       Object.entries(LIMITS).flatMap(([key, limit]) =>
         typeof task[key] === 'string' &&
@@ -171,7 +186,7 @@ export function diagramReply(raw, final = false) {
             closed: request.closed,
             error:
               parsed.error ??
-              `${request.kind === 'video' ? 'Video' : request.kind === 'visual' ? 'Visual' : 'Diagram'} request could not be read: ${groupError}.`,
+              `${request.kind === 'discussion' ? 'Discussion' : request.kind === 'video' ? 'Video' : request.kind === 'visual' ? 'Visual' : 'Diagram'} request could not be read: ${groupError}.`,
           }
         : { ...parsed, closed: request.closed };
     }),

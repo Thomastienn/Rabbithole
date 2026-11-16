@@ -3,17 +3,19 @@ import { safeDiagramSource } from './diagramSource.ts';
 // Ready videos with a missing file carry available: false.
 export type ArtifactSummary = {
   id: string;
-  kind?: 'mermaid' | 'video' | 'visual';
+  kind?: 'mermaid' | 'video' | 'visual' | 'discussion';
   title: string;
   status: 'pending' | 'ready' | 'failed' | 'canceled' | 'interrupted';
   available?: false;
+  classmates?: number;
 };
 export type Artifact = ArtifactSummary & {
   conversation: string;
   message: string;
-  kind: 'mermaid' | 'video' | 'visual';
+  kind: 'mermaid' | 'video' | 'visual' | 'discussion';
   description: string;
-  source: string | null;
+  source?: string | null;
+  discussion?: { classmates: string[]; lines: { speaker: string; text: string }[] };
   error: string | null;
   created: number;
   position?: number | null;
@@ -37,7 +39,7 @@ export type Artifact = ArtifactSummary & {
 export type DiagramState =
   { status: 'pending' } | { status: 'ready'; url: string } | { status: 'failed' };
 
-const KINDS = ['mermaid', 'video', 'visual'];
+const KINDS = ['mermaid', 'video', 'visual', 'discussion'];
 
 // Visual frames may only report their height; branch shapes validate visual branch requests (label, explanation).
 export type VisualPart = { label: string; explanation: string };

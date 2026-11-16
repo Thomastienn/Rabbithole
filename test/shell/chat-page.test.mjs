@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
+import { publicDiscussion } from '../fixtures/discussion.mjs';
 import { ui, button, name } from '../support/ui.mjs';
 
 // Composition check for the split ChatPage: its hooks load state, models and a chat into the regions.
@@ -144,6 +145,23 @@ test('map media chips open focused chat, focus and center the chosen artifact', 
     },
     { id: 'diagram:2', kind: 'mermaid', title: 'Trade loop', status: 'pending' },
     { id: 'video:3', kind: 'video', title: 'Trade narrated', status: 'ready', available: false },
+    {
+      id: 'discussion:4',
+      kind: 'discussion',
+      title: 'Discussion',
+      status: 'ready',
+      classmates: 3,
+      discussion: publicDiscussion,
+      position: 7,
+    },
+    {
+      id: 'discussion:5',
+      kind: 'discussion',
+      title: 'Discussion',
+      status: 'failed',
+      classmates: 0,
+      position: 7,
+    },
   ].map((a) => ({ conversation: 't1', message: 'a1', description: a.title, source: null, ...a }));
   const { container, act, settle, scrolls } = await mount(t, [summary], { artifacts });
   for (const artifact of artifacts) {

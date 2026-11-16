@@ -3,6 +3,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { ChatMessage, ChatMessageBubble } from '@astryxdesign/core/Chat';
 import type { Source } from '../map/TreeOverview';
 import DiagramCard from '../media/DiagramCard';
+import DiscussionCard from '../media/DiscussionCard';
 import VideoCard from '../media/VideoCard';
 import VisualFrame from '../media/VisualFrame';
 import CopyButton from '../markdown/CopyButton';
@@ -109,7 +110,7 @@ export default function ChatThread({
               overview
                 ? undefined
                 : artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(
-                    (a) => (a.kind === 'visual' || a.kind === 'video') && a.position != null,
+                    (a) => ['visual', 'video', 'discussion'].includes(a.kind) && a.position != null,
                   )
             }
             branched={
@@ -177,7 +178,9 @@ export default function ChatThread({
           artifactsAt(tree.artifacts ?? [], tree.id, message.id)
             .filter((a) => a.kind === 'mermaid' || a.position == null)
             .map((artifact, _, all) =>
-              artifact.kind === 'visual' ? (
+              artifact.kind === 'discussion' ? (
+                <DiscussionCard key={artifact.id} artifact={artifact} />
+              ) : artifact.kind === 'visual' ? (
                 <VisualFrame
                   key={artifact.id}
                   artifact={artifact}

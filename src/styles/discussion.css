@@ -1,0 +1,103 @@
+.discussion-card {
+  min-width: 0;
+  margin: 20px 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-container);
+  background: var(--color-background-surface);
+  overflow-wrap: anywhere;
+}
+.discussion-card:focus-visible {
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+.discussion-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+}
+.discussion-card__head > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-secondary);
+}
+.discussion-card .discussion-card__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-family-body);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.discussion-card__count {
+  margin-inline-start: auto;
+}
+.discussion-card .discussion-card__lines {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 4px 12px 12px;
+  list-style: none;
+}
+.discussion-card .discussion-card__lines > li {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+.discussion-card .discussion-card__avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-overlay-hover);
+  color: var(--color-text-primary);
+}
+.discussion-card .discussion-card__avatar--tutor {
+  background: var(--color-accent-muted);
+  color: var(--color-text-accent);
+}
+.discussion-card__avatar svg {
+  width: 16px;
+  height: 16px;
+}
+.discussion-card .discussion-card__name,
+.discussion-card .discussion-card__count,
+.discussion-card .discussion-card__error {
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.discussion-card .discussion-card__name {
+  color: var(--color-text-secondary);
+}
+.discussion-card__line[data-speaker='tutor'] .discussion-card__name {
+  color: var(--color-text-accent);
+}
+.discussion-card .discussion-card__text {
+  font-family: var(--rabbithole-font-reading);
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.discussion-card__skeleton {
+  display: grid;
+  gap: 12px;
+  padding: 4px 12px 12px;
+}
+.discussion-card__error {
+  display: block;
+  padding: 0 12px 12px;
+}
+.discussion-card[data-state='failed'] .discussion-card__head > svg {
+  color: var(--color-text-error);
+}
+@media (prefers-reduced-motion: reduce) {
+  .discussion-card .astryx-skeleton {
+    animation: none;
+  }
+}

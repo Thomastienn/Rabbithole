@@ -53,6 +53,14 @@ test('Contents lists nested conversation addresses and figures and routes each a
         artifacts: [
           { id: 'figure', message: 'reply', kind: 'mermaid', title: 'Trade loop', status: 'ready' },
           {
+            id: 'discussion',
+            message: 'reply',
+            kind: 'discussion',
+            title: 'Discussion',
+            status: 'ready',
+            classmates: 3,
+          },
+          {
             id: 'canceled',
             message: 'reply',
             kind: 'visual',

@@ -45,7 +45,7 @@ export const media = {
   finishArtifact(conversation, id, source, error = null) {
     this.db
       .prepare(
-        "UPDATE artifacts SET status=?,source=?,error=? WHERE conversation=? AND id=? AND kind IN ('mermaid','visual') AND status='pending'",
+        "UPDATE artifacts SET status=?,source=?,error=? WHERE conversation=? AND id=? AND kind IN ('mermaid','visual','discussion') AND status='pending'",
       )
       .run(error ? 'failed' : 'ready', error ? null : source, error, conversation, id);
     return this.artifact(conversation, id);

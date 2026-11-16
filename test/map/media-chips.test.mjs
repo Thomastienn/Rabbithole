@@ -45,6 +45,20 @@ test('media chips keep artifact order, kind/title/status labels and current stat
   });
   // Failed videos retain their existing raw status text.
   expected.find((e) => e.id === 'video-failed').label = 'Open video Title video-failed, failed';
+  for (const [status, classmates] of [
+    ['pending', 0],
+    ['ready', 3],
+    ['failed', 0],
+  ]) {
+    const id = `discussion-${status}`;
+    const state = status === 'pending' ? 'creating' : status === 'failed' ? 'unavailable' : 'ready';
+    artifacts.push({ id, kind: 'discussion', title: 'Discussion', status, classmates });
+    expected.push({
+      id,
+      label: `Open discussion with ${classmates} classmates, ${state}`,
+      text: status === 'pending' ? 'creating…' : status === 'failed' ? 'unavailable' : '',
+    });
+  }
   const opens = [];
   const { container, act, cleanup } = await render(
     h(
@@ -91,10 +105,15 @@ test('media chips keep artifact order, kind/title/status labels and current stat
     const e = expected[index];
     assert.equal(chip.getAttribute('aria-label'), e.label);
     assert.equal(chip.querySelector('.node-chip__status')?.textContent ?? '', e.text);
+    if (e.id.startsWith('discussion'))
+      assert.equal(
+        chip.querySelector('.node-chip__title').textContent,
+        `Discussion · ${artifacts.find((a) => a.id === e.id).classmates} classmates`,
+      );
     assert.equal(chip.dataset.status, artifacts.find((a) => a.id === e.id).status);
     assert.ok(chip.querySelector('svg[aria-hidden=true]'));
     assert.ok(chip.classList.contains('nodrag') && chip.classList.contains('nopan'));
-    chip.focus();
+    await act(async () => chip.focus());
     assert.equal(document.activeElement, chip);
     await act(async () => chip.click());
     assert.deepEqual(opens.at(-1), ['root', undefined, undefined, e.id]);

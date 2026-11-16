@@ -42,14 +42,20 @@ export const trees = {
       'SELECT id, role, text, status FROM messages WHERE tree=? ORDER BY seq',
     );
     const artifacts = this.db.prepare(
-      'SELECT id,message,kind,title,status FROM artifacts WHERE conversation=? ORDER BY created,rowid',
+      "SELECT id,message,kind,title,status,CASE WHEN kind='discussion' THEN json_array_length(source,'$.classmates') END AS classmates FROM artifacts WHERE conversation=? ORDER BY created,rowid",
     );
     return Object.fromEntries(
       ids.map((id) => {
         const byMessage = new Map();
-        for (const { message, ...artifact } of artifacts.all(id)) {
+        for (const { message, classmates, ...artifact } of artifacts.all(id)) {
           if (!byMessage.has(message)) byMessage.set(message, []);
-          byMessage.get(message).push(artifact);
+          byMessage
+            .get(message)
+            .push(
+              artifact.kind === 'discussion'
+                ? { ...artifact, classmates: classmates ?? 0 }
+                : artifact,
+            );
         }
         return [
           id,

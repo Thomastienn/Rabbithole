@@ -1,3 +1,4 @@
+import { discussionArtifact } from '../../media/discussions.mjs';
 import { randomUUID } from 'node:crypto';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { accessSync, constants, existsSync, renameSync, rmSync, readdirSync } from 'node:fs';
@@ -47,6 +48,7 @@ export function mediaJobs(ctx) {
   // Frozen inputs stay server-side for every kind; explicit worker actions reuse them.
   const live = (artifact) => {
     const { input, attempt, ...a } = artifact;
+    if (a.kind === 'discussion') return discussionArtifact(a);
     if (a.kind === 'visual' && a.status === 'pending') {
       const job = videos.get(a.id);
       return { ...a, source: job?.source ?? null, ...(job && { startedAt: job.startedAt }) };

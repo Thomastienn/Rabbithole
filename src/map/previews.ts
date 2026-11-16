@@ -15,7 +15,13 @@ export const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview =>
         ...(turn.artifacts && {
           artifacts: turn.artifacts
             .filter((a) => a.message === turn.reply!.id)
-            .map(({ id, kind, title, status }) => ({ id, kind, title, status })),
+            .map(({ id, kind, title, status, classmates }) => ({
+              id,
+              kind,
+              title,
+              status,
+              ...(kind === 'discussion' && { classmates }),
+            })),
         }),
       },
     },

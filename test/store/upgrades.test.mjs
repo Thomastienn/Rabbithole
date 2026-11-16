@@ -141,3 +141,67 @@ test('failed upgrade rolls back and retains its backup; newer schemas are refuse
   assert.throws(() => new Store(path), /schema 2 is newer/);
   assert.deepEqual(readFileSync(path), bytes);
 });
+
+test('the current media schema gains discussion artifacts without changing existing rows or positions', () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-discussion-upgrade-')), 'trees.sqlite');
+  let store = new Store(path);
+  const root = store.create('Saved media', 'codex');
+  const message = store.message(root.id, 'assistant', 'Saved reply', 'completed');
+  for (const kind of ['mermaid', 'visual', 'video']) {
+    const artifact = store.pendingArtifact(
+      root.id,
+      message,
+      kind,
+      'Description',
+      kind,
+      '{"frozen":true}',
+      6,
+    );
+    if (kind === 'video')
+      store.finishVideo(root.id, artifact.id, artifact.attempt, {
+        title: 'Saved video',
+        description: 'Description',
+        duration: 12,
+      });
+    else
+      store.finishArtifact(
+        root.id,
+        artifact.id,
+        kind === 'visual' ? '<p>Saved</p>' : 'flowchart TD; A-->B',
+      );
+  }
+  const before = store.tree(root.id).artifacts.map((a) => ({ ...a }));
+  // Recreate the exact pre-discussion CHECK on this otherwise current database.
+  const sql = store.db
+    .prepare("SELECT sql FROM sqlite_master WHERE name='artifacts'")
+    .get()
+    .sql.replace(",'discussion'", '');
+  store.db.exec(`ALTER TABLE artifacts RENAME TO artifacts_fixture;
+    ${sql};
+    INSERT INTO artifacts SELECT * FROM artifacts_fixture;
+    DROP TABLE artifacts_fixture;
+    CREATE INDEX artifacts_conversation ON artifacts(conversation, created);`);
+  store.close();
+  store = new Store(path);
+  try {
+    assert.deepEqual(
+      store.tree(root.id).artifacts.map((a) => ({ ...a })),
+      before,
+    );
+    const opening = store.pendingArtifact(
+      root.id,
+      message,
+      'Discussion',
+      '',
+      'discussion',
+      null,
+      6,
+    );
+    assert.equal(opening.kind, 'discussion');
+    assert.equal(opening.position, 6);
+    assert.deepEqual(store.db.prepare('PRAGMA foreign_key_check').all(), []);
+    assert.equal(store.library()[0].title, 'Saved video');
+  } finally {
+    store.close();
+  }
+});

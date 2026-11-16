@@ -17,6 +17,7 @@ import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import PhotoIcon from '@heroicons/react/24/outline/PhotoIcon';
 import RectangleStackIcon from '@heroicons/react/24/outline/RectangleStackIcon';
+import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
 import FilmIcon from '@heroicons/react/24/outline/FilmIcon';
 import type { CSSProperties } from 'react';
 import type { Summary, Preview } from './TreeOverview';
@@ -247,14 +248,19 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                               (a.status === 'ready' && a.available === false)
                             ? 'unavailable'
                             : a.status;
-                      const label = `Open ${kind} ${a.title}, ${status}`;
+                      const label =
+                        a.kind === 'discussion'
+                          ? `Open discussion with ${a.classmates ?? 0} classmates, ${status}`
+                          : `Open ${kind} ${a.title}, ${status}`;
                       const Icon = unavailable
                         ? ExclamationTriangleIcon
-                        : a.kind === 'visual'
-                          ? PhotoIcon
-                          : a.kind === 'video'
-                            ? FilmIcon
-                            : RectangleStackIcon;
+                        : a.kind === 'discussion'
+                          ? ChatBubbleLeftRightIcon
+                          : a.kind === 'visual'
+                            ? PhotoIcon
+                            : a.kind === 'video'
+                              ? FilmIcon
+                              : RectangleStackIcon;
                       return (
                         <Button
                           key={a.id}
@@ -279,7 +285,9 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                         >
                           <HStack gap={1} className="node-chip__content">
                             <Text type="supporting" className="node-chip__title">
-                              {a.title}
+                              {a.kind === 'discussion'
+                                ? `Discussion · ${a.classmates ?? 0} classmates`
+                                : a.title}
                             </Text>
                             {(a.kind === 'video' ||
                               a.status === 'pending' ||

@@ -48,7 +48,7 @@ export default function Contents({
       : (previews[t.id] ?? [])
     ).flatMap((m) =>
       (m.artifacts ?? [])
-        .filter((a) => !(a.kind === 'visual' && a.status === 'canceled'))
+        .filter((a) => a.kind !== 'discussion' && !(a.kind === 'visual' && a.status === 'canceled'))
         .map((a) => ({ ...a, conversation: t.id })),
     ),
   );

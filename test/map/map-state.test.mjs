@@ -326,6 +326,18 @@ test('live previews keep earlier messages, replace retried replies and use bound
       text: '**Roots** ' + '🌲'.repeat(600),
       status: 'streaming',
     },
+    artifacts: [
+      {
+        id: 'discussion',
+        conversation: 'root',
+        message: 'a',
+        kind: 'discussion',
+        title: 'Discussion',
+        status: 'ready',
+        classmates: 4,
+        discussion: { classmates: ['A', 'B', 'C', 'D'], lines: [] },
+      },
+    ],
   };
   const before = structuredClone(turn);
   const next = withLiveTurn(saved, turn);
@@ -337,6 +349,9 @@ test('live previews keep earlier messages, replace retried replies and use bound
   assert.ok(next[2].text.startsWith('Roots '));
   assert.equal(Array.from(next[2].text).length, 513);
   assert.equal(next[2].status, 'streaming');
+  assert.deepEqual(next[2].artifacts, [
+    { id: 'discussion', kind: 'discussion', title: 'Discussion', status: 'ready', classmates: 4 },
+  ]);
   assert.deepEqual(
     withLiveTurn(next, turn),
     next,
