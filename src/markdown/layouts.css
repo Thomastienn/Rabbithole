@@ -1,9 +1,19 @@
-/* Reply layouts: comparison columns and numbered step cards; narrow replies get plain flow from Reply. */
+/* Reply layouts share the reading rhythm; Reply removes these wrappers below 480px. */
+.reply-md .reply-layout {
+  min-width: 0;
+  margin-block: var(--spacing-6);
+}
+.reply-layout :is(.layout-media, .layout-text, .layout-item, .layout-card) {
+  min-width: 0;
+}
 .reply-layout .layout-cards {
   display: grid;
-  gap: var(--spacing-3);
-  margin: var(--spacing-3) 0;
+  gap: var(--spacing-4);
+  margin: 0;
   padding: 0;
+}
+.reply-layout > p + .layout-cards {
+  margin-block-start: var(--spacing-4);
 }
 .layout-comparison .layout-cards {
   grid-auto-columns: minmax(0, 1fr);
@@ -14,9 +24,12 @@
   counter-reset: step;
 }
 .reply-layout .layout-card {
-  padding: var(--spacing-3) var(--spacing-4);
-  border: thin solid var(--color-border);
-  border-radius: var(--radius-inner);
+  padding: var(--spacing-4);
+  background: var(--color-background-card);
+  border-radius: var(--radius-container);
+}
+.reply-md .layout-card + .layout-card {
+  margin-block-start: 0;
 }
 .layout-steps .layout-card {
   counter-increment: step;
@@ -24,6 +37,7 @@
 .layout-steps .layout-card > :first-child::before {
   content: counter(step) '. ';
   color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 .reply-layout .layout-card > :first-child {
   margin-top: 0;
@@ -35,9 +49,8 @@
 .layout-figure {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--spacing-4);
+  gap: var(--spacing-6);
   align-items: start;
-  margin: var(--spacing-3) 0;
 }
 .layout-figure[data-ratio='wide'] {
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -45,40 +58,65 @@
 .layout-figure[data-ratio='wide'][data-side='right'] {
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
 }
+.layout-figure .layout-media {
+  display: grid;
+  gap: var(--spacing-4);
+}
 .layout-gallery .layout-media {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-  gap: var(--spacing-3);
-  margin: var(--spacing-3) 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--spacing-4);
+}
+.layout-gallery > .layout-media:not(:first-child) {
+  margin-block-start: var(--spacing-4);
 }
 .layout-gallery .reply-image img {
-  max-height: 16rem;
+  width: 100%;
+  height: 12rem;
+  object-fit: contain;
+  background: var(--color-background-muted);
+  border-radius: var(--radius-container);
 }
-.layout-figure .layout-item:first-child > *,
+.reply-layout .layout-item .reply-image,
+.reply-layout .layout-item > figure {
+  margin: 0;
+}
 .layout-figure .layout-text > :first-child {
   margin-top: 0;
 }
+.layout-figure .layout-text > :last-child {
+  margin-bottom: 0;
+}
 .layout-callout {
   background: var(--color-background-card);
+  border-inline-start: thin solid var(--color-text-secondary);
   border-radius: var(--radius-container);
-  margin-block: var(--spacing-4);
+  padding: var(--spacing-6);
 }
-.layout-callout > :first-child,
+/* Section owns an inner surface; the callout needs only one tonal layer. */
+.layout-callout > .astryx-section {
+  padding: 0;
+  background: transparent;
+}
+.reply-md .layout-callout > .astryx-section > :first-child,
 .reply-md .timeline-entry > :first-child {
   margin-block-start: 0;
 }
-.layout-callout > :last-child,
+.layout-callout > .astryx-section > :last-child,
 .timeline-entry > :last-child {
   margin-block-end: 0;
 }
 .reply-md .timeline-entries {
-  padding-inline-start: var(--spacing-5);
-  margin-block: var(--spacing-4);
+  padding-inline-start: var(--spacing-6);
+  margin-block: 0;
   list-style-type: decimal;
 }
+.layout-timeline > p + .timeline-entries {
+  margin-block-start: var(--spacing-4);
+}
 .timeline-entry {
-  padding-inline-start: var(--spacing-3);
-  padding-block-end: var(--spacing-4);
+  padding-inline-start: var(--spacing-4);
+  padding-block-end: var(--spacing-6);
   border-inline-start: thin solid var(--color-border-emphasized);
 }
 .timeline-entry::marker {
