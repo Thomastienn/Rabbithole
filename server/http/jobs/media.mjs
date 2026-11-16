@@ -122,7 +122,7 @@ export function mediaJobs(ctx) {
                 ? 'plan'
                 : args[0].instructions.startsWith(PIECES_INSTRUCTIONS)
                   ? 'pieces'
-                  : args[0].instructions === PIECE_IMPROVE_INSTRUCTIONS
+                  : args[0].instructions.startsWith(PIECE_IMPROVE_INSTRUCTIONS)
                     ? 'improve'
                     : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].includes(args[0].instructions)
                       ? 'audit'

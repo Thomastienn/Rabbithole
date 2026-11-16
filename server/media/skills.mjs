@@ -6,3 +6,7 @@ const read = (name) =>
 export const TEACHING_SKILL = read('teaching');
 export const HUMANIZER_SKILL = read('humanizer');
 export const MANIM_TEACHING_SKILL = read('manim-teaching');
+export const REMOTION_SKILL = read('remotion');
+export const REMOTION_3D_SKILL = read('remotion-3d');
+export const MANIM_SKILL = read('manim-practices');
+export const VISUAL_SKILL = read('frontend-design');

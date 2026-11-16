@@ -3,6 +3,7 @@ import {
   PIECES_LIBRARY_NOTE,
   PIECE_IMPROVE_INSTRUCTIONS,
 } from './video-cut.mjs';
+import { REMOTION_SKILL } from './skills.mjs';
 import {
   cutSource,
   pieceChoices,
@@ -28,7 +29,7 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
     let raw;
     try {
       raw = await write(
-        PIECES_INSTRUCTIONS + (offered ? PIECES_LIBRARY_NOTE : ''),
+        PIECES_INSTRUCTIONS + '\n\n' + REMOTION_SKILL + (offered ? PIECES_LIBRARY_NOTE : ''),
         JSON.stringify({
           styleBrief: plan.styleBrief,
           names,
@@ -83,7 +84,7 @@ export async function improvePiece({ piece, why, call }) {
     recurringObjects: [{ look }],
   };
   const raw = await call(
-    PIECE_IMPROVE_INSTRUCTIONS,
+    PIECE_IMPROVE_INSTRUCTIONS + '\n\n' + REMOTION_SKILL,
     JSON.stringify({ name, look, props, roles, source, why }),
   );
   return libraryPieces(cutSource(raw, brief, [name]), brief, [name])[0];

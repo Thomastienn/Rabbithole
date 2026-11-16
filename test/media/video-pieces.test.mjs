@@ -13,6 +13,7 @@ import {
   fakeRender,
 } from '../support/video-kit.mjs';
 import { videoPlan, cutSource, pieceNames, libraryPieces } from '../../server/media/video-plan.mjs';
+import { REMOTION_SKILL, MANIM_SKILL } from '../../server/media/skills.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top, one third of its height.';
 const pieces = `import { colors, palette } from './kit';
@@ -95,6 +96,7 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
         if (tree.instructions.startsWith('You write the set pieces')) {
           calls.push('pieces');
           inputs.pieces = input;
+          inputs.piecesInstructions = tree.instructions;
           const row = env.store.tree(chat.id).artifacts[0];
           phaseAtPieces = (
             await (await env.get(`/api/trees/${chat.id}/artifacts/${row.id}`)).json()
@@ -104,6 +106,7 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
         const i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
         calls.push(`cut ${i}`);
         inputs[i] = input;
+        input.instructions = tree.instructions;
         if (i === 0) {
           const row = env.store.tree(chat.id).artifacts[0];
           livePieces = (
@@ -146,6 +149,14 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
   assert.deepEqual(staged, { 'cut-0': pieces, 'cut-1': pieces, 'cut-2': null });
   for (const i of [0, 1]) assert.equal(inputs[i].setPieces, pieces);
   assert.ok(!('setPieces' in inputs[2]));
+  // Each writer gets its engine's skill and no other.
+  assert.ok(inputs.piecesInstructions.includes(REMOTION_SKILL));
+  for (const i of [0, 1]) {
+    assert.ok(inputs[i].instructions.includes(REMOTION_SKILL));
+    assert.ok(!inputs[i].instructions.includes(MANIM_SKILL));
+  }
+  assert.ok(inputs[2].instructions.includes(MANIM_SKILL));
+  assert.ok(!inputs[2].instructions.includes(REMOTION_SKILL));
   assert.equal(
     inputs[2].styleBrief.recurringObjects[0].look,
     look,

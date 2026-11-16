@@ -1,0 +1,53 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/mockups/discussions.html"
+        ],
+        "createdAt": "2026-11-16T03:42:31.025Z",
+        "reason": "agent: every hit is review-annotation chrome (.gone/.new outlines, shared mk-bar), not shipped UI"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "docs/mockups/discussions.html"
+        ],
+        "createdAt": "2026-11-16T03:42:31.054Z",
+        "reason": "agent: hits are mockup chrome only (#d33 change markers, #3a3 'new' outline, shared mk-bar), same as sidebar.html"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "11px",
+        "files": [
+          "docs/mockups/discussions.html"
+        ],
+        "createdAt": "2026-11-16T03:42:31.074Z",
+        "reason": "agent: 11px is only the numbered red change markers, mockup chrome"
+      },
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "docs/mockups/discussions.html"
+        ],
+        "createdAt": "2026-11-16T03:42:31.095Z",
+        "reason": "agent: pending pulse mirrors the app's existing Responding indicator (.pulse in mock.css); fix list requires no animation under prefers-reduced-motion"
+      },
+      {
+        "rule": "repeating-stripes-gradient",
+        "value": "*",
+        "files": [
+          "docs/mockups/discussions.html"
+        ],
+        "createdAt": "2026-11-16T03:42:31.115Z",
+        "reason": "agent: comes from shared mock.css, not this file; predates this session"
+      }
+    ]
+  }
+}

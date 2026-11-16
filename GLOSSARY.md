@@ -41,7 +41,7 @@ A first-level branch of the trunk and every conversation beneath it. Each family
 _Avoid_: Subtree, colour group
 
 **Passage**:
-The exact contiguous text of a tutor reply that a branch was created from.
+The exact contiguous text of a tutor reply, or of a line in a discussion, that a branch was created from.
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
@@ -101,8 +101,16 @@ A connection between two concepts: either "related", or "builds on" when one con
 _Avoid_: Edge, dependency
 
 **Familiarity**:
-The app's estimate of how well the learner knows a concept, derived from evidence such as asking about it, using it in their own words and their own corrections. Merely meeting a concept in a reply counts for little, since the learner may not have read it. An estimate, never a measured mastery.
+The app's estimate of how well the learner knows a concept, derived silently from what the learner's own messages show, such as asking about it, using it correctly in their own words or stating it wrongly (a misconception). The learner never rates or corrects it. Merely meeting a concept in a reply counts for little, since the learner may not have read it. With no evidence, it is guessed from linked concepts, or left unknown when none are known. It fades while a concept goes unused, fast after first learning and ever more slowly each time the learner shows it again. An estimate, never a measured mastery.
 _Avoid_: Mastery, score, level
+
+**Discussion**:
+A group chat the learner asks for, placed inside a tutor reply like a visual. Three or four classmates and the tutor talk an idea through: classmates ask each other and the learner, and the tutor steps in to untangle or confirm. The learner can reply inside it until they next ask in the conversation itself; the discussion then closes for good and stays readable. Only the learner's own messages count as familiarity evidence.
+_Avoid_: Classroom, group chat, debate
+
+**Classmate**:
+A simulated fellow learner in a discussion, played by the chat model; only classmates relevant to the moment speak. A discussion's classmates sit at different levels around the learner's estimated familiarity, so it still fits if the estimate is wrong. Their mistakes are honest misunderstandings, never planted errors. Classmates do not learn or carry over between discussions.
+_Avoid_: Student, peer, persona
 
 **Inherited context**:
 The fixed background a child conversation receives at branch creation: the exact passage and a compact paragraph combining its parent's inherited context with the parent conversation, preserving important ideas. It supplies context without answering the child's question; that question is a separate learner message.

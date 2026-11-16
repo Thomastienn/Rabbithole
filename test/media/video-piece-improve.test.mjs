@@ -4,6 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { planFor, composition, directive, complete, until, open } from '../support/video-kit.mjs';
 import { AUDIT_INSTRUCTIONS, PIECE_IMPROVE_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { poorPieces } from '../../server/media/video-cuts.mjs';
+import { REMOTION_SKILL } from '../../server/media/skills.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top';
 const pieces = `import { colors, palette } from './kit';
@@ -40,7 +41,8 @@ async function run(t, rewrite) {
             JSON.stringify({ ok: true, pieces: [{ name: 'Winner', why: 'No crown on top' }] }),
           );
         }
-        if (tree.instructions === PIECE_IMPROVE_INSTRUCTIONS) {
+        if (tree.instructions.startsWith(PIECE_IMPROVE_INSTRUCTIONS)) {
+          assert.ok(tree.instructions.includes(REMOTION_SKILL));
           calls.improve.push(JSON.parse(text));
           return complete(emit, rewrite);
         }

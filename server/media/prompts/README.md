@@ -56,3 +56,57 @@ permission notice is kept beside the prompt.
   Excluded: the SKILL.md workflow, code snippets, the named colours (palette
   roles replace them), 3D techniques (Manim cuts are 2D), the colour palettes,
   timing and pacing tables, opening hooks and the emotional arc.
+
+### Media craft skills
+
+Retrieved and licence re-checked at the pinned commits on 2026-11-16 (via
+`gh api`). Each excerpt is rewritten and shortened, with code examples dropped.
+
+- `remotion.md` (Remotion cut writer, set-piece writer and piece improvement)
+  and `remotion-3d.md` (added only for cuts planned as 3D): remotion-dev/skills
+  `skills/remotion-markup/SKILL.md` ("General rules" only), `timing.md` and
+  `3d.md`, commit `7e541aa4d7361dfaca0780a565a47307eb7bdfbb` (skill version
+  4.0.543):
+  https://github.com/remotion-dev/skills/blob/7e541aa4d7361dfaca0780a565a47307eb7bdfbb/skills/remotion-markup/SKILL.md
+  https://github.com/remotion-dev/skills/blob/7e541aa4d7361dfaca0780a565a47307eb7bdfbb/skills/remotion-markup/timing.md
+  https://github.com/remotion-dev/skills/blob/7e541aa4d7361dfaca0780a565a47307eb7bdfbb/skills/remotion-markup/3d.md
+  The skills repository has no licence file of its own; it is generated from
+  the Remotion monorepo, whose Remotion License (source-available, free for
+  individuals, small companies and non-profits; © 2026 Remotion) applies and is
+  kept in `remotion-LICENSE.md`, from commit
+  `b0c3781e6acc736aeaf2102511068094032ea061`:
+  https://github.com/remotion-dev/remotion/blob/b0c3781e6acc736aeaf2102511068094032ea061/LICENSE.md
+  Rabbithole already uses Remotion under the same licence. Excluded: install
+  commands, `Interactive.*` components and every Studio-editability rule
+  (inline interpolations, transform shorthands, timeline structure), the
+  example colours, assets, media, fonts, maps, captions, voiceover, effects,
+  "Preserve user changes", visual checks, `transitions.md` (the app owns
+  transitions) and all other rule files. The excerpt holds no font or colour
+  advice; the house kit fixes both.
+- `manim-practices.md` (Manim cut writer, repairs and fixes):
+  adithya-s-k/manim_skill `skills/manimce-best-practices/rules/*.md`, the
+  "Best Practices" sections of animations, creation-animations,
+  transform-animations, animation-groups, grouping, latex, text, positioning,
+  updaters, axes, graphing, shapes and lines (MIT, © 2026 Adithya S Kolavi;
+  `manim_skill-LICENSE.txt`, identical to the skill's own `LICENSE.txt`),
+  commit `cef045011722d285692e3381d12d4d637da56e18`:
+  https://github.com/adithya-s-k/manim_skill/tree/cef045011722d285692e3381d12d4d637da56e18/skills/manimce-best-practices/rules
+  Excluded: `3d.md`, `camera.md`, `colors.md`, `styling.md`, `config.md`,
+  `cli.md`, scenes, text animations, mobjects, colour advice inside other
+  sections (graph colours, MarkupText colours), font installation, and any
+  object the kit does not export (Succession, TransformFromCopy, Uncreate,
+  RegularPolygon, RoundedRectangle, Vector, DashedLine, there_and_back,
+  ease_out_bounce).
+- `frontend-design.md` (visual writer, after `visual.md`): anthropics/skills
+  `skills/frontend-design/SKILL.md` (Apache-2.0; full text in
+  `frontend-design-LICENSE.txt`; no NOTICE file upstream), commit
+  `1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064`:
+  https://github.com/anthropics/skills/blob/1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064/skills/frontend-design/SKILL.md
+  **This file was changed** (Apache-2.0 section 4(b)): it is a rewritten,
+  shortened excerpt of the visual-structure, motion, typographic-tells,
+  restraint, quality-floor and writing guidance, keeping clustered traits 4
+  and 5 only. Excluded: the design-lead persona and aesthetic risk, subject
+  grounding and client confirmation, the hero, typeface, type-scale and palette
+  choices, traits 1 and 2 (they resemble the house dark-paper and amber look)
+  and trait 3, the two-pass plan, CSS specificity, screenshots and self-critique
+  notes.

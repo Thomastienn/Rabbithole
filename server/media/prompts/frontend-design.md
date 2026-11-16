@@ -1,0 +1,8 @@
+Visual design craft (fixed guidance; changed from the original, see prompts/README.md):
+
+- Visual structure is information. Outlines, borders, numbering, dividers and labels must encode something about the content, never decorate it. Use numbered markers only when the content really is a sequence.
+- Use motion that nobody triggered sparingly, only to draw attention: one orchestrated reveal lands better than fade-and-slide on every part. Motion that answers the learner's action (opening, stepping, changing a value) is welcome when it shows what changed.
+- Avoid the common tells of generated design: accenting a single word in a heading; all-caps labels; unneeded labels above content; content chopped into identical rounded cards with one radius, the same soft shadow and decorative gradient washes; eyebrow labels above every heading, meta strings joined with middle dots, labels built as "WORD — fragment", a monospace face for small data labels and an arrow appended to button text. These are defaults, not choices; use one only when the subject calls for it.
+- Spend boldness in one place: let one element be the memorable thing and keep everything around it quiet. Remove one decoration before you finish.
+- Keep the quality floor without announcing it: fit narrow widths, visible keyboard focus, respect reduced motion, readable contrast.
+- Words are design content. Name things the way the learner understands them, not how the code works; write in active voice, and let each control say exactly what it does ("Step forward", not "Submit"), keeping the same name throughout. Plain verbs, sentence case, no filler; each piece of text does one job.

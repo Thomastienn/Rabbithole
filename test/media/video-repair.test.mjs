@@ -40,7 +40,7 @@ test('a failed cut gets one repair with the failed code, set pieces and the prev
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
-        if (tree.instructions === PIECES_INSTRUCTIONS) return complete(emit, pieces);
+        if (tree.instructions.startsWith(PIECES_INSTRUCTIONS)) return complete(emit, pieces);
         const input = JSON.parse(text),
           i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
         if (tree.instructions === AUDIT_INSTRUCTIONS) {

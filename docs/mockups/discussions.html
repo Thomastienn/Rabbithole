@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Familiarity, recall and discussions · Rabbithole mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="icons.css">
+<link rel="stylesheet" href="mock.css">
+<style>
+/* Before/after mockup for epic TreeTutor-ywy (docs/familiarity-and-discussion-spec.md).
+   The rules marked "PORT" are the reference styles: port them to src/styles/*.css with the app's Astryx tokens
+   (token table in section 0). Everything else on this page is mockup chrome. */
+.sec { margin: 0 16px 56px; }
+.sec h2 { margin: 32px 0 4px; font-size: 20px; }
+.sec > h3 { margin: 20px 0 6px; font-size: 15px; }
+.sec > p { margin: 0 0 12px; color: var(--muted); max-width: 90ch; }
+.tix { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: var(--r-1); background: var(--hover); font: 600 12px var(--font-ui); color: var(--muted); vertical-align: middle; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px; align-items: start; }
+.lbl { margin: 8px 0 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.lbl--after { color: var(--accent-text); }
+.stage { display: block; position: relative; padding: 24px; border: 1px solid var(--seam-strong); background: var(--ground); }
+.stage--map { background: var(--deep); min-height: 280px; }
+.stage--read { max-width: 760px; }
+.m { position: absolute; z-index: 5; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #d33; color: #fff; font: 700 12px/1 Archivo, sans-serif; box-shadow: 0 0 0 2px var(--ground); }
+.mi { position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; margin: 0 4px; border-radius: 50%; background: #d33; color: #fff; font: 700 11px/1 Archivo, sans-serif; vertical-align: middle; }
+.gone { outline: 2px dashed #d33; outline-offset: 2px; }
+.new { outline: 2px solid #3a3; outline-offset: 2px; }
+.fix { margin: 12px 0 0; padding: 12px 16px; list-style: none; border-left: 3px solid #d33; background: var(--deep); max-width: 110ch; }
+.fix li { margin: 8px 0; line-height: 1.55; }
+.fix b.n { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 8px; border-radius: 50%; background: #d33; color: #fff; font-size: 11px; }
+.fix code, .note code { font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 24px; margin: 8px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i.sw { display: inline-block; width: 20px; height: 12px; }
+.note { max-width: 110ch; margin: 12px 0 0; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--deep); line-height: 1.55; }
+.note b { color: var(--text); }
+.spec-t { width: 100%; max-width: 1100px; border-collapse: collapse; font-size: 13px; }
+.spec-t th, .spec-t td { padding: 6px 10px; border-bottom: 1px solid var(--seam); text-align: left; vertical-align: top; }
+.spec-t th { color: var(--muted); font-weight: 600; }
+.spec-t code { font-size: 12px; }
+.sheet2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
+.sheet2 .stage { padding: 16px; }
+.sheet2 h3 { margin: 0 0 8px; font-size: 13px; }
+.sheet2 p.cap { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+/* Static node, same anatomy as the map's ConversationNode */
+.nd { width: 256px; border: 1px solid var(--seam); border-radius: var(--r-2); background: var(--surface); }
+.nd .node__band { --ink: var(--ink-1); }
+.nd__line { font-size: 12px; color: var(--muted); }
+
+/* ---------- PORT: node preview chips (src/map/Conversation.tsx, src/styles/map.css) ---------- */
+.node-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.node-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; height: 24px; padding: 0 8px 0 6px; border: 0; border-radius: var(--r-2); background: var(--hover); font: 600 12px var(--font-ui); color: var(--text); cursor: pointer; }
+.node-chip:hover { background: var(--pressed); }
+.node-chip:focus-visible { outline: 2px solid var(--paper); outline-offset: 1px; }
+.node-chip .i { flex: none; width: 14px; height: 14px; color: var(--muted); }
+.node-chip__title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.node-chip__status { flex: none; font-weight: 400; color: var(--muted); }
+.node-chip[data-status="pending"] .node-chip__status::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%; background: var(--accent); vertical-align: 1px; animation: pulse 1.4s ease-in-out infinite; }
+.node-chip[data-status="failed"] .node-chip__title { color: var(--muted); }
+.node-chip[data-status="failed"] .i-exclamation-triangle { color: var(--alert); }
+
+/* ---------- PORT: discussion card (new src/media/DiscussionCard.tsx, src/styles/media.css) ---------- */
+.dc { margin: 20px 0; border: 1px solid var(--seam); border-radius: var(--r-3); background: var(--surface); font-family: var(--font-ui); }
+.dc:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+.dc__head { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; }
+.dc__head .i { width: 18px; height: 18px; color: var(--muted); }
+.dc__title { font-size: 14px; font-weight: 700; }
+.dc__state { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--muted); }
+.dc__state[data-open] { color: var(--accent-text); }
+.dc__lines { display: grid; gap: 12px; padding: 4px 12px 12px; }
+.dc__line { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 10px; }
+.dc__av { grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--hover); font-size: 12px; font-weight: 700; color: var(--text); }
+.dc__line[data-speaker="tutor"] .dc__av { background: var(--accent-soft); color: var(--accent-text); }
+.dc__who { font-size: 12px; font-weight: 600; color: var(--muted); }
+.dc__line[data-speaker="tutor"] .dc__who { color: var(--accent-text); }
+.dc__text { font: 16px/1.6 var(--font-read); color: var(--text); }
+.dc__line[data-speaker="learner"] { grid-template-columns: minmax(0, 1fr); justify-items: end; }
+.dc__line[data-speaker="learner"] .dc__av { display: none; }
+.dc__line[data-speaker="learner"] .dc__text { max-width: 85%; padding: 6px 12px; border-radius: var(--r-2); background: var(--hover); font: 14px/1.5 var(--font-ui); }
+.dc__caret::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; background: var(--text); vertical-align: -2px; animation: pulse 1s steps(2) infinite; }
+.dc__busy { display: flex; align-items: center; gap: 8px; padding: 0 12px 12px 50px; font-size: 12px; color: var(--muted); }
+.dc__err { display: flex; align-items: flex-start; gap: 8px; margin: 0 12px 12px; padding: 8px 10px; border-radius: var(--r-2); background: var(--alert-soft); font-size: 13px; }
+.dc__err .i { flex: none; color: var(--alert); width: 16px; height: 16px; margin-top: 1px; }
+.dc__reply { padding: 8px 12px 12px; border-radius: 0 0 var(--r-3) var(--r-3); background: var(--deep); }
+.dc__box { display: flex; align-items: flex-end; gap: 8px; padding: 6px 6px 6px 10px; border: 1px solid var(--seam-strong); border-radius: var(--r-2); background: var(--raised); }
+.dc__box textarea { flex: 1; min-height: 24px; padding: 2px 0; border: 0; background: none; resize: none; outline: none; font-size: 14px; }
+.dc__hint { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.dc__foot { padding: 8px 12px 12px; font-size: 12px; color: var(--muted); }
+.dc--pending .dc__lines .skel { height: 14px; }
+.dc--failed .dc__head .i { color: var(--alert); }
+.dc--failed p { padding: 0 12px 12px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="mk-bar"><strong>Rabbithole mockup</strong><nav aria-label="Mockup screens"><a href="index.html">Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="knowledge.html">Knowledge</a><a href="settings.html">Settings</a><a href="sidebar.html">Sidebar</a><a href="discussions.html" aria-current="page">Discussions</a></nav>
+ <div class="mk-right"><label><input type="checkbox" id="mk-light"> Light</label></div></div>
+<p class="mk-note">Before/after mockup for epic <b>TreeTutor-ywy</b> (Familiarity, recall and discussions). The spec <code>docs/familiarity-and-discussion-spec.md</code> wins on any difference. Each section names the tickets it covers. Copy in quotes is the exact text to ship. Tickets with no UI (ywy.2, ywy.3) are not shown. The hidden verdict block (ywy.1) has no UI: it must never render anywhere.</p>
+<div class="legend"><span><b class="m" style="position:static">1</b> Change, explained in the numbered list under the frame</span><span><i class="sw" style="outline:2px dashed #d33"></i> Removed</span><span><i class="sw" style="outline:2px solid #3a3"></i> New</span></div>
+
+<!-- 0. Ground rules -->
+<section class="sec">
+<h2>0. Ground rules for every ticket below</h2>
+<ul class="note" style="list-style:disc;padding-left:32px">
+ <li><b>Reuse, do not invent.</b> Node chips use Astryx <code>Button</code> (size <code>sm</code>). The discussion card renders lines with Astryx <code>ChatMessage</code> (density <code>compact</code>, as <code>ChatThread.tsx</code> does), <code>Avatar</code> for initials, <code>ChatComposer</code> with <code>elevation="none"</code> and density <code>compact</code> for the reply box, <code>Skeleton</code> for pending and <code>Text type="supporting"</code> for status text. Branching reuses <code>Passage.tsx</code> and <code>BranchForm.tsx</code> unchanged.</li>
+ <li><b>One frame per object</b> (rule at the top of <code>mock.css</code>). A node is a frame, so its chips use a tonal fill and no border. The discussion card is a frame, so its lines, reply strip and error row use tone, not borders. Only the reply input keeps its stroke.</li>
+ <li><b>Classmate levels never reach the screen.</b> Not as a badge, colour, order, tooltip, <code>aria-*</code>, <code>data-*</code> or class. All classmate avatars look the same. List the roster in first-speaking order. Recommended: the server leaves <code>level</code> out of the artifact JSON it sends to the browser, so the UI cannot leak it.</li>
+ <li><b>Colour roles stay.</b> Leaf green (<code>--color-accent</code>) means action and the tutor. Rose red (<code>--color-text-error</code>) means failure only. Series inks are for branch families only, so they never colour a classmate.</li>
+</ul>
+<h3>Token map: mockup to app</h3>
+<table class="spec-t"><thead><tr><th>Mockup token</th><th>App token (src/styles)</th><th>Used for</th></tr></thead><tbody>
+<tr><td><code>--surface</code></td><td><code>--color-background-surface</code></td><td>Discussion card, node</td></tr>
+<tr><td><code>--hover</code> / <code>--pressed</code></td><td><code>--color-background-muted</code> / <code>--color-overlay-hover</code></td><td>Chip fill, avatar, learner bubble</td></tr>
+<tr><td><code>--deep</code></td><td><code>--color-background-body</code></td><td>Reply strip at the bottom of the card</td></tr>
+<tr><td><code>--seam</code> / <code>--seam-strong</code></td><td><code>--color-border</code> / <code>--color-border-emphasized</code></td><td>Card outline / reply input outline</td></tr>
+<tr><td><code>--text</code> / <code>--muted</code></td><td><code>--color-text-primary</code> / <code>--color-text-secondary</code></td><td>Line text / names, status</td></tr>
+<tr><td><code>--accent</code>, <code>--accent-text</code>, <code>--accent-soft</code></td><td><code>--color-accent</code> (soft: <code>color-mix</code> 15%)</td><td>Tutor name and avatar, "Open" state, pending pulse</td></tr>
+<tr><td><code>--alert</code>, <code>--alert-soft</code></td><td><code>--color-text-error</code> (soft: <code>color-mix</code> 12%)</td><td>Unavailable icon, failed turn row</td></tr>
+<tr><td><code>--font-read</code></td><td><code>--rabbithole-font-reading</code></td><td>Classmate and tutor line text</td></tr>
+<tr><td>4 / 8 / 12 px</td><td><code>--spacing-1</code> / <code>--spacing-2</code> / <code>--spacing-3</code></td><td>Gaps and padding</td></tr>
+<tr><td><code>--r-2</code> / <code>--r-3</code></td><td><code>--radius-element</code> / <code>--radius-container</code></td><td>Chip, bubble / card</td></tr>
+</tbody></table>
+</section>
+
+<!-- A. Node preview chips -->
+<section class="sec">
+<h2>A. Node preview: media lines become chips <span class="tix">ywy.5</span><span class="tix">ywy.6 adds the Discussion chip</span></h2>
+<p>A conversation node on the learning tree map, or in the docked map. The only change is the artifact lines under a reply (<code>m.artifacts.map(…)</code> in <code>src/map/Conversation.tsx</code>). The bubbles, statuses, retry, handles and fold stubs stay as they are.</p>
+<div class="pair">
+<div><div class="lbl">Today</div>
+<div class="stage stage--map">
+ <article class="nd"><header class="node__band"><span class="addr">1.1</span><span>Why trade at all?</span><button class="btn btn--sm btn--icon" aria-label="Reveal source passage"><i class="i i--sm i-link"></i></button></header>
+  <div class="node__body">
+   <span class="node__q">Show me how much further hyphae reach than roots.</span>
+   <span class="node__a">A root hair reaches about two millimetres into the soil. Hyphae are a tenth as wide and run for centimetres…</span>
+   <div class="gone" style="display:grid;gap:2px;position:relative"><b class="m" style="right:-30px;top:-4px">1</b>
+    <span class="nd__line">Visual: Reach of roots and hyphae · creating…</span>
+    <span class="nd__line">Diagram: Trade loop</span>
+    <span class="nd__line">Video: The trade, narrated · ready</span>
+    <span class="nd__line">Visual: Phosphorus price curve · unavailable</span>
+   </div>
+   <span class="nd__line">1 of 2 visuals ready</span>
+  </div></article>
+</div></div>
+<div><div class="lbl lbl--after">After</div>
+<div class="stage stage--map">
+ <article class="nd"><header class="node__band"><span class="addr">1.1</span><span>Why trade at all?</span><button class="btn btn--sm btn--icon" aria-label="Reveal source passage"><i class="i i--sm i-link"></i></button></header>
+  <div class="node__body">
+   <span class="node__q">Show me how much further hyphae reach than roots.</span>
+   <span class="node__a">A root hair reaches about two millimetres into the soil. Hyphae are a tenth as wide and run for centimetres…</span>
+   <div class="node-chips new" role="group" aria-label="Media in this reply" style="position:relative"><b class="m" style="right:-30px;top:-4px">2</b>
+    <button class="node-chip" data-status="pending" aria-label="Open visual Reach of roots and hyphae, creating" title="Open visual Reach of roots and hyphae, creating"><i class="i i-photo"></i><span class="node-chip__title">Reach of roots and hyphae</span><span class="node-chip__status">creating…</span></button>
+    <button class="node-chip" data-status="ready" aria-label="Open diagram Trade loop, ready" title="Open diagram Trade loop, ready"><i class="i i-rectangle-stack"></i><span class="node-chip__title">Trade loop</span></button>
+    <button class="node-chip" data-status="ready" aria-label="Open video The trade, narrated, ready" title="Open video The trade, narrated, ready"><i class="i i-film"></i><span class="node-chip__title">The trade, narrated</span><span class="node-chip__status">ready</span></button>
+    <button class="node-chip" data-status="failed" aria-label="Open visual Phosphorus price curve, unavailable" title="Open visual Phosphorus price curve, unavailable"><i class="i i-exclamation-triangle"></i><span class="node-chip__title">Phosphorus price curve</span><span class="node-chip__status">unavailable</span></button>
+   </div>
+   <span class="nd__line" style="position:relative">1 of 2 visuals ready<b class="m" style="right:-30px;top:-4px">3</b></span>
+  </div></article>
+ <article class="nd" style="margin-top:24px"><header class="node__band" style="--ink:var(--ink-2)"><span class="addr">1.2</span><span>What are hyphae?</span></header>
+  <div class="node__body">
+   <span class="node__q">Can we discuss whether hyphae are worth it?</span>
+   <span class="node__a">Good idea. Here is a quick discussion with three classmates who see it differently…</span>
+   <div class="node-chips new" role="group" aria-label="Media in this reply" style="position:relative"><b class="m" style="right:-30px;top:-4px">4</b>
+    <button class="node-chip" data-status="ready" aria-label="Open discussion with 3 classmates, ready" title="Open discussion with 3 classmates, ready"><i class="i i-chat-bubble-left-right"></i><span class="node-chip__title">Discussion · 3 classmates</span></button>
+   </div>
+  </div></article>
+</div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">1</b><b>ywy.5.</b> Remove the plain <code>Text</code> lines for visual, diagram and video. Keep the filter that hides canceled visuals.</li>
+ <li><b class="n">2</b><b>ywy.5.</b> Render one <code>.node-chips</code> row (<code>HStack gap={1} wrap="wrap" role="group" aria-label="Media in this reply"</code>) at the same place, in the order the artifacts appear in the reply. Each artifact is one Astryx <code>Button size="sm"</code> with the class <code>node-chip nodrag nopan</code>, <code>data-artifact={a.id}</code> and <code>data-status={a.status}</code>. Each chip has three parts:
+  <ul style="margin:6px 0 0 20px;list-style:disc">
+   <li><b>Icon:</b> heroicons outline <code>PhotoIcon</code> (visual), <code>RectangleStackIcon</code> (diagram), <code>FilmIcon</code> (video), <code>ChatBubbleLeftRightIcon</code> (discussion). A failed or unavailable chip shows <code>ExclamationTriangleIcon</code> in the error colour instead.</li>
+   <li><b>Title:</b> one line, ellipsis when it does not fit. The chip never grows wider than the node. Do not show a "Visual:" prefix: the icon and the label carry the kind.</li>
+   <li><b>Status:</b> today's text, unchanged. Visual and diagram show "creating…" while pending, "unavailable" when failed, and nothing when ready. Video shows "creating…", "ready" or "unavailable", and its raw status otherwise. Pending adds a 6px pulse dot before the text. Under <code>prefers-reduced-motion</code> the dot does not animate.</li>
+  </ul>
+  The accessible label and tooltip both read <code>Open {kind} {title}, {status}</code>, where status is one of creating, ready or unavailable (or the video's raw status). Example: "Open visual Reach of roots and hyphae, creating". On click, call <code>e.stopPropagation()</code>, then <code>data.open(t.id, undefined, undefined, a.id)</code>. Extend <code>Open</code> in <code>mapState.ts</code> with an optional 4th <code>artifact</code> argument and pass it through <code>TreeOverview</code> to <code>openConversation(id, source, artifact, message)</code>. That path already sets <code>figureTarget</code>, and <code>useChatTargets</code> already focuses and centres <code>.focused-chat [data-artifact="…"]</code>. A failed chip stays clickable: it opens the failed card, which has the retry.</li>
+ <li><b class="n">3</b>The "n of m visuals ready" line (<code>visualsReady</code>) stays below the chips, unchanged.</li>
+ <li><b class="n">4</b><b>ywy.6.</b> A discussion chip reads "Discussion · N classmates" plus the same status rules as a visual: "creating…" while the reply is still writing it, "unavailable" when malformed, nothing when ready. Its label reads "Open discussion with N classmates, {status}". Do not mark a discussion as open or closed on the chip: the spec does not ask for it. The card's root carries <code>data-artifact</code>, so the chip lands on it through the same <code>figureTarget</code> path.</li>
+</ol>
+<div class="sheet2" style="margin-top:16px">
+ <div><h3>Chip states, one per row</h3><div class="stage stage--map" style="min-height:0"><div class="node-chips" style="display:grid;justify-items:start;gap:8px;width:232px">
+  <button class="node-chip" data-status="pending"><i class="i i-photo"></i><span class="node-chip__title">Reach of roots and hyphae</span><span class="node-chip__status">creating…</span></button>
+  <button class="node-chip" data-status="ready"><i class="i i-photo"></i><span class="node-chip__title">Reach of roots and hyphae</span></button>
+  <button class="node-chip" data-status="failed"><i class="i i-exclamation-triangle"></i><span class="node-chip__title">Reach of roots and hyphae</span><span class="node-chip__status">unavailable</span></button>
+  <button class="node-chip" data-status="pending"><i class="i i-film"></i><span class="node-chip__title">The trade, narrated</span><span class="node-chip__status">creating…</span></button>
+  <button class="node-chip" data-status="ready"><i class="i i-film"></i><span class="node-chip__title">The trade, narrated</span><span class="node-chip__status">ready</span></button>
+  <button class="node-chip" data-status="pending"><i class="i i-chat-bubble-left-right"></i><span class="node-chip__title">Discussion · 4 classmates</span><span class="node-chip__status">creating…</span></button>
+  <button class="node-chip" data-status="ready" style="outline:2px solid var(--paper);outline-offset:1px"><i class="i i-rectangle-stack"></i><span class="node-chip__title">A very long diagram title that will not fit in the node</span></button>
+ </div></div><p class="cap">The last row shows keyboard focus (paper ring) and the title ellipsis. Chips are in the node's tab order after the reply bubble.</p></div>
+</div>
+</section>
+
+<!-- B. Discussion opening -->
+<section class="sec">
+<h2>B. Discussion card in a reply: opening, pending and unavailable <span class="tix">ywy.6</span></h2>
+<p>The tutor places a discussion block in its reply, like a visual. <code>Reply.tsx</code> renders it at <code>artifact.position</code> through the same <code>inlineArtifacts</code> mapping, with a new branch for <code>kind === 'discussion'</code> that renders a <code>DiscussionCard</code>. In ywy.6 the card is read-only and has no reply box yet.</p>
+<div class="pair">
+<div><div class="lbl lbl--after">After: ready (ywy.6 renders this without the reply strip)</div>
+<div class="stage stage--read">
+ <p class="q">Can we discuss whether hyphae are worth it for the plant?</p>
+ <article class="reply"><div class="reply__meta">Tutor · Claude · Opus 4</div>
+  <div class="prose"><p>Good idea. Here is a quick discussion with three classmates who see it differently. Jump in whenever you like.</p></div>
+  <section class="dc new" tabindex="-1" data-artifact="a-17" aria-label="Discussion with Maya, Theo and Jun" style="position:relative"><b class="m" style="right:-11px;top:-11px">5</b>
+   <header class="dc__head"><i class="i i-chat-bubble-left-right"></i><h3 class="dc__title">Discussion with Maya, Theo and Jun</h3><span class="dc__state" style="position:relative">3 classmates<b class="m" style="right:-28px;top:-3px">6</b></span></header>
+   <ol class="dc__lines" aria-label="Discussion lines" style="position:relative"><b class="m" style="left:-11px;top:4px">7</b>
+    <li class="dc__line" data-speaker="classmate"><span class="dc__av" aria-hidden="true">T</span><span class="dc__who">Theo</span><p class="dc__text">So the fungus is basically a parasite the plant puts up with?</p></li>
+    <li class="dc__line" data-speaker="classmate"><span class="dc__av" aria-hidden="true">M</span><span class="dc__who">Maya</span><p class="dc__text">I don't think so. The plant gets phosphorus back, so both sides gain.</p></li>
+    <li class="dc__line" data-speaker="classmate"><span class="dc__av" aria-hidden="true">J</span><span class="dc__who">Jun</span><p class="dc__text">But why can't the roots just grow longer and get the phosphorus themselves?</p></li>
+    <li class="dc__line" data-speaker="classmate"><span class="dc__av" aria-hidden="true">M</span><span class="dc__who">Maya</span><p class="dc__text">Hyphae are way thinner, so maybe they're cheaper to grow per centimetre?</p></li>
+    <li class="dc__line" data-speaker="tutor" style="position:relative"><b class="m" style="left:-23px;top:4px">8</b><span class="dc__av" aria-hidden="true"><i class="i i--sm i-sparkles"></i></span><span class="dc__who">Tutor</span><p class="dc__text">That's it, Maya. A hypha is about a tenth the width of a root hair, so the same sugar buys far more reach.</p></li>
+    <li class="dc__line" data-speaker="classmate"><span class="dc__av" aria-hidden="true">T</span><span class="dc__who">Theo</span><p class="dc__text">Okay, but you asked about this first. Would a plant in rich soil still bother trading?</p></li>
+   </ol>
+  </section>
+  <div class="prose"><p>Whatever you decide, keep the price in mind: the plant pays up to a fifth of its sugar.</p></div>
+  <div class="reply__foot"><button class="btn btn--sm btn--icon" aria-label="Copy reply"><i class="i i--sm i-clipboard-document"></i></button><span class="num">2,940 tokens</span></div>
+ </article>
+</div></div>
+<div>
+ <div class="lbl lbl--after">After: pending, while the reply is still writing the block</div>
+ <div class="stage stage--read" style="padding:8px 24px">
+  <section class="dc dc--pending" style="position:relative"><b class="m" style="right:-11px;top:-11px">9</b>
+   <header class="dc__head"><i class="i i-chat-bubble-left-right"></i><h3 class="dc__title" role="status">Starting a discussion…</h3></header>
+   <div class="dc__lines"><div class="skel" style="width:70%"></div><div class="skel" style="width:85%"></div><div class="skel" style="width:55%"></div></div>
+  </section>
+ </div>
+ <div class="lbl lbl--after" style="margin-top:16px">After: unavailable, when the block is malformed</div>
+ <div class="stage stage--read" style="padding:8px 24px">
+  <section class="dc dc--failed" tabindex="-1" data-artifact="a-18" aria-label="Discussion unavailable" style="position:relative"><b class="m" style="right:-11px;top:-11px">10</b>
+   <header class="dc__head"><i class="i i-exclamation-triangle"></i><h3 class="dc__title">Discussion unavailable</h3></header>
+   <p>The tutor's discussion could not be read. Ask for it again in the conversation.</p>
+  </section>
+ </div>
+</div>
+</div>
+<ol class="fix">
+ <li><b class="n">5</b>The new <code>src/media/DiscussionCard.tsx</code> renders one card, a <code>&lt;section&gt;</code> with <code>tabIndex={-1}</code>, <code>data-artifact={id}</code> and <code>aria-label="Discussion with {names}"</code>. Its frame is <code>--color-background-surface</code>, a 1px <code>--color-border</code> outline and <code>--radius-container</code>. It fills the reply column with 20px above and below, like a diagram card. It is not part of the reply's copied text, and it is never wrapped in a passage underline.</li>
+ <li><b class="n">6</b>Header row: <code>ChatBubbleLeftRightIcon</code>, the title "Discussion with Maya, Theo and Jun" (names joined with commas and "and", in first-speaking order; Archivo 14 bold), then on the right "3 classmates" as supporting text. ywy.7 swaps this right-hand text for the open or closed state, as section C shows.</li>
+ <li><b class="n">7</b>Lines are an ordered list (<code>aria-label="Discussion lines"</code>). Render each line with Astryx <code>ChatMessage density="compact"</code>, <code>sender="assistant"</code>, <code>name</code> set to the speaker and <code>avatar</code> set to <code>&lt;Avatar&gt;</code> with the first letter of the name. Every classmate gets the same neutral avatar fill: no hue per person, and none per level. Text is the reading face (<code>--rabbithole-font-reading</code>) at 16px with a 1.6 line height. Render the text as plain text, not markdown, so passage offsets stay simple for ywy.8. Leave 12px between lines. Repeat the name and avatar on every line, even when one speaker talks twice in a row.</li>
+ <li><b class="n">8</b>Tutor lines use the same layout, named "Tutor", with the avatar showing <code>SparklesIcon</code> on the accent-soft fill and the name in the accent colour. This is the only speaker with colour. Learner lines appear only from ywy.7 on: <code>sender="user"</code>, right-aligned, and drawn exactly like the main thread's question bubble, with no avatar and no name.</li>
+ <li><b class="n">9</b>Pending: while the reply streams and the block has opened but not closed, show the card frame, the header "Starting a discussion…" with <code>role="status"</code>, and three Astryx <code>Skeleton</code> lines. Do not stream the lines one by one. Swap in the full opening when the block closes.</li>
+ <li><b class="n">10</b>Unavailable (a malformed block, or a failed artifact): the same frame, <code>ExclamationTriangleIcon</code> in the error colour, the title "Discussion unavailable", and the supporting text "The tutor's discussion could not be read. Ask for it again in the conversation." It has no retry button: the spec says to ask again.</li>
+</ol>
+<div class="note"><b>Open question for the owner (ywy.6):</b> should a discussion be listed under <b>Figures</b> in Contents? The spec does not say. Recommended default: no, because it is not a figure. Record the choice in the ticket.</div>
+</section>
+
+<!-- C. Replies and closing -->
+<section class="sec">
+<h2>C. Replying in the card, streaming, a failed turn, and closing <span class="tix">ywy.7</span></h2>
+<p>The learner replies inside the open card. The next lines stream in. When the learner next sends a message in the conversation's own composer, every open discussion in that conversation closes for good.</p>
+<div class="sheet2" style="grid-template-columns:repeat(auto-fill,minmax(460px,1fr))">
+<div><h3>C1. Open, idle</h3><div class="stage">
+ <section class="dc" aria-label="Discussion with Maya, Theo and Jun" style="position:relative">
+  <header class="dc__head"><i class="i i-chat-bubble-left-right"></i><h3 class="dc__title">Discussion with Maya, Theo and Jun</h3><span class="dc__state" data-open style="position:relative">Open<b class="m" style="right:-28px;top:-3px">11</b></span></header>
+  <ol class="dc__lines">
+   <li class="dc__line" data-speaker="classmate"><span class="dc__av">T</span><span class="dc__who">Theo</span><p class="dc__text">Okay, but you asked about this first. Would a plant in rich soil still bother trading?</p></li>
+  </ol>
+  <div class="dc__reply new" style="position:relative"><b class="m" style="right:-11px;top:-11px">12</b>
+   <div class="dc__box"><textarea rows="1" placeholder="Reply to Maya, Theo and Jun" aria-label="Reply in the discussion"></textarea><button class="btn btn--sm btn--icon btn--primary" aria-label="Send to the discussion" disabled><i class="i i--sm i-arrow-up"></i></button></div>
+   <p class="dc__hint">Enter to send · Asking in the conversation closes this discussion</p>
+  </div>
+ </section></div></div>
+
+<div><h3>C2. Learner sent; lines streaming</h3><div class="stage">
+ <section class="dc" aria-label="Discussion with Maya, Theo and Jun" aria-busy="true">
+  <header class="dc__head"><i class="i i-chat-bubble-left-right"></i><h3 class="dc__title">Discussion with Maya, Theo and Jun</h3><span class="dc__state" data-open>Open</span></header>
+  <ol class="dc__lines" style="position:relative">
+   <li class="dc__line" data-speaker="classmate"><span class="dc__av">T</span><span class="dc__who">Theo</span><p class="dc__text">Would a plant in rich soil still bother trading?</p></li>
+   <li class="dc__line" data-speaker="learner" style="position:relative"><b class="m" style="left:-11px;top:0">13</b><p class="dc__text">Probably less, Theo. If phosphorus is easy to reach, the plant doesn't need to pay for it.</p></li>
+   <li class="dc__line" data-speaker="classmate" style="position:relative"><b class="m" style="left:-23px;top:4px">14</b><span class="dc__av">J</span><span class="dc__who">Jun</span><p class="dc__text dc__caret">Wait, so the plant can just stop paying? Wouldn't the fungus</p></li>
+  </ol>
+  <div class="dc__reply"><div class="dc__box"><textarea rows="1" placeholder="Reply to Maya, Theo and Jun" aria-label="Reply in the discussion" disabled></textarea><button class="btn btn--sm btn--icon btn--primary" aria-label="Send to the discussion" disabled><i class="i i--sm i-arrow-up"></i></button></div><p class="dc__hint">Enter to send · Asking in the conversation closes this discussion</p></div>
+ </section>
+ <p class="cap">Before the first streamed line arrives, a row with a pulse and "Discussion continuing…" (<code>role="status"</code>) sits under the learner line:</p>
+ <div class="dc__busy" style="padding-left:0;position:relative"><span class="pulse"></span>Discussion continuing…<b class="m" style="right:0;top:-4px">15</b></div>
+</div></div>
+
+<div><h3>C3. Failed turn</h3><div class="stage">
+ <section class="dc" aria-label="Discussion with Maya, Theo and Jun">
+  <header class="dc__head"><i class="i i-chat-bubble-left-right"></i><h3 class="dc__title">Discussion with Maya, Theo and Jun</h3><span class="dc__state" data-open>Open</span></header>
+  <ol class="dc__lines">
+   <li class="dc__line" data-speaker="classmate"><span class="dc__av">T</span><span class="dc__who">Theo</span><p class="dc__text">Would a plant in rich soil still bother trading?</p></li>
+   <li class="dc__line" data-speaker="learner"><p class="dc__text">Probably less, Theo. If phosphorus is easy to reach, the plant doesn't need to pay for it.</p></li>
+  </ol>
+  <div class="dc__err" role="alert" style="position:relative"><b class="m" style="right:-11px;top:-11px">16</b><i class="i i-exclamation-triangle"></i><span>The discussion could not continue: Provider timed out after 60 s. Send your reply again to retry.</span></div>
+  <div class="dc__reply"><div class="dc__box"><textarea rows="1" placeholder="Reply to Maya, Theo and Jun" aria-label="Reply in the discussion"></textarea><button class="btn btn--sm btn--icon btn--primary" aria-label="Send to the discussion" disabled><i class="i i--sm i-arrow-up"></i></button></div><p class="dc__hint">Enter to send · Asking in the conversation closes this discussion</p></div>
+ </section></div></div>
+
+<div><h3>C4. Closed (after a main-thread message)</h3><div class="stage">
+ <section class="dc" aria-label="Discussion with Maya, Theo and Jun, closed">
+  <header class="dc__head"><i class="i i-chat-bubble-left-right"></i><h3 class="dc__title">Discussion with Maya, Theo and Jun</h3><span class="dc__state" style="position:relative">Closed<b class="m" style="right:-28px;top:-3px">17</b></span></header>
+  <ol class="dc__lines">
+   <li class="dc__line" data-speaker="classmate"><span class="dc__av">J</span><span class="dc__who">Jun</span><p class="dc__text">Wait, so the plant can just stop paying? Wouldn't the fungus just leave?</p></li>
+   <li class="dc__line" data-speaker="tutor"><span class="dc__av"><i class="i i--sm i-sparkles"></i></span><span class="dc__who">Tutor</span><p class="dc__text">Some do. Plants in rich soil often cut back on partners, and the fungi move to hungrier roots.</p></li>
+  </ol>
+  <div class="dc__reply gone" style="display:none"></div>
+  <p class="dc__foot" style="position:relative">Closed when you asked in the conversation. You can still read it and branch from any line.<b class="m" style="right:-11px;top:-4px">18</b></p>
+ </section></div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">11</b>The header's right-hand text now shows the state: "Open" in the accent colour while the discussion is open, "Closed" in secondary text once closed. The classmate count moves out of the header. It stays on the map chip and in the title's names.</li>
+ <li><b class="n">12</b>Reply strip, open only. It is an Astryx <code>ChatComposer</code> with <code>elevation="none"</code>, <code>density="compact"</code>, the placeholder "Reply to Maya, Theo and Jun" and the label "Reply in the discussion". The send button is labelled "Send to the discussion". It sits on a <code>--color-background-body</code> strip with no border of its own, at the card's bottom. Under the input, supporting text reads "Enter to send · Asking in the conversation closes this discussion". Enter sends and Shift+Enter adds a new line, as in the main composer. The main composer is unchanged and shows no extra hint.</li>
+ <li><b class="n">13</b>On send, append the learner line at once (optimistic) as <code>ChatMessage sender="user"</code>, then clear and disable the input until the turn ends.</li>
+ <li><b class="n">14</b>Streamed lines appear one at a time with their speaker's name and avatar. The text grows with the same streaming caret the main reply uses. Only the speakers who talk get a line: no empty rows and no "is typing" for the others. Mark the card <code>aria-busy="true"</code> while a turn runs. Keep the reading position: do not scroll the page unless the reader is already at the card's bottom (the same follow rule as <code>ChatLayout</code>).</li>
+ <li><b class="n">15</b>Before the first token of a turn arrives, show one row under the learner line: a pulse dot and "Discussion continuing…", <code>role="status"</code>. Remove it when the first line starts. The spec has no Stop for discussion turns, so add none.</li>
+ <li><b class="n">16</b>A failed turn keeps every earlier line, including the learner's line that was sent. Under them, show an alert row (<code>role="alert"</code>, error-soft fill, <code>ExclamationTriangleIcon</code>) reading "The discussion could not continue: {error}. Send your reply again to retry." The input is enabled again. The row disappears on the next send.</li>
+ <li><b class="n">17</b>Closed comes from the server. The card updates without a reload when the main-thread send that closed it returns. A closed card's <code>aria-label</code> ends with ", closed".</li>
+ <li><b class="n">18</b>A closed card has no reply strip in the DOM (the component test checks there is no textbox). In its place, supporting text reads "Closed when you asked in the conversation. You can still read it and branch from any line." The lines stay selectable.</li>
+</ol>
+</section>
+
+<!-- D. Branching -->
+<section class="sec">
+<h2>D. Branching from a discussion line <span class="tix">ywy.8</span></h2>
+<p>Any contiguous text inside one line can become a passage, including text in a classmate's or the tutor's line. The interaction and visuals are exactly those of a reply passage: the same Ask button, the same passage box, and the same ink underline with an address chip.</p>
+<div class="pair">
+<div><div class="lbl lbl--after">After: selecting, then branched</div>
+<div class="stage stage--read">
+ <section class="dc" aria-label="Discussion with Maya, Theo and Jun">
+  <header class="dc__head"><i class="i i-chat-bubble-left-right"></i><h3 class="dc__title">Discussion with Maya, Theo and Jun</h3><span class="dc__state" data-open>Open</span></header>
+  <ol class="dc__lines">
+   <li class="dc__line" data-speaker="classmate" style="position:relative"><b class="m" style="left:-23px;top:4px">19</b><span class="dc__av">T</span><span class="dc__who">Theo</span><p class="dc__text">So the fungus is basically <a class="psg" style="--ink:var(--ink-1)">a parasite the plant puts up with<sup>1.1.3</sup></a>?</p></li>
+   <li class="dc__line" data-speaker="classmate" style="position:relative"><b class="m" style="left:-23px;top:4px">20</b><span class="dc__av">M</span><span class="dc__who">Maya</span><p class="dc__text">Hyphae are way thinner, so maybe they're <span class="psg--asking">cheaper to grow per centimetre</span>?</p>
+    <div style="grid-column:2;display:grid;gap:8px;justify-items:start;margin-top:6px"><div class="pop ask"><button class="btn btn--sm btn--primary"><i class="i i--sm i-chat-bubble-bottom-center-text"></i>Ask</button></div>
+    <div class="pop passage-box"><div class="passage-box__row"><input class="input" placeholder="Ask about this passage" aria-label="Question about this passage"><button class="btn btn--icon btn--primary" aria-label="Create focused chat"><i class="i i--sm i-arrow-up"></i></button></div></div></div></li>
+  </ol>
+ </section>
+</div></div>
+<div><div class="lbl lbl--after">After: the child conversation's inherited context</div>
+<div class="stage stage--read">
+ <details class="ctx" open style="--ink:var(--ink-1);position:relative"><summary><i class="i i--sm i-chevron-down"></i>Context the tutor received</summary>
+  <div class="ctx__body"><div><small>Passage, from Theo in the discussion</small><br><q>a parasite the plant puts up with</q></div>
+  <p class="new" style="position:relative">Discussion with Maya, Theo and Jun: Theo thought the fungus was a parasite. Maya pointed out the plant gets phosphorus back. The tutor confirmed hyphae are a tenth the width of a root hair, so the same sugar buys more reach…<b class="m" style="right:-11px;top:-11px">21</b></p></div></details>
+</div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">19</b>An existing branch underlines its passage in the branch family's ink, with the address chip (<code>&lt;sup&gt;1.1.3&lt;/sup&gt;</code>) right after it, exactly like <code>.psg</code> in a reply. Clicking the chip opens the child. The underline survives a reload because the passage stores the discussion's artifact id, the line index and character offsets within that line's text.</li>
+ <li><b class="n">20</b>Selecting text inside one line shows the existing Ask button, and Ask opens the existing <code>BranchForm</code> passage box anchored to the selection. A selection that crosses two lines, or reaches into a name or avatar, shows no Ask. Learner, classmate and tutor lines all allow branching. Branching works on open and closed cards alike.</li>
+ <li><b class="n">21</b>The child's "Context the tutor received" disclosure labels the passage "Passage, from {speaker} in the discussion". Below it, it shows the discussion's compacted paragraph, or its lines while the discussion is still open. It uses the existing disclosure component, with no new layout.</li>
+</ol>
+</section>
+
+<!-- E. Knowledge -->
+<section class="sec">
+<h2>E. Knowledge page becomes read-only <span class="tix">ywy.1</span></h2>
+<p>The concept detail panel (<code>src/knowledge/ConceptDetail.tsx</code>, <code>KnowledgeControls.tsx</code>) and the passage box (<code>BranchForm.tsx</code>, <code>PassageCorrection.tsx</code>). The map field, topics, key, zoom controls and Merge stay.</p>
+<div class="pair">
+<div><div class="lbl">Today</div>
+<div class="stage">
+ <p class="gone" style="color:var(--muted);position:relative;max-width:60ch">Concepts from all your learning trees. Familiarity is an estimate, not measured mastery. Your corrections take precedence.<b class="m" style="right:-30px;top:-4px">22</b></p>
+ <aside class="kg__detail" style="position:static;margin-top:20px;max-width:360px">
+  <h2>Hyphae</h2>
+  <p><strong>Estimated familiarity: some familiarity.</strong></p>
+  <p>Topics: Biology</p>
+  <dl class="gone" style="position:relative"><b class="m" style="right:-30px;top:-4px">23</b><dt>Met in replies</dt><dd>6</dd><dt>Asked about</dt><dd>2</dd><dt>Used in your questions</dt><dd>3</dd><dt>Underlines ignored (weak hint)</dt><dd>4</dd></dl>
+  <p>Arbuscule builds on Hyphae</p>
+  <div class="kg__actions" style="position:relative"><button class="btn btn--outline gone">I know this</button><button class="btn btn--outline gone">I don't get this</button><button class="btn">Merge…</button><b class="m" style="right:-30px;top:4px">24</b></div>
+ </aside>
+ <div style="margin-top:24px;position:relative" class="gone"><b class="m" style="right:-30px;top:-4px">25</b><div class="pop passage-box"><div class="passage-box__row"><input class="input" placeholder="Ask about this passage"><button class="btn btn--icon btn--primary"><i class="i i--sm i-arrow-up"></i></button><button class="btn btn--icon" aria-label="Corrections for hyphae"><i class="i i--sm i-ellipsis-horizontal"></i></button></div></div></div>
+</div></div>
+<div><div class="lbl lbl--after">After</div>
+<div class="stage">
+ <p class="new" style="color:var(--muted);position:relative;max-width:60ch">Concepts from all your learning trees. Familiarity is an estimate from what you write, not measured mastery.</p>
+ <aside class="kg__detail" style="position:static;margin-top:20px;max-width:360px">
+  <h2>Hyphae</h2>
+  <p><strong>Estimated familiarity: some familiarity.</strong></p>
+  <p>Topics: Biology</p>
+  <dl class="new" aria-label="Evidence for Hyphae" style="position:relative"><b class="m" style="right:-30px;top:-4px">26</b>
+   <dt>Met in replies</dt><dd>6</dd>
+   <dt style="grid-column:1/-1;margin-top:8px;font-weight:600;color:var(--text)">From your messages</dt>
+   <dt>Misconception</dt><dd>1</dd>
+   <dt>Heard of it</dt><dd>0</dd>
+   <dt>Partial</dt><dd>2</dd>
+   <dt>Explains it</dt><dd>1</dd>
+   <dt>Applies it</dt><dd>0</dd>
+   <dt>Teaches it</dt><dd>0</dd>
+  </dl>
+  <p>Arbuscule builds on Hyphae</p>
+  <div class="kg__actions" role="group" aria-label="Actions for Hyphae"><button class="btn">Merge…</button></div>
+ </aside>
+ <div style="margin-top:24px"><div class="pop passage-box"><div class="passage-box__row"><input class="input" placeholder="Ask about this passage"><button class="btn btn--icon btn--primary" aria-label="Create focused chat"><i class="i i--sm i-arrow-up"></i></button></div></div></div>
+</div></div>
+</div>
+<ol class="fix">
+ <li><b class="n">22</b>Header intro text becomes exactly: "Concepts from all your learning trees. Familiarity is an estimate from what you write, not measured mastery." In the merge dialog, drop the sentence "The latest correction from either concept takes precedence." and change "combine topics, evidence and links" to "combine topics, observations and links".</li>
+ <li><b class="n">23</b>Remove the Asked, Used and Ignored rows. Keep "Met in replies": the spec still records met.</li>
+ <li><b class="n">24</b>Remove "I know this" and "I don't get this", with <code>correct</code>, <code>Concept.correction</code> and the correction branches in <code>familiarity()</code>, <code>level()</code> and <code>fill()</code>. <b>Keep "Merge…"</b>: merging is not a correction. Rename the group's label from "Corrections for {name}" to "Actions for {name}".</li>
+ <li><b class="n">25</b>The passage box also posts corrections today, through <code>PassageCorrection</code>'s "Corrections for {concept}" menu. Remove it: <code>BranchForm</code> always renders the plain <code>HStack</code> row. Delete <code>PassageCorrection.tsx</code> once nothing imports it.</li>
+ <li><b class="n">26</b>Under a "From your messages" sub-heading, list observation counts by level, always all six rows in level order 0 to 5, with zeros shown: "Misconception", "Heard of it", "Partial", "Explains it", "Applies it", "Teaches it". Use the existing <code>dl.knowledge-evidence</code> grid with tabular figures. Do not show raw familiarity numbers, confidence or dates. The familiarity sentence and the map's ring fill use the new estimate with today's thresholds: 0.8 or more is familiar, 0.35 or more is some familiarity, anything lower is unfamiliar. A concept with no observations sits at the 0.3 prior, so it reads "unfamiliar". The key is unchanged.</li>
+</ol>
+</section>
+
+<!-- F. Settings -->
+<section class="sec">
+<h2>F. Settings: three new tutor tool switches <span class="tix">ywy.4</span></h2>
+<p>The Tutor tools section in <code>src/settings/TutorToolsSettings.tsx</code> renders whatever list the server returns, so the only UI work is the labels the server sends. There is no new component.</p>
+<div class="stage" style="max-width:640px">
+ <div class="set__group"><div class="set__label">Tutor tools</div><p class="set__note">Tools available to chat models that use tutor tools. Turning a tool off hides it from every provider on the next reply. Quick thinking and smart models stay tool-free.</p>
+  <div class="row"><div class="row__text"><b>… existing tools unchanged …</b></div><span></span></div>
+  <div class="row new" style="position:relative"><b class="m" style="left:-30px;top:12px">27</b><div class="row__text"><b>Look up concepts</b></div><input type="checkbox" checked aria-label="Look up concepts"></div>
+  <div class="row new"><div class="row__text"><b>Search earlier conversations</b></div><input type="checkbox" checked aria-label="Search earlier conversations"></div>
+  <div class="row new"><div class="row__text"><b>Read earlier conversations</b></div><input type="checkbox" checked aria-label="Read earlier conversations"></div>
+ </div>
+</div>
+<ol class="fix">
+ <li><b class="n">27</b>Add three entries to the server's tutor tool list, all on by default, after the existing tools, with these exact labels: "Look up concepts" (<code>look_up_concept</code>), "Search earlier conversations" (<code>search_conversations</code>) and "Read earlier conversations" (<code>read_conversation</code>). They have no <code>setup</code> text: they need no setup. They render as the existing Astryx <code>Switch</code>.</li>
+</ol>
+</section>
+</body>
+</html>

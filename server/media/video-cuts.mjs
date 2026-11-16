@@ -20,6 +20,7 @@ import {
   videoPalette,
 } from './video-plan.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS, MANIM_COMPONENT } from './manim-cut.mjs';
+import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL } from './skills.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
@@ -187,8 +188,11 @@ export async function writeCuts({
   const attempts = cuts.map(() => 0);
   const writerInstructions = (index) =>
     cuts[index].engine === 'manim'
-      ? MANIM_INSTRUCTIONS
-      : CUT_INSTRUCTIONS + (plan.cuts[index].dimension === '3d' ? CUT_3D : '');
+      ? MANIM_INSTRUCTIONS + '\n\n' + MANIM_SKILL
+      : CUT_INSTRUCTIONS +
+        '\n\n' +
+        REMOTION_SKILL +
+        (plan.cuts[index].dimension === '3d' ? CUT_3D + '\n\n' + REMOTION_3D_SKILL : '');
   const rewrite = async (index, reason) => {
     let error = reason && new Error(reason),
       failed = reason && cuts[index].code;

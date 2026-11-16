@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { themeChoices } from '../../src/shell/appearance.ts';
 import { task, block, source, complete, deferred, until, open } from '../support/visual-kit.mjs';
 import { TEST_PROVIDER } from '../support/test-provider.mjs';
+import { VISUAL_SKILL } from '../../server/media/skills.mjs';
 
 test('visual prompts receive the requested theme palette in light and dark, with a safe legacy fallback', async () => {
   const calls = [];
@@ -81,6 +82,8 @@ test('visual prompts receive the requested theme palette in light and dark, with
       assert.equal(palette.name, 'paperback');
       assert.equal(palette.mode, 'dark');
       assert.doesNotMatch(instructions, /PRIVATE/);
+      // The visual skill is fixed text ahead of the per-call palette.
+      assert.ok(instructions.split('\nCurrent theme palette: ')[0].includes(VISUAL_SKILL));
       await until(async () =>
         (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every((a) => a.status === 'ready'),
       );
