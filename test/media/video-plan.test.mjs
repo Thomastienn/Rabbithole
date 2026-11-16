@@ -8,11 +8,51 @@ import {
   PLAN_INSTRUCTIONS,
 } from '../../server/media/video-plan.mjs';
 import { planFor, composition, spatial, styleBrief } from '../support/video-kit.mjs';
-import { MANIM_TEACHING_SKILL } from '../../server/media/skills.mjs';
+import {
+  MANIM_TEACHING_SKILL,
+  HOUSE_STYLE_SKILL,
+  FOCAL_OBJECT_SKILL,
+} from '../../server/media/skills.mjs';
+import {
+  CUT_INSTRUCTIONS,
+  PIECES_INSTRUCTIONS,
+  PIECE_IMPROVE_INSTRUCTIONS,
+  AUDIT_INSTRUCTIONS,
+} from '../../server/media/video-cut.mjs';
+import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 
 test('the planner carries Manim teaching notes scoped to Manim cuts only', () => {
   assert.ok(PLAN_INSTRUCTIONS.endsWith(MANIM_TEACHING_SKILL));
-  assert.match(MANIM_TEACHING_SKILL, /^Manim teaching notes[^\n]*engine "manim"[^\n]*ignore them when the plan has none/);
+  assert.match(
+    MANIM_TEACHING_SKILL,
+    /^Manim teaching notes[^\n]*engine "manim"[^\n]*ignore them when the plan has none/,
+  );
+});
+
+test('the house style and focal-object rule reach the planner and Remotion writers, never Manim', () => {
+  assert.match(HOUSE_STYLE_SKILL, /detailed flat illustration/);
+  assert.match(HOUSE_STYLE_SKILL, /Blender/);
+  assert.match(FOCAL_OBJECT_SKILL, /one focal object/);
+  assert.match(FOCAL_OBJECT_SKILL, /unlabelled/);
+  assert.match(FOCAL_OBJECT_SKILL, /fade it once its point has landed/);
+  for (const prompt of [PLAN_INSTRUCTIONS, CUT_INSTRUCTIONS, AUDIT_INSTRUCTIONS]) {
+    assert.ok(prompt.includes(HOUSE_STYLE_SKILL));
+    assert.ok(prompt.includes(FOCAL_OBJECT_SKILL));
+  }
+  for (const prompt of [PIECES_INSTRUCTIONS, PIECE_IMPROVE_INSTRUCTIONS])
+    assert.ok(prompt.includes(HOUSE_STYLE_SKILL));
+  assert.match(CUT_INSTRUCTIONS, /vary layout and metaphor between videos, never the house style/);
+  assert.doesNotMatch(CUT_INSTRUCTIONS, /different videos look different/);
+  // The audit flags off-style objects and crowding labels as a preference, without a count.
+  assert.match(
+    AUDIT_INSTRUCTIONS,
+    /labels crowding the focal object, a preference rather than a count/,
+  );
+  assert.match(AUDIT_INSTRUCTIONS, /objects drawn outside the house style/);
+  // A reused library piece drawn off-style is flagged for redraw, not only the cut.
+  assert.match(AUDIT_INSTRUCTIONS, /unreadable at its size, or drawn outside the house style\)/);
+  for (const prompt of [MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS])
+    assert.ok(!prompt.includes(HOUSE_STYLE_SKILL) && !prompt.includes(FOCAL_OBJECT_SKILL));
 });
 
 test('compact plan validates the brief and ordered cuts, including the Manim engine', () => {

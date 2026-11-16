@@ -13,7 +13,12 @@ import {
   fakeRender,
 } from '../support/video-kit.mjs';
 import { videoPlan, cutSource, pieceNames, libraryPieces } from '../../server/media/video-plan.mjs';
-import { REMOTION_SKILL, MANIM_SKILL } from '../../server/media/skills.mjs';
+import {
+  REMOTION_SKILL,
+  MANIM_SKILL,
+  HOUSE_STYLE_SKILL,
+  FOCAL_OBJECT_SKILL,
+} from '../../server/media/skills.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top, one third of its height.';
 const pieces = `import { colors, palette } from './kit';
@@ -157,6 +162,17 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
   }
   assert.ok(inputs[2].instructions.includes(MANIM_SKILL));
   assert.ok(!inputs[2].instructions.includes(REMOTION_SKILL));
+  // The set-piece and Remotion writers draw in the house style; only Remotion cuts get the focal rule.
+  assert.ok(inputs.piecesInstructions.includes(HOUSE_STYLE_SKILL));
+  for (const i of [0, 1])
+    assert.ok(
+      inputs[i].instructions.includes(HOUSE_STYLE_SKILL) &&
+        inputs[i].instructions.includes(FOCAL_OBJECT_SKILL),
+    );
+  assert.ok(
+    !inputs[2].instructions.includes(HOUSE_STYLE_SKILL) &&
+      !inputs[2].instructions.includes(FOCAL_OBJECT_SKILL),
+  );
   assert.equal(
     inputs[2].styleBrief.recurringObjects[0].look,
     look,

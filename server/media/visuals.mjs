@@ -2,10 +2,14 @@ import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { savedTheme, themeChoices } from '../../src/shell/appearance.ts';
 import { visualMarkup } from '../../src/media/visualMarkup.ts';
-import { VISUAL_SKILL } from './skills.mjs';
+import { VISUAL_SKILL, HOUSE_STYLE_SKILL } from './skills.mjs';
 
 const INSTRUCTIONS =
-  readFileSync(new URL('./prompts/visual.md', import.meta.url), 'utf8') + '\n' + VISUAL_SKILL;
+  readFileSync(new URL('./prompts/visual.md', import.meta.url), 'utf8') +
+  '\n' +
+  VISUAL_SKILL +
+  '\n\n' +
+  HOUSE_STYLE_SKILL;
 const MAX_SOURCE = 64 * 1024;
 
 // Read Astryx's built colours so the worker prompt and browser share one palette.

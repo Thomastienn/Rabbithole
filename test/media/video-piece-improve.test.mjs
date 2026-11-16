@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { planFor, composition, directive, complete, until, open } from '../support/video-kit.mjs';
 import { AUDIT_INSTRUCTIONS, PIECE_IMPROVE_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { poorPieces } from '../../server/media/video-cuts.mjs';
-import { REMOTION_SKILL } from '../../server/media/skills.mjs';
+import { REMOTION_SKILL, HOUSE_STYLE_SKILL } from '../../server/media/skills.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top';
 const pieces = `import { colors, palette } from './kit';
@@ -20,7 +20,7 @@ const snapshot = async (dir, list) => {
   for (const { file } of list) writeFileSync(file, 'jpeg');
 };
 
-async function run(t, rewrite) {
+async function run(t, rewrite, why = 'No crown on top') {
   const plan = planFor(usesPieces, 1);
   plan.styleBrief = {
     ...plan.styleBrief,
@@ -36,13 +36,11 @@ async function run(t, rewrite) {
         if (tree.instructions.startsWith('You write the set pieces')) return complete(emit, pieces);
         if (tree.instructions === AUDIT_INSTRUCTIONS) {
           calls.audit.push(JSON.parse(text));
-          return complete(
-            emit,
-            JSON.stringify({ ok: true, pieces: [{ name: 'Winner', why: 'No crown on top' }] }),
-          );
+          return complete(emit, JSON.stringify({ ok: true, pieces: [{ name: 'Winner', why }] }));
         }
         if (tree.instructions.startsWith(PIECE_IMPROVE_INSTRUCTIONS)) {
           assert.ok(tree.instructions.includes(REMOTION_SKILL));
+          assert.ok(tree.instructions.includes(HOUSE_STYLE_SKILL));
           calls.improve.push(JSON.parse(text));
           return complete(emit, rewrite);
         }
@@ -75,6 +73,14 @@ test('an audit flagging a saved piece has the smart model rewrite it; the librar
   assert.ok(saved.improved > saved.created, 'last-improved time moves');
   assert.equal(JSON.parse(row.source).pieces, pieces, 'the current video keeps its piece');
   assert.ok(logs.some((l) => l.includes('stage="improve"')));
+});
+
+test('an off-style flag on a reused library piece redraws it in the house style for future videos', async (t) => {
+  const why = 'Drawn as a flat emoji, outside the house style';
+  const { saved, calls } = await run(t, better, why);
+  assert.equal(calls.improve.length, 1);
+  assert.equal(calls.improve[0].why, why);
+  assert.equal(saved.source, better);
 });
 
 test('an invalid piece rewrite leaves the library entry unchanged', async (t) => {

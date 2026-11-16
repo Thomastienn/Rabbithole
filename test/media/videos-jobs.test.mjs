@@ -148,7 +148,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.doesNotMatch(workers[1].tree.instructions, /@remotion\/three|ThreeCanvas/);
     assert.match(
       workers[1].tree.instructions,
-      /1920x1080[\s\S]*bottom 120 pixels[\s\S]*"\.\/kit"[\s\S]*never hard cuts[\s\S]*different videos look different/,
+      /1920x1080[\s\S]*bottom 120 pixels[\s\S]*"\.\/kit"[\s\S]*never hard cuts[\s\S]*never the house style/,
     );
     assert.equal(
       workers[0].tree.model,

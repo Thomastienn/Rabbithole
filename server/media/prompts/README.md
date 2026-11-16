@@ -110,3 +110,14 @@ Retrieved and licence re-checked at the pinned commits on 2026-11-16 (via
   choices, traits 1 and 2 (they resemble the house dark-paper and amber look)
   and trait 3, the two-pass plan, CSS specificity, screenshots and self-critique
   notes.
+
+### Rabbithole's own texts
+
+Written for Rabbithole, not vendored; no upstream licence applies.
+
+- `house-style.md` (video planner, set-piece writer, piece improvement,
+  Remotion cut writers, Remotion cut audit and visual writer): detailed flat
+  illustration in 2D, stylised Blender-like modelling in 3D.
+- `focal-object.md` (video planner, Remotion cut writers and Remotion cut
+  audit): one focal object at a time, unlabelled overviews, short-lived labels.
+  Manim prompts and the Manim audit get neither text.
