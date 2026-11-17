@@ -51,7 +51,7 @@ ${skills.MANIM_TEACHING_SKILL}`;
 export const EXHIBITS_NOTE = `\nExhibits: a Remotion cut may show up to two exhibits, real web media framed as real with a short source line, never standing in for a drawn object. Give that cut "exhibits":[{"kind":"image","query":"web image search words","show":"what the image shows and why it helps"},{"kind":"quote","query":"web search words that find the quote's source","text":"the short quote, at most 280 characters","by":"who said or wrote it"}]. Use one only where a real photo, artwork, document or someone's own words teaches better than a drawing, such as a historical figure, a real place or a primary source; most cuts need none. The app searches the web, downloads the image or credits the quote's source and gives the cut writer the result; an exhibit that cannot be found is left out, so the cut must also work without it. Manim cuts have no exhibits.`;
 
 // Appended after EXHIBITS_NOTE only when the clip downloader is also ready.
-export const CLIPS_NOTE = `\nA third kind is a muted clip, a few seconds of a real web video playing silently under the narration: {"kind":"clip","query":"web video search words","show":"what the clip shows and why it helps","start":<seconds into the video>,"end":<seconds>}, at most ${MAX_CLIP_SECONDS} seconds long. Use one only for real motion a drawing cannot show, such as footage of an event or a real process, and only when you know the moment, from a well-known video the search will find.`;
+export const CLIPS_NOTE = `\nA third kind is a clip, a few seconds of a real web video: {"kind":"clip","query":"web video search words","show":"what the clip shows and why it helps","start":<seconds into the video>,"end":<seconds>,"sound":false}, at most ${MAX_CLIP_SECONDS} seconds long. Use one only for real motion a drawing cannot show, such as footage of an event or a real process, and only when you know the moment, from a well-known video the search will find. Decide each clip's sound: "sound":false plays it muted under the narration, the usual choice; "sound":true only when its own sound teaches, such as a famous speech, a real voice or an instrument, and then also give "sentence", the 0-based sentence of that cut's narration after which the narration pauses while the clip plays with its sound, so two voices never speak at once. A cut has at most one clip with sound.`;
 
 const exhibitPlanned = (e, clips) =>
   text(e?.query) &&
@@ -64,7 +64,8 @@ const exhibitPlanned = (e, clips) =>
       Number.isFinite(e.end) &&
       e.start >= 0 &&
       e.end > e.start &&
-      e.end - e.start <= MAX_CLIP_SECONDS
+      e.end - e.start <= MAX_CLIP_SECONDS &&
+      (e.sound === false || (e.sound === true && Number.isInteger(e.sentence) && e.sentence >= 0))
     : e.kind === 'image'
       ? text(e.show) && e.show.length <= 300
       : e.kind === 'quote' &&
@@ -176,7 +177,8 @@ function planProblem(plan, exhibits, clips) {
             c.engine === 'remotion' &&
             Array.isArray(c.exhibits) &&
             c.exhibits.length <= 2 &&
-            c.exhibits.every((e) => exhibitPlanned(e, clips))),
+            c.exhibits.every((e) => exhibitPlanned(e, clips)) &&
+            c.exhibits.filter((e) => e.sound).length <= 1),
       ],
     ].find(([, ok]) => !ok)?.[0];
     if (field) return `cut ${i + 1} ${field}`;

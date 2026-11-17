@@ -6,6 +6,7 @@ import {
   AbsoluteFill,
   Audio,
   Freeze,
+  Sequence,
   Series,
   Video,
   interpolate,
@@ -35,11 +36,15 @@ export type LiveCut = {
     exit?: Join | null;
     sentences: Sentence[];
     captions: Caption[];
+    // The narration pause where a clip with sound plays.
+    pause?: { id: string; startFrame: number; frames: number };
   } | null;
   emphasis?: Mark[];
   Component?: ComponentType<{ sentences: Sentence[]; durationInFrames: number }>;
   audio?: string;
   clip?: string;
+  // The clip-with-sound exhibit's URL, played during timing.pause.
+  sound?: string;
 };
 
 // shortcut: a cut without measured narration holds 3 seconds, so later cuts shift once it is timed.
@@ -129,6 +134,15 @@ function Narrated({ cut }: { cut: LiveCut }) {
         <Cursor marks={cut.emphasis} sentences={timing.sentences} />
       </Joined>
       <Audio src={cut.audio!} />
+      {timing.pause && cut.sound && (
+        <Sequence
+          from={timing.pause.startFrame}
+          durationInFrames={timing.pause.frames}
+          layout="none"
+        >
+          <Audio src={cut.sound} />
+        </Sequence>
+      )}
       <div
         style={{
           position: 'absolute',

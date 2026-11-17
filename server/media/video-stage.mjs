@@ -13,8 +13,8 @@ const runtime = readFileSync(new URL('./video-stock.tsx', import.meta.url), 'utf
 // The host's data path into a Remotion cut: stock.json beside the cut, read by setStock in the kit. It carries
 // the cut's exhibits by id, images inlined as data URLs read from the cut folder; a missing file drops one.
 // A clip is copied into the public folder for staticFile; before narration staging makes that folder only the
-// write-time check runs, which renders nothing.
-async function stageHostData(dir, engine, exhibits = []) {
+// write-time check runs, which renders nothing. A clip with sound starts at its narration pause.
+async function stageHostData(dir, engine, exhibits = [], pause) {
   await writeFile(join(dir, 'video-stock.tsx'), runtime);
   if (engine === 'manim') return;
   const data = {};
@@ -22,7 +22,11 @@ async function stageHostData(dir, engine, exhibits = []) {
     if (shown.kind === 'clip') {
       if (!existsSync(join(dir, file))) continue;
       await copyFile(join(dir, file), join(dir, 'public', `${id}.mp4`)).catch(() => {});
-      data[id] = { ...shown, clip: `${id}.mp4` };
+      data[id] = {
+        ...shown,
+        clip: `${id}.mp4`,
+        ...(pause?.id === id && { from: pause.startFrame }),
+      };
       continue;
     }
     const bytes = file && (await readFile(join(dir, file)).catch(() => null));
@@ -34,7 +38,7 @@ async function stageHostData(dir, engine, exhibits = []) {
 
 // Stage the same host runtime and host data for audits and the final render.
 export async function stageCut({ dir, cut, plan, pieces, kit, manimKit, emphasis, exhibits }) {
-  await stageHostData(dir, cut.engine, exhibits);
+  await stageHostData(dir, cut.engine, exhibits, cut.timing?.pause);
   if (cut.engine === 'manim') {
     await writeFile(join(dir, 'Cut.py'), cut.code);
     await writeFile(join(dir, 'kit.py'), manimKit);

@@ -251,9 +251,9 @@ test('plans may name image and quote exhibits on Remotion cuts only when web sea
   assert.ok(!PLAN_INSTRUCTIONS.includes(EXHIBITS_NOTE));
 });
 
-test('plans may name muted clip exhibits with the wanted seconds only when the clip downloader is ready', () => {
+test('plans may name clip exhibits with the wanted seconds and sound only when the clip downloader is ready', () => {
   const plan = planFor();
-  const clip = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36.5 };
+  const clip = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36.5, sound: false };
   plan.cuts[0].exhibits = [clip];
   const raw = JSON.stringify(plan);
   assert.deepEqual(videoPlan(raw, { exhibits: true, clips: true }).cuts[0].exhibits, [clip]);
@@ -264,12 +264,20 @@ test('plans may name muted clip exhibits with the wanted seconds only when the c
     { ...clip, start: -1 },
     { ...clip, end: 30 + MAX_CLIP_SECONDS + 1 },
     { ...clip, show: undefined },
+    { ...clip, sound: undefined },
+    { ...clip, sound: true },
+    { ...clip, sound: true, sentence: -1 },
   ])
     assert.throws(
       () => videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), { exhibits: true, clips: true }),
       /cut 1 exhibits/,
     );
+  const loud = { ...clip, sound: true, sentence: 0 };
+  const loudPlan = (exhibits) => JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits }] });
+  assert.deepEqual(videoPlan(loudPlan([loud, clip]), { exhibits: true, clips: true }).cuts[0].exhibits, [loud, clip]);
+  assert.throws(() => videoPlan(loudPlan([loud, loud]), { exhibits: true, clips: true }), /cut 1 exhibits/);
   assert.match(CLIPS_NOTE, /"kind":"clip"/);
+  assert.match(CLIPS_NOTE, /"sound":true/);
   assert.ok(!EXHIBITS_NOTE.includes(CLIPS_NOTE));
 });
 

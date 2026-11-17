@@ -1,5 +1,6 @@
 // Clip exhibits (ADR 0005): yt-dlp from the project-local Python environment downloads the wanted moment and
-// the system ffmpeg trims it to a muted 1280x720 H.264 clip that Chrome and the Remotion render both play.
+// the system ffmpeg trims it to a 1280x720 H.264 clip that Chrome and the Remotion render both play, muted
+// unless the plan keeps its sound (then with AAC audio).
 import { spawnSync, execFile } from 'node:child_process';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -37,9 +38,10 @@ export function detectClips({
   return { ready: true, ytDlp, ffmpeg: 'ffmpeg' };
 }
 
-// Downloads seconds start..end of a video page and returns the trimmed, muted MP4 bytes; any failure throws.
+// Downloads seconds start..end of a video page and returns the trimmed MP4 bytes; any failure throws, including
+// a clip with sound whose source has no audio.
 export async function downloadClip(
-  { url, start, end },
+  { url, start, end, sound = false },
   { clips, signal, run = promisify(execFile) },
 ) {
   const work = await mkdtemp(join(tmpdir(), 'rabbithole-clip-'));
@@ -57,7 +59,9 @@ export async function downloadClip(
         '--max-filesize',
         '500M',
         '-f',
-        'bv*[height<=720]/b[height<=720]/bv*/b',
+        sound
+          ? 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b'
+          : 'bv*[height<=720]/b[height<=720]/bv*/b',
         '--download-sections',
         `*${start}-${end}`,
         '-o',
@@ -81,7 +85,7 @@ export async function downloadClip(
         join(work, source),
         '-t',
         String(end - start),
-        '-an',
+        ...(sound ? ['-map', '0:v:0', '-map', '0:a:0', '-c:a', 'aac', '-b:a', '128k'] : ['-an']),
         '-vf',
         'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30',
         '-c:v',

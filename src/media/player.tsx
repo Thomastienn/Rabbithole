@@ -149,6 +149,10 @@ addEventListener('message', (event) => {
     : [])
     if (blob instanceof Blob) exhibits[id] = { ...e, src: (exhibitUrls[id] ??= URL.createObjectURL(blob)) };
     else if (!media) exhibits[id] = e;
+  // A clip with sound starts at its cut's narration pause, as in the render's stock.json.
+  for (const cut of event.data.cuts as Incoming[])
+    if (cut.timing?.pause && exhibits[cut.timing.pause.id])
+      exhibits[cut.timing.pause.id].from = cut.timing.pause.startFrame;
   kit.setStock(exhibits);
   // Set pieces load before the cuts that import them; new set pieces recompile every cut.
   const shared = typeof event.data.pieces === 'string' ? event.data.pieces : undefined;
@@ -173,6 +177,7 @@ addEventListener('message', (event) => {
         Component: own.Component,
         audio: own.audio,
         clip: own.clip,
+        sound: cut.timing?.pause && exhibits[cut.timing.pause.id]?.src,
       };
     }),
   );

@@ -326,3 +326,43 @@ test('a live exhibit draws its delivered image, quote or muted clip in a frame w
   assert.equal(missing.container.textContent, '');
   await missing.cleanup();
 });
+
+test('live, a clip with sound starts at its cut narration pause, and its own sound plays only during that pause', async (t) => {
+  const { setStock, Exhibit } = await import('../../server/media/video-kit.tsx');
+  // As player.tsx delivers it: the clip's start comes from the cut timing's pause.
+  setStock({ exhibit1: { kind: 'clip', title: 'Speech', site: 'video.example', src: 'blob:speech', seconds: 1, sound: true, from: 20 } });
+  t.after(() => setStock({}));
+  const cuts = [
+    {
+      playable: true,
+      timing: { ...timing(90), pause: { id: 'exhibit1', startFrame: 20, frames: 30 } },
+      audio: 'blob:narration',
+      sound: 'blob:speech',
+      Component: () => h(Exhibit, { id: 'exhibit1', from: 0 }),
+    },
+  ];
+  const at = (frameToDisplay) =>
+    render(
+      h(Thumbnail, {
+        component: LiveVideo,
+        inputProps: { cuts },
+        durationInFrames: 90,
+        compositionWidth: 1920,
+        compositionHeight: 1080,
+        fps: 30,
+        frameToDisplay,
+      }),
+      ui,
+    );
+  const sources = (container) =>
+    [...container.querySelectorAll('audio, video')].map((e) => `${e.tagName.toLowerCase()} ${e.getAttribute('src').split('#')[0]}`);
+  const before = await at(10);
+  assert.deepEqual(sources(before.container), ['audio blob:narration']);
+  await before.cleanup();
+  const during = await at(30);
+  assert.deepEqual(sources(during.container).sort(), ['audio blob:narration', 'audio blob:speech', 'video blob:speech']);
+  await during.cleanup();
+  const after = await at(60);
+  assert.deepEqual(sources(after.container).sort(), ['audio blob:narration', 'video blob:speech']);
+  await after.cleanup();
+});

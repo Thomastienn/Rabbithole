@@ -22,6 +22,8 @@ type ExhibitData = {
   by?: string;
   clip?: string;
   seconds?: number;
+  // A clip with sound starts at its narration pause, whatever the cut passes.
+  from?: number;
 };
 export let hostData: Record<string, ExhibitData> = {};
 export const setStock = (data: typeof hostData) => {
@@ -70,7 +72,7 @@ export function Exhibit({
     >
       {e.kind === 'clip' ? (
         <div style={{ width: '100%', aspectRatio: '16 / 9', background: '#000' }}>
-          <Sequence from={Math.round(from)} layout="none">
+          <Sequence from={Math.round(e.from ?? from)} layout="none">
             <Loop durationInFrames={Math.max(1, Math.round((e.seconds ?? 1) * 30))} layout="none">
               <OffthreadVideo
                 src={e.src ?? staticFile(e.clip!)}

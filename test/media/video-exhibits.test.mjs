@@ -47,7 +47,7 @@ const fetched = {
   },
 };
 
-async function run({ ready = true, off = false, plan, clips = false } = {}) {
+async function run({ ready = true, off = false, plan, clips = false, narrate = fakeNarration } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tt-video-exhibits-'));
   const store = new Store(join(dir, 'trees.sqlite'));
   if (off) store.saveTutorTool('web_search', false);
@@ -81,13 +81,13 @@ async function run({ ready = true, off = false, plan, clips = false } = {}) {
       return fakeRender(workspace, output, ...rest);
     },
     snapshot: noSnapshot,
-    narrate: fakeNarration,
+    narrate,
     onWarning: (w) => warnings.push(w),
     search: { status: async () => ({ ready }) },
     exhibit: async (p, options) => {
       if (p.kind === 'clip') assert.equal(options.clips.ready, true);
       if (!fetched[p.query]) throw new Error('image returned HTTP 404');
-      return fetched[p.query];
+      return { ...fetched[p.query], ...(p.sound && { sound: true, sentence: p.sentence }) };
     },
     clips: () => (clips ? { ready: true, ytDlp: 'yt-dlp', ffmpeg: 'ffmpeg' } : { ready: false, error: 'no yt-dlp' }),
   }).then(
@@ -170,7 +170,7 @@ test('live playback serves exhibit metadata and image bytes, never the private f
 });
 
 test('a muted clip exhibit is planned only with the downloader, staged for the MP4 render as a public file and credited as a resource', async () => {
-  const clip = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36 };
+  const clip = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36, sound: false };
   const plan = planFor();
   plan.cuts[0].exhibits = [clip, { ...clip, query: 'missing footage' }];
   const { result, calls, staged, warnings, store, tree, dir, artifact } = await run({ plan, clips: true });
@@ -195,4 +195,40 @@ test('a muted clip exhibit is planned only with the downloader, staged for the M
   assert.ok(without.calls[0].instructions.includes(EXHIBITS_NOTE));
   assert.ok(!without.calls[0].instructions.includes(CLIPS_NOTE));
   assert.match(without.result, /cut 1 exhibits/);
+});
+
+test('a clip with sound puts a pause of its length into the narration after its sentence, where the cut plays its sound', async () => {
+  const clip = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36, sound: true, sentence: 0 };
+  const plan = planFor();
+  plan.cuts[0].exhibits = [clip];
+  // Two sentences over the fixture tone: the pause goes between them.
+  const narrate = async () => ({
+    ...(await fakeNarration()),
+    sentenceBoundaries: [
+      { offset: 0, duration: 8000000, text: 'Winners advance.' },
+      { offset: 9000000, duration: 9000000, text: 'Losers rest.' },
+    ],
+    wordBoundaries: [
+      { offset: 0, duration: 8000000, text: 'Winners advance.' },
+      { offset: 9000000, duration: 9000000, text: 'Losers rest.' },
+    ],
+  });
+  const { result, calls, staged, dir, artifact } = await run({ plan, clips: true, narrate });
+  assert.equal(result, null);
+  assert.deepEqual(calls.find((c) => c.input.cut).input.exhibits[0], {
+    id: 'exhibit1', kind: 'clip', title: 'Apollo 11 landing', site: 'video.example', seconds: 6, sound: true, sentence: 0, show: 'The landing',
+  });
+  const work = join(dir, 'video-work', artifact.id, artifact.attempt, 'cut-0');
+  const timing = JSON.parse(readFileSync(join(work, 'narration.json'), 'utf8'));
+  // Sentence 0 ends at 0.8 s (frame 24); the 6-second clip is 180 frames of silence in the narration track.
+  assert.deepEqual(timing.pause, { id: 'exhibit1', startFrame: 24, frames: 180 });
+  assert.deepEqual(timing.sentences.map((x) => x.startMs), [0, 900 + 6000]);
+  // The track itself is longer by the clip: the 1.92 s tone plus 6 s.
+  assert.ok(timing.audioFrames >= 236 && timing.audioFrames <= 240, `narration frames ${timing.audioFrames}`);
+  // Subtitles show only narration: no caption during the pause, the second one shifted past it.
+  assert.deepEqual(timing.captions.map((c) => [c.text, c.startFrame]), [['Winners advance.', 0], ['Losers rest.', 207]]);
+  assert.ok(timing.captions.every((c) => c.endFrame <= 24 || c.startFrame >= 204));
+  assert.match(readFileSync(join(work, 'public', 'captions.vtt'), 'utf8'), /00:00:06\.900 --> 00:00:07\.800\nLosers rest\./);
+  // The render's host data starts the footage at the pause whatever the cut passes.
+  assert.equal(staged[0].exhibit1.from, 24);
 });

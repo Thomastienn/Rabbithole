@@ -407,7 +407,13 @@ export async function writeCuts({
         );
         await mkdir(join(dir, 'out'), { recursive: true, mode: 0o700 });
         await mkdir(join(dir, 'tmp'), { mode: 0o700 });
-        const timing = await stageNarration(dir, narration, signal);
+        const loud = exhibitsOf(index).find((e) => e.sound);
+        const timing = await stageNarration(
+          dir,
+          narration,
+          signal,
+          loud && { id: loud.id, seconds: loud.seconds, sentence: loud.sentence },
+        );
         cut.timing = {
           ...timing,
           audioFrames: timing.durationInFrames,

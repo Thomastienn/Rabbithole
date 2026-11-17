@@ -9,7 +9,7 @@ export const CUT_INSTRUCTIONS =
 
 // Appended to the cut instructions only for a cut with fetched exhibits (ADR 0005).
 export const EXHIBIT_NOTE =
-  '\n\nThe task also has exhibits: real web images, quotes and muted clips the app fetched for this cut (id, kind, title, site, show or text and by, and seconds for a clip). Show each with the kit\'s <Exhibit id="<id>" x={…} y={…} width={…} scale={…} rotation={…} opacity={…} /> (x and y its centre in frame pixels, width its unscaled width, rotation in degrees), animating those props with the usual eased motion; a clip also takes from={…}, the frame its footage starts playing (usually sentences[i].startFrame of the sentence about it), plays muted under the narration and loops past its seconds, so show it about that long; it frames the media as real and draws its short source line, so never draw your own frame, caption or credit, and never load the media yourself: raw image tags and URLs are still rejected. An exhibit sits beside the drawn scene as evidence, never standing in for a recurring object; give it the focus while the narration speaks about it. Only these ids exist; a planned exhibit missing here could not be fetched, so draw the cut without it.';
+  '\n\nThe task also has exhibits: real web images, quotes and clips the app fetched for this cut (id, kind, title, site, show or text and by, and seconds, plus sound and sentence for a clip with sound). Show each with the kit\'s <Exhibit id="<id>" x={…} y={…} width={…} scale={…} rotation={…} opacity={…} /> (x and y its centre in frame pixels, width its unscaled width, rotation in degrees), animating those props with the usual eased motion; a clip also takes from={…}, the frame its footage starts playing (usually sentences[i].startFrame of the sentence about it), plays muted under the narration and loops past its seconds, so show it about that long; a clip with sound true plays its own sound while the narration pauses right after sentences[sentence] ends, so the app starts its footage there whatever from says: show it prominently from sentences[sentence].endFrame for its seconds; it frames the media as real and draws its short source line, so never draw your own frame, caption or credit, and never load the media yourself: raw image tags and URLs are still rejected. An exhibit sits beside the drawn scene as evidence, never standing in for a recurring object; give it the focus while the narration speaks about it. Only these ids exist; a planned exhibit missing here could not be fetched, so draw the cut without it.';
 
 // Appended to the cut instructions only for a cut planned as 3D.
 export const CUT_3D =
@@ -39,8 +39,9 @@ const fonts = delayRender('fonts');
 Promise.all(['400 1em Archivo', '500 1em Archivo', '600 1em Archivo', '700 1em Archivo', '400 1em Literata', '600 1em Literata'].map(f => document.fonts.load(f))).then(() => continueRender(fonts), () => continueRender(fonts));
 `;
 
-// The wrapper owns the ground, fonts, transition, narration and subtitles for each cut.
-export const CUT_ENTRY = `import { AbsoluteFill, Audio, Composition, continueRender, delayRender, interpolate, registerRoot, staticFile, useCurrentFrame } from 'remotion';
+// The wrapper owns the ground, fonts, transition, narration and subtitles for each cut, and plays a clip's own
+// sound during the narration pause made for it.
+export const CUT_ENTRY = `import { AbsoluteFill, Audio, Composition, Sequence, continueRender, delayRender, interpolate, registerRoot, staticFile, useCurrentFrame } from 'remotion';
 import Video from './Video';
 import { Cursor, Joined, Sketch, frame as videoFrame } from './kit';
 import timing from './narration.json';
@@ -50,6 +51,7 @@ ${FONTS}const Narrated = () => {
   const caption = timing.captions.find(c => frame >= c.startFrame && frame < c.endFrame);
   const opacity = caption ? Math.min(interpolate(frame, [caption.startFrame, caption.startFrame + 5], [0, 1], { extrapolateRight: 'clamp' }), interpolate(frame, [caption.endFrame - 4, caption.endFrame], [1, 0], { extrapolateLeft: 'clamp' })) : 0;
   return <AbsoluteFill style={{background:'#1a1613',color:'#efe6d6',fontFamily:'Archivo, sans-serif'}}><Joined timing={timing}><Video sentences={timing.sentences} durationInFrames={timing.durationInFrames} /><Sketch marks={emphasis} sentences={timing.sentences} /><Cursor marks={emphasis} sentences={timing.sentences} /></Joined><Audio src={staticFile('narration.mp3')} />
+    {timing.pause && <Sequence from={timing.pause.startFrame} durationInFrames={timing.pause.frames} layout="none"><Audio src={staticFile(timing.pause.id + '.mp4')} /></Sequence>}
     <div style={{position:'absolute',left:0,right:0,bottom:0,height:videoFrame.subtitles,background:'linear-gradient(to top, #1a1613f0 0%, #1a1613cc 55%, #1a161300 100%)',pointerEvents:'none'}} />
     {caption && <div style={{position:'absolute',bottom:12,left:120,right:120,textAlign:'center',fontFamily:'Archivo, sans-serif',fontWeight:500,fontSize:40,lineHeight:1.2,color:'#efe6d6',opacity,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',pointerEvents:'none'}}>{caption.text}</div>}
   </AbsoluteFill>;

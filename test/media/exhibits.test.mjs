@@ -136,6 +136,16 @@ test('a clip exhibit is video-searched, downloaded and trimmed by the downloader
   });
 });
 
+test('a clip with sound asks the downloader for its sound and records the sentence it plays after', async () => {
+  const search = searching([{ title: 'Speech', url: 'https://v.example/1', snippet: '' }]);
+  const asked = [];
+  const clip = async (wanted) => (asked.push(wanted), Buffer.from('mp4'));
+  const e = await fetchExhibit({ ...clipPlan, sound: true, sentence: 1 }, { search, clips, clip, lookup: publicLookup });
+  assert.deepEqual(asked, [{ url: 'https://v.example/1', start: 30, end: 36, sound: true }]);
+  assert.equal(e.sound, true);
+  assert.equal(e.sentence, 1);
+});
+
 test('a clip exhibit fails, so the caller drops it, when downloads fail, the host is private or there is no downloader', async () => {
   const search = searching([{ title: 'V', url: 'https://v.example/1', snippet: '' }]);
   const failing = async () => {
@@ -174,6 +184,13 @@ test('the downloader fetches the planned section with yt-dlp, then ffmpeg trims 
   assert.match(ffArgs[ffArgs.indexOf('-i') + 1], /source\.webm$/);
   assert.equal(ffArgs[ffArgs.indexOf('-t') + 1], '6');
   assert.ok(ffArgs.includes('-an'));
+  // A clip with sound downloads video and audio and keeps the audio track, failing when there is none.
+  calls.length = 0;
+  await downloadClip({ url: 'https://v.example/1', start: 30, end: 36, sound: true }, { clips, run });
+  const [[, loudYt], [, loudFf]] = calls;
+  assert.match(loudYt[loudYt.indexOf('-f') + 1], /^bv\*\[height<=720\]\+ba\//);
+  assert.ok(!loudFf.includes('-an'));
+  assert.deepEqual(loudFf.slice(loudFf.indexOf('-map'), loudFf.indexOf('-map') + 6), ['-map', '0:v:0', '-map', '0:a:0', '-c:a', 'aac']);
   // The download leaves nothing behind, and a downloader that saves nothing is a failure.
   await assert.rejects(downloadClip({ url: 'https://v.example/1', start: 0, end: 2 }, { clips, run: async () => {} }), /saved no video/);
 });

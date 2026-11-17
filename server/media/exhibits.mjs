@@ -61,7 +61,7 @@ async function publicHost(url, lookup, isPublic) {
     throw new Error(`refused non-public clip host ${host}`);
 }
 
-// One planned exhibit to {kind, url, title, site, text?, by?, bytes?, type?, seconds?}; any failure throws, and
+// One planned exhibit to {kind, url, title, site, text?, by?, bytes?, type?, seconds?, sound?, sentence?}; any failure throws, and
 // the caller drops the exhibit. search is the SearXNG tool (run(input, options, category)); clips is the
 // detected downloader and clip the function that downloads and trims (a fake in tests).
 export async function fetchExhibit(
@@ -92,14 +92,15 @@ export async function fetchExhibit(
     for (const r of results.slice(0, TRIES))
       try {
         await publicHost(r.url, lookup, isPublic);
-        const { start, end } = planned;
+        const { start, end, sound } = planned;
         return {
           kind: 'clip',
           url: r.url,
           title: r.title,
           site: site(r.url),
           seconds: end - start,
-          bytes: await clip({ url: r.url, start, end }, { clips, signal }),
+          ...(sound && { sound, sentence: planned.sentence }),
+          bytes: await clip({ url: r.url, start, end, ...(sound && { sound }) }, { clips, signal }),
           type: 'video/mp4',
         };
       } catch (error) {
