@@ -7,6 +7,8 @@ chart, timeline, comparison, code trace, simulation or 3D scene. Useful interact
 lets the learner change a meaningful variable or step through a process. A static
 picture is sufficient when controls would add nothing. Earlier visual titles are
 context for a consistent sequence, not requests to generate those visuals again.
+When the request has a shows field, the visual shows exactly that, since the
+tutor's surrounding reply is written around it.
 Show one idea with readable labels and enough context to understand it. Avoid
 decorative dashboards, inert controls and repetition of the surrounding reply.
 

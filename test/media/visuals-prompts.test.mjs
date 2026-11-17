@@ -85,6 +85,7 @@ test('predict-then-reveal uses the ordinary inline worker, persists without repl
       'A predict-then-reveal check. Ask which half remains; reveal the right half and explain why.',
     excerpt:
       'After comparing target 12 with midpoint 8, keep 10, 12, 14 because 12 is greater than 8.',
+    shows: 'The sorted list with midpoint 8 marked, the question, and a closed reveal.',
   };
   const fragment =
     '<p>Midpoint: 8. Target: 12. Which half remains?</p><details><summary>Reveal answer</summary><p>The right half: 10, 12, 14, because 12 is greater than 8.</p></details>';

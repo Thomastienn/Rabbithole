@@ -6,6 +6,7 @@ import {
   TUTOR_RULES,
   VERDICT_RULE,
   TUTOR_SKILLS,
+  diagramReply,
   tutorSystem,
 } from '../../server/media/diagrams.mjs';
 import { TEACHING_SKILL, HUMANIZER_SKILL } from '../../server/media/skills.mjs';
@@ -76,4 +77,37 @@ test('the teaching skill carries everyday-analogy guidance to replies, visuals a
   assert.ok(PLAN_INSTRUCTIONS.includes(TEACHING_SKILL));
   for (const rule of [DISCUSSION_RULE, DISCUSSION_TURN_RULE])
     assert.ok(!rule.includes(ANALOGY_SKILL));
+});
+
+test('a visual request carries what it shows; older requests without it still parse', () => {
+  const base = {
+    title: 'Artemis',
+    description: 'Missions in words.',
+    intent: 'Roadmap.',
+    excerpt: 'Artemis.',
+  };
+  const shows = 'Artemis I to IV with year and status, then longer-term goals';
+  const block = (task) => 'Intro.\n```rabbithole-visual\n' + JSON.stringify(task) + '\n```\n';
+  assert.deepEqual(diagramReply(block({ ...base, shows }), true).requests[0].task, {
+    ...base,
+    shows,
+  });
+  const old = diagramReply(block(base), true).requests[0];
+  assert.equal(old.error, undefined);
+  assert.deepEqual(old.task, base);
+});
+
+test('the tutor rules describe a visual as a section read in place, drawn by the chat model', () => {
+  assert.match(TUTOR_RULES, /shows \(up to 280 characters\)/);
+  assert.match(TUTOR_RULES, /section of your reply that the learner reads in place/);
+  assert.match(TUTOR_RULES, /chat model draws the visual in a separate call/);
+  assert.doesNotMatch(TUTOR_RULES, /smart-model/);
+});
+
+test('the default tutor style ends with the readability paragraph after the unchanged original', () => {
+  const [original, readability] = DEFAULT_TUTOR_STYLE.split('\n\n');
+  assert.ok(original.startsWith('You are Rabbithole, a patient tutor'));
+  assert.ok(original.endsWith('or recent events, or when you are unsure.'));
+  assert.match(readability, /^Write for reading top to bottom\./);
+  assert.doesNotMatch(readability, /\d/);
 });
