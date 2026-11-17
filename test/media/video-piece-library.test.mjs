@@ -349,6 +349,7 @@ export function Stadium({ x, y }) { return <div style={{ left: x, top: y, backgr
   assert.equal(row.status, 'ready', row.error);
   assert.match(rules[0], /built from parts/);
   assert.match(rules[0], /Prefer a flat build/, 'the writer is told to prefer a flat build');
+  assert.match(rules[0], /<Copies of=\{Part\}/, 'the writer is told about the copy helper');
   assert.equal(inputs[0].parts, undefined);
   assert.deepEqual(inputs[1].parts, [{ name: 'Person', look: looks.person }]);
   assert.deepEqual(

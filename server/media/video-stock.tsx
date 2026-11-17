@@ -1,14 +1,17 @@
-// The host's data path into a cut and the 3D camera, shared by live playback and the background render.
+// The host's data path into a cut, the 3D camera and many copies of a part, shared by live playback and the background render.
+import { useContext, useLayoutEffect, useRef, type ComponentType } from 'react';
 import {
   Img,
   Loop,
   OffthreadVideo,
   Sequence,
   interpolate,
+  random,
   staticFile,
   useCurrentFrame,
 } from 'remotion';
-import { useThree } from '@react-three/fiber';
+import { context as fiber, useThree } from '@react-three/fiber';
+import { Euler, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import { ease, fonts, palette } from './video-kit';
 
 // Exhibits the host delivered by id (ADR 0005): the render reads them from stock.json beside the cut, with
@@ -138,4 +141,105 @@ export function Camera({ keys }: { keys: CameraKey[] }) {
   camera.position.set(...position);
   camera.lookAt(...target);
   return null;
+}
+
+// Many copies of one set piece or part, such as a crowd: vary(i, rand) returns copy i's props (position or x and y,
+// scale, state, roles), rand() a seeded 0 to 1 sequence so every frame draws the same copies. Inside a ThreeCanvas
+// each mesh of the piece is drawn once per group of copies sharing their other props, with three.js instancing.
+type Copy = Record<string, any>;
+export function Copies<P extends Copy>({
+  of: Piece,
+  count,
+  seed = 0,
+  vary,
+}: {
+  of: ComponentType<P>;
+  count: number;
+  seed?: number | string;
+  vary: (i: number, rand: () => number) => P;
+}) {
+  const copies = Array.from({ length: count }, (_, i) => {
+    let n = 0;
+    return vary(i, () => random(`${seed}:${i}:${n++}`));
+  });
+  const solid = useContext(fiber);
+  if (!solid)
+    return (
+      <>
+        {copies.map((p, i) => (
+          <Piece key={i} {...p} />
+        ))}
+      </>
+    );
+  const groups = new Map<string, { props: Copy; items: Copy[] }>();
+  for (const copy of copies) {
+    const { position, rotation, scale, ...props } = copy;
+    const key = JSON.stringify(props);
+    if (!groups.has(key)) groups.set(key, { props, items: [] });
+    groups.get(key)!.items.push(copy);
+  }
+  return (
+    <>
+      {[...groups].map(([key, { props, items }]) => (
+        <Instanced key={key} piece={Piece as ComponentType<Copy>} props={props} items={items} />
+      ))}
+    </>
+  );
+}
+const place = new Matrix4(),
+  turn = new Quaternion(),
+  angles = new Euler(),
+  at = new Vector3(),
+  size = new Vector3();
+// A hidden copy of the piece is the template; its meshes, relative to it, become instanced meshes beside it.
+function Instanced({
+  piece: Piece,
+  props,
+  items,
+}: {
+  piece: ComponentType<Copy>;
+  props: Copy;
+  items: Copy[];
+}) {
+  const template = useRef<any>(null),
+    host = useRef<any>(null);
+  useLayoutEffect(() => {
+    const root = template.current!,
+      parent = host.current!;
+    root.updateMatrixWorld(true);
+    const inverse = root.matrixWorld.clone().invert();
+    const meshes: any[] = [];
+    root.traverse((o: any) => o.isMesh && meshes.push(o));
+    const made = meshes.map((mesh) => {
+      const copies = new InstancedMesh(mesh.geometry, mesh.material, items.length);
+      const local = inverse.clone().multiply(mesh.matrixWorld);
+      items.forEach(({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1 }, i) => {
+        place.compose(
+          at.set(...(position as [number, number, number])),
+          turn.setFromEuler(angles.set(...(rotation as [number, number, number]))),
+          typeof scale === 'number'
+            ? size.setScalar(scale)
+            : size.set(...(scale as [number, number, number])),
+        );
+        copies.setMatrixAt(i, place.multiply(local));
+      });
+      copies.frustumCulled = false;
+      parent.add(copies);
+      return copies;
+    });
+    // shortcut: rebuilt every render, cheap for hundreds of copies; update matrices in place if crowds grow to thousands.
+    return () =>
+      made.forEach((copies) => {
+        parent.remove(copies);
+        copies.dispose();
+      });
+  });
+  return (
+    <>
+      <group ref={template} visible={false}>
+        <Piece {...props} />
+      </group>
+      <group ref={host} />
+    </>
+  );
 }
