@@ -11,7 +11,7 @@ New issues use `Rabbithole-`, configured in the database and as `issue-prefix` i
 - Size each ticket for one Ralph run: up to 200k context, under one hour. Label `commit-sized` and `context-200k`. Merge work that fits one run instead of splitting it.
 - Labels: one or more `area:*` (canvas, chat, design, providers, …) and one `phase:*` (`text-release`, `later`, …). Reuse existing labels (`bd label list-all`) before inventing one.
 - Longer specs go in `docs/<feature>-spec.md`; link from the epic with `--spec-id`.
-- Put acceptance checks in `--acceptance`; design notes in `--design`.
+- Put acceptance criteria in `--acceptance`; design notes in `--design`. Acceptance criteria state the behaviour, not which checks to run; `docs/agents/testing.md` decides the checks.
 - Conversation history goes in comments: `bd comments add <id> "…"`.
 
 ## When a skill says "publish to the issue tracker"

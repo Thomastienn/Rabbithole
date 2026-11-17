@@ -38,9 +38,9 @@ Test files live in folders by area: `test/http`, `test/store`, `test/providers`,
 `test/media`, `test/chat`, `test/map`, `test/usage`, `test/shell` and `test/scripts`. Shared
 helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mjs`,
 `video-kit.mjs`, `diagram-kit.mjs` and the other `*-kit.mjs` setup files) live in `test/support/`; data files live in
-`test/fixtures/`. `npm test` runs `test/**/*.test.mjs` on 8 workers inside one `systemd-run` scope with `MemoryHigh=2G`
-and no swap (`test:slow` too): past 2 GB the kernel throttles the tests instead of letting them
-freeze the machine. There is no hard kill. Never compare DOM elements with `assert.equal`/`deepEqual`: a failure makes Node diff
+`test/fixtures/`. `npm test` runs `test/**/*.test.mjs` on 8 workers inside one `systemd-run` scope with `MemoryHigh=5G`
+and `MemorySwapMax=10G` (`test:slow` too): past 5 GB the kernel throttles the tests and swaps up
+to 10 GB instead of letting them freeze the machine. There is no hard kill. Never compare DOM elements with `assert.equal`/`deepEqual`: a failure makes Node diff
 the whole jsdom graph and exhaust memory; compare names, attributes or `assert.ok(a === b)`.
 
 ## Tiers
@@ -73,8 +73,24 @@ providers.
 - Test the plain function. Use HTTP, a subprocess or a real adapter only when the boundary
   itself is the behaviour.
 - Run shared behaviour on one provider (see above).
-- Assert what the code does for the learner or caller, not how it is built.
+- Assert what the code does for the learner or caller, not how it is built. A test must fail
+  on a regression a learner or caller would notice.
+- Reach the code a test covers through imports (static or dynamic), so the change's import
+  graph finds the test.
 - Put tests that start real adapters or subprocesses in `test:slow`.
+
+## Banned tests
+
+Do not write these, and delete them when you meet them:
+
+- Assertions on exact copy, labels or prompt wording. Computed text (counts, names, state)
+  may be asserted.
+- Render-only tests that check markup exists instead of what a learner can do with it.
+- Tests of constants or pass-through code.
+- A second test at a costlier level for behaviour a cheaper test already covers.
+- Tests that a removed feature stays removed; Git history records removals.
+- Tests that read or grep source files. The theme token lint (`test/shell/token-lint.test.mjs`)
+  is the only allowed source scan.
 
 ## Commands
 
