@@ -50,9 +50,13 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                   '\n```'
                 : text.startsWith('{') && JSON.parse(text).intent === 'Show each round.'
                   ? 'flowchart TD\n  W1[Round one] --> W2[Final]'
-                  : text === 'Check phrase anchors'
-                    ? '🪴 early | middle | early | late | shared \n\tstate | shared state | C++ (x.y) [z]? | a a a'
-                    : 'Authoritative original';
+                  : text.endsWith('notes fixture reply')
+                    ? 'Authoritative original\n```rabbithole-notes\n{"suggestion":"original","concept":"Originality"}\n{"concept":"Originality","topics":["Writing"]}\nnot json\n```'
+                    : text.endsWith('cut notes fixture')
+                      ? 'Authoritative original\n```rabbithole-notes\n{"suggestion":"original"}'
+                      : text === 'Check phrase anchors'
+                        ? '🪴 early | middle | early | late | shared \n\tstate | shared state | C++ (x.y) [z]? | a a a'
+                        : 'Authoritative original';
   // Suggestion calls get phrase-only picks, including overlaps, unmatched and exhausted repeats.
   // The question decides failure ('suggestions fail') and delay ('slow suggestions'); a wrong cheap model yields invalid output.
   const suggesting = (text) => text.startsWith('Mark every term');

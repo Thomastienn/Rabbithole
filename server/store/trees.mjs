@@ -192,12 +192,13 @@ export const trees = {
             'SELECT message,status,passages,usage FROM suggestions WHERE conversation=? ORDER BY rowid',
           )
           .all(id)
-          .map((s) => ({
+          .map(({ usage, ...s }) => ({
             ...s,
             passages: JSON.parse(s.passages ?? '[]').map(({ child, ...p }) =>
               this.live(child) ? { ...p, child } : p,
             ),
-            usage: JSON.parse(s.usage),
+            // Absent when the tutor's notes block supplied them and no call ran.
+            ...(usage && { usage: JSON.parse(usage) }),
           })),
       }
     );

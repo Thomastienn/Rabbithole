@@ -1,6 +1,6 @@
-import { knownConcepts, nameTokens, suggest } from '../../suggestions.mjs';
+import { knownConcepts, marks, nameTokens, suggest } from '../../suggestions.mjs';
 
-// Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
+// Fallback for a reply without a readable notes block. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
 export function suggestionJobs(ctx) {
   const { store, pick, suggesting } = ctx;
   const startSuggestions = (conversation, message, question, answer) => {
@@ -47,5 +47,15 @@ export function suggestionJobs(ctx) {
       .catch(() => {})
       .finally(() => suggesting.delete(message));
   };
-  return { startSuggestions };
+  // The tutor's notes block feeds the same store calls; only a completed reply without a readable block calls quick thinking.
+  const noteSuggestions = (conversation, message, status, notes, question, answer) => {
+    if (!answer.trim() || !store.tree(conversation) || !store.suggestionSettings().enabled) return;
+    if (notes?.readable || (notes && status === 'interrupted')) {
+      if (!store.pendingSuggestions(conversation, message)) return;
+      const { passages, graph } = marks(notes, answer);
+      store.addGraph(graph, message);
+      store.finishSuggestions(conversation, message, passages, null, null);
+    } else if (status === 'completed') startSuggestions(conversation, message, question, answer);
+  };
+  return { noteSuggestions };
 }

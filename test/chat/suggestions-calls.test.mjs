@@ -59,7 +59,7 @@ test('phrase-only suggestions anchor in order, then anywhere, then across whites
   }
 });
 
-test('a completed reply gets one cheap-model suggestion call whose exact passages and usage are saved; reopening, switching and old replies never run it', async (t) => {
+test('a completed reply without a notes block gets one cheap-model fallback call whose exact passages and usage are saved; reopening, switching and old replies never run it', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-suggest-'));
   // A reply saved before suggestions existed.
   let env = await start(dir, false);
@@ -138,7 +138,7 @@ test('a completed reply gets one cheap-model suggestion call whose exact passage
   );
 });
 
-test('failed, partial and canceled replies run no suggestions; Codex uses its Luna model', async (t) => {
+test('failed, partial and canceled replies without a notes block run no fallback; Codex uses its Luna model', async (t) => {
   const env = await start(mkdtempSync(join(tmpdir(), 'tt-suggest-codex-')));
   t.after(async () => {
     await env.close();

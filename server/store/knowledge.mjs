@@ -9,11 +9,12 @@ const mentions = (text, name) =>
 
 export const knowledge = {
   // INSERT OR IGNORE makes the run once-only per saved reply: reopening or switching providers never reruns it.
+  // A stopped reply may keep the part of its notes block that arrived.
   pendingSuggestions(conversation, message, nameTokens = null) {
     return (
       this.db
         .prepare(
-          "INSERT OR IGNORE INTO suggestions(message,conversation,status,nameTokens) SELECT ?,?,'pending',? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant' AND status='completed')",
+          "INSERT OR IGNORE INTO suggestions(message,conversation,status,nameTokens) SELECT ?,?,'pending',? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant' AND status IN ('completed','interrupted'))",
         )
         .run(message, conversation, nameTokens, message, conversation).changes > 0
     );
@@ -224,6 +225,7 @@ export const knowledge = {
       throw error;
     }
   },
+  // No selection: the tutor's own notes block, so no call is recorded and the reply shows no suggestions usage.
   finishSuggestions(conversation, message, passages, usage, selection) {
     const at = Date.now();
     if (
@@ -234,10 +236,11 @@ export const knowledge = {
         .run(
           passages ? 'ready' : 'failed',
           passages && JSON.stringify(passages),
-          usage && JSON.stringify({ ...usage, at }),
+          selection && JSON.stringify({ ...usage, at }),
           conversation,
           message,
-        ).changes
+        ).changes &&
+      selection
     )
       this.record(`suggestions:${message}`, 'suggestions', selection, usage, at);
   },

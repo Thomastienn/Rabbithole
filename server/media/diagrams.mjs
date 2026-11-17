@@ -5,6 +5,7 @@ import { Worker } from 'node:worker_threads';
 import { safeDiagramSource } from '../../src/media/diagramSource.ts';
 import { withAttachments } from '../attachments.mjs';
 import { TEACHING_SKILL, HUMANIZER_SKILL } from './skills.mjs';
+import { NOTES_RULE, readNotes } from '../suggestions.mjs';
 
 const MAX_SOURCE = 16 * 1024;
 // Resource bound on worker calls per reply, not a node limit inside a diagram.
@@ -54,6 +55,7 @@ export const tutorSystem = (tree) =>
       : TUTOR_RULES) +
       VERDICT_RULE +
       DISCUSSION_RULE +
+      NOTES_RULE +
       (tree.tools?.some((t) => t.name === 'update_memory_note') ? MEMORY_RULE : '') +
       TUTOR_SKILLS +
       (tree.tutorStyle?.trim() || DEFAULT_TUTOR_STYLE)) +
@@ -86,7 +88,7 @@ const WORKER_INSTRUCTIONS =
 export function diagramReply(raw, final = false) {
   // Fenced form, or tag form <rabbithole-visual>{json}</rabbithole-visual> whose opening tag may carry stray quotes or spaces.
   const open =
-    /(^|\r?\n)[ \t]*(`{3,}|~{3,})[ \t]*rabbithole-(diagram|video|visual|verdict|discussion)\b([^\r\n]*)(?:\r?\n|$)|<[\s"']*rabbithole-(diagram|video|visual|verdict|discussion)[\s"']*>/g;
+    /(^|\r?\n)[ \t]*(`{3,}|~{3,})[ \t]*rabbithole-(diagram|video|visual|verdict|notes|discussion)\b([^\r\n]*)(?:\r?\n|$)|<[\s"']*rabbithole-(diagram|video|visual|verdict|notes|discussion)[\s"']*>/g;
   let text = '',
     cursor = 0,
     match;
@@ -119,6 +121,7 @@ export function diagramReply(raw, final = false) {
     'rabbithole-video',
     'rabbithole-visual',
     'rabbithole-verdict',
+    'rabbithole-notes',
     'rabbithole-discussion',
   ];
   const tag = /<[\s"']*([\w-]*)[\s"']*$/.exec(text); // a streamed tag-form opening may still be arriving
@@ -138,8 +141,10 @@ export function diagramReply(raw, final = false) {
   if (hidden) text = text.slice(0, fenceHidden ? lineStart : tag.index);
   // Verdicts are not media: read them apart; null means no readable block.
   const verdicts = readVerdicts(requests.filter((r) => r.kind === 'verdict'));
-  requests = requests.filter((r) => r.kind !== 'verdict');
-  if (!requests.length) return { text, requested: false, hidden, verdicts };
+  // Notes carry suggestions and knowledge graph data; null means the reply wrote no block.
+  const notes = readNotes(requests.filter((r) => r.kind === 'notes'));
+  requests = requests.filter((r) => r.kind !== 'verdict' && r.kind !== 'notes');
+  if (!requests.length) return { text, requested: false, hidden, verdicts, notes };
   // Tolerant: unknown keys are ignored and long fields trimmed; incomplete or unreadable blocks still reject with a learner-facing reason.
   // A rejected request keeps whatever fields were readable (partial) so an explicit Retry can rerun from it.
   const parse = (request) => {
@@ -197,6 +202,7 @@ export function diagramReply(raw, final = false) {
     text,
     requested: true,
     verdicts,
+    notes,
     requests: requests.map((request) => {
       const parsed = parse(request);
       return groupError && request.kind !== 'visual'

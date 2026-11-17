@@ -75,7 +75,8 @@ export type Suggestions = {
   message: string;
   status: 'pending' | 'ready' | 'failed';
   passages: { start: number; end: number; text: string; child?: string; concept?: string }[];
-  usage: Usage | null;
+  // Absent when the tutor's notes block supplied the suggestions and no call ran.
+  usage?: Usage | null;
 };
 function taskUsageLine(task: string, calls: (Usage | MediaUsage | null)[]) {
   const reported = calls.filter((u): u is Usage => u?.input != null),
@@ -115,7 +116,7 @@ export function conversationUsageLine(messages: Message[], suggestions: Suggesti
   const replies = messages.filter((m) => m.role === 'assistant'),
     ids = new Set(replies.map((m) => m.id)),
     media = replies.flatMap((m) => m.mediaUsage ?? []),
-    calls = suggestions.filter((s) => ids.has(s.message));
+    calls = suggestions.filter((s) => ids.has(s.message) && s.usage !== undefined);
   return [
     taskUsageLine(
       'Chat',
@@ -125,7 +126,7 @@ export function conversationUsageLine(messages: Message[], suggestions: Suggesti
       ? [
           taskUsageLine(
             'Suggestions',
-            calls.map((s) => s.usage),
+            calls.map((s) => s.usage ?? null),
           ),
         ]
       : []),

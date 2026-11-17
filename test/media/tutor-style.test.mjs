@@ -10,9 +10,10 @@ import {
 } from '../../server/media/diagrams.mjs';
 import { TEACHING_SKILL, HUMANIZER_SKILL } from '../../server/media/skills.mjs';
 import { DISCUSSION_RULE } from '../../server/media/discussions.mjs';
+import { NOTES_RULE } from '../../server/suggestions.mjs';
 
 test('tutor prompt puts the fixed rules, then the skills, then the tutor style, and keeps the per-tree override', () => {
-  const rules = TUTOR_RULES + VERDICT_RULE + DISCUSSION_RULE + TUTOR_SKILLS;
+  const rules = TUTOR_RULES + VERDICT_RULE + DISCUSSION_RULE + NOTES_RULE + TUTOR_SKILLS;
   for (const tutorStyle of [undefined, null, '', '  \n '])
     assert.equal(tutorSystem({ tutorStyle }), rules + DEFAULT_TUTOR_STYLE, `${tutorStyle}`);
   assert.equal(

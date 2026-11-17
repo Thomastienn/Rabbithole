@@ -230,7 +230,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     // No readable block: the quick thinking model judges the learner message in the background.
     if (status === 'completed' && !output.verdicts && text.trim() && store.tree(id))
       ctx.startVerdicts(id, user, body.text, text);
-    if (status === 'completed' && text.trim()) ctx.startSuggestions(id, reply, body.text, text);
+    ctx.noteSuggestions(id, reply, status, output.notes, body.text, text);
     if (output.requested || output.hidden) store.forgetThread(id);
     if (active.get(id) === controller) active.delete(id);
     send({ type: 'done', status });
