@@ -302,6 +302,32 @@ test('deleting the open learning tree discards pending layout and opens the next
   assert.equal(page.current.actions.deletion, undefined);
 });
 
+test('deleting the open learning tree from the library keeps the library and opens no other tree', async (t) => {
+  const page = await mount(t, ({ path }, { state, data }) => {
+    if (path === '/api/trees/a/delete') {
+      state.trees = state.trees.filter((t) => t.id !== 'a');
+      data.delete('a');
+      return json({ deleted: ['a'], parent: null });
+    }
+  });
+  await page.act(async () => {
+    page.current.c.setTab('library');
+    page.current.actions.askDelete('a', null);
+  });
+  await page.act(async () => page.current.actions.deleteConversation());
+  assert.equal(page.current.c.tab, 'library');
+  assert.equal(page.current.c.tree, undefined);
+  assert.equal(page.current.c.root, undefined);
+  assert.deepEqual(
+    page.current.c.state.trees.map((t) => t.id),
+    ['b'],
+  );
+  assert.ok(!page.calls.some((c) => c.path === '/api/trees/b'), 'no neighbour opens');
+  await page.act(async () => page.current.c.setTab('learning'));
+  // No root on the learning tab is the new-chat screen.
+  assert.equal(page.current.c.root, undefined);
+});
+
 test('polling refreshes media usage during an owning reply stream while preserving live text', async (t) => {
   let stream;
   const page = await mount(t, ({ path }) => {

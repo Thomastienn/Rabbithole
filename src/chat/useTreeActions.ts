@@ -24,7 +24,7 @@ export function useTreeActions(
   const { root, setRoot, setTab, setOverview, setExpanded, setLoading, renaming, setRenaming } = c;
   const { selected, request, checkpoints, turns, streams, removed, renamed } = c;
   const { overviewOrigin, focusComposer, composer, setFolds, setBranch, setReveal } = c;
-  const { setSelectingMessage } = c;
+  const { setSelectingMessage, tab } = c;
   const [deletion, setDeletion] = useState<{
     id: string;
     root: string;
@@ -236,7 +236,8 @@ export function useTreeActions(
       } else if (root === deletion.root) {
         const roots = trees.filter((t) => !t.parent),
           index = state!.trees.filter((t) => !t.parent).findIndex((t) => t.id === deletion.root);
-        const next = roots[Math.min(index, roots.length - 1)];
+        // From the library, deleting the open tree clears it instead of opening a neighbour.
+        const next = tab === 'library' ? undefined : roots[Math.min(index, roots.length - 1)];
         if (next) {
           focusComposer.current = true;
           openTree(next.id, trees);
@@ -245,7 +246,7 @@ export function useTreeActions(
           selected.current = undefined;
           setTree(undefined);
           setRoot(undefined);
-          setTab('learning');
+          if (tab !== 'library') setTab('learning');
           setOverview(true);
           setExpanded(false);
           setLoading(false);
@@ -253,7 +254,9 @@ export function useTreeActions(
         if (!next || (next.layout?.panel !== 'beside' && next.layout?.panel !== 'expanded'))
           requestAnimationFrame(() =>
             document
-              .querySelector<HTMLElement>(next ? '.map-toolbar button' : ':is(.sidebar, .shell-band) .new-chat')
+              .querySelector<HTMLElement>(
+                next ? '.map-toolbar button' : ':is(.sidebar, .shell-band) .new-chat',
+              )
               ?.focus(),
           );
       } else
