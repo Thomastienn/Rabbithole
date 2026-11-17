@@ -20,3 +20,17 @@
 .video-cut-rows li[data-state='ready'] {
   color: var(--color-text-secondary);
 }
+/* The token breakdown under a finished inline video, closed behind its "⋯" button. */
+.video-usage table {
+  border-collapse: collapse;
+  font: 500 12px/1.35 var(--font-family-body);
+  font-variant-numeric: tabular-nums;
+}
+.video-usage th,
+.video-usage td {
+  padding: 2px 12px 2px 0;
+  text-align: left;
+}
+.video-usage th {
+  color: var(--color-text-secondary);
+}

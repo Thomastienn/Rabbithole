@@ -180,7 +180,7 @@ test('an older usage table gains the title task and keeps its rows', () => {
   // Recreate the previous task check in place.
   store.db
     .exec(`ALTER TABLE usage_events RENAME TO u; CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video')),
-    input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL); INSERT INTO usage_events SELECT * FROM u; DROP TABLE u;`);
+    input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL); INSERT INTO usage_events SELECT id,at,provider,model,task,input,output,cacheRead,message FROM u; DROP TABLE u;`);
   assert.throws(() => store.record('title:x', 'title', null, null));
   store.close();
   store = new Store(path);

@@ -14,6 +14,7 @@ import {
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import type { Artifact } from './artifacts';
 import LivePlayer from './LivePlayer';
+import VideoUsage from './VideoUsage';
 import { STEPS, elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
 
 const STATUS = {
@@ -309,6 +310,12 @@ export default function VideoCard({
             {open}
             {actions}
           </HStack>
+        )}
+        {inline && state !== 'pending' && (
+          <VideoUsage
+            url={`/api/trees/${artifact.conversation}/artifacts/${artifact.id}/usage`}
+            title={artifact.title}
+          />
         )}
         {state === 'ready' && enlarged && (
           <Lightbox

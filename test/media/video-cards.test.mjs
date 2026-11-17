@@ -49,13 +49,13 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
   assert.deepEqual(view(card('stopped')), {
     state: 'interrupted',
     status: 'stopped: Video generation interrupted when Rabbithole stopped.',
-    buttons: ['Retry video'],
+    buttons: ['Retry video', 'Token use: stopped'],
     video: false,
   });
   assert.deepEqual(view(card('lost')), {
     state: 'unavailable',
     status: 'lost: Video unavailable: its saved file is missing or unreadable.',
-    buttons: ['Regenerate video'],
+    buttons: ['Regenerate video', 'Token use: lost'],
     video: false,
   });
   await act(async () => button(card('lost'), 'Regenerate video').click());
@@ -70,7 +70,7 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
   assert.deepEqual(view(card('stopped')), {
     state: 'canceled',
     status: 'stopped: Video generation canceled.',
-    buttons: ['Retry video'],
+    buttons: ['Retry video', 'Token use: stopped'],
     video: false,
   });
   await act(async () => set(video('stopped', 'ready')));
@@ -179,4 +179,54 @@ test('a pending video lists a row per cut and the set pieces being drawn in a po
     [...list.querySelectorAll('li')].map((li) => li.textContent),
     ['Set pieces: 1 of 2 drawnDrawing Track', '1. Meet the winnerReady', '2. Race againRepairing'],
   );
+});
+
+test('a finished inline video hides its token breakdown until the ⋯ button opens it', async (t) => {
+  const urls = [];
+  const fetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    urls.push(url);
+    const row = (stage, model, calls, reported, input, output, cacheRead) => ({
+      stage,
+      model,
+      calls,
+      reported,
+      input,
+      output,
+      cacheRead,
+    });
+    return Response.json([
+      row('plan', 'smart', 2, 2, 1200, 300, 100),
+      row('repair', 'chat', 2, 1, 50, 5, 0),
+      row('fix', 'chat', 1, 0, 0, 0, 0),
+      row(null, 'chat', 3, 3, 9, 9, 9),
+    ]);
+  };
+  t.after(() => (globalThis.fetch = fetch));
+  const { container, act, cleanup } = await render(
+    h(VideoCard, { artifact: video('done', 'ready'), inline: true }),
+    ui,
+  );
+  t.after(cleanup);
+  const more = button(container, 'Token use: done');
+  assert.equal(more.getAttribute('aria-expanded'), 'false');
+  assert.equal(container.querySelector('.video-usage table'), null, 'closed by default');
+  assert.deepEqual(urls, []);
+  await act(async () => more.click());
+  assert.equal(more.getAttribute('aria-expanded'), 'true');
+  assert.deepEqual(urls, ['/api/trees/root/artifacts/done/usage']);
+  assert.deepEqual(
+    [...container.querySelectorAll('.video-usage tr')].map((tr) =>
+      [...tr.children].map((c) => c.textContent),
+    ),
+    [
+      ['Stage', 'Model', 'Calls', 'Input', 'Output', 'Cached'],
+      ['Plan', 'smart', '2', '1,200', '300', '100'],
+      ['Repair', 'chat', '2, 1 not reported', '50', '5', '0'],
+      ['Fix', 'chat', '1, 1 not reported', 'Not reported'],
+      ['Not recorded', 'chat', '3', '9', '9', '9'],
+    ],
+  );
+  await act(async () => more.click());
+  assert.equal(container.querySelector('.video-usage table'), null);
 });

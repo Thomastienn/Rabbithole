@@ -112,7 +112,19 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
       .prepare('PRAGMA table_info(usage_events)')
       .all()
       .map((c) => c.name),
-    ['id', 'at', 'provider', 'model', 'task', 'input', 'output', 'cacheRead', 'message'],
+    [
+      'id',
+      'at',
+      'provider',
+      'model',
+      'task',
+      'input',
+      'output',
+      'cacheRead',
+      'message',
+      'stage',
+      'cut',
+    ],
   );
   assert.ok(
     !JSON.stringify(env.store.db.prepare('SELECT * FROM usage_events').all()).match(
@@ -288,6 +300,46 @@ test('video worker attempts record their own reported usage, including failed an
     { ...by, input: null, output: null, cacheRead: null },
   ]);
   assert.equal(renders, 1);
+  // Stage and cut are kept per call; the per-video breakdown covers only the current attempt.
+  assert.deepEqual(
+    store.db
+      .prepare("SELECT stage,cut FROM usage_events WHERE task='video' ORDER BY rowid")
+      .all()
+      .map((r) => [r.stage, r.cut]),
+    [
+      ['plan', null],
+      ['plan', null],
+      ['cut', 1],
+      ['plan', null],
+      ['plan', null],
+    ],
+  );
+  // An older row (no stage) and an unreported repair in the current attempt.
+  const { attempt: current } = store.artifact(tree.id, first);
+  store.record(`video:${current}:old`, 'video', by, { input: 1, output: 1, cacheRead: 0 });
+  store.record(`video:${current}:lost`, 'video', by, null, undefined, null, 'repair', 1);
+  const rows = (stage, input, output, cacheRead, calls = 1, reported = calls) => ({
+    stage,
+    model: 'worker-model',
+    calls,
+    reported,
+    input,
+    output,
+    cacheRead,
+  });
+  assert.deepEqual(
+    store.videoUsage(tree.id, first).map((r) => ({ ...r })),
+    [
+      rows('plan', 11, 5, 2),
+      rows('cut', 12, 5, 2),
+      rows(null, 1, 1, 0),
+      rows('repair', 0, 0, 0, 1, 0),
+    ],
+  );
+  assert.deepEqual(
+    await (await fetch(origin + `/api/trees/${tree.id}/artifacts/${first}/usage`)).json(),
+    store.videoUsage(tree.id, first).map((r) => ({ ...r })),
+  );
   // The chat provider here reports nothing, so its rows stay unavailable rather than borrowing worker counts.
   assert.ok(
     store

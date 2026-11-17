@@ -151,6 +151,8 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
           usage,
           undefined,
           detail?.message,
+          detail?.stage,
+          detail?.cut,
         );
       record();
       try {

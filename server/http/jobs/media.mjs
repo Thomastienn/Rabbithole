@@ -139,6 +139,7 @@ export function mediaJobs(ctx) {
                         : [FIX_NOTE, FIX_WHOLE_NOTE].some((n) => args[0].instructions.endsWith(n))
                           ? 'fix'
                           : 'cut',
+              ...(args[5] && { cut: args[5] }),
               message: job.message,
             }).generate(...args),
         });

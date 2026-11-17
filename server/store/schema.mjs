@@ -124,6 +124,16 @@ export function open(path) {
           CREATE INDEX usage_events_at ON usage_events(at);
           CREATE INDEX usage_events_message ON usage_events(message);
           COMMIT;`);
+    // Video calls name their stage and, for one-cut calls, the cut number; older rows keep NULL (not recorded).
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(usage_events)')
+        .all()
+        .some((c) => c.name === 'stage')
+    )
+      this.db.exec(
+        'ALTER TABLE usage_events ADD COLUMN stage TEXT; ALTER TABLE usage_events ADD COLUMN cut INTEGER;',
+      );
     this.db.exec(
       `CREATE TABLE IF NOT EXISTS suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT)`,
     );

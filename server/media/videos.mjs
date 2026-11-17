@@ -152,9 +152,9 @@ export async function generateVideo({
     }
   };
   const deadline = Date.now() + (timeout ?? 600000);
-  const caller = (base, choice) => (instructions, input, onText, images) =>
+  const caller = (base, choice) => (instructions, input, onText, images, cut) =>
     wait(
-      videoCall(base, choice, instructions, input, controller.signal, onText, images),
+      videoCall(base, choice, instructions, input, controller.signal, onText, images, cut),
       Math.max(1, deadline - Date.now()),
       'Video composition timed out.',
     );

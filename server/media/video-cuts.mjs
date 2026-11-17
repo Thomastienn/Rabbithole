@@ -49,7 +49,17 @@ export const cutError = (reason, index, count) =>
     `Cut ${index + 1} of ${count}: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the other cuts.`,
   );
 
-export async function videoCall(provider, selection, instructions, input, signal, onText, images) {
+// cut: the 1-based cut a call serves, passed past the provider's signal for the usage meter only.
+export async function videoCall(
+  provider,
+  selection,
+  instructions,
+  input,
+  signal,
+  onText,
+  images,
+  cut,
+) {
   const items = new Map();
   let status, overflow;
   try {
@@ -73,6 +83,7 @@ export async function videoCall(provider, selection, instructions, input, signal
       },
       () => {},
       signal,
+      cut,
     );
   } catch {
     signal.throwIfAborted();
@@ -211,6 +222,7 @@ export async function writeCuts({
             text,
             undefined,
             previous ? [previous] : undefined,
+            index + 1,
           );
         // A repair of failed code answers a patch; when it does not apply, one whole-source call within this attempt.
         raw =
@@ -342,6 +354,7 @@ export async function writeCuts({
           }),
           undefined,
           previous ? [...own, previous] : own,
+          index + 1,
         );
         // The video keeps the pieces it started with; a flagged piece is improved in the library alongside.
         for (const { name, why } of poorPieces(answer, offered))
@@ -361,6 +374,7 @@ export async function writeCuts({
               text,
               undefined,
               previous ? [previous] : undefined,
+              index + 1,
             );
           const { code, ...rest } = audited,
             sentences = cut.timing.sentences.length;

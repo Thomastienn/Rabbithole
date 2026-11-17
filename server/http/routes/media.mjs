@@ -101,6 +101,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         code3d: whole.source3d ? compileCut(whole.source3d) : null,
       });
     }
+    const usageMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/usage$/);
+    if (usageMatch) return json(res, 200, store.videoUsage(usageMatch[1], usageMatch[2]));
     // Media is located only from the server-issued artifact id, never from a generated path or URL.
     const mediaMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/media$/),
       libraryMatch = url.pathname.match(/^\/api\/videos\/([^/]+)\/media$/);

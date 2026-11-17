@@ -6,7 +6,7 @@ export const usage = {
       .run(usage && JSON.stringify({ ...usage, at: Date.now() }), id);
   },
   // One row per call: streamed measurements replace its counts; an unreported finish cannot erase them.
-  record(id, task, selection, usage, at = Date.now(), message = null) {
+  record(id, task, selection, usage, at = Date.now(), message = null, stage = null, cut = null) {
     if (
       usage &&
       !['input', 'output', 'cacheRead'].every(
@@ -16,8 +16,8 @@ export const usage = {
       usage = null;
     this.db
       .prepare(
-        `INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message)
-         VALUES(?,?,?,?,?,?,?,?,(SELECT id FROM messages WHERE id=?))
+        `INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message,stage,cut)
+         VALUES(?,?,?,?,?,?,?,?,(SELECT id FROM messages WHERE id=?),?,?)
          ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,
            input=coalesce(excluded.input,usage_events.input),
            output=coalesce(excluded.output,usage_events.output),
@@ -33,7 +33,21 @@ export const usage = {
         usage?.output ?? null,
         usage?.cacheRead ?? null,
         message,
+        stage,
+        cut,
       );
+  },
+  // A video's current attempt by stage and model; stage NULL = recorded before stages were kept.
+  videoUsage(conversation, id) {
+    return this.db
+      .prepare(
+        `SELECT u.stage,u.model,COUNT(*) AS calls,COUNT(u.input) AS reported,
+          COALESCE(SUM(u.input),0) AS input,COALESCE(SUM(u.output),0) AS output,COALESCE(SUM(u.cacheRead),0) AS cacheRead
+        FROM artifacts a JOIN usage_events u ON u.id LIKE 'video:'||a.attempt||':%'
+        WHERE a.conversation=? AND a.id=? AND a.kind='video'
+        GROUP BY u.stage,u.model ORDER BY MIN(u.at),MIN(u.rowid)`,
+      )
+      .all(conversation, id);
   },
   replyMediaUsage(message) {
     return this.db
