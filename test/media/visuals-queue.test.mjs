@@ -49,6 +49,7 @@ test('closed blocks start chat-model workers while text streams, queue in order 
         complete(emit, source);
       },
     },
+    { saveEvery: 0 },
   );
   try {
     env.store.message(env.tree.id, 'user', 'UNRELATED PRIVATE TRANSCRIPT', 'completed');

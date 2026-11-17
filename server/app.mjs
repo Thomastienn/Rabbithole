@@ -56,6 +56,8 @@ export function createApp({
   defaultProvider = 'codex',
   assets = resolve('dist'),
   diagramTimeout = 300000,
+  // Minimum ms between mid-stream reply saves; tests pass 0 to read the saved row after each delta.
+  saveEvery = 250,
   diagramParse,
   visualTimeout = 300000,
   dir = join(tmpdir(), 'rabbithole'),
@@ -88,6 +90,7 @@ export function createApp({
     defaultProvider,
     assets,
     diagramTimeout,
+    saveEvery,
     diagramParse,
     visualTimeout,
     dir,

@@ -40,6 +40,9 @@ const running = async (env, text = 'Make a video.') => {
   await (await env.post(`/api/trees/${chat.id}/messages`, { text })).text();
   return chat;
 };
+// A later call can start after Cancel with the signal already aborted, like the real sandbox.
+const aborted = (signal) =>
+  signal.aborted || new Promise((resolve) => signal.addEventListener('abort', resolve));
 const settledRow = (env, chat) =>
   until(() =>
     env.store
@@ -299,7 +302,7 @@ test('cancel stops a running snapshot and a running audit', async (t) => {
             return complete(emit, written(cutOf(plan, text)));
           audits++;
           holding = true;
-          await new Promise((resolve) => signal.addEventListener('abort', resolve));
+          await aborted(signal);
           auditAborted = true;
         },
       },
@@ -307,7 +310,7 @@ test('cancel stops a running snapshot and a running audit', async (t) => {
         videoSnapshot: async (dir, list, signal) => {
           if (during === 'snapshot') {
             holding = true;
-            await new Promise((resolve) => signal.addEventListener('abort', resolve));
+            await aborted(signal);
             snapshotAborted = true;
             throw signal.reason;
           }

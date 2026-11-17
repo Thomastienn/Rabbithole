@@ -15,21 +15,24 @@ test('a closed video block starts its job mid-reply, completes once and survives
     finishVideo = Promise.withResolvers();
   let calls = 0,
     workerSignal;
-  const env = await open({
-    generate: async (tree, text, emit, save, signal) => {
-      if (!tree.id) {
-        calls++;
-        workerSignal = signal;
-        await finishVideo.promise;
-        return complete(emit, videoResponse(tree));
-      }
-      emit({ type: 'delta', item: 'answer', text: 'Before.' + directive.slice(0, -3) });
-      await closeBlock.promise;
-      emit({ type: 'delta', item: 'answer', text: '```\nAfter.' });
-      await finishReply.promise;
-      emit({ type: 'status', status: 'completed' });
+  const env = await open(
+    {
+      generate: async (tree, text, emit, save, signal) => {
+        if (!tree.id) {
+          calls++;
+          workerSignal = signal;
+          await finishVideo.promise;
+          return complete(emit, videoResponse(tree));
+        }
+        emit({ type: 'delta', item: 'answer', text: 'Before.' + directive.slice(0, -3) });
+        await closeBlock.promise;
+        emit({ type: 'delta', item: 'answer', text: '```\nAfter.' });
+        await finishReply.promise;
+        emit({ type: 'status', status: 'completed' });
+      },
     },
-  });
+    { saveEvery: 0 },
+  );
   t.after(async () => {
     closeBlock.resolve();
     finishReply.resolve();

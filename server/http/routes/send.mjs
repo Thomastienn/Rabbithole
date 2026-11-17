@@ -145,7 +145,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     finished = false,
     usage = null,
     called = false,
-    // shortcut: a crash mid-reply loses up to 250 ms of streamed text; save every delta only if that matters.
+    // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
     saved = -Infinity;
   const heartbeat = setInterval(() => {
     if (!res.destroyed) res.write(': keepalive\n\n');
@@ -345,7 +345,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
           );
           const output = diagramReply([...items.values()].join('\n\n'));
           text = output.text;
-          if (performance.now() - saved >= 250) {
+          if (performance.now() - saved >= ctx.saveEvery) {
             saved = performance.now();
             store.update(reply, text, status);
           }

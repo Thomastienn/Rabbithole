@@ -14,6 +14,7 @@ test('sibling branches interleave independent saved turns while another tree sub
   const app = createApp({
     store,
     auth: { status: () => ({ connected: true }) },
+    saveEvery: 0,
     provider: {
       generate: (tree, text, emit, save) =>
         new Promise((resolve) => {
