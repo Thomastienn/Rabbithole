@@ -12,6 +12,7 @@ import { visualsReady } from '../media/visualProgress';
 import { replyUsageLine } from './turn';
 import { ReplyFeedback } from './ChatDetails';
 import Passage from './Passage';
+import Reply from './Reply';
 import BranchForm from './BranchForm';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
@@ -170,9 +171,8 @@ export default function ChatThread({
             )}
             {message.text && (
               <ChatMessageBubble variant="ghost" className="question-bubble">
-                <Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                  {message.text}
-                </Text>
+                {/* Markdown only: suggestions, inline media and branching stay reply features. */}
+                <Reply text={message.text} underlines={[]} />
               </ChatMessageBubble>
             )}
           </>

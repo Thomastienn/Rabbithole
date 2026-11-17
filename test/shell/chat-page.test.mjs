@@ -232,6 +232,25 @@ test('files sit above the question bubble, and a files-only question draws no bu
   assert.equal(filesOnly.querySelector('.question-bubble'), null);
 });
 
+test('learner messages render markdown with coloured code but no reply-only features', async (t) => {
+  const { loadLanguage } = await import('../../src/markdown/codeTokens.ts');
+  await loadLanguage('java');
+  const text = 'Why does *this* fail?\n\n- one\n- two\n\n```java\nint x = 1;\n```';
+  tree.messages.push(
+    { id: 'q2', role: 'user', text, status: 'completed' },
+    { id: 'a2', role: 'assistant', text: 'Because.', status: 'completed' },
+  );
+  t.after(() => tree.messages.splice(2));
+  const { container } = await mount(t, [summary]);
+  const bubble = container.querySelectorAll('.chat-question')[1].querySelector('.question-bubble');
+  assert.equal(bubble.querySelector('em').textContent, 'this');
+  assert.deepEqual([...bubble.querySelectorAll('li')].map((li) => li.textContent), ['one', 'two']);
+  assert.equal(bubble.querySelector('pre code').textContent.trim(), 'int x = 1;');
+  assert.equal(bubble.querySelector('.astryx-token-keyword').textContent, 'int');
+  assert.equal(bubble.querySelector('.passage, .suggestion, figure'), null, 'no reply-only parts');
+  assert.equal(tree.messages[2].text, text, 'stored text is unchanged');
+});
+
 test('a saved tree opens its conversation with the thread, title and map', async (t) => {
   const { container, calls } = await mount(t, [summary]);
   assert.ok(calls.includes('/api/trees/t1'));

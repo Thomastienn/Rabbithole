@@ -393,6 +393,13 @@ button.contents-row > span:first-child > span {
   padding: var(--spacing-2) var(--spacing-3);
   overflow-wrap: anywhere;
 }
+/* Learner markdown keeps the bubble's face, not the reply reading face; code keeps the code face. */
+.question-bubble .reply-md,
+.question-bubble .reply-md .astryx-text:not(pre *, code *) {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
 /* Sidebar outline: titles wrap to two lines and each depth steps in by one module, so deep branches keep their names. */
 .sidebar .contents .contents-row {
   align-items: flex-start;
