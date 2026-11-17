@@ -161,15 +161,6 @@
   background: var(--color-text-accent);
   animation: pulse var(--duration-slow-max) ease-in-out infinite;
 }
-.discussion-card__text[data-streaming]::after {
-  content: '';
-  display: inline-block;
-  width: var(--spacing-2);
-  height: 1.1em;
-  margin-inline-start: 2px;
-  background: var(--color-text-accent);
-  vertical-align: -0.2em;
-}
 .discussion-card__line[data-speaker='learner'] .question-bubble {
   white-space: pre-wrap;
 }

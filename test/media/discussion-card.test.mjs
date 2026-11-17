@@ -5,7 +5,20 @@ import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
 import { publicDiscussion } from '../fixtures/discussion.mjs';
-const { default: DiscussionCard } = await import('../../src/media/DiscussionCard.tsx');
+const { default: DiscussionCard, linePause } = await import('../../src/media/DiscussionCard.tsx');
+// Mark the first n lines of a discussion as already seen in this browser.
+const seen = (id, n) => (w) => {
+  ui(w);
+  w.localStorage.setItem(`rabbithole.discussion-seen.${id}`, String(n));
+};
+const typeInto = (input, text) => {
+  input.textContent = text;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+};
+const enter = (input) =>
+  input.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+  );
 
 test('discussion opening repeats speaker names, reads plain text and never exposes levels', async (t) => {
   const artifact = {
@@ -17,10 +30,17 @@ test('discussion opening repeats speaker names, reads plain text and never expos
       lines: [...publicDiscussion.lines, { speaker: 'Jun', text: '<b>**Still plain**</b>' }],
     },
   };
-  const { container, cleanup } = await render(h(DiscussionCard, { artifact }), ui);
+  const { container, cleanup } = await render(
+    h(DiscussionCard, { artifact }),
+    seen('discussion', 5),
+  );
   t.after(cleanup);
   const card = container.querySelector('section');
   assert.equal(card.tabIndex, -1);
+  assert.ok(
+    !card.querySelector('.discussion-card__busy,.discussion-card__hint'),
+    'seen lines show at once',
+  );
   assert.equal(card.dataset.artifact, artifact.id);
   assert.equal(card.getAttribute('aria-label'), 'Discussion with Theo, Maya and Jun');
   assert.match(card.querySelector('header').textContent, /Open/);
@@ -79,7 +99,9 @@ test('reply entry sends with Enter, shows optimistic learner/busy and streamed l
       },
     });
   }
-  const { container, act, cleanup } = await render(h(Harness), ui);
+  t.mock.method(Math, 'random', () => 0.5);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { container, act, cleanup } = await render(h(Harness), seen('reply', 4));
   t.after(cleanup);
   const input = container.querySelector('[role=textbox]');
   const send = container.querySelector('button[aria-label="Send to the discussion"]');
@@ -141,8 +163,12 @@ test('reply entry sends with Enter, shows optimistic learner/busy and streamed l
     1,
     'server checkpoint replaces the optimistic line',
   );
-  assert.ok(!container.querySelector('.discussion-card__busy'));
-  assert.equal(container.querySelector('[data-streaming]').textContent, 'Now I see');
+  assert.equal(
+    container.querySelector('.discussion-card__busy[role=status]').textContent,
+    'Theo is typing…',
+    'a line still being written waits in the indicator',
+  );
+  assert.ok(!container.querySelector('ol').textContent.includes('Now I'));
   await act(async () => {
     publish({
       ...initial,
@@ -154,7 +180,13 @@ test('reply entry sends with Enter, shows optimistic learner/busy and streamed l
   });
   assert.equal(container.querySelector('section').hasAttribute('aria-busy'), false);
   assert.equal(input.getAttribute('contenteditable'), 'true');
+  assert.equal(container.querySelector('ol').children.length, savedLines.length - 1);
+  await act(async () => t.mock.timers.tick(linePause('Now I see')));
   assert.equal(container.querySelector('ol').children.length, savedLines.length);
+  assert.equal(
+    container.querySelector('ol > li:last-child .discussion-card__text').textContent,
+    'Now I see',
+  );
   assert.equal(
     container.querySelector('[role=alert]').textContent,
     'The discussion could not continue: Fixture timed out. Send your reply again to retry.',
@@ -183,4 +215,104 @@ test('pending and unavailable discussions stay in place without reply or retry c
     }
     await cleanup();
   }
+});
+
+test('pauses grow with line length, stay about 1 to 4 seconds and vary slightly', () => {
+  const short = linePause('Hm?', 0.5),
+    long = linePause('a'.repeat(120), 0.5);
+  assert.ok(short >= 1000 && short < long && long <= 4000, `${short} ${long}`);
+  assert.equal(linePause('a'.repeat(2000), 0.5), 4000);
+  assert.ok(linePause('Hm?', 0) < short && short < linePause('Hm?', 1));
+  assert.ok(linePause('Hm?', 0) >= 900 && linePause('a'.repeat(2000), 1) <= 4400);
+});
+
+test('opening lines arrive whole, one at a time behind a typing indicator, and remounting resumes the pace', async (t) => {
+  t.mock.method(Math, 'random', () => 0.5);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const artifact = {
+      id: 'paced',
+      kind: 'discussion',
+      status: 'ready',
+      discussion: publicDiscussion,
+    },
+    calls = [];
+  let show;
+  function Harness() {
+    const [open, setOpen] = useState(true);
+    show = setOpen;
+    return open
+      ? h(DiscussionCard, { artifact, onReply: async (a, text) => calls.push(text) })
+      : null;
+  }
+  const { container, act, cleanup } = await render(h(Harness), ui);
+  t.after(cleanup);
+  const shown = () =>
+    [...container.querySelectorAll('ol > li')].map(
+      (li) =>
+        li.querySelector('.discussion-card__name').textContent +
+        ': ' +
+        li.querySelector('.discussion-card__text').textContent,
+    );
+  const status = () => container.querySelector('.discussion-card__busy[role=status]')?.textContent;
+  const hint = () => container.querySelector('.discussion-card__hint')?.textContent;
+  const send = () => container.querySelector('button[aria-label="Send to the discussion"]');
+  const input = () => container.querySelector('[role=textbox]');
+  const [first, second, third, fourth] = publicDiscussion.lines;
+  assert.deepEqual(shown(), []);
+  assert.equal(status(), 'Theo is typing…');
+  assert.equal(hint(), 'You can send once every line has appeared.');
+  assert.equal(input().getAttribute('contenteditable'), 'true', 'typing stays available');
+  await act(async () => typeInto(input(), 'Maybe both win?'));
+  assert.equal(send().disabled, true);
+  await act(async () => enter(input()));
+  assert.equal(calls.length, 0, 'Enter does not send while lines arrive');
+  assert.equal(input().textContent, 'Maybe both win?', 'the draft is kept');
+  await act(async () => t.mock.timers.tick(linePause(first.text) - 1));
+  assert.deepEqual(shown(), []);
+  await act(async () => t.mock.timers.tick(1));
+  assert.deepEqual(shown(), ['Theo: ' + first.text], 'the whole line appears at once');
+  assert.equal(status(), 'Maya is typing…');
+  await act(async () => t.mock.timers.tick(linePause(second.text)));
+  assert.equal(shown().length, 2);
+  assert.equal(localStorage.getItem('rabbithole.discussion-seen.paced'), '2');
+  await act(async () => show(false));
+  await act(async () => show(true));
+  assert.equal(shown().length, 2, 'seen lines show at once on return');
+  assert.equal(status(), 'Jun is typing…');
+  await act(async () => t.mock.timers.tick(linePause(third.text) - 1));
+  assert.equal(shown().length, 2);
+  await act(async () => t.mock.timers.tick(1));
+  await act(async () => t.mock.timers.tick(linePause(fourth.text)));
+  assert.equal(shown().length, 4);
+  assert.ok(!status() && !hint());
+  await act(async () => typeInto(input(), 'Maybe both win?'));
+  assert.equal(send().disabled, false);
+  await act(async () => enter(input()));
+  assert.deepEqual(calls, ['Maybe both win?']);
+});
+
+test('closing a discussion mid-way shows every remaining line at once', async (t) => {
+  t.mock.method(Math, 'random', () => 0.5);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const artifact = {
+    id: 'closing',
+    kind: 'discussion',
+    status: 'ready',
+    discussion: publicDiscussion,
+  };
+  let publish;
+  function Harness() {
+    const [current, setCurrent] = useState(artifact);
+    publish = setCurrent;
+    return h(DiscussionCard, { artifact: current });
+  }
+  const { container, act, cleanup } = await render(h(Harness), ui);
+  t.after(cleanup);
+  await act(async () => t.mock.timers.tick(linePause(publicDiscussion.lines[0].text)));
+  assert.equal(container.querySelectorAll('ol > li').length, 1);
+  await act(async () =>
+    publish({ ...artifact, discussion: { ...publicDiscussion, closed: true } }),
+  );
+  assert.equal(container.querySelectorAll('ol > li').length, publicDiscussion.lines.length);
+  assert.ok(!container.querySelector('.discussion-card__busy,[role=textbox]'));
 });

@@ -153,3 +153,7 @@ test('the teaching skill carries everyday-analogy guidance to replies, visuals a
   for (const rule of [DISCUSSION_RULE, DISCUSSION_TURN_RULE])
     assert.doesNotMatch(rule, /analog/i);
 });
+
+test('the discussion rule places the discussion last in the reply', () => {
+  assert.match(DISCUSSION_RULE, /placed last in your reply with no reply text after it/);
+});

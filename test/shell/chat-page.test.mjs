@@ -67,6 +67,9 @@ async function mount(
       w.localStorage.setItem('rabbithole.contents', contents);
       w.localStorage.setItem('rabbithole.focus-mode', focus);
       w.localStorage.setItem('rabbithole.vim', vim ? 'on' : 'off');
+      // Pacing is covered by the discussion card tests; here every discussion line counts as seen.
+      for (const a of artifacts)
+        if (a.discussion) w.localStorage.setItem(`rabbithole.discussion-seen.${a.id}`, '99');
       w.DOMMatrixReadOnly = class {
         m22 = 1;
       };

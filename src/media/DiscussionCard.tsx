@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Avatar } from '@astryxdesign/core/Avatar';
 import {
   ChatMessage,
@@ -26,6 +26,20 @@ export type DiscussionBranch = {
   address?: string;
   ink?: number;
 };
+
+// About 1 to 4 seconds, longer for longer lines, with a small jitter; one speed for every speaker.
+export const linePause = (text: string, random = Math.random()) =>
+  Math.min(1000 + text.length * 20, 4000) * (0.9 + random * 0.2);
+
+// Lines already revealed, per discussion and browser; unreadable storage paces from the start.
+const seenKey = (id: string) => `rabbithole.discussion-seen.${id}`;
+function savedSeen(id: string) {
+  try {
+    return Number(localStorage.getItem(seenKey(id))) || 0;
+  } catch {
+    return 0;
+  }
+}
 
 // A selection inside one line's text: its card, line index and offsets in that line, ignoring address chips.
 export function discussionSelection(range: Range) {
@@ -121,9 +135,34 @@ export default function DiscussionCard({
   const discussion = artifact.discussion;
   const closed = !!discussion?.closed,
     busy = !closed && (sending || discussion?.turn?.status === 'streaming');
+  const all = discussion?.lines ?? [],
+    writing =
+      discussion?.turn?.status === 'streaming' && all.length > discussion.turn.start ? 1 : 0;
+  // A line still being written stays behind the typing indicator; closing reveals everything.
+  const [seen, setSeen] = useState(() => savedSeen(artifact.id));
+  const written = all.length - (closed ? 0 : writing),
+    shown = closed ? all.length : Math.min(seen, written),
+    next = shown < all.length ? all[shown] : undefined,
+    waiting = !closed && !!next,
+    queued = shown < written ? next : undefined;
+  useEffect(() => {
+    if (!queued) return;
+    const reveal = () => setSeen(shown + 1);
+    if (queued.speaker === 'Learner') return reveal();
+    const timer = setTimeout(reveal, linePause(queued.text));
+    return () => clearTimeout(timer);
+  }, [shown, queued?.speaker, queued?.text]);
+  useEffect(() => {
+    if (!discussion) return;
+    try {
+      localStorage.setItem(seenKey(artifact.id), String(shown));
+    } catch {
+      /* Seen lines stay for this view only. */
+    }
+  }, [artifact.id, shown, !!discussion]);
   const lines = discussion
     ? [
-        ...discussion.lines,
+        ...all.slice(0, shown),
         ...(optimistic && optimistic.from === discussion.lines.length
           ? [{ speaker: 'Learner', text: optimistic.text }]
           : []),
@@ -131,7 +170,7 @@ export default function DiscussionCard({
     : [];
   const failed = sending ? '' : error || artifact.error;
   async function submit(text: string) {
-    if (!onReply || !text.trim() || busy || closed || !discussion) return;
+    if (!onReply || !text.trim() || busy || waiting || closed || !discussion) return;
     setSending(true);
     setOptimistic({ text: text.trim(), from: discussion.lines.length });
     setDraft('');
@@ -248,17 +287,7 @@ export default function DiscussionCard({
                       </Text>
                     </ChatMessageBubble>
                   ) : (
-                    <Text
-                      className="discussion-card__text"
-                      data-line={index}
-                      data-streaming={
-                        (busy &&
-                          index === lines.length - 1 &&
-                          discussion.turn &&
-                          index >= discussion.turn.start) ||
-                        undefined
-                      }
-                    >
+                    <Text className="discussion-card__text" data-line={index}>
                       <LineText
                         text={line.text}
                         marks={explored.filter((b) => b.line === index)}
@@ -270,14 +299,20 @@ export default function DiscussionCard({
               </li>
             ))}
           </ol>
-          {busy &&
+          {waiting && next?.speaker !== 'Learner' ? (
+            <Text role="status" className="discussion-card__busy">
+              {next.speaker} is typing…
+            </Text>
+          ) : (
+            busy &&
             (optimistic?.from === discussion.lines.length ||
               !discussion.turn ||
               lines.length <= discussion.turn.start) && (
               <Text role="status" className="discussion-card__busy">
                 Discussion continuing…
               </Text>
-            )}
+            )
+          )}
           {failed && (
             <Text role="alert" className="discussion-card__failure">
               <ExclamationTriangleIcon aria-hidden />
@@ -291,7 +326,16 @@ export default function DiscussionCard({
               line.
             </Text>
           ) : (
-            <div className="discussion-card__reply">
+            <div
+              className="discussion-card__reply"
+              // Enter would clear the draft without sending while lines are still arriving.
+              onKeyDownCapture={(e) => {
+                if (waiting && e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+            >
               <ChatComposer
                 value={draft}
                 onChange={setDraft}
@@ -314,11 +358,16 @@ export default function DiscussionCard({
                     label="Send to the discussion"
                     variant="primary"
                     size="sm"
-                    isDisabled={busy || !draft.trim() || !onReply}
+                    isDisabled={busy || waiting || !draft.trim() || !onReply}
                     onClick={() => void submit(draft)}
                   />
                 }
               />
+              {waiting && (
+                <Text type="supporting" color="secondary" className="discussion-card__hint">
+                  You can send once every line has appeared.
+                </Text>
+              )}
             </div>
           )}
         </>

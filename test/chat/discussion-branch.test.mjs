@@ -55,6 +55,7 @@ test("selecting inside a classmate's line offers Ask and branches with the line 
 
 test('a saved discussion branch underlines its line passage in ink with its chip and opens the child', async (t) => {
   const { container, act, update, opened, branched, section } = await passage(t);
+  localStorage.setItem('rabbithole.discussion-seen.talk', '99'); // every line already seen
   await act(async () =>
     update((v) => ({
       ...v,
