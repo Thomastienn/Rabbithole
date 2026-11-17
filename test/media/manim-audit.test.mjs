@@ -106,7 +106,8 @@ for (const [name, fix] of Object.entries(fixes))
     assert.equal(audits.length, 1);
     assert.equal(audits[0].input.code, original);
     assert.equal(audits[0].input.setPieces, undefined);
-    assert.equal(audits[0].images.length, 2);
+    // The contact sheet, the sentence-end still and the last frame.
+    assert.equal(audits[0].images.length, 3);
     // Issues produce exactly one chat-model fix carrying them; ok makes no extra call.
     assert.equal(fixes.length, fix ? 1 : 0);
     if (fix) assert.deepEqual(fixes[0].issues, [{ what: 'Label clipped', where: 'top left' }]);

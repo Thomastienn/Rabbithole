@@ -32,7 +32,7 @@ const issues = [{ what: 'Label overlaps the box', where: 'sentence 1, centre' }]
 const flagged = JSON.stringify({ issues });
 // Stills record the staged code they were taken from.
 const stills = (shots) => async (dir, list) => {
-  shots.push([basename(dir), readFileSync(join(dir, 'Video.tsx'), 'utf8'), list.length]);
+  shots.push([basename(dir), readFileSync(join(dir, 'Video.tsx'), 'utf8'), list]);
   for (const { file } of list) writeFileSync(file, 'jpeg');
 };
 const running = async (env, text = 'Make a video.') => {
@@ -141,12 +141,17 @@ test('audits start together, see code, stills and the previous last frame; issue
   assert.equal(first.input.previousEndState, null);
   assert.equal(second.input.previousEndState, plan.cuts[0].endState);
   assert.deepEqual(first.input.styleBrief, plan.styleBrief);
-  // One still per sentence end plus the last frame; fakeNarration's last sentence ends before the audio does.
-  assert.equal(first.images.length, 2);
+  // A contact sheet, then one still per sentence end plus the last frame; fakeNarration's last sentence ends
+  // before the audio does.
+  assert.equal(first.images.length, 3);
   assert.equal(first.input.snapshots, 2);
-  assert.equal(second.images.length, 3, "cut 2 also sees cut 1's pre-audit last frame");
+  const [, , list] = shots.find(([dir]) => dir === 'cut-0');
+  assert.equal(first.images[0].path, list[0].file);
+  assert.equal(list[0].sheet, true, 'the first image is the contact sheet');
+  assert.ok(list.slice(1).every((s) => !s.sheet && s.frame >= 0));
+  assert.equal(second.images.length, 4, "cut 2 also sees cut 1's pre-audit last frame");
   assert.equal(second.input.previousLastFrame, true);
-  assert.equal(second.images[2].path, first.images[1].path);
+  assert.equal(second.images[3].path, first.images[2].path);
   assert.ok(second.images.every((img) => img.type === 'image/jpeg'));
   assert.deepEqual(
     shots

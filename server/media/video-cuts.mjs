@@ -292,15 +292,15 @@ export async function writeCuts({
     cuts[index].clip = `cut-${index}/public/manim.mp4`;
     persist();
   };
-  // Stills at each sentence end and the narration's last frame, rendered from the staged cut.
+  // The contact sheet, then stills at each sentence end and the narration's last frame, rendered from the staged cut.
   const shoot = async (index) => {
     const dir = await stage(index),
       { sentences, audioFrames } = cuts[index].timing;
     const frames = [
       ...new Set([...sentences.map((s) => Math.min(s.endFrame, audioFrames)), audioFrames]),
     ].map((f) => Math.max(0, f - 1));
-    const stills = frames.map((frame) => ({
-      frame,
+    const stills = [{ sheet: true, frame: 0 }, ...frames.map((frame) => ({ frame }))].map((s) => ({
+      ...s,
       file: join(dir, 'out', randomUUID() + '.jpg'),
     }));
     await snapshot(dir, stills, signal);
@@ -351,7 +351,7 @@ export async function writeCuts({
           JSON.stringify({
             ...audited,
             ...(offered.length && { libraryPieces: offered }),
-            snapshots: own.length,
+            snapshots: own.length - 1,
           }),
           undefined,
           previous ? [...own, previous] : own,

@@ -1,5 +1,5 @@
 // Runs inside the bubblewrap sandbox from videos.mjs; argv: workspace, output file, dependency directory,
-// and for snapshots a JSON list of {frame, file} stills instead of a video.
+// and for snapshots a JSON list of {frame, file, sheet?} stills instead of a video.
 import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -70,10 +70,15 @@ const composition = await selectComposition({
 });
 if (stills) {
   // Audit frames go at 960x540 to keep image tokens modest.
-  for (const { frame, file } of JSON.parse(stills))
+  // A sheet entry renders the cut entry's contact sheet composition instead of one frame.
+  const list = JSON.parse(stills);
+  const sheet =
+    list.some((s) => s.sheet) &&
+    (await selectComposition({ serveUrl, id: 'Sheet', browserExecutable, logLevel: 'error' }));
+  for (const { frame, file, sheet: tiled } of list)
     await renderStill({
       serveUrl,
-      composition,
+      composition: tiled ? sheet : composition,
       browserExecutable,
       output: file,
       frame,
@@ -81,7 +86,7 @@ if (stills) {
       scale: 0.5,
       logLevel: 'error',
     });
-  console.log(JSON.stringify({ stills: JSON.parse(stills).length }));
+  console.log(JSON.stringify({ stills: list.length }));
   process.exit(0);
 }
 let reported = 0;
