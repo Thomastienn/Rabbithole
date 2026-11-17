@@ -29,12 +29,13 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
     /Answer the question fully first; never hold an answer back behind questions/,
     /Teach at the learner's level/,
     /one optional practice step or check-yourself visual/,
-    /Back specific claims with resources, and recommend one primary resource/,
+    /Back specific claims with resources\./,
     /option about the same length and vary the right answer's position/,
     /at most one question per reply, at the end, and only when it helps/,
     /Search only for specific facts, figures, dates or recent events, or when you are unsure/,
   ])
     assert.match(DEFAULT_TUTOR_STYLE, rule);
+  assert.doesNotMatch(DEFAULT_TUTOR_STYLE, /primary resource/);
   assert.match(TUTOR_RULES, /^Do not use tools[\s\S]*rabbithole-visual[\s\S]*rabbithole-video/);
   assert.doesNotMatch(TUTOR_RULES, /stock|add objects/, 'visuals get no stock offers');
   assert.match(

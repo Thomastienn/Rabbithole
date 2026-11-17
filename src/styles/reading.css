@@ -1,12 +1,12 @@
 /* Focused chat reading column, replies, usage figures and passages. Files load in main.tsx order, which is the cascade order. */
-/* Read (mockup): the focused chat owns the centre at a 640px book measure; header, list and composer share it. */
+/* Read (mockup): the focused chat owns the centre at a 720px book measure; header, list and composer share it. */
 .chat-reply,
 .chat-reply > * {
   max-width: 100%;
 }
 .focused-chat .astryx-chat-message-list {
   width: 100%;
-  max-width: calc(640px + 6 * var(--rabbithole-module));
+  max-width: calc(720px + 6 * var(--rabbithole-module));
   margin-inline: auto;
   padding: calc(4 * var(--rabbithole-module)) calc(3 * var(--rabbithole-module))
     calc(5 * var(--rabbithole-module));
@@ -71,12 +71,12 @@
 .stats-toggle[aria-pressed='true'] {
   background: var(--color-overlay-pressed);
 }
-/* Replies: Literata 17px/1.7, no bubble (mockup Read). Code keeps the theme's code face. */
+/* Replies: Literata 16px/1.6, no bubble (mockup Read). Code keeps the theme's code face. */
 .reply-md,
 .reply-md .astryx-text {
   font-family: var(--rabbithole-font-reading);
-  font-size: 17px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.6;
 }
 .reply-md pre .astryx-text,
 .reply-md code .astryx-text {
@@ -317,6 +317,13 @@
 }
 .reply-md > :first-child {
   margin-block-start: 0;
+}
+/* Top-level sections: the shallowest heading level the reply uses gets a light rule and more air above. */
+.reply-md > h3:not(:first-child),
+.reply-md:not(:has(> h3)) > h4:not(:first-child) {
+  margin-block-start: var(--spacing-8);
+  padding-block-start: var(--spacing-5);
+  border-block-start: thin solid var(--color-border);
 }
 .reply-md :is(ul, ol) {
   padding-inline-start: var(--spacing-5);

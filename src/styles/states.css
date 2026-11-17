@@ -277,7 +277,7 @@
 }
 .focused-chat .astryx-chat-composer {
   width: 100%;
-  max-width: calc(640px + 6 * var(--rabbithole-module));
+  max-width: calc(720px + 6 * var(--rabbithole-module));
   margin-inline: auto;
   padding-inline: calc(3 * var(--rabbithole-module));
   box-sizing: border-box;
