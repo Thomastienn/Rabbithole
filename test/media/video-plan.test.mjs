@@ -44,6 +44,8 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   good.cuts[1].engine = 'manim';
   assert.deepEqual(videoPlan('```json\n' + JSON.stringify(good) + '\n```'), good);
   good.cuts[2].dimension = '3d';
+  // The planner's loose camera note for a 3D cut passes through to the cut writers.
+  good.cuts[2].camera = 'brisk sweep low across the surface';
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
   // A neutral object needs no colorRole; models send null or omit it.
   good.styleBrief.recurringObjects[0].colorRole = null;

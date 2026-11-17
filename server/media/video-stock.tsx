@@ -1,18 +1,9 @@
 // The host's data path into a cut, the 3D camera and many copies of a part, shared by live playback and the background render.
 import { useContext, useLayoutEffect, useRef, type ComponentType } from 'react';
-import {
-  Img,
-  Loop,
-  OffthreadVideo,
-  Sequence,
-  interpolate,
-  random,
-  staticFile,
-  useCurrentFrame,
-} from 'remotion';
+import { Img, Loop, OffthreadVideo, Sequence, random, staticFile, useCurrentFrame } from 'remotion';
 import { context as fiber, useThree } from '@react-three/fiber';
 import { Euler, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
-import { ease, fonts, palette } from './video-kit';
+import { fonts, palette } from './video-kit';
 
 // Exhibits the host delivered by id (ADR 0005): the render reads them from stock.json beside the cut, with
 // images as data URLs and clips as public files; live playback from the frame's message, with blob URLs.
@@ -119,21 +110,48 @@ export function Exhibit({
   );
 }
 
-// Camera move for a 3D cut, set every frame from useCurrentFrame: eased between keys (frames ascending).
+// Camera for a 3D cut, set every frame from useCurrentFrame: a Catmull-Rom path through the keys (frames ascending),
+// so velocity carries through each key, plus a slow orbit about the target that a key's pace scales (default 1).
+// The orbit never stops: pace is floored, and it keeps turning before the first key and after the last.
 type Vec3 = [number, number, number];
-export type CameraKey = { at: number; position: Vec3; target?: Vec3 };
+export type CameraKey = { at: number; position: Vec3; target?: Vec3; pace?: number };
+const ORBIT = (2 * Math.PI) / 2400; // radians a frame at pace 1: one turn in 80 seconds
 export function cameraAt(keys: CameraKey[], f: number) {
-  const ks = keys.length > 1 ? keys : [keys[0], { ...keys[0], at: keys[0].at + 1 }];
-  const at = (get: (k: CameraKey) => Vec3) =>
-    [0, 1, 2].map((i) =>
-      interpolate(
-        f,
-        ks.map((k) => k.at),
-        ks.map((k) => get(k)[i]),
-        { easing: ease, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
-      ),
-    ) as Vec3;
-  return { position: at((k) => k.position), target: at((k) => k.target ?? [0, 0, 0]) };
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  const k = (j: number) => keys[Math.max(0, Math.min(keys.length - 1, j))];
+  const segment = (t: number) => {
+    let i = 0;
+    while (i < keys.length - 2 && t >= keys[i + 1].at) i++;
+    const span = k(i + 1).at - k(i).at;
+    return { i, u: span > 0 ? clamp((t - k(i).at) / span) : 0 };
+  };
+  const { i, u } = segment(f);
+  const path = (get: (k: CameraKey) => Vec3) =>
+    [0, 1, 2].map((d) => {
+      const [p0, p1, p2, p3] = [i - 1, i, i + 1, i + 2].map((j) => get(k(j))[d]);
+      return (
+        p1 +
+        0.5 *
+          ((p2 - p0) * u +
+            (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u +
+            (3 * p1 - p0 - 3 * p2 + p3) * u * u * u)
+      );
+    }) as Vec3;
+  const target = path((k) => k.target ?? [0, 0, 0]);
+  const [x, y, z] = path((k) => k.position);
+  const pace = (t: number) => {
+    const { i, u } = segment(t);
+    return Math.max(0.1, (k(i).pace ?? 1) + ((k(i + 1).pace ?? 1) - (k(i).pace ?? 1)) * u);
+  };
+  let angle = 0;
+  for (let t = 0; t < f; t++) angle += ORBIT * pace(t);
+  const [dx, dz] = [x - target[0], z - target[2]];
+  const position: Vec3 = [
+    target[0] + dx * Math.cos(angle) + dz * Math.sin(angle),
+    y,
+    target[2] - dx * Math.sin(angle) + dz * Math.cos(angle),
+  ];
+  return { position, target };
 }
 export function Camera({ keys }: { keys: CameraKey[] }) {
   const camera = useThree((s) => s.camera);

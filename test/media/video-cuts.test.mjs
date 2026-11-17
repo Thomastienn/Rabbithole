@@ -32,6 +32,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
     transition: 'flip',
     direction: 'from-top',
     dimension: '3d',
+    camera: 'slow orbit, then push in on the core',
   });
   const writers = plan.cuts.map(gate),
     voices = plan.cuts.map(gate);
@@ -115,6 +116,10 @@ test('three cut writers and narrators start in parallel; reversed completions pe
     );
     assert.deepEqual(inputs[i].input.styleBrief, plan.styleBrief);
     assert.deepEqual(inputs[i].input.cut, plan.cuts[i]);
+    assert.equal(
+      inputs[i].input.cut.camera,
+      i === 2 ? 'slow orbit, then push in on the core' : undefined,
+    );
     assert.equal(inputs[i].input.previousEndState, i ? plan.cuts[i - 1].endState : null);
     assert.equal(inputs[i].tree.thread, null);
     // Only the 3D cut's writer gets the 3D guidance.

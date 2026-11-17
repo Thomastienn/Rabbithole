@@ -151,7 +151,8 @@ export async function writeCuts({
     const shown = exhibitsOf(index).map(({ file, type, url, cut, ...e }) => e);
     return {
       styleBrief: plan.styleBrief,
-      cut,
+      // A 3D cut's writer always gets a camera note; the default orbit when the plan gave none.
+      cut: cut.dimension === '3d' ? { camera: 'slow orbit around the focus', ...cut } : cut,
       previousEndState: index ? plan.cuts[index - 1].endState : null,
       ...(data.pieces && cuts[index].engine !== 'manim' && { setPieces: data.pieces }),
       ...(shown.length && { exhibits: shown }),
