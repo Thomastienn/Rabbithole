@@ -126,3 +126,30 @@ test('the chat prompt lists the learning tree resources with the citation form, 
     tutorSystem({ tutorStyle: 'Mine.' }),
   );
 });
+
+test('the teaching skill carries everyday-analogy guidance to replies, visuals and narration, never discussions', async () => {
+  const { ANALOGY_SKILL } = await import('../../server/media/skills.mjs');
+  const { PLAN_INSTRUCTIONS } = await import('../../server/media/video-plan.mjs');
+  const { DISCUSSION_TURN_RULE } = await import('../../server/media/discussion-turn.mjs');
+  for (const rule of [
+    /new or abstract to this learner, open with a familiar real-life situation/,
+    /map the formal idea onto it part by part/,
+    /say plainly where the analogy breaks down/,
+    /familiarity where you have it, and from the conversation otherwise/,
+    /Skip the analogy for quick factual answers, casual turns and concepts the learner already knows/,
+    /analogy of their own, take it seriously[^.]*refine or correct/,
+    /need not keep reusing it/,
+  ])
+    assert.match(ANALOGY_SKILL, rule);
+  assert.ok(TEACHING_SKILL.endsWith(ANALOGY_SKILL));
+  const prompt = tutorSystem({ tutorStyle: 'Never use analogies.' });
+  assert.ok(prompt.indexOf(ANALOGY_SKILL) < prompt.indexOf('follow it where it differs'));
+  assert.ok(prompt.endsWith('Never use analogies.'));
+  assert.ok(PLAN_INSTRUCTIONS.includes(TEACHING_SKILL));
+  assert.match(
+    PLAN_INSTRUCTIONS,
+    /decide how it shapes the video[^.]*keep one analogy across every cut/,
+  );
+  for (const rule of [DISCUSSION_RULE, DISCUSSION_TURN_RULE])
+    assert.doesNotMatch(rule, /analog/i);
+});

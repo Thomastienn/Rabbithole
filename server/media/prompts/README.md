@@ -121,3 +121,8 @@ Written for Rabbithole, not vendored; no upstream licence applies.
 - `focal-object.md` (video planner, Remotion cut writers and Remotion cut
   audit): one focal object at a time, unlabelled overviews, short-lived labels.
   Manim prompts and the Manim audit get neither text.
+- `analogy.md` (appended to the teaching skill, so tutor replies and video
+  narration get it, and given to the visual writer): open a new or abstract
+  concept with an everyday analogy, map it, say where it breaks down, and skip
+  it for quick facts, casual turns and known concepts. Discussion prompts do
+  not get it.
