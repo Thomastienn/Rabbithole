@@ -19,7 +19,7 @@ import CustomEffort from '../settings/CustomEffort';
 import type { SettingsTab } from '../settings/SettingsWindow';
 import type { ChatModel } from './useChatModel';
 
-// The composer's model and effort menu for the next reply.
+// The composer's model menu and, beside it, the effort menu for the next reply.
 export default function ModelMenu({
   model,
   active,
@@ -57,7 +57,7 @@ export default function ModelMenu({
                   ? 'Loading models'
                   : savingModel
                     ? 'Saving model selection'
-                    : `Model for next reply: ${modelLabel(composition)} · ${effortLabel(composition.effort)}`
+                    : `Model for next reply: ${modelLabel(composition)}`
             }
             icon={<AdjustmentsHorizontalIcon />}
             variant="ghost"
@@ -65,9 +65,7 @@ export default function ModelMenu({
             isDisabled={active || !!savingModel || openingModels || busy}
             isLoading={openingModels || !!savingModel}
           >
-            <span className="chat-model">
-              {modelLabel(composition)} · {effortLabel(composition.effort)}
-            </span>
+            <span className="chat-model">{modelLabel(composition)}</span>
           </Button>
         )}
       >
@@ -144,30 +142,50 @@ export default function ModelMenu({
             </DropdownMenuGroup>
           );
         })}
-        <DropdownMenuGroup title="Effort for next reply">
-          <DropdownMenuRadioGroup
-            label="Conversation effort"
-            value={composition.effort ?? 'default'}
-            onChange={(value) => {
-              if (value === CUSTOM_EFFORT) setTyping(true);
-              else if (currentModel)
-                void chooseModel(
-                  composition.provider,
-                  currentModel.model,
-                  value === 'default' ? null : value,
-                );
-            }}
+      </DropdownMenu>
+      <DropdownMenu
+        presentation="popover"
+        alignment="end"
+        renderTrigger={(props) => (
+          <Button
+            {...props}
+            className="model-picker"
+            label="Effort for next reply"
+            tooltip={
+              active
+                ? 'Wait for this reply to finish before changing effort'
+                : `Effort for next reply: ${effortLabel(composition.effort)}`
+            }
+            variant="ghost"
+            size="sm"
+            isDisabled={active || !!savingModel || busy || !currentModel}
           >
-            {effortOptions(composition.effort, currentModel).map((option) => (
-              <DropdownMenuRadioItem
-                key={option.value}
-                value={option.value}
-                label={option.label}
-                isDisabled={option.disabled || (option.value === 'default' && !currentModel)}
-              />
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuGroup>
+            <span className="chat-model">{effortLabel(composition.effort)}</span>
+          </Button>
+        )}
+      >
+        <DropdownMenuRadioGroup
+          label="Conversation effort"
+          value={composition.effort ?? 'default'}
+          onChange={(value) => {
+            if (value === CUSTOM_EFFORT) setTyping(true);
+            else if (currentModel)
+              void chooseModel(
+                composition.provider,
+                currentModel.model,
+                value === 'default' ? null : value,
+              );
+          }}
+        >
+          {effortOptions(composition.effort, currentModel).map((option) => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              label={option.label}
+              isDisabled={option.disabled || (option.value === 'default' && !currentModel)}
+            />
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenu>
       {typing && currentModel && (
         <CustomEffort
