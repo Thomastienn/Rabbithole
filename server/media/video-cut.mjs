@@ -76,10 +76,32 @@ export const PIECE_IMPROVE_INSTRUCTIONS =
   '\n\n' +
   HOUSE_STYLE_SKILL;
 
-// Appended to the cut instructions for a repair, which also counts as the cut's audit.
+// How a fix, repair or piece improvement answers a patch of only what changes (spec: Cut patches).
+const DIFF =
+  'a unified diff against exactly those lines: one or more hunks, each starting @@ -<old start>,<old count> +<new start>,<new count> @@, then lines starting with a space for unchanged context (about three around each change), - for removed and + for added lines, changing only the lines that need to change';
+
+// Appended to the cut instructions for a repair without failed code, and as the whole-source fallback when a repair patch does not apply.
 export const REPAIR_NOTE =
   "\nThis is a repair, and it is also this cut's audit. The task also holds validationError, the error the previous attempt hit, failedCode, the code that failed, when present, and previousLastFrame; when previousLastFrame is true the attached image is the previous cut's last frame. Fix the error and return the whole corrected cut under the same rules. Also check continuity against styleBrief, setPieces when present and previousEndState, using the previous frame as context. The plan is the target: align recurring objects to its positions and looks rather than copying deviations in the previous frame.";
 
+// Appended to the cut instructions for a repair of failed code, which also counts as the cut's audit.
+export const REPAIR_PATCH_NOTE =
+  "\nThis is a repair, and it is also this cut's audit. The task also holds validationError, the error the previous attempt hit, and previousLastFrame; when previousLastFrame is true the attached image is the previous cut's last frame. failedCode, the code that failed, follows the JSON task as raw lines after a line reading failedCode:. Fix the error under the same rules. Also check continuity against styleBrief, setPieces when present and previousEndState, using the previous frame as context. The plan is the target: align recurring objects to its positions and looks rather than copying deviations in the previous frame. Instead of the whole cut, return only " +
+  DIFF +
+  ' of failedCode, no Markdown fences or commentary.';
+
 // Appended to the cut instructions when the chat model fixes the issues an audit found.
 export const FIX_NOTE =
+  '\nThis is an audit fix. The task also holds issues, each naming what is wrong and where, emphasis, the pen and cursor marks drawn above the cut, and previousLastFrame; when previousLastFrame is true the attached image is the previous cut\'s last frame. code, the cut as written, follows the JSON task as raw lines after a line reading code:. Fix every issue and leave the rest of the cut as it is; the plan is the target, not the previous frame. Instead of bare source, return only compact JSON, no commentary: {"patch":"<the diff>","emphasis":[...]}, where patch is ' +
+  DIFF +
+  ' of code. Include emphasis only to replace the marks, using the same mark shape as the plan, with coordinates in 1920x1080 frame pixels placed on the content each mark points at.';
+
+// The whole-source fallback of an audit fix whose patch does not apply.
+export const FIX_WHOLE_NOTE =
   '\nThis is an audit fix. The task also holds issues, each naming what is wrong and where, code, the cut as written, emphasis, the pen and cursor marks drawn above it, and previousLastFrame; when previousLastFrame is true the attached image is the previous cut\'s last frame. Fix every issue and leave the rest of the cut as it is; the plan is the target, not the previous frame. Instead of bare source, return only compact JSON, no commentary: {"code":"<the whole corrected cut source>","emphasis":[...]}. Include emphasis only to replace the marks, using the same mark shape as the plan, with coordinates in 1920x1080 frame pixels placed on the content each mark points at.';
+
+// Appended to the piece improvement instructions: the saved module follows the task as raw lines.
+export const PIECE_PATCH_NOTE =
+  '\nsource, the saved module (with both forms when source3d is present), follows the JSON task as raw lines after a line reading source:. Instead of the whole module, return only ' +
+  DIFF +
+  ' of source, no Markdown fences or commentary.';

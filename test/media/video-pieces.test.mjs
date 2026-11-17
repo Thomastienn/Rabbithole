@@ -11,6 +11,8 @@ import {
   until,
   open,
   fakeRender,
+  fixerTask,
+  repairAnswer,
 } from '../support/video-kit.mjs';
 import { videoPlan, cutSource, pieceNames, libraryPieces } from '../../server/media/video-plan.mjs';
 import {
@@ -97,7 +99,7 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
           calls.push('plan');
           return complete(emit, JSON.stringify(plan));
         }
-        const input = JSON.parse(text);
+        const input = fixerTask(text);
         if (tree.instructions.startsWith('You write the set pieces')) {
           calls.push('pieces');
           inputs.pieces = input;
@@ -296,7 +298,7 @@ test('set pieces get two tries and fail by name; Retry keeps the plan, then keep
         plans++;
         return complete(emit, JSON.stringify(plan));
       }
-      const input = JSON.parse(text);
+      const input = fixerTask(text);
       if (tree.instructions.startsWith('You write the set pieces')) {
         pieceCalls++;
         errors.push(input.validationError);
@@ -309,9 +311,13 @@ test('set pieces get two tries and fail by name; Retry keeps the plan, then keep
       cutCalls[i]++;
       complete(
         emit,
-        i === 1 && !cutOk
-          ? usesPieces.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
-          : usesPieces,
+        repairAnswer(
+          tree,
+          text,
+          i === 1 && !cutOk
+            ? usesPieces.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
+            : usesPieces,
+        ),
       );
     },
   });

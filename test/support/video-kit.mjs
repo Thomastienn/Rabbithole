@@ -12,6 +12,25 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 import { RenderInternals } from '@remotion/renderer';
+import { createPatch } from 'diff';
+import { REPAIR_PATCH_NOTE } from '../../server/media/video-cut.mjs';
+
+// The JSON task a fixer receives, with the raw source that follows it restored under its field.
+export const fixerTask = (text) => {
+  const at = text.search(/\n\n\w+:\n/);
+  if (at < 0) return JSON.parse(text);
+  const field = text.slice(at + 2, text.indexOf(':', at));
+  return { ...JSON.parse(text.slice(0, at)), [field]: text.slice(at + field.length + 4) };
+};
+// A unified diff from one source to another, as a fixer answers.
+export const patchOf = (from, to) => createPatch('source', from, to);
+// A writer's answer: a repair of failed code answers the source as a patch of it; an unchanged source
+// gains a trailing newline, which validation trims, so the patch has a hunk.
+export const repairAnswer = (tree, text, source) => {
+  if (!tree.instructions.endsWith(REPAIR_PATCH_NOTE)) return source;
+  const { failedCode } = fixerTask(text);
+  return patchOf(failedCode, source === failedCode ? source + '\n' : source);
+};
 
 export const task = {
   title: 'Winners advance',

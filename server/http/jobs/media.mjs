@@ -10,7 +10,9 @@ import {
   PIECES_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
   REPAIR_NOTE,
+  REPAIR_PATCH_NOTE,
   FIX_NOTE,
+  FIX_WHOLE_NOTE,
   PIECE_IMPROVE_INSTRUCTIONS,
 } from '../../media/video-cut.mjs';
 import { MANIM_AUDIT_INSTRUCTIONS } from '../../media/manim-cut.mjs';
@@ -128,9 +130,9 @@ export function mediaJobs(ctx) {
                     ? 'improve'
                     : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].includes(args[0].instructions)
                       ? 'audit'
-                      : args[0].instructions.endsWith(REPAIR_NOTE)
+                      : [REPAIR_NOTE, REPAIR_PATCH_NOTE].some((n) => args[0].instructions.endsWith(n))
                         ? 'repair'
-                        : args[0].instructions.endsWith(FIX_NOTE)
+                        : [FIX_NOTE, FIX_WHOLE_NOTE].some((n) => args[0].instructions.endsWith(n))
                           ? 'fix'
                           : 'cut',
               message: job.message,

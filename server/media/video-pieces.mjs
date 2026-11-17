@@ -4,6 +4,7 @@ import {
   PIECES_PARTS_NOTE,
   PIECES_3D,
   PIECE_IMPROVE_INSTRUCTIONS,
+  PIECE_PATCH_NOTE,
 } from './video-cut.mjs';
 import { REMOTION_SKILL } from './skills.mjs';
 import {
@@ -14,6 +15,7 @@ import {
   libraryPieces,
   CUT_ATTEMPTS,
 } from './video-plan.mjs';
+import { patched, withSource } from './patches.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 
 export const piecesError = (reason) =>
@@ -166,8 +168,9 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
   }
 }
 
-// One smart-model rewrite of a saved piece an audit flagged; returns the validated library entry or throws.
-// A piece with a 3D form is rewritten in both forms; the module must export and validate both.
+// One smart-model patch of a saved piece an audit flagged, or one whole rewrite when the patch does not apply;
+// returns the validated library entry or throws. A piece with a 3D form is patched as one module holding both
+// forms, which must export and validate both.
 export async function improvePiece({ piece, why, call }) {
   const { name, look, props, roles, source, source3d, parts = [] } = piece;
   const names = source3d ? [name, `${name}3D`] : [name];
@@ -176,18 +179,31 @@ export async function improvePiece({ piece, why, call }) {
     paletteRoles: Object.fromEntries(roles.map((r) => [r, 'amber'])),
     recurringObjects: [{ look }],
   };
-  const raw = await call(
-    PIECE_IMPROVE_INSTRUCTIONS + '\n\n' + REMOTION_SKILL,
-    JSON.stringify({
-      name,
-      look,
-      props,
-      roles,
-      source,
-      ...(source3d && { source3d }),
-      ...(parts.length && { parts: parts.map((p) => p.name) }),
-      why,
-    }),
-  );
+  const task = {
+    name,
+    look,
+    props,
+    roles,
+    ...(parts.length && { parts: parts.map((p) => p.name) }),
+    why,
+  };
+  // Both forms start with the same imports and helpers; the module keeps them once.
+  const lines = source.split('\n'),
+    solid = source3d?.split('\n') ?? [];
+  let shared = 0;
+  while (source3d && shared < lines.length && lines[shared] === solid[shared]) shared++;
+  const module = [...lines, ...solid.slice(shared)].join('\n');
+  const raw =
+    patched(
+      module,
+      await call(
+        PIECE_IMPROVE_INSTRUCTIONS + PIECE_PATCH_NOTE + '\n\n' + REMOTION_SKILL,
+        withSource({ ...task, ...(source3d && { source3d: true }) }, 'source', module),
+      ),
+    ) ??
+    (await call(
+      PIECE_IMPROVE_INSTRUCTIONS + '\n\n' + REMOTION_SKILL,
+      JSON.stringify({ ...task, source, ...(source3d && { source3d }) }),
+    ));
   return libraryPieces(cutSource(raw, brief, names), brief, [name])[0];
 }

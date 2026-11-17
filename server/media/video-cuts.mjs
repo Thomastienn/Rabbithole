@@ -7,7 +7,9 @@ import {
   EXHIBIT_NOTE,
   AUDIT_INSTRUCTIONS,
   REPAIR_NOTE,
+  REPAIR_PATCH_NOTE,
   FIX_NOTE,
+  FIX_WHOLE_NOTE,
 } from './video-cut.mjs';
 import {
   cutJoin,
@@ -18,6 +20,7 @@ import {
   CUT_PAUSE_FRAMES,
   MAX_SOURCE,
 } from './video-plan.mjs';
+import { patched, withSource } from './patches.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from './manim-cut.mjs';
 import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL } from './skills.mjs';
 import { stageNarration } from './narration.mjs';
@@ -61,10 +64,24 @@ export function poorPieces(raw, offered) {
     : [];
 }
 
-// A fix answers {"code", "emphasis"?}; anything unusable throws.
-export function auditFix(raw, brief, sentences, engine = 'remotion') {
-  const answer = JSON.parse(unfenced(raw));
-  if (typeof answer?.code !== 'string') throw new Error('Fix returned no code.');
+// A fix answers {"patch", "emphasis"?} against source, or {"code", "emphasis"?} as the whole-source fallback.
+// A patch answer that does not parse or apply is null; anything else unusable throws.
+export function auditFix(raw, brief, sentences, engine = 'remotion', source) {
+  let answer;
+  try {
+    answer = JSON.parse(unfenced(raw));
+  } catch (e) {
+    if (source === undefined) throw e;
+    return null;
+  }
+  const code =
+    source === undefined
+      ? answer?.code
+      : typeof answer?.patch === 'string'
+        ? patched(source, answer.patch)
+        : null;
+  if (source !== undefined && code === null) return null;
+  if (typeof code !== 'string') throw new Error('Fix returned no code.');
   if (
     answer.emphasis !== undefined &&
     !(
@@ -75,7 +92,7 @@ export function auditFix(raw, brief, sentences, engine = 'remotion') {
   )
     throw new Error('Fix returned unreadable emphasis.');
   return {
-    code: engine === 'manim' ? answer.code.trim() : cutSource(answer.code, brief),
+    code: engine === 'manim' ? code.trim() : cutSource(code, brief),
     ...(answer.emphasis && { emphasis: answer.emphasis }),
   };
 }
@@ -221,18 +238,20 @@ export async function writeCuts({
       // Provider/auth failures are final; only validation/render failures spend a repair attempt.
       let raw;
       try {
-        raw = await write(
-          writerInstructions(index) + (error ? REPAIR_NOTE : ''),
-          JSON.stringify({
-            ...task(index),
-            ...(error && {
-              validationError: error.message,
-              ...(failed && { failedCode: failed }),
-              previousLastFrame: !!previous,
-            }),
-          }),
-          undefined,
-          previous ? [previous] : undefined,
+        const input = {
+          ...task(index),
+          ...(error && { validationError: error.message, previousLastFrame: !!previous }),
+        };
+        const call = (note, text) =>
+          write(writerInstructions(index) + note, text, undefined, previous ? [previous] : undefined);
+        // A repair of failed code answers a patch; when it does not apply, one whole-source call within this attempt.
+        raw =
+          error && failed
+            ? patched(failed, await call(REPAIR_PATCH_NOTE, withSource(input, 'failedCode', failed)))
+            : null;
+        raw ??= await call(
+          error ? REPAIR_NOTE : '',
+          JSON.stringify({ ...input, ...(error && failed && { failedCode: failed }) }),
         );
       } catch (e) {
         if (!e.invalidOutput) throw e;
@@ -360,20 +379,27 @@ export async function writeCuts({
           }
         const issues = auditIssues(answer);
         if (issues) {
-          // The chat model rewrites the flagged cut once; the fix is kept only if it validates and renders.
+          // The chat model patches the flagged cut once, or writes it whole once when the patch does not apply;
+          // the fix is kept only if it validates and renders.
+          const fix = (note, text) =>
+            write(writerInstructions(index) + note, text, undefined, previous ? [previous] : undefined);
+          const { code, ...rest } = audited,
+            sentences = cut.timing.sentences.length;
           Object.assign(
             cut,
             auditFix(
-              await write(
-                writerInstructions(index) + FIX_NOTE,
-                JSON.stringify({ ...audited, issues }),
-                undefined,
-                previous ? [previous] : undefined,
-              ),
+              await fix(FIX_NOTE, withSource({ ...rest, issues }, 'code', code)),
               plan.styleBrief,
-              cut.timing.sentences.length,
+              sentences,
               cut.engine,
-            ),
+              code,
+            ) ??
+              auditFix(
+                await fix(FIX_WHOLE_NOTE, JSON.stringify({ ...audited, issues })),
+                plan.styleBrief,
+                sentences,
+                cut.engine,
+              ),
           );
           // A Manim fix is checked and rendered to a new clip; the old clip is replaced only on success.
           if (cut.engine !== 'manim') await shoot(index);

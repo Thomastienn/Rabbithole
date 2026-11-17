@@ -11,8 +11,10 @@ import {
   open,
   job,
   fakeRender,
+  fixerTask,
+  patchOf,
 } from '../support/video-kit.mjs';
-import { AUDIT_INSTRUCTIONS, FIX_NOTE } from '../../server/media/video-cut.mjs';
+import { AUDIT_INSTRUCTIONS, FIX_NOTE, FIX_WHOLE_NOTE } from '../../server/media/video-cut.mjs';
 import { auditFix, auditIssues } from '../../server/media/video-cuts.mjs';
 
 const twoCuts = () => {
@@ -22,8 +24,7 @@ const twoCuts = () => {
   });
   return plan;
 };
-const cutOf = (plan, text) =>
-  plan.cuts.findIndex((c) => c.purpose === JSON.parse(text).cut.purpose);
+const cutOf = (plan, text) => plan.cuts.findIndex((c) => c.purpose === fixerTask(text).cut.purpose);
 const written = (i) => composition.replace('PRIVATE_SOURCE_MARKER', `CUT_${i}`);
 const fixed = composition.replace('PRIVATE_SOURCE_MARKER', 'AUDITED');
 const moved = [{ tool: 'cursor', sentence: 0, x: 700, y: 300 }];
@@ -61,8 +62,11 @@ test('audits start together, see code, stills and the previous last frame; issue
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         const i = cutOf(plan, text);
         if (tree.instructions.endsWith(FIX_NOTE)) {
-          fixes.push({ i, tree, input: JSON.parse(text) });
-          return complete(emit, JSON.stringify({ code: fixed, emphasis: moved }));
+          fixes.push({ i, tree, text, input: fixerTask(text) });
+          return complete(
+            emit,
+            JSON.stringify({ patch: patchOf(written(i), fixed), emphasis: moved }),
+          );
         }
         if (tree.instructions !== AUDIT_INSTRUCTIONS) return complete(emit, written(i));
         audits.push({ i, input: JSON.parse(text), images: tree.images });
@@ -153,6 +157,7 @@ test('audits start together, see code, stills and the previous last frame; issue
   assert.deepEqual(fixes[0].input.cut, plan.cuts[0]);
   assert.deepEqual(fixes[0].input.styleBrief, plan.styleBrief);
   assert.equal(fixes[0].input.code, written(0));
+  assert.ok(fixes[0].text.endsWith('\n\ncode:\n' + written(0)), 'the code follows as raw lines');
   assert.equal(fixes[0].input.previousLastFrame, false);
   assert.equal(fixes[0].tree.images, undefined);
   const stage = (name) =>
@@ -181,10 +186,12 @@ test('a fix that breaks the check or the render falls back to the cut from befor
         complete(
           emit,
           JSON.stringify({
-            code:
+            patch: patchOf(
+              written(i),
               i === 0
                 ? fixed.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
                 : fixed.replace('AUDITED', 'BROKEN'),
+            ),
             emphasis: moved,
           }),
         );
@@ -223,6 +230,57 @@ test('a fix that breaks the check or the render falls back to the cut from befor
   );
   assert.deepEqual(final, { 'cut-0': [written(0), []], 'cut-1': [written(1), []] });
   assert.equal(fixCalls, 2, 'each flagged cut gets exactly one fix and no retry');
+});
+
+test('a fix patch that does not parse or apply gets exactly one whole-source call; no patch retry', async (t) => {
+  const plan = twoCuts();
+  const calls = [];
+  const env = await open(
+    {
+      generate: async (tree, text, emit) => {
+        if (tree.id) return complete(emit, 'Watch.' + directive);
+        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        const i = cutOf(plan, text);
+        if (tree.instructions === AUDIT_INSTRUCTIONS) return complete(emit, flagged);
+        if (tree.instructions.endsWith(FIX_NOTE)) {
+          calls.push([i, 'patch']);
+          // Cut 0 answers a hunk whose context is not in the cut; cut 1 answers no diff at all.
+          return complete(
+            emit,
+            JSON.stringify({ patch: i ? 'move the label' : patchOf(fixed, written(i)) }),
+          );
+        }
+        if (tree.instructions.endsWith(FIX_WHOLE_NOTE)) {
+          calls.push([i, 'whole', JSON.parse(text).code]);
+          return complete(
+            emit,
+            JSON.stringify({ code: written(i).replace(`CUT_${i}`, `WHOLE_${i}`) }),
+          );
+        }
+        complete(emit, written(i));
+      },
+    },
+    { videoSnapshot: stills([]) },
+  );
+  t.after(async () => {
+    await env.app.stop();
+    env.store.close();
+  });
+  const row = await settledRow(env, await running(env));
+  assert.equal(row.status, 'ready', row.error);
+  assert.deepEqual(
+    calls.sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1])),
+    [
+      [0, 'patch'],
+      [0, 'whole', written(0)],
+      [1, 'patch'],
+      [1, 'whole', written(1)],
+    ],
+  );
+  assert.deepEqual(
+    JSON.parse(row.source).cuts.map((c) => c.code),
+    [0, 1].map((i) => written(i).replace(`CUT_${i}`, `WHOLE_${i}`)),
+  );
 });
 
 test('cancel stops a running snapshot and a running audit', async (t) => {
@@ -321,4 +379,21 @@ test('audit answers parse to ok or issues, fix answers to a validated fix, anyth
   assert.throws(() => auditFix(JSON.stringify({ code: fixed, emphasis: moved }), styleBrief, 0));
   assert.throws(() => auditFix(fixed, styleBrief, 1));
   assert.throws(() => auditFix('{"change":false}', styleBrief, 1));
+  // Against a source, a patch answer applies; one that does not parse or apply is null for the fallback.
+  const source = written(0);
+  assert.deepEqual(
+    auditFix(JSON.stringify({ patch: patchOf(source, fixed) }), styleBrief, 1, 'remotion', source),
+    { code: fixed },
+  );
+  for (const bad of [fixed, '{"code":"x"}', JSON.stringify({ patch: patchOf(fixed, source) })])
+    assert.equal(auditFix(bad, styleBrief, 1, 'remotion', source), null);
+  assert.throws(() =>
+    auditFix(
+      JSON.stringify({ patch: patchOf(source, fixed), emphasis: moved }),
+      styleBrief,
+      0,
+      'remotion',
+      source,
+    ),
+  );
 });

@@ -13,6 +13,8 @@ import {
   directive,
   fakeRender,
   until,
+  fixerTask,
+  repairAnswer,
 } from '../support/video-kit.mjs';
 
 test('Python cut validation accepts kit math and rejects imports and off-brief styles without executing scenes', () => {
@@ -39,7 +41,7 @@ for (const repair of [false, true])
             assert.match(tree.instructions, /Choose engine "manim"/);
             return complete(emit, JSON.stringify(plan));
           }
-          const input = JSON.parse(text),
+          const input = fixerTask(text),
             index = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
           writes[index]++;
           if (index === 1) {
@@ -48,7 +50,14 @@ for (const repair of [false, true])
             assert.equal(input.previousEndState, plan.cuts[0].endState);
             if (writes[index] > 1) assert.ok(input.validationError);
           } else assert.match(tree.instructions, /TypeScript React source/);
-          complete(emit, index === 1 ? '```python\n' + manimCut + '\n```' : composition);
+          complete(
+            emit,
+            repairAnswer(
+              tree,
+              text,
+              index === 1 ? '```python\n' + manimCut + '\n```' : composition,
+            ),
+          );
         },
       },
       {
@@ -200,8 +209,8 @@ for (const invalid of [false, true])
           if (tree.id) return complete(emit, 'Watch.' + directive);
           if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
           if (!tree.instructions.includes('Python source')) return complete(emit, composition);
-          inputs.push(JSON.parse(text));
-          complete(emit, invalid && inputs.length === 1 ? bad : manimCut);
+          inputs.push(fixerTask(text));
+          complete(emit, repairAnswer(tree, text, invalid && inputs.length === 1 ? bad : manimCut));
         },
       },
       {

@@ -10,8 +10,15 @@ import {
   until,
   open,
   fakeRender,
+  fixerTask,
+  patchOf,
 } from '../support/video-kit.mjs';
-import { AUDIT_INSTRUCTIONS, REPAIR_NOTE, FIX_NOTE } from '../../server/media/video-cut.mjs';
+import {
+  AUDIT_INSTRUCTIONS,
+  REPAIR_NOTE,
+  REPAIR_PATCH_NOTE,
+  FIX_NOTE,
+} from '../../server/media/video-cut.mjs';
 import {
   TEACHING_SKILL,
   HUMANIZER_SKILL,
@@ -36,7 +43,7 @@ const stageOf = (instructions) =>
       ? 'pieces'
       : instructions === AUDIT_INSTRUCTIONS
         ? 'audit'
-        : instructions.endsWith(REPAIR_NOTE)
+        : instructions.endsWith(REPAIR_NOTE) || instructions.endsWith(REPAIR_PATCH_NOTE)
           ? 'repair'
           : instructions.endsWith(FIX_NOTE)
             ? 'fix'
@@ -71,7 +78,12 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
               ? '{"issues":[{"what":"Label overlaps","where":"centre"}]}'
               : '{"ok":true}',
           );
-        if (stage === 'fix') return complete(emit, JSON.stringify({ code: composition }));
+        if (stage === 'fix') {
+          const { code } = fixerTask(text);
+          return complete(emit, JSON.stringify({ patch: patchOf(code, code + '\n// fixed') }));
+        }
+        if (tree.instructions.endsWith(REPAIR_PATCH_NOTE))
+          return complete(emit, patchOf(fixerTask(text).failedCode, composition));
         complete(emit, composition);
       },
     },

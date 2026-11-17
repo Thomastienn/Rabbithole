@@ -10,11 +10,14 @@ import {
   until,
   open,
   fakeRender,
+  fixerTask,
+  patchOf,
 } from '../support/video-kit.mjs';
 import {
   AUDIT_INSTRUCTIONS,
   PIECES_INSTRUCTIONS,
   REPAIR_NOTE,
+  REPAIR_PATCH_NOTE,
 } from '../../server/media/video-cut.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top.';
@@ -41,15 +44,15 @@ test('a failed cut gets one repair with the failed code, set pieces and the prev
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         if (tree.instructions.startsWith(PIECES_INSTRUCTIONS)) return complete(emit, pieces);
-        const input = JSON.parse(text),
+        const input = fixerTask(text),
           i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
         if (tree.instructions === AUDIT_INSTRUCTIONS) {
           audits.push({ i, images: tree.images });
           return complete(emit, '{"ok":true}');
         }
-        if (tree.instructions.endsWith(REPAIR_NOTE)) {
+        if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
           repairs.push({ i, input, images: tree.images });
-          return complete(emit, repaired);
+          return complete(emit, patchOf(input.failedCode, repaired));
         }
         complete(emit, i === 1 ? broken : composition);
       },
@@ -109,9 +112,9 @@ test('adjacent repaired cuts share the repaired last frame; the first cut needs 
           audits++;
           return complete(emit, '{"ok":true}');
         }
-        if (tree.instructions.endsWith(REPAIR_NOTE)) {
-          repairs.push({ input: JSON.parse(text), images: tree.images });
-          return complete(emit, repaired);
+        if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+          repairs.push({ input: fixerTask(text), images: tree.images });
+          return complete(emit, patchOf(fixerTask(text).failedCode, repaired));
         }
         complete(emit, broken);
       },
@@ -164,10 +167,10 @@ test('a render repair sees the stripped diagnostic and failed code and gets no f
           events.push('audit');
           return complete(emit, '{"ok":true}');
         }
-        if (tree.instructions.endsWith(REPAIR_NOTE)) {
+        if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
           events.push('repair');
-          repairs.push({ input: JSON.parse(text), images: tree.images });
-          return complete(emit, repaired);
+          repairs.push({ input: fixerTask(text), images: tree.images });
+          return complete(emit, patchOf(fixerTask(text).failedCode, repaired));
         }
         complete(emit, composition);
       },
@@ -209,4 +212,54 @@ test('a render repair sees the stripped diagnostic and failed code and gets no f
   ]);
   assert.deepEqual(events, ['audit', 'audit', 'repair']);
   assert.equal(JSON.parse(row.source).cuts[1].code, repaired);
+});
+
+test('a repair patch that does not apply gets one whole-source call in the same attempt; a patch that still breaks spends the last attempt', async (t) => {
+  for (const [answer, outcome] of [
+    ['not a diff', 'ready'],
+    [patchOf(broken, broken.replace('PRIVATE_SOURCE_MARKER', 'STILL_BROKEN')), 'failed'],
+  ]) {
+    const calls = [];
+    const env = await open(
+      {
+        generate: async (tree, text, emit) => {
+          if (tree.id) return complete(emit, 'Watch.' + directive);
+          if (tree.instructions.startsWith('You plan'))
+            return complete(emit, JSON.stringify(planFor(composition, 1)));
+          if (tree.instructions === AUDIT_INSTRUCTIONS) return complete(emit, '{"ok":true}');
+          if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+            calls.push(['patch', fixerTask(text).failedCode]);
+            return complete(emit, answer);
+          }
+          if (tree.instructions.endsWith(REPAIR_NOTE)) {
+            calls.push(['whole', JSON.parse(text).failedCode]);
+            return complete(emit, repaired);
+          }
+          calls.push(['write']);
+          complete(emit, broken);
+        },
+      },
+      {
+        videoSnapshot: async (dir, list) => {
+          for (const { file } of list) writeFileSync(file, 'jpeg');
+        },
+      },
+    );
+    const chat = env.store.create('Patch repair', 'codex');
+    await (await env.post(`/api/trees/${chat.id}/messages`, { text: 'Make a video.' })).text();
+    const row = await until(() =>
+      env.store.tree(chat.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
+    );
+    await env.app.stop();
+    env.store.close();
+    assert.equal(row.status, outcome, row.error);
+    if (outcome === 'ready') {
+      assert.deepEqual(calls, [['write'], ['patch', broken], ['whole', broken]]);
+      assert.equal(JSON.parse(row.source).cuts[0].code, repaired);
+    } else {
+      assert.deepEqual(calls, [['write'], ['patch', broken]], 'no attempt past the limit');
+      assert.match(row.error, /^Cut 1 of 1: .*import/i);
+    }
+  }
+  t.diagnostic('fallback and limit checked');
 });

@@ -10,6 +10,8 @@ import {
   until,
   open,
   fakeRender,
+  fixerTask,
+  repairAnswer,
 } from '../support/video-kit.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { tutorContext } from '../../server/media/diagrams.mjs';
@@ -46,7 +48,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
           planning++;
           return complete(emit, JSON.stringify(plan));
         }
-        const input = JSON.parse(text),
+        const input = fixerTask(text),
           i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
         inputs[i] = { tree, input };
         writing.push(i);
@@ -166,15 +168,19 @@ for (const failure of ['brief', 'render', 'exhausted'])
             plans++;
             return complete(emit, JSON.stringify(plan));
           }
-          const input = JSON.parse(text),
+          const input = fixerTask(text),
             i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
           writes[i]++;
           if (writes[i] > 1) repairs.push(input.validationError);
           complete(
             emit,
-            i === 1 && (failure === 'exhausted' || (failure === 'brief' && writes[i] === 1))
-              ? composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
-              : composition,
+            repairAnswer(
+              tree,
+              text,
+              i === 1 && (failure === 'exhausted' || (failure === 'brief' && writes[i] === 1))
+                ? composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
+                : composition,
+            ),
           );
         },
       },
@@ -242,7 +248,7 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
           plans++;
           return complete(emit, JSON.stringify(plan));
         }
-        const i = plan.cuts.findIndex((c) => c.purpose === JSON.parse(text).cut.purpose);
+        const i = plan.cuts.findIndex((c) => c.purpose === fixerTask(text).cut.purpose);
         writes[i]++;
         if (i === 1 && hold) await hold.promise;
         // The failing cut gives up only after its siblings are written and every cut is narrated.
@@ -259,9 +265,13 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
           }
         complete(
           emit,
-          i === 1 && broken
-            ? composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
-            : composition.replace('PRIVATE_SOURCE_MARKER', `CUT_${i}_W${writes[i]}`),
+          repairAnswer(
+            tree,
+            text,
+            i === 1 && broken
+              ? composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
+              : composition.replace('PRIVATE_SOURCE_MARKER', `CUT_${i}_W${writes[i]}`),
+          ),
         );
       },
     },

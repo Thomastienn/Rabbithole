@@ -4,7 +4,16 @@ import { join } from 'node:path';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { Store } from '../../server/store.mjs';
-import { open, complete, composition, planFor, directive, until } from '../support/video-kit.mjs';
+import {
+  open,
+  complete,
+  composition,
+  planFor,
+  directive,
+  until,
+  fixerTask,
+  repairAnswer,
+} from '../support/video-kit.mjs';
 import { block, source } from '../support/visual-kit.mjs';
 
 const counts = (n) => ({ input: n, output: n + 1, cacheRead: 1 });
@@ -35,15 +44,19 @@ test('reply API attributes retried visuals and every video call, reports running
           await planGate.promise;
           return complete(emit, JSON.stringify(planFor()));
         }
-        if (JSON.parse(text).cut) {
+        if (fixerTask(text).cut) {
           cutCalls++;
           emit({ type: 'usage', usage: counts(30) });
           // A cut retry must count as a separate call too.
           return complete(
             emit,
-            cutCalls === 1
-              ? composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
-              : composition,
+            repairAnswer(
+              tree,
+              text,
+              cutCalls === 1
+                ? composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
+                : composition,
+            ),
           );
         }
         visualAttempts++;

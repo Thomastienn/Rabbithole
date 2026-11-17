@@ -2,8 +2,21 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { planFor, composition, directive, complete, until, open } from '../support/video-kit.mjs';
-import { AUDIT_INSTRUCTIONS, PIECE_IMPROVE_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
+import {
+  planFor,
+  composition,
+  directive,
+  complete,
+  until,
+  open,
+  fixerTask,
+  patchOf,
+} from '../support/video-kit.mjs';
+import {
+  AUDIT_INSTRUCTIONS,
+  PIECE_IMPROVE_INSTRUCTIONS,
+  PIECE_PATCH_NOTE,
+} from '../../server/media/video-cut.mjs';
 import { poorPieces } from '../../server/media/video-cuts.mjs';
 import { improvePiece } from '../../server/media/video-pieces.mjs';
 import { REMOTION_SKILL, HOUSE_STYLE_SKILL } from '../../server/media/skills.mjs';
@@ -43,8 +56,13 @@ async function run(t, rewrite, why = 'No crown on top') {
         if (tree.instructions.startsWith(PIECE_IMPROVE_INSTRUCTIONS)) {
           assert.ok(tree.instructions.includes(REMOTION_SKILL));
           assert.ok(tree.instructions.includes(HOUSE_STYLE_SKILL));
-          calls.improve.push(JSON.parse(text));
-          return complete(emit, rewrite);
+          const input = fixerTask(text);
+          calls.improve.push(input);
+          // The smart model answers a patch of the saved source.
+          return complete(
+            emit,
+            tree.instructions.includes(PIECE_PATCH_NOTE) ? patchOf(input.source, rewrite) : rewrite,
+          );
         }
         complete(emit, usesPieces);
       },
@@ -136,17 +154,23 @@ test('improving a piece with a 3D form rewrites both together; a rewrite missing
     props: ['x', 'y'],
     roles: ['winner'],
     source: pieces,
-    source3d: `import { colors } from './kit';\n${solid('colors.winner')}`,
+    // Saved forms each carry the module's imports.
+    source3d: `import { colors, palette } from './kit';\n${solid('colors.winner')}`,
   };
   let input;
   const improve = (rewrite) =>
     improvePiece({
       piece,
       why: 'No crown',
-      call: async (_rules, text) => ((input = JSON.parse(text)), rewrite),
+      call: async (_rules, text) => ((input = fixerTask(text)), patchOf(input.source, rewrite)),
     });
   const entry = await improve(`${better}\n${solid('palette.raised')}`);
-  assert.equal(input.source3d, piece.source3d, 'the rewrite starts from both saved forms');
+  assert.equal(input.source3d, true);
+  assert.equal(
+    input.source,
+    `${pieces}\n${solid('colors.winner')}`,
+    'one module holds both forms, imports once',
+  );
   assert.match(entry.source, /Crowned winner/);
   assert.doesNotMatch(entry.source, /Winner3D/);
   assert.match(entry.source3d, /export function Winner3D[\s\S]*palette\.raised/);
@@ -155,7 +179,7 @@ test('improving a piece with a 3D form rewrites both together; a rewrite missing
   const flat = await improvePiece({
     piece: { ...piece, source3d: undefined },
     why: 'x',
-    call: async (_rules, text) => ((input = JSON.parse(text)), better),
+    call: async (_rules, text) => ((input = fixerTask(text)), patchOf(input.source, better)),
   });
   assert.ok(!('source3d' in input) && !flat.source3d, 'a 2D-only piece stays 2D-only');
 });
@@ -172,9 +196,40 @@ test('improving a piece built from parts names them so the rewrite draws them in
       parts: [{ name: 'Crown', id: 'c' }],
     },
     why: 'x',
-    call: async (r, text) => ((rules = r), (input = JSON.parse(text)), better),
+    call: async (r, text) => (
+      (rules = r),
+      (input = fixerTask(text)),
+      patchOf(input.source, better)
+    ),
   });
   assert.deepEqual(input.parts, ['Crown']);
   assert.match(rules, /never define them/);
   assert.deepEqual(entry.parts, [], 'the saved parts are kept by the store, not the rewrite');
+});
+
+test('a piece patch that does not apply gets exactly one whole-source rewrite with both saved forms', async () => {
+  const piece = {
+    name: 'Winner',
+    look,
+    props: ['x', 'y'],
+    roles: ['winner'],
+    source: pieces,
+    source3d: `import { colors, palette } from './kit';\nexport function Winner3D() { return <group />; }`,
+  };
+  const calls = [];
+  const entry = await improvePiece({
+    piece,
+    why: 'x',
+    call: async (rules, text) => {
+      calls.push(rules.includes(PIECE_PATCH_NOTE) ? 'patch' : JSON.parse(text));
+      return calls.length === 1
+        ? patchOf('unrelated\nlines\n', 'other\n')
+        : `${better}\nexport function Winner3D() { return <group />; }`;
+    },
+  });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0], 'patch');
+  assert.equal(calls[1].source, piece.source);
+  assert.equal(calls[1].source3d, piece.source3d);
+  assert.match(entry.source, /Crowned winner/);
 });
