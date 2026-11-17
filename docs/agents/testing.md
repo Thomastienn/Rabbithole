@@ -49,8 +49,12 @@ the whole jsdom graph and exhaust memory; compare names, attributes or `assert.o
   `test/**/*.test.mjs`.
 - **Slow (`npm run test:slow`).** Tests that start real provider adapters, server or launcher
   subprocesses, in `test/**/*.slow.mjs`. Put a new test of that kind in a `.slow.mjs` file.
-  Run `npm run test:slow` at the end of a ticket only when it changed `server/providers/`,
-  `server/http/`, `scripts/start*` or `scripts/build-state.mjs`.
+- **Affected (`npm run test:affected`).** Reads the changed and untracked paths from Git,
+  follows imports from every fast and slow test file, and runs the ones that reach a changed
+  path, with the fast suite's loader, workers and memory scope. A change under
+  `test/support/` or to `package.json` runs both suites. Each ticket ends with this command.
+- **Epic gate.** Each epic's last child is a full-suite gate ticket that runs `npm test` and
+  `npm run test:slow`.
 
 ## One provider
 
@@ -97,11 +101,12 @@ Do not write these, and delete them when you meet them:
 - Run `npm run format` before committing; `npm run format:check` must pass. Prettier uses
   print width 100 and single quotes.
 - Keep hand-written JS, TS, TSX and CSS files in `src`, `server`, `scripts` and `test` at
-  500 lines or fewer; split by behaviour instead of adding exemptions. `npm test` enforces
-  this rule. Generated Astryx theme output and test fixtures stay excluded.
+  500 lines or fewer; split by behaviour instead of adding exemptions. `npm test` and
+  `node scripts/check-size.mjs` enforce this rule. Generated Astryx theme output and test fixtures stay excluded.
 - While you work, run only the test files covering the change:
   `node --test test/<file or folder>`.
-- Run `npm test` once at the end.
+- At the end of a ticket run `node scripts/check-size.mjs`, `npm run format:check` and
+  `npm run test:affected`. The full suites run only in the epic gate ticket.
 - Run `npm run build` when you change TSX or the build.
 - Run `npm run test:render` only when you change video rendering.
 - Real OCR is manual and opt-in: `npm run test:ocr` (never part of `npm test`). It uses

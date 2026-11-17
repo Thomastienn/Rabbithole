@@ -34,9 +34,9 @@ Prerequisites: {{dependsOn}}
 - Follow docs/agents/testing.md. Prefer unit tests, then component tests,
   then integration tests; add or change tests at the cheapest level that
   proves the acceptance. While working, run only the test files covering the
-  change (`node --test test/<file or folder>`); run `npm test` once at the
-  end, and `npm run test:slow` only when the change touches the areas
-  testing.md lists. Test shared provider behaviour on one provider; if a
+  change (`node --test test/<file or folder>`); at the end run
+  `node scripts/check-size.mjs`, `npm run format:check` and
+  `npm run test:affected`. The full suites run only in the epic gate ticket. Test shared provider behaviour on one provider; if a
   live script hits a usage limit, rerun it with the other provider
   (`RABBITHOLE_TEST_PROVIDER`). Run a browser verify script or `npm run verify` only when the
   acceptance criteria name it, in the background, reading only the final
