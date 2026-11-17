@@ -156,3 +156,27 @@ test('library cards lead with the frame; missing files offer only removal; trash
     '/api/videos/kept/trash',
   ]);
 });
+
+test('a pending video lists a row per cut and the set pieces being drawn in a polite live region', async (t) => {
+  const { container, cleanup } = await render(
+    h(VideoCard, {
+      artifact: video('rows', 'pending', {
+        phase: 'pieces',
+        cutRows: [
+          { cut: 1, title: 'Meet the winner', state: 'ready' },
+          { cut: 2, title: 'Race again', state: 'repairing' },
+        ],
+        drawing: { drawing: ['Track'], drawn: 1, total: 2 },
+      }),
+      inline: true,
+    }),
+    ui,
+  );
+  t.after(cleanup);
+  const list = container.querySelector('.video-cut-rows');
+  assert.equal(list.getAttribute('aria-live'), 'polite');
+  assert.deepEqual(
+    [...list.querySelectorAll('li')].map((li) => li.textContent),
+    ['Set pieces: 1 of 2 drawnDrawing Track', '1. Meet the winnerReady', '2. Race againRepairing'],
+  );
+});

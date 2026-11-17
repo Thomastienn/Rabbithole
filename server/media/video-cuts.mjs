@@ -14,88 +14,34 @@ import {
 import {
   cutJoin,
   cutSource,
-  emphasisMark,
   pieceNames,
   CUT_ATTEMPTS,
   CUT_PAUSE_FRAMES,
   MAX_SOURCE,
 } from './video-plan.mjs';
 import { patched, withSource } from './patches.mjs';
+import { unfenced, auditIssues, poorPieces, auditFix } from './audit-answers.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from './manim-cut.mjs';
 import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL } from './skills.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
+
+export { auditIssues, poorPieces, auditFix };
 import { stageCut } from './video-stage.mjs';
 
-const unfenced = (raw) => raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim();
-
-// An audit answers {"ok":true} or {"issues":[{what, where}]}, never code; null means ok, anything unusable throws.
-export function auditIssues(raw) {
-  const answer = JSON.parse(unfenced(raw));
-  if (answer?.ok === true && !answer.issues) return null;
-  const issues = answer?.issues;
-  if (
-    !Array.isArray(issues) ||
-    !issues.length ||
-    issues.length > 8 ||
-    !issues.every((i) =>
-      [i?.what, i?.where].every((v) => typeof v === 'string' && v.trim() && v.length <= 500),
-    )
-  )
-    throw new Error('Audit returned unreadable issues.');
-  return issues;
-}
-
-// Saved pieces an audit flags as poor, limited to the offered names; anything unusable flags none.
-export function poorPieces(raw, offered) {
-  let list;
-  try {
-    list = JSON.parse(unfenced(raw))?.pieces;
-  } catch {}
-  return Array.isArray(list)
-    ? list.filter(
-        (p) =>
-          offered.includes(p?.name) &&
-          typeof p.why === 'string' &&
-          p.why.trim() &&
-          p.why.length <= 500,
-      )
-    : [];
-}
-
-// A fix answers {"patch", "emphasis"?} against source, or {"code", "emphasis"?} as the whole-source fallback.
-// A patch answer that does not parse or apply is null; anything else unusable throws.
-export function auditFix(raw, brief, sentences, engine = 'remotion', source) {
-  let answer;
-  try {
-    answer = JSON.parse(unfenced(raw));
-  } catch (e) {
-    if (source === undefined) throw e;
-    return null;
-  }
-  const code =
-    source === undefined
-      ? answer?.code
-      : typeof answer?.patch === 'string'
-        ? patched(source, answer.patch)
-        : null;
-  if (source !== undefined && code === null) return null;
-  if (typeof code !== 'string') throw new Error('Fix returned no code.');
-  if (
-    answer.emphasis !== undefined &&
-    !(
-      Array.isArray(answer.emphasis) &&
-      answer.emphasis.length <= 12 &&
-      answer.emphasis.every((m) => emphasisMark(m) && m.sentence < sentences)
-    )
-  )
-    throw new Error('Fix returned unreadable emphasis.');
-  return {
-    code: engine === 'manim' ? code.trim() : cutSource(code, brief),
-    ...(answer.emphasis && { emphasis: answer.emphasis }),
-  };
-}
+// A cut plays live once its code and measured narration exist and its audit settled; Manim also needs its clip.
+export const playable = (cut) =>
+  !!(cut.code && cut.timing && cut.audited && (cut.engine !== 'manim' || cut.clip));
+// Live rows: a row's state may move back (ready to repairing) while the job phase only moves forward.
+export const cutRows = (cuts, plan) =>
+  cuts.map((c, i) => ({
+    cut: i + 1,
+    title: plan.cuts[i].purpose,
+    state:
+      c.step ??
+      (playable(c) ? 'ready' : !c.code ? 'writing' : !c.timing ? 'narrating' : 'auditing'),
+  }));
 
 // A cut's final validation or render failure; provider, sign-in and runtime errors keep their own wording.
 export const cutError = (reason, index, count) =>
@@ -121,7 +67,7 @@ export async function videoCall(provider, selection, instructions, input, signal
           if (items.size > 32 || bytes > MAX_SOURCE) {
             overflow = true;
             items.clear();
-          } else onText?.(bytes);
+          } else onText?.(bytes, [...items.values()].join('\n\n'));
         }
         if (event.type === 'status') status = event.status;
       },
@@ -163,6 +109,8 @@ export async function writeCuts({
   onPoorPiece = async () => {},
   // Fetched exhibits ({id, cut, kind, title, site, url, text?, by?, show?, file?, type?}); files live in their cut folder.
   exhibits = [],
+  // Set piece drawing progress while their module streams: { drawing: names, drawn, total }.
+  onDrawing = () => {},
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
   const cuts = plan.cuts.map((c, i) => ({
@@ -179,7 +127,12 @@ export async function writeCuts({
       }),
   }));
   const names = plan.cuts.some((c) => c.engine === 'remotion') ? pieceNames(plan) : [];
-  const data = { plan, cuts, ...(names.length && { pieces }), ...(exhibits.length && { exhibits }) };
+  const data = {
+    plan,
+    cuts,
+    ...(names.length && { pieces }),
+    ...(exhibits.length && { exhibits }),
+  };
   const exhibitsOf = (index) => exhibits.filter((e) => e.cut === index);
   // Writers and audits see the cut's fetched exhibits, never the planned ones that may have been dropped.
   const task = (index) => {
@@ -202,12 +155,17 @@ export async function writeCuts({
     parts = [],
     library = {};
   if (names.length && !data.pieces)
-    ({ source: data.pieces, choices, parts } = await writeSetPieces({
+    ({
+      source: data.pieces,
+      choices,
+      parts,
+    } = await writeSetPieces({
       plan,
       names,
       write,
       matches,
       signal,
+      onDrawing,
     }));
   if (data.pieces && !pieces) {
     persist();
@@ -230,6 +188,11 @@ export async function writeCuts({
   const rewrite = async (index, reason) => {
     let error = reason && new Error(reason),
       failed = reason && cuts[index].code;
+    // A live row state only; the job phase still moves forward.
+    if (reason) {
+      cuts[index].step = 'repairing';
+      persist();
+    }
     while (attempts[index] < CUT_ATTEMPTS) {
       attempts[index]++;
       // A repair is also the cut's audit, so it sees the failed code and the previous cut's last frame.
@@ -243,11 +206,19 @@ export async function writeCuts({
           ...(error && { validationError: error.message, previousLastFrame: !!previous }),
         };
         const call = (note, text) =>
-          write(writerInstructions(index) + note, text, undefined, previous ? [previous] : undefined);
+          write(
+            writerInstructions(index) + note,
+            text,
+            undefined,
+            previous ? [previous] : undefined,
+          );
         // A repair of failed code answers a patch; when it does not apply, one whole-source call within this attempt.
         raw =
           error && failed
-            ? patched(failed, await call(REPAIR_PATCH_NOTE, withSource(input, 'failedCode', failed)))
+            ? patched(
+                failed,
+                await call(REPAIR_PATCH_NOTE, withSource(input, 'failedCode', failed)),
+              )
             : null;
         raw ??= await call(
           error ? REPAIR_NOTE : '',
@@ -284,6 +255,7 @@ export async function writeCuts({
         }
       // New code makes any earlier Manim clip stale.
       delete cuts[index].clip;
+      delete cuts[index].step;
       if (error) cuts[index].audited = true;
       persist();
       return;
@@ -379,10 +351,17 @@ export async function writeCuts({
           }
         const issues = auditIssues(answer);
         if (issues) {
+          cut.step = 'fixing';
+          persist();
           // The chat model patches the flagged cut once, or writes it whole once when the patch does not apply;
           // the fix is kept only if it validates and renders.
           const fix = (note, text) =>
-            write(writerInstructions(index) + note, text, undefined, previous ? [previous] : undefined);
+            write(
+              writerInstructions(index) + note,
+              text,
+              undefined,
+              previous ? [previous] : undefined,
+            );
           const { code, ...rest } = audited,
             sentences = cut.timing.sentences.length;
           Object.assign(
@@ -413,6 +392,7 @@ export async function writeCuts({
         Object.assign(cut, before);
         if (before.emphasis === undefined) delete cut.emphasis;
       }
+    delete cut.step;
     cut.audited = true;
     persist();
   };

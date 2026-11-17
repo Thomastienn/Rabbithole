@@ -40,6 +40,13 @@ export type Artifact = ArtifactSummary & {
   frames?: number;
   startedAt?: number;
   phaseStartedAt?: number;
+  // Pending videos: one row per cut (its state may move back) and the set pieces still being drawn.
+  cutRows?: {
+    cut: number;
+    title: string;
+    state: 'writing' | 'narrating' | 'auditing' | 'fixing' | 'repairing' | 'ready';
+  }[];
+  drawing?: { drawing: string[]; drawn: number; total: number };
 };
 export type DiscussionReply = (artifact: Artifact, text: string) => Promise<void>;
 export type DiagramState =

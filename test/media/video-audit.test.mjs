@@ -57,7 +57,7 @@ test('audits start together, see code, stills and the previous last frame; issue
     shots = [],
     logs = [],
     finalMarks = {};
-  let chat, liveDuringAudit, phaseDuringAudit, liveAtRender;
+  let chat, liveDuringAudit, phaseDuringAudit, liveAtRender, rowsDuringFix;
   const env = await open(
     {
       generate: async (tree, text, emit) => {
@@ -66,6 +66,10 @@ test('audits start together, see code, stills and the previous last frame; issue
         const i = cutOf(plan, text);
         if (tree.instructions.endsWith(FIX_NOTE)) {
           fixes.push({ i, tree, text, input: fixerTask(text) });
+          const row = env.store.tree(chat.id).artifacts[0];
+          rowsDuringFix = (
+            await (await env.get(`/api/trees/${chat.id}/artifacts/${row.id}`)).json()
+          ).cutRows;
           return complete(
             emit,
             JSON.stringify({ patch: patchOf(written(i), fixed), emphasis: moved }),
@@ -115,6 +119,14 @@ test('audits start together, see code, stills and the previous last frame; issue
   const row = await settledRow(env, chat);
   assert.equal(row.status, 'ready', row.error);
   assert.equal(phaseDuringAudit, 'auditing');
+  // The flagged cut shows fixing; its sibling's ok audit already made it ready.
+  assert.deepEqual(
+    rowsDuringFix.map((r) => [r.cut, r.title, r.state]),
+    [
+      [1, plan.cuts[0].purpose, 'fixing'],
+      [2, plan.cuts[1].purpose, 'ready'],
+    ],
+  );
   assert.deepEqual(
     liveDuringAudit.cuts.map((c) => [c.playable, c.code]),
     [

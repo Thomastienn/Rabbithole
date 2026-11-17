@@ -31,7 +31,10 @@ async function stageHostData(dir, engine, exhibits = [], pause) {
     }
     const bytes = file && (await readFile(join(dir, file)).catch(() => null));
     if (file && !bytes) continue;
-    data[id] = { ...shown, ...(bytes && { src: `data:${type};base64,${bytes.toString('base64')}` }) };
+    data[id] = {
+      ...shown,
+      ...(bytes && { src: `data:${type};base64,${bytes.toString('base64')}` }),
+    };
   }
   await writeFile(join(dir, 'stock.json'), JSON.stringify(data));
 }

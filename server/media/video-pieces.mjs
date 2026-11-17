@@ -77,9 +77,26 @@ function partRequest(raw, names) {
 
 // One call writes the shared set pieces before any cut, offered the library's closest pieces for each look.
 // The writer may first ask for parts; the library is then searched for them too and the call made again.
+// Named pieces drawn so far in a streaming module: each counts once a later export follows it, its 3D form with it.
+export function piecesDrawn(text, names) {
+  const seen = [...text.matchAll(/export\s+(?:const|function)\s+(\w+?)(?:3D)?\b/g)].map(
+    (m) => m[1],
+  );
+  const done = new Set(seen.slice(0, -1));
+  const drawing = names.filter((n) => !done.has(n));
+  return { drawing, drawn: names.length - drawing.length, total: names.length };
+}
+
 // Returns the accepted module, each name's and part's reuse/variant/new choice when anything was offered,
 // and the parts ({name, look}) the module exports besides the named pieces.
-export async function writeSetPieces({ plan, names, write, matches, signal }) {
+export async function writeSetPieces({
+  plan,
+  names,
+  write,
+  matches,
+  signal,
+  onDrawing = () => {},
+}) {
   const objects = plan.styleBrief.recurringObjects.filter((o) => o.look);
   // A 3D cut draws each object with its <Name>3D mesh group; only the 2D names go to the library.
   const solid = plan.cuts.some((c) => c.dimension === '3d');
@@ -87,6 +104,7 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
   signal.throwIfAborted();
   const library = names.map((_, i) => found[i] ?? []);
   let parts = null;
+  onDrawing(piecesDrawn('', names));
   for (let attempt = 0, error; ; attempt++) {
     if (attempt === CUT_ATTEMPTS) throw piecesError(error.message);
     const all = [...names, ...(parts ?? []).map((p) => p.name)];
@@ -127,6 +145,7 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
           }),
           ...(error && { validationError: error.message }),
         }),
+        (_, text) => onDrawing(piecesDrawn(text, names)),
       );
     } catch (e) {
       if (!e.invalidOutput) throw e;

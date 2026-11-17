@@ -50,8 +50,8 @@ the whole jsdom graph and exhaust memory; compare names, attributes or `assert.o
   follows imports from every fast and slow test file, and runs the ones that reach a changed
   path, with the fast suite's loader, workers and memory scope. A change under
   `test/support/` or to `package.json` runs both suites. Each ticket ends with this command.
-- **Backlog gate.** One full-suite gate ticket, blocked by every other open ticket, runs
-  `npm test` and `npm run test:slow` once the rest of the backlog is done.
+- **Backlog gate.** When every epic is out of ready work, `ralph-afk` makes a gate ticket
+  that runs `npm test` and `npm run test:slow`.
 
 ## One provider
 

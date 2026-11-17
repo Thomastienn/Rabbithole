@@ -85,15 +85,29 @@ test('an older database gains quote resources for video exhibits and keeps its c
   db.exec(`PRAGMA foreign_keys=OFF;
     CREATE TABLE r_old (tree TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE, number INTEGER NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL, site TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('page','image','file')), first_seen INTEGER NOT NULL, PRIMARY KEY(tree, number), UNIQUE(tree, url));
     INSERT INTO r_old SELECT * FROM resources; DROP TABLE resources; ALTER TABLE r_old RENAME TO resources;`);
-  assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name='citations'").get().sql, /REFERENCES resources\(/);
+  assert.match(
+    db.prepare("SELECT sql FROM sqlite_master WHERE name='citations'").get().sql,
+    /REFERENCES resources\(/,
+  );
   assert.equal(db.prepare('SELECT count(*) AS n FROM citations').get().n, 1);
   db.close();
   store = new Store(path);
   try {
-    assert.equal(store.addResource(tree.id, { url: 'https://q.example', title: 'Q', site: 'q.example', kind: 'quote' }), 2);
+    assert.equal(
+      store.addResource(tree.id, {
+        url: 'https://q.example',
+        title: 'Q',
+        site: 'q.example',
+        kind: 'quote',
+      }),
+      2,
+    );
     assert.deepEqual(
       store.resources(tree.id).map((r) => [r.kind, r.conversations.length]),
-      [['page', 1], ['quote', 0]],
+      [
+        ['page', 1],
+        ['quote', 0],
+      ],
     );
   } finally {
     store.close();

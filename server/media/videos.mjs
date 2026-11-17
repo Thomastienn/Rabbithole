@@ -23,7 +23,9 @@ import {
 } from './video-plan.mjs';
 import { fetchExhibit, fetchExhibits } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
-import { videoCall, writeCuts, cutError } from './video-cuts.mjs';
+import { videoCall, writeCuts, cutError, playable, cutRows } from './video-cuts.mjs';
+
+export { playable };
 import { improvePiece } from './video-pieces.mjs';
 import { sandboxProcess, REPO, withoutPaths } from './video-sandbox.mjs';
 import { detectManim } from './manim.mjs';
@@ -100,9 +102,6 @@ export async function validateOutput(workspace, output) {
 }
 
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
-// A cut plays live once its code and measured narration exist and its audit settled; Manim also needs its clip.
-export const playable = (cut) =>
-  !!(cut.code && cut.timing && cut.audited && (cut.engine !== 'manim' || cut.clip));
 
 export async function generateVideo({
   provider,
@@ -242,30 +241,38 @@ export async function generateVideo({
       playableStage = false,
       live,
       frames,
-      rendered;
+      rendered,
+      drawing;
     // Live phase from real cut state: cuts 1 and 2 (every cut when there are two or fewer) decide when playback
     // can start, so the learner rarely waits at the first join; saving needs every cut playable.
     const report = (value = rendered) => {
       rendered = value;
+      // Per-cut rows and set piece drawing ride along with every phase report.
+      const say = (phase, progress, detail) =>
+        onPhase(phase, progress, {
+          ...detail,
+          cutRows: cutRows(live.cuts, plan),
+          ...(live.pieces === null && drawing && { drawing }),
+        });
       const ready = live.cuts.filter(playable).length;
-      if (rendered !== undefined && ready === count) return onPhase('saving', rendered, frames);
-      if (live.pieces === null) return onPhase('pieces');
+      if (rendered !== undefined && ready === count) return say('saving', rendered, frames);
+      if (live.pieces === null) return say('pieces');
       const waiting = live.cuts.slice(0, 2).find((c) => !playable(c));
       if (waiting)
         return !waiting.code
-          ? onPhase('writing', undefined, {
+          ? say('writing', undefined, {
               cut: live.cuts.filter((c) => c.code).length,
               cuts: count,
             })
           : !waiting.timing
-            ? onPhase('narrating')
-            : onPhase('auditing', undefined, {
+            ? say('narrating')
+            : say('auditing', undefined, {
                 cut: live.cuts.filter((c) => c.audited).length,
                 cuts: count,
               });
       if (!playableStage) onStage('playable', { cut: ready, cuts: count });
       playableStage = true;
-      onPhase('playable', undefined, { cut: ready, cuts: count });
+      say('playable', undefined, { cut: ready, cuts: count });
     };
     const work = await writeCuts({
       plan,
@@ -297,6 +304,10 @@ export async function generateVideo({
       kept,
       exhibits,
       pieces: prior?.pieces,
+      onDrawing: (value) => {
+        drawing = value;
+        if (live) report();
+      },
       // Each look's top library matches; the same call embeds pieces saved while no embedder was usable.
       matches: async (looks) => {
         if (!embed) return [];

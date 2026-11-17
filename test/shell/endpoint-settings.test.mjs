@@ -172,9 +172,7 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
     if (path === '/api/settings/endpoints/model') {
       calls.push(body);
       models = models.map((m) =>
-        m.provider === body.id && m.model === body.model
-          ? { ...m, ...body, id: undefined }
-          : m,
+        m.provider === body.id && m.model === body.model ? { ...m, ...body, id: undefined } : m,
       );
       return body;
     }

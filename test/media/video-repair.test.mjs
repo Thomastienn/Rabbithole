@@ -157,7 +157,9 @@ test('a render repair sees the stripped diagnostic and failed code and gets no f
   const events = [],
     repairs = [],
     snapshots = {};
-  let renders = 0;
+  let renders = 0,
+    chat,
+    duringRepair;
   const env = await open(
     {
       generate: async (tree, text, emit) => {
@@ -170,6 +172,9 @@ test('a render repair sees the stripped diagnostic and failed code and gets no f
         if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
           events.push('repair');
           repairs.push({ input: fixerTask(text), images: tree.images });
+          const id = env.store.tree(chat.id).artifacts[0].id;
+          duringRepair = (await (await env.get(`/api/trees/${chat.id}/artifacts/${id}`)).json())
+            .cutRows;
           return complete(emit, patchOf(fixerTask(text).failedCode, repaired));
         }
         complete(emit, composition);
@@ -193,7 +198,7 @@ test('a render repair sees the stripped diagnostic and failed code and gets no f
     await env.app.stop();
     env.store.close();
   });
-  const chat = env.store.create('Render repair', 'codex');
+  chat = env.store.create('Render repair', 'codex');
   await (await env.post(`/api/trees/${chat.id}/messages`, { text: 'Make a video.' })).text();
   const row = await until(() =>
     env.store.tree(chat.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
@@ -211,6 +216,11 @@ test('a render repair sees the stripped diagnostic and failed code and gets no f
     { path: snapshots['cut-0'].at(-1).file, type: 'image/jpeg' },
   ]);
   assert.deepEqual(events, ['audit', 'audit', 'repair']);
+  // A ready cut moves back to repairing while the phase stays at saving.
+  assert.deepEqual(
+    duringRepair.map((r) => r.state),
+    ['ready', 'repairing'],
+  );
   assert.equal(JSON.parse(row.source).cuts[1].code, repaired);
 });
 

@@ -147,7 +147,8 @@ addEventListener('message', (event) => {
   for (const { id, blob, media, ...e } of Array.isArray(event.data.exhibits)
     ? event.data.exhibits
     : [])
-    if (blob instanceof Blob) exhibits[id] = { ...e, src: (exhibitUrls[id] ??= URL.createObjectURL(blob)) };
+    if (blob instanceof Blob)
+      exhibits[id] = { ...e, src: (exhibitUrls[id] ??= URL.createObjectURL(blob)) };
     else if (!media) exhibits[id] = e;
   // A clip with sound starts at its cut's narration pause, as in the render's stock.json.
   for (const cut of event.data.cuts as Incoming[])

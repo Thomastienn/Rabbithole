@@ -89,5 +89,8 @@ test('detection reports the project-local yt-dlp and ffmpeg, never throwing', ()
     ytDlp,
     ffmpeg: 'ffmpeg',
   });
-  assert.equal(detectClips({ root, probe: () => ({ status: null, error: new Error('ENOENT') }) }).ready, false);
+  assert.equal(
+    detectClips({ root, probe: () => ({ status: null, error: new Error('ENOENT') }) }).ready,
+    false,
+  );
 });

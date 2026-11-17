@@ -67,6 +67,8 @@ export function mediaJobs(ctx) {
         ...(job?.characters !== undefined && { characters: job.characters }),
         ...(job?.frames !== undefined && { frames: job.frames }),
         ...(job?.cuts !== undefined && { cut: job.cut, cuts: job.cuts }),
+        ...(job?.cutRows && { cutRows: job.cutRows }),
+        ...(job?.drawing && { drawing: job.drawing }),
       };
     }
     return a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
@@ -130,7 +132,9 @@ export function mediaJobs(ctx) {
                     ? 'improve'
                     : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].includes(args[0].instructions)
                       ? 'audit'
-                      : [REPAIR_NOTE, REPAIR_PATCH_NOTE].some((n) => args[0].instructions.endsWith(n))
+                      : [REPAIR_NOTE, REPAIR_PATCH_NOTE].some((n) =>
+                            args[0].instructions.endsWith(n),
+                          )
                         ? 'repair'
                         : [FIX_NOTE, FIX_WHOLE_NOTE].some((n) => args[0].instructions.endsWith(n))
                           ? 'fix'
@@ -166,6 +170,9 @@ export function mediaJobs(ctx) {
           onStage: stage,
           onPhase: (phase, progress, detail = {}) => {
             if (videos.get(job.id) !== running || running.controller.signal.aborted) return;
+            // Cut rows may move back (ready to repairing) even when the phase cannot.
+            if (detail.cutRows) running.cutRows = detail.cutRows;
+            running.drawing = detail.drawing;
             // Phases only advance, so the reported step and bar never move backward.
             if (PHASES.indexOf(phase) < PHASES.indexOf(running.phase)) return;
             if (running.phase !== phase) {
@@ -245,14 +252,7 @@ export function mediaJobs(ctx) {
           message: artifact.message,
         }).generate(...args),
     };
-    return generateVisual(
-      metering,
-      selection,
-      input,
-      signal,
-      ctx.visualTimeout,
-      onPartial,
-    );
+    return generateVisual(metering, selection, input, signal, ctx.visualTimeout, onPartial);
   };
   // Explicit Retry runs detached like a video job, with the same stop/delete/polling lifecycle.
   const startDrawing = (artifact, parentSignal, onUpdate = () => {}) => {

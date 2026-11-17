@@ -31,7 +31,9 @@ test('HTTP/SSE artifacts drive client states, owned map metadata and exact ancho
       emit({
         type: 'item',
         item: 'answer',
-        text: tree.id ? text + '\n```rabbithole-diagram\n' + JSON.stringify(task) + '\n```' : source,
+        text: tree.id
+          ? text + '\n```rabbithole-diagram\n' + JSON.stringify(task) + '\n```'
+          : source,
       });
       emit({ type: 'status', status: 'completed' });
     },

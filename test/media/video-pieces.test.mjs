@@ -358,3 +358,21 @@ test('set pieces get two tries and fail by name; Retry keeps the plan, then keep
   assert.deepEqual(cutCalls, [1, 3]);
   assert.equal(JSON.parse(ready.source).pieces, pieces);
 });
+
+test('set pieces count as drawn once a later export follows them; their 3D form counts with them', async () => {
+  const { piecesDrawn } = await import('../../server/media/video-pieces.mjs');
+  const names = ['Winner', 'Track'];
+  assert.deepEqual(piecesDrawn('', names), { drawing: names, drawn: 0, total: 2 });
+  assert.deepEqual(piecesDrawn('export function Winner() {\nexport const Wheel = 1;', names), {
+    drawing: ['Track'],
+    drawn: 1,
+    total: 2,
+  });
+  assert.equal(
+    piecesDrawn(
+      'export function Winner() {}\nexport function Track() {}\nexport const Winner3D',
+      names,
+    ).drawn,
+    2,
+  );
+});

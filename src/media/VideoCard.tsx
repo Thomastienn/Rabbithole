@@ -33,6 +33,14 @@ const STEP_LABEL = {
   playable: 'Playing live',
   saving: 'Saving video file',
 };
+const CUT_STATE = {
+  writing: 'Writing',
+  narrating: 'Narrating',
+  auditing: 'Auditing',
+  fixing: 'Fixing',
+  repairing: 'Repairing',
+  ready: 'Ready',
+};
 
 // Only known server-authored reasons reach the learner; arbitrary worker errors may contain private output.
 const FAILURE_REASON =
@@ -73,6 +81,8 @@ export default function VideoCard({
     | 'cuts'
     | 'startedAt'
     | 'phaseStartedAt'
+    | 'cutRows'
+    | 'drawing'
   > & { error?: string | null };
   inline?: boolean;
   onAction?: (action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
@@ -261,6 +271,28 @@ export default function VideoCard({
             )}
           </VStack>
         </section>
+        {drafting && (artifact.cutRows?.length || artifact.drawing) && (
+          <ol className="video-cut-rows" aria-live="polite" aria-label="Cuts">
+            {artifact.drawing && (
+              <li data-state="drawing">
+                <span>
+                  Set pieces: {artifact.drawing.drawn} of {artifact.drawing.total} drawn
+                </span>
+                {artifact.drawing.drawing.length > 0 && (
+                  <small>Drawing {artifact.drawing.drawing.join(', ')}</small>
+                )}
+              </li>
+            )}
+            {artifact.cutRows?.map((row) => (
+              <li key={row.cut} data-state={row.state}>
+                <span>
+                  {row.cut}. {row.title}
+                </span>
+                <small>{CUT_STATE[row.state]}</small>
+              </li>
+            ))}
+          </ol>
+        )}
         {caption}
         {!inline && (
           <Heading level={3} id={`${id}-title`}>
