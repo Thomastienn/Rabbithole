@@ -10,7 +10,7 @@ import CopyButton from '../markdown/CopyButton';
 import { artifactsAt } from '../media/artifacts';
 import { visualsReady } from '../media/visualProgress';
 import { replyUsageLine } from './turn';
-import { NextQuestions, ReplyFeedback } from './ChatDetails';
+import { Groundwork, NextQuestions, ReplyFeedback } from './ChatDetails';
 import Passage from './Passage';
 import Reply from './Reply';
 import BranchForm from './BranchForm';
@@ -99,6 +99,7 @@ export default function ChatThread({
           )
         }
       >
+        {message.role === 'assistant' && <Groundwork suggestions={suggestions} />}
         {message.role === 'assistant' ? (
           <Passage
             message={message}

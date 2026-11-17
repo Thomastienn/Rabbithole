@@ -190,16 +190,17 @@ export const trees = {
         resources: this.resources(id),
         suggestions: this.db
           .prepare(
-            'SELECT message,status,passages,usage FROM suggestions WHERE conversation=? ORDER BY rowid',
+            'SELECT message,status,passages,usage,groundwork FROM suggestions WHERE conversation=? ORDER BY rowid',
           )
           .all(id)
-          .map(({ usage, ...s }) => ({
+          .map(({ usage, groundwork, ...s }) => ({
             ...s,
             passages: JSON.parse(s.passages ?? '[]').map(({ child, ...p }) =>
               this.live(child) ? { ...p, child } : p,
             ),
             // Absent when the tutor's notes block supplied them and no call ran.
             ...(usage && { usage: JSON.parse(usage) }),
+            groundwork: JSON.parse(groundwork ?? '[]'),
           })),
       }
     );

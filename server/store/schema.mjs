@@ -86,6 +86,14 @@ export function open(path) {
         .some((c) => c.name === 'nameTokens')
     )
       this.db.exec('ALTER TABLE suggestions ADD COLUMN nameTokens INTEGER');
+    // Groundwork names saved with the reply's suggestions, a JSON array; NULL reads as none.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(suggestions)')
+        .all()
+        .some((c) => c.name === 'groundwork')
+    )
+      this.db.exec('ALTER TABLE suggestions ADD COLUMN groundwork TEXT');
     // Durable usage: counts, time and attribution only, so deleting content never shrinks history. NULL counts = not reported.
     if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='usage_events'").get()) {
       this.db

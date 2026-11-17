@@ -32,7 +32,14 @@ export function suggestionJobs(ctx) {
         settings.model?.model,
       );
       store.addGraph(result.graph, message);
-      store.finishSuggestions(conversation, message, result.passages, result.usage, selection);
+      store.finishSuggestions(
+        conversation,
+        message,
+        result.passages,
+        result.usage,
+        selection,
+        result.groundwork,
+      );
     })()
       .catch((error) => {
         if (!ctx.stopping)
@@ -52,9 +59,9 @@ export function suggestionJobs(ctx) {
     if (!answer.trim() || !store.tree(conversation) || !store.suggestionSettings().enabled) return;
     if (notes?.readable || (notes && status === 'interrupted')) {
       if (!store.pendingSuggestions(conversation, message)) return;
-      const { passages, graph } = marks(notes, answer);
+      const { passages, groundwork, graph } = marks(notes, answer);
       store.addGraph(graph, message);
-      store.finishSuggestions(conversation, message, passages, null, null);
+      store.finishSuggestions(conversation, message, passages, null, null, groundwork);
     } else if (status === 'completed') startSuggestions(conversation, message, question, answer);
   };
   return { noteSuggestions };

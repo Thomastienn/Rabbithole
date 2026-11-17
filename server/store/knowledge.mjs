@@ -226,17 +226,18 @@ export const knowledge = {
     }
   },
   // No selection: the tutor's own notes block, so no call is recorded and the reply shows no suggestions usage.
-  finishSuggestions(conversation, message, passages, usage, selection) {
+  finishSuggestions(conversation, message, passages, usage, selection, groundwork = []) {
     const at = Date.now();
     if (
       this.db
         .prepare(
-          "UPDATE suggestions SET status=?,passages=?,usage=? WHERE conversation=? AND message=? AND status='pending'",
+          "UPDATE suggestions SET status=?,passages=?,usage=?,groundwork=? WHERE conversation=? AND message=? AND status='pending'",
         )
         .run(
           passages ? 'ready' : 'failed',
           passages && JSON.stringify(passages),
           selection && JSON.stringify({ ...usage, at }),
+          passages && JSON.stringify(groundwork),
           conversation,
           message,
         ).changes &&

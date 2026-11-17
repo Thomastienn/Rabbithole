@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
-const { InheritedContext, TokenStats, TokenStatsToggle, ReplyFeedback, NextQuestions } =
+const { InheritedContext, TokenStats, TokenStatsToggle, ReplyFeedback, NextQuestions, Groundwork } =
   await import('../../src/chat/ChatDetails.tsx');
 
 test('chat details keep inherited context collapsed and read-only, show usage, and retry a failed compaction', async (t) => {
@@ -296,4 +296,26 @@ test('next questions show under the latest reply only, wait for streaming, and a
   assert.deepEqual(asked, ['How do locks queue?']);
   await act(async () => update((v) => ({ ...v, latest: false })));
   assert.equal(container.querySelector('.next-questions'), null);
+});
+
+test("groundwork shows as chips once a reply's suggestions are ready, and nothing without any", async (t) => {
+  let update;
+  function Fixture() {
+    const [suggestions, set] = useState({ message: 'r', status: 'pending', passages: [] });
+    update = set;
+    return h(Groundwork, { suggestions });
+  }
+  const { container, act, cleanup } = await render(h(Fixture), ui);
+  t.after(cleanup);
+  const chips = () =>
+    [...container.querySelectorAll('[role="group"][aria-label="Groundwork"] *')]
+      .filter((e) => !e.children.length && e.textContent)
+      .map((e) => e.textContent);
+  assert.deepEqual(chips(), []);
+  await act(async () =>
+    update({ message: 'r', status: 'ready', passages: [], groundwork: ['Threads', 'Memory'] }),
+  );
+  assert.deepEqual(chips(), ['Threads', 'Memory']);
+  await act(async () => update({ message: 'r', status: 'ready', passages: [], groundwork: [] }));
+  assert.equal(container.querySelector('[aria-label="Groundwork"]'), null);
 });

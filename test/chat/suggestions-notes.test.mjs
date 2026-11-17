@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { diagramReply } from '../../server/media/diagrams.mjs';
 import { suggestionJobs } from '../../server/http/jobs/suggestions.mjs';
+import { marks } from '../../server/suggestions.mjs';
 import { conversationUsageLine } from '../../src/chat/turn.ts';
 import { start } from '../support/suggestion-kit.mjs';
 
@@ -27,6 +28,7 @@ test('the notes block stays hidden at every streamed boundary and its lines pars
   assert.deepEqual(done.notes, {
     questions: ['How do locks queue?', 'What if two threads write?'],
     suggestions: [{ text: 'shared state', concept: 'Shared state' }],
+    groundwork: [],
     concepts: [{ name: 'Shared state', topics: ['Concurrency'] }],
     links: [{ from: 'Shared state', to: 'Mutex', kind: 'builds on' }],
     readable: true,
@@ -51,6 +53,20 @@ test('the notes block stays hidden at every streamed boundary and its lines pars
     3,
   );
   assert.equal(diagramReply('Plain.', true).notes, null);
+  // Groundwork: the first three non-empty names that do not repeat a suggestion concept of the reply.
+  const ground = diagramReply(
+    'Use shared state.\n```rabbithole-notes\n{"suggestion":"shared state","concept":"Shared state"}\n' +
+      ['', 'shared STATE', 'Threads', 'Memory', 'Caches', 'Disks']
+        .map((g) => JSON.stringify({ groundwork: g }))
+        .join('\n') +
+      '\n```',
+    true,
+  ).notes;
+  assert.deepEqual(marks(ground, 'Use shared state.').groundwork, ['Threads', 'Memory', 'Caches']);
+  assert.deepEqual(
+    marks(diagramReply('A\n```rabbithole-notes\n```', true).notes, 'A').groundwork,
+    [],
+  );
   assert.equal(diagramReply('A\n```rabbithole-notes\n```', true).notes.readable, true);
   assert.equal(diagramReply('A\n```rabbithole-notes\nnot json\n```', true).notes.readable, false);
 });
@@ -80,6 +96,7 @@ test('a stopped reply keeps its partial notes; a completed reply without a reada
       [{ start: 4, end: 16, text: 'shared state', concept: 'Shared state' }],
       null,
       null,
+      [],
     ],
   ]);
   calls.length = 0;
@@ -115,11 +132,15 @@ test('a reply with a notes block underlines and fills the graph with no suggesti
       message: saved.messages.at(-1).id,
       status: 'ready',
       passages: [{ start: 14, end: 22, text: 'original', concept: 'Originality' }],
+      groundwork: ['Copyright'],
     },
   ]);
   assert.deepEqual(
     env.store.graph().concepts.map((c) => [c.name, c.topics]),
-    [['Originality', ['Writing']]],
+    [
+      ['Copyright', []],
+      ['Originality', ['Writing']],
+    ],
   );
   assert.equal(
     conversationUsageLine(saved.messages, saved.suggestions).includes('Suggestions'),
@@ -134,4 +155,7 @@ test('a reply with a notes block underlines and fills the graph with no suggesti
   assert.equal(saved.messages.at(-1).questions, undefined);
   assert.equal(saved.suggestions.at(-1).status, 'ready');
   assert.ok(saved.suggestions.at(-1).usage.input >= 0);
+  // Quick thinking stands in for groundwork too: empty names drop, an existing concept keeps its name.
+  assert.deepEqual(saved.suggestions.at(-1).groundwork, ['Plagiarism', 'Copyright']);
+  assert.ok(env.store.graph().concepts.some((c) => c.name === 'Plagiarism'));
 });

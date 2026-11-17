@@ -51,7 +51,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                 : text.startsWith('{') && JSON.parse(text).intent === 'Show each round.'
                   ? 'flowchart TD\n  W1[Round one] --> W2[Final]'
                   : text.endsWith('notes fixture reply')
-                    ? 'Authoritative original\n```rabbithole-notes\n{"question":"Why does originality matter?"}\n{"question":"What if two works match?"}\n{"suggestion":"original","concept":"Originality"}\n{"concept":"Originality","topics":["Writing"]}\nnot json\n```'
+                    ? 'Authoritative original\n```rabbithole-notes\n{"question":"Why does originality matter?"}\n{"question":"What if two works match?"}\n{"suggestion":"original","concept":"Originality"}\n{"concept":"Originality","topics":["Writing"]}\n{"groundwork":"Copyright"}\n{"groundwork":" "}\n{"groundwork":"originality"}\nnot json\n```'
                     : text.endsWith('cut notes fixture')
                       ? 'Authoritative original\n```rabbithole-notes\n{"suggestion":"original"}'
                       : text === 'Check phrase anchors'
@@ -95,6 +95,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
     if (question.endsWith('suggestions fail') || model !== expected) return 'not json';
     return JSON.stringify({
       ...graph(question, knownConcepts),
+      ...(question.includes('cut notes') && { groundwork: ['Plagiarism', '', 'Copyright'] }),
       suggestions: [
         {
           text: answer.slice(0, 13),

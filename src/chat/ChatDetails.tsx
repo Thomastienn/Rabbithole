@@ -5,6 +5,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import ChartBarIcon from '@heroicons/react/24/outline/ChartBarIcon';
 import { Button } from '@astryxdesign/core/Button';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
+import { Token } from '@astryxdesign/core/Token';
 import { inkStyle } from '../map/treeList';
 import {
   replyFeedback,
@@ -166,6 +167,18 @@ export function ReplyFeedback({
 }
 
 // Next questions under the latest reply; choosing one asks it in this conversation.
+// Shown above the reply so the learner sees missing background before reading.
+export function Groundwork({ suggestions }: { suggestions?: Suggestions }) {
+  if (suggestions?.status !== 'ready' || !suggestions.groundwork?.length) return null;
+  return (
+    <HStack gap={1} className="groundwork" role="group" aria-label="Groundwork">
+      {suggestions.groundwork.map((concept) => (
+        <Token key={concept} label={concept} size="sm" />
+      ))}
+    </HStack>
+  );
+}
+
 export function NextQuestions({
   message,
   latest,
