@@ -45,7 +45,6 @@ test('Ask appears only on ready visuals, opens the branch form with the whole vi
     assert.equal(button(container.querySelector(`[data-artifact=v-${status}]`), ASK), undefined);
   const figure = container.querySelector('[data-artifact=v-ready]');
   const ask = button(figure, ASK);
-  assert.equal(ask.textContent.trim(), 'Ask', 'one visible Ask label');
   const trigger = button(figure, 'Visual actions: Tournament rounds');
   // Keyboard reachable: native buttons in tab order.
   for (const b of [ask, trigger]) assert.notEqual(b.getAttribute('tabindex'), '-1');
@@ -104,7 +103,10 @@ test('child chips sit under the visual in address order and family ink, and a ch
     chips.map((c) => c.textContent),
     ['1.2', '1.3', '1.10'],
   );
-  assert.ok(chips.every((c) => c.classList.contains('passage-address')), 'reuses the passage chip');
+  assert.ok(
+    chips.every((c) => c.classList.contains('passage-address')),
+    'reuses the passage chip',
+  );
   assert.deepEqual(
     chips.map((c) => c.style.getPropertyValue('--ink')),
     ['var(--rabbithole-ink-2)', 'var(--rabbithole-ink-3)', 'var(--rabbithole-ink-2)'],

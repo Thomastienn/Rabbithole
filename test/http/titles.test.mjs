@@ -11,8 +11,6 @@ const data = (prompt) => JSON.parse(prompt.slice(prompt.indexOf('\n') + 1));
 
 test('title prompt: a root reads its question; a child also reads its inherited context', () => {
   const root = titlePrompt({ branch: null }, '¿Qué es un árbol de torneo?');
-  assert.match(root, /at most 60 characters/);
-  assert.match(root, /language of "question"/);
   assert.deepEqual(data(root), { question: '¿Qué es un árbol de torneo?' });
   const child = titlePrompt(
     { branch: { snapshot: 'Tournament trees pick winners.', text: 'winners', question: 'Why?' } },

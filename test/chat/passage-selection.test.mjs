@@ -21,7 +21,8 @@ test('keyboard passage selection keeps exact offsets and returns focus on Escape
       new KeyboardEvent('keyup', { key: 'ArrowRight', shiftKey: true, bubbles: true }),
     );
   });
-  await act(async () => button(container, 'Ask about selection').click());
+  const ask = button(container, 'Ask about selection');
+  await act(async () => ask.click());
   assert.deepEqual(branched.at(-1)[0], {
     messageId: 'reply',
     start: 10,
@@ -29,7 +30,7 @@ test('keyboard passage selection keeps exact offsets and returns focus on Escape
     text: 'repeat 😀',
     at: undefined,
   });
-  assert.equal(branched.at(-1)[1].textContent.trim(), 'Ask about selection');
+  assert.ok(branched.at(-1)[1] === ask, 'focus returns to Ask');
   await act(async () => key(input, 'Escape'));
   assert.equal(container.querySelector('textarea'), null);
   assert.equal(document.activeElement, section());

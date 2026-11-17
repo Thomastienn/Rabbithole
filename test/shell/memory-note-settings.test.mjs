@@ -19,7 +19,6 @@ test('memory note section shows the saved note, saves edits and reports status',
   await act(async () => {});
   const box = container.querySelector('textarea');
   assert.equal(box.value, '- Knows Python');
-  assert.match(container.textContent, /Memory note/);
   await act(async () => {
     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(
       box,

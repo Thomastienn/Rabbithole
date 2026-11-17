@@ -13,6 +13,7 @@ import {
 } from '../support/video-kit.mjs';
 import { pieceChoices, assemblePieces, libraryPieces } from '../../server/media/video-plan.mjs';
 import { writeSetPieces, withParts } from '../../server/media/video-pieces.mjs';
+import { PIECES_PARTS_NOTE } from '../../server/media/video-cut.mjs';
 
 const pieces = `import { colors, palette } from './kit';
 export function Winner({ x, y, scale = 1, highlight = false }) {
@@ -347,9 +348,7 @@ export function Stadium({ x, y }) { return <div style={{ left: x, top: y, backgr
     env.store.tree(chat.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
   );
   assert.equal(row.status, 'ready', row.error);
-  assert.match(rules[0], /built from parts/);
-  assert.match(rules[0], /Prefer a flat build/, 'the writer is told to prefer a flat build');
-  assert.match(rules[0], /<Copies of=\{Part\}/, 'the writer is told about the copy helper');
+  assert.ok(rules[0].includes(PIECES_PARTS_NOTE));
   assert.equal(inputs[0].parts, undefined);
   assert.deepEqual(inputs[1].parts, [{ name: 'Person', look: looks.person }]);
   assert.deepEqual(

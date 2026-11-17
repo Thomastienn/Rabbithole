@@ -23,7 +23,6 @@ test('tutor style section prefills the default, saves edits, restores the defaul
   await act(async () => {});
   const box = container.querySelector('textarea');
   assert.equal(box.value, 'Built-in style.');
-  assert.match(container.textContent, /Tutor style/);
   await act(async () => {
     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(
       box,

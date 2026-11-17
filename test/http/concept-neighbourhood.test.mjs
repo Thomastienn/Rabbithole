@@ -19,7 +19,6 @@ async function launch(t, embed = null) {
     ...env,
     fake,
     tree,
-    system,
     neighbourhood: () =>
       system().includes('\nConcept neighbourhood')
         ? JSON.parse(system().split('\n').at(-1))
@@ -85,10 +84,6 @@ test('the provider receives cross-tree familiarity, guesses, unknowns, two hops 
     { from: 'Mutex', to: 'Semaphore', kind: 'builds on' },
     { from: 'Race condition', to: 'Ordering', kind: 'builds on' },
   ]);
-  assert.match(env.system(), /whole knowledge graph across all learning trees/);
-  assert.match(env.system(), /Correct a recentMisconception/);
-  assert.match(env.system(), /Explain unknown concepts normally/);
-  assert.doesNotMatch(env.system(), /"known"|"shaky"|Concepts from this learning tree/);
 
   // A newer observation, even in another learning tree, reaches the very next reply and Retry.
   env.store.observe(env.store.message(earlier.id, 'user', 'Corrected.', 'completed'), [

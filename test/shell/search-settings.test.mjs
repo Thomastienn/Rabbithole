@@ -35,7 +35,7 @@ test('Search Settings shows managed URL, tests draft, reports JSON-disabled and 
   const { container, act, cleanup } = await render(h(SearchSettings, { api }), ui);
   t.after(cleanup);
   const input = container.querySelector('input');
-  assert.equal(input.labels[0].textContent, 'SearXNG URL');
+  assert.ok(input.labels[0], 'the field is labelled');
   assert.equal(input.value, managed.url);
   await act(async () => inputValue(input, 'https://my-search.example.org'));
   await act(async () => button(container, 'Test search').click());

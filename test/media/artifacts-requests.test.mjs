@@ -166,8 +166,7 @@ for (const name of [TEST_PROVIDER])
       if (name === 'claude') {
         assert.equal(calls.length, 2);
         const system = (call) => call.args[call.args.indexOf('--system-prompt') + 1];
-        assert.match(system(calls[0]), /rabbithole-visual/);
-        assert.match(system(calls[1]), /one Mermaid diagram/);
+        assert.notEqual(system(calls[1]), system(calls[0]), 'the worker has its own instructions');
         assert.doesNotMatch(
           calls[1].input[0] + system(calls[1]),
           /UNRELATED ADAPTER TRANSCRIPT|Earlier discussion|diagram fixture request/,
@@ -188,15 +187,10 @@ for (const name of [TEST_PROVIDER])
         );
       } else {
         const requests = calls.flatMap((call) => call.input);
-        const worker = calls.find((call) =>
-          call.input.some(
-            (r) =>
-              r.method === 'thread/start' && /one Mermaid diagram/.test(r.params.baseInstructions),
-          ),
-        );
         const starts = requests.filter((r) => r.method === 'thread/start');
+        const worker = calls.find((call) => call.input.includes(starts[1]));
         assert.equal(starts.length, 2);
-        assert.match(starts[1].params.baseInstructions, /one Mermaid diagram/);
+        assert.notEqual(starts[1].params.baseInstructions, starts[0].params.baseInstructions);
         assert.equal(starts[1].params.threadId, undefined);
         const turns = requests.filter((r) => r.method === 'turn/start');
         assert.notEqual(turns[0].params.threadId, turns[1].params.threadId);

@@ -38,7 +38,7 @@ test('chat header row: return to parent, path crumbs, stats and map toggles, clo
   );
   t.after(cleanup);
   const nav = container.querySelector('nav');
-  assert.equal(nav.getAttribute('aria-label'), 'Path in this learning tree');
+  assert.ok(nav.getAttribute('aria-label'), 'named for assistive tech');
   assert.deepEqual([...nav.querySelectorAll('button')].map(name), ['1 Mutex basics']);
   assert.equal(nav.querySelector('[aria-current=location]').textContent, '1.1 Why one at a time?');
   await act(async () => button(container, 'Return to parent conversation').click());

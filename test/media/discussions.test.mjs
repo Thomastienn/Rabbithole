@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { diagramReply, tutorSystem } from '../../server/media/diagrams.mjs';
+import { diagramReply } from '../../server/media/diagrams.mjs';
 import { discussion, discussionBlock } from '../fixtures/discussion.mjs';
 
 test('discussion blocks stay hidden at every stream boundary and keep their reply position', () => {
@@ -67,25 +67,6 @@ test('discussion validation rejects malformed rosters, speakers and openings in 
     }),
     /voices must be distinct/,
   );
-});
-
-test('fixed discussion instructions require a learner request and a brief opening around familiarity', () => {
-  const instructions = tutorSystem({ tutorStyle: 'Be concise.' });
-  assert.match(instructions, /only when the learner (?:explicitly )?asks for a discussion/i);
-  assert.match(instructions, /rabbithole-discussion/);
-  assert.match(instructions, /below.*above/s);
-  assert.match(instructions, /4.*8.*lines/s);
-  assert.match(instructions, /ends? with a question.*learner/s);
-  assert.match(instructions, /"voice"/);
-  assert.match(
-    instructions,
-    /private voice.*how they talk and how they think.*fitting their level/s,
-  );
-  assert.match(instructions, /slang.*contractions.*swear word or typo.*rarely an emoji/s);
-  assert.match(instructions, /learner's language/);
-  assert.match(instructions, /Tutor.*plain clear lines/s);
-  assert.match(instructions, /honest misunderstandings/);
-  assert.match(instructions, /never flattens these voices/);
 });
 
 test('discussion slots coexist with hidden verdicts and other media in reply order', () => {

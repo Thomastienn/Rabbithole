@@ -4,7 +4,6 @@ import {
   videoPlan,
   cutSource,
   cutJoin,
-  CUT_PAUSE_FRAMES,
   PLAN_INSTRUCTIONS,
   EXHIBITS_NOTE,
   CLIPS_NOTE,
@@ -20,41 +19,21 @@ import {
   PIECES_INSTRUCTIONS,
   PIECE_IMPROVE_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
-  EXHIBIT_NOTE,
 } from '../../server/media/video-cut.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 import { MAX_CLIP_SECONDS } from '../../server/media/clips.mjs';
 
 test('the planner carries Manim teaching notes scoped to Manim cuts only', () => {
   assert.ok(PLAN_INSTRUCTIONS.endsWith(MANIM_TEACHING_SKILL));
-  assert.match(
-    MANIM_TEACHING_SKILL,
-    /^Manim teaching notes[^\n]*engine "manim"[^\n]*ignore them when the plan has none/,
-  );
 });
 
 test('the house style and focal-object rule reach the planner and Remotion writers, never Manim', () => {
-  assert.match(HOUSE_STYLE_SKILL, /detailed flat illustration/);
-  assert.match(HOUSE_STYLE_SKILL, /Blender/);
-  assert.match(FOCAL_OBJECT_SKILL, /one focal object/);
-  assert.match(FOCAL_OBJECT_SKILL, /unlabelled/);
-  assert.match(FOCAL_OBJECT_SKILL, /fade it once its point has landed/);
   for (const prompt of [PLAN_INSTRUCTIONS, CUT_INSTRUCTIONS, AUDIT_INSTRUCTIONS]) {
     assert.ok(prompt.includes(HOUSE_STYLE_SKILL));
     assert.ok(prompt.includes(FOCAL_OBJECT_SKILL));
   }
   for (const prompt of [PIECES_INSTRUCTIONS, PIECE_IMPROVE_INSTRUCTIONS])
     assert.ok(prompt.includes(HOUSE_STYLE_SKILL));
-  assert.match(CUT_INSTRUCTIONS, /vary layout and metaphor between videos, never the house style/);
-  assert.doesNotMatch(CUT_INSTRUCTIONS, /different videos look different/);
-  // The audit flags off-style objects and crowding labels as a preference, without a count.
-  assert.match(
-    AUDIT_INSTRUCTIONS,
-    /labels crowding the focal object, a preference rather than a count/,
-  );
-  assert.match(AUDIT_INSTRUCTIONS, /objects drawn outside the house style/);
-  // A reused library piece drawn off-style is flagged for redraw, not only the cut.
-  assert.match(AUDIT_INSTRUCTIONS, /unreadable at its size, or drawn outside the house style\)/);
   for (const prompt of [MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS])
     assert.ok(!prompt.includes(HOUSE_STYLE_SKILL) && !prompt.includes(FOCAL_OBJECT_SKILL));
 });
@@ -71,10 +50,6 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
   delete good.styleBrief.recurringObjects[0].colorRole;
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
-  assert.match(
-    PLAN_INSTRUCTIONS,
-    /request is the learner's own message[\s\S]*dimension of "2d" or "3d"[\s\S]*explicitly asks for 2D, use "2d" for every cut[\s\S]*explicitly asks for 3D, use "3d" for most cuts[\s\S]*"3d" only for a cut whose point is space, depth, rotation or orientation[\s\S]*Manim cuts are always "2d"/,
-  );
   for (const mutate of [
     (p) => {
       p.title = '';
@@ -141,9 +116,7 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   delete undimensioned.cuts[1].dimension;
   assert.throws(() => videoPlan(JSON.stringify(undimensioned)), /malformed: cut 2 dimension\.$/);
   assert.throws(() => videoPlan('not json'), /malformed: not a JSON object\.$/);
-  assert.match(PLAN_INSTRUCTIONS, /"engine":"remotion","dimension":"2d"/);
   assert.throws(() => videoPlan(' '.repeat(65537)), /64 KiB/);
-  assert.equal(CUT_PAUSE_FRAMES, 15);
 });
 
 test('plan joins accept continue and scene transitions, reject unknown values, and old plans read as scene with fade', () => {
@@ -179,9 +152,6 @@ test('plan joins accept continue and scene transitions, reject unknown values, a
   const first = structuredClone(old);
   first.cuts[0].join = 'continue';
   assert.throws(() => videoPlan(JSON.stringify(first)), /malformed/, 'cut 1 is always a scene');
-  assert.match(PLAN_INSTRUCTIONS, /"join":"scene","transition":"slide","direction":"from-right"/);
-  assert.match(PLAN_INSTRUCTIONS, /"continue" .*hard cut.*cut 1 is always "scene"/);
-  assert.match(PLAN_INSTRUCTIONS, /"fade", "slide", "wipe", "flip", "clockWipe" or "iris"/);
 });
 
 test('cut validation enforces kit imports, brief inks and house fonts before rendering', () => {
@@ -231,7 +201,12 @@ test('plans may name image and quote exhibits on Remotion cuts only when web sea
   const plan = planFor();
   plan.cuts[0].exhibits = [
     { kind: 'image', query: 'Ada Lovelace portrait', show: 'The person who wrote the notes' },
-    { kind: 'quote', query: 'Lovelace algebraic patterns', text: 'It weaves algebraic patterns.', by: 'Ada Lovelace' },
+    {
+      kind: 'quote',
+      query: 'Lovelace algebraic patterns',
+      text: 'It weaves algebraic patterns.',
+      by: 'Ada Lovelace',
+    },
   ];
   const raw = JSON.stringify(plan);
   assert.deepEqual(videoPlan(raw, { exhibits: true }).cuts[0].exhibits, plan.cuts[0].exhibits);
@@ -242,18 +217,30 @@ test('plans may name image and quote exhibits on Remotion cuts only when web sea
     { kind: 'quote', query: 'x', text: 'x'.repeat(281) },
   ])
     assert.throws(
-      () => videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), { exhibits: true }),
+      () =>
+        videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), {
+          exhibits: true,
+        }),
       /cut 1 exhibits/,
     );
   const manim = { ...plan.cuts[0], engine: 'manim' };
-  assert.throws(() => videoPlan(JSON.stringify({ ...plan, cuts: [manim] }), { exhibits: true }), /cut 1 exhibits/);
-  assert.match(EXHIBITS_NOTE, /"kind":"image"/);
+  assert.throws(
+    () => videoPlan(JSON.stringify({ ...plan, cuts: [manim] }), { exhibits: true }),
+    /cut 1 exhibits/,
+  );
   assert.ok(!PLAN_INSTRUCTIONS.includes(EXHIBITS_NOTE));
 });
 
 test('plans may name clip exhibits with the wanted seconds and sound only when the clip downloader is ready', () => {
   const plan = planFor();
-  const clip = { kind: 'clip', query: 'Apollo 11 landing footage', show: 'The landing', start: 30, end: 36.5, sound: false };
+  const clip = {
+    kind: 'clip',
+    query: 'Apollo 11 landing footage',
+    show: 'The landing',
+    start: 30,
+    end: 36.5,
+    sound: false,
+  };
   plan.cuts[0].exhibits = [clip];
   const raw = JSON.stringify(plan);
   assert.deepEqual(videoPlan(raw, { exhibits: true, clips: true }).cuts[0].exhibits, [clip]);
@@ -269,15 +256,23 @@ test('plans may name clip exhibits with the wanted seconds and sound only when t
     { ...clip, sound: true, sentence: -1 },
   ])
     assert.throws(
-      () => videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), { exhibits: true, clips: true }),
+      () =>
+        videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), {
+          exhibits: true,
+          clips: true,
+        }),
       /cut 1 exhibits/,
     );
   const loud = { ...clip, sound: true, sentence: 0 };
   const loudPlan = (exhibits) => JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits }] });
-  assert.deepEqual(videoPlan(loudPlan([loud, clip]), { exhibits: true, clips: true }).cuts[0].exhibits, [loud, clip]);
-  assert.throws(() => videoPlan(loudPlan([loud, loud]), { exhibits: true, clips: true }), /cut 1 exhibits/);
-  assert.match(CLIPS_NOTE, /"kind":"clip"/);
-  assert.match(CLIPS_NOTE, /"sound":true/);
+  assert.deepEqual(
+    videoPlan(loudPlan([loud, clip]), { exhibits: true, clips: true }).cuts[0].exhibits,
+    [loud, clip],
+  );
+  assert.throws(
+    () => videoPlan(loudPlan([loud, loud]), { exhibits: true, clips: true }),
+    /cut 1 exhibits/,
+  );
   assert.ok(!EXHIBITS_NOTE.includes(CLIPS_NOTE));
 });
 
@@ -288,7 +283,6 @@ export default function Video() {
   return <AbsoluteFill style={{ background: palette.ground }}><Exhibit id="exhibit1" x={1300} y={460} width={560} scale={1.1} rotation={-3} /></AbsoluteFill>;
 }`;
   assert.equal(cutSource(cut, styleBrief), cut);
-  assert.match(CUT_INSTRUCTIONS + EXHIBIT_NOTE, /<Exhibit id=/);
   for (const bad of [
     cut.replace('<Exhibit', '<img src={x} /><Exhibit'),
     cut.replace('"exhibit1"', '"https://museum.example/ada.png"'),

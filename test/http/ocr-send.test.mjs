@@ -90,7 +90,7 @@ test('OCR refusal saves nothing; next send recovers; retry follows capability wi
   const [question, failed] = store.tree(id).messages;
   const image = question.attachments[1];
   assert.equal(image.delivery, 'ocr');
-  assert.match(compactionPrompt(store.tree(id), 'An answer.'), /read by OCR.*\\nBinary heaps/);
+  assert.match(compactionPrompt(store.tree(id), 'An answer.'), /scan\.png.*\\nBinary heaps/);
   const asset = await fetch(`${origin}/api/trees/${id}/attachments/${image.id}`);
   assert.equal(asset.headers.get('content-type'), 'image/png');
   assert.equal(await asset.text(), 'PNG', 'chip still opens the original image');

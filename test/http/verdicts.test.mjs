@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { open } from '../support/diagram-kit.mjs';
-import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { tutorSystem, VERDICT_RULE } from '../../server/media/diagrams.mjs';
 import { verdictPrompt } from '../../server/http/jobs/verdicts.mjs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -29,7 +29,7 @@ test('streamed verdicts save only observations, resolve aliases, create concepts
   const provider = {
     generate: async (tree, question, emit) => {
       calls.push({ tree, question });
-      assert.match(tutorSystem(tree), /rabbithole-verdict/);
+      assert.ok(tutorSystem(tree).includes(VERDICT_RULE));
       for (const character of raw) {
         emit({ type: 'delta', item: 'answer', text: character });
         const saved = env.store.tree(id).messages.at(-1).text;

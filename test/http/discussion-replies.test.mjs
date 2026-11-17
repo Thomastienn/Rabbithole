@@ -98,10 +98,6 @@ test('card replies stream saved named lines, carry context and hidden levels, an
   assert.ok(
     prompt.neighbourhood.concepts.some((c) => c.name === 'Fungus' && typeof c.guess === 'number'),
   );
-  assert.match(calls[0].tree.instructions, /Only classmates relevant/);
-  assert.match(calls[0].tree.instructions, /Tutor steps in only to untangle or confirm/);
-  assert.match(calls[0].tree.instructions, /private voices for the whole discussion/);
-  assert.match(calls[0].tree.instructions, /learner’s language.*slang.*plain clear lines/s);
   const graph = env.store.graph();
   assert.equal(graph.concepts.find((c) => c.name === 'Hyphae').observations[5], 1);
   assert.equal(

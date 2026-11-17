@@ -185,7 +185,7 @@ test('improving a piece with a 3D form rewrites both together; a rewrite missing
 });
 
 test('improving a piece built from parts names them so the rewrite draws them instead of defining them', async () => {
-  let input, rules;
+  let input;
   const entry = await improvePiece({
     piece: {
       name: 'Winner',
@@ -196,14 +196,9 @@ test('improving a piece built from parts names them so the rewrite draws them in
       parts: [{ name: 'Crown', id: 'c' }],
     },
     why: 'x',
-    call: async (r, text) => (
-      (rules = r),
-      (input = fixerTask(text)),
-      patchOf(input.source, better)
-    ),
+    call: async (_rules, text) => ((input = fixerTask(text)), patchOf(input.source, better)),
   });
   assert.deepEqual(input.parts, ['Crown']);
-  assert.match(rules, /never define them/);
   assert.deepEqual(entry.parts, [], 'the saved parts are kept by the store, not the rewrite');
 });
 

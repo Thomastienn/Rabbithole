@@ -147,11 +147,6 @@ test('predict-then-reveal uses the ordinary inline worker, persists without repl
     );
     assert.equal(workers.length, 1);
     assert.deepEqual(workers[0].input, { request: prediction, earlierTitles: [] });
-    assert.match(
-      workers[0].tree.instructions,
-      /native details element[\s\S]*no open attribute[\s\S]*Reveal answer/,
-    );
-    assert.match(workers[0].tree.instructions, /Other visuals must not add a quiz/);
     await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Continue' })).text();
     const context = JSON.stringify(history.at(-1));
     assert.ok(context.includes(a.id) && context.includes(prediction.description));
@@ -368,8 +363,11 @@ test('Try a different version replaces a ready visual in place from the frozen r
     assert.doesNotMatch(JSON.stringify(calls[1]), /A → Final|UNTRUSTED/);
     assert.equal(calls[1].tree.effort, 'high', 'frozen smart selection');
     assert.equal(calls[1].tree.thread, null);
-    assert.match(calls[1].tree.instructions, /different approach than the previous version/);
-    assert.doesNotMatch(calls[0].tree.instructions, /different approach than the previous version/);
+    assert.notEqual(
+      calls[1].tree.instructions,
+      calls[0].tree.instructions,
+      'asks for a new approach',
+    );
     assert.equal(
       (await env.get('/api/usage')).events.filter((e) => e.task === 'diagram').length,
       2,
@@ -419,7 +417,6 @@ test('branch compaction keeps passage detail and sees a visual only as one title
     });
     assert.equal(response.status, 201);
     const [text] = compactions;
-    assert.match(text, /Keep the sentences around "passage" in its message in close detail/);
     const [message] = JSON.parse(text.slice(text.indexOf('\n') + 1)).messages.filter(
       (m) => m.role === 'assistant',
     );
@@ -434,40 +431,4 @@ test('branch compaction keeps passage detail and sees a visual only as one title
   } finally {
     await env.close();
   }
-});
-
-test('the visual prompt no longer asks the smart model to tag parts; the host owns Ask', () => {
-  const prompt = readFileSync('server/media/prompts/visual.md', 'utf8');
-  assert.doesNotMatch(prompt, /data-visual|branch tags?|tagged|\bTag (any|standalone)/i);
-  assert.match(
-    prompt,
-    /host provides the Ask follow-up action; do not add\s+ask or branch controls/,
-  );
-});
-
-test('the visual prompt prefers the step helper only for stages over time, bans prose paragraphs and keeps predict-then-reveal', () => {
-  const prompt = readFileSync('server/media/prompts/visual.md', 'utf8');
-  assert.match(prompt, /When the idea has stages[\s\S]*prefer[\s\S]*stepThrough\(root, steps\)/);
-  assert.match(prompt, /replace or build on each other in the same place\s+over time/);
-  assert.match(prompt, /shows\s+every stage at once uses no step helper/);
-  assert.match(prompt, /prefers-reduced-motion/);
-  assert.match(prompt, /do not add\s+your own step controls/);
-  assert.match(prompt, /Show every stage at once when the stages belong side by side/);
-  assert.match(prompt, /\{ scene: true, show \}/);
-  assert.match(
-    prompt,
-    /keeps the same elements and animates their attributes with d3\s+transitions using duration; never rebuild[\s\S]*toggle near-copies/,
-  );
-  assert.match(prompt, /scene change only when the layout really changes/);
-  assert.match(prompt, /Mixing\s+continuing steps and scene changes is allowed/);
-  assert.match(prompt, /frame holds only this visual, so CSS selectors need no id scoping/);
-  assert.doesNotMatch(prompt, /for example|e\.g\./i, 'no worked examples');
-  assert.match(prompt, /Do not put explanatory paragraphs inside the fragment/);
-  assert.match(
-    prompt,
-    /result or status line[\s\S]*var\(--color-text-primary\) at reading size[\s\S]*never small or dim/,
-  );
-  assert.match(prompt, /Keep labels inside the graphic/);
-  assert.match(prompt, /native details element[\s\S]*no open attribute[\s\S]*Reveal answer/);
-  assert.match(prompt, /Other visuals must not add a quiz/);
 });

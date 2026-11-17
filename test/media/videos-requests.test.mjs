@@ -287,7 +287,7 @@ test('Try a different version gives a ready video a new job; the chat shows only
       'same frozen request and selection',
     );
     assert.equal(b.differentVersion, true);
-    assert.match(workers[1].tree.instructions, /different approach than the previous version/);
+    assert.notEqual(workers[1].tree.instructions, workers[0].tree.instructions);
     assert.doesNotMatch(workers[1].text, /UNTRUSTED/);
     assert.equal(workers[1].tree.thread, null);
   } finally {

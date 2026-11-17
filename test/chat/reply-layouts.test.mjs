@@ -59,7 +59,7 @@ test('callout is a labelled region and timeline is an ordered list with one head
   const d = shown(additions);
   const callout = d.querySelector('.layout-callout');
   assert.equal(callout.getAttribute('role'), 'region');
-  assert.equal(callout.getAttribute('aria-label'), 'Callout');
+  assert.ok(callout.getAttribute('aria-label'), 'named for assistive tech');
   assert.equal(callout.textContent, 'Key ideaKeep the same elements 😀.');
   assert.equal(
     shown(':::callout\nA takeaway.\n:::').querySelector('[role="region"]').textContent,

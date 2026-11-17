@@ -16,6 +16,7 @@ import {
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { tutorContext } from '../../server/media/diagrams.mjs';
 import { REMOTION_SKILL, REMOTION_3D_SKILL } from '../../server/media/skills.mjs';
+import { CUT_3D } from '../../server/media/video-cut.mjs';
 import { firstDiagnostic } from '../../server/media/video-sandbox.mjs';
 
 const gate = () => Promise.withResolvers();
@@ -117,11 +118,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
     assert.equal(inputs[i].input.previousEndState, i ? plan.cuts[i - 1].endState : null);
     assert.equal(inputs[i].tree.thread, null);
     // Only the 3D cut's writer gets the 3D guidance.
-    (i === 2 ? assert.match : assert.doesNotMatch)(
-      inputs[i].tree.instructions,
-      /This cut is 3D[\s\S]*"@remotion\/three"/,
-    );
-    assert.doesNotMatch(inputs[i].tree.instructions, /decide the dimension/);
+    assert.equal(inputs[i].tree.instructions.includes(CUT_3D), i === 2);
     // Every Remotion writer gets the Remotion skill; only the 3D cut gets its 3D part.
     assert.ok(inputs[i].tree.instructions.includes(REMOTION_SKILL));
     assert.equal(inputs[i].tree.instructions.includes(REMOTION_3D_SKILL), i === 2);

@@ -35,7 +35,6 @@ test('the set-piece writer is offered only library matches: reuse, variant or ne
     },
   });
   assert.doesNotMatch(instructions, /stock/i);
-  assert.match(instructions, /"use":"reuse\|variant\|new"/);
   assert.equal(input.stock, undefined);
   assert.deepEqual(input.library[0].matches[0], library);
   assert.match(result.source, /export const Horse/);

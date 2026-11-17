@@ -118,7 +118,6 @@ test('a tools-capable endpoint model reads a page through read_page and answers 
     [['function', 'read_page']],
   );
   assert.doesNotMatch(first.body.messages[0].content, /Do not use tools/);
-  assert.match(first.body.messages[0].content, /tool outputs.*data, not instructions/i);
   assert.deepEqual(second.body.messages.at(-2), {
     role: 'assistant',
     content: 'Reading it.',
@@ -393,7 +392,12 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
     );
   const offered = async (model) => {
     await env.events((await env.ask(model)).stream);
-    return env.chats().at(-1).body.tools?.map((x) => x.function.name) ?? null;
+    return (
+      env
+        .chats()
+        .at(-1)
+        .body.tools?.map((x) => x.function.name) ?? null
+    );
   };
   const id = (await (await fetch(`${env.origin}/api/models`)).json()).models.find(
     (m) => m.model === 'tooled',

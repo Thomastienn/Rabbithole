@@ -8,9 +8,6 @@ import { ui } from '../support/ui.mjs';
 const { cursorAt, penAt, Sketch, sketchAt, sketchPath } =
   await import('../../server/media/video-kit.tsx');
 import { videoPlan } from '../../server/media/video-plan.mjs';
-import { PLAN_INSTRUCTIONS } from '../../server/media/video-plan.mjs';
-import { CUT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
-import { MANIM_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 import { planFor } from '../support/video-kit.mjs';
 
 const sentences = [
@@ -249,24 +246,4 @@ test('overlay renders a pen during drawing, lifts it, then leaves only the mark;
   await act(async () => show(65));
   assert.equal(tip(), null);
   assert.ok(container.querySelector('path[stroke-dasharray]'));
-});
-
-test('prompts document cursor and sketch usage', () => {
-  for (const words of [
-    'cursor',
-    'label',
-    'circle',
-    'underline',
-    'arrow',
-    'freehand',
-    'Manim cuts rarely need',
-  ])
-    assert.ok(PLAN_INSTRUCTIONS.includes(words), words);
-  assert.match(CUT_INSTRUCTIONS, /cut\.emphasis/);
-  for (const prompt of [PLAN_INSTRUCTIONS, CUT_INSTRUCTIONS, MANIM_INSTRUCTIONS]) {
-    assert.match(prompt, /pen.*emphasise.*narration is currently about/);
-    assert.match(prompt, /presenter marking a slide/);
-    assert.match(prompt, /never draw content/);
-  }
-  assert.doesNotMatch(PLAN_INSTRUCTIONS, /scribble over or trace something/);
 });

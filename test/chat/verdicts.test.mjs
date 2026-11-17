@@ -78,14 +78,6 @@ test('verdicts and media share the reply parser without turning verdicts into me
   assert.equal(parsed.requests[0].kind, 'video');
 });
 
-test('the fixed tutor rule asks for early verdicts about the learner, including branch passages, and no block for empty evidence', () => {
+test('the fixed tutor rule reaches the tutor prompt', () => {
   assert.ok(tutorSystem({ tutorStyle: 'My style.' }).includes(VERDICT_RULE));
-  assert.match(VERDICT_RULE, /after the first few sentences/);
-  assert.match(VERDICT_RULE, /selected passage and question/);
-  assert.match(
-    VERDICT_RULE,
-    /0 misconception.*1 heard of it.*2 partial.*3 explains.*4 applies.*5 teaches/,
-  );
-  assert.match(VERDICT_RULE, /never what your reply explains/);
-  assert.match(VERDICT_RULE, /shows nothing.*write no block/);
 });

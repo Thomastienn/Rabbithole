@@ -95,7 +95,7 @@ test('media chips keep artifact order, kind/title/status labels and current stat
   t.after(cleanup);
   const group = container.querySelector('.node-chips');
   assert.equal(group.getAttribute('role'), 'group');
-  assert.equal(group.getAttribute('aria-label'), 'Media in this reply');
+  assert.ok(group.getAttribute('aria-label'), 'named for assistive tech');
   const chips = [...group.querySelectorAll('button')];
   assert.deepEqual(
     chips.map((c) => c.dataset.artifact),

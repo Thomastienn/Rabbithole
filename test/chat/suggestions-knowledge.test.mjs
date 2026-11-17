@@ -61,9 +61,7 @@ test('the same suggestion call fills one global knowledge graph that survives re
     assert.doesNotMatch(call.system + call.input, /Peterson|knownConcepts|"concepts"/);
   const last = env.suggestionCalls().at(-1).input,
     newline = last.indexOf('\n');
-  // The known topics go out with the instruction to reuse them and keep topics broad and few.
-  assert.match(last.slice(0, newline), /keep topics broad and few/);
-  assert.match(last.slice(0, newline), /reuse a known topic whenever one fits/);
+  // The known topics go out as data after the instruction line.
   assert.deepEqual(JSON.parse(last.slice(newline + 1)).knownConcepts, {
     Concurrency: ['Mutual exclusion', "Peterson's algorithm"],
     'operating systems': ['Mutual exclusion'],

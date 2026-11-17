@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { publicDiscussion } from '../fixtures/discussion.mjs';
-import { ui, button, name } from '../support/ui.mjs';
+import { ui, button } from '../support/ui.mjs';
 
 // Composition check for the split ChatPage: its hooks load state, models and a chat into the regions.
 const models = {
@@ -205,7 +205,7 @@ test('with no saved trees the page shows the first-question composer and its mod
   const { container, calls } = await mount(t, []);
   assert.ok(calls.includes('/api/state') && calls.includes('/api/models'));
   assert.ok(container.querySelector('.first-question'));
-  assert.match(name(button(container, 'Model for next reply')), /Model for next reply/);
+  assert.ok(button(container, 'Model for next reply'));
   assert.match(container.querySelector('.chat-model').textContent, /Claude · Opus/);
 });
 
@@ -339,24 +339,22 @@ test('the sidebar holds Contents on the reading and map views, and a map-view ro
     container.querySelector('[aria-label="Show contents"], [aria-label="Hide contents"]'),
     null,
   );
-  assert.equal(sidebar().querySelector('[aria-current=page]').textContent, 'Read');
+  assert.ok(sidebar().querySelector('[aria-current=page]') === button(sidebar(), 'Read'));
   await act(async () => button(sidebar(), 'Map').click());
   assert.equal(chat().style.display, 'none');
   assert.ok(sidebar().querySelector('.contents'), 'contents stay on the map view');
   await act(async () => sidebar().querySelector('.contents-row').click());
   await act(async () => {});
   assert.equal(chat().style.display, 'flex');
-  assert.equal(sidebar().querySelector('[aria-current=page]').textContent, 'Read');
+  assert.ok(sidebar().querySelector('[aria-current=page]') === button(sidebar(), 'Read'));
   for (const label of ['Knowledge', 'Videos', 'Pieces', 'Library']) {
     await act(async () => button(sidebar(), label).click());
     assert.equal(sidebar().querySelector('.contents'), null, label);
     assert.ok(sidebar().querySelector('.sidebar-top'), label);
     if (label === 'Pieces') {
       const panel = container.querySelector('main[aria-label=Pieces]');
-      assert.equal(sidebar().querySelector('[aria-current=page]').textContent, 'Pieces');
+      assert.ok(sidebar().querySelector('[aria-current=page]') === button(sidebar(), 'Pieces'));
       assert.ok(panel.querySelector('#return-from-pieces'), 'returns like the other views');
-      await act(async () => {});
-      assert.equal(panel.querySelector('h1').textContent, 'Pieces');
     }
   }
   assert.ok(

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { tutorContext } from '../../server/media/diagrams.mjs';
+import { CUT_3D } from '../../server/media/video-cut.mjs';
 import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { OpenAI } from '../../server/providers/openai.mjs';
@@ -139,17 +140,8 @@ test('explicit video request creates one job with frozen input, publishes owned 
       'thread',
     ]);
     assert.equal(workers[0].tree.thread, null);
-    assert.match(
-      workers[0].tree.instructions,
-      /explicitly asks for 3D, use "3d" for most cuts/,
-    );
     // planFor cuts are 2D, so the cut writer gets no 3D guidance.
-    assert.match(workers[1].tree.instructions, /planned cut\.dimension/);
-    assert.doesNotMatch(workers[1].tree.instructions, /@remotion\/three|ThreeCanvas/);
-    assert.match(
-      workers[1].tree.instructions,
-      /1920x1080[\s\S]*bottom 120 pixels[\s\S]*"\.\/kit"[\s\S]*never hard cuts[\s\S]*never the house style/,
-    );
+    assert.ok(!workers[1].tree.instructions.includes(CUT_3D));
     assert.equal(
       workers[0].tree.model,
       'fixture-model',

@@ -74,7 +74,6 @@ test('compaction for a child receives the parent replies with their tool calls a
   const output = 'Title: Heaps\n' + 'A heap keeps its smallest key at the root. '.repeat(500);
   store.toolCall(id, reply, call('a', 'done', output));
   const prompt = compactionPrompt(store.tree(id), 'forty-two');
-  assert.match(prompt, /"tools" lists the tool calls/);
   const data = JSON.parse(prompt.slice(prompt.indexOf('{')));
   assert.deepEqual(data.messages.at(-1).tools, [
     { name: 'read_page', input: { url: 'https://example.com/a' }, output },

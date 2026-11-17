@@ -4,6 +4,8 @@ import { basename, join } from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { block as visualBlock } from '../support/visual-kit.mjs';
+import { MANIM_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
+import { CUT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import {
   open,
   complete,
@@ -38,18 +40,17 @@ for (const repair of [false, true])
           if (tree.id) return complete(emit, 'Watch.' + directive);
           emit({ type: 'usage', usage: { input: 3, output: 5, cacheRead: 0 } });
           if (tree.instructions.startsWith('You plan')) {
-            assert.match(tree.instructions, /Choose engine "manim"/);
             return complete(emit, JSON.stringify(plan));
           }
           const input = fixerTask(text),
             index = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
           writes[index]++;
           if (index === 1) {
-            assert.match(tree.instructions, /Python source/);
+            assert.ok(tree.instructions.includes(MANIM_INSTRUCTIONS));
             assert.deepEqual(input.styleBrief, plan.styleBrief);
             assert.equal(input.previousEndState, plan.cuts[0].endState);
             if (writes[index] > 1) assert.ok(input.validationError);
-          } else assert.match(tree.instructions, /TypeScript React source/);
+          } else assert.ok(tree.instructions.includes(CUT_INSTRUCTIONS));
           complete(
             emit,
             repairAnswer(

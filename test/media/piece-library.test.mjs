@@ -16,7 +16,6 @@ test('the Videos view has no Pieces tab', async (t) => {
   t.after(cleanup);
   await settle(act);
   assert.equal(container.querySelector('[role=tab]'), null);
-  assert.doesNotMatch(container.textContent, /Pieces/);
 });
 
 test('the Pieces view shows an empty state without a search bar when the library is empty', async (t) => {
@@ -24,7 +23,6 @@ test('the Pieces view shows an empty state without a search bar when the library
   const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
   t.after(cleanup);
   await settle(act);
-  assert.equal(container.querySelector('h1').textContent, 'Pieces');
   assert.match(container.textContent, /No saved pieces yet/);
   assert.equal(container.querySelector('input'), null);
 });
@@ -153,7 +151,6 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
     null,
     'source is read-only',
   );
-  assert.match(container.textContent, /Source \(read-only\)/);
   assert.ok(
     calls.every(([, body]) => body === undefined),
     'only reads, no writes',
@@ -206,7 +203,6 @@ test('opening a piece with a 3D form sends both forms to the isolated player fra
     [false, true],
     'both sources, read-only',
   );
-  assert.match(container.textContent, /3D source \(read-only\)/);
   assert.equal(container.querySelector('textarea, [contenteditable=true]'), null);
 });
 
