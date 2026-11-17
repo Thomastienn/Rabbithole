@@ -162,8 +162,8 @@ passed. The old workspace epic `TreeTutor-b1z` is consolidated into `TreeTutor-7
 Each task ends with the size check, the format check and `npm run test:affected`,
 which runs only the fast and slow tests its change reaches. When every epic is out
 of ready work, `ralph-afk` makes a gate epic (label `gate:backlog`) whose task
-runs `npm test` and `npm run test:slow`; it fixes what it can and files the
-remaining failures. It makes one only if a task closed after the last gate
+runs `npm test` and `npm run test:slow`, reviews the commits since the last
+gate, and fixes every failure and defect itself; it closes only when both pass. It makes one only if a task closed after the last gate
 closed and no gate is open, so a gate never triggers another.
 Keep internal implementation, repair and acceptance steps in one invocation;
 split only for an independent deliverable, an external/user gate or demonstrated
