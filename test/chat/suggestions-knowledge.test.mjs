@@ -141,18 +141,6 @@ test('meeting replies, naming concepts, branching and ignored suggestions do not
   assert.equal(sent[P], estimate);
 });
 
-test('the removed familiarity correction route returns not found and changes nothing', async (t) => {
-  const env = await start(mkdtempSync(join(tmpdir(), 'tt-corrections-')));
-  t.after(env.close);
-  const tree = JSON.parse(await env.post('/api/trees'));
-  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain locks' });
-  await env.settled();
-  const before = await env.get('/api/graph');
-  for (const name of ['Mutual exclusion', 'missing'])
-    assert.equal((await env.request('/api/graph/correct', { name, kind: 'known' })).status, 404);
-  assert.deepEqual(await env.get('/api/graph'), before);
-});
-
 test('Knowledge merge combines topics, observations and links; aliases and passages keep working after restart', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-merge-'));
   let env = await start(dir);

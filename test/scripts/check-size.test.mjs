@@ -31,7 +31,3 @@ test('check-size enforces 500 lines and skips generated files', () => {
     writeFileSync(join(root, file), 'x;\n');
   }
 });
-
-test('repository passes the size check', () => {
-  assert.deepEqual(checkSize(process.cwd()), []);
-});

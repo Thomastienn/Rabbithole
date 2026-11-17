@@ -447,3 +447,41 @@ test('a reused piece brings its parts in both forms, scoped and role-remapped; a
   assert.deepEqual(withParts(town).roles, ['town', 'crowd']);
   assert.equal(withParts(person).source, person.source, 'a piece without parts is unchanged');
 });
+
+test('a plan with a 3D cut also gets a <Name>3D mesh group per object, written for a 2D-only reused piece', async () => {
+  const horse = `import { colors } from './kit';
+export function Horse({x, y}) { return <div style={{left:x, top:y, color:colors.winner}}>Horse</div>; }`;
+  const solid = `import { colors } from './kit';
+export function Horse3D({position = [0, 0, 0]}) { return <group position={position}><mesh><boxGeometry args={[3, 2, 1]} /><meshStandardMaterial color={colors.winner} /></mesh></group>; }`;
+  const library = {
+    id: 'drawn-horse',
+    name: 'Horse',
+    look: 'A horse',
+    roles: ['winner'],
+    source: horse,
+  };
+  const plan = planFor();
+  plan.styleBrief = {
+    ...plan.styleBrief,
+    recurringObjects: [{ name: 'horse', look: 'A horse', colorRole: 'winner', position: 'centre' }],
+  };
+  plan.cuts[0].dimension = '3d';
+  const inputs = [];
+  const result = await writeSetPieces({
+    plan,
+    names: ['Horse'],
+    matches: async () => [[library]],
+    signal: new AbortController().signal,
+    write: async (_rules, text) => {
+      inputs.push(JSON.parse(text));
+      const code = inputs.length === 1 ? '' : solid;
+      return JSON.stringify({ pieces: [{ name: 'Horse', use: 'reuse', id: library.id }], code });
+    },
+  });
+  assert.deepEqual(inputs[0].solidNames, ['Horse3D']);
+  assert.match(inputs[1].validationError, /missing export Horse3D/);
+  assert.match(result.source, /export function Horse3D/);
+  const [entry] = libraryPieces(result.source, plan.styleBrief, ['Horse']);
+  assert.equal(entry.name, 'Horse');
+  assert.match(entry.source3d, /export function Horse3D/, 'the 3D form joins its 2D entry');
+});

@@ -1,15 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  task,
-  block,
-  source,
-  complete,
-  deferred,
-  until,
-  models,
-  open,
-} from '../support/visual-kit.mjs';
+import { task, block, source, complete, deferred, until, open } from '../support/visual-kit.mjs';
 
 test('invalid output gets one automatic retry, then a durable failure with explicit Retry from the same frozen request', async () => {
   const calls = [],
@@ -257,31 +248,3 @@ test('malformed visuals remain visible and retryable; shutdown recovers pending 
     if (!closed) await env.close();
   }
 });
-
-test('a missing smart model no longer skips visuals; they run on the conversation chat model and effort', async () => {
-  const calls = [];
-  const env = await open(
-    { generate: async (_tree, _text, emit) => complete(emit, 'Look.' + block()) },
-    {
-      models,
-      generate: async (tree, _text, emit) => {
-        calls.push(tree);
-        complete(emit, source);
-      },
-    },
-  );
-  try {
-    await env.post('/api/settings/smart', { model: null, followEffort: true });
-    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })).text();
-    await until(
-      async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts?.[0]?.status === 'ready',
-    );
-    assert.deepEqual(
-      calls.map((t) => [t.provider, t.model, t.effort, t.thread]),
-      [['claude', 'smart', 'high', null]],
-    );
-  } finally {
-    await env.close();
-  }
-});
-

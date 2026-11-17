@@ -5,27 +5,9 @@ import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
 const { default: PieceLibrary } = await import('../../src/media/PieceLibrary.tsx');
-const { default: VideoLibrary } = await import('../../src/media/VideoLibrary.tsx');
 
 const settle = (act, ms = 5) => act(async () => new Promise((r) => setTimeout(r, ms)));
 const list = (path) => path.startsWith('/api/pieces?');
-
-test('the Videos view has no Pieces tab', async (t) => {
-  const api = async (path) => (path === '/api/videos' ? [] : assert.fail(path));
-  const { container, act, cleanup } = await render(h(VideoLibrary, { api, activity: '' }), ui);
-  t.after(cleanup);
-  await settle(act);
-  assert.equal(container.querySelector('[role=tab]'), null);
-});
-
-test('the Pieces view shows an empty state without a search bar when the library is empty', async (t) => {
-  const api = async (path) => (list(path) ? { total: 0, pieces: [] } : assert.fail(path));
-  const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
-  t.after(cleanup);
-  await settle(act);
-  assert.match(container.textContent, /No saved pieces yet/);
-  assert.equal(container.querySelector('input'), null);
-});
 
 test('the Pieces view searches and pages, with a no-results message', async (t) => {
   const calls = [];

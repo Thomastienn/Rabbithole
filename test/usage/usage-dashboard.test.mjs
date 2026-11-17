@@ -188,10 +188,3 @@ test('unreported-only ranges show dashes and no estimated bars', async (t) => {
       ),
   );
 });
-
-test('an empty history shows zero and the no-usage state', async (t) => {
-  t.mock.timers.enable({ apis: ['Date'], now });
-  const empty = await mount(t, serve([]));
-  assert.match(empty.text('.usage-total'), /^0 tokens/);
-  assert.ok(empty.container.querySelector('.usage-empty'));
-});

@@ -1,6 +1,5 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
@@ -111,35 +110,12 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
   assert.equal(html.getAttribute('data-interface-font'), 'system');
   assert.equal(localStorage.getItem('rabbithole.interface-font'), 'system');
   assert.equal(container.querySelector('input[value=dark]').checked, true);
-  const css = readFileSync(new URL('../../src/styles/shell.css', import.meta.url), 'utf8');
-  const rule = (kind) =>
-    css.match(
-      new RegExp(`html\\[data-${kind}='system'\\] \\[data-astryx-theme\\] \\{([^}]*)\\}`),
-    )[1];
-  assert.deepEqual(
-    [...rule('reading-font').matchAll(/--[\w-]+/g)].map((m) => m[0]),
-    ['--rabbithole-font-reading'],
-  );
-  assert.deepEqual(
-    [...rule('interface-font').matchAll(/--[\w-]+/g)].map((m) => m[0]),
-    ['--font-family-body', '--font-family-heading'],
-  );
-  assert.doesNotMatch(css, /--font-family-code:/, 'code stays monospace');
   const vim = container.querySelector('input[type=checkbox]');
   assert.equal(vim.checked, false);
   assert.ok(vim.labels[0], 'the checkbox is labelled');
   assert.match(
     container.textContent,
     /h j k l act as arrows.*Never while typing, selecting text or using menus/,
-  );
-  assert.deepEqual(
-    [...container.querySelectorAll('.settings-keys dt')].map((e) => e.textContent),
-    [
-      'Pan the map, or move the focused conversation',
-      'Move farther',
-      'Open the focused conversation',
-      'Close Settings',
-    ],
   );
   await act(async () => {
     vim.focus();

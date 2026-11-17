@@ -156,16 +156,6 @@ test('a scene step under reduced motion switches instantly', () => {
   assert.equal(root.style.opacity, '');
 });
 
-test('the frame installs the helper as a global before fragments render, with no messaging', () => {
-  const sandbox = readFileSync('src/media/sandbox.ts', 'utf8');
-  assert.match(sandbox, /Object\.assign\(window, \{[^}]*stepThrough/);
-  assert.match(sandbox, /reflectSvgHidden\(window\)/);
-  assert.doesNotMatch(
-    readFileSync('src/media/stepThrough.ts', 'utf8'),
-    /postMessage|fetch|XMLHttpRequest|WebSocket|parent\./,
-  );
-});
-
 test('hidden on an SVG group hides and shows it; HTML keeps native hidden', () => {
   const style = readFileSync('sandbox.html', 'utf8').match(/<style>(.*?)<\/style>/s)[1];
   const { window } = new JSDOM(

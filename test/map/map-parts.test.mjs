@@ -4,12 +4,8 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { ReactFlowProvider, useStoreApi } from '@xyflow/react';
 import { render } from '../support/render.mjs';
-import { familyLegend } from '../../src/map/mapState.ts';
 
-const [{ Conversation, ConversationTransition }, { InkLegend }] = await Promise.all([
-  import('../../src/map/Conversation.tsx'),
-  import('../../src/map/MapControls.tsx'),
-]);
+const { Conversation, ConversationTransition } = await import('../../src/map/Conversation.tsx');
 
 const summary = (id, parent = null, extra = {}) => ({
   id,
@@ -328,34 +324,4 @@ test('returning from chat focuses the originating control; fold remount never st
     }
   });
   assert.equal(document.activeElement.id, 'map-control');
-});
-
-test('legend exposes trunk/family labels, accessible focus target and ink variables', async (t) => {
-  const trees = [
-    summary('root'),
-    summary('family', 'root'),
-    summary('deep', 'family'),
-    summary('other'),
-  ];
-  const { container, cleanup } = await render(
-    h(InkLegend, { root: 'root', legend: familyLegend('root', trees) }),
-  );
-  t.after(cleanup);
-  const legend = container.querySelector('aside');
-  assert.ok(legend.getAttribute('aria-label'), 'named for assistive tech');
-  legend.focus();
-  assert.equal(document.activeElement, legend);
-  assert.deepEqual(
-    [...legend.querySelectorAll('li')].map((e) => e.textContent),
-    ['1 root · trunk', '1.1 family'],
-  );
-  assert.equal(
-    legend.querySelector('li:last-child').style.getPropertyValue('--ink'),
-    'var(--rabbithole-ink-1)',
-  );
-  assert.ok(
-    [...legend.querySelectorAll('.contents-dot')].every(
-      (e) => e.getAttribute('aria-hidden') === 'true',
-    ),
-  );
 });

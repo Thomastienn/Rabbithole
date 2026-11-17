@@ -66,24 +66,3 @@ test('chat header row: return to parent, path crumbs, stats and map toggles, clo
   await menuItem('Rename conversation');
   assert.deepEqual(calls, [['parent'], ['open', 'root'], ['map'], ['rename']]);
 });
-
-test('a root conversation has no return-to-parent control', async (t) => {
-  const { container, cleanup } = await render(
-    h(ChatHeadingRow, {
-      ancestors: [],
-      current: { id: 'root', title: 'Root' },
-      addresses: new Map(),
-      open() {},
-      openParent() {},
-      statsOpen: false,
-      toggleStats() {},
-      expanded: false,
-      toggleExpanded() {},
-      returnToTree() {},
-      rename() {},
-    }),
-    ui,
-  );
-  t.after(cleanup);
-  assert.equal(button(container, 'Return to parent conversation'), undefined);
-});

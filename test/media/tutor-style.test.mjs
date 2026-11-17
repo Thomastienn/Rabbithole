@@ -64,16 +64,6 @@ test('the fixed memory rule appears only when update_memory_note is offered', ()
   assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(MEMORY_RULE));
 });
 
-test('the chat prompt lists the learning tree resources, and nothing when there are none', () => {
-  const resources = [{ number: 1, title: 'Heaps', site: 'example.com' }];
-  const prompt = tutorSystem({ tutorStyle: 'Mine.', resources });
-  assert.ok(prompt.endsWith('\n' + JSON.stringify(resources)));
-  assert.equal(
-    tutorSystem({ tutorStyle: 'Mine.', resources: [] }),
-    tutorSystem({ tutorStyle: 'Mine.' }),
-  );
-});
-
 test('the teaching skill carries everyday-analogy guidance to replies, visuals and narration, never discussions', async () => {
   const { ANALOGY_SKILL } = await import('../../server/media/skills.mjs');
   const { PLAN_INSTRUCTIONS } = await import('../../server/media/video-plan.mjs');

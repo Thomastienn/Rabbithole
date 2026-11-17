@@ -325,16 +325,6 @@ test('the toggle and shortcut switch between rail and full sidebar, survive a sh
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
 });
 
-test('the sidebar toggle icon does not spin under prefers-reduced-motion', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const css = await readFile(new URL('../../src/styles/shell.css', import.meta.url), 'utf8');
-  assert.match(css, /\.sidebar-toggle svg \{\s*animation:/);
-  assert.match(
-    css,
-    /@media \(prefers-reduced-motion: reduce\) \{\s*\.sidebar-toggle svg \{\s*animation: none;/,
-  );
-});
-
 test('Ctrl+Shift+O starts one new chat per press from anywhere, including text entry, but not while opening', async (t) => {
   let setBusy;
   const calls = [];

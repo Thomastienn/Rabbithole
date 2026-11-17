@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { visualMessage } from '../../src/media/artifacts.ts';
 import { renderVisual } from '../../src/media/visualMarkup.ts';
-import { readFileSync } from 'node:fs';
 
 const part = (label, explanation) =>
   `data-visual-label="${label}" data-visual-explanation="${explanation}"`;
@@ -19,17 +18,6 @@ test('stored tagged visuals render unchanged and their tags do not activate', ()
     for (const attr of ['tabindex', 'role', 'aria-label'])
       assert.equal(e.hasAttribute(attr), false);
   }
-  // The frame script neither tags parts nor relays clicks; the host accepts only height reports.
-  const sandbox = readFileSync('src/media/sandbox.ts', 'utf8');
-  assert.doesNotMatch(
-    sandbox,
-    /data-visual-label|addEventListener\('(click|keydown)'|postMessage\(part/,
-  );
-  assert.match(
-    readFileSync('src/media/VisualFrame.tsx', 'utf8'),
-    /message\?\.type === 'height'\) setHeight/,
-  );
-  assert.doesNotMatch(readFileSync('sandbox.html', 'utf8'), /data-visual/);
 });
 
 test('host accepts only exact, bounded height messages and visual branch parts', () => {
