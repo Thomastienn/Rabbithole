@@ -118,6 +118,8 @@ export async function generateVideo({
   render = sandboxRender,
   snapshot = sandboxSnapshot,
   narrate = edgeNarration,
+  // Renders stills of saved or improved library pieces in the background.
+  stills = () => {},
   onPhase = () => {},
   manim = { detect: detectManim, render: sandboxManim, check: checkManim },
   onWarning = console.warn,
@@ -328,6 +330,7 @@ export async function generateVideo({
             store.usePiece(c.piece.id, artifact.id);
             ids[c.name] = c.piece.id;
           }
+          stills();
         } catch (error) {
           controller.signal.throwIfAborted();
           onWarning(`WARN video piece library: ${error.message}`);
@@ -338,7 +341,10 @@ export async function generateVideo({
       onPoorPiece: async (id, why) => {
         try {
           const piece = store.piece(id);
-          if (piece) store.improvePiece(id, await improvePiece({ piece, why, call }));
+          if (piece) {
+            store.improvePiece(id, await improvePiece({ piece, why, call }));
+            stills();
+          }
         } catch (error) {
           controller.signal.throwIfAborted();
           onWarning(`WARN video piece improvement kept the saved piece: ${error.message}`);

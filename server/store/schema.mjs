@@ -262,6 +262,16 @@ export function open(path) {
         .some((c) => c.name === 'source3d')
     )
       this.db.exec('ALTER TABLE pieces ADD COLUMN source3d TEXT');
+    // JPEG stills of both forms for the library cards; pieces saved before them are backfilled.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(pieces)')
+        .all()
+        .some((c) => c.name === 'still')
+    )
+      this.db.exec(
+        'ALTER TABLE pieces ADD COLUMN still BLOB; ALTER TABLE pieces ADD COLUMN still3d BLOB',
+      );
     // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
     this.db.exec('BEGIN IMMEDIATE');
     try {

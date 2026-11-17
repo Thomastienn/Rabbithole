@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
@@ -50,7 +50,17 @@ test('the piece routes list the library with its saved videos and read one piece
   assert.equal(status, 200);
   assert.deepEqual(
     list.map(({ improved, ...p }) => (assert.ok(improved > 0), p)),
-    [{ id, name: 'Winner', look: 'A gold trophy', videos: [{ id: 'v1', title: 'Elections' }] }],
+    [
+      {
+        id,
+        name: 'Winner',
+        look: 'A gold trophy',
+        solid: false,
+        still: false,
+        still3d: false,
+        videos: [{ id: 'v1', title: 'Elections' }],
+      },
+    ],
     'only saved library videos are listed as users',
   );
   const [, piece] = await get(`/api/pieces/${id}`);
@@ -131,4 +141,94 @@ test('the piece list route pages and searches, embedding the query with pending 
   assert.equal((await get('/api/pieces?q=rocket')).total, 0, 'no text match, no results');
   assert.match(logs.join('\n'), /WARN media piece search fell back to text .*model files missing/);
   assert.doesNotMatch(logs.join('\n'), /rocket/, 'the query stays out of the log');
+});
+
+test('the piece list backfills stills through the snapshot path and serves them as JPEG', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-pieces-http-')),
+    store = new Store(join(dir, 'trees.sqlite')),
+    logs = [],
+    shots = [];
+  let broken = false;
+  const app = createApp({
+    store,
+    provider: { models: async () => [], generate: async () => assert.fail('no provider call') },
+    dir,
+    auth: { status: () => ({ connected: true }) },
+    log: (line) => logs.push(line),
+    // Stands in for the sandboxed Remotion still render: reads the staged entry, writes each JPEG.
+    pieceSnapshot: async (workspace, stills) => {
+      shots.push({
+        entry: readFileSync(join(workspace, 'index.tsx'), 'utf8'),
+        pieces: readFileSync(join(workspace, 'pieces.tsx'), 'utf8'),
+        solid: existsSync(join(workspace, 'pieces3d.tsx')),
+        kit: readFileSync(join(workspace, 'kit.tsx'), 'utf8'),
+        frames: stills.map((s) => s.frame),
+      });
+      if (broken) throw new Error('renderer missing');
+      for (const { frame, file } of stills) writeFileSync(file, `jpeg ${frame}`);
+      return { stills: stills.length };
+    },
+  });
+  await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+  t.after(() => {
+    app.stop();
+    store.close();
+  });
+  const base = `http://127.0.0.1:${app.server.address().port}`;
+  const list = async () => (await (await fetch(`${base}/api/pieces`)).json()).pieces;
+  const piece = (name, source3d) =>
+    store.savePiece({
+      name,
+      look: 'l',
+      props: [],
+      source: `export function ${name}() { return null; }`,
+      source3d,
+      roles: ['winner'],
+    });
+  const flat = piece('Flat'),
+    solid = piece('Solid', 'export function Solid3D() { return <group />; }');
+  assert.equal((await fetch(`${base}/api/pieces/${flat}/still`)).status, 404, 'no still yet');
+  await list();
+  for (let i = 0; i < 50 && store.unstilledPieces().length; i++)
+    await new Promise((r) => setTimeout(r, 10));
+  assert.deepEqual(store.unstilledPieces(), [], 'listing backfills pieces saved without stills');
+  const [one, two] = shots;
+  assert.deepEqual([one.frames, one.solid, two.frames, two.solid], [[0], false, [0, 1], true]);
+  assert.match(one.pieces, /export function Flat/);
+  assert.match(one.entry, /\(flat as any\)\["Flat"\]/);
+  assert.doesNotMatch(one.entry, /ThreeCanvas/, 'a 2D-only piece renders no 3D frame');
+  assert.match(
+    two.entry,
+    /ThreeCanvas[\s\S]*\(solid as any\)\["Solid3D"\]|\(solid as any\)\["Solid3D"\][\s\S]*ThreeCanvas/,
+  );
+  assert.match(one.kit, /"winner": palette\.amber/, 'roles borrow house hues');
+  assert.equal(existsSync(join(dir, 'piece-work', flat)), false, 'the workspace is removed');
+  assert.deepEqual(
+    (await list()).map((p) => [p.name, p.solid, p.still, p.still3d]),
+    [
+      ['Solid', true, true, true],
+      ['Flat', false, true, false],
+    ],
+  );
+  const res = await fetch(`${base}/api/pieces/${solid}/still3d`);
+  assert.equal(res.headers.get('content-type'), 'image/jpeg');
+  assert.equal(await res.text(), 'jpeg 1');
+  assert.equal(await (await fetch(`${base}/api/pieces/${solid}/still`)).text(), 'jpeg 0');
+  assert.equal((await fetch(`${base}/api/pieces/${flat}/still3d`)).status, 404);
+
+  broken = true;
+  const bad = piece('Bad');
+  const before = shots.length;
+  await list();
+  for (let i = 0; i < 50 && !logs.some((l) => /piece stills failed/.test(l)); i++)
+    await new Promise((r) => setTimeout(r, 10));
+  assert.match(logs.join('\n'), /WARN media piece stills failed .*renderer missing/);
+  await list();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(shots.length, before + 1, 'a failed piece is not rendered again on each list');
+  assert.deepEqual(
+    (await list()).find((p) => p.id === bad).still,
+    false,
+    'the card keeps waiting for its still',
+  );
 });

@@ -209,3 +209,47 @@ test('opening a piece with a 3D form sends both forms to the isolated player fra
   assert.match(container.textContent, /3D source \(read-only\)/);
   assert.equal(container.querySelector('textarea, [contenteditable=true]'), null);
 });
+
+test('cards show the 2D and 3D stills as images, a 2D only note, or a pending still, without a live player', async (t) => {
+  const row = (id, flags) => ({
+    id,
+    name: id,
+    look: 'l',
+    improved: 7,
+    videos: [],
+    solid: false,
+    still: true,
+    still3d: false,
+    ...flags,
+  });
+  const api = async (path) =>
+    list(path)
+      ? {
+          total: 3,
+          pieces: [
+            row('Both', { solid: true, still3d: true }),
+            row('Flat'),
+            row('Fresh', { solid: true, still: false }),
+          ],
+        }
+      : assert.fail(path);
+  const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+  t.after(cleanup);
+  await settle(act);
+  const card = (name) =>
+    [...container.querySelectorAll('.piece-library h3')]
+      .find((e) => e.textContent === name)
+      .closest('.piece-library > *');
+  const images = (name) =>
+    [...card(name).querySelectorAll('img')].map((i) => [i.getAttribute('src'), i.alt]);
+  assert.deepEqual(images('Both'), [
+    ['/api/pieces/Both/still?v=7', '2D form'],
+    ['/api/pieces/Both/still3d?v=7', '3D form'],
+  ]);
+  assert.deepEqual(images('Flat'), [['/api/pieces/Flat/still?v=7', '2D form']]);
+  assert.match(card('Flat').textContent, /2D only/);
+  assert.doesNotMatch(card('Both').textContent, /2D only/);
+  assert.deepEqual(images('Fresh'), []);
+  assert.match(card('Fresh').textContent, /2D form: still pending.*3D form: still pending/);
+  assert.equal(container.querySelector('iframe'), null, 'no live player per card');
+});

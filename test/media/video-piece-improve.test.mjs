@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { planFor, composition, directive, complete, until, open } from '../support/video-kit.mjs';
 import { AUDIT_INSTRUCTIONS, PIECE_IMPROVE_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { poorPieces } from '../../server/media/video-cuts.mjs';
@@ -27,7 +28,7 @@ async function run(t, rewrite, why = 'No crown on top') {
     ...plan.styleBrief,
     recurringObjects: [{ ...plan.styleBrief.recurringObjects[0], look }],
   };
-  const calls = { audit: [], improve: [] };
+  const calls = { audit: [], improve: [], stills: [] };
   const logs = [];
   const env = await open(
     {
@@ -48,7 +49,15 @@ async function run(t, rewrite, why = 'No crown on top') {
         complete(emit, usesPieces);
       },
     },
-    { videoSnapshot: snapshot, log: (line) => logs.push(line) },
+    {
+      videoSnapshot: snapshot,
+      // Library stills of the saved piece record which source they were rendered from.
+      pieceSnapshot: async (dir, list) => {
+        calls.stills.push(readFileSync(join(dir, 'pieces.tsx'), 'utf8'));
+        await snapshot(dir, list);
+      },
+      log: (line) => logs.push(line),
+    },
   );
   t.after(async () => {
     await env.app.stop();
@@ -61,11 +70,11 @@ async function run(t, rewrite, why = 'No crown on top') {
   );
   assert.equal(row.status, 'ready', row.error);
   const [saved] = env.store.pieceList().pieces.map((p) => env.store.piece(p.id));
-  return { row, saved, calls, logs };
+  return { row, saved, calls, logs, env };
 }
 
 test('an audit flagging a saved piece has the smart model rewrite it; the library entry is replaced, the current video keeps its piece', async (t) => {
-  const { row, saved, calls, logs } = await run(t, better);
+  const { row, saved, calls, logs, env } = await run(t, better);
   assert.deepEqual(calls.audit[0].libraryPieces, ['Winner'], 'the audit is offered the piece');
   assert.equal(calls.improve.length, 1);
   assert.equal(calls.improve[0].source, pieces, 'the rewrite starts from the saved source');
@@ -74,6 +83,15 @@ test('an audit flagging a saved piece has the smart model rewrite it; the librar
   assert.ok(saved.improved > saved.created, 'last-improved time moves');
   assert.equal(JSON.parse(row.source).pieces, pieces, 'the current video keeps its piece');
   assert.ok(logs.some((l) => l.includes('stage="improve"')));
+  // Stills render in the background, outside the observed job events, so poll.
+  for (
+    let i = 0;
+    i < 100 && (calls.stills.at(-1) !== better || env.store.unstilledPieces().length);
+    i++
+  )
+    await new Promise((r) => setTimeout(r, 10));
+  assert.equal(calls.stills.at(-1), better, 'stills are rendered from the improved source');
+  assert.ok(env.store.pieceStill(saved.id, '2d'), 'the improved piece gets new stills');
 });
 
 test('an off-style flag on a reused library piece redraws it in the house style for future videos', async (t) => {

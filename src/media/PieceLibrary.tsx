@@ -13,6 +13,10 @@ type PieceRow = {
   name: string;
   look: string;
   improved: number;
+  // Whether the piece has a 3D form, and which stills are rendered yet.
+  solid: boolean;
+  still: boolean;
+  still3d: boolean;
   videos: { id: string; title: string }[];
 };
 type Piece = PieceRow & {
@@ -149,6 +153,7 @@ export default function PieceLibrary({
               {pieces.map((p) => (
                 <ClickableCard key={p.id} label={`Open ${p.name}`} onClick={() => void show(p.id)}>
                   <VStack gap={1}>
+                    <PieceStills piece={p} />
                     <Heading level={3}>{p.name}</Heading>
                     <Text color="secondary">{p.look}</Text>
                     <Text type="supporting" color="secondary">
@@ -190,6 +195,30 @@ export default function PieceLibrary({
         </VStack>
       )}
     </VStack>
+  );
+}
+
+// Stills rendered on the server, never a live player per card; the improvement time keeps the URL fresh.
+function PieceStills({ piece }: { piece: PieceRow }) {
+  const still = (form: string, shown: boolean, label: string) =>
+    shown ? (
+      <img src={`/api/pieces/${piece.id}/${form}?v=${piece.improved}`} alt={label} loading="lazy" />
+    ) : (
+      <Text type="supporting" color="secondary" className="piece-still-pending">
+        {label}: still pending
+      </Text>
+    );
+  return (
+    <div className="piece-stills">
+      {still('still', piece.still, '2D form')}
+      {piece.solid ? (
+        still('still3d', piece.still3d, '3D form')
+      ) : (
+        <Text type="supporting" color="secondary" className="piece-still-pending">
+          2D only
+        </Text>
+      )}
+    </div>
   );
 }
 

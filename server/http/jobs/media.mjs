@@ -151,6 +151,7 @@ export function mediaJobs(ctx) {
           narrate: ctx.videoNarrate,
           manim: ctx.videoManim,
           embed: ctx.videoEmbed,
+          stills: () => ctx.pieceStills.fill(),
           search: ctx.search,
           onWarning: (cause) =>
             ctx.log(

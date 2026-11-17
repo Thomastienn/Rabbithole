@@ -99,3 +99,41 @@ test('a piece keeps an optional 3D form, improved together with its 2D form; old
   t.after(() => store.close());
   assert.deepEqual([store.piece('old').source, store.piece('old').source3d], ['src', null]);
 });
+
+test('a piece keeps stills of both forms until it is improved; the list says which stills and forms exist', (t) => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-pieces-')), 'trees.sqlite'));
+  t.after(() => store.close());
+  const flat = store.savePiece(entry('Flat', null)),
+    solid = store.savePiece({ ...entry('Solid', null), source3d: 'export function Solid3D() {}' });
+  assert.deepEqual(
+    store.unstilledPieces().map((p) => p.id),
+    [flat, solid],
+    'new pieces wait for stills, oldest first',
+  );
+  const flags = () =>
+    Object.fromEntries(
+      store.pieceList().pieces.map((p) => [p.name, [p.solid, p.still, p.still3d]]),
+    );
+  assert.deepEqual(flags(), { Flat: [false, false, false], Solid: [true, false, false] });
+  const { improved } = store.piece(solid);
+  store.stillPiece(flat, store.piece(flat).improved, { still: Buffer.from('2d') });
+  store.stillPiece(solid, improved, { still: Buffer.from('a'), still3d: Buffer.from('b') });
+  assert.deepEqual(flags(), { Flat: [false, true, false], Solid: [true, true, true] });
+  assert.equal(Buffer.from(store.pieceStill(solid, '2d')).toString(), 'a');
+  assert.equal(Buffer.from(store.pieceStill(solid, '3d')).toString(), 'b');
+  assert.equal(store.pieceStill(flat, '3d'), null);
+  assert.deepEqual(store.unstilledPieces(), []);
+  store.db.prepare('UPDATE pieces SET improved=improved-1 WHERE id=?').run(solid);
+  store.improvePiece(solid, { source: 's', source3d: 't', props: [], roles: [] });
+  assert.equal(store.pieceStill(solid, '2d'), null, 'an improvement drops its old stills');
+  store.stillPiece(solid, improved - 1, { still: Buffer.from('stale') });
+  assert.equal(
+    store.pieceStill(solid, '2d'),
+    null,
+    'stills of an older improvement are not stored',
+  );
+  assert.deepEqual(
+    store.unstilledPieces().map((p) => p.id),
+    [solid],
+  );
+});

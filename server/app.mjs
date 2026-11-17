@@ -33,6 +33,7 @@ import { recallTools } from './tools/recall.mjs';
 import { searxngSearch } from './tools/searxng.mjs';
 import { toolMcp } from './tools/mcp.mjs';
 import { retrieveNeighbourhood } from './neighbourhood.mjs';
+import { pieceStills } from './media/piece-stills.mjs';
 
 // Matching order; each route answers only its own method and paths, and assets answers everything left.
 const ROUTES = [
@@ -64,6 +65,8 @@ export function createApp({
   videoNarrate,
   videoManim,
   videoEmbed = null,
+  // Renders library piece stills; off unless the server passes the sandbox snapshot, like suggestions in tests.
+  pieceSnapshot = null,
   log = stdoutLog,
   suggestions = false,
   // Off in tests like suggestions, so fake replies without a verdict block make no extra calls.
@@ -144,6 +147,20 @@ export function createApp({
     },
     origin: () => `http://127.0.0.1:${server.address().port}`,
   };
+  ctx.pieceStills = pieceSnapshot
+    ? pieceStills({
+        store,
+        dir,
+        snapshot: pieceSnapshot,
+        onWarning: (error) =>
+          log(
+            formatLog('warn', 'media', 'piece stills failed', {
+              task: 'pieces',
+              cause: errorCause(error, []),
+            }),
+          ),
+      })
+    : { fill: () => {}, stop: () => {} };
   Object.assign(ctx, roles(ctx));
   ctx.syncEndpoints();
   Object.assign(
@@ -278,6 +295,7 @@ export function createApp({
       for (const t of titling.values()) t.controller.abort();
       for (const v of ctx.verdicting.values()) v.controller.abort();
       for (const c of compactions.values()) c.controller.abort();
+      ctx.pieceStills.stop();
       for (const parent of [...prepared.keys()]) ctx.unprepare(parent);
       store.interrupt();
       for (const p of new Set(Object.values(providers))) p?.close?.();

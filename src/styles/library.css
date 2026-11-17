@@ -244,6 +244,24 @@
   gap: 16px;
   overflow-wrap: anywhere;
 }
+/* A card's 2D and 3D stills side by side, each 16:9; a missing one keeps its place with a note. */
+.piece-stills {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.piece-stills img,
+.piece-still-pending {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-element);
+}
+.piece-still-pending {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: var(--color-background-muted);
+}
 .piece-detail .video-frame {
   max-width: 960px;
 }

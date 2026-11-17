@@ -29,11 +29,32 @@ export const pieces = {
     return id;
   },
   // A validated rewrite replaces the entry for future videos; saved videos are rendered files and never change.
-  // Both forms are replaced together so they never drift apart.
+  // Both forms are replaced together so they never drift apart; their stills are rendered again.
   improvePiece(id, { source, source3d = null, props, roles }) {
     this.db
-      .prepare('UPDATE pieces SET source=?, source3d=?, props=?, roles=?, improved=? WHERE id=?')
+      .prepare(
+        'UPDATE pieces SET source=?, source3d=?, props=?, roles=?, improved=?, still=NULL, still3d=NULL WHERE id=?',
+      )
       .run(source, source3d, JSON.stringify(props), JSON.stringify(roles), Date.now(), id);
+  },
+  // Pieces whose stills are missing, saved earlier or just saved or improved, oldest first.
+  unstilledPieces() {
+    return this.db
+      .prepare('SELECT id, improved FROM pieces WHERE still IS NULL ORDER BY rowid')
+      .all()
+      .map((r) => ({ ...r }));
+  },
+  // Stores stills rendered from the forms of that improvement; a newer improvement drops them.
+  stillPiece(id, improved, { still, still3d = null }) {
+    this.db
+      .prepare('UPDATE pieces SET still=?, still3d=? WHERE id=? AND improved=?')
+      .run(still, still3d, id, improved);
+  },
+  pieceStill(id, form) {
+    const row = this.db
+      .prepare(`SELECT ${form === '3d' ? 'still3d' : 'still'} AS still FROM pieces WHERE id=?`)
+      .get(id);
+    return row?.still ?? null;
   },
   usePiece(id, video) {
     this.db.prepare('INSERT OR IGNORE INTO piece_videos(piece,video) VALUES (?,?)').run(id, video);
@@ -63,8 +84,11 @@ export const pieces = {
     const q = query.trim().toLocaleLowerCase(),
       matches = (p) => `${p.name}\n${p.look}`.toLocaleLowerCase().includes(q);
     let rows = this.db
-      .prepare('SELECT id, name, look, improved FROM pieces ORDER BY improved DESC, rowid DESC')
-      .all();
+      .prepare(
+        'SELECT id, name, look, improved, source3d IS NOT NULL AS solid, still IS NOT NULL AS still, still3d IS NOT NULL AS still3d FROM pieces ORDER BY improved DESC, rowid DESC',
+      )
+      .all()
+      .map((p) => ({ ...p, solid: !!p.solid, still: !!p.still, still3d: !!p.still3d }));
     if (q && vector) {
       const score = new Map(this.nearestPieces(vector, Infinity).map((p) => [p.id, p.score]));
       rows = rows

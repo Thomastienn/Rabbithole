@@ -28,21 +28,24 @@ export const PIECES_INSTRUCTIONS =
 export const PIECES_LIBRARY_NOTE =
   '\nThe task also has, for each name, library: up to five saved pieces from earlier videos (id, name, look, props, roles, source, and source3d when the piece has a 3D form) whose looks are closest; the list may be empty. For each name choose "reuse" when a saved piece already draws the look as is; "variant" when a saved piece is close and you derive a new piece from its source; or "new" otherwise. Reused pieces are added by the app under the new name, with their colors.<role> mapped to this brief; pass roles ({"savedRole":"briefRole"}) only to override that mapping. Write code only for variant and new pieces, never for reused ones. Return only compact JSON instead of a bare module: {"pieces":[{"name":"<Name>","use":"reuse|variant|new","id":"<library id for reuse and variant>","roles":{}}],"code":"the TypeScript module exporting only the variant and new pieces, or an empty string"}.';
 
-// The wrapper owns the ground, fonts, transition, narration and subtitles for each cut.
-export const CUT_ENTRY = `import { AbsoluteFill, Audio, Composition, continueRender, delayRender, interpolate, registerRoot, staticFile, useCurrentFrame } from 'remotion';
-import '@fontsource/archivo/400.css';
+// The house fonts, loaded before any frame renders; entries import continueRender and delayRender.
+export const FONTS = `import '@fontsource/archivo/400.css';
 import '@fontsource/archivo/500.css';
 import '@fontsource/archivo/600.css';
 import '@fontsource/archivo/700.css';
 import '@fontsource/literata/400.css';
 import '@fontsource/literata/600.css';
+const fonts = delayRender('fonts');
+Promise.all(['400 1em Archivo', '500 1em Archivo', '600 1em Archivo', '700 1em Archivo', '400 1em Literata', '600 1em Literata'].map(f => document.fonts.load(f))).then(() => continueRender(fonts), () => continueRender(fonts));
+`;
+
+// The wrapper owns the ground, fonts, transition, narration and subtitles for each cut.
+export const CUT_ENTRY = `import { AbsoluteFill, Audio, Composition, continueRender, delayRender, interpolate, registerRoot, staticFile, useCurrentFrame } from 'remotion';
 import Video from './Video';
 import { Cursor, Joined, Sketch, frame as videoFrame } from './kit';
 import timing from './narration.json';
 import emphasis from './emphasis.json';
-const fonts = delayRender('fonts');
-Promise.all(['400 1em Archivo', '500 1em Archivo', '600 1em Archivo', '700 1em Archivo', '400 1em Literata', '600 1em Literata'].map(f => document.fonts.load(f))).then(() => continueRender(fonts), () => continueRender(fonts));
-const Narrated = () => {
+${FONTS}const Narrated = () => {
   const frame = useCurrentFrame();
   const caption = timing.captions.find(c => frame >= c.startFrame && frame < c.endFrame);
   const opacity = caption ? Math.min(interpolate(frame, [caption.startFrame, caption.startFrame + 5], [0, 1], { extrapolateRight: 'clamp' }), interpolate(frame, [caption.endFrame - 4, caption.endFrame], [1, 0], { extrapolateLeft: 'clamp' })) : 0;
