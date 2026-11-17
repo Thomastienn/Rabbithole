@@ -2,11 +2,11 @@
 import { createElement as h, Fragment, type ReactNode } from 'react';
 import { decodeString } from 'micromark-util-decode-string';
 import katex from 'katex';
-import { tokenize } from '@astryxdesign/core/CodeBlock';
 import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
+import { codeTokens } from './codeTokens.ts';
 import ReplyImage, { imageUrl, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
 import { layout } from './layouts.ts';
@@ -302,7 +302,7 @@ export function renderMarkdown(
       }
       case 'code': {
         const lines = sourceLines(raw, n, true),
-          tokens = tokenize(n.value!.replace(/\r\n?/g, '\n'), n.lang || 'plaintext');
+          tokens = codeTokens(n.value!.replace(/\r\n?/g, '\n'), n.lang || 'plaintext');
         return h(
           'pre',
           { ...attrs, 'data-language': n.lang || 'plaintext' },

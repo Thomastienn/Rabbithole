@@ -1,8 +1,17 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { Text } from '@astryxdesign/core/Text';
 import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import type { Source } from '../map/TreeOverview';
 import { renderMarkdown } from '../markdown/markdown';
+import { grammars } from '../markdown/codeTokens';
 import { imageSources } from '../markdown/ReplyImage';
 import type { ToolCall } from './turn';
 import type { Resource } from './types';
@@ -43,6 +52,7 @@ const Reply = memo(function Reply({
   onDiscussionReply?: DiscussionReply;
 }) {
   useEffect(ensureHighlightStyles, []);
+  const grammarVersion = useSyncExternalStore(grammars.subscribe, grammars.version);
   const box = useRef<HTMLElement>(null),
     [narrow, setNarrow] = useState(false);
   useLayoutEffect(() => {
@@ -129,6 +139,7 @@ const Reply = memo(function Reply({
           !!onArtifactAction,
           !!onDiscussionReply,
           narrow,
+          grammarVersion,
         ],
       )}
     </Text>
