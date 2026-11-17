@@ -2,6 +2,8 @@
 
 Issues and specs for this repo live in Beads (`bd` CLI, data in `.beads/`). Keep Git and Beads local: no push, pull or remote sync.
 
+New issues use `Rabbithole-`, configured in the database and as `issue-prefix` in `.beads/config.yaml`. Existing `TreeTutor-` IDs stay valid; do not rename them.
+
 ## Conventions
 
 - One feature = one epic (`bd create --type epic`); each implementation ticket is a child (`--parent <epic-id>`), never one combined ticket.
