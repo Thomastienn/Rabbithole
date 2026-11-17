@@ -3,6 +3,7 @@ import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { mediaPath, playable } from '../../media/videos.mjs';
+import { withParts } from '../../media/video-pieces.mjs';
 import { readable } from '../jobs/media.mjs';
 import { formatLog, errorCause } from '../../log.mjs';
 
@@ -82,20 +83,22 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     }
     const pieceMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
     if (pieceMatch) {
-      const piece = store.piece(pieceMatch[1]);
+      const piece = store.pieceTree(pieceMatch[1]);
       if (!piece) return json(res, 404, { error: 'Piece not found.' });
-      const { id, name, look, props, roles, source, source3d, improved } = piece;
+      const { id, name, look, props, source, source3d, improved } = piece;
+      // The code shown is the piece's own; the player runs it with its parts' current versions.
+      const whole = withParts(piece);
       return json(res, 200, {
         id,
         name,
         look,
         props,
-        roles,
+        roles: whole.roles,
         source,
         source3d,
         improved,
-        code: compileCut(source),
-        code3d: source3d ? compileCut(source3d) : null,
+        code: compileCut(whole.source),
+        code3d: whole.source3d ? compileCut(whole.source3d) : null,
       });
     }
     // Media is located only from the server-issued artifact id, never from a generated path or URL.

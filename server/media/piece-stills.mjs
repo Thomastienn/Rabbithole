@@ -4,6 +4,7 @@ import { mkdir, writeFile, readFile, rm, lstat, realpath } from 'node:fs/promise
 import { join } from 'node:path';
 import { FONTS } from './video-cut.mjs';
 import { stageCut } from './video-stage.mjs';
+import { withParts } from './video-pieces.mjs';
 
 const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
 // Pieces colour only through roles; like the library view, each role borrows a house hue in order.
@@ -26,8 +27,10 @@ const Still = () => <>
 registerRoot(() => <Composition id="Video" component={Still} width={frame.width} height={frame.height} fps={30} durationInFrames={${solid ? 2 : 1}} />);
 `;
 
-// JPEG stills of a piece's forms, rendered in the cut audit's sandbox by its snapshot path.
+// JPEG stills of a piece's forms (a store pieceTree, drawn with its parts), rendered in the cut audit's
+// sandbox by its snapshot path.
 export async function renderPieceStills(piece, { dir, snapshot, signal }) {
+  const { source, source3d, roles } = withParts(piece);
   // Three levels below dir, like a video attempt, so the sandbox hides the app's data directory.
   const work = join(dir, 'piece-work', piece.id, randomUUID());
   try {
@@ -38,16 +41,16 @@ export async function renderPieceStills(piece, { dir, snapshot, signal }) {
       cut: { engine: 'remotion', code: '' },
       plan: {
         styleBrief: {
-          paletteRoles: Object.fromEntries(piece.roles.map((r, i) => [r, HUES[i % HUES.length]])),
+          paletteRoles: Object.fromEntries(roles.map((r, i) => [r, HUES[i % HUES.length]])),
         },
       },
-      pieces: piece.source,
+      pieces: source,
       kit: KIT,
       emphasis: [],
     });
-    if (piece.source3d) await writeFile(join(work, 'pieces3d.tsx'), piece.source3d);
-    await writeFile(join(work, 'index.tsx'), entry(piece.name, !!piece.source3d));
-    const stills = (piece.source3d ? [0, 1] : [0]).map((frame) => ({
+    if (source3d) await writeFile(join(work, 'pieces3d.tsx'), source3d);
+    await writeFile(join(work, 'index.tsx'), entry(piece.name, !!source3d));
+    const stills = (source3d ? [0, 1] : [0]).map((frame) => ({
       frame,
       file: join(work, 'out', `${frame}.jpg`),
     }));
@@ -85,7 +88,7 @@ export function pieceStills({ store, dir, snapshot, onWarning }) {
       for (const { id, improved } of store.unstilledPieces()) {
         if (controller.signal.aborted) return;
         if (failed.has(`${id}:${improved}`)) continue;
-        const piece = store.piece(id);
+        const piece = store.pieceTree(id);
         try {
           if (piece)
             store.stillPiece(

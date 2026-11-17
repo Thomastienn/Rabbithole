@@ -182,9 +182,10 @@ export async function writeCuts({
   };
   persist();
   let choices = null,
+    parts = [],
     library = {};
   if (names.length && !data.pieces)
-    ({ source: data.pieces, choices } = await writeSetPieces({
+    ({ source: data.pieces, choices, parts } = await writeSetPieces({
       plan,
       names,
       write,
@@ -193,7 +194,7 @@ export async function writeCuts({
     }));
   if (data.pieces && !pieces) {
     persist();
-    library = (await onPieces(data.pieces, names, choices)) ?? {};
+    library = (await onPieces(data.pieces, names, choices, parts)) ?? {};
   }
   // Each audit shares its pre-audit last frame with the next cut's audit, so audits never wait on each other.
   const lastFrames = cuts.map(() => Promise.withResolvers());

@@ -5,13 +5,16 @@ import { blob, vector, cosine } from './embeddings.mjs';
 const MIN_SCORE = 0.25;
 
 export const pieces = {
-  // Saves one piece used by a video; returns its id.
-  savePiece({ name, look, props, source, source3d = null, roles, embedding = null }, video) {
+  // Saves one piece used by a video; returns its id. Parts ([{name, id}]) refer to saved pieces, never copies.
+  savePiece(
+    { name, look, props, source, source3d = null, roles, parts = [], embedding = null },
+    video,
+  ) {
     const id = randomUUID(),
       now = Date.now();
     this.db
       .prepare(
-        'INSERT INTO pieces(id,name,look,props,source,source3d,roles,embedding,created,improved) VALUES (?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO pieces(id,name,look,props,source,source3d,roles,parts,embedding,created,improved) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
       )
       .run(
         id,
@@ -21,6 +24,7 @@ export const pieces = {
         source,
         source3d,
         JSON.stringify(roles),
+        JSON.stringify(parts),
         blob(embedding),
         now,
         now,
@@ -70,9 +74,18 @@ export const pieces = {
       ...row,
       props: JSON.parse(row.props),
       roles: JSON.parse(row.roles),
+      parts: JSON.parse(row.parts ?? '[]'),
       embedding: vector(row.embedding),
       videos,
     };
+  },
+  // A piece with each part's current saved version (and its parts) attached, so an improved part reaches
+  // every later assembly; a part whose entry is gone is dropped.
+  pieceTree(id) {
+    const piece = this.piece(id);
+    if (!piece) return null;
+    const parts = piece.parts.map((p) => ({ ...p, piece: this.pieceTree(p.id) }));
+    return { ...piece, parts: parts.filter((p) => p.piece) };
   },
   // The Pieces view, one page at a time. Without a query: newest improvement first. With a query
   // vector: embedded pieces ranked by cosine, keeping close matches and name/look text matches;
@@ -121,6 +134,6 @@ export const pieces = {
       .map((r) => ({ id: r.id, score: cosine(query, vector(r.embedding)) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map(({ id, score }) => ({ ...this.piece(id), score }));
+      .map(({ id, score }) => ({ ...this.pieceTree(id), score }));
   },
 };

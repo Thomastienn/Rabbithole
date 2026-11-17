@@ -137,3 +137,36 @@ test('a piece keeps stills of both forms until it is improved; the list says whi
     [solid],
   );
 });
+
+test('a piece records the saved parts it is built from; its tree carries their current versions; older pieces have none', (t) => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-pieces-')), 'trees.sqlite'));
+  t.after(() => store.close());
+  const person = store.savePiece(entry('Person', null), 'video-a');
+  const town = store.savePiece(
+    { ...entry('Town', null), parts: [{ name: 'Person', id: person }] },
+    'video-a',
+  );
+  const city = store.savePiece(
+    { ...entry('City', [1, 0]), parts: [{ name: 'Town', id: town }] },
+    'video-a',
+  );
+  assert.deepEqual(store.piece(city).parts, [{ name: 'Town', id: town }], 'refers, never copies');
+  assert.doesNotMatch(store.piece(city).source, /Person|Town/);
+  store.improvePiece(person, {
+    source: 'export function Person() { return "better"; }',
+    props: ['x', 'y'],
+    roles: [],
+  });
+  const tree = store.nearestPieces([1, 0])[0];
+  assert.equal(
+    tree.parts[0].piece.parts[0].piece.source,
+    'export function Person() { return "better"; }',
+  );
+  assert.deepEqual(
+    store.piece(town).parts,
+    [{ name: 'Person', id: person }],
+    'improving keeps parts',
+  );
+  store.db.prepare('UPDATE pieces SET parts=NULL WHERE id=?').run(town);
+  assert.deepEqual(store.pieceTree(town).parts, [], 'pieces saved before parts load without any');
+});

@@ -235,7 +235,8 @@ export async function generateVideo({
     }
     count = plan.cuts.length;
     onStage('cuts', { cuts: count });
-    let vectors = [];
+    // Each looked-up look's vector, for saving the named pieces and parts that draw it.
+    const vectors = new Map();
     let writtenCuts = 0,
       narratedCuts = 0,
       playableStage = false,
@@ -305,8 +306,8 @@ export async function generateVideo({
           controller.signal.throwIfAborted();
           for (const [i, p] of pending.entries())
             if (out[looks.length + i]) store.embedPiece(p.id, out[looks.length + i]);
-          vectors = out.slice(0, looks.length);
-          return vectors.map((v) => (v ? store.nearestPieces(v) : []));
+          looks.forEach((look, i) => out[i] && vectors.set(look, out[i]));
+          return looks.map((_, i) => (out[i] ? store.nearestPieces(out[i]) : []));
         } catch (error) {
           controller.signal.throwIfAborted();
           onWarning(`WARN video piece library unavailable: ${error.message}`);
@@ -315,21 +316,28 @@ export async function generateVideo({
       },
       // Accepted variant and new pieces join the piece library, reused ones record this video; the library never fails the video.
       // Returns each set piece's library id, so audits can flag a poor one.
-      onPieces: async (source, names, choices) => {
+      // Parts are saved before the pieces built from them, which record their ids instead of copies.
+      onPieces: async (source, names, choices, parts = []) => {
         const ids = {};
         try {
-          const reused = choices?.filter((c) => c.use === 'reuse') ?? [];
-          const entries = libraryPieces(source, plan.styleBrief, names);
-          for (const entry of entries)
-            if (!reused.some((c) => c.name === entry.name))
-              ids[entry.name] = store.savePiece(
-                { ...entry, embedding: vectors[names.indexOf(entry.name)] ?? null },
-                artifact.id,
-              );
-          for (const c of reused) {
+          for (const c of choices?.filter((c) => c.use === 'reuse') ?? []) {
             store.usePiece(c.piece.id, artifact.id);
             ids[c.name] = c.piece.id;
           }
+          const entries = libraryPieces(source, plan.styleBrief, names, parts);
+          const save = (entry) =>
+            (ids[entry.name] ??= store.savePiece(
+              {
+                ...entry,
+                parts: entry.parts.map((name) => ({
+                  name,
+                  id: save(entries.find((e) => e.name === name)),
+                })),
+                embedding: vectors.get(entry.look) ?? null,
+              },
+              artifact.id,
+            ));
+          entries.forEach(save);
           stills();
         } catch (error) {
           controller.signal.throwIfAborted();

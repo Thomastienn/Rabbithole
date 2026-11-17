@@ -272,6 +272,14 @@ export function open(path) {
       this.db.exec(
         'ALTER TABLE pieces ADD COLUMN still BLOB; ALTER TABLE pieces ADD COLUMN still3d BLOB',
       );
+    // The library pieces a piece is built from, as [{name, id}]; pieces saved before parts have none.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(pieces)')
+        .all()
+        .some((c) => c.name === 'parts')
+    )
+      this.db.exec('ALTER TABLE pieces ADD COLUMN parts TEXT');
     // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
     this.db.exec('BEGIN IMMEDIATE');
     try {

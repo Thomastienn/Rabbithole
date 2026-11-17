@@ -159,3 +159,22 @@ test('improving a piece with a 3D form rewrites both together; a rewrite missing
   });
   assert.ok(!('source3d' in input) && !flat.source3d, 'a 2D-only piece stays 2D-only');
 });
+
+test('improving a piece built from parts names them so the rewrite draws them instead of defining them', async () => {
+  let input, rules;
+  const entry = await improvePiece({
+    piece: {
+      name: 'Winner',
+      look,
+      props: ['x', 'y'],
+      roles: ['winner'],
+      source: pieces,
+      parts: [{ name: 'Crown', id: 'c' }],
+    },
+    why: 'x',
+    call: async (r, text) => ((rules = r), (input = JSON.parse(text)), better),
+  });
+  assert.deepEqual(input.parts, ['Crown']);
+  assert.match(rules, /never define them/);
+  assert.deepEqual(entry.parts, [], 'the saved parts are kept by the store, not the rewrite');
+});

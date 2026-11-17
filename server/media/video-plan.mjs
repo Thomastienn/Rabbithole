@@ -319,9 +319,10 @@ export function cutSource(raw, brief, names) {
 }
 
 const PIECE_PROPS = ['x', 'y', 'scale', 'highlight', 'state'];
-// Splits an accepted set-piece module into one self-contained library entry per export, in names order:
-// the module's imports and private helpers, the export, and any other export it draws.
-export function libraryPieces(source, brief, names) {
+// Splits an accepted set-piece module into one library entry per named piece, then per part ({name, look}),
+// in order: the module's imports and private helpers, the export, and any other export it draws. Another
+// entry it draws (or that entry's 3D form) is recorded in parts by name instead of copied.
+export function libraryPieces(source, brief, names, parts = []) {
   const file = ts.createSourceFile(
     'pieces.tsx',
     source,
@@ -339,20 +340,25 @@ export function libraryPieces(source, brief, names) {
       : null;
   const shared = file.statements.filter((s) => !exportedName(s)).map((s) => s.getText(file));
   const exports = new Map(file.statements.filter(exportedName).map((s) => [exportedName(s), s]));
-  const looks = brief.recurringObjects.filter((o) => o.look);
+  const looks = [...brief.recurringObjects.filter((o) => o.look), ...parts];
+  const entries = [...names, ...parts.map((p) => p.name)];
+  const entryOf = (n) => entries.find((e) => n === e || n === `${e}3D`);
   // An export with every other export it draws, after the module's imports and private helpers.
-  const split = (name) => {
+  const split = (name, refs) => {
     const used = [name];
     for (let i = 0; i < used.length; i++)
       for (const other of exports.keys())
         if (
           !used.includes(other) &&
           new RegExp(`\\b${RegExp.escape(other)}\\b`).test(exports.get(used[i]).getText(file))
-        )
-          used.push(other);
+        ) {
+          const part = entryOf(other);
+          if (part && part !== entryOf(name)) refs.add(part);
+          else used.push(other);
+        }
     return [...shared, ...used.reverse().map((n) => exports.get(n).getText(file))].join('\n');
   };
-  return names.flatMap((name, index) => {
+  return entries.flatMap((name, index) => {
     const statement = exports.get(name);
     const fn = ts.isFunctionDeclaration(statement)
       ? statement
@@ -362,9 +368,10 @@ export function libraryPieces(source, brief, names) {
       binding && ts.isObjectBindingPattern(binding)
         ? binding.elements.map((e) => (e.propertyName ?? e.name).getText(file))
         : [];
-    const pieceSource = split(name);
+    const refs = new Set();
+    const pieceSource = split(name, refs);
     // The optional 3D form travels with its 2D piece in one library entry.
-    const source3d = exports.has(`${name}3D`) ? split(`${name}3D`) : null;
+    const source3d = exports.has(`${name}3D`) ? split(`${name}3D`, refs) : null;
     const roles = Object.keys(brief.paletteRoles).filter((role) =>
       new RegExp(
         `\\bcolors\\s*(?:\\.\\s*${RegExp.escape(role)}\\b|\\[\\s*['"\`]${RegExp.escape(role)}['"\`]\\s*\\])`,
@@ -378,6 +385,7 @@ export function libraryPieces(source, brief, names) {
         source: pieceSource,
         ...(source3d && { source3d }),
         roles,
+        parts: [...refs],
       },
     ];
   });

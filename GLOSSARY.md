@@ -198,8 +198,12 @@ A single review of one written cut by the smart model, from its code and still f
 _Avoid_: Final pass, whole-video audit
 
 **Focus mode**:
-The learner's choice to hide the app's sidebar on any page, leaving only the current page's content. One button at the top left hides and shows the sidebar: a menu icon while it is hidden, a close icon while it is shown.
-_Avoid_: Full screen, zen mode, distraction-free mode
+The learner's choice to shrink the app's sidebar to the sidebar rail on any page, giving the current page's content the rest of the width. One button at the top of the sidebar switches between the full sidebar and the rail. The sidebar is never fully hidden outside narrow screens.
+_Avoid_: Full screen, zen mode, distraction-free mode, hidden sidebar
+
+**Sidebar rail**:
+The narrow strip of icons the sidebar becomes in focus mode, giving one-click access to the app's own controls without opening the full sidebar.
+_Avoid_: Collapsed sidebar, mini sidebar, icon bar
 
 **Sidebar**:
 The panel on the left of every page holding the app's own controls (views, search, new chat, settings) above the page's own contents, such as a learning tree's conversations and resources.
@@ -212,3 +216,11 @@ _Avoid_: Skin, colour scheme, tint
 **Appearance**:
 The learner's choice of Dark, Light or System, deciding which variant of the current theme is shown.
 _Avoid_: Theme, mode
+
+**Reading font**:
+The learner's choice of typeface for tutor replies and other long text they read: the app's own reading face or their system font.
+_Avoid_: Font (alone), body font, typography
+
+**Interface font**:
+The learner's choice of typeface for the app's own controls, labels and headings: the app's own interface face or their system font. Chosen separately from the reading font.
+_Avoid_: Font (alone), UI font, typography

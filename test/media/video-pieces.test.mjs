@@ -256,12 +256,9 @@ export const Loser = (props) => <div style={{ color: palette.paper }}><Winner x=
     /^import \{ colors, palette \} from '\.\/kit';\nconst box = 240;\nexport function Winner/,
   );
   assert.doesNotMatch(winner.source, /Loser/);
-  assert.match(
-    loser.source,
-    /export function Winner[\s\S]*export const Loser/,
-    'a piece keeps the pieces it draws',
-  );
-  assert.deepEqual(loser.roles, ['winner']);
+  assert.doesNotMatch(loser.source, /function Winner/, 'a piece refers to the pieces it draws');
+  assert.deepEqual([winner.parts, loser.parts], [[], ['Winner']]);
+  assert.deepEqual(loser.roles, []);
   const strict = { ...brief, recurringObjects: [brief.recurringObjects[0]] };
   const piece = (style) =>
     `import { colors, palette${style.includes('series') ? ', series' : ''} } from './kit';\nexport function Winner() { return <div style={{ ${style} }} />; }`;
