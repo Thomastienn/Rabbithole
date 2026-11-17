@@ -45,15 +45,19 @@ The exact contiguous text of a tutor reply, or of a line in a discussion, that a
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
-A term or short phrase in a tutor reply that the quick thinking model marked as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. It carries no proposed question.
+A term or short phrase in a tutor reply that the tutor marked, while answering, as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
 
+**Next question**:
+A question the learner might ask next, offered under the latest tutor reply: one to three per teaching reply, none after a casual turn. Each is the kind of how, why or what-if a curious person would ask, raised by the reply but not answered in it. Choosing one asks it at once in the same conversation; it never creates a branch.
+_Avoid_: Follow-up, suggested question, prompt, suggestion
+
 **Quick thinking model**:
-The learner-chosen model for picking suggestions and compacting prior discussion into inherited context for child conversations, with its own configurable effort.
+The learner-chosen model for compacting prior discussion into inherited context for child conversations and naming new conversations, with its own configurable effort. It stands in for the tutor's own marking of suggestions, next questions and familiarity only when a reply arrives without them.
 _Avoid_: Helper model, cheap model
 
 **Suggestion model**:
-The previous name for the quick thinking model, describing its suggestion-picking role. Existing specifications use this name.
+The previous name for the quick thinking model, from when it picked suggestions. Existing specifications use this name.
 
 **Chat model**:
 The model that answers learner messages in a conversation. Its Settings default starts new learning trees; children inherit their parent's current model and effort.
@@ -159,7 +163,7 @@ One continuous segment of a video with its own part of the narration and its own
 _Avoid_: Scene, clip, shot
 
 **Set piece**:
-A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut. It has a 2D form and a 3D form of the same object, both in the house style, and takes its colours from the video's palette roles, so it can be reused in another video. A set piece may be built from other set pieces, its parts, such as a city drawn from many people, cars and houses, so a common object is drawn once and reused wherever it appears. A piece with no fitting part draws everything itself.
+A drawn object that recurs across the cuts of one video, such as a satellite or a house, defined once for the whole video so it looks the same in every cut. It has a 2D form and a 3D form of the same object, both in the house style, and takes its colours from the video's palette roles and its own true colours, so it can be reused in another video. A set piece may be built from other set pieces, its parts, such as a city drawn from many people, cars and houses, so a common object is drawn once and reused wherever it appears. A piece with no fitting part draws everything itself.
 _Avoid_: Model, asset, prop, stock piece
 
 **Part**:
@@ -185,6 +189,14 @@ _Avoid_: Focus (that is focus mode), highlight, subject
 **Exhibit**:
 A real image, short quote or video clip from the web that a video shows inside a cut, framed so it reads as real rather than drawn, with a short dim source line. It is a resource of its learning tree, never a set piece, and it does not have to match the house style.
 _Avoid_: Stock piece, embed, asset, reference
+
+**True colour**:
+The real-world colour a video plan gives an object whose colour carries meaning, such as Earth's blue oceans or a rocket's orange tank, so it reads as the real thing. Abstract roles, such as a highlight or a route, keep the video's palette inks. A set piece keeps its true colours when another video reuses it.
+_Avoid_: Custom colour, theme colour, hex colour
+
+**Reference photo**:
+A real photo of a real-world object that a video's set piece writer and cut audit look at so the drawing matches the real thing. It is kept as a resource of its learning tree but never shown in the video, unlike an exhibit.
+_Avoid_: Exhibit, reference image, stock piece
 
 **Continuing cut**:
 A cut that carries on the previous cut's scene from exactly where it ended, joined to it by a hard cut so the two play as one unbroken shot.
