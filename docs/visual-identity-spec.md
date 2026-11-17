@@ -4,7 +4,7 @@
 
 Agreed with the owner on 2026-11-10 in a grilling session. This spec owns TreeTutor's look and layout from the moment the direction contract below is recorded; PRD.md keeps authority over behavior and acceptance criteria.
 
-Status: **Complete**, 2026-11-11 (TreeTutor-nwx; finish ticket TreeTutor-nwx.12). All seven screens and both adopted optional features are implemented. The Impeccable finish reviewer returned `ship` after reviewing 46 dark/light desktop/narrow captures; no material fix round was required. The documenter replaced DESIGN.md and its sidecar with the built Lecture-hall Slate world. [Finish evidence and validation](verification/visual-finish/README.md) records fixture coverage, the existing TreeTutor-wpc failures, and native-provider checks outside this visual redesign's scope.
+Status: **Complete**, 2026-11-11 (TreeTutor-nwx; finish ticket TreeTutor-nwx.12). All seven screens and both adopted optional features are implemented. The Impeccable finish reviewer returned `ship` after reviewing 46 dark/light desktop/narrow captures; no material fix round was required. The documenter replaced DESIGN.md and its sidecar with the built Lecture-hall Slate world.
 
 ## Problem Statement
 
@@ -151,12 +151,10 @@ Not adopted, with reasons:
 ## Testing Decisions
 
 - A good test drives the built app the way a learner does and asserts what the learner sees or can do, never component internals or class names chosen for styling.
-- **Fixture browser scripts are the main seam.** The existing scripts build the app, use an isolated SQLite store and synthetic providers, and drive Chromium through agent-browser. The new verify runner runs all of them that need no live provider. Every redesign ticket leaves the runner green; where a redesign moves or renames UI, the ticket updates that script's selectors and visual assertions while keeping its behavioral assertions.
+- **Fixture browser scripts are the main seam.** The existing scripts build the app, use an isolated SQLite store and synthetic providers, and drive Chromium through agent-browser. The verify runner runs all of them. Every redesign ticket leaves the runner green; where a redesign moves or renames UI, the ticket updates that script's selectors and visual assertions while keeping its behavioral assertions.
 - **Appearance gets one new fixture script:** fresh browser storage opens Dark; choosing Light persists across reload; System follows an emulated color scheme preference; Mermaid diagrams and bubble tints follow the app's appearance rather than the operating system.
 - **Token lint is one new `node --test` test:** it fails when application source outside the theme contains a raw color literal or a font family name. Today the application source contains no raw hex colors, so the test starts green.
-- **Screenshots** use the existing screenshot helper pattern in the fixture scripts and are saved under docs/verification for each screen in both appearances.
 - Prior art: the settings window, focused chat layout, chat divider, chat-style nodes and hidden-branch stub scripts from the UI refresh epic; the integration tests under the test directory for server behavior.
-- Live-provider scripts are not part of the runner; the redesign does not change provider behavior.
 
 ## Out of Scope
 

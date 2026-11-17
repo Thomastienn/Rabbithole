@@ -78,7 +78,7 @@ Each chip says how its file reached the tutor: sent as image, read as text, or O
 
 - Tests assert the prepared parts and what each provider receives, plus what the chip shows; never library internals.
 - **Seams.** (1) The preparation module as a unit with small fixture files in `test/fixtures/`: a text file, a typed PDF, a PDF with a large figure and a small logo, a scanned page with an invisible OCR layer, and a vector-only page; OCR stubbed behind an injected recogniser, plus one OCR-unavailable case. (2) Each provider adapter with its existing fake (`test/support/fake-openai.mjs`, the Codex protocol fixture, the Claude launcher fake): image parts shaped correctly, custom endpoint history placeholders (`test/providers/openai-stream.test.mjs`, `test/providers/codex.test.mjs` are prior art). (3) `createApp` with a fake provider for multipart send, storage, delete with the conversation, and the refusal paths (`test/http/app.test.mjs`). (4) A component test for the composer chips and the message chip states including the OCR popover.
-- One real OCR run, like `npm run test:render`, stays manual and opt-in, since it downloads language data.
+- No real OCR run is kept: it downloads language data, and the real-tool scripts were removed (Rabbithole-4jx.5).
 
 ## Out of Scope
 

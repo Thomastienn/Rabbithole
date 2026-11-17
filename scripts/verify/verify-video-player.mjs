@@ -1,10 +1,9 @@
 // Browser fixture for TreeTutor-vm4.10 and tob.7: video status sequence, live playback and buffering, keyboard playback, no stolen focus or scroll, reload.
 // Synthetic tutor/worker providers; the composition is rendered for real in the bubblewrap sandbox. Needs `npm run build`.
-import { verifyOut } from './lib/output.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile, fork } from 'node:child_process';
 import { Store } from '../../server/store.mjs';
@@ -57,11 +56,7 @@ const calls = () =>
     .trim()
     .split('\n')
     .map((line) => JSON.parse(line).kind);
-const checks = [];
-const pass = (name, details = true) => {
-  checks.push({ name, pass: true, details });
-  console.log('PASS:', name);
-};
+const pass = (name) => console.log('PASS:', name);
 const chatTitle = (title) =>
   wait(
     `document.querySelector('.focused-chat h2')?.textContent===${JSON.stringify(title)} && getComputedStyle(document.querySelector('.focused-chat')).display!=='none'`,
@@ -116,7 +111,6 @@ try {
   );
 
   const loading = [];
-  mkdirSync('.impeccable/review', { recursive: true });
   for (const [mode, width] of [
     ['dark', 1280],
     ['light', 1280],
@@ -163,7 +157,6 @@ try {
     assert.equal(frame.overflow, false);
     assert.equal(frame.animations, '', 'no running animation under reduced motion');
     loading.push({ mode, width, ...frame });
-    await b('screenshot', resolve(`.impeccable/review/smart-video-loading-${mode}-${width}.png`));
   }
   pass(
     '16:9 dark-paper draft frame with visible title fits wide/narrow in both appearances with reduced motion',
@@ -218,7 +211,6 @@ try {
   const play = /button "Play video" \[ref=(e\d+)\]/.exec(await b('snapshot'))[1];
   await b('click', `@${play}`);
   const buffering = await inPlayer((tree) => tree.includes('Loading the next cut…'));
-  await b('screenshot', resolve('.impeccable/review/video-live-buffering.png'));
   pass('cut 1 plays live in the opaque-origin player and buffers at the unready cut 2', {
     liveFrame,
     isolation,
@@ -375,8 +367,6 @@ try {
     `(v=>({src:v.src===${video}.src,width:v.getBoundingClientRect().width>innerWidth*0.8,controls:v.controls}))(document.querySelector('dialog[open] video'))`,
   );
   assert.deepEqual(large, { src: true, width: true, controls: true });
-  mkdirSync('.impeccable/review', { recursive: true });
-  await b('screenshot', resolve('.impeccable/review/video-large.png'));
   await b('press', 'Escape');
   await wait(
     `!document.querySelector('dialog[open]') && document.activeElement?.textContent.trim()==='Open large'`,
@@ -429,7 +419,7 @@ try {
     await b('wait', '[aria-label="Open Mutual exclusion"]');
     await openFromMap('Tree levels');
     await wait(`${video}?.readyState>=1`);
-    // Capture a decoded frame, rather than the metadata-only player's loading spinner.
+    // Seek to a decoded frame, rather than the metadata-only player's loading spinner.
     await ev(`${video}.currentTime=1; true`);
     await wait(`${video}.readyState===4 && !${video}.seeking && ${video}.currentTime===1`);
     await b('focus', card + ' video');
@@ -455,30 +445,12 @@ try {
     assert.equal(style.after, 'Then the winners advance.');
     assert.equal(await ev(`document.documentElement.scrollWidth<=innerWidth`), true);
     appearances.push({ mode, width, ...style });
-    await b(
-      'screenshot',
-      join(process.cwd(), `.impeccable/review/smart-video-ready-${mode}-${width}.png`),
-    );
   }
   assert.notEqual(appearances[0].chat, appearances[1].chat);
   assert.deepEqual(calls(), callsBefore);
   pass(
     'dark and light: borderless inline player at its saved position, ghost actions and paused decoded frame; no new inference',
     appearances,
-  );
-
-  writeFileSync(
-    `${verifyOut}/smart-video-player.json`,
-    JSON.stringify(
-      {
-        checkedAt: new Date().toISOString(),
-        evidence:
-          'Synthetic tutor, plan and cut providers with fixture narration; live @remotion/player in the opaque-origin frame, real sandboxed Remotion cut renders and join, production build, HTTP, SQLite and headless Chrome. No native provider inference or speech.',
-        checks,
-      },
-      null,
-      2,
-    ) + '\n',
   );
 } finally {
   await b('close').catch(() => {});

@@ -2,13 +2,11 @@
 
 Decision gate: `TreeTutor-vm4.6.1`. Status: **agreed by the project owner on
 2026-11-09**, exactly as proposed below. Prepared 2026-11-09. Implementation
-belongs to `TreeTutor-vm4.6`, after the initial text release. Implemented and
-verified in [verification/vim-bindings.md](verification/vim-bindings.md).
+belongs to `TreeTutor-vm4.6`, after the initial text release. Implemented.
 
 ## Agreed mapping
 
-Reuse the standard controls documented in
-[keyboard-journey.md](verification/keyboard-journey.md). Each alias invokes the
+Reuse the standard keyboard controls (`scripts/verify/verify-keyboard-journey.mjs`). Each alias invokes the
 same action, including its persistence, bounds, movement announcement and focus
 behavior. It does not introduce a new way to select conversations.
 

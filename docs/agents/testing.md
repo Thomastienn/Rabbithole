@@ -29,9 +29,6 @@ tests are never the check for a routine ticket.
 4. **Browser (E2E).** These are the smoke scripts in `scripts/verify/`, which drive a real
    Chromium. Run them only for release tickets, or when the acceptance names one.
 
-Live-provider scripts (the `live` set in `scripts/verify/verify-all.mjs`) need a real sign-in.
-Run them by hand only.
-
 ## Layout
 
 Test files live in folders by area: `test/http`, `test/store`, `test/providers`,
@@ -62,13 +59,6 @@ Behaviour shared by the Claude and Codex adapters is tested on one of them. Loop
 `[TEST_PROVIDER]` from `test/support/test-provider.mjs` (default `claude`), not over
 `['claude', 'codex']`. Set `RABBITHOLE_TEST_PROVIDER=codex` to run them on Codex. Test a
 provider by name only for behaviour that belongs to that adapter.
-
-Live scripts that take a provider read `RABBITHOLE_TEST_PROVIDER` too. They use the
-provider's cheapest model, or `RABBITHOLE_TEST_MODEL` when it is set
-(`scripts/verify/lib/live-provider.mjs`). If a live script fails on a usage limit, rerun it
-with the other provider. `verify-diagram-live` (Claude), `verify-branch-streaming-live`
-(Codex), `verify-media-nested-live` and `verify-provider-continuity-live` (both) keep fixed
-providers.
 
 ## Writing a test
 
@@ -108,26 +98,18 @@ Do not write these, and delete them when you meet them:
 - At the end of a ticket run `node scripts/check-size.mjs`, `npm run format:check` and
   `npm run test:affected`. The full suites run only in the epic gate ticket.
 - Run `npm run build` when you change TSX or the build.
-- Run `npm run test:render` only when you change video rendering.
-- Real OCR is manual and opt-in: `npm run test:ocr` (never part of `npm test`). It uses
-  `test/fixtures/ocr.png` (printed "Binary heaps"), first refuses a simulated language
-  download failure, then downloads real English data with tesseract.js on the next attempt.
-  It checks the recognised text and the cache under a printed temporary data directory,
-  then starts a new worker with downloads unavailable to prove cached OCR still works.
-  Requires internet for the real first-use download; the app itself caches under
-  `<app data directory>/ocr/`. No provider or model is called by this script.
 - Run `npm run verify` only when the acceptance asks for it. It builds the app and runs the
-  smoke set (about a minute); live-provider scripts are skipped and run only by hand. Any
-  failure exits non-zero; there is no known-failure list. Run it in the background and read
-  only the final table.
+  smoke set (about a minute). Scripts report only through their exit code and the runner's
+  table; they write no screenshots or result files. Any failure exits non-zero; there is no
+  known-failure list. Run it in the background and read only the final table.
 
 Tests must not sleep for real. Inject a clock or a budget, or await the event the code
 already exposes.
 
 ## Smoke set
 
-`scripts/verify/` holds only `verify-all.mjs`, these five fixture scripts, the live-provider
-scripts and their `lib/` helpers:
+`scripts/verify/` holds only `verify-all.mjs`, these five fixture scripts and their `lib/`
+helpers. There are no live-provider or real-tool scripts:
 
 `verify-first-conversation`, `verify-branch-first`, `verify-keyboard-journey`,
 `verify-settings-window`, `verify-video-player`.
@@ -143,7 +125,7 @@ cover one again, add it to a smoke script.
 
 <!-- One line per lost check: script, check, reason. -->
 
-- Video subtitles: the reserved band measures 120px at 1080p and shows at most two lines; native browser geometry and text layout (MP4 dimensions and frame rate are checked by `npm run test:render`).
+- Video subtitles: the reserved band measures 120px at 1080p and shows at most two lines; native browser geometry and text layout; MP4 dimensions and frame rate need a real render.
 - `verify-read`: the map is 440px wide and directly to the right of focused chat; responsive CSS geometry.
 - `verify-read`: prose is 640px wide with a 60–76 character measure and Literata at 17px/1.7; loaded fonts and browser text layout.
 - `verify-read`: inherited context has no border or shadow; computed CSS.
@@ -371,7 +353,7 @@ cover one again, add it to a smoke script.
 - `verify-visual-sandbox`: Enlarge appears only on hover or focus and Escape closes the viewer; computed CSS and native dialog.
 - `verify-visual-themes`: switching appearance and all six themes recolours SVG/canvas inside the same frame without rerunning its script or losing control state, and the saved MP4 bytes stay unchanged with no provider calls; real iframe execution and CSS cascade.
 - `verify-visual-workers`: a worker's fragment renders, its local control works and the Check yourself reveal opens by keyboard inside the frame, fitting desktop and narrow columns in both appearances; real iframe execution and geometry (worker boundary, retry, queue, Stop and predict/reveal persistence remain integration tested).
-- `verify-visual-workers`: the native `--live` worker mode; live provider (covered by the `live` media scripts).
+- `verify-visual-workers`: the native `--live` worker mode; live provider (no live-provider script remains).
 - `verify-library`: library text and menu triggers meet AA and native Tab reaches every volume and menu with a paper focus ring in both appearances and layouts; computed CSS and browser traversal (volume structure remains component tested).
 - `verify-library`: spine ticks paint paper then family inks; computed CSS (spine inks remain unit tested).
 - `verify-library`: clicking anywhere on a volume, including the spine, opens the tree in Read; pointer hit testing and ChatPage orchestration (the title button's open callback remains component tested).

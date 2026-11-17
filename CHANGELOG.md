@@ -2,7 +2,7 @@
 
 ## 1.0.0 — 2026-11-10
 
-First product release. Release evidence and its limits: [docs/verification/product-release.md](docs/verification/product-release.md).
+First product release. Release evidence and its limits: [docs/product-release.md](docs/product-release.md).
 
 - Branching learning trees: select a passage, ask a question and get a child conversation with a frozen compact context snapshot; branches nest recursively.
 - Map: pan, zoom, drag, fold and bulk-fold conversations; compact previews and source-row branch lines; a chat panel beside the map, expanded or full-screen on narrow windows.

@@ -280,7 +280,7 @@ Smaller fixes:
 - **Frontend modules, unit level.** Markdown: `\(…\)` and `\[…\]` math, the five reply layouts, `resource:` citation chips, image placeholders and exact passage offsets inside layouts and math. Visual progress state and counts. Model profile switch effect on the open conversation. Prior art: the markdown tests and the chat hook tests.
 - **Components, jsdom harness.** Focus mode hot zone visibility and keyboard focus. Conversation node rows without tooltips but with accessible names. Tool activity line collapsed and expanded. Visual badge and live announcements. Searchable model list toggles. Resources list. Prior art: the navigation and map part tests.
 - **Fixed rules and tutor style, integration level.** The chat prompt contains the math rule, layout rule, memory note as data, resource list and strong-evidence concepts. A learner with no saved tutor style gets the new default. Prior art: the tutor style tests.
-- **Real sandbox, manual and opt-in.** A new `npm run test:python`, modelled on the real OCR check, runs real bubblewrap. It proves a computation works, network access fails, the home folder and app data are invisible, and the time limit kills a stuck run. It is never part of `npm test`.
+- **No real sandbox script.** A real bubblewrap check was added here and later removed with the other real-tool scripts (Rabbithole-4jx.5); the argument-level sandbox tests stay.
 - No browser scripts unless an issue's acceptance names one.
 
 ## Out of Scope

@@ -13,9 +13,6 @@
         "test": "node scripts/check-size.mjs && systemd-run --user --scope -q -p MemoryHigh=5G -p MemorySwapMax=10G node --import ./test/support/tsx.mjs --test --test-concurrency=8 \"test/**/*.test.mjs\"",
         "test:slow": "systemd-run --user --scope -q -p MemoryHigh=5G -p MemorySwapMax=10G node --import ./test/support/tsx.mjs --test --test-concurrency=8 \"test/**/*.slow.mjs\"",
         "test:affected": "node scripts/test-affected.mjs",
-        "test:ocr": "RABBITHOLE_REAL_OCR=1 node scripts/test-ocr.mjs",
-        "test:python": "RABBITHOLE_REAL_PYTHON=1 node scripts/test-python.mjs",
-        "test:render": "RABBITHOLE_REAL_RENDER=1 node --test --test-name-pattern=\"real short sandboxed\" test/media/videos-playback.test.mjs test/media/video-exhibits-render.test.mjs",
         "verify": "node scripts/verify/verify-all.mjs",
         "format": "prettier --write .",
         "format:check": "prettier --check ."

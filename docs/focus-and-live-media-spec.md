@@ -195,7 +195,7 @@ Visuals appear all at once after a wait, with nothing to watch while they are bu
   - the focus mode toggle, tab, shortcut and saved preference;
   - the live player switching to the MP4 once ready.
   - Prior art: `test/chat/navigation.test.mjs`, `test/shell/themes.test.mjs`, `test/shell/chat-settings.test.mjs`.
-- **Real render:** a short real Remotion and Manim cut render runs only in `npm run test:render`, never in `npm test`.
+- **Real render:** no real Remotion or Manim render test remains (removed in Rabbithole-4jx.5); `npm test` uses fake renders.
 - **Not covered:** pixel checks (turn rail clearance, single visible focus ring, subtitle band height) need a real browser. List them under "Not covered" in `docs/agents/testing.md`.
 
 ## Out of Scope

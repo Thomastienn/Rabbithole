@@ -101,4 +101,3 @@ offers Add endpoint. Each model
 menu groups models under the endpoint name. The compact model menu always
 includes a Custom endpoint group, and any endpoint group that cannot list
 models shows a settings action that focuses Add endpoint.
-See [settings and menu verification](verification/custom-endpoint-settings.md).

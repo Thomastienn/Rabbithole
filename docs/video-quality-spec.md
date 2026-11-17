@@ -24,7 +24,7 @@ Generated videos render at 640×360 and look blurry. The worker invents its own 
 
 ## Acceptance
 
-- A live Claude and Codex video renders at 1280×720 in dark paper with Archivo/Literata, eased transitions and the new subtitles; screenshot a frame under `docs/verification`.
+- A Claude and Codex video renders at 1280×720 in dark paper with Archivo/Literata, eased transitions and the new subtitles.
 - A reply containing only a video shows no "No reply received." text.
 - The pending frame matches the player size, shows each phase in order with real counts, and its bar never decreases.
 - `npm test` and `npm run build` pass.

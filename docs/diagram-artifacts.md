@@ -126,11 +126,8 @@ Map previews add only `{id,title,status}` metadata under the owning message and
 render a compact `Diagram: title` row. They never fetch Mermaid or include source.
 Reopen, browser reload and server restart read the existing artifact records;
 presentation never starts inference. Raw reply text and UTF-16 branch offsets
-remain unchanged. Browser/runtime fixture evidence is recorded in
-[diagram-rendering.md](verification/diagram-rendering.md).
-Step-specific integration, rendering and native-example evidence is recorded in
-[diagram-steps.md](verification/diagram-steps.md); syntax validity alone does not
-establish simplicity or learner comprehension.
+remain unchanged. Syntax validity alone does not establish simplicity or learner
+comprehension.
 
 ## Recovery and boundaries (TreeTutor-vm4.1)
 
@@ -145,4 +142,3 @@ tools, an empty strict MCP config, no setting sources or slash commands and one
 turn; Codex uses a read-only sandbox, `approvalPolicy: never`, disabled shell,
 patch, REPL, code, apps, skills and web search, and denies server-initiated tool
 requests. There is no automatic retry, video, editing, export or API-key path.
-Evidence: [diagram-recovery.md](verification/diagram-recovery.md).

@@ -1,6 +1,6 @@
 // Seeded store, fixture endpoints, app server and agent-browser helpers for verify-settings-window.mjs.
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -17,18 +17,9 @@ const b = async (...args) =>
     .stdout;
 const ev = async (code) => JSON.parse(await b('eval', code, '--json')).data.result;
 const wait = (code) => b('wait', '--fn', `!!(${code})`, '--timeout', '15000');
-const shot = async (name) => {
-  await wait('document.getAnimations().every(a => a.playState !== "running")');
-  await new Promise((r) => setTimeout(r, 300));
-  return b('screenshot', `${process.cwd()}/.impeccable/review/settings-window-${name}.png`);
-};
 const dialog = `document.querySelector('.settings-page:not([hidden])')`;
 const active = 'document.activeElement';
-const steps = [],
-  step = (text) => {
-    steps.push(text);
-    console.log(`ok - ${text}`);
-  };
+const step = (text) => console.log(`ok - ${text}`);
 
 const dir = mkdtempSync(join(tmpdir(), 'tt-settings-'));
 const store = new Store(join(dir, 'trees.sqlite'));
@@ -98,7 +89,6 @@ const app = createApp({
 });
 await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${app.server.address().port}`;
-mkdirSync('.impeccable/review', { recursive: true });
 
 async function mapMenu(item) {
   await b('find', 'role', 'button', 'click', '--name', 'Map menu', '--exact');
@@ -126,10 +116,8 @@ export {
   b,
   ev,
   wait,
-  shot,
   dialog,
   active,
-  steps,
   step,
   store,
   cleanup,
