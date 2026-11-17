@@ -24,3 +24,4 @@ dist/
 prompt.txt
 
 .claude/worktrees/
+.codex/
