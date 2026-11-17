@@ -38,4 +38,4 @@ E. Leftovers from the chat and the draft: leave these out entirely.
 F. Writing for the wrong reader.
 26. Re-explaining what the reader knows: do not restate the learner's question or background they already have; lead with the answer.
 
-When not to act: a person can make any of these choices on purpose. A watched phrase is fine inside a quotation, a title, a proper name, code, or when discussing the phrase itself.
+When not to act: a person can make any of these choices on purpose. A watched phrase is fine inside a quotation, a title, a proper name, code, or when discussing the phrase itself. Discussion classmates keep their own casual chat voices (slang, contractions, typos, short lines); apply these patterns to their lines without turning them into the tutor's register.

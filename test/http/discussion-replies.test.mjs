@@ -16,7 +16,7 @@ const events = (wire) =>
     .split('\n\n')
     .filter((s) => s.startsWith('data: '))
     .map((s) => JSON.parse(s.slice(6)));
-const seed = (store, conversation) => {
+const seed = (store, conversation, saved = discussion) => {
   store.message(conversation, 'user', 'Discuss Hyphae.', 'completed');
   const message = store.message(conversation, 'assistant', 'Here is a discussion.', 'completed');
   const artifact = store.pendingArtifact(
@@ -28,7 +28,7 @@ const seed = (store, conversation) => {
     null,
     21,
   );
-  return store.finishArtifact(conversation, artifact.id, JSON.stringify(discussion));
+  return store.finishArtifact(conversation, artifact.id, JSON.stringify(saved));
 };
 
 test('card replies stream saved named lines, carry context and hidden levels, and observe only the learner', async (t) => {
@@ -69,7 +69,8 @@ test('card replies stream saved named lines, carry context and hidden levels, an
     updates = events(wire)
       .filter((e) => e.type === 'artifact')
       .map((e) => e.artifact);
-  assert.doesNotMatch(wire, /rabbithole-verdict|"level"|"confidence"|below|above/);
+  assert.doesNotMatch(wire, /rabbithole-verdict|"level"|"voice"|"confidence"|below|above/);
+  assert.doesNotMatch(wire, /lowercase|sceptical/);
   const learner = {
     speaker: 'Learner',
     text: 'Theo, Hyphae trade less when phosphorus is plentiful.',
@@ -99,6 +100,8 @@ test('card replies stream saved named lines, carry context and hidden levels, an
   );
   assert.match(calls[0].tree.instructions, /Only classmates relevant/);
   assert.match(calls[0].tree.instructions, /Tutor steps in only to untangle or confirm/);
+  assert.match(calls[0].tree.instructions, /private voices for the whole discussion/);
+  assert.match(calls[0].tree.instructions, /learner’s language.*slang.*plain clear lines/s);
   const graph = env.store.graph();
   assert.equal(graph.concepts.find((c) => c.name === 'Hyphae').observations[5], 1);
   assert.equal(
@@ -114,6 +117,38 @@ test('card replies stream saved named lines, carry context and hidden levels, an
   const reopened = new Store(env.path);
   assert.deepEqual(reopened.discussion(id, artifact.id).lines.slice(-2), responseLines);
   reopened.close();
+});
+
+test('discussions saved before voices still load and accept replies', async (t) => {
+  const calls = [];
+  const env = await open(
+    {
+      generate: async (tree, prompt, emit) => {
+        calls.push(prompt);
+        emit({ type: 'delta', item: 'turn', text: continuation });
+        emit({ type: 'status', status: 'completed' });
+      },
+    },
+    { log: () => {} },
+  );
+  t.after(env.close);
+  const { id } = await (await env.post('/api/trees')).json();
+  const older = {
+    ...discussion,
+    classmates: discussion.classmates.map(({ voice, ...c }) => c),
+  };
+  const artifact = seed(env.store, id, older);
+  const saved = await (await env.get(`/api/trees/${id}`)).json();
+  assert.deepEqual(saved.artifacts[0].discussion.classmates, ['Maya', 'Theo', 'Jun']);
+  const wire = await (
+    await env.post(`/api/trees/${id}/discussions/${artifact.id}/replies`, { text: 'Both win.' })
+  ).text();
+  const last = events(wire)
+    .filter((e) => e.type === 'artifact')
+    .at(-1).artifact;
+  assert.equal(last.discussion.turn.status, 'completed');
+  assert.deepEqual(last.discussion.lines.slice(-2), responseLines);
+  assert.deepEqual(JSON.parse(calls[0]).discussion.classmates, older.classmates);
 });
 
 test('main-thread send closes every open discussion once and uses paragraphs in all later model context', async (t) => {

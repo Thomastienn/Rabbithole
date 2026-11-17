@@ -40,7 +40,7 @@ test('a streamed discussion opens in place, persists its hidden levels and expos
   assert.equal(ready.position, 7);
   assert.deepEqual(ready.discussion, publicDiscussion);
   assert.equal(ready.classmates, 3);
-  assert.doesNotMatch(JSON.stringify(artifacts), /"level"|below|above/);
+  assert.doesNotMatch(JSON.stringify(artifacts), /"level"|"voice"|below|above|sceptical/);
   assert.deepEqual(JSON.parse(env.store.tree(id).artifacts[0].source), discussion);
   const saved = await (await env.get(`/api/trees/${id}`)).json();
   assert.equal(saved.messages.at(-1).text, 'Before.\nAfter.');

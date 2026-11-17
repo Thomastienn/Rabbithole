@@ -1,4 +1,4 @@
-export const DISCUSSION_RULE = `\n\nDiscussion: create one only when the learner asks for a discussion; never start one unasked or treat an ordinary question as a request. Write it yourself in a fenced rabbithole-discussion JSON block, placed last in your reply with no reply text after it, since its lines appear one at a time. Shape: {"classmates":[{"name":"Maya","level":"below"},{"name":"Theo","level":"near"},{"name":"Jun","level":"above"}],"lines":[{"speaker":"Maya","text":"..."}]}. Choose 3 or 4 classmates with distinct short names, never Tutor or Learner. Each hidden level is relative to the learner's familiarity with the discussion's concepts: below, near or above, with at least one below and one above. Use the available familiarity context and what the learner has shown about these concepts; when unknown, assume an ordinary starting explanation and spread the classmates around it. Keep these levels private, never mention or label them in the lines or surrounding text. Classmates have honest misunderstandings, ask each other questions and draw the learner in; only relevant classmates speak. The Tutor steps in only to untangle or confirm. Write 4 to 8 short lines, each with a speaker (an exact classmate name or Tutor) and plain text (at most 2000 characters), and end with a question to the learner. Do not write learner lines or invent the learner's answer. No tools or extra model call are needed. Classmates belong only to this discussion and keep their levels.`;
+export const DISCUSSION_RULE = `\n\nDiscussion: create one only when the learner asks for a discussion; never start one unasked or treat an ordinary question as a request. Write it yourself in a fenced rabbithole-discussion JSON block, placed last in your reply with no reply text after it, since its lines appear one at a time. Shape: {"classmates":[{"name":"Maya","level":"below","voice":"..."},{"name":"Theo","level":"near","voice":"..."},{"name":"Jun","level":"above","voice":"..."}],"lines":[{"speaker":"Maya","text":"..."}]}. Choose 3 or 4 classmates with distinct short names, never Tutor or Learner. Each hidden level is relative to the learner's familiarity with the discussion's concepts: below, near or above, with at least one below and one above. Use the available familiarity context and what the learner has shown about these concepts; when unknown, assume an ordinary starting explanation and spread the classmates around it. Give each classmate a private voice beside their level: one or two sentences on how they talk and how they think, fitting their level and distinct from the others. Keep levels and voices private, never mention or label them in the lines or surrounding text. Classmates write like casual online chat in the learner's language: everyday words and slang, contractions, the odd swear word or typo, short lines, rarely an emoji, no buzzwords or performed eagerness. The natural-writing guidance still applies to their lines but never flattens these voices into the tutor's register. Classmates have honest misunderstandings, ask each other questions and draw the learner in; only relevant classmates speak. The Tutor steps in only to untangle or confirm, in plain clear lines. Write 4 to 8 short lines, each with a speaker (an exact classmate name or Tutor) and plain text (at most 2000 characters), and end with a question to the learner. Do not write learner lines or invent the learner's answer. No tools or extra model call are needed. Classmates belong only to this discussion and keep their levels and voices.`;
 
 // Validate the model's output at the reply boundary; reject the whole opening instead of silently changing voices.
 export function readDiscussion(task) {
@@ -24,7 +24,12 @@ export function readDiscussion(task) {
       )
     )
       return { error: 'classmate names must be distinct and cannot be Tutor or Learner' };
-    classmates.push({ name, level: c.level });
+    if (!bounded(c.voice, 500))
+      return { error: 'each classmate needs a voice describing how they talk and think' };
+    const voice = c.voice.trim();
+    if (classmates.some((p) => p.voice.toLowerCase() === voice.toLowerCase()))
+      return { error: 'classmate voices must be distinct' };
+    classmates.push({ name, level: c.level, voice });
   }
   if (!['below', 'above'].every((level) => classmates.some((c) => c.level === level)))
     return { error: 'include classmates below and above the learner’s familiarity' };
@@ -42,7 +47,7 @@ export function readDiscussion(task) {
   return { task: { classmates, lines } };
 }
 
-// Levels stay in the saved source for the model; the browser sees names and lines only.
+// Levels and voices stay in the saved source for the model; the browser sees names and lines only.
 export function discussionArtifact({ source, ...artifact }) {
   const discussion = source ? JSON.parse(source) : null;
   return {

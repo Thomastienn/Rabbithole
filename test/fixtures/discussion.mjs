@@ -1,8 +1,8 @@
 export const discussion = {
   classmates: [
-    { name: 'Maya', level: 'near' },
-    { name: 'Theo', level: 'below' },
-    { name: 'Jun', level: 'above' },
+    { name: 'Maya', level: 'near', voice: 'Chill, asks short follow-ups, thinks out loud.' },
+    { name: 'Theo', level: 'below', voice: 'Blunt, a bit sceptical, reasons from everyday stuff.' },
+    { name: 'Jun', level: 'above', voice: 'Dry humour, lowercase, jumps to mechanisms.' },
   ],
   lines: [
     { speaker: 'Theo', text: 'Is the fungus a parasite the plant puts up with?' },

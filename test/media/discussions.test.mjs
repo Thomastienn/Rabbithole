@@ -29,6 +29,9 @@ test('discussion validation rejects malformed rosters, speakers and openings in 
     { ...discussion, classmates: discussion.classmates.map((c) => ({ ...c, level: 1 })) },
     { ...discussion, classmates: discussion.classmates.map((c) => ({ ...c, name: 'Maya' })) },
     { ...discussion, classmates: discussion.classmates.map((c) => ({ ...c, name: 'Tutor' })) },
+    { ...discussion, classmates: discussion.classmates.map(({ voice, ...c }) => c) },
+    { ...discussion, classmates: discussion.classmates.map((c) => ({ ...c, voice: ' ' })) },
+    { ...discussion, classmates: discussion.classmates.map((c) => ({ ...c, voice: 'Same.' })) },
     { ...discussion, lines: discussion.lines.slice(0, 2) },
     { ...discussion, lines: [...discussion.lines, ...discussion.lines, ...discussion.lines] },
     { ...discussion, lines: discussion.lines.map((l) => ({ ...l, speaker: 'Learner' })) },
@@ -49,9 +52,21 @@ test('discussion validation rejects malformed rosters, speakers and openings in 
   }
   const four = {
     ...discussion,
-    classmates: [...discussion.classmates, { name: 'Ana', level: 'near' }],
+    classmates: [...discussion.classmates, { name: 'Ana', level: 'near', voice: 'Shy, careful.' }],
   };
   assert.deepEqual(diagramReply(discussionBlock(four), true).requests[0].task, four);
+  const problem = (value) => diagramReply(discussionBlock(value), true).requests[0].error;
+  assert.match(
+    problem({ ...discussion, classmates: discussion.classmates.map(({ voice, ...c }) => c) }),
+    /each classmate needs a voice/,
+  );
+  assert.match(
+    problem({
+      ...discussion,
+      classmates: discussion.classmates.map((c, i) => ({ ...c, voice: i ? 'same' : 'Same' })),
+    }),
+    /voices must be distinct/,
+  );
 });
 
 test('fixed discussion instructions require a learner request and a brief opening around familiarity', () => {
@@ -61,6 +76,16 @@ test('fixed discussion instructions require a learner request and a brief openin
   assert.match(instructions, /below.*above/s);
   assert.match(instructions, /4.*8.*lines/s);
   assert.match(instructions, /ends? with a question.*learner/s);
+  assert.match(instructions, /"voice"/);
+  assert.match(
+    instructions,
+    /private voice.*how they talk and how they think.*fitting their level/s,
+  );
+  assert.match(instructions, /slang.*contractions.*swear word or typo.*rarely an emoji/s);
+  assert.match(instructions, /learner's language/);
+  assert.match(instructions, /Tutor.*plain clear lines/s);
+  assert.match(instructions, /honest misunderstandings/);
+  assert.match(instructions, /never flattens these voices/);
 });
 
 test('discussion slots coexist with hidden verdicts and other media in reply order', () => {
