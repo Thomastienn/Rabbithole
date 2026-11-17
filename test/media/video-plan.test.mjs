@@ -52,6 +52,24 @@ test('compact plan validates the brief and ordered cuts, including the Manim eng
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
   delete good.styleBrief.recurringObjects[0].colorRole;
   assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  // A real object's reference query passes through; an empty or overlong one is rejected.
+  good.styleBrief.recurringObjects[0].referenceQuery = 'Saturn V rocket';
+  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  for (const referenceQuery of ['', 'x'.repeat(201), 7])
+    assert.throws(
+      () =>
+        videoPlan(
+          JSON.stringify({
+            ...good,
+            styleBrief: {
+              ...good.styleBrief,
+              recurringObjects: [{ ...good.styleBrief.recurringObjects[0], referenceQuery }],
+            },
+          }),
+        ),
+      /recurringObjects/,
+    );
+  delete good.styleBrief.recurringObjects[0].referenceQuery;
   for (const mutate of [
     (p) => {
       p.title = '';

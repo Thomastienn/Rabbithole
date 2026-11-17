@@ -1,10 +1,11 @@
 // The exhibit fetcher: turns a planned exhibit into data for its cut (ADR 0005). Images are downloaded on the
 // server through the public-address checks read_page uses, so cut code and its sandbox stay offline.
 import { lookup as dnsLookup } from 'node:dns';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, cp } from 'node:fs/promises';
 import { join } from 'node:path';
 import { request, body, publicAddress } from '../tools/readPage.mjs';
 import { downloadClip } from './clips.mjs';
+import { pieceNames } from './video-plan.mjs';
 
 const MAX_IMAGE = 3 * 1024 * 1024,
   TRIES = 3;
@@ -158,4 +159,72 @@ export async function fetchExhibits(
     onExhibit(exhibits.at(-1));
   }
   return exhibits;
+}
+
+// One photo per set piece whose object carries a reference query, fetched once per distinct query before set pieces
+// are drawn; a failed or empty search leaves that piece without one. Files sit in the attempt's references folder,
+// never in a cut folder, so no cut can show them.
+export async function fetchReferences(
+  plan,
+  { fetch, workspace, signal, wait, onWarning, onReference },
+) {
+  if (!plan.cuts.some((c) => c.engine === 'remotion')) return [];
+  const names = pieceNames(plan),
+    objects = plan.styleBrief.recurringObjects.filter((o) => o.look);
+  const queries = [...new Set(objects.map((o) => o.referenceQuery).filter(Boolean))];
+  const fetched = await wait(
+    Promise.all(
+      queries.map((query) =>
+        fetch({ kind: 'image', query }).catch((error) => {
+          signal.throwIfAborted();
+          onWarning(`WARN video reference photo skipped: ${error.message}`);
+          return null;
+        }),
+      ),
+    ),
+  );
+  const references = [];
+  for (const [n, photo] of fetched.entries()) {
+    if (!photo) continue;
+    const { bytes, type, url, title, site } = photo,
+      file = `references/reference${n + 1}`;
+    await mkdir(join(workspace, 'references'), { recursive: true, mode: 0o700 });
+    await writeFile(join(workspace, file), bytes);
+    onReference({ url, title, site });
+    for (const [i, o] of objects.entries())
+      if (o.referenceQuery === queries[n])
+        references.push({ name: names[i], file, type, url, title, site });
+  }
+  return references;
+}
+
+// A new plan's exhibits and reference photos, each credited as a resource of the learning tree; fetch is the
+// exhibit fetcher. Retry keeps the first attempt's: exhibit files came along with the cut folders, and the
+// reference folder is copied from the previous attempt's workspace (from).
+export async function videoMedia({ plan, prior, from, searching, fetch, credit, ...options }) {
+  if (prior?.plan)
+    return {
+      exhibits: prior.exhibits ?? [],
+      references: prior.references?.length
+        ? await cp(join(from, 'references'), join(options.workspace, 'references'), {
+            recursive: true,
+          }).then(
+            () => prior.references,
+            () => [],
+          )
+        : [],
+    };
+  const exhibits = await fetchExhibits(plan, {
+    fetch,
+    ...options,
+    onExhibit: (e) => credit({ url: e.url, title: e.title, site: e.site, kind: e.kind }),
+  });
+  const references = searching
+    ? await fetchReferences(plan, {
+        fetch,
+        ...options,
+        onReference: (r) => credit({ ...r, kind: 'image' }),
+      })
+    : [];
+  return { exhibits, references };
 }

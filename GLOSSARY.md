@@ -29,7 +29,7 @@ The full view of one conversation, where the learner reads replies, asks questio
 _Avoid_: Chat page, conversation view
 
 **Branch**:
-The parent-to-child link created when the learner asks about a passage of a conversation.
+The parent-to-child link created when the learner asks about a passage of a conversation or chooses one of its groundwork concepts.
 _Avoid_: Edge, connection, subtree
 
 **Address**:
@@ -41,12 +41,20 @@ A first-level branch of the trunk and every conversation beneath it. Each family
 _Avoid_: Subtree, colour group
 
 **Passage**:
-The exact contiguous text of a tutor reply, or of a line in a discussion, that a branch was created from.
+The exact contiguous text of a tutor reply, or of a line in a discussion, that a branch was created from. A branch created from groundwork has the groundwork concept's name as its passage instead.
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
 A term or short phrase in a tutor reply that the tutor marked, while answering, as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
+
+**Brief explanation**:
+One short paragraph about a term or passage of a tutor reply, shown above the branch question box so the learner can understand it without branching. It appears on its own when the learner opens an unexplored suggestion, and only on request for a passage they selected themselves. It explains whatever the term needs in context, such as what it is or why it holds. It is kept and shows again when the learner points at that suggestion, even after it has been branched; a branched suggestion without one shows the start of its child's first reply instead. It is not part of the conversation and the tutor never sees it. Getting one for a suggestion counts as weak evidence that the learner has seen the concept: it lifts an unknown concept a little and dips a well-known one a little.
+_Avoid_: Peek, tooltip, definition, summary
+
+**Groundwork**:
+A concept that a tutor reply relies on without naming, which the learner may need first, offered as a choice above the reply: at most three, often none, chosen by the tutor from what it knows of the learner's familiarity. Choosing one at once creates a child conversation that asks what it is. It is never a gate: the learner can ignore it.
+_Avoid_: Prerequisite, suggestion, requirement
 
 **Next question**:
 A question the learner might ask next, offered under the latest tutor reply: one to three per teaching reply, none after a casual turn. Each is the kind of how, why or what-if a curious person would ask, raised by the reply but not answered in it. Choosing one asks it at once in the same conversation; it never creates a branch.
@@ -103,6 +111,14 @@ _Avoid_: Section, category, area
 **Concept link**:
 A connection between two concepts: either "related", or "builds on" when one concept needs the other first.
 _Avoid_: Edge, dependency
+
+**Explored concept**:
+The one concept a conversation was created to explore: the concept of the suggestion or groundwork it was branched from, or otherwise the concept named for it together with its title. A conversation may have none.
+_Avoid_: Topic, subject, tag
+
+**Ghost tree**:
+A faded miniature of another learning tree drawn on a learning tree's map, joined by dashed lines to each conversation node whose explored concept the other tree also explored. Each conversation node joins at most one ghost tree, the tree where the learner explored that concept most; each other tree appears at most once on a map, and a map shows at most five. Choosing a ghost tree opens the other tree's map with its matching conversations marked, where a ghost tree leads back, so related learning trees link both ways. The learner can hide ghost trees.
+_Avoid_: Forest, linked tree, reference, ghost branch
 
 **Familiarity**:
 The app's estimate of how well the learner knows a concept, derived silently from what the learner's own messages show, such as asking about it, using it correctly in their own words or stating it wrongly (a misconception). The learner never rates or corrects it. Merely meeting a concept in a reply counts for little, since the learner may not have read it. With no evidence, it is guessed from linked concepts, or left unknown when none are known. It fades while a concept goes unused, fast after first learning and ever more slowly each time the learner shows it again. An estimate, never a measured mastery.

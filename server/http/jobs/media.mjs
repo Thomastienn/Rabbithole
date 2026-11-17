@@ -160,6 +160,7 @@ export function mediaJobs(ctx) {
           embed: ctx.videoEmbed,
           stills: () => ctx.pieceStills.fill(),
           search: ctx.search,
+          readsImages: await ctx.readsImages(chat).catch(() => false),
           onWarning: (cause) =>
             ctx.log(
               formatLog('warn', 'media', 'warning', {

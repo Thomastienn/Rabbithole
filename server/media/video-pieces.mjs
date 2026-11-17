@@ -5,6 +5,7 @@ import {
   PIECES_3D,
   PIECE_IMPROVE_INSTRUCTIONS,
   PIECE_PATCH_NOTE,
+  PIECES_REFERENCE_NOTE,
 } from './video-cut.mjs';
 import { REMOTION_SKILL } from './skills.mjs';
 import {
@@ -96,6 +97,8 @@ export async function writeSetPieces({
   matches,
   signal,
   onDrawing = () => {},
+  // Reference photos ({name, image}) the writer sees as images.
+  photos = [],
 }) {
   const objects = plan.styleBrief.recurringObjects.filter((o) => o.look);
   // A 3D cut draws each object with its <Name>3D mesh group; only the 2D names go to the library.
@@ -119,7 +122,8 @@ export async function writeSetPieces({
           REMOTION_SKILL +
           PIECES_PARTS_NOTE +
           (offered ? PIECES_LIBRARY_NOTE : '') +
-          (solid ? PIECES_3D : ''),
+          (solid ? PIECES_3D : '') +
+          (photos.length ? PIECES_REFERENCE_NOTE : ''),
         JSON.stringify({
           styleBrief: plan.styleBrief,
           names,
@@ -143,9 +147,11 @@ export async function writeSetPieces({
               ),
             })),
           }),
+          ...(photos.length && { referencePhotos: photos.map((p) => p.name) }),
           ...(error && { validationError: error.message }),
         }),
         (_, text) => onDrawing(piecesDrawn(text, names)),
+        photos.length ? photos.map((p) => p.image) : undefined,
       );
     } catch (e) {
       if (!e.invalidOutput) throw e;

@@ -21,7 +21,7 @@ import {
   CLIPS_NOTE,
   CUT_ATTEMPTS,
 } from './video-plan.mjs';
-import { fetchExhibit, fetchExhibits } from './exhibits.mjs';
+import { fetchExhibit, videoMedia } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
 import { videoCall, writeCuts, cutError, playable, cutRows } from './video-cuts.mjs';
 
@@ -130,6 +130,8 @@ export async function generateVideo({
   exhibit = fetchExhibit,
   // Probes yt-dlp and ffmpeg; when they are not ready the planner gets no clip option.
   clips = detectClips,
+  // Whether the chat model reads images; only then does the set piece writer see reference photos.
+  readsImages = false,
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
   const controller = new AbortController();
@@ -204,26 +206,19 @@ export async function generateVideo({
         ),
         { exhibits: searching, clips: !!clipping?.ready },
       );
-    // Retry keeps the exhibits the first attempt fetched; their files came along with the cut folders.
-    const exhibits = prior?.plan
-      ? (prior.exhibits ?? [])
-      : await fetchExhibits(plan, {
-          fetch: (planned) =>
-            exhibit(planned, { search, signal: controller.signal, clips: clipping }),
-          workspace,
-          signal: controller.signal,
-          wait: (promise) =>
-            wait(promise, Math.max(1, deadline - Date.now()), 'Video composition timed out.'),
-          onWarning,
-          // Each exhibit is credited as a resource of the video's learning tree, never a set piece.
-          onExhibit: (e) =>
-            store.addResource(artifact.conversation, {
-              url: e.url,
-              title: e.title,
-              site: e.site,
-              kind: e.kind,
-            }),
-        });
+    const { exhibits, references } = await videoMedia({
+      plan,
+      prior,
+      from: prior?.plan && join(dir, 'video-work', artifact.id, previous.attempt),
+      searching,
+      fetch: (planned) => exhibit(planned, { search, signal: controller.signal, clips: clipping }),
+      workspace,
+      signal: controller.signal,
+      wait: (promise) =>
+        wait(promise, Math.max(1, deadline - Date.now()), 'Video composition timed out.'),
+      onWarning,
+      credit: (resource) => store.addResource(artifact.conversation, resource),
+    });
     let runtime;
     if (plan.cuts.some((c) => c.engine === 'manim')) {
       runtime = manim.detect();
@@ -303,6 +298,8 @@ export async function generateVideo({
       stop: (error) => controller.abort(error),
       kept,
       exhibits,
+      references,
+      readsImages,
       pieces: prior?.pieces,
       onDrawing: (value) => {
         drawing = value;

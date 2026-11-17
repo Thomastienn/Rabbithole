@@ -120,6 +120,9 @@ export async function writeCuts({
   onPoorPiece = async () => {},
   // Fetched exhibits ({id, cut, kind, title, site, url, text?, by?, show?, file?, type?}); files live in their cut folder.
   exhibits = [],
+  // Set pieces' reference photos ({name, file, type, …}) outside any cut; the piece writer sees them if it readsImages.
+  references = [],
+  readsImages = false,
   // Set piece drawing progress while their module streams: { drawing: names, drawn, total }.
   onDrawing = () => {},
 }) {
@@ -143,7 +146,9 @@ export async function writeCuts({
     cuts,
     ...(names.length && { pieces }),
     ...(exhibits.length && { exhibits }),
+    ...(references.length && { references }),
   };
+  const photo = (r) => ({ path: join(workspace, r.file), type: r.type });
   const exhibitsOf = (index) => exhibits.filter((e) => e.cut === index);
   // Writers and audits see the cut's fetched exhibits, never the planned ones that may have been dropped.
   const task = (index) => {
@@ -178,6 +183,7 @@ export async function writeCuts({
       matches,
       signal,
       onDrawing,
+      photos: readsImages ? references.map((r) => ({ name: r.name, image: photo(r) })) : [],
     }));
   if (data.pieces && !pieces) {
     persist();
@@ -340,21 +346,21 @@ export async function writeCuts({
           emphasis: cut.emphasis ?? plan.cuts[index].emphasis ?? [],
           previousLastFrame: !!previous,
         };
-        const offered =
-          cut.engine === 'manim'
-            ? []
-            : Object.keys(library).filter((n) =>
-                new RegExp(`\\b${RegExp.escape(n)}(?:3D)?\\b`).test(cut.code),
-              );
+        const draws = (name) =>
+          cut.engine !== 'manim' &&
+          new RegExp(`\\b${RegExp.escape(name)}(?:3D)?\\b`).test(cut.code);
+        const offered = Object.keys(library).filter(draws);
+        const photos = references.filter((r) => draws(r.name));
         const answer = await call(
           cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS,
           JSON.stringify({
             ...audited,
             ...(offered.length && { libraryPieces: offered }),
             snapshots: own.length - 1,
+            ...(photos.length && { referencePhotos: photos.map((r) => r.name) }),
           }),
           undefined,
-          previous ? [...own, previous] : own,
+          [...own, ...(previous ? [previous] : []), ...photos.map(photo)],
           index + 1,
         );
         // The video keeps the pieces it started with; a flagged piece is improved in the library alongside.
