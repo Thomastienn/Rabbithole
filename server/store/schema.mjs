@@ -288,6 +288,14 @@ export function open(path) {
         .some((c) => c.name === 'parts')
     )
       this.db.exec('ALTER TABLE pieces ADD COLUMN parts TEXT');
+    // The true colours a piece keeps on reuse, as {role or name: hex}; older pieces have none (ADR 0009).
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(pieces)')
+        .all()
+        .some((c) => c.name === 'true_colors')
+    )
+      this.db.exec('ALTER TABLE pieces ADD COLUMN true_colors TEXT');
     // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
     this.db.exec('BEGIN IMMEDIATE');
     try {

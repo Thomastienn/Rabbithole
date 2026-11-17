@@ -50,8 +50,8 @@ the whole jsdom graph and exhaust memory; compare names, attributes or `assert.o
   follows imports from every fast and slow test file, and runs the ones that reach a changed
   path, with the fast suite's loader, workers and memory scope. A change under
   `test/support/` or to `package.json` runs both suites. Each ticket ends with this command.
-- **Epic gate.** Each epic's last child is a full-suite gate ticket that runs `npm test` and
-  `npm run test:slow`.
+- **Backlog gate.** One full-suite gate ticket, blocked by every other open ticket, runs
+  `npm test` and `npm run test:slow` once the rest of the backlog is done.
 
 ## One provider
 
@@ -96,7 +96,7 @@ Do not write these, and delete them when you meet them:
 - While you work, run only the test files covering the change:
   `node --test test/<file or folder>`.
 - At the end of a ticket run `node scripts/check-size.mjs`, `npm run format:check` and
-  `npm run test:affected`. The full suites run only in the epic gate ticket.
+  `npm run test:affected`. The full suites run only in the backlog gate ticket.
 - Run `npm run build` when you change TSX or the build.
 - Run `npm run verify` only when the acceptance asks for it. It builds the app and runs the
   smoke set (about a minute). Scripts report only through their exit code and the runner's

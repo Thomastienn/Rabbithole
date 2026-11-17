@@ -30,7 +30,7 @@ registerRoot(() => <Composition id="Video" component={Still} width={frame.width}
 // JPEG stills of a piece's forms (a store pieceTree, drawn with its parts), rendered in the cut audit's
 // sandbox by its snapshot path.
 export async function renderPieceStills(piece, { dir, snapshot, signal }) {
-  const { source, source3d, roles } = withParts(piece);
+  const { source, source3d, roles, trueColors } = withParts(piece);
   // Three levels below dir, like a video attempt, so the sandbox hides the app's data directory.
   const work = join(dir, 'piece-work', piece.id, randomUUID());
   try {
@@ -41,7 +41,10 @@ export async function renderPieceStills(piece, { dir, snapshot, signal }) {
       cut: { engine: 'remotion', code: '' },
       plan: {
         styleBrief: {
-          paletteRoles: Object.fromEntries(roles.map((r, i) => [r, HUES[i % HUES.length]])),
+          paletteRoles: Object.fromEntries(
+            roles.map((r, i) => [r, trueColors[r] ? r : HUES[i % HUES.length]]),
+          ),
+          trueColors,
         },
       },
       pieces: source,

@@ -7,7 +7,7 @@ New issues use `Rabbithole-`, configured in the database and as `issue-prefix` i
 ## Conventions
 
 - One feature = one epic (`bd create --type epic`); each implementation ticket is a child (`--parent <epic-id>`), never one combined ticket.
-- Every epic ends with a full-suite gate child, blocked by all other children. It runs `npm test` and `npm run test:slow`; its acceptance is that both pass, or every remaining failure is fixed or filed as a ticket.
+- The backlog has one open full-suite gate ticket, outside any epic, blocked by every other open ticket. It runs `npm test` and `npm run test:slow` once the rest of the backlog is done; its acceptance is that both pass, or every remaining failure is fixed or filed as a ticket. When you create tickets, add each as a blocker of the open gate (`bd dep add <gate> <new>`); create the gate if none is open. Do not create a gate per epic.
 - Order tickets with dependencies (`--deps blocked-by:<id>` or `bd dep add <blocked> <blocker>`); `bd ready` lists the unblocked frontier.
 - Size each ticket for one Ralph run: up to 200k context, under one hour. Label `commit-sized` and `context-200k`. Merge work that fits one run instead of splitting it.
 - Labels: one or more `area:*` (canvas, chat, design, providers, …) and one `phase:*` (`text-release`, `later`, …). Reuse existing labels (`bd label list-all`) before inventing one.

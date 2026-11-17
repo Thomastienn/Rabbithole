@@ -3,7 +3,7 @@ import { MANIM_COMPONENT } from './manim-cut.mjs';
 import { readFileSync, existsSync } from 'node:fs';
 import { writeFile, readFile, copyFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { videoPalette } from './video-plan.mjs';
+import { videoPalette, roleColor } from './video-colors.mjs';
 
 const runtime = readFileSync(new URL('./video-stock.tsx', import.meta.url), 'utf8').replace(
   "from './video-kit'",
@@ -53,9 +53,9 @@ export async function stageCut({ dir, cut, plan, pieces, kit, manimKit, emphasis
           ),
         ),
         colors: Object.fromEntries(
-          Object.entries(plan.styleBrief.paletteRoles).map(([role, ink]) => [
+          Object.keys(plan.styleBrief.paletteRoles).map((role) => [
             role,
-            videoPalette[ink],
+            roleColor(plan.styleBrief, role),
           ]),
         ),
       }),
@@ -70,7 +70,10 @@ export async function stageCut({ dir, cut, plan, pieces, kit, manimKit, emphasis
     kit +
       '\nexport const colors = {\n' +
       Object.entries(plan.styleBrief.paletteRoles)
-        .map(([role, ink]) => `  ${JSON.stringify(role)}: palette.${ink},`)
+        .map(
+          ([role, ink]) =>
+            `  ${JSON.stringify(role)}: ${Object.hasOwn(videoPalette, ink) ? `palette.${ink}` : JSON.stringify(roleColor(plan.styleBrief, role))},`,
+        )
         .join('\n') +
       '\n};\n' +
       (cut.engine !== 'manim'

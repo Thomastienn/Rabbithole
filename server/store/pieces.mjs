@@ -7,14 +7,24 @@ const MIN_SCORE = 0.25;
 export const pieces = {
   // Saves one piece used by a video; returns its id. Parts ([{name, id}]) refer to saved pieces, never copies.
   savePiece(
-    { name, look, props, source, source3d = null, roles, parts = [], embedding = null },
+    {
+      name,
+      look,
+      props,
+      source,
+      source3d = null,
+      roles,
+      trueColors = {},
+      parts = [],
+      embedding = null,
+    },
     video,
   ) {
     const id = randomUUID(),
       now = Date.now();
     this.db
       .prepare(
-        'INSERT INTO pieces(id,name,look,props,source,source3d,roles,parts,embedding,created,improved) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO pieces(id,name,look,props,source,source3d,roles,true_colors,parts,embedding,created,improved) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
       )
       .run(
         id,
@@ -24,6 +34,7 @@ export const pieces = {
         source,
         source3d,
         JSON.stringify(roles),
+        JSON.stringify(trueColors),
         JSON.stringify(parts),
         blob(embedding),
         now,
@@ -70,8 +81,10 @@ export const pieces = {
       .prepare('SELECT video FROM piece_videos WHERE piece=? ORDER BY rowid')
       .all(id)
       .map((r) => r.video);
+    const { true_colors, ...rest } = row;
     return {
-      ...row,
+      ...rest,
+      trueColors: JSON.parse(true_colors ?? '{}'),
       props: JSON.parse(row.props),
       roles: JSON.parse(row.roles),
       parts: JSON.parse(row.parts ?? '[]'),

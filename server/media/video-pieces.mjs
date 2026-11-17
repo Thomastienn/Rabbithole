@@ -18,6 +18,10 @@ import {
 import { patched, withSource } from './patches.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 
+// Saved true colours as brief trueColors that accept their hex literals, keyed apart from any brief role or ink.
+const prefixed = (colors) =>
+  Object.fromEntries(Object.entries(colors).map(([k, hex]) => [`kept${k}`, hex]));
+
 export const piecesError = (reason) =>
   new Error(`Set pieces: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the plan.`);
 
@@ -28,8 +32,14 @@ export function withParts(piece, own = new Set()) {
   const parts = (piece.parts ?? [])
     .filter((p) => !own.has(p.name))
     .map((p) => ({ name: p.name, inner: p.piece.name, ...withParts(p.piece, own) }));
+  const trueColors = Object.assign({}, ...parts.map((p) => p.trueColors), piece.trueColors);
   if (!parts.length)
-    return { source: piece.source, source3d: piece.source3d ?? null, roles: piece.roles };
+    return {
+      source: piece.source,
+      source3d: piece.source3d ?? null,
+      roles: piece.roles,
+      trueColors,
+    };
   return {
     source: assemblePieces(piece.source, parts),
     source3d:
@@ -41,6 +51,7 @@ export function withParts(piece, own = new Set()) {
           .map((p) => ({ name: `${p.name}3D`, inner: `${p.inner}3D`, source: p.source3d })),
       ),
     roles: [...new Set([...piece.roles, ...parts.flatMap((p) => p.roles)])],
+    trueColors,
   };
 }
 
@@ -100,12 +111,13 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
             library: all.map((name, i) => ({
               name,
               matches: library[i].map(
-                ({ id, name, look, props, roles, source, source3d, parts }) => ({
+                ({ id, name, look, props, roles, trueColors, source, source3d, parts }) => ({
                   id,
                   name,
                   look,
                   props,
                   roles,
+                  ...(Object.keys(trueColors ?? {}).length && { trueColors }),
                   source,
                   ...(source3d && { source3d }),
                   ...(parts?.length && { parts: parts.map((p) => p.name) }),
@@ -148,7 +160,14 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
         .flatMap((c) => {
           const whole = withParts(c.piece, own);
           const remap = (source) =>
-            remapRoles(source, whole.roles, c.colorRole, plan.styleBrief, c.roles);
+            remapRoles(
+              source,
+              whole.roles,
+              c.colorRole,
+              plan.styleBrief,
+              c.roles,
+              whole.trueColors,
+            );
           return [
             { name: c.name, inner: c.piece.name, source: remap(whole.source) },
             ...(solid && whole.source3d
@@ -156,8 +175,15 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
               : []),
           ];
         });
+      // Reused pieces bring their true colours as hex literals, and a variant may copy them; the module
+      // accepts the offered pieces' true colours too.
+      const kept = Object.assign({}, ...library.flat().map((m) => withParts(m).trueColors));
+      const brief = {
+        ...plan.styleBrief,
+        trueColors: { ...plan.styleBrief.trueColors, ...prefixed(kept) },
+      };
       return {
-        source: cutSource(assemblePieces(code, reused), plan.styleBrief, exported),
+        source: cutSource(assemblePieces(code, reused), brief, exported),
         choices,
         parts: parts ?? [],
       };
@@ -172,11 +198,12 @@ export async function writeSetPieces({ plan, names, write, matches, signal }) {
 // returns the validated library entry or throws. A piece with a 3D form is patched as one module holding both
 // forms, which must export and validate both.
 export async function improvePiece({ piece, why, call }) {
-  const { name, look, props, roles, source, source3d, parts = [] } = piece;
+  const { name, look, props, roles, trueColors = {}, source, source3d, parts = [] } = piece;
   const names = source3d ? [name, `${name}3D`] : [name];
   // The piece colours through its own saved roles; the ink is irrelevant to validation.
   const brief = {
     paletteRoles: Object.fromEntries(roles.map((r) => [r, 'amber'])),
+    trueColors: prefixed(trueColors),
     recurringObjects: [{ look }],
   };
   const task = {
@@ -205,5 +232,6 @@ export async function improvePiece({ piece, why, call }) {
       PIECE_IMPROVE_INSTRUCTIONS + '\n\n' + REMOTION_SKILL,
       JSON.stringify({ ...task, source, ...(source3d && { source3d }) }),
     ));
-  return libraryPieces(cutSource(raw, brief, names), brief, [name])[0];
+  // The saved true colours stay as they were; the rewrite draws through the same roles.
+  return { ...libraryPieces(cutSource(raw, brief, names), brief, [name])[0], trueColors };
 }

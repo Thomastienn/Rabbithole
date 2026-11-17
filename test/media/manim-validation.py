@@ -38,6 +38,12 @@ class Validation(unittest.TestCase):
 
     def test_valid(self):
         renderer.validate(source, brief)
+
+    def test_true_colour_role(self):
+        true = {**brief, "colors": {**brief["colors"], "earth": "#2b6cb0"}}
+        renderer.validate(source.replace('colors["winner"]', 'colors["earth"]'), true)
+        with self.assertRaisesRegex(ValueError, "not a kit color"):
+            renderer.validate(source.replace('colors["winner"]', '"#2b6cb0"'), true)
         renderer.validate(source.replace('colors["winner"]', 'palette["amber"]'), brief)
         renderer.validate(source.replace('fonts["heading"]', 'fonts["reading"]'), brief)
         renderer.validate(
