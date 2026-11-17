@@ -2,7 +2,9 @@
 
 Issues and specs for this repo live in Beads (`bd` CLI, data in `.beads/`). Keep Git and Beads local: no push, pull or remote sync.
 
-New issues use `Rabbithole-`, configured in the database and as `issue-prefix` in `.beads/config.yaml`. Existing `TreeTutor-` IDs stay valid; do not rename them.
+New issues use `Rabbithole-`, set as `issue-prefix` in `.beads/config.yaml`. Existing `TreeTutor-` IDs stay valid; do not rename them.
+
+The database's own `issue_prefix` is still `TreeTutor`, and bd cannot change it: `bd config set` refuses, unsetting it stops all creation, and `bd rename-prefix` only accepts lowercase and would rename every issue. So every `bd create` passes `--force`. A new epic also passes `--id Rabbithole-<three lowercase letters or digits>`, after checking with `bd show` that the ID is free. Children take `--parent` without `--id` (bd rejects both together) and get the epic's prefix.
 
 ## Conventions
 
