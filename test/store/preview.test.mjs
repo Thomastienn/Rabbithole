@@ -52,6 +52,7 @@ test('previews list every message in order, bound each text and survive reload w
       'artifacts',
       'attachments',
       'branches',
+      'briefs',
       'chat_settings',
       'citations',
       'concept_aliases',

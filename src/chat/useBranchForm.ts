@@ -142,7 +142,13 @@ export function useBranchForm(
     setBranch({ parent, anchor, question: '' });
     setError('');
   }
+  // A brief explanation of a reply passage, saved by the server and served from storage on reopening.
+  const explainBrief = (parent: string, anchor: Anchor) =>
+    api(`/api/trees/${parent}/brief`, branchRequest(anchor)).then(
+      (r: { explanation: string }) => r.explanation,
+    );
   return {
+    explainBrief,
     branching,
     closeBranch,
     submitBranch,

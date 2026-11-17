@@ -20,6 +20,7 @@ import { mediaJobs, recoverStaged, STOPPED } from './http/jobs/media.mjs';
 import { suggestionJobs } from './http/jobs/suggestions.mjs';
 import { titleJobs } from './http/jobs/title.mjs';
 import { verdictJobs } from './http/jobs/verdicts.mjs';
+import { briefJobs } from './http/jobs/briefs.mjs';
 import { stateRoutes } from './http/routes/state.mjs';
 import { settingsRoutes } from './http/routes/settings.mjs';
 import { knowledgeRoutes } from './http/routes/knowledge.mjs';
@@ -143,6 +144,8 @@ export function createApp({
     titling: new Map(),
     // Learner message id -> verdict fallback job.
     verdicting: new Map(),
+    // Passage key -> brief explanation call shared by concurrent requests.
+    briefing: new Map(),
     json: (res, status, body) => {
       res.writeHead(status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(body));
@@ -174,6 +177,7 @@ export function createApp({
     suggestionJobs(ctx),
     titleJobs(ctx),
     verdictJobs(ctx),
+    briefJobs(ctx),
   );
   const { active, videoJobs, suggesting, titling, compactions, prepared, json } = ctx;
   let stopped;
@@ -282,6 +286,7 @@ export function createApp({
           ...suggesting.values(),
           ...titling.values(),
           ...ctx.verdicting.values(),
+          ...ctx.briefing.values(),
           ...compactions.values(),
           ...ctx.discussing.values(),
         ]
@@ -297,6 +302,7 @@ export function createApp({
       for (const s of suggesting.values()) s.controller.abort();
       for (const t of titling.values()) t.controller.abort();
       for (const v of ctx.verdicting.values()) v.controller.abort();
+      for (const b of ctx.briefing.values()) b.controller.abort();
       for (const c of compactions.values()) c.controller.abort();
       ctx.pieceStills.stop();
       for (const parent of [...prepared.keys()]) ctx.unprepare(parent);

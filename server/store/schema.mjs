@@ -97,7 +97,7 @@ export function open(path) {
     // Durable usage: counts, time and attribution only, so deleting content never shrinks history. NULL counts = not reported.
     if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='usage_events'").get()) {
       this.db
-        .exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict')),
+        .exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief')),
           input INTEGER, output INTEGER, cacheRead INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
           CREATE INDEX usage_events_at ON usage_events(at);
           INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'chat:'||id,usage->>'at','chat',usage->>'input',usage->>'output',usage->>'cacheRead' FROM messages WHERE usage IS NOT NULL;
@@ -142,6 +142,25 @@ export function open(path) {
       this.db.exec(
         'ALTER TABLE usage_events ADD COLUMN stage TEXT; ALTER TABLE usage_events ADD COLUMN cut INTEGER;',
       );
+    // Brief explanation usage widens the task check again; this rebuild keeps the stage and cut columns.
+    if (
+      !this.db
+        .prepare("SELECT sql FROM sqlite_master WHERE name='usage_events'")
+        .get()
+        .sql.includes("'brief'")
+    )
+      this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE usage_events RENAME TO usage_events_old;
+          CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief')),
+            input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL, stage TEXT, cut INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
+          INSERT INTO usage_events SELECT id,at,provider,model,task,input,output,cacheRead,message,stage,cut FROM usage_events_old;
+          DROP TABLE usage_events_old;
+          CREATE INDEX usage_events_at ON usage_events(at);
+          CREATE INDEX usage_events_message ON usage_events(message);
+          COMMIT;`);
+    // Additive table: brief explanations sit beside tutor replies, keyed by reply and passage; the tutor never reads them.
+    this.db.exec(
+      'CREATE TABLE IF NOT EXISTS briefs (message TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, concept TEXT, explanation TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(message, start, end))',
+    );
     this.db.exec(
       `CREATE TABLE IF NOT EXISTS suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT)`,
     );

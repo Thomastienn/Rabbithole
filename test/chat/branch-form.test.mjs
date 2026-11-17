@@ -66,3 +66,61 @@ test('branch form names its passage, controls submit/locking, and distinguishes 
   assert.equal(button(container, 'Create focused chat').disabled, true);
   assert.equal(input.value, 'Why?');
 });
+
+test('an unexplored suggestion shows its brief explanation above the question box, with loading, error and retry', async (t) => {
+  const asked = [],
+    replies = [];
+  const explain = (a) => {
+    asked.push(a);
+    return new Promise((resolve, reject) => replies.push({ resolve, reject }));
+  };
+  const form = (props) =>
+    h(BranchForm, {
+      branch: { parent: 'root', anchor, question: '' },
+      branching: false,
+      active: false,
+      submit: () => {},
+      close: () => {},
+      setQuestion: () => {},
+      explain,
+      ...props,
+    });
+  const { container, act, cleanup } = await render(form(), (w) => ui(w));
+  t.after(cleanup);
+  const status = () => container.querySelector('[role="status"]')?.textContent;
+  assert.equal(status(), 'Writing a brief explanation…', 'loads without pressing anything');
+  assert.equal(asked.length, 1);
+  assert.equal(asked[0].text, 'mutex');
+  await act(async () => replies[0].reject(new Error('Brief explanation failed. Retry.')));
+  assert.match(container.querySelector('[role="alert"]').textContent, /failed/);
+  await act(async () => button(container, 'Retry').click());
+  assert.equal(asked.length, 2);
+  assert.equal(status(), 'Writing a brief explanation…');
+  await act(async () => replies[1].resolve('A lock one thread holds at a time.'));
+  const brief = container.querySelector('.branch-brief');
+  assert.equal(brief.textContent, 'A lock one thread holds at a time.');
+  assert.ok(
+    brief.compareDocumentPosition(container.querySelector('input')) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    'above the question box',
+  );
+});
+
+test('a selected passage asks for no brief explanation on opening', async (t) => {
+  let asked = 0;
+  const { container, cleanup } = await render(
+    h(BranchForm, {
+      branch: { parent: 'root', anchor: { ...anchor, suggestion: undefined }, question: '' },
+      branching: false,
+      active: false,
+      submit: () => {},
+      close: () => {},
+      setQuestion: () => {},
+      explain: async () => (asked++, ''),
+    }),
+    (w) => ui(w),
+  );
+  t.after(cleanup);
+  assert.equal(asked, 0);
+  assert.equal(container.querySelector('.branch-brief'), null);
+});

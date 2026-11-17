@@ -31,6 +31,7 @@ const TASKS: Record<string, string> = {
   video: 'Videos',
   title: 'Conversation titles',
   verdict: 'Familiarity verdicts',
+  brief: 'Brief explanations',
 };
 const n = (v: number) => v.toLocaleString();
 const counts = (t: Totals) =>

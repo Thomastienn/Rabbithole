@@ -157,6 +157,31 @@ export const knowledge = {
       throw error;
     }
   },
+  brief(message, start, end) {
+    return this.db
+      .prepare('SELECT explanation FROM briefs WHERE message=? AND start=? AND end=?')
+      .get(message, start, end)?.explanation;
+  },
+  // Saved once per passage; a suggestion's concept gets one weak observation keyed by this brief explanation.
+  saveBrief({ message, start, end, text, concept }, explanation) {
+    const at = Date.now();
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const saved = this.db
+        .prepare('INSERT OR IGNORE INTO briefs VALUES (?,?,?,?,?,?,?)')
+        .run(message, start, end, text, concept ?? null, explanation, at).changes;
+      if (saved && concept)
+        this.db
+          .prepare(
+            "INSERT OR IGNORE INTO observations(concept,message,level,confidence,at) VALUES (?,?,2,'low',?)",
+          )
+          .run(this.conceptId(concept), `brief:${message}:${start}:${end}`, at);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  },
   mergeConcepts(from, into) {
     const source = this.concept(from),
       target = this.concept(into);

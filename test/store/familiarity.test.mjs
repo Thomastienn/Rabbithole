@@ -129,3 +129,11 @@ test('the schema upgrade deletes old familiarity evidence and keeps met', () => 
   store.db.close();
   assert.equal(new Store(path).graph().concepts[0].met, 1);
 });
+
+test('a brief explanation (level 2, low confidence) lifts an unknown concept and dips a well-known one', () => {
+  near(familiarity([at(0, 2)], 0), 0.35);
+  const known = [at(0, 5, 'high'), at(0, 5, 'high'), at(0, 5, 'high')];
+  near(familiarity(known, 0), 0.9);
+  const after = familiarity([...known, at(0, 2)], 0);
+  assert.ok(Math.abs(after - 0.83) < 0.005, `${after} about 0.83`);
+});

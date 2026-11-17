@@ -50,7 +50,7 @@ export default function ChatThread({
   const { overview, addresses, state, branch, setBranch, selectingMessage, setSelectingMessage } =
     c;
   const { branching, submitBranch, closeBranch, openVisualPart, visualBranches } = branchForm;
-  const { discussionBranches, groundworkBranches, chooseGroundwork } = branchForm;
+  const { discussionBranches, groundworkBranches, chooseGroundwork, explainBrief } = branchForm;
   return tree.messages.map((message) => {
     const suggestions = tree.suggestions?.find((s) => s.message === message.id),
       index =
@@ -157,6 +157,7 @@ export default function ChatThread({
                         submit={submitBranch}
                         close={closeBranch}
                         setQuestion={(question) => setBranch((b) => b && { ...b, question })}
+                        explain={(anchor) => explainBrief(branch.parent, anchor)}
                       />
                     ),
                     // Discussion offsets are inside a card line, not the reply text.

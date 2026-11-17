@@ -16,6 +16,10 @@
   overflow-wrap: anywhere;
   font-family: var(--rabbithole-font-reading);
 }
+.branch-brief {
+  max-width: 60ch;
+  font-family: var(--rabbithole-font-reading);
+}
 .branch-question {
   flex: 1;
   min-width: 0;

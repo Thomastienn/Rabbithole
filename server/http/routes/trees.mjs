@@ -101,7 +101,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
     );
   }
   const match = url.pathname.match(
-    /^\/api\/trees\/([^/]+)\/(messages|retry|stop|branches|prepare|unprepare|position|layout|model|rename|delete)$/,
+    /^\/api\/trees\/([^/]+)\/(messages|retry|stop|branches|prepare|unprepare|position|layout|model|rename|delete|brief)$/,
   );
   if (!match) return false;
   const [, id, action] = match;
@@ -307,6 +307,26 @@ export async function treeRoutes(req, res, url, ctx, body) {
       });
     } finally {
       active.delete(id);
+    }
+  }
+  // A brief explanation of a tutor reply passage: saved one at once, else one quick thinking call, returned whole.
+  if (action === 'brief') {
+    const anchor = anchorOf(tree, body);
+    if (!anchor || anchor.error || anchor.artifactId || anchor.groundwork)
+      return json(res, 400, { error: 'Select a passage of a completed tutor reply.' });
+    const { messageId: message, start, end, text } = anchor;
+    const saved = store.brief(message, start, end);
+    if (saved) return json(res, 200, { explanation: saved });
+    // Only the reply's own suggestion supplies a concept; a selected passage carries none.
+    const concept = tree.suggestions
+      .find((s) => s.message === message && s.status === 'ready')
+      ?.passages.find((p) => p.start === start && p.end === end)?.concept;
+    const reply = tree.messages.find((m) => m.id === message).text;
+    try {
+      const explanation = await ctx.writeBrief(id, reply, { message, start, end, text, concept });
+      return json(res, 200, { explanation });
+    } catch {
+      return json(res, 502, { error: 'Brief explanation failed. Retry.' });
     }
   }
   if (action === 'branches') {
