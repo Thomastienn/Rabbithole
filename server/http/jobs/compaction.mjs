@@ -93,8 +93,23 @@ export const anchorOf = (tree, body) => {
       text: visualPassage(visual, part),
       question: body.question,
     };
+  } else if (body && 'groundwork' in body) {
+    const concept = tree.suggestions
+      ?.find((s) => s.message === body.messageId && s.status === 'ready')
+      ?.groundwork.find((g) => g === body.groundwork);
+    if (!concept || 'start' in body || 'end' in body || 'suggestion' in body)
+      return { error: 'Choose a groundwork concept of this reply.' };
+    // No start or end: the passage is the concept's name and the question is fixed.
+    anchor = {
+      messageId: body.messageId,
+      text: concept,
+      groundwork: concept,
+      question: `What is ${concept}?`,
+    };
   }
-  return source && (anchor.artifactId || anchored(source.text, anchor)) ? anchor : null;
+  return source && (anchor.artifactId || anchor.groundwork || anchored(source.text, anchor))
+    ? anchor
+    : null;
 };
 
 // Compaction and branch preparation; reads ctx.stopping at settle time.

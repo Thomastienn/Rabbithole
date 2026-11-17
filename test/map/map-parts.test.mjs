@@ -27,6 +27,7 @@ test('conversation previews keep every row, accessible message jumps, source-row
   const child = summary('child', 'root'),
     sibling = summary('sibling', 'root');
   const missing = summary('missing', 'root', { messageId: 'stale' });
+  const groundwork = summary('groundwork', 'root', { start: null, end: null, passage: 'Soil' });
   const preview = [
     message('question', 'user', 'Why roots?'),
     message('answer', 'assistant', 'A long reply. '.repeat(60)),
@@ -35,7 +36,7 @@ test('conversation previews keep every row, accessible message jumps, source-row
   ];
   const data = {
     conversation: summary('root'),
-    sources: [child, sibling, missing],
+    sources: [child, sibling, groundwork, missing],
     preview,
     open: (...args) => opens.push(args),
     retry: () => {},
@@ -112,6 +113,8 @@ test('conversation previews keep every row, accessible message jumps, source-row
   }
   assert.equal(box.querySelector('[data-source=child]').style.top, `${100 / 3}%`);
   assert.equal(box.querySelector('[data-source=sibling]').style.top, `${200 / 3}%`);
+  // A groundwork branch leaves the top of the reply instead of taking a passage slot.
+  assert.equal(box.querySelector('[data-source=groundwork]').style.top, '0px');
   assert.equal(box.querySelector('[data-source=missing]').closest('[data-message]'), null);
   assert.equal(box.querySelectorAll('.passage-anchor').length, 0);
   await act(async () => container.querySelector('#open-root').click());

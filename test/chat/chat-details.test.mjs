@@ -212,7 +212,7 @@ test('the reply line renders task usage while media runs, including when the rep
       model: { modelLabel: () => 'Fixture' },
       trees: { openConversation() {} },
       stream: { send() {} },
-      branchForm: { visualBranches: {} },
+      branchForm: { visualBranches: {}, groundworkBranches: {} },
       actions: { videoAction() {} },
       active: true,
     }),
@@ -298,12 +298,14 @@ test('next questions show under the latest reply only, wait for streaming, and a
   assert.equal(container.querySelector('.next-questions'), null);
 });
 
-test("groundwork shows as chips once a reply's suggestions are ready, and nothing without any", async (t) => {
+test("groundwork shows as chips once a reply's suggestions are ready, chooses them, marks explored ones, and nothing without any", async (t) => {
   let update;
+  const chosen = [];
+  const explored = [{ concept: 'Memory', address: '1.2', ink: 1 }];
   function Fixture() {
     const [suggestions, set] = useState({ message: 'r', status: 'pending', passages: [] });
     update = set;
-    return h(Groundwork, { suggestions });
+    return h(Groundwork, { suggestions, explored, choose: (c) => chosen.push(c) });
   }
   const { container, act, cleanup } = await render(h(Fixture), ui);
   t.after(cleanup);
@@ -315,7 +317,17 @@ test("groundwork shows as chips once a reply's suggestions are ready, and nothin
   await act(async () =>
     update({ message: 'r', status: 'ready', passages: [], groundwork: ['Threads', 'Memory'] }),
   );
-  assert.deepEqual(chips(), ['Threads', 'Memory']);
+  assert.ok(chips().includes('Threads') && chips().includes('Memory'));
+  const chip = (name) =>
+    [...container.querySelectorAll('.groundwork button')].find((b) =>
+      b.closest('[role="group"] > *').textContent.startsWith(name),
+    );
+  await act(async () => chip('Threads').click());
+  await act(async () => chip('Memory').click());
+  assert.deepEqual(chosen, ['Threads', 'Memory']);
+  const memory = chip('Memory').closest('[data-explored]');
+  assert.ok(memory?.textContent.includes('1.2'));
+  assert.equal(chip('Threads').closest('[data-explored]'), null);
   await act(async () => update({ message: 'r', status: 'ready', passages: [], groundwork: [] }));
   assert.equal(container.querySelector('[aria-label="Groundwork"]'), null);
 });

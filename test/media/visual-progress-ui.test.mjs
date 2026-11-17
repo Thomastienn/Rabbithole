@@ -90,7 +90,7 @@ test('reply footer and conversation node show "n of m visuals ready" until every
       model: { modelLabel: () => 'Fixture' },
       trees: { openConversation() {} },
       stream: { send() {} },
-      branchForm: { visualBranches: {} },
+      branchForm: { visualBranches: {}, groundworkBranches: {} },
       actions: { videoAction() {} },
       active: true,
     });

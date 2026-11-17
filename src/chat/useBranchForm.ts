@@ -12,7 +12,7 @@ import type { ReplyStream } from './useReplyStream';
 // Branch form: opening it from a passage or a visual's Ask button, inherited context preparation and submit.
 export function useBranchForm(
   c: ChatState,
-  { refresh }: LearningTrees,
+  { refresh, openConversation }: LearningTrees,
   { savingModel }: ChatModel,
   { send }: ReplyStream,
 ) {
@@ -37,19 +37,21 @@ export function useBranchForm(
   }, [prepareKey]);
   async function submitBranch(e: React.FormEvent) {
     e.preventDefault();
-    if (!branch || branching || savingModel === branch.parent || !branch.question.trim()) return;
+    if (!branch || !branch.question.trim()) return;
+    await createBranch(branch.parent, branchRequest(branch.anchor, branch.question));
+  }
+  async function createBranch(parent: string, body: object) {
+    if (branching || savingModel === parent) return;
     setBranching(true);
     setError('');
     try {
-      const next: Tree = await api(
-        `/api/trees/${branch.parent}/branches`,
-        branchRequest(branch.anchor, branch.question),
-      );
-      setDrafts((d) => ({ ...d, [next.id]: branch.question }));
+      const next: Tree = await api(`/api/trees/${parent}/branches`, body);
+      const question = next.branch!.question;
+      setDrafts((d) => ({ ...d, [next.id]: question }));
       overviewOrigin.current = undefined;
       setBranch(undefined);
       // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
-      if (selected.current === branch.parent) {
+      if (selected.current === parent) {
         focusComposer.current = true;
         setOverview(false);
         selected.current = next.id;
@@ -57,11 +59,11 @@ export function useBranchForm(
         setTree(next);
         setLoading(false);
       }
-      const sending = send(branch.question, next);
+      const sending = send(question, next);
       await refresh();
       await sending;
     } catch (e) {
-      if (selected.current === branch.parent) setError((e as Error).message);
+      if (selected.current === parent) setError((e as Error).message);
     } finally {
       setBranching(false);
     }
@@ -91,6 +93,24 @@ export function useBranchForm(
         start: t.start,
         end: t.end,
       });
+  // A groundwork branch has no start or end; its passage is the concept's name.
+  const groundworkBranches: Record<
+    string,
+    { concept: string; child: string; address?: string; ink?: number }[]
+  > = {};
+  for (const t of state?.trees ?? [])
+    if (t.parent === tree?.id && t.messageId && !t.artifactId && t.start === null && t.passage)
+      (groundworkBranches[t.messageId] ??= []).push({
+        concept: t.passage,
+        child: t.id,
+        ...c.addresses.get(t.id),
+      });
+  // Choosing a chip asks "What is <concept>?" at once; a chip already chosen opens its child.
+  function chooseGroundwork(messageId: string, concept: string) {
+    const child = groundworkBranches[messageId]?.find((b) => b.concept === concept)?.child;
+    if (child) return openConversation(child);
+    if (tree) return createBranch(tree.id, { messageId, groundwork: concept });
+  }
   const openVisualPart: PartAction = (visual, part, origin) => {
     if (
       !tree ||
@@ -130,6 +150,8 @@ export function useBranchForm(
     discussionBranches,
     openVisualPart,
     startBranch,
+    groundworkBranches,
+    chooseGroundwork,
   };
 }
 

@@ -276,6 +276,64 @@ test('branch preparation excludes the question and the saved child opens before 
   });
 });
 
+test('choosing a groundwork chip creates its child at once and choosing it again opens that child', async (t) => {
+  let controller;
+  const page = await mount(t, ({ path, body }, { data, state }) => {
+    if (path === '/api/trees/a/branches') {
+      const child = {
+        ...conversation('child'),
+        branch: {
+          parent: 'a',
+          messageId: 'reply',
+          text: body.groundwork,
+          question: `What is ${body.groundwork}?`,
+          snapshot: '',
+        },
+      };
+      data.set('child', child);
+      state.trees.push({
+        ...summary('child', 'a'),
+        messageId: 'reply',
+        start: null,
+        end: null,
+        passage: body.groundwork,
+      });
+      return json(child);
+    }
+    if (path === '/api/trees/child/messages')
+      return new Response(
+        new ReadableStream({
+          start(value) {
+            controller = value;
+          },
+        }),
+      );
+  });
+  let chosen;
+  await page.act(async () => {
+    chosen = page.current.branch.chooseGroundwork('reply', 'Mutexes');
+  });
+  assert.deepEqual(page.calls.find((c) => c.path.endsWith('/branches')).body, {
+    messageId: 'reply',
+    groundwork: 'Mutexes',
+  });
+  assert.equal(page.current.c.tree.id, 'child');
+  const sent = page.calls.find((c) => c.path === '/api/trees/child/messages');
+  assert.equal(sent.body.text, 'What is Mutexes?');
+  await page.act(async () => {
+    controller.close();
+    await chosen;
+  });
+  await page.act(async () => page.current.trees.openConversation('a'));
+  assert.deepEqual(
+    page.current.branch.groundworkBranches.reply.map((b) => [b.concept, b.child]),
+    [['Mutexes', 'child']],
+  );
+  await page.act(async () => page.current.branch.chooseGroundwork('reply', 'Mutexes'));
+  assert.equal(page.current.c.tree.id, 'child');
+  assert.equal(page.calls.filter((c) => c.path.endsWith('/branches')).length, 1);
+});
+
 test('deleting the open learning tree discards pending layout and opens the next saved conversation', async (t) => {
   const page = await mount(t, ({ path }, { state, data }) => {
     if (path === '/api/trees/a/delete') {

@@ -50,7 +50,7 @@ export default function ChatThread({
   const { overview, addresses, state, branch, setBranch, selectingMessage, setSelectingMessage } =
     c;
   const { branching, submitBranch, closeBranch, openVisualPart, visualBranches } = branchForm;
-  const { discussionBranches } = branchForm;
+  const { discussionBranches, groundworkBranches, chooseGroundwork } = branchForm;
   return tree.messages.map((message) => {
     const suggestions = tree.suggestions?.find((s) => s.message === message.id),
       index =
@@ -99,7 +99,13 @@ export default function ChatThread({
           )
         }
       >
-        {message.role === 'assistant' && <Groundwork suggestions={suggestions} />}
+        {message.role === 'assistant' && (
+          <Groundwork
+            suggestions={suggestions}
+            explored={groundworkBranches[message.id]}
+            choose={(concept) => chooseGroundwork(message.id, concept)}
+          />
+        )}
         {message.role === 'assistant' ? (
           <Passage
             message={message}

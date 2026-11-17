@@ -168,13 +168,38 @@ export function ReplyFeedback({
 
 // Next questions under the latest reply; choosing one asks it in this conversation.
 // Shown above the reply so the learner sees missing background before reading.
-export function Groundwork({ suggestions }: { suggestions?: Suggestions }) {
+// Choosing a chip creates its child at once; an explored chip carries its child's address and ink and opens it.
+export function Groundwork({
+  suggestions,
+  explored = [],
+  choose,
+}: {
+  suggestions?: Suggestions;
+  explored?: { concept: string; address?: string; ink?: number }[];
+  choose: (concept: string) => void;
+}) {
   if (suggestions?.status !== 'ready' || !suggestions.groundwork?.length) return null;
   return (
     <HStack gap={1} className="groundwork" role="group" aria-label="Groundwork">
-      {suggestions.groundwork.map((concept) => (
-        <Token key={concept} label={concept} size="sm" />
-      ))}
+      {suggestions.groundwork.map((concept) => {
+        const child = explored.find((b) => b.concept === concept);
+        return (
+          <Token
+            key={concept}
+            label={concept}
+            size="sm"
+            description={
+              child
+                ? `Explored. Opens its chat${child.address ? `, ${child.address}` : ''}`
+                : `Ask what ${concept} is in a new chat`
+            }
+            endContent={child?.address}
+            data-explored={child ? '' : undefined}
+            style={child ? inkStyle(child.ink ?? 0) : undefined}
+            onClick={() => choose(concept)}
+          />
+        );
+      })}
     </HStack>
   );
 }

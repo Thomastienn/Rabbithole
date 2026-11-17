@@ -311,9 +311,14 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                     {visualsReady(m.artifacts)}
                   </Text>
                 )}
-                {sources.map((child, index) =>
-                  handle(child, { top: `${(100 * (index + 1)) / (sources.length + 1)}%` }),
-                )}
+                {sources.map((child) => {
+                  // A groundwork branch comes from the reply as a whole, so its line leaves the reply's top.
+                  const spread = sources.filter((s) => s.start !== null || s.artifactId);
+                  const index = spread.indexOf(child);
+                  return handle(child, {
+                    top: index < 0 ? 0 : `${(100 * (index + 1)) / (spread.length + 1)}%`,
+                  });
+                })}
               </VStack>
             );
           })}
