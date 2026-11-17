@@ -38,6 +38,7 @@ declare module 'micromark-util-types' {
     bracketMathText: 'bracketMathText';
     bracketMathDisplay: 'bracketMathDisplay';
     bracketMathData: 'bracketMathData';
+    dollarMathDisplay: 'dollarMathDisplay';
   }
 }
 const bracketMath = (
@@ -84,6 +85,54 @@ const bracketMath = (
 const bracketMathSyntax: Extension = {
   text: { 92: [bracketMath('bracketMathText', 40, 41), bracketMath('bracketMathDisplay', 91, 93)] },
 };
+// Model replies use LaTeX display delimiters, including content on either fence line.
+// Markdown math fences treat opening-line content as metadata and require a standalone closing fence.
+const dollarMath: Construct = {
+  name: 'dollarMathDisplay',
+  concrete: true,
+  tokenize(effects, ok, nok) {
+    const inside: State = (code) => {
+      if (code === null) return nok(code);
+      if (code < -2) {
+        effects.enter('lineEnding');
+        effects.consume(code);
+        effects.exit('lineEnding');
+        return inside;
+      }
+      effects.enter('bracketMathData');
+      return data(code);
+    };
+    const data: State = (code) => {
+      if (code === null || code < -2) {
+        effects.exit('bracketMathData');
+        return inside(code);
+      }
+      effects.consume(code);
+      return code === 36 ? close : code === 92 ? escaped : data;
+    };
+    const escaped: State = (code) => {
+      if (code === null || code < -2) return data(code);
+      effects.consume(code);
+      return data;
+    };
+    const close: State = (code) => {
+      if (code !== 36) return data(code);
+      effects.consume(code);
+      effects.exit('bracketMathData');
+      effects.exit('dollarMathDisplay');
+      return ok;
+    };
+    return (code) => {
+      effects.enter('dollarMathDisplay');
+      effects.consume(code);
+      return (next) => (next === 36 ? (effects.consume(next), inside) : nok(next));
+    };
+  },
+};
+const dollarMathSyntax: Extension = {
+  flow: { 36: dollarMath },
+  text: { 36: dollarMath },
+};
 const enterMath = (type: 'inlineMath' | 'math') =>
   function (this: CompileContext, token: Token) {
     this.enter({ type, value: '' } as never, token);
@@ -93,12 +142,22 @@ function exitMath(this: CompileContext, token: Token) {
   this.exit(token);
 }
 const bracketMathFromMarkdown: MdastExtension = {
-  enter: { bracketMathText: enterMath('inlineMath'), bracketMathDisplay: enterMath('math') },
-  exit: { bracketMathText: exitMath, bracketMathDisplay: exitMath },
+  enter: {
+    bracketMathText: enterMath('inlineMath'),
+    bracketMathDisplay: enterMath('math'),
+    dollarMathDisplay: enterMath('math'),
+  },
+  exit: { bracketMathText: exitMath, bracketMathDisplay: exitMath, dollarMathDisplay: exitMath },
 };
 export const parse = (text: string) =>
   fromMarkdown(text, {
-    extensions: [gfmTable(), math(), bracketMathSyntax, containerDirective],
+    extensions: [
+      gfmTable(),
+      { text: math().text },
+      bracketMathSyntax,
+      dollarMathSyntax,
+      containerDirective,
+    ],
     mdastExtensions: [
       gfmTableFromMarkdown(),
       mathFromMarkdown(),
