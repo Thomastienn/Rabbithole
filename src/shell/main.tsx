@@ -12,7 +12,14 @@ import '@fontsource/literata/600.css';
 import { Theme } from '@astryxdesign/core/theme';
 import { themes } from './astryx-themes';
 import ChatPage from './ChatPage';
-import { savedAppearance, savedTheme, type Appearance, type ThemeChoice } from './appearance';
+import {
+  applyFont,
+  savedAppearance,
+  savedFont,
+  savedTheme,
+  type Appearance,
+  type ThemeChoice,
+} from './appearance';
 import { savePreference } from './preferences';
 // Last, so the map and app styles follow every other stylesheet, in this order.
 import '@xyflow/react/dist/style.css';
@@ -27,6 +34,9 @@ import '../styles/discussion.css';
 import '../styles/states.css';
 import '../styles/map.css';
 import '../styles/settings.css';
+
+applyFont('reading-font', savedFont('reading-font'));
+applyFont('interface-font', savedFont('interface-font'));
 
 function App() {
   const [appearance, setAppearance] = useState(savedAppearance);

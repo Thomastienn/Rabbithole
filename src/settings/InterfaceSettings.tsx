@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Divider } from '@astryxdesign/core/Divider';
@@ -6,7 +6,17 @@ import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { RadioList, RadioListItem } from '@astryxdesign/core/RadioList';
 import { Icon } from '@astryxdesign/core/Icon';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import { appearances, themeChoices, type Appearance, type ThemeChoice } from '../shell/appearance';
+import {
+  applyFont,
+  appearances,
+  fontChoices,
+  savedFont,
+  themeChoices,
+  type Appearance,
+  type FontKind,
+  type ThemeChoice,
+} from '../shell/appearance';
+import { savePreference } from '../shell/preferences';
 import { Theme } from '@astryxdesign/core/theme';
 import { themes } from '../shell/astryx-themes';
 
@@ -39,6 +49,37 @@ export function Section({
       </VStack>
       {children}
     </VStack>
+  );
+}
+
+// Owns its state: the choice lives on <html> and in storage, applied at startup by main.tsx.
+function FontChoice({
+  kind,
+  title,
+  description,
+}: {
+  kind: FontKind;
+  title: string;
+  description: string;
+}) {
+  const [font, setFont] = useState(() => savedFont(kind));
+  return (
+    <Section title={title} description={description}>
+      <RadioList
+        label={title}
+        isLabelHidden
+        value={font}
+        onChange={(value) => {
+          setFont(value);
+          applyFont(kind, value);
+          savePreference(kind, value);
+        }}
+      >
+        {fontChoices[kind].map((f) => (
+          <RadioListItem key={f.id} value={f.id} label={f.label} />
+        ))}
+      </RadioList>
+    </Section>
   );
 }
 
@@ -112,6 +153,18 @@ export default function InterfaceSettings({
           ))}
         </fieldset>
       </Section>
+      <Divider />
+      <FontChoice
+        kind="reading-font"
+        title="Reading font"
+        description="For replies and other long text. Code stays monospace. Saved in this browser."
+      />
+      <Divider />
+      <FontChoice
+        kind="interface-font"
+        title="Interface font"
+        description="For controls, labels and headings. Saved in this browser."
+      />
       <Divider />
       <Section title="Keyboard">
         <CheckboxInput

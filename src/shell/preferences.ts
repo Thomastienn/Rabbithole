@@ -25,7 +25,14 @@ export function savedLibraryLayout(): 'shelf' | 'list' {
 }
 
 export function savePreference(
-  key: 'appearance' | 'theme' | 'vim' | 'library-layout' | 'focus-mode',
+  key:
+    | 'appearance'
+    | 'theme'
+    | 'vim'
+    | 'library-layout'
+    | 'focus-mode'
+    | 'reading-font'
+    | 'interface-font',
   value: string,
 ) {
   try {

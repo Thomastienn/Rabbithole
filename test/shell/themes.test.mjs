@@ -3,7 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   appearances,
+  fontChoices,
   savedAppearance,
+  savedFont,
   savedTheme,
   themeChoices,
 } from '../../src/shell/appearance.ts';
@@ -50,6 +52,19 @@ test('browser preferences restore valid choices independently, fall back safely 
     assert.equal(savedAppearance(), 'system');
     assert.equal(savedTheme(values.get('rabbithole.theme')), 'graphite');
   }
+  assert.equal(savedFont('reading-font'), 'literata');
+  assert.equal(savedFont('interface-font'), 'archivo');
+  savePreference('reading-font', 'system');
+  assert.equal(savedFont('reading-font'), 'system');
+  assert.equal(savedFont('interface-font'), 'archivo', 'reading font leaves interface font alone');
+  savePreference('interface-font', 'system');
+  savePreference('reading-font', 'literata');
+  assert.equal(savedFont('interface-font'), 'system');
+  assert.equal(savedFont('reading-font'), 'literata');
+  for (const kind of Object.keys(fontChoices)) {
+    savePreference(kind, 'comic-sans');
+    assert.equal(savedFont(kind), fontChoices[kind][0].id);
+  }
   savePreference('appearance', 'sepia');
   assert.equal(savedAppearance(), 'dark');
   assert.equal(savedTheme('ocean'), 'paperback');
@@ -63,6 +78,8 @@ test('browser preferences restore valid choices independently, fall back safely 
   assert.equal(savedAppearance(), 'dark');
   assert.equal(savedVim(), false);
   assert.equal(savedLibraryLayout(), 'shelf');
+  assert.equal(savedFont('reading-font'), 'literata');
+  assert.equal(savedFont('interface-font'), 'archivo');
   assert.doesNotThrow(() => savePreference('theme', 'forest'));
 });
 
