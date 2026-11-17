@@ -71,13 +71,13 @@ export function marks(result, answer) {
 
 // The tutor ends each reply with this block; it carries the suggestion call's meaning, one JSON object per line.
 export const NOTES_RULE =
-  '\n\nNotes: end every reply with one fenced rabbithole-notes block, after everything else. Write one JSON object per line and nothing else inside it. For each term or short phrase of one to six words used in this reply but not explained in it, relevant to the question and probably unfamiliar to this learner, write {"suggestion": term, "concept": name}. Copy the term exactly as written in the reply, in reading order without overlaps. Skip terms defined in place, everyday words, the question\'s own topic, section headings, whole sentences and concepts the learner already knows well. Mark as many as qualify and none when nothing qualifies; never pad. For each concept the reply teaches or relies on, write {"concept": name, "topics": [topic]}; topics are broad subject areas such as "Concurrency", few and broad, never one per concept. For links between those concepts write {"from": name, "to": name, "kind": "related" or "builds on"}, "builds on" when from needs to first. When a concept or topic is the same as one in the concept neighbourhood, even under another wording, use its name exactly. Write an empty block when nothing qualifies. The learner never sees this block, so never mention it.';
+  '\n\nNotes: end every reply with one fenced rabbithole-notes block, after everything else. Write one JSON object per line and nothing else inside it. Start with up to three next questions, one per line as {"question": text}: deep, curious how, why or what-if questions this reply raises but does not answer, in the learner\'s voice; none after a casual turn. For each term or short phrase of one to six words used in this reply but not explained in it, relevant to the question and probably unfamiliar to this learner, write {"suggestion": term, "concept": name}. Copy the term exactly as written in the reply, in reading order without overlaps. Skip terms defined in place, everyday words, the question\'s own topic, section headings, whole sentences and concepts the learner already knows well. Mark as many as qualify and none when nothing qualifies; never pad. For each concept the reply teaches or relies on, write {"concept": name, "topics": [topic]}; topics are broad subject areas such as "Concurrency", few and broad, never one per concept. For links between those concepts write {"from": name, "to": name, "kind": "related" or "builds on"}, "builds on" when from needs to first. When a concept or topic is the same as one in the concept neighbourhood, even under another wording, use its name exactly. Write an empty block when nothing qualifies. The learner never sees this block, so never mention it.';
 
 // Tolerant: each complete line stands alone, so a stopped reply keeps the lines that arrived.
 // Readable: a closed block with no lines or at least one JSON object line; otherwise quick thinking falls back.
 export function readNotes(blocks) {
   if (!blocks.length) return null;
-  const notes = { suggestions: [], concepts: [], links: [], readable: false };
+  const notes = { questions: [], suggestions: [], concepts: [], links: [], readable: false };
   for (const block of blocks) {
     let lines = 0,
       read = 0;
@@ -92,7 +92,11 @@ export function readNotes(blocks) {
       }
       if (!e || typeof e !== 'object' || Array.isArray(e)) continue;
       read++;
-      if ('suggestion' in e) notes.suggestions.push({ text: e.suggestion, concept: e.concept });
+      if (typeof e.question === 'string') {
+        if (e.question.trim() && notes.questions.length < 3)
+          notes.questions.push(e.question.trim());
+      } else if ('suggestion' in e)
+        notes.suggestions.push({ text: e.suggestion, concept: e.concept });
       else if ('topics' in e) notes.concepts.push({ name: e.concept, topics: e.topics });
       else if ('from' in e) notes.links.push(e);
     }

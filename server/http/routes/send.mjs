@@ -145,6 +145,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     finished = false,
     usage = null,
     called = false,
+    questions = [],
     // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
     saved = -Infinity;
   const heartbeat = setInterval(() => {
@@ -230,6 +231,12 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     // No readable block: the quick thinking model judges the learner message in the background.
     if (status === 'completed' && !output.verdicts && text.trim() && store.tree(id))
       ctx.startVerdicts(id, user, body.text, text);
+    // Quick thinking fallback never writes next questions; only the tutor's block does.
+    if (output.notes?.questions.length) {
+      store.nextQuestions(reply, output.notes.questions);
+      if (output.notes.questions.length > questions.length)
+        send({ type: 'questions', questions: output.notes.questions });
+    }
     ctx.noteSuggestions(id, reply, status, output.notes, body.text, text);
     if (output.requested || output.hidden) store.forgetThread(id);
     if (active.get(id) === controller) active.delete(id);
@@ -350,6 +357,11 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             store.update(reply, text, status);
           }
           send({ type: 'text', text });
+          // Each next question streams once its line completes.
+          if ((output.notes?.questions.length ?? 0) > questions.length) {
+            questions = output.notes.questions;
+            send({ type: 'questions', questions });
+          }
           prepareArtifacts(output);
         }
         if (event.type === 'status') status = event.status;

@@ -165,6 +165,44 @@ export function ReplyFeedback({
   );
 }
 
+// Next questions under the latest reply; choosing one asks it in this conversation.
+export function NextQuestions({
+  message,
+  latest,
+  overview,
+  active,
+  ask,
+}: {
+  message: Message;
+  latest: boolean;
+  overview: boolean;
+  active: boolean;
+  ask: (question: string) => void;
+}) {
+  if (overview || !latest || message.role !== 'assistant' || !message.questions?.length)
+    return null;
+  return (
+    <VStack
+      gap={1}
+      hAlign="start"
+      className="next-questions"
+      role="group"
+      aria-label="Next questions"
+    >
+      {message.questions.map((question) => (
+        <Button
+          key={question}
+          label={question}
+          variant="secondary"
+          size="sm"
+          isDisabled={active}
+          onClick={() => ask(question)}
+        />
+      ))}
+    </VStack>
+  );
+}
+
 export function TokenStatsToggle({ open, toggle }: { open: boolean; toggle: () => void }) {
   return (
     <IconButton

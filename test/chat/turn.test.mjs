@@ -43,8 +43,10 @@ test('main-thread events close older discussion cards and stale card events cann
     },
     'c',
   );
+  assert.equal(applyStreamEvent(turn, { type: 'questions', questions: ['Why?'] }, 'c'), true);
   const updated = withTurn(tree, turn);
   assert.equal(updated.artifacts[0].discussion.closed, true);
+  assert.deepEqual(updated.messages.at(-1).questions, ['Why?']);
   assert.equal(
     mergeArtifact(updated.artifacts, artifact, 'c', updated.messages)[0].discussion.closed,
     true,

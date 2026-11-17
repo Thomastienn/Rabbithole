@@ -10,7 +10,7 @@ import CopyButton from '../markdown/CopyButton';
 import { artifactsAt } from '../media/artifacts';
 import { visualsReady } from '../media/visualProgress';
 import { replyUsageLine } from './turn';
-import { ReplyFeedback } from './ChatDetails';
+import { NextQuestions, ReplyFeedback } from './ChatDetails';
 import Passage from './Passage';
 import Reply from './Reply';
 import BranchForm from './BranchForm';
@@ -225,6 +225,13 @@ export default function ChatThread({
           previous={tree.messages.at(-2)}
           compactionError={tree.compaction?.error}
           retry={(text) => void send(text, tree, true)}
+        />
+        <NextQuestions
+          message={message}
+          latest={message === tree.messages.at(-1)}
+          overview={overview}
+          active={active}
+          ask={(question) => void send(question, tree)}
         />
       </ChatMessage>
     );

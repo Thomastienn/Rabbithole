@@ -235,6 +235,14 @@ export function open(path) {
         .some((c) => c.name === 'embedding')
     )
       this.db.exec('ALTER TABLE messages ADD COLUMN embedding BLOB');
+    // Next questions from the tutor's notes block, a JSON array; NULL when the reply had none.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(messages)')
+        .all()
+        .some((c) => c.name === 'questions')
+    )
+      this.db.exec('ALTER TABLE messages ADD COLUMN questions TEXT');
     // Observations: the tutor's verdict on what one learner message showed about a concept; familiarity derives from them.
     // Created once: the old familiarity evidence (asked, used, ignored and corrections) was test data and goes; met stays.
     if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='observations'").get())

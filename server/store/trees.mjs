@@ -165,10 +165,10 @@ export const trees = {
           : null,
         messages: this.db
           .prepare(
-            'SELECT id,role,text,status,stopped,usage FROM messages WHERE tree=? ORDER BY seq',
+            'SELECT id,role,text,status,stopped,usage,questions FROM messages WHERE tree=? ORDER BY seq',
           )
           .all(id)
-          .map(({ usage, stopped, ...m }) => {
+          .map(({ usage, stopped, questions, ...m }) => {
             if (m.role !== 'assistant') {
               const attachments = this.attachments(id, m.id);
               return attachments.length ? { ...m, attachments } : m;
@@ -179,6 +179,7 @@ export const trees = {
               ...m,
               ...(tools.length && { tools }),
               ...(stopped && { stopped }),
+              ...(questions && { questions: JSON.parse(questions) }),
               usage: JSON.parse(usage),
               ...(mediaUsage.length && { mediaUsage }),
             };
@@ -404,6 +405,11 @@ export const trees = {
       .run(text, status, stopped, id);
     // Citations are rebuilt once the reply settles, not on every streamed save.
     if (status !== 'streaming') this.cite(id, text);
+  },
+  nextQuestions(id, questions) {
+    this.db
+      .prepare('UPDATE messages SET questions=? WHERE id=?')
+      .run(JSON.stringify(questions), id);
   },
   // Retry drops the failed reply and its artifacts; library videos live in their own table and are kept.
   discardReply(conversation, message) {

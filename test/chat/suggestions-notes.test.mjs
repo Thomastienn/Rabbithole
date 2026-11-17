@@ -9,7 +9,7 @@ import { conversationUsageLine } from '../../src/chat/turn.ts';
 import { start } from '../support/suggestion-kit.mjs';
 
 const lines =
-  '{"suggestion":"shared state","concept":"Shared state"}\n{"concept":"Shared state","topics":["Concurrency"]}\n{"from":"Shared state","to":"Mutex","kind":"builds on"}\n';
+  '{"question":"How do locks queue?"}\n{"question":"What if two threads write?"}\n{"suggestion":"shared state","concept":"Shared state"}\n{"concept":"Shared state","topics":["Concurrency"]}\n{"from":"Shared state","to":"Mutex","kind":"builds on"}\n';
 const block = '\n```rabbithole-notes\n' + lines + '```';
 
 test('the notes block stays hidden at every streamed boundary and its lines parse tolerantly', () => {
@@ -25,6 +25,7 @@ test('the notes block stays hidden at every streamed boundary and its lines pars
   assert.equal(done.text, 'Use shared state.');
   assert.equal(done.requested, false);
   assert.deepEqual(done.notes, {
+    questions: ['How do locks queue?', 'What if two threads write?'],
     suggestions: [{ text: 'shared state', concept: 'Shared state' }],
     concepts: [{ name: 'Shared state', topics: ['Concurrency'] }],
     links: [{ from: 'Shared state', to: 'Mutex', kind: 'builds on' }],
@@ -35,6 +36,20 @@ test('the notes block stays hidden at every streamed boundary and its lines pars
   assert.equal(cut.notes.readable, false);
   assert.equal(cut.notes.suggestions.length, 1);
   assert.equal(cut.notes.links.length, 0);
+  // Each next question appears once its line completes; a torn line is ignored.
+  const second = block.indexOf('"What if');
+  assert.deepEqual(diagramReply('A' + block.slice(0, second + 12)).notes.questions, [
+    'How do locks queue?',
+  ]);
+  assert.equal(
+    diagramReply('A' + block.slice(0, block.indexOf('"suggestion"'))).notes.questions.length,
+    2,
+  );
+  assert.equal(
+    diagramReply('A\n```rabbithole-notes\n' + '{"question":"Q?"}\n'.repeat(5) + '```', true).notes
+      .questions.length,
+    3,
+  );
   assert.equal(diagramReply('Plain.', true).notes, null);
   assert.equal(diagramReply('A\n```rabbithole-notes\n```', true).notes.readable, true);
   assert.equal(diagramReply('A\n```rabbithole-notes\nnot json\n```', true).notes.readable, false);
@@ -82,10 +97,18 @@ test('a reply with a notes block underlines and fills the graph with no suggesti
   const env = await start(mkdtempSync(join(tmpdir(), 'tt-notes-')));
   t.after(() => env.close());
   const tree = JSON.parse(await env.post('/api/trees'));
-  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Use the notes fixture reply' });
+  const streamed = await env.post(`/api/trees/${tree.id}/messages`, {
+    text: 'Use the notes fixture reply',
+  });
+  assert.match(streamed, /"type":"questions","questions":\["Why does originality matter\?"/);
+  assert.doesNotMatch(streamed, /rabbithole-notes|"question":/);
   await env.settled();
   let saved = await env.get(`/api/trees/${tree.id}`);
   assert.equal(saved.messages.at(-1).text, 'Authoritative original');
+  assert.deepEqual(saved.messages.at(-1).questions, [
+    'Why does originality matter?',
+    'What if two works match?',
+  ]);
   assert.equal(env.suggestionCalls().length, 0);
   assert.deepEqual(saved.suggestions, [
     {
@@ -107,6 +130,8 @@ test('a reply with a notes block underlines and fills the graph with no suggesti
   await env.settled();
   saved = await env.get(`/api/trees/${tree.id}`);
   assert.equal(env.suggestionCalls().length, 1);
+  // The quick thinking fallback writes no next questions.
+  assert.equal(saved.messages.at(-1).questions, undefined);
   assert.equal(saved.suggestions.at(-1).status, 'ready');
   assert.ok(saved.suggestions.at(-1).usage.input >= 0);
 });

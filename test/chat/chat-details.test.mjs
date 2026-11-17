@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
-const { InheritedContext, TokenStats, TokenStatsToggle, ReplyFeedback } =
+const { InheritedContext, TokenStats, TokenStatsToggle, ReplyFeedback, NextQuestions } =
   await import('../../src/chat/ChatDetails.tsx');
 
 test('chat details keep inherited context collapsed and read-only, show usage, and retry a failed compaction', async (t) => {
@@ -263,4 +263,37 @@ test('a discussion branch labels its speaker and shows the inherited discussion'
     ],
   );
   assert.equal(body.querySelector('.inherited-discussion').textContent, branch.discussion);
+});
+
+test('next questions show under the latest reply only, wait for streaming, and ask on choice', async (t) => {
+  const asked = [];
+  let update;
+  const reply = {
+    id: 'r',
+    role: 'assistant',
+    text: 'Locks queue.',
+    status: 'streaming',
+    questions: ['How do locks queue?'],
+  };
+  function Fixture() {
+    const [value, set] = useState({ message: reply, latest: true, active: true });
+    update = set;
+    return h(NextQuestions, { ...value, overview: false, ask: (q) => asked.push(q) });
+  }
+  const { container, act, cleanup } = await render(h(Fixture), ui);
+  t.after(cleanup);
+  const choice = () => button(container, 'How do locks queue?');
+  assert.equal(choice().disabled, true);
+  await act(async () =>
+    update((v) => ({
+      ...v,
+      active: false,
+      message: { ...reply, status: 'completed', questions: [...reply.questions, 'Why FIFO?'] },
+    })),
+  );
+  assert.equal(container.querySelectorAll('.next-questions button').length, 2);
+  await act(async () => choice().click());
+  assert.deepEqual(asked, ['How do locks queue?']);
+  await act(async () => update((v) => ({ ...v, latest: false })));
+  assert.equal(container.querySelector('.next-questions'), null);
 });

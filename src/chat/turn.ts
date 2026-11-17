@@ -50,6 +50,7 @@ export type Message = {
   artifacts?: ArtifactSummary[];
   attachments?: Attachment[];
   tools?: ToolCall[];
+  questions?: string[];
 };
 export const usageLine = (u: Usage) =>
   `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;
@@ -227,6 +228,8 @@ export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
       text: event.text ?? turn.reply.text,
       status: event.status ?? turn.reply.status,
     };
+  if (event.type === 'questions' && turn.reply)
+    turn.reply = { ...turn.reply, questions: event.questions };
   if (event.type === 'tool' && turn.reply) {
     const tools = turn.reply.tools ?? [];
     const index = tools.findIndex((t) => t.id === event.tool.id);
@@ -244,7 +247,7 @@ export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
         ? [{ id: event.artifact.message, role: 'assistant' }]
         : []),
     ]);
-  return ['saved', 'status', 'text', 'done', 'artifact', 'tool'].includes(event.type);
+  return ['saved', 'status', 'text', 'done', 'artifact', 'tool', 'questions'].includes(event.type);
 }
 
 // Reconcile saved checkpoints with the latest events for this conversation only.
