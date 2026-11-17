@@ -14,7 +14,7 @@ export const trees = {
   list() {
     return this.db
       .prepare(
-        'SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage,b.artifactId,b.label,b.explanation,b.line FROM trees t LEFT JOIN branches b ON b.child=t.id ORDER BY t.created DESC,t.rowid DESC',
+        "SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage,b.artifactId,b.label,b.explanation,b.line,c.name AS concept,(SELECT COUNT(*) FROM messages m WHERE m.tree=t.id AND m.role='user') AS learnerMessages FROM trees t LEFT JOIN branches b ON b.child=t.id LEFT JOIN concepts c ON c.id=t.concept ORDER BY t.created DESC,t.rowid DESC",
       )
       .all()
       .map(({ artifactId, label, explanation, line, ...t }) => {
@@ -267,6 +267,12 @@ export const trees = {
         hit = passages.find(
           (p) => p.start === anchor.start && p.end === anchor.end && !this.live(p.child),
         );
+      // A suggestion or groundwork branch explores that concept from creation.
+      const concept = anchor.groundwork ?? hit?.concept;
+      if (concept)
+        this.db
+          .prepare('UPDATE trees SET concept=? WHERE id=?')
+          .run(this.conceptId(concept), child.id);
       if (hit) {
         hit.child = child.id;
         this.db

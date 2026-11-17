@@ -53,4 +53,5 @@ test('a groundwork branch asks what the concept is, with no start or end, as an 
   assert.equal(summary.parent, root.id);
   assert.equal(summary.passage, 'Mutual exclusion');
   assert.equal(summary.start, null);
+  assert.equal(summary.concept, 'Mutual exclusion');
 });

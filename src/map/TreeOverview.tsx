@@ -56,6 +56,9 @@ export type Summary = {
   x: number | null;
   y: number | null;
   layout?: Layout | null;
+  // The conversation's explored concept name, and how many learner messages it holds.
+  concept?: string | null;
+  learnerMessages?: number;
 };
 export type Source = { messageId: string; text: string } & (
   | { start: number; end: number; artifactId?: undefined }

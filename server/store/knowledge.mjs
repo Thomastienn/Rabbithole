@@ -106,6 +106,27 @@ export const knowledge = {
       )
       .get(name, name);
   },
+  // An existing concept or alias, else a new concept with no topic; callers hold the transaction.
+  conceptId(name) {
+    return (
+      this.concept(name)?.id ??
+      this.db.prepare('INSERT INTO concepts(name) VALUES (?)').run(name).lastInsertRowid
+    );
+  },
+  // A conversation's explored concept is set once; a later name never replaces it.
+  explore(conversation, name) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      if (this.db.prepare('SELECT 1 FROM trees WHERE id=? AND concept IS NULL').get(conversation))
+        this.db
+          .prepare('UPDATE trees SET concept=? WHERE id=?')
+          .run(this.conceptId(name), conversation);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  },
   evidence(concept, kind, source) {
     this.db
       .prepare('INSERT OR IGNORE INTO evidence(concept,kind,source,at) VALUES (?,?,?,?)')
@@ -185,6 +206,7 @@ export const knowledge = {
             .prepare('UPDATE suggestions SET passages=? WHERE message=?')
             .run(JSON.stringify(passages), row.message);
       }
+      this.db.prepare('UPDATE trees SET concept=? WHERE concept=?').run(b, a);
       this.db.prepare('UPDATE concept_aliases SET concept=? WHERE concept=?').run(b, a);
       this.db.prepare('INSERT INTO concept_aliases(name,concept) VALUES (?,?)').run(source.name, b);
       this.db.prepare('DELETE FROM concepts WHERE id=?').run(a);

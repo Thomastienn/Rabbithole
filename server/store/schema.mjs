@@ -245,6 +245,31 @@ export function open(path) {
         .some((c) => c.name === 'embedding')
     )
       this.db.exec('ALTER TABLE concepts ADD COLUMN embedding BLOB');
+    // Explored concept, set once per conversation. Added once: conversations already branched from a saved suggestion take its concept.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(trees)')
+        .all()
+        .some((c) => c.name === 'concept')
+    ) {
+      this.db.exec('BEGIN IMMEDIATE');
+      try {
+        this.db.exec('ALTER TABLE trees ADD COLUMN concept INTEGER REFERENCES concepts(id)');
+        const explore = this.db.prepare(
+          'UPDATE trees SET concept=? WHERE id=? AND concept IS NULL',
+        );
+        for (const row of this.db
+          .prepare('SELECT passages FROM suggestions WHERE passages IS NOT NULL')
+          .all())
+          for (const p of JSON.parse(row.passages))
+            if (p.child && p.concept && this.live(p.child))
+              explore.run(this.conceptId(p.concept), p.child);
+        this.db.exec('COMMIT');
+      } catch (error) {
+        this.db.exec('ROLLBACK');
+        throw error;
+      }
+    }
     // Saved messages get a Float32 embedding for recall, filled lazily when the local embedder is usable.
     if (
       !this.db
