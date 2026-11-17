@@ -118,19 +118,16 @@ html[data-interface-font='system'] [data-astryx-theme] {
   border-inline-end: thin solid var(--color-border);
   background: var(--color-background-muted);
 }
-/* The sidebar toggle stays put: a raised menu button over the page in Focus mode, a plain close button in the sidebar head. */
-.sidebar-toggle {
-  position: fixed;
-  z-index: 8;
-  /* Centred on the chat heading row and in line with the header's side padding. */
-  top: calc(1.25 * var(--rabbithole-module));
-  left: calc(2 * var(--rabbithole-module));
-  /* Opaque so the scrolled sidebar passes under it cleanly. */
-  background: var(--color-background-muted);
+/* Focus mode: the sidebar rail, its own controls as icons in one column. */
+.sidebar-rail {
+  flex: none;
+  width: auto;
 }
-.sidebar-toggle[aria-expanded='false'] {
-  border: thin solid var(--color-border);
-  box-shadow: var(--shadow-high);
+.sidebar-rail :is(.sidebar-head, .sidebar-tools) {
+  flex-direction: column;
+}
+.sidebar.sidebar-rail .view-tab {
+  justify-content: center;
 }
 .sidebar-toggle svg {
   animation: sidebar-toggle-in 160ms ease-out;
@@ -146,10 +143,6 @@ html[data-interface-font='system'] [data-astryx-theme] {
     animation: none;
   }
 }
-/* The chat title starts past the floating menu button. */
-body:has(.sidebar-toggle[aria-expanded='false']) .chat-heading-row {
-  padding-inline-start: calc(5 * var(--rabbithole-module));
-}
 .sidebar-top {
   flex: none;
   padding: var(--rabbithole-module);
@@ -158,10 +151,8 @@ body:has(.sidebar-toggle[aria-expanded='false']) .chat-heading-row {
   border-block-end: thin solid var(--color-border);
 }
 .sidebar-head {
-  justify-content: space-between;
-  /* The logo sits beside the sidebar toggle. */
+  /* The sidebar toggle leads, the logo beside it. */
   padding-block: calc(0.75 * var(--rabbithole-module)) var(--rabbithole-module);
-  padding-inline-start: calc(6 * var(--rabbithole-module));
 }
 .sidebar-mark {
   justify-content: flex-start;

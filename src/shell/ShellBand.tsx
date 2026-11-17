@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type MouseEvent } from 'react';
+import {
+  cloneElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type MouseEvent,
+} from 'react';
 import { flushSync } from 'react-dom';
 import { HStack, Layout as Regions, LayoutContent, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
@@ -7,13 +16,13 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
 import {
   Bars3Icon,
+  ChevronDoubleLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   Cog6ToothIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   RectangleStackIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { savedFocusMode, savePreference } from './preferences';
 import { Logo } from './Logo';
@@ -194,14 +203,19 @@ export default function ShellBand({
     return () => removeEventListener('keydown', shortcut);
   }, [busy, newChat]);
   // Narrow screens keep their header; Focus mode hides that header there.
-  // Desktop: one toggle stays at the top left, a menu button while the sidebar is hidden and a close button beside its logo.
-  const bar = mobile ? 'top bar' : 'sidebar';
+  // Desktop: Focus mode shrinks the sidebar to the rail; the toggle leads both and stays one button.
+  const rail = focusMode && !mobile;
+  const toggleLabel = mobile
+    ? `${focusMode ? 'Show' : 'Hide'} top bar`
+    : focusMode
+      ? 'Show full sidebar'
+      : 'Shrink sidebar to rail';
   const focusButton = (
     <IconButton
       ref={focusToggle}
       className={mobile ? (focusMode ? 'focus-restore' : 'band-focus') : 'sidebar-toggle'}
-      label={`${focusMode ? 'Show' : 'Hide'} ${bar}`}
-      tooltip={`${focusMode ? 'Show' : 'Hide'} ${bar} (Ctrl+Shift+F)`}
+      label={toggleLabel}
+      tooltip={`${toggleLabel} (Ctrl+Shift+F)`}
       aria-expanded={!focusMode}
       aria-keyshortcuts="Control+Shift+F"
       icon={
@@ -214,14 +228,25 @@ export default function ShellBand({
         ) : focusMode ? (
           <Bars3Icon />
         ) : (
-          <XMarkIcon />
+          <ChevronDoubleLeftIcon />
         )
       }
       variant="ghost"
-      size={mobile ? 'sm' : 'lg'}
+      size="sm"
       onClick={toggleFocusMode}
     />
   );
+  // Rail items are the sidebar's own buttons, icon-only with their name as tooltip.
+  const item = (node: ReactNode) =>
+    rail
+      ? cloneElement(
+          node as ReactElement<{ label: string }>,
+          {
+            isIconOnly: true,
+            tooltip: (node as ReactElement<{ label: string }>).props.label,
+          } as object,
+        )
+      : node;
   // Narrow screens: a hot zone along the top edge; the restore button stays in the tab order but shows only on hover or focus.
   // The save alert stays mounted outside it so its alert role is still announced while hidden.
   if (focusMode && mobile)
@@ -241,20 +266,23 @@ export default function ShellBand({
       </>
     );
   const sidebar = (
-    <nav className="sidebar" aria-label="App">
+    <nav className={rail ? 'sidebar sidebar-rail' : 'sidebar'} aria-label="App">
       <VStack gap={0} className="sidebar-top">
         <HStack gap={1} vAlign="center" className="sidebar-head">
-          <Button
-            className="sidebar-mark"
-            label="Rabbithole"
-            tooltip="Open the Library"
-            variant="ghost"
-            size="sm"
-            onClick={library}
-          >
-            <Logo />
-            <span className="band-mark">Rabbithole</span>
-          </Button>
+          {focusButton}
+          {!rail && (
+            <Button
+              className="sidebar-mark"
+              label="Rabbithole"
+              tooltip="Open the Library"
+              variant="ghost"
+              size="sm"
+              onClick={library}
+            >
+              <Logo />
+              <span className="band-mark">Rabbithole</span>
+            </Button>
+          )}
         </HStack>
         <HStack gap={1} vAlign="center" className="sidebar-tools">
           <Button
@@ -264,6 +292,7 @@ export default function ShellBand({
             variant="primary"
             size="sm"
             icon={<PlusIcon />}
+            isIconOnly={rail}
             isDisabled={busy}
             onClick={newChat}
           />
@@ -279,25 +308,17 @@ export default function ShellBand({
           />
         </HStack>
         <VStack gap={0} className="sidebar-views">
-          {views}
-          {viewTab('Library', <RectangleStackIcon />, tab === 'library', library)}
+          {views.map(item)}
+          {item(viewTab('Library', <RectangleStackIcon />, tab === 'library', library))}
         </VStack>
-        {saveAlert}
+        {!rail && saveAlert}
       </VStack>
-      {contents}
+      {!rail && contents}
       <div className="sidebar-foot">
-        {viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings)}
+        {item(viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings))}
       </div>
     </nav>
   );
-  // The save alert stays mounted while the sidebar is hidden so its alert role is still announced.
-  if (focusMode)
-    return (
-      <>
-        {focusButton}
-        {saveAlert && <div className="focus-save">{saveAlert}</div>}
-      </>
-    );
   return mobile ? (
     <header className="shell-band">
       <IconButton
@@ -342,8 +363,9 @@ export default function ShellBand({
     </header>
   ) : (
     <>
-      {focusButton}
       {sidebar}
+      {/* The rail is too narrow for the save alert; it floats beside it and keeps its alert role. */}
+      {rail && saveAlert && <div className="focus-save">{saveAlert}</div>}
     </>
   );
 }

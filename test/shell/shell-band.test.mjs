@@ -62,13 +62,8 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
   t.after(cleanup);
   assert.equal(container.querySelector('.shell-band, header'), null, 'no desktop top bar');
   let band = () => container.querySelector('nav.sidebar');
-  // The toggle sits outside and before the sidebar; its tooltip renders between them.
-  assert.ok(
-    button(container, 'Hide sidebar').compareDocumentPosition(band()) &
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    'sidebar toggle precedes the sidebar',
-  );
   assert.deepEqual([...band().querySelectorAll('button')].map(name), [
+    'Shrink sidebar to rail',
     'Rabbithole',
     'New chat',
     'Search learning trees',
@@ -131,7 +126,92 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
   assert.equal(button(band(), 'Contents').getAttribute('aria-expanded'), 'false');
 });
 
-test('focus mode hides the sidebar, survives a shell remount, keeps the save alert and ignores text entry, alternate chords and held keys', async (t) => {
+// Astryx renders a button's tooltip right after it, and skips aria-describedby when it only repeats the name.
+const tip = (b) => {
+  let e = b.nextElementSibling;
+  while (e && e.getAttribute('role') !== 'tooltip') e = e.nextElementSibling;
+  return e?.textContent;
+};
+
+test('focus mode shrinks the sidebar to a labelled rail of named icons that keep focus mode', async (t) => {
+  const calls = [];
+  function Fixture() {
+    const [tab, setTab] = useState('Map');
+    const views = ['Read', 'Map', 'Knowledge', 'Videos', 'Pieces'].map((label) =>
+      viewTab(label, h('svg'), tab === label, () => setTab(label)),
+    );
+    return h(ShellBand, {
+      mobile: false,
+      tab,
+      busy: false,
+      drawer: false,
+      views,
+      saveAlert: h(SaveAlert, { retry() {} }),
+      contents: h('aside', { className: 'contents' }, h('button', null, '1 Fungi')),
+      setDrawer() {},
+      search: () => calls.push('search'),
+      newChat: () => calls.push('new'),
+      library: () => (calls.push('library'), setTab('library')),
+      settings: () => (calls.push('settings'), setTab('settings')),
+    });
+  }
+  const { container, act, cleanup } = await render(h(Fixture), (w) => {
+    ui(w);
+    w.localStorage.setItem('rabbithole.focus-mode', 'on');
+  });
+  t.after(() => {
+    localStorage.removeItem('rabbithole.focus-mode');
+    return cleanup();
+  });
+  const rail = () => container.querySelector('nav.sidebar-rail[aria-label="App"]');
+  const buttons = () => [...rail().querySelectorAll('button')];
+  assert.deepEqual(buttons().map(name), [
+    'Show full sidebar',
+    'New chat',
+    'Search learning trees',
+    'Read',
+    'Map',
+    'Knowledge',
+    'Videos',
+    'Pieces',
+    'Library',
+    'Settings',
+  ]);
+  assert.ok(
+    rail().querySelector('.sidebar-foot button[aria-label="Settings"]'),
+    'Settings at the foot',
+  );
+  assert.equal(rail().querySelector('.contents'), null, 'no contents outline in the rail');
+  assert.equal(rail().querySelector('[role=alert]'), null);
+  assert.match(
+    container.querySelector('.focus-save [role=alert]').textContent,
+    /Map layout not saved/,
+  );
+  for (const b of buttons()) {
+    assert.equal(b.textContent.trim(), '', `${name(b)} shows its icon only`);
+    assert.ok(tip(b)?.startsWith(name(b)), `${name(b)} tooltip carries its name`);
+  }
+  assert.equal(tip(button(rail(), 'Show full sidebar')), 'Show full sidebar (Ctrl+Shift+F)');
+  assert.equal(tip(button(rail(), 'New chat')), 'New chat (Ctrl+Shift+O)');
+  assert.equal(button(rail(), 'Map').getAttribute('aria-current'), 'page');
+  for (const label of ['Read', 'Knowledge', 'Videos', 'Pieces', 'Map']) {
+    await act(async () => button(rail(), label).click());
+    assert.equal(rail().querySelector('[aria-current=page]').getAttribute('aria-label'), label);
+  }
+  for (const [label, expected] of [
+    ['New chat', 'new'],
+    ['Search learning trees', 'search'],
+    ['Library', 'library'],
+    ['Settings', 'settings'],
+  ]) {
+    await act(async () => button(rail(), label).click());
+    assert.equal(calls.at(-1), expected);
+    assert.ok(rail(), `${label} keeps focus mode`);
+  }
+  assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'on');
+});
+
+test('the toggle and shortcut switch between rail and full sidebar, survive a shell remount and ignore text entry, alternate chords and held keys', async (t) => {
   let mount;
   function Fixture() {
     const [mounted, setMounted] = useState(true);
@@ -147,6 +227,7 @@ test('focus mode hides the sidebar, survives a shell remount, keeps the save ale
           drawer: false,
           views: [],
           saveAlert: h(SaveAlert, { retry() {} }),
+          contents: h('aside', { className: 'contents' }, h('button', null, '1 Fungi')),
           setDrawer() {},
           search() {},
           newChat() {},
@@ -164,8 +245,12 @@ test('focus mode hides the sidebar, survives a shell remount, keeps the save ale
     );
   }
   const { container, act, cleanup } = await render(h(Fixture), ui);
-  t.after(cleanup);
-  const shown = 'nav.sidebar';
+  t.after(() => {
+    localStorage.removeItem('rabbithole.focus-mode');
+    return cleanup();
+  });
+  const full = 'nav.sidebar:not(.sidebar-rail) .contents';
+  const rail = 'nav.sidebar-rail';
   const chord = async (target, options = {}) => {
     const e = new KeyboardEvent('keydown', {
       key: 'F',
@@ -182,7 +267,7 @@ test('focus mode hides the sidebar, survives a shell remount, keeps the save ale
     'input, textarea, select, [contenteditable] span',
   )) {
     assert.equal((await chord(target)).defaultPrevented, false);
-    assert.ok(container.querySelector(shown));
+    assert.ok(container.querySelector(full));
   }
   for (const options of [
     { ctrlKey: false },
@@ -194,7 +279,7 @@ test('focus mode hides the sidebar, survives a shell remount, keeps the save ale
     { key: 'G' },
   ]) {
     assert.equal((await chord(container, options)).defaultPrevented, false);
-    assert.ok(container.querySelector(shown));
+    assert.ok(container.querySelector(full));
   }
   const handled = new KeyboardEvent('keydown', {
     key: 'F',
@@ -205,75 +290,39 @@ test('focus mode hides the sidebar, survives a shell remount, keeps the save ale
   });
   handled.preventDefault();
   await act(async () => container.dispatchEvent(handled));
-  assert.ok(container.querySelector(shown));
+  assert.ok(container.querySelector(full));
   await chord(container);
-  assert.equal(container.querySelector(shown), null);
+  assert.ok(container.querySelector(rail));
+  assert.equal(container.querySelector('.contents'), null);
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'on');
-  assert.match(
-    container.querySelector('.focus-save [role=alert]').textContent,
-    /Map layout not saved/,
-    'save alert still announces while the sidebar is hidden',
-  );
   assert.equal(container.querySelector('.focus-hot-zone'), null, 'desktop has no top hot zone');
   await chord(container);
-  assert.ok(container.querySelector(shown));
+  assert.ok(container.querySelector(full));
   await chord(container);
-  assert.equal(container.querySelector(shown), null);
   await act(async () => mount(false));
   await act(async () => mount(true));
-  assert.equal(container.querySelector(shown), null);
-  assert.equal(button(container, 'Show sidebar').getAttribute('aria-expanded'), 'false');
-  await act(async () => button(container, 'Show sidebar').click());
-  await act(async () => mount(false));
-  await act(async () => mount(true));
-  assert.ok(container.querySelector(shown));
-  assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
-});
-
-test('the desktop sidebar toggle stays one button: a menu icon while hidden, a close icon while shown', async (t) => {
-  const { container, act, cleanup } = await render(
-    h(ShellBand, {
-      mobile: false,
-      tab: 'learning',
-      busy: false,
-      drawer: false,
-      views: [viewTab('Read', null, true, () => {})],
-      saveAlert: null,
-      contents: h('aside', { className: 'contents' }, h('button', null, '1 Fungi')),
-      setDrawer() {},
-      search() {},
-      newChat() {},
-      library() {},
-      settings() {},
-    }),
-    ui,
-  );
-  t.after(() => {
-    localStorage.removeItem('rabbithole.focus-mode');
-    cleanup();
-  });
-  const toggle = container.querySelector('.sidebar-toggle');
-  const icon = () => toggle.querySelector('svg path').getAttribute('d');
-  assert.equal(name(toggle), 'Hide sidebar');
-  assert.equal(
-    container.querySelectorAll('nav.sidebar button[aria-expanded]').length,
-    0,
-    'no second toggle in the sidebar',
-  );
-  const close = icon();
+  assert.ok(container.querySelector(rail), 'the rail survives a remount');
+  // One toggle, first in both the rail and the full sidebar, the same button across the switch.
+  const toggle = container.querySelector('nav button');
+  assert.equal(name(toggle), 'Show full sidebar');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  const railIcon = toggle.querySelector('svg path').getAttribute('d');
   await act(async () => {
     toggle.focus();
     toggle.click();
   });
-  assert.equal(container.querySelector('nav.sidebar'), null);
-  assert.equal(container.querySelector('.sidebar-toggle'), toggle, 'same button, not remounted');
-  assert.equal(name(toggle), 'Show sidebar');
-  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
-  assert.notEqual(icon(), close, 'the icon changes');
+  assert.ok(container.querySelector(full));
+  assert.equal(container.querySelector('nav button'), toggle, 'same button, not remounted');
+  assert.equal(name(toggle), 'Shrink sidebar to rail');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.notEqual(toggle.querySelector('svg path').getAttribute('d'), railIcon, 'the icon changes');
   assert.equal(document.activeElement, toggle);
-  await act(async () => toggle.click());
-  assert.ok(container.querySelector('nav.sidebar'));
-  assert.equal(icon(), close);
+  assert.equal(container.querySelectorAll('button[aria-expanded]').length, 1, 'one toggle');
+  assert.equal(container.querySelector('.focus-save'), null);
+  await act(async () => mount(false));
+  await act(async () => mount(true));
+  assert.ok(container.querySelector(full));
+  assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
 });
 
 test('the sidebar toggle icon does not spin under prefers-reduced-motion', async () => {

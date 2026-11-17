@@ -247,7 +247,10 @@ test('learner messages render markdown with coloured code but no reply-only feat
   const { container } = await mount(t, [summary]);
   const bubble = container.querySelectorAll('.chat-question')[1].querySelector('.question-bubble');
   assert.equal(bubble.querySelector('em').textContent, 'this');
-  assert.deepEqual([...bubble.querySelectorAll('li')].map((li) => li.textContent), ['one', 'two']);
+  assert.deepEqual(
+    [...bubble.querySelectorAll('li')].map((li) => li.textContent),
+    ['one', 'two'],
+  );
   assert.equal(bubble.querySelector('pre code').textContent.trim(), 'int x = 1;');
   assert.equal(bubble.querySelector('.astryx-token-keyword').textContent, 'int');
   assert.equal(bubble.querySelector('.passage, .suggestion, figure'), null, 'no reply-only parts');
@@ -376,22 +379,25 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
     await act(async () => target.dispatchEvent(event));
     return event;
   };
-  const band = () => container.querySelector('.sidebar');
-  const hide = button(container, 'Hide sidebar');
+  // Focus mode shrinks the sidebar to the rail; `band()` is the full sidebar.
+  const band = () => container.querySelector('.sidebar:not(.sidebar-rail)');
+  const rail = () => container.querySelector('.sidebar-rail');
+  const hide = button(container, 'Shrink sidebar to rail');
   assert.equal(hide.getAttribute('aria-expanded'), 'true');
   await act(async () => {
     hide.focus();
     hide.click();
   });
   assert.equal(band(), null);
+  assert.ok(rail());
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'on');
-  let restore = button(container, 'Show sidebar');
+  let restore = button(container, 'Show full sidebar');
   assert.equal(restore.getAttribute('aria-expanded'), 'false');
   assert.equal(restore, hide, 'the focused toggle stays put');
   assert.equal(document.activeElement, restore);
   await act(async () => restore.click());
   assert.ok(band());
-  assert.equal(document.activeElement, button(container, 'Hide sidebar'));
+  assert.equal(document.activeElement, button(container, 'Shrink sidebar to rail'));
   assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
   for (const target of [
     container.querySelector('[role=textbox]'),
@@ -402,23 +408,23 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   }
   assert.equal((await key(container.querySelector('.question-bubble'))).defaultPrevented, true);
   assert.equal(band(), null);
-  await key(container);
-  await act(async () => button(band(), 'Map').click());
+  // Rail views switch pages and keep the rail.
+  await act(async () => button(rail(), 'Map').click());
+  assert.ok(rail());
   const canvas = container.querySelector('.tree-canvas');
+  assert.ok(canvas);
   assert.equal((await key(canvas, { key: 'f', shiftKey: false })).defaultPrevented, false);
+  assert.ok(rail());
+  assert.equal((await key(canvas)).defaultPrevented, true);
   assert.ok(band());
   assert.equal((await key(canvas)).defaultPrevented, true);
-  assert.equal(band(), null);
-  await key(canvas);
   for (const label of ['Knowledge', 'Videos', 'Pieces', 'Settings']) {
-    await act(async () => button(band(), label).click());
-    await act(async () => button(container, 'Hide sidebar').click());
-    assert.equal(band(), null, label);
-    await act(async () => button(container, 'Show sidebar').click());
-    assert.ok(band());
+    await act(async () => button(rail(), label).click());
+    assert.ok(rail(), label);
+    await act(async () => button(container, 'Show full sidebar').click());
+    assert.ok(band(), label);
     assert.equal((await key(container)).defaultPrevented, true);
     assert.equal(band(), null, label);
-    await key(container);
   }
 });
 
