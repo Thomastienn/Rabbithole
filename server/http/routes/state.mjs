@@ -8,6 +8,7 @@ export async function stateRoutes(req, res, url, ctx) {
     return json(res, 200, {
       csrf: ctx.csrf,
       auth: ctx.auth.status(),
+      firstRun: !store.setupFinished(),
       trees: store.list(),
       active: [...ctx.active.keys()],
       discussing: [...new Set([...ctx.discussing.values()].map((j) => j.conversation))],

@@ -105,6 +105,12 @@ export const profiles = {
         .run(id, id).changes === 1
     );
   },
+  setupFinished() {
+    return !!this.db.prepare('SELECT finished FROM first_run WHERE id=1').get().finished;
+  },
+  finishSetup() {
+    this.db.prepare('UPDATE first_run SET finished=1 WHERE id=1').run();
+  },
   suggestionSettings() {
     const row = this.db.prepare('SELECT enabled FROM suggestion_settings WHERE id=1').get();
     return { enabled: row ? !!row.enabled : true, ...roles(this.profileRow()).quick };

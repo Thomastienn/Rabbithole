@@ -38,6 +38,11 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     return false;
   }
   if (req.method !== 'POST') return false;
+  // Confirming a chat model and "Set up later" both end first-run setup for good.
+  if (url.pathname === '/api/setup') {
+    store.finishSetup();
+    return json(res, 200, { firstRun: false });
+  }
   if (url.pathname === '/api/settings/tutor-tools') {
     if (!Object.hasOwn(TUTOR_TOOLS, body?.name) || typeof body?.enabled !== 'boolean')
       return json(res, 400, { error: 'Choose a listed tutor tool and turn it on or off.' });

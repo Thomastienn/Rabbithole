@@ -34,6 +34,7 @@ export type Providers = Record<string, { label: string; connected: boolean }>;
 export type State = {
   csrf: string;
   auth: { connected: boolean; email: string | null };
+  firstRun?: boolean;
   trees: Summary[];
   active: string[];
   discussing?: string[];

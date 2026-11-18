@@ -1,0 +1,156 @@
+import { useState } from 'react';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { Heading, Text } from '@astryxdesign/core/Text';
+import { Button } from '@astryxdesign/core/Button';
+import { Selector } from '@astryxdesign/core/Selector';
+import { Divider } from '@astryxdesign/core/Divider';
+import type { Model } from '../settings/models';
+import type { ModelSelection, Providers } from '../chat/types';
+
+const key = (m: Pick<Model, 'provider' | 'model'>) => `${m.provider}\n${m.model}`;
+
+// First-run setup: sign in through the existing flows, confirm a prefilled chat model, or leave it for later.
+export default function FirstRunSetup({
+  api,
+  models,
+  providers,
+  modelError,
+  auth,
+  loadModels,
+  signIn,
+  done,
+}: {
+  api: (path: string, body?: unknown) => Promise<unknown>;
+  models?: Model[];
+  providers?: Providers;
+  modelError: string;
+  auth?: { connected: boolean; email: string | null };
+  loadModels: () => void;
+  signIn: () => Promise<void>;
+  done: (chat: ModelSelection | null) => void;
+}) {
+  const [picked, setPicked] = useState<string>(),
+    [pending, setPending] = useState(false),
+    [error, setError] = useState('');
+  const available = (models ?? []).filter((m) => providers?.[m.provider]?.connected);
+  // Prefilled with the first signed-in provider's default model at its default effort.
+  const chosen =
+    available.find((m) => key(m) === picked) ?? available.find((m) => m.isDefault) ?? available[0];
+  // Smart and quick thinking follow the chat model in a new profile, so only chat is saved.
+  async function finish(chat: ModelSelection | null) {
+    setPending(true);
+    setError('');
+    try {
+      if (chat) await api('/api/settings/chat', chat);
+      await api('/api/setup', {});
+      done(chat);
+    } catch (e) {
+      setError((e as Error).message);
+      setPending(false);
+    }
+  }
+  const claude = providers?.claude?.connected;
+  return (
+    <VStack className="first-run" gap={5} role="region" aria-labelledby="first-run-heading">
+      <VStack gap={2}>
+        <Heading level={2} id="first-run-heading">
+          Before your first question
+        </Heading>
+        <Text color="secondary">
+          Sign in to Claude or Codex with your own plan, then confirm the model that answers you.
+        </Text>
+      </VStack>
+      <VStack gap={2}>
+        <Heading level={3}>Claude</Heading>
+        <Text type="supporting">
+          {claude
+            ? 'Signed in through Claude Code.'
+            : 'Run claude in a terminal and sign in, then check again.'}
+        </Text>
+        {!claude && (
+          <HStack>
+            <Button
+              label="Check again"
+              variant="secondary"
+              size="sm"
+              onClick={() => loadModels()}
+            />
+          </HStack>
+        )}
+      </VStack>
+      <Divider />
+      <VStack gap={2}>
+        <Heading level={3}>Codex</Heading>
+        <Text type="supporting">
+          {auth?.connected
+            ? `Connected ${auth.email ?? 'to ChatGPT'}.`
+            : 'Sign in with your ChatGPT account.'}
+        </Text>
+        {!auth?.connected && (
+          <HStack>
+            <Button
+              label="Continue with ChatGPT"
+              variant="secondary"
+              size="sm"
+              data-oai-siwc-button=""
+              onClick={() => void signIn().catch((e) => setError((e as Error).message))}
+            />
+          </HStack>
+        )}
+      </VStack>
+      <Divider />
+      <VStack gap={2}>
+        <Heading level={3}>Chat model</Heading>
+        {chosen ? (
+          <Selector
+            label="Chat model"
+            value={key(chosen)}
+            width="100%"
+            hasSearch
+            isDisabled={pending}
+            options={Object.entries(providers ?? {})
+              .map(([provider, { label }]) => ({
+                type: 'section' as const,
+                title: label,
+                options: available
+                  .filter((m) => m.provider === provider)
+                  .map((m) => ({ value: key(m), label: m.label })),
+              }))
+              .filter((section) => section.options.length)}
+            onChange={setPicked}
+          />
+        ) : (
+          <Text type="supporting">
+            {models ? 'Sign in above to choose a chat model.' : 'Loading models…'}
+          </Text>
+        )}
+        {modelError && !chosen && (
+          <Text type="supporting" role="status">
+            {modelError}
+          </Text>
+        )}
+        {error && (
+          <Text type="supporting" role="alert">
+            {error}
+          </Text>
+        )}
+      </VStack>
+      <HStack gap={3} vAlign="center" hAlign="between" wrap="wrap">
+        <Button
+          label="Set up later"
+          variant="ghost"
+          isDisabled={pending}
+          onClick={() => void finish(null)}
+        />
+        <Button
+          label="Start asking"
+          variant="primary"
+          isDisabled={!chosen || pending}
+          onClick={() =>
+            chosen && void finish({ provider: chosen.provider, model: chosen.model, effort: null })
+          }
+        />
+      </HStack>
+    </VStack>
+  );
+}

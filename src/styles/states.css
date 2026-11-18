@@ -156,6 +156,15 @@
   font-weight: 700;
   text-align: center;
 }
+.first-run {
+  width: min(100%, 520px);
+  margin: 48px auto;
+  text-align: left;
+}
+.first-run h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
 .tree-loading {
   width: min(100%, 640px);
 }

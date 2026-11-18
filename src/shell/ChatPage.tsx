@@ -9,6 +9,7 @@ import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
 import { savedVim, savePreference } from './preferences';
 import LibraryPanel from './LibraryPanel';
 import ReturnPanel from './ReturnPanel';
+import FirstRunSetup from './FirstRunSetup';
 import type { Appearance, ThemeChoice } from './appearance';
 import type { MapActions } from '../map/TreeOverview';
 import MapMenu from '../map/MapMenu';
@@ -307,6 +308,20 @@ export default function ChatPage({
                           <TreeLoading />
                         ) : selected.current ? (
                           <TreeLoadFailure retry={() => void select(selected.current!)} />
+                        ) : state.firstRun ? (
+                          <FirstRunSetup
+                            api={api}
+                            models={models}
+                            providers={providers}
+                            modelError={modelError}
+                            auth={state.auth}
+                            loadModels={() => void loadModels()}
+                            signIn={signIn}
+                            done={(chat) => {
+                              c.setState((s) => s && { ...s, firstRun: false });
+                              if (chat) model.chooseModel(chat.provider, chat.model!, chat.effort);
+                            }}
+                          />
                         ) : (
                           tab === 'learning' && firstQuestion
                         )}

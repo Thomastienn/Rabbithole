@@ -400,6 +400,11 @@ export function open(path) {
     )
       this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE branches ADD COLUMN line INTEGER;
           ALTER TABLE branches ADD COLUMN speaker TEXT; ALTER TABLE branches ADD COLUMN discussion TEXT; COMMIT;`);
+    // First-run setup: decided once; an upgraded database with a profile (holding any chosen model) or a tree skips it.
+    if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='first_run'").get())
+      this.db
+        .exec(`CREATE TABLE first_run (id INTEGER PRIMARY KEY CHECK(id=1), finished INTEGER NOT NULL CHECK(finished IN (0,1)));
+          INSERT INTO first_run SELECT 1, EXISTS(SELECT 1 FROM profiles) OR EXISTS(SELECT 1 FROM trees);`);
     // Trees on a fresh database may have no provider; older databases keep assuming the default provider.
     this.assumesProvider = !!this.db
       .prepare('PRAGMA table_info(trees)')
