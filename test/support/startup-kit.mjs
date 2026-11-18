@@ -12,7 +12,9 @@ export function launch(
     cwd,
     env: {
       ...process.env,
+      // CLI detection also searches home install folders, so HOME hides them too.
       PATH: dir,
+      HOME: dir,
       RABBITHOLE_DATA_DIR: dir,
       RABBITHOLE_PORT: String(port),
       ...env,

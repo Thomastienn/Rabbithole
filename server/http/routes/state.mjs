@@ -55,6 +55,8 @@ export async function stateRoutes(req, res, url, ctx) {
         {
           label: providers[id]?.label ?? LABELS[id] ?? id,
           connected: results[ids.indexOf(id)]?.status === 'fulfilled',
+          // Only CLI providers answer; false means setup shows the install page.
+          ...(providers[id]?.installed && { installed: providers[id].installed() }),
         },
       ]),
     );

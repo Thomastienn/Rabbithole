@@ -17,10 +17,11 @@ const MODELS = [
 // Runs the user-installed Claude Code CLI with its own native sign-in. Never reads or stores Claude credentials.
 export class Claude {
   readsImages = true;
-  constructor(dir, launch = spawn, run = execFile) {
+  constructor(dir, launch = spawn, run = execFile, bin = () => 'claude') {
     this.cwd = join(dir, 'claude-workspace');
     this.launch = launch;
     this.run = run;
+    this.bin = bin;
     this.children = new Set();
   }
   // No API key fallback: the CLI must use the learner's own subscription login.
@@ -28,9 +29,19 @@ export class Claude {
     const { ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ...env } = process.env;
     return env;
   }
+  installed() {
+    return !!this.bin();
+  }
+  cli() {
+    const bin = this.bin();
+    if (!bin) throw new Error('Claude Code is not installed. Install it, then check again.');
+    return bin;
+  }
   async status() {
+    const bin = this.bin();
+    if (!bin) return { connected: false, email: null };
     const out = await new Promise((resolve) =>
-      this.run('claude', ['auth', 'status'], { env: this.env(), timeout: 15000 }, (error, stdout) =>
+      this.run(bin, ['auth', 'status'], { env: this.env(), timeout: 15000 }, (error, stdout) =>
         resolve(error && !stdout ? null : stdout),
       ),
     );
@@ -122,7 +133,7 @@ export class Claude {
       return;
     }
     // The CLI gives its environment effort precedence over --effort.
-    const child = this.launch('claude', args, {
+    const child = this.launch(this.cli(), args, {
       cwd: this.cwd,
       env: { ...this.env(), ...(tree.effort != null && { CLAUDE_CODE_EFFORT_LEVEL: tree.effort }) },
       stdio: ['pipe', 'pipe', 'pipe'],

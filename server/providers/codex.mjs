@@ -8,8 +8,9 @@ import { toolEvents } from './toolEvents.mjs';
 
 export class Codex {
   readsImages = true;
-  constructor(auth, dir, launch = spawn, toolSession = null) {
+  constructor(auth, dir, launch = spawn, toolSession = null, bin = () => 'codex') {
     this.auth = auth;
+    this.bin = bin;
     this.dir = dir;
     this.launch = launch;
     this.pending = new Map();
@@ -27,8 +28,13 @@ export class Codex {
     });
     return this.starting;
   }
+  installed() {
+    return !!this.bin();
+  }
   async start(token) {
     this.close();
+    const bin = this.bin();
+    if (!bin) throw new Error('Codex is not installed. Install it, then check again.');
     const cwd = join(this.dir, 'workspace'),
       home = join(this.dir, 'codex');
     mkdirSync(cwd, { recursive: true, mode: 0o700 });
@@ -86,7 +92,7 @@ export class Codex {
       'stdio://',
       ...Object.entries(configs).flatMap(([k, v]) => ['-c', `${k}=${toml(v)}`]),
     ];
-    const child = this.launch('codex', args, {
+    const child = this.launch(bin, args, {
       cwd,
       env: { PATH: process.env.PATH, CODEX_HOME: home, ACCESS_TOKEN: token },
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -194,11 +200,17 @@ export class Codex {
     if ((tree.nativeTools?.length || tree.tools?.length) && !this.toolSession && !signal.aborted) {
       const mcp = tree.tools?.length ? await tree.mcp.open(tree, emit, signal) : null;
       // A fresh CLI per tool turn reloads its header even on resumed threads; concurrent turns cannot share credentials.
-      const worker = new Codex(this.auth, this.dir, this.launch, {
-        mcp,
-        tools: tree.tools ?? [],
-        webSearch: !!tree.nativeTools?.includes('web_search'),
-      });
+      const worker = new Codex(
+        this.auth,
+        this.dir,
+        this.launch,
+        {
+          mcp,
+          tools: tree.tools ?? [],
+          webSearch: !!tree.nativeTools?.includes('web_search'),
+        },
+        this.bin,
+      );
       this.workers.add(worker);
       try {
         return await worker.generate(tree, text, emit, saveThread, signal);

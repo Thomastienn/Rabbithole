@@ -7,6 +7,7 @@ import { Store } from './store.mjs';
 import { Auth } from './providers/auth.mjs';
 import { Codex } from './providers/codex.mjs';
 import { Claude } from './providers/claude.mjs';
+import { cliPath } from './providers/findCli.mjs';
 import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
 import { localEmbedder } from './media/embedder.mjs';
@@ -63,14 +64,14 @@ try {
   store.pruneEmpty();
   const downloads = downloadManager(videoTools());
   const auth = new Auth(dir),
-    claude = new Claude(dir),
+    claude = new Claude(dir, spawn, execFile, cliPath('claude')),
     endpoint = new OpenAI(dir),
     embed = localEmbedder(dir);
   app = createApp({
     store,
     auth,
     endpoint,
-    providers: { claude, codex: new Codex(auth, dir) },
+    providers: { claude, codex: new Codex(auth, dir, spawn, null, cliPath('codex')) },
     // Existing installs keep assuming Claude for an unset chat role; a fresh install assumes nothing.
     defaultProvider: store.assumesProvider ? 'claude' : null,
     dir,

@@ -247,7 +247,13 @@ test('switching providers keeps history, starts a fresh session, children inheri
   const app = createApp({
     store,
     auth: { status: () => ({ connected: true }) },
-    providers: { claude: fake('claude', () => claudeDown), codex: fake('codex', () => false) },
+    providers: {
+      claude: fake('claude', () => claudeDown),
+      codex: Object.assign(
+        fake('codex', () => false),
+        { installed: () => false },
+      ),
+    },
     defaultProvider: 'claude',
   });
   await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
@@ -269,6 +275,8 @@ test('switching providers keeps history, starts a fresh session, children inheri
       models.models.map((m) => m.provider),
       ['claude', 'codex'],
     );
+    assert.equal(models.providers.codex.installed, false, 'a missing CLI is reported for setup');
+    assert.equal('installed' in models.providers.claude, false);
     assert.equal(
       (await post(`/api/trees/${root.id}/model`, { provider: 'codex', model: 'claude-m' })).status,
       400,

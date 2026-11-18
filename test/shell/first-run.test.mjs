@@ -6,7 +6,7 @@ import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
 
 // A fresh install: no trees, no chat model, nothing signed in until `signedIn`.
-async function mount(t, { firstRun = true, signedIn = true } = {}) {
+async function mount(t, { firstRun = true, signedIn = true, cli = { missing: false } } = {}) {
   const posts = [];
   const saved = globalThis.fetch;
   globalThis.fetch = async (path, options) => {
@@ -22,21 +22,26 @@ async function mount(t, { firstRun = true, signedIn = true } = {}) {
             firstRun,
           }
         : path === '/api/models'
-          ? signedIn
+          ? cli.missing
             ? {
-                models: [
-                  { provider: 'claude', model: 'haiku', label: 'Haiku', efforts: [] },
-                  {
-                    provider: 'claude',
-                    model: 'opus',
-                    label: 'Opus',
-                    isDefault: true,
-                    efforts: [],
-                  },
-                ],
-                providers: { claude: { label: 'Claude', connected: true } },
+                models: [],
+                providers: { claude: { label: 'Claude', connected: false, installed: false } },
               }
-            : { models: [], providers: { claude: { label: 'Claude', connected: false } } }
+            : signedIn
+              ? {
+                  models: [
+                    { provider: 'claude', model: 'haiku', label: 'Haiku', efforts: [] },
+                    {
+                      provider: 'claude',
+                      model: 'opus',
+                      label: 'Opus',
+                      isDefault: true,
+                      efforts: [],
+                    },
+                  ],
+                  providers: { claude: { label: 'Claude', connected: true } },
+                }
+              : { models: [], providers: { claude: { label: 'Claude', connected: false } } }
           : path === '/api/settings/chat'
             ? options?.method === 'POST'
               ? JSON.parse(options.body)
@@ -104,4 +109,17 @@ test('an ended or upgraded install opens on the first question, not setup', asyn
   const { container } = await mount(t, { firstRun: false });
   assert.equal(container.querySelector('.first-run'), null);
   assert.ok(container.querySelector('.first-question'));
+});
+
+test('a missing CLI shows its official install page and command; "Check again" finds it once installed', async (t) => {
+  const cli = { missing: true };
+  const { container, click } = await mount(t, { cli });
+  const setup = container.querySelector('.first-run');
+  assert.match(setup.textContent, /Claude Code is not installed/);
+  assert.match(setup.textContent, /curl -fsSL https:\/\/claude\.ai\/install\.sh \| bash/);
+  assert.ok(setup.querySelector('a[href="https://code.claude.com/docs/en/setup"]'));
+  cli.missing = false;
+  await click('Check again');
+  assert.doesNotMatch(container.textContent, /not installed/);
+  assert.match(container.querySelector('.first-run').textContent, /Signed in through Claude Code/);
 });

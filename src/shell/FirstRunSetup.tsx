@@ -4,8 +4,42 @@ import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Divider } from '@astryxdesign/core/Divider';
+import { Link } from '@astryxdesign/core/Link';
+import { Code } from '@astryxdesign/core/Code';
 import type { Model } from '../settings/models';
 import type { ModelSelection, Providers } from '../chat/types';
+
+// Official installers; the app never installs or bundles either CLI.
+const INSTALL = {
+  claude: {
+    name: 'Claude Code',
+    page: 'https://code.claude.com/docs/en/setup',
+    command: 'curl -fsSL https://claude.ai/install.sh | bash',
+  },
+  codex: {
+    name: 'Codex',
+    page: 'https://developers.openai.com/codex/cli',
+    command: 'npm install -g @openai/codex',
+  },
+};
+
+function Install({ cli, check }: { cli: keyof typeof INSTALL; check: () => void }) {
+  const { name, page, command } = INSTALL[cli];
+  return (
+    <VStack gap={2}>
+      <Text type="supporting">
+        {name} is not installed. Install it from{' '}
+        <Link href={page} isExternalLink>
+          the official {name} setup page
+        </Link>{' '}
+        or run <Code>{command}</Code> in a terminal, then check again.
+      </Text>
+      <HStack>
+        <Button label="Check again" variant="secondary" size="sm" onClick={check} />
+      </HStack>
+    </VStack>
+  );
+}
 
 const key = (m: Pick<Model, 'provider' | 'model'>) => `${m.provider}\n${m.model}`;
 
@@ -50,6 +84,7 @@ export default function FirstRunSetup({
     }
   }
   const claude = providers?.claude?.connected;
+  const missing = (cli: string) => providers?.[cli]?.installed === false;
   return (
     <VStack className="first-run" gap={5} role="region" aria-labelledby="first-run-heading">
       <VStack gap={2}>
@@ -62,40 +97,52 @@ export default function FirstRunSetup({
       </VStack>
       <VStack gap={2}>
         <Heading level={3}>Claude</Heading>
-        <Text type="supporting">
-          {claude
-            ? 'Signed in through Claude Code.'
-            : 'Run claude in a terminal and sign in, then check again.'}
-        </Text>
-        {!claude && (
-          <HStack>
-            <Button
-              label="Check again"
-              variant="secondary"
-              size="sm"
-              onClick={() => loadModels()}
-            />
-          </HStack>
+        {missing('claude') ? (
+          <Install cli="claude" check={loadModels} />
+        ) : (
+          <>
+            <Text type="supporting">
+              {claude
+                ? 'Signed in through Claude Code.'
+                : 'Run claude in a terminal and sign in, then check again.'}
+            </Text>
+            {!claude && (
+              <HStack>
+                <Button
+                  label="Check again"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => loadModels()}
+                />
+              </HStack>
+            )}
+          </>
         )}
       </VStack>
       <Divider />
       <VStack gap={2}>
         <Heading level={3}>Codex</Heading>
-        <Text type="supporting">
-          {auth?.connected
-            ? `Connected ${auth.email ?? 'to ChatGPT'}.`
-            : 'Sign in with your ChatGPT account.'}
-        </Text>
-        {!auth?.connected && (
-          <HStack>
-            <Button
-              label="Continue with ChatGPT"
-              variant="secondary"
-              size="sm"
-              data-oai-siwc-button=""
-              onClick={() => void signIn().catch((e) => setError((e as Error).message))}
-            />
-          </HStack>
+        {missing('codex') ? (
+          <Install cli="codex" check={loadModels} />
+        ) : (
+          <>
+            <Text type="supporting">
+              {auth?.connected
+                ? `Connected ${auth.email ?? 'to ChatGPT'}.`
+                : 'Sign in with your ChatGPT account.'}
+            </Text>
+            {!auth?.connected && (
+              <HStack>
+                <Button
+                  label="Continue with ChatGPT"
+                  variant="secondary"
+                  size="sm"
+                  data-oai-siwc-button=""
+                  onClick={() => void signIn().catch((e) => setError((e as Error).message))}
+                />
+              </HStack>
+            )}
+          </>
         )}
       </VStack>
       <Divider />

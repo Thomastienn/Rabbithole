@@ -96,7 +96,8 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
   fake.models = [{ id: 'local-tutor', api_key: apiKey, owned_by: apiKey }, { id: apiKey }];
   const launch = async () => {
     const child = spawn(process.execPath, ['server/main.mjs'], {
-      env: { ...process.env, PATH: dir, RABBITHOLE_DATA_DIR: dir, RABBITHOLE_PORT: '0' },
+      // HOME too: CLI detection also searches the usual home install folders.
+      env: { ...process.env, PATH: dir, HOME: dir, RABBITHOLE_DATA_DIR: dir, RABBITHOLE_PORT: '0' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     const { exited, waitFor, output } = processOutput(child);
