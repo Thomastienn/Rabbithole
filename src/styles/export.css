@@ -1,0 +1,49 @@
+/* Export MP4: a progress ring around the icon while the MP4 renders. */
+.export-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.export-ring {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0;
+  width: 32px;
+  height: 32px;
+  translate: -2px -50%;
+  rotate: -90deg;
+  pointer-events: none;
+}
+.export-ring circle {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.3s ease;
+}
+.export-error {
+  max-width: 24ch;
+}
+.video-lightbox-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+/* Open large on a live video shows its stage full screen, so Export MP4 stays reachable. */
+.video-stage:fullscreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background-body);
+}
+.video-stage:fullscreen .video-live {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .export-ring circle {
+    transition: none;
+  }
+}

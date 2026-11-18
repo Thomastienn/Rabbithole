@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { generateDiagram } from '../../media/diagrams.mjs';
 import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
+import { exportVideo } from '../../media/video-export.mjs';
 import {
   PIECES_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
@@ -336,5 +337,50 @@ export function mediaJobs(ctx) {
       });
     return running;
   };
-  return { live, startVideo, startDrawing };
+  // One export per video, keyed by its library id; a failed one stays listed until the next press retries it.
+  const startExport = (id) => {
+    const current = ctx.exports.get(id);
+    if (current && !current.error) return current;
+    const saved = store.libraryCuts(id);
+    const running = { controller: new AbortController(), artifact: id, progress: 0 };
+    const fields = { id, task: 'export' };
+    let step = 0;
+    ctx.exports.set(id, running);
+    videoJobs.add(running);
+    ctx.log(formatLog('info', 'media', 'export', fields));
+    running.done = exportVideo({
+      dir,
+      id,
+      attempt: saved.attempt,
+      source: saved.source,
+      signal: running.controller.signal,
+      render: ctx.videoRender,
+      onProgress: (progress) => {
+        running.progress = Math.max(running.progress, Math.min(1, progress));
+        while (step < Math.floor(running.progress * 4))
+          ctx.log(formatLog('info', 'media', 'render', { ...fields, progress: ++step * 25 }));
+      },
+    })
+      .then(() => {
+        ctx.log(formatLog('info', 'media', 'exported', fields));
+        if (ctx.exports.get(id) === running) ctx.exports.delete(id);
+      })
+      .catch((error) => {
+        const stopped = running.controller.signal.aborted;
+        ctx.log(
+          formatLog(stopped ? 'info' : 'error', 'media', stopped ? 'stopped' : 'failed', {
+            ...fields,
+            ...(!stopped && {
+              cause: errorCause(error),
+              next: 'Run npm start to check or repair the video runtime, then Retry the export.',
+            }),
+          }),
+        );
+        if (!stopped) running.error = error.message;
+        else if (ctx.exports.get(id) === running) ctx.exports.delete(id);
+      })
+      .finally(() => videoJobs.delete(running));
+    return running;
+  };
+  return { live, startVideo, startDrawing, startExport };
 }

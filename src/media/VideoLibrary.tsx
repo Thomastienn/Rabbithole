@@ -126,6 +126,11 @@ export default function VideoLibrary({
                 }
                 media={`/api/videos/${v.id}/media`}
                 cuts={v.live ? undefined : `/api/videos/${v.id}/cuts`}
+                onExported={() =>
+                  setVideos((list) =>
+                    list?.map((x) => (x.id === v.id ? { ...x, exported: true } : x)),
+                  )
+                }
                 actions={
                   !v.live && (
                     <>

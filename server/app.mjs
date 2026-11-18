@@ -136,6 +136,8 @@ export function createApp({
     discussing: new Map(),
     videos: new Map(),
     videoJobs: new Set(),
+    // Video id -> running or failed export { controller, progress, done, error? }.
+    exports: new Map(),
     // Branch-first: child id -> background compaction { controller, done, settled, error }; kept after failure, removed on success.
     compactions: new Map(),
     // Parent id -> compaction started when the branch form opened { key, controller, run }; submit reuses it while the key matches.

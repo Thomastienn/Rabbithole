@@ -18,6 +18,13 @@ const compileCut = (code) =>
     },
   }).outputText;
 
+const exportState = (ctx, id) => {
+  const job = ctx.exports.get(id);
+  if (job?.error) return { exported: false, error: job.error };
+  if (job) return { exported: false, exporting: true, progress: job.progress };
+  return { exported: readable(mediaPath(ctx.dir, id)) };
+};
+
 // The video library, media playback, artifact reads and artifact job actions.
 export async function mediaRoutes(req, res, url, ctx, body) {
   const { store, json, dir, live, videos } = ctx;
@@ -109,6 +116,9 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         code3d: whole.source3d ? compileCut(whole.source3d) : null,
       });
     }
+    // Export state of one saved video, polled by its Export MP4 button.
+    const exportMatch = url.pathname.match(/^\/api\/videos\/([^/]+)\/export$/);
+    if (exportMatch) return json(res, 200, exportState(ctx, exportMatch[1]));
     const usageMatch = url.pathname.match(/^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/usage$/);
     if (usageMatch) return json(res, 200, store.videoUsage(usageMatch[1], usageMatch[2]));
     // Media is located only from the server-issued artifact id, never from a generated path or URL.
@@ -121,6 +131,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             kind: 'video',
             status: 'ready',
             id: libraryMatch[1],
+            title: store.libraryVideo(libraryMatch[1]).title,
           };
       const info =
         (artifact?.kind === 'video' &&
@@ -142,6 +153,10 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         'Content-Length': end - start + 1,
         'Accept-Ranges': 'bytes',
         ...(req.headers.range && { 'Content-Range': `bytes ${start}-${end}/${info.size}` }),
+        // An export delivers the MP4 as a file download (the desktop shell shows a save dialog).
+        ...(url.searchParams.has('download') && {
+          'Content-Disposition': `attachment; filename="video.mp4"; filename*=UTF-8''${encodeURIComponent(`${artifact.title || 'video'}.mp4`)}`,
+        }),
       });
       createReadStream(mediaPath(dir, artifact.id), { start, end })
         .on('error', () => res.destroy())
@@ -233,6 +248,21 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     return false;
   }
   if (req.method !== 'POST') return false;
+  // Starts or joins the video's one export; an exported video answers at once with no render.
+  const exportStart = url.pathname.match(/^\/api\/videos\/([^/]+)\/export$/);
+  if (exportStart) {
+    const [, id] = exportStart;
+    if (!store.libraryVideo(id))
+      return json(res, 404, { error: 'Video not found in the library.' });
+    if (!readable(mediaPath(dir, id))) {
+      if (!savedCuts(store.libraryCuts(id).source) || !existsSync(join(dir, 'video-work', id)))
+        return json(res, 409, {
+          error: 'This video’s saved work is missing, so it cannot be exported.',
+        });
+      ctx.startExport(id);
+    }
+    return json(res, 200, exportState(ctx, id));
+  }
   // Desktop actions locate files only from a server-issued library id; the body carries no path or command.
   const libraryAction = url.pathname.match(/^\/api\/videos\/([^/]+)\/(reveal|trash)$/);
   if (libraryAction) {
@@ -271,6 +301,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         });
       }
     store.removeLibraryVideo(id);
+    ctx.exports.get(id)?.controller.abort(new Error('Video moved to trash.'));
     // Production work is private app data, so it is deleted rather than trashed.
     await rm(join(dir, 'video-work', id), { recursive: true, force: true });
     return json(res, 200, { trashed: !!info, missing: !info });

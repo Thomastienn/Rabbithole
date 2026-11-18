@@ -7,10 +7,12 @@ import type { Anchor } from './branch';
 import type { State, Tree } from './types';
 import { conversationAddresses } from '../map/treeList';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
+import { session } from '../media/ExportButton';
 
 // State and refs shared by the ChatPage hooks and regions; each hook takes this object.
 export function useChatState() {
   const [state, setState] = useState<State>();
+  session.csrf = state?.csrf ?? '';
   const [tree, setTree] = useState<Tree>();
   const addresses = useMemo(() => conversationAddresses(state?.trees ?? []), [state?.trees]);
   const [previews, setPreviews] = useState<Record<string, Preview>>({});

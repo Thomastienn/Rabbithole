@@ -21,8 +21,8 @@ import { detectManim } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
 
 const MAX_MEDIA = 200 * 1024 * 1024;
-const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
-const MANIM_KIT = readFileSync(new URL('./manim-kit.py', import.meta.url), 'utf8');
+export const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
+export const MANIM_KIT = readFileSync(new URL('./manim-kit.py', import.meta.url), 'utf8');
 // The learner must name a video; the tutor's block alone never starts one.
 export const asksForVideo = (text) =>
   !/\b(?:don['’]t|do not|never)\s+(?:\w+\s+){0,3}(?:make|create|generate|render|produce|show|give|animate)\b/i.test(

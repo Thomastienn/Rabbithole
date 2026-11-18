@@ -14,6 +14,7 @@ import {
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import type { Artifact } from './artifacts';
 import LivePlayer from './LivePlayer';
+import ExportButton from './ExportButton';
 import VideoUsage from './VideoUsage';
 import { STEPS, elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
 
@@ -66,6 +67,7 @@ export default function VideoCard({
   media = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/media`,
   cuts = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/cuts`,
   actions,
+  onExported,
 }: {
   artifact: Pick<
     Artifact,
@@ -92,6 +94,7 @@ export default function VideoCard({
   media?: string;
   cuts?: string;
   actions?: ReactNode;
+  onExported?: () => void;
 }) {
   const id = useId();
   const [enlarged, setEnlarged] = useState(false);
@@ -103,14 +106,12 @@ export default function VideoCard({
     state === 'pending' && (artifact.phase === 'playable' || artifact.phase === 'saving');
   const exported = state === 'ready' && artifact.exported !== false;
   const stage = useRef<HTMLElement>(null);
-  // The live player has no Lightbox form, so Open large shows it full screen.
+  // The live player has no Lightbox form, so Open large shows its stage, with Export MP4, full screen.
   const enlarge = () =>
-    exported
-      ? setEnlarged(true)
-      : void stage.current
-          ?.querySelector('iframe')
-          ?.requestFullscreen()
-          .catch(() => {});
+    exported ? setEnlarged(true) : void stage.current?.requestFullscreen().catch(() => {});
+  const exportButton = state === 'ready' && (
+    <ExportButton id={artifact.id} title={artifact.title} onExported={onExported} />
+  );
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!drafting) return;
@@ -243,6 +244,7 @@ export default function VideoCard({
               </Text>
               {status}
             </Text>
+            {exportButton}
             {state === 'ready' && onAction && (
               <IconButton
                 label={`Try a different version of video: ${artifact.title}`}
@@ -335,7 +337,12 @@ export default function VideoCard({
             media={{
               src: media,
               alt: `Video: ${artifact.title}`,
-              caption: artifact.title,
+              caption: (
+                <span className="video-lightbox-caption">
+                  {artifact.title}
+                  {exportButton}
+                </span>
+              ),
               type: 'video',
             }}
           />
