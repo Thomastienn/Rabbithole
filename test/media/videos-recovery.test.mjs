@@ -22,19 +22,10 @@ import {
 } from '../support/video-kit.mjs';
 
 test('cancel stops only its own job, late output cannot publish, and retry reuses the frozen input without a new message', async () => {
-  const renders = [],
-    workers = [],
-    progress = [];
-  // Each render waits until the test releases it and ignores cancellation, like output arriving late.
-  const videoRender = (workspace, output, signal, onProgress) => {
-    progress.push(onProgress);
-    return new Promise((done) =>
-      renders.push(() => {
-        writeFileSync(output, mp4);
-        done({ durationInFrames: 75, fps: 30 });
-      }),
-    );
-  };
+  const voices = [],
+    workers = [];
+  // Each narration waits until the test releases it and ignores cancellation, like output arriving late.
+  const videoNarrate = () => new Promise((done) => voices.push(() => done(fakeNarration())));
   const provider = {
     generate: async (tree, text, emit) => {
       if (!tree.id) {
@@ -44,14 +35,14 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
       complete(emit, /video/.test(text) ? 'Sure.' + directive : 'Answer in another chat.');
     },
   };
-  const env = await open(provider, { videoRender });
+  const env = await open(provider, { videoNarrate });
   try {
     const a = env.store.create('A', 'codex'),
       b = env.store.create('B', 'codex');
     await (await env.post(`/api/trees/${a.id}/messages`, { text: 'Make a video of A.' })).text();
-    await until(() => renders.length === 1); // Jobs are detached; renders[0] must be A's.
+    await until(() => voices.length === 1); // Jobs are detached; voices[0] must be A's.
     await (await env.post(`/api/trees/${b.id}/messages`, { text: 'Make a video of B.' })).text();
-    await until(() => renders.length === 2);
+    await until(() => voices.length === 2);
     const jobA = env.store.tree(a.id).artifacts[0],
       jobB = env.store.tree(b.id).artifacts[0];
     const messages = env.store.tree(a.id).messages.length;
@@ -86,25 +77,18 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     assert.notEqual(retried.attempt, jobA.attempt);
     assert.equal(retried.input, jobA.input);
     assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).status, 409); // already running
-    await until(() => renders.length === 3);
+    await until(() => voices.length === 3);
     assert.deepEqual(workers.slice(-1), [jobA.input]);
-    progress[2](0.5);
-    progress[0](0.9); // The canceled attempt cannot overwrite the new attempt's progress.
-    assert.equal(
-      (await (await env.get(`/api/trees/${a.id}/artifacts/${jobA.id}`)).json()).progress,
-      0.5,
-    );
-    assert.equal(
-      (await (await env.get(`/api/trees/${b.id}/artifacts/${jobB.id}`)).json()).progress,
-      0,
-    );
 
     // The canceled attempt's late output arrives first and is ignored; the retry publishes.
-    renders[0]();
+    voices[0]();
     await canceledWork;
     assert.equal(env.store.artifact(a.id, jobA.id).status, 'pending');
-    assert.equal(existsSync(mediaPath(env.dir, jobA.id)), false);
-    renders[2]();
+    assert.equal(
+      existsSync(join(env.dir, 'video-work', jobA.id, jobA.attempt, 'cut-0', 'public')),
+      false,
+    );
+    voices[2]();
     const ready = await until(
       () =>
         env.store.artifact(a.id, jobA.id).status === 'ready' && env.store.artifact(a.id, jobA.id),
@@ -113,8 +97,8 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     assert.equal(ready.position, jobA.position);
     assert.equal(env.store.tree(a.id).messages.length, messages);
     assert.equal(env.store.tree(a.id).artifacts.length, 1);
-    assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).status, 409); // ready media needs no retry
-    renders[1]();
+    assert.equal((await env.post(`/api/trees/${a.id}/artifacts/${jobA.id}/retry`)).status, 409); // a saved video needs no retry
+    voices[1]();
     await until(() => env.store.artifact(b.id, jobB.id).status === 'ready');
 
     // A changed request is a new job.
@@ -127,11 +111,11 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
   }
 });
 
-test('render, composition and save failures stay honest and retry the same request', async () => {
+test('narration, composition and save failures stay honest and retry the same request', async () => {
   let fail = true;
-  const videoRender = async (ws, output) => {
-    if (fail) throw new Error('Video rendering failed.');
-    return fakeRender(ws, output);
+  const videoNarrate = async () => {
+    if (fail) throw new Error('Video narration failed. Check your connection and Retry.');
+    return fakeNarration();
   };
   let compose = 0;
   const provider = {
@@ -141,7 +125,7 @@ test('render, composition and save failures stay honest and retry the same reque
       complete(emit, compose === 1 ? 'not a composition' : videoResponse(tree));
     },
   };
-  const env = await open(provider, { videoRender });
+  const env = await open(provider, { videoNarrate });
   try {
     const tree = env.store.create('Video', 'codex');
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
@@ -156,7 +140,7 @@ test('render, composition and save failures stay honest and retry the same reque
     await until(() => env.store.artifact(tree.id, id).status === 'failed');
     assert.equal(
       env.store.artifact(tree.id, id).error,
-      'Cut 1 of 1: Video rendering failed. Retry keeps the other cuts.',
+      'Video narration failed. Check your connection and Retry.',
     );
     fail = false;
     const finish = env.store.finishVideo.bind(env.store);
@@ -179,7 +163,7 @@ test('render, composition and save failures stay honest and retry the same reque
     // Generation errors and work never enter tutor history.
     const history = JSON.stringify(tutorContext(env.store.tree(tree.id)));
     for (const secret of [
-      'rendering failed',
+      'narration failed',
       'could not be saved',
       'PRIVATE_SOURCE_MARKER',
       'not a composition',
@@ -247,12 +231,14 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
     assert.equal(by.Kept.status, 'ready');
     assert.equal(by.Kept.position, null);
     assert.equal(by.Kept.available, undefined);
+    assert.equal(by.Kept.exported, true, 'an MP4 saved before live saving counts as exported');
     assert.equal(
       (await fetch(`${origin}/api/trees/${tree.id}/artifacts/${kept.id}/media`)).status,
       200,
     );
     assert.equal(by.Lost.status, 'ready');
     assert.equal(by.Lost.available, false);
+    assert.equal(by.Lost.exported, false);
     const rows = (await (await fetch(`${origin}/api/previews?id=${tree.id}`)).json())[tree.id].at(
       -1,
     ).artifacts;
@@ -281,7 +267,12 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
       JSON.parse(calls.find((c) => c[1].includes('Make a video.'))?.[1]).request,
       JSON.parse(running.input).request,
     );
-    assert.ok(existsSync(mediaPath(dir, lost.id)));
+    // The regenerated video is saved as playable cuts, not as an MP4.
+    assert.equal(existsSync(mediaPath(dir, lost.id)), false);
+    assert.equal(
+      (await fetch(`${origin}/api/trees/${tree.id}/artifacts/${lost.id}/cuts`)).status,
+      200,
+    );
     assert.equal(store.artifact(tree.id, running.id).position, 3);
   } finally {
     app.stop();
@@ -291,10 +282,10 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
 
 test('stopping the app during a job marks it interrupted before exit and keeps it interrupted on restart', async (t) => {
   let started;
-  const rendering = new Promise((r) => {
+  const narrating = new Promise((r) => {
     started = r;
   });
-  const videoRender = (ws, output, signal) =>
+  const videoNarrate = (script, signal) =>
     new Promise((_, reject) => {
       started();
       signal.addEventListener('abort', () => reject(signal.reason));
@@ -304,12 +295,12 @@ test('stopping the app during a job marks it interrupted before exit and keeps i
       generate: async (tree, text, emit) =>
         complete(emit, tree.id ? 'Sure.' + directive : videoResponse(tree)),
     },
-    { videoRender },
+    { videoNarrate },
   );
   t.after(() => env.close());
   const tree = env.store.create('Video', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
-  await rendering;
+  await narrating;
   await env.app.stop();
   assert.equal(env.store.tree(tree.id).artifacts[0].status, 'interrupted');
   env.store.close();

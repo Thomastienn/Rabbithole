@@ -17,7 +17,6 @@ import {
   videoResponse,
   planFor,
   spatial,
-  mp4,
   complete,
   until,
   open,
@@ -103,7 +102,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
     const saved = env.store.tree(child.id);
     assert.equal(saved.artifacts.length, 5);
     assert.equal(ready.kind, 'video');
-    assert.equal(JSON.parse(ready.source).cuts[0].status, 'ready');
+    assert.equal(JSON.parse(ready.source).cuts[0].status, 'written');
     assert.equal(ready.duration, 2.5);
     assert.equal(ready.description, 'Two labelled boxes slide together into a final box.');
     const [user, reply] = saved.messages.slice(-2);
@@ -150,15 +149,19 @@ test('explicit video request creates one job with frozen input, publishes owned 
     assert.equal(workers[1].tree.model, 'conversation-only-model', 'the chat model writes cuts');
     assert.ok(!workers[0].text.includes('UNRELATED SIBLING DISCUSSION'));
 
-    // Media is served same-origin only for its owning conversation; private output was moved out.
-    const media = await env.get(`/api/trees/${child.id}/artifacts/${ready.id}/media`);
-    assert.equal(media.status, 200);
-    assert.equal(media.headers.get('content-type'), 'video/mp4');
-    assert.deepEqual(Buffer.from(await media.arrayBuffer()), mp4);
+    // A saved video has no MP4 until exported; its cuts play live only for its owning conversation.
+    assert.equal((await env.get(`/api/trees/${child.id}/artifacts/${ready.id}/media`)).status, 404);
+    const shown = await (await env.get(`/api/trees/${child.id}/artifacts/${ready.id}`)).json();
+    assert.equal(shown.exported, false);
+    assert.equal(shown.available, undefined);
+    const cuts = await env.get(`/api/trees/${child.id}/artifacts/${ready.id}/cuts`);
+    assert.equal(cuts.status, 200);
+    assert.ok((await cuts.json()).cuts.every((c) => c.playable && c.code));
     assert.equal(
-      (await env.get(`/api/trees/${parent.id}/artifacts/${ready.id}/media`)).status,
-      404,
+      (await env.get(`/api/trees/${child.id}/artifacts/${ready.id}/cuts/0/narration`)).status,
+      200,
     );
+    assert.equal((await env.get(`/api/trees/${parent.id}/artifacts/${ready.id}/cuts`)).status, 404);
     assert.deepEqual(
       readdirSync(join(env.dir, 'video-work', ready.id, ready.attempt, 'cut-0')).sort(),
       [

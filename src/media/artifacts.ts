@@ -1,12 +1,13 @@
 import { safeDiagramSource } from './diagramSource.ts';
 
-// Ready videos with a missing file carry available: false.
+// Ready videos are exported once their MP4 exists; one with neither MP4 nor cuts carries available: false.
 export type ArtifactSummary = {
   id: string;
   kind?: 'mermaid' | 'video' | 'visual' | 'discussion';
   title: string;
   status: 'pending' | 'ready' | 'failed' | 'canceled' | 'interrupted';
   available?: false;
+  exported?: boolean;
   classmates?: number;
 };
 export type Artifact = ArtifactSummary & {

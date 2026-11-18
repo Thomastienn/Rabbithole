@@ -9,7 +9,6 @@ import {
   complete,
   until,
   open,
-  fakeRender,
   fixerTask,
   patchOf,
 } from '../support/video-kit.mjs';
@@ -150,78 +149,6 @@ test('adjacent repaired cuts share the repaired last frame; the first cut needs 
   assert.deepEqual(repairs[1].images, [{ path: previous.list.at(-1).file, type: 'image/jpeg' }]);
   assert.equal(audits, 0);
   assert.ok(JSON.parse(row.source).cuts.every((c) => c.code === repaired && c.audited));
-});
-
-test('a render repair sees the stripped diagnostic and failed code and gets no further audit', async (t) => {
-  const plan = planFor(composition, 2);
-  const events = [],
-    repairs = [],
-    snapshots = {};
-  let renders = 0,
-    chat,
-    duringRepair;
-  const env = await open(
-    {
-      generate: async (tree, text, emit) => {
-        if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
-        if (tree.instructions === AUDIT_INSTRUCTIONS) {
-          events.push('audit');
-          return complete(emit, '{"ok":true}');
-        }
-        if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
-          events.push('repair');
-          repairs.push({ input: fixerTask(text), images: tree.images });
-          const id = env.store.tree(chat.id).artifacts[0].id;
-          duringRepair = (await (await env.get(`/api/trees/${chat.id}/artifacts/${id}`)).json())
-            .cutRows;
-          return complete(emit, patchOf(fixerTask(text).failedCode, repaired));
-        }
-        complete(emit, composition);
-      },
-    },
-    {
-      videoSnapshot: async (dir, list) => {
-        snapshots[basename(dir)] = list;
-        for (const { file } of list) writeFileSync(file, 'jpeg');
-      },
-      videoRender: async (dir, out) => {
-        if (basename(dir) === 'cut-1' && ++renders === 1)
-          throw Object.assign(new Error('Video rendering failed.'), {
-            diagnostic: `TypeError: shape is not a function at ${dir}/Video.tsx:3:4`,
-          });
-        return fakeRender(dir, out);
-      },
-    },
-  );
-  t.after(async () => {
-    await env.app.stop();
-    env.store.close();
-  });
-  chat = env.store.create('Render repair', 'codex');
-  await (await env.post(`/api/trees/${chat.id}/messages`, { text: 'Make a video.' })).text();
-  const row = await until(() =>
-    env.store.tree(chat.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
-  );
-  assert.equal(row.status, 'ready', row.error);
-  assert.equal(renders, 2);
-  assert.equal(repairs.length, 1);
-  assert.equal(
-    repairs[0].input.validationError,
-    'TypeError: shape is not a function at [path]:3:4',
-  );
-  assert.equal(repairs[0].input.failedCode, composition);
-  assert.equal(repairs[0].input.previousEndState, plan.cuts[0].endState);
-  assert.deepEqual(repairs[0].images, [
-    { path: snapshots['cut-0'].at(-1).file, type: 'image/jpeg' },
-  ]);
-  assert.deepEqual(events, ['audit', 'audit', 'repair']);
-  // A ready cut moves back to repairing while the phase stays at saving.
-  assert.deepEqual(
-    duringRepair.map((r) => r.state),
-    ['ready', 'repairing'],
-  );
-  assert.equal(JSON.parse(row.source).cuts[1].code, repaired);
 });
 
 test('a repair patch that does not apply gets one whole-source call in the same attempt; a patch that still breaks spends the last attempt', async (t) => {

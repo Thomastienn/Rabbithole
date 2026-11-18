@@ -1,16 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { renameSync, unlinkSync, readFileSync } from 'node:fs';
-import {
-  mkdir,
-  writeFile,
-  realpath,
-  lstat,
-  open,
-  rm,
-  copyFile,
-  cp,
-  access,
-} from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { mkdir, realpath, lstat, open, rm, copyFile, cp, access } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { edgeNarration } from './narration.mjs';
 import {
@@ -19,15 +9,14 @@ import {
   PLAN_INSTRUCTIONS,
   EXHIBITS_NOTE,
   CLIPS_NOTE,
-  CUT_ATTEMPTS,
 } from './video-plan.mjs';
 import { fetchExhibit, videoMedia } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
-import { videoCall, writeCuts, cutError, playable, cutRows } from './video-cuts.mjs';
+import { videoCall, writeCuts, playable, cutRows } from './video-cuts.mjs';
 
 export { playable };
 import { improvePiece } from './video-pieces.mjs';
-import { sandboxProcess, REPO, withoutPaths } from './video-sandbox.mjs';
+import { sandboxProcess, REPO } from './video-sandbox.mjs';
 import { detectManim } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
 
@@ -114,7 +103,6 @@ export async function generateVideo({
   previous,
   signal,
   timeout,
-  render = sandboxRender,
   snapshot = sandboxSnapshot,
   narrate = edgeNarration,
   // Renders stills of saved or improved library pieces in the background.
@@ -235,13 +223,10 @@ export async function generateVideo({
       narratedCuts = 0,
       playableStage = false,
       live,
-      frames,
-      rendered,
       drawing;
     // Live phase from real cut state: cuts 1 and 2 (every cut when there are two or fewer) decide when playback
     // can start, so the learner rarely waits at the first join; saving needs every cut playable.
-    const report = (value = rendered) => {
-      rendered = value;
+    const report = () => {
       // Per-cut rows and set piece drawing ride along with every phase report.
       const say = (phase, progress, detail) =>
         onPhase(phase, progress, {
@@ -250,7 +235,6 @@ export async function generateVideo({
           ...(live.pieces === null && drawing && { drawing }),
         });
       const ready = live.cuts.filter(playable).length;
-      if (rendered !== undefined && ready === count) return say('saving', rendered, frames);
       if (live.pieces === null) return say('pieces');
       const waiting = live.cuts.slice(0, 2).find((c) => !playable(c));
       if (waiting)
@@ -380,71 +364,10 @@ export async function generateVideo({
       },
     });
     const { cuts } = work.data;
-    frames = { frames: cuts.reduce((n, c) => n + c.timing.durationInFrames, 0) };
-    const outputs = [];
-    for (let index = 0; index < cuts.length; index++) {
-      const cut = cuts[index];
-      for (;;) {
-        controller.signal.throwIfAborted();
-        cut.status = 'rendering';
-        work.persist();
-        const cutDir = await work.stage(index);
-        const output = join(cutDir, 'out', randomUUID() + '.mp4');
-        report(index / cuts.length);
-        try {
-          // A repair after a failed render leaves the Manim cut without a clip.
-          if (cut.engine === 'manim' && !cut.clip) await work.clip(index);
-          const result = await render(cutDir, output, controller.signal, (p) =>
-            report((index + p) / cuts.length),
-          );
-          controller.signal.throwIfAborted();
-          await validateOutput(cutDir, output);
-          if (result?.fps !== 30 || result.durationInFrames !== cut.timing.durationInFrames)
-            throw new Error('Rendered video is unreadable.');
-          outputs.push(output);
-          cut.status = 'ready';
-          work.persist();
-          report((index + 1) / cuts.length);
-          break;
-        } catch (error) {
-          controller.signal.throwIfAborted();
-          // Renderer diagnostics can name private directories; models and stored errors see them without paths.
-          const reason = withoutPaths(error.diagnostic ?? error.message);
-          if (error.manimUnavailable || work.attempts[index] >= CUT_ATTEMPTS) {
-            cut.status = 'failed';
-            work.persist();
-            throw error.manimUnavailable || error.code
-              ? error
-              : cutError(reason, index, cuts.length);
-          }
-          cut.status = 'writing';
-          await work.rewrite(index, reason);
-        }
-      }
-    }
-    let output = outputs[0];
-    if (cuts.length > 1) {
-      await writeFile(
-        join(workspace, 'narration.json'),
-        JSON.stringify({ fps: 30, durationInFrames: frames.frames }),
-      );
-      await writeFile(
-        join(workspace, 'cuts.json'),
-        JSON.stringify(
-          outputs.map((file, i) => ({ file, durationInFrames: cuts[i].timing.durationInFrames })),
-        ),
-      );
-      output = join(workspace, 'out', randomUUID() + '.mp4');
-      const result = await render(workspace, output, controller.signal, () => {});
-      await validateOutput(workspace, output);
-      if (result?.fps !== 30 || result.durationInFrames !== frames.frames)
-        throw new Error('Rendered video is unreadable.');
-    }
-    // Piece improvements run alongside rendering and never fail the video.
+    const frames = { frames: cuts.reduce((n, c) => n + c.timing.durationInFrames, 0) };
+    // Piece improvements run alongside the last audits and never fail the video.
     await Promise.all(work.improving);
-    onPhase('saving', 1, frames);
-    const final = mediaPath(dir, artifact.id);
-    await mkdir(join(dir, 'videos'), { recursive: true, mode: 0o700 });
+    onPhase('saving');
     const owner = store.artifact(artifact.conversation, artifact.id);
     if (
       owner?.attempt !== artifact.attempt ||
@@ -452,24 +375,19 @@ export async function generateVideo({
       controller.signal.aborted
     )
       throw new Error('Video job no longer owns this output.');
-    // Publish filesystem metadata and the row in one turn so Cancel/Retry cannot interleave.
+    // The saved video is its playable cuts; an MP4 is rendered only when the learner exports it.
+    let ready;
     try {
-      renameSync(output, final);
-      const ready = store.finishVideo(artifact.conversation, artifact.id, artifact.attempt, {
+      ready = store.finishVideo(artifact.conversation, artifact.id, artifact.attempt, {
         title: plan.title,
         description: plan.description,
         duration: frames.frames / 30,
       });
-      if (ready?.status !== 'ready') throw new Error();
-      published = true;
-      onStage('saved');
-      return ready;
-    } catch {
-      try {
-        unlinkSync(final);
-      } catch {}
-      throw new Error('Video could not be saved.');
-    }
+    } catch {}
+    if (ready?.status !== 'ready') throw new Error('Video could not be saved.');
+    published = true;
+    onStage('saved');
+    return ready;
   } catch (error) {
     controller.abort(error);
     throw error.code ? new Error('Video could not be generated.') : error;

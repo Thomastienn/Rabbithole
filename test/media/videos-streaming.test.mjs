@@ -143,7 +143,7 @@ test('a video ready before the reply finishes is preserved by Stop', async (t) =
   await env.post(`/api/trees/${tree.id}/stop`);
   assert.match(await stream, /"status":"interrupted"/);
   assert.deepEqual(env.store.artifact(tree.id, ready.id), ready);
-  assert.equal((await env.get(`/api/videos/${ready.id}/media`)).status, 200);
+  assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${ready.id}/cuts`)).status, 200);
 });
 
 test('a later conflicting media block fails the pending video without publishing late output', async (t) => {

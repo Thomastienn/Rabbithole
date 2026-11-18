@@ -96,7 +96,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
   assert.deepEqual(data.plan, plan);
   assert.deepEqual(
     data.cuts.map((c) => c.status),
-    ['ready', 'ready', 'ready'],
+    ['written', 'written', 'written'],
   );
   data.cuts.forEach((cut, i) => {
     assert.match(cut.code, new RegExp(`CUT_${i}_PRIVATE`));
@@ -131,15 +131,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
   });
   assert.equal(planning, 1);
   assert.equal(ready.duration, 7.5);
-  assert.deepEqual(
-    renders.map((ws) => basename(ws)),
-    ['cut-0', 'cut-1', 'cut-2', ready.attempt],
-  );
-  const joinData = JSON.parse(readFileSync(join(renders.at(-1), 'cuts.json')));
-  assert.deepEqual(
-    joinData.map((c) => basename(dirname(dirname(c.file)))),
-    ['cut-0', 'cut-1', 'cut-2'],
-  );
+  assert.deepEqual(renders, [], 'saving renders no MP4');
   assert.equal(env.store.usageEvents().events.filter((e) => e.task === 'video').length, 4);
   for (const path of [
     `/api/trees/${tree.id}`,
@@ -153,11 +145,10 @@ test('three cut writers and narrators start in parallel; reversed completions pe
   assert.ok(!JSON.stringify(tutorContext(env.store.tree(tree.id))).includes('CUT_0_PRIVATE'));
 });
 
-for (const failure of ['brief', 'render', 'exhausted'])
+for (const failure of ['brief', 'exhausted'])
   test(`${failure}: only the failed cut is rewritten within the repair budget`, async (t) => {
     const plan = planFor(composition, 3),
       writes = [0, 0, 0],
-      renderCounts = [0, 0, 0],
       repairs = [];
     let plans = 0,
       voices = 0;
@@ -191,18 +182,6 @@ for (const failure of ['brief', 'render', 'exhausted'])
           voices++;
           return fakeNarration();
         },
-        videoRender: async (ws, out) => {
-          const match = /^cut-(\d)$/.exec(basename(ws));
-          if (match) {
-            const i = Number(match[1]);
-            renderCounts[i]++;
-            if (failure === 'render' && i === 1 && renderCounts[i] === 1)
-              throw Object.assign(new Error('Video rendering failed.'), {
-                diagnostic: `TypeError: shape is not a function at ${ws}/Video.tsx:3:4`,
-              });
-          }
-          return fakeRender(ws, out);
-        },
       },
     );
     t.after(async () => {
@@ -218,17 +197,13 @@ for (const failure of ['brief', 'render', 'exhausted'])
     assert.deepEqual(writes, [1, 2, 1]);
     assert.equal(repairs.length, 1);
     assert.ok(repairs[0]);
-    if (failure === 'render')
-      assert.equal(repairs[0], 'TypeError: shape is not a function at [path]:3:4');
     if (failure === 'exhausted')
       assert.match(row.error, /^Cut 2 of 3: \S.*\. Retry keeps the other cuts\.$/);
     assert.ok(!JSON.stringify(repairs).includes('/'), 'no absolute path reaches the repair');
     assert.equal(plans, 1);
     assert.equal(voices, 3, 'narration is reused for a rewritten cut');
     assert.equal(env.store.usageEvents().events.filter((e) => e.task === 'video').length, 5);
-    if (failure !== 'exhausted')
-      assert.deepEqual(renderCounts, failure === 'render' ? [1, 2, 1] : [1, 1, 1]);
-    else
+    if (failure === 'exhausted')
       assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${row.id}/media`)).status, 404);
   });
 
@@ -345,7 +320,7 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
   }
   assert.match(data.cuts[1].code, /CUT_1_W6/);
   assert.ok(before.cuts[1].status === 'failed');
-  assert.equal((await env.get(`/api/trees/${chat.id}/artifacts/${ready.id}/media`)).status, 200);
+  assert.equal((await env.get(`/api/trees/${chat.id}/artifacts/${ready.id}/cuts`)).status, 200);
 
   await env.post(`/api/trees/${chat.id}/artifacts/${ready.id}/regenerate`);
   await until(() =>

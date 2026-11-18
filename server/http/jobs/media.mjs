@@ -35,6 +35,14 @@ export function recoverStaged(store, dir) {
 }
 
 // Ready videos whose file is missing or unreadable are reported unavailable, so the learner can regenerate them.
+// Whether a saved video's source holds cuts the live player can play.
+export const savedCuts = (source) => {
+  try {
+    return Array.isArray(JSON.parse(source)?.cuts);
+  } catch {
+    return false;
+  }
+};
 export const readable = (path) => {
   try {
     accessSync(path, constants.R_OK);
@@ -71,7 +79,10 @@ export function mediaJobs(ctx) {
         ...(job?.drawing && { drawing: job.drawing }),
       };
     }
-    return a.status === 'ready' && !readable(mediaPath(dir, a.id)) ? { ...a, available: false } : a;
+    if (a.status !== 'ready') return a;
+    // Exported means the MP4 exists; a saved video without one plays its cuts live, unless it has none.
+    if (readable(mediaPath(dir, a.id))) return { ...a, exported: true };
+    return { ...a, exported: false, ...(!savedCuts(artifact.source) && { available: false }) };
   };
   // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
   const startVideo = (job, parentSignal, previous) => {
@@ -153,7 +164,6 @@ export function mediaJobs(ctx) {
           previous,
           signal: running.controller.signal,
           timeout: ctx.videoTimeout,
-          render: ctx.videoRender,
           snapshot: ctx.videoSnapshot,
           narrate: ctx.videoNarrate,
           manim: ctx.videoManim,

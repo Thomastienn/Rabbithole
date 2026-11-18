@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { mediaPath, playable } from '../../media/videos.mjs';
 import { withParts } from '../../media/video-pieces.mjs';
-import { readable } from '../jobs/media.mjs';
+import { readable, savedCuts } from '../jobs/media.mjs';
 import { formatLog, errorCause } from '../../log.mjs';
 
 // Validated cut TSX becomes a CommonJS function body; the player sandbox supplies require() for the kit and libraries.
@@ -38,9 +38,14 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             created,
             live: conversation,
           })),
-        ...store
-          .library()
-          .map((v) => (readable(mediaPath(dir, v.id)) ? v : { ...v, available: false })),
+        // A video is exported once its MP4 exists; an unexported one plays live while its tree has it.
+        ...store.library().map((v) => {
+          if (readable(mediaPath(dir, v.id))) return { ...v, exported: true };
+          const saved = store.readyVideo(v.id);
+          return savedCuts(saved?.source)
+            ? { ...v, exported: false, conversation: saved.conversation }
+            : { ...v, exported: false, available: false };
+        }),
       ]);
     // The read-only piece library; the source compiles for the player frame like live cut code.
     // Paged and searchable; the query is embedded with any pieces saved while no embedder was usable.
@@ -140,7 +145,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         .pipe(res);
       return true;
     }
-    // Live playback: only a pending cut-format video, only playable cuts, files located from server ids.
+    // Live playback: only a pending or saved cut-format video, only playable cuts, files located from server ids.
     const cutsMatch = url.pathname.match(
       /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/cuts(?:\/(\d+)\/(narration|clip|exhibit))?$/,
     );
@@ -149,7 +154,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         artifact = store.artifact(conversation, id);
       let data = null;
       try {
-        if (artifact?.kind === 'video' && artifact.status === 'pending')
+        if (artifact?.kind === 'video' && ['pending', 'ready'].includes(artifact.status))
           data = JSON.parse(artifact.source);
       } catch {}
       if (!Array.isArray(data?.cuts)) return json(res, 404, { error: 'Live video not available.' });

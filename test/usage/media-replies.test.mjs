@@ -22,7 +22,7 @@ const measurement = (task, n) => ({ task, ...counts(n) });
 test('reply API attributes retried visuals and every video call, reports running usage, retains retries and survives restart and deletion', async (t) => {
   const planGate = Promise.withResolvers(),
     visualGate = Promise.withResolvers(),
-    renderGate = Promise.withResolvers();
+    repairGate = Promise.withResolvers();
   let visualAttempts = 0,
     cutCalls = 0,
     regenerating = false,
@@ -47,15 +47,14 @@ test('reply API attributes retried visuals and every video call, reports running
         if (fixerTask(text).cut) {
           cutCalls++;
           emit({ type: 'usage', usage: counts(30) });
-          // A cut retry must count as a separate call too.
+          // A cut repair must count as a separate call too; it is held, then still invalid, so the video fails.
+          if (cutCalls === 2) await repairGate.promise;
           return complete(
             emit,
             repairAnswer(
               tree,
               text,
-              cutCalls === 1
-                ? composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'")
-                : composition,
+              composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'"),
             ),
           );
         }
@@ -70,16 +69,12 @@ test('reply API attributes retried visuals and every video call, reports running
     },
     {
       videoSnapshot: async () => {},
-      videoRender: async () => {
-        await renderGate.promise;
-        throw new Error('Fixture render failed');
-      },
     },
   );
   t.after(async () => {
     planGate.resolve();
     visualGate.resolve();
-    renderGate.resolve();
+    repairGate.resolve();
     await env.app.stop();
     if (!closed) env.store.close();
   });
@@ -118,7 +113,7 @@ test('reply API attributes retried visuals and every video call, reports running
   );
   tree = await read();
   const video = tree.artifacts.find((a) => a.kind === 'video');
-  assert.equal(video.status, 'pending', 'reported cut calls appear before rendering finishes');
+  assert.equal(video.status, 'pending', 'reported cut calls appear before the video finishes');
   const expected = [
     measurement('diagram', 5),
     measurement('diagram', 12),
@@ -127,7 +122,7 @@ test('reply API attributes retried visuals and every video call, reports running
     measurement('video', 30),
   ];
   assert.deepEqual(tree.messages.at(-1).mediaUsage, expected);
-  renderGate.resolve();
+  repairGate.resolve();
   await env.app.settled();
 
   await (await env.post(`/api/trees/${root.id}/messages`, { text: 'More' })).text();

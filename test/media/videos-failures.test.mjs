@@ -1,15 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
-  symlinkSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { mediaPath } from '../../server/media/videos.mjs';
 import { cutSource } from '../../server/media/video-plan.mjs';
 import {
@@ -24,38 +16,10 @@ import {
   until,
   open,
   job,
+  repairAnswer,
 } from '../support/video-kit.mjs';
 
-test('out-of-workspace output, unreadable media, lost ownership and a failed save publish nothing', async () => {
-  const outside = join(mkdtempSync(join(tmpdir(), 'tt-outside-')), 'elsewhere.mp4');
-  writeFileSync(outside, mp4);
-  const cases = {
-    'symlink out of workspace': async (ws, output) => {
-      symlinkSync(outside, output);
-      return { durationInFrames: 30, fps: 30 };
-    },
-    'replaced out directory': async (ws, output) => {
-      const { renameSync } = await import('node:fs');
-      renameSync(join(ws, 'out'), join(ws, 'old'));
-      symlinkSync(dirname(outside), join(ws, 'out'));
-      writeFileSync(join(dirname(outside), output.split('/').at(-1)), mp4);
-      return { durationInFrames: 30, fps: 30 };
-    },
-    'missing output': async () => ({ durationInFrames: 30, fps: 30 }),
-    'unreadable media': async (ws, output) => {
-      writeFileSync(output, Buffer.alloc(4096, 7));
-      return { durationInFrames: 30, fps: 30 };
-    },
-    'render failure': async () => {
-      throw new Error('Video rendering failed.');
-    },
-  };
-  for (const [name, render] of Object.entries(cases)) {
-    const { result, row, published } = await job(render);
-    assert.ok(result, name);
-    assert.equal(row.status, 'pending', name); // the app marks it failed; nothing became ready
-    assert.equal(published, false, name);
-  }
+test('lost ownership and a failed save publish nothing', async () => {
   const lost = await job(fakeRender, (store) =>
     store.db.prepare("UPDATE artifacts SET attempt='superseded'").run(),
   );
@@ -96,11 +60,14 @@ test('out-of-workspace output, unreadable media, lost ownership and a failed sav
     };
   });
   assert.equal(racing.row.status, 'ready');
-  assert.deepEqual(
-    readFileSync(mediaPath(racing.dir, racing.row.id)),
-    replacement ? newerMedia : mp4,
-    'a superseded attempt must never overwrite newer ready media',
-  );
+  assert.equal(racing.row.attempt, replacement?.attempt ?? racing.row.attempt);
+  if (replacement)
+    assert.deepEqual(
+      readFileSync(mediaPath(racing.dir, racing.row.id)),
+      newerMedia,
+      'a superseded attempt must never touch newer ready media',
+    );
+  else assert.equal(racing.exported, false, 'generation saves no MP4');
 
   for (const bad of [
     composition.replace("from 'remotion'", "from '../../trees.sqlite'"),
@@ -131,15 +98,20 @@ test('out-of-workspace output, unreadable media, lost ownership and a failed sav
 });
 
 test('app marks a failed job failed without a playable result', async () => {
+  // The cut keeps an off-brief colour through every repair.
+  const invalid = composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'");
   const provider = {
     generate: async (tree, text, emit) =>
-      complete(emit, tree.id ? 'Sure.' + directive : videoResponse(tree)),
+      complete(
+        emit,
+        tree.id
+          ? 'Sure.' + directive
+          : tree.instructions.startsWith('You plan')
+            ? videoResponse(tree)
+            : repairAnswer(tree, text, invalid),
+      ),
   };
-  const env = await open(provider, {
-    videoRender: async () => {
-      throw new Error('Video rendering failed.');
-    },
-  });
+  const env = await open(provider);
   try {
     const tree = env.store.create('Video', 'codex');
     await (
@@ -150,7 +122,7 @@ test('app marks a failed job failed without a playable result', async () => {
     const failed = await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
     );
-    assert.equal(failed.error, 'Cut 1 of 1: Video rendering failed. Retry keeps the other cuts.');
+    assert.match(failed.error, /^Cut 1 of 1: \S.*\. Retry keeps the other cuts\.$/);
     assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${failed.id}/media`)).status, 404);
   } finally {
     env.close();
@@ -206,7 +178,7 @@ test('failed or timed-out script calls stay final; only explicit Retry calls aga
       late?.();
       await new Promise((r) => setImmediate(r));
       assert.equal(calls, 3);
-      assert.equal(renders, 1);
+      assert.equal(renders, 0, 'saving renders no MP4');
       assert.equal(env.store.artifact(tree.id, failed.id).status, 'ready');
     } finally {
       env.close();

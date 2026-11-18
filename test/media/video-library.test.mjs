@@ -111,8 +111,12 @@ test('existing ready videos migrate into a global library that survives source d
       [ids.kept, ids.missing, ids.other].sort(),
       'only ready videos migrate',
     );
+    // A video saved as an MP4 counts as exported; one with neither MP4 nor cuts is unavailable.
     assert.equal(list.find((v) => v.id === ids.missing).available, false);
+    assert.equal(list.find((v) => v.id === ids.missing).exported, false);
     assert.equal(list.find((v) => v.id === ids.kept).available, undefined);
+    assert.equal(list.find((v) => v.id === ids.kept).exported, true);
+    assert.equal((await env.get(`/api/videos/${ids.kept}/media`)).status, 200);
     assert.equal((await env.get(`/api/videos/${ids.missing}/media`)).status, 404);
     assert.equal((await env.get(`/api/videos/${ids.failed}/media`)).status, 404);
     assert.equal((await env.get('/api/videos/..%2Ftrees.sqlite/media')).status, 404);

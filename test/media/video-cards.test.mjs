@@ -73,7 +73,13 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
     buttons: ['Retry video', 'Token use: stopped'],
     video: false,
   });
-  await act(async () => set(video('stopped', 'ready')));
+  // A saved, unexported video plays live from its cuts; the same button opens it large.
+  await act(async () => set(video('stopped', 'ready', { exported: false })));
+  assert.equal(action.textContent.trim(), 'Open large');
+  assert.equal(card('stopped').querySelector('video'), null);
+  assert.equal(card('stopped').querySelector('iframe').title, 'Live video: stopped');
+  await act(async () => set(video('stopped', 'ready', { exported: true })));
+  assert.equal(card('stopped').querySelector('iframe'), null);
   assert.equal(action.textContent.trim(), 'Open large');
   assert.equal(document.activeElement, action, 'focus stays on the one action button');
   // Regenerate on an unavailable file is a retry of the saved request.
@@ -97,7 +103,23 @@ test('library cards lead with the frame; missing files offer only removal; trash
     requests.push(path);
     if (path === '/api/videos')
       return [
-        { id: 'kept', title: 'Kept', description: 'A saved video.', duration: 3, created: 1 },
+        {
+          id: 'kept',
+          title: 'Kept',
+          description: 'A saved video.',
+          duration: 3,
+          created: 1,
+          exported: true,
+        },
+        {
+          id: 'fresh',
+          title: 'Fresh',
+          description: 'Saved, never exported.',
+          duration: 3,
+          created: 3,
+          exported: false,
+          conversation: 'tree-1',
+        },
         {
           id: 'gone',
           title: 'Gone',
@@ -129,6 +151,14 @@ test('library cards lead with the frame; missing files offer only removal; trash
     ['Open large', 'Show in folder', 'Move to trash'],
   );
   assert.equal(kept.querySelector('video').getAttribute('src'), '/api/videos/kept/media');
+  // An unexported video plays live from its tree and has no file to show.
+  const fresh = card('fresh');
+  assert.equal(fresh.querySelector('video'), null);
+  assert.equal(fresh.querySelector('iframe').getAttribute('title'), 'Live video: Fresh');
+  assert.deepEqual(
+    [...fresh.querySelectorAll('.video-volume-actions button')].map((b) => b.textContent.trim()),
+    ['Open large', 'Move to trash'],
+  );
   assert.deepEqual(view(card('gone')), {
     state: 'unavailable',
     status: 'Gone: Video unavailable: its saved file is missing or unreadable.',

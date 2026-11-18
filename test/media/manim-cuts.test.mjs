@@ -77,21 +77,7 @@ for (const repair of [false, true])
             return fakeRender(ws, out);
           },
         },
-        videoRender: async (ws, out) => {
-          renders.push(basename(ws));
-          if (basename(ws) === 'cut-1') {
-            assert.match(readFileSync(join(ws, 'Video.tsx'), 'utf8'), /OffthreadVideo/);
-            assert.ok(existsSync(join(ws, 'public/manim.mp4')));
-          }
-          if (existsSync(join(ws, 'cuts.json')))
-            assert.deepEqual(
-              JSON.parse(readFileSync(join(ws, 'cuts.json'))).map((c) =>
-                basename(join(c.file, '../..')),
-              ),
-              ['cut-0', 'cut-1', 'cut-2'],
-            );
-          return fakeRender(ws, out);
-        },
+        videoRender: async (ws) => renders.push(basename(ws)),
       },
     );
     t.after(async () => {
@@ -111,7 +97,7 @@ for (const repair of [false, true])
     );
     assert.deepEqual(
       cuts.map((c) => c.status),
-      ['ready', 'ready', 'ready'],
+      ['written', 'written', 'written'],
     );
     assert.equal(cuts[1].clip, 'cut-1/public/manim.mp4');
     assert.equal(cuts[1].timing.durationInFrames, 75);
@@ -122,7 +108,11 @@ for (const repair of [false, true])
       env.store.usageEvents().events.filter((e) => e.task === 'video').length,
       repair ? 5 : 4,
     );
-    assert.deepEqual(renders, ['cut-0', 'cut-1', 'cut-2', row.attempt]);
+    // Saving renders no MP4; the Manim clip is kept for live playback.
+    assert.deepEqual(renders, []);
+    assert.ok(
+      existsSync(join(env.dir, 'video-work', row.id, row.attempt, 'cut-1/public/manim.mp4')),
+    );
     assert.deepEqual(
       warnings.filter((line) => line.includes(' WARN media ')),
       [],

@@ -14,8 +14,11 @@ export type LibraryVideo = {
   duration: number | null;
   created: number;
   available?: false;
-  // Conversation of a pending video that plays live until its MP4 is saved.
+  exported?: boolean;
+  // Conversation of a pending video that plays live while it is generating.
   live?: string;
+  // Learning tree of a saved, unexported video; it plays live from there.
+  conversation?: string;
 };
 
 export default function VideoLibrary({
@@ -119,13 +122,13 @@ export default function VideoLibrary({
                 artifact={
                   v.live
                     ? { ...v, status: 'pending', conversation: v.live, phase: 'playable' }
-                    : { ...v, status: 'ready', conversation: '' }
+                    : { ...v, status: 'ready', conversation: v.conversation ?? '' }
                 }
                 media={`/api/videos/${v.id}/media`}
                 actions={
                   !v.live && (
                     <>
-                      {v.available !== false && (
+                      {v.exported && (
                         <Button
                           label="Show in folder"
                           variant="ghost"

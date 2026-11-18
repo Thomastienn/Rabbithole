@@ -95,12 +95,6 @@ async function run({
     dir,
     artifact,
     signal: new AbortController().signal,
-    render: async (workspace, output, ...rest) => {
-      // The joined render of several cuts has no host data of its own.
-      if (existsSync(join(workspace, 'stock.json')))
-        staged.push(JSON.parse(readFileSync(join(workspace, 'stock.json'), 'utf8')));
-      return fakeRender(workspace, output, ...rest);
-    },
     snapshot: noSnapshot,
     narrate,
     onWarning: (w) => warnings.push(w),
@@ -118,6 +112,11 @@ async function run({
     () => null,
     (error) => error.message,
   );
+  // Each saved cut keeps the host data an export render reads.
+  for (let i = 0; i < plan.cuts.length; i++) {
+    const stock = join(dir, 'video-work', artifact.id, artifact.attempt, `cut-${i}`, 'stock.json');
+    if (existsSync(stock)) staged.push(JSON.parse(readFileSync(stock, 'utf8')));
+  }
   return {
     result,
     calls,
@@ -165,7 +164,7 @@ test('a video with exhibits fetches them, drops a failed one, hands the rest to 
     ],
   );
   assert.deepEqual(warnings, ['WARN video exhibit dropped: image returned HTTP 404']);
-  // The background render reads the same exhibits, the image inlined as a data URL.
+  // A later export render reads the same exhibits, the image inlined as a data URL.
   assert.deepEqual(staged, [
     {
       exhibit1: {
@@ -395,6 +394,6 @@ test('a clip with sound puts a pause of its length into the narration after its 
     readFileSync(join(work, 'public', 'captions.vtt'), 'utf8'),
     /00:00:06\.900 --> 00:00:07\.800\nLosers rest\./,
   );
-  // The render's host data starts the footage at the pause whatever the cut passes.
+  // The saved host data starts the footage at the pause whatever the cut passes.
   assert.equal(staged[0].exhibit1.from, 24);
 });

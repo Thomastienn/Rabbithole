@@ -184,7 +184,6 @@ export async function job(render, mutate, source = composition, count = 1, optio
     dir,
     artifact,
     signal: new AbortController().signal,
-    render,
     // A real render also takes real snapshots.
     snapshot: options.snapshot ?? (render ? noSnapshot : undefined),
     narrate: fakeNarration,
@@ -198,10 +197,13 @@ export async function job(render, mutate, source = composition, count = 1, optio
     (error) => error.message,
   );
   assert.ok(!existsSync(join(dir, 'video-work', artifact.id, artifact.attempt, 'out'))); // no leftover unpublished output
+  const row = store.artifact(tree.id, artifact.id);
   return {
     result,
-    row: store.artifact(tree.id, artifact.id),
-    published: existsSync(mediaPath(dir, artifact.id)),
+    row,
+    published: row.status === 'ready',
+    // Generation saves cuts, never an MP4 (an MP4 is the export).
+    exported: existsSync(mediaPath(dir, artifact.id)),
     dir,
     phases,
     audits,

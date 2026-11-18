@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import {
   planFor,
@@ -42,7 +42,7 @@ test('the set-piece step reuses, varies or draws new pieces from library matches
   const written = `import { colors } from './kit';
 export function Loser({ x, y }) { return <div style={{ left: x, top: y, background: colors.loser }} />; }
 export function Note({ x, y }) { return <div style={{ left: x, top: y, background: colors.note }} />; }`;
-  let input, kit;
+  let input;
   const logs = [];
   const env = await open(
     {
@@ -70,10 +70,6 @@ export function Note({ x, y }) { return <div style={{ left: x, top: y, backgroun
     {
       log: (line) => logs.push(line),
       videoEmbed: async (texts) => texts.map((t) => vectors[t]),
-      videoRender: async (ws, out) => {
-        if (basename(ws) === 'cut-0') kit = readFileSync(join(ws, 'kit.tsx'), 'utf8');
-        return fakeRender(ws, out);
-      },
     },
   );
   t.after(async () => {
@@ -112,6 +108,11 @@ export function Note({ x, y }) { return <div style={{ left: x, top: y, backgroun
   assert.match(module, /colors\.champ/);
   assert.doesNotMatch(module, /colors\.winner/, 'the reused piece takes the new roles');
   assert.equal((module.match(/from '\.\/kit'/g) ?? []).length, 1, 'imports merge');
+  // The saved cut keeps the kit its export renders with.
+  const kit = readFileSync(
+    join(env.dir, 'video-work', row.id, row.attempt, 'cut-0', 'kit.tsx'),
+    'utf8',
+  );
   assert.match(kit, /"champ": palette\.leaf/, 'the new role renders in the new ink');
 
   assert.deepEqual(

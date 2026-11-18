@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { basename } from 'node:path';
 import { writeFileSync } from 'node:fs';
 import {
   planFor,
@@ -9,7 +8,7 @@ import {
   complete,
   until,
   open,
-  fakeRender,
+  repairAnswer,
   fixerTask,
   patchOf,
 } from '../support/video-kit.mjs';
@@ -30,7 +29,9 @@ const pieces = `import { colors, palette } from './kit';
 export function Winner({ x, y, scale = 1, highlight = false }) {
   return <div style={{ position: 'absolute', left: x, top: y, width: 240 * scale, height: 120 * scale, background: highlight ? colors.winner : palette.raised }}>Winner</div>;
 }`;
-const plan = planFor(composition);
+// Cut 2 fails validation until its repairs run out while cut 1 is audited and fixed.
+const plan = planFor(composition, 2);
+const invalid = composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'");
 plan.styleBrief = {
   ...plan.styleBrief,
   recurringObjects: [{ ...plan.styleBrief.recurringObjects[0], look }],
@@ -52,7 +53,7 @@ const stageOf = (instructions) =>
 test('a video freezes smart and chat selections: smart plans and audits, chat writes pieces, cuts, repairs and fixes; Retry keeps both; legacy jobs use one for both; usage follows each call', async (t) => {
   const calls = [],
     skills = {};
-  let renderFails = Infinity,
+  let broken = true,
     audits = 0;
   const env = await open(
     {
@@ -82,19 +83,13 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
           const { code } = fixerTask(text);
           return complete(emit, JSON.stringify({ patch: patchOf(code, code + '\n// fixed') }));
         }
-        if (tree.instructions.endsWith(REPAIR_PATCH_NOTE))
-          return complete(emit, patchOf(fixerTask(text).failedCode, composition));
-        complete(emit, composition);
+        const source = broken && fixerTask(text).cut.purpose === 'Step 2' ? invalid : composition;
+        complete(emit, repairAnswer(tree, text, source));
       },
     },
     {
       videoSnapshot: async (_dir, list) => {
         for (const { file } of list) writeFileSync(file, 'jpeg');
-      },
-      videoRender: async (ws, out) => {
-        if (/^cut-\d$/.test(basename(ws)) && renderFails-- > 0)
-          throw Object.assign(new Error('Video rendering failed.'), { diagnostic: 'Bad frame.' });
-        return fakeRender(ws, out);
       },
     },
   );
@@ -149,7 +144,7 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
   });
   env.store.model(chat.id, 'other-model');
   calls.length = 0;
-  renderFails = 0;
+  broken = false;
   await env.post(`/api/trees/${chat.id}/artifacts/${failed.id}/retry`);
   const retried = await until(() => {
     const a = env.store.artifact(chat.id, failed.id);

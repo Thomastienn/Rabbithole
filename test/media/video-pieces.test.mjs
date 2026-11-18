@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import {
   planFor,
@@ -88,7 +88,6 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
   const plan = videoPlanWithLooks();
   const calls = [],
     inputs = {},
-    staged = {},
     logs = [];
   let phaseAtPieces, livePieces, chat;
   const env = await open(
@@ -126,13 +125,6 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
     {
       log: (line) => logs.push(line),
       videoManim: manim,
-      videoRender: async (ws, out) => {
-        if (/^cut-\d$/.test(basename(ws)))
-          staged[basename(ws)] = existsSync(join(ws, 'pieces.tsx'))
-            ? readFileSync(join(ws, 'pieces.tsx'), 'utf8')
-            : null;
-        return fakeRender(ws, out);
-      },
     },
   );
   t.after(async () => {
@@ -153,7 +145,12 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
   assert.equal(inputs.pieces.styleBrief.recurringObjects[0].look, look);
   assert.equal(phaseAtPieces, 'pieces');
   assert.match(livePieces, /function Winner/, 'live player receives compiled set pieces');
-  assert.deepEqual(staged, { 'cut-0': pieces, 'cut-1': pieces, 'cut-2': null });
+  // The saved Remotion cuts keep the staged module their export renders with.
+  const staged = (i) => {
+    const file = join(env.dir, 'video-work', row.id, row.attempt, `cut-${i}`, 'pieces.tsx');
+    return existsSync(file) ? readFileSync(file, 'utf8') : null;
+  };
+  assert.deepEqual([0, 1, 2].map(staged), [pieces, pieces, null]);
   for (const i of [0, 1]) assert.equal(inputs[i].setPieces, pieces);
   assert.ok(!('setPieces' in inputs[2]));
   // Each writer gets its engine's skill and no other.

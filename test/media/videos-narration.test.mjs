@@ -18,8 +18,7 @@ import {
 
 test('narration stages measured audio, returned timings and subtitles without exposing production or adding model calls', async (t) => {
   let calls = 0,
-    speech = 0,
-    captured;
+    speech = 0;
   const env = await open(
     {
       generate: async (tree, text, emit) => {
@@ -34,16 +33,6 @@ test('narration stages measured audio, returned timings and subtitles without ex
         assert.equal(signal.aborted, false);
         return { ...(await fakeNarration()), duration: 999 }; // Ignore the client's estimated duration.
       },
-      videoRender: async (workspace, output) => {
-        captured = JSON.parse(readFileSync(join(workspace, 'narration.json')));
-        assert.equal(captured.durationInFrames, 75);
-        assert.equal(captured.sentences[0].endFrame, 54);
-        assert.match(
-          readFileSync(join(workspace, 'index.tsx'), 'utf8'),
-          /durationInFrames=\{timing.durationInFrames\}/,
-        );
-        return fakeRender(workspace, output);
-      },
     },
   );
   t.after(async () => {
@@ -57,7 +46,15 @@ test('narration stages measured audio, returned timings and subtitles without ex
   const ready = await until(() =>
     env.store.tree(tree.id).artifacts.find((a) => a.status === 'ready'),
   );
+  // The saved cut keeps the timing and entry its export renders with.
   const workspace = join(env.dir, 'video-work', ready.id, ready.attempt, 'cut-0');
+  const captured = JSON.parse(readFileSync(join(workspace, 'narration.json')));
+  assert.equal(captured.durationInFrames, 75);
+  assert.equal(captured.sentences[0].endFrame, 54);
+  assert.match(
+    readFileSync(join(workspace, 'index.tsx'), 'utf8'),
+    /durationInFrames=\{timing.durationInFrames\}/,
+  );
   assert.deepEqual(
     JSON.parse(readFileSync(join(workspace, 'public', 'timing.json'))).captions,
     captured.captions,
@@ -80,7 +77,10 @@ test('narration stages measured audio, returned timings and subtitles without ex
     ready.attempt,
   ])
     assert.ok(!publicData.includes(secret));
-  assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${ready.id}/media`)).status, 200);
+  assert.equal(
+    (await env.get(`/api/trees/${tree.id}/artifacts/${ready.id}/cuts/0/narration`)).status,
+    200,
+  );
   assert.equal(calls, 2);
   assert.equal(speech, 1);
 });
@@ -157,7 +157,7 @@ test('TTS failure and invalid returned timing stay final until explicit Retry; c
   // Retries after a failure reuse the plan; the retry after Cancel plans fresh.
   assert.equal(calls, 6);
   assert.equal(speech, 4);
-  assert.equal(renders, 1);
+  assert.equal(renders, 0, 'saving renders no MP4');
   assert.equal(existsSync(join(env.dir, 'video-work', failed.id, old.attempt, 'public')), false);
 });
 

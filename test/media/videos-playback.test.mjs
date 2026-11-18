@@ -5,34 +5,19 @@ import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { SANDBOX } from '../../server/media/videos.mjs';
+import { SANDBOX, mediaPath } from '../../server/media/videos.mjs';
 import {
   task,
   directive,
   videoResponse,
   mp4,
-  fakeRender,
   complete,
   until,
   open,
   sandboxed,
 } from '../support/video-kit.mjs';
 
-test('inline video exposes bounded live progress and its position, keeps inputs private, then serves seekable media', async () => {
-  let gate, renderStarted;
-  const started = new Promise((r) => {
-    renderStarted = r;
-  });
-  let progress;
-  const videoRender = async (workspace, output, signal, onProgress) => {
-    progress = onProgress;
-    renderStarted();
-    onProgress(0.4);
-    await new Promise((r) => {
-      gate = r;
-    });
-    return fakeRender(workspace, output);
-  };
+test('inline video exposes its phase and position, keeps inputs private, then serves seekable media once exported', async () => {
   let release;
   const composing = new Promise((r) => {
     release = r;
@@ -46,7 +31,7 @@ test('inline video exposes bounded live progress and its position, keeps inputs 
       complete(emit, 'Before.\n' + directive + '\n\nAfter.');
     },
   };
-  const env = await open(provider, { videoRender });
+  const env = await open(provider);
   try {
     const tree = env.store.create('Video', 'codex'),
       other = env.store.create('Other', 'codex');
@@ -66,30 +51,16 @@ test('inline video exposes bounded live progress and its position, keeps inputs 
     const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
     assert.equal(saved.messages.at(-1).text, 'Before.\n\n\nAfter.');
     assert.equal(await artifact(other.id), undefined);
-    release();
-    await started;
-    const rendering = await artifact(tree.id);
-    assert.equal(rendering.status, 'pending');
-    assert.equal(rendering.phase, 'saving');
-    assert.equal(rendering.progress, 0.4);
-    assert.equal(rendering.position, pending.position);
-    for (const key of ['input', 'attempt']) assert.equal(rendering[key], undefined);
-    const own = `/api/trees/${tree.id}/artifacts/${rendering.id}`;
-    assert.equal((await (await env.get(own)).json()).progress, 0.4);
-    assert.equal((await env.get(`/api/trees/${other.id}/artifacts/${rendering.id}`)).status, 404);
-    progress(3);
-    assert.equal((await artifact(tree.id)).progress, 1);
-    progress(-1);
-    assert.equal((await artifact(tree.id)).progress, 0);
-    progress(NaN);
-    assert.equal((await artifact(tree.id)).progress, undefined);
+    const own = `/api/trees/${tree.id}/artifacts/${pending.id}`;
+    assert.equal((await (await env.get(own)).json()).phase, 'planning');
+    assert.equal((await env.get(`/api/trees/${other.id}/artifacts/${pending.id}`)).status, 404);
     const previews = await (await env.get(`/api/previews?id=${tree.id}&id=${other.id}`)).json();
     assert.deepEqual(previews[tree.id].at(-1).artifacts, [
-      { id: rendering.id, kind: 'video', title: task.title, status: 'pending' },
+      { id: pending.id, kind: 'video', title: task.title, status: 'pending' },
     ]);
     assert.ok(!previews[other.id].some((m) => m.artifacts));
-    gate();
-    await until(() => env.store.artifact(tree.id, rendering.id).status === 'ready');
+    release();
+    await until(() => env.store.artifact(tree.id, pending.id).status === 'ready');
     await env.app.settled();
     assert.deepEqual((await state()).videos, []);
     const ready = await artifact(tree.id);
@@ -97,7 +68,13 @@ test('inline video exposes bounded live progress and its position, keeps inputs 
     assert.equal(ready.phase, undefined);
     assert.equal(ready.progress, undefined);
     assert.equal(ready.position, pending.position);
+    assert.equal(ready.exported, false);
+    // An MP4 at the media path (an export, or a video saved before live saving) is served and counts as exported.
     const media = `/api/trees/${tree.id}/artifacts/${ready.id}/media`;
+    assert.equal((await env.get(media)).status, 404);
+    mkdirSync(join(env.dir, 'videos'), { recursive: true });
+    writeFileSync(mediaPath(env.dir, ready.id), mp4);
+    assert.equal((await artifact(tree.id)).exported, true);
     const whole = await env.get(media);
     assert.equal(whole.headers.get('accept-ranges'), 'bytes');
     assert.equal(Buffer.from(await whole.arrayBuffer()).length, mp4.length);

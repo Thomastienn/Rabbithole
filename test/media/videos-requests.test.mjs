@@ -258,12 +258,12 @@ test('Try a different version gives a ready video a new job; the chat shows only
       'one generation at a time',
     );
     assert.equal((await env.post(url)).status, 404, 'the previous id is no longer in the chat');
-    // The previous video stays playable in the library while the new one is made.
+    // The previous video stays in the library while the new one is made; it was never exported.
+    // Its live playback outside the chat is Rabbithole-exp.2 (cut routes keyed by video id).
     assert.deepEqual(
-      (await (await env.get('/api/videos')).json()).map((v) => v.id),
-      [first.id],
+      (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.exported]),
+      [[first.id, false]],
     );
-    assert.equal((await env.get(`/api/videos/${first.id}/media`)).status, 200);
     release();
     await until(() =>
       env.store.tree(tree.id).artifacts.find((a) => a.id === next.id && a.status === 'ready'),
@@ -278,8 +278,7 @@ test('Try a different version gives a ready video a new job; the chat shows only
       (await (await env.get('/api/videos')).json()).map((v) => v.id).sort(),
       [first.id, next.id].sort(),
     );
-    assert.equal((await env.get(`/api/videos/${first.id}/media`)).status, 200);
-    assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${next.id}/media`)).status, 200);
+    assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${next.id}/cuts`)).status, 200);
     const [a, b] = workers.map((w) => JSON.parse(w.text));
     assert.deepEqual(
       { ...b, differentVersion: undefined },

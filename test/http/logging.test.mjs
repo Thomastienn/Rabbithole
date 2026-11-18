@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { open, complete, directive, videoResponse, fakeRender } from '../support/video-kit.mjs';
+import { open, complete, directive, videoResponse } from '../support/video-kit.mjs';
 
 const usage = { input: 12, output: 7, cacheRead: 3 };
 const capture = async (t, provider, options = {}) => {
@@ -164,7 +164,7 @@ test('suggestion and compaction calls log their task and selected model at exist
   );
 });
 
-test('video logs plan, cuts, narration, playable, 25% rendering steps and saved with no generated content', async (t) => {
+test('video logs plan, cuts, narration, playable and saved, with no render steps or generated content', async (t) => {
   const env = await capture(
     t,
     {
@@ -173,13 +173,7 @@ test('video logs plan, cuts, narration, playable, 25% rendering steps and saved 
         complete(emit, tree.id ? 'PRIVATE reply.' + directive : videoResponse(tree));
       },
     },
-    {
-      videoSnapshot: async () => {},
-      videoRender: async (workspace, output, signal, progress) => {
-        for (const value of [0.1, 0.26, 0.29, 0.2, 0.8, 0.99, 1, 1]) progress(value);
-        return fakeRender(workspace, output, signal);
-      },
-    },
+    { videoSnapshot: async () => {} },
   );
   const tree = env.store.create('Video', 'codex');
   await (
@@ -194,12 +188,8 @@ test('video logs plan, cuts, narration, playable, 25% rendering steps and saved 
       media.some((line) => line.includes(` media ${stage} `)),
       stage,
     );
-  assert.deepEqual(
-    media
-      .filter((line) => line.includes(' media render '))
-      .map((line) => Number(/progress=(\d+)/.exec(line)[1])),
-    [25, 50, 75, 100],
-  );
+  // Saving renders nothing; render progress belongs to the export.
+  assert.ok(!media.some((line) => line.includes(' media render ')));
   assert.equal(
     env.logs.filter((line) => line.includes(' model finished ') && line.includes('task="video"'))
       .length,

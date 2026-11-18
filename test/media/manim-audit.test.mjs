@@ -35,7 +35,6 @@ for (const [name, fix] of Object.entries(fixes))
       fixes = [],
       shots = [],
       events = [];
-    let finalClip;
     const env = await open(
       {
         generate: async (tree, text, emit) => {
@@ -83,10 +82,6 @@ for (const [name, fix] of Object.entries(fixes))
           shots.push([readFileSync(join(ws, 'Video.tsx'), 'utf8'), clipOf(ws)]);
           for (const { file } of list) writeFileSync(file, 'jpeg');
         },
-        videoRender: async (ws, out) => {
-          if (ws.endsWith('cut-0')) finalClip = clipOf(ws);
-          return fakeRender(ws, out);
-        },
       },
     );
     t.after(async () => {
@@ -124,5 +119,8 @@ for (const [name, fix] of Object.entries(fixes))
     const saved = JSON.parse(row.source).cuts[0];
     assert.equal(saved.code, accepted ? fix : original);
     assert.equal(saved.audited, true);
-    assert.ok(finalClip.endsWith(accepted ? fix : original), 'the MP4 uses the kept clip');
+    // The saved video keeps the kept clip for live playback.
+    const { attempt } = env.store.artifact(chat.id, row.id);
+    const finalClip = clipOf(join(env.dir, 'video-work', row.id, attempt, 'cut-0'));
+    assert.ok(finalClip.endsWith(accepted ? fix : original), 'the saved video keeps the kept clip');
   });

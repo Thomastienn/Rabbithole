@@ -55,9 +55,8 @@ test('audits start together, see code, stills and the previous last frame; issue
   const audits = [],
     fixes = [],
     shots = [],
-    logs = [],
-    finalMarks = {};
-  let chat, liveDuringAudit, phaseDuringAudit, liveAtRender, rowsDuringFix;
+    logs = [];
+  let chat, liveDuringAudit, phaseDuringAudit, rowsDuringFix;
   const env = await open(
     {
       generate: async (tree, text, emit) => {
@@ -96,19 +95,6 @@ test('audits start together, see code, stills and the previous last frame; issue
     {
       log: (line) => logs.push(line),
       videoSnapshot: stills(shots),
-      videoRender: async (ws, out) => {
-        if (/^cut-\d$/.test(basename(ws))) {
-          finalMarks[basename(ws)] = [
-            readFileSync(join(ws, 'Video.tsx'), 'utf8'),
-            JSON.parse(readFileSync(join(ws, 'emphasis.json'), 'utf8')),
-          ];
-          const row = env.store.tree(chat.id).artifacts[0];
-          liveAtRender ??= await (
-            await env.get(`/api/trees/${chat.id}/artifacts/${row.id}/cuts`)
-          ).json();
-        }
-        return fakeRender(ws, out);
-      },
     },
   );
   t.after(async () => {
@@ -164,12 +150,14 @@ test('audits start together, see code, stills and the previous last frame; issue
     shots.some(([dir, code]) => dir === 'cut-0' && code === fixed),
     'fix is rendered',
   );
-  const saved = JSON.parse(row.source);
-  assert.equal(saved.cuts[0].code, fixed);
-  assert.deepEqual(saved.cuts[0].emphasis, moved);
-  assert.equal(saved.cuts[1].code, written(1));
-  assert.deepEqual(finalMarks['cut-0'], [fixed, moved], 'the MP4 uses the fix and moved marks');
-  assert.deepEqual(liveAtRender.cuts[0].emphasis, moved, 'live player draws moved marks');
+  const source = JSON.parse(row.source);
+  assert.equal(source.cuts[0].code, fixed);
+  assert.deepEqual(source.cuts[0].emphasis, moved);
+  assert.equal(source.cuts[1].code, written(1));
+  // The saved video plays live with the fix and its moved marks.
+  const saved = await (await env.get(`/api/trees/${chat.id}/artifacts/${row.id}/cuts`)).json();
+  assert.ok(saved.cuts.every((c) => c.playable));
+  assert.deepEqual(saved.cuts[0].emphasis, moved, 'live player draws moved marks');
   // Only the flagged cut gets a fix: one chat-model rewrite carrying the issues, plan, set pieces and code.
   assert.equal(fixes.length, 1);
   assert.equal(fixes[0].i, 0);
@@ -191,8 +179,7 @@ test('audits start together, see code, stills and the previous last frame; issue
 
 test('a fix that breaks the check or the render falls back to the cut from before the audit', async (t) => {
   const plan = twoCuts();
-  const shots = [],
-    final = {};
+  const shots = [];
   let fixCalls = 0;
   const env = await open(
     {
@@ -223,14 +210,6 @@ test('a fix that breaks the check or the render falls back to the cut from befor
           throw new Error('Video rendering failed.');
         return stills(shots)(dir, list, signal);
       },
-      videoRender: async (ws, out) => {
-        if (/^cut-\d$/.test(basename(ws)))
-          final[basename(ws)] = [
-            readFileSync(join(ws, 'Video.tsx'), 'utf8'),
-            JSON.parse(readFileSync(join(ws, 'emphasis.json'), 'utf8')),
-          ];
-        return fakeRender(ws, out);
-      },
     },
   );
   t.after(async () => {
@@ -248,7 +227,6 @@ test('a fix that breaks the check or the render falls back to the cut from befor
       [written(1), undefined],
     ],
   );
-  assert.deepEqual(final, { 'cut-0': [written(0), []], 'cut-1': [written(1), []] });
   assert.equal(fixCalls, 2, 'each flagged cut gets exactly one fix and no retry');
 });
 

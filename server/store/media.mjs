@@ -170,6 +170,14 @@ export const media = {
   removeLibraryVideo(id) {
     this.db.prepare('DELETE FROM videos WHERE id=?').run(id);
   },
+  // The learning tree still holding a saved video, for live playback of an unexported one.
+  readyVideo(id) {
+    return this.db
+      .prepare(
+        "SELECT conversation,source FROM artifacts WHERE id=? AND kind='video' AND status='ready'",
+      )
+      .get(id);
+  },
   libraryVideo(id) {
     return this.db
       .prepare('SELECT id,title,description,duration,created FROM videos WHERE id=?')

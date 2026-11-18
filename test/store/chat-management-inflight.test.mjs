@@ -2,7 +2,7 @@ import { until } from '../support/events.mjs';
 import { test } from 'node:test';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import assert from 'node:assert/strict';
-import { writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
@@ -224,8 +224,8 @@ test('deleted dirty layouts and failed in-flight writes never requeue, while sur
   }
 });
 
-test('delete stops an active video render and removes its partial files without interrupting a sibling render', async () => {
-  const renders = [];
+test('delete stops an active video job and removes its partial files without interrupting a sibling job', async () => {
+  const voices = [];
   const directive =
     '\n```rabbithole-video\n' +
     JSON.stringify({
@@ -252,45 +252,33 @@ test('delete stops an active video render and removes its partial files without 
       },
     },
     {
-      videoNarrate: fakeNarration,
-      videoRender: (workspace, output, signal) =>
+      // Narration holds each job until released; the first job is the child's.
+      videoNarrate: (script, signal) =>
         new Promise((resolve, reject) => {
-          writeFileSync(
-            output,
-            Buffer.concat([
-              Buffer.from([0, 0, 0, 24]),
-              Buffer.from('ftypisom'),
-              Buffer.alloc(4096),
-            ]),
-          );
-          renders.push({ workspace, output, signal, resolve });
+          voices.push({ signal, resolve: async () => resolve(await fakeNarration()) });
           signal.addEventListener('abort', () => reject(signal.reason), { once: true });
         }),
     },
   );
   try {
-    for (const t of [env.child, env.sibling])
+    for (const [i, t] of [env.child, env.sibling].entries()) {
       await (await env.post(t.id, 'messages', { text: 'Make a video' })).text();
-    await until(() => renders.length === 2);
+      await until(() => voices.length === i + 1);
+    }
     const deleted = env.store.tree(env.child.id).artifacts.at(-1),
       kept = env.store.tree(env.sibling.id).artifacts.at(-1);
-    const deletedRender = renders.find(
-      (r) => r.workspace === join(env.dir, 'video-work', deleted.id, deleted.attempt, 'cut-0'),
-    );
-    const keptRender = renders.find(
-      (r) => r.workspace === join(env.dir, 'video-work', kept.id, kept.attempt, 'cut-0'),
-    );
+    const [deletedJob, keptJob] = voices;
     assert.equal(
       (await env.post(env.root.id, 'delete', { conversation: env.child.id })).status,
       200,
     );
-    assert.equal(deletedRender.signal.aborted, true);
+    assert.equal(deletedJob.signal.aborted, true);
     assert.equal(existsSync(join(env.dir, 'video-work', deleted.id)), false);
     assert.equal(existsSync(mediaPath(env.dir, deleted.id)), false);
-    assert.equal(keptRender.signal.aborted, false);
-    keptRender.resolve({ durationInFrames: 75, fps: 30 });
+    assert.equal(keptJob.signal.aborted, false);
+    await keptJob.resolve();
     await until(() => env.store.artifact(env.sibling.id, kept.id).status === 'ready');
-    assert.ok(existsSync(mediaPath(env.dir, kept.id)));
+    assert.ok(existsSync(join(env.dir, 'video-work', kept.id, kept.attempt, 'cut-0', 'public')));
   } finally {
     env.close();
   }

@@ -73,6 +73,7 @@ export default function VideoCard({
     | 'description'
     | 'status'
     | 'available'
+    | 'exported'
     | 'conversation'
     | 'phase'
     | 'progress'
@@ -95,9 +96,19 @@ export default function VideoCard({
   const state =
     artifact.status === 'ready' && artifact.available === false ? 'unavailable' : artifact.status;
   const drafting = inline && state === 'pending';
-  // Once cut 1 is ready the pending video plays live until its MP4 is saved.
+  // Once cut 1 is ready the pending video plays live; a saved video plays live until it is exported.
   const live =
     state === 'pending' && (artifact.phase === 'playable' || artifact.phase === 'saving');
+  const exported = state === 'ready' && artifact.exported !== false;
+  const stage = useRef<HTMLElement>(null);
+  // The live player has no Lightbox form, so Open large shows it full screen.
+  const enlarge = () =>
+    exported
+      ? setEnlarged(true)
+      : void stage.current
+          ?.querySelector('iframe')
+          ?.requestFullscreen()
+          .catch(() => {});
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!drafting) return;
@@ -136,7 +147,7 @@ export default function VideoCard({
       size="sm"
       icon={<ArrowsPointingOutIcon />}
       aria-label={`Open large: ${artifact.title}`}
-      clickAction={() => setEnlarged(true)}
+      clickAction={enlarge}
     />
   );
   // Library cards (mockup Videos): frame first, then title, description and an action row that leads with Open large.
@@ -153,10 +164,11 @@ export default function VideoCard({
     >
       <VStack gap={2}>
         <section
+          ref={stage}
           className={`video-stage${!inline || state === 'ready' || drafting ? ' video-frame' : ''}`}
         >
           {state === 'pending' && !inline && !live && <Skeleton />}
-          {live && (
+          {(live || (state === 'ready' && !exported)) && (
             <LivePlayer
               conversation={artifact.conversation}
               id={artifact.id}
@@ -203,7 +215,7 @@ export default function VideoCard({
               </span>
             </div>
           )}
-          {state === 'ready' && (
+          {exported && (
             <video
               className="video-frame"
               src={media}
@@ -265,7 +277,7 @@ export default function VideoCard({
                 size="sm"
                 clickAction={() =>
                   state === 'ready'
-                    ? setEnlarged(true)
+                    ? enlarge()
                     : onAction?.(state === 'pending' ? 'cancel' : 'retry')
                 }
               />
@@ -317,7 +329,7 @@ export default function VideoCard({
             title={artifact.title}
           />
         )}
-        {state === 'ready' && enlarged && (
+        {exported && enlarged && (
           <Lightbox
             isOpen
             onOpenChange={setEnlarged}

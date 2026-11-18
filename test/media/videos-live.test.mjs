@@ -5,7 +5,6 @@ import {
   composition,
   styleBrief,
   task,
-  fakeRender,
   complete,
   until,
   open,
@@ -58,13 +57,9 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
     if (text === 'First.') await gate('voice');
     return fakeNarration();
   };
-  let renderProgress;
-  const videoRender = async (workspace, output, signal, onProgress) => {
-    renderProgress = onProgress;
-    onProgress(0.4);
-    // Hold only the first cut render; later cut renders and the join run straight through.
-    if (!opened.render) await gate('render');
-    return fakeRender(workspace, output);
+  let renders = 0;
+  const videoRender = async () => {
+    renders++;
   };
   const env = await open(provider, { videoRender, videoNarrate });
   // Phases follow saved cut state, so wake waiters on each save.
@@ -127,18 +122,12 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
     for (const path of ['2/narration', '0/clip', '9/narration'])
       assert.equal((await env.get(`${cuts}/${path}`)).status, 404, path);
     assert.equal((await env.get(`/api/trees/other/artifacts/${id}/cuts`)).status, 404);
-    // The library plays the live version until the MP4 is saved.
+    // The library plays the live version while the video is generating.
     assert.deepEqual(
       (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.live]),
       [[id, tree.id]],
     );
     await release('third');
-    const saving = await at('saving');
-    assert.equal(saving.progress, 0.4 / 3, 'cut 1 of 3 at 40%');
-    assert.equal(saving.frames, 225);
-    renderProgress(0.1);
-    assert.equal((await artifact()).phase, 'saving', 'the phase never moves backward');
-    await release('render');
     await until(async () => (await artifact()).status === 'ready');
     await env.app.settled();
     assert.deepEqual(seen, [
@@ -146,12 +135,19 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
       ['writing', 0, 3],
       ['narrating', undefined, undefined],
       ['playable', 2, 3],
-      ['saving', undefined, undefined],
     ]);
-    assert.equal((await env.get(cuts)).status, 404, 'the saved MP4 replaces the live cuts');
+    // Saving makes no render call; the saved video keeps playing live from its cuts.
+    assert.equal(renders, 0);
+    assert.equal((await artifact()).exported, false);
+    assert.ok((await (await env.get(cuts)).json()).cuts.every((c) => c.playable));
     assert.deepEqual(
-      (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.live]),
-      [[id, undefined]],
+      (await (await env.get('/api/videos')).json()).map((v) => [
+        v.id,
+        v.live,
+        v.exported,
+        v.conversation,
+      ]),
+      [[id, undefined, false, tree.id]],
     );
   } finally {
     env.close();

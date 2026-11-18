@@ -198,7 +198,7 @@ test('background compaction and diagram calls record actual provider/model per l
   );
 });
 
-test('video worker attempts record their own reported usage, including failed and canceled attempts; rendering adds none', async (t) => {
+test('video worker attempts record their own reported usage, including failed and canceled attempts; saving renders nothing', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-usage-video-'));
   const store = new Store(join(dir, 'trees.sqlite'));
   const task = {
@@ -299,7 +299,7 @@ test('video worker attempts record their own reported usage, including failed an
     { ...by, input: 13, output: 5, cacheRead: 2 }, // canceled attempt keeps what it reported
     { ...by, input: null, output: null, cacheRead: null },
   ]);
-  assert.equal(renders, 1);
+  assert.equal(renders, 0);
   // Stage and cut are kept per call; the per-video breakdown covers only the current attempt.
   assert.deepEqual(
     store.db
