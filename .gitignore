@@ -13,6 +13,8 @@ node_modules/
 .tools/
 dist/
 .impeccable/review/
+desktop/stage/
+desktop/target/
 
 # Ralph run state and logs; keep workflow configuration and checks tracked.
 .ralph-tui/iterations/

@@ -22,9 +22,13 @@ npm start -- --port 4318
 npm start -- --port 0
 ```
 
-`RABBITHOLE_PORT` also sets the port; `--port` takes precedence. Use the printed address, including its port. Keep the app on loopback; hosted deployment and a desktop installer are outside its scope.
+`RABBITHOLE_PORT` also sets the port; `--port` takes precedence. Use the printed address, including its port. Keep the app on loopback; hosted deployment is outside its scope.
 
 Stop with **Ctrl+C** and wait for the terminal command to exit. Active replies end as interrupted, keeping their partial text; unfinished videos also become interrupted. Closing a browser tab leaves the server and its work running. Reopening never automatically restarts an interrupted or failed generation.
+
+### Linux desktop app
+
+`npm run desktop:build` builds `desktop/target/release/bundle/appimage/Rabbithole_1.0.0_amd64.AppImage`. It needs Rust and Tauri's [Linux prerequisites](https://v2.tauri.app/start/prerequisites/#linux) (`sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf gstreamer1.0-plugins-good gstreamer1.0-libav`; the AppImage bundles the build machine's GStreamer plugins so video plays). The AppImage contains this Node runtime, the built app and its production dependencies. Opening it needs no terminal: on the first launch of each build it unpacks the app into `~/.local/share/rabbithole-app` (video tools downloaded there survive updates), starts the server on a free loopback port and shows it in a window. It uses the same data folder as `npm start`, so stop one before opening the other. Closing the window stops the server. Downloads such as an exported MP4 ask where to save. Video making still needs the system `bwrap` and the packages first-run setup lists.
 
 ## Providers and sign-in
 

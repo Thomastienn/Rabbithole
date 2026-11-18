@@ -23,6 +23,10 @@ export const SANDBOX = (workspace) => [
   '--ro-bind',
   join(REPO, 'node_modules'),
   join(REPO, 'node_modules'),
+  // The desktop app's bundled Node lives under the hidden home.
+  '--ro-bind',
+  process.execPath,
+  process.execPath,
   '--ro-bind',
   join(REPO, 'server', 'media', 'video-render.mjs'),
   join(REPO, 'server', 'media', 'video-render.mjs'),
