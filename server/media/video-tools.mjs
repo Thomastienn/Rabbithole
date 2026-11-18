@@ -6,6 +6,7 @@ import { detectPython } from '../tools/python.mjs';
 import { ensureManim } from '../../scripts/manim-setup.mjs';
 import { ensureClips } from '../../scripts/clips-setup.mjs';
 import { ensurePython } from '../../scripts/python-setup.mjs';
+import { ensureLatex, ensureUv, latexReady, uvReady } from '../../scripts/tools-setup.mjs';
 
 // The existing terminal setups, run by the download manager; stopping the app kills the running step.
 const runner = (signal) => (command, args) =>
@@ -33,6 +34,20 @@ const browser = (args, onLine = () => {}, signal) =>
 
 export function videoTools({ root = projectRoot } = {}) {
   return [
+    {
+      id: 'uv',
+      name: 'uv',
+      video: true,
+      ready: async () => uvReady(),
+      run: ({ report, signal }) => ensureUv({ run: runner(signal), root, report, signal }),
+    },
+    {
+      id: 'latex',
+      name: 'LaTeX',
+      video: true,
+      ready: async () => latexReady(),
+      run: ({ report, signal }) => ensureLatex({ run: runner(signal), root, report, signal }),
+    },
     {
       id: 'manim',
       name: 'Manim',

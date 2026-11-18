@@ -5,6 +5,7 @@ import { buildIsCurrent } from './build-state.mjs';
 import { ensureManim } from './manim-setup.mjs';
 import { ensurePython } from './python-setup.mjs';
 import { ensureClips } from './clips-setup.mjs';
+import { ensureLatex, ensureUv } from './tools-setup.mjs';
 
 if (Number(process.versions.node.split('.')[0]) < 24) {
   console.error(
@@ -47,6 +48,8 @@ try {
     );
     await npm(['ci', '--include=dev']);
   }
+  await ensureUv({ run });
+  await ensureLatex({ run });
   await ensureManim({ run });
   await ensureClips({ run });
   await ensurePython({ run });

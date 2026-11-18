@@ -1,9 +1,51 @@
 import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const MANIM_VERSION = '0.22.1';
 export const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
+// Downloaded uv and TinyTeX live in the project's .tools; bin names follow each archive's layout.
+export const uvDir = (root = projectRoot) => join(root, '.tools', 'uv');
+export const texBin = (root = projectRoot, platform = process.platform, arch = process.arch) =>
+  join(
+    root,
+    '.tools',
+    'TinyTeX',
+    'bin',
+    platform === 'darwin' ? 'universal-darwin' : `${arch === 'arm64' ? 'aarch64' : 'x86_64'}-linux`,
+  );
+// After the system PATH, so a learner's own uv or LaTeX wins over the downloads.
+process.env.PATH = [process.env.PATH, uvDir(), texBin()].join(delimiter);
+
+export const LINUX_PACKAGES =
+  'sudo apt install bubblewrap libcairo2-dev libpango1.0-dev pkg-config python3-dev build-essential';
+
+function osRelease() {
+  try {
+    return readFileSync('/etc/os-release', 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+// First-run setup's Linux line: null when bwrap, pkg-config and the Cairo/Pango headers are present.
+export function systemPackages({
+  platform = process.platform,
+  probe = spawnSync,
+  release = osRelease(),
+} = {}) {
+  if (platform !== 'linux') return null;
+  const ok = (command, args) => probe(command, args, { timeout: 10000 }).status === 0;
+  if (ok('bwrap', ['--version']) && ok('pkg-config', ['--exists', 'cairo', 'pangocairo']))
+    return null;
+  return /^ID(_LIKE)?=.*\b(debian|ubuntu)\b/m.test(release)
+    ? { command: LINUX_PACKAGES }
+    : {
+        words:
+          'bubblewrap, pkg-config, the Cairo and Pango development headers, the Python 3 development headers and the C build tools',
+      };
+}
 
 export function checkManimDependencies({ platform = process.platform, probe = spawnSync } = {}) {
   if (!['linux', 'darwin'].includes(platform))
@@ -19,12 +61,7 @@ export function checkManimDependencies({ platform = process.platform, probe = sp
   if (
     ['latex', 'dvisvgm'].some((tool) => probe(tool, ['--version'], { timeout: 10000 }).status !== 0)
   )
-    missing.push(
-      'LaTeX or dvisvgm is missing. Run: ' +
-        (platform === 'darwin'
-          ? 'brew install --cask mactex-no-gui'
-          : 'sudo apt install texlive-full'),
-    );
+    missing.push('LaTeX or dvisvgm is missing; it downloads as TinyTeX with the video tools.');
   if (missing.length)
     throw new Error(missing.join('\n') + '\nReopen your terminal, then run npm start.');
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -38,6 +38,40 @@ function Install({ cli, check }: { cli: keyof typeof INSTALL; check: () => void 
         <Button label="Check again" variant="secondary" size="sm" onClick={check} />
       </HStack>
     </VStack>
+  );
+}
+
+type SystemPackages = { command?: string; words?: string };
+
+// Linux only: system packages video making needs; chat, visuals and diagrams work without them.
+function VideoPackages({ api }: { api: (path: string) => Promise<unknown> }) {
+  const [system, setSystem] = useState<SystemPackages>({});
+  const check = () =>
+    void api('/api/setup/system')
+      .then((s) => setSystem(s as SystemPackages))
+      .catch(() => {});
+  useEffect(check, []);
+  if (!system.command && !system.words) return null;
+  return (
+    <>
+      <VStack gap={2}>
+        <Heading level={3}>Video tools</Heading>
+        <Text type="supporting">
+          Video making needs a few system packages; chat works without them.{' '}
+          {system.command ? (
+            <>
+              Run <Code>{system.command}</Code> in a terminal, then check again.
+            </>
+          ) : (
+            `Install ${system.words} with your distribution's package manager, then check again.`
+          )}
+        </Text>
+        <HStack>
+          <Button label="Check again" variant="secondary" size="sm" onClick={check} />
+        </HStack>
+      </VStack>
+      <Divider />
+    </>
   );
 }
 
@@ -146,6 +180,7 @@ export default function FirstRunSetup({
         )}
       </VStack>
       <Divider />
+      <VideoPackages api={api} />
       <VStack gap={2}>
         <Heading level={3}>Chat model</Heading>
         {chosen ? (

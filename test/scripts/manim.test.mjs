@@ -18,25 +18,29 @@ for (const [platform, headers, latex] of [
   [
     'linux',
     'sudo apt install build-essential python3-dev pkg-config libcairo2-dev libpango1.0-dev',
-    'sudo apt install texlive-full',
+    'LaTeX or dvisvgm is missing; it downloads as TinyTeX',
   ],
-  ['darwin', 'brew install pkg-config cairo pango', 'brew install --cask mactex-no-gui'],
+  [
+    'darwin',
+    'brew install pkg-config cairo pango',
+    'LaTeX or dvisvgm is missing; it downloads as TinyTeX',
+  ],
 ]) {
   test(`${platform}: dependency probes pass, or give exact commands for missing headers and LaTeX`, () => {
     assert.doesNotThrow(() => checkManimDependencies({ platform, probe: probes() }));
     for (const [missing, commands] of [
-      [['pkg-config'], [headers]],
+      [['pkg-config'], ['Run: ' + headers]],
       [['latex'], [latex]],
       [['dvisvgm'], [latex]],
       [
         ['pkg-config', 'latex'],
-        [headers, latex],
+        ['Run: ' + headers, latex],
       ],
     ]) {
       assert.throws(
         () => checkManimDependencies({ platform, probe: probes(missing) }),
         (error) => {
-          for (const command of commands) assert.ok(error.message.includes('Run: ' + command));
+          for (const command of commands) assert.ok(error.message.includes(command));
           assert.match(error.message, /run npm start/);
           return true;
         },
@@ -120,15 +124,11 @@ test('startup stops for missing prerequisites, failed installation or an unusabl
   const python = join(root, '.venv/bin/python');
   await assert.rejects(
     ensureManim({ root, probe: probes(['latex']), run: assert.fail }),
-    /sudo apt install texlive-full/,
+    /downloads as TinyTeX/,
   );
   await assert.rejects(
     ensureManim({ root, probe: probes([python, 'uv']), run: assert.fail }),
-    /https:\/\/astral.sh\/uv\/install.sh/,
-  );
-  await assert.rejects(
-    ensureManim({ root, platform: 'darwin', probe: probes([python, 'uv']), run: assert.fail }),
-    /brew install uv/,
+    /requires uv, which downloads first/,
   );
   await assert.rejects(
     ensureManim({ root, probe: probes([python]), run: async () => 1, log: () => {} }),

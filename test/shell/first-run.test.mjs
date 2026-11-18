@@ -6,7 +6,10 @@ import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
 
 // A fresh install: no trees, no chat model, nothing signed in until `signedIn`.
-async function mount(t, { firstRun = true, signedIn = true, cli = { missing: false } } = {}) {
+async function mount(
+  t,
+  { firstRun = true, signedIn = true, cli = { missing: false }, system = { body: {} } } = {},
+) {
   const posts = [];
   const saved = globalThis.fetch;
   globalThis.fetch = async (path, options) => {
@@ -48,7 +51,9 @@ async function mount(t, { firstRun = true, signedIn = true, cli = { missing: fal
               : { provider: null, model: null, effort: null }
             : path === '/api/setup'
               ? { firstRun: false }
-              : {};
+              : path === '/api/setup/system'
+                ? system.body
+                : {};
     return { ok: true, json: async () => body };
   };
   const { default: ChatPage } = await import('../../src/shell/ChatPage.tsx');
@@ -122,4 +127,38 @@ test('a missing CLI shows its official install page and command; "Check again" f
   await click('Check again');
   assert.doesNotMatch(container.textContent, /not installed/);
   assert.match(container.querySelector('.first-run').textContent, /Signed in through Claude Code/);
+});
+
+test('Linux setup shows the one install line while packages are missing; "Check again" clears it and chat still starts', async (t) => {
+  const command =
+    'sudo apt install bubblewrap libcairo2-dev libpango1.0-dev pkg-config python3-dev build-essential';
+  const system = { body: { command } };
+  const { container, posts, click } = await mount(t, { system });
+  const setup = () => container.querySelector('.first-run');
+  assert.match(
+    setup().textContent,
+    /Video making needs a few system packages; chat works without them/,
+  );
+  assert.equal(setup().querySelector('code').textContent, command);
+  system.body = {};
+  await click('Check again');
+  assert.doesNotMatch(setup().textContent, /Video tools|sudo apt/);
+  await click('Start asking');
+  assert.deepEqual(posts.at(-1), ['/api/setup', {}]);
+  assert.equal(setup(), null);
+});
+
+test('other distros get the package list in words; setup still ends with the line unresolved', async (t) => {
+  const { container, click } = await mount(t, {
+    system: { body: { words: 'bubblewrap, pkg-config and the Cairo headers' } },
+  });
+  const text = container.querySelector('.first-run').textContent;
+  assert.match(
+    text,
+    /Install bubblewrap, pkg-config and the Cairo headers with your distribution's package manager/,
+  );
+  assert.doesNotMatch(text, /sudo apt/);
+  await click('Start asking');
+  assert.equal(container.querySelector('.first-run'), null);
+  assert.ok(container.querySelector('[aria-label="Your question"]'));
 });

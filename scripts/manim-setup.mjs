@@ -19,13 +19,7 @@ export async function ensureManim({
   if (!manim.ready) {
     checkManimDependencies({ platform, probe });
     if (probe('uv', ['--version'], { timeout: 10000 }).status !== 0)
-      throw new Error(
-        'Manim setup requires uv. Install it with: ' +
-          (platform === 'darwin'
-            ? 'brew install uv'
-            : 'curl -LsSf https://astral.sh/uv/install.sh | sh') +
-          '\nReopen your terminal, then run npm start.',
-      );
+      throw new Error('Manim setup requires uv, which downloads first. Run npm start again.');
     async function uv(args) {
       let code;
       try {
