@@ -136,10 +136,11 @@ export async function treeRoutes(req, res, url, ctx, body) {
       result = store.remove(id, body.conversation, (artifacts) => {
         // Move files reversibly before commit; an SQL or filesystem failure restores their original names.
         for (const a of artifacts.filter((a) => a.kind === 'video')) {
-          // Library videos keep their media; private production work is still removed.
+          // Library videos keep their media and the production work their live playback needs.
           for (const path of [
-            ...(store.libraryVideo(a.id) ? [] : [mediaPath(dir, a.id)]),
-            join(dir, 'video-work', a.id),
+            ...(store.libraryVideo(a.id)
+              ? []
+              : [mediaPath(dir, a.id), join(dir, 'video-work', a.id)]),
             ...(a.attempt ? [join(dir, 'video-work', a.attempt)] : []),
           ]) {
             files.push(path);

@@ -104,7 +104,7 @@ export const media = {
       if (done && !error)
         this.db
           .prepare(
-            'INSERT INTO videos(id,title,description,duration,created) SELECT id,title,description,duration,created FROM artifacts WHERE id=? ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,duration=excluded.duration',
+            'INSERT INTO videos(id,title,description,duration,created,source,attempt) SELECT id,title,description,duration,created,source,attempt FROM artifacts WHERE id=? ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,duration=excluded.duration,source=excluded.source,attempt=excluded.attempt',
           )
           .run(id);
       this.db.exec('COMMIT');
@@ -170,13 +170,9 @@ export const media = {
   removeLibraryVideo(id) {
     this.db.prepare('DELETE FROM videos WHERE id=?').run(id);
   },
-  // The learning tree still holding a saved video, for live playback of an unexported one.
-  readyVideo(id) {
-    return this.db
-      .prepare(
-        "SELECT conversation,source FROM artifacts WHERE id=? AND kind='video' AND status='ready'",
-      )
-      .get(id);
+  // A library video's own cut source and attempt, so it plays live after its tree is deleted or regenerated.
+  libraryCuts(id) {
+    return this.db.prepare('SELECT source,attempt FROM videos WHERE id=?').get(id);
   },
   libraryVideo(id) {
     return this.db

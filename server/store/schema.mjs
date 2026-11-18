@@ -320,6 +320,18 @@ export function open(path) {
         .exec(`CREATE TABLE videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, duration REAL, created INTEGER NOT NULL);
           INSERT INTO videos(id,title,description,duration,created) SELECT id,title,description,duration,created FROM artifacts WHERE kind='video' AND status='ready';`);
     }
+    // Library playback: a library video keeps its cut source and attempt; saved videos backfill from their tree.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(videos)')
+        .all()
+        .some((c) => c.name === 'source')
+    )
+      this.db.exec(`BEGIN IMMEDIATE;
+          ALTER TABLE videos ADD COLUMN source TEXT;
+          ALTER TABLE videos ADD COLUMN attempt TEXT;
+          UPDATE videos SET (source,attempt)=(SELECT source,attempt FROM artifacts WHERE artifacts.id=videos.id AND kind='video' AND status='ready');
+          COMMIT;`);
     // Piece library: one saved Remotion set piece per row, shared across videos; the embedding is a Float32 blob of its look.
     this.db
       .exec(`CREATE TABLE IF NOT EXISTS pieces (id TEXT PRIMARY KEY, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, roles TEXT NOT NULL, embedding BLOB, created INTEGER NOT NULL, improved INTEGER NOT NULL);

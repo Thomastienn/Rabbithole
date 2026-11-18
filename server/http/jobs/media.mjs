@@ -82,7 +82,14 @@ export function mediaJobs(ctx) {
     if (a.status !== 'ready') return a;
     // Exported means the MP4 exists; a saved video without one plays its cuts live, unless it has none.
     if (readable(mediaPath(dir, a.id))) return { ...a, exported: true };
-    return { ...a, exported: false, ...(!savedCuts(artifact.source) && { available: false }) };
+    // Trashing a video from the library deletes its production work, so it can no longer play.
+    return {
+      ...a,
+      exported: false,
+      ...((!savedCuts(artifact.source) || !existsSync(join(dir, 'video-work', a.id))) && {
+        available: false,
+      }),
+    };
   };
   // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
   const startVideo = (job, parentSignal, previous) => {

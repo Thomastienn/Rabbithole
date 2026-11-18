@@ -1,5 +1,5 @@
-import { stat, lstat, readFile } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
+import { stat, lstat, readFile, rm } from 'node:fs/promises';
+import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { mediaPath, playable } from '../../media/videos.mjs';
@@ -38,14 +38,17 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             created,
             live: conversation,
           })),
-        // A video is exported once its MP4 exists; an unexported one plays live while its tree has it.
-        ...store.library().map((v) => {
-          if (readable(mediaPath(dir, v.id))) return { ...v, exported: true };
-          const saved = store.readyVideo(v.id);
-          return savedCuts(saved?.source)
-            ? { ...v, exported: false, conversation: saved.conversation }
-            : { ...v, exported: false, available: false };
-        }),
+        // A video is exported once its MP4 exists; an unexported one plays live from its own saved cuts.
+        ...store
+          .library()
+          .map((v) =>
+            readable(mediaPath(dir, v.id))
+              ? { ...v, exported: true }
+              : savedCuts(store.libraryCuts(v.id).source) &&
+                  existsSync(join(dir, 'video-work', v.id))
+                ? { ...v, exported: false }
+                : { ...v, exported: false, available: false },
+          ),
       ]);
     // The read-only piece library; the source compiles for the player frame like live cut code.
     // Paged and searchable; the query is embedded with any pieces saved while no embedder was usable.
@@ -146,12 +149,18 @@ export async function mediaRoutes(req, res, url, ctx, body) {
       return true;
     }
     // Live playback: only a pending or saved cut-format video, only playable cuts, files located from server ids.
-    const cutsMatch = url.pathname.match(
-      /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/cuts(?:\/(\d+)\/(narration|clip|exhibit))?$/,
-    );
+    // A library video plays by its id alone, since its learning tree may be gone.
+    const cutsMatch =
+      url.pathname.match(
+        /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/cuts(?:\/(\d+)\/(narration|clip|exhibit))?$/,
+      ) ??
+      url.pathname.match(/^\/api\/videos()\/([^/]+)\/cuts(?:\/(\d+)\/(narration|clip|exhibit))?$/);
     if (cutsMatch) {
       const [, conversation, id, index, file] = cutsMatch,
-        artifact = store.artifact(conversation, id);
+        saved = !conversation && store.libraryCuts(id),
+        artifact = conversation
+          ? store.artifact(conversation, id)
+          : saved && { kind: 'video', status: 'ready', id, ...saved };
       let data = null;
       try {
         if (artifact?.kind === 'video' && ['pending', 'ready'].includes(artifact.status))
@@ -262,6 +271,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         });
       }
     store.removeLibraryVideo(id);
+    // Production work is private app data, so it is deleted rather than trashed.
+    await rm(join(dir, 'video-work', id), { recursive: true, force: true });
     return json(res, 200, { trashed: !!info, missing: !info });
   }
   const jobMatch = url.pathname.match(

@@ -17,8 +17,6 @@ export type LibraryVideo = {
   exported?: boolean;
   // Conversation of a pending video that plays live while it is generating.
   live?: string;
-  // Learning tree of a saved, unexported video; it plays live from there.
-  conversation?: string;
 };
 
 export default function VideoLibrary({
@@ -54,9 +52,11 @@ export default function VideoLibrary({
       setVideos((list) => list?.filter((x) => x.id !== v.id));
       setTrashing(undefined);
       setNotice(
-        result.missing
-          ? `Removed “${v.title}” from Videos. Its file was already missing.`
-          : `Moved “${v.title}” to the system trash. Restore it from your desktop trash if needed.`,
+        v.exported === false
+          ? `Removed “${v.title}” and its saved work from Videos.`
+          : result.missing
+            ? `Removed “${v.title}” from Videos. Its file was already missing.`
+            : `Moved “${v.title}” to the system trash. Restore it from your desktop trash if needed.`,
       );
       requestAnimationFrame(() => document.getElementById('refresh-videos')?.focus());
     } catch (e) {
@@ -122,9 +122,10 @@ export default function VideoLibrary({
                 artifact={
                   v.live
                     ? { ...v, status: 'pending', conversation: v.live, phase: 'playable' }
-                    : { ...v, status: 'ready', conversation: v.conversation ?? '' }
+                    : { ...v, status: 'ready', conversation: '' }
                 }
                 media={`/api/videos/${v.id}/media`}
+                cuts={v.live ? undefined : `/api/videos/${v.id}/cuts`}
                 actions={
                   !v.live && (
                     <>
@@ -167,7 +168,7 @@ export default function VideoLibrary({
             ? `Remove “${trashing?.title ?? ''}” from Videos?`
             : `Move “${trashing?.title ?? ''}” to the trash?`
         }
-        description={`${trashing?.available === false ? 'Its saved file is already missing, so only the library entry is removed.' : 'The video file moves to your system trash, where you can restore it.'} Your usage history is kept, and Rabbithole will not regenerate it.${trashError ? ` ${trashError}` : ''}`}
+        description={`${trashing?.available === false ? 'Its saved file is already missing, so only the library entry is removed.' : trashing?.exported === false ? 'It was never exported, so its saved work is deleted and cannot be restored.' : 'The video file moves to your system trash, where you can restore it.'} Your usage history is kept, and Rabbithole will not regenerate it.${trashError ? ` ${trashError}` : ''}`}
         actionLabel={trashing?.available === false ? 'Remove from Videos' : 'Move to trash'}
         cancelLabel="Keep video"
         isActionLoading={busy}

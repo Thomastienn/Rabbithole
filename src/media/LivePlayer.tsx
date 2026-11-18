@@ -15,22 +15,14 @@ type LiveCuts = {
 
 // Plays a pending video's ready cuts inside the opaque-origin player frame. The app fetches cut code, narration
 // and clips from its own API and hands them over as data; the frame itself has no network.
-export default function LivePlayer({
-  conversation,
-  id,
-  title,
-}: {
-  conversation: string;
-  id: string;
-  title: string;
-}) {
+export default function LivePlayer({ cuts, title }: { cuts: string; title: string }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (!loaded) return;
     let stopped = false,
       last = '';
-    const base = `/api/trees/${conversation}/artifacts/${id}/cuts`,
+    const base = cuts,
       blobs = new Map<string, Blob>();
     const blob = async (key: string) => {
       if (blobs.has(key)) return;
@@ -83,7 +75,7 @@ export default function LivePlayer({
     return () => {
       stopped = true;
     };
-  }, [loaded, conversation, id]);
+  }, [loaded, cuts]);
   return (
     <iframe
       ref={frame}

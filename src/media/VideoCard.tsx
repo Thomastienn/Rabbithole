@@ -58,12 +58,13 @@ const SKETCH = [
 ];
 
 // Only the status line announces (step changes, ready, failure); source stays private.
-// Library cards pass their own media route and no onAction: their source conversation may be gone, so nothing can regenerate there.
+// Library cards pass their own media and cut routes and no onAction: their source conversation may be gone, so nothing can regenerate there.
 export default function VideoCard({
   artifact,
   inline = false,
   onAction,
   media = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/media`,
+  cuts = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/cuts`,
   actions,
 }: {
   artifact: Pick<
@@ -89,6 +90,7 @@ export default function VideoCard({
   inline?: boolean;
   onAction?: (action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
   media?: string;
+  cuts?: string;
   actions?: ReactNode;
 }) {
   const id = useId();
@@ -169,11 +171,7 @@ export default function VideoCard({
         >
           {state === 'pending' && !inline && !live && <Skeleton />}
           {(live || (state === 'ready' && !exported)) && (
-            <LivePlayer
-              conversation={artifact.conversation}
-              id={artifact.id}
-              title={artifact.title}
-            />
+            <LivePlayer cuts={cuts} title={artifact.title} />
           )}
           {live && drafting && (
             <span className="video-draft-bar" aria-hidden>

@@ -68,9 +68,10 @@ test('delete a branch cascades only its descendants, cleans files and layout, an
     for (const path of env.paths)
       assert.equal(
         existsSync(path),
-        path.endsWith('.mp4') || !deleted.has(readFileOwner(path, before)),
+        !deleted.has(readFileOwner(path, before).conversation) ||
+          libraryKeeps(path, before, env.store),
         path,
-      ); // library keeps ready media
+      );
     assert.deepEqual(env.store.db.prepare('PRAGMA foreign_key_check').all(), []);
     assert.equal(
       (
@@ -102,7 +103,13 @@ function readFileOwner(path, before) {
   // The fixture embeds artifact/attempt IDs in server-chosen paths, matching real storage ownership.
   return before.artifacts.find(
     (a) => a.kind === 'video' && (path.includes(a.id) || path.includes(a.attempt)),
-  ).conversation;
+  );
+}
+
+// A library video keeps its MP4 and its production work; the legacy attempt-keyed folder goes.
+function libraryKeeps(path, before, store) {
+  const { id } = readFileOwner(path, before);
+  return !!store.libraryVideo(id) && path.includes(id);
 }
 
 test('delete a whole chat removes every owned row and private work file; another chat stays byte-identical', async () => {
@@ -110,6 +117,11 @@ test('delete a whole chat removes every owned row and private work file; another
   try {
     const other = env.store.tree(env.other.id),
       before = snapshot(env.store);
+    // A video trashed from the library loses its media and production work with its tree.
+    const rootVideo = before.artifacts.find(
+      (a) => a.kind === 'video' && a.conversation === env.root.id,
+    );
+    env.store.removeLibraryVideo(rootVideo.id);
     const response = await env.post(env.root.id, 'delete', { conversation: env.root.id });
     assert.equal(response.status, 200);
     assert.equal((await response.json()).deleted.length, 4);
@@ -121,7 +133,8 @@ test('delete a whole chat removes every owned row and private work file; another
     for (const path of env.paths)
       assert.equal(
         existsSync(path),
-        path.endsWith('.mp4') || readFileOwner(path, before) === env.other.id,
+        readFileOwner(path, before).conversation === env.other.id ||
+          libraryKeeps(path, before, env.store),
         path,
       );
     for (const [table, key] of [

@@ -118,7 +118,6 @@ test('library cards lead with the frame; missing files offer only removal; trash
           duration: 3,
           created: 3,
           exported: false,
-          conversation: 'tree-1',
         },
         {
           id: 'gone',
@@ -151,7 +150,7 @@ test('library cards lead with the frame; missing files offer only removal; trash
     ['Open large', 'Show in folder', 'Move to trash'],
   );
   assert.equal(kept.querySelector('video').getAttribute('src'), '/api/videos/kept/media');
-  // An unexported video plays live from its tree and has no file to show.
+  // An unexported video plays live from its saved cuts and has no file to show.
   const fresh = card('fresh');
   assert.equal(fresh.querySelector('video'), null);
   assert.equal(fresh.querySelector('iframe').getAttribute('title'), 'Live video: Fresh');

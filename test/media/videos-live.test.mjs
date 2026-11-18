@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   directive,
   composition,
@@ -39,8 +41,10 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
     await until(() => opened[name]);
     gates[name]();
   };
+  let generations = 0;
   const provider = {
     generate: async (tree, text, emit) => {
+      generations++;
       if (tree.instructions?.startsWith('You plan')) {
         await gate('plan');
         return complete(emit, JSON.stringify(plan));
@@ -145,10 +149,31 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
         v.id,
         v.live,
         v.exported,
-        v.conversation,
+        v.available,
       ]),
-      [[id, undefined, false, tree.id]],
+      [[id, undefined, false, undefined]],
     );
+    // After its tree is deleted, the library still plays the unexported video by its id, without a provider.
+    const library = `/api/videos/${id}/cuts`,
+      calls = generations,
+      saved = await (await env.get(cuts)).json();
+    assert.equal(
+      (await env.post(`/api/trees/${tree.id}/delete`, { conversation: tree.id })).status,
+      200,
+    );
+    assert.equal((await env.get(cuts)).status, 404, 'the tree route is gone');
+    assert.deepEqual(await (await env.get(library)).json(), saved);
+    assert.deepEqual(
+      Buffer.from(await (await env.get(`${library}/2/narration`)).arrayBuffer()),
+      Buffer.from((await fakeNarration()).audio),
+    );
+    assert.equal(generations, calls, 'library playback never calls a provider');
+    // Trashing removes its production work and library entry.
+    const trashed = await env.post(`/api/videos/${id}/trash`);
+    assert.deepEqual(await trashed.json(), { trashed: false, missing: true });
+    assert.equal(existsSync(join(env.dir, 'video-work', id)), false);
+    assert.deepEqual(await (await env.get('/api/videos')).json(), []);
+    assert.equal((await env.get(library)).status, 404);
   } finally {
     env.close();
   }

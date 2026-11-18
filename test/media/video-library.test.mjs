@@ -121,13 +121,13 @@ test('existing ready videos migrate into a global library that survives source d
     assert.equal((await env.get(`/api/videos/${ids.failed}/media`)).status, 404);
     assert.equal((await env.get('/api/videos/..%2Ftrees.sqlite/media')).status, 404);
 
-    // Deleting the source chat keeps library media and routes, but no discussion text or private work.
+    // Deleting the source chat keeps library media, production work and routes, but no discussion text.
     assert.equal(
       (await env.post(`/api/trees/${root.id}/delete`, { conversation: root.id })).status,
       200,
     );
     assert.equal(env.store.tree(root.id), undefined);
-    assert.equal(existsSync(join(dir, 'video-work', ids.kept)), false);
+    assert.ok(existsSync(join(dir, 'video-work', ids.kept)));
     assert.ok(existsSync(mediaPath(dir, ids.kept)));
     const after = await (await env.get('/api/videos')).json();
     assert.deepEqual(after.map((v) => v.id).sort(), [ids.kept, ids.missing, ids.other].sort());
