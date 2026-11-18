@@ -8,6 +8,7 @@ import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { PlusIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import type { Model } from './models';
+import SearchOffer from './SearchOffer';
 
 type Endpoint = {
   id: string;
@@ -122,7 +123,8 @@ export default function EndpointSettings({
   const [testing, setTesting] = useState(''),
     [pending, setPending] = useState('loading'),
     [error, setError] = useState(''),
-    [message, setMessage] = useState('');
+    [message, setMessage] = useState(''),
+    [offerSearch, setOfferSearch] = useState(false);
   async function load() {
     setPending('loading');
     setError('');
@@ -146,6 +148,7 @@ export default function EndpointSettings({
     setPending(action);
     setError('');
     setMessage('');
+    setOfferSearch(false);
     try {
       setList(await api(`/api/settings/endpoints${action === 'add' ? '' : `/${action}`}`, body));
       setMessage(done);
@@ -156,6 +159,11 @@ export default function EndpointSettings({
         setBaseUrl('');
       }
       setRemoving(undefined);
+      // Endpoints usually bring no web search, so offer the app's own unless search already works.
+      if (action === 'add') {
+        const search = await api('/api/settings/searxng').catch(() => null);
+        setOfferSearch(!!search && !search.ready && !search.customUrl);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -430,6 +438,14 @@ export default function EndpointSettings({
         <Text type="supporting" role="status">
           {message}
         </Text>
+      )}
+      {offerSearch && (
+        <SearchOffer
+          api={api}
+          close={() => setOfferSearch(false)}
+          done={setMessage}
+          failed={setError}
+        />
       )}
       {error && !nameTaken && !removing && (
         <Text type="supporting" role="alert">

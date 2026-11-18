@@ -12,7 +12,7 @@ import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
 import { localEmbedder } from './media/embedder.mjs';
 import { sandboxSnapshot } from './media/videos.mjs';
-import { managedSearxng } from './searxng.mjs';
+import { searxngDownload } from './searxng.mjs';
 import { pythonTool } from './tools/python.mjs';
 import { downloadManager } from './downloads.mjs';
 import { videoTools } from './media/video-tools.mjs';
@@ -37,10 +37,8 @@ if (
 }
 const port = Number(portText);
 let release, store, app, stopping, searxng;
-const startup = new AbortController();
 function shutdown(code = 0) {
   return (stopping ??= (async () => {
-    startup.abort();
     await app?.stop();
     await searxng?.stop();
     store?.close();
@@ -58,11 +56,11 @@ try {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   // A second instance must not race a rotating OAuth refresh token or mark live replies interrupted.
   release = await lockfile.lock(dir, { realpath: true, stale: 10000 });
-  searxng = await managedSearxng(dir, { signal: startup.signal });
+  searxng = searxngDownload(dir);
   store = new Store(join(dir, 'trees.sqlite'));
   if (store.backupPath) console.log(`Saved pre-upgrade backup: ${store.backupPath}`);
   store.pruneEmpty();
-  const downloads = downloadManager(videoTools());
+  const downloads = downloadManager([...videoTools(), searxng.tool]);
   const auth = new Auth(dir),
     claude = new Claude(dir, spawn, execFile, cliPath('claude')),
     endpoint = new OpenAI(dir),

@@ -18,7 +18,12 @@ function fakeTools(installed = {}) {
         pending[id] = { resolve, reject, report };
       }),
   });
-  return { tools: [tool('manim', true), tool('browser', true), tool('python')], runs, pending };
+  const search = { ...tool('searxng'), requested: () => Boolean(installed.requested) };
+  return {
+    tools: [tool('manim', true), tool('browser', true), tool('python'), search],
+    runs,
+    pending,
+  };
 }
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const states = (manager) => manager.list().map((d) => `${d.id}:${d.state}`);
@@ -156,4 +161,31 @@ test('routes stream the list, retry failures, mark seen, and setup starts downlo
   pending.manim.resolve();
   await downloads.idle();
   assert.deepEqual(await (await env.post('/api/downloads/seen')).json(), []);
+});
+
+test('an on-request download waits to be added, then queues once; a requested one checks on launch', async (t) => {
+  const { tools, runs, pending } = fakeTools({ manim: true, browser: true, python: true });
+  const downloads = downloadManager(tools);
+  const env = await open({ generate: async () => assert.fail('no video work') }, { downloads });
+  t.after(env.close);
+  await downloads.start();
+  assert.deepEqual(runs, [], 'a fresh install does not download web search');
+  assert.equal((await env.post('/api/downloads/nothing')).status, 404);
+  assert.deepEqual(
+    (await (await env.post('/api/downloads/searxng')).json()).map((d) => d.state),
+    ['queued'],
+  );
+  downloads.add('searxng');
+  await tick();
+  assert.deepEqual(runs, ['searxng'], 'adding again while listed is a no-op');
+  pending.searxng.resolve();
+  await downloads.idle();
+  assert.deepEqual(states(downloads), ['searxng:ready']);
+
+  const interrupted = fakeTools({ manim: true, browser: true, python: true, requested: true });
+  const again = downloadManager(interrupted.tools);
+  void again.start();
+  await tick();
+  assert.deepEqual(states(again), ['searxng:running'], 'a cut-short request re-queues on launch');
+  again.stop();
 });

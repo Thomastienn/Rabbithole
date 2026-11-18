@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { ensureSearxng } from '../scripts/searxng-setup.mjs';
 
@@ -94,4 +96,45 @@ export async function managedSearxng(
     log(state.error);
   }
   return { status, stop };
+}
+
+// Web search downloads only when asked for (offered on adding a custom endpoint); once its folder exists,
+// every launch starts it, re-queuing a download that was cut short.
+export function searxngDownload(dir, { manage = managedSearxng, setup = ensureSearxng } = {}) {
+  let current;
+  const offline = (options) =>
+    setup({
+      ...options,
+      run: async () => {
+        throw new Error('SearXNG is not downloaded.');
+      },
+    });
+  const launch = async (install, signal) => {
+    if (current?.status().ready) return true;
+    await current?.stop();
+    current = await manage(dir, {
+      setup: install,
+      signal,
+      log: install === offline ? () => {} : undefined,
+    });
+    return current.status().ready;
+  };
+  return {
+    status: () =>
+      current?.status() ?? {
+        ready: false,
+        url: null,
+        error: 'Web search is not downloaded. Adding a custom endpoint offers it.',
+      },
+    stop: () => current?.stop(),
+    tool: {
+      id: 'searxng',
+      name: 'Web search',
+      requested: () => existsSync(join(dir, 'searxng')),
+      ready: () => launch(offline),
+      run: async ({ signal }) => {
+        if (!(await launch(setup, signal))) throw new Error(current.status().error);
+      },
+    },
+  };
 }

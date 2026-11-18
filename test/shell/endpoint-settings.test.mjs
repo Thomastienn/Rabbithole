@@ -19,6 +19,8 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
   const calls = [];
   const api = async (path, body) => {
     if (body) calls.push([path, body]);
+    if (path === '/api/settings/searxng') return { ready: false, url: null, customUrl: null };
+    if (path === '/api/downloads/searxng') return [];
     if (path === '/api/settings/endpoints' && body) {
       if (list.some((e) => e.name.toLowerCase() === body.name.toLowerCase()))
         throw new Error(`Another endpoint is called ${body.name}. Choose a different name.`);
@@ -95,6 +97,12 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
   assert.equal(container.querySelector('.endpoint-form'), null, 'the form closes after saving');
   assert.match(container.textContent, /Work gateway added\. Choose its models in any model menu\./);
   assert.ok(!container.innerHTML.includes('secret'), 'the key is never shown');
+  // Adding an endpoint while web search is unavailable offers its download.
+  assert.match(container.textContent, /Most endpoints cannot search the web/);
+  await act(async () => button(container, 'Download web search').click());
+  assert.deepEqual(calls.at(-1), ['/api/downloads/searxng', {}]);
+  assert.match(container.textContent, /Web search is downloading\. Follow it in Downloads\./);
+  assert.equal(container.querySelector('.endpoint-search-offer'), null);
 
   // A failed test stays on the row, is announced and offers Test again.
   await act(async () => button(container, 'Test Work gateway').click());
@@ -225,4 +233,44 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
   assert.match(panel().textContent, /No models match\./);
   await act(async () => button(container, 'Hide Gateway models').click());
   assert.equal(panel(), null);
+});
+
+// Adds one endpoint while /api/settings/searxng answers `search`; returns the page and the POSTed paths.
+async function addGateway(t, search) {
+  let list = [];
+  const calls = [];
+  const api = async (path, body) => {
+    if (body) calls.push(path);
+    if (path === '/api/settings/searxng') return search;
+    if (body) list = [{ id: 'openai:gw', name: body.name, baseUrl: body.baseUrl, lastTest: null }];
+    return list;
+  };
+  const { container, act, cleanup } = await render(h(EndpointSettings, { api, changed() {} }), ui);
+  t.after(cleanup);
+  await act(async () => {});
+  await act(async () => button(container, 'Add endpoint').click());
+  const field = (label) =>
+    [...container.querySelectorAll('.endpoint-form input')].find((i) =>
+      i.labels?.[0]?.textContent.startsWith(label),
+    );
+  await act(async () => {
+    inputValue(field('Name'), 'Gateway');
+    inputValue(field('Base URL'), 'http://gw/v1');
+    inputValue(field('API key'), 'secret');
+  });
+  await act(async () => container.querySelector('.endpoint-form').requestSubmit());
+  assert.match(container.textContent, /Gateway added/);
+  return { container, act, calls };
+}
+
+test('declining the web search offer keeps the endpoint and queues nothing', async (t) => {
+  const { container, act, calls } = await addGateway(t, { ready: false, customUrl: null });
+  await act(async () => button(container, 'Not now').click());
+  assert.equal(container.querySelector('.endpoint-search-offer'), null);
+  assert.deepEqual(calls, ['/api/settings/endpoints']);
+});
+
+test('no web search offer when search already works', async (t) => {
+  const { container } = await addGateway(t, { ready: true, customUrl: null });
+  assert.equal(container.querySelector('.endpoint-search-offer'), null);
 });

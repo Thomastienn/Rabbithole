@@ -48,7 +48,7 @@ test('main starts an old database without providers; busy port explains how to c
     const search = await (await fetch(origin + '/api/settings/searxng')).json();
     assert.equal(search.ready, false);
     assert.equal(search.url, null);
-    assert.match(search.error, /Install uv/);
+    assert.match(search.error, /Web search is not downloaded/);
     assert.equal(state.auth.connected, false);
     assert.deepEqual(
       state.trees.map((t) => t.title),

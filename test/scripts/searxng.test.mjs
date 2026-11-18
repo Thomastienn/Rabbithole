@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { ensureSearxng, SEARXNG_SOURCE } from '../../scripts/searxng-setup.mjs';
-import { managedSearxng } from '../../server/searxng.mjs';
+import { managedSearxng, searxngDownload } from '../../server/searxng.mjs';
 
 const directory = () => mkdtempSync(join(tmpdir(), 'rabbithole-searxng-unit-'));
 const quiet = () => {};
@@ -264,4 +264,40 @@ test('shutdown escalates an unresponsive child; cancelled setup never launches a
   });
   assert.equal(cancelled.status().ready, false);
   assert.match(cancelled.status().error, /App stopped/);
+});
+
+test('web search is not downloaded until asked; an installed copy starts without downloading', async () => {
+  const dir = directory(),
+    downloads = [];
+  // A fake setup: installs only through run, as ensureSearxng does; manage starts what setup returns.
+  let installed = false;
+  const setup = async ({ run }) => {
+    mkdirSync(join(dir, 'searxng'), { recursive: true });
+    if (!installed) {
+      try {
+        await run('uv', ['pip', 'install']);
+      } catch (error) {
+        return { ready: false, error: error.message };
+      }
+      downloads.push('searxng');
+      installed = true;
+    }
+    return { ready: true };
+  };
+  const manage = async (_, options) => {
+    const ready = (await options.setup({ run: async () => 0 })).ready;
+    return { status: () => ({ ready, url: ready ? 'http://127.0.0.1:1' : null }), stop() {} };
+  };
+  const search = searxngDownload(dir, { manage, setup });
+  assert.equal(search.tool.requested(), false, 'a fresh install has not asked for it');
+  assert.match(search.status().error, /not downloaded/);
+  assert.equal(await search.tool.ready(), false, 'checking never downloads');
+  assert.deepEqual(downloads, []);
+  await search.tool.run({});
+  assert.deepEqual(downloads, ['searxng']);
+  assert.equal(search.status().ready, true);
+  const relaunched = searxngDownload(dir, { manage, setup });
+  assert.equal(relaunched.tool.requested(), true);
+  assert.equal(await relaunched.tool.ready(), true, 'the next launch starts the installed copy');
+  assert.deepEqual(downloads, ['searxng']);
 });

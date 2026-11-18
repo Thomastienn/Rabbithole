@@ -51,7 +51,7 @@ test('one start command builds absent or changed assets and reuses a current bui
   });
   for (const tool of ['pkg-config', 'latex', 'dvisvgm'])
     writeFileSync(join(data, tool), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
-  // Search provisioning failure must leave the real launcher/server usable, without network in tests.
+  // A fresh launch never installs web search; uv fails loudly if it is tried, without network in tests.
   writeFileSync(
     join(data, 'uv'),
     '#!/bin/sh\nif [ "$1" = "--version" ]; then exit 0; fi\necho "offline install fixture" >&2\nexit 1\n',
@@ -67,7 +67,7 @@ test('one start command builds absent or changed assets and reuses a current bui
       const search = await (await fetch(origin + '/api/settings/searxng')).json();
       assert.equal(search.ready, false);
       assert.equal(search.url, null);
-      assert.match(search.error, /offline install fixture/);
+      assert.match(search.error, /Web search is not downloaded/);
       return running.output();
     } finally {
       await running.stop();

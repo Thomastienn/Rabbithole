@@ -1,4 +1,4 @@
-// The download list streams as server-sent events; Retry and "seen" are the only actions.
+// The download list streams as server-sent events; the actions are add (on-request tools), Retry and "seen".
 export async function downloadRoutes(req, res, url, ctx) {
   const { downloads, json } = ctx;
   if (!url.pathname.startsWith('/api/downloads')) return false;
@@ -18,6 +18,11 @@ export async function downloadRoutes(req, res, url, ctx) {
   if (req.method !== 'POST') return false;
   if (url.pathname === '/api/downloads/seen') {
     downloads.seen();
+    return json(res, 200, downloads.list());
+  }
+  const add = url.pathname.match(/^\/api\/downloads\/([\w-]+)$/);
+  if (add) {
+    if (!downloads.add(add[1])) return json(res, 404, { error: 'No such download.' });
     return json(res, 200, downloads.list());
   }
   const retry = url.pathname.match(/^\/api\/downloads\/([\w-]+)\/retry$/);
