@@ -7,3 +7,5 @@ After every reply, a separate quick thinking model call read the reply again to 
 - Keep the quick thinking call and add next questions to it. No change to the tutor prompt, but the questions come from the weaker model, after the reply, and the extra request stays.
 - The chat model writes only next questions; the quick call keeps suggestions and the knowledge graph. Smaller tutor prompt, but the extra request stays for every reply.
 - Inline markers around suggested terms in the reply text. Underlines would appear while streaming, but markers can leak into copied text and the knowledge graph would still need its own block.
+
+Delivery superseded in part by ADR 0013: the tutor still marks suggestions and next questions, but returns them through a tool call instead of a hidden block.

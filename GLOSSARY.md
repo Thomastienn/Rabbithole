@@ -167,7 +167,7 @@ An action the chat model can take while answering, such as searching the web, re
 _Avoid_: Plugin, function, skill
 
 **Skill**:
-Fixed guidance on a craft, such as teaching, natural writing or animation, that the app gives a model for one kind of work. Skills are hidden from the learner and cannot be edited; the tutor style is the learner's own layer on top.
+Fixed guidance on a craft, such as teaching, natural writing or animation, that the app gives a model for one kind of work. Some skills are always given; others the model loads only when its work needs them, such as 3D drawing for a 3D visual, and it must load those whenever that work applies. Skills are hidden from the learner and cannot be edited; the tutor style is the learner's own layer on top.
 _Avoid_: Tutor tool, tutor style, prompt
 
 **Resource**:
