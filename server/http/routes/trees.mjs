@@ -194,7 +194,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
     return json(res, 200, {});
   }
   if (action === 'layout') {
-    const { folded, selected, panel, viewport, positions = {} } = body;
+    const { folded, selected, panel, viewport, positions = {}, ghosts } = body;
     const coordinate = (n) => Number.isFinite(n) && Math.abs(n) <= 1000000;
     const owned = new Set(store.descendants(id)); // positions may only move conversations inside this root's tree
     if (
@@ -220,6 +220,17 @@ export async function treeRoutes(req, res, url, ctx, body) {
       Array.isArray(positions) ||
       !Object.entries(positions).every(
         ([p, at]) => owned.has(p) && at && coordinate(at.x) && coordinate(at.y),
+      ) ||
+      // Ghost tree positions, keyed by the other tree's root.
+      !(
+        ghosts === undefined ||
+        (ghosts &&
+          typeof ghosts === 'object' &&
+          !Array.isArray(ghosts) &&
+          Object.keys(ghosts).length <= 1000 &&
+          Object.entries(ghosts).every(
+            ([g, at]) => g.length <= 100 && at && coordinate(at.x) && coordinate(at.y),
+          ))
       )
     )
       return json(res, 400, { error: 'Layout not saved. Reload and try again.' });
@@ -231,6 +242,11 @@ export async function treeRoutes(req, res, url, ctx, body) {
         panel,
         ...(viewport && {
           viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
+        }),
+        ...(ghosts && {
+          ghosts: Object.fromEntries(
+            Object.entries(ghosts).map(([g, at]) => [g, { x: at.x, y: at.y }]),
+          ),
         }),
       },
       positions,

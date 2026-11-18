@@ -23,8 +23,7 @@ import {
 } from './Conversation';
 import Branch from './Branch';
 import { GhostTree } from './GhostTree';
-import { useGhostTrees } from './useGhostTrees';
-import type { GhostTree as Ghost } from './ghostTrees';
+import { useGhostTrees, type GhostOptions } from './useGhostTrees';
 import { fit, useMapViewport } from './useMapViewport';
 import { InkLegend, MapToolbar } from './MapControls';
 import {
@@ -42,6 +41,8 @@ export type Layout = {
   selected: string | null;
   panel: 'collapsed' | 'beside' | 'expanded';
   viewport?: Viewport;
+  // Ghost tree positions on this map, keyed by the other tree's root.
+  ghosts?: Record<string, Point>;
 };
 export type Summary = {
   id: string;
@@ -109,13 +110,13 @@ export default function TreeOverview({
   vim,
   marked = noMarks,
   from,
-  openGhost,
+  ghosts,
 }: {
   vim?: boolean;
   // Conversations marked after arriving from the ghost tree of map `from`.
   marked?: string[];
   from?: string;
-  openGhost: (ghost: Ghost) => void;
+  ghosts: GhostOptions;
   toolbar?: ReactNode;
   saveViewport: (viewport: Viewport) => void;
   initialFolded?: string[];
@@ -155,9 +156,7 @@ export default function TreeOverview({
     known.current = new Set(trees.map((t) => t.id));
     if (!added.length) return;
     for (const child of added) createdBranches.current.set(child.id, performance.now());
-    setFolded((previous) => {
-      return revealAddedBranches(previous, added, trees);
-    });
+    setFolded((previous) => revealAddedBranches(previous, added, trees));
   }, [trees]);
   const toggle = useCallback(
     (id: string) => {
@@ -358,10 +357,10 @@ export default function TreeOverview({
     () => branchEdges(hierarchy, folded, focusedPath, addresses, createdBranches.current),
     [hierarchy, folded, focusedPath, addresses],
   );
-  const { ghostNodes, ghostEdges } = useGhostTrees({ trees, root, from, nodes, open: openGhost });
-  // Ghost nodes stay out of `nodes`: placement and layout saving cover conversations only.
-  const mapNodes = useMemo(() => [...nodes, ...(ghostNodes as never[])], [nodes, ghostNodes]);
-  const mapEdges = useMemo(() => [...edges, ...ghostEdges], [edges, ghostEdges]);
+  const ghost = useGhostTrees({ trees, root, from, nodes, ...ghosts });
+  // Ghost nodes stay out of `nodes`: conversation placement covers conversations only.
+  const mapNodes = useMemo(() => [...nodes, ...(ghost.nodes as never[])], [nodes, ghost.nodes]);
+  const mapEdges = useMemo(() => [...edges, ...ghost.edges], [edges, ghost.edges]);
   return (
     <>
       <MapToolbar zoom={zoom} zoomOut={zoomOut} zoomIn={zoomIn} fitTree={fitTree}>
@@ -448,7 +447,7 @@ export default function TreeOverview({
           <ReactFlow<ConversationNode>
             nodes={mapNodes}
             onlyRenderVisibleElements={canCull && nodes.length > 50}
-            onNodesChange={onNodesChange}
+            onNodesChange={(changes) => onNodesChange(ghost.move(changes))}
             edges={mapEdges}
             edgeTypes={edgeTypes}
             nodeTypes={nodeTypes}
@@ -471,6 +470,7 @@ export default function TreeOverview({
                 open(node.id);
             }}
             onNodeDragStop={(_, node) => {
+              if (node.type !== 'conversation') return;
               save({ [node.id]: node.position });
               setNotice(
                 `${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`,

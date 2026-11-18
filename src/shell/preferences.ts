@@ -15,6 +15,15 @@ export function savedFocusMode() {
   }
 }
 
+// Ghost trees show unless they were switched off.
+export function savedGhostTrees() {
+  try {
+    return localStorage.getItem('rabbithole.ghost-trees') !== 'off';
+  } catch {
+    return true;
+  }
+}
+
 // Library opens as a shelf unless List was chosen.
 export function savedLibraryLayout(): 'shelf' | 'list' {
   try {
@@ -31,6 +40,7 @@ export function savePreference(
     | 'vim'
     | 'library-layout'
     | 'focus-mode'
+    | 'ghost-trees'
     | 'reading-font'
     | 'interface-font',
   value: string,

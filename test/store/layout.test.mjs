@@ -76,6 +76,7 @@ test('layout snapshots stay per tree, hold only IDs and survive restart; legacy 
       selected: first.id,
       panel: 'collapsed',
       viewport: { x: 5, y: -6, zoom: 0.5 },
+      ghosts: { [second.id]: { x: 300, y: -40 } },
       positions: { [first.id]: { x: 10, y: 20 }, [child.id]: { x: 30, y: 40 } },
     };
     assert.equal(
@@ -83,12 +84,15 @@ test('layout snapshots stay per tree, hold only IDs and survive restart; legacy 
       400,
       'positions belong to the batch owner tree',
     );
+    for (const ghosts of [[], { [second.id]: { x: 'far', y: 0 } }, { [second.id]: null }])
+      assert.equal((await post(first.id, { ...batch, ghosts })).status, 400, 'bad ghost position');
     assert.equal((await post(first.id, batch)).status, 200);
     assert.deepEqual(store.list().find((t) => t.id === first.id).layout, {
       folded: [],
       selected: first.id,
       panel: 'collapsed',
       viewport: { x: 5, y: -6, zoom: 0.5 },
+      ghosts: { [second.id]: { x: 300, y: -40 } },
     });
     assert.deepEqual(
       [first.id, child.id, second.id].map((id) => {

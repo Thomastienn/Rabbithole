@@ -1,32 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Position, type Edge } from '@xyflow/react';
+import { Position, type Edge, type NodeChange } from '@xyflow/react';
 import { placeBox, type Point } from './canvas';
 import { ghostTrees, miniature, MINIATURE, type GhostTree } from './ghostTrees';
 import type { ConversationNode } from './Conversation';
 import type { GhostNode } from './GhostTree';
 import type { Summary } from './TreeOverview';
 
+const none: GhostTree[] = [];
 // Room for the miniature, its title and the button's padding.
 const GHOST = { width: MINIATURE + 16, height: MINIATURE + 48 };
 
-// The map's ghost tree nodes and dashed lines, each placed in free space near its first linked node.
+export type GhostOptions = {
+  shown: boolean;
+  open: (ghost: GhostTree) => void;
+  save: (ghost: string, at: Point) => void;
+};
+
+// The map's ghost tree nodes and dashed lines, each at its saved position or placed in free space near its first linked node.
 export function useGhostTrees({
   trees,
   root,
   from,
   nodes,
+  shown,
   open,
-}: {
-  trees: Summary[];
-  root: string;
-  from?: string;
-  nodes: ConversationNode[];
-  open: (ghost: GhostTree) => void;
-}) {
+  save,
+}: { trees: Summary[]; root: string; from?: string; nodes: ConversationNode[] } & GhostOptions) {
   const callback = useRef(open);
   callback.current = open;
-  const ghosts = useMemo(() => ghostTrees(trees, root, from), [trees, root, from]);
-  const [positions, setPositions] = useState<Record<string, Point>>({});
+  const all = useMemo(() => ghostTrees(trees, root, from), [trees, root, from]);
+  const ghosts = shown ? all : none;
+  const [positions, setPositions] = useState<Record<string, Point>>(() => ({
+    ...trees.find((t) => t.id === root)?.layout?.ghosts,
+  }));
   useEffect(() => {
     const placed = { ...positions };
     for (const ghost of ghosts) {
@@ -58,7 +64,7 @@ export function useGhostTrees({
           type: 'ghost',
           position: positions[ghost.root],
           focusable: false,
-          draggable: false,
+          draggable: true,
           selectable: false,
           // Fixed size and handle: these nodes bypass the map's node state, so nothing stores a measurement.
           ...GHOST,
@@ -82,5 +88,18 @@ export function useGhostTrees({
       ),
     [ghostNodes],
   );
-  return { ghostNodes, ghostEdges };
+  // Drags of ghost nodes move them here and save on release; other changes go to the map's nodes.
+  function moveGhosts<N extends ConversationNode>(changes: NodeChange<N>[]) {
+    return changes.filter((change) => {
+      const ghost = change.type === 'position' && ghostNodes.find((n) => n.id === change.id);
+      if (!ghost) return true;
+      if (change.type === 'position' && change.position) {
+        const at = change.position;
+        setPositions((p) => ({ ...p, [ghost.data.ghost.root]: at }));
+        if (!change.dragging) save(ghost.data.ghost.root, at);
+      }
+      return false;
+    });
+  }
+  return { nodes: ghostNodes, edges: ghostEdges, move: moveGhosts };
 }

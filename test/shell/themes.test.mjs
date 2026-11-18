@@ -9,7 +9,12 @@ import {
   savedTheme,
   themeChoices,
 } from '../../src/shell/appearance.ts';
-import { savePreference, savedLibraryLayout, savedVim } from '../../src/shell/preferences.ts';
+import {
+  savePreference,
+  savedGhostTrees,
+  savedLibraryLayout,
+  savedVim,
+} from '../../src/shell/preferences.ts';
 import { DIAGRAM_HUES, diagramTheme } from '../../src/media/diagramTheme.ts';
 const { themes } = await import('../../src/shell/astryx-themes.ts');
 
@@ -33,6 +38,11 @@ test('browser preferences restore valid choices independently, fall back safely 
   assert.equal(savedLibraryLayout(), 'list');
   savePreference('library-layout', 'garbage');
   assert.equal(savedLibraryLayout(), 'shelf');
+  assert.equal(savedGhostTrees(), true, 'Ghost trees are on by default');
+  savePreference('ghost-trees', 'off');
+  assert.equal(savedGhostTrees(), false);
+  savePreference('ghost-trees', 'on');
+  assert.equal(savedGhostTrees(), true);
   for (const { id } of appearances) {
     savePreference('appearance', id);
     assert.equal(savedAppearance(), id);
@@ -78,6 +88,7 @@ test('browser preferences restore valid choices independently, fall back safely 
   assert.equal(savedAppearance(), 'dark');
   assert.equal(savedVim(), false);
   assert.equal(savedLibraryLayout(), 'shelf');
+  assert.equal(savedGhostTrees(), true);
   assert.equal(savedFont('reading-font'), 'literata');
   assert.equal(savedFont('interface-font'), 'archivo');
   assert.doesNotThrow(() => savePreference('theme', 'forest'));

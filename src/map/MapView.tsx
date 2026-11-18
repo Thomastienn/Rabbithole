@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { Switch } from '@astryxdesign/core/Switch';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import TreeOverview, { type MapActions } from './TreeOverview';
 import MapDivider from './MapDivider';
@@ -6,11 +8,12 @@ import type { ChatState } from '../chat/useChatState';
 import type { LayoutSaving } from './useLayoutSaving';
 import type { LearningTrees } from '../chat/useLearningTrees';
 import type { ReplyStream } from '../chat/useReplyStream';
+import { savedGhostTrees, savePreference } from '../shell/preferences';
 
 // The learning tree map beside or instead of the focused chat, with its resize divider.
 export default function MapView({
   c,
-  layout: { savePositions, saveViewport },
+  layout: { savePositions, saveViewport, saveGhost },
   trees: { openConversation, openGhost },
   stream: { retryFromMap },
   vim,
@@ -27,6 +30,7 @@ export default function MapView({
   const { shownMapWidth, workspaceWidth, workspace, setMapWidth, overviewOrigin } = c;
   const { focusComposer, changeView, setFolds, ghostMarks } = c;
   const marks = ghostMarks?.root === root ? ghostMarks : undefined;
+  const [ghostsShown, setGhostsShown] = useState(savedGhostTrees);
   return (
     <>
       {root && state && !overview && !expanded && !mobile && (
@@ -47,20 +51,29 @@ export default function MapView({
           <TreeOverview
             vim={vim}
             toolbar={
-              overview &&
-              tree && (
-                <IconButton
-                  label="Reopen chat"
-                  tooltip={`Open chat: ${tree.title}`}
-                  icon={<ChatBubbleLeftRightIcon />}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    focusComposer.current = true;
-                    changeView(false, tree.id);
+              <>
+                <Switch
+                  label="Ghost trees"
+                  value={ghostsShown}
+                  onChange={(on) => {
+                    setGhostsShown(on);
+                    savePreference('ghost-trees', on ? 'on' : 'off');
                   }}
                 />
-              )
+                {overview && tree && (
+                  <IconButton
+                    label="Reopen chat"
+                    tooltip={`Open chat: ${tree.title}`}
+                    icon={<ChatBubbleLeftRightIcon />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      focusComposer.current = true;
+                      changeView(false, tree.id);
+                    }}
+                  />
+                )}
+              </>
             }
             menu={menu}
             key={root}
@@ -83,7 +96,11 @@ export default function MapView({
             onFold={(ids) => setFolds({ root, ids })}
             marked={marks?.ids}
             from={marks?.from}
-            openGhost={(ghost) => openGhost(ghost, root)}
+            ghosts={{
+              shown: ghostsShown,
+              open: (ghost) => openGhost(ghost, root),
+              save: saveGhost,
+            }}
           />
         </section>
       )}

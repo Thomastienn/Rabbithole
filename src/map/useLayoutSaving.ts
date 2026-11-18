@@ -53,6 +53,7 @@ export function useLayoutSaving(c: ChatState) {
       selected: tree.id,
       panel: overview ? 'collapsed' : expanded ? 'expanded' : 'beside',
       ...(current?.viewport && { viewport: current.viewport }),
+      ...(current?.ghosts && { ghosts: current.ghosts }),
     };
     if (JSON.stringify(layout) !== JSON.stringify(current)) markLayout(root, layout);
   }, [root, tree?.id, overview, expanded, folds, state?.trees]);
@@ -68,7 +69,19 @@ export function useLayoutSaving(c: ChatState) {
         viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
       });
   }
-  return { saver, layoutFailed, setLayoutFailed, withUnsaved, savePositions, saveViewport };
+  function saveGhost(ghost: string, at: Point) {
+    const layout = root ? layoutOf(root) : undefined;
+    if (layout) markLayout(root!, { ...layout, ghosts: { ...layout.ghosts, [ghost]: at } });
+  }
+  return {
+    saver,
+    layoutFailed,
+    setLayoutFailed,
+    withUnsaved,
+    savePositions,
+    saveViewport,
+    saveGhost,
+  };
 }
 
 export type LayoutSaving = ReturnType<typeof useLayoutSaving>;

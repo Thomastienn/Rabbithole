@@ -16,7 +16,7 @@ export const GhostTree = memo(function GhostTree({ data }: NodeProps<GhostNode>)
       <Handle type="target" position={Position.Left} />
       <button
         type="button"
-        className="ghost-tree nodrag nopan"
+        className="ghost-tree nopan"
         aria-label={`Open ${ghost.title}, which also explored ${ghost.concepts.join(', ')}`}
         onClick={() => data.open(ghost)}
       >
