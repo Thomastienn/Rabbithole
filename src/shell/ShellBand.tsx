@@ -26,6 +26,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { savedFocusMode, savePreference } from './preferences';
 import { Logo } from './Logo';
+import Downloads from './Downloads';
 
 export const viewTab = (
   label: string,
@@ -315,6 +316,7 @@ export default function ShellBand({
       </VStack>
       {!rail && contents}
       <div className="sidebar-foot">
+        <Downloads rail={rail} />
         {item(viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings))}
       </div>
     </nav>

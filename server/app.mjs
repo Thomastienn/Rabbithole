@@ -28,6 +28,7 @@ import { mediaRoutes } from './http/routes/media.mjs';
 import { authRoutes } from './http/routes/auth.mjs';
 import { treeRoutes } from './http/routes/trees.mjs';
 import { assetRoutes } from './http/routes/assets.mjs';
+import { downloadRoutes } from './http/routes/downloads.mjs';
 import { tesseractOcr } from './ocr.mjs';
 import { toolRunner } from './tools/runner.mjs';
 import { recallTools } from './tools/recall.mjs';
@@ -45,6 +46,7 @@ const ROUTES = [
   authRoutes,
   discussionRoutes,
   treeRoutes,
+  downloadRoutes,
   assetRoutes,
 ];
 
@@ -80,6 +82,8 @@ export function createApp({
   tools,
   python,
   searxng = () => ({ ready: false, url: null, error: 'SearXNG is not managed by this server.' }),
+  // The tool download manager (server/downloads.mjs); tests and embedded servers run without one.
+  downloads = null,
 }) {
   const search = searxngSearch({ store, managed: searxng });
   // One context for every extracted module; stopping is read from it at call time.
@@ -128,6 +132,8 @@ export function createApp({
         }),
       }),
     python,
+    downloads,
+    downloadStreams: new Set(),
     mcp: toolMcp(),
     search,
     stopping: false,
@@ -307,6 +313,8 @@ export function createApp({
       for (const b of ctx.briefing.values()) b.controller.abort();
       for (const c of compactions.values()) c.controller.abort();
       ctx.pieceStills.stop();
+      downloads?.stop();
+      for (const stream of ctx.downloadStreams) stream.end();
       for (const parent of [...prepared.keys()]) ctx.unprepare(parent);
       store.interrupt();
       for (const p of new Set(Object.values(providers))) p?.close?.();

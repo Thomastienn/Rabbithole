@@ -119,6 +119,9 @@ export function mediaJobs(ctx) {
     stage('plan');
     running.done = Promise.resolve()
       .then(async () => {
+        // Nothing starts by itself once the tools are ready; the learner asks again.
+        const waiting = ctx.downloads?.videoWaiting();
+        if (waiting) throw new Error(waiting);
         const resolve = async (choice, role, check = true) => {
           const provider = pick(choice);
           choice.model ??=

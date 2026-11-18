@@ -220,3 +220,43 @@ html[data-interface-font='system'] [data-astryx-theme] {
   color: var(--color-on-error);
   text-decoration: underline;
 }
+.downloads-button {
+  position: relative;
+  display: flex;
+}
+.downloads-ring {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0;
+  width: 32px;
+  height: 32px;
+  translate: 0 -50%;
+  rotate: -90deg;
+  pointer-events: none;
+}
+.downloads-ring circle {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.3s ease;
+}
+.downloads-button[data-failed] .downloads-ring circle {
+  stroke: var(--color-error);
+}
+.downloads-list {
+  display: grid;
+  gap: var(--rabbithole-module);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.downloads-list li {
+  display: grid;
+  gap: calc(var(--rabbithole-module) / 2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .downloads-ring circle {
+    transition: none;
+  }
+}

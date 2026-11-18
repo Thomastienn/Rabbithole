@@ -48,6 +48,8 @@ const CUT_STATE = {
 const FAILURE_REASON =
   /^(?:Video request could not be read: [^\n]+\.|Tutor reply did not complete\.|Video (?:rendering (?:failed|timed out)|renderer could not start|narration timed out|narration failed\. Check your connection and Retry|could not be saved|composition (?:timed out|did not complete|exceeds 64 KiB|is missing its (?:description|narration)|uses a disallowed import or resource)|provider failed to generate a composition|narration(?: timing)? is (?:missing|unreadable))\.|Rendered video is unreadable\.)$/;
 
+const DOWNLOADING = /^Video tools are still downloading \(\d{1,3}%\)\.$/;
+
 // Rough storyboard panels drawn and erased in ink behind the progress (spec decision 9). Hand-set wobble keeps them sketched.
 const SKETCH = [
   'M42 46 C96 43 158 45 206 48 C208 82 207 116 204 150 C150 152 96 151 44 148 C41 114 42 80 42 46',
@@ -98,8 +100,13 @@ export default function VideoCard({
 }) {
   const id = useId();
   const [enlarged, setEnlarged] = useState(false);
+  // A request made while its tools still download is saved as failed and shown unavailable with that reason.
+  const downloading =
+    artifact.status === 'failed' && DOWNLOADING.test(artifact.error ?? '') ? artifact.error : null;
   const state =
-    artifact.status === 'ready' && artifact.available === false ? 'unavailable' : artifact.status;
+    (artifact.status === 'ready' && artifact.available === false) || downloading
+      ? 'unavailable'
+      : artifact.status;
   const drafting = inline && state === 'pending';
   // Once cut 1 is ready the pending video plays live; a saved video plays live until it is exported.
   const live =
@@ -125,9 +132,10 @@ export default function VideoCard({
     detail = videoStepDetail(artifact);
   const status = drafting
     ? `${STEP_LABEL[step]}…`
-    : state === 'failed' && inline && FAILURE_REASON.test(artifact.error ?? '')
-      ? artifact.error
-      : STATUS[state];
+    : downloading ||
+      (state === 'failed' && inline && FAILURE_REASON.test(artifact.error ?? '')
+        ? artifact.error
+        : STATUS[state]);
   const caption = inline && (
     <VStack gap={1} className="video-caption">
       <Heading
@@ -269,7 +277,7 @@ export default function VideoCard({
                     ? 'Open large'
                     : state === 'pending'
                       ? 'Cancel video'
-                      : state === 'unavailable'
+                      : state === 'unavailable' && !downloading
                         ? 'Regenerate video'
                         : 'Retry video'
                 }

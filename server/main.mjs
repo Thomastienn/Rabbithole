@@ -13,6 +13,8 @@ import { localEmbedder } from './media/embedder.mjs';
 import { sandboxSnapshot } from './media/videos.mjs';
 import { managedSearxng } from './searxng.mjs';
 import { pythonTool } from './tools/python.mjs';
+import { downloadManager } from './downloads.mjs';
+import { videoTools } from './media/video-tools.mjs';
 
 process.umask(0o077);
 const dir = resolve(
@@ -59,6 +61,7 @@ try {
   store = new Store(join(dir, 'trees.sqlite'));
   if (store.backupPath) console.log(`Saved pre-upgrade backup: ${store.backupPath}`);
   store.pruneEmpty();
+  const downloads = downloadManager(videoTools());
   const auth = new Auth(dir),
     claude = new Claude(dir),
     endpoint = new OpenAI(dir),
@@ -77,6 +80,7 @@ try {
     python: pythonTool({ dir }),
     videoEmbed: embed,
     pieceSnapshot: sandboxSnapshot,
+    downloads,
   });
   await new Promise((resolve, reject) => {
     app.server.once('error', reject);
@@ -92,6 +96,8 @@ try {
     })
       .on('error', () => {})
       .unref();
+  // Downloads begin once first-run setup has ended; POST /api/setup starts them otherwise.
+  if (store.setupFinished()) void downloads.start();
   // Local diagnostics only. Start listening first so a missing or slow CLI cannot prevent reading saved trees.
   const installed = (command) =>
     new Promise((resolve) =>
