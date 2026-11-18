@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import type { Summary, Source, Preview } from '../map/TreeOverview';
 import { restoredTree } from '../map/mapState';
+import type { GhostTree } from '../map/ghostTrees';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
 import { treeSearchSource } from '../shell/treeSearch';
 import { withTurn } from './turn';
@@ -140,7 +141,25 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
     c.setExpanded(expanded);
     void select(saved);
   }
-  return { refresh, select, loadInitial, openConversation, openTree, titleSearch, activeKey };
+  // A ghost tree opens the other tree's map, marking its matches until the learner leaves it.
+  function openGhost(ghost: GhostTree, from: string) {
+    openTree(ghost.root);
+    c.setOverview(true);
+    c.setGhostMarks({ root: ghost.root, from, ids: ghost.matches });
+  }
+  useEffect(() => {
+    if (!c.overview || c.root !== c.ghostMarks?.root) c.setGhostMarks(undefined);
+  }, [c.overview, c.root]);
+  return {
+    refresh,
+    select,
+    loadInitial,
+    openConversation,
+    openTree,
+    openGhost,
+    titleSearch,
+    activeKey,
+  };
 }
 
 export type LearningTrees = ReturnType<typeof useLearningTrees>;

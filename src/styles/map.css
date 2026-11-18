@@ -270,3 +270,53 @@
 section[role='alert'] {
   background: var(--color-background-body);
 }
+/* Ghost trees: another learning tree that explored a shared concept. */
+.ghost-tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2);
+  border: thin dashed var(--color-border);
+  border-radius: var(--radius-element);
+  background: transparent;
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity var(--duration-fast) ease-out;
+}
+.ghost-tree:is(:hover, :focus-visible) {
+  opacity: 1;
+}
+.ghost-tree:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+.ghost-tree line {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.ghost-tree circle {
+  fill: var(--ink);
+}
+.ghost-tree__title {
+  max-width: 10rem;
+  overflow-wrap: anywhere;
+}
+.react-flow__edge.ghost-link .react-flow__edge-path {
+  stroke: var(--color-text-secondary);
+  stroke-dasharray: 6 6;
+}
+.react-flow__handle.ghost-handle,
+.react-flow__node-ghost .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+.conversation-box[data-marked='true'] {
+  outline: var(--focus-outline-width) dashed var(--rabbithole-paper);
+  outline-offset: var(--focus-outline-offset);
+}
+.react-flow__node-ghost .ghost-tree {
+  width: 100%;
+  height: 100%;
+}

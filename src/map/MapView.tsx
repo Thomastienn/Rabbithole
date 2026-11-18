@@ -11,7 +11,7 @@ import type { ReplyStream } from '../chat/useReplyStream';
 export default function MapView({
   c,
   layout: { savePositions, saveViewport },
-  trees: { openConversation },
+  trees: { openConversation, openGhost },
   stream: { retryFromMap },
   vim,
   menu,
@@ -25,7 +25,8 @@ export default function MapView({
 }) {
   const { root, state, tree, overview, expanded, mobile, previews, transitionBox } = c;
   const { shownMapWidth, workspaceWidth, workspace, setMapWidth, overviewOrigin } = c;
-  const { focusComposer, changeView, setFolds } = c;
+  const { focusComposer, changeView, setFolds, ghostMarks } = c;
+  const marks = ghostMarks?.root === root ? ghostMarks : undefined;
   return (
     <>
       {root && state && !overview && !expanded && !mobile && (
@@ -80,6 +81,9 @@ export default function MapView({
             current={tree?.id}
             initialFolded={state.trees.find((t) => t.id === root)?.layout?.folded}
             onFold={(ids) => setFolds({ root, ids })}
+            marked={marks?.ids}
+            from={marks?.from}
+            openGhost={(ghost) => openGhost(ghost, root)}
           />
         </section>
       )}

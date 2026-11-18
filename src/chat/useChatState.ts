@@ -62,6 +62,8 @@ export function useChatState() {
     return () => cancelAnimationFrame(frame);
   }, [statsOpen, tree?.id]);
   const [folds, setFolds] = useState<{ root: string; ids: string[] }>();
+  // Conversations marked after arriving from a ghost tree on map `from`.
+  const [ghostMarks, setGhostMarks] = useState<{ root: string; from: string; ids: string[] }>();
   const [transitionBox, setTransitionBox] = useState<string>();
   const overviewOrigin = useRef<{ id: string; control: string }>(undefined);
   const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
@@ -206,6 +208,8 @@ export function useChatState() {
     statsPanel,
     folds,
     setFolds,
+    ghostMarks,
+    setGhostMarks,
     transitionBox,
     overviewOrigin,
     reveal,

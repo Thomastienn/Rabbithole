@@ -41,6 +41,7 @@ export type ConversationNode = Node<
     ink: number;
     stubs: { child: Summary; beneath: number; address: string; ink: number }[];
     folded: boolean;
+    marked?: boolean;
     toggle: (id: string) => void;
   },
   'conversation'
@@ -105,9 +106,11 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
       data-active={data.active}
       data-focused={data.focused}
       data-folded={data.folded}
+      data-marked={data.marked}
       style={inkStyle(data.ink)}
     >
       {t.parent && <Handle type="target" position={Position.Left} />}
+      <Handle id="ghost" type="source" position={Position.Right} className="ghost-handle" />
       <HStack gap={1} vAlign="center" className="node-band">
         {data.childCount > 0 && (
           <IconButton
