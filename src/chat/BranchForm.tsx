@@ -15,6 +15,7 @@ export default function BranchForm({
   close,
   setQuestion,
   explain,
+  saved,
 }: {
   branch: { parent: string; anchor: Anchor; question: string };
   branching: boolean;
@@ -23,27 +24,39 @@ export default function BranchForm({
   close: (refocus: boolean) => void;
   setQuestion: (question: string) => void;
   explain?: (anchor: Anchor) => Promise<string>;
+  saved?: string;
 }) {
   const { anchor } = branch;
-  // Only an unexplored suggestion in a reply asks for its brief explanation on opening.
-  const auto = !!explain && anchor.suggestion === true && anchor.artifactId === undefined;
-  const [brief, setBrief] = useState<{ attempt: number; text?: string; failed?: string }>({
+  // Reply passages can have a brief explanation; only an unexplored suggestion asks on opening, a selection waits for its button.
+  const briefKey =
+    !!explain &&
+    anchor.artifactId === undefined &&
+    JSON.stringify([branch.parent, anchor.messageId, anchor.start, anchor.end]);
+  const [asked, setAsked] = useState<string>();
+  const [brief, setBrief] = useState<{
+    attempt: number;
+    key?: string;
+    text?: string;
+    failed?: string;
+  }>({
     attempt: 0,
   });
-  const briefKey =
-    auto && JSON.stringify([branch.parent, anchor.messageId, anchor.start, anchor.end]);
+  const want = !!briefKey && !saved && (anchor.suggestion === true || asked === briefKey);
   useEffect(() => {
-    if (!briefKey) return;
+    if (!want) return;
     let live = true;
-    setBrief((b) => ({ attempt: b.attempt }));
+    setBrief((b) => ({ attempt: b.attempt, key: briefKey }));
     explain!(anchor).then(
-      (text) => live && setBrief((b) => ({ attempt: b.attempt, text })),
-      (e: Error) => live && setBrief((b) => ({ attempt: b.attempt, failed: e.message })),
+      (text) => live && setBrief((b) => ({ attempt: b.attempt, key: briefKey, text })),
+      (e: Error) =>
+        live && setBrief((b) => ({ attempt: b.attempt, key: briefKey, failed: e.message })),
     );
     return () => {
       live = false;
     };
-  }, [briefKey, brief.attempt]);
+  }, [want, briefKey, brief.attempt]);
+  const mine = brief.key === briefKey ? brief : undefined;
+  const text = saved ?? mine?.text;
   useEffect(() => {
     if (branching) return;
     // Capture phase so the popup closes before a new selection or underline reopens it.
@@ -66,24 +79,38 @@ export default function BranchForm({
       }}
     >
       <VStack padding={2} gap={2}>
-        {briefKey &&
-          (brief.text ? (
-            <Text className="branch-brief">{brief.text}</Text>
-          ) : brief.failed ? (
-            <HStack gap={1} vAlign="center" role="alert">
-              <Text className="branch-brief">{brief.failed}</Text>
+        {text ? (
+          <Text className="branch-brief">{text}</Text>
+        ) : want && mine?.failed ? (
+          <HStack gap={1} vAlign="center" role="alert">
+            <Text className="branch-brief">{mine.failed}</Text>
+            <Button
+              label="Retry"
+              size="sm"
+              variant="ghost"
+              onClick={() => setBrief((b) => ({ attempt: b.attempt + 1 }))}
+            />
+          </HStack>
+        ) : want ? (
+          <Text className="branch-brief" role="status">
+            Writing a brief explanation…
+          </Text>
+        ) : (
+          briefKey && (
+            <HStack>
               <Button
-                label="Retry"
+                label="Explain briefly"
                 size="sm"
                 variant="ghost"
-                onClick={() => setBrief((b) => ({ attempt: b.attempt + 1 }))}
+                onClick={(e) => {
+                  // The button gives way to the loading state, so focus moves on to the question box.
+                  e.currentTarget.form?.querySelector('input')?.focus();
+                  setAsked(briefKey);
+                }}
               />
             </HStack>
-          ) : (
-            <Text className="branch-brief" role="status">
-              Writing a brief explanation…
-            </Text>
-          ))}
+          )
+        )}
         <HStack gap={1} vAlign="center">
           {/* The reply paints the passage; this quote only describes the question for screen readers. */}
           <Text id="branch-passage" className="branch-passage sr-only">

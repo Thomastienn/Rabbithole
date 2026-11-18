@@ -198,3 +198,12 @@ export function previewText(text: string, role: string) {
   const chars = Array.from(role === 'assistant' ? plainText(text) : text);
   return chars.slice(0, 512).join('') + (chars.length > 512 ? '…' : '');
 }
+
+// The start of a reply as plain text, cut at a word boundary with an ellipsis.
+export function excerpt(raw: string, max = 200) {
+  const text = plainText(raw);
+  if (text.length <= max) return text;
+  const head = text.slice(0, max + 1),
+    space = head.search(/\s\S*$/);
+  return (space > 0 ? head.slice(0, space) : text.slice(0, max)) + '…';
+}

@@ -143,9 +143,36 @@ export function useBranchForm(
     setError('');
   }
   // A brief explanation of a reply passage, saved by the server and served from storage on reopening.
+  // Kept on the open conversation so its popup and reopened textbox show it without reloading.
   const explainBrief = (parent: string, anchor: Anchor) =>
     api(`/api/trees/${parent}/brief`, branchRequest(anchor)).then(
-      (r: { explanation: string }) => r.explanation,
+      ({ explanation }: { explanation: string }) => {
+        const saved = {
+          message: anchor.messageId,
+          start: anchor.start!,
+          end: anchor.end!,
+          explanation,
+        };
+        setTree((t) =>
+          t?.id === parent
+            ? {
+                ...t,
+                briefs: [
+                  ...(t.briefs ?? []).filter(
+                    (b) =>
+                      !(
+                        b.message === saved.message &&
+                        b.start === saved.start &&
+                        b.end === saved.end
+                      ),
+                  ),
+                  saved,
+                ],
+              }
+            : t,
+        );
+        return explanation;
+      },
     );
   return {
     explainBrief,

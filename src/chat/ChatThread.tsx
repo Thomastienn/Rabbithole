@@ -112,6 +112,7 @@ export default function ChatThread({
             addresses={addresses}
             resources={tree.resources}
             suggestions={suggestions}
+            briefs={tree.briefs?.filter((b) => b.message === message.id)}
             onVisualPart={openVisualPart}
             visualBranches={visualBranches}
             discussionBranches={discussionBranches}
@@ -158,6 +159,15 @@ export default function ChatThread({
                         close={closeBranch}
                         setQuestion={(question) => setBranch((b) => b && { ...b, question })}
                         explain={(anchor) => explainBrief(branch.parent, anchor)}
+                        saved={
+                          tree.briefs?.find(
+                            (b) =>
+                              branch.anchor.artifactId === undefined &&
+                              b.message === branch.anchor.messageId &&
+                              b.start === branch.anchor.start &&
+                              b.end === branch.anchor.end,
+                          )?.explanation
+                        }
                       />
                     ),
                     // Discussion offsets are inside a card line, not the reply text.

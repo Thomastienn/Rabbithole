@@ -106,21 +106,52 @@ test('an unexplored suggestion shows its brief explanation above the question bo
   );
 });
 
-test('a selected passage asks for no brief explanation on opening', async (t) => {
-  let asked = 0;
-  const { container, cleanup } = await render(
-    h(BranchForm, {
-      branch: { parent: 'root', anchor: { ...anchor, suggestion: undefined }, question: '' },
-      branching: false,
-      active: false,
-      submit: () => {},
-      close: () => {},
-      setQuestion: () => {},
-      explain: async () => (asked++, ''),
-    }),
-    (w) => ui(w),
-  );
+test('a selected passage asks for a brief explanation only on Explain briefly, and shows a saved one at once', async (t) => {
+  const asked = [];
+  let resolve;
+  const props = {
+    branch: { parent: 'root', anchor: { ...anchor, suggestion: undefined }, question: '' },
+    branching: false,
+    active: false,
+    submit: () => assert.fail('Explain briefly must not submit'),
+    close: () => {},
+    setQuestion: () => {},
+    explain: (a) => (asked.push(a), new Promise((r) => (resolve = r))),
+  };
+  const { container, act, cleanup } = await render(h(BranchForm, props), (w) => ui(w));
   t.after(cleanup);
-  assert.equal(asked, 0);
+  assert.equal(asked.length, 0, 'selecting makes no call');
   assert.equal(container.querySelector('.branch-brief'), null);
+  await act(async () => button(container, 'Explain briefly').click());
+  assert.equal(asked.length, 1);
+  assert.equal(document.activeElement, container.querySelector('input'));
+  assert.equal(
+    container.querySelector('[role="status"]').textContent,
+    'Writing a brief explanation…',
+  );
+  await act(async () => resolve('Taken one at a time.'));
+  assert.equal(container.querySelector('.branch-brief').textContent, 'Taken one at a time.');
+});
+
+test('reopening the textbox for a selected passage shows its saved explanation with no call', async (t) => {
+  const asked = [];
+  const props = {
+    branch: { parent: 'root', anchor: { ...anchor, suggestion: undefined }, question: '' },
+    branching: false,
+    active: false,
+    submit: () => {},
+    close: () => {},
+    setQuestion: () => {},
+    explain: async (a) => (asked.push(a), ''),
+  };
+  const reopened = await render(h(BranchForm, { ...props, saved: 'Taken one at a time.' }), (w) =>
+    ui(w),
+  );
+  t.after(reopened.cleanup);
+  assert.equal(
+    reopened.container.querySelector('.branch-brief').textContent,
+    'Taken one at a time.',
+  );
+  assert.equal(button(reopened.container, 'Explain briefly'), undefined);
+  assert.equal(asked.length, 0, 'a saved explanation needs no call');
 });

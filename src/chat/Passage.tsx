@@ -14,7 +14,7 @@ import type { Artifact, DiscussionReply } from '../media/artifacts';
 import { discussionSelection, type DiscussionBranch } from '../media/DiscussionCard';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import Reply from './Reply';
-import type { Resource } from './types';
+import type { Brief, Resource } from './types';
 import ToolActivity from './ToolActivity';
 
 export default function Passage({
@@ -29,6 +29,7 @@ export default function Passage({
   closeSelection,
   form,
   suggestions,
+  briefs,
   branched,
   inlineArtifacts,
   resources,
@@ -49,6 +50,7 @@ export default function Passage({
   onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
   onDiscussionReply?: DiscussionReply;
   suggestions?: Suggestions;
+  briefs?: Brief[];
   branched: { start: number; end: number; text: string; child: string }[];
   onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void;
   onOpenChild: (id: string) => void;
@@ -62,6 +64,12 @@ export default function Passage({
   const highlighted = useRef(false);
   // place is where a pointer highlight's passage box floats once Ask is clicked.
   const [anchor, setAnchor] = useState<Anchor & { at?: Point; place?: Anchor['at'] }>();
+  const [tip, setTip] = useState<{
+    start: number;
+    text: string;
+    at: React.CSSProperties;
+    piece?: HTMLElement;
+  }>();
   const wrapper = useRef<HTMLElement>(null);
   const floating = useRef<HTMLDivElement>(null);
   const passage = useRef<HTMLElement>(null);
@@ -171,12 +179,52 @@ export default function Passage({
       said && { messageId: message.id, ...said },
     );
   }
-  // An unexplored underline opens the passage textbox; an explored one opens its existing child.
-  function activate(target: EventTarget) {
-    const piece = (target as Element).closest?.('u.suggestion') as HTMLElement | null;
+  function underlineAt(target: EventTarget | null) {
+    const piece = (target as Element | null)?.closest?.('u.suggestion') as HTMLElement | null;
     const u =
       piece && underlines.find((u) => +piece.dataset.o! >= u.start && +piece.dataset.o! < u.end);
-    if (!u || !completed) return false;
+    return u ? { piece: piece!, u } : {};
+  }
+  // A suggestion's saved brief explanation, else its child's first reply; never a model call.
+  function point(target: EventTarget | null, focused: boolean) {
+    const { piece, u } = underlineAt(target);
+    const p =
+      u &&
+      suggestions?.status === 'ready' &&
+      suggestions.passages.find((p) => p.start === u.start && p.end === u.end);
+    const text =
+      p &&
+      (briefs?.find((b) => b.start === p.start && b.end === p.end)?.explanation ??
+        (u.child ? p.preview : undefined));
+    if (!text || !piece) return setTip(undefined);
+    const box = piece.getBoundingClientRect(),
+      wrap = wrapper.current!.getBoundingClientRect();
+    setTip((t) =>
+      t?.start === u.start && t.text === text && !!t.piece === focused
+        ? t
+        : {
+            start: u.start,
+            text,
+            // An underline in the right half hangs its popup leftward so it stays inside the reply.
+            at:
+              box.left - wrap.left > wrap.width / 2
+                ? { right: wrap.right - box.right, top: box.bottom - wrap.top }
+                : { left: box.left - wrap.left, top: box.bottom - wrap.top },
+            piece: focused ? piece : undefined,
+          },
+    );
+  }
+  const tipId = `brief-tip-${message.id}`;
+  useEffect(() => {
+    const piece = tip?.piece;
+    if (!piece || formOpen) return;
+    piece.setAttribute('aria-describedby', tipId);
+    return () => piece.removeAttribute('aria-describedby');
+  }, [tip, formOpen]);
+  // An unexplored underline opens the passage textbox; an explored one opens its existing child.
+  function activate(target: EventTarget) {
+    const { piece, u } = underlineAt(target);
+    if (!u || !piece || !completed) return false;
     if (u.child) {
       onOpenChild(u.child);
       return true;
@@ -238,6 +286,12 @@ export default function Passage({
       gap={2}
       className="passage"
       onKeyDown={(e) => {
+        if (e.key === 'Escape' && tip && !anchor && !selecting && !formOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          setTip(undefined);
+          return;
+        }
         if (e.key === 'Escape' && (anchor || selecting)) {
           e.preventDefault();
           e.stopPropagation();
@@ -250,6 +304,12 @@ export default function Passage({
       <section
         ref={passage}
         tabIndex={-1}
+        onPointerOver={(e) => point(e.target, false)}
+        onPointerLeave={(e) => {
+          if (!(e.relatedTarget as Element | null)?.closest?.('.brief-tip')) setTip(undefined);
+        }}
+        onFocus={(e) => point(e.target, true)}
+        onBlur={() => setTip(undefined)}
         onMouseUp={captureSelection}
         onKeyUp={captureSelection}
         onClick={(e) => {
@@ -281,6 +341,17 @@ export default function Passage({
           resources={resources}
         />
       </section>
+      {tip && !formOpen && (
+        <Text
+          id={tipId}
+          role="tooltip"
+          className="brief-tip"
+          style={tip.at}
+          onPointerLeave={() => setTip(undefined)}
+        >
+          {tip.text}
+        </Text>
+      )}
       {!!message.tools?.length && <ToolActivity tools={message.tools} />}
       {/* Mounted before suggestions arrive so their arrival is announced once; reopened replies are not re-announced. */}
       <Text role="status" className="sr-only">

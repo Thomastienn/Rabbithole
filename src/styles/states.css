@@ -422,3 +422,15 @@
     animation: none;
   }
 }
+/* A saved brief explanation, shown while a suggestion underline is pointed at or focused. */
+.brief-tip {
+  position: absolute;
+  z-index: 3;
+  max-width: min(100%, 40ch);
+  margin-top: var(--spacing-1);
+  padding: var(--spacing-2);
+  border: thin solid var(--rabbithole-paper);
+  border-radius: var(--radius-container);
+  background: var(--color-background-popover);
+  font-family: var(--rabbithole-font-reading);
+}

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { previewText } from '../../src/markdown/markdownText.ts';
+import { excerpt, previewText } from '../../src/markdown/markdownText.ts';
 import { blob, vector } from './embeddings.mjs';
 
 export const trees = {
@@ -195,15 +195,29 @@ export const trees = {
           .all(id)
           .map(({ usage, groundwork, ...s }) => ({
             ...s,
+            // A branched passage carries the start of its child's first reply for the popup.
             passages: JSON.parse(s.passages ?? '[]').map(({ child, ...p }) =>
-              this.live(child) ? { ...p, child } : p,
+              this.live(child) ? { ...p, child, ...this.firstReply(child) } : p,
             ),
             // Absent when the tutor's notes block supplied them and no call ran.
             ...(usage && { usage: JSON.parse(usage) }),
             groundwork: JSON.parse(groundwork ?? '[]'),
           })),
+        briefs: this.db
+          .prepare(
+            'SELECT b.message,b.start,b.end,b.explanation FROM briefs b JOIN messages m ON m.id=b.message WHERE m.tree=?',
+          )
+          .all(id),
       }
     );
+  },
+  firstReply(child) {
+    const reply = this.db
+      .prepare(
+        "SELECT text FROM messages WHERE tree=? AND role='assistant' AND text!='' ORDER BY seq LIMIT 1",
+      )
+      .get(child);
+    return reply ? { preview: excerpt(reply.text) } : {};
   },
   // An explored suggestion whose child was deleted reads as unexplored again.
   live(child) {

@@ -262,7 +262,7 @@ const modelMessage = ({ attachments, ...message }) =>
   attachments ? { ...message, text: withAttachments(message.text, attachments) } : message;
 
 export function tutorContext(tree) {
-  const { artifacts = [], suggestions, ...context } = tree; // suggestions never reach the tutor
+  const { artifacts = [], suggestions, briefs, ...context } = tree; // suggestions and brief explanations never reach the tutor
   return {
     ...context,
     messages: tree.messages.map(modelMessage).map((message) => {

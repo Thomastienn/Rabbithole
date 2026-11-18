@@ -13,6 +13,8 @@ export type Resource = {
   firstSeen: number;
   conversations: string[];
 };
+// A saved brief explanation of a reply passage.
+export type Brief = { message: string; start: number; end: number; explanation: string };
 export type Tree = {
   id: string;
   title: string;
@@ -24,6 +26,7 @@ export type Tree = {
   artifacts: Artifact[];
   resources?: Resource[];
   suggestions?: Suggestions[];
+  briefs?: Brief[];
   compaction?: { status: 'compacting' | 'failed'; error?: string };
 };
 export type ModelSelection = Pick<Tree, 'provider' | 'model' | 'effort'>;
