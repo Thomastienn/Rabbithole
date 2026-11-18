@@ -73,6 +73,14 @@ The model that answers learner messages in a conversation. Its Settings default 
 **Smart model**:
 The learner-chosen model for planning videos and auditing their cuts; the chat model writes visuals and cut code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
 
+**First-run setup**:
+The short screen a fresh install shows before anything else, where the learner signs in to Claude or Codex and chooses a chat model so they can start asking. It appears only on first run and is quick to finish; later changes happen in Settings.
+_Avoid_: Onboarding, wizard, setup screen
+
+**Download**:
+A tool the app fetches for itself in the background so a feature can run, such as the video tools or web search. The learner sees running, failed and newly finished downloads in the sidebar; saving a video as an MP4 is an export, not a download.
+_Avoid_: Install, update, export
+
 **Model profile**:
 A named set of model choices the learner can swap between: a model and effort for the chat model default, the smart model and the quick thinking model.
 _Avoid_: Agent, agent profile, preset
@@ -145,6 +153,10 @@ The record of reported model usage across learning trees and tasks, retained ind
 
 **Video library**:
 The local collection of generated videos, available independently of their originating learning trees. A saved video remains until the learner explicitly trashes it, even when its source discussion is deleted.
+
+**Export**:
+Turning a playable video into an MP4 file on the learner's computer, done only when the learner asks for it. A video plays and stays in the video library without ever being exported.
+_Avoid_: Render, download, save
 
 **Everyday analogy**:
 A familiar real-life situation used to open an explanation of a concept that is new or abstract to the learner, such as traffic police letting a set number of cars through for a semaphore. The formal idea is then mapped onto it, and where the analogy breaks down is said plainly. Replies, visuals and videos use one when it helps, not always; a video carries one analogy through its cuts.

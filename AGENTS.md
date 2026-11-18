@@ -18,7 +18,9 @@ technical prerequisites, acceptance checks and the PRD release scope (Claude
 default plus Codex);
 later/deferred work keeps its release order. Record concrete external blockers
 and continue independent ready work. Preserve unrelated edits. Keep Git local:
-no push, pull or remote sync. Authorization comes from the project owner and
+no push, pull or remote sync. Desktop release builds on GitHub Actions are the
+owner's exception: agents edit `.github/workflows/` locally, and the owner
+pushes and triggers the run. Authorization comes from the project owner and
 does not represent approval from a third-party provider.
 
 ## Branches
