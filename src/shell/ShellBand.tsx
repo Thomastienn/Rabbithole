@@ -41,7 +41,7 @@ export const viewTab = (
     label={label}
     icon={icon}
     variant="ghost"
-    size="sm"
+    size="md"
     aria-current={current ? 'page' : undefined}
     isDisabled={disabled}
     onClick={onClick}
@@ -99,7 +99,7 @@ export function ContentsDrawer({
                 label="Settings"
                 icon={<Cog6ToothIcon />}
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={settings}
               />
             </VStack>
@@ -117,7 +117,7 @@ export function SaveAlert({ retry }: { retry: () => void }) {
         Map layout not saved.
         <span className="sr-only"> It retries every minute while this tree stays open.</span>
       </Text>
-      <Button label="Retry saving layout" variant="ghost" size="sm" onClick={retry} />
+      <Button label="Retry saving layout" variant="ghost" size="md" onClick={retry} />
     </HStack>
   );
 }
@@ -233,7 +233,7 @@ export default function ShellBand({
         )
       }
       variant="ghost"
-      size="sm"
+      size="md"
       onClick={toggleFocusMode}
     />
   );
@@ -277,7 +277,7 @@ export default function ShellBand({
               label="Rabbithole"
               tooltip="Open the Library"
               variant="ghost"
-              size="sm"
+              size="md"
               onClick={library}
             >
               <Logo />
@@ -291,7 +291,7 @@ export default function ShellBand({
             label={busy ? 'Opening…' : 'New chat'}
             tooltip="New chat (Ctrl+Shift+O)"
             variant="primary"
-            size="sm"
+            size="md"
             icon={<PlusIcon />}
             isIconOnly={rail}
             isDisabled={busy}
@@ -302,7 +302,7 @@ export default function ShellBand({
             label="Search learning trees"
             tooltip="Search learning trees"
             variant="ghost"
-            size="sm"
+            size="md"
             icon={<MagnifyingGlassIcon />}
             aria-haspopup="dialog"
             onClick={search}
@@ -329,7 +329,7 @@ export default function ShellBand({
         tooltip="Contents"
         icon={<Bars3Icon />}
         variant="ghost"
-        size="sm"
+        size="md"
         aria-haspopup="dialog"
         aria-expanded={drawer}
         onClick={() => setDrawer(true)}
@@ -346,7 +346,7 @@ export default function ShellBand({
           tooltip="Search learning trees"
           icon={<MagnifyingGlassIcon />}
           variant="ghost"
-          size="sm"
+          size="md"
           aria-haspopup="dialog"
           onClick={search}
         />
@@ -356,7 +356,7 @@ export default function ShellBand({
           tooltip="New chat"
           icon={<PlusIcon />}
           variant="ghost"
-          size="sm"
+          size="md"
           isDisabled={busy}
           onClick={newChat}
         />
