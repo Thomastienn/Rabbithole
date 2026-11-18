@@ -157,8 +157,9 @@ test('choosing a role before any profile exists saves it into an active "Default
   assert.equal(tree.model, 'chat');
 });
 
-test('activating a profile swaps all three roles; role routes edit only the active profile; conversations and the suggestions switch stay put', async () => {
+test('activating a profile swaps all three roles; role routes edit only the active profile; conversations and the suggestions switch stay put', async (t) => {
   let env = await start();
+  t.after(() => env.close());
   await env.post('/api/settings/chat', { provider: 'codex', model: 'chat', effort: 'high' });
   await env.post('/api/settings/smart', { followEffort: false, effort: 'low' });
   await env.post('/api/settings/suggestions', {
@@ -221,8 +222,9 @@ test('activating a profile swaps all three roles; role routes edit only the acti
   await env.close();
 });
 
-test('a profile whose model is unavailable still swaps in and fails visibly instead of falling back', async () => {
+test('a profile whose model is unavailable still swaps in and fails visibly instead of falling back', async (t) => {
   let env = await start();
+  t.after(() => env.close());
   await (await env.post('/api/profiles', { name: 'Local' })).json();
   const local = (await env.get('/api/profiles')).profiles.find((p) => p.name === 'Local');
   await env.post('/api/profiles/active', { id: local.id });
@@ -250,8 +252,9 @@ test('a profile whose model is unavailable still swaps in and fails visibly inst
   await env.close();
 });
 
-test('rename, duplicate and delete profiles over HTTP: unique names, last one kept, deleting the active one activates another, all persist', async () => {
+test('rename, duplicate and delete profiles over HTTP: unique names, last one kept, deleting the active one activates another, all persist', async (t) => {
   let env = await start();
+  t.after(() => env.close());
   const json = async (path, body) => {
     const r = await env.post(path, body);
     return { status: r.status, body: await r.json() };

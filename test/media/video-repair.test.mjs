@@ -255,6 +255,7 @@ test('a repair patch that does not apply gets one whole-source call in the same 
         },
       },
     );
+    t.after(() => env.close());
     const chat = env.store.create('Patch repair', 'codex');
     await (await env.post(`/api/trees/${chat.id}/messages`, { text: 'Make a video.' })).text();
     const row = await until(() =>

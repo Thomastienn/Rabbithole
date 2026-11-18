@@ -335,6 +335,7 @@ test('cancel stops a running snapshot and a running audit', async (t) => {
         },
       },
     );
+    t.after(() => env.close());
     const chat = await running(env);
     await until(() => holding);
     const id = env.store.tree(chat.id).artifacts[0].id;

@@ -87,6 +87,9 @@ if (import.meta.main) {
       './test/support/tsx.mjs',
       '--test',
       '--test-concurrency=8',
+      // A leaked handle or a stuck wait must end the run with a failure, not hang it.
+      '--test-force-exit',
+      '--test-timeout=120000',
       ...files,
     ],
     { stdio: 'inherit' },

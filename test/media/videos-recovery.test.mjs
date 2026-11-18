@@ -289,7 +289,7 @@ test('restart marks unfinished videos interrupted, keeps ready media and offers 
   }
 });
 
-test('stopping the app during a job marks it interrupted before exit and keeps it interrupted on restart', async () => {
+test('stopping the app during a job marks it interrupted before exit and keeps it interrupted on restart', async (t) => {
   let started;
   const rendering = new Promise((r) => {
     started = r;
@@ -306,6 +306,7 @@ test('stopping the app during a job marks it interrupted before exit and keeps i
     },
     { videoRender },
   );
+  t.after(() => env.close());
   const tree = env.store.create('Video', 'codex');
   await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
   await rendering;

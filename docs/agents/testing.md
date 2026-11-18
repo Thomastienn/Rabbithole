@@ -37,7 +37,10 @@ helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mj
 `video-kit.mjs`, `diagram-kit.mjs` and the other `*-kit.mjs` setup files) live in `test/support/`; data files live in
 `test/fixtures/`. `npm test` runs `test/**/*.test.mjs` on 8 workers inside one `systemd-run` scope with `MemoryHigh=5G`
 and `MemorySwapMax=10G` (`test:slow` too): past 5 GB the kernel throttles the tests and swaps up
-to 10 GB instead of letting them freeze the machine. There is no hard kill. Never compare DOM elements with `assert.equal`/`deepEqual`: a failure makes Node diff
+to 10 GB instead of letting them freeze the machine. There is no hard kill. All three runs pass
+`--test-force-exit` and `--test-timeout=120000`: a test file that leaves a server open still exits
+when its tests end, and a test that never finishes fails after two minutes. Still put cleanup in
+`t.after` or `finally`, never as plain lines after asserts. Never compare DOM elements with `assert.equal`/`deepEqual`: a failure makes Node diff
 the whole jsdom graph and exhaust memory; compare names, attributes or `assert.ok(a === b)`.
 
 ## Tiers
