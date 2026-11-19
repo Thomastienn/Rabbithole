@@ -37,7 +37,8 @@ const n = (v: number) => v.toLocaleString();
 const counts = (t: Totals) =>
   !t.calls && t.unavailable
     ? 'Token counts not reported'
-    : `${n(t.input)} input, ${n(t.output)} output, ${n(t.cacheRead)} cache-read tokens (${n(total(t))} total)`;
+    : `${n(t.input)} input, ${n(t.output)} output${reasoning(t)}, ${n(t.cacheRead)} cache-read tokens (${n(total(t))} total)`;
+const reasoning = (t: Totals) => (t.reasoning === null ? '' : ` (${n(t.reasoning)} reasoning)`);
 const calls = (t: Totals) =>
   `${n(t.calls + t.unavailable)} call${t.calls + t.unavailable === 1 ? '' : 's'}${t.unavailable ? `, ${n(t.unavailable)} without reported counts` : ''}`;
 // A group with only unreported calls shows a dash, not zero tokens.
@@ -202,6 +203,7 @@ export default function UsageDashboard({
                   <span className="usage-swatch" data-series={key} aria-hidden="true" />
                   <Text type="supporting" color="secondary">
                     <b>{cell(sum, key)}</b> {name.toLowerCase()}
+                    {key === 'output' && reasoning(sum)}
                   </Text>
                 </HStack>
               ))}

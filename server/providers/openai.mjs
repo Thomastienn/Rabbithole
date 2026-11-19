@@ -14,6 +14,7 @@ import {
 import { probeTools } from './toolProbe.mjs';
 import { QUICK_TOOLS } from '../tools/quickTools.mjs';
 import {
+  addUsage,
   chunkUsage,
   history,
   redactStream,
@@ -396,10 +397,7 @@ class Endpoint {
             const reported = chunkUsage(chunk.usage);
             if (reported) {
               used = reported;
-              emit({
-                type: 'usage',
-                usage: Object.fromEntries(Object.entries(total).map(([k, v]) => [k, v + used[k]])),
-              });
+              emit({ type: 'usage', usage: addUsage(total, used) });
             }
             const choice = chunk.choices?.find((c) => c.index === 0);
             if (!choice) return false;
@@ -437,7 +435,7 @@ class Endpoint {
         } finally {
           if (!response.body?.locked) await response.body?.cancel().catch(() => {});
         }
-        if (used) for (const k in total) total[k] += used[k];
+        if (used) Object.assign(total, addUsage(total, used));
         call.throwIfAborted();
         reply.end();
         if (!completed)

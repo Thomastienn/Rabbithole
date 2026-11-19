@@ -106,8 +106,18 @@ export function chunkUsage(u) {
   const cached = u.prompt_tokens_details?.cached_tokens;
   const cacheRead =
     Number.isSafeInteger(cached) && cached >= 0 ? Math.min(cached, u.prompt_tokens) : 0;
-  return { input: u.prompt_tokens - cacheRead, output: u.completion_tokens, cacheRead };
+  const reasoning = u.completion_tokens_details?.reasoning_tokens;
+  return {
+    input: u.prompt_tokens - cacheRead,
+    output: u.completion_tokens,
+    cacheRead,
+    ...(Number.isSafeInteger(reasoning) && reasoning >= 0 && { reasoning }),
+  };
 }
+
+// Adds two usage counts key by key; reasoning stays absent until some round reports it.
+export const addUsage = (a, b) =>
+  Object.fromEntries(Object.keys({ ...a, ...b }).map((k) => [k, (a[k] ?? 0) + (b[k] ?? 0)]));
 
 // Runs one model tool call through the turn's runner and emits its tool events; a failure goes back to the model as text.
 export async function runTool(tree, call, emit, signal, key) {

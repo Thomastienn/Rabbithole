@@ -358,6 +358,7 @@ test('usage of every model call in a tool turn is summed into the reply and usag
           prompt_tokens: 300,
           completion_tokens: 20,
           prompt_tokens_details: { cached_tokens: 100 },
+          completion_tokens_details: { reasoning_tokens: 12 },
         })
       : streamToolCalls(
           res,
@@ -373,14 +374,21 @@ test('usage of every model call in a tool turn is summed into the reply and usag
   const events = await env.events(stream);
   assert.deepEqual(events.at(-1), { type: 'done', status: 'completed' });
   assert.ok(env.chats().every((c) => c.body.stream_options?.include_usage === true));
-  const total = { input: 320, output: 35, cacheRead: 100 };
+  // Only the second round reports reasoning; it is summed into output's share, not added to output.
+  const total = { input: 320, output: 35, cacheRead: 100, reasoning: 12 };
   const { at, ...usage } = env.store.tree(id).messages.at(-1).usage;
   assert.deepEqual(usage, total);
   const { events: recorded } = env.store.usageEvents();
   assert.equal(recorded.length, 1);
   const [event] = recorded;
   assert.deepEqual(
-    { input: event.input, output: event.output, cacheRead: event.cacheRead, task: event.task },
+    {
+      input: event.input,
+      output: event.output,
+      cacheRead: event.cacheRead,
+      reasoning: event.reasoning,
+      task: event.task,
+    },
     { ...total, task: 'chat' },
   );
 });
@@ -398,7 +406,10 @@ test('a tool-free endpoint call asks for usage and records it once', async (t) =
   assert.deepEqual(usage, { input: 50, output: 7, cacheRead: 0 });
   const { events } = env.store.usageEvents();
   assert.equal(events.length, 1);
-  assert.deepEqual([events[0].input, events[0].output, events[0].task], [50, 7, 'chat']);
+  assert.deepEqual(
+    [events[0].input, events[0].output, events[0].reasoning, events[0].task],
+    [50, 7, null, 'chat'],
+  );
 });
 
 test('uses tutor tools: override, else reported tools, else off; tool switches remove tools; all off is tool-free', async (t) => {

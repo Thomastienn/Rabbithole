@@ -214,6 +214,7 @@ export async function suggest(
           input: event.usage.input,
           output: event.usage.output,
           cacheRead: event.usage.cacheRead,
+          reasoning: event.usage.reasoning,
         };
     },
     () => {},
