@@ -37,6 +37,20 @@ test('the house style and focal-object rule reach the planner and Remotion write
     assert.ok(!prompt.includes(HOUSE_STYLE_SKILL) && !prompt.includes(FOCAL_OBJECT_SKILL));
 });
 
+test('the planner defaults to 2D and keeps explicit 2D and 3D asks', () => {
+  assert.match(
+    PLAN_INSTRUCTIONS,
+    /default to "2d": use "3d" only for a cut whose point cannot be shown flat/,
+  );
+  assert.match(PLAN_INSTRUCTIONS, /3D cuts cost more/);
+  assert.match(PLAN_INSTRUCTIONS, /explicitly asks for 2D, use "2d" for every cut/);
+  assert.match(PLAN_INSTRUCTIONS, /explicitly asks for 3D, use "3d" for most cuts/);
+  assert.match(
+    HOUSE_STYLE_SKILL,
+    /layered depth \(parallax layers\) or an isometric view; flat is fine/,
+  );
+});
+
 test('plan calls validate the brief and ordered cuts, including the Manim engine', () => {
   const good = planFor(composition, 3);
   assert.deepEqual(planThrough(good), good);
