@@ -11,6 +11,8 @@ import {
   open,
   fakeRender,
   planText,
+  fixerTask,
+  patchOf,
 } from '../support/video-kit.mjs';
 import { pieceChoices, assemblePieces, libraryPieces } from '../../server/media/video-plan.mjs';
 import { writeSetPieces, withParts } from '../../server/media/video-pieces.mjs';
@@ -227,9 +229,13 @@ ${solid('Loser', 'loser')}`;
     names: ['Champ', 'Loser'],
     matches: async () => [[saved], [saved]],
     signal: new AbortController().signal,
+    // The retry patches the code of the first answer; its piece choices stay.
     write: async (_rules, text) => {
-      inputs.push(JSON.parse(text));
-      return JSON.stringify(answers[inputs.length - 1]);
+      inputs.push(fixerTask(text));
+      const answer = answers[inputs.length - 1];
+      return inputs.at(-1).failedCode === undefined
+        ? JSON.stringify(answer)
+        : patchOf(inputs.at(-1).failedCode, answer.code);
     },
   });
   assert.equal(
@@ -430,9 +436,13 @@ test('a reused piece brings its parts in both forms, scoped and role-remapped; a
     names: ['City'],
     matches: async () => [[town]],
     signal: new AbortController().signal,
+    // The retry patches the code of the first answer; its piece choices stay.
     write: async (_rules, text) => {
-      inputs.push(JSON.parse(text));
-      return JSON.stringify(answers[inputs.length - 1]);
+      inputs.push(fixerTask(text));
+      const answer = answers[inputs.length - 1];
+      return inputs.at(-1).failedCode === undefined
+        ? JSON.stringify(answer)
+        : patchOf(inputs.at(-1).failedCode, answer.code);
     },
   });
   assert.match(inputs[1].validationError, /new PascalCase name/);

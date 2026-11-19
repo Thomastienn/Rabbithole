@@ -15,7 +15,10 @@ import {
   repairAnswer,
   planText,
   planThrough,
+  patchOf,
 } from '../support/video-kit.mjs';
+import { writeSetPieces } from '../../server/media/video-pieces.mjs';
+import { PIECES_PATCH_NOTE } from '../../server/media/video-cut.mjs';
 import { cutSource, pieceNames, libraryPieces } from '../../server/media/video-plan.mjs';
 import {
   REMOTION_SKILL,
@@ -304,9 +307,12 @@ test('set pieces get three tries and fail by name; Retry keeps the plan, then ke
       if (tree.instructions.startsWith('You write the set pieces')) {
         pieceCalls++;
         errors.push(input.validationError);
+        const module = piecesOk ? pieces : pieces.replace('function Winner', 'function Champ');
         return complete(
           emit,
-          piecesOk ? pieces : pieces.replace('function Winner', 'function Champ'),
+          input.failedCode === undefined
+            ? module
+            : patchOf(input.failedCode, module === input.failedCode ? module + '\n' : module),
         );
       }
       const i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
@@ -381,4 +387,42 @@ test('set pieces count as drawn once a later export follows them; their 3D form 
     ).drawn,
     2,
   );
+});
+
+test('a set-piece module that fails its check is fixed by a patch, and rewritten whole only when the patch does not apply', async () => {
+  const plan = videoPlanWithLooks(),
+    broken = pieces.replace('function Winner', 'function Champ');
+  const write = (answers) => {
+    const calls = [];
+    return {
+      calls,
+      write: async (instructions, text) => {
+        const task = fixerTask(text);
+        calls.push({ instructions, task });
+        return answers[calls.length - 1](task);
+      },
+    };
+  };
+  const run = ({ write }) =>
+    writeSetPieces({
+      plan,
+      names: ['Winner'],
+      write,
+      matches: async () => [],
+      signal: new AbortController().signal,
+    });
+
+  const patching = write([() => broken, (task) => patchOf(task.failedCode, pieces)]);
+  assert.match((await run(patching)).source, /function Winner/);
+  assert.equal(patching.calls.length, 2);
+  assert.ok(patching.calls[1].instructions.endsWith(PIECES_PATCH_NOTE));
+  assert.equal(patching.calls[1].task.failedCode, broken);
+  assert.equal(patching.calls[1].task.validationError, 'missing export Winner.');
+
+  const whole = write([() => broken, () => 'not a diff', () => pieces]);
+  assert.match((await run(whole)).source, /function Winner/);
+  assert.equal(whole.calls.length, 3);
+  assert.ok(!whole.calls[2].instructions.endsWith(PIECES_PATCH_NOTE));
+  assert.equal(whole.calls[2].task.failedCode, undefined);
+  assert.equal(whole.calls[2].task.validationError, 'missing export Winner.');
 });

@@ -3,6 +3,7 @@ import {
   PIECES_LIBRARY_NOTE,
   PIECES_PARTS_NOTE,
   PIECES_3D,
+  PIECES_PATCH_NOTE,
   PIECE_IMPROVE_INSTRUCTIONS,
   PIECE_PATCH_NOTE,
   PIECES_REFERENCE_NOTE,
@@ -76,6 +77,19 @@ function partRequest(raw, names) {
   return answer.parts.map(({ name, look }) => ({ name, look }));
 }
 
+// The code of a {"pieces", "code"} answer, patched in place so its piece choices stay; null when unreadable.
+function answerCode(raw) {
+  let answer;
+  try {
+    answer = JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
+  } catch {
+    return null;
+  }
+  return typeof answer?.code === 'string'
+    ? { code: answer.code, wrap: (code) => JSON.stringify({ ...answer, code }) }
+    : null;
+}
+
 // One call writes the shared set pieces before any cut, offered the library's closest pieces for each look.
 // The writer may first ask for parts; the library is then searched for them too and the call made again.
 // Named pieces drawn so far in a streaming module: each counts once a later export follows it, its 3D form with it.
@@ -106,7 +120,9 @@ export async function writeSetPieces({
   const found = await matches(objects.map((o) => o.look));
   signal.throwIfAborted();
   const library = names.map((_, i) => found[i] ?? []);
-  let parts = null;
+  let parts = null,
+    // The module that last failed its check: its code and how to put a patched code back into an answer.
+    failed = null;
   onDrawing(piecesDrawn('', names));
   for (let attempt = 0, error; ; attempt++) {
     if (attempt === CUT_ATTEMPTS) throw piecesError(error.message);
@@ -114,44 +130,64 @@ export async function writeSetPieces({
     const solidNames = solid ? all.map((n) => `${n}3D`) : [];
     const exported = [...all, ...solidNames];
     const offered = library.some((m) => m.length);
-    let raw;
+    let raw = null;
+    const retry = failed;
+    failed = null;
     try {
-      raw = await write(
+      const instructions =
         PIECES_INSTRUCTIONS +
-          '\n\n' +
-          REMOTION_SKILL +
-          PIECES_PARTS_NOTE +
-          (offered ? PIECES_LIBRARY_NOTE : '') +
-          (solid ? PIECES_3D : '') +
-          (photos.length ? PIECES_REFERENCE_NOTE : ''),
-        JSON.stringify({
-          styleBrief: plan.styleBrief,
-          names,
-          ...(parts && { parts }),
-          ...(solid && { solidNames }),
-          ...(offered && {
-            library: all.map((name, i) => ({
-              name,
-              matches: library[i].map(
-                ({ id, name, look, props, roles, trueColors, source, source3d, parts }) => ({
-                  id,
-                  name,
-                  look,
-                  props,
-                  roles,
-                  ...(Object.keys(trueColors ?? {}).length && { trueColors }),
-                  source,
-                  ...(source3d && { source3d }),
-                  ...(parts?.length && { parts: parts.map((p) => p.name) }),
-                }),
-              ),
-            })),
-          }),
-          ...(photos.length && { referencePhotos: photos.map((p) => p.name) }),
-          ...(error && { validationError: error.message }),
+        '\n\n' +
+        REMOTION_SKILL +
+        PIECES_PARTS_NOTE +
+        (offered ? PIECES_LIBRARY_NOTE : '') +
+        (solid ? PIECES_3D : '') +
+        (photos.length ? PIECES_REFERENCE_NOTE : '');
+      const input = {
+        styleBrief: plan.styleBrief,
+        names,
+        ...(parts && { parts }),
+        ...(solid && { solidNames }),
+        ...(offered && {
+          library: all.map((name, i) => ({
+            name,
+            matches: library[i].map(
+              ({ id, name, look, props, roles, trueColors, source, source3d, parts }) => ({
+                id,
+                name,
+                look,
+                props,
+                roles,
+                ...(Object.keys(trueColors ?? {}).length && { trueColors }),
+                source,
+                ...(source3d && { source3d }),
+                ...(parts?.length && { parts: parts.map((p) => p.name) }),
+              }),
+            ),
+          })),
         }),
+        ...(photos.length && { referencePhotos: photos.map((p) => p.name) }),
+        ...(error && { validationError: error.message }),
+      };
+      const images = photos.length ? photos.map((p) => p.image) : undefined;
+      // A module that failed its check is repaired by a patch; when it does not apply, one whole module
+      // within this attempt, as cut repairs do.
+      if (retry) {
+        const code = patched(
+          retry.code,
+          await write(
+            instructions + PIECES_PATCH_NOTE,
+            withSource(input, 'failedCode', retry.code),
+            undefined,
+            images,
+          ),
+        );
+        if (code !== null) raw = retry.wrap(code);
+      }
+      raw ??= await write(
+        instructions,
+        JSON.stringify(input),
         (_, text) => onDrawing(piecesDrawn(text, names)),
-        photos.length ? photos.map((p) => p.image) : undefined,
+        images,
       );
     } catch (e) {
       if (!e.invalidOutput) throw e;
@@ -169,6 +205,8 @@ export async function writeSetPieces({
         attempt--;
         continue;
       }
+      failed = offered ? answerCode(raw) : { code: raw, wrap: (code) => code };
+      if (!failed?.code.trim()) failed = null;
       if (!offered)
         return {
           source: cutSource(raw, plan.styleBrief, exported),
