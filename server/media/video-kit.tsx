@@ -1,9 +1,6 @@
 // Rabbithole video kit: copied beside each generated composition as ./kit. Building blocks only, no scene templates.
 // Fixed dark-paper identity (docs/video-quality-spec.md); inks are the Paperback dark series values.
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { PCFShadowMap, PMREMGenerator } from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   AbsoluteFill,
   Easing,
@@ -18,7 +15,16 @@ import { wipe } from '@remotion/transitions/wipe';
 import { flip } from '@remotion/transitions/flip';
 import { clockWipe } from '@remotion/transitions/clock-wipe';
 import { iris } from '@remotion/transitions/iris';
-export { setStock, Exhibit, Camera, cameraAt, Copies, type CameraKey } from './video-stock';
+export {
+  setStock,
+  Exhibit,
+  Camera,
+  cameraAt,
+  Copies,
+  Lights,
+  GROUND,
+  type CameraKey,
+} from './video-stock';
 
 export const palette = {
   ground: '#1a1613',
@@ -149,63 +155,6 @@ export const three = {
     paper: palette.paper,
   },
 };
-// Soft room light generated in code (no file) for gentle reflections, and soft shadows from the key light
-// onto a shadow-only ground at y = GROUND. Quality is fixed low for smooth live playback.
-export const GROUND = -2;
-export function Lights() {
-  const { gl, scene } = useThree();
-  gl.shadowMap.enabled = true;
-  gl.shadowMap.type = PCFShadowMap;
-  useEffect(() => {
-    const pmrem = new PMREMGenerator(gl);
-    const room = new RoomEnvironment();
-    const map = pmrem.fromScene(room, 0.04).texture;
-    scene.environment = map;
-    scene.environmentIntensity = 0.45;
-    room.dispose();
-    pmrem.dispose();
-    return () => {
-      if (scene.environment === map) scene.environment = null;
-      map.dispose();
-    };
-  }, [gl, scene]);
-  // Meshes come from generated code, so the kit opts them in; runs on each rendered frame.
-  useFrame(() =>
-    scene.traverse((o: any) => {
-      if (o.isMesh && !o.userData.ground) o.castShadow = true;
-    }),
-  );
-  return (
-    <>
-      <ambientLight intensity={0.3} color="#fff4e2" />
-      <directionalLight
-        position={[4, 6, 5]}
-        intensity={1.4}
-        color="#fff1dc"
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-radius={6}
-        shadow-bias={-0.0005}
-        shadow-camera-left={-8}
-        shadow-camera-right={8}
-        shadow-camera-top={8}
-        shadow-camera-bottom={-8}
-        shadow-camera-far={30}
-      />
-      <directionalLight position={[-5, -2, -4]} intensity={0.35} color={palette.lichen} />
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, GROUND, 0]}
-        receiveShadow
-        userData={{ ground: true }}
-      >
-        <planeGeometry args={[40, 40]} />
-        <shadowMaterial opacity={0.35} />
-      </mesh>
-    </>
-  );
-}
-
 // Emphasis overlay: the app draws these above every cut (Manim included) from the plan's cut.emphasis marks,
 // timed to narration sentence frames, in the shared 1920x1080 frame space.
 type Timed = { startFrame: number; endFrame: number };

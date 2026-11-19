@@ -1,8 +1,17 @@
 // The host's data path into a cut, the 3D camera and many copies of a part, shared by live playback and the background render.
-import { useContext, useLayoutEffect, useRef, type ComponentType } from 'react';
+import { useContext, useEffect, useLayoutEffect, useRef, type ComponentType } from 'react';
 import { Img, Loop, OffthreadVideo, Sequence, random, staticFile, useCurrentFrame } from 'remotion';
-import { context as fiber, useThree } from '@react-three/fiber';
-import { Euler, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
+import { context as fiber, useFrame, useThree } from '@react-three/fiber';
+import {
+  Euler,
+  InstancedMesh,
+  Matrix4,
+  PCFShadowMap,
+  PMREMGenerator,
+  Quaternion,
+  Vector3,
+} from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { fonts, palette } from './video-kit';
 
 // Exhibits the host delivered by id (ADR 0005): the render reads them from stock.json beside the cut, with
@@ -258,6 +267,63 @@ function Instanced({
         <Piece {...props} />
       </group>
       <group ref={host} />
+    </>
+  );
+}
+
+// Soft room light generated in code (no file) for gentle reflections, and soft shadows from the key light
+// onto a shadow-only ground at y = GROUND. Quality is fixed low for smooth live playback.
+export const GROUND = -2;
+export function Lights() {
+  const { gl, scene } = useThree();
+  gl.shadowMap.enabled = true;
+  gl.shadowMap.type = PCFShadowMap;
+  useEffect(() => {
+    const pmrem = new PMREMGenerator(gl);
+    const room = new RoomEnvironment();
+    const map = pmrem.fromScene(room, 0.04).texture;
+    scene.environment = map;
+    scene.environmentIntensity = 0.45;
+    room.dispose();
+    pmrem.dispose();
+    return () => {
+      if (scene.environment === map) scene.environment = null;
+      map.dispose();
+    };
+  }, [gl, scene]);
+  // Meshes come from generated code, so the kit opts them in; runs on each rendered frame.
+  useFrame(() =>
+    scene.traverse((o: any) => {
+      if (o.isMesh && !o.userData.ground) o.castShadow = true;
+    }),
+  );
+  return (
+    <>
+      <ambientLight intensity={0.3} color="#fff4e2" />
+      <directionalLight
+        position={[4, 6, 5]}
+        intensity={1.4}
+        color="#fff1dc"
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        shadow-radius={6}
+        shadow-bias={-0.0005}
+        shadow-camera-left={-8}
+        shadow-camera-right={8}
+        shadow-camera-top={8}
+        shadow-camera-bottom={-8}
+        shadow-camera-far={30}
+      />
+      <directionalLight position={[-5, -2, -4]} intensity={0.35} color={palette.lichen} />
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, GROUND, 0]}
+        receiveShadow
+        userData={{ ground: true }}
+      >
+        <planeGeometry args={[40, 40]} />
+        <shadowMaterial opacity={0.35} />
+      </mesh>
     </>
   );
 }
