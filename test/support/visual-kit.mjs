@@ -4,6 +4,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
+import { fixerTask, patchOf } from './video-kit.mjs';
+
+export { fixerTask };
+// A writer's answer: a retry of a previous fragment answers output as a patch of it; an unchanged output
+// gains a trailing newline, which validation trims, so the patch has a hunk.
+export const visualAnswer = (text, output) => {
+  const { previousFragment } = fixerTask(text);
+  if (previousFragment === undefined) return output;
+  return patchOf(previousFragment, output === previousFragment ? output + '\n' : output);
+};
 
 export const task = {
   title: 'Rounds',

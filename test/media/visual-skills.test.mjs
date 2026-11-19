@@ -5,6 +5,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { generateVisual } from '../../server/media/visuals.mjs';
 import { toolMcp } from '../../server/tools/mcp.mjs';
 import { THREEJS_SKILL, MOTION_DESIGN_SKILL, GSAP_SKILL } from '../../server/media/skills.mjs';
+import { fixerTask, visualAnswer } from '../support/visual-kit.mjs';
 
 const SCENE =
   '<div aria-label="A cube" role="img"></div><script>const renderer = new THREE.WebGLRenderer();</script>';
@@ -20,8 +21,8 @@ function writer(attempts) {
   return {
     calls,
     generate: async (tree, text, emit, _save, signal) => {
-      calls.push({ tree, input: JSON.parse(text) });
-      const output = await attempts[calls.length - 1](tree, signal);
+      calls.push({ tree, input: fixerTask(text) });
+      const output = visualAnswer(text, await attempts[calls.length - 1](tree, signal));
       emit({ type: 'item', item: 'answer', text: output });
       emit({ type: 'status', status: 'completed' });
     },

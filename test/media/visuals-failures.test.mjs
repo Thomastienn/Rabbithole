@@ -1,6 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { task, block, source, complete, deferred, until, open } from '../support/visual-kit.mjs';
+import {
+  task,
+  block,
+  source,
+  complete,
+  deferred,
+  until,
+  open,
+  fixerTask,
+  visualAnswer,
+} from '../support/visual-kit.mjs';
 
 test('invalid output gets one automatic retry, then a durable failure with explicit Retry from the same frozen request', async () => {
   const calls = [],
@@ -11,9 +21,9 @@ test('invalid output gets one automatic retry, then a durable failure with expli
     { generate: async (_tree, _text, emit) => complete(emit, 'See this.' + block()) },
     {
       generate: async (tree, text, emit) => {
-        calls.push({ tree, input: JSON.parse(text) });
+        calls.push({ tree, input: fixerTask(text) });
         if (hold) await retryHold.promise;
-        complete(emit, output);
+        complete(emit, visualAnswer(text, output));
       },
     },
   );
@@ -59,9 +69,9 @@ test('invalid output gets one automatic retry, then a durable failure with expli
       {},
       {
         generate: async (tree, text, emit) => {
-          calls.push({ tree, input: JSON.parse(text) });
+          calls.push({ tree, input: fixerTask(text) });
           if (hold) await retryHold.promise;
-          complete(emit, output);
+          complete(emit, visualAnswer(text, output));
         },
       },
       { path },
@@ -101,7 +111,10 @@ test('server validation catches document, resource, library, syntax and size mis
     count = 0;
   const env = await open(
     { generate: async (_tree, _text, emit) => complete(emit, 'Look.' + block()) },
-    { generate: async (_tree, _text, emit) => complete(emit, count++ % 2 ? source : invalid) },
+    {
+      generate: async (_tree, text, emit) =>
+        complete(emit, visualAnswer(text, count++ % 2 ? source : invalid)),
+    },
   );
   try {
     for (invalid of [

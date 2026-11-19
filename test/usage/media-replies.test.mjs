@@ -15,7 +15,7 @@ import {
   repairAnswer,
   planText,
 } from '../support/video-kit.mjs';
-import { block, source } from '../support/visual-kit.mjs';
+import { block, source, visualAnswer } from '../support/visual-kit.mjs';
 
 const counts = (n) => ({ input: n, output: n + 1, cacheRead: 1 });
 const measurement = (task, n) => ({ task, ...counts(n) });
@@ -65,7 +65,7 @@ test('reply API attributes retried visuals and every video call, reports running
         await visualGate.promise;
         // A later cumulative measurement replaces this call's earlier count, not a second call.
         emit({ type: 'usage', usage: counts(12) });
-        return complete(emit, source);
+        return complete(emit, visualAnswer(text, source));
       },
     },
     {
