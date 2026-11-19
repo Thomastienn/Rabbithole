@@ -111,6 +111,34 @@ Retrieved and licence re-checked at the pinned commits on 2026-11-16 (via
   and trait 3, the two-pass plan, CSS specificity, screenshots and self-critique
   notes.
 
+### Loadable visual skills
+
+The visual writer loads these with its `load_skill` tool (`server/media/visuals.mjs`);
+the server rejects a fragment that uses three.js or animation without the
+matching skill once and retries with it in the prompt. Retrieved and licence
+checked at the pinned commits on 2026-11-19 (via `gh api`). Each excerpt is
+rewritten and shortened, with code examples dropped.
+
+- `threejs.md`: CloudAI-X/threejs-skills
+  `skills/threejs-fundamentals/SKILL.md`, "Quick Start", "Cleanup",
+  "Performance" and "Common Mistakes" (MIT, © 2026 CloudAI-X;
+  `threejs-skills-LICENSE.txt`), commit
+  `0e181866f095b5f06d005133876e926515390d95`:
+  https://github.com/CloudAI-X/threejs-skills/blob/0e181866f095b5f06d005133876e926515390d95/skills/threejs-fundamentals/SKILL.md
+  Adapted to the preloaded `THREE` global. Excluded: imports and import maps,
+  WebGPU and TSL, cameras other than the perspective camera, ArrayCamera and
+  CubeCamera, the math, loading-manager and LOD sections, and the other skills.
+- `motion-design.md`: LottieFiles/motion-design-skill
+  `skills/motion-design/reference/quality-checklist.md` and
+  `timing-easing-tables.md` (MIT, © 2025 LottieFiles;
+  `motion-design-skill-LICENSE.txt`), commit
+  `2e1f3c052dd70c60b598413e2fc5d7704d9e9896`:
+  https://github.com/LottieFiles/motion-design-skill/blob/2e1f3c052dd70c60b598413e2fc5d7704d9e9896/skills/motion-design/reference/quality-checklist.md
+  https://github.com/LottieFiles/motion-design-skill/blob/2e1f3c052dd70c60b598413e2fc5d7704d9e9896/skills/motion-design/reference/timing-easing-tables.md
+  The d3 easing names are Rabbithole's. Excluded: brand personality and
+  emotional-quality items, the personality, material, spring and Apple tables,
+  severity tiers, `SKILL.md` and the director, pattern and export files.
+
 ### Rabbithole's own texts
 
 Written for Rabbithole, not vendored; no upstream licence applies.

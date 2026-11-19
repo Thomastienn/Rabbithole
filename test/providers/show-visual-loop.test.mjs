@@ -78,7 +78,12 @@ test('a custom endpoint gets "queued" for show_visual and its repeated continuat
   assert.deepEqual(events.at(-1), { type: 'done', status: 'completed' });
   assert.ok(!events.some((e) => e.type === 'tool'));
 
-  const chats = fake.calls.filter((c) => c.path === '/v1/chat/completions' && c.body.tools?.length);
+  // The visual writer also carries a tool (load_skill); count only the tutor's calls.
+  const chats = fake.calls.filter(
+    (c) =>
+      c.path === '/v1/chat/completions' &&
+      c.body.tools?.some((tool) => tool.function.name === 'show_visual'),
+  );
   assert.equal(chats.length, 3);
   assert.match(chats[1].body.messages.at(-1).content, /^Error: show_visual needs alt/);
   assert.deepEqual(chats[2].body.messages.at(-1), {

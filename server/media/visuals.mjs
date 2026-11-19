@@ -2,7 +2,49 @@ import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { savedTheme, themeChoices } from '../../src/shell/appearance.ts';
 import { visualMarkup } from '../../src/media/visualMarkup.ts';
-import { VISUAL_SKILL, HOUSE_STYLE_SKILL, ANALOGY_SKILL } from './skills.mjs';
+import {
+  VISUAL_SKILL,
+  HOUSE_STYLE_SKILL,
+  ANALOGY_SKILL,
+  THREEJS_SKILL,
+  MOTION_DESIGN_SKILL,
+} from './skills.mjs';
+import { readCall } from './reply-requests.mjs';
+
+// Loadable skills; `uses` spots output that needs the skill, so the server can enforce loading it.
+const SKILLS = {
+  threejs: {
+    description:
+      'three.js craft: scene setup, animation loop, resize, cleanup and common mistakes.',
+    when: 'any 3D scene with THREE',
+    text: THREEJS_SKILL,
+    uses: /\bTHREE\s*\./,
+  },
+  'motion-design': {
+    description: 'motion pacing: a motion checklist and duration and easing tables.',
+    when: 'any animation (d3 transitions, CSS transitions or keyframes)',
+    text: MOTION_DESIGN_SKILL,
+    uses: /\.transition\s*\(|\btransition(?:-[a-z-]+)?\s*:|@keyframes\b/i,
+  },
+};
+export const LOAD_SKILL = {
+  name: 'load_skill',
+  description: 'Load one skill by name; returns its guidance to follow while writing the visual.',
+  parameters: {
+    type: 'object',
+    properties: { name: { type: 'string', enum: Object.keys(SKILLS) } },
+    required: ['name'],
+  },
+};
+const SKILL_RULES =
+  '\n\nLoadable skills: you must call load_skill with the matching skill before writing whenever its work applies; a fragment that does that work without its skill is rejected.\n' +
+  Object.entries(SKILLS)
+    .map(([name, skill]) => `- ${name}: ${skill.description} Load it for ${skill.when}.`)
+    .join('\n');
+// Without native tool calling the call is written as text; no result comes back.
+const TEXT_TOOL =
+  '\nYou cannot call tools natively. To load a skill, write <tool_call>{"name": "load_skill", "arguments": {"name": "skill name"}}</tool_call> before the fragment; no result comes back, and the server asks again with that skill in these instructions.';
+const CALLS = /<tool_call>([\s\S]*?)(?:<\/tool_call>|$)/g;
 
 const INSTRUCTIONS =
   readFileSync(new URL('./prompts/visual.md', import.meta.url), 'utf8') +
@@ -11,7 +53,8 @@ const INSTRUCTIONS =
   '\n\n' +
   HOUSE_STYLE_SKILL +
   '\n\n' +
-  ANALOGY_SKILL;
+  ANALOGY_SKILL +
+  SKILL_RULES;
 const MAX_SOURCE = 64 * 1024;
 
 // Read Astryx's built colours so the worker prompt and browser share one palette.
@@ -140,6 +183,7 @@ export async function generateVisual(
   parentSignal,
   timeout = 300000,
   onPartial = () => {},
+  { capable = false, mcp } = {},
 ) {
   const controller = new AbortController();
   const cancel = () => controller.abort(new Error('Visual generation canceled.'));
@@ -159,9 +203,13 @@ export async function generateVisual(
     const { JSDOM } = await import('jsdom');
     const document = JSDOM.fragment('').ownerDocument;
     let validationError;
+    // Skills put into the prompt after a rejection; loaded marks what this attempt received.
+    const given = new Set();
     for (let attempt = 0; attempt < 2; attempt++) {
       if (controller.signal.aborted) throw controller.signal.reason;
-      const items = new Map();
+      const items = new Map(),
+        loaded = new Set(given);
+      const fragment = () => [...items.values()].join('\n\n').replace(CALLS, '');
       onPartial('');
       let status, overflow;
       try {
@@ -169,8 +217,20 @@ export async function generateVisual(
           {
             ...selection,
             thread: null,
+            ...(capable && {
+              tools: [LOAD_SKILL],
+              mcp,
+              runTool: (_name, input) => {
+                const skill = SKILLS[input?.name];
+                if (!skill) throw new Error(`Choose a skill: ${Object.keys(SKILLS).join(' or ')}.`);
+                loaded.add(input.name);
+                return skill.text;
+              },
+            }),
             instructions:
               INSTRUCTIONS +
+              (capable ? '' : TEXT_TOOL) +
+              [...given].map((name) => '\n\n' + SKILLS[name].text).join('') +
               (input.differentVersion
                 ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
                 : '') +
@@ -196,7 +256,7 @@ export async function generateVisual(
                 overflow = 'Visual output is invalid: the fragment exceeds its size limit.';
                 items.clear();
               }
-              onPartial(visualMarkup([...items.values()].join('\n\n'), document));
+              onPartial(visualMarkup(fragment(), document));
             }
             if (event.type === 'status') status = event.status;
           },
@@ -211,13 +271,30 @@ export async function generateVisual(
       if (controller.signal.aborted) throw controller.signal.reason;
       if (status !== 'completed')
         throw new Error('Visual generation did not complete. Retry to try again.');
+      let result, error;
       try {
         if (overflow) throw new Error(overflow);
-        return await validate([...items.values()].join('\n\n'));
-      } catch (error) {
-        validationError = error.message;
-        if (attempt) throw error;
+        result = await validate(fragment());
+      } catch (caught) {
+        error = caught;
       }
+      if (attempt) {
+        if (error) throw error;
+        return result;
+      }
+      // Text-mode load_skill calls asked for skills that never reached the model.
+      const asked = [...[...items.values()].join('\n\n').matchAll(CALLS)]
+        .map(([, json]) => readCall({ json }))
+        .filter((call) => call.name === LOAD_SKILL.name)
+        .map((call) => call.input.name);
+      const missing = Object.keys(SKILLS).filter(
+        (name) => !loaded.has(name) && (asked.includes(name) || SKILLS[name].uses.test(fragment())),
+      );
+      if (!error && !missing.length) return result;
+      for (const name of missing) given.add(name);
+      validationError =
+        error?.message ??
+        `Visual output is invalid: it needs the ${missing.join(' and ')} skill, now included in your instructions; follow it and return a complete replacement fragment.`;
     }
   };
   try {

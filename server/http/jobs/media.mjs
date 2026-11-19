@@ -276,7 +276,12 @@ export function mediaJobs(ctx) {
           message: artifact.message,
         }).generate(...args),
     };
-    return generateVisual(metering, selection, input, signal, ctx.visualTimeout, onPartial);
+    const capable = await ctx.toolCapable(selection);
+    if (signal.aborted) throw signal.reason;
+    return generateVisual(metering, selection, input, signal, ctx.visualTimeout, onPartial, {
+      capable,
+      mcp: ctx.mcp,
+    });
   };
   // Explicit Retry runs detached like a video job, with the same stop/delete/polling lifecycle.
   const startDrawing = (artifact, parentSignal, onUpdate = () => {}) => {

@@ -155,7 +155,7 @@ test('predict-then-reveal uses the ordinary inline worker, persists without repl
 });
 
 for (const name of [TEST_PROVIDER])
-  test(`${name} visual workers retain the native no-tool boundary, fresh session and selected effort`, async () => {
+  test(`${name} visual workers get only load_skill, a fresh session and the selected effort`, async () => {
     const launches = [],
       dir = mkdtempSync(join(tmpdir(), 'tt-visual-adapter-'));
     const launch = (command, args, options) => {
@@ -195,15 +195,16 @@ for (const name of [TEST_PROVIDER])
       assert.equal(a.status, 'ready', a.error);
       assert.equal(a.kind, 'visual');
       assert.equal(a.source, '<p>Round winners meet in the final.</p>');
-      assert.equal(launches.length, 1);
-      const call = launches[0];
+      // Codex runs a tool turn on a fresh worker CLI.
+      assert.equal(launches.length, name === 'claude' ? 1 : 2);
+      const call = launches.at(-1);
       if (name === 'claude') {
         const arg = (flag) => call.args[call.args.indexOf(flag) + 1];
         assert.equal(arg('--model'), 'haiku');
         assert.equal(arg('--effort'), 'high');
         assert.equal(arg('--tools'), '');
-        assert.equal(arg('--max-turns'), '1');
-        assert.equal(arg('--mcp-config'), '{"mcpServers":{}}');
+        assert.equal(arg('--allowedTools'), 'mcp__rabbithole__load_skill');
+        assert.deepEqual(Object.keys(JSON.parse(arg('--mcp-config')).mcpServers), ['rabbithole']);
         assert.equal(arg('--setting-sources'), '');
         assert.ok(
           call.args.includes('--strict-mcp-config') &&
