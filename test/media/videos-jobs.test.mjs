@@ -139,6 +139,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
       'mcp',
       'model',
       'provider',
+      'reportsByTools',
       'runTool',
       'thread',
       'tools',

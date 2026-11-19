@@ -18,7 +18,13 @@ export async function videoCall(
   let status, overflow;
   try {
     await provider.generate(
-      { ...selection, thread: null, instructions, ...(images && { images }), ...tools },
+      {
+        ...selection,
+        thread: null,
+        instructions,
+        ...(images && { images }),
+        ...(tools && { ...tools, reportsByTools: true }),
+      },
       input,
       (event) => {
         if (signal.aborted) return;

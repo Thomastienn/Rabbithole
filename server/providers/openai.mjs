@@ -468,7 +468,8 @@ class Endpoint {
         if (answered || round.every((c) => ['record_turn', 'start_discussion'].includes(c.name)))
           break;
       }
-      if (!reply.shown && !answered)
+      // A call that reports through tools may end silently; its caller checks what the tools received.
+      if (!reply.shown && !answered && !(tree.reportsByTools && messages.at(-1).tool_call_id))
         throw new EndpointError(
           'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
         );
