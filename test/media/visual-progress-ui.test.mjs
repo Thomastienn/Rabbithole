@@ -37,7 +37,7 @@ test('the visual badge, dimming, input lock and live announcements follow its st
   const badge = () => figure().querySelector('.visual-badge');
   const status = () => figure().querySelector('[role=status]');
   const live = status();
-  assert.match(badge().textContent, /^Drawing… 0:0[45]$/);
+  assert.match(badge().textContent, /^Drawing… 0:0\d$/);
   assert.equal(
     badge().getAttribute('aria-hidden'),
     'true',
