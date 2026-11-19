@@ -10,6 +10,7 @@ import {
   until,
   open,
   fakeRender,
+  planText,
 } from '../support/video-kit.mjs';
 import { pieceChoices, assemblePieces, libraryPieces } from '../../server/media/video-plan.mjs';
 import { writeSetPieces, withParts } from '../../server/media/video-pieces.mjs';
@@ -48,7 +49,7 @@ export function Note({ x, y }) { return <div style={{ left: x, top: y, backgroun
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         if (tree.instructions.startsWith('You write the set pieces')) {
           input = JSON.parse(text);
           const id = (n) => input.library.flatMap((l) => l.matches).find((m) => m.name === n).id;
@@ -288,7 +289,7 @@ export function Stadium({ x, y }) { return <div style={{ left: x, top: y, backgr
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         if (tree.instructions.startsWith('You write the set pieces')) {
           inputs.push(JSON.parse(text));
           rules.push(tree.instructions);

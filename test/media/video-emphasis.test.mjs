@@ -7,8 +7,7 @@ import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
 const { cursorAt, penAt, Sketch, sketchAt, sketchPath } =
   await import('../../server/media/video-kit.tsx');
-import { videoPlan } from '../../server/media/video-plan.mjs';
-import { planFor } from '../support/video-kit.mjs';
+import { planFor, planThrough } from '../support/video-kit.mjs';
 
 const sentences = [
   { startFrame: 0, endFrame: 60 },
@@ -116,7 +115,7 @@ test('plan accepts timed emphasis marks in frame space and rejects malformed one
       ],
     },
   ];
-  assert.deepEqual(videoPlan(JSON.stringify(plan)), plan);
+  assert.deepEqual(planThrough(plan), plan);
   for (const bad of [
     { tool: 'cursor', sentence: 0, x: 2000, y: 10 },
     { tool: 'cursor', sentence: -1, x: 10, y: 10 },
@@ -143,7 +142,7 @@ test('plan accepts timed emphasis marks in frame space and rejects malformed one
     },
   ]) {
     plan.cuts[1].emphasis = [bad];
-    assert.throws(() => videoPlan(JSON.stringify(plan)), /malformed/, JSON.stringify(bad));
+    assert.throws(() => planThrough(plan), /^Error: emphasis /, JSON.stringify(bad));
   }
 });
 

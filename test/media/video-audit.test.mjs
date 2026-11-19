@@ -16,6 +16,7 @@ import {
   audit,
   pass,
   problems,
+  planText,
 } from '../support/video-kit.mjs';
 import { AUDIT_INSTRUCTIONS, FIX_NOTE, FIX_WHOLE_NOTE } from '../../server/media/video-cut.mjs';
 import { auditFix, auditReport } from '../../server/media/video-cuts.mjs';
@@ -63,7 +64,7 @@ test('audits start together, see code, stills and the previous last frame; issue
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         const i = cutOf(plan, text);
         if (tree.instructions.endsWith(FIX_NOTE)) {
           fixes.push({ i, tree, text, input: fixerTask(text) });
@@ -187,7 +188,7 @@ test('a fix that breaks the check or the render falls back to the cut from befor
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         const i = cutOf(plan, text);
         if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
           return audit(tree, emit, ...problems(issues));
@@ -240,7 +241,7 @@ test('a fix patch that does not parse or apply gets exactly one whole-source cal
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         const i = cutOf(plan, text);
         if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
           return audit(tree, emit, ...problems(issues));
@@ -296,7 +297,7 @@ test('cancel stops a running snapshot and a running audit', async (t) => {
       {
         generate: async (tree, text, emit, _, signal) => {
           if (tree.id) return complete(emit, 'Watch.' + directive);
-          if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+          if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
           if (!tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
             return complete(emit, written(cutOf(plan, text)));
           audits++;

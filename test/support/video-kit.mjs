@@ -12,6 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createPatch } from 'diff';
 import { REPAIR_PATCH_NOTE } from '../../server/media/video-cut.mjs';
+import { planBuilder } from '../../server/media/plan-calls.mjs';
 
 // The JSON task a fixer receives, with the raw source that follows it restored under its field.
 export const fixerTask = (text) => {
@@ -100,9 +101,42 @@ export const planFor = (source = composition, count = 1) => ({
     endState: `Winner at position ${i + 1}`,
   })),
 });
+// Calls written as <tool_call> text, the way a model without native tool calling answers.
+export const callText = (calls) =>
+  calls
+    .map(
+      ([name, input = {}]) =>
+        `<tool_call>${JSON.stringify({ name, arguments: input })}</tool_call>`,
+    )
+    .join('\n');
+// Today's plan shape as the planning calls that build it.
+export const planCalls = ({ title, description, styleBrief: b, cuts }) => [
+  ['start_video', { title, description }],
+  ...b.layoutAreas.map((a) => ['add_area', a]),
+  ...Object.entries(b.paletteRoles).map(([role, ink]) => [
+    'add_colour',
+    b.trueColors?.[ink] ? { role, name: ink, hex: b.trueColors[ink] } : { role, ink },
+  ]),
+  ...b.recurringObjects.map((o) => ['add_object', o]),
+  ...b.exactTerms.map((term) => ['add_term', { term }]),
+  ...cuts.flatMap(({ exhibits = [], ...cut }, i) => [
+    ['add_cut', cut],
+    ...exhibits.map((e) => ['add_exhibit', { cut: i + 1, ...e }]),
+  ]),
+  ['finish_video'],
+];
+export const planText = (plan) => callText(planCalls(plan));
+// A plan run through the planning calls as a native model would; the first rejected call or unfinished plan throws.
+export const planThrough = (plan, options) => {
+  const builder = planBuilder(options);
+  for (const [name, input = {}] of planCalls(plan)) builder.run(name, input);
+  const problem = builder.problem();
+  if (problem) throw new Error(problem);
+  return builder.plan();
+};
 export const videoResponse = (tree, source = composition) =>
   tree.instructions?.startsWith('You plan') && source.startsWith('// Description:')
-    ? JSON.stringify(planFor(source))
+    ? planText(planFor(source))
     : source;
 export const complete = (emit, text) => {
   emit({ type: 'item', item: 'answer', text });
@@ -111,17 +145,7 @@ export const complete = (emit, text) => {
 // Answers a cut audit with its calls: natively through tree.runTool when given, else as <tool_call> text.
 export const audit = async (tree, emit, ...calls) => {
   if (tree.runTool) for (const [name, input = {}] of calls) await tree.runTool(name, input);
-  complete(
-    emit,
-    tree.runTool
-      ? ''
-      : calls
-          .map(
-            ([name, input = {}]) =>
-              `<tool_call>${JSON.stringify({ name, arguments: input })}</tool_call>`,
-          )
-          .join('\n'),
-  );
+  complete(emit, tree.runTool ? '' : callText(calls));
 };
 export const pass = ['pass_cut'];
 // Today's issue shape as the flag_problem calls that report it.
@@ -187,7 +211,7 @@ export async function job(render, mutate, source = composition, count = 1, optio
         emit,
         t.instructions.startsWith('You plan') &&
           (options.plan || source.startsWith('// Description:'))
-          ? JSON.stringify(options.plan ?? planFor(source, count))
+          ? planText(options.plan ?? planFor(source, count))
           : options.plan?.cuts.find((c) => c.purpose === JSON.parse(text).cut.purpose)?.engine ===
               'manim'
             ? manimCut

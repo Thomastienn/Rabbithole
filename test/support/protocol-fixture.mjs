@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { planFor } from './video-kit.mjs';
+import { planFor, planText } from './video-kit.mjs';
 import { appTool, codexMcp, claudeSearch } from './tool-protocol.mjs';
 
 export async function protocol(stdin, stdout, argv, exit, wait = async () => {}) {
@@ -38,7 +38,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
               }) +
               '\n```'
             : text.startsWith('{') && JSON.parse(text).request?.endsWith('video fixture request')
-              ? JSON.stringify(planFor(video))
+              ? planText(planFor(video))
               : text.endsWith('diagram fixture request')
                 ? 'A bracket shows each round.\n```rabbithole-diagram\n' +
                   JSON.stringify({

@@ -7,7 +7,7 @@ import { Store } from '../../server/store.mjs';
 import { generateVideo } from '../../server/media/videos.mjs';
 import { AUDIT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
-import { planFor, complete, fakeRender, audit, pass } from '../support/video-kit.mjs';
+import { planFor, planText, complete, fakeRender, audit, pass } from '../support/video-kit.mjs';
 
 const png = Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]),
@@ -57,7 +57,7 @@ async function run({ photo = true, readsImages = true } = {}) {
       generate: async (t, text, emit) => {
         const call = { instructions: t.instructions, input: JSON.parse(text), images: t.images };
         calls.push(call);
-        if (t.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (t.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         if (t.instructions.startsWith('You write the set pieces')) return complete(emit, pieces);
         if (t.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
           call.photos = (t.images ?? [])

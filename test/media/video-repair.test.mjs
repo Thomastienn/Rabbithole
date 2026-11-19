@@ -13,6 +13,7 @@ import {
   patchOf,
   audit,
   pass,
+  planText,
 } from '../support/video-kit.mjs';
 import {
   AUDIT_INSTRUCTIONS,
@@ -43,7 +44,7 @@ test('a failed cut gets one repair with the failed code, set pieces and the prev
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         if (tree.instructions.startsWith(PIECES_INSTRUCTIONS)) return complete(emit, pieces);
         const input = fixerTask(text),
           i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
@@ -108,7 +109,7 @@ test('adjacent repaired cuts share the repaired last frame; the first cut needs 
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
           audits++;
           return audit(tree, emit, pass);
@@ -164,7 +165,7 @@ test('a repair patch that does not apply gets one whole-source call in the same 
         generate: async (tree, text, emit) => {
           if (tree.id) return complete(emit, 'Watch.' + directive);
           if (tree.instructions.startsWith('You plan'))
-            return complete(emit, JSON.stringify(planFor(composition, 1)));
+            return complete(emit, planText(planFor(composition, 1)));
           if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) return audit(tree, emit, pass);
           if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
             calls.push(['patch', fixerTask(text).failedCode]);

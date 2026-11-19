@@ -1,14 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  videoPlan,
   cutSource,
   cutJoin,
   PLAN_INSTRUCTIONS,
   EXHIBITS_NOTE,
   CLIPS_NOTE,
 } from '../../server/media/video-plan.mjs';
-import { planFor, composition, spatial, styleBrief } from '../support/video-kit.mjs';
+import { planFor, planThrough, composition, spatial, styleBrief } from '../support/video-kit.mjs';
 import {
   MANIM_TEACHING_SKILL,
   HOUSE_STYLE_SKILL,
@@ -38,114 +37,74 @@ test('the house style and focal-object rule reach the planner and Remotion write
     assert.ok(!prompt.includes(HOUSE_STYLE_SKILL) && !prompt.includes(FOCAL_OBJECT_SKILL));
 });
 
-test('compact plan validates the brief and ordered cuts, including the Manim engine', () => {
+test('plan calls validate the brief and ordered cuts, including the Manim engine', () => {
   const good = planFor(composition, 3);
-  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  assert.deepEqual(planThrough(good), good);
   good.cuts[1].engine = 'manim';
-  assert.deepEqual(videoPlan('```json\n' + JSON.stringify(good) + '\n```'), good);
+  assert.deepEqual(planThrough(good), good);
   good.cuts[2].dimension = '3d';
   // The planner's loose camera note for a 3D cut passes through to the cut writers.
   good.cuts[2].camera = 'brisk sweep low across the surface';
-  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  assert.deepEqual(planThrough(good), good);
   // A neutral object needs no colorRole; models send null or omit it.
   good.styleBrief.recurringObjects[0].colorRole = null;
-  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  const { colorRole, ...neutral } = good.styleBrief.recurringObjects[0];
+  assert.deepEqual(planThrough(good).styleBrief.recurringObjects, [neutral]);
   delete good.styleBrief.recurringObjects[0].colorRole;
-  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  assert.deepEqual(planThrough(good), good);
   // A real object's reference query passes through; an empty or overlong one is rejected.
   good.styleBrief.recurringObjects[0].referenceQuery = 'Saturn V rocket';
-  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  assert.deepEqual(planThrough(good), good);
   for (const referenceQuery of ['', 'x'.repeat(201), 7])
     assert.throws(
       () =>
-        videoPlan(
-          JSON.stringify({
-            ...good,
-            styleBrief: {
-              ...good.styleBrief,
-              recurringObjects: [{ ...good.styleBrief.recurringObjects[0], referenceQuery }],
-            },
-          }),
-        ),
-      /recurringObjects/,
+        planThrough({
+          ...good,
+          styleBrief: {
+            ...good.styleBrief,
+            recurringObjects: [{ ...good.styleBrief.recurringObjects[0], referenceQuery }],
+          },
+        }),
+      /^Error: referenceQuery/,
     );
   delete good.styleBrief.recurringObjects[0].referenceQuery;
-  for (const mutate of [
-    (p) => {
-      p.title = '';
-    },
-    (p) => {
-      p.description = 'x'.repeat(281);
-    },
-    (p) => {
-      p.styleBrief = null;
-    },
-    (p) => {
-      p.styleBrief.layoutAreas = [];
-    },
-    (p) => {
-      p.styleBrief.layoutAreas[0].description = 12;
-    },
-    (p) => {
-      p.styleBrief.paletteRoles = {};
-    },
-    (p) => {
-      p.styleBrief.paletteRoles.winner = 'red';
-    },
-    (p) => {
-      p.styleBrief.paletteRoles = ['amber'];
-    },
-    (p) => {
-      p.styleBrief.recurringObjects[0].position = '';
-    },
-    (p) => {
-      p.styleBrief.recurringObjects[0].colorRole = 'missing';
-    },
-    (p) => {
-      p.styleBrief.exactTerms = [''];
-    },
-    (p) => {
-      p.cuts = [];
-    },
-    (p) => {
-      p.cuts[0].narration = '';
-    },
-    (p) => {
-      p.cuts[0].engine = 'other';
-    },
-    (p) => {
-      p.cuts[0].endState = '';
-    },
-    (p) => {
-      delete p.cuts[0].dimension;
-    },
-    (p) => {
-      p.cuts[0].dimension = '4d';
-    },
-    (p) => {
-      p.cuts[1].engine = 'manim';
-      p.cuts[1].dimension = '3d';
-    },
+  // Each bad call gets an error naming its field.
+  for (const [field, mutate] of [
+    ['title', (p) => (p.title = '')],
+    ['description', (p) => (p.description = 'x'.repeat(281))],
+    ['description', (p) => (p.styleBrief.layoutAreas[0].description = 12)],
+    ['ink', (p) => (p.styleBrief.paletteRoles.winner = 'red')],
+    ['role', (p) => (p.styleBrief.paletteRoles = ['amber'])],
+    ['position', (p) => (p.styleBrief.recurringObjects[0].position = '')],
+    ['colorRole', (p) => (p.styleBrief.recurringObjects[0].colorRole = 'missing')],
+    ['term', (p) => (p.styleBrief.exactTerms = [''])],
+    ['narration', (p) => (p.cuts[0].narration = '')],
+    ['engine', (p) => (p.cuts[0].engine = 'other')],
+    ['endState', (p) => (p.cuts[0].endState = '')],
+    ['dimension', (p) => delete p.cuts[0].dimension],
+    ['dimension', (p) => (p.cuts[0].dimension = '4d')],
   ]) {
     const bad = structuredClone(good);
     mutate(bad);
-    assert.throws(() => videoPlan(JSON.stringify(bad)), /malformed/);
+    assert.throws(() => planThrough(bad), new RegExp(`^Error: ${field} `), field);
   }
-  for (const raw of ['not json', 'null', '[]', '{}']) assert.throws(() => videoPlan(raw));
-  const undimensioned = structuredClone(good);
-  delete undimensioned.cuts[1].dimension;
-  assert.throws(() => videoPlan(JSON.stringify(undimensioned)), /malformed: cut 2 dimension\.$/);
-  assert.throws(() => videoPlan('not json'), /malformed: not a JSON object\.$/);
-  assert.throws(() => videoPlan(' '.repeat(65537)), /64 KiB/);
+  // Missing areas, roles, objects and terms are empty; a 3D Manim cut becomes 2D.
+  const sparse = structuredClone(good);
+  sparse.styleBrief = { layoutAreas: [], paletteRoles: {}, recurringObjects: [], exactTerms: [] };
+  Object.assign(sparse.cuts[1], { engine: 'manim', dimension: '3d' });
+  const built = planThrough(sparse);
+  assert.deepEqual(built.styleBrief, sparse.styleBrief);
+  assert.equal(built.cuts[1].dimension, '2d');
+  assert.throws(() => planThrough({ ...good, cuts: [] }), /^Error: The plan has no cuts;/);
 });
 
-test('plan joins accept continue and scene transitions, reject unknown values, and old plans read as scene with fade', () => {
+test('plan joins accept continue and scene transitions, a bad join becomes a scene change, and old plans read as scene with fade', () => {
   const good = planFor(composition, 4);
   Object.assign(good.cuts[0], { join: 'scene', transition: 'iris' });
   good.cuts[1].join = 'continue';
   Object.assign(good.cuts[2], { join: 'scene', transition: 'wipe', direction: 'from-top-left' });
   Object.assign(good.cuts[3], { transition: 'slide', direction: 'from-right' });
-  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  assert.deepEqual(planThrough(good), good);
   assert.deepEqual(good.cuts.map(cutJoin), [
     { join: 'scene', transition: 'iris' },
     { join: 'continue' },
@@ -153,7 +112,7 @@ test('plan joins accept continue and scene transitions, reject unknown values, a
     { join: 'scene', transition: 'slide', direction: 'from-right' },
   ]);
   const old = planFor(composition, 2);
-  assert.deepEqual(videoPlan(JSON.stringify(old)), old);
+  assert.deepEqual(planThrough(old), old);
   assert.deepEqual(old.cuts.map(cutJoin), [
     { join: 'scene', transition: 'fade' },
     { join: 'scene', transition: 'fade' },
@@ -167,11 +126,16 @@ test('plan joins accept continue and scene transitions, reject unknown values, a
   ]) {
     const bad = structuredClone(old);
     Object.assign(bad.cuts[1], cut);
-    assert.throws(() => videoPlan(JSON.stringify(bad)), /malformed/, JSON.stringify(cut));
+    const { join, transition, direction } = planThrough(bad).cuts[1];
+    assert.deepEqual(
+      [join, transition, direction],
+      ['scene', undefined, undefined],
+      JSON.stringify(cut),
+    );
   }
   const first = structuredClone(old);
   first.cuts[0].join = 'continue';
-  assert.throws(() => videoPlan(JSON.stringify(first)), /malformed/, 'cut 1 is always a scene');
+  assert.equal(planThrough(first).cuts[0].join, 'scene', 'cut 1 is always a scene');
 });
 
 test('cut validation enforces kit imports, brief inks and house fonts before rendering', () => {
@@ -228,9 +192,8 @@ test('plans may name image and quote exhibits on Remotion cuts only when web sea
       by: 'Ada Lovelace',
     },
   ];
-  const raw = JSON.stringify(plan);
-  assert.deepEqual(videoPlan(raw, { exhibits: true }).cuts[0].exhibits, plan.cuts[0].exhibits);
-  assert.throws(() => videoPlan(raw), /cut 1 exhibits/);
+  assert.deepEqual(planThrough(plan, { exhibits: true }).cuts[0].exhibits, plan.cuts[0].exhibits);
+  assert.throws(() => planThrough(plan), /^Error: Use .*finish_video\.$/);
   for (const bad of [
     { kind: 'clip', query: 'x', show: 'x' },
     { kind: 'image', query: 'x' },
@@ -238,15 +201,13 @@ test('plans may name image and quote exhibits on Remotion cuts only when web sea
   ])
     assert.throws(
       () =>
-        videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), {
-          exhibits: true,
-        }),
-      /cut 1 exhibits/,
+        planThrough({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }, { exhibits: true }),
+      /missing a field/,
     );
   const manim = { ...plan.cuts[0], engine: 'manim' };
   assert.throws(
-    () => videoPlan(JSON.stringify({ ...plan, cuts: [manim] }), { exhibits: true }),
-    /cut 1 exhibits/,
+    () => planThrough({ ...plan, cuts: [manim] }, { exhibits: true }),
+    /Manim cuts have no exhibits/,
   );
   assert.ok(!PLAN_INSTRUCTIONS.includes(EXHIBITS_NOTE));
 });
@@ -262,9 +223,8 @@ test('plans may name clip exhibits with the wanted seconds and sound only when t
     sound: false,
   };
   plan.cuts[0].exhibits = [clip];
-  const raw = JSON.stringify(plan);
-  assert.deepEqual(videoPlan(raw, { exhibits: true, clips: true }).cuts[0].exhibits, [clip]);
-  assert.throws(() => videoPlan(raw, { exhibits: true }), /cut 1 exhibits/);
+  assert.deepEqual(planThrough(plan, { exhibits: true, clips: true }).cuts[0].exhibits, [clip]);
+  assert.throws(() => planThrough(plan, { exhibits: true }), /missing a field/);
   for (const bad of [
     { ...clip, start: undefined },
     { ...clip, end: 30 },
@@ -277,21 +237,21 @@ test('plans may name clip exhibits with the wanted seconds and sound only when t
   ])
     assert.throws(
       () =>
-        videoPlan(JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] }), {
-          exhibits: true,
-          clips: true,
-        }),
-      /cut 1 exhibits/,
+        planThrough(
+          { ...plan, cuts: [{ ...plan.cuts[0], exhibits: [bad] }] },
+          { exhibits: true, clips: true },
+        ),
+      /missing a field/,
     );
   const loud = { ...clip, sound: true, sentence: 0 };
-  const loudPlan = (exhibits) => JSON.stringify({ ...plan, cuts: [{ ...plan.cuts[0], exhibits }] });
+  const loudPlan = (exhibits) => ({ ...plan, cuts: [{ ...plan.cuts[0], exhibits }] });
   assert.deepEqual(
-    videoPlan(loudPlan([loud, clip]), { exhibits: true, clips: true }).cuts[0].exhibits,
+    planThrough(loudPlan([loud, clip]), { exhibits: true, clips: true }).cuts[0].exhibits,
     [loud, clip],
   );
   assert.throws(
-    () => videoPlan(loudPlan([loud, loud]), { exhibits: true, clips: true }),
-    /cut 1 exhibits/,
+    () => planThrough(loudPlan([loud, loud]), { exhibits: true, clips: true }),
+    /at most one clip with sound/,
   );
   assert.ok(!EXHIBITS_NOTE.includes(CLIPS_NOTE));
 });

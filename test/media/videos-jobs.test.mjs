@@ -21,6 +21,7 @@ import {
   until,
   open,
   job,
+  planText,
 } from '../support/video-kit.mjs';
 
 test('explicit video request creates one job with frozen input, publishes owned media and exposes only metadata to the tutor', async () => {
@@ -131,12 +132,16 @@ test('explicit video request creates one job with frozen input, publishes owned 
     // The worker receives only the frozen input, in a fresh session, with its own instructions.
     assert.equal(workers.length, 2);
     assert.equal(workers[0].text, ready.input);
+    // The planner calls tools natively, so its request carries the plan tools.
     assert.deepEqual(Object.keys(workers[0].tree).sort(), [
       'effort',
       'instructions',
+      'mcp',
       'model',
       'provider',
+      'runTool',
       'thread',
+      'tools',
     ]);
     assert.equal(workers[0].tree.thread, null);
     // planFor cuts are 2D, so the cut writer gets no 3D guidance.
@@ -371,7 +376,7 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
   fake.reply = (_req, res, body) => {
     if (body.messages[0].content.startsWith('You plan')) {
       upstream = body;
-      release = () => streamReply(res, [JSON.stringify(planFor())]);
+      release = () => streamReply(res, [planText(planFor())]);
     } else streamReply(res, [composition]);
   };
   const env = await open(tutor, { endpoint });

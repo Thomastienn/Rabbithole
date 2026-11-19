@@ -6,6 +6,7 @@ import { Store } from '../../../server/store.mjs';
 import { createApp } from '../../../server/app.mjs';
 import { sandboxRender } from '../../../server/media/videos.mjs';
 import { fakeNarration } from '../../../test/support/fake-narration.mjs';
+import { planText } from '../../../test/support/video-kit.mjs';
 
 export const task = {
   title: 'Peterson in the tournament tree',
@@ -57,7 +58,7 @@ if (process.argv[2] === '--serve') {
       if (tree.instructions?.startsWith('You plan')) {
         log('worker');
         await gate('compose');
-        return done(emit, JSON.stringify(plan));
+        return done(emit, planText(plan));
       }
       if (tree.instructions?.startsWith('You write one Remotion cut')) {
         log('worker');

@@ -12,6 +12,7 @@ import {
   fakeRender,
   fixerTask,
   repairAnswer,
+  planText,
 } from '../support/video-kit.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { tutorContext } from '../../server/media/diagrams.mjs';
@@ -52,7 +53,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
         emit({ type: 'usage', usage: { input: 10, output: 5, cacheRead: 2 } });
         if (tree.instructions.startsWith('You plan')) {
           planning++;
-          return complete(emit, JSON.stringify(plan));
+          return complete(emit, planText(plan));
         }
         const input = fixerTask(text),
           i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
@@ -164,7 +165,7 @@ for (const failure of ['brief', 'exhausted'])
           emit({ type: 'usage', usage: { input: 2, output: 3, cacheRead: 0 } });
           if (tree.instructions.startsWith('You plan')) {
             plans++;
-            return complete(emit, JSON.stringify(plan));
+            return complete(emit, planText(plan));
           }
           const input = fixerTask(text),
             i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
@@ -228,7 +229,7 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) {
           plans++;
-          return complete(emit, JSON.stringify(plan));
+          return complete(emit, planText(plan));
         }
         const i = plan.cuts.findIndex((c) => c.purpose === fixerTask(text).cut.purpose);
         writes[i]++;
@@ -341,7 +342,7 @@ test('a provider failure while writing a cut keeps its own wording', async (t) =
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         throw new Error('401 from /home/u/secret');
       },
     },

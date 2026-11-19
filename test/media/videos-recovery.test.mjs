@@ -122,7 +122,8 @@ test('narration, composition and save failures stay honest and retry the same re
     generate: async (tree, text, emit) => {
       if (tree.id) return complete(emit, 'Sure.' + directive);
       if (tree.instructions.startsWith('You plan')) compose++;
-      complete(emit, compose === 1 ? 'not a composition' : videoResponse(tree));
+      // Both plan attempts answer no calls, so the plan fails after its one retry.
+      complete(emit, compose <= 2 ? 'not a composition' : videoResponse(tree));
     },
   };
   const env = await open(provider, { videoNarrate });
@@ -134,7 +135,7 @@ test('narration, composition and save failures stay honest and retry the same re
     );
     assert.equal(
       env.store.artifact(tree.id, id).error,
-      'Video plan or style brief is malformed: not a JSON object.',
+      'Video plan is incomplete: no plan calls were made.',
     );
     await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
     await until(() => env.store.artifact(tree.id, id).status === 'failed');
@@ -155,7 +156,7 @@ test('narration, composition and save failures stay honest and retry the same re
     env.store.finishVideo = finish;
     await env.post(`/api/trees/${tree.id}/artifacts/${id}/retry`);
     await until(() => env.store.artifact(tree.id, id).status === 'ready');
-    assert.equal(compose, 2, 'retries after a saved plan make no plan call');
+    assert.equal(compose, 3, 'retries after a saved plan make no plan call');
     assert.deepEqual(
       env.store.tree(tree.id).messages.map((m) => m.role),
       ['user', 'assistant'],

@@ -13,6 +13,7 @@ import {
   patchOf,
   audit,
   pass,
+  planText,
 } from '../support/video-kit.mjs';
 import {
   AUDIT_INSTRUCTIONS,
@@ -48,7 +49,7 @@ async function run(t, rewrite, why = 'No crown on top') {
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         if (tree.instructions.startsWith('You write the set pieces')) return complete(emit, pieces);
         if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
           calls.audit.push(JSON.parse(text));

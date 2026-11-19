@@ -8,7 +8,14 @@ import { generateVideo } from '../../server/media/videos.mjs';
 import { EXHIBITS_NOTE, CLIPS_NOTE } from '../../server/media/video-plan.mjs';
 import { EXHIBIT_NOTE } from '../../server/media/video-cut.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
-import { planFor, complete, fakeRender, noSnapshot, open } from '../support/video-kit.mjs';
+import {
+  planFor,
+  planText,
+  complete,
+  fakeRender,
+  noSnapshot,
+  open,
+} from '../support/video-kit.mjs';
 
 const png = Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]),
@@ -87,7 +94,7 @@ async function run({
     provider: {
       generate: async (t, text, emit) => {
         calls.push({ instructions: t.instructions, input: JSON.parse(text) });
-        complete(emit, t.instructions.startsWith('You plan') ? JSON.stringify(plan) : cut);
+        complete(emit, t.instructions.startsWith('You plan') ? planText(plan) : cut);
       },
     },
     selection: {},
@@ -205,14 +212,15 @@ test('a video with exhibits fetches them, drops a failed one, hands the rest to 
   assert.deepEqual(store.pieceList().pieces, []);
 });
 
-test('without web search ready and switched on the planner gets no exhibit option and a plan naming exhibits is rejected', async () => {
+test('without web search ready and switched on the planner gets no exhibit option and an exhibit call is dropped', async () => {
   const { result, calls, store, tree } = await run({ ready: false });
   assert.ok(!calls[0].instructions.includes(EXHIBITS_NOTE));
-  assert.match(result, /cut 1 exhibits/);
+  assert.equal(result, null);
   assert.deepEqual(store.resources(tree.id), []);
   const off = await run({ off: true });
   assert.ok(!off.calls[0].instructions.includes(EXHIBITS_NOTE));
-  assert.match(off.result, /cut 1 exhibits/);
+  assert.equal(off.result, null);
+  assert.deepEqual(off.store.resources(off.tree.id), []);
   const plain = await run({ ready: false, plan: planFor() });
   assert.equal(plain.result, null);
   assert.deepEqual(plain.staged, [{}]);
@@ -325,11 +333,12 @@ test('a muted clip exhibit is planned only with the downloader, staged for the M
     store.resources(tree.id).map(({ url, kind }) => ({ url, kind })),
     [{ url: 'https://video.example/watch?v=1', kind: 'clip' }],
   );
-  // Without the downloader the planner gets no clip option and a clip plan is rejected.
+  // Without the downloader the planner gets no clip option and a clip call is rejected, leaving no clip.
   const without = await run({ plan, clips: false });
   assert.ok(without.calls[0].instructions.includes(EXHIBITS_NOTE));
   assert.ok(!without.calls[0].instructions.includes(CLIPS_NOTE));
-  assert.match(without.result, /cut 1 exhibits/);
+  assert.equal(without.result, null);
+  assert.deepEqual(without.store.resources(without.tree.id), []);
 });
 
 test('a clip with sound puts a pause of its length into the narration after its sentence, where the cut plays its sound', async () => {

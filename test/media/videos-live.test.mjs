@@ -10,6 +10,7 @@ import {
   complete,
   until,
   open,
+  planText,
 } from '../support/video-kit.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { observe, notify } from '../support/events.mjs';
@@ -47,7 +48,7 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
       generations++;
       if (tree.instructions?.startsWith('You plan')) {
         await gate('plan');
-        return complete(emit, JSON.stringify(plan));
+        return complete(emit, planText(plan));
       }
       if (tree.instructions?.startsWith('You write one Remotion cut')) {
         const step = JSON.parse(text).cut.purpose;

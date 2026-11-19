@@ -13,6 +13,7 @@ import {
   patchOf,
   audit,
   pass,
+  planText,
 } from '../support/video-kit.mjs';
 import {
   AUDIT_INSTRUCTIONS,
@@ -71,7 +72,7 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
         skills[stage] = [TEACHING_SKILL, HUMANIZER_SKILL, MANIM_TEACHING_SKILL].map((skill) =>
           tree.instructions.includes(skill),
         );
-        if (stage === 'plan') return complete(emit, JSON.stringify(plan));
+        if (stage === 'plan') return complete(emit, planText(plan));
         if (stage === 'pieces') return complete(emit, pieces);
         // The first audit flags its cut, so one fix runs; later audits pass.
         if (stage === 'audit')

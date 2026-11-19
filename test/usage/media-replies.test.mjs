@@ -13,6 +13,7 @@ import {
   until,
   fixerTask,
   repairAnswer,
+  planText,
 } from '../support/video-kit.mjs';
 import { block, source } from '../support/visual-kit.mjs';
 
@@ -42,7 +43,7 @@ test('reply API attributes retried visuals and every video call, reports running
         if (tree.instructions.startsWith('You plan')) {
           emit({ type: 'usage', usage: counts(20) });
           await planGate.promise;
-          return complete(emit, JSON.stringify(planFor()));
+          return complete(emit, planText(planFor()));
         }
         if (fixerTask(text).cut) {
           cutCalls++;

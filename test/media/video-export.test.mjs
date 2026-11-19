@@ -22,6 +22,7 @@ import {
   complete,
   until,
   open,
+  planText,
 } from '../support/video-kit.mjs';
 
 // Export progress is not a store change, so the gated check polls.
@@ -42,7 +43,7 @@ async function saved(options = {}) {
         tree.id
           ? 'Sure.' + directive
           : tree.instructions.startsWith('You plan')
-            ? JSON.stringify(planFor(composition, 2))
+            ? planText(planFor(composition, 2))
             : composition,
       ),
   };

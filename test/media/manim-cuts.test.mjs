@@ -17,6 +17,7 @@ import {
   until,
   fixerTask,
   repairAnswer,
+  planText,
 } from '../support/video-kit.mjs';
 
 test('Python cut validation accepts kit math and rejects imports and off-brief styles without executing scenes', () => {
@@ -40,7 +41,7 @@ for (const repair of [false, true])
           if (tree.id) return complete(emit, 'Watch.' + directive);
           emit({ type: 'usage', usage: { input: 3, output: 5, cacheRead: 0 } });
           if (tree.instructions.startsWith('You plan')) {
-            return complete(emit, JSON.stringify(plan));
+            return complete(emit, planText(plan));
           }
           const input = fixerTask(text),
             index = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
@@ -141,7 +142,7 @@ for (const broken of ['detect', 'runtime'])
                   ? visualBlock()
                   : 'Chat still works.',
             );
-          if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+          if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
           if (tree.instructions.includes('Python source')) {
             calls++;
             return complete(emit, manimCut);
@@ -198,7 +199,7 @@ for (const invalid of [false, true])
       {
         generate: async (tree, text, emit) => {
           if (tree.id) return complete(emit, 'Watch.' + directive);
-          if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+          if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
           if (!tree.instructions.includes('Python source')) return complete(emit, composition);
           inputs.push(fixerTask(text));
           complete(emit, repairAnswer(tree, text, invalid && inputs.length === 1 ? bad : manimCut));

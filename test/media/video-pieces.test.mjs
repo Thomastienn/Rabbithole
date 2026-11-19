@@ -13,8 +13,10 @@ import {
   fakeRender,
   fixerTask,
   repairAnswer,
+  planText,
+  planThrough,
 } from '../support/video-kit.mjs';
-import { videoPlan, cutSource, pieceNames, libraryPieces } from '../../server/media/video-plan.mjs';
+import { cutSource, pieceNames, libraryPieces } from '../../server/media/video-plan.mjs';
 import {
   REMOTION_SKILL,
   MANIM_SKILL,
@@ -47,7 +49,7 @@ const manim = {
 
 test('plan looks are validated; set-piece modules must export every named piece and keep kit colors', () => {
   const plan = videoPlanWithLooks();
-  assert.deepEqual(videoPlan(JSON.stringify(plan)), plan);
+  assert.deepEqual(planThrough(plan), plan);
   assert.deepEqual(pieceNames(plan), ['Winner']);
   assert.deepEqual(
     pieceNames({
@@ -68,7 +70,7 @@ test('plan looks are validated; set-piece modules must export every named piece 
   );
   const bad = structuredClone(plan);
   bad.styleBrief.recurringObjects[0].look = ' ';
-  assert.throws(() => videoPlan(JSON.stringify(bad)), /malformed/);
+  assert.throws(() => planThrough(bad), /^Error: look /);
   assert.equal(cutSource(pieces, plan.styleBrief, ['Winner']), pieces);
   assert.throws(
     () => cutSource(pieces, plan.styleBrief, ['Winner', 'Final']),
@@ -97,7 +99,7 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) {
           calls.push('plan');
-          return complete(emit, JSON.stringify(plan));
+          return complete(emit, planText(plan));
         }
         const input = fixerTask(text);
         if (tree.instructions.startsWith('You write the set pieces')) {
@@ -206,7 +208,7 @@ test('a new video embeds each accepted set piece look and saves it to the piece 
     {
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
-        if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
         if (tree.instructions.startsWith('You write the set pieces')) return complete(emit, pieces);
         complete(emit, usesPieces);
       },
@@ -296,7 +298,7 @@ test('set pieces get two tries and fail by name; Retry keeps the plan, then keep
       if (tree.id) return complete(emit, 'Watch.' + directive);
       if (tree.instructions.startsWith('You plan')) {
         plans++;
-        return complete(emit, JSON.stringify(plan));
+        return complete(emit, planText(plan));
       }
       const input = fixerTask(text);
       if (tree.instructions.startsWith('You write the set pieces')) {

@@ -4,8 +4,8 @@ import { mkdtempSync } from 'node:fs';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { planFor, composition, styleBrief } from '../support/video-kit.mjs';
-import { videoPlan, cutSource, libraryPieces } from '../../server/media/video-plan.mjs';
+import { planFor, planThrough, composition, styleBrief } from '../support/video-kit.mjs';
+import { cutSource, libraryPieces } from '../../server/media/video-plan.mjs';
 import { stageCut } from '../../server/media/video-stage.mjs';
 import { writeSetPieces } from '../../server/media/video-pieces.mjs';
 import { Store } from '../../server/store.mjs';
@@ -18,7 +18,7 @@ test('true colours: roles map to an ink or a planned hex, near-white passes, str
   };
   const good = { ...planFor(composition, 2), styleBrief: brief };
   good.cuts[1].engine = 'manim';
-  assert.deepEqual(videoPlan(JSON.stringify(good)), good);
+  assert.deepEqual(planThrough(good), good);
   for (const trueColors of [
     { earthBlue: 'blue' },
     { earthBlue: '#2b6cb' },
@@ -28,11 +28,11 @@ test('true colours: roles map to an ink or a planned hex, near-white passes, str
   ]) {
     const bad = structuredClone(good);
     bad.styleBrief.trueColors = trueColors;
-    assert.throws(() => videoPlan(JSON.stringify(bad)), /styleBrief\.(?:trueColors|paletteRoles)/);
+    assert.throws(() => planThrough(bad), /^Error: (?:hex|ink|name) /);
   }
   const unmapped = structuredClone(good);
   unmapped.styleBrief.paletteRoles.earth = 'oceanBlue';
-  assert.throws(() => videoPlan(JSON.stringify(unmapped)), /styleBrief\.paletteRoles/);
+  assert.throws(() => planThrough(unmapped), /^Error: ink /);
 
   const code = `import { colors, palette } from './kit';
 export default () => <div style={{background:palette.ground,color:colors.earth}}><b style={{color:'#F2F0EA'}} /></div>;`;

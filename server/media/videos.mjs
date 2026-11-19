@@ -3,17 +3,12 @@ import { readFileSync } from 'node:fs';
 import { mkdir, realpath, lstat, open, rm, copyFile, cp, access } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { edgeNarration } from './narration.mjs';
-import {
-  videoPlan,
-  libraryPieces,
-  PLAN_INSTRUCTIONS,
-  EXHIBITS_NOTE,
-  CLIPS_NOTE,
-} from './video-plan.mjs';
+import { libraryPieces, PLAN_INSTRUCTIONS, EXHIBITS_NOTE, CLIPS_NOTE } from './video-plan.mjs';
 import { fetchExhibit, videoMedia } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
 import { writeCuts, playable, cutRows } from './video-cuts.mjs';
 import { videoCall } from './video-call.mjs';
+import { planBuilder } from './plan-calls.mjs';
 
 export { playable };
 import { improvePiece } from './video-pieces.mjs';
@@ -183,21 +178,44 @@ export async function generateVideo({
       store.tutorTools().web_search !== false &&
       (await search.status({ signal: controller.signal })).ready;
     const clipping = searching && clips();
-    const plan =
-      prior?.plan ??
-      videoPlan(
-        await call(
-          PLAN_INSTRUCTIONS +
-            (searching ? EXHIBITS_NOTE : '') +
-            (clipping?.ready ? CLIPS_NOTE : '') +
-            (JSON.parse(artifact.input).differentVersion
-              ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
-              : ''),
-          artifact.input,
-          (characters) => onPhase('planning', undefined, { characters }),
-        ),
-        { exhibits: searching, clips: !!clipping?.ready },
+    // The smart model builds the plan through calls; one stop without a valid finish gets a retry with the problem.
+    const planned = async (note = '') => {
+      const builder = planBuilder({ exhibits: searching, clips: !!clipping?.ready });
+      let characters = 0;
+      const answer = await call(
+        PLAN_INSTRUCTIONS +
+          (searching ? EXHIBITS_NOTE : '') +
+          (clipping?.ready ? CLIPS_NOTE : '') +
+          (JSON.parse(artifact.input).differentVersion
+            ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
+            : '') +
+          note +
+          (capable ? '' : builder.textTools),
+        artifact.input,
+        (bytes) => onPhase('planning', undefined, { characters: bytes }),
+        undefined,
+        undefined,
+        capable && {
+          tools: builder.tools,
+          mcp,
+          runTool: (name, input) => {
+            const result = builder.run(name, input);
+            characters += JSON.stringify(input).length;
+            onPhase('planning', undefined, { characters });
+            return result;
+          },
+        },
       );
+      builder.read(answer);
+      return builder;
+    };
+    let builder = prior?.plan ? null : await planned();
+    if (builder?.problem())
+      builder = await planned(
+        `\nYour previous attempt stopped without a valid finish: ${builder.problem()}. Plan the whole video again through the tools and end with finish_video.`,
+      );
+    if (builder?.problem()) throw new Error(`Video plan is incomplete: ${builder.problem()}.`);
+    const plan = prior?.plan ?? builder.plan();
     const { exhibits, references } = await videoMedia({
       plan,
       prior,
