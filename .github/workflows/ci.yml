@@ -1,4 +1,5 @@
 # Checks every pull request that ralph-afk --pr opens; the reviewer merges only when all jobs pass.
+# Node 26: Node 24 ignores the runtime process.env.TZ switches in test/map/tree-list.test.mjs.
 name: CI
 
 on:
@@ -18,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 26
           cache: npm
       - run: npm ci
       - run: npm run format:check
@@ -29,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 26
           cache: npm
       - run: npm ci
       # `npm test` without its systemd-run memory scope, which runners lack. Keep the flags in step with package.json.
