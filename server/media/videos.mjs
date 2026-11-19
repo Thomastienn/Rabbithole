@@ -118,6 +118,8 @@ export async function generateVideo({
   readsImages = false,
   // Whether the smart model calls tools natively, and the MCP server for its audit calls.
   capable = false,
+  // Whether the chat model calls tools natively; then cut writers submit through submit_cut.
+  writerCapable = false,
   mcp,
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
@@ -307,6 +309,7 @@ export async function generateVideo({
       references,
       readsImages,
       capable,
+      writerCapable,
       mcp,
       pieces: prior?.pieces,
       onDrawing: (value) => {

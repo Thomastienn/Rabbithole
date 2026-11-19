@@ -85,6 +85,27 @@ export const PIECE_IMPROVE_INSTRUCTIONS =
   '\n\n' +
   HOUSE_STYLE_SKILL;
 
+// A tool-calling cut writer submits through this tool; each submission is checked and an error goes back to be fixed.
+export const SUBMIT_CUT = {
+  name: 'submit_cut',
+  description:
+    'Submit the cut: code, the whole source, or patch, a unified diff against failedCode or your last submission. The app checks it against the validator rules (a Manim cut also in its render sandbox) and answers with the error to fix, or that the cut is accepted.',
+  parameters: {
+    type: 'object',
+    properties: {
+      code: { type: 'string', description: 'The whole cut source.' },
+      patch: {
+        type: 'string',
+        description: 'A unified diff against failedCode or your last submission.',
+      },
+    },
+  },
+};
+
+// Appended to the cut instructions when the chat model calls tools natively.
+export const SUBMIT_NOTE =
+  '\nsubmit_cut is the one tool you may use. Instead of answering with the source or a diff, submit it through submit_cut: the whole source as code, or a diff as patch. When it answers with an error, fix exactly what it names and submit again. Once it answers that the cut is accepted, end your turn without repeating the code.';
+
 // How a fix, repair or piece improvement answers a patch of only what changes (spec: Cut patches).
 const DIFF =
   'a unified diff against exactly those lines: one or more hunks, each starting @@ -<old start>,<old count> +<new start>,<new count> @@, then lines starting with a space for unchanged context (about three around each change), - for removed and + for added lines, changing only the lines that need to change';

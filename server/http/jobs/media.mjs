@@ -186,6 +186,7 @@ export function mediaJobs(ctx) {
           search: ctx.search,
           readsImages: await ctx.readsImages(chat).catch(() => false),
           capable: await ctx.toolCapable(selection).catch(() => false),
+          writerCapable: await ctx.toolCapable(chat).catch(() => false),
           mcp: ctx.mcp,
           onWarning: (cause) =>
             ctx.log(

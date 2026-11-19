@@ -10,8 +10,17 @@ import {
   REPAIR_PATCH_NOTE,
   FIX_NOTE,
   FIX_WHOLE_NOTE,
+  SUBMIT_CUT,
+  SUBMIT_NOTE,
 } from './video-cut.mjs';
-import { cutJoin, cutSource, pieceNames, CUT_ATTEMPTS, CUT_PAUSE_FRAMES } from './video-plan.mjs';
+import {
+  cutJoin,
+  cutSource,
+  pieceNames,
+  CUT_ATTEMPTS,
+  CUT_CHECKS,
+  CUT_PAUSE_FRAMES,
+} from './video-plan.mjs';
 import { patched, withSource } from './patches.mjs';
 import { unfenced, auditReport, auditFix } from './audit-answers.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from './manim-cut.mjs';
@@ -73,6 +82,8 @@ export async function writeCuts({
   onDrawing = () => {},
   // Whether the smart model calls tools natively, and the MCP server Claude and Codex reach them through.
   capable = false,
+  // Whether the chat model, which writes the cuts, calls tools natively.
+  writerCapable = false,
   mcp,
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
@@ -154,6 +165,24 @@ export async function writeCuts({
         MOTION_DESIGN_SKILL +
         (plan.cuts[index].dimension === '3d' ? CUT_3D + '\n\n' + REMOTION_3D_SKILL : '') +
         (exhibitsOf(index).length ? EXHIBIT_NOTE : '');
+  // The cut source rules, then for a Manim cut the render sandbox, before narration or render.
+  const validate = async (index, raw) => {
+    cuts[index].code =
+      cuts[index].engine === 'manim' ? unfenced(raw) : cutSource(raw, plan.styleBrief);
+    if (cuts[index].engine === 'manim' && check)
+      try {
+        await mkdir(join(workspace, `cut-${index}`), { recursive: true, mode: 0o700 });
+        await check(await stage(index));
+      } catch (e) {
+        signal.throwIfAborted();
+        if (e.manimUnavailable) throw e;
+        throw new Error(
+          withoutPaths(
+            e.message === 'Video rendering failed.' ? (e.diagnostic ?? e.message) : e.message,
+          ),
+        );
+      }
+  };
   const rewrite = async (index, reason) => {
     let error = reason && new Error(reason),
       failed = reason && cuts[index].code;
@@ -167,8 +196,41 @@ export async function writeCuts({
       // A repair is also the cut's audit, so it sees the failed code and the previous cut's last frame.
       const previous = error && index ? await lastFrames[index - 1].promise : null;
       signal.throwIfAborted();
+      // A tool-calling writer submits through submit_cut until one submission validates; each error goes back to it.
+      let accepted = null,
+        rejected = null,
+        fatal = null,
+        checks = 0;
+      const submit = writerCapable && {
+        tools: [SUBMIT_CUT],
+        mcp,
+        runTool: async (_name, input) => {
+          if (fatal) throw fatal;
+          if (accepted !== null) return 'The cut is already accepted; end your turn.';
+          if (checks >= CUT_CHECKS) throw new Error('No checks left; end your turn.');
+          const diff = typeof input?.patch === 'string',
+            base = rejected?.code ?? failed,
+            code = diff ? base && patched(base, input.patch) : input?.code;
+          if (typeof code !== 'string' || !code.trim())
+            throw new Error(
+              diff
+                ? 'patch does not apply; submit the whole source as code.'
+                : 'Submit code, the whole cut source, or patch, a diff of it.',
+            );
+          checks++;
+          try {
+            await validate(index, code);
+          } catch (e) {
+            if (e.manimUnavailable) fatal = e;
+            rejected = { error: e, code };
+            throw e;
+          }
+          accepted = cuts[index].code;
+          return 'Cut accepted. End your turn.';
+        },
+      };
       // Provider/auth failures are final; only validation/render failures spend a repair attempt.
-      let raw;
+      let raw = null;
       try {
         const input = {
           ...task(index),
@@ -176,53 +238,46 @@ export async function writeCuts({
         };
         const call = (note, text) =>
           write(
-            writerInstructions(index) + note,
+            writerInstructions(index) + (submit ? SUBMIT_NOTE : '') + note,
             text,
             undefined,
             previous ? [previous] : undefined,
             index + 1,
+            submit,
           );
         // A repair of failed code answers a patch; when it does not apply, one whole-source call within this attempt.
-        raw =
-          error && failed
-            ? patched(
-                failed,
-                await call(REPAIR_PATCH_NOTE, withSource(input, 'failedCode', failed)),
-              )
-            : null;
+        // A writer that submitted through submit_cut is settled by its submissions.
+        if (error && failed) {
+          const answer = await call(REPAIR_PATCH_NOTE, withSource(input, 'failedCode', failed));
+          raw = accepted === null && !rejected ? patched(failed, answer) : '';
+        }
         raw ??= await call(
           error ? REPAIR_NOTE : '',
           JSON.stringify({ ...input, ...(error && failed && { failedCode: failed }) }),
         );
       } catch (e) {
+        if (fatal) throw fatal;
         if (!e.invalidOutput) throw e;
         error = e;
         failed = null;
         continue;
       }
-      failed = raw;
-      try {
-        cuts[index].code =
-          cuts[index].engine === 'manim' ? unfenced(raw) : cutSource(raw, plan.styleBrief);
-      } catch (e) {
-        error = e;
+      if (fatal) throw fatal;
+      if (accepted === null && rejected) {
+        ({ error, code: failed } = rejected);
         continue;
       }
-      // A Manim cut is validated in the render sandbox as soon as it is written, before narration or render.
-      if (cuts[index].engine === 'manim' && check)
+      // A writer without tools, or one that answered with the source anyway, is validated from its answer.
+      if (accepted === null) {
+        failed = raw;
         try {
-          await mkdir(join(workspace, `cut-${index}`), { recursive: true, mode: 0o700 });
-          await check(await stage(index));
+          await validate(index, raw);
         } catch (e) {
-          signal.throwIfAborted();
           if (e.manimUnavailable) throw e;
-          error = new Error(
-            withoutPaths(
-              e.message === 'Video rendering failed.' ? (e.diagnostic ?? e.message) : e.message,
-            ),
-          );
+          error = e;
           continue;
         }
+      }
       // New code makes any earlier Manim clip stale.
       delete cuts[index].clip;
       delete cuts[index].step;
