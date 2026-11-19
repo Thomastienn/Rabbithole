@@ -182,7 +182,11 @@ export class Claude {
           clearTimeout(timeout);
           timeout = setTimeout(() => {
             kill();
-            reject(new Error('Response timed out. Partial reply saved; try again.'));
+            reject(
+              new Error(
+                'The model stopped responding for 5 minutes. Partial reply saved; try again.',
+              ),
+            );
           }, 300000);
         };
         idle();

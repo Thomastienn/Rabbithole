@@ -305,7 +305,11 @@ export class Codex {
           clearTimeout(timeout);
           timeout = setTimeout(() => {
             interrupt();
-            finish(new Error('Response timed out. Partial reply saved; try again.'));
+            finish(
+              new Error(
+                'The model stopped responding for 5 minutes. Partial reply saved; try again.',
+              ),
+            );
           }, 300000);
         };
         idle();

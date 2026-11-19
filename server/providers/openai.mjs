@@ -16,6 +16,7 @@ import { QUICK_TOOLS } from '../tools/quickTools.mjs';
 import {
   chunkUsage,
   history,
+  idleLimit,
   redactStream,
   roundText,
   runTool,
@@ -326,7 +327,6 @@ class Endpoint {
     const saved = this.#saved,
       controller = new AbortController();
     const signal = AbortSignal.any([parentSignal, controller.signal]);
-    // Each model call has its own time limit; tool runs between calls keep their own.
     let call = signal;
     this.#requests.add(controller);
     try {
@@ -363,7 +363,7 @@ class Endpoint {
       const total = { input: 0, output: 0, cacheRead: 0 };
       // No call cap: the loop ends when the model answers without tool calls or with only end-of-reply app calls, or on Stop.
       while (true) {
-        call = AbortSignal.any([signal, AbortSignal.timeout(300000)]);
+        call = idleLimit(signal);
         const response = await this.#fetch(saved, '/chat/completions', call, {
           model,
           messages,
@@ -383,7 +383,7 @@ class Endpoint {
             throw new EndpointError(
               'Custom endpoint did not return a chat-completion stream. Check compatibility and the base URL.',
             );
-          await streamEvents(response.body, (data) => {
+          await streamEvents(response.body, call, (data) => {
             if (data.trim() === '[DONE]') {
               if (completed) return true;
               throw new EndpointError(
@@ -486,7 +486,7 @@ class Endpoint {
         ? error
         : new EndpointError(
             call.reason?.name === 'TimeoutError'
-              ? 'Custom endpoint response timed out. Partial reply saved; try again.'
+              ? 'The model stopped responding for 5 minutes. Partial reply saved; try again.'
               : 'Custom endpoint connection or stream failed. Check compatibility and endpoint settings, then retry.',
           );
     } finally {

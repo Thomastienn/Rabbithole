@@ -7,6 +7,8 @@ import { ui, button } from '../support/ui.mjs';
 const { default: VideoCard } = await import('../../src/media/VideoCard.tsx');
 const { default: DiagramCard } = await import('../../src/media/DiagramCard.tsx');
 const { default: VisualFrame } = await import('../../src/media/VisualFrame.tsx');
+const STALLED =
+  'Video provider failed: The model stopped responding for 5 minutes. Partial reply saved; try again.';
 
 test('failed media keep readable reasons and Retry actions; cancellation stays distinct', async (t) => {
   const calls = [];
@@ -60,6 +62,14 @@ test('failed media keep readable reasons and Retry actions; cancellation stays d
         inline: true,
       }),
       h(VideoCard, {
+        artifact: artifact('stalled', 'video', STALLED),
+        inline: true,
+      }),
+      h(VideoCard, {
+        artifact: artifact('overrun', 'video', 'Video generation ran over two hours.'),
+        inline: true,
+      }),
+      h(VideoCard, {
         artifact: artifact('private', 'video', 'private worker output'),
         inline: true,
       }),
@@ -73,6 +83,8 @@ test('failed media keep readable reasons and Retry actions; cancellation stays d
     ['video', 'Video narration timed out.'],
     ['provider', 'Video provider failed: Model gpt-x is not in the catalog'],
     ['canceled', 'Video generation canceled.'],
+    ['stalled', 'The model stopped responding for 5 minutes'],
+    ['overrun', 'Video generation ran over two hours.'],
   ]) {
     const card = container.querySelector(`[data-artifact=${id}]`);
     assert.match(card.querySelector('[role=status]').textContent, new RegExp(text));
