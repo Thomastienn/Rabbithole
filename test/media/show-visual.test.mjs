@@ -138,7 +138,10 @@ test('a model without tool calling writes show_visual as <tool_call> text and ge
     const response = await env.post(`/api/trees/${tree.id}/messages`, { text: 'Show me.' });
     const streamed = await events(response);
     assert.deepEqual(streamed.at(-1), { type: 'done', status: 'completed' });
-    assert.deepEqual(offered, { tools: undefined, text: ['show_visual', 'record_turn'] });
+    assert.deepEqual(offered, {
+      tools: undefined,
+      text: ['show_visual', 'make_video', 'start_discussion', 'record_turn'],
+    });
     for (const e of streamed.filter((e) => e.type === 'text'))
       assert.doesNotMatch(e.text, /tool_call|[{}]/);
     const saved = await env.get(`/api/trees/${tree.id}`);

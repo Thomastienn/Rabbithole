@@ -122,6 +122,8 @@ test('custom model searches and finds images through the default runner, stores 
           'search_conversations',
           'read_conversation',
           'show_visual',
+          'make_video',
+          'start_discussion',
           'record_turn',
         ],
       );
@@ -167,6 +169,8 @@ test('custom model searches and finds images through the default runner, stores 
         'search_conversations',
         'read_conversation',
         'show_visual',
+        'make_video',
+        'start_discussion',
         'record_turn',
       ],
     );

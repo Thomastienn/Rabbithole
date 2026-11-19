@@ -118,6 +118,8 @@ test('a tools-capable endpoint model reads a page through read_page and answers 
     [
       ['function', 'read_page'],
       ['function', 'show_visual'],
+      ['function', 'make_video'],
+      ['function', 'start_discussion'],
       ['function', 'record_turn'],
     ],
   );
@@ -408,7 +410,13 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
     (m) => m.model === 'tooled',
   ).provider;
   assert.deepEqual(await uses(), { tooled: true, plain: false });
-  assert.deepEqual(await offered('tooled'), ['read_page', 'show_visual', 'record_turn']);
+  assert.deepEqual(await offered('tooled'), [
+    'read_page',
+    'show_visual',
+    'make_video',
+    'start_discussion',
+    'record_turn',
+  ]);
   assert.equal(await offered('plain'), null);
 
   const toggle = async (model, usesTutorTools) =>
@@ -420,7 +428,13 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
   await toggle('plain', true);
   assert.deepEqual(await uses(), { tooled: false, plain: true });
   assert.equal(await offered('tooled'), null);
-  assert.deepEqual(await offered('plain'), ['read_page', 'show_visual', 'record_turn']);
+  assert.deepEqual(await offered('plain'), [
+    'read_page',
+    'show_visual',
+    'make_video',
+    'start_discussion',
+    'record_turn',
+  ]);
   assert.equal(
     (await env.post('/api/settings/endpoints/model', { id, model: 'plain', usesTutorTools: 1 }))
       .status,
@@ -432,7 +446,12 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
     await env.post('/api/settings/tutor-tools', { name: 'read_page', enabled: false })
   ).json();
   assert.equal(switched.find((x) => x.name === 'read_page').enabled, false);
-  assert.deepEqual(await offered('plain'), ['show_visual', 'record_turn']);
+  assert.deepEqual(await offered('plain'), [
+    'show_visual',
+    'make_video',
+    'start_discussion',
+    'record_turn',
+  ]);
   assert.doesNotMatch(env.chats().at(-1).body.messages[0].content, /rabbithole-visual/);
   assert.equal(
     (await env.post('/api/settings/tutor-tools', { name: 'nope', enabled: false })).status,

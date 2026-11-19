@@ -1,6 +1,7 @@
 import { LIMITS } from '../media/diagrams.mjs';
 import { visualTheme } from '../media/visuals.mjs';
 import { asksForVideo } from '../media/videos.mjs';
+import { videoContext } from '../tools/makeVideo.mjs';
 
 // One reply owns its artifact slots and the bounded queue for detached media workers.
 export function replyArtifacts(
@@ -30,6 +31,29 @@ export function replyArtifacts(
       });
     }
   };
+  const videoInput = ({ intent, excerpt }, context) => ({
+    ...ctx.videoRoles(tree),
+    request: body.text.trim().slice(0, LIMITS.intent),
+    intent,
+    excerpt,
+    ...(context && { context }),
+    inheritedContext: tree.branch
+      ? {
+          snapshot: tree.branch.snapshot,
+          selectedPassage: tree.branch.text,
+          question: tree.branch.question,
+        }
+      : null,
+    sources: {
+      conversation: id,
+      requestMessage: user,
+      replyMessage: reply,
+      ...(tree.branch && {
+        parentConversation: tree.branch.parent,
+        parentMessage: tree.branch.messageId,
+      }),
+    },
+  });
   // Legacy diagrams retain their completed-reply policy.
   const prepareArtifacts = (output, final = false) => {
     if (!store.tree(id)) return;
@@ -94,28 +118,7 @@ export function replyArtifacts(
       };
       const input =
         request.kind === 'video'
-          ? {
-              ...ctx.videoRoles(tree),
-              request: body.text.trim().slice(0, LIMITS.intent),
-              intent: task.intent,
-              excerpt: task.excerpt,
-              inheritedContext: tree.branch
-                ? {
-                    snapshot: tree.branch.snapshot,
-                    selectedPassage: tree.branch.text,
-                    question: tree.branch.question,
-                  }
-                : null,
-              sources: {
-                conversation: id,
-                requestMessage: user,
-                replyMessage: reply,
-                ...(tree.branch && {
-                  parentConversation: tree.branch.parent,
-                  parentMessage: tree.branch.messageId,
-                }),
-              },
-            }
+          ? videoInput(task)
           : request.kind === 'visual'
             ? {
                 selection: ctx.videoRoles(tree).chat,
@@ -156,8 +159,16 @@ export function replyArtifacts(
   };
   // A show_visual call: pending at the call's reply position and drawing at once while the reply continues.
   let calls = 0;
-  const showVisual = (request, position) => {
+  const media = () =>
+    [...artifacts.values()].filter((a) => ['visual', 'video', 'discussion'].includes(a.kind));
+  // A video stands alone in its reply: a plain error lets the tutor carry on without the extra media.
+  const besideVideo = (name) => {
     if (!store.tree(id)) throw new Error('This conversation was deleted.');
+    if (media().some((a) => a.kind === 'video'))
+      throw new Error(`${name} cannot join a video: a video stands alone in its reply.`);
+  };
+  const showVisual = (request, position) => {
+    besideVideo('show_visual');
     const earlierTitles = [...artifacts.values()]
       .filter((a) => a.kind === 'visual')
       .map((a) => a.title);
@@ -180,5 +191,52 @@ export function replyArtifacts(
     mediaQueue.push(artifact);
     pumpMedia();
   };
-  return { artifacts, prepareArtifacts, showVisual };
+  const makeVideo = (topic, position, replySoFar) => {
+    besideVideo('make_video');
+    if (media().length)
+      throw new Error(
+        'make_video stands alone: this reply already has a visual or discussion, so make no video in it.',
+      );
+    if (!asksForVideo(body.text))
+      throw new Error(
+        'make_video needs the learner to ask for a video or animation explicitly; answer in text instead.',
+      );
+    if (!ctx.smart().resolved.provider)
+      throw new Error('Videos need a smart model; tell the learner to choose one in Settings.');
+    const artifact = store.pendingArtifact(
+      id,
+      reply,
+      topic,
+      topic,
+      'video',
+      JSON.stringify(
+        videoInput(
+          { intent: topic, excerpt: '' },
+          videoContext(tree.messages, body.text, replySoFar),
+        ),
+      ),
+      position,
+    );
+    artifacts.set(`call:${calls++}`, artifact);
+    send({ type: 'artifact', artifact: live(artifact) });
+    mediaQueue.push(artifact);
+    pumpMedia();
+  };
+  // A start_discussion call: its opening is saved at once, and the learner sees its lines one at a time.
+  const startDiscussion = (task, position) => {
+    besideVideo('start_discussion');
+    const pending = store.pendingArtifact(
+      id,
+      reply,
+      'Discussion',
+      '',
+      'discussion',
+      null,
+      position,
+    );
+    const artifact = store.finishArtifact(id, pending.id, JSON.stringify(task));
+    artifacts.set(`call:${calls++}`, artifact);
+    send({ type: 'artifact', artifact: live(artifact) });
+  };
+  return { artifacts, prepareArtifacts, showVisual, makeVideo, startDiscussion };
 }

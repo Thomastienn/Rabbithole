@@ -26,7 +26,7 @@ test('show_visual names a missing or over-long argument, and a corrected call re
 
 test('with show_visual offered, the tutor prompt holds no visual block rules', () => {
   assert.doesNotMatch(TOOL_VISUAL_RULES, /rabbithole-visual/);
-  assert.match(TOOL_VISUAL_RULES, /rabbithole-video block containing a JSON object with title/);
+  assert.doesNotMatch(TOOL_VISUAL_RULES, /rabbithole-video/);
   const prompt = tutorSystem({ tools: [SHOW_VISUAL] });
   assert.doesNotMatch(prompt, /rabbithole-visual/);
   assert.match(tutorSystem({}), /rabbithole-visual block/);

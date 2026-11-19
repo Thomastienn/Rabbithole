@@ -49,7 +49,7 @@ export const TUTOR_SKILLS =
   '\n\n' +
   HUMANIZER_SKILL +
   '\n\nTutor style (follow it where it differs from the skills above):\n';
-// With show_visual offered, its description carries the visual and check-yourself rules (ADR 0013); videos keep their block until they move to a tool too.
+// With the app tools offered, their descriptions carry the visual, check-yourself, video and discussion rules (ADR 0013).
 const cut = (text, from, to) => {
   const start = text.indexOf(from),
     end = text.indexOf(to, start);
@@ -59,15 +59,12 @@ const cut = (text, from, to) => {
 const [beforeVisuals, afterVisuals] = cut(
   TUTOR_RULES,
   'Visualize structures',
-  'Ready visuals appear in later history only as artifact id, title and description. ',
+  'Do not write video code yourself.',
 );
 const [beforeCheck, afterCheck] = cut(
   beforeVisuals +
-    'Request each visual with the show_visual tool where it belongs in your reply; never write a fenced visual block. ' +
-    afterVisuals.replace(
-      'with the same JSON fields',
-      'containing a JSON object with title (up to 120 characters), description (up to 280 characters), intent (up to 600 characters) and excerpt (up to 1200 characters)',
-    ),
+    'Request each visual with the show_visual tool where it belongs in your reply, a video with make_video and a discussion with start_discussion; never write a fenced media block.' +
+    afterVisuals,
   'Check yourself:',
   'unless a check is requested in their intent.',
 );
@@ -102,7 +99,7 @@ export const tutorSystem = (tree) =>
           )
         : TUTOR_RULES) +
       ([...(tree.tools ?? []), ...(tree.textTools ?? [])].some((t) => t.name === 'record_turn')
-        ? DISCUSSION_RULE + RECORD_RULE
+        ? RECORD_RULE
         : VERDICT_RULE + DISCUSSION_RULE + NOTES_RULE) +
       (tree.tools?.some((t) => t.name === 'update_memory_note') ? MEMORY_RULE : '') +
       TUTOR_SKILLS +

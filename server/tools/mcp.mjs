@@ -7,6 +7,8 @@ import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv
 import { runTool } from '../providers/chatStream.mjs';
 import { SHOW_VISUAL } from './showVisual.mjs';
 import { RECORD_TURN } from './recordTurn.mjs';
+import { MAKE_VIDEO } from './makeVideo.mjs';
+import { START_DISCUSSION } from './startDiscussion.mjs';
 
 // The runner already owns JSON Schemas; the SDK's low-level server keeps those authoritative.
 export function toolMcp() {
@@ -49,7 +51,9 @@ export function toolMcp() {
       const input = params.arguments ?? {};
       // App tools validate themselves so their result names the argument or entry.
       if (
-        ![SHOW_VISUAL.name, RECORD_TURN.name].includes(definition.name) &&
+        ![SHOW_VISUAL, MAKE_VIDEO, START_DISCUSSION, RECORD_TURN].some(
+          (t) => t.name === definition.name,
+        ) &&
         !validator.getValidator(definition.parameters)(input).valid
       )
         throw new Error('Invalid tool arguments.');
