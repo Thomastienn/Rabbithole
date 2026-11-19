@@ -8,7 +8,9 @@ import {
   launcherArgs,
   sandboxCommand,
   sandboxMissing,
+  windowsSandbox,
 } from '../../server/media/video-sandbox.mjs';
+import { EventEmitter } from 'node:events';
 import { pythonRuntime } from '../../server/media/manim.mjs';
 import {
   detectPython,
@@ -108,4 +110,39 @@ test('a Windows venv names its base interpreter folder in pyvenv.cfg', () => {
     pythonRuntime(join(venv, 'Scripts', 'python.exe'), 'win32'),
     'C:\\uv\\python\\cpython-3.12',
   );
+});
+
+test('enabling the Windows sandbox runs the launcher setup once and reports what --check sees', async () => {
+  let ready = false;
+  const runs = [];
+  const probe = () => ({ status: ready ? 0 : 1 });
+  const run = (launcher, args, { accept }) => {
+    runs.push([launcher, ...args]);
+    const child = new EventEmitter();
+    setImmediate(() => ((ready = accept), child.emit('close', accept ? 0 : 1)));
+    return child;
+  };
+  const linux = windowsSandbox({ platform: 'linux', launcher: 'l.exe', probe, run });
+  assert.deepEqual(await linux.enable(), { windows: false, ready: true });
+  assert.deepEqual(runs, []);
+
+  const declined = windowsSandbox({
+    platform: 'win32',
+    launcher: 'l.exe',
+    probe,
+    run: (l, a, o) => run(l, a, { ...o, accept: false }),
+  });
+  assert.deepEqual(declined.status(), { windows: true, ready: false });
+  assert.deepEqual(await declined.enable(), { windows: true, ready: false });
+  const accepted = windowsSandbox({
+    platform: 'win32',
+    launcher: 'l.exe',
+    probe,
+    run: (l, a, o) => run(l, a, { ...o, accept: true }),
+  });
+  assert.deepEqual(await accepted.enable(), { windows: true, ready: true });
+  assert.deepEqual(runs, [
+    ['l.exe', '--setup'],
+    ['l.exe', '--setup'],
+  ]);
 });

@@ -58,6 +58,7 @@ test('the app reports first-run setup and ends it on request', async (t) => {
     defaultProvider: null,
     auth: { status: () => ({ connected: false }) },
     dir,
+    sandbox: { status: () => ({ windows: true, ready: false }), enable: async () => 'enabled' },
   });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   t.after(() => {
@@ -75,4 +76,14 @@ test('the app reports first-run setup and ends it on request', async (t) => {
   });
   assert.deepEqual(await ended.json(), { firstRun: false });
   assert.equal((await state()).firstRun, false);
+  assert.deepEqual(await (await fetch(origin + '/api/setup/sandbox')).json(), {
+    windows: true,
+    ready: false,
+  });
+  const enabled = await fetch(origin + '/api/setup/sandbox', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
+    body: '{}',
+  });
+  assert.equal(await enabled.json(), 'enabled');
 });

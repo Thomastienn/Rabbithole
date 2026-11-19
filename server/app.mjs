@@ -28,6 +28,7 @@ import { mediaRoutes } from './http/routes/media.mjs';
 import { authRoutes } from './http/routes/auth.mjs';
 import { treeRoutes } from './http/routes/trees.mjs';
 import { assetRoutes } from './http/routes/assets.mjs';
+import { windowsSandbox } from './media/video-sandbox.mjs';
 import { downloadRoutes } from './http/routes/downloads.mjs';
 import { tesseractOcr } from './ocr.mjs';
 import { toolRunner } from './tools/runner.mjs';
@@ -84,6 +85,7 @@ export function createApp({
   searxng = () => ({ ready: false, url: null, error: 'SearXNG is not managed by this server.' }),
   // The tool download manager (server/downloads.mjs); tests and embedded servers run without one.
   downloads = null,
+  sandbox = windowsSandbox(),
 }) {
   const search = searxngSearch({ store, managed: searxng });
   // One context for every extracted module; stopping is read from it at call time.
@@ -133,6 +135,7 @@ export function createApp({
       }),
     python,
     downloads,
+    sandbox,
     downloadStreams: new Set(),
     mcp: toolMcp(),
     search,

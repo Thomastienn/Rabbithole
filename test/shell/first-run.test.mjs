@@ -8,7 +8,13 @@ import { ui, button } from '../support/ui.mjs';
 // A fresh install: no trees, no chat model, nothing signed in until `signedIn`.
 async function mount(
   t,
-  { firstRun = true, signedIn = true, cli = { missing: false }, system = { body: {} } } = {},
+  {
+    firstRun = true,
+    signedIn = true,
+    cli = { missing: false },
+    system = { body: {} },
+    sandbox = { windows: false, ready: true },
+  } = {},
 ) {
   const posts = [];
   const saved = globalThis.fetch;
@@ -53,7 +59,9 @@ async function mount(
               ? { firstRun: false }
               : path === '/api/setup/system'
                 ? system.body
-                : {};
+                : path === '/api/setup/sandbox'
+                  ? sandbox
+                  : {};
     return { ok: true, json: async () => body };
   };
   const { default: ChatPage } = await import('../../src/shell/ChatPage.tsx');
@@ -83,6 +91,11 @@ test('a fresh install opens on setup; confirming the prefilled default model let
   assert.equal(container.querySelector('.first-question'), null);
   assert.match(container.querySelector('.first-run').textContent, /Signed in through Claude Code/);
   assert.match(container.querySelector('[aria-haspopup=listbox]').textContent, /Opus/);
+  assert.doesNotMatch(
+    container.textContent,
+    /Video sandbox|administrator/,
+    'Linux has no sandbox step',
+  );
   await click('Start asking');
   assert.deepEqual(posts, [
     ['/api/settings/chat', { provider: 'claude', model: 'opus', effort: null }],
@@ -161,4 +174,26 @@ test('other distros get the package list in words; setup still ends with the lin
   await click('Start asking');
   assert.equal(container.querySelector('.first-run'), null);
   assert.ok(container.querySelector('[aria-label="Your question"]'));
+});
+
+test('Windows setup asks once for admin rights; declining explains and setup still ends', async (t) => {
+  const { container, posts, click } = await mount(t, { sandbox: { windows: true, ready: false } });
+  const setup = () => container.querySelector('.first-run');
+  assert.match(setup().textContent, /Video sandbox.*asks once for administrator rights/);
+  await click('Enable sandbox');
+  assert.deepEqual(posts, [['/api/setup/sandbox', {}]]);
+  assert.match(
+    setup().textContent,
+    /Video making stays off until it is enabled; you can try again from Settings/,
+  );
+  assert.equal(
+    [...setup().querySelectorAll('button')].find((b) =>
+      /Enable sandbox|Try again/.test(b.textContent),
+    ),
+    undefined,
+    'setup asks only once',
+  );
+  await click('Start asking');
+  assert.deepEqual(posts.at(-1), ['/api/setup', {}]);
+  assert.equal(setup(), null);
 });

@@ -106,6 +106,28 @@ export function sandboxMissing({
   return 'Video making needs the Windows sandbox. Enable it in Settings, then ask again.';
 }
 
+// The Windows sandbox's one-time setup, from first-run setup or Settings; `--setup` shows the one UAC prompt.
+export function windowsSandbox({
+  platform = process.platform,
+  launcher = process.env.RABBITHOLE_SANDBOX,
+  probe = spawnSync,
+  run = spawn,
+} = {}) {
+  const status = () => ({
+    windows: platform === 'win32',
+    ready: !sandboxMissing({ platform, launcher, probe }),
+  });
+  const enable = () =>
+    new Promise((done) => {
+      if (platform !== 'win32' || !launcher) return done(status());
+      // Declining UAC exits non-zero; either way the --check that follows reports the result.
+      const child = run(launcher, ['--setup'], { stdio: 'ignore' });
+      child.on('error', () => done(status()));
+      child.on('close', () => done(status()));
+    });
+  return { status, enable };
+}
+
 export function sandboxProcess(workspace, command, signal, onProgress, budget, binds = []) {
   return new Promise((resolvePromise, reject) => {
     const [program, args, env] = sandboxCommand([...SANDBOX(workspace), ...binds, ...command]);

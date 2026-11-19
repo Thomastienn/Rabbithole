@@ -6,6 +6,7 @@ import { Selector } from '@astryxdesign/core/Selector';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
 import { Code } from '@astryxdesign/core/Code';
+import SandboxSettings from '../settings/SandboxSettings';
 import type { Model } from '../settings/models';
 import type { ModelSelection, Providers } from '../chat/types';
 
@@ -181,6 +182,7 @@ export default function FirstRunSetup({
       </VStack>
       <Divider />
       <VideoPackages api={api} />
+      <SandboxSettings api={api} firstRun />
       <VStack gap={2}>
         <Heading level={3}>Chat model</Heading>
         {chosen ? (

@@ -1,9 +1,11 @@
 // Runs one model-written command inside OpenAI's codex-windows-sandbox (elevated mode), with the
 // rules the server gives bwrap on Linux: no network, a separate sandbox account that cannot see
 // the learner's home or app data, reads of the workspace and runtime folders, writes only to the
-// workspace. `--check` exits 0 once the one-time elevated setup has run.
+// workspace. `--check` exits 0 once the one-time elevated setup has run; `--setup` runs that setup
+// behind one UAC prompt and exits non-zero when it is declined or fails.
 //
 // rabbithole-sandbox --check
+// rabbithole-sandbox --setup
 // rabbithole-sandbox --workspace <dir> [--read <path>]... [--env KEY=VALUE]... -- <command>...
 
 use std::collections::HashMap;
@@ -12,6 +14,7 @@ use std::path::PathBuf;
 #[derive(Debug, PartialEq)]
 enum Request {
     Check,
+    Setup,
     Run {
         workspace: PathBuf,
         reads: Vec<PathBuf>,
@@ -23,6 +26,9 @@ enum Request {
 fn parse(args: &[String]) -> Result<Request, String> {
     if args == ["--check"] {
         return Ok(Request::Check);
+    }
+    if args == ["--setup"] {
+        return Ok(Request::Setup);
     }
     let (mut workspace, mut reads, mut env) = (None, Vec::new(), HashMap::new());
     let mut rest = args.iter();
@@ -75,6 +81,39 @@ fn run(request: Request) -> Result<i32, String> {
 
     let home = sandbox_home();
     let ready = sandbox::sandbox_setup_is_complete(&home);
+    let profile = PermissionProfile::workspace_write_with(
+        &[],
+        NetworkSandboxPolicy::Restricted,
+        /*exclude_tmpdir_env_var*/ true,
+        /*exclude_slash_tmp*/ true,
+    );
+    if request == Request::Setup {
+        if ready {
+            return Ok(0);
+        }
+        // The one UAC prompt; per-run read and write roots are applied at spawn time.
+        std::fs::create_dir_all(&home).map_err(|e| e.to_string())?;
+        let root = AbsolutePathBuf::from_absolute_path(&home).map_err(|e| e.to_string())?;
+        let permissions =
+            sandbox::ResolvedWindowsSandboxPermissions::try_from_permission_profile_for_workspace_roots(
+                &profile,
+                std::slice::from_ref(&root),
+            )
+            .map_err(|e| format!("{e:#}"))?;
+        sandbox::run_elevated_setup(sandbox::SandboxSetupRequest {
+            permissions: &permissions,
+            command_cwd: &home,
+            env_map: &HashMap::new(),
+            codex_home: &home,
+            proxy_enforced: false,
+        })
+        .map_err(|e| format!("{e:#}"))?;
+        return Ok(if sandbox::sandbox_setup_is_complete(&home) {
+            0
+        } else {
+            1
+        });
+    }
     let Request::Run {
         workspace,
         mut reads,
@@ -99,12 +138,6 @@ fn run(request: Request) -> Result<i32, String> {
     for key in ["TEMP", "TMP"] {
         env.insert(key.into(), workspace.to_string_lossy().into_owned());
     }
-    let profile = PermissionProfile::workspace_write_with(
-        &[],
-        NetworkSandboxPolicy::Restricted,
-        /*exclude_tmpdir_env_var*/ true,
-        /*exclude_slash_tmp*/ true,
-    );
     let writes = [workspace.clone()];
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -164,6 +197,7 @@ mod tests {
     #[test]
     fn parses_check() {
         assert_eq!(parse(&args(&["--check"])), Ok(Request::Check));
+        assert_eq!(parse(&args(&["--setup"])), Ok(Request::Setup));
     }
 
     #[test]

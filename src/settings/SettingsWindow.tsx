@@ -21,6 +21,7 @@ import TutorStyleSettings from './TutorStyleSettings';
 import MemoryNoteSettings from './MemoryNoteSettings';
 import SearchSettings from './SearchSettings';
 import TutorToolsSettings from './TutorToolsSettings';
+import SandboxSettings from './SandboxSettings';
 import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
 import type { ModelSelection } from '../chat/types';
@@ -232,6 +233,7 @@ export default function SettingsWindow({
             </Section>
             <Divider />
             <TutorToolsSettings api={api} />
+            <SandboxSettings api={api} />
             <Divider />
             <TutorStyleSettings api={api} />
             <Divider />

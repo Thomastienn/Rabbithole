@@ -31,6 +31,7 @@ export async function settingsRoutes(req, res, url, ctx, body) {
       return json(res, 200, store.suggestionSettings());
     if (url.pathname === '/api/settings/chat') return json(res, 200, chatDefault());
     if (url.pathname === '/api/setup/system') return json(res, 200, systemPackages() ?? {});
+    if (url.pathname === '/api/setup/sandbox') return json(res, 200, ctx.sandbox.status());
     if (url.pathname === '/api/settings/smart') return json(res, 200, smart());
     if (url.pathname === '/api/profiles') return json(res, 200, profiles());
     if (url.pathname === '/api/settings/tutor-style')
@@ -46,6 +47,7 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     void ctx.downloads?.start();
     return json(res, 200, { firstRun: false });
   }
+  if (url.pathname === '/api/setup/sandbox') return json(res, 200, await ctx.sandbox.enable());
   if (url.pathname === '/api/settings/tutor-tools') {
     if (!Object.hasOwn(TUTOR_TOOLS, body?.name) || typeof body?.enabled !== 'boolean')
       return json(res, 400, { error: 'Choose a listed tutor tool and turn it on or off.' });
