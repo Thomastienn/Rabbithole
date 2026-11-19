@@ -207,6 +207,7 @@ export async function job(render, mutate, source = composition, count = 1, optio
   const provider = {
     generate: async (t, text, emit) => {
       if (t.images) audits.push(t.images);
+      await options.slow?.();
       complete(
         emit,
         t.instructions.startsWith('You plan') &&

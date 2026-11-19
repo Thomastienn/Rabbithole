@@ -142,7 +142,7 @@ test('Claude CLI: the time limit counts silence, so steady output past 5 minutes
   const silent = turn();
   await settle();
   t.mock.timers.tick(300000);
-  await assert.rejects(silent, /Response timed out/);
+  await assert.rejects(silent, /stopped responding/);
 });
 
 test('Claude CLI: error result fails visibly with the CLI reason', async () => {
