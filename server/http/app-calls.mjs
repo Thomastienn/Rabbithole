@@ -1,4 +1,4 @@
-import { SHOW_VISUAL, readShowVisual } from '../tools/showVisual.mjs';
+import { SHOW_VISUAL, readShowVisual, visualPosition } from '../tools/showVisual.mjs';
 import { RECORD_TURN, readRecordTurn } from '../tools/recordTurn.mjs';
 import { MAKE_VIDEO, readMakeVideo } from '../tools/makeVideo.mjs';
 import { START_DISCUSSION, readStartDiscussion } from '../tools/startDiscussion.mjs';
@@ -25,18 +25,25 @@ export function appCalls(
         cause: errorCause(error, privateValues(JSON.stringify(input ?? {}))),
       }),
     );
-  const run = (name, input, position, replySoFar) => {
+  const run = (...args) => {
     try {
-      return runCall(name, input, position, replySoFar);
+      return runCall(...args);
     } catch (error) {
-      refused(name, input, error);
+      refused(args[0], args[1], error);
       throw error;
     }
   };
-  const runCall = (name, input, position, replySoFar) => {
-    // A show_visual call queues its visual at that reply position.
+  // responseStart: where the model response holding the call began; null when after is ignored.
+  const runCall = (name, input, position, replySoFar, responseStart = 0, textCall = false) => {
+    // A show_visual call queues its visual at its after anchor, or that reply position.
     if (name === SHOW_VISUAL.name) {
-      showVisual(readShowVisual(input, replySoFar), position);
+      const request = readShowVisual(input, replySoFar);
+      showVisual(
+        request,
+        responseStart === null
+          ? position
+          : visualPosition(input, replySoFar, responseStart, position, !textCall),
+      );
       return 'queued';
     }
     if (name === MAKE_VIDEO.name) {
@@ -62,7 +69,14 @@ export function appCalls(
         refused(call.name, call.input, new Error(`Tool call could not be read: ${call.error}.`));
       else
         try {
-          run(call.name, call.input, call.position, output.text.slice(0, call.position));
+          run(
+            call.name,
+            call.input,
+            call.position,
+            output.text.slice(0, call.position),
+            call.position === output.text.length ? 0 : null,
+            true,
+          );
         } catch {
           // run logged the refusal; nothing goes back to the model.
         }

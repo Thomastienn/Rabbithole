@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import {
+  catalogue,
   EndpointError,
   endpointName,
   lastTest,
@@ -14,8 +15,11 @@ import {
 import { probeTools } from './toolProbe.mjs';
 import { QUICK_TOOLS } from '../tools/quickTools.mjs';
 import {
+  addUsage,
   chunkUsage,
   history,
+  idleLimit,
+  STALLED,
   redactStream,
   roundText,
   runTool,
@@ -23,6 +27,9 @@ import {
 } from './chatStream.mjs';
 
 export { EndpointError };
+
+const RECORD_NUDGE =
+  'Your reply above ended without its record_turn call; make it now. A teaching reply leaves next questions and suggestions; include them along with every other argument that qualifies.';
 
 // The list of saved custom endpoints; each entry is registered as its own provider.
 export class OpenAI {
@@ -259,49 +266,7 @@ class Endpoint {
     this.#requests.add(controller);
     try {
       const response = await this.#fetch(saved, '/models', signal);
-      const data = await response.json();
-      if (!Array.isArray(data.data))
-        throw new EndpointError(
-          'Custom endpoint returned an invalid model catalogue. Check the API base URL.',
-        );
-      const models = data.data.filter(
-        (m) =>
-          typeof m?.id === 'string' &&
-          m.id.trim() &&
-          m.id.length <= 500 &&
-          !m.id.includes(saved.apiKey),
-      );
-      const ids = [...new Set(models.map((m) => m.id))];
-      if (!ids.length)
-        throw new EndpointError(
-          'Custom endpoint returned no usable models. Check endpoint settings.',
-        );
-      return ids.map((model, i) => {
-        // shortcut: /models has no standard effort discovery; only accept explicitly advertised levels, never guess by model name.
-        const { supported_reasoning_efforts: levels, capabilities } = models.find(
-          (m) => m.id === model,
-        );
-        return {
-          model,
-          label: model,
-          isDefault: i === 0,
-          // Reported capabilities are kept only when the endpoint states them as booleans.
-          ...(typeof capabilities?.vision === 'boolean' && { vision: capabilities.vision }),
-          ...(typeof capabilities?.tools === 'boolean' && { tools: capabilities.tools }),
-          efforts: Array.isArray(levels)
-            ? [
-                ...new Set(
-                  levels.filter(
-                    (e) =>
-                      typeof e === 'string' &&
-                      /^[a-z][a-z0-9_-]{0,31}$/.test(e) &&
-                      !e.includes(saved.apiKey),
-                  ),
-                ),
-              ]
-            : [],
-        };
-      });
+      return catalogue(await response.json(), saved.apiKey);
     } catch (error) {
       throw error instanceof EndpointError
         ? error
@@ -326,8 +291,9 @@ class Endpoint {
     const saved = this.#saved,
       controller = new AbortController();
     const signal = AbortSignal.any([parentSignal, controller.signal]);
-    // Each model call has its own time limit; tool runs between calls keep their own.
-    let call = signal;
+    let call = signal,
+      forcing = false,
+      finish;
     this.#requests.add(controller);
     try {
       signal.throwIfAborted();
@@ -336,7 +302,10 @@ class Endpoint {
       const system = tutorSystem(tree);
       const parts = inputParts(tree, text);
       const tools = tree.tools ?? [];
-      let answered = false;
+      let answered = false,
+        // Some models (github/auto through Omniroute) skip record_turn; one forced call asks for it.
+        recorded = false,
+        forced = false;
       const messages = [
         { role: 'system', content: system },
         ...history(tree.messages ?? [], tools.length > 0),
@@ -358,12 +327,17 @@ class Endpoint {
         },
       ];
       const output = redactStream(saved.apiKey, emit);
+      finish = () => {
+        output('', true);
+        saveThread(null, model);
+        emit({ type: 'status', status: 'completed' });
+      };
       const reply = roundText(output);
       // Every request asks for usage; tool turns sum each model call's report.
       const total = { input: 0, output: 0, cacheRead: 0 };
       // No call cap: the loop ends when the model answers without tool calls or with only end-of-reply app calls, or on Stop.
       while (true) {
-        call = AbortSignal.any([signal, AbortSignal.timeout(300000)]);
+        call = idleLimit(signal);
         const response = await this.#fetch(saved, '/chat/completions', call, {
           model,
           messages,
@@ -371,6 +345,7 @@ class Endpoint {
           ...(tree.effort != null && { reasoning_effort: tree.effort }),
           stream_options: { include_usage: true },
           ...(tools.length && { tools: tools.map((t) => ({ type: 'function', function: t })) }),
+          ...(forcing && { tool_choice: { type: 'function', function: { name: 'record_turn' } } }),
         });
         const calls = new Map();
         // This call's latest usage report; some endpoints repeat it on several chunks.
@@ -383,7 +358,7 @@ class Endpoint {
             throw new EndpointError(
               'Custom endpoint did not return a chat-completion stream. Check compatibility and the base URL.',
             );
-          await streamEvents(response.body, (data) => {
+          await streamEvents(response.body, call, (data) => {
             if (data.trim() === '[DONE]') {
               if (completed) return true;
               throw new EndpointError(
@@ -396,14 +371,12 @@ class Endpoint {
             const reported = chunkUsage(chunk.usage);
             if (reported) {
               used = reported;
-              emit({
-                type: 'usage',
-                usage: Object.fromEntries(Object.entries(total).map(([k, v]) => [k, v + used[k]])),
-              });
+              emit({ type: 'usage', usage: addUsage(total, used) });
             }
             const choice = chunk.choices?.find((c) => c.index === 0);
             if (!choice) return false;
-            if (typeof choice.delta?.content === 'string' && choice.delta.content) {
+            // The reply is already shown; text beside a forced record_turn call is dropped.
+            if (!forcing && typeof choice.delta?.content === 'string' && choice.delta.content) {
               content += choice.delta.content;
               reply.write(choice.delta.content);
             }
@@ -437,7 +410,7 @@ class Endpoint {
         } finally {
           if (!response.body?.locked) await response.body?.cancel().catch(() => {});
         }
-        if (used) for (const k in total) total[k] += used[k];
+        if (used) Object.assign(total, addUsage(total, used));
         call.throwIfAborted();
         reply.end();
         if (!completed)
@@ -445,7 +418,17 @@ class Endpoint {
             'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
           );
         const round = tools.length ? [...calls].sort(([a], [b]) => a - b).map(([, c]) => c) : [];
-        if (!round.length) break;
+        recorded ||= round.some((c) => c.name === 'record_turn');
+        if (!round.length) {
+          if (forced || recorded || !reply.shown || !tools.some((t) => t.name === 'record_turn'))
+            break;
+          if (content) messages.push({ role: 'assistant', content });
+          // Without this nudge forced calls came back with concepts only (live github/auto runs).
+          messages.push({ role: 'system', content: RECORD_NUDGE });
+          forced = forcing = true;
+          continue;
+        }
+        forcing = false;
         round.forEach((c, i) => (c.id ||= `call_${messages.length}_${i}`));
         messages.push({
           role: 'assistant',
@@ -473,20 +456,20 @@ class Endpoint {
         throw new EndpointError(
           'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
         );
-      output('', true);
-      saveThread(null, model);
-      emit({ type: 'status', status: 'completed' });
+      finish();
     } catch (error) {
       if (signal.aborted && signal.reason?.name !== 'TimeoutError') {
         emit({ type: 'status', status: 'interrupted' });
         return;
       }
+      // A failed forced call keeps the finished reply; quick thinking stands in for record_turn.
+      if (forcing) return finish();
       emit({ type: 'status', status: 'failed' });
       throw error instanceof EndpointError
         ? error
         : new EndpointError(
             call.reason?.name === 'TimeoutError'
-              ? 'Custom endpoint response timed out. Partial reply saved; try again.'
+              ? STALLED
               : 'Custom endpoint connection or stream failed. Check compatibility and endpoint settings, then retry.',
           );
     } finally {

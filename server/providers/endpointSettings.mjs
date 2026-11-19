@@ -105,3 +105,41 @@ export function endpointName(name, apiKey) {
     throw new EndpointError('Enter an endpoint name of up to 80 characters.');
   return name.trim();
 }
+
+// The usable models of a /models response, the first one the default.
+export function catalogue(data, apiKey) {
+  if (!Array.isArray(data.data))
+    throw new EndpointError(
+      'Custom endpoint returned an invalid model catalogue. Check the API base URL.',
+    );
+  const models = data.data.filter(
+    (m) => typeof m?.id === 'string' && m.id.trim() && m.id.length <= 500 && !m.id.includes(apiKey),
+  );
+  const ids = [...new Set(models.map((m) => m.id))];
+  if (!ids.length)
+    throw new EndpointError('Custom endpoint returned no usable models. Check endpoint settings.');
+  return ids.map((model, i) => {
+    // shortcut: /models has no standard effort discovery; only accept explicitly advertised levels, never guess by model name.
+    const { supported_reasoning_efforts: levels, capabilities } = models.find(
+      (m) => m.id === model,
+    );
+    return {
+      model,
+      label: model,
+      isDefault: i === 0,
+      // Reported capabilities are kept only when the endpoint states them as booleans.
+      ...(typeof capabilities?.vision === 'boolean' && { vision: capabilities.vision }),
+      ...(typeof capabilities?.tools === 'boolean' && { tools: capabilities.tools }),
+      efforts: Array.isArray(levels)
+        ? [
+            ...new Set(
+              levels.filter(
+                (e) =>
+                  typeof e === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(e) && !e.includes(apiKey),
+              ),
+            ),
+          ]
+        : [],
+    };
+  });
+}

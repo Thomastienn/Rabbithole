@@ -201,7 +201,7 @@ test('clearing settings interrupts in-flight generations; timeout releases resou
       () => assert.fail('Timeout saved a session'),
       AbortSignal.timeout(50),
     ),
-    /timed out/,
+    /stopped responding/,
   );
   assert.deepEqual(events, [{ type: 'status', status: 'failed' }]);
 });

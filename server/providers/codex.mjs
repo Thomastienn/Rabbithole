@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
+import { STALLED } from './chatStream.mjs';
 
 export class Codex {
   readsImages = true;
@@ -274,6 +275,9 @@ export class Codex {
             input: usage.inputTokens - usage.cachedInputTokens,
             output: usage.outputTokens,
             cacheRead: usage.cachedInputTokens,
+            ...(Number.isSafeInteger(usage.reasoningOutputTokens) && {
+              reasoning: usage.reasoningOutputTokens,
+            }),
             ...(contextWindow && { contextWindow }),
           },
         });
@@ -305,7 +309,7 @@ export class Codex {
           clearTimeout(timeout);
           timeout = setTimeout(() => {
             interrupt();
-            finish(new Error('Response timed out. Partial reply saved; try again.'));
+            finish(new Error(STALLED));
           }, 300000);
         };
         idle();
@@ -337,7 +341,12 @@ export class Codex {
           if (message.method === 'thread/tokenUsage/updated') {
             const { last, total } = p.tokenUsage ?? {};
             if (this.toolSession && last && total) {
-              const keys = ['inputTokens', 'cachedInputTokens', 'outputTokens'];
+              const keys = [
+                'inputTokens',
+                'cachedInputTokens',
+                'outputTokens',
+                'reasoningOutputTokens',
+              ];
               baseline ??= Object.fromEntries(keys.map((k) => [k, total[k] - last[k]]));
               usage = Object.fromEntries(keys.map((k) => [k, total[k] - baseline[k]]));
             } else usage = last;

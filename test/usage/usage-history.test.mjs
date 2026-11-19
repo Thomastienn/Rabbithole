@@ -39,6 +39,7 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
       input: 103,
       output: 7,
       cacheRead: 40,
+      reasoning: null, // older rows never recorded reasoning
     },
   ]);
 
@@ -57,6 +58,7 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
         input: null,
         output: null,
         cacheRead: null,
+        reasoning: null,
       },
       {
         provider: 'codex',
@@ -65,6 +67,7 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
         input: 30,
         output: 9,
         cacheRead: 20,
+        reasoning: 4, // Codex reasoning output, part of output
       },
     ],
   );
@@ -124,6 +127,7 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
       'message',
       'stage',
       'cut',
+      'reasoning',
     ],
   );
   assert.ok(
@@ -163,9 +167,9 @@ test('background compaction and diagram calls record actual provider/model per l
   await env.post(`/api/trees/${codex.id}/messages`, { text: 'Explain, no usage' });
   await env.post(`/api/trees/${codex.id}/messages`, { text: 'fail' });
 
-  const claudeUsage = { input: 103, output: 7, cacheRead: 40 },
-    codexUsage = { input: 30, output: 9, cacheRead: 20 },
-    none = { input: null, output: null, cacheRead: null };
+  const claudeUsage = { input: 103, output: 7, cacheRead: 40, reasoning: null },
+    codexUsage = { input: 30, output: 9, cacheRead: 20, reasoning: 4 },
+    none = { input: null, output: null, cacheRead: null, reasoning: null };
   const events = (await env.get('/api/usage')).events;
   assert.deepEqual(
     events.map(({ at, ...e }) => e),
@@ -291,7 +295,7 @@ test('video worker attempts record their own reported usage, including failed an
     .usageEvents()
     .events.filter((e) => e.task === 'video')
     .map(({ at, ...e }) => e);
-  const by = { provider: 'codex', model: 'worker-model', task: 'video' };
+  const by = { provider: 'codex', model: 'worker-model', task: 'video', reasoning: null };
   assert.deepEqual(videos, [
     { ...by, input: 10, output: 5, cacheRead: 2 }, // failed attempt
     { ...by, input: 11, output: 5, cacheRead: 2 }, // explicit retry: its own attempt
@@ -318,7 +322,15 @@ test('video worker attempts record their own reported usage, including failed an
   const { attempt: current } = store.artifact(tree.id, first);
   store.record(`video:${current}:old`, 'video', by, { input: 1, output: 1, cacheRead: 0 });
   store.record(`video:${current}:lost`, 'video', by, null, undefined, null, 'repair', 1);
-  const rows = (stage, input, output, cacheRead, calls = 1, reported = calls) => ({
+  const rows = (
+    stage,
+    input,
+    output,
+    cacheRead,
+    calls = 1,
+    reported = calls,
+    reasoning = null,
+  ) => ({
     stage,
     model: 'worker-model',
     calls,
@@ -326,6 +338,7 @@ test('video worker attempts record their own reported usage, including failed an
     input,
     output,
     cacheRead,
+    reasoning,
   });
   assert.deepEqual(
     store.videoUsage(tree.id, first).map((r) => ({ ...r })),

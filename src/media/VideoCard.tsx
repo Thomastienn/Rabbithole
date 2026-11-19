@@ -45,7 +45,7 @@ const CUT_STATE = {
 
 // Only known server-authored reasons reach the learner; arbitrary worker errors may contain private output.
 const FAILURE_REASON =
-  /^(?:Video provider failed: [^\n]+|Video request could not be read: [^\n]+\.|Tutor reply did not complete\.|Video (?:rendering (?:failed|timed out)|renderer could not start|narration timed out|narration failed\. Check your connection and Retry|could not be saved|composition (?:timed out|did not complete|exceeds 64 KiB|is missing its (?:description|narration)|uses a disallowed import or resource)|provider failed to generate a composition|narration(?: timing)? is (?:missing|unreadable))\.|Rendered video is unreadable\.)$/;
+  /^(?:Video provider failed: [^\n]+|Video request could not be read: [^\n]+\.|Tutor reply did not complete\.|Video (?:rendering (?:failed|timed out)|renderer could not start|narration timed out|narration failed\. Check your connection and Retry|could not be saved|generation ran over two hours|composition (?:timed out|did not complete|exceeds 64 KiB|is missing its (?:description|narration)|uses a disallowed import or resource)|provider failed to generate a composition|narration(?: timing)? is (?:missing|unreadable))\.|Rendered video is unreadable\.)$/;
 
 const DOWNLOADING =
   /^(?:Video tools are still downloading \(\d{1,3}%\)|Video making needs the Windows sandbox\. Enable it in Settings, then ask again)\.$/;

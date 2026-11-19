@@ -57,7 +57,12 @@ async function callAll(tree, emit, signal, calls) {
   return results;
 }
 
-const visual = { title: 'Orbit', shows: 'Earth circling the Sun', alt: 'Earth circles the Sun.' };
+const visual = {
+  title: 'Orbit',
+  shows: 'Earth circling the Sun',
+  alt: 'Earth circles the Sun.',
+  after: 'Sure.',
+};
 
 test('make_video plans from the conversation; other media beside it gets a plain error', async () => {
   const plans = [],

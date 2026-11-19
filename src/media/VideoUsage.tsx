@@ -10,6 +10,7 @@ type Row = {
   input: number;
   output: number;
   cacheRead: number;
+  reasoning: number | null;
 };
 const STAGE: Record<string, string> = {
   plan: 'Plan',
@@ -63,6 +64,7 @@ export default function VideoUsage({ url, title }: { url: string; title: string 
                     <th>Calls</th>
                     <th>Input</th>
                     <th>Output</th>
+                    <th>Reasoning</th>
                     <th>Cached</th>
                   </tr>
                 </thead>
@@ -76,11 +78,11 @@ export default function VideoUsage({ url, title }: { url: string; title: string 
                         {r.reported < r.calls && `, ${r.calls - r.reported} not reported`}
                       </td>
                       {r.reported ? (
-                        [r.input, r.output, r.cacheRead].map((n, i) => (
-                          <td key={i}>{n.toLocaleString()}</td>
+                        [r.input, r.output, r.reasoning, r.cacheRead].map((n, i) => (
+                          <td key={i}>{n === null ? '—' : n.toLocaleString()}</td>
                         ))
                       ) : (
-                        <td colSpan={3}>Not reported</td>
+                        <td colSpan={4}>Not reported</td>
                       )}
                     </tr>
                   ))}

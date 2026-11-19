@@ -80,12 +80,31 @@ test('unavailable counts are never estimated and breakdowns group exact totals',
     ev(2, 'suggestions', [4, 5, 6], 'b'),
     ev(3, 'chat', null, 'a'),
   ];
-  assert.deepEqual(totals(events), { input: 5, output: 7, cacheRead: 9, calls: 2, unavailable: 1 });
+  assert.deepEqual(totals(events), {
+    input: 5,
+    output: 7,
+    cacheRead: 9,
+    reasoning: null,
+    calls: 2,
+    unavailable: 1,
+  });
   assert.deepEqual(
     breakdown(events, (e) => e.task).map((r) => [r.name, r.total, r.unavailable]),
     [
       ['suggestions', 15, 0],
       ['chat', 6, 1],
     ],
+  );
+});
+
+test('reasoning totals count only calls that reported it; none reported stays null, not zero', () => {
+  const day = new Date(2026, 0, 2, 9);
+  assert.equal(totals([ev(day), ev(day)]).reasoning, null);
+  const mixed = [ev(day), { ...ev(day), reasoning: 1 }, { ...ev(day), reasoning: 0 }];
+  assert.equal(totals(mixed).reasoning, 1);
+  const days = buckets(mixed, span('week', day, 2026, null), true);
+  assert.deepEqual(
+    days.map((d) => d.reasoning),
+    [null, null, null, null, 1, 1, 1],
   );
 });

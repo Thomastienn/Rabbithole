@@ -128,7 +128,8 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
       throw error;
     } finally {
       const timedOut =
-        signal?.reason?.name === 'TimeoutError' || /timed out/i.test(signal?.reason?.message ?? '');
+        signal?.reason?.name === 'TimeoutError' ||
+        /timed out|ran over/i.test(signal?.reason?.message ?? '');
       const stopped = (signal?.aborted && !timedOut) || status === 'interrupted';
       const failed = failure || timedOut || status === 'failed';
       const valid =

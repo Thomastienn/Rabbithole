@@ -2,6 +2,7 @@
 const LIMITS = { title: 120, shows: 280, alt: 280, check_answer: 600 };
 // The writer reads the reply so far as context; a resource bound, not a rule the tutor sees.
 const CONTEXT = 6000;
+const AFTER = 120;
 
 export const SHOW_VISUAL = {
   name: 'show_visual',
@@ -10,7 +11,7 @@ export const SHOW_VISUAL = {
     'Call it where the visual belongs in the explanation, as early as that is; never collect visuals at the end. Use one visual per idea; for a complex idea, call it several times for small visuals in order. ' +
     'A visual is a section of your reply that the learner reads in place, so let your text carry what the visual cannot, and keep technical detail and precise terms in your text. ' +
     'Another model draws it from these arguments and your reply so far; never write visual code yourself. The result is "queued": continue your reply right after the visual without repeating any text. ' +
-    'Inside a :::figure or :::wide layout, call it where the media goes. Ready visuals appear in later history only as artifact id, title and description. ' +
+    'Give after: the last few words of your reply text the visual follows, quoted exactly, so it lands there even when you call it after writing more. Never put a visual inside :::figure, which is for images only. Ready visuals appear in later history only as artifact id, title and description. ' +
     'Check yourself: at most once per reply, give check_answer to make a predict-then-reveal check when predicting the next step or an outcome would help the learner test an idea, after enough context to reason about it. Honor requests for a check and requests to skip quizzes; never quiz on short factual answers, casual turns or when the learner wants a direct explanation; never require an answer, grade the learner or hold back the explanation. Keep title, alt and your text free of the hidden answer.',
   parameters: {
     type: 'object',
@@ -27,12 +28,16 @@ export const SHOW_VISUAL = {
         type: 'string',
         description: `Text alternative, at most ${LIMITS.alt} characters: say in words what the visual shows; for a check, only the starting state and the prediction question.`,
       },
+      after: {
+        type: 'string',
+        description: `The last few words of your reply text the visual follows, quoted exactly, at most ${AFTER} characters.`,
+      },
       check_answer: {
         type: 'string',
         description: `Only for a predict-then-reveal check, at most ${LIMITS.check_answer} characters: the prediction question, the correct outcome and a short reason. The answer stays hidden until the learner reveals it.`,
       },
     },
-    required: ['title', 'shows', 'alt'],
+    required: ['title', 'shows', 'alt', 'after'],
   },
 };
 
@@ -55,4 +60,29 @@ export function readShowVisual(input, replySoFar = '') {
   }
   const context = replySoFar.trim().slice(-CONTEXT);
   return Object.freeze({ ...request, ...(context && { context }) });
+}
+
+// Where a visual lands: its call's position, or the end of the first match of after in this response's text (from start).
+// Plain errors name after so the model can fix the call; the <tool_call> text path may omit it (required false).
+export function visualPosition(input, text, start, position, required = true) {
+  const after = input?.after;
+  if (after === undefined && !required) return position;
+  if (typeof after !== 'string' || !after.trim())
+    throw new Error('show_visual needs after as non-empty text.');
+  const anchor = after.trim();
+  if (anchor.length > AFTER)
+    throw new Error(
+      `show_visual after is ${anchor.length} characters; shorten it to at most ${AFTER}.`,
+    );
+  const response = text.slice(start, position);
+  const loose = anchor
+    .split(/\s+/)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('\\s+');
+  // A tutor that stopped at the call quotes the text just before it: keep the call's position.
+  if (new RegExp(`${loose}\\s*$`, 'i').test(response)) return position;
+  const exact = response.indexOf(anchor);
+  if (exact >= 0) return start + exact + anchor.length;
+  const match = new RegExp(loose, 'i').exec(response);
+  return match ? start + match.index + match[0].length : position;
 }

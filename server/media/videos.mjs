@@ -86,6 +86,8 @@ export async function validateOutput(workspace, output) {
   }
 }
 
+const OVERRUN = 'Video generation ran over two hours.';
+
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
 
 export async function generateVideo({
@@ -142,14 +144,13 @@ export async function generateVideo({
       clearTimeout(timer);
     }
   };
-  // 20 minutes, stretched to 4 per cut once the plan is known, so slow models and long videos fit.
-  const started = Date.now();
-  let deadline = started + (timeout ?? 1200000);
+  // Calls stop only when the model stalls (the providers' idle limit); this guards against a runaway loop.
+  const deadline = Date.now() + (timeout ?? 7200000);
   const caller = (base, choice) => (instructions, input, onText, images, cut, tools) =>
     wait(
       videoCall(base, choice, instructions, input, controller.signal, onText, images, cut, tools),
       Math.max(1, deadline - Date.now()),
-      'Video composition timed out.',
+      OVERRUN,
     );
   const call = caller(provider, selection),
     write = caller(chat.provider, chat.selection);
@@ -220,7 +221,6 @@ export async function generateVideo({
       );
     if (builder?.problem()) throw new Error(`Video plan is incomplete: ${builder.problem()}.`);
     const plan = prior?.plan ?? builder.plan();
-    if (timeout == null) deadline = Math.max(deadline, started + plan.cuts.length * 240000);
     const { exhibits, references } = await videoMedia({
       plan,
       prior,
@@ -229,8 +229,7 @@ export async function generateVideo({
       fetch: (planned) => exhibit(planned, { search, signal: controller.signal, clips: clipping }),
       workspace,
       signal: controller.signal,
-      wait: (promise) =>
-        wait(promise, Math.max(1, deadline - Date.now()), 'Video composition timed out.'),
+      wait: (promise) => wait(promise, Math.max(1, deadline - Date.now()), OVERRUN),
       onWarning,
       credit: (resource) => store.addResource(artifact.conversation, resource),
     });
