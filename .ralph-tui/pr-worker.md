@@ -29,10 +29,16 @@ pushes to your branch and Beads updates are authorized (AGENTS.md).
 6. **Open the PR**: `gh pr create --base <base> --head <branch> --title
    "task: <task> <title>"`, with a body that lists what changed, each
    acceptance criterion with its evidence, and the defaults you chose.
-7. **Wait for CI**: `gh pr checks <branch> --watch`. When a check is red, read
+7. **Catch up** before every wait: when `gh pr view <branch> --json mergeable`
+   says `CONFLICTING`, run `git fetch origin <base>` and
+   `git merge origin/<base>`, resolve the conflicts, run the checks from step 3
+   on the files you touched, commit and push. GitHub starts no CI on a
+   conflicting PR, so waiting without this never ends. `UNKNOWN` means GitHub
+   is still computing it: ask again after a few seconds.
+8. **Wait for CI**: `gh pr checks <branch> --watch`. When a check is red, read
    it (`gh run view <run> --log-failed`), fix, push and wait again, up to 3
    fix rounds.
-8. **Hand over.** With every check green, run
+9. **Hand over.** With every check green, run
    `bd update <task> --add-label in-review` and end. The task stays open: the
    reviewer merges the PR and `ralph-afk` closes the task.
 
