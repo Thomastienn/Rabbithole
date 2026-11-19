@@ -36,8 +36,9 @@ compaction supplies its own instructions and a single data prompt.
 
 Only choice zero's text deltas are emitted, using one local reply item ID.
 SSE framing handles split bytes, UTF-8, LF/CRLF, comments and multiline data.
-A `stop` finish completes; truncation, filtering, tool calls, upstream errors,
-invalid streams and premature EOF fail visibly, retaining partial text.
+A `stop` finish completes, as does `tool_calls` when tools were offered;
+truncation, filtering, unrequested tool calls, upstream errors, invalid streams
+and premature EOF fail visibly, retaining partial text.
 The stream must contain a successful finish; `[DONE]` alone is insufficient.
 Abort cancels fetch/body consumption. Model listing has a 30-second timeout;
 generation has a five-minute timeout. Settings changes and shutdown abort all
@@ -46,7 +47,34 @@ requests through this adapter.
 The compatibility surface follows the official [Chat Completions reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create),
 [streaming chunk reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/streaming-events)
 and [model catalogue reference](https://developers.openai.com/api/reference/resources/models/methods/list).
-Tools, vision and Responses API support are outside this adapter.
+Responses API support is outside this adapter.
+
+## Tool calls
+
+A model uses tools when its saved tool flag says so (set by the learner or a
+probe), else when the catalogue reports `capabilities.tools`, else after a
+probe on first use: one small non-streamed request offering a `ping` tool.
+Such a model gets the learner's tutor tools and the app tools (`show_visual`,
+`make_video`, `start_discussion`, `record_turn`) as `tools` in each request.
+A model without tool calling gets the app tools in its instructions instead
+and writes each call as `<tool_call>{...}</tool_call>` text, which the server
+runs and hides; no result goes back.
+
+Streamed `tool_calls` deltas are joined per index. After a round with calls,
+the adapter appends the assistant message with its calls and one `tool`
+message per result, then calls the model again. The loop has no call cap: it
+ends when the model answers without calls, when a round holds only
+`record_turn` or `start_discussion`, when a quick thinking tool answer is
+accepted, or on Stop. Each model call has its own five-minute limit and the
+reply's usage sums every call's report.
+
+Some models end their text without the `record_turn` call (seen on
+`github/auto` through Omniroute). When a reply with shown text ends without
+one, the adapter makes one more request with the reply, a system nudge naming
+the expected arguments and `tool_choice` set to `record_turn`; text in that
+answer is dropped. If that request fails or brings no call, the reply still
+completes and the quick thinking model stands in for the verdict and
+suggestions, as for any reply without `record_turn`.
 
 ## Settings and credential boundary
 

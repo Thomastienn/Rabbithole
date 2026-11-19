@@ -37,7 +37,9 @@ export async function fakeOpenAI(t) {
         JSON.stringify({
           choices: [{ index: 0, message: { role: 'assistant', content: 'ok' } }],
         }),
-      ),
+      ), // A call forcing record_turn after a reply without it; by default the model still sends none.
+    forced: [],
+    force: (req, res) => streamReply(res, []),
   };
   const server = createServer(async (req, res) => {
     const chunks = [];
@@ -46,6 +48,10 @@ export async function fakeOpenAI(t) {
     if (req.url === '/v1/chat/completions' && body?.stream === false) {
       fake.probes.push(body);
       return fake.probe(req, res, body);
+    }
+    if (body?.tool_choice?.function?.name === 'record_turn') {
+      fake.forced.push(body);
+      return fake.force(req, res, body);
     }
     fake.calls.push({ path: req.url, method: req.method, headers: req.headers, body });
     if (req.url === '/v1/models') {
