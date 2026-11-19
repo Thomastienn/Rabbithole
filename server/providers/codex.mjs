@@ -274,6 +274,9 @@ export class Codex {
             input: usage.inputTokens - usage.cachedInputTokens,
             output: usage.outputTokens,
             cacheRead: usage.cachedInputTokens,
+            ...(Number.isSafeInteger(usage.reasoningOutputTokens) && {
+              reasoning: usage.reasoningOutputTokens,
+            }),
             ...(contextWindow && { contextWindow }),
           },
         });
@@ -337,7 +340,12 @@ export class Codex {
           if (message.method === 'thread/tokenUsage/updated') {
             const { last, total } = p.tokenUsage ?? {};
             if (this.toolSession && last && total) {
-              const keys = ['inputTokens', 'cachedInputTokens', 'outputTokens'];
+              const keys = [
+                'inputTokens',
+                'cachedInputTokens',
+                'outputTokens',
+                'reasoningOutputTokens',
+              ];
               baseline ??= Object.fromEntries(keys.map((k) => [k, total[k] - last[k]]));
               usage = Object.fromEntries(keys.map((k) => [k, total[k] - baseline[k]]));
             } else usage = last;

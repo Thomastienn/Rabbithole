@@ -106,7 +106,13 @@ export function chunkUsage(u) {
   const cached = u.prompt_tokens_details?.cached_tokens;
   const cacheRead =
     Number.isSafeInteger(cached) && cached >= 0 ? Math.min(cached, u.prompt_tokens) : 0;
-  return { input: u.prompt_tokens - cacheRead, output: u.completion_tokens, cacheRead };
+  const reasoning = u.completion_tokens_details?.reasoning_tokens;
+  return {
+    input: u.prompt_tokens - cacheRead,
+    output: u.completion_tokens,
+    cacheRead,
+    ...(Number.isSafeInteger(reasoning) && reasoning >= 0 && { reasoning }),
+  };
 }
 
 // Runs one model tool call through the turn's runner and emits its tool events; a failure goes back to the model as text.

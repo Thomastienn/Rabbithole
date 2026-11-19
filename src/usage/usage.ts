@@ -7,6 +7,7 @@ export type UsageEvent = {
   input: number | null;
   output: number | null;
   cacheRead: number | null;
+  reasoning?: number | null;
 };
 export type UsageRange = 'today' | 'week' | 'month' | 'year' | 'all';
 export type Unit = 'hour' | 'day' | 'month' | 'year';
@@ -15,6 +16,8 @@ export type Totals = {
   input: number;
   output: number;
   cacheRead: number;
+  // Part of output; null when no call in the group reported it.
+  reasoning: number | null;
   calls: number;
   unavailable: number;
 };
@@ -55,7 +58,17 @@ export function span(range: UsageRange, now: Date, year: number, first: number |
     : { from: new Date(start.getFullYear(), start.getMonth(), 1), to, unit: 'month' };
 }
 
-const empty = (): Totals => ({ input: 0, output: 0, cacheRead: 0, calls: 0, unavailable: 0 });
+const empty = (): Totals => ({
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  reasoning: null,
+  calls: 0,
+  unavailable: 0,
+});
+const addReasoning = (t: Totals, r: number | null) => {
+  if (r !== null) t.reasoning = (t.reasoning ?? 0) + r;
+};
 const add = (t: Totals, e: UsageEvent) => {
   if (e.input === null) {
     t.unavailable++;
@@ -64,6 +77,7 @@ const add = (t: Totals, e: UsageEvent) => {
   t.input += e.input;
   t.output += e.output!;
   t.cacheRead += e.cacheRead!;
+  addReasoning(t, e.reasoning ?? null);
   t.calls++;
 };
 // Providers report disjoint input, output and cache-read counts, so their sum is the total.
@@ -83,9 +97,10 @@ export function buckets(
   }
   if (cumulative)
     rows.forEach((r, i) => {
-      if (i)
-        for (const k of ['input', 'output', 'cacheRead', 'calls', 'unavailable'] as const)
-          r[k] += rows[i - 1][k];
+      if (!i) return;
+      for (const k of ['input', 'output', 'cacheRead', 'calls', 'unavailable'] as const)
+        r[k] += rows[i - 1][k];
+      addReasoning(r, rows[i - 1].reasoning);
     });
   return rows;
 }

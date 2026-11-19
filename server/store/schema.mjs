@@ -157,6 +157,14 @@ export function open(path) {
           CREATE INDEX usage_events_at ON usage_events(at);
           CREATE INDEX usage_events_message ON usage_events(message);
           COMMIT;`);
+    // Reasoning tokens are part of output, kept apart where the provider reports them; older rows keep NULL (not reported).
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(usage_events)')
+        .all()
+        .some((c) => c.name === 'reasoning')
+    )
+      this.db.exec('ALTER TABLE usage_events ADD COLUMN reasoning INTEGER');
     // Additive table: brief explanations sit beside tutor replies, keyed by reply and passage; the tutor never reads them.
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS briefs (message TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, concept TEXT, explanation TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(message, start, end))',
