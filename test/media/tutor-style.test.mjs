@@ -111,3 +111,22 @@ test('the default tutor style ends with the readability paragraph after the unch
   assert.match(readability, /^Write for reading top to bottom\./);
   assert.doesNotMatch(readability, /\d/);
 });
+
+test('the tool-path tutor prompt before learner data is at most half its pre-tool-call size and keeps its core rules', async () => {
+  const { APP_TOOLS } = await import('../../server/http/app-calls.mjs');
+  const { NEIGHBOURHOOD_RULE } = await import('../../server/neighbourhood.mjs');
+  // tutorSystem({ tools: [update_memory_note, find_images] }) at 8475eed^, before epic Rabbithole-tcl.
+  const BEFORE = 20265;
+  const tools = [...APP_TOOLS, { name: 'update_memory_note' }, { name: 'find_images' }];
+  const native = tutorSystem({ tools });
+  const definitions = JSON.stringify(
+    APP_TOOLS.map(({ name, description, parameters }) => ({ name, description, parameters })),
+  );
+  const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
+  for (const prompt of [native, text]) assert.ok(prompt.length <= BEFORE / 2, `${prompt.length}`);
+  for (const part of ['Math: write every formula', 'Reply layouts: there are eight', MEMORY_RULE])
+    assert.ok(native.includes(part), part);
+  assert.ok(native.endsWith(TUTOR_SKILLS + DEFAULT_TUTOR_STYLE));
+  const neighbourhood = { concepts: [{ name: 'Recursion', familiarity: 0.9 }], links: [] };
+  assert.ok(tutorSystem({ tools, neighbourhood }).includes(NEIGHBOURHOOD_RULE));
+});

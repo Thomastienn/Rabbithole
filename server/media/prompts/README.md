@@ -37,6 +37,8 @@ permission notice is kept beside the prompt.
     https://github.com/EveryInc/compound-engineering-plugin/blob/ee46dde75a40e297bd8eac4055a410a771d3ac1d/skills/ce-explain/SKILL.md
     Excluded: everything else (evidence gathering, subagents, artifact roots,
     shell blocks, publishing, check-in files).
+  - Trimmed to its core rules for the lean tutor prompt (Rabbithole-tcl.6):
+    one short paragraph per habit, without the examples and asides.
 - `humanizer.md` (tutor and video planner): blader/humanizer v3.1.0 `SKILL.md`
   (MIT, © 2025 Siqi Chen; `humanizer-LICENSE.txt`), commit
   `225a6f39ac85f76ee48dbad772ea4abe4ed6c9d8`:
@@ -46,7 +48,9 @@ permission notice is kept beside the prompt.
   act". Excluded: "How to work", voice matching, the return modes, the word
   lists beyond a few examples, and every before/after example. v4.0.0 is not
   used because it allows added specifics. The Wikipedia "Signs of AI writing"
-  page (CC BY-SA 4.0) that Humanizer credits was not copied.
+  page (CC BY-SA 4.0) that Humanizer credits was not copied. Trimmed for the
+  lean tutor prompt (Rabbithole-tcl.6): the 26 rules are folded into five
+  one-line groups (the "wrong reader" rule joins the leftovers).
 - `manim-teaching.md` (video planner, scoped to Manim cuts):
   adithya-s-k/manim_skill `skills/manim-composer/references/visual-techniques.md`
   and `narrative-patterns.md` (MIT, © 2026 Adithya S Kolavi;
