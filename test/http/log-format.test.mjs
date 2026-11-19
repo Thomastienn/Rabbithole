@@ -168,3 +168,25 @@ test('request paths retain route actions and UUIDs while masking arbitrary conte
     assert.equal(requestPath(path), path);
   assert.equal(requestPath('/api/PRIVATE_QUESTION'), '/api/:id');
 });
+
+test('a failure cause keeps words that only app tool schemas contain', async () => {
+  const logs = [];
+  const provider = {
+    async generate() {
+      throw new Error('Custom endpoint said: model PRIVATE_MODEL is missing.');
+    },
+  };
+  const tools = [{ name: 'record_turn', parameters: { required: ['to', 'text', 'name'] } }];
+  await assert.rejects(
+    loggedProvider((line) => logs.push(line), provider, 'chat', 'call-id', {
+      provider: 'openai',
+      model: 'PRIVATE_MODEL',
+    }).generate(
+      { tools, textTools: tools, model: 'PRIVATE_MODEL' },
+      'question',
+      () => {},
+      () => {},
+    ),
+  );
+  assert.match(logs.at(-1), /cause="Custom endpoint said: model \[redacted\] is missing\."/);
+});

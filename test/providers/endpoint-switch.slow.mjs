@@ -12,6 +12,7 @@ import { Codex } from '../../server/providers/codex.mjs';
 import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { APP_TOOLS } from '../../server/http/app-calls.mjs';
 
 test('all six provider switches preserve root and nested history/context, inherit choices, and repeat after restart', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-three-providers-')),
@@ -198,7 +199,10 @@ test('all six provider switches preserve root and nested history/context, inheri
             tutorSystem({
               tutorStyle: 'Fixture tutor style 59.',
               nativeTools: target === 'openai' ? [] : ['web_search'],
-              tools: target === 'openai' ? [] : [{ name: 'update_memory_note' }],
+              // The fake endpoint has no native tool calls, so it gets the app tools as text.
+              ...(target === 'openai'
+                ? { textTools: APP_TOOLS }
+                : { tools: [{ name: 'update_memory_note' }, ...APP_TOOLS] }),
             }),
           ),
           label,

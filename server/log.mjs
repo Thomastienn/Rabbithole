@@ -93,7 +93,9 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
         model: tree.model ?? selection.model,
         ...detail,
       };
-    const privateText = [...privateValues(tree), ...privateValues(text)];
+    // Tool definitions are app text; their short schema words would redact ordinary causes.
+    const { tools, textTools, ...data } = tree;
+    const privateText = [...privateValues(data), ...privateValues(text)];
     const items = new Map();
     let usage = null,
       status,
