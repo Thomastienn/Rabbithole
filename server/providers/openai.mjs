@@ -12,6 +12,7 @@ import {
   responseError,
 } from './endpointSettings.mjs';
 import { probeTools } from './toolProbe.mjs';
+import { QUICK_TOOLS } from '../tools/quickTools.mjs';
 import {
   chunkUsage,
   history,
@@ -335,6 +336,7 @@ class Endpoint {
       const system = tutorSystem(tree);
       const parts = inputParts(tree, text);
       const tools = tree.tools ?? [];
+      let answered = false;
       const messages = [
         { role: 'system', content: system },
         ...history(tree.messages ?? [], tools.length > 0),
@@ -456,15 +458,17 @@ class Endpoint {
         });
         // Text before the call is on screen before the tool runs, so show_visual lands after it.
         output('', true);
-        for (const c of round)
-          messages.push({
-            role: 'tool',
-            tool_call_id: c.id,
-            content: await runTool(tree, c, emit, signal, saved.apiKey),
-          });
-        if (round.every((c) => ['record_turn', 'start_discussion'].includes(c.name))) break;
+        answered = true;
+        for (const c of round) {
+          const content = await runTool(tree, c, emit, signal, saved.apiKey);
+          messages.push({ role: 'tool', tool_call_id: c.id, content });
+          // An accepted quick thinking answer is the whole reply; a rejected one goes back to be fixed.
+          answered &&= QUICK_TOOLS.includes(c.name) && !content.startsWith('Error:');
+        }
+        if (answered || round.every((c) => ['record_turn', 'start_discussion'].includes(c.name)))
+          break;
       }
-      if (!reply.shown)
+      if (!reply.shown && !answered)
         throw new EndpointError(
           'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
         );

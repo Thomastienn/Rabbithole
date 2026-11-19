@@ -8,6 +8,7 @@ import { runTool } from '../providers/chatStream.mjs';
 import { SHOW_VISUAL } from './showVisual.mjs';
 import { RECORD_TURN } from './recordTurn.mjs';
 import { MAKE_VIDEO } from './makeVideo.mjs';
+import { QUICK_TOOLS } from './quickTools.mjs';
 import { START_DISCUSSION } from './startDiscussion.mjs';
 
 // The runner already owns JSON Schemas; the SDK's low-level server keeps those authoritative.
@@ -54,6 +55,7 @@ export function toolMcp() {
         ![SHOW_VISUAL, MAKE_VIDEO, START_DISCUSSION, RECORD_TURN].some(
           (t) => t.name === definition.name,
         ) &&
+        !QUICK_TOOLS.includes(definition.name) &&
         !validator.getValidator(definition.parameters)(input).valid
       )
         throw new Error('Invalid tool arguments.');

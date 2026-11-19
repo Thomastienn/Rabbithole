@@ -44,6 +44,8 @@ export function readCall(request) {
       };
 }
 
+export const VERDICT_SHAPE =
+  'It holds a JSON array of objects {"concept": name, "level": 0-5, "confidence": "low" or "high"}. Levels: 0 misconception (states it wrongly), 1 heard of it (names it, no grasp), 2 partial (right idea, gaps or fuzzy), 3 explains it correctly in own words, 4 applies it to a new case, 5 teaches it (corrects someone, spots edge cases). Judge only what the message shows, never what your reply explains. Use "high" only when the message clearly shows the level.';
 // Tolerant: unreadable entries are skipped; the last entry for a concept wins. Null when no closed block parses.
 export function readVerdicts(blocks) {
   let verdicts = null;

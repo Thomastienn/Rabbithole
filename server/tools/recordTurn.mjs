@@ -1,4 +1,4 @@
-import { VERDICT_SHAPE } from '../media/diagrams.mjs';
+import { VERDICT_SHAPE } from '../media/reply-requests.mjs';
 
 // record_turn: the tutor's hidden end-of-reply record (ADR 0013), replacing the verdict and notes blocks.
 const LEVELS = VERDICT_SHAPE.slice(VERDICT_SHAPE.indexOf('Levels:'));

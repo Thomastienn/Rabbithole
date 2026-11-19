@@ -30,6 +30,10 @@ export function suggestionJobs(ctx) {
         running.controller.signal,
         ctx.suggestionTimeout,
         settings.model?.model,
+        {
+          capable: await ctx.toolCapable(selection).catch(() => false),
+          mcp: ctx.mcp,
+        },
       );
       store.addGraph(result.graph, message);
       store.finishSuggestions(
