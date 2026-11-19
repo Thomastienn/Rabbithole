@@ -3,7 +3,7 @@ import * as skills from './skills.mjs';
 import { MAX_CLIP_SECONDS } from './clips.mjs';
 
 export const CUT_PAUSE_FRAMES = 15;
-export const CUT_ATTEMPTS = 2;
+export const CUT_ATTEMPTS = 3;
 // Submissions a tool-calling cut writer may have checked within one attempt.
 export const CUT_CHECKS = 5;
 export const MAX_SOURCE = 64 * 1024;

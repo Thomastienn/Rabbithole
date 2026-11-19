@@ -200,15 +200,18 @@ for (const failure of ['brief', 'exhausted'])
       env.store.tree(tree.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
     );
     assert.equal(row.status, failure === 'exhausted' ? 'failed' : 'ready');
-    assert.deepEqual(writes, [1, 2, 1]);
-    assert.equal(repairs.length, 1);
+    assert.deepEqual(writes, failure === 'exhausted' ? [1, 3, 1] : [1, 2, 1]);
+    assert.equal(repairs.length, failure === 'exhausted' ? 2 : 1);
     assert.ok(repairs[0]);
     if (failure === 'exhausted')
       assert.match(row.error, /^Cut 2 of 3: \S.*\. Retry keeps the other cuts\.$/);
     assert.ok(!JSON.stringify(repairs).includes('/'), 'no absolute path reaches the repair');
     assert.equal(plans, 1);
     assert.equal(voices, 3, 'narration is reused for a rewritten cut');
-    assert.equal(env.store.usageEvents().events.filter((e) => e.task === 'video').length, 5);
+    assert.equal(
+      env.store.usageEvents().events.filter((e) => e.task === 'video').length,
+      failure === 'exhausted' ? 6 : 5,
+    );
     if (failure === 'exhausted')
       assert.equal((await env.get(`/api/trees/${tree.id}/artifacts/${row.id}/media`)).status, 404);
   });
@@ -278,19 +281,19 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
   assert.match(failed.error, /^Cut 2 of 3: .+\. Retry keeps the other cuts\.$/);
   await env.app.settled();
   const before = JSON.parse(failed.source);
-  assert.deepEqual(writes, [1, 2, 1]);
+  assert.deepEqual(writes, [1, 3, 1]);
 
   // Cancel the retry while its one cut write is held; the released late output must not publish.
   hold = Promise.withResolvers();
   await env.post(`/api/trees/${chat.id}/artifacts/${failed.id}/retry`);
-  await until(() => writes[1] === 3);
+  await until(() => writes[1] === 4);
   await env.post(`/api/trees/${chat.id}/artifacts/${failed.id}/cancel`);
   broken = false;
   hold.resolve();
   await env.app.settled();
   assert.equal(env.store.artifact(chat.id, failed.id).status, 'canceled');
   assert.equal((await env.get(`/api/trees/${chat.id}/artifacts/${failed.id}/media`)).status, 404);
-  assert.deepEqual(writes, [1, 3, 1]);
+  assert.deepEqual(writes, [1, 4, 1]);
   assert.equal(plans, 1);
 
   // Retry from the canceled attempt has nothing settled to keep, so it fails again with a fresh plan.
@@ -304,7 +307,7 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
   );
   await env.app.settled();
   assert.equal(plans, 2);
-  assert.deepEqual(writes, [2, 5, 2]);
+  assert.deepEqual(writes, [2, 7, 2]);
   assert.deepEqual(voices, [2, 2, 2]);
   const prior = JSON.parse(again.source);
 
@@ -315,7 +318,7 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
     return row.status === 'ready' && row;
   });
   assert.equal(plans, 2, 'Retry makes no plan call');
-  assert.deepEqual(writes, [2, 6, 2], 'exactly one cut call');
+  assert.deepEqual(writes, [2, 8, 2], 'exactly one cut call');
   assert.deepEqual(voices, [2, 2, 2], 'narration and timing are reused');
   assert.notEqual(ready.attempt, again.attempt);
   const data = JSON.parse(ready.source);
@@ -324,7 +327,7 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
     assert.equal(data.cuts[i].code, prior.cuts[i].code);
     assert.deepEqual(data.cuts[i].timing, prior.cuts[i].timing);
   }
-  assert.match(data.cuts[1].code, /CUT_1_W6/);
+  assert.match(data.cuts[1].code, /CUT_1_W8/);
   assert.ok(before.cuts[1].status === 'failed');
   assert.equal((await env.get(`/api/trees/${chat.id}/artifacts/${ready.id}/cuts`)).status, 200);
 
@@ -333,7 +336,7 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
     env.store.tree(chat.id).artifacts.some((a) => a.id !== ready.id && a.status === 'ready'),
   );
   assert.equal(plans, 3, 'a different version plans fresh');
-  assert.deepEqual(writes, [3, 7, 3]);
+  assert.deepEqual(writes, [3, 9, 3]);
 });
 
 test('a provider failure while writing a cut keeps its own wording', async (t) => {

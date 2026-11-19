@@ -173,7 +173,7 @@ test('a repair patch that does not apply gets one whole-source call in the same 
           }
           if (tree.instructions.endsWith(REPAIR_NOTE)) {
             calls.push(['whole', JSON.parse(text).failedCode]);
-            return complete(emit, repaired);
+            return complete(emit, outcome === 'ready' ? repaired : broken);
           }
           calls.push(['write']);
           complete(emit, broken);
@@ -198,7 +198,12 @@ test('a repair patch that does not apply gets one whole-source call in the same 
       assert.deepEqual(calls, [['write'], ['patch', broken], ['whole', broken]]);
       assert.equal(JSON.parse(row.source).cuts[0].code, repaired);
     } else {
-      assert.deepEqual(calls, [['write'], ['patch', broken]], 'no attempt past the limit');
+      const still = broken.replace('PRIVATE_SOURCE_MARKER', 'STILL_BROKEN');
+      assert.deepEqual(
+        calls,
+        [['write'], ['patch', broken], ['patch', still], ['whole', still]],
+        'no attempt past the limit',
+      );
       assert.match(row.error, /^Cut 1 of 1: .*import/i);
     }
   }
@@ -248,7 +253,7 @@ test('a Remotion cut whose audit stills throw in the page spends the repair; a r
     await env.app.stop();
     env.store.close();
     assert.equal(row.status, outcome, row.error);
-    assert.equal(repairs.length, 1);
+    assert.equal(repairs.length, outcome === 'ready' ? 1 : 2);
     assert.equal(repairs[0].validationError, crash);
     assert.equal(repairs[0].failedCode, composition);
     assert.equal(audits, 0, 'the repair is the audit');

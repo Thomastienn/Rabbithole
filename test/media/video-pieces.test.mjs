@@ -284,7 +284,7 @@ export const Loser = (props) => <div style={{ color: palette.paper }}><Winner x=
   );
 });
 
-test('set pieces get two tries and fail by name; Retry keeps the plan, then keeps set pieces that succeeded', async (t) => {
+test('set pieces get three tries and fail by name; Retry keeps the plan, then keeps set pieces that succeeded', async (t) => {
   const plan = videoPlanWithLooks();
   plan.cuts.pop();
   let plans = 0,
@@ -333,8 +333,12 @@ test('set pieces get two tries and fail by name; Retry keeps the plan, then keep
     env.store.tree(chat.id).artifacts.find((a) => a.status === 'failed'),
   );
   assert.equal(failed.error, 'Set pieces: missing export Winner. Retry keeps the plan.');
-  assert.equal(pieceCalls, 2);
-  assert.deepEqual(errors, [undefined, 'missing export Winner.'], 'the repair sees the error');
+  assert.equal(pieceCalls, 3);
+  assert.deepEqual(
+    errors,
+    [undefined, 'missing export Winner.', 'missing export Winner.'],
+    'the repair sees the error',
+  );
   assert.deepEqual(cutCalls, [0, 0]);
   await env.app.settled();
 
@@ -346,7 +350,7 @@ test('set pieces get two tries and fail by name; Retry keeps the plan, then keep
   });
   assert.match(cutFailed.error, /^Cut 2 of 2: /);
   assert.equal(plans, 1, 'Retry keeps the plan');
-  assert.equal(pieceCalls, 3);
+  assert.equal(pieceCalls, 4);
   await env.app.settled();
 
   cutOk = true;
@@ -356,8 +360,8 @@ test('set pieces get two tries and fail by name; Retry keeps the plan, then keep
     return r.status === 'ready' && r;
   });
   assert.equal(plans, 1);
-  assert.equal(pieceCalls, 3, 'Retry keeps set pieces that succeeded');
-  assert.deepEqual(cutCalls, [1, 3]);
+  assert.equal(pieceCalls, 4, 'Retry keeps set pieces that succeeded');
+  assert.deepEqual(cutCalls, [1, 4]);
   assert.equal(JSON.parse(ready.source).pieces, pieces);
 });
 
