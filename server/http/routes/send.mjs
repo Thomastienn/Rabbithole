@@ -404,6 +404,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             input: event.usage.input,
             output: event.usage.output,
             cacheRead: event.usage.cacheRead,
+            reasoning: event.usage.reasoning,
             ...(Number.isSafeInteger(event.usage.contextWindow) &&
               event.usage.contextWindow > 0 && {
                 context: { limit: event.usage.contextWindow, provider: tree.provider },

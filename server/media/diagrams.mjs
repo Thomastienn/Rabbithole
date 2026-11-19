@@ -399,7 +399,7 @@ export async function generateDiagram(
   selection,
   task,
   parentSignal,
-  timeout = 900000,
+  timeout = 7200000,
   parse,
 ) {
   const controller = new AbortController();

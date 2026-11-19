@@ -14,14 +14,17 @@ export const usage = {
       )
     )
       usage = null;
+    const reasoning =
+      Number.isSafeInteger(usage?.reasoning) && usage.reasoning >= 0 ? usage.reasoning : null;
     this.db
       .prepare(
-        `INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message,stage,cut)
-         VALUES(?,?,?,?,?,?,?,?,(SELECT id FROM messages WHERE id=?),?,?)
+        `INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,reasoning,message,stage,cut)
+         VALUES(?,?,?,?,?,?,?,?,?,(SELECT id FROM messages WHERE id=?),?,?)
          ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,
            input=coalesce(excluded.input,usage_events.input),
            output=coalesce(excluded.output,usage_events.output),
-           cacheRead=coalesce(excluded.cacheRead,usage_events.cacheRead)`,
+           cacheRead=coalesce(excluded.cacheRead,usage_events.cacheRead),
+           reasoning=coalesce(excluded.reasoning,usage_events.reasoning)`,
       )
       .run(
         id,
@@ -32,6 +35,7 @@ export const usage = {
         usage?.input ?? null,
         usage?.output ?? null,
         usage?.cacheRead ?? null,
+        reasoning,
         message,
         stage,
         cut,
@@ -42,7 +46,7 @@ export const usage = {
     return this.db
       .prepare(
         `SELECT u.stage,u.model,COUNT(*) AS calls,COUNT(u.input) AS reported,
-          COALESCE(SUM(u.input),0) AS input,COALESCE(SUM(u.output),0) AS output,COALESCE(SUM(u.cacheRead),0) AS cacheRead
+          COALESCE(SUM(u.input),0) AS input,COALESCE(SUM(u.output),0) AS output,COALESCE(SUM(u.cacheRead),0) AS cacheRead,SUM(u.reasoning) AS reasoning
         FROM artifacts a JOIN usage_events u ON u.id LIKE 'video:'||a.attempt||':%'
         WHERE a.conversation=? AND a.id=? AND a.kind='video'
         GROUP BY u.stage,u.model ORDER BY MIN(u.at),MIN(u.rowid)`,
@@ -66,7 +70,7 @@ export const usage = {
       first: this.db.prepare('SELECT MIN(at) AS at FROM usage_events').get().at,
       events: this.db
         .prepare(
-          'SELECT at,provider,model,task,input,output,cacheRead FROM usage_events WHERE at>=? AND at<? ORDER BY at,rowid',
+          'SELECT at,provider,model,task,input,output,cacheRead,reasoning FROM usage_events WHERE at>=? AND at<? ORDER BY at,rowid',
         )
         .all(from, to),
     };

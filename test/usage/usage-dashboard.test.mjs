@@ -17,7 +17,7 @@ const ev = (at, task, provider, model, counts) => ({
   cacheRead: counts?.[2] ?? null,
 });
 const events = [
-  ev(+now - 1000, 'chat', 'claude', 'sonnet', [1200, 300, 800]),
+  { ...ev(+now - 1000, 'chat', 'claude', 'sonnet', [1200, 300, 800]), reasoning: 120 },
   ev(+now - 900, 'suggestions', 'claude', 'haiku', [200, 50, 0]),
   ev(+now - 800, 'chat', 'codex', 'gpt-5', null),
   ev(+now - 700, 'chat', 'openai:local', 'qwen3:32b', null),
@@ -79,6 +79,7 @@ test('usage dashboard totals, charts and breakdowns agree, never estimate unrepo
     [...container.querySelectorAll('.usage-legend b')].map((b) => b.textContent),
     ['1,800', '390', '880'],
   );
+  assert.match(text('.usage-legend'), /390 output \(120 reasoning\)/);
   assert.match(text('.usage-legend'), /5 calls, 2 without reported counts/);
   assert.equal(
     container.querySelector('svg[role=group]').getAttribute('aria-label'),
@@ -89,7 +90,7 @@ test('usage dashboard totals, charts and breakdowns agree, never estimate unrepo
   await radio('Cumulative');
   assert.match(
     bars().at(-1).getAttribute('aria-label'),
-    /1,800 input, 390 output, 880 cache-read tokens \(3,070 total\); 5 calls/,
+    /1,800 input, 390 output \(120 reasoning\), 880 cache-read tokens \(3,070 total\); 5 calls/,
   );
 
   const models = rows();

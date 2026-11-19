@@ -197,7 +197,7 @@ export async function generateVisual(
   selection,
   input,
   parentSignal,
-  timeout = 900000,
+  timeout = 7200000,
   onPartial = () => {},
   { capable = false, mcp } = {},
 ) {

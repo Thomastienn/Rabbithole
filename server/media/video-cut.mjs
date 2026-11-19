@@ -126,10 +126,6 @@ export const FIX_NOTE =
   DIFF +
   ' of code. Include emphasis only to replace the marks, using the same mark shape as the plan, with coordinates in 1920x1080 frame pixels placed on the content each mark points at.';
 
-// The whole-source fallback of an audit fix whose patch does not apply.
-export const FIX_WHOLE_NOTE =
-  '\nThis is an audit fix. The task also holds issues, each naming what is wrong and where, code, the cut as written, emphasis, the pen and cursor marks drawn above it, and previousLastFrame; when previousLastFrame is true the attached image is the previous cut\'s last frame. Fix every issue and leave the rest of the cut as it is; the plan is the target, not the previous frame. Instead of bare source, return only compact JSON, no commentary: {"code":"<the whole corrected cut source>","emphasis":[...]}. Include emphasis only to replace the marks, using the same mark shape as the plan, with coordinates in 1920x1080 frame pixels placed on the content each mark points at.';
-
 // Appended to the set-piece instructions for a repair of a module that failed its check.
 export const PIECES_PATCH_NOTE =
   '\nThis is a repair. The task also holds validationError, the error the previous module hit. failedCode, the module that failed (when library is present, only the code of your previous answer; its piece choices stay as they were), follows the JSON task as raw lines after a line reading failedCode:. Fix the error under the same rules. Instead of the whole module, return only ' +

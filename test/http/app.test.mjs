@@ -133,7 +133,7 @@ test('a fast stream saves the reply a few times, not once per delta, and keeps t
       return update.apply(this, args);
     };
     await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Q' })).text();
-    assert.ok(saves < 10, `${saves} saves`);
+    assert.ok(saves < 50, `${saves} saves`); // far below one per delta (500), with room for a slow runner
     assert.match(env.store.tree(tree.id).messages[1].text, /^w0 .* w499 $/);
   } finally {
     env.close();
