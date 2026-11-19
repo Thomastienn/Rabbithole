@@ -46,7 +46,7 @@ export async function downloadClip(
 ) {
   const work = await mkdtemp(join(tmpdir(), 'rabbithole-clip-'));
   try {
-    const options = { signal, timeout: 120000, maxBuffer: 1024 * 1024 };
+    const options = { signal, timeout: 300000, maxBuffer: 1024 * 1024 };
     await run(
       clips.ytDlp,
       [

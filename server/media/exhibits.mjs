@@ -30,7 +30,7 @@ export function imageType(bytes) {
 }
 
 async function download(url, { signal, lookup, isPublic }) {
-  const timed = AbortSignal.any([AbortSignal.timeout(30000), ...(signal ? [signal] : [])]);
+  const timed = AbortSignal.any([AbortSignal.timeout(60000), ...(signal ? [signal] : [])]);
   let target = new URL(url);
   for (let redirects = 0; ; redirects++) {
     if (!['http:', 'https:'].includes(target.protocol)) throw new Error('not an http(s) image');

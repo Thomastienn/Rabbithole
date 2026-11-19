@@ -54,7 +54,7 @@ export function sandboxManim(workspace, output, signal, onProgress, runtime) {
     ],
     signal,
     onProgress,
-    120000 + (timing.durationInFrames / 30) * 15000,
+    300000 + (timing.durationInFrames / 30) * 30000,
     manimBindings(runtime.python),
   );
 }
@@ -66,6 +66,6 @@ export const checkManim = (workspace, signal, runtime) =>
     [runtime.python, '-I', '-B', join(projectRoot, 'server/media/manim-render.py'), '--check'],
     signal,
     () => {},
-    30000,
+    60000,
     manimBindings(runtime.python),
   );

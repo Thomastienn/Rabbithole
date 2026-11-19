@@ -409,7 +409,7 @@ export async function writeCuts({
         }
         const narration = await wait(
           narrate(plan.cuts[index].narration, signal),
-          120000 + plan.cuts[index].narration.length * 30,
+          300000 + plan.cuts[index].narration.length * 60,
           'Video narration timed out.',
         );
         await mkdir(join(dir, 'out'), { recursive: true, mode: 0o700 });

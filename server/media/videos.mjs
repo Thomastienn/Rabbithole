@@ -16,7 +16,7 @@ import { sandboxProcess, REPO } from './video-sandbox.mjs';
 import { detectManim } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
 
-const MAX_MEDIA = 200 * 1024 * 1024;
+const MAX_MEDIA = 1024 * 1024 * 1024;
 export const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
 export const MANIM_KIT = readFileSync(new URL('./manim-kit.py', import.meta.url), 'utf8');
 // The learner must name a video; the tutor's block alone never starts one.
@@ -33,9 +33,9 @@ export { SANDBOX } from './video-sandbox.mjs';
 export function sandboxRender(workspace, output, signal, onProgress = () => {}, timeout) {
   const budget =
     timeout ??
-    120000 +
+    300000 +
       (JSON.parse(readFileSync(join(workspace, 'narration.json'), 'utf8')).durationInFrames / 30) *
-        15000;
+        30000;
   return sandboxProcess(
     workspace,
     [
@@ -65,7 +65,7 @@ export function sandboxSnapshot(workspace, stills, signal) {
     ],
     signal,
     () => {},
-    120000 + stills.length * 15000,
+    300000 + stills.length * 30000,
   );
 }
 
@@ -142,7 +142,9 @@ export async function generateVideo({
       clearTimeout(timer);
     }
   };
-  const deadline = Date.now() + (timeout ?? 600000);
+  // 20 minutes, stretched to 4 per cut once the plan is known, so slow models and long videos fit.
+  const started = Date.now();
+  let deadline = started + (timeout ?? 1200000);
   const caller = (base, choice) => (instructions, input, onText, images, cut, tools) =>
     wait(
       videoCall(base, choice, instructions, input, controller.signal, onText, images, cut, tools),
@@ -218,6 +220,7 @@ export async function generateVideo({
       );
     if (builder?.problem()) throw new Error(`Video plan is incomplete: ${builder.problem()}.`);
     const plan = prior?.plan ?? builder.plan();
+    if (timeout == null) deadline = Math.max(deadline, started + plan.cuts.length * 240000);
     const { exhibits, references } = await videoMedia({
       plan,
       prior,
