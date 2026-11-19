@@ -167,7 +167,7 @@ export function replyArtifacts(
     if (media().some((a) => a.kind === 'video'))
       throw new Error(`${name} cannot join a video: a video stands alone in its reply.`);
   };
-  const showVisual = (request, position) => {
+  const showVisual = (request, position, side = null) => {
     besideVideo('show_visual');
     const earlierTitles = [...artifacts.values()]
       .filter((a) => a.kind === 'visual')
@@ -185,6 +185,7 @@ export function replyArtifacts(
         earlierTitles,
       }),
       position,
+      side,
     );
     artifacts.set(`call:${calls++}`, artifact);
     send({ type: 'artifact', artifact: live(artifact) });

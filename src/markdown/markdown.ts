@@ -9,7 +9,7 @@ import CopyButton from './CopyButton.ts';
 import { codeTokens } from './codeTokens.ts';
 import ReplyImage, { imageUrl, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
-import { layout } from './layouts.ts';
+import { figure, layout } from './layouts.ts';
 export { plainText };
 
 type Span = { start: number; end: number };
@@ -100,7 +100,7 @@ export function renderMarkdown(
   raw: string,
   reveal?: Span,
   underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
-  slots: { at: number; node: ReactNode; kind?: string }[] = [],
+  slots: { at: number; node: ReactNode; kind?: string; side?: string | null }[] = [],
   sources: Record<string, ImageSource> = {},
   flow = false,
   resources: Record<string, string> = {},
@@ -214,13 +214,35 @@ export function renderMarkdown(
     switch (n.type) {
       case 'root': {
         const take = (until: number) =>
-          pending
-            .splice(0, pending.filter((slot) => slot.at <= until).length)
-            .map((slot) => slot.node);
-        return [
-          ...(n.children ?? []).flatMap((c) => [...take(pos(c).start), node(c)]),
-          ...take(Infinity),
-        ];
+            pending.splice(0, pending.filter((slot) => slot.at <= until).length),
+          children = n.children ?? [],
+          out: ReactNode[] = [];
+        // A sided visual sits beside the section after it: up to the next heading, directive, rule or visual.
+        const ends = (c: MarkdownNode) =>
+          ['heading', 'containerDirective', 'thematicBreak'].includes(c.type) ||
+          pending[0]?.at <= pos(c).start;
+        for (let i = 0; i < children.length; i++) {
+          const c = children[i],
+            taken = take(pos(c).start),
+            sided = taken.filter((slot) => slot.side === 'left' || slot.side === 'right');
+          out.push(...taken.filter((slot) => !sided.includes(slot)).map((slot) => slot.node));
+          if (!sided.length || flow || c.type === 'containerDirective') {
+            out.push(...sided.map((slot) => slot.node), node(c));
+            continue;
+          }
+          const section = [c];
+          while (i + 1 < children.length && !ends(children[i + 1])) section.push(children[++i]);
+          out.push(
+            figure(
+              `side-${pos(c).start}`,
+              sided[0].side === 'right',
+              false,
+              sided.map((slot, j) => h('div', { key: j, className: 'layout-item' }, slot.node)),
+              section.map((s) => node(s)),
+            ),
+          );
+        }
+        return [...out, ...take(Infinity).map((slot) => slot.node)];
       }
       case 'text':
         return sourceLines(raw, n)

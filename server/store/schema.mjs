@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
         kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual','discussion')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
-        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER,
+        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER, side TEXT,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
@@ -462,6 +462,14 @@ export const schema = {
       this.db.exec('ALTER TABLE trees ADD COLUMN working_thread TEXT');
     if (!columns.includes('title_renamed'))
       this.db.exec('ALTER TABLE trees ADD COLUMN title_renamed INTEGER NOT NULL DEFAULT 0');
+    // A visual's side beside the section after it; older artifacts sit in the flow.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(artifacts)')
+        .all()
+        .some((c) => c.name === 'side')
+    )
+      this.db.exec('ALTER TABLE artifacts ADD COLUMN side TEXT');
   },
   // SQLite cannot alter a CHECK in place: rebuild the table when its definition lacks the marker, keeping every saved column.
   rebuildArtifacts(marker) {

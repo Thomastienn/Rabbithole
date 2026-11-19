@@ -11,7 +11,7 @@ export const SHOW_VISUAL = {
     'Call it where the visual belongs in the explanation, as early as that is; never collect visuals at the end. Use one visual per idea; for a complex idea, call it several times for small visuals in order. ' +
     'A visual is a section of your reply that the learner reads in place, so let your text carry what the visual cannot, and keep technical detail and precise terms in your text. ' +
     'Another model draws it from these arguments and your reply so far; never write visual code yourself. The result is "queued": continue your reply right after the visual without repeating any text. ' +
-    'Give after: the last few words of your reply text the visual follows, quoted exactly, so it lands there even when you call it after writing more. Never put a visual inside :::figure, which is for images only. Ready visuals appear in later history only as artifact id, title and description. ' +
+    'Give after: the last few words of your reply text the visual follows, quoted exactly, so it lands there even when you call it after writing more. Give side, left or right, to set the visual beside the section that follows it; leave it out to keep the visual in the flow. Never put a visual inside :::figure, which is for images only. Ready visuals appear in later history only as artifact id, title and description. ' +
     'Check yourself: at most once per reply, give check_answer to make a predict-then-reveal check when predicting the next step or an outcome would help the learner test an idea, after enough context to reason about it. Honor requests for a check and requests to skip quizzes; never quiz on short factual answers, casual turns or when the learner wants a direct explanation; never require an answer, grade the learner or hold back the explanation. Keep title, alt and your text free of the hidden answer.',
   parameters: {
     type: 'object',
@@ -31,6 +31,11 @@ export const SHOW_VISUAL = {
       after: {
         type: 'string',
         description: `The last few words of your reply text the visual follows, quoted exactly, at most ${AFTER} characters.`,
+      },
+      side: {
+        type: 'string',
+        enum: ['left', 'right'],
+        description: 'Optional: set the visual on this side of the section that follows it.',
       },
       check_answer: {
         type: 'string',
@@ -60,6 +65,15 @@ export function readShowVisual(input, replySoFar = '') {
   }
   const context = replySoFar.trim().slice(-CONTEXT);
   return Object.freeze({ ...request, ...(context && { context }) });
+}
+
+// Which side of the following section a visual sits on; null keeps it in the flow.
+export function visualSide(input) {
+  const side = input?.side;
+  if (side === undefined || side === null) return null;
+  if (side !== 'left' && side !== 'right')
+    throw new Error('show_visual side must be left or right, or left out.');
+  return side;
 }
 
 // Where a visual lands: its call's position, or the end of the first match of after in this response's text (from start).

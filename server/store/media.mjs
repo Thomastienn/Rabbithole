@@ -11,6 +11,7 @@ export const media = {
   },
   // Videos keep frozen input and an attempt; source holds their private plan and ordered cuts.
   // position: offset in the stored reply text where the request block was removed; null renders after the reply.
+  // side: left or right beside the section after position (visuals); null sits in the flow.
   pendingArtifact(
     conversation,
     message,
@@ -19,11 +20,12 @@ export const media = {
     kind = 'mermaid',
     input = null,
     position = null,
+    side = null,
   ) {
     const id = randomUUID();
     const result = this.db
       .prepare(
-        "INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created,input,attempt,position) SELECT ?,?,?,?,'pending',?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')",
+        "INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created,input,attempt,position,side) SELECT ?,?,?,?,'pending',?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')",
       )
       .run(
         id,
@@ -36,6 +38,7 @@ export const media = {
         input,
         kind === 'video' ? randomUUID() : null,
         position,
+        side,
         message,
         conversation,
       );

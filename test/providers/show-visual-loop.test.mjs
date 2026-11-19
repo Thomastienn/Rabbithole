@@ -144,7 +144,7 @@ test('a custom endpoint that writes the whole reply and then calls show_visual p
     return streamToolCalls(
       res,
       [
-        { name: 'show_visual', input: { ...call, after: 'Halve the list.' } },
+        { name: 'show_visual', input: { ...call, after: 'Halve the list.', side: 'right' } },
         { name: 'show_visual', input: { ...call, after: 'compare  THE middle.' } },
         { name: 'show_visual', input: { ...call, after: 'Split the array.' } },
       ],
@@ -158,5 +158,10 @@ test('a custom endpoint that writes the whole reply and then calls show_visual p
   assert.deepEqual(
     saved.artifacts.map((a) => a.position),
     [' Compare', ' Search', null].map((s) => (s ? reply.indexOf(s) : reply.length)),
+  );
+  // Reopening reads the stored side; a visual without side sits in the flow.
+  assert.deepEqual(
+    saved.artifacts.map((a) => a.side),
+    ['right', null, null],
   );
 });
