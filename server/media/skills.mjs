@@ -15,6 +15,7 @@ export const VISUAL_SKILL = read('frontend-design');
 // Loaded by the visual writer through load_skill.
 export const THREEJS_SKILL = read('threejs');
 export const MOTION_DESIGN_SKILL = read('motion-design');
+export const GSAP_SKILL = read('gsap');
 // Rabbithole's own texts, not vendored.
 export const HOUSE_STYLE_SKILL = read('house-style');
 export const FOCAL_OBJECT_SKILL = read('focal-object');

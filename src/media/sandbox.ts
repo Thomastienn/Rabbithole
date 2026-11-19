@@ -4,6 +4,7 @@ import mermaid from 'mermaid';
 import * as THREE from 'three';
 import katex from 'katex';
 import * as d3 from 'd3';
+import { gsap } from 'gsap';
 import { renderVisual } from './visualMarkup';
 import { reflectSvgHidden, stepThrough } from './stepThrough';
 import 'katex/dist/katex.min.css';
@@ -17,6 +18,7 @@ Object.assign(window, {
   THREE,
   katex,
   d3,
+  gsap,
   stepThrough,
 });
 reflectSvgHidden(window);

@@ -118,7 +118,7 @@ Retrieved and licence re-checked at the pinned commits on 2026-11-16 (via
 ### Loadable visual skills
 
 The visual writer loads these with its `load_skill` tool (`server/media/visuals.mjs`);
-the server rejects a fragment that uses three.js or animation without the
+the server rejects a fragment that uses three.js, GSAP or animation without the
 matching skill once and retries with it in the prompt. Retrieved and licence
 checked at the pinned commits on 2026-11-19 (via `gh api`). Each excerpt is
 rewritten and shortened, with code examples dropped.
@@ -142,6 +142,18 @@ rewritten and shortened, with code examples dropped.
   The d3 easing names are Rabbithole's. Excluded: brand personality and
   emotional-quality items, the personality, material, spring and Apple tables,
   severity tiers, `SKILL.md` and the director, pattern and export files.
+- `gsap.md` (Rabbithole-tcl.9, retrieved and licence checked 2026-11-19):
+  greensock/gsap-skills `skills/gsap-core/SKILL.md` and
+  `skills/gsap-timeline/SKILL.md` (MIT, © 2026 GreenSock;
+  `gsap-skills-LICENSE.txt`), commit
+  `aed9cfd3277740755f6bfc1155c7aa645403b760`:
+  https://github.com/greensock/gsap-skills/blob/aed9cfd3277740755f6bfc1155c7aa645403b760/skills/gsap-core/SKILL.md
+  https://github.com/greensock/gsap-skills/blob/aed9cfd3277740755f6bfc1155c7aa645403b760/skills/gsap-timeline/SKILL.md
+  Adapted to the preloaded core `gsap` global and the visual root. Excluded:
+  library-recommendation and Webflow text, CustomEase and every other plugin,
+  ScrollTrigger, gsap.defaults(), clearProps, CSS variables, directional
+  rotation, overwrite and the other skills. The sandbox's `gsap` package
+  itself ships under GreenSock's standard no-charge licence, not MIT.
 
 ### Rabbithole's own texts
 

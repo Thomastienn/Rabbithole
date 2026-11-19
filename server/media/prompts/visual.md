@@ -99,7 +99,7 @@ Rabbithole's fragment contract:
   width rather than shrinking a wide diagram and all its text. Controls must wrap.
 - No network APIs, remote resources, links, images, navigation, storage, parent
   access or messaging. Use inline SVG/HTML or the globals already loaded:
-  mermaid, THREE, katex, d3 and stepThrough. No imports, external scripts or other libraries.
+  mermaid, THREE, katex, d3, gsap (core only, no plugins) and stepThrough. No imports, external scripts or other libraries.
 - Animations start paused or play once. Honor prefers-reduced-motion, provide
   pause/reset when needed, and stop animation when the page is hidden.
 - All interaction must be keyboard-operable. Preserve native keyboard controls

@@ -8,6 +8,7 @@ import {
   ANALOGY_SKILL,
   THREEJS_SKILL,
   MOTION_DESIGN_SKILL,
+  GSAP_SKILL,
 } from './skills.mjs';
 import { readCall } from './reply-requests.mjs';
 
@@ -20,11 +21,17 @@ const SKILLS = {
     text: THREEJS_SKILL,
     uses: /\bTHREE\s*\./,
   },
+  gsap: {
+    description: 'GSAP core craft: tweens, eases, staggers, timelines and playback control.',
+    when: 'any animation with gsap',
+    text: GSAP_SKILL,
+    uses: /\bgsap\s*\./,
+  },
   'motion-design': {
     description: 'motion pacing: a motion checklist and duration and easing tables.',
-    when: 'any animation (d3 transitions, CSS transitions or keyframes)',
+    when: 'any animation (GSAP, d3 transitions, CSS transitions or keyframes)',
     text: MOTION_DESIGN_SKILL,
-    uses: /\.transition\s*\(|\btransition(?:-[a-z-]+)?\s*:|@keyframes\b/i,
+    uses: /\bgsap\s*\.|\.transition\s*\(|\btransition(?:-[a-z-]+)?\s*:|@keyframes\b/i,
   },
 };
 export const LOAD_SKILL = {
@@ -133,7 +140,7 @@ async function validate(source) {
     invalid('stock pieces are retired; draw every object yourself in the house style');
   const javascript = (code) => {
     if (
-      /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|Worker|SharedWorker|RTCPeerConnection|serviceWorker)\s*[.(\[]|\b(?:import|require)\s*\(|\bgsap\s*\.|\bnew\s+Chart\b|\bLeaflet\s*\.|\w*Loader\b/.test(
+      /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|Worker|SharedWorker|RTCPeerConnection|serviceWorker)\s*[.(\[]|\b(?:import|require)\s*\(|\bnew\s+Chart\b|\bLeaflet\s*\.|\w*Loader\b/.test(
         code,
       )
     )
