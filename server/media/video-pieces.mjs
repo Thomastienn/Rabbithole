@@ -253,6 +253,7 @@ export async function writeSetPieces({
     } catch (e) {
       signal.throwIfAborted();
       error = e;
+      if (e.choice) failed = null;
     }
   }
 }

@@ -385,6 +385,8 @@ export function libraryPieces(source, brief, names, parts = []) {
 }
 
 const USES = ['reuse', 'variant', 'new'];
+// A wrong piece choice, which a patch of the code cannot fix.
+const choiceError = (message) => Object.assign(new Error(message), { choice: true });
 // The set-piece answer when library matches were offered: {"pieces":[{name, use, id?, roles?}], "code"}.
 // Reuse and variant name one of that object's library matches; code holds only variant and new pieces.
 // With solid, a reused piece's saved 3D form is added by the app too, so it must not be written either.
@@ -398,9 +400,9 @@ export function pieceChoices(raw, names, matches, brief, solid = false) {
   const choices = names.map((name, i) => {
     const c = answer.pieces.find((p) => p?.name === name);
     if (!c || !USES.includes(c.use))
-      throw new Error(`no reuse, variant or new choice for ${name}.`);
+      throw choiceError(`no reuse, variant or new choice for ${name}.`);
     const piece = c.use === 'new' ? null : matches[i]?.find((m) => m.id === c.id);
-    if (c.use !== 'new' && !piece) throw new Error(`${name} names a piece that was not offered.`);
+    if (c.use !== 'new' && !piece) throw choiceError(`${name} names a piece that was not offered.`);
     if (
       c.roles !== undefined &&
       !(
@@ -409,7 +411,7 @@ export function pieceChoices(raw, names, matches, brief, solid = false) {
         Object.values(c.roles).every((r) => Object.hasOwn(brief.paletteRoles, r))
       )
     )
-      throw new Error(`${name} maps roles outside the brief.`);
+      throw choiceError(`${name} maps roles outside the brief.`);
     const written = (n) =>
       new RegExp(`\\b(?:function|const|let|var|class)\\s+${RegExp.escape(n)}\\b`).test(answer.code);
     if (c.use === 'reuse' && (written(name) || (solid && piece.source3d && written(`${name}3D`))))
