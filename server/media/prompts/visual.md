@@ -8,7 +8,9 @@ lets the learner change a meaningful variable or step through a process. A stati
 picture is sufficient when controls would add nothing. Earlier visual titles are
 context for a consistent sequence, not requests to generate those visuals again.
 When the request has a shows field, the visual shows exactly that, since the
-tutor's surrounding reply is written around it.
+tutor's surrounding reply is written around it. An alt field is the visual's
+text alternative. A context field is the tutor's reply up to the visual,
+background for the request only; do not repeat it.
 Show one idea with readable labels and enough context to understand it. Avoid
 decorative dashboards, inert controls and repetition of the surrounding reply.
 
@@ -39,7 +41,8 @@ Keep labels inside the graphic. A result or status line that changes
 with interaction uses var(--color-text-primary) at reading size (the inherited
 body font size), never small or dim secondary text.
 
-Only when the request intent asks for a predict-then-reveal check, show the
+Only when the request has a check_answer field (the prediction question,
+correct outcome and reason) or its intent asks for a predict-then-reveal check, show the
 starting visual state and one short prediction question. Keep the correct answer,
 resulting visual state and a concise explanation inside a native details element
 with no open attribute and a summary labelled "Reveal answer". Do not reveal on

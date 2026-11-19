@@ -1,5 +1,6 @@
 import { replyArtifacts } from '../reply-artifacts.mjs';
 import { nativeTools as nativeToolsFor } from '../../tools/runner.mjs';
+import { SHOW_VISUAL, readShowVisual } from '../../tools/showVisual.mjs';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { diagramReply, generateDiagram, tutorContext } from '../../media/diagrams.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
@@ -151,7 +152,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
   const heartbeat = setInterval(() => {
     if (!res.destroyed) res.write(': keepalive\n\n');
   }, 15000);
-  const { artifacts, prepareArtifacts } = replyArtifacts(ctx, {
+  const { artifacts, prepareArtifacts, showVisual } = replyArtifacts(ctx, {
     id,
     tree,
     user,
@@ -314,12 +315,16 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     const capable = await ctx.toolCapable(tree);
     const settings = store.tutorTools();
     const nativeTools = nativeToolsFor({ provider: tree.provider, capable, settings });
-    const tools = await ctx.tools.tools({
-      provider: tree.provider,
-      capable,
-      settings,
-      signal: controller.signal,
-    });
+    // show_visual is always offered to a tool-capable model, after the learner's tutor tools.
+    const tools = [
+      ...(await ctx.tools.tools({
+        provider: tree.provider,
+        capable,
+        settings,
+        signal: controller.signal,
+      })),
+      ...(capable ? [SHOW_VISUAL] : []),
+    ];
     const neighbourhood = await ctx.neighbourhood(
       [prompt, tree.branch?.text].filter(Boolean).join('\n'),
       controller.signal,
@@ -332,8 +337,13 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         ...((nativeTools.length || tools.length) && { nativeTools, mcp: ctx.mcp }),
         ...(tools.length && {
           tools,
-          runTool: (name, input, signal) =>
-            ctx.tools.run(name, input, { conversation: id, reply, signal }),
+          runTool: (name, input, signal) => {
+            if (name !== SHOW_VISUAL.name)
+              return ctx.tools.run(name, input, { conversation: id, reply, signal });
+            if (finished) throw new Error('The reply has already ended.');
+            showVisual(readShowVisual(input, text), text.length);
+            return 'queued';
+          },
         }),
         tutorStyle: store.tutorStyle(),
         memoryNote: store.memoryNote(),
@@ -365,7 +375,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
           prepareArtifacts(output);
         }
         if (event.type === 'status') status = event.status;
-        if (event.type === 'tool') {
+        // show_visual is media, not tool activity.
+        if (event.type === 'tool' && event.tool.name !== SHOW_VISUAL.name) {
           if (store.tree(id)) store.toolCall(id, reply, event.tool);
           send({ type: 'tool', tool: event.tool });
         }

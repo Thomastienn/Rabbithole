@@ -45,6 +45,60 @@ export const history = (messages, replayTools) =>
       { role: m.role, content: m.text },
     ]);
 
+// Reply text across tool rounds: a later round starts a new paragraph, and one that starts by
+// repeating shown text or the last round's text (exactly, after leading space) has that prefix dropped.
+// A round is held while it could still be a repeat; a partial repeat that ends is shown as written.
+export function roundText(output) {
+  let shown = '',
+    previous = '',
+    round;
+  const show = (text) => {
+    if (!text) return;
+    if (round.separate) output('\n\n');
+    round.separate = false;
+    shown += text;
+    output(text);
+  };
+  return {
+    get shown() {
+      return shown;
+    },
+    start() {
+      const repeats = [shown, previous]
+        .map((r) => r.trim())
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length);
+      round = { separate: !!shown, content: '', held: repeats.length ? '' : null, repeats };
+    },
+    write(text) {
+      round.content += text;
+      // After a dropped repeat, the text resumes at its first non-space character.
+      if (round.resume) text = text.trimStart();
+      if (round.held === null) {
+        if (text) round.resume = false;
+        return show(text);
+      }
+      round.held += text;
+      const start = round.held.trimStart(),
+        repeat = round.repeats.find((r) => start.startsWith(r));
+      if (repeat) {
+        round.held = null;
+        text = start.slice(repeat.length).trimStart();
+        round.resume = !text;
+        show(text);
+      } else if (!round.repeats.some((r) => r.startsWith(start))) {
+        [text, round.held] = [round.held, null];
+        show(text);
+      }
+    },
+    end() {
+      if (round.held?.trim()) show(round.held);
+      round.held = null;
+      previous = round.content;
+    },
+  };
+}
+
 // One call's reported usage in Rabbithole's counts (cache reads apart from input), or null.
 export function chunkUsage(u) {
   if (![u?.prompt_tokens, u?.completion_tokens].every((n) => Number.isSafeInteger(n) && n >= 0))

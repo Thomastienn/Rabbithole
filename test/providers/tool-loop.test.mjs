@@ -115,7 +115,10 @@ test('a tools-capable endpoint model reads a page through read_page and answers 
   assert.equal(env.chats().length, 2);
   assert.deepEqual(
     first.body.tools.map((t) => [t.type, t.function.name]),
-    [['function', 'read_page']],
+    [
+      ['function', 'read_page'],
+      ['function', 'show_visual'],
+    ],
   );
   assert.doesNotMatch(first.body.messages[0].content, /Do not use tools/);
   assert.deepEqual(second.body.messages.at(-2), {
@@ -403,7 +406,7 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
     (m) => m.model === 'tooled',
   ).provider;
   assert.deepEqual(await uses(), { tooled: true, plain: false });
-  assert.deepEqual(await offered('tooled'), ['read_page']);
+  assert.deepEqual(await offered('tooled'), ['read_page', 'show_visual']);
   assert.equal(await offered('plain'), null);
 
   const toggle = async (model, usesTutorTools) =>
@@ -415,20 +418,20 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
   await toggle('plain', true);
   assert.deepEqual(await uses(), { tooled: false, plain: true });
   assert.equal(await offered('tooled'), null);
-  assert.deepEqual(await offered('plain'), ['read_page']);
+  assert.deepEqual(await offered('plain'), ['read_page', 'show_visual']);
   assert.equal(
     (await env.post('/api/settings/endpoints/model', { id, model: 'plain', usesTutorTools: 1 }))
       .status,
     400,
   );
 
-  // Switching off the only available tool leaves the old tool-free request and prompt.
+  // Switching off the only learner tool still offers show_visual, which is never learner-toggled.
   const switched = await (
     await env.post('/api/settings/tutor-tools', { name: 'read_page', enabled: false })
   ).json();
   assert.equal(switched.find((x) => x.name === 'read_page').enabled, false);
-  assert.equal(await offered('plain'), null);
-  assert.match(env.chats().at(-1).body.messages[0].content, /Do not use tools/);
+  assert.deepEqual(await offered('plain'), ['show_visual']);
+  assert.doesNotMatch(env.chats().at(-1).body.messages[0].content, /rabbithole-visual/);
   assert.equal(
     (await env.post('/api/settings/tutor-tools', { name: 'nope', enabled: false })).status,
     400,

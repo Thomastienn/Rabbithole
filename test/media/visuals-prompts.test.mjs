@@ -131,7 +131,7 @@ test('predict-then-reveal uses the ordinary inline worker, persists without repl
     assert.equal(workers.length, 1);
     assert.deepEqual(workers[0].input, { request: prediction, earlierTitles: [] });
     await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Continue' })).text();
-    const context = JSON.stringify(history.at(-1));
+    const context = JSON.stringify(history.at(-1).messages);
     assert.ok(context.includes(a.id) && context.includes(prediction.description));
     assert.doesNotMatch(context, /right half|because 12|<details|predict-then-reveal/);
     const { path, tree } = env;

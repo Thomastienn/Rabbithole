@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv-provider.js';
 import { runTool } from '../providers/chatStream.mjs';
+import { SHOW_VISUAL } from './showVisual.mjs';
 
 // The runner already owns JSON Schemas; the SDK's low-level server keeps those authoritative.
 export function toolMcp() {
@@ -45,7 +46,11 @@ export function toolMcp() {
       const definition = entry.tree.tools.find((tool) => tool.name === params.name);
       if (!definition) throw new Error('Tool is unavailable for this turn.');
       const input = params.arguments ?? {};
-      if (!validator.getValidator(definition.parameters)(input).valid)
+      // show_visual validates itself so its error names the argument.
+      if (
+        definition.name !== SHOW_VISUAL.name &&
+        !validator.getValidator(definition.parameters)(input).valid
+      )
         throw new Error('Invalid tool arguments.');
       let isError = false;
       const output = await runTool(

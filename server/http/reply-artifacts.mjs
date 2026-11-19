@@ -154,5 +154,31 @@ export function replyArtifacts(
     }
     pumpMedia();
   };
-  return { artifacts, prepareArtifacts };
+  // A show_visual call: pending at the call's reply position and drawing at once while the reply continues.
+  let calls = 0;
+  const showVisual = (request, position) => {
+    if (!store.tree(id)) throw new Error('This conversation was deleted.');
+    const earlierTitles = [...artifacts.values()]
+      .filter((a) => a.kind === 'visual')
+      .map((a) => a.title);
+    const artifact = store.pendingArtifact(
+      id,
+      reply,
+      request.title,
+      request.alt,
+      'visual',
+      JSON.stringify({
+        selection: ctx.videoRoles(tree).chat,
+        theme: visualTheme(body.theme),
+        request,
+        earlierTitles,
+      }),
+      position,
+    );
+    artifacts.set(`call:${calls++}`, artifact);
+    send({ type: 'artifact', artifact: live(artifact) });
+    mediaQueue.push(artifact);
+    pumpMedia();
+  };
+  return { artifacts, prepareArtifacts, showVisual };
 }

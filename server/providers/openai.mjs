@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import { EndpointError, endpointName, lastTest, readOwned, settings } from './endpointSettings.mjs';
-import { chunkUsage, history, runTool, streamEvents } from './chatStream.mjs';
+import { chunkUsage, history, roundText, runTool, streamEvents } from './chatStream.mjs';
 
 export { EndpointError };
 
@@ -359,7 +359,7 @@ class Endpoint {
         },
       ];
       const output = redactStream(saved.apiKey, emit);
-      let hasText = false;
+      const reply = roundText(output);
       // Tool turns sum every model call's reported usage; tool-free requests stay as before.
       const total = { input: 0, output: 0, cacheRead: 0 };
       // No call cap: the loop ends when the model answers without tool calls, or on Stop.
@@ -379,8 +379,8 @@ class Endpoint {
         // This call's latest usage report; some endpoints repeat it on several chunks.
         let used = null,
           completed = false,
-          content = '',
-          separate = hasText;
+          content = '';
+        reply.start();
         try {
           if (!response.headers.get('content-type')?.startsWith('text/event-stream'))
             throw new EndpointError(
@@ -407,12 +407,8 @@ class Endpoint {
             const choice = chunk.choices?.find((c) => c.index === 0);
             if (!choice) return false;
             if (typeof choice.delta?.content === 'string' && choice.delta.content) {
-              // Text after a tool round starts a new paragraph.
-              if (separate) output('\n\n');
-              separate = false;
-              hasText = true;
               content += choice.delta.content;
-              output(choice.delta.content);
+              reply.write(choice.delta.content);
             }
             for (const t of choice.delta?.tool_calls ?? []) {
               if (!Number.isSafeInteger(t.index) || t.index < 0)
@@ -446,6 +442,7 @@ class Endpoint {
         }
         if (used) for (const k in total) total[k] += used[k];
         call.throwIfAborted();
+        reply.end();
         if (!completed)
           throw new EndpointError(
             'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
@@ -462,6 +459,8 @@ class Endpoint {
             function: { name: c.name, arguments: c.arguments },
           })),
         });
+        // Text before the call is on screen before the tool runs, so show_visual lands after it.
+        output('', true);
         for (const c of round)
           messages.push({
             role: 'tool',
@@ -469,7 +468,7 @@ class Endpoint {
             content: await runTool(tree, c, emit, signal, saved.apiKey),
           });
       }
-      if (!hasText)
+      if (!reply.shown)
         throw new EndpointError(
           'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
         );
