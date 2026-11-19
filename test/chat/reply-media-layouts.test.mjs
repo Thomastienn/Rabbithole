@@ -8,6 +8,7 @@ import { JSDOM } from 'jsdom';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
 import { renderMarkdown, rawOffsets } from '../../src/markdown/markdown.ts';
+import { stacks } from '../../src/markdown/layouts.ts';
 import { previewText } from '../../src/markdown/markdownText.ts';
 const { default: Reply } = await import('../../src/chat/Reply.tsx');
 
@@ -328,4 +329,63 @@ for (const options of ['', '{side=right}', '{ratio=wide}', '{side=right ratio=wi
       container.querySelector('.layout-figure').firstElementChild.className,
       options.includes('side=right') ? 'layout-text' : 'layout-media',
     );
+  });
+
+test('a figure stacks at about twice its media height and unstacks only below 1.5x', () => {
+  assert.equal(stacks(399, 200, false), false);
+  assert.equal(stacks(400, 200, false), true);
+  assert.equal(stacks(300, 200, true), true);
+  assert.equal(stacks(299, 200, true), false);
+  assert.equal(stacks(400, 0, false), false);
+});
+
+for (const options of ['', '{side=right ratio=wide}'])
+  test(`a lopsided figure${options} stacks; a balanced one keeps its columns and side`, async (t) => {
+    const css = readFileSync(new URL('../../src/markdown/layouts.css', import.meta.url), 'utf8');
+    let textHeight = 300,
+      observers = [];
+    const { container, act, cleanup } = await render(
+      h('div', null, renderMarkdown(raw.replace(':::figure', `:::figure${options}`))),
+      (w) => {
+        ui(w);
+        w.ResizeObserver = class {
+          constructor(fn) {
+            observers.push(fn);
+          }
+          observe() {}
+          disconnect() {}
+        };
+        // Side by side each column is 300px wide; stacked, 600px.
+        w.HTMLElement.prototype.getBoundingClientRect = function () {
+          const stacked = this.parentElement?.hasAttribute('data-stacked'),
+            width = stacked ? 600 : 300;
+          if (this.className === 'layout-text')
+            return { width, height: stacked ? textHeight / 2 : textHeight };
+          if (this.className === 'layout-media') return { width, height: stacked ? 400 : 200 };
+          return { width: 0, height: 0 };
+        };
+      },
+    );
+    t.after(cleanup);
+    const style = container.ownerDocument.createElement('style');
+    style.textContent = css;
+    container.ownerDocument.head.append(style);
+    const figure = container.querySelector('.layout-figure'),
+      columns = () => getComputedStyle(figure).gridTemplateColumns,
+      measure = () => act(async () => observers.forEach((fn) => fn()));
+    await measure();
+    assert.equal(figure.hasAttribute('data-stacked'), false);
+    assert.notEqual(columns(), 'minmax(0, 1fr)');
+    assert.equal(figure.dataset.side, options.includes('right') ? 'right' : undefined);
+    textHeight = 400;
+    await measure();
+    assert.equal(figure.hasAttribute('data-stacked'), true);
+    assert.equal(columns(), 'minmax(0, 1fr)');
+    // Stacking reflows the text and scales the media, but the figure stays stacked.
+    await measure();
+    assert.equal(figure.hasAttribute('data-stacked'), true);
+    textHeight = 200;
+    await measure();
+    assert.equal(figure.hasAttribute('data-stacked'), false);
+    assert.equal(figure.dataset.side, options.includes('right') ? 'right' : undefined);
   });

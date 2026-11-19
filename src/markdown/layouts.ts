@@ -1,5 +1,12 @@
 // Reply layouts from `:::name` container directives. Undefined means plain flow.
-import { createElement as h, type ReactNode } from 'react';
+import {
+  createElement as h,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type HTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { Section } from '@astryxdesign/core/Section';
 import type { MarkdownNode } from './markdownText.ts';
 import './layouts.css';
@@ -21,6 +28,46 @@ const images = (n: MarkdownNode) =>
   n.children!.every((c) => isImage(c) || (c.type === 'text' && !c.value!.trim()))
     ? n.children!.filter(isImage)
     : undefined;
+
+// A figure stacks when its text is about twice as tall as its media side by side; once stacked it
+// returns only below 1.5x, so the reflow from stacking cannot flip it back and forth.
+export const stacks = (text: number, media: number, stacked: boolean) =>
+  media > 0 && text >= (stacked ? 1.5 : 2) * media;
+
+type FigureProps = HTMLAttributes<HTMLDivElement> & { 'data-side'?: string; 'data-ratio'?: string };
+function Figure(props: FigureProps) {
+  const root = useRef<HTMLDivElement>(null),
+    columns = useRef({ text: 0, media: 0 }),
+    [stacked, setStacked] = useState(false);
+  useLayoutEffect(() => {
+    const el = root.current!,
+      text = el.querySelector('.layout-text')!,
+      media = el.querySelector('.layout-media')!;
+    const measure = () => {
+      const t = text.getBoundingClientRect(),
+        m = media.getBoundingClientRect(),
+        now = el.hasAttribute('data-stacked');
+      if (!now) columns.current = { text: t.width, media: m.width };
+      // Stacked columns are wider, so estimate the side-by-side heights: text reflows shorter, media scales taller.
+      const c = columns.current;
+      setStacked(
+        now
+          ? stacks((t.height * t.width) / c.text, (m.height * c.media) / m.width, true)
+          : stacks(t.height, m.height, false),
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(text);
+    observer.observe(media);
+    return () => observer.disconnect();
+  }, []);
+  return h('div', {
+    ...props,
+    ref: root,
+    // Stacked drops the column attributes, so their grid rules no longer apply.
+    ...(stacked && { 'data-side': undefined, 'data-ratio': undefined, 'data-stacked': '' }),
+  });
+}
 
 // `pending` is the renderer's sorted slot queue; media layouts remove the visuals they place.
 export function layout(
@@ -81,7 +128,7 @@ export function layout(
       const right = n.name === 'figure' && n.attributes?.side === 'right',
         explanation = n.name === 'figure' && h('div', { className: 'layout-text' }, text.map(node));
       return h(
-        'div',
+        n.name === 'figure' ? Figure : 'div',
         {
           key: `${n.type}-${s}`,
           className: `reply-layout layout-${n.name}`,

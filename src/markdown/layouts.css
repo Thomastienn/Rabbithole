@@ -58,6 +58,9 @@
 .layout-figure[data-ratio='wide'][data-side='right'] {
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
 }
+.layout-figure[data-stacked] {
+  grid-template-columns: minmax(0, 1fr);
+}
 .layout-figure .layout-media {
   display: grid;
   gap: var(--spacing-4);
