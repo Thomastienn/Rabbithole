@@ -23,6 +23,7 @@ export {
   screenAt,
   Pin,
   Copies,
+  Lights,
   type CameraKey,
 } from './video-stock';
 
@@ -155,14 +156,6 @@ export const three = {
     paper: palette.paper,
   },
 };
-export const Lights = () => (
-  <>
-    <ambientLight intensity={0.55} color="#fff4e2" />
-    <directionalLight position={[4, 6, 5]} intensity={1.4} color="#fff1dc" />
-    <directionalLight position={[-5, -2, -4]} intensity={0.35} color={palette.lichen} />
-  </>
-);
-
 // Emphasis overlay: the app draws these above every cut (Manim included) from the plan's cut.emphasis marks,
 // timed to narration sentence frames, in the shared 1920x1080 frame space.
 type Timed = { startFrame: number; endFrame: number };
