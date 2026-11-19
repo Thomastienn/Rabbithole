@@ -1,8 +1,38 @@
 import { randomUUID } from 'node:crypto';
 import { EndpointError } from './endpointSettings.mjs';
 
-// Reads server-sent events, passing each event's joined data lines to frame until it returns true.
-export async function streamEvents(body, frame) {
+export const STALLED =
+  'The model stopped responding for 5 minutes. Partial reply saved; try again.';
+
+// Each model call stops after ms without a streamed event, never at a fixed time; tool runs between calls keep their own limits.
+export function idleLimit(signal, ms = 300000) {
+  const idle = new AbortController();
+  let timer;
+  const call = AbortSignal.any([signal, idle.signal]);
+  call.alive = () => {
+    clearTimeout(timer);
+    timer = setTimeout(
+      () => idle.abort(new DOMException('The model stopped responding.', 'TimeoutError')),
+      ms,
+    );
+    // An unfinished request never holds the process open.
+    timer.unref?.();
+  };
+  call.stop = () => clearTimeout(timer);
+  call.alive();
+  return call;
+}
+
+// Reads server-sent events, passing each event's joined data lines to frame until it returns true; each event keeps an idleLimit call alive.
+export async function streamEvents(body, call, frame) {
+  try {
+    await readEvents(body, (data) => (call?.alive(), frame(data)));
+  } finally {
+    call?.stop();
+  }
+}
+
+async function readEvents(body, frame) {
   let buffer = '';
   for await (const part of body.pipeThrough(new TextDecoderStream())) {
     buffer += part;

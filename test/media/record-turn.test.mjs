@@ -10,7 +10,7 @@ import { readRecordTurn } from '../../server/tools/recordTurn.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { OpenAI } from '../../server/providers/openai.mjs';
-import { fakeOpenAI, streamToolCalls } from '../support/fake-openai.mjs';
+import { fakeOpenAI, streamReply, streamToolCalls } from '../support/fake-openai.mjs';
 
 const REPLY = 'A mutex guards shared state between threads.';
 const turn = {
@@ -42,6 +42,22 @@ test('record_turn keeps valid entries and names the skipped ones', () => {
   assert.equal(readRecordTurn({}).result, 'recorded');
   assert.match(readRecordTurn({ links: 'x' }).result, /links \(must be a list\)/);
   assert.equal(readRecordTurn({ next_questions: ['a', 'b', 'c', 'd'] }).notes.questions.length, 3);
+});
+
+test('record_turn keeps one video offer as a next question; a second or one beside media is skipped', () => {
+  const offer = 'Can you make a video of how a mutex queues threads?';
+  const first = readRecordTurn({ next_questions: ['Why deadlock?'], video_offer: offer });
+  assert.deepEqual(first.notes.questions, ['Why deadlock?', offer]);
+  assert.equal(first.result, 'recorded');
+  const second = readRecordTurn({ video_offer: 'Can you make a video of locks?' }, first);
+  assert.deepEqual(second.notes.questions, ['Why deadlock?', offer]);
+  assert.match(second.result, /skipped video_offer \(at most one per reply\)/);
+  const beside = readRecordTurn({ video_offer: offer }, null, true);
+  assert.deepEqual(beside.notes.questions, []);
+  assert.match(
+    beside.result,
+    /video_offer \(never in a reply holding a visual, discussion or video\)/,
+  );
 });
 
 // Reads server-sent events as they arrive, so a test can wait on one mid-reply.
@@ -190,4 +206,91 @@ test('a custom endpoint makes no further request after a round of only record_tu
   const reply = store.tree(id).messages.at(-1);
   assert.equal(reply.text, REPLY);
   assert.deepEqual(reply.questions, ['Why can a mutex deadlock?']);
+});
+
+test('a custom endpoint reply without record_turn gets one forced record_turn call; a failed one falls back to quick thinking', async (t) => {
+  const fake = await fakeOpenAI(t);
+  fake.models = [{ id: 'tooled', capabilities: { tools: true } }];
+  const dir = mkdtempSync(join(tmpdir(), 'tt-record-turn-')),
+    store = new Store(join(dir, 'trees.sqlite'));
+  const app = createApp({
+    store,
+    dir,
+    endpoint: new OpenAI(dir),
+    providers: {},
+    defaultProvider: 'claude',
+    auth: { status: () => ({ connected: false }) },
+    log: () => {},
+    verdicts: true,
+  });
+  await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => {
+    await app.stop();
+    store.close();
+  });
+  const origin = `http://127.0.0.1:${app.server.address().port}`;
+  const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+  const post = (path, body) =>
+    fetch(origin + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
+      body: JSON.stringify(body),
+    });
+  const endpoint = (
+    await (
+      await post('/api/settings/endpoints', {
+        name: 'Local',
+        baseUrl: fake.baseUrl,
+        apiKey: 'sk-test',
+      })
+    ).json()
+  ).at(-1).id;
+  await post('/api/settings/smart', {
+    model: { provider: endpoint, model: 'tooled' },
+    followEffort: false,
+    effort: null,
+  });
+  const ask = async (reply) => {
+    fake.reply = (req, res, body) =>
+      // The tutor call ends with text and no record_turn; quick thinking records nothing.
+      body.messages[0].content.startsWith('You ')
+        ? streamReply(res, ['[]'])
+        : streamReply(res, [reply]);
+    const id = store.create('Turn', endpoint, 'tooled').id;
+    const events = (await (await post(`/api/trees/${id}/messages`, { text: 'Mutex?' })).text())
+      .split('\n\n')
+      .filter((f) => f.startsWith('data: '))
+      .map((f) => JSON.parse(f.slice(6)));
+    assert.deepEqual(events.at(-1), { type: 'done', status: 'completed' });
+    return store.tree(id).messages.at(-1);
+  };
+  // The quick thinking verdict call judges the learner message beside the reply.
+  const quick = (reply) =>
+    fake.calls.filter(
+      (c) =>
+        c.body?.messages?.[0].content.startsWith('You judge') &&
+        JSON.stringify(c.body).includes(reply),
+    );
+
+  // Text beside the forced call is dropped: the reply is already shown.
+  fake.force = (req, res) => streamToolCalls(res, [{ name: 'record_turn', input: turn }], 'Again.');
+  const recorded = await ask(REPLY);
+  assert.equal(fake.forced.length, 1);
+  assert.deepEqual(fake.forced[0].tool_choice, {
+    type: 'function',
+    function: { name: 'record_turn' },
+  });
+  assert.deepEqual(fake.forced[0].messages.at(-2), { role: 'assistant', content: REPLY });
+  assert.match(fake.forced[0].messages.at(-1).content, /without its record_turn call/);
+  assert.equal(recorded.text, REPLY);
+  assert.deepEqual(recorded.questions, ['Why can a mutex deadlock?']);
+
+  const SECOND = 'A semaphore counts permits.';
+  fake.force = (req, res) => res.writeHead(500).end();
+  const fallen = await ask(SECOND);
+  assert.equal(fake.forced.length, 2);
+  assert.equal(fallen.text, SECOND);
+  await until(() => quick(SECOND).length);
+  // The first reply's record_turn stood in for the verdict call.
+  assert.equal(quick(REPLY).length, 0);
 });

@@ -59,11 +59,11 @@ export function createApp({
   endpoint,
   defaultProvider = 'codex',
   assets = resolve('dist'),
-  diagramTimeout = 300000,
+  diagramTimeout,
   // Minimum ms between mid-stream reply saves; tests pass 0 to read the saved row after each delta.
   saveEvery = 250,
   diagramParse,
-  visualTimeout = 300000,
+  visualTimeout,
   dir = join(tmpdir(), 'rabbithole'),
   videoTimeout,
   videoRender,

@@ -57,22 +57,31 @@ async function callAll(tree, emit, signal, calls) {
   return results;
 }
 
-const visual = { title: 'Orbit', shows: 'Earth circling the Sun', alt: 'Earth circles the Sun.' };
+const visual = {
+  title: 'Orbit',
+  shows: 'Earth circling the Sun',
+  alt: 'Earth circles the Sun.',
+  after: 'Sure.',
+};
 
 test('make_video plans from the conversation; other media beside it gets a plain error', async () => {
-  const plans = [];
+  const plans = [],
+    logs = [];
   let calls, results;
-  const env = await open({
-    generate: async (tree, text, emit, _save, signal) => {
-      if (!tree.id) {
-        if (tree.instructions.startsWith('You plan')) plans.push(JSON.parse(text));
-        return complete(emit, videoResponse(tree));
-      }
-      emit({ type: 'item', item: 'a', text: 'Sure.' });
-      results = await callAll(tree, emit, signal, calls);
-      complete(emit, 'On its way.');
+  const env = await open(
+    {
+      generate: async (tree, text, emit, _save, signal) => {
+        if (!tree.id) {
+          if (tree.instructions.startsWith('You plan')) plans.push(JSON.parse(text));
+          return complete(emit, videoResponse(tree));
+        }
+        emit({ type: 'item', item: 'a', text: 'Sure.' });
+        results = await callAll(tree, emit, signal, calls);
+        complete(emit, 'On its way.');
+      },
     },
-  });
+    { log: (line) => logs.push(line) },
+  );
   try {
     const tree = env.store.create('Orbits', 'codex');
     calls = [
@@ -96,22 +105,39 @@ test('make_video plans from the conversation; other media beside it gets a plain
     assert.equal(plans[0].intent, 'How Earth orbits the Sun');
     assert.equal(plans[0].context, `Learner: ${ask}\n\nTutor: Sure.`);
 
-    // A visual first: the video is refused, and so is a video the learner never asked for.
+    // Each refusal is a warn line with tool, reply id and reason, never the input values.
+    const reply = env.store.tree(tree.id).messages.at(-1).id;
+    const refusals = logs.filter((l) => / WARN chat app tool call refused /.test(l));
+    assert.equal(refusals.length, 3);
+    assert.match(
+      refusals[0],
+      new RegExp(`id="${reply}" tool="make_video" cause="make_video needs topic`),
+    );
+    assert.match(refusals[1], /tool="show_visual" cause="show_visual cannot join a video/);
+    assert.ok(!refusals.some((l) => /Orbit|Again|Earth circl/.test(l)));
+
+    // A visual first: the video is refused, and so is a record_turn video offer beside it.
     calls = [
       ['show_visual', visual],
       ['make_video', { topic: 'Orbits' }],
+      ['record_turn', { video_offer: 'Can you make a video of an orbit?' }],
     ];
     const other = env.store.create('Mixed', 'codex');
     await (await env.post(`/api/trees/${other.id}/messages`, { text: ask })).text();
     assert.equal(results[0], 'queued');
     assert.match(results[1], /make_video stands alone/);
-    calls = [['make_video', { topic: 'Orbits' }]];
-    const unasked = env.store.create('Unasked', 'codex');
-    await (
-      await env.post(`/api/trees/${unasked.id}/messages`, { text: 'How do orbits work?' })
-    ).text();
-    assert.match(results[0], /ask for a video or animation explicitly/);
-    assert.equal(env.store.tree(unasked.id).artifacts.length, 0);
+    assert.match(results[2], /skipped video_offer \(never in a reply holding/);
+    // The tutor judges the ask: no trigger words and other languages start a video too.
+    for (const text of [
+      'can u quicky a short video how to play, just 2d video',
+      'Peux-tu me montrer comment la Terre tourne autour du Soleil ?',
+    ]) {
+      calls = [['make_video', { topic: 'How to play' }]];
+      const asked = env.store.create('Asked', 'codex');
+      await (await env.post(`/api/trees/${asked.id}/messages`, { text })).text();
+      assert.equal(results[0], 'queued');
+      assert.equal(env.store.tree(asked.id).artifacts[0].kind, 'video');
+    }
   } finally {
     await env.close();
   }

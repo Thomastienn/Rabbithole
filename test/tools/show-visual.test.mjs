@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readShowVisual, SHOW_VISUAL } from '../../server/tools/showVisual.mjs';
+import { readShowVisual, SHOW_VISUAL, visualPosition } from '../../server/tools/showVisual.mjs';
 import { TOOL_VISUAL_RULES, tutorSystem } from '../../server/media/diagrams.mjs';
 import { roundText } from '../../server/providers/chatStream.mjs';
 
@@ -22,6 +22,34 @@ test('show_visual names a missing or over-long argument, and a corrected call re
     readShowVisual({ ...call, check_answer: 'Right half, because 12 > 8.' }).check_answer,
     'Right half, because 12 > 8.',
   );
+});
+
+test('a visual lands after its anchor in its own response, else at the call', () => {
+  const earlier = 'Before. ';
+  const text = earlier + 'Halve the list. Then search one half. Done.';
+  const at = (after, start = earlier.length) => visualPosition({ after }, text, start, text.length);
+  assert.equal(at('Halve the list.'), text.indexOf(' Then'));
+  assert.equal(at('halve   THE\nlist.'), text.indexOf(' Then'));
+  assert.equal(at('one half.'), text.indexOf(' Done'));
+  // A misquote, or a passage from an earlier response, falls back to the call.
+  assert.equal(at('Halve the array.'), text.length);
+  assert.equal(at('Before.'), text.length);
+  // Quoting the text just before the call keeps the call's place even when it also appears earlier.
+  assert.equal(visualPosition({ after: 'Go.' }, 'Go. Go.', 0, 7), 7);
+  assert.throws(() => at(''), /show_visual needs after/);
+  assert.throws(() => at('x'.repeat(121)), /after is 121 characters/);
+  assert.equal(visualPosition({}, text, 0, 3, false), 3);
+});
+
+test('the tutor prompt keeps visuals out of :::figure', () => {
+  const prompt = tutorSystem({ tools: [SHOW_VISUAL] });
+  assert.match(prompt, /To show an image beside its explanation/);
+  assert.doesNotMatch(
+    prompt,
+    /image or visual beside|or rabbithole-visual block and the explanation/,
+  );
+  assert.doesNotMatch(SHOW_VISUAL.description, /Inside a :::figure/);
+  assert.ok(SHOW_VISUAL.parameters.required.includes('after'));
 });
 
 test('with show_visual offered, the tutor prompt holds no visual block rules', () => {
