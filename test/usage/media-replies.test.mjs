@@ -125,6 +125,8 @@ test('reply API attributes retried visuals and every video call, reports running
   assert.deepEqual(tree.messages.at(-1).mediaUsage, expected);
   repairGate.resolve();
   await env.app.settled();
+  // The second repair, still invalid, is the last attempt.
+  expected.push(measurement('video', 30));
 
   await (await env.post(`/api/trees/${root.id}/messages`, { text: 'More' })).text();
   tree = await read();
@@ -145,7 +147,7 @@ test('reply API attributes retried visuals and every video call, reports running
   assert.deepEqual((await read()).messages.find((m) => m.id === reply).mediaUsage, expected);
   const history = (await (await env.get('/api/usage')).json()).events;
   assert.equal(history.filter((e) => e.task === 'diagram').length, 2);
-  assert.equal(history.filter((e) => e.task === 'video').length, 4);
+  assert.equal(history.filter((e) => e.task === 'video').length, 5);
 
   await env.app.stop();
   env.store.close();

@@ -10,18 +10,11 @@ import {
   REPAIR_PATCH_NOTE,
   FIX_NOTE,
   FIX_WHOLE_NOTE,
-  SUBMIT_CUT,
   SUBMIT_NOTE,
 } from './video-cut.mjs';
-import {
-  cutJoin,
-  cutSource,
-  pieceNames,
-  CUT_ATTEMPTS,
-  CUT_CHECKS,
-  CUT_PAUSE_FRAMES,
-} from './video-plan.mjs';
+import { cutJoin, cutSource, pieceNames, CUT_ATTEMPTS, CUT_PAUSE_FRAMES } from './video-plan.mjs';
 import { patched, withSource } from './patches.mjs';
+import { cutSubmission } from './video-cut-submit.mjs';
 import { unfenced, auditReport, auditFix } from './audit-answers.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from './manim-cut.mjs';
 import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL, MOTION_DESIGN_SKILL } from './skills.mjs';
@@ -196,39 +189,12 @@ export async function writeCuts({
       // A repair is also the cut's audit, so it sees the failed code and the previous cut's last frame.
       const previous = error && index ? await lastFrames[index - 1].promise : null;
       signal.throwIfAborted();
-      // A tool-calling writer submits through submit_cut until one submission validates; each error goes back to it.
-      let accepted = null,
-        rejected = null,
-        fatal = null,
-        checks = 0;
-      const submit = writerCapable && {
-        tools: [SUBMIT_CUT],
-        mcp,
-        runTool: async (_name, input) => {
-          if (fatal) throw fatal;
-          if (accepted !== null) return 'The cut is already accepted; end your turn.';
-          if (checks >= CUT_CHECKS) throw new Error('No checks left; end your turn.');
-          const diff = typeof input?.patch === 'string',
-            base = rejected?.code ?? failed,
-            code = diff ? base && patched(base, input.patch) : input?.code;
-          if (typeof code !== 'string' || !code.trim())
-            throw new Error(
-              diff
-                ? 'patch does not apply; submit the whole source as code.'
-                : 'Submit code, the whole cut source, or patch, a diff of it.',
-            );
-          checks++;
-          try {
-            await validate(index, code);
-          } catch (e) {
-            if (e.manimUnavailable) fatal = e;
-            rejected = { error: e, code };
-            throw e;
-          }
-          accepted = cuts[index].code;
-          return 'Cut accepted. End your turn.';
-        },
-      };
+      const submission = cutSubmission(
+          async (code) => (await validate(index, code), cuts[index].code),
+          failed,
+          mcp,
+        ),
+        submit = writerCapable && submission.tool;
       // Provider/auth failures are final; only validation/render failures spend a repair attempt.
       let raw = null;
       try {
@@ -249,26 +215,26 @@ export async function writeCuts({
         // A writer that submitted through submit_cut is settled by its submissions.
         if (error && failed) {
           const answer = await call(REPAIR_PATCH_NOTE, withSource(input, 'failedCode', failed));
-          raw = accepted === null && !rejected ? patched(failed, answer) : '';
+          raw = submission.accepted === null && !submission.rejected ? patched(failed, answer) : '';
         }
         raw ??= await call(
           error ? REPAIR_NOTE : '',
           JSON.stringify({ ...input, ...(error && failed && { failedCode: failed }) }),
         );
       } catch (e) {
-        if (fatal) throw fatal;
+        if (submission.fatal) throw submission.fatal;
         if (!e.invalidOutput) throw e;
         error = e;
         failed = null;
         continue;
       }
-      if (fatal) throw fatal;
-      if (accepted === null && rejected) {
-        ({ error, code: failed } = rejected);
+      if (submission.fatal) throw submission.fatal;
+      if (submission.accepted === null && submission.rejected) {
+        ({ error, code: failed } = submission.rejected);
         continue;
       }
       // A writer without tools, or one that answered with the source anyway, is validated from its answer.
-      if (accepted === null) {
+      if (submission.accepted === null) {
         failed = raw;
         try {
           await validate(index, raw);
