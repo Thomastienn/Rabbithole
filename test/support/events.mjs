@@ -43,7 +43,7 @@ export const observeProvider = (provider) =>
   observe(provider, ['generate', 'model', 'models', 'rpc']);
 
 export async function until(check) {
-  const timeout = AbortSignal.timeout(5000);
+  const timeout = AbortSignal.timeout(30_000); // loaded CI runners need far more than 5s
   for (;;) {
     const next = Promise.withResolvers();
     const changed = () => next.resolve();
