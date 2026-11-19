@@ -116,7 +116,7 @@ test('stdio stream routes by thread, final item replaces partial, saved thread r
     assert.deepEqual(events, [
       { type: 'delta', item: 'answer', text: 'Partial' },
       { type: 'item', item: 'answer', text: 'Authoritative original' },
-      { type: 'usage', usage: { input: 30, output: 9, cacheRead: 20 } },
+      { type: 'usage', usage: { input: 30, output: 9, cacheRead: 20, reasoning: 4 } },
       { type: 'status', status: 'completed' },
     ]);
   } finally {
