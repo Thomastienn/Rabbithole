@@ -94,24 +94,11 @@ export function auditReport(offered) {
   };
 }
 
-// A fix answers {"patch", "emphasis"?} against source, or {"code", "emphasis"?} as the whole-source fallback.
-// A patch answer that does not parse or apply is null; anything else unusable throws.
-export function auditFix(raw, brief, sentences, engine = 'remotion', source) {
-  let answer;
-  try {
-    answer = JSON.parse(unfenced(raw));
-  } catch (e) {
-    if (source === undefined) throw e;
-    return null;
-  }
-  const code =
-    source === undefined
-      ? answer?.code
-      : typeof answer?.patch === 'string'
-        ? patched(source, answer.patch)
-        : null;
-  if (source !== undefined && code === null) return null;
-  if (typeof code !== 'string') throw new Error('Fix returned no code.');
+// A fix answers {"patch", "emphasis"?} against source; an answer that does not parse, apply or read throws.
+export function auditFix(raw, brief, sentences, engine, source) {
+  const answer = JSON.parse(unfenced(raw));
+  const code = typeof answer?.patch === 'string' ? patched(source, answer.patch) : null;
+  if (typeof code !== 'string') throw new Error('The fix patch did not apply.');
   if (
     answer.emphasis !== undefined &&
     !(

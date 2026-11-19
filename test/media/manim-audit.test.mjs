@@ -96,7 +96,8 @@ for (const [name, fix] of Object.entries(fixes))
     );
     assert.equal(row.status, 'ready', row.error);
     // The clip renders first; the audit's stills come from the staged clip wrapper.
-    assert.equal(shots.length, 1);
+    // A fix that fails the check is repaired and shot again; the repair also counts as the audit.
+    assert.equal(shots.length, name === 'broken check' ? 2 : 1);
     assert.match(shots[0][0], /OffthreadVideo/);
     assert.ok(shots[0][1].endsWith(original));
     assert.equal(audits.length, 1);
@@ -113,7 +114,7 @@ for (const [name, fix] of Object.entries(fixes))
       {
         unchanged: ['check', 'render'],
         changed: ['check', 'render', 'check', 'render'],
-        'broken check': ['check', 'render', 'check'],
+        'broken check': ['check', 'render', 'check', 'check', 'render'],
         'broken render': ['check', 'render', 'check', 'render'],
       }[name],
     );

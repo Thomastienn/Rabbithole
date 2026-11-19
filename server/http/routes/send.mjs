@@ -147,6 +147,9 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     usage = null,
     called = false,
     questions = [],
+    // Reply text at the latest tool call and where the model response holding that call began.
+    callAt = 0,
+    responseStart = 0,
     // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
     saved = -Infinity;
   const heartbeat = setInterval(() => {
@@ -357,10 +360,12 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         ...(tools.length && {
           tools,
           runTool: (name, input, signal) => {
+            // Text since the last call belongs to a new model response.
+            if (text.length > callAt) [responseStart, callAt] = [callAt, text.length];
             if (!isAppTool(name))
               return ctx.tools.run(name, input, { conversation: id, reply, signal });
             if (finished) throw new Error('The reply has already ended.');
-            return calls.run(name, input, text.length, text);
+            return calls.run(name, input, text.length, text, responseStart);
           },
         }),
         tutorStyle: store.tutorStyle(),
@@ -404,6 +409,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             input: event.usage.input,
             output: event.usage.output,
             cacheRead: event.usage.cacheRead,
+            reasoning: event.usage.reasoning,
             ...(Number.isSafeInteger(event.usage.contextWindow) &&
               event.usage.contextWindow > 0 && {
                 context: { limit: event.usage.contextWindow, provider: tree.provider },

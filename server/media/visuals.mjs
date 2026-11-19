@@ -12,6 +12,14 @@ import {
 } from './skills.mjs';
 import { readCall } from './reply-requests.mjs';
 import { providerError } from '../log.mjs';
+import { patched, withSource } from './patches.mjs';
+import { DIFF } from './video-cut.mjs';
+
+// Appended to the instructions of a retry of a fragment that failed.
+const VISUAL_PATCH_NOTE =
+  '\npreviousFragment, the fragment that failed, follows the JSON task as raw lines after a line reading previousFragment:. Fix the validationError under the same rules. Instead of the whole fragment, return only ' +
+  DIFF +
+  ' of previousFragment, no Markdown fences or commentary.';
 
 // Loadable skills; `uses` spots output that needs the skill, so the server can enforce loading it.
 const SKILLS = {
@@ -189,7 +197,7 @@ export async function generateVisual(
   selection,
   input,
   parentSignal,
-  timeout = 900000,
+  timeout = 7200000,
   onPartial = () => {},
   { capable = false, mcp } = {},
 ) {
@@ -213,76 +221,98 @@ export async function generateVisual(
     let validationError;
     // Skills put into the prompt after a rejection; loaded marks what this attempt received.
     const given = new Set();
+    let previous = '';
     for (let attempt = 0; attempt < 2; attempt++) {
       if (controller.signal.aborted) throw controller.signal.reason;
-      const items = new Map(),
-        loaded = new Set(given);
-      const fragment = () => [...items.values()].join('\n\n').replace(CALLS, '');
-      onPartial('');
-      let status, overflow;
-      try {
-        await provider.generate(
-          {
-            ...selection,
-            thread: null,
-            ...(capable && {
-              tools: [LOAD_SKILL],
-              mcp,
-              runTool: (_name, input) => {
-                const skill = SKILLS[input?.name];
-                if (!skill) throw new Error(`Choose a skill: ${Object.keys(SKILLS).join(' or ')}.`);
-                loaded.add(input.name);
-                return skill.text;
-              },
-            }),
-            instructions:
-              INSTRUCTIONS +
-              (capable ? '' : TEXT_TOOL) +
-              [...given].map((name) => '\n\n' + SKILLS[name].text).join('') +
-              (input.differentVersion
-                ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
-                : '') +
-              '\nCurrent theme palette: ' +
-              JSON.stringify(paletteFor(input.theme)),
-          },
-          JSON.stringify({
-            request: input.request,
-            earlierTitles: input.earlierTitles,
-            ...(validationError && { validationError }),
-          }),
-          (event) => {
-            if (controller.signal.aborted) return;
-            if ((event.type === 'delta' || event.type === 'item') && !overflow) {
-              items.set(
-                event.item,
-                event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text,
-              );
-              if (
-                items.size > 32 ||
-                [...items.values()].reduce((n, text) => n + Buffer.byteLength(text), 0) > MAX_SOURCE
-              ) {
-                overflow = 'Visual output is invalid: the fragment exceeds its size limit.';
-                items.clear();
+      const loaded = new Set(given);
+      const task = {
+        request: input.request,
+        earlierTitles: input.earlierTitles,
+        ...(validationError && { validationError }),
+      };
+      // One writer call; returns its answer with any text tool calls, or overflow when it outgrew the limit.
+      const ask = async (note, text, stream) => {
+        const items = new Map();
+        let status, overflow;
+        if (stream) onPartial('');
+        try {
+          await provider.generate(
+            {
+              ...selection,
+              thread: null,
+              ...(capable && {
+                tools: [LOAD_SKILL],
+                mcp,
+                runTool: (_name, input) => {
+                  const skill = SKILLS[input?.name];
+                  if (!skill)
+                    throw new Error(`Choose a skill: ${Object.keys(SKILLS).join(' or ')}.`);
+                  loaded.add(input.name);
+                  return skill.text;
+                },
+              }),
+              instructions:
+                INSTRUCTIONS +
+                (capable ? '' : TEXT_TOOL) +
+                [...given].map((name) => '\n\n' + SKILLS[name].text).join('') +
+                (input.differentVersion
+                  ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
+                  : '') +
+                '\nCurrent theme palette: ' +
+                JSON.stringify(paletteFor(input.theme)) +
+                note,
+            },
+            text,
+            (event) => {
+              if (controller.signal.aborted) return;
+              if ((event.type === 'delta' || event.type === 'item') && !overflow) {
+                items.set(
+                  event.item,
+                  event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text,
+                );
+                if (
+                  items.size > 32 ||
+                  [...items.values()].reduce((n, text) => n + Buffer.byteLength(text), 0) >
+                    MAX_SOURCE
+                ) {
+                  overflow = 'Visual output is invalid: the fragment exceeds its size limit.';
+                  items.clear();
+                }
+                if (stream)
+                  onPartial(
+                    visualMarkup([...items.values()].join('\n\n').replace(CALLS, ''), document),
+                  );
               }
-              onPartial(visualMarkup(fragment(), document));
-            }
-            if (event.type === 'status') status = event.status;
-          },
-          () => {},
-          controller.signal,
-        );
-      } catch (error) {
-        throw new Error(
-          `Visual provider could not generate a result: ${providerError(error).replace(/\.$/, '')}. Check Smart in Settings → Models, then Retry.`,
-        );
-      }
-      if (controller.signal.aborted) throw controller.signal.reason;
-      if (status !== 'completed')
-        throw new Error('Visual generation did not complete. Retry to try again.');
+              if (event.type === 'status') status = event.status;
+            },
+            () => {},
+            controller.signal,
+          );
+        } catch (error) {
+          throw new Error(
+            `Visual provider could not generate a result: ${providerError(error).replace(/\.$/, '')}. Check Smart in Settings → Models, then Retry.`,
+          );
+        }
+        if (controller.signal.aborted) throw controller.signal.reason;
+        if (status !== 'completed')
+          throw new Error('Visual generation did not complete. Retry to try again.');
+        return { answer: [...items.values()].join('\n\n'), overflow };
+      };
+      // A retry of a written fragment answers a patch; when it does not apply, one whole fragment, as cut repairs do.
+      const fix = previous
+        ? patched(
+            previous,
+            (await ask(VISUAL_PATCH_NOTE, withSource(task, 'previousFragment', previous), false))
+              .answer,
+          )
+        : null;
+      const { answer, overflow } =
+        fix === null ? await ask('', JSON.stringify(task), true) : { answer: fix };
+      const fragment = answer.replace(CALLS, '');
       let result, error;
       try {
         if (overflow) throw new Error(overflow);
-        result = await validate(fragment());
+        result = await validate(fragment);
       } catch (caught) {
         error = caught;
       }
@@ -291,18 +321,19 @@ export async function generateVisual(
         return result;
       }
       // Text-mode load_skill calls asked for skills that never reached the model.
-      const asked = [...[...items.values()].join('\n\n').matchAll(CALLS)]
+      const asked = [...answer.matchAll(CALLS)]
         .map(([, json]) => readCall({ json }))
         .filter((call) => call.name === LOAD_SKILL.name)
         .map((call) => call.input.name);
       const missing = Object.keys(SKILLS).filter(
-        (name) => !loaded.has(name) && (asked.includes(name) || SKILLS[name].uses.test(fragment())),
+        (name) => !loaded.has(name) && (asked.includes(name) || SKILLS[name].uses.test(fragment)),
       );
       if (!error && !missing.length) return result;
       for (const name of missing) given.add(name);
+      previous = overflow ? '' : fragment;
       validationError =
         error?.message ??
-        `Visual output is invalid: it needs the ${missing.join(' and ')} skill, now included in your instructions; follow it and return a complete replacement fragment.`;
+        `Visual output is invalid: it needs the ${missing.join(' and ')} skill, now included in your instructions; follow it.`;
     }
   };
   try {

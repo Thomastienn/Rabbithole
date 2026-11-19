@@ -215,7 +215,7 @@ test('a finished inline video hides its token breakdown until the ⋯ button ope
   const fetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
     urls.push(url);
-    const row = (stage, model, calls, reported, input, output, cacheRead) => ({
+    const row = (stage, model, calls, reported, input, output, cacheRead, reasoning = null) => ({
       stage,
       model,
       calls,
@@ -223,9 +223,10 @@ test('a finished inline video hides its token breakdown until the ⋯ button ope
       input,
       output,
       cacheRead,
+      reasoning,
     });
     return Response.json([
-      row('plan', 'smart', 2, 2, 1200, 300, 100),
+      row('plan', 'smart', 2, 2, 1200, 300, 100, 250),
       row('repair', 'chat', 2, 1, 50, 5, 0),
       row('fix', 'chat', 1, 0, 0, 0, 0),
       row(null, 'chat', 3, 3, 9, 9, 9),
@@ -249,11 +250,11 @@ test('a finished inline video hides its token breakdown until the ⋯ button ope
       [...tr.children].map((c) => c.textContent),
     ),
     [
-      ['Stage', 'Model', 'Calls', 'Input', 'Output', 'Cached'],
-      ['Plan', 'smart', '2', '1,200', '300', '100'],
-      ['Repair', 'chat', '2, 1 not reported', '50', '5', '0'],
+      ['Stage', 'Model', 'Calls', 'Input', 'Output', 'Reasoning', 'Cached'],
+      ['Plan', 'smart', '2', '1,200', '300', '250', '100'],
+      ['Repair', 'chat', '2, 1 not reported', '50', '5', '—', '0'],
       ['Fix', 'chat', '1, 1 not reported', 'Not reported'],
-      ['Not recorded', 'chat', '3', '9', '9', '9'],
+      ['Not recorded', 'chat', '3', '9', '9', '—', '9'],
     ],
   );
   await act(async () => more.click());

@@ -14,7 +14,6 @@ import {
   REPAIR_NOTE,
   REPAIR_PATCH_NOTE,
   FIX_NOTE,
-  FIX_WHOLE_NOTE,
   PIECE_IMPROVE_INSTRUCTIONS,
 } from '../../media/video-cut.mjs';
 import { MANIM_AUDIT_INSTRUCTIONS } from '../../media/manim-cut.mjs';
@@ -161,7 +160,7 @@ export function mediaJobs(ctx) {
                             args[0].instructions.endsWith(n),
                           )
                         ? 'repair'
-                        : [FIX_NOTE, FIX_WHOLE_NOTE].some((n) => args[0].instructions.endsWith(n))
+                        : args[0].instructions.endsWith(FIX_NOTE)
                           ? 'fix'
                           : 'cut',
               ...(args[5] && { cut: args[5] }),

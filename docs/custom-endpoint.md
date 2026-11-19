@@ -41,7 +41,7 @@ truncation, filtering, unrequested tool calls, upstream errors, invalid streams
 and premature EOF fail visibly, retaining partial text.
 The stream must contain a successful finish; `[DONE]` alone is insufficient.
 Abort cancels fetch/body consumption. Model listing has a 30-second timeout;
-generation has a five-minute timeout. Settings changes and shutdown abort all
+generation stops after five minutes without a streamed event. Settings changes and shutdown abort all
 requests through this adapter.
 
 The compatibility surface follows the official [Chat Completions reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create),
@@ -65,7 +65,7 @@ the adapter appends the assistant message with its calls and one `tool`
 message per result, then calls the model again. The loop has no call cap: it
 ends when the model answers without calls, when a round holds only
 `record_turn` or `start_discussion`, when a quick thinking tool answer is
-accepted, or on Stop. Each model call has its own five-minute limit and the
+accepted, or on Stop. Each model call stops after five silent minutes and the
 reply's usage sums every call's report.
 
 Some models end their text without the `record_turn` call (seen on

@@ -13,12 +13,18 @@ import {
   fakeRender,
   fixerTask,
   patchOf,
+  repairAnswer,
   audit,
   pass,
   problems,
   planText,
 } from '../support/video-kit.mjs';
-import { AUDIT_INSTRUCTIONS, FIX_NOTE, FIX_WHOLE_NOTE } from '../../server/media/video-cut.mjs';
+import {
+  AUDIT_INSTRUCTIONS,
+  FIX_NOTE,
+  REPAIR_NOTE,
+  REPAIR_PATCH_NOTE,
+} from '../../server/media/video-cut.mjs';
 import { auditFix, auditReport } from '../../server/media/video-cuts.mjs';
 
 const twoCuts = () => {
@@ -180,9 +186,10 @@ test('audits start together, see code, stills and the previous last frame; issue
   assert.ok(!existsSync(join(dir, 'cut-0', 'out')), 'snapshots are removed');
 });
 
-test('a fix that breaks the check or the render falls back to the cut from before the audit', async (t) => {
+test('a fix that breaks the check goes to a repair carrying the issues; one that breaks the render keeps the cut from before the audit', async (t) => {
   const plan = twoCuts();
-  const shots = [];
+  const shots = [],
+    repairs = [];
   let fixCalls = 0;
   const env = await open(
     {
@@ -192,7 +199,9 @@ test('a fix that breaks the check or the render falls back to the cut from befor
         const i = cutOf(plan, text);
         if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
           return audit(tree, emit, ...problems(issues));
-        if (!tree.instructions.endsWith(FIX_NOTE)) return complete(emit, written(i));
+        if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) repairs.push([i, fixerTask(text)]);
+        if (!tree.instructions.endsWith(FIX_NOTE))
+          return complete(emit, repairAnswer(tree, text, written(i)));
         fixCalls++;
         complete(
           emit,
@@ -232,11 +241,19 @@ test('a fix that breaks the check or the render falls back to the cut from befor
     ],
   );
   assert.equal(fixCalls, 2, 'each flagged cut gets exactly one fix and no retry');
+  // Only the fix that failed validation is repaired, from the cut before the audit.
+  assert.deepEqual(
+    repairs.map(([i, task]) => i),
+    [0],
+  );
+  assert.equal(repairs[0][1].failedCode, written(0));
+  assert.match(repairs[0][1].validationError, /Label overlaps the box/);
 });
 
-test('a fix patch that does not parse or apply gets exactly one whole-source call; no patch retry', async (t) => {
+test('a fix patch that does not parse or apply goes to the repair attempts carrying the issues; no whole-source fix', async (t) => {
   const plan = twoCuts();
   const calls = [];
+  const repaired = (i) => written(i).replace(`CUT_${i}`, `REPAIRED_${i}`);
   const env = await open(
     {
       generate: async (tree, text, emit) => {
@@ -246,20 +263,24 @@ test('a fix patch that does not parse or apply gets exactly one whole-source cal
         if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
           return audit(tree, emit, ...problems(issues));
         if (tree.instructions.endsWith(FIX_NOTE)) {
-          calls.push([i, 'patch']);
+          calls.push([i, 'fix']);
           // Cut 0 answers a hunk whose context is not in the cut; cut 1 answers no diff at all.
           return complete(
             emit,
             JSON.stringify({ patch: i ? 'move the label' : patchOf(fixed, written(i)) }),
           );
         }
-        if (tree.instructions.endsWith(FIX_WHOLE_NOTE)) {
-          calls.push([i, 'whole', JSON.parse(text).code]);
-          return complete(
-            emit,
-            JSON.stringify({ code: written(i).replace(`CUT_${i}`, `WHOLE_${i}`) }),
-          );
+        if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+          const task = fixerTask(text);
+          calls.push([
+            i,
+            'repair',
+            task.failedCode,
+            /Label overlaps the box/.test(task.validationError),
+          ]);
+          return complete(emit, repairAnswer(tree, text, repaired(i)));
         }
+        if (tree.instructions.endsWith(REPAIR_NOTE)) calls.push([i, 'whole']);
         complete(emit, written(i));
       },
     },
@@ -274,16 +295,53 @@ test('a fix patch that does not parse or apply gets exactly one whole-source cal
   assert.deepEqual(
     calls.sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1])),
     [
-      [0, 'patch'],
-      [0, 'whole', written(0)],
-      [1, 'patch'],
-      [1, 'whole', written(1)],
+      [0, 'fix'],
+      [0, 'repair', written(0), true],
+      [1, 'fix'],
+      [1, 'repair', written(1), true],
     ],
   );
   assert.deepEqual(
-    JSON.parse(row.source).cuts.map((c) => c.code),
-    [0, 1].map((i) => written(i).replace(`CUT_${i}`, `WHOLE_${i}`)),
+    JSON.parse(row.source).cuts.map((c) => [c.code, c.audited]),
+    [0, 1].map((i) => [repaired(i), true]),
   );
+});
+
+test('a failed fix patch on a cut out of repairs fails the cut', async (t) => {
+  const plan = twoCuts();
+  const invalid = composition.replace('fontSize: 40', "fontSize: 40, color: 'blue'");
+  let fixes = 0;
+  const env = await open(
+    {
+      generate: async (tree, text, emit) => {
+        if (tree.id) return complete(emit, 'Watch.' + directive);
+        if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
+        const i = cutOf(plan, text);
+        if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
+          return audit(tree, emit, ...(i ? [pass] : problems(issues)));
+        if (tree.instructions.endsWith(FIX_NOTE)) {
+          fixes++;
+          return complete(emit, JSON.stringify({ patch: 'move the label' }));
+        }
+        // Cut 0's repairs never validate.
+        complete(
+          emit,
+          tree.instructions.endsWith(REPAIR_NOTE) || tree.instructions.endsWith(REPAIR_PATCH_NOTE)
+            ? invalid
+            : written(i),
+        );
+      },
+    },
+    { videoSnapshot: stills([]) },
+  );
+  t.after(async () => {
+    await env.app.stop();
+    env.store.close();
+  });
+  const row = await settledRow(env, await running(env));
+  assert.equal(row.status, 'failed');
+  assert.match(row.error, /^Cut 1 of 2: /);
+  assert.equal(fixes, 1);
 });
 
 test('cancel stops a running snapshot and a running audit', async (t) => {
@@ -389,22 +447,24 @@ test('audit calls assemble into ok or issues, each bad call gets an error naming
     auditReport([]).tools.map((t) => t.name),
     ['flag_problem', 'pass_cut'],
   );
-  assert.deepEqual(auditFix(JSON.stringify({ code: fixed }), styleBrief, 1), { code: fixed });
-  assert.deepEqual(auditFix(JSON.stringify({ code: fixed, emphasis: moved }), styleBrief, 1), {
-    code: fixed,
-    emphasis: moved,
-  });
-  assert.throws(() => auditFix(JSON.stringify({ code: fixed, emphasis: moved }), styleBrief, 0));
-  assert.throws(() => auditFix(fixed, styleBrief, 1));
-  assert.throws(() => auditFix('{"change":false}', styleBrief, 1));
-  // Against a source, a patch answer applies; one that does not parse or apply is null for the fallback.
+  // Against a source, a patch answer applies; one that does not parse or apply throws.
   const source = written(0);
   assert.deepEqual(
     auditFix(JSON.stringify({ patch: patchOf(source, fixed) }), styleBrief, 1, 'remotion', source),
     { code: fixed },
   );
+  assert.deepEqual(
+    auditFix(
+      JSON.stringify({ patch: patchOf(source, fixed), emphasis: moved }),
+      styleBrief,
+      1,
+      'remotion',
+      source,
+    ),
+    { code: fixed, emphasis: moved },
+  );
   for (const bad of [fixed, '{"code":"x"}', JSON.stringify({ patch: patchOf(fixed, source) })])
-    assert.equal(auditFix(bad, styleBrief, 1, 'remotion', source), null);
+    assert.throws(() => auditFix(bad, styleBrief, 1, 'remotion', source));
   assert.throws(() =>
     auditFix(
       JSON.stringify({ patch: patchOf(source, fixed), emphasis: moved }),

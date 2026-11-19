@@ -106,7 +106,8 @@ Rabbithole's fragment contract:
   and text alternatives. The host provides the Ask follow-up action; do not add
   ask or branch controls or call the host yourself.
 - A validationError means the previous attempt failed server validation. Correct
-  that mistake and return a complete replacement fragment under these same rules.
+  that mistake under these same rules, with a complete replacement fragment unless
+  asked for a patch.
 
 Provenance and license notice (not visual content):
 Adapted from CopilotKit/OpenIntelligentUI; source paths are in README.md.

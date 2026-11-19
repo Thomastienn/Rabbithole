@@ -41,7 +41,7 @@ test('show_visual mid-reply lands at its position, starts at once and keeps its 
             (await mcp.client.callTool({ name: 'show_visual', arguments: args })).content[0].text;
           results.push(await ask({ ...call, alt: undefined }));
           results.push(await ask({ ...call, title: 'x'.repeat(200) }));
-          results.push(await ask(call));
+          results.push(await ask({ ...call, after: 'halves the list.' }));
         } finally {
           await mcp.close();
         }
