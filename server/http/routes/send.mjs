@@ -147,6 +147,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     usage = null,
     called = false,
     questions = [],
+    ranCalls = 0,
     // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
     saved = -Infinity;
   const heartbeat = setInterval(() => {
@@ -163,6 +164,29 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     isFinished: () => finished,
     getStatus: () => status,
   });
+  // A show_visual call, native or written as text, queues its visual at that reply position.
+  const visualCall = (input, position, replySoFar) => {
+    showVisual(readShowVisual(input, replySoFar), position);
+    return 'queued';
+  };
+  // <tool_call> text (the text fallback or a leaked native call) runs once each; nothing goes back to the model.
+  const runCalls = (output) => {
+    for (const call of output.calls.slice(ranCalls)) {
+      ranCalls++;
+      try {
+        if (call.error) throw new Error(`Tool call could not be read: ${call.error}.`);
+        if (call.name !== SHOW_VISUAL.name) throw new Error(`${call.name} is not a text tool.`);
+        visualCall(call.input, call.position, output.text.slice(0, call.position));
+      } catch (error) {
+        ctx.log(
+          formatLog('error', 'chat', 'text tool call skipped', {
+            id: reply,
+            cause: errorCause(error, privateValues(JSON.stringify(call.input ?? {}))),
+          }),
+        );
+      }
+    }
+  };
   const finish = () => {
     if (finished) return;
     finished = true;
@@ -325,6 +349,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       })),
       ...(capable ? [SHOW_VISUAL] : []),
     ];
+    // Without native tool calling the tutor writes app tool calls as <tool_call> text.
+    const textTools = capable ? [] : [SHOW_VISUAL];
     const neighbourhood = await ctx.neighbourhood(
       [prompt, tree.branch?.text].filter(Boolean).join('\n'),
       controller.signal,
@@ -334,6 +360,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     await ctx.logged(pick(tree), 'chat', reply, tree).generate(
       {
         ...tutorContext(tree),
+        ...(textTools.length && { textTools }),
         ...((nativeTools.length || tools.length) && { nativeTools, mcp: ctx.mcp }),
         ...(tools.length && {
           tools,
@@ -341,8 +368,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             if (name !== SHOW_VISUAL.name)
               return ctx.tools.run(name, input, { conversation: id, reply, signal });
             if (finished) throw new Error('The reply has already ended.');
-            showVisual(readShowVisual(input, text), text.length);
-            return 'queued';
+            return visualCall(input, text.length, text);
           },
         }),
         tutorStyle: store.tutorStyle(),
@@ -373,6 +399,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             send({ type: 'questions', questions });
           }
           prepareArtifacts(output);
+          runCalls(output);
         }
         if (event.type === 'status') status = event.status;
         // show_visual is media, not tool activity.
@@ -399,6 +426,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     if (status === 'streaming') status = controller.signal.aborted ? 'interrupted' : 'completed';
     if (!finished) {
       const output = diagramReply([...items.values()].join('\n\n'), true);
+      if (status === 'completed') runCalls(output);
       if (output.requested) {
         text = output.text;
         store.update(reply, text, status);

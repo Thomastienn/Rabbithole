@@ -189,13 +189,14 @@ test('a refused or failing tool call goes back to the model as an error, and the
   assert.deepEqual(env.hits, []);
 });
 
-test('models without tool capability get the old tool-free request', async (t) => {
+test('models without tool capability get a request without native tools', async (t) => {
   const env = await launch(t);
   const { id, stream } = await env.ask('plain');
   await env.events(stream);
   assert.equal(env.chats().length, 1);
   assert.equal(Object.hasOwn(env.chats()[0].body, 'tools'), false);
-  assert.match(env.chats()[0].body.messages[0].content, /Do not use tools/);
+  // App tools are described for the <tool_call> text fallback instead.
+  assert.match(env.chats()[0].body.messages[0].content, /<tool_call>/);
   const reply = env.store.tree(id).messages.at(-1);
   assert.equal(reply.text, 'Peterson uses two flags.');
   assert.equal(reply.tools, undefined);

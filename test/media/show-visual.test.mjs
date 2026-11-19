@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { source, complete, deferred, open } from '../support/visual-kit.mjs';
+import { source, complete, deferred, open, until } from '../support/visual-kit.mjs';
 import { TUTOR_TOOLS } from '../../server/tools/runner.mjs';
 
 const INTRO = 'Binary search halves the list.';
@@ -95,6 +95,84 @@ test('show_visual mid-reply lands at its position, starts at once and keeps its 
     assert.equal(workers.length, 1);
     assert.deepEqual(workers[0].request, { ...call, context: INTRO });
     assert.doesNotMatch(reply.text + visual.title + visual.description, /right half|greater/);
+  } finally {
+    await env.close();
+  }
+});
+
+const events = async (response) =>
+  (await response.text())
+    .split('\n\n')
+    .filter((f) => f.startsWith('data: '))
+    .map((f) => JSON.parse(f.slice(6)));
+const written = (args) =>
+  `<tool_call>${JSON.stringify({ name: 'show_visual', arguments: args })}</tool_call>`;
+// Streams text in small deltas so a call arrives across chunks.
+const stream = (emit, text) => {
+  for (let i = 0; i < text.length; i += 7)
+    emit({ type: 'delta', item: 'answer', text: text.slice(i, i + 7) });
+  emit({ type: 'status', status: 'completed' });
+};
+
+test('a model without tool calling writes show_visual as <tool_call> text and gets the visual', async () => {
+  const { check_answer, ...args } = call;
+  const workers = [];
+  let offered;
+  const writer = (tree, text, emit) => {
+    workers.push(JSON.parse(text));
+    complete(emit, source);
+  };
+  const env = await open(
+    {
+      generate: async (tree, text, emit) => {
+        if (tree.instructions?.startsWith('You create one self-contained visual'))
+          return writer(tree, text, emit);
+        offered = { tools: tree.tools, text: tree.textTools?.map((t) => t.name) };
+        stream(emit, `${INTRO}\n${written(args)}\nThe right side holds 12.`);
+      },
+    },
+    { generate: writer },
+  );
+  try {
+    const tree = env.store.create('Endpoint', 'openai', 'smart', 'high');
+    const response = await env.post(`/api/trees/${tree.id}/messages`, { text: 'Show me.' });
+    const streamed = await events(response);
+    assert.deepEqual(streamed.at(-1), { type: 'done', status: 'completed' });
+    assert.deepEqual(offered, { tools: undefined, text: ['show_visual'] });
+    for (const e of streamed.filter((e) => e.type === 'text'))
+      assert.doesNotMatch(e.text, /tool_call|[{}]/);
+    const saved = await env.get(`/api/trees/${tree.id}`);
+    assert.equal(saved.messages.at(-1).text, `${INTRO}\n\nThe right side holds 12.`);
+    assert.equal(saved.artifacts.length, 1);
+    assert.equal(saved.artifacts[0].position, INTRO.length + 1);
+    assert.equal(saved.artifacts[0].description, args.alt);
+    await until(() => workers.length === 1);
+    assert.deepEqual(workers[0].request, { ...args, context: INTRO });
+  } finally {
+    await env.close();
+  }
+});
+
+test('a native call leaked into reply text runs once and is hidden', async () => {
+  const drawn = [];
+  const env = await open(
+    { generate: async (tree, text, emit) => stream(emit, `${INTRO}${written(call)}Then.`) },
+    {
+      generate: async (tree, text, emit) => {
+        drawn.push(JSON.parse(text).request.title);
+        complete(emit, source);
+      },
+    },
+  );
+  try {
+    const response = await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Go on.' });
+    assert.deepEqual((await events(response)).at(-1), { type: 'done', status: 'completed' });
+    const saved = await env.get(`/api/trees/${env.tree.id}`);
+    assert.equal(saved.messages.at(-1).text, INTRO + 'Then.');
+    assert.equal(saved.artifacts.length, 1);
+    assert.equal(saved.artifacts[0].position, INTRO.length);
+    await until(() => drawn.length === 1);
+    assert.deepEqual(drawn, [call.title]);
   } finally {
     await env.close();
   }
