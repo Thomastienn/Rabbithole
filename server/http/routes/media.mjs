@@ -185,6 +185,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
       if (!file)
         return json(res, 200, {
           paletteRoles: data.plan.styleBrief.paletteRoles,
+          // Roles naming a real object's true colour resolve through these hexes.
+          trueColors: data.plan.styleBrief.trueColors ?? {},
           pieces: data.pieces ? compileCut(data.pieces) : null,
           // Exhibit metadata only; image and clip bytes come from /cuts/<exhibit index>/exhibit.
           exhibits: (data.exhibits ?? []).map(({ file, type, url, show, ...e }) => ({

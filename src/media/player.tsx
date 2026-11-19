@@ -82,11 +82,12 @@ function show(cuts: LiveCut[]) {
   );
 }
 
-const inks = (colors: Record<string, string>) =>
+// A role names a kit ink or a true colour from the brief, as roleColor resolves it for the render.
+const inks = (colors: Record<string, string>, trueColors: Record<string, string> = {}) =>
   Object.fromEntries(
     Object.entries(colors).map(([role, ink]) => [
       role,
-      kit.palette[ink as keyof typeof kit.palette],
+      kit.palette[ink as keyof typeof kit.palette] ?? trueColors[ink],
     ]),
   );
 
@@ -141,7 +142,7 @@ addEventListener('message', (event) => {
       typeof event.data.code3d === 'string' ? event.data.code3d : undefined,
     );
   if (event.data?.type !== 'cuts' || !Array.isArray(event.data.cuts)) return;
-  const roles = inks(event.data.paletteRoles ?? {});
+  const roles = inks(event.data.paletteRoles ?? {}, event.data.trueColors ?? {});
   // Exhibits arrive as data; an image's or clip's blob URL is made once and kept for the frame's life.
   const exhibits: Parameters<typeof kit.setStock>[0] = {};
   for (const { id, blob, media, ...e } of Array.isArray(event.data.exhibits)

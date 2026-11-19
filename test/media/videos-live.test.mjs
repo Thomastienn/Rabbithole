@@ -18,7 +18,11 @@ import { observe, notify } from '../support/events.mjs';
 const plan = {
   title: task.title,
   description: task.description,
-  styleBrief,
+  styleBrief: {
+    ...styleBrief,
+    paletteRoles: { ...styleBrief.paletteRoles, earth: 'earthBlue' },
+    trueColors: { earthBlue: '#2f6fb5' },
+  },
   cuts: ['First.', 'Second.', 'Third.'].map((narration, i) => ({
     purpose: `Step ${i + 1}`,
     engine: 'remotion',
@@ -97,7 +101,8 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
     assert.equal(playable.status, 'pending');
     // Cuts 1 and 2 are live: compiled code (no TypeScript or JSX left), timing and narration; cut 3 is still being written.
     const live = await (await env.get(cuts)).json();
-    assert.deepEqual(live.paletteRoles, styleBrief.paletteRoles);
+    assert.deepEqual(live.paletteRoles, plan.styleBrief.paletteRoles);
+    assert.deepEqual(live.trueColors, { earthBlue: '#2f6fb5' }, 'true colour roles resolve live');
     assert.deepEqual(
       live.cuts.map((c) => [c.engine, c.playable, typeof c.code]),
       [

@@ -183,7 +183,8 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
       return {
         ok: true,
         json: async () => ({
-          paletteRoles: { winner: 'amber' },
+          paletteRoles: { winner: 'amber', earth: 'earthBlue' },
+          trueColors: { earthBlue: '#2f6fb5' },
           cuts: [
             {
               engine: 'remotion',
@@ -244,7 +245,8 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
     '/api/trees/root/artifacts/v1/cuts/0/narration',
   ]);
   assert.equal(posted[0].type, 'cuts');
-  assert.deepEqual(posted[0].paletteRoles, { winner: 'amber' });
+  assert.deepEqual(posted[0].paletteRoles, { winner: 'amber', earth: 'earthBlue' });
+  assert.deepEqual(posted[0].trueColors, { earthBlue: '#2f6fb5' });
   assert.ok(posted[0].cuts[0].audio instanceof Blob);
   assert.equal(posted[0].cuts[1].audio, undefined);
   await act(async () => set((a) => ({ ...a, phase: undefined, status: 'ready' })));

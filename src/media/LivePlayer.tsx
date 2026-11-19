@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 type LiveCuts = {
   paletteRoles: Record<string, string>;
+  trueColors?: Record<string, string>;
   pieces: string | null;
   exhibits?: { id: string; media: boolean }[];
   cuts: {
@@ -53,6 +54,7 @@ export default function LivePlayer({ cuts, title }: { cuts: string; title: strin
                 {
                   type: 'cuts',
                   paletteRoles: data.paletteRoles,
+                  trueColors: data.trueColors,
                   pieces: data.pieces,
                   exhibits: (data.exhibits ?? []).map((e, i) => ({
                     ...e,
