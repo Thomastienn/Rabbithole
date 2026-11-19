@@ -44,6 +44,22 @@ test('record_turn keeps valid entries and names the skipped ones', () => {
   assert.equal(readRecordTurn({ next_questions: ['a', 'b', 'c', 'd'] }).notes.questions.length, 3);
 });
 
+test('record_turn keeps one video offer as a next question; a second or one beside media is skipped', () => {
+  const offer = 'Can you make a video of how a mutex queues threads?';
+  const first = readRecordTurn({ next_questions: ['Why deadlock?'], video_offer: offer });
+  assert.deepEqual(first.notes.questions, ['Why deadlock?', offer]);
+  assert.equal(first.result, 'recorded');
+  const second = readRecordTurn({ video_offer: 'Can you make a video of locks?' }, first);
+  assert.deepEqual(second.notes.questions, ['Why deadlock?', offer]);
+  assert.match(second.result, /skipped video_offer \(at most one per reply\)/);
+  const beside = readRecordTurn({ video_offer: offer }, null, true);
+  assert.deepEqual(beside.notes.questions, []);
+  assert.match(
+    beside.result,
+    /video_offer \(never in a reply holding a visual, discussion or video\)/,
+  );
+});
+
 // Reads server-sent events as they arrive, so a test can wait on one mid-reply.
 const watch = (response) => {
   const seen = [];

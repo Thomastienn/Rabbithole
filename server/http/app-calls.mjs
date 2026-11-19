@@ -9,11 +9,31 @@ export const APP_TOOLS = [SHOW_VISUAL, MAKE_VIDEO, START_DISCUSSION, RECORD_TURN
 export const isAppTool = (name) => APP_TOOLS.some((t) => t.name === name);
 
 // One reply's app calls, native or written as <tool_call> text.
-export function appCalls(ctx, { reply, showVisual, makeVideo, startDiscussion, questioned }) {
+export function appCalls(
+  ctx,
+  { reply, showVisual, makeVideo, startDiscussion, hasMedia, questioned },
+) {
   let ranCalls = 0,
     // What record_turn calls carried; null until one arrives, so quick thinking stands in.
     recorded = null;
+  // Every refused call is logged with its reason, its input values redacted.
+  const refused = (name, input, error) =>
+    ctx.log(
+      formatLog('warn', 'chat', 'app tool call refused', {
+        id: reply,
+        tool: name,
+        cause: errorCause(error, privateValues(JSON.stringify(input ?? {}))),
+      }),
+    );
   const run = (name, input, position, replySoFar) => {
+    try {
+      return runCall(name, input, position, replySoFar);
+    } catch (error) {
+      refused(name, input, error);
+      throw error;
+    }
+  };
+  const runCall = (name, input, position, replySoFar) => {
     // A show_visual call queues its visual at that reply position.
     if (name === SHOW_VISUAL.name) {
       showVisual(readShowVisual(input, replySoFar), position);
@@ -28,7 +48,9 @@ export function appCalls(ctx, { reply, showVisual, makeVideo, startDiscussion, q
       return 'started; end your reply now.';
     }
     if (name !== RECORD_TURN.name) throw new Error(`${name} is not a text tool.`);
-    recorded = readRecordTurn(input, recorded);
+    recorded = readRecordTurn(input, recorded, hasMedia());
+    // Skipped entries (such as a refused video offer) are refusals too; the result names only keys.
+    if (recorded.result !== 'recorded') refused(name, {}, recorded.result);
     questioned(recorded.notes.questions);
     return recorded.result;
   };
@@ -36,17 +58,14 @@ export function appCalls(ctx, { reply, showVisual, makeVideo, startDiscussion, q
   const runText = (output) => {
     for (const call of output.calls.slice(ranCalls)) {
       ranCalls++;
-      try {
-        if (call.error) throw new Error(`Tool call could not be read: ${call.error}.`);
-        run(call.name, call.input, call.position, output.text.slice(0, call.position));
-      } catch (error) {
-        ctx.log(
-          formatLog('error', 'chat', 'text tool call skipped', {
-            id: reply,
-            cause: errorCause(error, privateValues(JSON.stringify(call.input ?? {}))),
-          }),
-        );
-      }
+      if (call.error)
+        refused(call.name, call.input, new Error(`Tool call could not be read: ${call.error}.`));
+      else
+        try {
+          run(call.name, call.input, call.position, output.text.slice(0, call.position));
+        } catch {
+          // run logged the refusal; nothing goes back to the model.
+        }
     }
   };
   // A record_turn call stands for the verdict and notes blocks.
