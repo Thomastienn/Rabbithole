@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import '../support/tsx.mjs';
-import { cameraAt, screenAt } from '../../server/media/video-kit.tsx';
+import { createElement as h } from 'react';
+import { Thumbnail } from '@remotion/player';
+import { render } from '../support/render.mjs';
+import { ui } from '../support/ui.mjs';
+const { cameraAt, screenAt, Pin } = await import('../../server/media/video-kit.tsx');
 import { CUT_3D, AUDIT_3D } from '../../server/media/video-cut.mjs';
 
 const keys = [
@@ -44,4 +48,27 @@ test('3D cut guidance pins labels with Pin and the 3D audit checks them', () => 
   assert.match(CUT_3D, /Pin every label to its object with the kit.s <Pin/);
   assert.match(CUT_3D, /Titles and legends may stay unpinned/);
   assert.match(AUDIT_3D, /label or pen mark that is not on the object/);
+});
+
+test('a Pin centres its label on the projected point and hides it behind the camera', async (t) => {
+  const { position, target } = cameraAt(keys, 30);
+  const behind = position.map((p, i) => 2 * p - target[i]);
+  const Scene = () =>
+    h('div', null, h(Pin, { keys, at: () => target }, 'core'), h(Pin, { keys, at: behind }, 'far'));
+  const { container, cleanup } = await render(
+    h(Thumbnail, {
+      component: Scene,
+      compositionWidth: 1920,
+      compositionHeight: 1080,
+      fps: 30,
+      durationInFrames: 60,
+      frameToDisplay: 30,
+    }),
+    ui,
+  );
+  t.after(cleanup);
+  const pin = (text) => [...container.querySelectorAll('div')].find((d) => d.textContent === text);
+  assert.equal(pin('core').style.left, '960px');
+  assert.equal(pin('core').style.opacity, '1');
+  assert.equal(pin('far').style.display, 'none');
 });
