@@ -54,7 +54,7 @@ test('tutor style saves, normalizes empty or default text to null, restores and 
     tutorSystem({
       tutorStyle: 'Use sports analogies.',
       nativeTools: ['web_search'],
-      tools: [{ name: 'update_memory_note' }, { name: 'show_visual' }],
+      tools: [{ name: 'update_memory_note' }, { name: 'show_visual' }, { name: 'record_turn' }],
     }),
   );
   for (const style of ['', '   ', ` ${DEFAULT_TUTOR_STYLE}\n`, null]) {

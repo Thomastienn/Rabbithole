@@ -6,6 +6,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv-provider.js';
 import { runTool } from '../providers/chatStream.mjs';
 import { SHOW_VISUAL } from './showVisual.mjs';
+import { RECORD_TURN } from './recordTurn.mjs';
 
 // The runner already owns JSON Schemas; the SDK's low-level server keeps those authoritative.
 export function toolMcp() {
@@ -46,9 +47,9 @@ export function toolMcp() {
       const definition = entry.tree.tools.find((tool) => tool.name === params.name);
       if (!definition) throw new Error('Tool is unavailable for this turn.');
       const input = params.arguments ?? {};
-      // show_visual validates itself so its error names the argument.
+      // App tools validate themselves so their result names the argument or entry.
       if (
-        definition.name !== SHOW_VISUAL.name &&
+        ![SHOW_VISUAL.name, RECORD_TURN.name].includes(definition.name) &&
         !validator.getValidator(definition.parameters)(input).valid
       )
         throw new Error('Invalid tool arguments.');

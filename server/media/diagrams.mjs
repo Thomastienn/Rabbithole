@@ -40,6 +40,9 @@ export const VERDICT_RULE =
   "\n\nVerdict: after the first few sentences of each reply, write one fenced rabbithole-verdict block judging what the learner's latest message (including a selected passage and question about it) showed about each concept it touched. " +
   VERDICT_SHAPE +
   " When the message shows nothing about any concept, write no block. Keep the concept's usual short name. The learner never sees this block, so never mention it.";
+// With record_turn offered, its description carries the verdict and notes rules (ADR 0013).
+export const RECORD_RULE =
+  '\n\nRecord turn: end every reply with one record_turn call after all your text. The learner never sees it, so never mention it.';
 export const TUTOR_SKILLS =
   '\n\n' +
   TEACHING_SKILL +
@@ -98,9 +101,9 @@ export const tutorSystem = (tree) =>
             textToolsRule(tree.textTools),
           )
         : TUTOR_RULES) +
-      VERDICT_RULE +
-      DISCUSSION_RULE +
-      NOTES_RULE +
+      ([...(tree.tools ?? []), ...(tree.textTools ?? [])].some((t) => t.name === 'record_turn')
+        ? DISCUSSION_RULE + RECORD_RULE
+        : VERDICT_RULE + DISCUSSION_RULE + NOTES_RULE) +
       (tree.tools?.some((t) => t.name === 'update_memory_note') ? MEMORY_RULE : '') +
       TUTOR_SKILLS +
       (tree.tutorStyle?.trim() || DEFAULT_TUTOR_STYLE)) +

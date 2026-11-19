@@ -362,7 +362,7 @@ class Endpoint {
       const reply = roundText(output);
       // Tool turns sum every model call's reported usage; tool-free requests stay as before.
       const total = { input: 0, output: 0, cacheRead: 0 };
-      // No call cap: the loop ends when the model answers without tool calls, or on Stop.
+      // No call cap: the loop ends when the model answers without tool calls or with only end-of-reply app calls, or on Stop.
       while (true) {
         call = AbortSignal.any([signal, AbortSignal.timeout(300000)]);
         const response = await this.#fetch(saved, '/chat/completions', call, {
@@ -467,6 +467,7 @@ class Endpoint {
             tool_call_id: c.id,
             content: await runTool(tree, c, emit, signal, saved.apiKey),
           });
+        if (round.every((c) => ['record_turn', 'start_discussion'].includes(c.name))) break;
       }
       if (!reply.shown)
         throw new EndpointError(

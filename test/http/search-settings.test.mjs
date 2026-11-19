@@ -122,6 +122,7 @@ test('custom model searches and finds images through the default runner, stores 
           'search_conversations',
           'read_conversation',
           'show_visual',
+          'record_turn',
         ],
       );
       streamToolCalls(res, [
@@ -166,6 +167,7 @@ test('custom model searches and finds images through the default runner, stores 
         'search_conversations',
         'read_conversation',
         'show_visual',
+        'record_turn',
       ],
     );
     streamReply(res, ['Search is unavailable.']);

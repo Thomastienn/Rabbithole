@@ -1,0 +1,46 @@
+import { SHOW_VISUAL, readShowVisual } from '../tools/showVisual.mjs';
+import { RECORD_TURN, readRecordTurn } from '../tools/recordTurn.mjs';
+import { formatLog, errorCause, privateValues } from '../log.mjs';
+
+// App tools the server runs itself for the tutor; never learner-toggled tutor tools or tool activity.
+export const APP_TOOLS = [SHOW_VISUAL, RECORD_TURN];
+export const isAppTool = (name) => APP_TOOLS.some((t) => t.name === name);
+
+// One reply's app calls, native or written as <tool_call> text.
+export function appCalls(ctx, { reply, showVisual, questioned }) {
+  let ranCalls = 0,
+    // What record_turn calls carried; null until one arrives, so quick thinking stands in.
+    recorded = null;
+  const run = (name, input, position, replySoFar) => {
+    // A show_visual call queues its visual at that reply position.
+    if (name === SHOW_VISUAL.name) {
+      showVisual(readShowVisual(input, replySoFar), position);
+      return 'queued';
+    }
+    if (name !== RECORD_TURN.name) throw new Error(`${name} is not a text tool.`);
+    recorded = readRecordTurn(input, recorded);
+    questioned(recorded.notes.questions);
+    return recorded.result;
+  };
+  // <tool_call> text (the text fallback or a leaked native call) runs once each; nothing goes back to the model.
+  const runText = (output) => {
+    for (const call of output.calls.slice(ranCalls)) {
+      ranCalls++;
+      try {
+        if (call.error) throw new Error(`Tool call could not be read: ${call.error}.`);
+        run(call.name, call.input, call.position, output.text.slice(0, call.position));
+      } catch (error) {
+        ctx.log(
+          formatLog('error', 'chat', 'text tool call skipped', {
+            id: reply,
+            cause: errorCause(error, privateValues(JSON.stringify(call.input ?? {}))),
+          }),
+        );
+      }
+    }
+  };
+  // A record_turn call stands for the verdict and notes blocks.
+  const record = (output) =>
+    recorded ? { ...output, notes: recorded.notes, verdicts: recorded.verdicts } : output;
+  return { run, runText, record };
+}
