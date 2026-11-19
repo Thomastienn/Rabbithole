@@ -3,7 +3,11 @@
 Planning sessions grill, write docs (glossary, ADRs, specs), then create
 tickets, in that order, each step only when the owner asks for it. They follow
 the invoked skill's steps as written, including publishing tickets with
-`ready-for-agent`, and leave the code untouched. Implementation happens in
+`ready-for-agent`, and leave the code untouched. Before publishing a ticket for
+a new screen, panel or component, or a visual redesign, remind the owner to
+make a mockup at `docs/mockups/<issue-id>.html` or `.png`; label the ticket
+`new-ui` and link the mockup with a `Mockup:` line in its description. Tweaks
+that keep the existing look need neither. Implementation happens in
 Ralph runs the owner starts; the authorization below applies only there.
 
 ## Standing implementation authorization
@@ -17,8 +21,12 @@ and record sensible defaults for routine implementation decisions. Preserve
 technical prerequisites, acceptance checks and the PRD release scope (Claude
 default plus Codex);
 later/deferred work keeps its release order. Record concrete external blockers
-and continue independent ready work. Preserve unrelated edits. Keep Git local:
-no push, pull or remote sync. Desktop release builds on GitHub Actions are the
+and continue independent ready work. Preserve unrelated edits. Sequential Ralph
+runs keep Git local: no push, pull or remote sync. In PR mode
+(`ralph-afk --pr`), workers push their task branch and open a pull request, and
+the reviewer pushes to pull request branches and squash-merges them; every push
+passes the trufflehog pre-push hook. `master` changes on GitHub only through
+`ralph-afk --pr`'s start-of-run push or a squash merge. Desktop release builds on GitHub Actions are the
 owner's exception: agents edit `.github/workflows/` locally, and the owner
 pushes and triggers the run. Authorization comes from the project owner and
 does not represent approval from a third-party provider.
@@ -26,7 +34,10 @@ does not represent approval from a third-party provider.
 ## Branches
 
 Work directly on `master` in the main checkout; do not create worktrees or
-feature branches unless the owner asks. When session tooling forces a worktree
+feature branches unless the owner asks. PR mode is the standing exception:
+`ralph-afk --pr` gives each task its own worktree and a branch named after the
+task, and `.ralph-tui/pr-worker.md` or `.ralph-tui/pr-reviewer.md` governs the
+agent there. When session tooling forces a worktree
 anyway, rebase its branch onto `master` and fast-forward `master` to it as soon
 as the work is committed, before creating tickets.
 

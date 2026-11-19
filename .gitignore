@@ -7,7 +7,8 @@
 *.gate.lock*
 
 # Local app build and dependencies
-node_modules/
+# No slash: PR-mode worktrees link node_modules from the main checkout.
+node_modules
 .venv/
 .venv-python/
 .tools/
@@ -24,6 +25,7 @@ desktop/sandbox/target/
 .ralph-tui/afk.lock
 .ralph-tui/session*.json
 .ralph-tui/progress.md
+.ralph-tui/pr-logs/
 
 prompt.txt
 
