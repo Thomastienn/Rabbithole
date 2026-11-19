@@ -37,7 +37,8 @@ export async function fakeOpenAI(t) {
         JSON.stringify({
           choices: [{ index: 0, message: { role: 'assistant', content: 'ok' } }],
         }),
-      ), // A call forcing record_turn after a reply without it; by default the model still sends none.
+      ),
+    // A call forcing record_turn after a reply without it; by default the model still sends none.
     forced: [],
     force: (req, res) => streamReply(res, []),
   };
