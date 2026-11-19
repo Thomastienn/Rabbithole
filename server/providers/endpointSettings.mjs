@@ -3,6 +3,20 @@ import { constants, openSync, closeSync, readFileSync, fchmodSync, fstatSync } f
 // Validation of saved custom endpoint settings and their owner-only credential file.
 export class EndpointError extends Error {}
 
+// An endpoint's HTTP failure as a learner-facing error that keeps the status.
+export function statusError(status) {
+  const message = [401, 403].includes(status)
+    ? 'Custom endpoint rejected the API key. Check endpoint settings.'
+    : status === 404
+      ? 'Custom endpoint path or model was not found. Check the base URL and model.'
+      : status === 429
+        ? 'Custom endpoint rate or usage limit reached. Wait and retry.'
+        : status >= 500
+          ? 'Custom endpoint is unavailable. Try again later.'
+          : `Custom endpoint rejected the request (HTTP ${status}). Check endpoint settings and model.`;
+  return Object.assign(new EndpointError(message), { status });
+}
+
 export function settings(body) {
   const invalid = () => {
     throw new EndpointError(

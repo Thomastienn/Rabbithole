@@ -3,23 +3,25 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
-import { EndpointError, endpointName, lastTest, readOwned, settings } from './endpointSettings.mjs';
-import { chunkUsage, history, roundText, runTool, streamEvents } from './chatStream.mjs';
+import {
+  EndpointError,
+  endpointName,
+  lastTest,
+  readOwned,
+  settings,
+  statusError,
+} from './endpointSettings.mjs';
+import { probeTools } from './toolProbe.mjs';
+import {
+  chunkUsage,
+  history,
+  redactStream,
+  roundText,
+  runTool,
+  streamEvents,
+} from './chatStream.mjs';
 
 export { EndpointError };
-
-// Only exact key echoes are filtered; hold a matching suffix across stream chunks.
-function redactStream(key, emit) {
-  let pending = '';
-  return (text, final = false) => {
-    pending = (pending + text).split(key).join('[redacted]');
-    let hold = final ? 0 : Math.min(key.length - 1, pending.length);
-    while (hold && !key.startsWith(pending.slice(-hold))) hold--;
-    const safe = pending.slice(0, pending.length - hold);
-    pending = pending.slice(pending.length - hold);
-    if (safe) emit({ type: 'delta', item: 'reply', text: safe });
-  };
-}
 
 // The list of saved custom endpoints; each entry is registered as its own provider.
 export class OpenAI {
@@ -244,16 +246,7 @@ class Endpoint {
     });
     if (!response.ok) {
       await response.body?.cancel();
-      const message = [401, 403].includes(response.status)
-        ? 'Custom endpoint rejected the API key. Check endpoint settings.'
-        : response.status === 404
-          ? 'Custom endpoint path or model was not found. Check the base URL and model.'
-          : response.status === 429
-            ? 'Custom endpoint rate or usage limit reached. Wait and retry.'
-            : response.status >= 500
-              ? 'Custom endpoint is unavailable. Try again later.'
-              : `Custom endpoint rejected the request (HTTP ${response.status}). Check endpoint settings and model.`;
-      throw new EndpointError(message);
+      throw statusError(response.status);
     }
     return response;
   }
@@ -320,6 +313,13 @@ class Endpoint {
     } finally {
       this.#requests.delete(controller);
     }
+  }
+  probeTools(model) {
+    const controller = new AbortController();
+    this.#requests.add(controller);
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]);
+    const post = (body) => this.#fetch(this.#saved, '/chat/completions', signal, body);
+    return probeTools(post, model).finally(() => this.#requests.delete(controller));
   }
   async model(tree, signal) {
     return tree.model ?? (await this.models(signal))[0].model;

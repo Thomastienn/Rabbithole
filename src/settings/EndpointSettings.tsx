@@ -3,14 +3,14 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
-import { Switch } from '@astryxdesign/core/Switch';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { PlusIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import type { Model } from './models';
 import SearchOffer from './SearchOffer';
+import EndpointModels from './EndpointModels';
 
-type Endpoint = {
+export type Endpoint = {
   id: string;
   name: string;
   baseUrl: string;
@@ -25,83 +25,6 @@ const when = (at: string) => {
     ? `today, ${time}`
     : `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}, ${time}`;
 };
-
-// Rows rendered at once; search narrows a catalogue of hundreds.
-const SHOWN = 50;
-
-// Each model's image and tool overrides save independently.
-function EndpointModels({
-  endpoint,
-  models,
-  save,
-}: {
-  endpoint: Endpoint;
-  models: Model[];
-  save: (model: string, field: 'readsImages' | 'usesTutorTools', on: boolean) => Promise<void>;
-}) {
-  const [query, setQuery] = useState(''),
-    [saving, setSaving] = useState(''),
-    [error, setError] = useState('');
-  const q = query.trim().toLowerCase(),
-    found = models.filter((m) => m.model.toLowerCase().includes(q)),
-    shown = found.slice(0, SHOWN);
-  return (
-    <VStack gap={2} className="endpoint-models" as="section" aria-label={`${endpoint.name} models`}>
-      <Text type="supporting" color="secondary">
-        Reads images: on sends images to the model; off sends their OCR text. Starts from what the
-        endpoint reports. Uses tutor tools allows the tools enabled in Settings; starts off unless
-        the endpoint reports tool support.
-      </Text>
-      <TextInput
-        label="Search models"
-        isLabelHidden
-        placeholder="Search models"
-        value={query}
-        onChange={setQuery}
-        autoComplete="off"
-        hasClear
-      />
-      {shown.map((m) => (
-        <VStack key={m.model} gap={1} role="group" aria-label={m.label}>
-          {(['readsImages', 'usesTutorTools'] as const).map((field) => (
-            <Switch
-              key={field}
-              label={`${m.label} · ${field === 'readsImages' ? 'Reads images' : 'Uses tutor tools'}`}
-              value={!!m[field]}
-              isLoading={saving === `${m.model}:${field}`}
-              isDisabled={!!saving}
-              onChange={async (on) => {
-                setSaving(`${m.model}:${field}`);
-                setError('');
-                try {
-                  await save(m.model, field, on);
-                } catch (e) {
-                  setError((e as Error).message);
-                } finally {
-                  setSaving('');
-                }
-              }}
-            />
-          ))}
-        </VStack>
-      ))}
-      <Text type="supporting" color="secondary" role="status">
-        {!models.length
-          ? 'No models listed. Test the endpoint, then try again.'
-          : !found.length
-            ? 'No models match.'
-            : found.length > shown.length
-              ? `Showing ${shown.length} of ${found.length} models. Search to narrow.`
-              : `${found.length} ${found.length === 1 ? 'model' : 'models'}`}
-      </Text>
-      {error && (
-        <Text type="supporting" role="alert">
-          {error}
-        </Text>
-      )}
-    </VStack>
-  );
-}
 
 export default function EndpointSettings({
   api,
@@ -427,6 +350,10 @@ export default function EndpointSettings({
                 models={(models ?? []).filter((m) => m.provider === e.id)}
                 save={async (model, field, on) => {
                   await api('/api/settings/endpoints/model', { id: e.id, model, [field]: on });
+                  await changed();
+                }}
+                retest={async (model) => {
+                  await api('/api/settings/endpoints/model/retest', { id: e.id, model });
                   await changed();
                 }}
               />

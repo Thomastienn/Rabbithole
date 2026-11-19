@@ -184,6 +184,13 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
       );
       return body;
     }
+    if (path === '/api/settings/endpoints/model/retest') {
+      calls.push({ retest: body });
+      models = models.map((m) =>
+        m.provider === body.id && m.model === body.model ? { ...m, usesTutorTools: false } : m,
+      );
+      return body;
+    }
     return list;
   };
   let reload;
@@ -228,6 +235,9 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
   assert.deepEqual(calls.at(-1), { id: 'openai:gw', model: 'model-290', usesTutorTools: true });
   assert.equal(tools().checked, true, 'the tool toggle saves on its own');
   assert.equal(target().checked, false);
+  await act(async () => button(panel(), 'Retest model-290 tool support').click());
+  assert.deepEqual(calls.at(-1), { retest: { id: 'openai:gw', model: 'model-290' } });
+  assert.equal(tools().checked, false, 'the reloaded list shows the retest result');
 
   await act(async () => inputValue(search, 'nothing-like-this'));
   assert.match(panel().textContent, /No models match\./);

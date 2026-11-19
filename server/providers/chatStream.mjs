@@ -167,3 +167,16 @@ export async function runTool(tree, call, emit, signal, key) {
     clearInterval(timer);
   }
 }
+
+// Only exact key echoes are filtered; hold a matching suffix across stream chunks.
+export function redactStream(key, emit) {
+  let pending = '';
+  return (text, final = false) => {
+    pending = (pending + text).split(key).join('[redacted]');
+    let hold = final ? 0 : Math.min(key.length - 1, pending.length);
+    while (hold && !key.startsWith(pending.slice(-hold))) hold--;
+    const safe = pending.slice(0, pending.length - hold);
+    pending = pending.slice(pending.length - hold);
+    if (safe) emit({ type: 'delta', item: 'reply', text: safe });
+  };
+}

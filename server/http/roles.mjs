@@ -100,9 +100,31 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     isEndpoint(provider)
       ? imageReading(provider, await listed(provider, model))
       : imageReading(provider);
-  // Tutor tools: override, else the reported capability, else off for custom endpoint models.
-  const toolCapable = async ({ provider, model }) =>
-    usesTutorTools(provider, isEndpoint(provider) ? await listed(provider, model) : {});
+  // The tool support probe saves its result as the model's tool flag; parallel first uses share one probe.
+  const probing = new Map();
+  const probeTools = (provider, model) => {
+    const key = `${provider}\n${model}`;
+    if (!probing.has(key))
+      probing.set(
+        key,
+        Promise.resolve()
+          .then(() => providers[provider].probeTools(model))
+          .then((ok) => {
+            store.setUsesTutorTools(provider, model, ok);
+            return ok;
+          })
+          .finally(() => probing.delete(key)),
+      );
+    return probing.get(key);
+  };
+  // Tutor tools: the saved flag (learner or probe), else the reported capability, else probed on first use.
+  const toolCapable = async ({ provider, model }) => {
+    if (!isEndpoint(provider)) return usesTutorTools(provider, {});
+    const m = await listed(provider, model);
+    if (m.model && m.tools == null && store.usesTutorToolsOverride(provider, m.model) == null)
+      await probeTools(provider, m.model).catch(() => {});
+    return usesTutorTools(provider, m);
+  };
   // A null default provider (fresh install) leaves an unset chat role without a provider.
   const unset = () => ({ provider: defaultProvider, model: null, effort: null });
   const chatDefault = () => store.chatSettings() ?? unset();
@@ -212,6 +234,7 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     withTyped,
     readsImages,
     toolCapable,
+    probeTools,
     chatDefault,
     smart,
     videoRoles,

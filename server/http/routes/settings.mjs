@@ -232,6 +232,19 @@ export async function settingsRoutes(req, res, url, ctx, body) {
       });
     }
   }
+  // Retest re-runs the tool support probe and saves the result as the model's tool flag.
+  if (endpoint && url.pathname === '/api/settings/endpoints/model/retest') {
+    const { id, model } = body ?? {};
+    if (!endpoint.list().some((e) => e.id === id) || typeof model !== 'string' || !model.trim())
+      return json(res, 400, { error: 'Choose a model of a saved endpoint, then try again.' });
+    try {
+      return json(res, 200, { id, model, usesTutorTools: await ctx.probeTools(id, model) });
+    } catch (error) {
+      return json(res, 502, {
+        error: `Could not test tool support. ${error.message ?? 'Check the endpoint and retry.'}`,
+      });
+    }
+  }
   // Independent overrides for one model of a saved endpoint; the override survives until the endpoint is removed.
   if (endpoint && url.pathname === '/api/settings/endpoints/model') {
     const { id, model, readsImages, usesTutorTools } = body ?? {};

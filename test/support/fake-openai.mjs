@@ -30,11 +30,23 @@ export async function fakeOpenAI(t) {
     models: [{ id: 'local-tutor' }, { id: 'second-model' }],
     modelStatus: 200,
     reply: (req, res) => streamReply(res, ['Peterson ', 'uses two flags.']),
+    // The tool support probe is the only non-streamed chat call; by default the model answers without a call.
+    probes: [],
+    probe: (req, res) =>
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(
+        JSON.stringify({
+          choices: [{ index: 0, message: { role: 'assistant', content: 'ok' } }],
+        }),
+      ),
   };
   const server = createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : null;
+    if (req.url === '/v1/chat/completions' && body?.stream === false) {
+      fake.probes.push(body);
+      return fake.probe(req, res, body);
+    }
     fake.calls.push({ path: req.url, method: req.method, headers: req.headers, body });
     if (req.url === '/v1/models') {
       res.writeHead(fake.modelStatus, { 'Content-Type': 'application/json', ...fake.modelHeaders });
