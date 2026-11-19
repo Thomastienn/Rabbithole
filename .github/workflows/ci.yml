@@ -1,0 +1,49 @@
+# Checks every pull request that ralph-afk --pr opens; the reviewer merges only when all jobs pass.
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # `npm test` without its systemd-run memory scope, which runners lack. Keep the flags in step with package.json.
+      - run: node scripts/check-size.mjs
+      - run: >
+          node --import ./test/support/tsx.mjs --test --test-concurrency=8 --test-force-exit
+          --test-timeout=120000 "test/**/*.test.mjs"
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: trufflesecurity/trufflehog@v3.99.9
+        with:
+          extra_args: --results=verified,unknown

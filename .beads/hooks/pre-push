@@ -57,3 +57,19 @@ if command -v bd >/dev/null 2>&1; then
   if [ "$_bd_exit" -ne 0 ]; then exit "$_bd_exit"; fi
 fi
 # --- END BEADS INTEGRATION v1.3.4 ---
+
+# Secret scan for every push (PR mode lets agents push). Kept below the Beads section so bd can rewrite that part.
+# shortcut: scans HEAD's commits that origin/master lacks, not each pushed ref; read the stdin ref list if other refs get pushed.
+if ! command -v trufflehog >/dev/null 2>&1; then
+  echo >&2 "pre-push: trufflehog is not installed; refusing to push unscanned commits"
+  exit 1
+fi
+# The main checkout, because trufflehog cannot open a worktree's .git file.
+_th_repo=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+_th_head=$(git rev-parse HEAD)
+_th_base=$(git merge-base HEAD origin/master 2>/dev/null) || _th_base=
+if ! trufflehog git "file://$_th_repo" --branch "$_th_head" ${_th_base:+--since-commit "$_th_base"} \
+  --results=verified,unknown --fail --no-update >&2; then
+  echo >&2 "pre-push: trufflehog found a possible secret (or failed); push refused"
+  exit 1
+fi

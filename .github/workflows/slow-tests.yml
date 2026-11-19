@@ -1,0 +1,23 @@
+# The slow suite on master. ralph-afk --pr triggers it every 5 merges; the owner can also run it by hand.
+name: Slow tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  slow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # `npm run test:slow` without its systemd-run memory scope, which runners lack.
+      - run: >
+          node --import ./test/support/tsx.mjs --test --test-concurrency=8 --test-force-exit
+          --test-timeout=120000 "test/**/*.slow.mjs"
