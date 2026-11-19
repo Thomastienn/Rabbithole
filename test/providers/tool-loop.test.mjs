@@ -376,17 +376,29 @@ test('usage of every model call in a tool turn is summed into the reply and usag
   const total = { input: 320, output: 35, cacheRead: 100 };
   const { at, ...usage } = env.store.tree(id).messages.at(-1).usage;
   assert.deepEqual(usage, total);
-  const [event] = env.store.usageEvents().events;
+  const { events: recorded } = env.store.usageEvents();
+  assert.equal(recorded.length, 1);
+  const [event] = recorded;
   assert.deepEqual(
     { input: event.input, output: event.output, cacheRead: event.cacheRead, task: event.task },
     { ...total, task: 'chat' },
   );
 });
 
-test('tool-free endpoint requests do not ask for usage', async (t) => {
+test('a tool-free endpoint call asks for usage and records it once', async (t) => {
   const env = await launch(t);
-  await env.events((await env.ask('plain')).stream);
-  assert.equal(Object.hasOwn(env.chats()[0].body, 'stream_options'), false);
+  env.fake.reply = (req, res) =>
+    streamReply(res, ['Plain.'], 'stop', { prompt_tokens: 50, completion_tokens: 7 });
+  const { id, stream } = await env.ask('plain');
+  assert.deepEqual((await env.events(stream)).at(-1), { type: 'done', status: 'completed' });
+  const [chat] = env.chats();
+  assert.equal(chat.body.tools, undefined);
+  assert.equal(chat.body.stream_options?.include_usage, true);
+  const { at, ...usage } = env.store.tree(id).messages.at(-1).usage;
+  assert.deepEqual(usage, { input: 50, output: 7, cacheRead: 0 });
+  const { events } = env.store.usageEvents();
+  assert.equal(events.length, 1);
+  assert.deepEqual([events[0].input, events[0].output, events[0].task], [50, 7, 'chat']);
 });
 
 test('uses tutor tools: override, else reported tools, else off; tool switches remove tools; all off is tool-free', async (t) => {

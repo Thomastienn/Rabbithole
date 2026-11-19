@@ -357,7 +357,7 @@ class Endpoint {
       ];
       const output = redactStream(saved.apiKey, emit);
       const reply = roundText(output);
-      // Tool turns sum every model call's reported usage; tool-free requests stay as before.
+      // Every request asks for usage; tool turns sum each model call's report.
       const total = { input: 0, output: 0, cacheRead: 0 };
       // No call cap: the loop ends when the model answers without tool calls or with only end-of-reply app calls, or on Stop.
       while (true) {
@@ -367,10 +367,8 @@ class Endpoint {
           messages,
           stream: true,
           ...(tree.effort != null && { reasoning_effort: tree.effort }),
-          ...(tools.length && {
-            tools: tools.map((t) => ({ type: 'function', function: t })),
-            stream_options: { include_usage: true },
-          }),
+          stream_options: { include_usage: true },
+          ...(tools.length && { tools: tools.map((t) => ({ type: 'function', function: t })) }),
         });
         const calls = new Map();
         // This call's latest usage report; some endpoints repeat it on several chunks.
@@ -393,7 +391,7 @@ class Endpoint {
             const chunk = JSON.parse(data);
             if (chunk.error)
               throw new EndpointError('Custom endpoint reported a stream error. Try again.');
-            const reported = tools.length && chunkUsage(chunk.usage);
+            const reported = chunkUsage(chunk.usage);
             if (reported) {
               used = reported;
               emit({
@@ -432,7 +430,7 @@ class Endpoint {
               completed = true;
             }
             // With usage requested, its chunk follows the finish; read on to [DONE] or the stream's end.
-            return completed && !tools.length;
+            return false;
           });
         } finally {
           if (!response.body?.locked) await response.body?.cancel().catch(() => {});
