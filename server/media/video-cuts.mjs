@@ -280,8 +280,11 @@ export async function writeCuts({
     let own = null;
     try {
       own = await shoot(index);
-    } catch {
+    } catch (e) {
       signal.throwIfAborted();
+      // Remotion cut code that throws in the page renders no frame, live or final; its writer repairs it.
+      if (cut.engine !== 'manim' && /^SymbolicateableError\b/.test(e.diagnostic ?? ''))
+        throw Object.assign(new Error(e.diagnostic), { crashed: true });
     } finally {
       lastFrames[index].resolve(own?.at(-1) ?? null);
     }
@@ -427,7 +430,15 @@ export async function writeCuts({
           if (attempts[index] >= CUT_ATTEMPTS) throw cutError(reason, index, plan.cuts.length);
           await rewrite(index, reason);
         }
-      await audit(index);
+      for (;;)
+        try {
+          await audit(index);
+          break;
+        } catch (e) {
+          if (!e.crashed) throw e;
+          if (attempts[index] >= CUT_ATTEMPTS) throw cutError(e.message, index, plan.cuts.length);
+          await rewrite(index, e.message);
+        }
     } catch (error) {
       if (!signal.aborted) {
         cut.status = 'failed';

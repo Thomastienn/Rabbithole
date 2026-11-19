@@ -83,6 +83,11 @@ class HouseScene(Scene):
         self.cut_duration = timing["durationInFrames"] / 30
         self.audio_duration = timing["audioFrames"] / 30
 
+    # Cuts wait for a sentence with max(0, start - self.time); Manim rejects a zero wait.
+    def wait(self, duration=1.0, *args, **kwargs):
+        if duration > 0:
+            super().wait(duration, *args, **kwargs)
+
     def tear_down(self):
         if self.time > self.cut_duration + 1 / 30:
             raise ValueError("Manim cut exceeds its measured narration duration.")

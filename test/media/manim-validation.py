@@ -1,8 +1,12 @@
 """Cheap AST checks: no Manim import, scene execution or real render."""
 
 import importlib.util
+import json
+import os
 import re
 import sys
+import tempfile
+import types
 from pathlib import Path
 import unittest
 
@@ -112,6 +116,42 @@ class Validation(unittest.TestCase):
         ]:
             with self.subTest(code=code), self.assertRaises((ValueError, SyntaxError)):
                 renderer.validate(code, brief)
+
+    def test_late_sentence_wait_is_skipped(self):
+        class Scene:
+            def wait(self, duration=1.0, **kwargs):
+                self.waits.append(duration)
+
+        class Any:
+            set_default = staticmethod(lambda **kwargs: None)
+
+        manim = types.ModuleType("manim")
+        manim.Scene = Scene
+        manim.__getattr__ = lambda name: Any
+        with tempfile.TemporaryDirectory() as dir:
+            Path(dir, "brief.json").write_text(
+                json.dumps({**brief, "palette": {**brief["palette"], "muted": "#8a8070"}})
+            )
+            cwd = os.getcwd()
+            os.chdir(dir)
+            sys.modules["manim"] = manim
+            try:
+                spec = importlib.util.spec_from_file_location(
+                    "kit", root / "server/media/manim-kit.py"
+                )
+                kit = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(kit)
+            finally:
+                del sys.modules["manim"]
+                os.chdir(cwd)
+        scene = kit.HouseScene.__new__(kit.HouseScene)
+        scene.waits = []
+        # The cut pattern self.wait(max(0, start - self.time)) once animations overran the sentence.
+        scene.wait(0)
+        scene.wait(-0.2)
+        scene.wait(0.5, frozen_frame=True)
+        scene.wait()
+        self.assertEqual(scene.waits, [0.5, 1.0])
 
 
 if __name__ == "__main__":

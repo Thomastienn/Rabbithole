@@ -378,6 +378,12 @@ test('the first diagnostic line names the error without absolute paths', () => {
     ),
     "Error: Module not found: Error: Can't resolve './x' in '[path]'",
   );
+  assert.equal(
+    firstDiagnostic(
+      'node:internal/modules/run_main:107\n    triggerUncaughtException(\n\nSymbolicateableError [TypeError]: Cannot interpolate an input which is not a number\n    at reveal (http://localhost:3000/bundle.js:68284:49)\n',
+    ),
+    'SymbolicateableError [TypeError]: Cannot interpolate an input which is not a number',
+  );
   assert.equal(firstDiagnostic('\n at file:///home/u/a.tsx:12:5 1/2\n'), 'at [path]:12:5 1/2');
   assert.equal(firstDiagnostic(''), undefined);
 });

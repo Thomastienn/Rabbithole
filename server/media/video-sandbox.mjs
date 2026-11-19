@@ -190,6 +190,6 @@ export function firstDiagnostic(stderr) {
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
-  const line = lines.find((l) => /\b\w*(?:Error|Exception)\b:/.test(l)) ?? lines[0];
+  const line = lines.find((l) => /\b\w*(?:Error|Exception)\b(?: \[\w+\])?:/.test(l)) ?? lines[0];
   return line && withoutPaths(line).slice(0, 500);
 }

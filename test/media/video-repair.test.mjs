@@ -204,3 +204,55 @@ test('a repair patch that does not apply gets one whole-source call in the same 
   }
   t.diagnostic('fallback and limit checked');
 });
+
+test('a Remotion cut whose audit stills throw in the page spends the repair; a repair that still throws fails the cut', async (t) => {
+  const crash =
+    'SymbolicateableError [TypeError]: Cannot interpolate an input which is not a number';
+  for (const [fix, outcome] of [
+    [repaired, 'ready'],
+    [composition.replace('PRIVATE_SOURCE_MARKER', 'STILL_BROKEN'), 'failed'],
+  ]) {
+    const repairs = [];
+    let audits = 0;
+    const env = await open(
+      {
+        generate: async (tree, text, emit) => {
+          if (tree.id) return complete(emit, 'Watch.' + directive);
+          if (tree.instructions.startsWith('You plan'))
+            return complete(emit, planText(planFor(composition, 1)));
+          if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
+            audits++;
+            return audit(tree, emit, pass);
+          }
+          if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+            repairs.push(fixerTask(text));
+            return complete(emit, patchOf(fixerTask(text).failedCode, fix));
+          }
+          complete(emit, composition);
+        },
+      },
+      {
+        videoSnapshot: async (dir, list) => {
+          if (!readFileSync(join(dir, 'Video.tsx'), 'utf8').includes('REPAIRED'))
+            throw Object.assign(new Error('Video rendering failed.'), { diagnostic: crash });
+          for (const { file } of list) writeFileSync(file, 'jpeg');
+        },
+      },
+    );
+    t.after(() => env.close());
+    const chat = env.store.create('Crash repair', 'codex');
+    await (await env.post(`/api/trees/${chat.id}/messages`, { text: 'Make a video.' })).text();
+    const row = await until(() =>
+      env.store.tree(chat.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
+    );
+    await env.app.stop();
+    env.store.close();
+    assert.equal(row.status, outcome, row.error);
+    assert.equal(repairs.length, 1);
+    assert.equal(repairs[0].validationError, crash);
+    assert.equal(repairs[0].failedCode, composition);
+    assert.equal(audits, 0, 'the repair is the audit');
+    if (outcome === 'ready') assert.equal(JSON.parse(row.source).cuts[0].code, repaired);
+    else assert.equal(row.error, `Cut 1 of 1: ${crash}. Retry keeps the other cuts.`);
+  }
+});
