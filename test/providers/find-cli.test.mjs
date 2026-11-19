@@ -5,7 +5,7 @@ import { PassThrough } from 'node:stream';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { findCli, cliPath } from '../../server/providers/findCli.mjs';
+import { findCli, cliPath, launchArgs } from '../../server/providers/findCli.mjs';
 import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 
@@ -24,6 +24,65 @@ test('detection checks PATH before the usual Linux install folders', () => {
   );
   assert.equal(find('codex', ['/brew/bin/codex'], { HOMEBREW_PREFIX: '/brew' }), '/brew/bin/codex');
   assert.equal(find('codex', [], { npm: null }), null);
+});
+
+// npm's cmd-shim output for a script bin and for a native bin.
+const shim = (target, viaNode) =>
+  [
+    '@ECHO off',
+    'GOTO start',
+    ':find_dp0',
+    'SET dp0=%~dp0',
+    'EXIT /b',
+    ':start',
+    'SETLOCAL',
+    'CALL :find_dp0',
+    viaNode
+      ? `IF EXIST "%dp0%\\node.exe" (\n  SET "_prog=%dp0%\\node.exe"\n) ELSE (\n  SET "_prog=node"\n)\n` +
+        `endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\${target}" %*`
+      : `"%dp0%\\${target}"   %*`,
+  ].join('\r\n');
+
+test('Windows detection checks PATH, %LOCALAPPDATA%, %APPDATA%\\npm and %USERPROFILE%\\.local\\bin, and resolves npm shims', () => {
+  const env = {
+    PATH: 'C:\\Windows\\system32;C:\\Tools',
+    LOCALAPPDATA: 'C:\\Users\\L\\AppData\\Local',
+    APPDATA: 'C:\\Users\\L\\AppData\\Roaming',
+    USERPROFILE: 'C:\\Users\\L',
+  };
+  const npm = 'C:\\Users\\L\\AppData\\Roaming\\npm';
+  const shims = {
+    [`${npm}\\codex.cmd`]: shim('node_modules\\@openai\\codex\\bin\\codex.js', true),
+    [`${npm}\\claude.cmd`]: shim(
+      'node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe',
+      false,
+    ),
+  };
+  const win = (name, files) =>
+    findCli(name, {
+      env,
+      platform: 'win32',
+      exists: (p) => files.includes(p) || p in shims,
+      read: (p) => shims[p],
+      npm: assert.fail,
+    });
+  const script = `${npm}\\node_modules\\@openai\\codex\\bin\\codex.js`;
+  const native = `${npm}\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe`;
+  assert.equal(win('codex', [script]), script);
+  assert.equal(win('claude', [native]), native);
+  assert.equal(win('claude', ['C:\\Tools\\claude.exe', native]), 'C:\\Tools\\claude.exe');
+  assert.equal(
+    win('claude', ['C:\\Users\\L\\.local\\bin\\claude.exe']),
+    'C:\\Users\\L\\.local\\bin\\claude.exe',
+  );
+  assert.equal(
+    win('codex', ['C:\\Users\\L\\AppData\\Local\\codex.exe']),
+    'C:\\Users\\L\\AppData\\Local\\codex.exe',
+  );
+  assert.equal(win('codex', []), null, 'a shim whose target is gone is not found');
+  // A script runs under this server's own Node; an executable runs directly.
+  assert.deepEqual(launchArgs(script, ['app-server']), [process.execPath, [script, 'app-server']]);
+  assert.deepEqual(launchArgs(native, ['-p']), [native, ['-p']]);
 });
 
 test('a missing CLI is found once installed, and a found path is remembered', () => {
@@ -106,5 +165,12 @@ test('Codex launches the found path; a missing CLI fails its model list', async 
   bin = '/opt/npm/bin/codex';
   await codex.ready();
   codex.close();
-  assert.deepEqual(commands, ['/opt/npm/bin/codex']);
+  bin = 'C:\\npm\\node_modules\\@openai\\codex\\bin\\codex.js';
+  await codex.ready();
+  codex.close();
+  assert.deepEqual(
+    commands,
+    ['/opt/npm/bin/codex', process.execPath],
+    'a resolved npm script runs under Node, not a shell',
+  );
 });

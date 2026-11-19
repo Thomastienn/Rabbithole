@@ -1,4 +1,5 @@
 import { spawn, execFile } from 'node:child_process';
+import { launchArgs } from './findCli.mjs';
 import { createInterface } from 'node:readline';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -41,8 +42,10 @@ export class Claude {
     const bin = this.bin();
     if (!bin) return { connected: false, email: null };
     const out = await new Promise((resolve) =>
-      this.run(bin, ['auth', 'status'], { env: this.env(), timeout: 15000 }, (error, stdout) =>
-        resolve(error && !stdout ? null : stdout),
+      this.run(
+        ...launchArgs(bin, ['auth', 'status']),
+        { env: this.env(), timeout: 15000 },
+        (error, stdout) => resolve(error && !stdout ? null : stdout),
       ),
     );
     try {
@@ -133,7 +136,7 @@ export class Claude {
       return;
     }
     // The CLI gives its environment effort precedence over --effort.
-    const child = this.launch(this.cli(), args, {
+    const child = this.launch(...launchArgs(this.cli(), args), {
       cwd: this.cwd,
       env: { ...this.env(), ...(tree.effort != null && { CLAUDE_CODE_EFFORT_LEVEL: tree.effort }) },
       stdio: ['pipe', 'pipe', 'pipe'],

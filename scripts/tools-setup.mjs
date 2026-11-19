@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, extname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { projectRoot, texBin, uvDir } from '../server/media/manim.mjs';
@@ -11,6 +11,8 @@ const UV_TARGETS = {
   'linux-arm64': 'aarch64-unknown-linux-gnu',
   'darwin-x64': 'x86_64-apple-darwin',
   'darwin-arm64': 'aarch64-apple-darwin',
+  'win32-x64': 'x86_64-pc-windows-msvc',
+  'win32-arm64': 'aarch64-pc-windows-msvc',
 };
 // shortcut: TinyTeX's rolling "daily" bundle, because tlmgr installs from the current CTAN year anyway and a pinned older bundle stops working at the next TeX Live release.
 const TINYTEX = {
@@ -18,6 +20,7 @@ const TINYTEX = {
   'linux-arm64': 'linux-arm64',
   'darwin-x64': 'darwin',
   'darwin-arm64': 'darwin',
+  'win32-x64': 'windows',
 };
 // Manim's documented minimal LaTeX packages (docs.manim.community, installation).
 export const MANIM_TEX_PACKAGES = (
@@ -47,9 +50,10 @@ async function download(url, file, report, signal) {
 }
 
 // Unpacks beside the target and renames, so an interrupted download leaves no half tool behind.
-async function unpack(url, dir, { run, report, signal, name }) {
+// `extract` fills the part folder and returns an exit code; `inner` names the archive's top folder, if it keeps one.
+async function unpack(url, dir, { report, signal, name, extract, inner = '' }) {
   const part = `${dir}.part`,
-    archive = `${dir}.download`;
+    archive = `${dir}.download${extname(url)}`;
   rmSync(part, { recursive: true, force: true });
   mkdirSync(part, { recursive: true });
   let size;
@@ -60,19 +64,24 @@ async function unpack(url, dir, { run, report, signal, name }) {
         `${name} download failed (${error.message}). Check your connection and Retry.`,
       );
     });
-    if (await run('tar', ['-xf', archive, '-C', part, '--strip-components', '1']))
+    if (await extract(archive, part))
       throw new Error(`${name} could not be unpacked. Retry the download.`);
   } finally {
     rmSync(archive, { force: true });
   }
   rmSync(dir, { recursive: true, force: true });
-  renameSync(part, dir);
+  renameSync(join(part, inner), dir);
+  rmSync(part, { recursive: true, force: true });
   return size;
 }
 
+const untar = (run, strip) => (archive, part) =>
+  run('tar', ['-xf', archive, '-C', part, ...(strip ? ['--strip-components', '1'] : [])]);
+
 const target = (table, platform, arch, name) => {
   const found = table[`${platform}-${arch}`];
-  if (!found) throw new Error(`${name} downloads support Linux and macOS on x64 or arm64.`);
+  if (!found)
+    throw new Error(`${name} downloads support Linux, macOS and Windows on x64 or arm64.`);
   return found;
 };
 const found = (probe, command) => probe(command, ['--version'], { timeout: 10000 }).status === 0;
@@ -93,15 +102,17 @@ export async function ensureUv({
   log = console.log,
 }) {
   if (uvReady({ probe })) return;
-  const asset = `uv-${target(UV_TARGETS, platform, arch, 'uv')}.tar.gz`;
+  const windows = platform === 'win32';
+  // The Windows zip holds uv.exe at its root; the tarballs keep one top folder.
+  const asset = `uv-${target(UV_TARGETS, platform, arch, 'uv')}.${windows ? 'zip' : 'tar.gz'}`;
   log(`Downloading uv ${UV_VERSION}. Internet access is needed.`);
   const dir = uvDir(root);
   mkdirSync(dirname(dir), { recursive: true });
   await unpack(`https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${asset}`, dir, {
-    run,
     report,
     signal,
     name: 'uv',
+    extract: untar(run, !windows),
   });
   if (!found(probe, join(dir, 'uv')))
     throw new Error('Downloaded uv does not run. Retry the download.');
@@ -120,24 +131,38 @@ export async function ensureLatex({
 }) {
   if (latexReady({ probe })) return;
   const bin = texBin(root, platform, arch),
-    tlmgr = join(bin, 'tlmgr');
+    dir = dirname(dirname(bin)),
+    windows = platform === 'win32';
+  // Windows tlmgr is a .bat, which spawn cannot run without a shell, so call the Perl script it wraps.
+  const [tlmgr, tlmgrArgs] = windows
+    ? [
+        join(dir, 'tlpkg', 'tlperl', 'bin', 'perl.exe'),
+        [join(dir, 'texmf-dist', 'scripts', 'texlive', 'tlmgr.pl')],
+      ]
+    : [join(bin, 'tlmgr'), []];
   // A bundle already unpacked only needs its packages, so Retry after a failed tlmgr skips the download.
   if (!existsSync(tlmgr)) {
-    const bundle = `TinyTeX-1-${target(TINYTEX, platform, arch, 'LaTeX')}.tar.xz`;
+    const bundle = `TinyTeX-1-${target(TINYTEX, platform, arch, 'LaTeX')}.${windows ? 'exe' : 'tar.xz'}`;
     log('Downloading LaTeX (TinyTeX). Internet access is needed.');
-    const dir = dirname(dirname(bin));
     mkdirSync(dirname(dir), { recursive: true });
     const size = await unpack(
       `https://github.com/rstudio/tinytex-releases/releases/download/daily/${bundle}`,
       dir,
-      { run, report, signal, name: 'LaTeX' },
+      {
+        report,
+        signal,
+        name: 'LaTeX',
+        // The Windows bundle is a 7-Zip self-extractor holding one TinyTeX folder.
+        extract: windows ? (archive, part) => run(archive, ['-y', `-o${part}`]) : untar(run, true),
+        inner: windows ? 'TinyTeX' : '',
+      },
     );
     // Package installs report no bytes, so the bar turns indeterminate while tlmgr runs.
     report({ ...size, percent: null });
   }
   log("Installing Manim's LaTeX packages with tlmgr.");
-  if (await run(tlmgr, ['install', ...MANIM_TEX_PACKAGES]))
+  if (await run(tlmgr, [...tlmgrArgs, 'install', ...MANIM_TEX_PACKAGES]))
     throw new Error('LaTeX package install failed. Check your connection and Retry.');
-  if (!['latex', 'dvisvgm'].every((tool) => existsSync(join(bin, tool))))
+  if (!['latex', 'dvisvgm'].every((tool) => existsSync(join(bin, windows ? `${tool}.exe` : tool))))
     throw new Error('LaTeX install is incomplete. Retry the download.');
 }

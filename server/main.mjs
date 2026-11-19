@@ -1,5 +1,4 @@
 import { join, resolve } from 'node:path';
-import { homedir } from 'node:os';
 import { mkdirSync } from 'node:fs';
 import { execFile, spawn } from 'node:child_process';
 import lockfile from 'proper-lockfile';
@@ -8,6 +7,7 @@ import { Auth } from './providers/auth.mjs';
 import { Codex } from './providers/codex.mjs';
 import { Claude } from './providers/claude.mjs';
 import { cliPath } from './providers/findCli.mjs';
+import { dataDir } from './desktop.mjs';
 import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
 import { localEmbedder } from './media/embedder.mjs';
@@ -18,10 +18,7 @@ import { downloadManager } from './downloads.mjs';
 import { videoTools } from './media/video-tools.mjs';
 
 process.umask(0o077);
-const dir = resolve(
-  process.env.RABBITHOLE_DATA_DIR ??
-    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'rabbithole'),
-);
+const dir = resolve(process.env.RABBITHOLE_DATA_DIR ?? dataDir());
 const args = process.argv.slice(2);
 const portText =
   args[0] === '--port' && args.length === 2 ? args[1] : (process.env.RABBITHOLE_PORT ?? '4317');

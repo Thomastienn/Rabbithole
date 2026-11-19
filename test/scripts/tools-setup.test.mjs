@@ -25,8 +25,10 @@ function fixture(t, files = []) {
   t.after(() => (globalThis.fetch = saved));
   const run = async (command, args) => {
     calls.push([command, args]);
-    if (command === 'tar') {
-      const into = args[args.indexOf('-C') + 1];
+    // The Windows TinyTeX self-extractor takes -y -o<folder>.
+    const sfx = args[0] === '-y';
+    if (command === 'tar' || sfx) {
+      const into = sfx ? args[1].slice(2) : args[args.indexOf('-C') + 1];
       for (const file of files) {
         mkdirSync(join(into, file, '..'), { recursive: true });
         writeFileSync(join(into, file), '');
@@ -90,6 +92,47 @@ test("missing LaTeX downloads TinyTeX and installs Manim's packages; Retry after
   assert.equal(f.fetched.length, 1);
   // System latex and dvisvgm mean no download.
   await ensureLatex({ ...options, probe: () => ({ status: 0 }), run: assert.fail });
+});
+
+test('Windows gets the uv zip and the TinyTeX self-extractor, and tlmgr runs through its Perl without a shell', async (t) => {
+  const f = fixture(t, [
+    'uv.exe',
+    'TinyTeX/tlpkg/tlperl/bin/perl.exe',
+    'TinyTeX/bin/windows/latex.exe',
+  ]);
+  const win = { ...f, platform: 'win32', arch: 'x64', log: () => {} };
+  await ensureUv(win).catch(() => {}); // the fake uv.exe cannot run here
+  assert.equal(
+    f.fetched[0],
+    `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-pc-windows-msvc.zip`,
+  );
+  assert.deepEqual(
+    f.calls[0][1].slice(-2),
+    ['-C', `${uvDir(f.root)}.part`],
+    'the zip has no top folder',
+  );
+  assert.ok(existsSync(join(uvDir(f.root), 'uv.exe')));
+
+  const tex = join(f.root, '.tools', 'TinyTeX'),
+    perl = join(tex, 'tlpkg', 'tlperl', 'bin', 'perl.exe');
+  const run = async (command, args) => {
+    if (command !== perl) return f.run(command, args);
+    f.calls.push([command, args]);
+    writeFileSync(join(texBin(f.root, 'win32', 'x64'), 'dvisvgm.exe'), '');
+    return 0;
+  };
+  await ensureLatex({ ...win, run });
+  assert.equal(
+    f.fetched[1],
+    'https://github.com/rstudio/tinytex-releases/releases/download/daily/TinyTeX-1-windows.exe',
+  );
+  assert.deepEqual(f.calls[1], [`${tex}.download.exe`, ['-y', `-o${tex}.part`]]);
+  assert.deepEqual(f.calls.at(-1), [
+    perl,
+    [join(tex, 'texmf-dist', 'scripts', 'texlive', 'tlmgr.pl'), 'install', ...MANIM_TEX_PACKAGES],
+  ]);
+  assert.equal(texBin(f.root, 'win32', 'x64'), join(tex, 'bin', 'windows'));
+  assert.deepEqual(readdirSync(join(f.root, '.tools')).sort(), ['TinyTeX', 'uv']);
 });
 
 test('the Linux line shows only when bwrap, pkg-config or Cairo/Pango headers are missing', () => {

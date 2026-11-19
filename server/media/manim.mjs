@@ -13,7 +13,11 @@ export const texBin = (root = projectRoot, platform = process.platform, arch = p
     '.tools',
     'TinyTeX',
     'bin',
-    platform === 'darwin' ? 'universal-darwin' : `${arch === 'arm64' ? 'aarch64' : 'x86_64'}-linux`,
+    platform === 'win32'
+      ? 'windows'
+      : platform === 'darwin'
+        ? 'universal-darwin'
+        : `${arch === 'arm64' ? 'aarch64' : 'x86_64'}-linux`,
   );
 // After the system PATH, so a learner's own uv or LaTeX wins over the downloads.
 process.env.PATH = [process.env.PATH, uvDir(), texBin()].join(delimiter);
@@ -56,10 +60,14 @@ export function systemPackages({
 }
 
 export function checkManimDependencies({ platform = process.platform, probe = spawnSync } = {}) {
-  if (!['linux', 'darwin'].includes(platform))
-    throw new Error('Manim setup supports Linux (apt) and macOS (Homebrew).');
+  if (!['linux', 'darwin', 'win32'].includes(platform))
+    throw new Error('Manim setup supports Linux, macOS and Windows.');
   const missing = [];
-  if (probe('pkg-config', ['--exists', 'cairo', 'pangocairo'], { timeout: 10000 }).status !== 0)
+  // Windows installs pycairo and manimpango from wheels, so it needs no system headers.
+  if (
+    platform !== 'win32' &&
+    probe('pkg-config', ['--exists', 'cairo', 'pangocairo'], { timeout: 10000 }).status !== 0
+  )
     missing.push(
       'Cairo/Pango development headers or pkg-config are missing. Run: ' +
         (platform === 'darwin'
@@ -80,7 +88,10 @@ export function detectManim({
   probe = spawnSync,
   platform = process.platform,
 } = {}) {
-  const python = join(root, '.venv', 'bin', 'python');
+  const python =
+    platform === 'win32'
+      ? join(root, '.venv', 'Scripts', 'python.exe')
+      : join(root, '.venv', 'bin', 'python');
   try {
     checkManimDependencies({ probe, platform });
     const result = probe(python, ['-I', '-c', 'import manim; print(manim.__version__)'], {

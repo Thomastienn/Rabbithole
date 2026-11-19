@@ -1,7 +1,7 @@
-import { accessSync, constants, statSync } from 'node:fs';
+import { accessSync, constants, readFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { delimiter, join } from 'node:path';
+import { delimiter, join, win32 } from 'node:path';
 
 const runnable = (path) => {
   try {
@@ -29,12 +29,48 @@ function globalNpmBin(env) {
   return npmBin;
 }
 
-// PATH first, then the usual Linux install folders. Returns an absolute path, or null when missing.
-// shortcut: Linux folders only; Windows folders and .cmd shims come with the Windows build ticket.
+// npm's .cmd shim ends by running "%dp0%\<target>" (a .exe, or a script after node.exe); spawn cannot run the .cmd without a shell.
+const shimTarget = (shim, read) => {
+  const targets = [...read(shim).matchAll(/"%dp0%\\([^"]+)"/g)]
+    .map((m) => m[1])
+    .filter((t) => !/^node\.exe$/i.test(t));
+  return targets.length ? win32.join(win32.dirname(shim), targets.at(-1)) : null;
+};
+
+function findWindowsCli(name, env, exists, read) {
+  const dirs = [
+    ...(env.PATH ?? '').split(';'),
+    env.LOCALAPPDATA,
+    env.APPDATA && win32.join(env.APPDATA, 'npm'),
+    env.USERPROFILE && win32.join(env.USERPROFILE, '.local', 'bin'),
+  ].filter(Boolean);
+  for (const dir of dirs) {
+    const exe = win32.join(dir, `${name}.exe`),
+      shim = win32.join(dir, `${name}.cmd`);
+    if (exists(exe)) return exe;
+    const target = exists(shim) && shimTarget(shim, read);
+    if (target && exists(target)) return target;
+  }
+  return null;
+}
+
+// A found script runs with this server's own Node, so no shell or PATH lookup is involved.
+export const launchArgs = (bin, args) =>
+  /\.[cm]?js$/i.test(bin) ? [process.execPath, [bin, ...args]] : [bin, args];
+
+// PATH first, then the usual install folders. Returns an absolute path, or null when missing.
 export function findCli(
   name,
-  { env = process.env, home = homedir(), exists = runnable, npm = () => globalNpmBin(env) } = {},
+  {
+    env = process.env,
+    home = homedir(),
+    exists = runnable,
+    npm = () => globalNpmBin(env),
+    platform = process.platform,
+    read = (path) => readFileSync(path, 'utf8'),
+  } = {},
 ) {
+  if (platform === 'win32') return findWindowsCli(name, env, exists, read);
   const dirs = [
     ...(env.PATH ?? '').split(delimiter).filter(Boolean),
     join(home, '.local', 'bin'),

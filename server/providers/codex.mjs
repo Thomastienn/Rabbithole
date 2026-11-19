@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { launchArgs } from './findCli.mjs';
 import { createInterface } from 'node:readline';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -92,7 +93,7 @@ export class Codex {
       'stdio://',
       ...Object.entries(configs).flatMap(([k, v]) => ['-c', `${k}=${toml(v)}`]),
     ];
-    const child = this.launch(bin, args, {
+    const child = this.launch(...launchArgs(bin, args), {
       cwd,
       env: { PATH: process.env.PATH, CODEX_HOME: home, ACCESS_TOKEN: token },
       stdio: ['pipe', 'pipe', 'pipe'],

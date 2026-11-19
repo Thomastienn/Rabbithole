@@ -101,6 +101,35 @@ test('first run provisions a local Python environment and pinned Manim; later st
   );
 });
 
+test('Windows setup needs no system packages: Manim installs into .venv/Scripts with only TinyTeX checked', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'rabbithole-manim-win-'));
+  const python = join(root, '.venv', 'Scripts', 'python.exe');
+  let installed = false;
+  const probe = (command) => probes(installed ? ['pkg-config'] : ['pkg-config', python])(command);
+  const calls = [];
+  const result = await ensureManim({
+    root,
+    probe,
+    platform: 'win32',
+    log: () => {},
+    run: async (command, args) => {
+      calls.push([command, args]);
+      if (args[0] === 'pip') installed = true;
+      return 0;
+    },
+  });
+  assert.equal(result.ready, true);
+  assert.equal(result.python, python);
+  assert.deepEqual(calls.at(-1), [
+    'uv',
+    ['pip', 'install', '--python', python, `manim==${MANIM_VERSION}`],
+  ]);
+  assert.throws(
+    () => checkManimDependencies({ platform: 'win32', probe: probes(['dvisvgm']) }),
+    /downloads as TinyTeX/,
+  );
+});
+
 test('an interrupted or wrong-version install repairs the existing environment without replacing it', async () => {
   const root = mkdtempSync(join(tmpdir(), 'rabbithole-manim-repair-'));
   mkdirSync(join(root, '.venv/bin'), { recursive: true });
