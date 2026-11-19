@@ -13,7 +13,11 @@
     "targets": ["appimage"],
     "category": "Education",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png"],
-    "resources": { "stage/app.tar": "app.tar", "stage/app.build": "app.build" },
+    "resources": {
+      "stage/app.tar": "app.tar",
+      "stage/app.build": "app.build",
+      "LICENSES.md": "LICENSES.md"
+    },
     "linux": { "appimage": { "bundleMediaFramework": true } }
   }
 }

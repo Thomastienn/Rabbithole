@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { delimiter, join } from 'node:path';
+import { readFileSync, realpathSync } from 'node:fs';
+import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const MANIM_VERSION = '0.22.1';
@@ -17,6 +17,14 @@ export const texBin = (root = projectRoot, platform = process.platform, arch = p
   );
 // After the system PATH, so a learner's own uv or LaTeX wins over the downloads.
 process.env.PATH = [process.env.PATH, uvDir(), texBin()].join(delimiter);
+
+// A venv's base interpreter folder, which the sandbox must let it read: uv links it on Linux, pyvenv.cfg names it on Windows.
+export const pythonRuntime = (python, platform = process.platform) =>
+  platform === 'win32'
+    ? /^home\s*=\s*(.+?)\s*$/m.exec(
+        readFileSync(join(dirname(dirname(python)), 'pyvenv.cfg'), 'utf8'),
+      )[1]
+    : dirname(dirname(realpathSync(python)));
 
 export const LINUX_PACKAGES =
   'sudo apt install bubblewrap libcairo2-dev libpango1.0-dev pkg-config python3-dev build-essential';

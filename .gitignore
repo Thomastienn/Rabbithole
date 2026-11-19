@@ -15,6 +15,7 @@ dist/
 .impeccable/review/
 desktop/stage/
 desktop/target/
+desktop/sandbox/target/
 
 # Ralph run state and logs; keep workflow configuration and checks tracked.
 .ralph-tui/iterations/

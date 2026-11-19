@@ -97,6 +97,9 @@ fn run_server(app: AppHandle, window: WebviewWindow) {
             .current_dir(&root)
             .stdout(writer.try_clone()?)
             .stderr(writer);
+        // Model-written code runs through the bundled launcher (desktop/sandbox) beside the Codex helpers.
+        #[cfg(windows)]
+        command.env("RABBITHOLE_SANDBOX", resources.join("rabbithole-sandbox.exe"));
         #[cfg(target_os = "linux")]
         unsafe {
             use std::os::unix::process::CommandExt;

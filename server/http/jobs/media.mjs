@@ -7,6 +7,7 @@ import { generateDiagram } from '../../media/diagrams.mjs';
 import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
 import { exportVideo } from '../../media/video-export.mjs';
+import { sandboxMissing } from '../../media/video-sandbox.mjs';
 import {
   PIECES_INSTRUCTIONS,
   AUDIT_INSTRUCTIONS,
@@ -119,8 +120,8 @@ export function mediaJobs(ctx) {
     stage('plan');
     running.done = Promise.resolve()
       .then(async () => {
-        // Nothing starts by itself once the tools are ready; the learner asks again.
-        const waiting = ctx.downloads?.videoWaiting();
+        // Nothing starts by itself once the tools or the Windows sandbox are ready; the learner asks again.
+        const waiting = sandboxMissing() ?? ctx.downloads?.videoWaiting();
         if (waiting) throw new Error(waiting);
         const resolve = async (choice, role, check = true) => {
           const provider = pick(choice);

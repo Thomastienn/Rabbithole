@@ -1,8 +1,9 @@
 import { spawn as spawnProcess } from 'node:child_process';
-import { mkdirSync, realpathSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { projectRoot } from '../media/manim.mjs';
+import { projectRoot, pythonRuntime } from '../media/manim.mjs';
+import { sandboxCommand } from '../media/video-sandbox.mjs';
 
 export const PYTHON_PACKAGES = ['numpy==2.5.4', 'scipy==1.18.1', 'sympy==1.14.0', 'pandas==3.1.1'];
 export const pythonVenv = (root = projectRoot) => join(root, '.venv-python');
@@ -24,10 +25,24 @@ function probe(command, args) {
   });
 }
 
-// Ready only when bubblewrap and the dedicated venv with every package exist.
-export async function detectPython({ root = projectRoot, check = probe } = {}) {
-  const python = join(pythonVenv(root), 'bin', 'python');
-  if (process.platform !== 'linux' || !(await check('bwrap', ['--version'])))
+export const WINDOWS_SANDBOX_MISSING =
+  'Offline Python needs the Windows sandbox. Enable it in Settings, then ask again.';
+
+// Ready only when the sandbox (bubblewrap, or the Windows launcher set up) and the dedicated venv with every package exist.
+export async function detectPython({
+  root = projectRoot,
+  check = probe,
+  platform = process.platform,
+  launcher = process.env.RABBITHOLE_SANDBOX,
+} = {}) {
+  const python =
+    platform === 'win32'
+      ? join(pythonVenv(root), 'Scripts', 'python.exe')
+      : join(pythonVenv(root), 'bin', 'python');
+  if (platform === 'win32') {
+    if (!launcher || !(await check(launcher, ['--check'])))
+      return { ready: false, python, error: WINDOWS_SANDBOX_MISSING };
+  } else if (platform !== 'linux' || !(await check('bwrap', ['--version'])))
     return { ready: false, python, bwrap: false, error: `bubblewrap is missing. ${PYTHON_SETUP}` };
   if (!(await check(python, ['-I', '-c', 'import numpy, scipy, sympy, pandas'])))
     return { ready: false, python, error: `The Python environment is missing. ${PYTHON_SETUP}` };
@@ -36,7 +51,7 @@ export async function detectPython({ root = projectRoot, check = probe } = {}) {
 
 // Model-written code: no network, empty home, read-only system, app data hidden, only the workspace writable.
 export function pythonSandbox(workspace, python, dataDir) {
-  const runtime = dirname(dirname(realpathSync(python))),
+  const runtime = pythonRuntime(python),
     venv = dirname(dirname(python));
   return [
     '--ro-bind', '/', '/',
@@ -86,10 +101,8 @@ export async function runPython(
     throw new Error('run_python timeout must be a whole number of seconds from 1 to 240.');
   signal?.throwIfAborted();
   mkdirSync(workspace, { recursive: true, mode: 0o700 });
-  const child = spawn('bwrap', pythonSandbox(workspace, python, dataDir), {
-    stdio: ['pipe', 'pipe', 'pipe'],
-    env: {},
-  });
+  const [program, args, env] = sandboxCommand(pythonSandbox(workspace, python, dataDir));
+  const child = spawn(program, args, { stdio: ['pipe', 'pipe', 'pipe'], env });
   const out = capture(child.stdout),
     err = capture(child.stderr);
   let timedOut = false;
@@ -102,7 +115,7 @@ export async function runPython(
   child.stdin.on('error', () => {});
   child.stdin.end(code);
   const exit = await new Promise((resolve, reject) => {
-    child.once('error', () => reject(new Error('run_python could not start bubblewrap.')));
+    child.once('error', () => reject(new Error('run_python could not start its sandbox.')));
     child.once('close', (status) => resolve(status));
   }).finally(() => {
     clearTimeout(timer);

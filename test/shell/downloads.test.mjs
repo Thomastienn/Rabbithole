@@ -97,3 +97,18 @@ test('a video asked for before its tools are ready shows the unavailable state w
   await act(async () => button(container, 'Retry video').click());
   assert.deepEqual(calls, ['retry']);
 });
+
+test('a video asked for before the Windows sandbox is set up shows the unavailable state with that reason', async (t) => {
+  const error = 'Video making needs the Windows sandbox. Enable it in Settings, then ask again.';
+  const { container, cleanup } = await render(
+    h(VideoCard, {
+      artifact: { id: 'video', conversation: 'root', title: 'Winners', status: 'failed', error },
+      inline: true,
+      onAction: async () => {},
+    }),
+    ui,
+  );
+  t.after(cleanup);
+  assert.equal(container.querySelector('[data-artifact=video]').dataset.state, 'unavailable');
+  assert.equal(container.querySelector('[role=status]').textContent, `Winners: ${error}`);
+});

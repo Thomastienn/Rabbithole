@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
 import { homedir } from 'node:os';
@@ -59,12 +59,57 @@ export const SANDBOX = (workspace) => [
   join(workspace, 'tmp'),
 ];
 
+// bwrap flags and how many values follow each; the first other word starts the command.
+const BWRAP = {
+  '--ro-bind': 2,
+  '--bind': 2,
+  '--setenv': 2,
+  '--tmpfs': 1,
+  '--chdir': 1,
+  '--dev': 1,
+  '--proc': 1,
+  '--unshare-all': 0,
+  '--die-with-parent': 0,
+  '--new-session': 0,
+  '--clearenv': 0,
+};
+
+// The Windows launcher reads the same rules: read binds become --read and the one writable bind the workspace.
+// Hidden mounts need nothing, as the sandbox account cannot see the learner's home or app data; PATH holds POSIX folders.
+export function launcherArgs(args) {
+  const out = [];
+  let i = 0;
+  for (; i < args.length && args[i] in BWRAP; i += 1 + BWRAP[args[i]]) {
+    const [flag, a, b] = args.slice(i, i + 3);
+    if (flag === '--bind') out.push('--workspace', a);
+    else if (flag === '--ro-bind' && a !== '/') out.push('--read', a);
+    else if (flag === '--setenv' && a !== 'PATH') out.push('--env', `${a}=${b}`);
+  }
+  return [...out, '--', ...args.slice(i)];
+}
+
+// Every model-written code run: bwrap on Linux, the desktop app's codex-windows-sandbox launcher on Windows.
+// The trusted launcher keeps the server's environment for its own state; the command gets only the --env values.
+export const sandboxCommand = (args, platform = process.platform) =>
+  platform === 'win32'
+    ? [process.env.RABBITHOLE_SANDBOX, launcherArgs(args), process.env]
+    : ['bwrap', args, {}];
+
+// Null when model-written code can run; on Windows the launcher must exist and its one-time setup be done.
+export function sandboxMissing({
+  platform = process.platform,
+  launcher = process.env.RABBITHOLE_SANDBOX,
+  probe = spawnSync,
+} = {}) {
+  if (platform !== 'win32') return null;
+  if (launcher && probe(launcher, ['--check'], { timeout: 10000 }).status === 0) return null;
+  return 'Video making needs the Windows sandbox. Enable it in Settings, then ask again.';
+}
+
 export function sandboxProcess(workspace, command, signal, onProgress, budget, binds = []) {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn('bwrap', [...SANDBOX(workspace), ...binds, ...command], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: {},
-    });
+    const [program, args, env] = sandboxCommand([...SANDBOX(workspace), ...binds, ...command]);
+    const child = spawn(program, args, { stdio: ['ignore', 'pipe', 'pipe'], env });
     let out = '';
     child.stdout.on('data', (chunk) => {
       out = (out + chunk).slice(-4096);
