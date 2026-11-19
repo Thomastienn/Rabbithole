@@ -9,7 +9,7 @@ import {
   lastTest,
   readOwned,
   settings,
-  statusError,
+  responseError,
 } from './endpointSettings.mjs';
 import { probeTools } from './toolProbe.mjs';
 import {
@@ -244,10 +244,7 @@ class Endpoint {
       },
       ...(body && { body: JSON.stringify(body) }),
     });
-    if (!response.ok) {
-      await response.body?.cancel();
-      throw statusError(response.status);
-    }
+    if (!response.ok) throw await responseError(response, saved.apiKey);
     return response;
   }
   async models(parentSignal) {

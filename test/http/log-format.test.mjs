@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   formatLog,
   errorCause,
+  providerError,
   loggedProvider,
   stdoutLog,
   requestPath,
@@ -39,6 +40,21 @@ test('errors retain cause while dropping echoed inputs, outputs and credential p
   );
   assert.match(cause, /^Quota exceeded:/);
   assert.doesNotMatch(cause, /PRIVATE_|abc123|xyz456|sk-hidden|user:pass|token=secret/);
+});
+
+test('a provider error keeps its first line, shortened, without keys, tokens, endpoints or paths', () => {
+  const line = providerError(
+    new Error(
+      `\n  Model gpt-x not found Bearer abc123 sk-hidden access_token: xyz https://h/v1 /home/u/key ${'x'.repeat(400)}\nsecond line`,
+    ),
+    ['PRIVATE'],
+  );
+  assert.match(
+    line,
+    /^Model gpt-x not found Bearer \[redacted\] \[redacted\] access_token: \[redacted\] \[endpoint\] \[path\] x+$/,
+  );
+  assert.equal(line.length, 300);
+  assert.equal(providerError(new Error('')), 'Unknown failure');
 });
 
 test('default sink routes info to stdout and warnings/errors to stderr', (t) => {

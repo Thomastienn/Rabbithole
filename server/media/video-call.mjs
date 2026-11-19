@@ -1,4 +1,5 @@
 import { MAX_SOURCE } from './video-plan.mjs';
+import { providerError } from '../log.mjs';
 
 // cut: the 1-based cut a call serves, passed past the provider's signal for the usage meter only.
 export async function videoCall(
@@ -38,9 +39,9 @@ export async function videoCall(
       signal,
       cut,
     );
-  } catch {
+  } catch (error) {
     signal.throwIfAborted();
-    throw new Error('Video provider failed to generate a composition.');
+    throw new Error(`Video provider failed: ${providerError(error)}`);
   }
   signal.throwIfAborted();
   if (status !== 'completed') throw new Error('Video composition did not complete.');

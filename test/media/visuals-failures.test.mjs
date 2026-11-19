@@ -128,6 +128,7 @@ test('server validation catches document, resource, library, syntax and size mis
       assert.equal(count, before + 2, invalid.slice(0, 45));
       assert.equal(a.status, 'ready', a.error);
       assert.equal(a.source, source);
+      assert.equal(a.error ?? null, null, 'a recovered repair shows no error');
     }
     // The standard SVG namespace names a format, not a network dependency.
     invalid = source
@@ -141,7 +142,7 @@ test('server validation catches document, resource, library, syntax and size mis
   }
 });
 
-test('provider failures and deadlines do not automatically retry or expose diagnostics; late output cannot publish', async () => {
+test('provider failures show their redacted first line and deadlines do not automatically retry; late output cannot publish', async () => {
   const hold = deferred();
   let calls = 0,
     signal,
@@ -152,7 +153,8 @@ test('provider failures and deadlines do not automatically retry or expose diagn
     {
       generate: async (_tree, _text, emit, _save, s) => {
         calls++;
-        if (fail) throw new Error('PRIVATE PROVIDER CREDENTIAL');
+        if (fail)
+          throw new Error('Model gpt-x is not in the catalog with api_key=PRIVATE-CREDENTIAL');
         signal = s;
         late = emit;
         await hold.promise;
@@ -161,7 +163,10 @@ test('provider failures and deadlines do not automatically retry or expose diagn
     { visualTimeout: 25 },
   );
   try {
-    for (const reason of [/Visual provider could not generate/, /Visual generation timed out/]) {
+    for (const reason of [
+      /^Visual provider could not generate a result: Model gpt-x is not in the catalog with api_key=\[redacted\]\. Check Smart/,
+      /Visual generation timed out/,
+    ]) {
       const before = calls;
       const stream = await (
         await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })
@@ -174,7 +179,7 @@ test('provider failures and deadlines do not automatically retry or expose diagn
       const a = (await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1);
       assert.equal(a.status, 'failed');
       assert.match(a.error, reason);
-      assert.doesNotMatch(stream, /PRIVATE PROVIDER CREDENTIAL/);
+      assert.doesNotMatch(stream + a.error, /PRIVATE-CREDENTIAL/);
       assert.equal(calls, before + 1);
       fail = false;
     }

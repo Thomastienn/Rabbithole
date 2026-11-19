@@ -1,10 +1,12 @@
+import { providerError } from '../log.mjs';
 import { constants, openSync, closeSync, readFileSync, fchmodSync, fstatSync } from 'node:fs';
 
 // Validation of saved custom endpoint settings and their owner-only credential file.
 export class EndpointError extends Error {}
 
 // An endpoint's HTTP failure as a learner-facing error that keeps the status.
-export function statusError(status) {
+// detail: the endpoint's own first error line, already redacted.
+export function statusError(status, detail) {
   const message = [401, 403].includes(status)
     ? 'Custom endpoint rejected the API key. Check endpoint settings.'
     : status === 404
@@ -14,7 +16,24 @@ export function statusError(status) {
         : status >= 500
           ? 'Custom endpoint is unavailable. Try again later.'
           : `Custom endpoint rejected the request (HTTP ${status}). Check endpoint settings and model.`;
-  return Object.assign(new EndpointError(message), { status });
+  return Object.assign(
+    new EndpointError(detail ? `${message} Endpoint said: ${detail.replace(/\.$/, '')}.` : message),
+    { status },
+  );
+}
+
+// A failed response's status error with the endpoint's own first error line, redacted.
+export async function responseError(response, apiKey) {
+  const text = (await response.text().catch(() => '')).slice(0, 4000);
+  let detail = text.trim();
+  try {
+    const { error } = JSON.parse(text);
+    detail = error?.message ?? error;
+  } catch {}
+  return statusError(
+    response.status,
+    typeof detail === 'string' && detail ? providerError(detail, [apiKey]) : undefined,
+  );
 }
 
 export function settings(body) {

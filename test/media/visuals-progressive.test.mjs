@@ -97,7 +97,7 @@ for (const stop of [false, true]) {
           emit = send;
           signal = s;
           await workerHold.promise;
-          if (!stop) throw new Error('PRIVATE PROVIDER DIAGNOSTIC');
+          if (!stop) throw new Error('Quota exceeded for sk-PRIVATE');
         },
       },
     );
@@ -113,7 +113,10 @@ for (const stop of [false, true]) {
       await until(() => events.some((e) => e.artifact?.status === 'failed'));
       const failed = events.find((e) => e.artifact?.status === 'failed').artifact;
       assert.equal(failed.source, null);
-      assert.match(failed.error, stop ? /canceled/ : /provider could not generate/);
+      assert.match(
+        failed.error,
+        stop ? /canceled/ : /could not generate a result: Quota exceeded for \[redacted\]/,
+      );
       assert.doesNotMatch(failed.error, /PRIVATE/);
       if (stop) assert.ok(signal.aborted);
       complete(emit, final);

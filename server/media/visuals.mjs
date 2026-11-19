@@ -11,6 +11,7 @@ import {
   GSAP_SKILL,
 } from './skills.mjs';
 import { readCall } from './reply-requests.mjs';
+import { providerError } from '../log.mjs';
 
 // Loadable skills; `uses` spots output that needs the skill, so the server can enforce loading it.
 const SKILLS = {
@@ -270,9 +271,9 @@ export async function generateVisual(
           () => {},
           controller.signal,
         );
-      } catch {
+      } catch (error) {
         throw new Error(
-          'Visual provider could not generate a result. Check Smart in Settings → Models, then Retry.',
+          `Visual provider could not generate a result: ${providerError(error).replace(/\.$/, '')}. Check Smart in Settings → Models, then Retry.`,
         );
       }
       if (controller.signal.aborted) throw controller.signal.reason;

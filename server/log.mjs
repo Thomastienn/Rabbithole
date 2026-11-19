@@ -1,3 +1,5 @@
+import { withoutPaths } from './media/video-sandbox.mjs';
+
 const FIELDS = new Set([
   'id',
   'task',
@@ -37,6 +39,15 @@ export function formatLog(level, area, message, fields = {}, at = new Date()) {
           `${key}=${JSON.stringify(value == null ? 'unreported' : typeof value === 'number' ? value : line(errorCause(value)))}`,
       ),
   ].join(' ');
+}
+
+// A provider failure's first line for a failed card: secrets, endpoints and paths redacted, shortened.
+export function providerError(error, privateText = []) {
+  const line = errorCause(error, privateText)
+    .split('\n')
+    .map((l) => l.trim())
+    .find(Boolean);
+  return withoutPaths(line ?? 'Unknown failure').slice(0, 300);
 }
 
 export function stdoutLog(line) {

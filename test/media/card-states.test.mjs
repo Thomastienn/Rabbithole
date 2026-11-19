@@ -52,6 +52,14 @@ test('failed media keep readable reasons and Retry actions; cancellation stays d
         },
       }),
       h(VideoCard, {
+        artifact: artifact(
+          'provider',
+          'video',
+          'Video provider failed: Model gpt-x is not in the catalog',
+        ),
+        inline: true,
+      }),
+      h(VideoCard, {
         artifact: artifact('private', 'video', 'private worker output'),
         inline: true,
       }),
@@ -63,6 +71,7 @@ test('failed media keep readable reasons and Retry actions; cancellation stays d
     ['visual', 'Visual unavailable. The visual could not be drawn.'],
     ['diagram', 'Diagram unavailable. The diagram source has an error.'],
     ['video', 'Video narration timed out.'],
+    ['provider', 'Video provider failed: Model gpt-x is not in the catalog'],
     ['canceled', 'Video generation canceled.'],
   ]) {
     const card = container.querySelector(`[data-artifact=${id}]`);

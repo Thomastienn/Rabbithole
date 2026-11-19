@@ -343,7 +343,9 @@ test('a provider failure while writing a cut keeps its own wording', async (t) =
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
-        throw new Error('401 from /home/u/secret');
+        throw new Error(
+          'Model gpt-x is not in the catalog for Bearer tok-123 at /home/u/secret\nstack',
+        );
       },
     },
     { videoNarrate: async () => fakeNarration(), videoRender: fakeRender },
@@ -357,7 +359,10 @@ test('a provider failure while writing a cut keeps its own wording', async (t) =
   const row = await until(() =>
     env.store.tree(tree.id).artifacts.find((a) => a.status === 'failed'),
   );
-  assert.equal(row.error, 'Video provider failed to generate a composition.');
+  assert.equal(
+    row.error,
+    'Video provider failed: Model gpt-x is not in the catalog for Bearer [redacted] at [path]',
+  );
 });
 
 test('the first diagnostic line names the error without absolute paths', () => {

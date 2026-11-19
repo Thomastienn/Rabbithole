@@ -180,14 +180,19 @@ test('upstream HTTP, malformed streams, truncation and filtering fail honestly a
   ]) {
     fake.reply = (req, res) => {
       res.writeHead(status);
-      res.end('private upstream error-fixture-secret');
+      res.end(
+        JSON.stringify({
+          error: { message: 'Model local-tutor is not in the catalog (key error-fixture-secret)' },
+        }),
+      );
     };
     const response = await (
       await post(`/api/trees/${tree.id}/messages`, { text: `HTTP ${status}` })
     ).text();
     assert.match(response, reason);
     assert.match(response, /"status":"failed"/);
-    assert.doesNotMatch(response, /private upstream|error-fixture-secret/);
+    assert.match(response, /Endpoint said: Model local-tutor is not in the catalog/);
+    assert.doesNotMatch(response, /error-fixture-secret/);
   }
   for (const [reply, reason] of [
     [(req, res) => streamReply(res, ['Partial reply'], 'length'), /reply limit/],
