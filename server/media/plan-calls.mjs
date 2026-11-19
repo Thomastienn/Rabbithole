@@ -14,8 +14,10 @@ const MARK = {
   properties: {
     tool: { type: 'string', enum: ['cursor', 'sketch'] },
     sentence: { type: 'integer', description: '0-based sentence of the narration.' },
-    x: { type: 'number' },
-    y: { type: 'number' },
+    x: { type: 'number', description: '2D cuts: frame pixels.' },
+    y: { type: 'number', description: '2D cuts: frame pixels.' },
+    target: str('3D cuts instead of x, y and points: the recurring object (set piece) marked.'),
+    part: str('3D cuts, optional: a named part of the target, such as nozzle.'),
     label: str('Cursor only: optional short name, at most 40 characters.'),
     shape: { type: 'string', enum: ['circle', 'underline', 'arrow', 'freehand'] },
     points: { type: 'array', items: { type: 'array', items: { type: 'number' } } },
@@ -121,6 +123,8 @@ const FIX = {
   endState: 'endState must describe the objects, positions and labels at the end.',
   emphasis:
     'emphasis must be at most 12 cursor or sketch marks, each with a 0-based sentence and points inside the 1920x1080 frame.',
+  emphasis3d:
+    'emphasis in a 3D cut must be at most 12 cursor or sketch marks, each with a 0-based sentence and a target naming the set piece it marks (optionally a part), not x, y or points; sketch shapes are circle, underline or arrow.',
 };
 const text = (v) => typeof v === 'string' && !!v.trim();
 const fail = (message) => {
@@ -228,7 +232,7 @@ export function planBuilder({ exhibits = false, clips = false } = {}) {
         delete cut.direction;
       }
       const field = cutProblem(cut, i);
-      if (field) fail(FIX[field]);
+      if (field) fail(FIX[field === 'emphasis' && cut.dimension === '3d' ? 'emphasis3d' : field]);
       plan.cuts.push(cut);
       return `Cut ${i + 1} added.`;
     },

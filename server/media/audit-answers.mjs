@@ -95,7 +95,7 @@ export function auditReport(offered) {
 }
 
 // A fix answers {"patch", "emphasis"?} against source; an answer that does not parse, apply or read throws.
-export function auditFix(raw, brief, sentences, engine, source) {
+export function auditFix(raw, brief, sentences, engine, source, dimension = '2d') {
   const answer = JSON.parse(unfenced(raw));
   const code = typeof answer?.patch === 'string' ? patched(source, answer.patch) : null;
   if (typeof code !== 'string') throw new Error('The fix patch did not apply.');
@@ -104,7 +104,7 @@ export function auditFix(raw, brief, sentences, engine, source) {
     !(
       Array.isArray(answer.emphasis) &&
       answer.emphasis.length <= 12 &&
-      answer.emphasis.every((m) => emphasisMark(m) && m.sentence < sentences)
+      answer.emphasis.every((m) => emphasisMark(m, dimension) && m.sentence < sentences)
     )
   )
     throw new Error('Fix returned unreadable emphasis.');

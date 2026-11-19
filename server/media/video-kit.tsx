@@ -26,6 +26,7 @@ export {
   Lights,
   type CameraKey,
 } from './video-stock';
+import { screenAt, type CameraKey } from './video-stock';
 
 export const palette = {
   ground: '#1a1613',
@@ -157,9 +158,11 @@ export const three = {
   },
 };
 // Emphasis overlay: the app draws these above every cut (Manim included) from the plan's cut.emphasis marks,
-// timed to narration sentence frames, in the shared 1920x1080 frame space.
+// timed to narration sentence frames, in the shared 1920x1080 frame space. A 3D cut's marks name a target set
+// piece (and optionally a part) instead; the cut draws those itself with <Marks>, so the overlay skips them.
 type Timed = { startFrame: number; endFrame: number };
 type Point = [number, number];
+type Vec3 = [number, number, number];
 export type Mark =
   | { tool: 'cursor'; sentence: number; x: number; y: number; label?: string }
   | {
@@ -167,7 +170,17 @@ export type Mark =
       shape: 'circle' | 'underline' | 'arrow' | 'freehand';
       sentence: number;
       points: Point[];
+      seed?: number;
     };
+export type TargetMark = {
+  tool: 'cursor' | 'sketch';
+  sentence: number;
+  target: string;
+  part?: string;
+  label?: string;
+  shape?: 'circle' | 'underline' | 'arrow';
+};
+const onScreen = (marks: (Mark | TargetMark)[]) => marks.filter((m): m is Mark => !('target' in m));
 const GLIDE = 15,
   DRAW = 20,
   FADE = 10;
@@ -209,7 +222,7 @@ export function sketchAt(mark: Mark, sentences: Timed[], f: number) {
 
 // Hand-drawn wobble, deterministic per mark so every frame and render draws the same stroke.
 function sketchPoints(mark: Extract<Mark, { tool: 'sketch' }>) {
-  const seed = mark.points.flat().reduce((n, v) => n + v, 0);
+  const seed = mark.seed ?? mark.points.flat().reduce((n, v) => n + v, 0);
   const wobble = (i: number, k: number) => Math.sin(seed * 12.9898 + i * 78.233) * k;
   const [[ax, ay], [bx, by]] = mark.points;
   let pts: Point[] = [];
@@ -286,7 +299,13 @@ export function penAt(
   };
 }
 
-export function Sketch({ marks = [], sentences }: { marks?: Mark[]; sentences: Timed[] }) {
+export function Sketch({
+  marks = [],
+  sentences,
+}: {
+  marks?: (Mark | TargetMark)[];
+  sentences: Timed[];
+}) {
   const f = useCurrentFrame();
   const reduced =
     typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -298,7 +317,7 @@ export function Sketch({ marks = [], sentences }: { marks?: Mark[]; sentences: T
       aria-hidden="true"
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
     >
-      {marks.map((mark, i) => {
+      {onScreen(marks).map((mark, i) => {
         if (mark.tool !== 'sketch') return null;
         const { draw, opacity } = sketchAt(mark, sentences, f);
         const tip = penAt(mark, sentences, f, reduced);
@@ -335,8 +354,14 @@ export function Sketch({ marks = [], sentences }: { marks?: Mark[]; sentences: T
   );
 }
 
-export function Cursor({ marks = [], sentences }: { marks?: Mark[]; sentences: Timed[] }) {
-  const at = cursorAt(marks, sentences, useCurrentFrame());
+export function Cursor({
+  marks = [],
+  sentences,
+}: {
+  marks?: (Mark | TargetMark)[];
+  sentences: Timed[];
+}) {
+  const at = cursorAt(onScreen(marks), sentences, useCurrentFrame());
   if (!at || at.opacity <= 0) return null;
   return (
     <div
@@ -381,6 +406,71 @@ export function Cursor({ marks = [], sentences }: { marks?: Mark[]; sentences: T
         </div>
       )}
     </div>
+  );
+}
+
+// A 3D cut's target marks at frame f as frame-pixel marks: each target (or "target.part") in at resolves to its
+// 3D point, projected through the camera keys, so marks follow the camera. Marks whose point is behind the
+// camera or unknown are left out.
+export function targetMarksAt(
+  marks: (Mark | TargetMark)[],
+  keys: CameraKey[],
+  at: Record<string, Vec3 | ((f: number) => Vec3)>,
+  f: number,
+  fov?: number,
+): Mark[] {
+  return marks.flatMap((m): Mark[] => {
+    if (!('target' in m)) return [];
+    const point = (m.part && at[`${m.target}.${m.part}`]) || at[m.target];
+    if (!point) return [];
+    const { x, y, front } = screenAt(keys, f, typeof point === 'function' ? point(f) : point, {
+      fov,
+    });
+    if (!front) return [];
+    if (m.tool === 'cursor')
+      return [{ tool: 'cursor', sentence: m.sentence, x, y, ...(m.label && { label: m.label }) }];
+    const shape = m.shape ?? 'circle';
+    const points: Point[] =
+      shape === 'circle'
+        ? [
+            [x - 90, y - 90],
+            [x + 90, y + 90],
+          ]
+        : shape === 'underline'
+          ? [
+              [x - 100, y + 80],
+              [x + 100, y + 80],
+            ]
+          : [
+              [x - 240, y - 170],
+              [x - 50, y - 40],
+            ];
+    // A fixed seed keeps the hand wobble steady while the points move with the camera.
+    return [{ tool: 'sketch', shape, sentence: m.sentence, points, seed: m.sentence + 1 }];
+  });
+}
+
+// The pen and cursor marks of a 3D cut, pinned to their set pieces: placed by the cut in the HTML layer above the
+// ThreeCanvas with the same keys as <Camera> and the 3D point of every target the marks name.
+export function Marks({
+  marks = [],
+  sentences,
+  keys,
+  at,
+  fov,
+}: {
+  marks?: (Mark | TargetMark)[];
+  sentences: Timed[];
+  keys: CameraKey[];
+  at: Record<string, Vec3 | ((f: number) => Vec3)>;
+  fov?: number;
+}) {
+  const resolved = targetMarksAt(marks, keys, at, useCurrentFrame(), fov);
+  return (
+    <>
+      <Sketch marks={resolved} sentences={sentences} />
+      <Cursor marks={resolved} sentences={sentences} />
+    </>
   );
 }
 

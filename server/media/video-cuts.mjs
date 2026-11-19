@@ -366,7 +366,14 @@ export async function writeCuts({
           try {
             Object.assign(
               cut,
-              auditFix(answer, plan.styleBrief, cut.timing.sentences.length, cut.engine, code),
+              auditFix(
+                answer,
+                plan.styleBrief,
+                cut.timing.sentences.length,
+                cut.engine,
+                code,
+                plan.cuts[index].dimension,
+              ),
             );
             if (cut.engine === 'manim' && check) await check(await stage(index));
           } catch (e) {
