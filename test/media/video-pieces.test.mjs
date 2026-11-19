@@ -426,3 +426,34 @@ test('a set-piece module that fails its check is fixed by a patch, and rewritten
   assert.equal(whole.calls[2].task.failedCode, undefined);
   assert.equal(whole.calls[2].task.validationError, 'missing export Winner.');
 });
+
+test('a wrong piece choice is rewritten whole, since a code patch keeps the choices', async () => {
+  const plan = planFor(composition, 1);
+  const saved = {
+    id: 'w',
+    name: 'Winner',
+    look: 'crowned box',
+    props: ['x', 'y'],
+    roles: [],
+    source: pieces,
+  };
+  const inputs = [];
+  const answers = [
+    { pieces: [{ name: 'Winner', use: 'reuse', id: 'gone' }], code: 'const unused = 1;' },
+    { pieces: [{ name: 'Winner', use: 'reuse', id: 'w' }], code: '' },
+  ];
+  const { choices } = await writeSetPieces({
+    plan,
+    names: ['Winner'],
+    matches: async () => [[saved]],
+    signal: new AbortController().signal,
+    write: async (_rules, text) => {
+      inputs.push(fixerTask(text));
+      return JSON.stringify(answers[inputs.length - 1]);
+    },
+  });
+  assert.equal(inputs.length, 2);
+  assert.match(inputs[1].validationError, /names a piece that was not offered/);
+  assert.equal(inputs[1].failedCode, undefined);
+  assert.equal(choices[0].use, 'reuse');
+});
