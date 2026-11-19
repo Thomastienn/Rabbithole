@@ -4,6 +4,7 @@ import { VStack } from '@astryxdesign/core/Layout';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
+import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import { CUSTOM_EFFORT, effortOptions, effortSupported, type Model } from './models';
 import CustomEffort from './CustomEffort';
@@ -79,15 +80,11 @@ export default function SuggestionSettings({
           </small>
         </div>
         <div role="cell">
-          <Selector
+          <ModelPicker
             label="Quick thinking model"
-            isLabelHidden
             value={key(saved?.model ?? null)}
-            size="sm"
-            width="100%"
-            hasSearch
             isDisabled={!saved || !!pending}
-            status={unavailable ? { type: 'error' } : undefined}
+            isUnavailable={unavailable}
             options={[
               {
                 value: 'default',

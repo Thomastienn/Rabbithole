@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
-import { Selector } from '@astryxdesign/core/Selector';
+import ModelPicker from '../settings/ModelPicker';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
 import { Code } from '@astryxdesign/core/Code';
@@ -186,11 +186,9 @@ export default function FirstRunSetup({
       <VStack gap={2}>
         <Heading level={3}>Chat model</Heading>
         {chosen ? (
-          <Selector
+          <ModelPicker
             label="Chat model"
             value={key(chosen)}
-            width="100%"
-            hasSearch
             isDisabled={pending}
             options={Object.entries(providers ?? {})
               .map(([provider, { label }]) => ({

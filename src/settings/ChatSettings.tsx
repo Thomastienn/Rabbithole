@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
+import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import {
   CUSTOM_EFFORT,
@@ -79,15 +80,11 @@ export default function ChatSettings({
           <small>Answers your questions in new learning trees</small>
         </div>
         <div role="cell">
-          <Selector
+          <ModelPicker
             label="Chat default model"
-            isLabelHidden
             value={selected ? key(selected) : 'unavailable'}
-            size="sm"
-            width="100%"
-            hasSearch
             isDisabled={!saved || !!pending}
-            status={unavailable ? { type: 'error' } : undefined}
+            isUnavailable={unavailable}
             options={[
               ...(!selected
                 ? [

@@ -80,11 +80,11 @@ const providers = {
   codex: { label: 'Codex', connected: true },
   openai: { label: 'Custom endpoint', connected: true },
 };
-const trigger = (container, index) => container.querySelectorAll('[aria-haspopup=listbox]')[index];
+const trigger = (container, index) => container.querySelectorAll('[aria-haspopup]')[index];
 const shown = (button) => [
   ...document
     .getElementById(button.getAttribute('aria-controls'))
-    .querySelectorAll('[role=option]'),
+    .querySelectorAll('[role=option],[role=menuitemradio]'),
 ];
 async function pick(container, dom, act, index, label) {
   const button = trigger(container, index);
@@ -160,7 +160,7 @@ test('a fresh install shows Not set for chat and the smart role that follows it,
   );
   t.after(cleanup);
   await act(async () => {});
-  const [chat, , smart] = container.querySelectorAll('[aria-haspopup=listbox]');
+  const [chat, , smart] = container.querySelectorAll('[aria-haspopup]');
   assert.equal(chat.textContent.trim(), 'Not set');
   assert.equal(smart.textContent.trim(), 'Follow chat default (Not set)');
   assert.equal(container.querySelector('[role=alert]'), null);

@@ -90,7 +90,7 @@ test('a fresh install opens on setup; confirming the prefilled default model let
   assert.ok(container.querySelector('.first-run'));
   assert.equal(container.querySelector('.first-question'), null);
   assert.match(container.querySelector('.first-run').textContent, /Signed in through Claude Code/);
-  assert.match(container.querySelector('[aria-haspopup=listbox]').textContent, /Opus/);
+  assert.match(container.querySelector('[aria-label="Chat model"]').textContent, /Opus/);
   assert.doesNotMatch(
     container.textContent,
     /Video sandbox|administrator/,

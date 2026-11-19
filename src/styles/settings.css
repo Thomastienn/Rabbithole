@@ -194,3 +194,9 @@
     position: static;
   }
 }
+.model-picker-field {
+  justify-content: space-between;
+}
+.model-picker-field[data-unavailable] {
+  border-color: var(--color-border-error);
+}

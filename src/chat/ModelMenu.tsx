@@ -14,7 +14,9 @@ import {
   effortOptions,
   keptEffort,
   menuGroups,
+  searchGroups,
 } from '../settings/models';
+import { ModelSearch, searchNote } from '../settings/ModelPicker';
 import CustomEffort from '../settings/CustomEffort';
 import type { SettingsTab } from '../settings/SettingsWindow';
 import type { ChatModel } from './useChatModel';
@@ -35,8 +37,14 @@ export default function ModelMenu({
 }) {
   const { composition, modelMenuOpen, openModels, openingModels, savingModel, modelLabel } = model;
   const { providers, models, chooseModel, signIn, loadModels, currentModel } = model;
-  const [typing, setTyping] = useState(false);
+  const [typing, setTyping] = useState(false),
+    [query, setQuery] = useState('');
   if (!composition) return null;
+  const groups = menuGroups(providers ?? {}, models, composition),
+    found = searchGroups(
+      groups.map((g) => g.items ?? []),
+      query,
+    );
   return (
     <>
       <DropdownMenu
@@ -44,7 +52,12 @@ export default function ModelMenu({
         alignment="end"
         menuWidth="16rem"
         isMenuOpen={modelMenuOpen}
-        onOpenChange={(open) => void openModels(open)}
+        onOpenChange={(open) => {
+          if (!open) setQuery('');
+          void openModels(open);
+        }}
+        header={<ModelSearch query={query} setQuery={setQuery} />}
+        footer={searchNote(found.shown.length, found.found, query)}
         renderTrigger={(props) => (
           <Button
             {...props}
@@ -69,11 +82,14 @@ export default function ModelMenu({
           </Button>
         )}
       >
-        {menuGroups(providers ?? {}, models, composition).map((g) => {
-          const { id } = g;
+        {groups.map((g, i) => {
+          const { id } = g,
+            items = g.items && found.groups[i];
+          // A search hides providers without matches, including their sign-in actions.
+          if (query.trim() && !items?.length) return null;
           return (
             <DropdownMenuGroup key={id} title={g.title}>
-              {g.items ? (
+              {items ? (
                 <DropdownMenuRadioGroup
                   label={`${g.label} models`}
                   value={g.value}
@@ -88,7 +104,7 @@ export default function ModelMenu({
                     )
                   }
                 >
-                  {g.items.map((m) => (
+                  {items.map((m) => (
                     <DropdownMenuRadioItem
                       key={m.value}
                       value={m.value}

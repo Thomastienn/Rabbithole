@@ -99,3 +99,50 @@ export const menuGroups = (
       action: isCustomEndpoint(id) ? 'endpoint' : id === 'codex' ? 'codex' : 'check',
     };
   });
+// Rows a model picker draws at once; a search narrows catalogues of thousands.
+export const SHOWN_MODELS = 50;
+// Fuzzy subsequence score, lower is better, or null when the query is not a subsequence.
+// Fewer breaks between matched runs rank first, then an earlier start, then shorter text.
+export function fuzzyScore(query: string, text: string) {
+  const t = text.toLowerCase();
+  let best: number | null = null;
+  for (let start = t.indexOf(query[0]); start >= 0; start = t.indexOf(query[0], start + 1)) {
+    let at = start,
+      breaks = 0;
+    for (let i = 1; i < query.length && at >= 0; i++) {
+      const next = t.indexOf(query[i], at + 1);
+      if (next > at + 1) breaks++;
+      at = next;
+    }
+    if (at < 0) break;
+    const score = breaks * 1e6 + Math.min(start, 999) * 1e3 + Math.min(t.length, 999);
+    if (best === null || score < best) best = score;
+  }
+  return best;
+}
+// The shared model search: best matches on label or id first, capped at SHOWN_MODELS.
+// An empty query keeps the given order. Returns the shown items and how many matched.
+export function searchModels<T extends { label: string; value: string }>(
+  items: T[],
+  query: string,
+) {
+  const q = query.toLowerCase().replace(/\s+/g, '');
+  if (!q) return { shown: items.slice(0, SHOWN_MODELS), found: items.length };
+  const ranked = items
+    .map((item) => {
+      const a = fuzzyScore(q, item.label),
+        b = fuzzyScore(q, item.value);
+      return { item, score: a === null ? b : b === null ? a : Math.min(a, b) };
+    })
+    .filter((r): r is { item: T; score: number } => r.score !== null)
+    .sort((a, b) => a.score - b.score);
+  return { shown: ranked.slice(0, SHOWN_MODELS).map((r) => r.item), found: ranked.length };
+}
+// The search over grouped lists (one per provider): each group keeps its shown items in rank order.
+export function searchGroups<T extends { label: string; value: string }>(
+  groups: T[][],
+  query: string,
+) {
+  const { shown, found } = searchModels(groups.flat(), query);
+  return { groups: groups.map((g) => shown.filter((i) => g.includes(i))), shown, found };
+}

@@ -58,18 +58,18 @@ test('suggestion settings toggle globally, save a pinned quick model and warn on
   await act(async () => update(2501));
   assert.match(container.textContent, /Warning: concept matching is getting expensive/);
   assert.match(container.textContent, /2,501 tokens of concept names/);
-  const model = container.querySelector('[aria-haspopup=listbox]');
+  const model = container.querySelector('[aria-label="Quick thinking model"]');
   assert.ok(model);
   await act(async () => model.click());
   await act(async () => dom.frames());
-  const option = [...document.querySelectorAll('[role=option]')].find((e) =>
+  const option = [...document.querySelectorAll('[role=option],[role=menuitemradio]')].find((e) =>
     e.textContent.includes('Fixture alternate'),
   );
   assert.ok(option);
   await act(async () => option.click());
   assert.deepEqual(writes.at(-1), { model: { provider: 'codex', model: 'other' }, effort: null });
   assert.match(
-    container.querySelector('[role=status]').textContent,
+    [...container.querySelectorAll('[role=status]')].map((e) => e.textContent).join(' '),
     /Quick thinking settings saved/,
   );
 });

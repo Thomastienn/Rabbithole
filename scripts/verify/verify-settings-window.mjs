@@ -250,7 +250,7 @@ try {
   const saved = await (await fetch(`${origin}/api/settings/suggestions`)).json();
   assert.equal(saved.enabled, !before);
   await b('find', 'label', 'Quick thinking model', 'click');
-  await b('find', 'role', 'option', 'click', '--name', 'Fixture model', '--exact');
+  await b('find', 'role', 'menuitemradio', 'click', '--name', 'Fixture model', '--exact');
   await wait(`${dialog}.textContent.includes('Quick thinking settings saved.')`);
   assert.deepEqual((await (await fetch(`${origin}/api/settings/suggestions`)).json()).model, {
     provider: 'claude',

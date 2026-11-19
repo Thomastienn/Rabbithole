@@ -217,10 +217,13 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
   const search = panel().querySelector('input:not([role=switch])');
   await act(async () => inputValue(search, 'model-29'));
   assert.deepEqual(
-    switches().map((s) => s.labels[0].textContent.match(/model-\d+/)[0]),
+    switches()
+      .slice(0, 11)
+      .map((s) => s.labels[0].textContent.match(/model-\d+/)[0]),
     ['model-29', ...Array.from({ length: 10 }, (_, i) => `model-${290 + i}`)],
+    'contiguous matches come before fuzzy ones such as model-129',
   );
-  assert.match(panel().textContent, /11 models/);
+  assert.match(panel().textContent, /21 models/);
   const target = () => switches().find((s) => /model-290/.test(s.labels[0].textContent));
   assert.equal(target().checked, true);
   await act(async () => target().click());

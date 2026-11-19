@@ -145,13 +145,11 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
   const settle = () => act(async () => dom.frames());
   await settle();
   const trigger = (label) =>
-    [...container.querySelectorAll('[aria-haspopup=listbox]')].find((e) =>
-      named(e).startsWith(label),
-    );
+    [...container.querySelectorAll('[aria-haspopup]')].find((e) => named(e).startsWith(label));
   const options = (label) => [
     ...document
       .getElementById(trigger(label).getAttribute('aria-controls'))
-      .querySelectorAll('[role=option]'),
+      .querySelectorAll('[role=option],[role=menuitemradio]'),
   ];
   const open = async (label) => {
     await act(async () => trigger(label).click());

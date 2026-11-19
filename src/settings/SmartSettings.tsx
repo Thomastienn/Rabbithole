@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
+import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import {
   CUSTOM_EFFORT,
@@ -96,14 +97,10 @@ export default function SmartSettings({
           <small>Writes visuals and plans videos</small>
         </div>
         <div role="cell">
-          <Selector
+          <ModelPicker
             label="Smart model"
-            isLabelHidden
-            status={unavailable ? { type: 'error' } : undefined}
+            isUnavailable={unavailable}
             value={saved?.model ? key(saved.model) : 'follow'}
-            size="sm"
-            width="100%"
-            hasSearch
             isDisabled={!saved || !!pending}
             options={[
               {

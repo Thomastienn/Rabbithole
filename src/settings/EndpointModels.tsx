@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
-import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { Switch } from '@astryxdesign/core/Switch';
-import type { Model } from './models';
+import { searchModels, type Model } from './models';
+import { ModelSearch } from './ModelPicker';
 import type { Endpoint } from './EndpointSettings';
-
-// Rows rendered at once; search narrows a catalogue of hundreds.
-const SHOWN = 50;
 
 // Each model's image and tool overrides save independently.
 export default function EndpointModels({
@@ -25,9 +22,10 @@ export default function EndpointModels({
   const [query, setQuery] = useState(''),
     [saving, setSaving] = useState(''),
     [error, setError] = useState('');
-  const q = query.trim().toLowerCase(),
-    found = models.filter((m) => m.model.toLowerCase().includes(q)),
-    shown = found.slice(0, SHOWN);
+  const { shown, found } = searchModels(
+    models.map((m) => ({ ...m, value: m.model })),
+    query,
+  );
   return (
     <VStack gap={2} className="endpoint-models" as="section" aria-label={`${endpoint.name} models`}>
       <Text type="supporting" color="secondary">
@@ -35,15 +33,7 @@ export default function EndpointModels({
         endpoint reports. Uses tutor tools allows the tools enabled in Settings; unless the endpoint
         reports it, a tiny tool call on first use sets it. Retest runs that check again.
       </Text>
-      <TextInput
-        label="Search models"
-        isLabelHidden
-        placeholder="Search models"
-        value={query}
-        onChange={setQuery}
-        autoComplete="off"
-        hasClear
-      />
+      <ModelSearch query={query} setQuery={setQuery} />
       {shown.map((m) => (
         <VStack key={m.model} gap={1} role="group" aria-label={m.label}>
           {(['readsImages', 'usesTutorTools'] as const).map((field) => (
@@ -91,11 +81,11 @@ export default function EndpointModels({
       <Text type="supporting" color="secondary" role="status">
         {!models.length
           ? 'No models listed. Test the endpoint, then try again.'
-          : !found.length
+          : !found
             ? 'No models match.'
-            : found.length > shown.length
-              ? `Showing ${shown.length} of ${found.length} models. Search to narrow.`
-              : `${found.length} ${found.length === 1 ? 'model' : 'models'}`}
+            : found > shown.length
+              ? `Showing ${shown.length} of ${found} models. Search to narrow.`
+              : `${found} ${found === 1 ? 'model' : 'models'}`}
       </Text>
       {error && (
         <Text type="supporting" role="alert">
