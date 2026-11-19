@@ -1,5 +1,5 @@
 // The host's data path into a cut, the 3D camera and many copies of a part, shared by live playback and the background render.
-import { useContext, useLayoutEffect, useRef, type ComponentType } from 'react';
+import { useContext, useLayoutEffect, useRef, type ComponentType, type ReactNode } from 'react';
 import { Img, Loop, OffthreadVideo, Sequence, random, staticFile, useCurrentFrame } from 'remotion';
 import { context as fiber, useThree } from '@react-three/fiber';
 import { Euler, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
@@ -159,6 +159,68 @@ export function Camera({ keys }: { keys: CameraKey[] }) {
   camera.position.set(...position);
   camera.lookAt(...target);
   return null;
+}
+
+// Where a 3D point lands in the 1920x1080 frame at frame f, through the same camera path, for a ThreeCanvas that
+// fills the frame (canvas size sets the aspect; fov is vertical degrees, 75 being the canvas default). front is
+// false behind the camera; opacity fades a pin over 60 pixels at the frame edge and is 0 behind or off frame.
+export function screenAt(
+  keys: CameraKey[],
+  f: number,
+  point: Vec3,
+  { width = 1920, height = 1080, fov = 75 } = {},
+) {
+  const { position: p, target: t } = cameraAt(keys, f);
+  const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a: Vec3, b: Vec3): Vec3 => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const unit = (a: Vec3) => a.map((v) => v / (Math.hypot(...a) || 1)) as Vec3;
+  const forward = unit(sub(t, p));
+  const right = unit(cross(forward, [0, 1, 0]));
+  const up = cross(right, forward);
+  const d = sub(point, p);
+  const depth = dot(d, forward);
+  const front = depth > 0.1; // the canvas camera's near plane
+  const half = Math.tan((fov * Math.PI) / 360) * Math.max(depth, 1e-6);
+  const x = ((dot(d, right) / (half * (width / height)) + 1) / 2) * 1920;
+  const y = ((1 - dot(d, up) / half) / 2) * 1080;
+  const edge = Math.min(x, 1920 - x, y, 1080 - y);
+  return { x, y, front, opacity: front ? Math.max(0, Math.min(1, edge / 60)) : 0 };
+}
+
+// HTML above the ThreeCanvas pinned to a 3D point (or a function of the frame, for idle motion): its children are
+// centred on the point's place in the frame and fade when the point goes behind the camera or off frame.
+export function Pin({
+  keys,
+  at,
+  fov,
+  children,
+}: {
+  keys: CameraKey[];
+  at: Vec3 | ((f: number) => Vec3);
+  fov?: number;
+  children: ReactNode;
+}) {
+  const f = useCurrentFrame();
+  const { x, y, opacity } = screenAt(keys, f, typeof at === 'function' ? at(f) : at, { fov });
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        transform: 'translate(-50%, -50%)',
+        opacity,
+        display: opacity ? undefined : 'none',
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 // Many copies of one set piece or part, such as a crowd: vary(i, rand) returns copy i's props (position or x and y,

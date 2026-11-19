@@ -6,6 +6,7 @@ import {
   CUT_3D,
   EXHIBIT_NOTE,
   AUDIT_INSTRUCTIONS,
+  AUDIT_3D,
   REPAIR_NOTE,
   REPAIR_PATCH_NOTE,
   FIX_NOTE,
@@ -328,6 +329,7 @@ export async function writeCuts({
         const report = auditReport(offered);
         const answer = await call(
           (cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS) +
+            (plan.cuts[index].dimension === '3d' ? AUDIT_3D : '') +
             (capable ? '' : report.textTools),
           JSON.stringify({
             ...audited,
