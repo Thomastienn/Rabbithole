@@ -34,12 +34,9 @@ jobs:
       - run: npm ci
       # `npm test` without its systemd-run memory scope, which runners lack. Keep the flags in step with package.json.
       - run: node scripts/check-size.mjs
-      # Official Node builds ignore a runtime process.env.TZ switch, so test/map/tree-list.test.mjs needs its zone set up front.
       - run: >
           node --import ./test/support/tsx.mjs --test --test-concurrency=8 --test-force-exit
           --test-timeout=120000 "test/**/*.test.mjs"
-        env:
-          TZ: America/Edmonton
 
   secrets:
     runs-on: ubuntu-latest
