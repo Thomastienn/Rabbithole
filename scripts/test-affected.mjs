@@ -1,10 +1,10 @@
-// Runs the fast and slow test files that reach a changed or untracked path through imports.
+// Runs the fast test files that reach a changed or untracked path through imports; slow ones wait for the backlog gate.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 
 export const ALL = 'all';
-const TEST = /^test\/.*\.(test|slow)\.mjs$/;
+const TEST = /^test\/.*\.test\.mjs$/;
 const IMPORT = /(?:\bfrom|\bimport)\s*\(?\s*['"]([^'"]+)['"]/g;
 
 // changed: repo-relative paths; tests: test files; read(path) returns source or null.
@@ -66,11 +66,9 @@ if (import.meta.main) {
     console.log('No tests are affected by the current changes.');
     process.exit(0);
   }
-  const files = selected === ALL ? ['test/**/*.test.mjs', 'test/**/*.slow.mjs'] : selected;
+  const files = selected === ALL ? ['test/**/*.test.mjs'] : selected;
   console.log(
-    selected === ALL
-      ? 'Running every fast and slow test.'
-      : `Running ${files.length} affected test files.`,
+    selected === ALL ? 'Running every fast test.' : `Running ${files.length} affected test files.`,
   );
   const { status } = spawnSync(
     'systemd-run',
@@ -81,12 +79,14 @@ if (import.meta.main) {
       '-p',
       'MemoryHigh=5G',
       '-p',
-      'MemorySwapMax=10G',
+      'MemorySwapMax=2G',
+      '-p',
+      'CPUQuota=200%',
       'node',
       '--import',
       './test/support/tsx.mjs',
       '--test',
-      '--test-concurrency=8',
+      '--test-concurrency=2',
       // A leaked handle or a stuck wait must end the run with a failure, not hang it.
       '--test-force-exit',
       '--test-timeout=120000',

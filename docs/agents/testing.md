@@ -35,9 +35,10 @@ Test files live in folders by area: `test/http`, `test/store`, `test/providers`,
 `test/media`, `test/chat`, `test/map`, `test/usage`, `test/shell` and `test/scripts`. Shared
 helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mjs`,
 `video-kit.mjs`, `diagram-kit.mjs` and the other `*-kit.mjs` setup files) live in `test/support/`; data files live in
-`test/fixtures/`. `npm test` runs `test/**/*.test.mjs` on 8 workers inside one `systemd-run` scope with `MemoryHigh=5G`
-and `MemorySwapMax=10G` (`test:slow` too): past 5 GB the kernel throttles the tests and swaps up
-to 10 GB instead of letting them freeze the machine. There is no hard kill. All three runs pass
+`test/fixtures/`. `npm test` runs `test/**/*.test.mjs` on 2 workers inside one `systemd-run` scope with `MemoryHigh=5G`,
+`MemorySwapMax=2G` and `CPUQuota=200%` (`test:slow` and `test:affected` too): past 5 GB the kernel
+throttles the tests and swaps up to 2 GB, and the run never takes more than two cores, so the
+machine stays usable. There is no hard kill. All three runs pass
 `--test-force-exit` and `--test-timeout=120000`: a test file that leaves a server open still exits
 when its tests end, and a test that never finishes fails after two minutes. Still put cleanup in
 `t.after` or `finally`, never as plain lines after asserts. Never compare DOM elements with `assert.equal`/`deepEqual`: a failure makes Node diff
@@ -50,9 +51,10 @@ the whole jsdom graph and exhaust memory; compare names, attributes or `assert.o
 - **Slow (`npm run test:slow`).** Tests that start real provider adapters, server or launcher
   subprocesses, in `test/**/*.slow.mjs`. Put a new test of that kind in a `.slow.mjs` file.
 - **Affected (`npm run test:affected`).** Reads the changed and untracked paths from Git,
-  follows imports from every fast and slow test file, and runs the ones that reach a changed
+  follows imports from every fast test file, and runs the ones that reach a changed
   path, with the fast suite's loader, workers and memory scope. A change under
-  `test/support/` or to `package.json` runs both suites. Each ticket ends with this command.
+  `test/support/` or to `package.json` runs the whole fast suite. Slow tests are left to the
+  backlog gate. Each ticket ends with this command.
 - **Backlog gate.** When every epic is out of ready work, `ralph-afk` makes a gate ticket
   that runs `npm test` and `npm run test:slow`.
 
