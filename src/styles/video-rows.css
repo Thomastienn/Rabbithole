@@ -1,11 +1,12 @@
 /* Per-cut rows under the draft frame; a ready cut reads quieter, one being worked on reads in paper ink. */
-.video-cut-rows {
+/* .video-card outranks the reply's own list indent. */
+.video-card .video-cut-rows {
   margin: 0;
-  padding: 0;
+  padding: 0 2px;
   list-style: none;
   display: grid;
   gap: 2px;
-  font: 500 13px/1.35 var(--font-family-body);
+  font: 400 13px/1.35 var(--font-family-body);
 }
 .video-cut-rows li {
   display: flex;

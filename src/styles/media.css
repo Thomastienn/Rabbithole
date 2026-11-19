@@ -166,7 +166,7 @@
   color-scheme: dark;
   background: var(--color-background-body);
 }
-/* Pending draft frame: storyboard ink drawing and erasing behind the real steps, elapsed time, estimated bar and Cancel. */
+/* Pending draft frame: storyboard ink drawn once behind one status line, elapsed time, estimated bar and Cancel. */
 .video-inline[data-state='pending'] .video-stage {
   color-scheme: dark;
   background: var(--color-background-body);
@@ -195,79 +195,20 @@
 .video-sketch path {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  animation: video-sketch 7.2s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+  animation: video-sketch 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .video-sketch .video-sketch-mark {
   stroke: var(--rabbithole-ink-1);
   stroke-opacity: 0.55;
 }
 @keyframes video-sketch {
-  0% {
-    stroke-dashoffset: 1;
-  }
-  45%,
-  72% {
+  to {
     stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: -1;
-  }
-}
-.video-steps {
-  position: absolute;
-  left: 24px;
-  bottom: 26px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 6px;
-  font: 500 13px/1.35 var(--font-family-body);
-}
-.video-steps li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-}
-.video-steps li > i {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  margin-inline: 2.5px;
-  border-radius: 50%;
-  border: 1.5px solid currentColor;
-}
-.video-steps li > svg {
-  flex: none;
-  width: 12px;
-  height: 12px;
-  stroke-width: 2.5;
-  color: var(--rabbithole-ink-2);
-}
-.video-steps li[data-step='active'] {
-  color: var(--rabbithole-paper);
-  font-weight: 600;
-}
-.video-steps li[data-step='active'] > i {
-  background: var(--rabbithole-ink-1);
-  border-color: var(--rabbithole-ink-1);
-  animation: video-pulse 1.6s ease-in-out infinite;
-}
-.video-steps small {
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-@keyframes video-pulse {
-  50% {
-    opacity: 0.35;
   }
 }
 .video-inline[data-state='pending'] .video-controls {
   position: absolute;
-  inset: auto 16px 18px auto;
+  inset: auto 16px 18px 24px;
   flex-direction: row;
   align-items: center;
   gap: 12px;
@@ -286,6 +227,22 @@
 }
 .video-live {
   border: 0;
+}
+.video-inline[data-state='pending']:not([data-live]) .video-controls > [role='status'] {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 600 13px/1.35 var(--font-family-body);
+  color: var(--rabbithole-paper);
+}
+.video-step-detail {
+  flex: none;
+  font: 400 12px/1.35 var(--font-family-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+.video-inline[data-state='pending']:not([data-live]) .video-elapsed {
+  margin-inline-start: auto;
 }
 .video-elapsed {
   font: 500 13px/1 var(--font-family-body);
@@ -306,23 +263,20 @@
   transition: transform 1.2s linear;
 }
 @container (width < 440px) {
-  .video-steps li:not([data-step='active']) {
+  .video-step-detail {
     display: none;
   }
   .video-sketch {
     opacity: 0.6;
   }
   .video-inline[data-state='pending'] .video-controls {
-    inset: 8px 8px auto auto;
+    inset: auto 12px 12px 16px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .video-sketch path {
     animation: none;
     stroke-dashoffset: 0;
-  }
-  .video-steps li[data-step='active'] > i {
-    animation: none;
   }
   .video-draft-bar > i {
     transition: none;

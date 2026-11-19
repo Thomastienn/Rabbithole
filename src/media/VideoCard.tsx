@@ -7,7 +7,6 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import {
   ArrowPathIcon,
   ArrowsPointingOutIcon,
-  CheckIcon,
   FilmIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
@@ -16,7 +15,7 @@ import type { Artifact } from './artifacts';
 import LivePlayer from './LivePlayer';
 import ExportButton from './ExportButton';
 import VideoUsage from './VideoUsage';
-import { STEPS, elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
+import { elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
 
 const STATUS = {
   pending: 'Creating video…',
@@ -51,7 +50,7 @@ const FAILURE_REASON =
 const DOWNLOADING =
   /^(?:Video tools are still downloading \(\d{1,3}%\)|Video making needs the Windows sandbox\. Enable it in Settings, then ask again)\.$/;
 
-// Rough storyboard panels drawn and erased in ink behind the progress (spec decision 9). Hand-set wobble keeps them sketched.
+// Rough storyboard panels drawn once in ink behind the progress (spec decision 9). Hand-set wobble keeps them sketched.
 const SKETCH = [
   'M42 46 C96 43 158 45 206 48 C208 82 207 116 204 150 C150 152 96 151 44 148 C41 114 42 80 42 46',
   'M70 122 C92 96 112 92 130 104 S168 126 184 92',
@@ -202,22 +201,10 @@ export default function VideoCard({
                     d={d}
                     pathLength={1}
                     className={i % 2 ? 'video-sketch-mark' : undefined}
-                    style={{ animationDelay: `${i * 0.6}s` }}
+                    style={{ animationDelay: `${i * 0.15}s` }}
                   />
                 ))}
               </svg>
-              <ol className="video-steps">
-                {STEPS.map((s, i) => {
-                  const at = STEPS.indexOf(step);
-                  return (
-                    <li key={s} data-step={i < at ? 'done' : i === at ? 'active' : 'next'}>
-                      {i < at ? <CheckIcon aria-hidden /> : <i aria-hidden />}
-                      <span>{STEP_LABEL[s]}</span>
-                      {i === at && detail && <small>{detail}</small>}
-                    </li>
-                  );
-                })}
-              </ol>
               <span className="video-draft-bar" aria-hidden>
                 <i style={{ transform: `scaleX(${peak.current})` }} />
               </span>
@@ -246,13 +233,14 @@ export default function VideoCard({
               type="supporting"
               color="secondary"
               role="status"
-              className={state === 'ready' || (drafting && !live) ? 'sr-only' : undefined}
+              className={state === 'ready' ? 'sr-only' : undefined}
             >
               <Text type="inherit" className="sr-only">
                 {artifact.title}:{' '}
               </Text>
               {status}
             </Text>
+            {drafting && !live && detail && <small className="video-step-detail">{detail}</small>}
             {exportButton}
             {state === 'ready' && onAction && (
               <IconButton

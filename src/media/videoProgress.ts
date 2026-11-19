@@ -19,15 +19,6 @@ export type VideoJob = {
   phaseStartedAt?: number;
 };
 
-export const STEPS = [
-  'planning',
-  'pieces',
-  'writing',
-  'narrating',
-  'auditing',
-  'playable',
-  'saving',
-] as const;
 // Share of the bar each phase owns, and how fast its estimate creeps (seconds to ~63% of its share; 0 = counted).
 const SPAN = {
   planning: [0, 0.25, 30],
