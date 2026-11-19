@@ -160,9 +160,8 @@ export function open(path) {
     // Reasoning tokens are part of output, kept apart where the provider reports them; older rows keep NULL (not reported).
     if (
       !this.db
-        .prepare('PRAGMA table_info(usage_events)')
-        .all()
-        .some((c) => c.name === 'reasoning')
+        .prepare("SELECT 1 FROM pragma_table_info('usage_events') WHERE name='reasoning'")
+        .get()
     )
       this.db.exec('ALTER TABLE usage_events ADD COLUMN reasoning INTEGER');
     // Additive table: brief explanations sit beside tutor replies, keyed by reply and passage; the tutor never reads them.

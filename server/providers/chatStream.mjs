@@ -115,6 +115,10 @@ export function chunkUsage(u) {
   };
 }
 
+// Adds two usage counts key by key; reasoning stays absent until some round reports it.
+export const addUsage = (a, b) =>
+  Object.fromEntries(Object.keys({ ...a, ...b }).map((k) => [k, (a[k] ?? 0) + (b[k] ?? 0)]));
+
 // Runs one model tool call through the turn's runner and emits its tool events; a failure goes back to the model as text.
 export async function runTool(tree, call, emit, signal, key) {
   const id = randomUUID(),

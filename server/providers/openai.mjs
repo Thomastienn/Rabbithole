@@ -14,6 +14,7 @@ import {
 import { probeTools } from './toolProbe.mjs';
 import { QUICK_TOOLS } from '../tools/quickTools.mjs';
 import {
+  addUsage,
   chunkUsage,
   history,
   redactStream,
@@ -23,10 +24,6 @@ import {
 } from './chatStream.mjs';
 
 export { EndpointError };
-
-// Adds two usage counts key by key; reasoning stays absent until some round reports it.
-const sum = (a, b) =>
-  Object.fromEntries(Object.keys({ ...a, ...b }).map((k) => [k, (a[k] ?? 0) + (b[k] ?? 0)]));
 
 // The list of saved custom endpoints; each entry is registered as its own provider.
 export class OpenAI {
@@ -364,7 +361,7 @@ class Endpoint {
       const output = redactStream(saved.apiKey, emit);
       const reply = roundText(output);
       // Every request asks for usage; tool turns sum each model call's report.
-      let total = { input: 0, output: 0, cacheRead: 0 };
+      const total = { input: 0, output: 0, cacheRead: 0 };
       // No call cap: the loop ends when the model answers without tool calls or with only end-of-reply app calls, or on Stop.
       while (true) {
         call = AbortSignal.any([signal, AbortSignal.timeout(300000)]);
@@ -400,10 +397,7 @@ class Endpoint {
             const reported = chunkUsage(chunk.usage);
             if (reported) {
               used = reported;
-              emit({
-                type: 'usage',
-                usage: sum(total, used),
-              });
+              emit({ type: 'usage', usage: addUsage(total, used) });
             }
             const choice = chunk.choices?.find((c) => c.index === 0);
             if (!choice) return false;
@@ -441,7 +435,7 @@ class Endpoint {
         } finally {
           if (!response.body?.locked) await response.body?.cancel().catch(() => {});
         }
-        if (used) total = sum(total, used);
+        if (used) Object.assign(total, addUsage(total, used));
         call.throwIfAborted();
         reply.end();
         if (!completed)
