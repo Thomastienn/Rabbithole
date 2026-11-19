@@ -18,6 +18,7 @@ import { videoPlan, cutSource, pieceNames, libraryPieces } from '../../server/me
 import {
   REMOTION_SKILL,
   MANIM_SKILL,
+  MOTION_DESIGN_SKILL,
   HOUSE_STYLE_SKILL,
   FOCAL_OBJECT_SKILL,
 } from '../../server/media/skills.mjs';
@@ -158,8 +159,10 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
   for (const i of [0, 1]) {
     assert.ok(inputs[i].instructions.includes(REMOTION_SKILL));
     assert.ok(!inputs[i].instructions.includes(MANIM_SKILL));
+    assert.ok(inputs[i].instructions.includes(MOTION_DESIGN_SKILL));
   }
   assert.ok(inputs[2].instructions.includes(MANIM_SKILL));
+  assert.ok(!inputs[2].instructions.includes(MOTION_DESIGN_SKILL));
   assert.ok(!inputs[2].instructions.includes(REMOTION_SKILL));
   // The set-piece and Remotion writers draw in the house style; only Remotion cuts get the focal rule.
   assert.ok(inputs.piecesInstructions.includes(HOUSE_STYLE_SKILL));

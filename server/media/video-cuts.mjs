@@ -11,23 +11,16 @@ import {
   FIX_NOTE,
   FIX_WHOLE_NOTE,
 } from './video-cut.mjs';
-import {
-  cutJoin,
-  cutSource,
-  pieceNames,
-  CUT_ATTEMPTS,
-  CUT_PAUSE_FRAMES,
-  MAX_SOURCE,
-} from './video-plan.mjs';
+import { cutJoin, cutSource, pieceNames, CUT_ATTEMPTS, CUT_PAUSE_FRAMES } from './video-plan.mjs';
 import { patched, withSource } from './patches.mjs';
-import { unfenced, auditIssues, poorPieces, auditFix } from './audit-answers.mjs';
+import { unfenced, auditReport, auditFix } from './audit-answers.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from './manim-cut.mjs';
-import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL } from './skills.mjs';
+import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL, MOTION_DESIGN_SKILL } from './skills.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
 
-export { auditIssues, poorPieces, auditFix };
+export { auditReport, auditFix };
 import { stageCut } from './video-stage.mjs';
 
 // A cut plays live once its code and measured narration exist and its audit settled; Manim also needs its clip.
@@ -48,53 +41,6 @@ export const cutError = (reason, index, count) =>
   new Error(
     `Cut ${index + 1} of ${count}: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the other cuts.`,
   );
-
-// cut: the 1-based cut a call serves, passed past the provider's signal for the usage meter only.
-export async function videoCall(
-  provider,
-  selection,
-  instructions,
-  input,
-  signal,
-  onText,
-  images,
-  cut,
-) {
-  const items = new Map();
-  let status, overflow;
-  try {
-    await provider.generate(
-      { ...selection, thread: null, instructions, ...(images && { images }) },
-      input,
-      (event) => {
-        if (signal.aborted) return;
-        if ((event.type === 'delta' || event.type === 'item') && !overflow) {
-          items.set(
-            event.item,
-            event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text,
-          );
-          const bytes = [...items.values()].reduce((n, v) => n + Buffer.byteLength(v), 0);
-          if (items.size > 32 || bytes > MAX_SOURCE) {
-            overflow = true;
-            items.clear();
-          } else onText?.(bytes, [...items.values()].join('\n\n'));
-        }
-        if (event.type === 'status') status = event.status;
-      },
-      () => {},
-      signal,
-      cut,
-    );
-  } catch {
-    signal.throwIfAborted();
-    throw new Error('Video provider failed to generate a composition.');
-  }
-  signal.throwIfAborted();
-  if (status !== 'completed') throw new Error('Video composition did not complete.');
-  if (overflow)
-    throw Object.assign(new Error('Video composition exceeds 64 KiB.'), { invalidOutput: true });
-  return [...items.values()].join('\n\n');
-}
 
 export async function writeCuts({
   plan,
@@ -125,6 +71,9 @@ export async function writeCuts({
   readsImages = false,
   // Set piece drawing progress while their module streams: { drawing: names, drawn, total }.
   onDrawing = () => {},
+  // Whether the smart model calls tools natively, and the MCP server Claude and Codex reach them through.
+  capable = false,
+  mcp,
 }) {
   // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
   const cuts = plan.cuts.map((c, i) => ({
@@ -201,6 +150,8 @@ export async function writeCuts({
       : CUT_INSTRUCTIONS +
         '\n\n' +
         REMOTION_SKILL +
+        '\n\n' +
+        MOTION_DESIGN_SKILL +
         (plan.cuts[index].dimension === '3d' ? CUT_3D + '\n\n' + REMOTION_3D_SKILL : '') +
         (exhibitsOf(index).length ? EXHIBIT_NOTE : '');
   const rewrite = async (index, reason) => {
@@ -351,8 +302,10 @@ export async function writeCuts({
           new RegExp(`\\b${RegExp.escape(name)}(?:3D)?\\b`).test(cut.code);
         const offered = Object.keys(library).filter(draws);
         const photos = references.filter((r) => draws(r.name));
+        const report = auditReport(offered);
         const answer = await call(
-          cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS,
+          (cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS) +
+            (capable ? '' : report.textTools),
           JSON.stringify({
             ...audited,
             ...(offered.length && { libraryPieces: offered }),
@@ -362,14 +315,16 @@ export async function writeCuts({
           undefined,
           [...own, ...(previous ? [previous] : []), ...photos.map(photo)],
           index + 1,
+          capable && { tools: report.tools, mcp, runTool: report.run },
         );
+        report.read(answer);
         // The video keeps the pieces it started with; a flagged piece is improved in the library alongside.
-        for (const { name, why } of poorPieces(answer, offered))
+        for (const { name, why } of report.pieces)
           if (!flagged.has(library[name])) {
             flagged.add(library[name]);
             improving.push(onPoorPiece(library[name], why).catch(() => {}));
           }
-        const issues = auditIssues(answer);
+        const issues = report.issues();
         if (issues) {
           cut.step = 'fixing';
           persist();

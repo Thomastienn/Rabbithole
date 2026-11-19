@@ -15,7 +15,11 @@ import {
 } from '../support/video-kit.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { tutorContext } from '../../server/media/diagrams.mjs';
-import { REMOTION_SKILL, REMOTION_3D_SKILL } from '../../server/media/skills.mjs';
+import {
+  REMOTION_SKILL,
+  REMOTION_3D_SKILL,
+  MOTION_DESIGN_SKILL,
+} from '../../server/media/skills.mjs';
 import { CUT_3D } from '../../server/media/video-cut.mjs';
 import { firstDiagnostic } from '../../server/media/video-sandbox.mjs';
 
@@ -126,6 +130,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
     assert.equal(inputs[i].tree.instructions.includes(CUT_3D), i === 2);
     // Every Remotion writer gets the Remotion skill; only the 3D cut gets its 3D part.
     assert.ok(inputs[i].tree.instructions.includes(REMOTION_SKILL));
+    assert.ok(inputs[i].tree.instructions.includes(MOTION_DESIGN_SKILL));
     assert.equal(inputs[i].tree.instructions.includes(REMOTION_3D_SKILL), i === 2);
     assert.ok(!('messages' in inputs[i].tree));
   });

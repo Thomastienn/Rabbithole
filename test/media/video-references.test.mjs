@@ -7,7 +7,7 @@ import { Store } from '../../server/store.mjs';
 import { generateVideo } from '../../server/media/videos.mjs';
 import { AUDIT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
-import { planFor, complete, fakeRender } from '../support/video-kit.mjs';
+import { planFor, complete, fakeRender, audit, pass } from '../support/video-kit.mjs';
 
 const png = Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]),
@@ -59,11 +59,11 @@ async function run({ photo = true, readsImages = true } = {}) {
         calls.push(call);
         if (t.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         if (t.instructions.startsWith('You write the set pieces')) return complete(emit, pieces);
-        if (t.instructions === AUDIT_INSTRUCTIONS) {
+        if (t.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
           call.photos = (t.images ?? [])
             .filter((i) => i.type === 'image/png')
             .map((i) => readFileSync(i.path));
-          return complete(emit, '{"ok":true}');
+          return audit(t, emit, pass);
         }
         complete(emit, cutDrawing(call.input.cut.purpose === 'Step 1' ? 'Winner' : 'Trophy'));
       },
@@ -123,7 +123,7 @@ test('a reference query fetches one photo before set pieces are drawn; the piece
   assert.deepEqual(writer.input.referencePhotos, ['Winner']);
   assert.equal(writer.images.length, 1);
   assert.deepEqual(readFileSync(writer.images[0].path), png);
-  const audits = calls.filter((c) => c.instructions === AUDIT_INSTRUCTIONS);
+  const audits = calls.filter((c) => c.instructions.startsWith(AUDIT_INSTRUCTIONS));
   const winner = audits.find((a) => a.input.cut.purpose === 'Step 1'),
     trophy = audits.find((a) => a.input.cut.purpose === 'Step 2');
   assert.deepEqual(winner.input.referencePhotos, ['Winner']);
@@ -138,7 +138,7 @@ test('a reference query fetches one photo before set pieces are drawn; the piece
   assert.ok(staged.every((s) => !s.includes('saturn')));
   assert.ok(
     calls
-      .filter((c) => c.input.cut && c.instructions !== AUDIT_INSTRUCTIONS)
+      .filter((c) => c.input.cut && !c.instructions.startsWith(AUDIT_INSTRUCTIONS))
       .every((c) => !c.images),
   );
 });
@@ -150,7 +150,7 @@ test('a set piece writer that cannot read images gets no photo, while the audit 
   assert.equal(writer.images, undefined);
   assert.equal(writer.input.referencePhotos, undefined);
   const audit = calls.find(
-    (c) => c.instructions === AUDIT_INSTRUCTIONS && c.input.cut.purpose === 'Step 1',
+    (c) => c.instructions.startsWith(AUDIT_INSTRUCTIONS) && c.input.cut.purpose === 'Step 1',
   );
   assert.deepEqual(audit.photos, [png]);
 });

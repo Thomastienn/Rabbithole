@@ -11,13 +11,14 @@ import {
   open,
   fixerTask,
   patchOf,
+  audit,
+  pass,
 } from '../support/video-kit.mjs';
 import {
   AUDIT_INSTRUCTIONS,
   PIECE_IMPROVE_INSTRUCTIONS,
   PIECE_PATCH_NOTE,
 } from '../../server/media/video-cut.mjs';
-import { poorPieces } from '../../server/media/video-cuts.mjs';
 import { improvePiece } from '../../server/media/video-pieces.mjs';
 import { REMOTION_SKILL, HOUSE_STYLE_SKILL } from '../../server/media/skills.mjs';
 
@@ -49,9 +50,9 @@ async function run(t, rewrite, why = 'No crown on top') {
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         if (tree.instructions.startsWith('You write the set pieces')) return complete(emit, pieces);
-        if (tree.instructions === AUDIT_INSTRUCTIONS) {
+        if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
           calls.audit.push(JSON.parse(text));
-          return complete(emit, JSON.stringify({ ok: true, pieces: [{ name: 'Winner', why }] }));
+          return audit(tree, emit, pass, ['flag_poor_piece', { piece: 'Winner', reason: why }]);
         }
         if (tree.instructions.startsWith(PIECE_IMPROVE_INSTRUCTIONS)) {
           assert.ok(tree.instructions.includes(REMOTION_SKILL));
@@ -126,23 +127,6 @@ test('an invalid piece rewrite leaves the library entry unchanged', async (t) =>
   assert.equal(saved.source, pieces);
   assert.equal(saved.improved, saved.created);
   assert.equal(JSON.parse(row.source).pieces, pieces);
-});
-
-test('only offered pieces with a reason are flagged', () => {
-  const answer = (pieces) => JSON.stringify({ ok: true, pieces });
-  assert.deepEqual(
-    poorPieces(
-      answer([
-        { name: 'Winner', why: 'flat' },
-        { name: 'Other', why: 'x' },
-        { name: 'Winner', why: ' ' },
-      ]),
-      ['Winner'],
-    ),
-    [{ name: 'Winner', why: 'flat' }],
-  );
-  assert.deepEqual(poorPieces('{"ok":true}', ['Winner']), []);
-  assert.deepEqual(poorPieces('not json', ['Winner']), []);
 });
 
 test('improving a piece with a 3D form rewrites both together; a rewrite missing or breaking a form is rejected', async () => {

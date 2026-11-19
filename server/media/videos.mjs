@@ -12,7 +12,8 @@ import {
 } from './video-plan.mjs';
 import { fetchExhibit, videoMedia } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
-import { videoCall, writeCuts, playable, cutRows } from './video-cuts.mjs';
+import { writeCuts, playable, cutRows } from './video-cuts.mjs';
+import { videoCall } from './video-call.mjs';
 
 export { playable };
 import { improvePiece } from './video-pieces.mjs';
@@ -120,6 +121,9 @@ export async function generateVideo({
   clips = detectClips,
   // Whether the chat model reads images; only then does the set piece writer see reference photos.
   readsImages = false,
+  // Whether the smart model calls tools natively, and the MCP server for its audit calls.
+  capable = false,
+  mcp,
 }) {
   const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
   const controller = new AbortController();
@@ -142,9 +146,9 @@ export async function generateVideo({
     }
   };
   const deadline = Date.now() + (timeout ?? 600000);
-  const caller = (base, choice) => (instructions, input, onText, images, cut) =>
+  const caller = (base, choice) => (instructions, input, onText, images, cut, tools) =>
     wait(
-      videoCall(base, choice, instructions, input, controller.signal, onText, images, cut),
+      videoCall(base, choice, instructions, input, controller.signal, onText, images, cut, tools),
       Math.max(1, deadline - Date.now()),
       'Video composition timed out.',
     );
@@ -284,6 +288,8 @@ export async function generateVideo({
       exhibits,
       references,
       readsImages,
+      capable,
+      mcp,
       pieces: prior?.pieces,
       onDrawing: (value) => {
         drawing = value;

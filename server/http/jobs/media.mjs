@@ -153,7 +153,9 @@ export function mediaJobs(ctx) {
                   ? 'pieces'
                   : args[0].instructions.startsWith(PIECE_IMPROVE_INSTRUCTIONS)
                     ? 'improve'
-                    : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].includes(args[0].instructions)
+                    : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].some((i) =>
+                          args[0].instructions.startsWith(i),
+                        )
                       ? 'audit'
                       : [REPAIR_NOTE, REPAIR_PATCH_NOTE].some((n) =>
                             args[0].instructions.endsWith(n),
@@ -183,6 +185,8 @@ export function mediaJobs(ctx) {
           stills: () => ctx.pieceStills.fill(),
           search: ctx.search,
           readsImages: await ctx.readsImages(chat).catch(() => false),
+          capable: await ctx.toolCapable(selection).catch(() => false),
+          mcp: ctx.mcp,
           onWarning: (cause) =>
             ctx.log(
               formatLog('warn', 'media', 'warning', {

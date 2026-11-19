@@ -13,9 +13,12 @@ import {
   fakeRender,
   fixerTask,
   patchOf,
+  audit,
+  pass,
+  problems,
 } from '../support/video-kit.mjs';
 import { AUDIT_INSTRUCTIONS, FIX_NOTE, FIX_WHOLE_NOTE } from '../../server/media/video-cut.mjs';
-import { auditFix, auditIssues } from '../../server/media/video-cuts.mjs';
+import { auditFix, auditReport } from '../../server/media/video-cuts.mjs';
 
 const twoCuts = () => {
   const plan = planFor(composition, 2);
@@ -29,7 +32,6 @@ const written = (i) => composition.replace('PRIVATE_SOURCE_MARKER', `CUT_${i}`);
 const fixed = composition.replace('PRIVATE_SOURCE_MARKER', 'AUDITED');
 const moved = [{ tool: 'cursor', sentence: 0, x: 700, y: 300 }];
 const issues = [{ what: 'Label overlaps the box', where: 'sentence 1, centre' }];
-const flagged = JSON.stringify({ issues });
 // Stills record the staged code they were taken from.
 const stills = (shots) => async (dir, list) => {
   shots.push([basename(dir), readFileSync(join(dir, 'Video.tsx'), 'utf8'), list]);
@@ -74,7 +76,7 @@ test('audits start together, see code, stills and the previous last frame; issue
             JSON.stringify({ patch: patchOf(written(i), fixed), emphasis: moved }),
           );
         }
-        if (tree.instructions !== AUDIT_INSTRUCTIONS) return complete(emit, written(i));
+        if (!tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) return complete(emit, written(i));
         audits.push({ i, input: JSON.parse(text), images: tree.images });
         // Both audits are in flight at once; sequential audits would never get here.
         await until(() => audits.length === 2);
@@ -86,10 +88,10 @@ test('audits start together, see code, stills and the previous last frame; issue
           phaseDuringAudit = (
             await (await env.get(`/api/trees/${chat.id}/artifacts/${row.id}`)).json()
           ).phase;
-          return complete(emit, flagged);
+          return audit(tree, emit, ...problems(issues));
         }
         await until(() => liveDuringAudit);
-        complete(emit, '{"ok":true}');
+        audit(tree, emit, pass);
       },
     },
     {
@@ -187,7 +189,8 @@ test('a fix that breaks the check or the render falls back to the cut from befor
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         const i = cutOf(plan, text);
-        if (tree.instructions === AUDIT_INSTRUCTIONS) return complete(emit, flagged);
+        if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
+          return audit(tree, emit, ...problems(issues));
         if (!tree.instructions.endsWith(FIX_NOTE)) return complete(emit, written(i));
         fixCalls++;
         complete(
@@ -239,7 +242,8 @@ test('a fix patch that does not parse or apply gets exactly one whole-source cal
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
         const i = cutOf(plan, text);
-        if (tree.instructions === AUDIT_INSTRUCTIONS) return complete(emit, flagged);
+        if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
+          return audit(tree, emit, ...problems(issues));
         if (tree.instructions.endsWith(FIX_NOTE)) {
           calls.push([i, 'patch']);
           // Cut 0 answers a hunk whose context is not in the cut; cut 1 answers no diff at all.
@@ -293,7 +297,7 @@ test('cancel stops a running snapshot and a running audit', async (t) => {
         generate: async (tree, text, emit, _, signal) => {
           if (tree.id) return complete(emit, 'Watch.' + directive);
           if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
-          if (tree.instructions !== AUDIT_INSTRUCTIONS)
+          if (!tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
             return complete(emit, written(cutOf(plan, text)));
           audits++;
           holding = true;
@@ -357,19 +361,33 @@ test('phases advance through auditing before playable; an unusable audit answer 
   assert.ok(phases.lastIndexOf('auditing') < phases.indexOf('playable'));
 });
 
-test('audit answers parse to ok or issues, fix answers to a validated fix, anything else to an error', () => {
+test('audit calls assemble into ok or issues, each bad call gets an error naming its field; fix answers to a validated fix', () => {
   const { styleBrief } = planFor();
-  assert.equal(auditIssues('{"ok":true}'), null);
-  assert.deepEqual(auditIssues('```json\n' + flagged + '\n```'), issues);
-  for (const bad of [
-    '{}',
-    '{"issues":[]}',
-    '{"issues":[{"what":"x"}]}',
-    JSON.stringify({ code: fixed }),
-    JSON.stringify({ issues: Array(9).fill(issues[0]) }),
-    fixed,
-  ])
-    assert.throws(() => auditIssues(bad), bad.slice(0, 40));
+  const passed = auditReport([]);
+  passed.run('pass_cut', {});
+  assert.equal(passed.issues(), null);
+  // A problem outranks a pass; text-mode calls read the same as native ones.
+  const flagging = auditReport(['Winner']);
+  flagging.read(
+    '<tool_call>{"name":"pass_cut","arguments":{}}</tool_call>' +
+      `<tool_call>{"name":"flag_problem","arguments":${JSON.stringify({ cut: issues[0].where, problem: issues[0].what })}}</tool_call>` +
+      '<tool_call>{"name":"flag_poor_piece","arguments":"{\\"piece\\":\\"Winner\\",\\"reason\\":\\"Flat\\"}"}</tool_call>',
+  );
+  assert.deepEqual(flagging.issues(), issues);
+  assert.deepEqual(flagging.pieces, [{ name: 'Winner', why: 'Flat' }]);
+  assert.throws(() => auditReport([]).issues(), /no verdict/);
+  const checked = auditReport(['Winner']);
+  assert.throws(() => checked.run('flag_problem', { problem: 'x' }), /^Error: cut/);
+  assert.throws(() => checked.run('flag_problem', { cut: 'x', problem: ' ' }), /^Error: problem/);
+  assert.throws(() => checked.run('flag_poor_piece', { piece: 'Other', reason: 'x' }), /Winner/);
+  assert.throws(() => checked.run('flag_poor_piece', { piece: 'Winner' }), /^Error: reason/);
+  for (let i = 0; i < 8; i++) checked.run('flag_problem', { cut: 'x', problem: 'y' });
+  assert.throws(() => checked.run('flag_problem', { cut: 'x', problem: 'y' }), /At most 8/);
+  // A cut without library pieces is offered no flag_poor_piece.
+  assert.deepEqual(
+    auditReport([]).tools.map((t) => t.name),
+    ['flag_problem', 'pass_cut'],
+  );
   assert.deepEqual(auditFix(JSON.stringify({ code: fixed }), styleBrief, 1), { code: fixed });
   assert.deepEqual(auditFix(JSON.stringify({ code: fixed, emphasis: moved }), styleBrief, 1), {
     code: fixed,

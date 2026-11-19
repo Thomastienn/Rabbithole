@@ -14,6 +14,8 @@ import {
   until,
   fixerTask,
   patchOf,
+  audit,
+  pass,
 } from '../support/video-kit.mjs';
 import { MANIM_AUDIT_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 import { FIX_NOTE } from '../../server/media/video-cut.mjs';
@@ -44,14 +46,12 @@ for (const [name, fix] of Object.entries(fixes))
             fixes.push(fixerTask(text));
             return complete(emit, JSON.stringify({ patch: patchOf(fixes.at(-1).code, fix) }));
           }
-          if (tree.instructions !== MANIM_AUDIT_INSTRUCTIONS) return complete(emit, manimCut);
+          if (!tree.instructions.startsWith(MANIM_AUDIT_INSTRUCTIONS))
+            return complete(emit, manimCut);
           audits.push({ input: JSON.parse(text), images: tree.images });
-          complete(
-            emit,
-            JSON.stringify(
-              fix ? { issues: [{ what: 'Label clipped', where: 'top left' }] } : { ok: true },
-            ),
-          );
+          return fix
+            ? audit(tree, emit, ['flag_problem', { cut: 'top left', problem: 'Label clipped' }])
+            : audit(tree, emit, pass);
         },
       },
       {

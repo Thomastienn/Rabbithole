@@ -11,6 +11,8 @@ import {
   open,
   fixerTask,
   patchOf,
+  audit,
+  pass,
 } from '../support/video-kit.mjs';
 import {
   AUDIT_INSTRUCTIONS,
@@ -45,9 +47,9 @@ test('a failed cut gets one repair with the failed code, set pieces and the prev
         if (tree.instructions.startsWith(PIECES_INSTRUCTIONS)) return complete(emit, pieces);
         const input = fixerTask(text),
           i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
-        if (tree.instructions === AUDIT_INSTRUCTIONS) {
+        if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
           audits.push({ i, images: tree.images });
-          return complete(emit, '{"ok":true}');
+          return audit(tree, emit, pass);
         }
         if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
           repairs.push({ i, input, images: tree.images });
@@ -107,9 +109,9 @@ test('adjacent repaired cuts share the repaired last frame; the first cut needs 
       generate: async (tree, text, emit) => {
         if (tree.id) return complete(emit, 'Watch.' + directive);
         if (tree.instructions.startsWith('You plan')) return complete(emit, JSON.stringify(plan));
-        if (tree.instructions === AUDIT_INSTRUCTIONS) {
+        if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
           audits++;
-          return complete(emit, '{"ok":true}');
+          return audit(tree, emit, pass);
         }
         if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
           repairs.push({ input: fixerTask(text), images: tree.images });
@@ -163,7 +165,7 @@ test('a repair patch that does not apply gets one whole-source call in the same 
           if (tree.id) return complete(emit, 'Watch.' + directive);
           if (tree.instructions.startsWith('You plan'))
             return complete(emit, JSON.stringify(planFor(composition, 1)));
-          if (tree.instructions === AUDIT_INSTRUCTIONS) return complete(emit, '{"ok":true}');
+          if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) return audit(tree, emit, pass);
           if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
             calls.push(['patch', fixerTask(text).failedCode]);
             return complete(emit, answer);

@@ -108,6 +108,25 @@ export const complete = (emit, text) => {
   emit({ type: 'item', item: 'answer', text });
   emit({ type: 'status', status: 'completed' });
 };
+// Answers a cut audit with its calls: natively through tree.runTool when given, else as <tool_call> text.
+export const audit = async (tree, emit, ...calls) => {
+  if (tree.runTool) for (const [name, input = {}] of calls) await tree.runTool(name, input);
+  complete(
+    emit,
+    tree.runTool
+      ? ''
+      : calls
+          .map(
+            ([name, input = {}]) =>
+              `<tool_call>${JSON.stringify({ name, arguments: input })}</tool_call>`,
+          )
+          .join('\n'),
+  );
+};
+export const pass = ['pass_cut'];
+// Today's issue shape as the flag_problem calls that report it.
+export const problems = (issues) =>
+  issues.map((i) => ['flag_problem', { cut: i.where, problem: i.what }]);
 export { until } from './events.mjs';
 
 export async function open(provider, options = {}) {

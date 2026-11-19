@@ -11,6 +11,8 @@ import {
   repairAnswer,
   fixerTask,
   patchOf,
+  audit,
+  pass,
 } from '../support/video-kit.mjs';
 import {
   AUDIT_INSTRUCTIONS,
@@ -42,7 +44,7 @@ const stageOf = (instructions) =>
     ? 'plan'
     : instructions.startsWith('You write the set pieces')
       ? 'pieces'
-      : instructions === AUDIT_INSTRUCTIONS
+      : instructions.startsWith(AUDIT_INSTRUCTIONS)
         ? 'audit'
         : instructions.endsWith(REPAIR_NOTE) || instructions.endsWith(REPAIR_PATCH_NOTE)
           ? 'repair'
@@ -73,12 +75,9 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
         if (stage === 'pieces') return complete(emit, pieces);
         // The first audit flags its cut, so one fix runs; later audits pass.
         if (stage === 'audit')
-          return complete(
-            emit,
-            ++audits === 1
-              ? '{"issues":[{"what":"Label overlaps","where":"centre"}]}'
-              : '{"ok":true}',
-          );
+          return ++audits === 1
+            ? audit(tree, emit, ['flag_problem', { cut: 'centre', problem: 'Label overlaps' }])
+            : audit(tree, emit, pass);
         if (stage === 'fix') {
           const { code } = fixerTask(text);
           return complete(emit, JSON.stringify({ patch: patchOf(code, code + '\n// fixed') }));
