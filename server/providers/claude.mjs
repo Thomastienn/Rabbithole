@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
+import { STALLED } from './chatStream.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [
@@ -182,11 +183,7 @@ export class Claude {
           clearTimeout(timeout);
           timeout = setTimeout(() => {
             kill();
-            reject(
-              new Error(
-                'The model stopped responding for 5 minutes. Partial reply saved; try again.',
-              ),
-            );
+            reject(new Error(STALLED));
           }, 300000);
         };
         idle();

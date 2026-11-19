@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { EndpointError } from './endpointSettings.mjs';
 
+export const STALLED =
+  'The model stopped responding for 5 minutes. Partial reply saved; try again.';
+
 // Each model call stops after ms without a streamed event, never at a fixed time; tool runs between calls keep their own limits.
 export function idleLimit(signal, ms = 300000) {
   const idle = new AbortController();

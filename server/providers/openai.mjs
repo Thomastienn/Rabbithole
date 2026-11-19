@@ -17,6 +17,7 @@ import {
   chunkUsage,
   history,
   idleLimit,
+  STALLED,
   redactStream,
   roundText,
   runTool,
@@ -486,7 +487,7 @@ class Endpoint {
         ? error
         : new EndpointError(
             call.reason?.name === 'TimeoutError'
-              ? 'The model stopped responding for 5 minutes. Partial reply saved; try again.'
+              ? STALLED
               : 'Custom endpoint connection or stream failed. Check compatibility and endpoint settings, then retry.',
           );
     } finally {
