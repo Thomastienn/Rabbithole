@@ -1,0 +1,89 @@
+# Builds the unsigned desktop installers. Manual trigger only: the owner runs it (AGENTS.md).
+name: Desktop build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    # The oldest supported runner, so the AppImage runs on older glibc.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop -> target
+      - name: Cache Tauri bundler tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/tauri
+          key: tauri-tools-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: tauri-tools-${{ runner.os }}-
+      - name: Install Tauri's Linux prerequisites
+        run: >
+          sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl
+          wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          gstreamer1.0-plugins-good gstreamer1.0-libav
+      - run: npm ci
+      - run: npm run desktop:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: desktop/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            desktop -> target
+            desktop/sandbox -> target
+      - name: Cache Tauri bundler tools
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\tauri
+          key: tauri-tools-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: tauri-tools-${{ runner.os }}-
+      - run: npm ci
+      - run: npm run desktop:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: desktop/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+
+  release:
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      # A draft: the owner reviews, renames the tag if wanted and publishes it by hand.
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "desktop-build-${{ github.run_number }}" installers/*
+          --repo "${{ github.repository }}" --target "${{ github.sha }}" --draft
+          --title "Rabbithole desktop build ${{ github.run_number }}"
+          --notes "Unsigned AppImage and Windows installer from ${{ github.sha }}."

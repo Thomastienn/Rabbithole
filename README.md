@@ -30,6 +30,14 @@ Stop with **Ctrl+C** and wait for the terminal command to exit. Active replies e
 
 `npm run desktop:build` builds `desktop/target/release/bundle/appimage/Rabbithole_1.0.0_amd64.AppImage`. It needs Rust and Tauri's [Linux prerequisites](https://v2.tauri.app/start/prerequisites/#linux) (`sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf gstreamer1.0-plugins-good gstreamer1.0-libav`; the AppImage bundles the build machine's GStreamer plugins so video plays). The AppImage contains this Node runtime, the built app and its production dependencies. Opening it needs no terminal: on the first launch of each build it unpacks the app into `~/.local/share/rabbithole-app` (video tools downloaded there survive updates), starts the server on a free loopback port and shows it in a window. It uses the same data folder as `npm start`, so stop one before opening the other. Closing the window stops the server. Downloads such as an exported MP4 ask where to save. Video making still needs the system `bwrap` and the packages first-run setup lists.
 
+### Windows desktop app
+
+On Windows, the same `npm run desktop:build` builds the unsigned NSIS installer `desktop/target/release/bundle/nsis/Rabbithole_1.0.0_x64-setup.exe`, with the sandbox launcher and its Codex helpers beside the app. It needs Rust and Tauri's [Windows prerequisites](https://v2.tauri.app/start/prerequisites/#windows). The app unpacks into `%LOCALAPPDATA%\rabbithole-app` and keeps its data in `%APPDATA%\rabbithole`.
+
+### Downloads
+
+The **Desktop build** GitHub Actions workflow (`.github/workflows/desktop-build.yml`) runs only when started by hand. It builds the AppImage on Linux and the installer on Windows, then attaches both to a draft release, which is published by hand. On Linux, mark the AppImage executable (`chmod +x`) and open it. The Windows installer is not signed, so SmartScreen shows "Windows protected your PC" the first time. Choose **More info**, then **Run anyway**.
+
 ## Providers and sign-in
 
 Startup reports the Node requirement, whether each CLI can run, Claude's native sign-in state and whether a ChatGPT connection is saved. These checks do not send a learning question or verify model entitlement or remaining quota. Provider setup is optional until you want a new reply. There is no API-key fallback.

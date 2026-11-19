@@ -16,15 +16,21 @@ const APP: [&str; 8] = [
     "scripts",
     "src",
     "node_modules",
-    "node",
+    NODE,
     "package.json",
     "package-lock.json",
 ];
+
+const NODE: &str = if cfg!(windows) { "node.exe" } else { "node" };
 
 struct Server(Mutex<Option<Child>>);
 
 // The bundle is read-only (an AppImage mount), but the server writes its tools beside its code, so it runs from a copy.
 fn app_root() -> PathBuf {
+    #[cfg(windows)]
+    return PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_default())
+        .join("rabbithole-app");
+    #[cfg(not(windows))]
     std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
@@ -54,7 +60,7 @@ fn install(resources: &Path, root: &Path) -> std::io::Result<()> {
             fs::remove_file(&path)?;
         }
     }
-    let status = Command::new("tar")
+    let status = tar()
         .arg("-xf")
         .arg(resources.join("app.tar"))
         .arg("-C")
@@ -69,6 +75,26 @@ fn install(resources: &Path, root: &Path) -> std::io::Result<()> {
     }
     fs::write(&stamp, build)
 }
+
+// Windows' own bsdtar: a Git-for-Windows GNU tar earlier on PATH reads "C:" as a remote host.
+fn tar() -> Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let mut command = Command::new(
+            PathBuf::from(std::env::var_os("SystemRoot").unwrap_or("C:\\Windows".into()))
+                .join("System32\\tar.exe"),
+        );
+        command.creation_flags(CREATE_NO_WINDOW);
+        command
+    }
+    #[cfg(not(windows))]
+    Command::new("tar")
+}
+
+// A GUI app's children would otherwise each open a console window.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 fn show_error(window: &WebviewWindow, message: &str) {
     let _ = window.eval(format!(
@@ -91,7 +117,7 @@ fn run_server(app: AppHandle, window: WebviewWindow) {
     }
     let spawned = (|| {
         let (reader, writer) = std::io::pipe()?;
-        let mut command = Command::new(root.join("node"));
+        let mut command = Command::new(root.join(NODE));
         command
             .args(["server/main.mjs", "--port", "0"])
             .current_dir(&root)
@@ -99,7 +125,15 @@ fn run_server(app: AppHandle, window: WebviewWindow) {
             .stderr(writer);
         // Model-written code runs through the bundled launcher (desktop/sandbox) beside the Codex helpers.
         #[cfg(windows)]
-        command.env("RABBITHOLE_SANDBOX", resources.join("rabbithole-sandbox.exe"));
+        {
+            use std::os::windows::process::CommandExt;
+            command
+                .env(
+                    "RABBITHOLE_SANDBOX",
+                    resources.join("rabbithole-sandbox.exe"),
+                )
+                .creation_flags(CREATE_NO_WINDOW);
+        }
         #[cfg(target_os = "linux")]
         unsafe {
             use std::os::unix::process::CommandExt;
@@ -185,6 +219,9 @@ fn stop_server(app: &AppHandle) {
     let Some(mut child) = app.state::<Server>().0.lock().unwrap().take() else {
         return;
     };
+    // shortcut: Windows has no SIGTERM, so the server is killed and its lock goes stale after 10 s; add a stop request if reopening quickly matters.
+    #[cfg(windows)]
+    let _ = child.kill();
     #[cfg(unix)]
     unsafe {
         libc::kill(child.id() as i32, libc::SIGTERM);
@@ -220,7 +257,12 @@ fn main() {
                     })
                     // Links that open a new tab, such as sign-in pages, open in the learner's browser.
                     .on_new_window(|url, _| {
-                        let _ = Command::new("xdg-open").arg(url.as_str()).spawn();
+                        let opener = if cfg!(windows) {
+                            "explorer"
+                        } else {
+                            "xdg-open"
+                        };
+                        let _ = Command::new(opener).arg(url.as_str()).spawn();
                         NewWindowResponse::Deny
                     })
                     .build()?;
@@ -248,7 +290,7 @@ mod tests {
         fs::create_dir_all(src.join("server")).unwrap();
         fs::write(src.join("server/main.mjs"), "new").unwrap();
         fs::create_dir_all(&res).unwrap();
-        Command::new("tar")
+        tar()
             .arg("-cf")
             .arg(res.join("app.tar"))
             .arg("-C")
