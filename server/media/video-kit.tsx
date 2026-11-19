@@ -15,7 +15,16 @@ import { wipe } from '@remotion/transitions/wipe';
 import { flip } from '@remotion/transitions/flip';
 import { clockWipe } from '@remotion/transitions/clock-wipe';
 import { iris } from '@remotion/transitions/iris';
-export { setStock, Exhibit, Camera, cameraAt, Copies, type CameraKey } from './video-stock';
+export {
+  setStock,
+  Exhibit,
+  Camera,
+  cameraAt,
+  screenAt,
+  Pin,
+  Copies,
+  type CameraKey,
+} from './video-stock';
 
 export const palette = {
   ground: '#1a1613',
