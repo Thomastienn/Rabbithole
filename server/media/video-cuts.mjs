@@ -9,7 +9,6 @@ import {
   REPAIR_NOTE,
   REPAIR_PATCH_NOTE,
   FIX_NOTE,
-  FIX_WHOLE_NOTE,
   SUBMIT_NOTE,
 } from './video-cut.mjs';
 import { cutJoin, cutSource, pieceNames, CUT_ATTEMPTS, CUT_PAUSE_FRAMES } from './video-plan.mjs';
@@ -352,45 +351,40 @@ export async function writeCuts({
         if (issues) {
           cut.step = 'fixing';
           persist();
-          // The chat model patches the flagged cut once, or writes it whole once when the patch does not apply;
-          // the fix is kept only if it validates and renders.
-          const fix = (note, text) =>
-            write(
-              writerInstructions(index) + note,
-              text,
-              undefined,
-              previous ? [previous] : undefined,
-              index + 1,
-            );
-          const { code, ...rest } = audited,
-            sentences = cut.timing.sentences.length;
-          Object.assign(
-            cut,
-            auditFix(
-              await fix(FIX_NOTE, withSource({ ...rest, issues }, 'code', code)),
-              plan.styleBrief,
-              sentences,
-              cut.engine,
-              code,
-            ) ??
-              auditFix(
-                await fix(FIX_WHOLE_NOTE, JSON.stringify({ ...audited, issues })),
-                plan.styleBrief,
-                sentences,
-                cut.engine,
-              ),
+          // The chat model patches the flagged cut once; a patch that does not apply or validate
+          // sends the cut to its repair attempts with the audit's issues. A fix that will not render keeps the cut.
+          const { code, ...rest } = audited;
+          const answer = await write(
+            writerInstructions(index) + FIX_NOTE,
+            withSource({ ...rest, issues }, 'code', code),
+            undefined,
+            previous ? [previous] : undefined,
+            index + 1,
           );
+          try {
+            Object.assign(
+              cut,
+              auditFix(answer, plan.styleBrief, cut.timing.sentences.length, cut.engine, code),
+            );
+            if (cut.engine === 'manim' && check) await check(await stage(index));
+          } catch (e) {
+            signal.throwIfAborted();
+            if (e.manimUnavailable) throw e;
+            const found = issues.map((i) => `${i.where}: ${i.what}`).join('; ');
+            throw Object.assign(
+              new Error(`The cut audit found: ${found}. Its fix patch failed: ${e.message}`),
+              { repair: true },
+            );
+          }
           // A Manim fix is checked and rendered to a new clip; the old clip is replaced only on success.
           if (cut.engine !== 'manim') await shoot(index);
-          else {
-            if (check) await check(await stage(index));
-            await clipOf(index);
-          }
+          else await clipOf(index);
         }
-      } catch {
+      } catch (e) {
         signal.throwIfAborted();
         Object.assign(cut, before);
         if (before.emphasis === undefined) delete cut.emphasis;
+        if (e.repair) throw e;
       }
     delete cut.step;
     cut.audited = true;
@@ -441,25 +435,27 @@ export async function writeCuts({
     try {
       await Promise.all(operations);
       // A Manim cut renders before its audit, which sees frames of the clip; a failed render spends the repair.
-      while (cut.engine === 'manim' && !cut.clip)
-        try {
-          await clipOf(index);
-        } catch (e) {
-          signal.throwIfAborted();
-          if (e.manimUnavailable || e.code) throw e;
-          const reason = withoutPaths(e.diagnostic ?? e.message);
-          if (attempts[index] >= CUT_ATTEMPTS) throw cutError(reason, index, plan.cuts.length);
-          await rewrite(index, reason);
-        }
-      for (;;)
+      // A crashed cut or a failed audit fix is repaired, then shot again.
+      for (;;) {
+        while (cut.engine === 'manim' && !cut.clip)
+          try {
+            await clipOf(index);
+          } catch (e) {
+            signal.throwIfAborted();
+            if (e.manimUnavailable || e.code) throw e;
+            const reason = withoutPaths(e.diagnostic ?? e.message);
+            if (attempts[index] >= CUT_ATTEMPTS) throw cutError(reason, index, plan.cuts.length);
+            await rewrite(index, reason);
+          }
         try {
           await audit(index);
           break;
         } catch (e) {
-          if (!e.crashed) throw e;
+          if (!e.crashed && !e.repair) throw e;
           if (attempts[index] >= CUT_ATTEMPTS) throw cutError(e.message, index, plan.cuts.length);
           await rewrite(index, e.message);
         }
+      }
     } catch (error) {
       if (!signal.aborted) {
         cut.status = 'failed';
