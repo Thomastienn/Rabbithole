@@ -17,6 +17,11 @@ export const RECORD_TURN = {
         description:
           "Up to three deep, curious how, why or what-if questions this reply raises but does not answer, in the learner's voice; none after a casual turn.",
       },
+      video_offer: {
+        type: 'string',
+        description:
+          'Rarely, as a last resort: one next question worded as the learner asking for a video of the idea, such as "Can you make a video of how the heap reorders itself?", when they hinted at a video or still do not follow. At most one per reply; never in a reply holding a visual, discussion or video.',
+      },
       suggestions: {
         type: 'array',
         items: {
@@ -112,7 +117,8 @@ const READERS = {
 
 // Tolerant like the blocks were: invalid entries are skipped and named; the valid ones are kept.
 // A repeat call adds to the earlier one's entries.
-export function readRecordTurn(input, earlier = null) {
+// hasMedia: the reply already holds a visual, discussion or video, so no video offer joins it.
+export function readRecordTurn(input, earlier = null, hasMedia = false) {
   const kept = {},
     skipped = [];
   for (const [key, read] of Object.entries(READERS)) {
@@ -131,10 +137,31 @@ export function readRecordTurn(input, earlier = null) {
       else kept[key].push(value);
     });
   }
+  // The video offer is a next question; choosing it sends it as the learner's ask.
+  const offer = input?.video_offer;
+  let offered = earlier?.offered ?? false;
+  if (offer !== undefined) {
+    const reason =
+      typeof offer !== 'string' || !offer.trim()
+        ? 'needs non-empty text'
+        : offered
+          ? 'at most one per reply'
+          : hasMedia
+            ? 'never in a reply holding a visual, discussion or video'
+            : kept.next_questions.length >= 3
+              ? 'at most three next questions'
+              : null;
+    if (reason) skipped.push(`video_offer (${reason})`);
+    else {
+      kept.next_questions.push(offer.trim());
+      offered = true;
+    }
+  }
   // The last verdict for a concept wins, as in the block.
   const verdicts = new Map(kept.verdicts.map((v) => [v.concept.toLowerCase(), v]));
   return {
     kept,
+    offered,
     notes: {
       questions: kept.next_questions,
       suggestions: kept.suggestions,

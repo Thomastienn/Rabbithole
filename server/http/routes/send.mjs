@@ -155,9 +155,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
   const heartbeat = setInterval(() => {
     if (!res.destroyed) res.write(': keepalive\n\n');
   }, 15000);
-  const { artifacts, prepareArtifacts, showVisual, makeVideo, startDiscussion } = replyArtifacts(
-    ctx,
-    {
+  const { artifacts, prepareArtifacts, showVisual, makeVideo, startDiscussion, hasMedia } =
+    replyArtifacts(ctx, {
       id,
       tree,
       user,
@@ -167,13 +166,13 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       controller,
       isFinished: () => finished,
       getStatus: () => status,
-    },
-  );
+    });
   const calls = appCalls(ctx, {
     reply,
     showVisual,
     makeVideo,
     startDiscussion,
+    hasMedia,
     // Next questions show as soon as a record_turn call carries them.
     questioned: (list) => {
       if (list.length > questions.length)

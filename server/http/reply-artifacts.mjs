@@ -142,6 +142,7 @@ export function replyArtifacts(
       const invalid =
         request.error ??
         (final && getStatus() !== 'completed' ? 'Tutor reply did not complete.' : null) ??
+        // Only the legacy video block keeps this check; make_video trusts the tutor (ADR 0015).
         (request.kind === 'video' && !asksForVideo(body.text)
           ? 'Video request could not be read: the learner did not ask for a video. Retry to create it.'
           : null);
@@ -197,10 +198,6 @@ export function replyArtifacts(
       throw new Error(
         'make_video stands alone: this reply already has a visual or discussion, so make no video in it.',
       );
-    if (!asksForVideo(body.text))
-      throw new Error(
-        'make_video needs the learner to ask for a video or animation explicitly; answer in text instead.',
-      );
     if (!ctx.smart().resolved.provider)
       throw new Error('Videos need a smart model; tell the learner to choose one in Settings.');
     const artifact = store.pendingArtifact(
@@ -238,5 +235,12 @@ export function replyArtifacts(
     artifacts.set(`call:${calls++}`, artifact);
     send({ type: 'artifact', artifact: live(artifact) });
   };
-  return { artifacts, prepareArtifacts, showVisual, makeVideo, startDiscussion };
+  return {
+    artifacts,
+    prepareArtifacts,
+    showVisual,
+    makeVideo,
+    startDiscussion,
+    hasMedia: () => media().length > 0,
+  };
 }
