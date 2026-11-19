@@ -57,7 +57,7 @@ A concept that a tutor reply relies on without naming, which the learner may nee
 _Avoid_: Prerequisite, suggestion, requirement
 
 **Next question**:
-A question the learner might ask next, offered under the latest tutor reply: one to three per teaching reply, none after a casual turn. Each is the kind of how, why or what-if a curious person would ask, raised by the reply but not answered in it. Choosing one asks it at once in the same conversation; it never creates a branch.
+A question the learner might ask next, offered under the latest tutor reply: one to three per teaching reply, none after a casual turn. Each is the kind of how, why or what-if a curious person would ask, raised by the reply but not answered in it. As a last resort, one may instead offer a video of the idea, only when the learner hints at wanting one or still does not follow after the explanation; choosing it asks for that video. Choosing one asks it at once in the same conversation; it never creates a branch.
 _Avoid_: Follow-up, suggested question, prompt, suggestion
 
 **Quick thinking model**:
@@ -207,11 +207,11 @@ A ready-made 2D or 3D object from an outside catalog, used as it is instead of d
 _Avoid_: Asset, model, prop
 
 **House style**:
-The one look every drawn object in a visual or video shares, across all videos. In 2D it is detailed flat illustration: recognisable shapes and parts, a few shades for form, clean edges. In 3D it is stylised modelling like a clean Blender scene: believable proportions, smooth shading, simple materials, moderate detail. Hand-drawn, cartoon, emoji, faceted low-poly and photoreal looks are outside it. Manim math cuts keep their own look.
+The one look every drawn object in a visual or video shares, across all videos. In 2D it is detailed flat illustration: recognisable shapes and parts, a few shades for form, clean edges; it may add layered depth or an isometric view where that helps, or stay flat. In 3D it is stylised modelling like a clean Blender scene: believable proportions, smooth shading, a few named finishes such as matte, metal or glass, soft low-contrast surface patterns such as wood grain or panel lines in the object's own colours, soft light and soft shadows, moderate detail. Hand-drawn, cartoon, emoji, faceted low-poly and photoreal looks are outside it. Manim math cuts keep their own look.
 _Avoid_: Theme, art style (alone), look (alone)
 
 **Focal object**:
-The one thing a cut directs the viewer's attention to at a given moment, while the narration explains it. On-screen labels are attention cues for the focal object that fade once the point lands; an overview may show the whole scene with no focal object.
+The one thing a cut directs the viewer's attention to at a given moment, while the narration explains it. On-screen labels are attention cues for the focal object that fade once the point lands; in a 3D cut, a label or mark stays on its object while the camera moves. An overview may show the whole scene with no focal object.
 _Avoid_: Focus (that is focus mode), highlight, subject
 
 **Exhibit**:
