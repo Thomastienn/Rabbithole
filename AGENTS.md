@@ -47,6 +47,14 @@ agent there. When session tooling forces a worktree anyway, land it on
 4. In the main checkout, run `git merge --ff-only <branch>`, then
    `git worktree remove <path>` and `git branch -d <branch>`.
 
+## Secret scanning
+
+Never make gitleaks or trufflehog skip a line or file without the owner's
+permission: no `gitleaks:allow` or `trufflehog:ignore` comments, no
+`.gitleaksignore` entries, no allowlists or excluded paths. When a scan flags a
+fake value in a test, change the value so the scanner no longer matches it; for
+anything else, stop and ask.
+
 ## Agent skills
 
 ### Issue tracker
