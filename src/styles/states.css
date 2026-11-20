@@ -4,6 +4,16 @@
   outline: 2px solid var(--focus-outline-color);
   outline-offset: 2px;
 }
+/* Fields show focus on their own frame (mockup .field.on), so the control inside draws no second ring.
+   The title search palette has no frame: its seam under the field turns porcelain instead. */
+.astryx-text-input :focus-visible,
+.astryx-command-palette-input :focus-visible,
+.astryx-chat-composer-input > [contenteditable] {
+  outline: none;
+}
+.astryx-layout-header:has(.astryx-command-palette-input :focus-visible) {
+  border-bottom-color: var(--rabbithole-paper);
+}
 /* Overlays (menus, popovers, the passage box, dialogs) sit flat on raised enamel with a 1.5px porcelain seam. */
 .branch-form,
 .astryx-popover,
@@ -290,13 +300,8 @@
   min-height: 0;
   overflow: auto;
 }
-/* Floating composer: the dock fades in rather than drawing a band; it ignores pointers so passages above stay selectable. */
+/* Floating composer: flat, only the composer itself is solid; the dock ignores pointers so passages above stay selectable. */
 .focused-chat .astryx-chat-layout > :last-child {
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    var(--color-background-body) var(--spacing-8)
-  );
   pointer-events: none;
 }
 .focused-chat .astryx-chat-layout > :last-child > * {
@@ -317,6 +322,7 @@
   margin-inline: auto;
   padding: 8px 44px 20px;
   box-sizing: border-box;
+  background: var(--color-background-body);
 }
 @media (max-width: 48rem) {
   .focused-chat .astryx-chat-composer {
@@ -334,6 +340,7 @@
 }
 .focused-chat .astryx-chat-composer > :first-child:focus-within {
   border-color: var(--rabbithole-paper);
+  box-shadow: none;
 }
 .focused-chat .astryx-chat-composer > :first-child > :first-child {
   min-width: 0;

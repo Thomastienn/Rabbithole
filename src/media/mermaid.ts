@@ -48,6 +48,9 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
       theme: 'base',
       look: 'classic',
       themeVariables: diagramTheme(style, series, dark),
+      // Line Diagram: 8px container corners and round-capped, line-weight strokes.
+      themeCSS:
+        '.node rect{rx:8px;ry:8px;stroke-width:1.5px}.flowchart-link{stroke-width:2px;stroke-linecap:round;stroke-linejoin:round}',
     });
     const { svg } = await mermaid.render(`diagram-${crypto.randomUUID()}`, styled);
     const drawing = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;

@@ -1,608 +1,605 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-13T08:52:06+00:00",
+  "generatedAt": "2026-11-20T06:24:23+00:00",
   "title": "Design System: Rabbithole",
   "extensions": {
     "colorMeta": {
-      "leaf-action": {
+      "porcelain": {
         "role": "primary",
-        "displayName": "Leaf Green",
-        "canonical": "light-dark(#46642a, #9dba6e)",
+        "displayName": "Porcelain",
+        "canonical": "light-dark(#0b1230, #ffffff)",
         "tonalRamp": [
-          "#060e00",
-          "#1d2a00",
-          "#374911",
-          "#536b26",
-          "#748d49",
-          "#98af75",
-          "#bed2a2",
-          "#e6f5d0"
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
         ]
       },
-      "leaf-text": {
+      "on-porcelain": {
         "role": "primary",
-        "displayName": "Leaf Text",
-        "canonical": "light-dark(#3d5a22, #a9c67a)",
+        "displayName": "On Porcelain",
+        "canonical": "light-dark(#ffffff, #0b1230)",
         "tonalRamp": [
-          "#060e00",
-          "#1d2a00",
-          "#374911",
-          "#546b27",
-          "#748d49",
-          "#98af75",
-          "#bed2a2",
-          "#e6f5d0"
+          "#080b12",
+          "#1f2433",
+          "#394159",
+          "#556081",
+          "#7681a4",
+          "#9ba4c0",
+          "#c2c9dd",
+          "#eaeefa"
         ]
       },
-      "on-leaf": {
-        "role": "primary",
-        "displayName": "On Leaf",
-        "canonical": "light-dark(#ffffff, #171c0f)",
-        "tonalRamp": [
-          "#0a0c07",
-          "#23271e",
-          "#3f4439",
-          "#5e6455",
-          "#7f8576",
-          "#a2a79a",
-          "#c6cbc0",
-          "#ecf0e7"
-        ]
-      },
-      "leaf-wash": {
-        "role": "primary",
-        "displayName": "Leaf Wash",
-        "canonical": "light-dark(#46642a1f, #9dba6e26)",
-        "tonalRamp": [
-          "#060e00",
-          "#1d2a00",
-          "#374911",
-          "#536b26",
-          "#748d49",
-          "#98af75",
-          "#bed2a2",
-          "#e6f5d0"
-        ]
-      },
-      "amber-ink": {
+      "line-cobalt": {
         "role": "secondary",
-        "displayName": "Amber Ink",
-        "canonical": "light-dark(#85600c, #dfae4e)",
+        "displayName": "Cobalt Line (line 1)",
+        "canonical": "light-dark(#1f4fd8, #4d7dff)",
         "tonalRamp": [
-          "#180700",
-          "#381f00",
-          "#5c3b00",
-          "#825800",
-          "#a57a1a",
-          "#c49f59",
-          "#e4c58d",
-          "#ffebc0"
+          "#030922",
+          "#0e2053",
+          "#1e3a8a",
+          "#2f56c5",
+          "#4e7aec",
+          "#7ca2fb",
+          "#abc8ff",
+          "#ddefff"
         ]
       },
-      "rust-ink": {
+      "line-amber": {
+        "role": "secondary",
+        "displayName": "Amber Line (line 2)",
+        "canonical": "light-dark(#8f6200, #ffc20e)",
+        "tonalRamp": [
+          "#140900",
+          "#372000",
+          "#5e3a00",
+          "#885600",
+          "#ac7800",
+          "#c79f44",
+          "#e2c68b",
+          "#fdedcc"
+        ]
+      },
+      "line-green": {
+        "role": "secondary",
+        "displayName": "Signal Green Line (line 3)",
+        "canonical": "light-dark(#157a3a, #22b14c)",
+        "tonalRamp": [
+          "#001001",
+          "#003007",
+          "#005312",
+          "#00781f",
+          "#219b43",
+          "#6aba77",
+          "#a2d9a9",
+          "#d9f8dc"
+        ]
+      },
+      "line-magenta": {
+        "role": "secondary",
+        "displayName": "Magenta Line (line 4)",
+        "canonical": "light-dark(#b8297a, #f06bb0)",
+        "tonalRamp": [
+          "#19030e",
+          "#410e2b",
+          "#6f1d4b",
+          "#9f2e6d",
+          "#c6538f",
+          "#df83af",
+          "#f5b3d1",
+          "#ffe2f3"
+        ]
+      },
+      "scarlet-failure": {
         "role": "tertiary",
-        "displayName": "Rust Ink",
-        "canonical": "light-dark(#9a4a22, #d68560)",
+        "displayName": "Signal Scarlet",
+        "canonical": "light-dark(#c0152a, #ff6b78)",
         "tonalRamp": [
-          "#1c0200",
-          "#401702",
-          "#673015",
-          "#914c2a",
-          "#b66d4c",
-          "#d49477",
-          "#f2bba3",
-          "#ffe4d1"
+          "#1b0204",
+          "#460c15",
+          "#761b28",
+          "#a92b3e",
+          "#d1515d",
+          "#e88388",
+          "#fdb3b4",
+          "#ffe2e2"
         ]
       },
-      "lichen-ink": {
+      "scarlet-wash": {
         "role": "tertiary",
-        "displayName": "Lichen Ink",
-        "canonical": "light-dark(#27685f, #86b8ae)",
+        "displayName": "Scarlet Wash",
+        "canonical": "light-dark(#c0152a1a, #ff6b7826)",
         "tonalRamp": [
-          "#000f0c",
-          "#0f2b26",
-          "#264a43",
-          "#3f6b63",
-          "#608d84",
-          "#88aea6",
-          "#b2d1ca",
-          "#dcf5ef"
+          "#1b0204",
+          "#460c15",
+          "#761b28",
+          "#a92b3e",
+          "#d1515d",
+          "#e88388",
+          "#fdb3b4",
+          "#ffe2e2"
         ]
       },
-      "bark-ground": {
+      "midnight-ground": {
         "role": "neutral",
-        "displayName": "Bark Ground",
-        "canonical": "light-dark(#f2eee5, #1a1613)",
+        "displayName": "Midnight Ground",
+        "canonical": "light-dark(#f4f6fb, #0b1230)",
         "tonalRamp": [
-          "#0d0b09",
-          "#272422",
-          "#45413e",
-          "#65605d",
-          "#86817e",
-          "#a8a4a1",
-          "#ccc8c6",
-          "#f1eeec"
+          "#080b12",
+          "#1f2433",
+          "#394159",
+          "#556081",
+          "#7681a4",
+          "#9ba4c0",
+          "#c2c9dd",
+          "#eaeefa"
         ]
       },
-      "raised-bark": {
+      "deep-field": {
         "role": "neutral",
-        "displayName": "Raised Bark",
-        "canonical": "light-dark(#faf7f0, #241f1a)",
+        "displayName": "Deep Field",
+        "canonical": "light-dark(#e8ecf6, #070d24)",
         "tonalRamp": [
-          "#0d0b09",
-          "#282421",
-          "#45413d",
-          "#66605b",
-          "#87817b",
-          "#a9a49f",
-          "#cdc8c4",
-          "#f1eeea"
+          "#090b11",
+          "#202531",
+          "#3b4154",
+          "#57617b",
+          "#78829d",
+          "#9ca5bb",
+          "#c3c9d9",
+          "#ebeef8"
         ]
       },
-      "popover-bark": {
+      "raised-enamel": {
         "role": "neutral",
-        "displayName": "Popover Bark",
-        "canonical": "light-dark(#ffffff, #2d2620)",
+        "displayName": "Raised Enamel",
+        "canonical": "light-dark(#ffffff, #141d42)",
         "tonalRamp": [
-          "#0d0b08",
-          "#292420",
-          "#47413c",
-          "#676059",
-          "#89817a",
-          "#aba49e",
-          "#cec8c3",
-          "#f2ede9"
+          "#080b13",
+          "#1f2436",
+          "#38415c",
+          "#536086",
+          "#7381a9",
+          "#99a4c4",
+          "#c0c9e0",
+          "#e9eefc"
         ]
       },
-      "deep-panel": {
+      "hover-enamel": {
         "role": "neutral",
-        "displayName": "Deep Panel",
-        "canonical": "light-dark(#e6e0d3, #14110e)",
+        "displayName": "Hover Enamel",
+        "canonical": "light-dark(#dde3f1, #1f2a5a)",
         "tonalRamp": [
-          "#0c0b09",
-          "#272523",
-          "#44413f",
-          "#64605d",
-          "#85827e",
-          "#a8a4a1",
-          "#cbc8c6",
-          "#f0eeec"
+          "#080b15",
+          "#1d2439",
+          "#364062",
+          "#515f8e",
+          "#7180b2",
+          "#97a4cb",
+          "#bfc8e5",
+          "#e8eeff"
         ]
       },
-      "paper": {
+      "ink": {
         "role": "neutral",
-        "displayName": "Paper",
-        "canonical": "light-dark(#1f1a15, #efe6d6)",
+        "displayName": "Ink",
+        "canonical": "light-dark(#141b3a, #e9ecf7)",
         "tonalRamp": [
-          "#0e0b06",
-          "#29241d",
-          "#474137",
-          "#676053",
-          "#898174",
-          "#aba498",
-          "#cec8bf",
-          "#f2eee6"
+          "#0b0b0d",
+          "#242529",
+          "#404248",
+          "#5f6169",
+          "#80828b",
+          "#a3a5ac",
+          "#c7c9ce",
+          "#edeef1"
         ]
       },
-      "paper-muted": {
+      "muted-ink": {
         "role": "neutral",
-        "displayName": "Paper Muted",
-        "canonical": "light-dark(#5f5547, #ab9e8b)",
+        "displayName": "Muted Ink",
+        "canonical": "light-dark(#4d587c, #97a1c4)",
         "tonalRamp": [
-          "#0f0a05",
-          "#2a241a",
-          "#494134",
-          "#6a5f4f",
-          "#8c8170",
-          "#aea395",
-          "#d0c8bb",
-          "#f4ede3"
-        ]
-      },
-      "paper-faint": {
-        "role": "neutral",
-        "displayName": "Paper Faint",
-        "canonical": "light-dark(#857a6b, #84786a)",
-        "tonalRamp": [
-          "#0f0a06",
-          "#2a241c",
-          "#494037",
-          "#6a5f53",
-          "#8c8073",
-          "#ada398",
-          "#d0c8be",
-          "#f4ede6"
+          "#090b11",
+          "#212431",
+          "#3b4156",
+          "#58607c",
+          "#78819f",
+          "#9da4bc",
+          "#c3c9da",
+          "#ebeef8"
         ]
       },
       "seam": {
         "role": "neutral",
         "displayName": "Seam",
-        "canonical": "light-dark(#1f1a1526, #efe6d61f)",
+        "canonical": "light-dark(#0b123024, #ffffff22)",
         "tonalRamp": [
-          "#0e0b06",
-          "#29241d",
-          "#474137",
-          "#676053",
-          "#898174",
-          "#aba498",
-          "#cec8bf",
-          "#f2eee6"
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
         ]
       },
       "seam-strong": {
         "role": "neutral",
-        "displayName": "Seam Strong",
-        "canonical": "light-dark(#1f1a1559, #efe6d64d)",
+        "displayName": "Strong Seam",
+        "canonical": "light-dark(#0b123080, #ffffff66)",
         "tonalRamp": [
-          "#0e0b06",
-          "#29241d",
-          "#474137",
-          "#676053",
-          "#898174",
-          "#aba498",
-          "#cec8bf",
-          "#f2eee6"
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
         ]
       },
       "selection": {
         "role": "neutral",
         "displayName": "Selection",
-        "canonical": "light-dark(#c9dba8, #9dba6e59)",
+        "canonical": "light-dark(#1f4fd833, #4d7dff66)",
         "tonalRamp": [
-          "#060e00",
-          "#1d2a00",
-          "#374911",
-          "#536b26",
-          "#748d49",
-          "#98af75",
-          "#bed2a2",
-          "#e6f5d0"
+          "#030922",
+          "#0e2053",
+          "#1e3a8a",
+          "#2f56c5",
+          "#4e7aec",
+          "#7ca2fb",
+          "#abc8ff",
+          "#ddefff"
         ]
       },
-      "moss-band": {
+      "scrim": {
         "role": "neutral",
-        "displayName": "Moss Band",
-        "canonical": "#33432a",
+        "displayName": "Scrim",
+        "canonical": "light-dark(#0b123066, #000000b8)",
         "tonalRamp": [
-          "#070d05",
-          "#1f281a",
-          "#3a4633",
-          "#57674e",
-          "#78886f",
-          "#9caa94",
-          "#c1cebb",
-          "#e8f2e3"
-        ]
-      },
-      "band-ink": {
-        "role": "neutral",
-        "displayName": "Band Ink",
-        "canonical": "light-dark(#eef3e0, #e9efd9)",
-        "tonalRamp": [
-          "#0a0c06",
-          "#24261c",
-          "#404436",
-          "#5f6452",
-          "#808573",
-          "#a3a797",
-          "#c7cbbe",
-          "#edf0e5"
-        ]
-      },
-      "band-muted": {
-        "role": "neutral",
-        "displayName": "Band Muted",
-        "canonical": "light-dark(#b9c7a4, #b3c19d)",
-        "tonalRamp": [
-          "#090d03",
-          "#212816",
-          "#3d462e",
-          "#5b6648",
-          "#7c8868",
-          "#9faa8e",
-          "#c4cdb6",
-          "#eaf2e0"
-        ]
-      },
-      "rose-failure": {
-        "role": "error",
-        "displayName": "Rose Failure",
-        "canonical": "light-dark(#b3263a, #f07f8a)",
-        "tonalRamp": [
-          "#200003",
-          "#460b17",
-          "#70232f",
-          "#9c3c49",
-          "#c35e69",
-          "#e0888f",
-          "#fdb2b7",
-          "#ffdde0"
-        ]
-      },
-      "rose-wash": {
-        "role": "error",
-        "displayName": "Rose Wash",
-        "canonical": "light-dark(#b3263a1a, #f07f8a26)",
-        "tonalRamp": [
-          "#200003",
-          "#460b17",
-          "#70232f",
-          "#9c3c49",
-          "#c35e69",
-          "#e0888f",
-          "#fdb2b7",
-          "#ffdde0"
-        ]
-      },
-      "on-rose": {
-        "role": "error",
-        "displayName": "On Rose",
-        "canonical": "light-dark(#ffffff, #240a0e)",
-        "tonalRamp": [
-          "#130709",
-          "#311f21",
-          "#533a3d",
-          "#77585b",
-          "#99797b",
-          "#ba9d9f",
-          "#dbc2c4",
-          "#fde9ea"
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
         ]
       }
     },
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Page titles: Library, Settings, conversation title."
+        "purpose": "Conversation title in the reading column, led by its 16px title chip."
+      },
+      "page-head": {
+        "displayName": "Page head",
+        "purpose": "Library, Settings, Usage total, Knowledge/Videos/Pieces heads."
       },
       "headline": {
         "displayName": "Headline",
-        "purpose": "Contents tree title, Knowledge detail, first-question prompt."
+        "purpose": "Knowledge concept detail title."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Reply section titles, the tree title atop Contents, first-run heading."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Volume titles on the shelf."
+        "purpose": "Settings group and empty-state headings."
+      },
+      "card-title": {
+        "displayName": "Card title",
+        "purpose": "Learning tree titles on Library shelf cards."
+      },
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "Sidebar wordmark, uppercase, porcelain."
+      },
+      "wordmark-narrow": {
+        "displayName": "Wordmark (narrow)",
+        "purpose": "Wordmark in the narrow header."
       },
       "reading": {
         "displayName": "Reading",
-        "purpose": "Tutor replies at 640px measure, no bubble."
+        "purpose": "Replies at a 640px measure."
       },
-      "reading-heading": {
-        "displayName": "Reading Heading",
-        "purpose": "Headings inside replies."
+      "reading-small": {
+        "displayName": "Reading small",
+        "purpose": "Discussion lines."
       },
-      "reading-aside": {
-        "displayName": "Reading Aside",
-        "purpose": "Knowledge explanations and video captions, muted."
+      "title-chip": {
+        "displayName": "Title chip",
+        "purpose": "Address chip leading a conversation title."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Interface text and Contents rows."
+        "purpose": "Interface text, buttons, menus, question bubbles."
       },
-      "small": {
-        "displayName": "Small",
-        "purpose": "Date headings, evidence, video steps; replies' code at 13px."
+      "body-small": {
+        "displayName": "Body small",
+        "purpose": "Sidebar rows, settings keys, connection status."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Contents/Figures labels, topics, model picker, reply status."
+        "purpose": "Uppercase section labels, date groups, table headers."
       },
-      "section-label": {
-        "displayName": "Section Label",
-        "purpose": "Settings group and panel headings in all small caps."
+      "chip": {
+        "displayName": "Chip",
+        "purpose": "Address chips in text, on map cards and breadcrumbs."
       },
-      "address-chip": {
-        "displayName": "Address Chip",
-        "purpose": "Inked address after a branched passage."
+      "supporting": {
+        "displayName": "Supporting",
+        "purpose": "Reply status, dates, map card previews, counts."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Usage chart axes, attachment type badges."
       },
       "code": {
         "displayName": "Code",
-        "purpose": "Code blocks and inline code."
+        "purpose": "Code inside replies."
       }
     },
     "shadows": [
       {
         "name": "hairline",
-        "value": "inset 0 0 0 1px light-dark(#1f1a1526, #efe6d61f)",
-        "purpose": "All of shadow-low/med/high: a seam, never a drop shadow."
+        "value": "inset 0 0 0 1px <seam>",
+        "purpose": "Every Astryx shadow token (low, med, high) resolves to this flat hairline; no drop shadows exist."
       },
       {
-        "name": "current-volume-ring",
-        "value": "0 0 0 3px var(--color-background-body), 0 0 0 5px var(--rabbithole-paper)",
-        "purpose": "Selection ring on the current Library volume; not elevation."
-      },
-      {
-        "name": "composer-focus",
-        "value": "0 0 0 1px var(--rabbithole-paper)",
-        "purpose": "Composer focus ring alongside a paper border."
+        "name": "selected-tile",
+        "value": "inset 0 0 0 2px <porcelain>",
+        "purpose": "The checked theme tile in Settings."
       }
     ],
     "motion": [
       {
-        "name": "branch-draw",
-        "value": "350ms ease-out (stroke-dashoffset 1 to 0)",
-        "purpose": "A new branch line draws on; instant under reduced motion."
+        "name": "line-draw",
+        "value": "350ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The one motion: a new branch line draws out of its interchange ring (stroke-dashoffset)."
       },
       {
-        "name": "ease-out-expo",
-        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
-        "purpose": "View transitions (220ms) and the selection action rise (140ms)."
+        "name": "station-land",
+        "value": "125ms linear, delayed 350ms",
+        "purpose": "The station ring fades in after the line arrives."
       },
       {
-        "name": "hover-fast",
-        "value": "120ms ease-out",
-        "purpose": "Seam line, node extras, copy buttons; Astryx --duration-fast 125ms for border colour."
+        "name": "state-change",
+        "value": "120-165ms ease-out (opacity or colour only)",
+        "purpose": "Hover reveals and border changes; no travel."
       },
       {
-        "name": "activity-pulse",
-        "value": "935ms ease-in-out infinite (opacity 0.3 at 50%)",
-        "purpose": "Leaf dot on a responding conversation; off under reduced motion."
-      },
-      {
-        "name": "streaming-pulse",
-        "value": "1.2s ease-in-out infinite",
-        "purpose": "Leaf dot in the reply status while streaming."
-      },
-      {
-        "name": "video-sketch",
-        "value": "7.2s cubic-bezier(0.22, 1, 0.36, 1) infinite",
-        "purpose": "Pending video storyboard draws and erases; static under reduced motion."
+        "name": "reduced-motion",
+        "value": "none",
+        "purpose": "prefers-reduced-motion shows the line and station at once."
       }
     ],
     "breakpoints": [
       {
         "name": "narrow",
-        "value": "max-width: 48rem"
+        "value": "48rem"
       },
       {
-        "name": "coarse-touch-type",
-        "value": "width < 1024px and pointer: coarse"
-      },
-      {
-        "name": "video-compact",
-        "value": "container width < 440px"
+        "name": "docked-map",
+        "value": "1200px"
       }
-    ]
+    ],
+    "themes": [
+      {
+        "slug": "main",
+        "label": "Main Line",
+        "default": true,
+        "blurb": "Navy and porcelain with cobalt, amber, green and magenta."
+      },
+      {
+        "slug": "enamel",
+        "label": "Enamel",
+        "blurb": "Bottle green and cream, like a station sign."
+      },
+      {
+        "slug": "tunnel",
+        "label": "Tunnel",
+        "blurb": "Neutral charcoal with signal-lamp lines."
+      },
+      {
+        "slug": "timetable",
+        "label": "Timetable",
+        "blurb": "Printed paper with press inks."
+      },
+      {
+        "slug": "ferry",
+        "label": "Ferry",
+        "blurb": "Deep-water teal with coral and sand."
+      },
+      {
+        "slug": "terminus",
+        "label": "Terminus",
+        "blurb": "Carriage maroon with gold and cream."
+      }
+    ],
+    "lineWeights": {
+      "sidebar": "5px",
+      "themeTile": "4px",
+      "map": "7px",
+      "mapFocused": "9px",
+      "ghostLink": "3px dotted"
+    },
+    "focus": {
+      "ring": "2px solid porcelain, 2px offset",
+      "fields": "focus shown on the field frame; inner control draws no ring"
+    }
   },
   "components": [
     {
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one leaf-green action: Send, New chat in the Library.",
+      "description": "The one porcelain action: New chat, Send, a dialog primary.",
       "html": "<button class=\"ds-btn-primary\">New chat</button>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-btn-primary { height:32px; padding:0 12px; border:0; border-radius:3px; background:var(--leaf); color:var(--on-leaf); font:600 14px/1.4286 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; cursor:pointer; transition:background-color .12s cubic-bezier(.16,1,.3,1); } .ds-btn-primary:hover { background:#a9c67a; } .ds-btn-primary:focus-visible { outline:2px solid var(--paper); outline-offset:2px; }"
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-btn-primary{height:32px;padding:0 12px;border:0;border-radius:8px;background:var(--porcelain);color:var(--on-porcelain);font:500 14px/1.4286 var(--ui);cursor:pointer;} .ds-btn-primary:hover{background:color-mix(in srgb,var(--porcelain) 90%,var(--on-porcelain));}"
     },
     {
-      "name": "Outlined Button",
+      "name": "Ghost Button",
       "kind": "button",
-      "refersTo": "button-outlined",
-      "description": "Secondary actions and deletion: neutral hairline, never rose; deletion fills paper on keyboard focus.",
-      "html": "<button class=\"ds-btn-outlined\">Delete learning tree</button>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-btn-outlined { height:32px; padding:0 12px; border:0; border-radius:3px; background:transparent; box-shadow:inset 0 0 0 1px var(--seam-strong); color:var(--paper); font:600 14px/1.4286 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; cursor:pointer; } .ds-btn-outlined:hover { background:color-mix(in oklab, var(--paper) 8%, transparent); } .ds-btn-outlined:focus-visible { background:var(--paper); color:var(--bark); outline:2px solid var(--paper); outline-offset:2px; }"
-    },
-    {
-      "name": "Shell Band",
-      "kind": "nav",
-      "refersTo": "band",
-      "description": "Moss band: wordmark, tree switcher, view tabs, tools.",
-      "html": "<nav class=\"ds-band\"><span class=\"ds-mark\">Rabbithole</span><button class=\"ds-switch\">How do fungi trade?</button><button class=\"ds-tab\" aria-current=\"page\">Read</button><button class=\"ds-tab\">Map</button><button class=\"ds-tab\">Knowledge</button><button class=\"ds-tab\">Videos</button><button class=\"ds-new\">New chat</button></nav>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-band { display:flex; align-items:center; gap:8px; height:56px; padding:0 16px; background:var(--moss); color:var(--band-ink); font:600 14px/1 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; } .ds-mark { font-size:20px; font-weight:400; letter-spacing:-.01em; margin-inline-end:8px; } .ds-band button { height:32px; padding:0 12px; border:0; border-radius:3px; background:none; color:var(--band-ink); font:inherit; cursor:pointer; } .ds-switch { box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--band-ink) 22%, transparent); margin-inline-end:16px; } .ds-band .ds-tab { color:var(--band-muted); } .ds-band .ds-tab:hover { color:var(--band-ink); } .ds-band .ds-tab[aria-current=page] { background:var(--band-ink); color:var(--moss); } .ds-new { margin-inline-start:auto; box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--band-ink) 35%, transparent); } .ds-band button:focus-visible { outline:2px solid var(--band-ink); outline-offset:2px; }"
-    },
-    {
-      "name": "Contents Outline",
-      "kind": "nav",
-      "refersTo": "contents-panel",
-      "description": "264px numbered outline with family ink dots; current row raised.",
-      "html": "<nav class=\"ds-contents\"><h3>Contents</h3><a class=\"ds-row\" aria-current=\"location\" style=\"--ink:var(--paper)\"><span class=\"ds-addr\">1</span><i></i>How do fungi trade?</a><a class=\"ds-row\" style=\"--ink:var(--amber);--d:1\"><span class=\"ds-addr\">1.1</span><i></i>Why trade at all?</a><a class=\"ds-row\" style=\"--ink:var(--amber);--d:2\"><span class=\"ds-addr\">1.1.1</span><i></i>Could a plant go alone?</a></nav>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-contents { width:264px; padding:8px; background:var(--deep); color:var(--paper); font:400 14px/1.4286 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; } .ds-contents h3 { margin:0; padding:16px 8px 6px; font-size:12px; font-weight:600; color:var(--muted); } .ds-row { display:flex; align-items:center; gap:8px; min-height:32px; padding:6px 8px 6px calc(8px + var(--d,0) * 16px); border-radius:3px; cursor:pointer; } .ds-row:hover { background:#efe6d614; } .ds-row[aria-current] { background:var(--raised); box-shadow:inset 0 0 0 1px var(--seam); font-weight:600; } .ds-addr { min-width:34px; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; } .ds-row i { width:8px; height:8px; border-radius:50%; background:var(--ink); } .ds-row:focus-visible { outline:2px solid var(--paper); outline-offset:-4px; }"
+      "refersTo": "button-ghost",
+      "description": "Every other control: transparent until hovered.",
+      "html": "<button class=\"ds-btn-ghost\">Retry reply</button>",
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-btn-ghost{height:32px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:500 14px/1.4286 var(--ui);cursor:pointer;} .ds-btn-ghost:hover{background:color-mix(in srgb,var(--porcelain) 8%,transparent);} .ds-btn-ghost:active{background:color-mix(in srgb,var(--porcelain) 14%,transparent);}"
     },
     {
       "name": "Composer",
       "kind": "input",
       "refersTo": "composer",
-      "description": "640px reading-measure composer; paper border on focus, leaf Send.",
-      "html": "<div class=\"ds-composer\"><textarea placeholder=\"What would you like to understand?\" rows=\"2\"></textarea><button aria-label=\"Send\">&#8593;</button></div>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-composer { display:flex; align-items:flex-end; gap:8px; max-width:640px; padding:8px; border:1px solid var(--seam-strong); border-radius:4px; background:var(--raised); } .ds-composer:focus-within { border-color:var(--paper); box-shadow:0 0 0 1px var(--paper); } .ds-composer textarea { flex:1; border:0; background:none; resize:none; color:var(--paper); font:400 14px/1.4286 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; outline:none; } .ds-composer button { width:32px; height:32px; border:0; border-radius:3px; background:var(--leaf); color:var(--on-leaf); cursor:pointer; } .ds-composer button:focus-visible { outline:2px solid var(--paper); outline-offset:2px; }"
+      "description": "The pinned question field; focus shows on its own frame.",
+      "html": "<div class=\"ds-composer\"><div class=\"ds-composer-in\" contenteditable=\"true\" aria-label=\"Question\">What would you like to understand?</div><button class=\"ds-send\" aria-label=\"Send\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><path d=\"M8 13V3M4 7l4-4 4 4\"/></svg></button></div>",
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-composer{display:flex;align-items:flex-end;gap:8px;width:420px;padding:12px 10px 10px 16px;border:1.5px solid var(--seam-strong);border-radius:8px;background:var(--raised);color:var(--muted);font:400 14px/1.4286 var(--ui);} .ds-composer:focus-within{border-color:var(--porcelain);} .ds-composer-in{flex:1;outline:none;} .ds-send{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:var(--porcelain);color:var(--on-porcelain);cursor:pointer;}"
     },
     {
-      "name": "Reply with Branched Passage",
+      "name": "Address Chip",
+      "kind": "chip",
+      "refersTo": "address-chip",
+      "description": "Filled with the family line; leads every title, porcelain for the trunk.",
+      "html": "<span class=\"ds-chip\" style=\"--l:var(--porcelain)\">1</span> <span class=\"ds-chip\">1.1</span> <span class=\"ds-chip\" style=\"--l:var(--l2)\">1.2</span> <span class=\"ds-chip\" style=\"--l:var(--l3)\">1.3</span> <span class=\"ds-chip\" style=\"--l:var(--l4)\">1.4</span>",
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-chip{display:inline-block;padding:3px 6px 2px;border-radius:4px;background:var(--l,var(--l1));color:var(--on-porcelain);font:700 12px/1 var(--sc);letter-spacing:.02em;font-variant-numeric:tabular-nums;}"
+    },
+    {
+      "name": "Contents Route Strip",
+      "kind": "nav",
+      "refersTo": "nav-item-current",
+      "description": "Sidebar contents drawn as the diagram: 5px family lines, ringed stations, current row on raised enamel.",
+      "html": "<ol class=\"ds-route\"><li aria-current=\"true\"><svg width=\"56\" height=\"36\"><line x1=\"16\" y1=\"18\" x2=\"16\" y2=\"36\" stroke=\"#ffffff\" stroke-width=\"5\" stroke-linecap=\"round\"/><circle cx=\"16\" cy=\"18\" r=\"6\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2.5\"/></svg><span class=\"a\">1</span>How do fungi trade?</li><li><svg width=\"56\" height=\"36\"><path d=\"M16 0V8L30 22V36\" fill=\"none\" stroke=\"#4d7dff\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"30\" cy=\"18\" r=\"5\" fill=\"#070d24\" stroke=\"#ffffff\" stroke-width=\"2.5\"/></svg><span class=\"a\">1.1</span>Why trade at all?</li></ol>",
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-route{list-style:none;margin:0;padding:8px;width:256px;background:var(--deep);} .ds-route li{display:flex;align-items:center;gap:6px;min-height:36px;padding-inline-end:8px;border-radius:8px;color:var(--ink);font:400 14px/18px var(--ui);} .ds-route li svg{flex:none;} .ds-route li[aria-current]{background:var(--raised);color:var(--porcelain);font-weight:600;} .ds-route .a{min-width:30px;color:var(--muted);font-size:12px;font-weight:400;font-variant-numeric:tabular-nums;} .ds-route li:hover:not([aria-current]){background:var(--hover);}"
+    },
+    {
+      "name": "Conversation Card",
+      "kind": "card",
+      "refersTo": "conversation-card",
+      "description": "A map station: header with address chip and title over turn previews; the current card wears a porcelain ring.",
+      "html": "<article class=\"ds-card\" data-focused=\"true\"><header><span class=\"ds-chip\">1.1</span><h3>Why trade at all?</h3></header><p class=\"q\">Why trade at all?</p><p>Neither partner can make what the other offers, so each pays in what it has.</p></article>",
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-card{width:160px;padding:0 12px 12px;border:1px solid transparent;border-radius:8px;background:var(--raised);color:var(--muted);font:400 12px/1.4 var(--ui);transition:border-color 125ms ease-out;} .ds-card:hover{border-color:var(--seam-strong);} .ds-card[data-focused=true]{outline:2.5px solid var(--porcelain);outline-offset:3px;} .ds-card header{display:flex;gap:6px;align-items:center;margin:0 -12px;padding:8px 8px 8px 10px;border-bottom:1px solid var(--seam);} .ds-card h3{margin:0;color:var(--porcelain);font:600 14px/1.2 var(--sc);} .ds-chip{padding:3px 6px 2px;border-radius:4px;background:var(--l1);color:var(--on-porcelain);font:700 12px/1 var(--sc);} .ds-card .q{margin:8px 0 0 auto;width:fit-content;max-width:85%;padding:3px 8px;border-radius:4px;background:var(--hover);color:var(--ink);} .ds-card p{margin:8px 0 0;}"
+    },
+    {
+      "name": "Branched Passage",
       "kind": "custom",
-      "refersTo": "passage-address",
-      "description": "Literata reply; suggestion dotted, explored passage in family ink with address chip.",
-      "html": "<p class=\"ds-reply\">Mycorrhizal <u class=\"ds-explored\" style=\"--ink:var(--amber)\">fungi trade</u><span class=\"ds-chip\" style=\"--ink:var(--amber)\">1.1</span> phosphorus for sugar, threading <u class=\"ds-suggest\" tabindex=\"0\">hyphae</u> between root cells.</p>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-reply { max-width:640px; color:var(--paper); font:400 17px/1.7 Literata, Georgia, 'Times New Roman', serif; } .ds-suggest { text-decoration:underline dotted var(--muted); text-decoration-thickness:2px; text-underline-offset:4px; cursor:pointer; } .ds-suggest:hover { text-decoration-color:var(--paper); } .ds-suggest:focus-visible { outline:2px solid var(--paper); outline-offset:4px; border-radius:3px; } .ds-explored { text-decoration:underline solid var(--ink); text-decoration-thickness:2px; text-underline-offset:4px; } .ds-chip { display:inline-block; margin-inline-start:2px; padding:0 4px; border-radius:2px; background:var(--ink); color:var(--bark); font:700 10px/1.45 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; font-variant-numeric:tabular-nums; vertical-align:5px; }"
+      "refersTo": "address-chip",
+      "description": "A passage that left a line: 3px family underline, porcelain interchange ring, address chip.",
+      "html": "<p class=\"ds-reply\">Mycorrhizal <u class=\"ex\">fungi trade</u><span class=\"ring\"></span><span class=\"ds-chip\" aria-hidden=\"true\">1.1</span> phosphorus for sugar, while <u class=\"sg\">hyphae</u> reach far.</p>",
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-reply{max-width:640px;margin:0;padding:16px;background:var(--ground);color:var(--ink);font:400 17px/1.68 var(--read);} .ds-reply u{text-underline-offset:5px;} .ds-reply u.sg{text-decoration:underline dotted var(--muted);text-decoration-thickness:2px;} .ds-reply u.ex{text-decoration:underline solid var(--l1);text-decoration-thickness:3px;} .ring{display:inline-block;width:13px;height:13px;box-sizing:border-box;margin:0 4px 0 6px;border:3px solid var(--porcelain);border-radius:50%;background:var(--ground);vertical-align:-1px;} .ds-chip{padding:3px 6px 2px;border-radius:4px;background:var(--l1);color:var(--on-porcelain);font:700 12px/1 var(--sc);vertical-align:2px;}"
     },
     {
-      "name": "Conversation Node",
+      "name": "Overlay Sheet",
       "kind": "card",
-      "refersTo": "conversation-node",
-      "description": "Map node: raised bark box under a flat ink band carrying address and title.",
-      "html": "<article class=\"ds-node\" tabindex=\"0\" style=\"--ink:var(--amber)\"><header>1.1 Why trade at all?</header><p>Neither partner can make what the other offers, so each pays in what it has in surplus.</p></article>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-node { width:16rem; border:1px solid var(--seam); border-radius:3px; background:var(--raised); color:var(--paper); font:400 12px/1.5 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; transition:border-color .125s ease-out; } .ds-node:hover { border-color:var(--muted); } .ds-node:focus-visible { outline:2px solid var(--paper); outline-offset:2px; } .ds-node header { padding:4px 8px; border-radius:2px 2px 0 0; background:var(--ink); color:var(--bark); font-size:14px; font-weight:600; } .ds-node p { margin:0; padding:8px 12px 12px; color:var(--muted); }"
-    },
-    {
-      "name": "Library Volume",
-      "kind": "card",
-      "refersTo": "volume",
-      "description": "A learning tree as a paperback: paper cover, spine ticks per conversation in family ink.",
-      "html": "<article class=\"ds-volume\" tabindex=\"0\"><div class=\"ds-cover\"><strong>How do fungi trade?</strong><span>Started 13 Nov</span></div><div class=\"ds-meta\"><div class=\"ds-spine\"><i style=\"background:var(--paper)\"></i><i style=\"background:var(--amber)\"></i><i style=\"background:var(--amber)\"></i><i style=\"background:var(--leaf)\"></i></div><span>4 conversations · 3 branches</span></div></article>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-volume { display:grid; grid-template-rows:144px auto; width:176px; border:1px solid var(--seam); border-radius:3px; background:var(--raised); color:var(--muted); font:400 12px/1.6667 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; cursor:pointer; } .ds-volume:hover { border-color:var(--seam-strong); } .ds-volume:focus-visible { outline:2px solid var(--paper); outline-offset:2px; } .ds-cover { display:flex; flex-direction:column; padding:12px; border-radius:2px 2px 0 0; background:var(--paper); color:var(--bark); } .ds-cover strong { font-size:17px; line-height:1.15; letter-spacing:-.01em; } .ds-cover span { margin-top:auto; font-weight:600; } .ds-meta { display:grid; gap:8px; padding:10px 12px 12px; } .ds-spine { display:flex; gap:2px; } .ds-spine i { width:4px; height:6px; border-radius:1px; }"
+      "refersTo": "overlay-sheet",
+      "description": "Menus, popovers, the passage box and dialogs: raised enamel, 1.5px strong seam, no shadow.",
+      "html": "<div class=\"ds-sheet\" role=\"dialog\" aria-label=\"Delete learning tree\"><h3>Delete learning tree?</h3><p>Its conversations and figures go too.</p><div><button class=\"g\">Cancel</button><button class=\"p\">Delete</button></div></div>",
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-sheet{width:320px;padding:16px;border:1.5px solid var(--seam-strong);border-radius:8px;background:var(--raised);color:var(--ink);font:400 14px/1.4286 var(--ui);} .ds-sheet h3{margin:0 0 8px;color:var(--porcelain);font:700 20px/1.2 var(--sc);} .ds-sheet p{margin:0 0 16px;color:var(--muted);} .ds-sheet div{display:flex;justify-content:flex-end;gap:8px;} .ds-sheet button{height:32px;padding:0 12px;border:0;border-radius:8px;font:500 14px var(--ui);cursor:pointer;} .g{background:transparent;color:var(--ink);} .g:hover{background:color-mix(in srgb,var(--porcelain) 8%,transparent);} .p{background:var(--porcelain);color:var(--on-porcelain);}"
     },
     {
       "name": "Failure Banner",
       "kind": "custom",
       "refersTo": "failure-banner",
-      "description": "Rose is failure-only: wash, rose hairline, retry pushed to the end.",
-      "html": "<div class=\"ds-fail\" role=\"alert\"><span>Reply failed. The provider closed the connection.</span><button>Retry</button></div>",
-      "css": ":host { --bark:#1a1613; --raised:#241f1a; --deep:#14110e; --paper:#efe6d6; --muted:#ab9e8b; --seam:#efe6d61f; --seam-strong:#efe6d64d; --leaf:#9dba6e; --on-leaf:#171c0f; --moss:#33432a; --band-ink:#e9efd9; --band-muted:#b3c19d; --amber:#dfae4e; --rust:#d68560; --lichen:#86b8ae; --rose:#f07f8a; --rose-wash:#f07f8a26; } .ds-fail { display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--rose); border-radius:3px; background:var(--rose-wash); color:var(--paper); font:400 14px/1.4286 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; } .ds-fail button { margin-inline-start:auto; height:24px; padding:0 8px; border:0; border-radius:3px; background:none; color:var(--paper); font:600 14px/1 Archivo, 'Segoe UI', Helvetica, Arial, sans-serif; text-decoration:underline; cursor:pointer; } .ds-fail button:hover { background:#efe6d614; } .ds-fail button:focus-visible { outline:2px solid var(--paper); outline-offset:2px; }"
+      "description": "Scarlet only for failure, always with words and a way forward.",
+      "html": "<div class=\"ds-fail\" role=\"alert\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><circle cx=\"8\" cy=\"8\" r=\"6.5\"/><path d=\"M8 4.5v4M8 11v.01\"/></svg><span>Reply failed. The provider timed out.</span><button>Retry reply</button></div>",
+      "css": ":host{--ground:#0b1230;--deep:#070d24;--raised:#141d42;--hover:#1f2a5a;--porcelain:#ffffff;--on-porcelain:#0b1230;--ink:#e9ecf7;--muted:#97a1c4;--seam:#ffffff22;--seam-strong:#ffffff66;--l1:#4d7dff;--l2:#ffc20e;--l3:#22b14c;--l4:#f06bb0;--scarlet:#ff6b78;--scarlet-wash:#ff6b7826;--sc:'Barlow Semi Condensed',Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--ui:Barlow,'Segoe UI',Helvetica,Arial,sans-serif;--read:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',Verdana,sans-serif;} :focus-visible{outline:2px solid var(--porcelain);outline-offset:2px;} .ds-fail{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:420px;padding:8px 12px;border:1px solid var(--scarlet);border-radius:8px;background:var(--scarlet-wash);color:var(--ink);font:400 14px/1.4286 var(--ui);} .ds-fail svg{flex:none;color:var(--scarlet);} .ds-fail button{margin-inline-start:auto;height:32px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:500 14px var(--ui);cursor:pointer;} .ds-fail button:hover{background:color-mix(in srgb,var(--porcelain) 8%,transparent);}"
     }
   ],
   "narrative": {
-    "northStar": "The Paperback Series",
-    "overview": "A learning tree is a volume in a paperback series. The trunk conversation is paper; each first-level branch family takes one muted seasonal ink (amber, leaf, rust, lichen), and that ink follows the family everywhere: the passage underline it was branched from, the address chip after that passage, the dot in the Contents outline, the branch line on the map, the conversation node's band and the tick on the volume's spine in the Library. Structure, not ornament, is what makes the screen recognisable.\n\nThe app is dark by default on bark-black with paper text, and the light appearance has the same structure on warm paper with darkened inks. A moss band runs across the top as the series' cover strip. Below it, a numbered Contents outline sits on the left, the reply is read at a book measure in the centre, and the learning tree map is docked on the right. Everything sits on one 8px module, divided by hairline seams and flat ink bands. There is no texture, no drop shadow and no blur. Chrome steps back while the learner reads: the reply is set in Literata with no bubble, and the interface is set in Archivo.\n\nThe world rejects the category default of a grey chat column beside a sidebar list with one blue accent. It also rejects what PRODUCT.md names: childish or gamified, generic SaaS dashboard, neon hacker-dark, and decoration that competes with reply text.",
+    "northStar": "The Line Diagram",
+    "overview": "**Creative North Star: \"The Line Diagram\"**\n\nA learning tree is a transit line diagram. The trunk conversation is a porcelain line; each first-level branch family is a line of its own colour; every conversation is a white-ringed station; and every branch point is an interchange ring placed at the passage the learner selected. The diagram is not decoration laid over a chat app: it is the navigation. The same family colour runs from the passage underline in a reply, through the interchange ring and the address chip that leads a title, to the Contents route strip in the sidebar and the line on the map.\n\nThe world is midnight enamel by default: a deep navy ground, a deeper field for the sidebar and the docked map, and raised enamel for anything that sits on top. Light appearance swaps to a porcelain ground with midnight ink and action and the same lines darkened to AA. It is flat and dense in the way a printed network map is dense: thick round-capped lines that turn only at 45 or 90 degrees, hairline seams, condensed caps labels, and no shadow, gradient or blur. Reading is the exception to density: replies sit at a 640px measure in a large, open reading face.\n\nThe system ships as six interchangeable themes that share every role and differ only in palette (Main Line by default, then Enamel, Tunnel, Timetable, Ferry, Terminus), each with a light and a dark variant chosen separately in Settings (Dark is the default appearance).",
     "keyCharacteristics": [
-      "Bark-black ground, paper text, moss shell band; a designed light appearance with the same roles.",
-      "Four series inks cycle per first-level branch family; the trunk wears paper.",
-      "Leaf green is the one action colour; paper is focus; rose red means failure and nothing else.",
-      "Archivo for what you operate, Literata for what you read.",
-      "3px element and 4px container corners, hairline seams, an 8px module, flat ink bands.",
-      "Motion is brief and structural: a 350ms branch draw-on, which is instant under reduced motion."
+      "One colour per first-level branch family, four lines repeating; porcelain is the trunk.",
+      "Lines 5px in the sidebar, 7px on the map, round caps, 45/90 degree turns only.",
+      "Stations and interchanges are porcelain rings; the current station is filled.",
+      "Colour belongs to lines and their chips, never to running text.",
+      "Flat enamel: tonal layers and hairline seams, no shadow, gradient or blur.",
+      "One motion: a new line draws out of its interchange, then its station lands."
     ],
     "rules": [
       {
-        "name": "The Family Ink Rule",
-        "body": "Each first-level branch takes the next ink in the cycle amber, leaf, rust, lichen, repeating, in creation order. Its descendants inherit that ink, and the trunk wears paper. A family's ink appears in the same six places: the passage underline, the address chip, the Contents dot, the branch line, the node band and the spine tick. Never assign an ink by topic, status or decoration.",
+        "name": "The Colour Belongs to Lines Rule",
+        "body": "Family colour appears only as a line, a ring, a filled address chip, a passage underline, a line tick, or a line swatch in a key or legend (a short round-capped length of the line itself). Running text is never tinted to decorate; titles and current items are porcelain, everything else is ink or muted ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Bar Beside Text Rule",
+        "body": "No coloured vertical or horizontal bar sits beside text as an accent. The family shows as the filled address chip that leads a title. The Contents route strip and the swatches in keys and legends are the diagram itself, not accents, and are the only places a line runs alongside text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scarlet Means Failure Rule",
+        "body": "Scarlet appears only when something failed, and always with words (\"Reply failed\") and a way forward (Retry, Cancel, a reason). It is never a brand colour, a highlight or a destructive-button decoration.",
         "section": "colors"
       },
       {
         "name": "The One Action Colour Rule",
-        "body": "Leaf green is the only fill that means \"do this\". There is never a second action hue. Secondary actions are outlined neutral.",
+        "body": "Porcelain is the only action fill (New chat, Send, a dialog's primary); everything else is a quiet ghost control.",
         "section": "colors"
       },
       {
-        "name": "The Paper Focus Rule",
-        "body": "Keyboard focus is a paper outline (band ink on the moss band). Focus is never leaf and never blue.",
-        "section": "colors"
-      },
-      {
-        "name": "The Rose Means Failure Rule",
-        "body": "Rose red appears only for something that failed: an unsaved map layout, a failed reply, a failed visual or video, a failed deletion. Deletion itself is not a failure. It is an outlined neutral button, set 32px apart from the other actions, and it fills with paper on keyboard focus.",
-        "section": "colors"
-      },
-      {
-        "name": "The Two Faces Rule",
-        "body": "Use Literata for anything the learner reads as prose: replies, reply headings, inherited context, the passage quoted in the branch form, Knowledge explanations and figure captions. Use Archivo for everything else, including tables and code captions inside a reply.",
+        "name": "The Signage Above, Reading Below Rule",
+        "body": "Semi Condensed is for things you navigate by: titles, caps labels, chips, the wordmark. Anything the tutor wrote is set in the reading face. The interface between the two is Barlow.",
         "section": "typography"
       },
       {
-        "name": "The Numbered Address Rule",
-        "body": "Every conversation has an address (trunk 1, children 1.1, 1.2 in creation order, grandchildren 1.1.1). A later sibling never renumbers an earlier one. The address appears in tabular figures wherever the conversation is named.",
+        "name": "The Caps Are Labels Rule",
+        "body": "Uppercase is used only for the 12px label role and the wordmark. It never sits directly above a title as a kicker; where a screen needs to say where a conversation came from, the origin line under the title carries it.",
         "section": "typography"
       },
       {
-        "name": "The Hairline Rule",
-        "body": "Separate surfaces with a seam or a tonal step, never with a drop shadow or blur. The only rings are selection and focus rings. The current Library volume wears a 3px ground gap and a 2px paper ring, which is a selection mark and not elevation.",
+        "name": "The Fixed Columns Rule",
+        "body": "Columns do not reflow when state changes. State restyles the row (current, hover, failed); it never moves the layout.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Enamel Rule",
+        "body": "No shadow, gradient or blur. An overlay is lifted by sitting on raised enamel with a 1.5px strong seam, not by casting a shadow. The one permitted hard colour split is the half-filled familiarity ring on Knowledge, which is a fill state, not a gradient.",
         "section": "elevation"
+      },
+      {
+        "name": "The Porcelain Seam Rule",
+        "body": "Menus, popovers, the passage box, dialogs and enlarged media share one frame: raised enamel, 8px corners, a 1.5px strong-seam border.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Routing Rule",
+        "body": "A line leaves its ring horizontally, turns 45 degrees, runs vertically through the centre of the gutter (at least 40px clear of any card edge) when the rise exceeds the run, turns 45 degrees again, and enters the target ring horizontally. Rings at the same height join with one straight horizontal. A child placed left of or above its parent is not drawn.",
+        "section": "shapes"
+      },
+      {
+        "name": "The One Motion Rule",
+        "body": "Creating a branch draws the new line out of its interchange along its path in 350ms on an exponential ease-out (`cubic-bezier(0.16, 1, 0.3, 1)`), then the station ring lands (a 125ms fade). With reduced motion it appears at once. Everything else changes state without travel: hover and reveal are opacity or colour changes of 120 to 165ms.",
+        "section": "components"
       }
     ],
     "dos": [
-      "Do set every band, column and major gap on the 8px module (56px band, 264px Contents, 640px measure, 440px map).",
-      "Do give each first-level branch family one series ink, in the order amber, leaf, rust, lichen, and carry it to the underline, address chip, Contents dot, branch line, node band and spine tick. The trunk wears paper.",
-      "Do reserve Leaf Green fills for the one action in a region: Send, primary New chat, a pressed filter.",
-      "Do draw focus as a paper outline, or band ink on the moss band.",
-      "Do set replies and other prose for reading in Literata 17px/1.7 at a 640px measure, and everything operable in Archivo.",
-      "Do use 3px corners for elements, 4px for containers and 2px for inline marks.",
-      "Do make every animation instant under `prefers-reduced-motion`. That includes the branch draw-on, pulses, the selection rise and view transitions.",
-      "Do show failures persistently in rose and stay silent about success. There is no \"Saved\" idle label."
+      "**Do** give every first-level branch family one line colour, cycling line 1 to 4, and carry it from passage underline to interchange ring, address chip, route strip and map line.",
+      "**Do** lead every conversation title with its filled address chip (4px corners).",
+      "**Do** draw lines thick and round-capped (5px sidebar, 7px map) and turn them only at 45 or 90 degrees, following the Routing Rule.",
+      "**Do** mark stations and interchanges with porcelain rings, and the current one by filling it.",
+      "**Do** set replies in Atkinson Hyperlegible Next 17px/1.68 at a 640px measure, and titles in Barlow Semi Condensed 700 (38px conversation title).",
+      "**Do** put every overlay on raised enamel with a 1.5px strong seam and 8px corners.",
+      "**Do** use one focus ring everywhere: 2px porcelain, 2px off the control. Fields show focus on their own frame instead.",
+      "**Do** pair scarlet with words and a way forward (Retry, Cancel, a reason).",
+      "**Do** take every value from the theme roles so all six themes, light and dark, stay in step."
     ],
     "donts": [
-      "Don't use drop shadows, blur or texture. Depth comes from tone and hairline seams.",
-      "Don't use rose red for deletion, warnings or emphasis. It means something failed.",
-      "Don't introduce a second action hue, or use blue anywhere as an accent or a focus colour.",
-      "Don't add a fifth series ink or assign inks by topic. The four-ink cycle is the identity.",
-      "Don't put tutor replies in bubbles or cards. Only the learner's question is tinted.",
-      "Don't make the interface childish or gamified, a generic SaaS dashboard, or neon hacker-dark, and don't let decoration compete with reply text."
+      "**Don't** tint running text with a family colour to decorate it.",
+      "**Don't** place a coloured bar beside text; the route strip and key swatches are the diagram, not accents.",
+      "**Don't** use scarlet for anything but a failure.",
+      "**Don't** add shadows, gradients or blur; depth is tonal enamel and seams.",
+      "**Don't** add a second motion: no sliding panels, bouncing or travel beyond the line draw.",
+      "**Don't** put a caps kicker above a title; the origin line under it says where it came from.",
+      "**Don't** add a top bar; navigation lives in the sidebar (or the narrow header and drawer).",
+      "**Don't** use a pill radius on chips or controls; full rounding is for lines, ticks and dots."
     ]
   }
 }
