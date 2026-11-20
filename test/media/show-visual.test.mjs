@@ -42,7 +42,8 @@ test('show_visual mid-reply lands at its position, starts at once and keeps its 
                             .content[0].text;
                     results.push(await ask({ ...call, alt: undefined }));
                     results.push(await ask({ ...call, title: 'x'.repeat(200) }));
-                    results.push(await ask({ ...call, after: 'halves the list.' }));
+                    results.push(await ask(call));
+                    results.push(await ask({ ...call, name: 'predict-half' }));
                 } finally {
                     await mcp.close();
                 }
@@ -78,7 +79,8 @@ test('show_visual mid-reply lands at its position, starts at once and keeps its 
         // Plain errors name the argument; the corrected call is queued.
         assert.match(results[0], /show_visual needs alt/);
         assert.match(results[1], /title is 200 characters/);
-        assert.match(results[2], /^queued; continue your reply/);
+        assert.match(results[2], /show_visual needs name/);
+        assert.match(results[3], /^queued; continue your reply/);
         // Never tool activity, live or stored.
         assert.ok(!events.some((e) => e.type === 'tool'));
 
@@ -96,6 +98,73 @@ test('show_visual mid-reply lands at its position, starts at once and keeps its 
         assert.equal(workers.length, 1);
         assert.deepEqual(workers[0].request, { ...call, context: INTRO });
         assert.doesNotMatch(reply.text + visual.title + visual.description, /right half|greater/);
+    } finally {
+        await env.close();
+    }
+});
+
+test('a visual shows at its call until its marker streams in, and one reply never repeats a title', async () => {
+    const results = [],
+        logs = [],
+        halves = { title: 'The halves', shows: 'A list cut at 8', alt: 'The list splits at 8.' };
+    let replies = 0;
+    const env = await open(
+        {
+            generate: async (tree, text, emit, _save, signal) => {
+                replies++;
+                emit({ type: 'item', item: 'first', text: INTRO });
+                const mcp = await mcpClient(tree, emit, signal);
+                try {
+                    const ask = async (args) =>
+                        (await mcp.client.callTool({ name: 'show_visual', arguments: args }))
+                            .content[0].text;
+                    results.push(await ask({ ...halves, name: 'halves' }));
+                    // Same title in the same reply, in another case and spacing: drawn once only.
+                    if (replies === 1)
+                        results.push(
+                            await ask({ ...halves, title: ' the  HALVES ', name: 'again' }),
+                        );
+                } finally {
+                    await mcp.close();
+                }
+                complete(emit, 'Then.\n\n[[visual: halves]]\n\nThe right half remains.');
+            },
+        },
+        { generate: async (tree, text, emit) => complete(emit, source) },
+        { log: (line) => logs.push(line) },
+    );
+    try {
+        const ask = async () =>
+            events(await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Show me.' }));
+        const streamed = await ask();
+        assert.deepEqual(streamed.at(-1), { type: 'done', status: 'completed' });
+        const first = env.store.tree(env.tree.id);
+        const reply = first.messages.at(-1);
+        assert.equal(reply.text, `${INTRO}\n\nThen.\n\n\n\nThe right half remains.`);
+        assert.equal(first.artifacts.length, 1);
+        const [visual] = first.artifacts;
+        // At the call first, then at its marker.
+        const marker = `${INTRO}\n\nThen.\n\n`.length;
+        const moves = streamed
+            .filter((e) => e.type === 'artifact' && e.artifact.id === visual.id)
+            .map((e) => e.artifact.position);
+        assert.equal(moves[0], INTRO.length);
+        assert.equal(moves.at(-1), marker);
+        assert.equal(visual.position, marker);
+        assert.equal(visual.side, null);
+        for (const e of streamed.filter((e) => e.type === 'text'))
+            assert.doesNotMatch(e.text, /\[|visual:/);
+        assert.match(results[0], /^queued/);
+        assert.equal(results[1], 'already shown; continue your reply without repeating it.');
+        assert.ok(
+            logs.some((l) =>
+                new RegExp(`app tool call refused id="${reply.id}" tool="show_visual"`).test(l),
+            ),
+        );
+        // A later reply may show a visual with the same title.
+        await ask();
+        assert.match(results[2], /^queued/);
+        assert.equal(env.store.tree(env.tree.id).artifacts.length, 2);
     } finally {
         await env.close();
     }
@@ -129,7 +198,10 @@ test('a model without tool calling writes show_visual as <tool_call> text and ge
                 if (tree.instructions?.startsWith('You create one self-contained visual'))
                     return writer(tree, text, emit);
                 offered = { tools: tree.tools, text: tree.textTools?.map((t) => t.name) };
-                stream(emit, `${INTRO}\n${written(args)}\nThe right side holds 12.`);
+                stream(
+                    emit,
+                    `${INTRO}\n${written({ ...args, name: 'half' })}\nThe right side holds 12.`,
+                );
             },
         },
         { generate: writer },
@@ -160,7 +232,10 @@ test('a model without tool calling writes show_visual as <tool_call> text and ge
 test('a native call leaked into reply text runs once and is hidden', async () => {
     const drawn = [];
     const env = await open(
-        { generate: async (tree, text, emit) => stream(emit, `${INTRO}${written(call)}Then.`) },
+        {
+            generate: async (tree, text, emit) =>
+                stream(emit, `${INTRO}${written({ ...call, name: 'half' })}Then.`),
+        },
         {
             generate: async (tree, text, emit) => {
                 drawn.push(JSON.parse(text).request.title);

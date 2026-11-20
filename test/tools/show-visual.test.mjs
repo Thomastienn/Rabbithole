@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-    readShowVisual,
-    SHOW_VISUAL,
-    visualPosition,
-    visualSide,
-} from '../../server/tools/showVisual.mjs';
+import { readShowVisual, SHOW_VISUAL } from '../../server/tools/showVisual.mjs';
 import { TOOL_VISUAL_RULES, tutorSystem } from '../../server/media/diagrams.mjs';
 import { roundText } from '../../server/providers/chatStream.mjs';
 
-const call = { title: 'Rounds', shows: 'Two winners meet in the final', alt: 'Two arrows join.' };
+const call = {
+    title: 'Rounds',
+    shows: 'Two winners meet in the final',
+    alt: 'Two arrows join.',
+    name: 'rounds',
+};
 
 test('show_visual names a missing or over-long argument, and a corrected call reads', () => {
     assert.throws(() => readShowVisual({ ...call, shows: undefined }), /show_visual needs shows/);
@@ -29,50 +29,35 @@ test('show_visual names a missing or over-long argument, and a corrected call re
     );
 });
 
-test('a visual lands after its anchor in its own response, else at the call', () => {
-    const earlier = 'Before. ';
-    const text = earlier + 'Halve the list. Then search one half. Done.';
-    const at = (after, start = earlier.length) =>
-        visualPosition({ after }, text, start, text.length);
-    assert.equal(at('Halve the list.'), text.indexOf(' Then'));
-    assert.equal(at('halve   THE\nlist.'), text.indexOf(' Then'));
-    assert.equal(at('one half.'), text.indexOf(' Done'));
-    // A misquote, or a passage from an earlier response, falls back to the call.
-    assert.equal(at('Halve the array.'), text.length);
-    assert.equal(at('Before.'), text.length);
-    // Quoting the text just before the call keeps the call's place even when it also appears earlier.
-    assert.equal(visualPosition({ after: 'Go.' }, 'Go. Go.', 0, 7), 7);
-    assert.throws(() => at(''), /show_visual needs after/);
-    assert.throws(() => at('x'.repeat(121)), /after is 121 characters/);
-    assert.equal(visualPosition({}, text, 0, 3, false), 3);
-});
-
-test('show_visual side is left, right or left out', () => {
-    assert.equal(visualSide({ ...call, side: 'right' }), 'right');
-    assert.equal(visualSide({ ...call, side: 'left' }), 'left');
-    assert.equal(visualSide(call), null);
-    assert.throws(() => visualSide({ ...call, side: 'top' }), /side must be left or right/);
-    assert.deepEqual(SHOW_VISUAL.parameters.properties.side.enum, ['left', 'right']);
-    assert.ok(!SHOW_VISUAL.parameters.required.includes('side'));
-});
-
-test('the tutor prompt keeps visuals out of :::figure', () => {
-    const prompt = tutorSystem({ tools: [SHOW_VISUAL] });
-    assert.match(prompt, /To show an image beside its explanation/);
-    assert.doesNotMatch(
-        prompt,
-        /image or visual beside|or rabbithole-visual block and the explanation/,
+test('show_visual carries a short name for its marker and no after or side', () => {
+    assert.throws(() => readShowVisual({ ...call, name: undefined }), /show_visual needs name/);
+    assert.throws(
+        () => readShowVisual({ ...call, name: 'x'.repeat(41) }),
+        /name is 41 characters; shorten it to at most 40/,
     );
-    assert.doesNotMatch(SHOW_VISUAL.description, /Inside a :::figure/);
-    assert.ok(SHOW_VISUAL.parameters.required.includes('after'));
+    assert.ok(SHOW_VISUAL.parameters.required.includes('name'));
+    assert.deepEqual(Object.keys(SHOW_VISUAL.parameters.properties).sort(), [
+        'alt',
+        'check_answer',
+        'name',
+        'shows',
+        'title',
+    ]);
+    assert.match(SHOW_VISUAL.description, /\[\[visual: name\]\]/);
+    assert.doesNotMatch(SHOW_VISUAL.description, /Give after|Give side|images only/);
+});
+
+test('the tutor prompt sets a visual marker inside :::figure and :::wide', () => {
+    const prompt = tutorSystem({ tools: [SHOW_VISUAL] });
+    assert.match(prompt, /To show an image or visual beside its explanation/);
+    assert.match(prompt, /image \(from find_images\) or \[\[visual: name\]\] marker and the/);
+    assert.match(prompt, /with only the image or \[\[visual: name\]\] marker inside/);
+    assert.doesNotMatch(prompt, /never put a show_visual call in it/);
 });
 
 test('with show_visual offered, the tutor prompt holds no visual block rules', () => {
     assert.doesNotMatch(TOOL_VISUAL_RULES, /rabbithole-visual/);
     assert.doesNotMatch(TOOL_VISUAL_RULES, /rabbithole-video/);
-    // A native call cannot sit inside :::wide, so wide holds images only.
-    assert.match(TOOL_VISUAL_RULES, /never put a show_visual call in it/);
-    assert.doesNotMatch(TOOL_VISUAL_RULES, /image or show_visual call inside/);
     const prompt = tutorSystem({ tools: [SHOW_VISUAL] });
     assert.doesNotMatch(prompt, /rabbithole-visual/);
     assert.match(tutorSystem({}), /rabbithole-visual block/);

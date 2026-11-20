@@ -149,9 +149,6 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         usage = null,
         called = false,
         questions = [],
-        // Reply text at the latest tool call and where the model response holding that call began.
-        callAt = 0,
-        responseStart = 0,
         // Model responses with text when record_turn ran; Claude and Codex may answer again after it, and that text is dropped.
         recordedItems = null,
         // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
@@ -159,21 +156,29 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     const heartbeat = setInterval(() => {
         if (!res.destroyed) res.write(': keepalive\n\n');
     }, 15000);
-    const { artifacts, prepareArtifacts, showVisual, makeVideo, startDiscussion, hasMedia } =
-        replyArtifacts(ctx, {
-            id,
-            tree,
-            user,
-            reply,
-            body,
-            send,
-            controller,
-            isFinished: () => finished,
-            getStatus: () => status,
-        });
+    const {
+        artifacts,
+        prepareArtifacts,
+        showVisual,
+        moveVisual,
+        makeVideo,
+        startDiscussion,
+        hasMedia,
+    } = replyArtifacts(ctx, {
+        id,
+        tree,
+        user,
+        reply,
+        body,
+        send,
+        controller,
+        isFinished: () => finished,
+        getStatus: () => status,
+    });
     const calls = appCalls(ctx, {
         reply,
         showVisual,
+        moveVisual,
         makeVideo,
         startDiscussion,
         hasMedia,
@@ -367,14 +372,12 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                 ...(tools.length && {
                     tools,
                     runTool: (name, input, signal) => {
-                        // Text since the last call belongs to a new model response.
-                        if (text.length > callAt) [responseStart, callAt] = [callAt, text.length];
                         if (!isAppTool(name))
                             return ctx.tools.run(name, input, { conversation: id, reply, signal });
                         if (finished) throw new Error('The reply has already ended.');
                         // A repeat answer after record_turn (Claude Code asks for one after an empty response) runs no app calls.
                         if (recordedItems) return 'The reply has already ended.';
-                        const result = calls.run(name, input, text.length, text, responseStart);
+                        const result = calls.run(name, input, text.length, text);
                         if (name === RECORD_TURN.name && text.trim())
                             recordedItems ??= new Set(items.keys());
                         return result;
@@ -415,6 +418,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                         send({ type: 'questions', questions });
                     }
                     prepareArtifacts(output);
+                    calls.place(output);
                     calls.runText(output);
                 }
                 if (event.type === 'status') status = event.status;
