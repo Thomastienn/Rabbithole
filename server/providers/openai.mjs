@@ -29,9 +29,6 @@ import {
 
 export { EndpointError };
 
-const RECORD_NUDGE =
-    'Your reply above ended without its record_turn call; make it now. A teaching reply leaves next questions and suggestions; include them along with every other argument that qualifies.';
-
 // The list of saved custom endpoints; each entry is registered as its own provider.
 export class OpenAI {
     #list = [];
@@ -308,9 +305,7 @@ class Endpoint {
         const saved = this.#saved,
             controller = new AbortController();
         const signal = AbortSignal.any([parentSignal, controller.signal]);
-        let call = signal,
-            forcing = false,
-            finish;
+        let call = signal;
         this.#requests.add(controller);
         try {
             signal.throwIfAborted();
@@ -319,10 +314,7 @@ class Endpoint {
             const system = tutorSystem(tree);
             const parts = inputParts(tree, text);
             const tools = tree.tools ?? [];
-            let answered = false,
-                // Some models (github/auto through Omniroute) skip record_turn; one forced call asks for it.
-                recorded = false,
-                forced = false;
+            let answered = false;
             const messages = [
                 { role: 'system', content: system },
                 ...history(tree.messages ?? [], tools.length > 0),
@@ -344,11 +336,6 @@ class Endpoint {
                 },
             ];
             const output = redactStream(saved.apiKey, emit);
-            finish = () => {
-                output('', true);
-                saveThread(null, model);
-                emit({ type: 'status', status: 'completed' });
-            };
             const reply = roundText(output);
             // Every request asks for usage; tool turns sum each model call's report.
             const total = { input: 0, output: 0, cacheRead: 0 };
@@ -363,9 +350,6 @@ class Endpoint {
                     stream_options: { include_usage: true },
                     ...(tools.length && {
                         tools: tools.map((t) => ({ type: 'function', function: t })),
-                    }),
-                    ...(forcing && {
-                        tool_choice: { type: 'function', function: { name: 'record_turn' } },
                     }),
                 });
                 const calls = new Map();
@@ -398,12 +382,7 @@ class Endpoint {
                         }
                         const choice = chunk.choices?.find((c) => c.index === 0);
                         if (!choice) return false;
-                        // The reply is already shown; text beside a forced record_turn call is dropped.
-                        if (
-                            !forcing &&
-                            typeof choice.delta?.content === 'string' &&
-                            choice.delta.content
-                        ) {
+                        if (typeof choice.delta?.content === 'string' && choice.delta.content) {
                             content += choice.delta.content;
                             reply.write(choice.delta.content);
                         }
@@ -451,22 +430,7 @@ class Endpoint {
                 const round = tools.length
                     ? [...calls].sort(([a], [b]) => a - b).map(([, c]) => c)
                     : [];
-                recorded ||= round.some((c) => c.name === 'record_turn');
-                if (!round.length) {
-                    if (
-                        forced ||
-                        recorded ||
-                        !reply.shown ||
-                        !tools.some((t) => t.name === 'record_turn')
-                    )
-                        break;
-                    if (content) messages.push({ role: 'assistant', content });
-                    // Without this nudge forced calls came back with concepts only (live github/auto runs).
-                    messages.push({ role: 'system', content: RECORD_NUDGE });
-                    forced = forcing = true;
-                    continue;
-                }
-                forcing = false;
+                if (!round.length) break;
                 round.forEach((c, i) => (c.id ||= `call_${messages.length}_${i}`));
                 messages.push({
                     role: 'assistant',
@@ -486,25 +450,21 @@ class Endpoint {
                     // An accepted quick thinking answer is the whole reply; a rejected one goes back to be fixed.
                     answered &&= QUICK_TOOLS.includes(c.name) && !content.startsWith('Error:');
                 }
-                if (
-                    answered ||
-                    round.every((c) => ['record_turn', 'start_discussion'].includes(c.name))
-                )
-                    break;
+                if (answered || round.every((c) => c.name === 'start_discussion')) break;
             }
             // A call that reports through tools may end silently; its caller checks what the tools received.
             if (!reply.shown && !answered && !(tree.reportsByTools && messages.at(-1).tool_call_id))
                 throw new EndpointError(
                     'Custom endpoint ended without a complete text reply. Partial reply saved; try again.',
                 );
-            finish();
+            output('', true);
+            saveThread(null, model);
+            emit({ type: 'status', status: 'completed' });
         } catch (error) {
             if (signal.aborted && signal.reason?.name !== 'TimeoutError') {
                 emit({ type: 'status', status: 'interrupted' });
                 return;
             }
-            // A failed forced call keeps the finished reply; quick thinking stands in for record_turn.
-            if (forcing) return finish();
             emit({ type: 'status', status: 'failed' });
             throw error instanceof EndpointError
                 ? error

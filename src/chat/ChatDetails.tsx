@@ -194,7 +194,8 @@ export function Groundwork({
     explored?: { concept: string; address?: string; ink?: number }[];
     choose: (concept: string) => void;
 }) {
-    if (suggestions?.status !== 'ready' || !suggestions.groundwork?.length) return null;
+    // The tutor's groundwork shows as the reply begins.
+    if (suggestions?.status === 'failed' || !suggestions?.groundwork?.length) return null;
     return (
         <HStack gap={1} className="groundwork" role="group" aria-label="Groundwork">
             {suggestions.groundwork.map((concept) => {

@@ -120,7 +120,6 @@ test('a tools-capable endpoint model reads a page through read_page and answers 
             ['function', 'show_visual'],
             ['function', 'make_video'],
             ['function', 'start_discussion'],
-            ['function', 'record_turn'],
         ],
     );
     assert.doesNotMatch(first.body.messages[0].content, /Do not use tools/);
@@ -441,7 +440,6 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
         'show_visual',
         'make_video',
         'start_discussion',
-        'record_turn',
     ]);
     assert.equal(await offered('plain'), null);
 
@@ -459,7 +457,6 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
         'show_visual',
         'make_video',
         'start_discussion',
-        'record_turn',
     ]);
     assert.equal(
         (await env.post('/api/settings/endpoints/model', { id, model: 'plain', usesTutorTools: 1 }))
@@ -472,12 +469,7 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
         await env.post('/api/settings/tutor-tools', { name: 'read_page', enabled: false })
     ).json();
     assert.equal(switched.find((x) => x.name === 'read_page').enabled, false);
-    assert.deepEqual(await offered('plain'), [
-        'show_visual',
-        'make_video',
-        'start_discussion',
-        'record_turn',
-    ]);
+    assert.deepEqual(await offered('plain'), ['show_visual', 'make_video', 'start_discussion']);
     assert.doesNotMatch(env.chats().at(-1).body.messages[0].content, /rabbithole-visual/);
     assert.equal(
         (await env.post('/api/settings/tutor-tools', { name: 'nope', enabled: false })).status,

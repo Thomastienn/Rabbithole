@@ -290,4 +290,22 @@ export const knowledge = {
         )
             this.record(`suggestions:${message}`, 'suggestions', selection, usage, at);
     },
+    // Quick thinking names the concepts of the tutor's ready passages; a branch made meanwhile keeps its child.
+    nameSuggestions(conversation, message, named, usage, selection) {
+        const at = Date.now(),
+            row = this.db
+                .prepare(
+                    "SELECT passages FROM suggestions WHERE conversation=? AND message=? AND status='ready'",
+                )
+                .get(conversation, message);
+        if (!row) return;
+        const passages = JSON.parse(row.passages).map((p) => {
+            const concept = named.find((n) => n.start === p.start && n.end === p.end)?.concept;
+            return concept && !p.concept ? { ...p, concept } : p;
+        });
+        this.db
+            .prepare('UPDATE suggestions SET passages=?,usage=? WHERE conversation=? AND message=?')
+            .run(JSON.stringify(passages), JSON.stringify({ ...usage, at }), conversation, message);
+        this.record(`suggestions:${message}`, 'suggestions', selection, usage, at);
+    },
 };

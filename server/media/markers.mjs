@@ -31,12 +31,13 @@ export function stripMarkers(text, final = false) {
         if (spans.some(([s, e]) => start >= s && start < e)) continue;
         if (close === ']]') {
             if (!body.trim()) continue;
-            const kind = KIND.exec(body);
+            // [[end]] closes the end section; it carries no value.
+            const kind = KIND.exec(body) ?? /^\s*(end)\s*$/i.exec(body);
             if (kind) cuts.push([start, end]);
             else cuts.push([start, start + 2], [end - 2, end]);
             markers.push({
                 kind: kind?.[1].toLowerCase() ?? null,
-                value: (kind?.[2] ?? body).trim(),
+                value: (kind ? (kind[2] ?? '') : body).trim(),
                 start,
             });
         } else if (end === text.length && !final) cuts.push([start, end]);
@@ -55,4 +56,44 @@ export function stripMarkers(text, final = false) {
         markers: markers.map(({ start, ...m }) => ({ ...m, position: at(start) })),
         at,
     };
+}
+
+const name = (v) => (v && v.length <= 200 && !/[\u0000-\u001f]/.test(v) ? v : null);
+const same = (list, v) => list.some((x) => (x.text ?? x).toLowerCase() === v.toLowerCase());
+
+// The notes the learner sees, read from the reply's markers (ADR 0016) with the notes reader's limits.
+// text is the stripped text; hasMedia: the reply holds a visual, discussion or video, so no video offer joins it.
+export function markerNotes(text, markers, hasMedia = false) {
+    const notes = { questions: [], passages: [], groundwork: [], ended: false };
+    let grounded = false,
+        offered = false;
+    for (const m of markers) {
+        if (m.kind === 'groundwork') {
+            // Only the first groundwork line counts, and only before any reply text.
+            if (grounded || text.slice(0, m.position).trim()) continue;
+            grounded = true;
+            for (const g of m.value.split(';').map((g) => name(g.trim())))
+                if (g && notes.groundwork.length < 3 && !same(notes.groundwork, g))
+                    notes.groundwork.push(g);
+        } else if (m.kind === null) {
+            // The term stays in the text; its passage is where it landed, skipping a repeat or one over six words.
+            const start = text.indexOf(m.value, m.position);
+            if (
+                start >= 0 &&
+                !text.slice(m.position, start).trim() &&
+                m.value.split(/\s+/).length <= 6 &&
+                !same(notes.passages, m.value)
+            )
+                notes.passages.push({ start, end: start + m.value.length, text: m.value });
+        } else if (m.kind === 'next' || m.kind === 'video offer') {
+            if (!m.value || notes.questions.length >= 3 || same(notes.questions, m.value)) continue;
+            if (m.kind === 'video offer') {
+                // At most one per reply, never beside media.
+                if (offered || hasMedia) continue;
+                offered = true;
+            }
+            notes.questions.push(m.value);
+        } else if (m.kind === 'end') notes.ended = true;
+    }
+    return notes;
 }

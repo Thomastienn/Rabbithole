@@ -70,7 +70,9 @@ const visual = {
 test('make_video plans from the conversation; other media beside it gets a plain error', async () => {
     const plans = [],
         logs = [];
-    let calls, results;
+    let calls,
+        results,
+        offer = '';
     const env = await open(
         {
             generate: async (tree, text, emit, _save, signal) => {
@@ -80,7 +82,7 @@ test('make_video plans from the conversation; other media beside it gets a plain
                 }
                 emit({ type: 'item', item: 'a', text: 'Sure.' });
                 results = await callAll(tree, emit, signal, calls);
-                complete(emit, 'On its way.');
+                complete(emit, 'On its way.' + offer);
             },
         },
         { log: (line) => logs.push(line) },
@@ -119,17 +121,18 @@ test('make_video plans from the conversation; other media beside it gets a plain
         assert.match(refusals[1], /tool="show_visual" cause="show_visual cannot join a video/);
         assert.ok(!refusals.some((l) => /Orbit|Again|Earth circl/.test(l)));
 
-        // A visual first: the video is refused, and so is a record_turn video offer beside it.
+        // A visual first: the video is refused, and so is a video offer beside it.
         calls = [
             ['show_visual', visual],
             ['make_video', { topic: 'Orbits' }],
-            ['record_turn', { video_offer: 'Can you make a video of an orbit?' }],
         ];
+        offer = '\n[[video offer: Can you make a video of an orbit?]]\n[[end]]';
         const other = env.store.create('Mixed', 'codex');
         await (await env.post(`/api/trees/${other.id}/messages`, { text: ask })).text();
         assert.match(results[0], /^queued; continue your reply/);
         assert.match(results[1], /make_video stands alone/);
-        assert.match(results[2], /skipped video_offer \(never in a reply holding/);
+        assert.equal(env.store.tree(other.id).messages.at(-1).questions, undefined);
+        offer = '';
         // The tutor judges the ask: no trigger words and other languages start a video too.
         for (const text of [
             'can u quicky a short video how to play, just 2d video',

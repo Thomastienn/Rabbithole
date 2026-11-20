@@ -8,13 +8,12 @@ import { createApp } from '../../server/app.mjs';
 import { briefPrompt } from '../../server/http/jobs/briefs.mjs';
 
 const PREFIX = briefPrompt('', '').split('{')[0];
-const REPLY = 'A **mutex** guards the shared counter.';
-const notes =
-    '\n```rabbithole-notes\n' +
-    JSON.stringify({ suggestion: 'mutex', concept: 'Mutex' }) +
-    '\n' +
-    JSON.stringify({ concept: 'Mutex', topics: ['Concurrency'] }) +
-    '\n```';
+const REPLY = 'A **[[mutex]]** guards the shared counter.\n[[end]]';
+// Quick thinking names the concept of the tutor's marked suggestion.
+const named = JSON.stringify({
+    suggestions: [{ text: 'mutex', concept: 'Mutex' }],
+    concepts: [{ name: 'Mutex', topics: ['Concurrency'] }],
+});
 
 test('a brief explanation is written once, shared, saved with usage and one weak observation, and never reaches the tutor', async (t) => {
     const store = new Store(
@@ -26,6 +25,10 @@ test('a brief explanation is written once, shared, saved with usage and one weak
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
+            if (text.startsWith('The tutor already marked')) {
+                emit({ type: 'item', item: 'answer', text: named });
+                return emit({ type: 'status', status: 'completed' });
+            }
             if (!text.startsWith(PREFIX)) return; // title calls
             prompts.push(text);
             await write(emit);
@@ -34,7 +37,7 @@ test('a brief explanation is written once, shared, saved with usage and one weak
     const chat = {
         generate: async (tree, text, emit) => {
             tutor.push(tree);
-            emit({ type: 'item', item: 'answer', text: REPLY + notes });
+            emit({ type: 'item', item: 'answer', text: REPLY });
             emit({ type: 'status', status: 'completed' });
         },
     };
@@ -43,6 +46,7 @@ test('a brief explanation is written once, shared, saved with usage and one weak
         providers: { codex: chat, claude: quick },
         auth: { status: () => ({ connected: true }) },
         log: () => {},
+        suggestions: true,
     });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
     t.after(() => {
