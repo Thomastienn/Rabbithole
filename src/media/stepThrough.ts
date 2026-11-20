@@ -57,6 +57,8 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
             pending = { timer: view.setTimeout(run, ms / 2), run };
         }
         indicator.textContent = `Step ${index + 1} of ${steps.length}`;
+        // A picked visual part records the step it was picked on.
+        controls.dataset.step = String(index);
         previous.disabled = index === 0;
         next.disabled = index === steps.length - 1;
         // A bound disables the focused button; keep focus on the controls.

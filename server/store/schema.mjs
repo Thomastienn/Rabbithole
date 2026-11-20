@@ -417,6 +417,12 @@ export function open(path) {
         )
             this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE branches ADD COLUMN line INTEGER;
           ALTER TABLE branches ADD COLUMN speaker TEXT; ALTER TABLE branches ADD COLUMN discussion TEXT; COMMIT;`);
+        // A picked visual part keeps its trail (JSON names, outermost first) and the step it was picked on.
+        if (
+            !this.db.prepare("SELECT 1 FROM pragma_table_info('branches') WHERE name='trail'").get()
+        )
+            this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE branches ADD COLUMN trail TEXT;
+          ALTER TABLE branches ADD COLUMN step INTEGER; COMMIT;`);
         // First-run setup: decided once; an upgraded database with a profile (holding any chosen model) or a tree skips it.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='first_run'").get())
             this.db

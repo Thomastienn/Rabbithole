@@ -112,7 +112,7 @@ export function useBranchForm(
         if (child) return openConversation(child);
         if (tree) return createBranch(tree.id, { messageId, groundwork: concept });
     }
-    const openVisualPart: PartAction = (visual, part, origin) => {
+    const openVisualPart: PartAction = (visual, part, origin, box) => {
         if (
             !tree ||
             overview ||
@@ -122,6 +122,12 @@ export function useBranchForm(
         )
             return;
         branchOrigin.current = origin;
+        // A picked part floats the ask box over it, like an underline; the whole visual's Ask keeps the inline box.
+        const reply = box
+            ? document
+                  .querySelector(`[data-chat-message="${CSS.escape(visual.message)}"] .passage`)
+                  ?.getBoundingClientRect().top
+            : undefined;
         setBranch({
             parent: tree.id,
             anchor: {
@@ -129,11 +135,27 @@ export function useBranchForm(
                 artifactId: visual.id,
                 ...part,
                 text: visualPassage(visual, part),
+                ...(box &&
+                    reply !== undefined && {
+                        at: { x: 0, y: box.y - reply, below: box.y + box.height - reply },
+                    }),
             },
             question: '',
         });
         setError('');
     };
+    // Choosing an earlier trail entry widens the source to that ancestor part, keeping its first depth names.
+    function widenPart(depth: number) {
+        setBranch((b) => {
+            const a = b?.anchor,
+                visual = tree?.artifacts?.find((v) => v.id === a?.artifactId);
+            if (!b || !a || !('trail' in a) || !a.trail || !visual) return b;
+            if (depth < 1 || depth >= a.trail.length) return b;
+            const trail = a.trail.slice(0, depth),
+                part = { label: trail.at(-1)!, explanation: a.explanation, trail, step: a.step };
+            return { ...b, anchor: { ...a, ...part, text: visualPassage(visual, part) } };
+        });
+    }
     function startBranch(
         parent: string,
         anchor: Anchor,
@@ -183,6 +205,7 @@ export function useBranchForm(
         visualBranches,
         discussionBranches,
         openVisualPart,
+        widenPart,
         startBranch,
         groundworkBranches,
         chooseGroundwork,

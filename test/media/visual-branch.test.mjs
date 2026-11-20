@@ -239,6 +239,88 @@ test('visual branch API rejects invalid parts, foreign or unfinished visuals and
     }
 });
 
+test('a picked visual part branches with its name as label, its trail and step, and its child tutor knows the part, trail and visual', async () => {
+    let env = await open();
+    try {
+        const parent = env.store.create('Power', 'codex', 'chat', 'low');
+        const messageId = env.store.message(
+            parent.id,
+            'assistant',
+            'Heat boils water.',
+            'completed',
+        );
+        const visual = env.store.pendingArtifact(
+            parent.id,
+            messageId,
+            'Nuclear plant',
+            'How a plant makes electricity.',
+            'visual',
+        );
+        env.store.finishArtifact(parent.id, visual.id, '<svg></svg>');
+        const trail = ['Nuclear plant', 'Reactor', 'Control rods'],
+            body = {
+                messageId,
+                artifactId: visual.id,
+                label: 'Control rods',
+                explanation: 'Untrusted explanation',
+                trail,
+                step: 2,
+                question: 'What do they absorb?',
+            };
+        for (const change of [
+            { trail: [] },
+            { trail: ['A', 'B', 'C', 'Control rods'] },
+            { trail: ['Nuclear plant', 'Reactor'] },
+            { trail: ['Nuclear plant', 'Re\tactor', 'Control rods'] },
+            { trail: 'Control rods' },
+            { trail: ['Nuclear plant', 'x'.repeat(61), 'Control rods'] },
+            { step: -1 },
+            { step: 1.5 },
+            { step: '2' },
+        ])
+            assert.equal(
+                (await env.post(`/api/trees/${parent.id}/branches`, { ...body, ...change })).status,
+                400,
+                JSON.stringify(change),
+            );
+        const response = await env.post(`/api/trees/${parent.id}/branches`, body);
+        assert.equal(response.status, 201);
+        const passage =
+            'Visual: Nuclear plant\nHow a plant makes electricity.\nPart: Nuclear plant › Reactor › Control rods';
+        const child = await compacted(env.app, env.origin, (await response.json()).id);
+        assert.deepEqual(
+            [child.branch.label, child.branch.explanation, child.branch.trail, child.branch.step],
+            ['Control rods', 'How a plant makes electricity.', trail, 2],
+        );
+        assert.equal(child.branch.text, passage);
+        await (
+            await env.post(`/api/trees/${child.id}/messages`, { text: 'What do they absorb?' })
+        ).text();
+        assert.equal(env.calls.at(-1).tree.branch.text, passage, 'the child tutor reads the part');
+        const summary = (await env.get('/api/state')).trees.find((t) => t.id === child.id);
+        assert.deepEqual([summary.label, summary.trail, summary.step], ['Control rods', trail, 2]);
+        const whole = await env.post(`/api/trees/${parent.id}/branches`, {
+            ...body,
+            label: 'Nuclear plant',
+            explanation: 'How a plant makes electricity.',
+            trail: undefined,
+            step: undefined,
+        });
+        const wholeChild = await whole.json();
+        assert.deepEqual(
+            [wholeChild.branch.trail, wholeChild.branch.step],
+            [undefined, undefined],
+            'the whole-visual Ask has no trail or step',
+        );
+        const path = env.path;
+        await env.close();
+        env = await open(path);
+        assert.deepEqual((await env.get(`/api/trees/${child.id}`)).branch.trail, trail);
+    } finally {
+        await env.close();
+    }
+});
+
 test('current databases migrate saved text branches without loss and accept visual branches with null offsets', async () => {
     const path = join(mkdtempSync(join(tmpdir(), 'tt-visual-branch-migration-')), 'trees.sqlite');
     const seed = new Store(path),

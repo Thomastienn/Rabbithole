@@ -159,3 +159,45 @@ test('reopening the textbox for a selected passage shows its saved explanation w
     assert.equal(button(reopened.container, 'Explain briefly'), undefined);
     assert.equal(asked.length, 0, 'a saved explanation needs no call');
 });
+
+test('a picked visual part shows its trail, and choosing an earlier entry widens the question', async (t) => {
+    const widened = [];
+    const part = {
+        messageId: 'reply',
+        artifactId: 'plant',
+        label: 'Control rods',
+        explanation: 'How a plant makes electricity.',
+        trail: ['Nuclear plant', 'Reactor', 'Control rods'],
+        step: null,
+        text: 'Visual: Nuclear plant',
+    };
+    const { container, act, cleanup } = await render(
+        h(BranchForm, {
+            branch: { parent: 'root', anchor: part, question: '' },
+            branching: false,
+            active: false,
+            submit: () => {},
+            close: () => {},
+            setQuestion: () => {},
+            explain: async () => '',
+            widen: (depth) => widened.push(depth),
+        }),
+        (w) => ui(w),
+    );
+    t.after(cleanup);
+    const trail = container.querySelector('nav[aria-label="Part of the visual"]');
+    assert.deepEqual(
+        [...trail.querySelectorAll('button, [aria-current]')].map((e) => e.textContent),
+        ['Nuclear plant', 'Reactor', 'Control rods'],
+    );
+    assert.equal(trail.querySelector('[aria-current]').textContent, 'Control rods');
+    assert.equal(button(trail, 'Control rods'), undefined, 'the current part is not a button');
+    await act(async () => button(trail, 'Reactor').click());
+    assert.deepEqual(widened, [2]);
+    assert.equal(container.querySelector('input').placeholder, 'Ask about Control rods');
+    assert.equal(
+        button(container, 'Explain briefly'),
+        undefined,
+        'no brief explanation for a part',
+    );
+});

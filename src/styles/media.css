@@ -24,6 +24,36 @@
     height: 100%;
     opacity: 0;
 }
+/* The visual part under the pointer: the suggestion's dotted muted line drawn as a rectangle, its name on a neutral chip. */
+.visual-part {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px dotted var(--color-text-secondary);
+    border-radius: var(--radius-inner);
+    pointer-events: none;
+}
+.visual-part-name {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: -2px;
+    max-width: 24ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 3px 6px 2px;
+    border: thin solid var(--color-border-emphasized);
+    border-radius: var(--radius-inner);
+    background: var(--color-background-popover);
+    color: var(--color-text-primary);
+    font: 700 12px/1 var(--font-family-heading);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+/* A part at the top edge keeps its name inside, clear of the badge row above the frame. */
+.visual-part[data-inside] .visual-part-name {
+    top: 4px;
+    bottom: auto;
+    left: 4px;
+}
 /* A visual's child branches: the passage address chip as a button, in a row under the figure. */
 .visual-chips {
     margin-top: 6px;

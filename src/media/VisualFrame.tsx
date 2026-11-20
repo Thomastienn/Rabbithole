@@ -14,20 +14,33 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { inkStyle } from '../map/treeList';
-import { visualMessage, type Artifact, type VisualPart } from './artifacts';
+import { visualMessage, type Artifact, type PartBox, type VisualPart } from './artifacts';
 import { visualProgress } from './visualProgress';
 
 export type VisualBranch = VisualPart & { child: string; address?: string; ink?: number };
+// box: a picked part's bounds in viewport coordinates, where the ask box floats.
+export type Box = { x: number; y: number; width: number; height: number };
 export type PartAction = (
     artifact: Artifact,
     part: VisualPart,
     origin: React.RefObject<HTMLElement | null>,
+    box?: Box,
 ) => void;
 
 // Generated code runs only in this frame: scripts without allow-same-origin give it an opaque origin.
-function Frame({ artifact }: { artifact: Artifact }) {
+function Frame({
+    artifact,
+    onPick,
+}: {
+    artifact: Artifact;
+    onPick?: (part: VisualPart, box: Box) => void;
+}) {
     const frame = useRef<HTMLIFrameElement>(null);
     const [height, setHeight] = useState<number>();
+    // The smallest visual part under the pointer, outlined by the host over the frame.
+    const [hover, setHover] = useState<PartBox>();
+    const pick = useRef(onPick);
+    pick.current = artifact.status === 'ready' ? onPick : undefined;
     const loaded = useRef(false);
     const { mode, name } = useTheme();
     const post = (data: object) => frame.current?.contentWindow?.postMessage(data, '*');
@@ -42,8 +55,28 @@ function Frame({ artifact }: { artifact: Artifact }) {
     useEffect(() => {
         function receive(event: MessageEvent) {
             if (!frame.current || event.source !== frame.current.contentWindow) return;
-            const message = visualMessage(event.data);
+            const el = frame.current,
+                message = visualMessage(event.data, {
+                    width: el.clientWidth,
+                    height: el.clientHeight,
+                });
             if (message?.type === 'height') setHeight(message.height);
+            if (!pick.current) return;
+            if (message?.type === 'leave') setHover(undefined);
+            if (message?.type === 'part') setHover(message.parts.at(-1));
+            if (message?.type === 'pick') {
+                const { name, x, y, width, height } = message.parts.at(-1)!,
+                    at = el.getBoundingClientRect();
+                pick.current(
+                    {
+                        label: name,
+                        explanation: artifact.description,
+                        trail: message.parts.map((p) => p.name),
+                        step: message.step,
+                    },
+                    { x: at.left + x, y: at.top + y, width, height },
+                );
+            }
         }
         addEventListener('message', receive);
         return () => removeEventListener('message', receive);
@@ -108,6 +141,21 @@ function Frame({ artifact }: { artifact: Artifact }) {
                     render();
                 }}
             />
+            {hover && frame.current && (
+                <span
+                    className="visual-part"
+                    aria-hidden
+                    data-inside={hover.y < 24 || undefined}
+                    style={{
+                        left: frame.current.offsetLeft + hover.x,
+                        top: frame.current.offsetTop + hover.y,
+                        width: hover.width,
+                        height: hover.height,
+                    }}
+                >
+                    <span className="visual-part-name">{hover.name}</span>
+                </span>
+            )}
         </>
     );
 }
@@ -224,7 +272,11 @@ export default function VisualFrame({
             />
             {drawing && <span className="visual-drawing-ring" aria-hidden />}
             {(artifact.status === 'pending' || artifact.status === 'ready') && (
-                <Frame key={artifact.id} artifact={artifact} />
+                <Frame
+                    key={artifact.id}
+                    artifact={artifact}
+                    onPick={onPart && ((part, box) => onPart(artifact, part, figure, box))}
+                />
             )}
             {drawing && nudge !== null && (
                 <Text className="visual-nudge" aria-hidden style={{ top: nudge }}>
@@ -310,7 +362,17 @@ export default function VisualFrame({
                                     }}
                                 />
                             )}
-                            <Frame artifact={artifact} />
+                            <Frame
+                                artifact={artifact}
+                                // The ask box opens beside the figure once the enlarged view closes.
+                                onPick={
+                                    onPart &&
+                                    ((part) => {
+                                        setEnlarged(false);
+                                        onPart(artifact, part, figure);
+                                    })
+                                }
+                            />
                             <span
                                 tabIndex={0}
                                 className="sr-only"

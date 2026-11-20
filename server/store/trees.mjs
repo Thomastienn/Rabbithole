@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { excerpt, previewText } from '../../src/markdown/markdownText.ts';
 import { blob, vector } from './embeddings.mjs';
 
+// A picked visual part's trail and step; the whole-visual Ask and older part branches have none.
+const picked = (trail, step) => (trail ? { trail: JSON.parse(trail), step } : {});
+
 export const trees = {
     // Run once at startup: removes learning trees never sent a message (older New chat saved them eagerly); focused chats are kept.
     pruneEmpty() {
@@ -14,15 +17,15 @@ export const trees = {
     list() {
         return this.db
             .prepare(
-                "SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage,b.artifactId,b.label,b.explanation,b.line,c.name AS concept,(SELECT COUNT(*) FROM messages m WHERE m.tree=t.id AND m.role='user') AS learnerMessages FROM trees t LEFT JOIN branches b ON b.child=t.id LEFT JOIN concepts c ON c.id=t.concept ORDER BY t.created DESC,t.rowid DESC",
+                "SELECT t.id,t.title,t.created,t.x,t.y,t.layout,b.parent,b.messageId,b.start,b.end,b.text AS passage,b.artifactId,b.label,b.explanation,b.trail,b.step,b.line,c.name AS concept,(SELECT COUNT(*) FROM messages m WHERE m.tree=t.id AND m.role='user') AS learnerMessages FROM trees t LEFT JOIN branches b ON b.child=t.id LEFT JOIN concepts c ON c.id=t.concept ORDER BY t.created DESC,t.rowid DESC",
             )
             .all()
-            .map(({ artifactId, label, explanation, line, ...t }) => {
+            .map(({ artifactId, label, explanation, trail, step, line, ...t }) => {
                 const visual = !artifactId
                     ? {}
                     : line !== null
                       ? { artifactId, line }
-                      : { artifactId, label, explanation };
+                      : { artifactId, label, explanation, ...picked(trail, step) };
                 try {
                     return { ...t, ...visual, layout: JSON.parse(t.layout) };
                 } catch {
@@ -149,11 +152,20 @@ export const trees = {
         const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
         const savedBranch = this.db
             .prepare(
-                'SELECT parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation,line,speaker,discussion FROM branches WHERE child=?',
+                'SELECT parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation,trail,step,line,speaker,discussion FROM branches WHERE child=?',
             )
             .get(id);
-        const { artifactId, label, explanation, line, speaker, discussion, ...branch } =
-            savedBranch ?? {};
+        const {
+            artifactId,
+            label,
+            explanation,
+            trail,
+            step,
+            line,
+            speaker,
+            discussion,
+            ...branch
+        } = savedBranch ?? {};
         return (
             tree.id && {
                 ...tree,
@@ -163,7 +175,7 @@ export const trees = {
                           ...(artifactId &&
                               (line !== null
                                   ? { artifactId, line, speaker, discussion }
-                                  : { artifactId, label, explanation })),
+                                  : { artifactId, label, explanation, ...picked(trail, step) })),
                       }
                     : null,
                 messages: this.db
@@ -254,7 +266,7 @@ export const trees = {
             );
             this.db
                 .prepare(
-                    'INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation,line,speaker,discussion) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    'INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation,trail,step,line,speaker,discussion) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 )
                 .run(
                     child.id,
@@ -268,6 +280,8 @@ export const trees = {
                     anchor.artifactId ?? null,
                     anchor.label ?? null,
                     anchor.explanation ?? null,
+                    anchor.trail ? JSON.stringify(anchor.trail) : null,
+                    anchor.step ?? null,
                     anchor.line ?? null,
                     anchor.speaker ?? null,
                     anchor.discussion ?? null,
