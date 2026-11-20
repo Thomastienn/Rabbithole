@@ -64,7 +64,7 @@ const visual = {
     title: 'Orbit',
     shows: 'Earth circling the Sun',
     alt: 'Earth circles the Sun.',
-    after: 'Sure.',
+    name: 'orbit',
 };
 
 test('make_video plans from the conversation; other media beside it gets a plain error', async () => {

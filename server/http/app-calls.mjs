@@ -1,4 +1,4 @@
-import { SHOW_VISUAL, readShowVisual, visualPosition, visualSide } from '../tools/showVisual.mjs';
+import { SHOW_VISUAL, readShowVisual } from '../tools/showVisual.mjs';
 import { RECORD_TURN, readRecordTurn } from '../tools/recordTurn.mjs';
 import { MAKE_VIDEO, readMakeVideo } from '../tools/makeVideo.mjs';
 import { START_DISCUSSION, readStartDiscussion } from '../tools/startDiscussion.mjs';
@@ -11,11 +11,19 @@ export const isAppTool = (name) => APP_TOOLS.some((t) => t.name === name);
 // One reply's app calls, native or written as <tool_call> text.
 export function appCalls(
     ctx,
-    { reply, showVisual, makeVideo, startDiscussion, hasMedia, questioned },
+    { reply, showVisual, moveVisual, makeVideo, startDiscussion, hasMedia, questioned },
 ) {
     let ranCalls = 0,
         // What record_turn calls carried; null until one arrives, so quick thinking stands in.
-        recorded = null;
+        recorded = null,
+        // The reply's markers so far; each drawn visual by name; the titles drawn in this reply.
+        markers = [];
+    const visuals = new Map(),
+        titles = new Set();
+    // Names and titles match ignoring case and whitespace.
+    const key = (text) => text.toLowerCase().replace(/\s+/g, '');
+    const markerAt = (name) =>
+        markers.find((m) => m.kind === 'visual' && key(m.value) === name)?.position;
     // Every refused call is logged with its reason, its input values redacted.
     const refused = (name, input, error) =>
         ctx.log(
@@ -33,18 +41,17 @@ export function appCalls(
             throw error;
         }
     };
-    // responseStart: where the model response holding the call began; null when after is ignored.
-    const runCall = (name, input, position, replySoFar, responseStart = 0, textCall = false) => {
-        // A show_visual call queues its visual at its after anchor, or that reply position.
+    const runCall = (name, input, position, replySoFar) => {
+        // A show_visual call queues its visual at its marker, or at the call until the marker arrives (ADR 0017).
         if (name === SHOW_VISUAL.name) {
-            const request = readShowVisual(input, replySoFar);
-            showVisual(
-                request,
-                responseStart === null
-                    ? position
-                    : visualPosition(input, replySoFar, responseStart, position, !textCall),
-                visualSide(input),
-            );
+            const { name: label, ...request } = readShowVisual(input, replySoFar);
+            // A repeat answer may call it again; the same title is never drawn twice in one reply.
+            if (titles.has(key(request.title))) {
+                refused(name, input, new Error('A visual with this title was already shown.'));
+                return 'already shown; continue your reply without repeating it.';
+            }
+            visuals.set(key(label), showVisual(request, markerAt(key(label)) ?? position));
+            titles.add(key(request.title));
             // A bare "queued" read as the end of the reply to Claude, which then skipped the rest of its answer.
             return 'queued; continue your reply where you stopped, without repeating any text.';
         }
@@ -76,21 +83,23 @@ export function appCalls(
                 );
             else
                 try {
-                    run(
-                        call.name,
-                        call.input,
-                        call.position,
-                        output.text.slice(0, call.position),
-                        call.position === output.text.length ? 0 : null,
-                        true,
-                    );
+                    run(call.name, call.input, call.position, output.text.slice(0, call.position));
                 } catch {
                     // run logged the refusal; nothing goes back to the model.
                 }
         }
     };
+    // Each visual moves to its marker once the marker streams in.
+    const place = (output) => {
+        markers = output.markers ?? [];
+        for (const [name, artifact] of visuals) {
+            const at = markerAt(name);
+            if (at !== undefined && at !== artifact.position)
+                visuals.set(name, moveVisual(artifact, at));
+        }
+    };
     // A record_turn call stands for the verdict and notes blocks.
     const record = (output) =>
         recorded ? { ...output, notes: recorded.notes, verdicts: recorded.verdicts } : output;
-    return { run, runText, record };
+    return { run, runText, place, record };
 }

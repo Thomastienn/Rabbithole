@@ -111,7 +111,7 @@ test('a record_turn call over MCP saves the turn, shows next questions at once, 
                     repeated = (
                         await client.callTool({
                             name: 'show_visual',
-                            arguments: { title: 'T', shows: 'S', alt: 'A', after: 'threads.' },
+                            arguments: { title: 'T', shows: 'S', alt: 'A', name: 'threads' },
                         })
                     ).content[0].text;
                     await client.close();
