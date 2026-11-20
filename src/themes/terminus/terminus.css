@@ -307,7 +307,7 @@
     --rabbithole-ink-3: light-dark(#12754a, #7fd8a8);
     --rabbithole-ink-4: light-dark(#b0471a, #ffab7a);
     --rabbithole-ink-on: light-dark(#ffffff, #2a0f18);
-    --rabbithole-map-node-width: 16rem;
+    --rabbithole-map-node-width: 10rem;
     --rabbithole-sidebar-width: 14.5rem;
     --rabbithole-branch-color: light-dark(#3a0f1c, #fff2dc);
     --rabbithole-branch-width: 7px;

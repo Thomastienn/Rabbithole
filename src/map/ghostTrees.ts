@@ -90,7 +90,7 @@ export function ghostTrees(
 }
 
 export const MINIATURE = 160;
-const BOX = { width: 256, height: 160 };
+const BOX = { width: 160, height: 160 };
 
 // A ghost tree's miniature: one dot per conversation at its saved position (or the map's default
 // placement right of its parent), lines in branch family inks, scaled to fit MINIATURE pixels.
@@ -112,7 +112,7 @@ export function miniature(trees: readonly Conversation[], root: string) {
     const t = next ?? pending[0];
     const parent = t.parent ? placed.get(t.parent) : undefined;
     const position = placeBox(
-      parent ? { x: parent.x + BOX.width + 72, y: parent.y } : { x: 0, y: 0 },
+      parent ? { x: parent.x + BOX.width + 96, y: parent.y } : { x: 0, y: 0 },
       BOX,
       occupied,
     );

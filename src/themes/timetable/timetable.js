@@ -236,7 +236,7 @@ export const timetableTheme = {
     "--rabbithole-ink-3": "light-dark(#8a6200, #e6ad2f)",
     "--rabbithole-ink-4": "light-dark(#0f755a, #45c49d)",
     "--rabbithole-ink-on": "light-dark(#ffffff, #1e1812)",
-    "--rabbithole-map-node-width": "16rem",
+    "--rabbithole-map-node-width": "10rem",
     "--rabbithole-sidebar-width": "14.5rem",
     "--rabbithole-branch-color": "light-dark(#231a10, #fbf0d9)",
     "--rabbithole-branch-width": "7px",

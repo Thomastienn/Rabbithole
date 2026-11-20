@@ -96,7 +96,10 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
               }}
             >
               <Text type="supporting" hasTabularNumbers>
-                {stub.address} · {1 + stub.beneath} folded
+                <Text type="inherit" className="node-address" hasTabularNumbers>
+                  {stub.address}
+                </Text>{' '}
+                · {1 + stub.beneath} folded
               </Text>
             </Button>
           </HStack>
@@ -125,22 +128,9 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
       )}
       <Handle id="ghost" type="source" position={Position.Right} className="ghost-handle" />
       <HStack gap={1} vAlign="center" className="node-band">
-        {data.childCount > 0 && (
-          <IconButton
-            id={`fold-${t.id}`}
-            className="nodrag nopan"
-            label={`${data.folded ? 'Expand' : 'Collapse'} descendants of ${t.title}`}
-            tooltip={`${data.folded ? 'Expand' : 'Collapse'} descendants`}
-            aria-expanded={!data.folded}
-            icon={data.folded ? <ChevronRightIcon /> : <ChevronDownIcon />}
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              data.toggle(t.id);
-            }}
-          />
-        )}
+        <Text className="node-address" hasTabularNumbers>
+          {data.address}
+        </Text>
         <Text
           className="activity-dot"
           role={data.active ? 'status' : undefined}
@@ -148,13 +138,11 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
         >
           {data.active && <Text className="sr-only">Responding</Text>}
         </Text>
-        <Text className="node-address" hasTabularNumbers>
-          {data.address}
-        </Text>
         <Button
           id={`open-${t.id}`}
           className="node-title nodrag nopan"
           label={`Open ${t.title}`}
+          aria-current={data.focused || undefined}
           variant="ghost"
           size="sm"
           onClick={() => data.open(t.id)}
@@ -166,18 +154,36 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
             {t.title}
           </Heading>
         </Button>
-        {t.parent && (
-          <IconButton
-            id={`reveal-${t.id}`}
-            className="node-extra nodrag nopan"
-            label={`Reveal source passage for ${t.title}`}
-            tooltip={`From “${t.passage}”`}
-            icon={<LinkIcon />}
-            variant="ghost"
-            size="sm"
-            onClick={() => data.open(t.parent!, sourceOf(t))}
-          />
-        )}
+        <HStack gap={1} vAlign="center" className="node-actions">
+          {t.parent && (
+            <IconButton
+              id={`reveal-${t.id}`}
+              className="node-extra nodrag nopan"
+              label={`Reveal source passage for ${t.title}`}
+              tooltip={`From “${t.passage}”`}
+              icon={<LinkIcon />}
+              variant="ghost"
+              size="sm"
+              onClick={() => data.open(t.parent!, sourceOf(t))}
+            />
+          )}
+          {data.childCount > 0 && (
+            <IconButton
+              id={`fold-${t.id}`}
+              className="nodrag nopan"
+              label={`${data.folded ? 'Expand' : 'Collapse'} descendants of ${t.title}`}
+              tooltip={`${data.folded ? 'Expand' : 'Collapse'} descendants`}
+              aria-expanded={!data.folded}
+              icon={data.folded ? <ChevronRightIcon /> : <ChevronDownIcon />}
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                data.toggle(t.id);
+              }}
+            />
+          )}
+        </HStack>
       </HStack>
       {!!preview?.length && (
         <VStack gap={1} className="node-preview">
@@ -211,7 +217,13 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                     <Text
                       type="supporting"
                       color={m.role === 'user' ? 'primary' : 'secondary'}
-                      className={m.role === 'user' ? 'question-bubble' : undefined}
+                      className={
+                        m.role === 'user'
+                          ? 'question-bubble'
+                          : m.status === 'streaming'
+                            ? 'node-arriving'
+                            : undefined
+                      }
                       maxLines={3}
                       hasTruncateTooltip={false}
                     >
@@ -225,7 +237,7 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                 {m.role === 'assistant' && m.status !== 'completed' && (
                   <Text type="supporting" className="node-status" data-status={m.status}>
                     {m.status === 'failed' && <ExclamationTriangleIcon aria-hidden />}
-                    {m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}
+                    {m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}`}
                   </Text>
                 )}
                 {m.role === 'assistant' &&
