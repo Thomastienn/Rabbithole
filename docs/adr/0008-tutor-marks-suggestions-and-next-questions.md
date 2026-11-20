@@ -9,3 +9,5 @@ After every reply, a separate quick thinking model call read the reply again to 
 - Inline markers around suggested terms in the reply text. Underlines would appear while streaming, but markers can leak into copied text and the knowledge graph would still need its own block.
 
 Delivery superseded in part by ADR 0013: the tutor still marks suggestions and next questions, but returns them through a tool call instead of a hidden block.
+
+ADR 0016 later moved the marks into inline markers in the reply text and gave concepts and links to the quick thinking model; the tutor still marks suggestions and next questions.

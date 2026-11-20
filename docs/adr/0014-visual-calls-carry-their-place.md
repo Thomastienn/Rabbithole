@@ -4,6 +4,8 @@ ADR 0013 placed a visual at the reply text streamed when its call ran, relying o
 
 This amends ADR 0013's placement only; visuals still start drawing the moment their call runs.
 
+Superseded by ADR 0017: a `[[visual: name]]` marker in the text places each visual, replacing `after` and `side`.
+
 ## Considered Options
 
 - Tell the tutor to end its message at the call. Free, but unenforced, and the models that ignore it are the weak ones this app tries to serve.

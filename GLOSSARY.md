@@ -45,15 +45,15 @@ The exact contiguous text of a tutor reply, or of a line in a discussion, that a
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
-A term or short phrase in a tutor reply that the tutor marked, while answering, as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. It carries no proposed question.
+A term or short phrase in a tutor reply that the tutor marked, while answering, as worth breaking down into a branch: used but not explained, and likely unfamiliar to the learner. Its underline appears as the term arrives, so the learner can branch while still reading. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
 
 **Brief explanation**:
-One short paragraph about a term or passage of a tutor reply, shown above the branch question box so the learner can understand it without branching. It appears on its own when the learner opens an unexplored suggestion, and only on request for a passage they selected themselves. It explains whatever the term needs in context, such as what it is or why it holds. It is kept and shows again when the learner points at that suggestion, even after it has been branched; a branched suggestion without one shows the start of its child's first reply instead. It is not part of the conversation and the tutor never sees it. Getting one for a suggestion counts as weak evidence that the learner has seen the concept: it lifts an unknown concept a little and dips a well-known one a little.
+A few short sentences about a term or passage of a tutor reply, read at a glance and free to bold or italicise a key word, shown above the branch question box so the learner can understand it without branching. It appears on its own when the learner opens an unexplored suggestion, and only on request for a passage they selected themselves. It explains whatever the term needs in context, such as what it is or why it holds. It is kept and shows again when the learner points at that suggestion, even after it has been branched; a branched suggestion without one shows the start of its child's first reply instead. It is not part of the conversation and the tutor never sees it. Getting one for a suggestion counts as weak evidence that the learner has seen the concept: it lifts an unknown concept a little and dips a well-known one a little.
 _Avoid_: Peek, tooltip, definition, summary
 
 **Groundwork**:
-A concept that a tutor reply relies on without naming, which the learner may need first, offered as a choice above the reply: at most three, often none, chosen by the tutor from what it knows of the learner's familiarity. Choosing one at once creates a child conversation that asks what it is. It is never a gate: the learner can ignore it.
+A concept that a tutor reply relies on without naming, which the learner may need first, offered as a choice above the reply as soon as the reply begins, before its text: at most three, often none, chosen by the tutor from what it knows of the learner's familiarity. Choosing one at once creates a child conversation that asks what it is. It is never a gate: the learner can ignore it.
 _Avoid_: Prerequisite, suggestion, requirement
 
 **Next question**:
@@ -61,7 +61,7 @@ A question the learner might ask next, offered under the latest tutor reply: one
 _Avoid_: Follow-up, suggested question, prompt, suggestion
 
 **Quick thinking model**:
-The learner-chosen model for compacting prior discussion into inherited context for child conversations and naming new conversations, with its own configurable effort. It stands in for the tutor's own marking of suggestions, next questions and familiarity only when a reply arrives without them.
+The learner-chosen model for compacting prior discussion into inherited context for child conversations and naming new conversations, with its own configurable effort. After each tutor reply it judges familiarity and records the concepts and links the reply touched. It marks suggestions, groundwork and next questions only for a reply that arrives without the tutor's own.
 _Avoid_: Helper model, cheap model
 
 **Suggestion model**:
@@ -181,6 +181,10 @@ _Avoid_: Template, theme, design
 **Visual**:
 An interactive HTML/SVG/JS fragment shown inside a tutor reply where the tutor placed it, running in an isolated sandbox with no network or access to the app. Older Mermaid diagrams stay diagrams.
 _Avoid_: Widget, canvas, artifact (in UI copy)
+
+**Visual part**:
+A drawn object in a visual that the learner can point at and ask about, such as the reactor of a power plant. Visual parts nest: a larger part holds the smaller parts drawn within it, such as the reactor's control rods, so the learner can ask about a whole component or one of its details. Every meaningful object in a visual is a visual part; the visual's own controls, such as its buttons and sliders, are not.
+_Avoid_: Part (alone), component, element
 
 **Step**:
 One stage of a visual that the learner moves through with Previous and Next. Each step either continues the previous step's scene, changing what is already drawn in place, or changes to a new scene; one visual may mix both. A visual that shows every stage at once has no steps.
