@@ -100,9 +100,15 @@ test('an unexplored suggestion shows its brief explanation above the question bo
     await act(async () => button(container, 'Retry').click());
     assert.equal(asked.length, 2);
     assert.equal(status(), 'Writing a brief explanation…');
-    await act(async () => replies[1].resolve('A lock one thread holds at a time.'));
+    await act(async () => replies[1].resolve('A **lock** one thread holds at *a time*.'));
     const brief = container.querySelector('.branch-brief');
     assert.equal(brief.textContent, 'A lock one thread holds at a time.');
+    assert.equal(
+        brief.querySelector('strong').textContent,
+        'lock',
+        'markdown renders as in the popup',
+    );
+    assert.equal(brief.querySelector('em').textContent, 'a time');
     assert.ok(
         brief.compareDocumentPosition(container.querySelector('input')) &
             Node.DOCUMENT_POSITION_FOLLOWING,

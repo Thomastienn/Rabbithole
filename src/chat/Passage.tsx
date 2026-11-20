@@ -10,6 +10,7 @@ import type { conversationAddresses } from '../map/treeList';
 import { underlineRanges, type Message, type Suggestions } from './turn';
 import { passageAnchor, type Anchor } from './branch';
 import { rawOffsets, rawRange } from '../markdown/markdown';
+import { renderInline } from '../markdown/inlineMarkdown';
 import type { Artifact, DiscussionReply } from '../media/artifacts';
 import { discussionSelection, type DiscussionBranch } from '../media/DiscussionCard';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
@@ -67,6 +68,7 @@ export default function Passage({
     const [tip, setTip] = useState<{
         start: number;
         text: string;
+        brief: boolean;
         at: React.CSSProperties;
         piece?: HTMLElement;
     }>();
@@ -205,10 +207,8 @@ export default function Passage({
             u &&
             suggestions?.status === 'ready' &&
             suggestions.passages.find((p) => p.start === u.start && p.end === u.end);
-        const text =
-            p &&
-            (briefs?.find((b) => b.start === p.start && b.end === p.end)?.explanation ??
-                (u.child ? p.preview : undefined));
+        const brief = p && briefs?.find((b) => b.start === p.start && b.end === p.end)?.explanation;
+        const text = brief ?? (p && u.child ? p.preview : undefined);
         if (!text || !piece) return setTip(undefined);
         const box = piece.getBoundingClientRect(),
             wrap = wrapper.current!.getBoundingClientRect();
@@ -218,6 +218,7 @@ export default function Passage({
                 : {
                       start: u.start,
                       text,
+                      brief: !!brief,
                       // An underline in the right half hangs its popup leftward so it stays inside the reply.
                       at:
                           box.left - wrap.left > wrap.width / 2
@@ -364,7 +365,7 @@ export default function Passage({
                     style={tip.at}
                     onPointerLeave={() => setTip(undefined)}
                 >
-                    {tip.text}
+                    {tip.brief ? renderInline(tip.text) : tip.text}
                 </Text>
             )}
             {!!message.tools?.length && <ToolActivity tools={message.tools} />}
