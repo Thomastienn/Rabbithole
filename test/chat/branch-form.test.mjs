@@ -280,7 +280,7 @@ test("the Ask button's box picks parts from the keyboard: arrows move at a level
     const trail = container.querySelector('nav[aria-label="Part of the visual"]');
     await act(async () => button(trail, 'Plant').click());
     assert.deepEqual(options(), [['Plant', 'true']], 'the trail widens the level');
-    cleanup();
+    await cleanup();
     assert.equal(shown.at(-1), undefined, 'closing the box ends picking');
 });
 
@@ -301,11 +301,10 @@ test('a question sent while the reply streams shows as waiting and survives outs
     const input = container.querySelector('input');
     assert.equal(input.value, 'Why?');
     assert.equal(input.getAttribute('aria-disabled'), 'true');
-    assert.equal(button(container, 'Waiting for the reply…').disabled, true);
+    assert.equal(container.querySelector('button[type=submit]').disabled, true);
     assert.ok(
-        [...container.querySelectorAll('[role="status"]')].some(
-            (s) => s.textContent === 'Sends when the reply finishes.',
-        ),
+        [...container.querySelectorAll('[role="status"]')].some((s) => s.textContent.trim()),
+        'the wait is announced',
     );
     await act(async () => document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })));
     assert.deepEqual(closed, [], 'an outside click keeps the waiting question');

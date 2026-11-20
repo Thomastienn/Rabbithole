@@ -78,7 +78,13 @@ test('stop freezes only its branch; stale callbacks cannot alter a stopped or ne
         old.save('stale-thread', 'stale-model');
         old.reject(new Error('Late abort failure'));
         await new Promise((resolve) => setImmediate(resolve));
-        assert.equal(env.app.active.get(a.id).signal, env.turns[2].signal);
+        // The provider gets the turn's signal combined with its end-of-reply signal, so compare liveness.
+        assert.equal(
+            env.app.active.get(a.id).signal.aborted,
+            false,
+            'the retry still owns the branch',
+        );
+        assert.equal(env.turns[2].signal.aborted, false);
         assert.equal(env.store.tree(a.id).thread, `thread-${a.id}`);
         assert.deepEqual(
             env.store
