@@ -6,44 +6,115 @@
 .reply-layout :is(.layout-media, .layout-text, .layout-item, .layout-card) {
   min-width: 0;
 }
-.reply-layout .layout-cards {
+.reply-md :is(h3, h4, h5, h6) + .reply-layout {
+  margin-block-start: 0;
+}
+/* Entry titles sit one step above the 17px reading text, whatever heading depth the tutor wrote. */
+.reply-md .reply-layout :is(h3, h4, h5, h6),
+.reply-md .reply-layout :is(h3, h4, h5, h6) .astryx-text {
+  font-size: 18px;
+  line-height: 1.25;
+}
+.reply-md .reply-layout :is(h3, h4, h5, h6) {
+  margin-block-end: var(--spacing-1);
+}
+.reply-layout :is(.layout-card, .timeline-entry, .layout-text, .astryx-section) > * + * {
+  margin-block-start: var(--spacing-3);
+}
+.reply-md .reply-layout :is(h3, h4, h5, h6) + * {
+  margin-block-start: 0;
+}
+.reply-md .reply-layout :is(.layout-cards, .timeline-entries) {
   display: grid;
-  gap: var(--spacing-4);
   margin: 0;
   padding: 0;
+  list-style: none;
 }
-.reply-layout > p + .layout-cards {
+.reply-md .reply-layout > p + :is(.layout-cards, .timeline-entries) {
   margin-block-start: var(--spacing-4);
 }
-.layout-comparison .layout-cards {
+.reply-md :is(.layout-card, .timeline-entry) + :is(.layout-card, .timeline-entry) {
+  margin-block-start: 0;
+}
+.reply-layout :is(.layout-card, .timeline-entry, .layout-text, .astryx-section) > :first-child {
+  margin-block-start: 0;
+}
+.reply-layout :is(.layout-card, .timeline-entry, .layout-text, .astryx-section) > :last-child {
+  margin-block-end: 0;
+}
+/* Comparison: one panel, its columns divided by seams. */
+.reply-md .layout-comparison .layout-cards {
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
-}
-.layout-steps .layout-cards {
-  list-style: none;
-  counter-reset: step;
-}
-.reply-layout .layout-card {
-  padding: var(--spacing-4);
+  padding-block: var(--spacing-4);
   background: var(--color-background-card);
   border-radius: var(--radius-container);
 }
-.reply-md .layout-card + .layout-card {
-  margin-block-start: 0;
+.reply-md .layout-comparison .layout-card {
+  padding-inline: var(--spacing-5);
+}
+.reply-md .layout-comparison .layout-card + .layout-card {
+  border-inline-start: thin solid var(--color-border);
+}
+/* Steps and timeline: entries hang off a rail; steps carry numbered rings, timeline entries station dots. */
+.layout-steps .layout-cards {
+  counter-reset: step;
+}
+.layout-steps .layout-card,
+.timeline-entry {
+  position: relative;
+  padding-block-end: var(--spacing-5);
+}
+.layout-steps .layout-card:last-child,
+.timeline-entry:last-child {
+  padding-block-end: 0;
 }
 .layout-steps .layout-card {
   counter-increment: step;
+  padding-block-start: 3px;
+  padding-inline-start: 44px;
 }
-.layout-steps .layout-card > :first-child::before {
-  content: counter(step) '. ';
-  color: var(--color-text-secondary);
+.layout-steps .layout-card::before {
+  content: counter(step);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--color-border-emphasized);
+  border-radius: 50%;
+  color: var(--rabbithole-paper);
+  font: 700 13px/1 var(--font-family-heading);
   font-variant-numeric: tabular-nums;
 }
-.reply-layout .layout-card > :first-child {
-  margin-top: 0;
+.timeline-entry {
+  padding-inline-start: 28px;
 }
-.reply-layout .layout-card > :last-child {
-  margin-bottom: 0;
+.timeline-entry::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 2.5px solid var(--rabbithole-paper);
+  border-radius: 50%;
+}
+.layout-steps .layout-card:not(:last-child)::after,
+.timeline-entry:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  inset-block: 32px 4px;
+  inset-inline-start: 13px;
+  border-inline-start: 1.5px solid var(--color-border-emphasized);
+}
+.timeline-entry:not(:last-child)::after {
+  inset-block: 21px -1px;
+  inset-inline-start: 5px;
 }
 /* Figure beside text: media column beside its explanation; gallery: a grid of images or visuals. */
 .layout-figure {
@@ -65,72 +136,37 @@
   display: grid;
   gap: var(--spacing-4);
 }
+/* Gallery: one row height, each image at its own width, so nothing is cropped or letterboxed. */
 .layout-gallery .layout-media {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-4);
 }
 .layout-gallery > .layout-media:not(:first-child) {
   margin-block-start: var(--spacing-4);
 }
+.layout-gallery .layout-item:not(:has(.reply-image)) {
+  flex: 1 1 16rem;
+}
 .layout-gallery .reply-image img {
-  width: 100%;
-  height: 12rem;
+  width: auto;
+  height: 11rem;
   object-fit: contain;
-  background: var(--color-background-muted);
   border-radius: var(--radius-container);
 }
 .reply-layout .layout-item .reply-image,
 .reply-layout .layout-item > figure {
   margin: 0;
 }
-.layout-figure .layout-text > :first-child {
-  margin-top: 0;
-}
-.layout-figure .layout-text > :last-child {
-  margin-bottom: 0;
-}
 .layout-callout {
   background: var(--color-background-card);
-  border-inline-start: thin solid var(--color-text-secondary);
   border-radius: var(--radius-container);
-  padding: var(--spacing-6);
+  padding: var(--spacing-4) var(--spacing-5);
 }
 /* Section owns an inner surface; the callout needs only one tonal layer. */
 .layout-callout > .astryx-section {
   padding: 0;
   background: transparent;
-}
-.reply-md .layout-callout > .astryx-section > :first-child,
-.reply-md .timeline-entry > :first-child {
-  margin-block-start: 0;
-}
-.layout-callout > .astryx-section > :last-child,
-.timeline-entry > :last-child {
-  margin-block-end: 0;
-}
-.reply-md .timeline-entries {
-  padding-inline-start: var(--spacing-6);
-  margin-block: 0;
-  list-style-type: decimal;
-}
-.layout-timeline > p + .timeline-entries {
-  margin-block-start: var(--spacing-4);
-}
-.timeline-entry {
-  padding-inline-start: var(--spacing-4);
-  padding-block-end: var(--spacing-6);
-  border-inline-start: thin solid var(--color-border-emphasized);
-}
-.timeline-entry::marker {
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-.reply-md .timeline-entry + .timeline-entry {
-  margin-block-start: 0;
-}
-.timeline-entry:last-child {
-  padding-block-end: 0;
 }
 .layout-wide .layout-media,
 .layout-wide .reply-image img {
