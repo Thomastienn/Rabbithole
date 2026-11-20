@@ -1,5 +1,5 @@
 import mermaid from 'mermaid';
-import { diagramFontFace } from '../themes/paperback/diagramFont';
+import { diagramFontFace } from '../themes/diagramFont';
 import { DIAGRAM_HUES, diagramTheme } from './diagramTheme';
 
 // Mermaid has global configuration. Keep each theme initialization with its queued render.

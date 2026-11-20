@@ -56,7 +56,7 @@ try {
     'Appearance',
     'Appearance is the first setting',
   );
-  // World (mockup Settings): a page on the body ground (no dialog surface), Archivo, small-caps group labels, paper focus ring, AA text.
+  // World (mockup Settings): a page on the body ground (no dialog surface), Barlow, small-caps group labels, paper focus ring, AA text.
   const look = {};
   for (const mode of ['dark', 'light']) {
     await b(
@@ -69,6 +69,8 @@ try {
       '--exact',
     );
     await wait(`document.documentElement.getAttribute('data-theme') === '${mode}'`);
+    // Radios fade their colours when checked changes; measure once they settle.
+    await wait(`document.getAnimations().length === 0`);
     await ev(`document.getElementById('settings-heading').scrollIntoView(); true`);
     look[mode] =
       await ev(`(() => { const d = ${dialog}, s = getComputedStyle, body = s(document.body), h = s(d.querySelector('.settings-panel h3'));
@@ -84,7 +86,7 @@ try {
       return { dialogs: document.querySelectorAll('dialog[open]').length, font: s(d.querySelector('p, span')).fontFamily, caps: h.fontVariantCaps, paper, controls,
         contrast: { title: ratio(s(d.querySelector('h1')).color, ground), label: ratio(h.color, ground), text: ratio(s(d.querySelector('.settings-group p, .settings-group span')).color, ground), nav: ratio(s(d.querySelector('nav [aria-current]')).color, ground), muted: ratio(s(d.querySelector('nav a:not([aria-current]), nav button:not([aria-current])')).color, ground) } }; })()`);
     assert.equal(look[mode].dialogs, 0, `${mode} settings is a page, not a dialog`);
-    assert.match(look[mode].font, /^"?Archivo/, `${mode} Archivo`);
+    assert.match(look[mode].font, /^"?Barlow/, `${mode} Barlow`);
     assert.equal(look[mode].caps, 'all-small-caps', `${mode} small-caps labels`);
     for (const [name, value] of Object.entries(look[mode].contrast))
       assert.ok(value >= 4.5, `${mode} ${name} contrast ${value} below AA`);
@@ -106,7 +108,7 @@ try {
   await b('find', 'role', 'radio', 'click', '--name', 'Dark', '--exact');
   await wait(`document.documentElement.getAttribute('data-theme') === 'dark'`);
   step(
-    `Settings page opens on Interface with Appearance first; dark and light: no dialog, Archivo, small-caps labels, AA text contrast, paper focus ring ${JSON.stringify(look)}`,
+    `Settings page opens on Interface with Appearance first; dark and light: no dialog, Barlow, small-caps labels, AA text contrast, paper focus ring ${JSON.stringify(look)}`,
   );
   await tab('Models');
   assert.ok((await text()).includes('Automatic suggestions'));

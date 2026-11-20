@@ -12,7 +12,7 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
   let dom;
   function Fixture() {
     const [appearance, setAppearance] = useState('dark'),
-      [theme, setTheme] = useState('paperback'),
+      [theme, setTheme] = useState('main'),
       [vim, setVim] = useState(false);
     return h(InterfaceSettings, {
       appearance,
@@ -53,11 +53,14 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
     themeLabels.map((e) => e.querySelector('input').value),
     themeChoices.map((t) => t.id),
   );
+  // Each swatch: a mini line diagram (trunk plus four family lines), its name and blurb.
   assert.ok(
     themeLabels.every(
-      (e) =>
-        e.querySelectorAll('.theme-tile-inks i').length === 5 &&
-        e.querySelector('[data-theme-swatch]'),
+      (e, i) =>
+        e.querySelectorAll('[data-theme-swatch] > svg path').length === 5 &&
+        e.querySelector('.theme-choice-name').textContent === themeChoices[i].label &&
+        e.querySelector('.theme-choice-blurb').textContent === themeChoices[i].blurb &&
+        e.querySelector('input').labels[0] === e,
     ),
   );
   assert.equal(container.querySelectorAll('.bubble-tint-swatch').length, 0);
@@ -66,18 +69,18 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
     assert.equal(container.querySelector(`input[value=${value}]`).checked, true);
     assert.deepEqual(changes.at(-1), ['appearance', value]);
   }
-  await act(async () => container.querySelector('input[value=forest]').click());
-  assert.equal(container.querySelector('input[value=forest]').checked, true);
-  assert.equal(container.querySelector('input[value=paperback]').checked, false);
+  await act(async () => container.querySelector('input[value=ferry]').click());
+  assert.equal(container.querySelector('input[value=ferry]').checked, true);
+  assert.equal(container.querySelector('input[value=main]').checked, false);
   assert.equal(container.querySelectorAll('.theme-choice-name svg').length, 1);
   assert.ok(
     container
-      .querySelector('input[value=forest]')
+      .querySelector('input[value=ferry]')
       .closest('label')
       .querySelector('.theme-choice-name svg'),
   );
   assert.equal(container.querySelector('input[value=dark]').checked, true);
-  assert.deepEqual(changes.at(-1), ['theme', 'forest']);
+  assert.deepEqual(changes.at(-1), ['theme', 'ferry']);
   // Font choices: named radio lists after Theme, each switching only its own <html> attribute.
   const groups = [...container.querySelectorAll('[role=radiogroup]')];
   const labelsOf = (g) =>
@@ -94,10 +97,10 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
     ),
     ['Appearance', 'Reading font', 'Interface font'],
   );
-  assert.deepEqual(labelsOf(groups[1]), ['Literata', 'System']);
-  assert.deepEqual(labelsOf(groups[2]), ['Archivo', 'System']);
-  assert.equal(groups[1].querySelector('input[value=literata]').checked, true);
-  assert.equal(groups[2].querySelector('input[value=archivo]').checked, true);
+  assert.deepEqual(labelsOf(groups[1]), ['Atkinson Hyperlegible Next', 'System']);
+  assert.deepEqual(labelsOf(groups[2]), ['Barlow', 'System']);
+  assert.equal(groups[1].querySelector('input[value=atkinson]').checked, true);
+  assert.equal(groups[2].querySelector('input[value=barlow]').checked, true);
   const html = document.documentElement;
   await act(async () => groups[1].querySelector('input[value=system]').click());
   assert.equal(groups[1].querySelector('input[value=system]').checked, true);
@@ -105,8 +108,8 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
   assert.notEqual(html.getAttribute('data-interface-font'), 'system');
   assert.equal(localStorage.getItem('rabbithole.reading-font'), 'system');
   await act(async () => groups[2].querySelector('input[value=system]').click());
-  await act(async () => groups[1].querySelector('input[value=literata]').click());
-  assert.equal(html.getAttribute('data-reading-font'), 'literata');
+  await act(async () => groups[1].querySelector('input[value=atkinson]').click());
+  assert.equal(html.getAttribute('data-reading-font'), 'atkinson');
   assert.equal(html.getAttribute('data-interface-font'), 'system');
   assert.equal(localStorage.getItem('rabbithole.interface-font'), 'system');
   assert.equal(container.querySelector('input[value=dark]').checked, true);

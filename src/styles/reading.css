@@ -71,7 +71,7 @@
 .stats-toggle[aria-pressed='true'] {
   background: var(--color-overlay-pressed);
 }
-/* Replies: Literata 16px/1.6, no bubble (mockup Read). Code keeps the theme's code face. */
+/* Replies: the reading face, 16px/1.6, no bubble (mockup Read). Code keeps the theme's code face. */
 .reply-md,
 .reply-md .astryx-text {
   font-family: var(--rabbithole-font-reading);

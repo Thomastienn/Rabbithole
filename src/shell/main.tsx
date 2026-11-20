@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
-import '@fontsource/archivo/400.css';
-import '@fontsource/archivo/500.css';
-import '@fontsource/archivo/600.css';
-import '@fontsource/archivo/700.css';
-import '@fontsource/literata/400.css';
-import '@fontsource/literata/400-italic.css';
-import '@fontsource/literata/600.css';
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/500.css';
+import '@fontsource/barlow/600.css';
+import '@fontsource/barlow/700.css';
+import '@fontsource/barlow-semi-condensed/500.css';
+import '@fontsource/barlow-semi-condensed/600.css';
+import '@fontsource/barlow-semi-condensed/700.css';
+import '@fontsource/atkinson-hyperlegible-next/400.css';
+import '@fontsource/atkinson-hyperlegible-next/400-italic.css';
+import '@fontsource/atkinson-hyperlegible-next/600.css';
 import { Theme } from '@astryxdesign/core/theme';
-import { themes } from './astryx-themes';
+import { defaultThemeSlug, themes } from './astryx-themes';
 import ChatPage from './ChatPage';
 import {
   applyFont,
@@ -47,7 +50,7 @@ function App() {
     try {
       return savedTheme(localStorage.getItem('rabbithole.theme'));
     } catch {
-      return 'paperback';
+      return defaultThemeSlug;
     }
   });
   return (

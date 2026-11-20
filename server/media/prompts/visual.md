@@ -85,7 +85,7 @@ Rabbithole's fragment contract:
   var(--color-text-secondary), borders var(--color-border), action
   var(--color-accent), focus var(--focus-outline-color). Series may use var(--color-text-yellow),
   var(--color-text-blue), var(--color-text-pink), var(--color-text-green).
-  Use Archivo for labels and controls, Literata for result lines,
+  Use Barlow for labels and controls, Atkinson Hyperlegible Next for result lines,
   and monospace for code. Do not hardcode palette values. Both light and dark
   must work; CSS variables update when the theme or appearance changes. The
   current theme palette below is a generation-time reference; keep CSS variable
