@@ -18,34 +18,38 @@ export function savedAppearance(): Appearance {
 
 // Theme slugs match src/astryx-themes.ts; Appearance still picks each theme's light or dark variant.
 export const themeChoices = [
-  { id: 'paperback', label: 'Paperback' },
-  { id: 'forest', label: 'Forest' },
-  { id: 'harbor', label: 'Harbor' },
-  { id: 'dusk', label: 'Dusk' },
-  { id: 'ember', label: 'Ember' },
-  { id: 'graphite', label: 'Graphite' },
+  {
+    id: 'main',
+    label: 'Main Line',
+    blurb: 'Navy and porcelain with cobalt, amber, green and magenta.',
+  },
+  { id: 'enamel', label: 'Enamel', blurb: 'Bottle green and cream, like a station sign.' },
+  { id: 'tunnel', label: 'Tunnel', blurb: 'Neutral charcoal with signal-lamp lines.' },
+  { id: 'timetable', label: 'Timetable', blurb: 'Printed paper with press inks.' },
+  { id: 'ferry', label: 'Ferry', blurb: 'Deep-water teal with coral and sand.' },
+  { id: 'terminus', label: 'Terminus', blurb: 'Carriage maroon with gold and cream.' },
 ] as const;
 
 export type ThemeChoice = (typeof themeChoices)[number]['id'];
 
-// Stored per browser and app origin; no, unknown or unreadable value means Paperback.
+// Stored per browser and app origin; no, unknown (including the retired Paperback-era slugs) or unreadable value means Main Line.
 export const savedTheme = (saved: string | null): ThemeChoice =>
-  themeChoices.find((t) => t.id === saved)?.id ?? 'paperback';
+  themeChoices.find((t) => t.id === saved)?.id ?? 'main';
 
 export const fontChoices = {
   'reading-font': [
-    { id: 'literata', label: 'Literata' },
+    { id: 'atkinson', label: 'Atkinson Hyperlegible Next' },
     { id: 'system', label: 'System' },
   ],
   'interface-font': [
-    { id: 'archivo', label: 'Archivo' },
+    { id: 'barlow', label: 'Barlow' },
     { id: 'system', label: 'System' },
   ],
 } as const;
 
 export type FontKind = keyof typeof fontChoices;
 
-// Stored per browser and app origin; no, unknown or unreadable value means the first (bundled) font.
+// Stored per browser and app origin; no, unknown (including the retired literata and archivo) or unreadable value means the first (bundled) font.
 export function savedFont(kind: FontKind): string {
   try {
     const saved = localStorage.getItem(`rabbithole.${kind}`);

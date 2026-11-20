@@ -8,9 +8,9 @@ import { gsap } from 'gsap';
 import { renderVisual } from './visualMarkup';
 import { reflectSvgHidden, stepThrough } from './stepThrough';
 import 'katex/dist/katex.min.css';
-import '@fontsource/archivo/400.css';
-import '@fontsource/archivo/600.css';
-import '@fontsource/literata/400.css';
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/600.css';
+import '@fontsource/atkinson-hyperlegible-next/400.css';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
 Object.assign(window, {

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Divider } from '@astryxdesign/core/Divider';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
@@ -19,6 +19,23 @@ import {
 import { savePreference } from '../shell/preferences';
 import { Theme } from '@astryxdesign/core/theme';
 import { themes } from '../shell/astryx-themes';
+
+// Swatch diagram (mockup Settings): the trunk, then family lines 1 to 4, and their stations.
+const SWATCH_LINES = [
+  'M8 24H108',
+  'M26 24L40 10H60',
+  'M62 24L76 10H108',
+  'M26 24L40 38H74',
+  'M76 24L90 38H108',
+];
+const SWATCH_STATIONS = [
+  [8, 24],
+  [108, 24],
+  [60, 10],
+  [108, 10],
+  [74, 38],
+  [108, 38],
+];
 
 // Map keys (TreeOverview handlers); Esc is ChatPage's close.
 const KEYS: [string, string[]][] = [
@@ -118,7 +135,7 @@ export default function InterfaceSettings({
       <Divider />
       <Section
         title="Theme"
-        description="Colours for the whole app, including your question bubbles and the four branch inks. Shown in your appearance's variant. Saved in this browser."
+        description="A theme sets the ground and the four line colours. Appearance picks its light or dark side. Saved in this browser."
       >
         <fieldset className="theme-tiles">
           <legend className="sr-only">Theme</legend>
@@ -132,23 +149,30 @@ export default function InterfaceSettings({
                 checked={theme === t.id}
                 onChange={() => setTheme(t.id)}
               />
-              {/* Each tile wears its own theme: ground, question bubble, a reply line, the action colour and the four branch inks. */}
+              {/* Each swatch wears its own theme: a mini line diagram of the trunk and the four family lines. */}
               <Theme theme={themes[t.id]} mode={appearance}>
-                <span aria-hidden="true" className="theme-tile" data-theme-swatch={t.id}>
-                  <i className="theme-tile-bubble" />
-                  <i className="theme-tile-line" />
-                  <span className="theme-tile-inks">
-                    <i style={{ background: 'var(--color-accent)' }} />
-                    {[1, 2, 3, 4].map((n) => (
-                      <i key={n} style={{ background: `var(--rabbithole-ink-${n})` }} />
+                <span className="theme-tile" data-theme-swatch={t.id}>
+                  <svg viewBox="0 0 116 48" aria-hidden="true">
+                    {SWATCH_LINES.map((d, i) => (
+                      <path
+                        key={d}
+                        d={d}
+                        style={{
+                          stroke: i ? `var(--rabbithole-ink-${i})` : 'var(--rabbithole-paper)',
+                        }}
+                      />
                     ))}
+                    {SWATCH_STATIONS.map(([cx, cy]) => (
+                      <circle key={`${cx} ${cy}`} cx={cx} cy={cy} r="3.5" />
+                    ))}
+                  </svg>
+                  <span className="theme-choice-name">
+                    {t.label}
+                    {theme === t.id && <Icon icon={CheckIcon} size="sm" />}
                   </span>
+                  <span className="theme-choice-blurb">{t.blurb}</span>
                 </span>
               </Theme>
-              <HStack gap={1} vAlign="center" className="theme-choice-name">
-                <Text weight="semibold">{t.label}</Text>
-                {theme === t.id && <Icon icon={CheckIcon} size="sm" />}
-              </HStack>
             </label>
           ))}
         </fieldset>

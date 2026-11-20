@@ -250,7 +250,7 @@ The panel on the left of every page holding the app's own controls (views, searc
 _Avoid_: Top bar, band, nav, drawer (outside narrow screens)
 
 **Theme**:
-A named colour palette for the whole app, such as Paperback or Forest, covering surfaces, ink, accent and the four series inks. Each theme has a light and a dark variant; Appearance chooses between them.
+A named colour palette for the whole app, such as Main Line or Enamel, covering the ground, ink, porcelain and the four family line colours. Each theme has a light and a dark variant; Appearance chooses between them.
 _Avoid_: Skin, colour scheme, tint
 
 **Appearance**:

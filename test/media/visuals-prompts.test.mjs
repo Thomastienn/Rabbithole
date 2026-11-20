@@ -42,10 +42,10 @@ test('visual prompts receive the requested theme palette in light and dark, with
         if (mode === 'light') light = palette.tokens['--color-background-body'];
         else
           assert.notEqual(palette.tokens['--color-background-body'], light, `${name} modes differ`);
-        if (name === 'forest')
+        if (name === 'enamel')
           assert.equal(
             palette.tokens['--color-text-green'],
-            mode === 'light' ? '#3b6629' : '#9cc47a',
+            mode === 'light' ? '#0b6aa3' : '#6cc7ff',
           );
         await until(async () =>
           (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every((a) => a.status === 'ready'),
@@ -61,7 +61,7 @@ test('visual prompts receive the requested theme palette in light and dark, with
       await until(() => calls.length === 1);
       const instructions = calls.pop(),
         palette = JSON.parse(instructions.split('\nCurrent theme palette: ')[1]);
-      assert.equal(palette.name, 'paperback');
+      assert.equal(palette.name, 'main');
       assert.equal(palette.mode, 'dark');
       assert.doesNotMatch(instructions, /PRIVATE/);
       // The visual skill is fixed text ahead of the per-call palette.
