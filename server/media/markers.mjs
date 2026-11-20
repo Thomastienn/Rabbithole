@@ -33,6 +33,12 @@ export function stripMarkers(text, final = false) {
             if (!body.trim()) continue;
             // [[end]] closes the end section; it carries no value.
             const kind = KIND.exec(body) ?? /^\s*(end)\s*$/i.exec(body);
+            // The reply ends at [[end]] (ADR 0016): text after it is dropped.
+            if (kind?.[1].toLowerCase() === 'end') {
+                cuts.push([start, text.length]);
+                markers.push({ kind: 'end', value: '', start });
+                break;
+            }
             if (kind) cuts.push([start, end]);
             else cuts.push([start, start + 2], [end - 2, end]);
             markers.push({
@@ -44,15 +50,18 @@ export function stripMarkers(text, final = false) {
         else if (whole !== '[')
             cuts.push([start, start + 2], ...(whole.endsWith(']') ? [[end - 1, end]] : []));
     }
-    const at = (p) => p - cuts.reduce((n, [s, e]) => n + (e <= p ? e - s : 0), 0);
     let out = '',
         cursor = 0;
     for (const [s, e] of cuts) {
         out += text.slice(cursor, s);
         cursor = e;
     }
+    out += text.slice(cursor);
+    // A position after [[end]] maps to the reply's end.
+    const at = (p) =>
+        Math.min(out.length, p - cuts.reduce((n, [s, e]) => n + (e <= p ? e - s : 0), 0));
     return {
-        text: out + text.slice(cursor),
+        text: out,
         markers: markers.map(({ start, ...m }) => ({ ...m, position: at(start) })),
         at,
     };

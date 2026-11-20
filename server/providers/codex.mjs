@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
-import { STALLED } from './chatStream.mjs';
+import { ENDED, STALLED } from './chatStream.mjs';
 
 export class Codex {
     readsImages = true;
@@ -323,7 +323,12 @@ export class Codex {
                     error ? reject(error) : resolve();
                 };
                 finishTurn = () => {
-                    emit({ type: 'status', status: 'interrupted' });
+                    // A run the server ended at the end section completed; the next turn resumes the thread.
+                    if (signal.reason === ENDED) emitUsage();
+                    emit({
+                        type: 'status',
+                        status: signal.reason === ENDED ? 'completed' : 'interrupted',
+                    });
                     finish();
                 };
                 // Times silence, not the whole turn, so a reply with several long tool calls can finish.
@@ -337,6 +342,7 @@ export class Codex {
                 };
                 idle();
                 const listener = (message) => {
+                    if (signal.aborted) return;
                     const p = message.params;
                     if (message.method === 'rabbithole/disconnected')
                         return finish(
@@ -350,6 +356,12 @@ export class Codex {
                     }
                     if ((p.turnId && p.turnId !== turnId) || (p.turn?.id && p.turn.id !== turnId))
                         return;
+                    // Reasoning or a message after earlier items begins a later model response.
+                    if (
+                        message.method === 'item/started' &&
+                        ['reasoning', 'agentMessage'].includes(p.item?.type)
+                    )
+                        emit({ type: 'response' });
                     if (message.method === 'item/agentMessage/delta')
                         emit({ type: 'delta', item: p.itemId, text: p.delta });
                     if (message.method === 'item/completed' && p.item?.type === 'agentMessage')
