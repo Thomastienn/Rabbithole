@@ -130,7 +130,7 @@ try {
         ? `Rabbithole is already using data directory ${dir}. Stop that instance before restarting, or choose a different RABBITHOLE_DATA_DIR.`
         : error.message.startsWith('Database schema ')
           ? error.message
-          : `Rabbithole could not start. Check write access and free disk space in ${dir}, then retry. See README.md for backup and restore.`,
+          : `Rabbithole could not start. Check write access and free disk space in ${dir}, then retry. See docs/guide/data-and-privacy.md for backup and restore.`,
   );
   await shutdown(1);
 }
