@@ -46,7 +46,9 @@ Names are short, one to four words in the learner's language. The host outlines
 the part under the pointer and asks about it on click. Never name controls
 (buttons, inputs, selects, sliders, the step controls) as parts; they keep
 working and never pick. Objects drawn by script get data-part in the script.
-Plain canvas drawings have no parts.
+In a 3D scene, a part is a three.js object with a name and userData.part = true,
+nested the same way: a Group named "Reactor" holding a Mesh named "Control rods".
+Render with THREE.WebGLRenderer. Plain canvas drawings have no parts.
 
 Text budget: at most a few short sentences in the whole fragment, and short
 labels. Do not put explanatory paragraphs inside the fragment (a predict-then-reveal

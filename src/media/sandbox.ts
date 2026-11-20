@@ -66,4 +66,22 @@ function report() {
     parent.postMessage({ type: 'height', height: Math.ceil(natural * scale) }, '*');
 }
 new ResizeObserver(report).observe(document.body);
-watchParts(window, root, (message) => parent.postMessage(message, '*'));
+const drew = watchParts(window, root, (message) => parent.postMessage(message, '*'));
+type Frame = Parameters<typeof drew>;
+// three.js sets render on each instance, so this subclass wraps it to learn each canvas's scene and camera.
+class WebGLRenderer extends THREE.WebGLRenderer {
+    constructor(...args: unknown[]) {
+        super(...args);
+        const render = this.render;
+        this.render = (scene: Frame[1], camera: Frame[2]) => {
+            render.call(this, scene, camera);
+            // Picking never breaks the visual's animation loop.
+            try {
+                drew(this.domElement, scene, camera);
+            } catch {
+                /* no part this frame */
+            }
+        };
+    }
+}
+Object.assign(window, { THREE: { ...THREE, WebGLRenderer } });
