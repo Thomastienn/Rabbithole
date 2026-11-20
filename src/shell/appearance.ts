@@ -18,6 +18,7 @@ export function savedAppearance(): Appearance {
 
 // Theme slugs match src/astryx-themes.ts; Appearance still picks each theme's light or dark variant.
 export const themeChoices = [
+  { id: 'platform', label: 'Platform', blurb: 'Graphite with the Main Line colours.' },
   {
     id: 'main',
     label: 'Main Line',
@@ -32,9 +33,9 @@ export const themeChoices = [
 
 export type ThemeChoice = (typeof themeChoices)[number]['id'];
 
-// Stored per browser and app origin; no, unknown (including the retired Paperback-era slugs) or unreadable value means Main Line.
+// Stored per browser and app origin; no, unknown (including the retired Paperback-era slugs) or unreadable value means Platform.
 export const savedTheme = (saved: string | null): ThemeChoice =>
-  themeChoices.find((t) => t.id === saved)?.id ?? 'main';
+  themeChoices.find((t) => t.id === saved)?.id ?? 'platform';
 
 export const fontChoices = {
   'reading-font': [

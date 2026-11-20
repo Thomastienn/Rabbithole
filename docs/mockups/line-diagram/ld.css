@@ -35,6 +35,25 @@
   --fail: light-dark(#c0152a, #ff6b78);
   --sel: light-dark(#1f4fd833, #4d7dff66);
 }
+/* Platform: Graphite with the Main Line colours; the app default. */
+[data-theme="platform"] {
+  --g: light-dark(#f6f8fa, #14171d);
+  --deep: light-dark(#edeff3, #0d1014);
+  --up: light-dark(#ffffff, #1d2128);
+  --up2: light-dark(#e1e4ea, #292d36);
+  --w: light-dark(#191e27, #f3f5f9);
+  --on-w: light-dark(#ffffff, #14171d);
+  --ink: light-dark(#1d2229, #e3e6ec);
+  --mut: light-dark(#5a616c, #9ea3ad);
+  --seam: light-dark(#191e2724, #ffffff22);
+  --seam2: light-dark(#191e2780, #ffffff66);
+  --l1: light-dark(#225ebf, #6da5f8);
+  --l2: light-dark(#976213, #edb24d);
+  --l3: light-dark(#287c42, #5dc47e);
+  --l4: light-dark(#a93772, #e37fb0);
+  --fail: light-dark(#be222a, #f17070);
+  --sel: light-dark(#225ebf33, #6da5f866);
+}
 /* Enamel: Bottle green and cream, like a station sign. */
 [data-theme="enamel"] {
   --g: light-dark(#f3f6ee, #0b2a22);

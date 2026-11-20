@@ -32,7 +32,7 @@ test('browser preferences restore valid choices independently, fall back safely 
     value: { getItem: (k) => values.get(k) ?? null, setItem: (k, v) => values.set(k, v) },
   });
   assert.equal(savedAppearance(), 'dark');
-  assert.equal(savedTheme(null), 'main');
+  assert.equal(savedTheme(null), 'platform');
   assert.equal(savedVim(), false);
   assert.equal(savedLibraryLayout(), 'shelf', 'Shelf is the default');
   savePreference('library-layout', 'list');
@@ -82,9 +82,9 @@ test('browser preferences restore valid choices independently, fall back safely 
   }
   savePreference('appearance', 'sepia');
   assert.equal(savedAppearance(), 'dark');
-  assert.equal(savedTheme('ocean'), 'main');
+  assert.equal(savedTheme('ocean'), 'platform');
   for (const old of ['paperback', 'forest', 'harbor', 'dusk', 'ember', 'graphite'])
-    assert.equal(savedTheme(old), 'main', `retired ${old} opens Main Line`);
+    assert.equal(savedTheme(old), 'platform', `retired ${old} opens Platform`);
   assert.equal(values.has('rabbithole.bubble-tint'), false);
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
@@ -116,7 +116,7 @@ const contrast = (fg, bg) => {
   return (a + 0.05) / (b + 0.05);
 };
 
-test('all six authored and shipped theme modules agree on the mockup ground, porcelain focus and ordered family lines', async () => {
+test('all seven authored and shipped theme modules agree on the mockup ground, porcelain focus and ordered family lines', async () => {
   const css = readFileSync('docs/mockups/line-diagram/ld.css', 'utf8');
   const tiles = [];
   for (const { id } of themeChoices) {
@@ -139,7 +139,7 @@ test('all six authored and shipped theme modules agree on the mockup ground, por
     }
     tiles.push(JSON.stringify(theme.tokens['--color-background-body']));
   }
-  assert.equal(new Set(tiles).size, 6);
+  assert.equal(new Set(tiles).size, 7);
 });
 
 test('every theme and side: text, family lines, selection and focus meet WCAG AA', () => {

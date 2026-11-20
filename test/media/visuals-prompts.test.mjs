@@ -61,7 +61,7 @@ test('visual prompts receive the requested theme palette in light and dark, with
       await until(() => calls.length === 1);
       const instructions = calls.pop(),
         palette = JSON.parse(instructions.split('\nCurrent theme palette: ')[1]);
-      assert.equal(palette.name, 'main');
+      assert.equal(palette.name, 'platform');
       assert.equal(palette.mode, 'dark');
       assert.doesNotMatch(instructions, /PRIVATE/);
       // The visual skill is fixed text ahead of the per-call palette.

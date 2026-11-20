@@ -233,7 +233,7 @@ A learning tree is a transit line diagram. The trunk conversation is a porcelain
 
 The world is midnight enamel by default: a deep navy ground, a deeper field for the sidebar and the docked map, and raised enamel for anything that sits on top. Light appearance swaps to a porcelain ground with midnight ink and action and the same lines darkened to AA. It is flat and dense in the way a printed network map is dense: thick round-capped lines that turn only at 45 or 90 degrees, hairline seams, condensed caps labels, and no shadow, gradient or blur. Reading is the exception to density: replies sit at a 640px measure in a large, open reading face.
 
-The system ships as six interchangeable themes that share every role and differ only in palette (Main Line by default, then Enamel, Tunnel, Timetable, Ferry, Terminus), each with a light and a dark variant chosen separately in Settings (Dark is the default appearance).
+The system ships as seven interchangeable themes that share every role and differ only in palette (Platform by default, then Main Line, Enamel, Tunnel, Timetable, Ferry, Terminus), each with a light and a dark variant chosen separately in Settings (Dark is the default appearance). Platform carries Main Line's four hues on a low-chroma graphite ground so long reading sessions are not spent on saturated navy; Main Line stays as the navy original.
 
 **Key Characteristics:**
 - One colour per first-level branch family, four lines repeating; porcelain is the trunk.
@@ -245,7 +245,7 @@ The system ships as six interchangeable themes that share every role and differ 
 
 ## Colors
 
-A midnight enamel ground carrying one porcelain trunk and four equal-weight family lines; scarlet is held back for failure. Frontmatter values are Main Line, dark appearance (the default); every role is defined as a `light-dark()` pair in each theme source (`src/themes/<name>/<name>Theme.ts`).
+A midnight enamel ground carrying one porcelain trunk and four equal-weight family lines; scarlet is held back for failure. Frontmatter and the role values below are Main Line, dark appearance; Platform, the default, is in the theme table; every role is defined as a `light-dark()` pair in each theme source (`src/themes/<name>/<name>Theme.ts`).
 
 ### Primary
 - **Porcelain** (#ffffff dark / #0b1230 light): the trunk line, every station and interchange ring, the focus ring, conversation titles and current-item text, and the one action fill (New chat, Send, the primary button). Text on it is **On Porcelain** (#0b1230 dark / #ffffff light), which is also the text on any filled line chip.
@@ -274,11 +274,12 @@ The lines are also mapped into Astryx's hue slots (yellow = line 1, green = line
 - **Selection** (line 1 at 40% dark / 20% light): text selection, passage highlight and revealed text.
 - **Scrim** (black at 72% dark / porcelain at 40% light): backdrop behind dialogs and enlarged media.
 
-### The six themes
+### The seven themes
 Each theme keeps every role above and changes only the palette. Values are dark / light.
 
 | Theme | Ground | Deep field | Raised | Porcelain | Line 1 | Line 2 | Line 3 | Line 4 | Failure |
 |---|---|---|---|---|---|---|---|---|---|
+| Platform: graphite, Main Line colours (default) | #14171d / #f6f8fa | #0d1014 / #edeff3 | #1d2128 / #ffffff | #f3f5f9 / #191e27 | #6da5f8 / #225ebf | #edb24d / #976213 | #5dc47e / #287c42 | #e37fb0 / #a93772 | #f17070 / #be222a |
 | Main Line: navy and porcelain | #0b1230 / #f4f6fb | #070d24 / #e8ecf6 | #141d42 / #ffffff | #ffffff / #0b1230 | #4d7dff / #1f4fd8 | #ffc20e / #8f6200 | #22b14c / #157a3a | #f06bb0 / #b8297a | #ff6b78 / #c0152a |
 | Enamel: bottle green and cream | #0b2a22 / #f3f6ee | #061f19 / #e6ebdd | #12382e / #ffffff | #fff6df / #07271e | #ffd23f / #8a6400 | #6cc7ff / #0b6aa3 | #ff9a8a / #b23a2a | #d6a8ff / #7a3fb3 | #ff8a80 / #b3141f |
 | Tunnel: charcoal, signal lamps | #151617 / #f3f3f1 | #0c0d0e / #e7e7e3 | #202224 / #ffffff | #ffffff / #151617 | #ff9433 / #b04e00 | #3cc8ff / #0a6a9e | #a6e22e / #48720a | #b48cff / #6a3fc4 | #ff6b6b / #c0152a |
