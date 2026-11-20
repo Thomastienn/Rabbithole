@@ -1,4 +1,4 @@
-// Finish-review captures: all seven screens, dark and light, desktop and narrow, over a seeded fixture (synthetic providers, production build).
+// Finish-review captures: every screen, dark and light, desktop and narrow, over a seeded fixture (synthetic providers, production build).
 // Usage: node scripts/capture-finish.mjs [round]  → .impeccable/review/finish-<round>/<screen>-<scheme>-<width>.png
 import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -209,12 +209,25 @@ try {
       await page('Settings');
       await wait(`document.activeElement?.id === 'settings-heading'`);
       await shot('4-settings');
+      await b('click', '#settings-usage');
+      await wait(`document.activeElement?.id === 'settings-section-usage'`);
+      await shot('4-usage');
       await b('press', 'Escape');
       await wait(`!document.querySelector('.settings-page:not([hidden])')`);
       await nav();
       await page('Knowledge');
       await wait(`document.querySelectorAll('[data-concept]').length >= 3`);
       await shot('5-knowledge');
+      for (const [view, n] of [
+        ['Videos', '8-videos'],
+        ['Pieces', '9-pieces'],
+      ]) {
+        await page(view);
+        await wait(
+          `[...document.querySelectorAll('h1')].some(h => h.checkVisibility() && h.textContent === '${view}') && ${idle}`,
+        );
+        await shot(n);
+      }
     }
   console.log(files.join('\n'));
 } finally {

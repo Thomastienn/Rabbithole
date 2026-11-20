@@ -203,6 +203,11 @@ test('unreported-only ranges show dashes and no estimated bars', async (t) => {
   assert.match(unreported.text('.usage-total'), /^— tokens today/);
   assert.deepEqual(unreported.rows()[0].cells.slice(1, 5), ['—', '—', '—', '—']);
   assert.equal(unreported.container.querySelectorAll('.usage-bar rect[data-series]').length, 0);
+  assert.deepEqual(
+    [...unreported.container.querySelectorAll('.usage-scale span')].map((s) => s.textContent),
+    ['3', '2', '1', '0'],
+    'scale ticks stay whole and distinct',
+  );
   assert.ok(
     unreported
       .bars()

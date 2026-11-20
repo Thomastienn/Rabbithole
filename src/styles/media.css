@@ -331,6 +331,13 @@
   width: 92vw;
   height: calc(100dvh - 8rem);
 }
+/* Diagrams are vector, so the enlarged one fills the sheet rather than keeping its inline width. */
+.diagram-lightbox img {
+  width: min(960px, 92vw);
+  height: auto;
+  max-height: calc(100dvh - 8rem);
+  object-fit: contain;
+}
 /* Media viewers share the raised sheet and dimmed paper backdrop; no blur. */
 .astryx-lightbox::backdrop {
   backdrop-filter: none !important;

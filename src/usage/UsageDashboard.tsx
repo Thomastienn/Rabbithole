@@ -160,7 +160,8 @@ export default function UsageDashboard({
     rows = buckets(events, s, cumulative),
     sum = totals(events);
   const titles = new Map(events.flatMap((e) => (e.tree ? [[e.tree, e.treeTitle ?? '']] : [])));
-  const max = Math.max(1, ...rows.map(total)),
+  // A multiple of 3 keeps the four scale ticks whole and distinct (an empty chart read 1, 1, 0, 0).
+  const max = Math.ceil(Math.max(1, ...rows.map(total)) / 3) * 3,
     shown = rows[active];
   const rangeLabel = {
     today: 'today',

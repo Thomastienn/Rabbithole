@@ -7,7 +7,7 @@ related_targets: ["src/shell/main.tsx","src/shell/ChatPage.tsx","src/shell/Shell
 
 # Rabbithole workspace (shipped app)
 
-Mode: Operate. Build path: code-led. The shipped app still wears Paperback Series (DESIGN.md, written 2026-11-13). The owner chose a replacement world on 2026-11-19; until Ralph runs ship it, the authority for the new look is this contract plus the static mockups in `docs/mockups/line-diagram/`. DESIGN.md is rewritten from the build when the new world ships.
+Mode: Operate. Build path: code-led. The owner chose Line Diagram on 2026-11-19 and the app ships it (epic Rabbithole-ldr). DESIGN.md was rewritten from the build on 2026-11-20 after the finish review (Rabbithole-ldr.12); this contract and the mockups in `docs/mockups/line-diagram/` stay the design authority for later changes.
 
 ## Direction contract
 
@@ -44,6 +44,7 @@ FINISH: unreviewed and undocumented is unfinished; this mockup build ends with t
 
 ### Kept behaviour notes
 
+- Downloads sits at the sidebar foot beside Settings only while the download list is non-empty (src/shell/Downloads.tsx); an empty list renders nothing.
 - No idle "Saved" label: layout writes batch once a minute, so only the failure state shows.
 - Explicit video requests reserve their place in the reply; pending shows a slim status line with phase and percentage plus Cancel; failure shows a safe reason and Retry.
 - Copy buttons on replies and code blocks, and title search across learning trees, remain.
