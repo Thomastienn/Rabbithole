@@ -82,6 +82,7 @@ test('a record_turn call over MCP saves the turn, shows next questions at once, 
     const quick = [];
     let watched,
         result,
+        repeated,
         record = true;
     const env = await open(
         {
@@ -106,6 +107,13 @@ test('a record_turn call over MCP saves the turn, shows next questions at once, 
                     );
                     result = (await client.callTool({ name: 'record_turn', arguments: turn }))
                         .content[0].text;
+                    // A repeat answer after record_turn runs no app calls, so no second visual.
+                    repeated = (
+                        await client.callTool({
+                            name: 'show_visual',
+                            arguments: { title: 'T', shows: 'S', alt: 'A', after: 'threads.' },
+                        })
+                    ).content[0].text;
                     await client.close();
                     mcp.close();
                     // Next questions reach the learner before the reply ends.
@@ -131,8 +139,10 @@ test('a record_turn call over MCP saves the turn, shows next questions at once, 
         assert.ok(!watched.seen.some((e) => e.type === 'tool'));
         assert.match(result, /skipped .*suggestions\[1\]/);
         assert.match(result, /end your reply now\.$/);
+        assert.equal(repeated, 'The reply has already ended.');
         assert.ok(!watched.seen.some((e) => e.type === 'text' && e.text.includes('Repeat')));
         const saved = await env.get(`/api/trees/${tree.id}`);
+        assert.equal(saved.artifacts.length, 0);
         const reply = saved.messages.at(-1);
         assert.equal(reply.text, REPLY);
         assert.deepEqual(reply.questions, ['Why can a mutex deadlock?']);

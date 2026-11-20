@@ -45,7 +45,8 @@ export function appCalls(
                     : visualPosition(input, replySoFar, responseStart, position, !textCall),
                 visualSide(input),
             );
-            return 'queued';
+            // A bare "queued" read as the end of the reply to Claude, which then skipped the rest of its answer.
+            return 'queued; continue your reply where you stopped, without repeating any text.';
         }
         if (name === MAKE_VIDEO.name) {
             makeVideo(readMakeVideo(input), position, replySoFar);

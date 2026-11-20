@@ -80,7 +80,13 @@ export const TOOL_VISUAL_RULES = (
     beforeCheck +
     'Check yourself: offer at most one optional predict-then-reveal check per reply, through show_visual with check_answer.' +
     afterCheck
-).replaceAll('rabbithole-visual block', 'show_visual call');
+)
+    .replaceAll('rabbithole-visual block', 'show_visual call')
+    // A native call cannot sit between two lines of text, so the tutor wrote empty wide blocks.
+    .replace(
+        'Use :::wide and ::: for one visual or image at full reply width, with only the image or show_visual call inside.',
+        'Use :::wide and ::: for one image at full reply width, with only the image inside; never put a show_visual call in it.',
+    );
 // A model without native tool calling writes Hermes-style calls as text; no result comes back.
 const textToolsRule = (tools) =>
     'You cannot call tools natively. Call each tool below by writing <tool_call>{"name": "tool name", "arguments": {...}}</tool_call> in your reply exactly where the call belongs, with the arguments as one JSON object. The app runs the call and hides it from the learner. No result comes back: treat it as "queued" and continue your reply right after it. Call no other tools, and do not access files or execute code. Tools (name, description and JSON Schema parameters): ' +

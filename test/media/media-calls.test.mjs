@@ -127,7 +127,7 @@ test('make_video plans from the conversation; other media beside it gets a plain
         ];
         const other = env.store.create('Mixed', 'codex');
         await (await env.post(`/api/trees/${other.id}/messages`, { text: ask })).text();
-        assert.equal(results[0], 'queued');
+        assert.match(results[0], /^queued; continue your reply/);
         assert.match(results[1], /make_video stands alone/);
         assert.match(results[2], /skipped video_offer \(never in a reply holding/);
         // The tutor judges the ask: no trigger words and other languages start a video too.

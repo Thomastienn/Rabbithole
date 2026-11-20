@@ -70,6 +70,9 @@ test('the tutor prompt keeps visuals out of :::figure', () => {
 test('with show_visual offered, the tutor prompt holds no visual block rules', () => {
     assert.doesNotMatch(TOOL_VISUAL_RULES, /rabbithole-visual/);
     assert.doesNotMatch(TOOL_VISUAL_RULES, /rabbithole-video/);
+    // A native call cannot sit inside :::wide, so wide holds images only.
+    assert.match(TOOL_VISUAL_RULES, /never put a show_visual call in it/);
+    assert.doesNotMatch(TOOL_VISUAL_RULES, /image or show_visual call inside/);
     const prompt = tutorSystem({ tools: [SHOW_VISUAL] });
     assert.doesNotMatch(prompt, /rabbithole-visual/);
     assert.match(tutorSystem({}), /rabbithole-visual block/);

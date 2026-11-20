@@ -78,7 +78,7 @@ test('show_visual mid-reply lands at its position, starts at once and keeps its 
         // Plain errors name the argument; the corrected call is queued.
         assert.match(results[0], /show_visual needs alt/);
         assert.match(results[1], /title is 200 characters/);
-        assert.equal(results[2], 'queued');
+        assert.match(results[2], /^queued; continue your reply/);
         // Never tool activity, live or stored.
         assert.ok(!events.some((e) => e.type === 'tool'));
 

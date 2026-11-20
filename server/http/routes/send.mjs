@@ -372,6 +372,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                         if (!isAppTool(name))
                             return ctx.tools.run(name, input, { conversation: id, reply, signal });
                         if (finished) throw new Error('The reply has already ended.');
+                        // A repeat answer after record_turn (Claude Code asks for one after an empty response) runs no app calls.
+                        if (recordedItems) return 'The reply has already ended.';
                         const result = calls.run(name, input, text.length, text, responseStart);
                         if (name === RECORD_TURN.name && text.trim())
                             recordedItems ??= new Set(items.keys());

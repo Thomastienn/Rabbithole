@@ -95,7 +95,7 @@ test('a custom endpoint gets "queued" for show_visual and its repeated continuat
     assert.deepEqual(chats[2].body.messages.at(-1), {
         role: 'tool',
         tool_call_id: 'call-0',
-        content: 'queued',
+        content: 'queued; continue your reply where you stopped, without repeating any text.',
     });
 
     await until(() => store.tree(id).artifacts[0]?.status === 'ready');
