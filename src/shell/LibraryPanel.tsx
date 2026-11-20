@@ -49,8 +49,8 @@ export default function LibraryPanel({
             <VStack gap={2}>
               <Heading level={1}>Library</Heading>
               <Text color="secondary" className="library-intro">
-                Every learning tree you have started. A tree keeps its root conversation and every
-                branch.
+                Every learning tree you have started. One tick is one conversation, in the colour of
+                its line.
               </Text>
             </VStack>
             <Button
@@ -100,6 +100,7 @@ export default function LibraryPanel({
                   </HStack>
                   <LibraryShelf
                     groups={libraryGroups}
+                    query={libraryQuery}
                     layout={libraryLayout}
                     current={root}
                     renaming={renaming?.place === 'library' ? renaming.id : undefined}
@@ -109,6 +110,7 @@ export default function LibraryPanel({
                     onCancelRename={finishRename}
                     onStartRename={(id) => setRenaming({ id, place: 'library' })}
                     onDelete={askDelete}
+                    onNewChat={busy ? undefined : newChat}
                   />
                 </>
               )}

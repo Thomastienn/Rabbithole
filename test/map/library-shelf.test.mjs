@@ -65,6 +65,16 @@ test('volumes show date groups, counts, one spine tick per conversation and the 
     ['How do fungi trade?'],
   );
   assert.ok(button(nav, 'Actions for Roman roads'));
+  const trigger = button(nav, 'Actions for Roman roads');
+  await act(async () => trigger.click());
+  const menu = document.getElementById(trigger.getAttribute('aria-controls'));
+  const del = [...menu.querySelectorAll('[role=menuitem]')].find((e) =>
+    e.textContent.includes('Delete chat'),
+  );
+  assert.equal(del.dataset.variant, 'destructive');
+  await act(async () => del.click());
+  assert.deepEqual(calls.at(-1), ['delete', 'roads', 'chat-actions-roads']);
+  calls.length = 0;
   await act(async () => button(nav, "Bayes' rule, slowly").click());
   assert.deepEqual(calls, [['open', 'bayes']]);
 });
@@ -80,12 +90,17 @@ test('List layout, renaming in place and no matches', async (t) => {
     onStartRename() {},
     onDelete() {},
   };
-  const { container, cleanup } = await render(
+  const { container, act, cleanup } = await render(
     h(
       'div',
       null,
       h(LibraryShelf, { ...base, groups: treeGroups(trees, now), renaming: 'roads' }),
-      h(LibraryShelf, { ...base, groups: [] }),
+      h(LibraryShelf, {
+        ...base,
+        groups: [],
+        query: ' quantum ',
+        onNewChat: () => calls.push(['new']),
+      }),
     ),
     ui,
   );
@@ -96,5 +111,11 @@ test('List layout, renaming in place and no matches', async (t) => {
   const editing = list.querySelector('.volume[data-renaming=true]');
   assert.equal(editing.querySelector('input').value, 'Roman roads');
   assert.equal(editing.querySelector('.saved-chat-title'), null);
-  assert.equal(empty.textContent, 'No learning tree titles match.');
+  assert.equal(list.querySelectorAll('.volume-spine i').length, 3);
+  assert.equal(
+    empty.querySelector('h2').textContent,
+    'No learning tree matches \u201cquantum\u201d',
+  );
+  await act(async () => button(empty, 'New chat').click());
+  assert.deepEqual(calls, [['new']]);
 });

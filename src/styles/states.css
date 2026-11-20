@@ -56,10 +56,6 @@
 .delete-dialog[data-failed='true'] [id$='description'] {
   color: var(--color-text-error);
 }
-.delete-menu-item {
-  border-block-start: thin solid var(--color-border);
-  margin-block-start: 4px;
-}
 .astryx-dropdown-menu {
   background: var(--color-background-popover);
 }
