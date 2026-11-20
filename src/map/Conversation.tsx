@@ -154,34 +154,36 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
             {t.title}
           </Heading>
         </Button>
-        {data.childCount > 0 && (
-          <IconButton
-            id={`fold-${t.id}`}
-            className="nodrag nopan"
-            label={`${data.folded ? 'Expand' : 'Collapse'} descendants of ${t.title}`}
-            tooltip={`${data.folded ? 'Expand' : 'Collapse'} descendants`}
-            aria-expanded={!data.folded}
-            icon={data.folded ? <ChevronRightIcon /> : <ChevronDownIcon />}
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              data.toggle(t.id);
-            }}
-          />
-        )}
-        {t.parent && (
-          <IconButton
-            id={`reveal-${t.id}`}
-            className="node-extra nodrag nopan"
-            label={`Reveal source passage for ${t.title}`}
-            tooltip={`From “${t.passage}”`}
-            icon={<LinkIcon />}
-            variant="ghost"
-            size="sm"
-            onClick={() => data.open(t.parent!, sourceOf(t))}
-          />
-        )}
+        <HStack gap={1} vAlign="center" className="node-actions">
+          {t.parent && (
+            <IconButton
+              id={`reveal-${t.id}`}
+              className="node-extra nodrag nopan"
+              label={`Reveal source passage for ${t.title}`}
+              tooltip={`From “${t.passage}”`}
+              icon={<LinkIcon />}
+              variant="ghost"
+              size="sm"
+              onClick={() => data.open(t.parent!, sourceOf(t))}
+            />
+          )}
+          {data.childCount > 0 && (
+            <IconButton
+              id={`fold-${t.id}`}
+              className="nodrag nopan"
+              label={`${data.folded ? 'Expand' : 'Collapse'} descendants of ${t.title}`}
+              tooltip={`${data.folded ? 'Expand' : 'Collapse'} descendants`}
+              aria-expanded={!data.folded}
+              icon={data.folded ? <ChevronRightIcon /> : <ChevronDownIcon />}
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                data.toggle(t.id);
+              }}
+            />
+          )}
+        </HStack>
       </HStack>
       {!!preview?.length && (
         <VStack gap={1} className="node-preview">

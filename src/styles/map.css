@@ -19,7 +19,6 @@
   outline-offset: 3px;
 }
 .conversation-box .node-band {
-  position: relative;
   margin: calc(-1 * var(--spacing-3)) calc(-1 * var(--spacing-3)) 0;
   padding: var(--spacing-2) var(--spacing-2) var(--spacing-2) 10px;
   border-bottom: thin solid var(--color-border);
@@ -55,10 +54,15 @@
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
-/* Reveal floats over the header end on hover or focus, so 160px leaves the title its room. */
+/* Reveal floats over the title end, just before the fold toggle, on hover or focus, so 160px leaves the title its room. */
+.node-actions {
+  position: relative;
+  flex: none;
+  align-self: stretch;
+}
 .node-extra {
   position: absolute;
-  inset-inline-end: var(--spacing-1);
+  inset-inline-end: 100%;
   background: var(--color-background-surface);
   opacity: 0;
   transition: opacity 120ms ease-out;
