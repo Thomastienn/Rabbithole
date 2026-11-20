@@ -66,12 +66,14 @@ export type VisualPart = {
     step?: number | null;
 };
 export type PartBox = { name: string; x: number; y: number; width: number; height: number };
+export type PartMark = Omit<PartBox, 'name'> & { trail: string[] };
 export type VisualMessage =
     | { type: 'height'; height: number }
     | ({ type: 'branch' } & VisualPart)
     | { type: 'part'; parts: PartBox[] }
     | { type: 'pick'; parts: PartBox[]; step: number | null }
-    | { type: 'leave' };
+    | { type: 'leave' }
+    | { type: 'marks'; marks: PartMark[] };
 export function visualPassage(visual: Pick<Artifact, 'title' | 'description'>, part: VisualPart) {
     return part.trail
         ? `Visual: ${visual.title}\n${visual.description}\nPart: ${part.trail.join(' › ')}`
@@ -88,34 +90,33 @@ export function partTrail(v: unknown): string[] | undefined {
         return v.map((name: string) => name.trim());
 }
 const step = (v: unknown) => v === null || (Number.isInteger(v) && (v as number) >= 0);
+type Frame = { width: number; height: number };
 // Boxes from the sandbox must lie inside the frame; 1px absorbs subpixel rounding.
-function partBoxes(v: unknown, frame: { width: number; height: number }) {
-    const inside = (b: Record<string, unknown>) => {
-        const [x, y, w, h] = [b.x, b.y, b.width, b.height];
-        return (
-            [x, y, w, h].every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0) &&
-            (x as number) + (w as number) <= frame.width + 1 &&
-            (y as number) + (h as number) <= frame.height + 1
-        );
-    };
-    if (
-        !Array.isArray(v) ||
-        !v.every(
-            (b) =>
-                b &&
-                typeof b === 'object' &&
-                Object.keys(b).sort().join() === 'height,name,width,x,y' &&
-                inside(b),
-        )
-    )
-        return;
+function inside(b: unknown, keys: string, frame: Frame): b is Record<string, unknown> {
+    if (!b || typeof b !== 'object' || Object.keys(b).sort().join() !== keys) return false;
+    const { x, y, width: w, height: h } = b as Record<string, unknown>;
+    return (
+        [x, y, w, h].every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0) &&
+        (x as number) + (w as number) <= frame.width + 1 &&
+        (y as number) + (h as number) <= frame.height + 1
+    );
+}
+function partBoxes(v: unknown, frame: Frame) {
+    if (!Array.isArray(v) || !v.every((b) => inside(b, 'height,name,width,x,y', frame))) return;
     const names = partTrail(v.map((b) => b.name));
     return names && v.map((b, i) => ({ ...b, name: names[i] }) as PartBox);
 }
-export function visualMessage(
-    data: unknown,
-    frame?: { width: number; height: number },
-): VisualMessage | undefined {
+// Branched parts the frame draws; the host asks for at most one per branch, so 50 bounds a visual's branches.
+function partMarks(v: unknown, frame: Frame) {
+    if (!Array.isArray(v) || v.length > 50) return;
+    const marks = v.map((b) =>
+        inside(b, 'height,trail,width,x,y', frame) && partTrail(b.trail)
+            ? ({ ...b, trail: partTrail(b.trail) } as PartMark)
+            : undefined,
+    );
+    if (marks.every(Boolean)) return marks as PartMark[];
+}
+export function visualMessage(data: unknown, frame?: Frame): VisualMessage | undefined {
     if (!data || typeof data !== 'object') return;
     const m = data as Record<string, unknown>,
         keys = Object.keys(m).sort().join();
@@ -131,6 +132,8 @@ export function visualMessage(
     if (parts && m.type === 'part' && keys === 'parts,type') return { type: 'part', parts };
     if (parts && m.type === 'pick' && keys === 'parts,step,type' && step(m.step))
         return { type: 'pick', parts, step: m.step as number | null };
+    const marks = frame && m.type === 'marks' && keys === 'marks,type' && partMarks(m.marks, frame);
+    if (marks) return { type: 'marks', marks };
     const bounded = (v: unknown, max: number) =>
         typeof v === 'string' && !!v.trim() && v.length <= max && !/[\r\n]/.test(v);
     if (

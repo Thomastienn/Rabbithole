@@ -96,6 +96,7 @@ export function useBranchForm(
                 ...c.addresses.get(t.id),
                 label: t.label,
                 explanation: t.explanation,
+                ...(t.trail && { trail: t.trail, step: t.step }),
             });
     const discussionBranches: Record<string, DiscussionBranch[]> = {};
     for (const t of state?.trees ?? [])

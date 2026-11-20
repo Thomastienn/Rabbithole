@@ -313,6 +313,26 @@ test('message jump labels flatten and bound text; source reveal keeps exact UTF-
             explanation: 'What it does',
         },
     );
+    assert.deepEqual(
+        sourceOf({
+            ...child,
+            artifactId: 'visual',
+            label: 'Tip',
+            explanation: 'What it does',
+            trail: ['Root', 'Tip'],
+            step: 1,
+        }),
+        {
+            messageId: 'reply',
+            text: '🌲 repeated',
+            artifactId: 'visual',
+            label: 'Tip',
+            explanation: 'What it does',
+            trail: ['Root', 'Tip'],
+            step: 1,
+        },
+        'a picked part returns to its trail and stored step',
+    );
 });
 
 test('preview requests batch at 500 and encode IDs; polling excludes idle and other learning trees', () => {

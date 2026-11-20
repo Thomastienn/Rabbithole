@@ -23,6 +23,7 @@ export function originSource(branch: Branch): Source {
                 artifactId: branch.artifactId,
                 label: branch.label ?? '',
                 explanation: branch.explanation ?? '',
+                ...(branch.trail && { trail: branch.trail, step: branch.step }),
             }
           : {
                 messageId: branch.messageId,

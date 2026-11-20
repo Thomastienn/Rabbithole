@@ -255,6 +255,7 @@ test('a picked visual part branches with its name as label, its trail and step, 
             'Nuclear plant',
             'How a plant makes electricity.',
             'visual',
+            '{}',
         );
         env.store.finishArtifact(parent.id, visual.id, '<svg></svg>');
         const trail = ['Nuclear plant', 'Reactor', 'Control rods'],
@@ -299,6 +300,14 @@ test('a picked visual part branches with its name as label, its trail and step, 
         assert.equal(env.calls.at(-1).tree.branch.text, passage, 'the child tutor reads the part');
         const summary = (await env.get('/api/state')).trees.find((t) => t.id === child.id);
         assert.deepEqual([summary.label, summary.trail, summary.step], ['Control rods', trail, 2]);
+        const version = env.store.regenerateArtifact(parent.id, visual.id);
+        env.store.finishArtifact(parent.id, version.id, '<svg><g data-part="Turbine"></g></svg>');
+        const kept = (await env.get('/api/state')).trees.find((t) => t.id === child.id);
+        assert.deepEqual(
+            [kept.artifactId, kept.trail, kept.step],
+            [visual.id, trail, 2],
+            'a different version keeps the branch on the same visual with its trail',
+        );
         const whole = await env.post(`/api/trees/${parent.id}/branches`, {
             ...body,
             label: 'Nuclear plant',

@@ -1,5 +1,6 @@
-// Runs inside the visual frame: reads the visual's named parts (data-part, nested) and reports
-// the part under the pointer and a click on it to the host, which validates every message.
+// Runs inside the visual frame: reads the visual's named parts (data-part, nested, or flagged three.js
+// objects) and reports the part under the pointer and a click on it to the host, which validates every message.
+import { Box3, Raycaster, Vector2, Vector3 } from 'three';
 const CONTROLS =
     'button, input, select, textarea, label, summary, a, [role=button], [role=slider], [contenteditable]';
 const POINTER = [
@@ -40,27 +41,97 @@ function trail(target: EventTarget | null, root: Element) {
     return parts.length ? parts.slice(-3) : undefined;
 }
 
+type Box = { left: number; top: number; right: number; bottom: number };
+// The three.js shapes used here; the module itself is untyped (src/vite-env.d.ts).
+type Object3D = {
+    name: string;
+    visible: boolean;
+    parent: Object3D | null;
+    userData: Record<string, unknown>;
+};
+type Camera = object;
+type Scene = { scene: Object3D; camera: Camera };
+const raycaster = new Raycaster();
+const shown = (o: Object3D | null): boolean => !o || (o.visible && shown(o.parent));
+
+// The flagged objects (userData.part) holding the nearest visible object under the pointer,
+// outermost first and at most three, each with its on-screen box clamped to the canvas.
+function sceneTrail({ scene, camera }: Scene, canvas: Box, x: number, y: number) {
+    const width = canvas.right - canvas.left,
+        height = canvas.bottom - canvas.top;
+    raycaster.setFromCamera(
+        new Vector2(((x - canvas.left) / width) * 2 - 1, 1 - ((y - canvas.top) / height) * 2),
+        camera,
+    );
+    const hit = raycaster.intersectObject(scene).find((h: { object: Object3D }) => shown(h.object));
+    const parts: { name: string; box: Box }[] = [];
+    for (let o = hit?.object ?? null; o && o !== scene; o = o.parent) {
+        if (o.userData.part !== true || !o.name.trim()) continue;
+        const b = new Box3().setFromObject(o),
+            box = {
+                left: canvas.right,
+                top: canvas.bottom,
+                right: canvas.left,
+                bottom: canvas.top,
+            };
+        // shortcut: corners behind the camera project wrongly; clamping hides it, upgrade if boxes jump.
+        for (let i = 0; i < 8; i++) {
+            const p = new Vector3(
+                    i & 1 ? b.max.x : b.min.x,
+                    i & 2 ? b.max.y : b.min.y,
+                    i & 4 ? b.max.z : b.min.z,
+                ).project(camera),
+                px = Math.min(
+                    canvas.right,
+                    Math.max(canvas.left, canvas.left + ((p.x + 1) / 2) * width),
+                ),
+                py = Math.min(
+                    canvas.bottom,
+                    Math.max(canvas.top, canvas.top + ((1 - p.y) / 2) * height),
+                );
+            box.left = Math.min(box.left, px);
+            box.right = Math.max(box.right, px);
+            box.top = Math.min(box.top, py);
+            box.bottom = Math.max(box.bottom, py);
+        }
+        parts.unshift({ name: o.name.trim(), box });
+    }
+    return parts.length ? parts.slice(-3) : undefined;
+}
+
+// Returns drew, which the sandbox's three.js renderer calls after each frame it draws on a canvas,
+// with mark and step for the host's branched parts.
 export function watchParts(
     view: Window & typeof globalThis,
     root: Element,
     post: (message: object) => void,
 ) {
     const document = view.document;
+    const scenes = new WeakMap<Element, Scene>();
     // Bounds are clipped to the frame's viewport, the only area the host accepts.
-    const describe = (target: EventTarget | null) =>
-        trail(target, root)?.map((e) => {
-            const r = e.getBoundingClientRect(),
-                x = Math.max(0, r.left),
-                y = Math.max(0, r.top);
-            return {
-                name: nameOf(e)!,
-                x,
-                y,
-                width: Math.max(0, Math.min(view.innerWidth, r.right) - x),
-                height: Math.max(0, Math.min(view.innerHeight, r.bottom) - y),
-            };
-        });
-    let last = 'null';
+    const clip = ({ name, box: r }: { name: string; box: Box }) => {
+        const x = Math.max(0, r.left),
+            y = Math.max(0, r.top);
+        return {
+            name,
+            x,
+            y,
+            width: Math.max(0, Math.min(view.innerWidth, r.right) - x),
+            height: Math.max(0, Math.min(view.innerHeight, r.bottom) - y),
+        };
+    };
+    // A canvas drawing a scene picks by raycast, even with its own orbit handlers.
+    const describe = (target: EventTarget | null, x: number, y: number) => {
+        const scene = target instanceof view.Element ? scenes.get(target) : undefined;
+        if (scene)
+            return sceneTrail(scene, (target as Element).getBoundingClientRect(), x, y)?.map(clip);
+        return trail(target, root)?.map((e) =>
+            clip({ name: nameOf(e)!, box: e.getBoundingClientRect() }),
+        );
+    };
+    let last = 'null',
+        pointer: { target: EventTarget | null; x: number; y: number } | undefined,
+        down = { x: 0, y: 0 };
     const hover = (parts: ReturnType<typeof describe>) => {
         document.documentElement.classList.toggle('tt-pick', !!parts);
         const key = JSON.stringify(parts ?? null);
@@ -68,12 +139,98 @@ export function watchParts(
         last = key;
         post(parts ? { type: 'part', parts } : { type: 'leave' });
     };
-    document.addEventListener('pointermove', (event) => hover(describe(event.target)));
-    document.documentElement.addEventListener('pointerleave', () => hover(undefined));
+    document.addEventListener('pointermove', (event) => {
+        pointer = { target: event.target, x: event.clientX, y: event.clientY };
+        hover(describe(event.target, event.clientX, event.clientY));
+    });
+    document.documentElement.addEventListener('pointerleave', () => {
+        pointer = undefined;
+        hover(undefined);
+    });
+    document.addEventListener(
+        'pointerdown',
+        (event) => (down = { x: event.clientX, y: event.clientY }),
+        true,
+    );
     document.addEventListener('click', (event) => {
-        const parts = describe(event.target);
+        // A click ending a drag, such as orbiting the camera, never picks.
+        if (Math.hypot(event.clientX - down.x, event.clientY - down.y) > 4) return;
+        const parts = describe(event.target, event.clientX, event.clientY);
         if (!parts) return;
         const step = (event.target as Element).closest('.tt-steps')?.getAttribute('data-step');
         post({ type: 'pick', parts, step: step ? Number(step) : null });
+    });
+
+    // Branched parts the host marks: the first drawn part with each trail, re-measured whenever the visual changes.
+    let marked: string[] = [],
+        wanted: number | undefined,
+        queued = false,
+        lastMarks = '[]';
+    const bounds = (e: Element) => {
+        const { name: _, ...box } = clip({ name: '', box: e.getBoundingClientRect() });
+        return box;
+    };
+    const measure = () => {
+        queued = false;
+        const controls = wanted !== undefined && document.querySelector('.tt-steps');
+        if (controls) {
+            controls.dispatchEvent(new view.CustomEvent('tt-show', { detail: wanted }));
+            wanted = undefined;
+        }
+        const drawn = new Map<string, Element>();
+        for (const e of root.querySelectorAll('[data-part]')) {
+            const names: string[] = [];
+            for (let p: Element | null = e; p && p !== root; p = p.parentElement)
+                if (nameOf(p)) names.unshift(nameOf(p)!);
+            const key = JSON.stringify(names.slice(-3)),
+                box = bounds(e);
+            if (
+                marked.includes(key) &&
+                !drawn.has(key) &&
+                box.width &&
+                box.height &&
+                e.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) !== false
+            )
+                drawn.set(key, e);
+        }
+        const marks = marked
+                .filter((key) => drawn.has(key))
+                .map((key) => ({ trail: JSON.parse(key), ...bounds(drawn.get(key)!) })),
+            key = JSON.stringify(marks);
+        if (key === lastMarks) return;
+        lastMarks = key;
+        post({ type: 'marks', marks });
+    };
+    const schedule = () => {
+        if (queued || (!marked.length && wanted === undefined)) return;
+        queued = true;
+        view.requestAnimationFrame(measure);
+    };
+    new view.MutationObserver(schedule).observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+    });
+    for (const type of ['resize', 'transitionend', 'animationend'])
+        view.addEventListener(type, schedule);
+    // Each frame re-reads the hovered object, so its rectangle follows the camera.
+    function drew(canvas: Element, scene: Object3D, camera: Camera) {
+        scenes.set(canvas, { scene, camera });
+        if (pointer?.target === canvas) hover(describe(canvas, pointer.x, pointer.y));
+    }
+    return Object.assign(drew, {
+        mark(trails: string[][]) {
+            marked = trails.map((t) => JSON.stringify(t));
+            if (!marked.length) {
+                if (lastMarks !== '[]') post({ type: 'marks', marks: [] });
+                lastMarks = '[]';
+            }
+            schedule();
+        },
+        // Opens a step-through visual at a stored step, once its controls exist.
+        step(index: number) {
+            wanted = index;
+            schedule();
+        },
     });
 }

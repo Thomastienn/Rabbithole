@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
-import { conversation, json, mount } from '../support/chat-hooks-kit.mjs';
+import { conversation, json, mount, summary } from '../support/chat-hooks-kit.mjs';
 const { default: VisualFrame } = await import('../../src/media/VisualFrame.tsx');
 
 const visual = (status) => ({
@@ -183,6 +183,71 @@ test('hovering a visual part draws its rectangle and name, and one click asks ab
     ]);
 });
 
+test('a branched part keeps a thin rectangle in its family ink, and returning to it opens the stored step and brings it into view', async (t) => {
+    const rods = ['Nuclear plant', 'Reactor', 'Control rods'],
+        part = { label: 'Control rods', explanation: 'How a plant makes electricity.' };
+    const explored = [
+        { child: 'c1', address: '1.1', ink: 2, ...part, trail: rods, step: 2 },
+        { child: 'c2', address: '1.2', ink: 3, label: 'Tournament rounds', explanation: 'x' },
+        { child: 'c3', address: '1.3', ink: 3, ...part, trail: ['Turbine'], step: null },
+    ];
+    const reveal = { messageId: 'reply', artifactId: 'v-ready', text: 'x', ...part, trail: rods };
+    const { container, act, cleanup } = await render(
+        h(VisualFrame, {
+            artifact: visual('ready'),
+            explored,
+            reveal: { ...reveal, step: 2 },
+            onOpenChild: () => {},
+        }),
+        ui,
+    );
+    t.after(cleanup);
+    const figure = container.querySelector('figure'),
+        frame = figure.querySelector('iframe'),
+        receive = sender(act, frame),
+        posted = [],
+        scrolled = [];
+    sized(frame);
+    frame.contentWindow.postMessage = (data) => posted.push(data);
+    window.Element.prototype.scrollIntoView = function () {
+        scrolled.push(this.className);
+    };
+    await act(async () => frame.dispatchEvent(new Event('load')));
+    assert.deepEqual(
+        posted.find((m) => m.type === 'marks'),
+        {
+            type: 'marks',
+            trails: [rods, ['Turbine']],
+        },
+    );
+    assert.deepEqual(
+        posted.find((m) => m.type === 'step'),
+        { type: 'step', step: 2 },
+    );
+    const box = { x: 10, y: 20, width: 100, height: 40 };
+    await receive({ type: 'marks', marks: [{ trail: rods, ...box }] });
+    const marks = () => [...figure.querySelectorAll('.visual-mark')];
+    assert.equal(marks().length, 1);
+    const [mark] = marks();
+    assert.equal(mark.getAttribute('aria-hidden'), 'true');
+    assert.equal(mark.textContent, '', 'never filled, no label');
+    assert.equal(mark.style.getPropertyValue('--ink'), 'var(--rabbithole-ink-2)');
+    assert.deepEqual(
+        ['left', 'top', 'width', 'height'].map((k) => mark.style[k]),
+        ['7px', '17px', '106px', '46px'],
+        'drawn just outside the part, never over it',
+    );
+    assert.ok(scrolled.includes('visual-mark'), 'the returned-to part comes into view');
+    scrolled.length = 0;
+    await receive({ type: 'marks', marks: [{ trail: rods, ...box, y: 60 }] });
+    assert.equal(marks()[0].style.top, '57px', 'a later step moves the rectangle with its part');
+    assert.ok(!scrolled.includes('visual-mark'), 'it comes into view once per return');
+    await receive({ type: 'marks', marks: [{ trail: ['Boiler'], ...box }] });
+    assert.equal(marks().length, 0, 'a trail no branch asked about is never marked');
+    await receive({ type: 'marks', marks: [{ trail: rods, ...box, x: 590 }] });
+    assert.equal(marks().length, 0, 'out-of-frame marks are ignored');
+});
+
 test('parts of a still-drawing visual neither outline nor pick', async (t) => {
     const calls = [];
     const { container, act, cleanup } = await render(
@@ -266,5 +331,29 @@ test('a picked part opens the ask box floating over it, and choosing an earlier 
         page.calls.filter((c) => c.path.endsWith('/prepare')).at(-1).body.trail,
         ['Nuclear plant', 'Reactor'],
         'branch preparation follows the widened part',
+    );
+});
+
+test("a visual's branches carry their part's trail and step to the visual", async (t) => {
+    const trail = ['Nuclear plant', 'Reactor'];
+    const page = await mount(t, ({ path }, { state }) => {
+        if (path !== '/api/state') return;
+        state.trees = [
+            summary('a'),
+            {
+                ...summary('c', 'a'),
+                messageId: 'reply',
+                artifactId: 'plant',
+                label: 'Reactor',
+                explanation: 'How a plant makes electricity.',
+                trail,
+                step: 1,
+            },
+        ];
+    });
+    await page.act(async () => page.current.trees.openConversation('a'));
+    assert.deepEqual(
+        page.current.branch.visualBranches.plant.map((b) => [b.child, b.trail, b.step]),
+        [['c', trail, 1]],
     );
 });
