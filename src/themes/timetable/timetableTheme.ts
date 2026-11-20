@@ -1,6 +1,6 @@
 // Line Diagram, Timetable: Printed paper with press inks.
-// Palette from docs/mockups/line-diagram/ld.css; the six themes share every role and differ only here.
-// Every colour is a [light, dark] tuple; dark is the default. Keep the rest in step with the other five.
+// Palette from docs/mockups/line-diagram/ld.css; every theme shares every role and differs only here.
+// Every colour is a [light, dark] tuple; dark is the default. Keep the rest in step with the other themes.
 import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { timetableIcons } from './icons';

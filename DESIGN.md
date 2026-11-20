@@ -233,7 +233,7 @@ A learning tree is a transit line diagram. The trunk conversation is a porcelain
 
 The world is midnight enamel by default: a deep navy ground, a deeper field for the sidebar and the docked map, and raised enamel for anything that sits on top. Light appearance swaps to a porcelain ground with midnight ink and action and the same lines darkened to AA. It is flat and dense in the way a printed network map is dense: thick round-capped lines that turn only at 45 or 90 degrees, hairline seams, condensed caps labels, and no shadow, gradient or blur. Reading is the exception to density: replies sit at a 640px measure in a large, open reading face.
 
-The system ships as seven interchangeable themes that share every role and differ only in palette (Platform by default, then Main Line, Enamel, Tunnel, Timetable, Ferry, Terminus), each with a light and a dark variant chosen separately in Settings (Dark is the default appearance). Platform carries Main Line's four hues on a low-chroma graphite ground so long reading sessions are not spent on saturated navy; Main Line stays as the navy original.
+The system ships as interchangeable themes that share every role and differ only in palette (Platform by default, then Main Line, Enamel, Tunnel, Timetable, Ferry, Terminus), each with a light and a dark variant chosen separately in Settings (Dark is the default appearance). Platform carries Main Line's four hues on a low-chroma graphite ground so long reading sessions are not spent on saturated navy; Main Line stays as the navy original.
 
 **Key Characteristics:**
 - One colour per first-level branch family, four lines repeating; porcelain is the trunk.
@@ -274,7 +274,7 @@ The lines are also mapped into Astryx's hue slots (yellow = line 1, green = line
 - **Selection** (line 1 at 40% dark / 20% light): text selection, passage highlight and revealed text.
 - **Scrim** (black at 72% dark / porcelain at 40% light): backdrop behind dialogs and enlarged media.
 
-### The seven themes
+### The themes
 Each theme keeps every role above and changes only the palette. Values are dark / light.
 
 | Theme | Ground | Deep field | Raised | Porcelain | Line 1 | Line 2 | Line 3 | Line 4 | Failure |
@@ -288,6 +288,12 @@ Each theme keeps every role above and changes only the palette. Values are dark 
 | Terminus: carriage maroon, gold, cream | #2a0f18 / #f8f1ee | #1e0910 / #eee3de | #3a1722 / #ffffff | #fff2dc / #3a0f1c | #f2c14e / #876000 | #7cc4ff / #1565a8 | #7fd8a8 / #12754a | #ffab7a / #b0471a | #ff8f8f / #b8142a |
 
 Ink, muted ink, hover, seams and selection follow the same recipe in every theme (see each theme source). Selection is always line 1 at reduced alpha.
+
+**Adding a theme.** Copy an existing `src/themes/<slug>/` folder and change only the palette, then:
+1. `npx astryx theme build src/themes/<slug>/<slug>Theme.ts`, then `npx astryx theme add <slug>`; this regenerates `src/astryx-themes.ts`.
+2. Add the entry to `themeChoices` in `src/shell/appearance.ts`; settings swatches and the visuals palette read it.
+3. Add a `[data-theme="<slug>"]` block to `docs/mockups/line-diagram/ld.css`; `test/shell/themes.test.mjs` checks each shipped theme against it.
+4. Add the theme's row to the table above and its name to the Overview list.
 
 ### Named Rules
 **The Colour Belongs to Lines Rule.** Family colour appears only as a line, a ring, a filled address chip, a passage underline, a line tick, or a line swatch in a key or legend (a short round-capped length of the line itself). Running text is never tinted to decorate; titles and current items are porcelain, everything else is ink or muted ink.
@@ -428,7 +434,7 @@ Mermaid renders on the base theme fed from the surrounding tokens: surface fills
 - **Do** put every overlay on raised enamel with a 1.5px strong seam and 8px corners.
 - **Do** use one focus ring everywhere: 2px porcelain, 2px off the control. Fields show focus on their own frame instead.
 - **Do** pair scarlet with words and a way forward (Retry, Cancel, a reason).
-- **Do** take every value from the theme roles so all six themes, light and dark, stay in step.
+- **Do** take every value from the theme roles so every theme, light and dark, stay in step.
 
 ### Don't:
 - **Don't** tint running text with a family colour to decorate it.

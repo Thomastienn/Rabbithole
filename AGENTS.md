@@ -37,9 +37,15 @@ Work directly on `master` in the main checkout; do not create worktrees or
 feature branches unless the owner asks. PR mode is the standing exception:
 `ralph-afk --pr` gives each task its own worktree and a branch named after the
 task, and `.ralph-tui/pr-worker.md` or `.ralph-tui/pr-reviewer.md` governs the
-agent there. When session tooling forces a worktree
-anyway, rebase its branch onto `master` and fast-forward `master` to it as soon
-as the work is committed, before creating tickets.
+agent there. When session tooling forces a worktree anyway, land it on
+`master` as soon as the work is committed, before creating tickets:
+
+1. In the new worktree, run `ln -s ../../../node_modules node_modules`.
+2. After committing, run `git rebase master` in the worktree.
+3. Call `ExitWorktree` with `keep`; the worktree guard blocks `git -C` into
+   the main checkout.
+4. In the main checkout, run `git merge --ff-only <branch>`, then
+   `git worktree remove <path>` and `git branch -d <branch>`.
 
 ## Agent skills
 

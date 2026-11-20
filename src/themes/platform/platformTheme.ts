@@ -1,6 +1,6 @@
 // Line Diagram, Platform: Graphite with the Main Line colours, the default for long reading.
-// Main Line's four hues on a low-chroma ground (OKLCH C 0.012), lines evened to L 0.72-0.80; the seven themes share every role and differ only here.
-// Every colour is a [light, dark] tuple; dark is the default. Keep the rest in step with the other six.
+// Main Line's four hues on a low-chroma ground (OKLCH C 0.012), lines evened to L 0.72-0.80; every theme shares every role and differs only here.
+// Every colour is a [light, dark] tuple; dark is the default. Keep the rest in step with the other themes.
 import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { platformIcons } from './icons';

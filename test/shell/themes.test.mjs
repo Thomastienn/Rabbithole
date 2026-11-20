@@ -17,7 +17,7 @@ import {
   savedVim,
 } from '../../src/shell/preferences.ts';
 import { DIAGRAM_HUES, diagramTheme } from '../../src/media/diagramTheme.ts';
-const { themes } = await import('../../src/shell/astryx-themes.ts');
+const { themes } = await import('../../src/astryx-themes.ts');
 
 test('browser preferences restore valid choices independently, fall back safely and tolerate denied storage', (t) => {
   const values = new Map();
@@ -116,7 +116,7 @@ const contrast = (fg, bg) => {
   return (a + 0.05) / (b + 0.05);
 };
 
-test('all seven authored and shipped theme modules agree on the mockup ground, porcelain focus and ordered family lines', async () => {
+test('every authored and shipped theme module agree on the mockup ground, porcelain focus and ordered family lines', async () => {
   const css = readFileSync('docs/mockups/line-diagram/ld.css', 'utf8');
   const tiles = [];
   for (const { id } of themeChoices) {
@@ -139,7 +139,7 @@ test('all seven authored and shipped theme modules agree on the mockup ground, p
     }
     tiles.push(JSON.stringify(theme.tokens['--color-background-body']));
   }
-  assert.equal(new Set(tiles).size, 7);
+  assert.equal(new Set(tiles).size, themeChoices.length);
 });
 
 test('every theme and side: text, family lines, selection and focus meet WCAG AA', () => {

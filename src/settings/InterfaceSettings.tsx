@@ -18,7 +18,7 @@ import {
 } from '../shell/appearance';
 import { savePreference } from '../shell/preferences';
 import { Theme } from '@astryxdesign/core/theme';
-import { themes } from '../shell/astryx-themes';
+import { themes } from '../astryx-themes';
 
 // Swatch diagram (mockup Settings): the trunk, then family lines 1 to 4, and their stations.
 const SWATCH_LINES = [

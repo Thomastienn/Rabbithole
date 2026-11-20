@@ -13,7 +13,7 @@ import '@fontsource/atkinson-hyperlegible-next/400.css';
 import '@fontsource/atkinson-hyperlegible-next/400-italic.css';
 import '@fontsource/atkinson-hyperlegible-next/600.css';
 import { Theme } from '@astryxdesign/core/theme';
-import { defaultThemeSlug, themes } from './astryx-themes';
+import { defaultThemeSlug, themes } from '../astryx-themes';
 import ChatPage from './ChatPage';
 import {
   applyFont,

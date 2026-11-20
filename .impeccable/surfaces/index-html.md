@@ -2,7 +2,7 @@
 version: 1
 slug: "index-html"
 primary_target: "index.html"
-related_targets: ["src/shell/main.tsx","src/shell/ChatPage.tsx","src/shell/ShellBand.tsx","src/chat/Contents.tsx","src/chat/FocusedChat.tsx","src/map/TreeOverview.tsx","src/shell/astryx-themes.ts"]
+related_targets: ["src/shell/main.tsx","src/shell/ChatPage.tsx","src/shell/ShellBand.tsx","src/chat/Contents.tsx","src/chat/FocusedChat.tsx","src/map/TreeOverview.tsx","src/astryx-themes.ts"]
 ---
 
 # Rabbithole workspace (shipped app)

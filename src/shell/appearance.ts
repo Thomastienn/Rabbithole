@@ -17,6 +17,7 @@ export function savedAppearance(): Appearance {
 }
 
 // Theme slugs match src/astryx-themes.ts; Appearance still picks each theme's light or dark variant.
+// Adding a theme touches more than this list: see "Adding a theme" in DESIGN.md.
 export const themeChoices = [
   { id: 'platform', label: 'Platform', blurb: 'Graphite with the Main Line colours.' },
   {

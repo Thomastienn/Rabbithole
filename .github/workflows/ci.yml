@@ -25,6 +25,7 @@ jobs:
       - run: npm run format:check
       # `npm test` without its systemd-run memory scope, which runners lack. Keep the flags in step with package.json.
       - run: node scripts/check-size.mjs
+      - run: npx tsc --noEmit
       - run: >
           node --import ./test/support/tsx.mjs --test --test-concurrency=8 --test-force-exit
           --test-timeout=120000 "test/**/*.test.mjs"

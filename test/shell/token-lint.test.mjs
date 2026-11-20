@@ -4,8 +4,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Colors and type come from the theme only (docs/visual-identity-spec.md). Theme = generated
-// src/shell/astryx-themes.ts plus anything under src/themes/.
-const isTheme = (path) => path === 'src/shell/astryx-themes.ts' || path.startsWith('src/themes/');
+// src/astryx-themes.ts plus anything under src/themes/.
+const isTheme = (path) => path === 'src/astryx-themes.ts' || path.startsWith('src/themes/');
 // shortcut: named color keywords (red, white) are not detected; add a keyword list if one slips in.
 const color =
   /(?<![\w&])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/gi;
