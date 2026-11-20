@@ -274,6 +274,22 @@ test('a saved tree opens its conversation with the thread, title and map', async
   assert.ok(button(container, 'Copy tutor reply 1'));
 });
 
+test('with no model connected, the open conversation says so in scarlet inside its composer', async (t) => {
+  const { container } = await mount(t, [summary], {
+    respond: (path) =>
+      path === '/api/models' && {
+        ok: true,
+        json: async () => ({ models: [], providers: { claude: { label: 'Claude' } } }),
+      },
+  });
+  const composer = container.querySelector('.focused-chat .astryx-chat-composer');
+  assert.match(
+    composer.querySelector('.attachment-note').textContent,
+    /No model is connected. Open Settings, then Connections./,
+  );
+  assert.equal(container.querySelector('.attachment-note[role]'), null, 'not an alert');
+});
+
 test('a child shows its first question once, in the thread, not on the origin line', async (t) => {
   const branch = { parent: 't0', messageId: 'm1', start: 0, end: 5, text: 'Spore' };
   const { container } = await mount(t, [summary], {
