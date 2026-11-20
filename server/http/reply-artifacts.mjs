@@ -184,7 +184,7 @@ export function replyArtifacts(
         if (media().some((a) => a.kind === 'video'))
             throw new Error(`${name} cannot join a video: a video stands alone in its reply.`);
     };
-    const showVisual = (request, position, side = null) => {
+    const showVisual = (request, position) => {
         besideVideo('show_visual');
         const earlierTitles = [...artifacts.values()]
             .filter((a) => a.kind === 'visual')
@@ -202,12 +202,18 @@ export function replyArtifacts(
                 earlierTitles,
             }),
             position,
-            side,
         );
         artifacts.set(`call:${calls++}`, artifact);
         send({ type: 'artifact', artifact: live(artifact) });
         mediaQueue.push(artifact);
         pumpMedia();
+        return artifact;
+    };
+    // A visual moves to its marker while it may still be drawing.
+    const moveVisual = (artifact, position) => {
+        const moved = store.moveArtifact(id, artifact.id, position);
+        if (moved) send({ type: 'artifact', artifact: live(moved) });
+        return moved ?? artifact;
     };
     const makeVideo = (topic, position, replySoFar) => {
         besideVideo('make_video');
@@ -258,6 +264,7 @@ export function replyArtifacts(
         artifacts,
         prepareArtifacts,
         showVisual,
+        moveVisual,
         makeVideo,
         startDiscussion,
         hasMedia: () => media().length > 0,

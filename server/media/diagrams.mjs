@@ -6,6 +6,7 @@ import { safeDiagramSource } from '../../src/media/diagramSource.ts';
 import { withAttachments } from '../attachments.mjs';
 import { TEACHING_SKILL, HUMANIZER_SKILL } from './skills.mjs';
 import { NOTES_RULE, readNotes } from '../suggestions.mjs';
+import { stripMarkers } from './markers.mjs';
 import {
     jsonEnd,
     inMediaLayout,
@@ -82,10 +83,11 @@ export const TOOL_VISUAL_RULES = (
     afterCheck
 )
     .replaceAll('rabbithole-visual block', 'show_visual call')
-    // A native call cannot sit between two lines of text, so the tutor wrote empty wide blocks.
+    // A native call cannot sit between two lines of text; its visual marker can (ADR 0017).
+    .replace('the image or show_visual call inside', 'the image or [[visual: name]] marker inside')
     .replace(
-        'Use :::wide and ::: for one visual or image at full reply width, with only the image or show_visual call inside.',
-        'Use :::wide and ::: for one image at full reply width, with only the image inside; never put a show_visual call in it.',
+        'To show an image beside its explanation, put that section between a line :::figure and a line :::, with the image (from find_images) and',
+        'To show an image or visual beside its explanation, put that section between a line :::figure and a line :::, with the image (from find_images) or [[visual: name]] marker and',
     );
 // A model without native tool calling writes Hermes-style calls as text; no result comes back.
 const textToolsRule = (tools) =>
@@ -248,6 +250,11 @@ export function diagramReply(raw, final = false) {
     );
     const hidden = fenceHidden || tagHidden;
     if (hidden) text = text.slice(0, fenceHidden ? lineStart : tag.index);
+    // Markers leave the text after the blocks, so every position counts in the text the learner sees.
+    const marked = stripMarkers(text, final),
+        markers = marked.markers;
+    text = marked.text;
+    for (const request of requests) request.position = marked.at(request.position);
     // Verdicts are not media: read them apart; null means no readable block.
     const verdicts = readVerdicts(requests.filter((r) => r.kind === 'verdict'));
     // Notes carry suggestions and knowledge graph data; null means the reply wrote no block.
@@ -256,7 +263,7 @@ export function diagramReply(raw, final = false) {
     const calls = requests.filter((r) => r.kind === 'call' && (r.closed || final)).map(readCall);
     requests = requests.filter((r) => !['verdict', 'notes', 'call'].includes(r.kind));
     if (!requests.length)
-        return { text, requested: calls.length > 0, hidden, verdicts, notes, calls };
+        return { text, requested: calls.length > 0, hidden, verdicts, notes, calls, markers };
     // Tolerant: unknown keys are ignored and long fields trimmed; incomplete or unreadable blocks still reject with a learner-facing reason.
     // A rejected request keeps whatever fields were readable (partial) so an explicit Retry can rerun from it.
     const parse = (request) => {
@@ -317,6 +324,7 @@ export function diagramReply(raw, final = false) {
         verdicts,
         notes,
         calls,
+        markers,
         requests: requests.map((request) => {
             const parsed = parse(request);
             return groupError && request.kind !== 'visual'
