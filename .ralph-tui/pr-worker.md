@@ -16,7 +16,7 @@ pushes to your branch and Beads updates are authorized (AGENTS.md).
    simplest default consistent with `PRD.md` and record it with
    `bd note <task> "..."`.
 3. **Check cheaply.** Read the code you changed and its callers. Run only the
-   test files you wrote or changed (`node --import ./test/support/tsx.mjs --test test/<file>`) and
+   test files you wrote or changed (`npm run test:file -- test/<file>`) and
    `npx prettier --write` on the files you changed. CI runs the full fast
    suite, format check and secret scan, so leave `npm test`,
    `npm run test:affected`, `npm run test:slow` and `npm run verify` to it.

@@ -34,7 +34,7 @@ Prerequisites: {{dependsOn}}
 - Follow docs/agents/testing.md. Prefer unit tests, then component tests,
   then integration tests; add or change tests at the cheapest level that
   proves the acceptance. While working, run only the test files covering the
-  change (`node --test test/<file or folder>`); at the end run
+  change (`npm run test:file -- test/<file>`); at the end run
   `node scripts/check-size.mjs`, `npm run format:check` and
   `npm run test:affected`. The full suites run only in the backlog gate ticket. Test shared provider behaviour on one provider
   (`RABBITHOLE_TEST_PROVIDER`). Run a browser verify script or `npm run verify` only when the

@@ -19,7 +19,7 @@ the worker's worktree, so you work on a detached HEAD.
    the one test file that proves it. Drop a finding you cannot confirm.
 4. **Fix** every confirmed finding yourself, commit, and push with
    `git push origin HEAD:<branch>`. Run only the test files covering your
-   fixes (`node --import ./test/support/tsx.mjs --test test/<file>`) and `npx prettier --write` on the files
+   fixes (`npm run test:file -- test/<file>`) and `npx prettier --write` on the files
    you changed; CI runs the full fast suite.
 5. **Catch up**: when the PR conflicts with the base, `git merge origin/<base>`,
    resolve so both sides' intent survives, run the test files for the

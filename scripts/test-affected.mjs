@@ -1,7 +1,8 @@
 // Runs the fast test files that reach a changed or untracked path through imports; slow ones wait for the backlog gate.
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
+import { runLimited } from './limited.mjs';
 
 export const ALL = 'all';
 const TEST = /^test\/.*\.test\.mjs$/;
@@ -72,19 +73,8 @@ if (import.meta.main) {
             ? 'Running every fast test.'
             : `Running ${files.length} affected test files.`,
     );
-    const { status } = spawnSync(
-        'systemd-run',
-        [
-            '--user',
-            '--scope',
-            '-q',
-            '-p',
-            'MemoryHigh=5G',
-            '-p',
-            'MemorySwapMax=2G',
-            '-p',
-            'CPUQuota=200%',
-            'node',
+    process.exit(
+        runLimited('node', [
             '--import',
             './test/support/tsx.mjs',
             '--test',
@@ -93,8 +83,6 @@ if (import.meta.main) {
             '--test-force-exit',
             '--test-timeout=120000',
             ...files,
-        ],
-        { stdio: 'inherit' },
+        ]),
     );
-    process.exit(status ?? 1);
 }

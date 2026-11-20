@@ -18,12 +18,11 @@ tests are never the check for a routine ticket.
    `test/support/render.mjs` mounts into a fresh jsdom with `act` and returns
    `{ container, act, cleanup }`; pass `cleanup` to `t.after`. Put the test at
    `test/<area>/<component>.test.mjs`; `test/chat/navigation.test.mjs` is the example. Run one
-   with `node --import ./test/support/tsx.mjs --test test/chat/navigation.test.mjs`; for a folder
-   pass a quoted glob (`"test/chat/*.test.mjs"`), since `node --test` rejects a bare directory.
+   with `npm run test:file -- test/chat/navigation.test.mjs`; for a folder pass a quoted glob
+   (`"test/chat/*.test.mjs"`), since `node --test` rejects a bare directory.
    `render(element, setupWindow)` optionally supplies missing DOM APIs before mounting. Keep
-   those stubs local to the test; they do not prove native browser behavior. The map tests
-   register the loader before dynamically importing TSX, so `node --test test/map/map-parts.test.mjs`
-   and `node --test test/map/tree-search.test.mjs` also work directly.
+   those stubs local to the test; they do not prove native browser behavior. Run every test
+   through `npm`: the loader refuses a local run outside the shared limit below.
 3. **Integration.** Run `createApp` or `Store` in-process with a temp database and fake
    providers. Use this only for behaviour at the HTTP, storage or provider boundary.
 4. **Browser (E2E).** These are the smoke scripts in `scripts/verify/`, which drive a real
@@ -35,10 +34,12 @@ Test files live in folders by area: `test/http`, `test/store`, `test/providers`,
 `test/media`, `test/chat`, `test/map`, `test/usage`, `test/shell` and `test/scripts`. Shared
 helpers and fakes (`fake-openai.mjs`, `fake-narration.mjs`, `protocol-fixture.mjs`,
 `video-kit.mjs`, `diagram-kit.mjs` and the other `*-kit.mjs` setup files) live in `test/support/`; data files live in
-`test/fixtures/`. `npm test` runs `test/**/*.test.mjs` on 2 workers inside one `systemd-run` scope with `MemoryHigh=5G`,
-`MemorySwapMax=2G` and `CPUQuota=200%` (`test:slow` and `test:affected` too): past 5 GB the kernel
-throttles the tests and swaps up to 2 GB, and the run never takes more than two cores, so the
-machine stays usable. There is no hard kill. All three runs pass
+`test/fixtures/`. Every local run (`npm test`, `test:slow`, `test:affected` and `test:file`) goes through
+`scripts/limited.mjs`, which puts it in one shared systemd slice, `rabbithole-tests.slice`, with
+`MemoryHigh=5G`, `MemorySwapMax=2G` and `CPUQuota=200%`. The limit covers all runs together, so
+several agents testing at once still share 5 GB and two cores: past 5 GB the kernel throttles
+the tests and swaps up to 2 GB, and the machine stays usable. There is no hard kill. CI (`CI`
+set) runs without the limit. The test loader exits when a local run is outside the slice. All runs pass
 `--test-force-exit` and `--test-timeout=120000`: a test file that leaves a server open still exits
 when its tests end, and a test that never finishes fails after two minutes. Still put cleanup in
 `t.after` or `finally`, never as plain lines after asserts. Never compare DOM elements with `assert.equal`/`deepEqual`: a failure makes Node diff
@@ -99,7 +100,7 @@ Do not write these, and delete them when you meet them:
   550 lines or fewer; split by behaviour instead of adding exemptions. `npm test` and
   `node scripts/check-size.mjs` enforce this rule. Generated Astryx theme output and test fixtures stay excluded.
 - While you work, run only the test files covering the change:
-  `node --test test/<file or folder>`.
+  `npm run test:file -- test/<file>`.
 - At the end of a ticket run `node scripts/check-size.mjs`, `npm run format:check` and
   `npm run test:affected`. The full suites run only in the backlog gate ticket.
 - Run `npm run build` when you change TSX or the build.
