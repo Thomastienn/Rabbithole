@@ -54,6 +54,14 @@
     bottom: auto;
     left: 4px;
 }
+/* A branched visual part: a thin unfilled line in its family ink (--ink, set inline), like an explored passage's underline. */
+.visual-mark {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid var(--ink, var(--color-accent));
+    border-radius: var(--radius-inner);
+    pointer-events: none;
+}
 /* A visual's child branches: the passage address chip as a button, in a row under the figure. */
 .visual-chips {
     margin-top: 6px;

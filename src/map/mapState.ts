@@ -27,6 +27,7 @@ export const sourceOf = (t: Summary): Source =>
                 artifactId: t.artifactId,
                 label: t.label!,
                 explanation: t.explanation!,
+                ...(t.trail && { trail: t.trail, step: t.step }),
             }
           : { messageId: t.messageId!, start: t.start!, end: t.end!, text: t.passage! };
 

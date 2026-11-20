@@ -86,6 +86,8 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
     });
     // Space activates a button on keyup; the keydown above already stepped.
     controls.addEventListener('keyup', (event) => event.key === ' ' && event.preventDefault());
+    // The host opens a branched visual part at the step it was picked on.
+    controls.addEventListener('tt-show', (event) => show((event as CustomEvent).detail, false));
     show(0, false);
     return { show };
 }
