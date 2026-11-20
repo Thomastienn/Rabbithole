@@ -91,6 +91,25 @@ test('Contents lists nested conversation addresses and figures and routes each a
     container.querySelector('[aria-current=location]').getAttribute('aria-label'),
     '1 How do fungi trade?',
   );
+  const stations = [...container.querySelectorAll('.contents-strip > li')];
+  assert.equal(stations.length, 4, 'one station per conversation');
+  assert.ok(
+    stations.every((li) => li.querySelector('svg').getAttribute('aria-hidden') === 'true'),
+    'strip graphics are hidden from assistive technology',
+  );
+  assert.deepEqual(
+    stations.map((li) => [
+      li.querySelector('.contents-station').getAttribute('r'),
+      !!li.querySelector('.contents-here'),
+    ]),
+    [
+      ['7.5', true],
+      ['5', false],
+      ['5', false],
+      ['5', false],
+    ],
+    'the current conversation is the larger ring with a dot',
+  );
   await act(async () => button(container, '1.1.1 Could a plant go alone?').click());
   await act(async () => button(container, 'Fig 1 Trade loop').click());
   assert.deepEqual(calls, [

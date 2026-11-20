@@ -16,8 +16,8 @@
 .contents {
   display: flex;
   flex-direction: column;
-  flex: 0 0 calc(33 * var(--rabbithole-module));
-  width: calc(33 * var(--rabbithole-module));
+  flex: 0 0 calc(34 * var(--rabbithole-module));
+  width: calc(34 * var(--rabbithole-module));
   min-height: 0;
   border-inline-end: thin solid var(--color-border);
   background: var(--color-background-muted);
@@ -28,14 +28,14 @@
 }
 .contents-head {
   flex: none;
-  padding: calc(3 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module))
-    calc(2 * var(--rabbithole-module));
+  padding: calc(2 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module)) 2px;
 }
 .contents-head h2 {
-  font-size: 20px;
-  line-height: 1.2;
+  font-family: var(--font-family-heading);
+  font-size: 22px;
+  line-height: 1.15;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  color: var(--rabbithole-paper);
   overflow-wrap: anywhere;
 }
 .contents-scroll {
@@ -46,8 +46,12 @@
 }
 .contents-label {
   padding: calc(2 * var(--rabbithole-module)) var(--rabbithole-module) 6px;
+  font-family: var(--font-family-heading);
   font-size: 12px;
   font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--color-text-secondary);
 }
 .contents-list {
@@ -59,16 +63,54 @@
   display: flex;
   width: 100%;
   height: auto;
-  min-height: calc(4 * var(--rabbithole-module));
+  min-height: 30px;
   justify-content: flex-start;
-  gap: var(--rabbithole-module);
-  padding: 6px var(--rabbithole-module) 6px
-    calc(var(--rabbithole-module) + var(--depth, 0) * 2 * var(--rabbithole-module));
+  padding: 5px var(--rabbithole-module);
+  border-radius: var(--radius-element);
   text-align: start;
+  font-size: 13px;
   font-weight: 400;
 }
-.contents-row[aria-current] {
+.contents .contents-row:hover {
+  background: var(--color-background-gray);
+}
+/* Route strip (mockup Read): the strip sits on the bare deep field; the row tint starts at the address. */
+.contents-strip > li {
+  position: relative;
+  padding-inline-start: calc(7 * var(--rabbithole-module));
+}
+.contents-route {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 4px;
+  width: calc(7 * var(--rabbithole-module));
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.contents-route line {
+  stroke: var(--ink);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+.contents-station {
+  fill: var(--color-background-muted);
+  stroke: var(--rabbithole-paper);
+  stroke-width: 2.5;
+}
+.contents-here {
+  fill: var(--rabbithole-paper);
+}
+/* The first line's centre lands on the station, 18px below the row top, however the title wraps. */
+.contents .contents-strip .contents-row {
+  min-height: 36px;
+  padding: 9px var(--rabbithole-module);
+  font-size: 14px;
+  line-height: 18px;
+}
+.contents .contents-row[aria-current] {
   background: var(--color-background-surface);
+  color: var(--rabbithole-paper);
   font-weight: 600;
 }
 button.contents-row > span:first-child > span {
@@ -78,12 +120,14 @@ button.contents-row > span:first-child > span {
 .contents-row-body {
   display: flex;
   width: 100%;
-  align-items: center;
-  gap: var(--rabbithole-module);
+  align-items: baseline;
+  gap: 6px;
 }
 .contents-address {
   flex: none;
-  min-width: 34px;
+  min-width: 30px;
+  font-size: 12px;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
 }
@@ -101,9 +145,26 @@ button.contents-row > span:first-child > span {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Whole titles, one 18px line each, so every first line meets its station. */
+.contents .contents-strip :is(.contents-name, .contents-address) {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: inherit;
+  -webkit-line-clamp: none;
+}
 .contents-row .contents-busy {
+  display: flex;
   flex: none;
-  color: var(--color-text-secondary);
+  align-self: center;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+.contents-busy svg {
+  width: 14px;
+  height: 14px;
 }
 .contents .contents-resource {
   flex-direction: column;
@@ -116,7 +177,7 @@ button.contents-row > span:first-child > span {
   background: var(--color-background-surface);
 }
 .contents-resource-meta {
-  padding-inline-start: calc(34px + var(--rabbithole-module));
+  padding-inline-start: 36px;
   overflow-wrap: anywhere;
 }
 .citation-chip {
@@ -192,7 +253,11 @@ button.contents-row > span:first-child > span {
 }
 :is(.band-drawer, .sidebar) .view-tab[aria-current='page'] {
   background: var(--color-background-surface);
+  color: var(--rabbithole-paper);
   font-weight: 600;
+}
+:is(.band-drawer, .sidebar) .view-tab:not([aria-current='page']) svg {
+  color: var(--color-text-secondary);
 }
 :is(.band-drawer, .sidebar) .contents {
   flex: 1;
@@ -400,31 +465,11 @@ button.contents-row > span:first-child > span {
   font-size: inherit;
   line-height: inherit;
 }
-/* Sidebar outline: titles wrap to two lines and each depth steps in by one module, so deep branches keep their names. */
-.sidebar .contents .contents-row {
-  align-items: flex-start;
-  padding-inline-start: calc(var(--rabbithole-module) + var(--depth, 0) * var(--rabbithole-module));
-}
-.sidebar .contents-row-body {
-  align-items: baseline;
-}
-.sidebar .contents-address {
-  min-width: 26px;
-}
-.sidebar .contents-dot {
-  align-self: center;
-}
-.sidebar .contents-row-body:has(.contents-dot) .contents-dot {
-  align-self: flex-start;
-  margin-block-start: 0.5em;
-}
+/* Sidebar outline: figure and resource titles wrap to two lines; Contents titles wrap whole beside their station. */
 .sidebar .contents-name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   white-space: normal;
   overflow-wrap: anywhere;
-}
-.sidebar .contents-resource-meta {
-  padding-inline-start: calc(26px + var(--rabbithole-module));
 }

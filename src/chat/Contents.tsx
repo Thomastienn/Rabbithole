@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -6,6 +6,7 @@ import type { Preview, Summary } from '../map/TreeOverview';
 import type { Artifact } from '../media/artifacts';
 import { conversationAddresses, inkStyle } from '../map/treeList';
 import { conversationContext, type Message } from './turn';
+import { routeStrip, STATION_Y } from './routeStrip';
 import type { Resource } from './types';
 
 type Current = {
@@ -53,6 +54,7 @@ export default function Contents({
     ),
   );
   const resources = current?.resources ?? [];
+  const strip = routeStrip(conversations);
   const context = current && conversationContext(current);
   const used = context?.used.toLocaleString();
   const percentage = context?.limit
@@ -65,7 +67,8 @@ export default function Contents({
           <Heading level={2}>{byId.get(root)?.title}</Heading>
           <Text type="supporting" color="secondary">
             {conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'} ·{' '}
-            {figures.length} {figures.length === 1 ? 'figure' : 'figures'}
+            {figures.length} {figures.length === 1 ? 'figure' : 'figures'} · {resources.length}{' '}
+            {resources.length === 1 ? 'resource' : 'resources'}
           </Text>
         </VStack>
         <VStack gap={0} className="contents-scroll">
@@ -73,44 +76,55 @@ export default function Contents({
             <Heading level={3} className="contents-label">
               Contents
             </Heading>
-            <ol className="contents-list">
-              {conversations.map((t) => (
-                <li
-                  key={t.id}
-                  style={
-                    {
-                      ...inkStyle(t.ink),
-                      '--depth': Math.min(t.address.split('.').length - 1, 3),
-                    } as CSSProperties
-                  }
-                >
-                  <Button
-                    className="contents-row"
-                    label={`${t.address} ${t.title}`}
-                    variant="ghost"
-                    size="sm"
-                    aria-current={current?.id === t.id ? 'location' : undefined}
-                    onClick={() => open(t.id)}
-                  >
-                    <Text as="span" type="inherit" className="contents-row-body">
-                      <Text type="supporting" className="contents-address">
-                        {t.address}
-                      </Text>
-                      <Text as="span" className="contents-dot" aria-hidden>
-                        {''}
-                      </Text>
-                      <Text as="span" className="contents-name">
-                        {t.title}
-                      </Text>
-                      {active.includes(t.id) && (
-                        <Text type="supporting" className="contents-busy">
-                          Responding…
-                        </Text>
+            <ol className="contents-list contents-strip">
+              {conversations.map((t, i) => {
+                const here = current?.id === t.id;
+                return (
+                  <li key={t.id} style={inkStyle(t.ink)}>
+                    <svg className="contents-route" aria-hidden="true" focusable="false">
+                      {strip[i].segments.map(({ ink, ...line }) => (
+                        <line
+                          key={`${line.x1} ${line.y1} ${line.y2} ${ink}`}
+                          {...line}
+                          style={inkStyle(ink)}
+                        />
+                      ))}
+                      <circle
+                        className="contents-station"
+                        cx={strip[i].x}
+                        cy={STATION_Y}
+                        r={here ? 7.5 : t.address === '1' ? 5.5 : 5}
+                      />
+                      {here && (
+                        <circle className="contents-here" cx={strip[i].x} cy={STATION_Y} r={2.8} />
                       )}
-                    </Text>
-                  </Button>
-                </li>
-              ))}
+                    </svg>
+                    <Button
+                      className="contents-row"
+                      label={`${t.address} ${t.title}`}
+                      variant="ghost"
+                      size="sm"
+                      aria-current={here ? 'location' : undefined}
+                      onClick={() => open(t.id)}
+                    >
+                      <Text as="span" type="inherit" className="contents-row-body">
+                        <Text type="supporting" className="contents-address">
+                          {t.address}
+                        </Text>
+                        <Text as="span" className="contents-name">
+                          {t.title}
+                        </Text>
+                        {active.includes(t.id) && (
+                          <Text type="supporting" className="contents-busy">
+                            <ArrowPathIcon />
+                            Responding…
+                          </Text>
+                        )}
+                      </Text>
+                    </Button>
+                  </li>
+                );
+              })}
             </ol>
           </nav>
           <nav aria-label="Figures">
