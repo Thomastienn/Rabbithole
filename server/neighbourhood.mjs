@@ -77,7 +77,15 @@ async function matched(store, embed, text, signal) {
   if (embed && rows.length) {
     try {
       const pending = rows.filter((c) => !c.embedding);
-      const [query, ...vectors] = await embed([text, ...pending.map((c) => c.name)]);
+      // One vector per paragraph: a long reply in one vector is truncated by the model and blurred by averaging.
+      const chunks = text
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      if (!chunks.length) chunks.push(text);
+      const output = await embed([...chunks, ...pending.map((c) => c.name)]);
+      const queries = output.slice(0, chunks.length),
+        vectors = output.slice(chunks.length);
       signal?.throwIfAborted();
       for (const [i, c] of pending.entries())
         if (vectors[i]) store.embedConcept(c.id, c.name, vectors[i]);
@@ -86,7 +94,10 @@ async function matched(store, embed, text, signal) {
       // shortcut: cosine scan suits a personal graph; index vectors if graph size makes this slow.
       matches = rows
         .filter((c) => c.embedding)
-        .map((c) => ({ name: c.name, score: cosine(query, c.embedding) }))
+        .map((c) => ({
+          name: c.name,
+          score: Math.max(...queries.map((q) => cosine(q, c.embedding))),
+        }))
         .filter((c) => c.score >= MATCH_THRESHOLD)
         .sort((a, b) => b.score - a.score)
         .slice(0, SEMANTIC_MATCHES)

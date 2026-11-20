@@ -261,3 +261,31 @@ test('a concept merge during embedding keeps current names, observations and emb
   );
   assert.ok(result.concepts.some((c) => c.name === 'Lock'));
 });
+
+test('semantic matching scores each concept by its closest paragraph', async (t) => {
+  const env = await launch(t);
+  add(env.store, ['Mutex', 'Unrelated']);
+  const batches = [];
+  const result = await retrieveNeighbourhood(
+    env.store,
+    async (texts) => {
+      batches.push(texts);
+      return texts.map((text) =>
+        text === 'Unrelated'
+          ? [0, 0, 1]
+          : text === 'Mutex' || (/lock/.test(text) && !/cats/.test(text))
+            ? [1, 0, 0]
+            : [0, 1, 0],
+      );
+    },
+    'An intro about cats.\n\n  \nThe lock thing matters.',
+  );
+  assert.deepEqual(batches, [
+    ['An intro about cats.', 'The lock thing matters.', 'Mutex', 'Unrelated'],
+  ]);
+  assert.deepEqual(
+    result.concepts.map((c) => c.name),
+    ['Mutex'],
+    'a whole-reply vector would have missed it',
+  );
+});
