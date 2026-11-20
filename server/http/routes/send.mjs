@@ -1,6 +1,7 @@
 import { replyArtifacts } from '../reply-artifacts.mjs';
 import { nativeTools as nativeToolsFor } from '../../tools/runner.mjs';
 import { APP_TOOLS, appCalls, isAppTool } from '../app-calls.mjs';
+import { RECORD_TURN } from '../../tools/recordTurn.mjs';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { diagramReply, generateDiagram, tutorContext } from '../../media/diagrams.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
@@ -150,6 +151,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     // Reply text at the latest tool call and where the model response holding that call began.
     callAt = 0,
     responseStart = 0,
+    // Model responses with text when record_turn ran; Claude and Codex may answer again after it, and that text is dropped.
+    recordedItems = null,
     // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
     saved = -Infinity;
   const heartbeat = setInterval(() => {
@@ -364,7 +367,9 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             if (!isAppTool(name))
               return ctx.tools.run(name, input, { conversation: id, reply, signal });
             if (finished) throw new Error('The reply has already ended.');
-            return calls.run(name, input, text.length, text, responseStart);
+            const result = calls.run(name, input, text.length, text, responseStart);
+            if (name === RECORD_TURN.name && text.trim()) recordedItems ??= new Set(items.keys());
+            return result;
           },
         }),
         tutorStyle: store.tutorStyle(),
@@ -377,7 +382,10 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
       prompt,
       (event) => {
         if (finished) return;
-        if (event.type === 'delta' || event.type === 'item') {
+        if (
+          (event.type === 'delta' || event.type === 'item') &&
+          !(recordedItems && !recordedItems.has(event.item))
+        ) {
           items.set(
             event.item,
             event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text,

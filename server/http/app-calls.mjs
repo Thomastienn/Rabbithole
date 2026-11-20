@@ -60,7 +60,8 @@ export function appCalls(
     // Skipped entries (such as a refused video offer) are refusals too; the result names only keys.
     if (recorded.result !== 'recorded') refused(name, {}, recorded.result);
     questioned(recorded.notes.questions);
-    return recorded.result;
+    // Claude and Codex answer a tool result with another model request; this asks it to write nothing more.
+    return `${recorded.result}; end your reply now.`;
   };
   // <tool_call> text (the text fallback or a leaked native call) runs once each; nothing goes back to the model.
   const runText = (output) => {

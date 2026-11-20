@@ -75,7 +75,7 @@ const watch = (response) => {
   return { seen, done };
 };
 
-test('a record_turn call over MCP saves the turn, shows next questions at once and skips quick thinking; a reply without it falls back', async () => {
+test('a record_turn call over MCP saves the turn, shows next questions at once, drops a repeat answer after it and skips quick thinking; a reply without it falls back', async () => {
   const quick = [];
   let watched,
     result,
@@ -109,6 +109,8 @@ test('a record_turn call over MCP saves the turn, shows next questions at once a
           while (!watched.seen.some((e) => e.type === 'questions'))
             await new Promise((r) => setTimeout(r, 10));
           assert.ok(!watched.seen.some((e) => e.type === 'done'));
+          // Claude and Codex may answer again after the call; that response is dropped.
+          emit({ type: 'item', item: 'again', text: 'Repeat of the answer.' });
         }
         emit({ type: 'status', status: 'completed' });
       },
@@ -123,6 +125,8 @@ test('a record_turn call over MCP saves the turn, shows next questions at once a
     assert.deepEqual(watched.seen.at(-1), { type: 'done', status: 'completed' });
     assert.ok(!watched.seen.some((e) => e.type === 'tool'));
     assert.match(result, /skipped .*suggestions\[1\]/);
+    assert.match(result, /end your reply now\.$/);
+    assert.ok(!watched.seen.some((e) => e.type === 'text' && e.text.includes('Repeat')));
     const saved = await env.get(`/api/trees/${tree.id}`);
     const reply = saved.messages.at(-1);
     assert.equal(reply.text, REPLY);

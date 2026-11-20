@@ -72,7 +72,7 @@ The visual writer loads the skills its work needs, such as three.js for 3D and G
 - **make_video**: `topic`. The server gives the planner the conversation context. The "only when the learner explicitly asks" rule and the "stands alone without other media" rule move into its description.
 - **start_discussion**: classmates (name, level, voice) and lines (speaker, text), with today's discussion rules in its description. It is placed last, as the block was.
 - **record_turn**: next questions, suggestions (text and concept), groundwork, concepts with topics, concept links, and verdicts (concept, level, confidence). It is called once at the end of each reply and replaces both the hidden verdict and notes blocks. Next questions show as soon as the call arrives. Invalid entries are skipped and named in the result, the same tolerance the blocks had; no retry is asked for. When a reply ends without the call, the quick thinking model stands in as it does today.
-- **Turn ending**: for custom endpoints, a round whose only calls are record_turn or start_discussion ends the reply without another request. Claude and Codex may make one more short request after it, which is accepted.
+- **Turn ending**: for custom endpoints, a round whose only calls are record_turn or start_discussion ends the reply without another request. Claude and Codex may make one more request after it: the record_turn result asks the tutor to end its reply, and any text from that request is dropped.
 - **Mid-reply continuation**: after show_visual on a custom endpoint, the server sends the "queued" result and continues the reply in the next request. If the continuation starts by repeating text already shown, the repeated prefix is dropped.
 
 ### Text fallback and tolerant parsing
