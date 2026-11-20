@@ -336,7 +336,10 @@ export function mediaJobs(ctx) {
             task: artifact.kind,
             ...(!stopped && {
               cause: errorCause(error, privateValues(artifact.input)),
-              next: 'Check Smart model settings, then Retry the visual.',
+              next:
+                artifact.kind === 'visual'
+                  ? 'Check the conversation’s chat model, then Retry the visual.'
+                  : 'Check the conversation’s chat model, then Retry the diagram.',
             }),
           }),
         );

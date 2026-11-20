@@ -11,6 +11,7 @@ import {
   readOwned,
   settings,
   responseError,
+  requestShape,
 } from './endpointSettings.mjs';
 import { probeTools } from './toolProbe.mjs';
 import { QUICK_TOOLS } from '../tools/quickTools.mjs';
@@ -252,7 +253,11 @@ class Endpoint {
       },
       ...(body && { body: JSON.stringify(body) }),
     });
-    if (!response.ok) throw await responseError(response, saved.apiKey);
+    if (!response.ok)
+      throw Object.assign(await responseError(response, saved.apiKey), {
+        requestId: response.headers.get('x-request-id')?.slice(0, 100),
+        request: body && requestShape(body),
+      });
     return response;
   }
   async models(parentSignal) {

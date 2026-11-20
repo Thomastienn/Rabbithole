@@ -20,6 +20,8 @@ const FIELDS = new Set([
   'cut',
   'cuts',
   'engine',
+  'requestId',
+  'request',
 ]);
 
 // Only diagnostic metadata reaches the terminal; unknown fields are dropped.
@@ -155,6 +157,10 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
                   ...items.values(),
                 ]),
                 next: 'Check provider sign-in or endpoint settings, then retry.',
+                // A custom endpoint's HTTP status, request id and request shape, to match its own logs.
+                ...(Number.isInteger(failure?.status) && { status: failure.status }),
+                ...(failure?.requestId && { requestId: failure.requestId }),
+                ...(failure?.request && { request: failure.request }),
               }),
           },
         ),

@@ -356,6 +356,14 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             ? `This ${label} was saved without its request. Ask the tutor for it again.`
             : `This ${label} does not need to be regenerated.`,
       });
+    // Retry asks again now: a visual follows the conversation's current chat model, not the one that failed.
+    if (job.kind === 'visual') {
+      job.input = JSON.stringify({
+        ...JSON.parse(job.input),
+        selection: ctx.videoRoles(tree).chat,
+      });
+      store.visualInput(id, artifactId, job.input);
+    }
     ctx.startDrawing(job);
     return json(res, 200, live(job));
   }

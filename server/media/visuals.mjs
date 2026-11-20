@@ -290,7 +290,7 @@ export async function generateVisual(
           );
         } catch (error) {
           throw new Error(
-            `Visual provider could not generate a result: ${providerError(error).replace(/\.$/, '')}. Check Smart in Settings → Models, then Retry.`,
+            `Visual provider could not generate a result: ${providerError(error).replace(/\.$/, '')}. Check the conversation’s chat model, then Retry.`,
           );
         }
         if (controller.signal.aborted) throw controller.signal.reason;

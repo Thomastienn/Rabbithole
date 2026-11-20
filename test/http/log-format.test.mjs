@@ -8,6 +8,7 @@ import {
   stdoutLog,
   requestPath,
 } from '../../server/log.mjs';
+import { requestShape } from '../../server/providers/endpointSettings.mjs';
 
 test('plain formatter writes one dated line with level, area and diagnostic fields only', () => {
   const line = formatLog(
@@ -102,6 +103,43 @@ test('model logs preserve actual model and unavailable counts, and distinguish c
     / INFO model stopped .*model="actual-model" input="unreported" output="unreported" cacheRead="unreported" ms=\d+/,
   );
   assert.doesNotMatch(logs.join('\n'), /private-thread|PRIVATE_INPUT/);
+});
+
+test('a failed endpoint call logs its HTTP status, request id and request shape', async () => {
+  const logs = [];
+  const provider = {
+    generate: async () => {
+      throw Object.assign(new Error('Custom endpoint rejected the request (HTTP 400).'), {
+        status: 400,
+        requestId: 'req-1',
+        request: requestShape({
+          messages: [
+            { role: 'system', content: 'PRIVATE_SYSTEM' },
+            { role: 'user', content: [{ type: 'text', text: 'Hi' }, { type: 'image_url' }] },
+          ],
+          tools: [{}],
+          tool_choice: { type: 'function', function: { name: 'record_turn' } },
+        }),
+      });
+    },
+  };
+  await assert.rejects(
+    loggedProvider((line) => logs.push(line), provider, 'diagram', 'id', {
+      provider: 'openai',
+      model: 'github/auto',
+    }).generate(
+      {},
+      'q',
+      () => {},
+      () => {},
+      new AbortController().signal,
+    ),
+  );
+  assert.match(
+    logs[1],
+    / ERROR model failed .*status=400 requestId="req-1" request="messages=2 chars=16 images=1 tools=1 effort=none forced=record_turn"/,
+  );
+  assert.doesNotMatch(logs.join('\n'), /PRIVATE_SYSTEM/);
 });
 
 test('logging preserves the provider receiver for catalog and generation calls', async () => {

@@ -177,7 +177,7 @@ test('provider failures show their redacted first line and deadlines do not auto
   );
   try {
     for (const reason of [
-      /^Visual provider could not generate a result: Model gpt-x is not in the catalog with api_key=\[redacted\]\. Check Smart/,
+      /^Visual provider could not generate a result: Model gpt-x is not in the catalog with api_key=\[redacted\]\. Check the conversation’s chat model/,
       /Visual generation timed out/,
     ]) {
       const before = calls;
@@ -206,6 +206,41 @@ test('provider failures show their redacted first line and deadlines do not auto
     );
   } finally {
     hold.resolve();
+    await env.close();
+  }
+});
+
+test('Retry draws a failed visual with the conversation’s current chat model', async () => {
+  const drawnBy = [];
+  const env = await open(
+    {
+      generate: async (tree, text, emit) => {
+        if (!tree.instructions?.startsWith('You create one self-contained visual'))
+          return complete(emit, 'Look.' + block());
+        drawnBy.push('openai');
+        complete(emit, visualAnswer(text, source));
+      },
+    },
+    {
+      generate: async () => {
+        drawnBy.push('claude');
+        throw new Error('no model endpoints available given user constraints');
+      },
+    },
+  );
+  try {
+    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })).text();
+    await until(
+      async () => (await env.get(`/api/trees/${env.tree.id}`)).artifacts[0].status === 'failed',
+    );
+    const { id } = (await env.get(`/api/trees/${env.tree.id}`)).artifacts[0];
+    env.store.switchProvider(env.tree.id, 'openai', 'smart');
+    assert.equal((await env.post(`/api/trees/${env.tree.id}/artifacts/${id}/retry`)).status, 200);
+    await until(
+      async () => (await env.get(`/api/trees/${env.tree.id}/artifacts/${id}`)).status === 'ready',
+    );
+    assert.deepEqual(drawnBy, ['claude', 'openai']);
+  } finally {
     await env.close();
   }
 });

@@ -36,6 +36,21 @@ export async function responseError(response, apiKey) {
   );
 }
 
+// A rejected request's size and options, never its text: enough to find it in the endpoint's own logs.
+export const requestShape = ({ messages, tools, reasoning_effort, tool_choice }) => {
+  const parts = messages.flatMap((m) =>
+    Array.isArray(m.content) ? m.content : [{ text: m.content ?? '' }],
+  );
+  return [
+    `messages=${messages.length}`,
+    `chars=${parts.reduce((n, p) => n + (p.text?.length ?? 0), 0)}`,
+    `images=${parts.filter((p) => p.type === 'image_url').length}`,
+    `tools=${tools?.length ?? 0}`,
+    `effort=${reasoning_effort ?? 'none'}`,
+    ...(tool_choice ? [`forced=${tool_choice.function.name}`] : []),
+  ].join(' ');
+};
+
 export function settings(body) {
   const invalid = () => {
     throw new EndpointError(
