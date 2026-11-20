@@ -282,7 +282,7 @@
     transition: none;
   }
 }
-/* Figure caption under the player: title in Archivo, description in the reading face. */
+/* Figure caption under the player: title in the heading face, description in the reading face. */
 .video-caption {
   padding-inline: 2px;
 }
