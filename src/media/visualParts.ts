@@ -47,19 +47,19 @@ export function watchParts(
 ) {
     const document = view.document;
     // Bounds are clipped to the frame's viewport, the only area the host accepts.
+    const bounds = (e: Element) => {
+        const r = e.getBoundingClientRect(),
+            x = Math.max(0, r.left),
+            y = Math.max(0, r.top);
+        return {
+            x,
+            y,
+            width: Math.max(0, Math.min(view.innerWidth, r.right) - x),
+            height: Math.max(0, Math.min(view.innerHeight, r.bottom) - y),
+        };
+    };
     const describe = (target: EventTarget | null) =>
-        trail(target, root)?.map((e) => {
-            const r = e.getBoundingClientRect(),
-                x = Math.max(0, r.left),
-                y = Math.max(0, r.top);
-            return {
-                name: nameOf(e)!,
-                x,
-                y,
-                width: Math.max(0, Math.min(view.innerWidth, r.right) - x),
-                height: Math.max(0, Math.min(view.innerHeight, r.bottom) - y),
-            };
-        });
+        trail(target, root)?.map((e) => ({ name: nameOf(e)!, ...bounds(e) }));
     let last = 'null';
     const hover = (parts: ReturnType<typeof describe>) => {
         document.documentElement.classList.toggle('tt-pick', !!parts);
@@ -76,4 +76,68 @@ export function watchParts(
         const step = (event.target as Element).closest('.tt-steps')?.getAttribute('data-step');
         post({ type: 'pick', parts, step: step ? Number(step) : null });
     });
+
+    // Branched parts the host marks: the first drawn part with each trail, re-measured whenever the visual changes.
+    let marked: string[] = [],
+        wanted: number | undefined,
+        queued = false,
+        lastMarks = '[]';
+    const measure = () => {
+        queued = false;
+        const controls = wanted !== undefined && document.querySelector('.tt-steps');
+        if (controls) {
+            controls.dispatchEvent(new view.CustomEvent('tt-show', { detail: wanted }));
+            wanted = undefined;
+        }
+        const drawn = new Map<string, Element>();
+        for (const e of root.querySelectorAll('[data-part]')) {
+            const names: string[] = [];
+            for (let p: Element | null = e; p && p !== root; p = p.parentElement)
+                if (nameOf(p)) names.unshift(nameOf(p)!);
+            const key = JSON.stringify(names.slice(-3)),
+                box = bounds(e);
+            if (
+                marked.includes(key) &&
+                !drawn.has(key) &&
+                box.width &&
+                box.height &&
+                e.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) !== false
+            )
+                drawn.set(key, e);
+        }
+        const marks = marked
+                .filter((key) => drawn.has(key))
+                .map((key) => ({ trail: JSON.parse(key), ...bounds(drawn.get(key)!) })),
+            key = JSON.stringify(marks);
+        if (key === lastMarks) return;
+        lastMarks = key;
+        post({ type: 'marks', marks });
+    };
+    const schedule = () => {
+        if (queued || (!marked.length && wanted === undefined)) return;
+        queued = true;
+        view.requestAnimationFrame(measure);
+    };
+    new view.MutationObserver(schedule).observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+    });
+    for (const type of ['resize', 'transitionend', 'animationend'])
+        view.addEventListener(type, schedule);
+    return {
+        mark(trails: string[][]) {
+            marked = trails.map((t) => JSON.stringify(t));
+            if (!marked.length) {
+                if (lastMarks !== '[]') post({ type: 'marks', marks: [] });
+                lastMarks = '[]';
+            }
+            schedule();
+        },
+        // Opens a step-through visual at a stored step, once its controls exist.
+        step(index: number) {
+            wanted = index;
+            schedule();
+        },
+    };
 }

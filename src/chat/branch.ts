@@ -18,6 +18,8 @@ export type Branch = {
     discussion?: string;
     label?: string;
     explanation?: string;
+    trail?: string[];
+    step?: number | null;
 };
 
 export function passageAnchor(message: Pick<Message, 'id' | 'text'>, start: number, end: number) {

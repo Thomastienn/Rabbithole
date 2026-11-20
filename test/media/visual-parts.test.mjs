@@ -55,18 +55,22 @@ function plant() {
     const root = w.document.getElementById('visual'),
         posted = [];
     w.document.getElementById('dragged').addEventListener('pointerdown', () => {});
-    // jsdom has no layout: each part reports a box from its own data, the turbine off the frame's right edge.
+    // jsdom has no layout: each part reports a box from its own data, the turbine off the frame's right edge;
+    // a hidden part draws nothing.
     w.Element.prototype.getBoundingClientRect = function () {
+        if (this.closest('[hidden]'))
+            return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
         const left = this.id === 'turbine' ? 1000 : 10;
         return { left, top: 20, right: left + 100, bottom: 60, width: 100, height: 40 };
     };
-    watchParts(w, root, (m) => posted.push(m));
+    const parts = watchParts(w, root, (m) => posted.push(m));
     const at = (id, type = 'pointermove') =>
         w.document
             .getElementById(id)
             .dispatchEvent(new w.MouseEvent(type, { bubbles: true, cancelable: true }));
-    return { w, root, posted, at };
+    return { w, root, posted, at, parts };
 }
+const frame = (w) => new Promise((resolve) => w.requestAnimationFrame(() => resolve()));
 
 test('hovering names the smallest part under the pointer with its trail, at most three deep, and its bounds inside the frame', () => {
     const { w, posted, at } = plant();
@@ -174,4 +178,81 @@ test('host accepts only bounded part messages inside the frame and ignores malfo
     ])
         assert.equal(visualMessage(bad, frame), undefined, JSON.stringify(bad));
     assert.equal(visualMessage({ type: 'leave' }), undefined, 'part messages need the frame');
+});
+
+test('branched parts report their bounds on every step that draws them, matched by trail, and the stored step opens', async () => {
+    const { w, posted, parts } = plant();
+    const rods = ['Nuclear plant', 'Reactor', 'Control rods'],
+        box = { x: 10, y: 20, width: 100, height: 40 };
+    parts.mark([
+        rods,
+        ['Nuclear plant', 'Turbine'],
+        ['Reactor', 'Control rods', 'Rod tip'],
+        ['Boiler'],
+    ]);
+    await frame(w);
+    assert.deepEqual(posted.pop(), {
+        type: 'marks',
+        marks: [
+            { trail: rods, ...box },
+            {
+                trail: ['Nuclear plant', 'Turbine'],
+                x: 1000,
+                y: 20,
+                width: w.innerWidth - 1000,
+                height: 40,
+            },
+            { trail: ['Reactor', 'Control rods', 'Rod tip'], ...box },
+        ],
+    });
+    // The next step hides the rods; the part tip inside them goes too.
+    const art = w.document.getElementById('art'),
+        group = w.document.getElementById('rod').parentElement,
+        control = stepThrough(art, [
+            () => group.removeAttribute('hidden'),
+            () => group.setAttribute('hidden', ''),
+        ]);
+    control.show(1);
+    await frame(w);
+    assert.deepEqual(
+        posted.pop().marks.map((m) => m.trail),
+        [['Nuclear plant', 'Turbine']],
+        'a step that does not draw a part leaves it unmarked',
+    );
+    control.show(0);
+    await frame(w);
+    assert.equal(posted.pop().marks.length, 3, 'a later step that draws it again marks it again');
+    await frame(w);
+    assert.equal(posted.length, 0, 'unchanged marks post once');
+    parts.step(1);
+    await frame(w);
+    assert.equal(w.document.querySelector('.tt-steps').dataset.step, '1', 'the stored step opens');
+    assert.equal(posted.pop().marks.length, 1);
+});
+
+test('host accepts only bounded mark messages with valid trails inside the frame', () => {
+    const frame = { width: 600, height: 400 },
+        rods = { trail: ['Reactor', ' Control rods '], x: 10, y: 20, width: 100, height: 40 };
+    assert.deepEqual(visualMessage({ type: 'marks', marks: [rods] }, frame), {
+        type: 'marks',
+        marks: [{ ...rods, trail: ['Reactor', 'Control rods'] }],
+    });
+    assert.deepEqual(visualMessage({ type: 'marks', marks: [] }, frame), {
+        type: 'marks',
+        marks: [],
+    });
+    for (const bad of [
+        { type: 'marks', marks: [{ ...rods, trail: [] }] },
+        { type: 'marks', marks: [{ ...rods, trail: ['A', 'B', 'C', 'D'] }] },
+        { type: 'marks', marks: [{ ...rods, trail: ['Tab\there'] }] },
+        { type: 'marks', marks: [{ ...rods, trail: 'Reactor' }] },
+        { type: 'marks', marks: [{ ...rods, x: 590 }] },
+        { type: 'marks', marks: [{ ...rods, name: 'Reactor' }] },
+        { type: 'marks', marks: [null] },
+        { type: 'marks', marks: Array(51).fill(rods) },
+        { type: 'marks', marks: 'Reactor' },
+        { type: 'marks', marks: [rods], step: 1 },
+    ])
+        assert.equal(visualMessage(bad, frame), undefined, JSON.stringify(bad));
+    assert.equal(visualMessage({ type: 'marks', marks: [] }), undefined, 'marks need the frame');
 });

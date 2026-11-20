@@ -29,6 +29,7 @@ const root = document.getElementById('visual')!,
 let rendered = false;
 let complete = false;
 let room = Infinity;
+const parts = watchParts(window, root, (message) => parent.postMessage(message, '*'));
 
 addEventListener('message', (event) => {
     if (event.source !== parent) return;
@@ -54,6 +55,14 @@ addEventListener('message', (event) => {
         complete = data.complete === true;
         renderVisual(root, data.source, complete);
     }
+    if (
+        data?.type === 'marks' &&
+        Array.isArray(data.trails) &&
+        data.trails.every((t: unknown) => Array.isArray(t) && t.every((n) => typeof n === 'string'))
+    )
+        parts.mark(data.trails);
+    if (data?.type === 'step' && Number.isInteger(data.step) && data.step >= 0)
+        parts.step(data.step);
 });
 
 // The host validates these height reports and the part messages below against this frame's window.
@@ -66,4 +75,3 @@ function report() {
     parent.postMessage({ type: 'height', height: Math.ceil(natural * scale) }, '*');
 }
 new ResizeObserver(report).observe(document.body);
-watchParts(window, root, (message) => parent.postMessage(message, '*'));
