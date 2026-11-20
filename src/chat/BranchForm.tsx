@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Button } from '@astryxdesign/core/Button';
 import ArrowUpIcon from '@heroicons/react/24/outline/ArrowUpIcon';
+import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import type { Anchor } from './branch';
 import { renderInline } from '../markdown/inlineMarkdown';
 
@@ -17,6 +18,7 @@ export default function BranchForm({
     setQuestion,
     explain,
     saved,
+    widen,
 }: {
     branch: { parent: string; anchor: Anchor; question: string };
     branching: boolean;
@@ -26,8 +28,11 @@ export default function BranchForm({
     setQuestion: (question: string) => void;
     explain?: (anchor: Anchor) => Promise<string>;
     saved?: string;
+    widen?: (depth: number) => void;
 }) {
     const { anchor } = branch;
+    // A picked visual part, named by its trail.
+    const part = 'trail' in anchor && anchor.trail ? anchor : undefined;
     // Reply passages can have a brief explanation; only an unexplored suggestion asks on opening, a selection waits for its button.
     const briefKey =
         !!explain &&
@@ -80,6 +85,25 @@ export default function BranchForm({
             }}
         >
             <VStack padding={2} gap={2}>
+                {/* A picked visual part: its trail, the same crumbs as the conversation path; an earlier part widens the question. */}
+                {part && (
+                    <nav className="crumbs branch-trail" aria-label="Part of the visual">
+                        {part.trail!.slice(0, -1).map((name, i) => (
+                            <Fragment key={i}>
+                                <Button
+                                    className="crumb"
+                                    label={name}
+                                    variant="ghost"
+                                    size="sm"
+                                    isDisabled={branching || !widen}
+                                    onClick={() => widen?.(i + 1)}
+                                />
+                                <ChevronRightIcon className="crumb-sep" aria-hidden />
+                            </Fragment>
+                        ))}
+                        <strong aria-current="location">{part.label}</strong>
+                    </nav>
+                )}
                 {text ? (
                     <Text className="branch-brief">{renderInline(text)}</Text>
                 ) : want && mine?.failed ? (
@@ -118,9 +142,9 @@ export default function BranchForm({
                         {branch.anchor.text}
                     </Text>
                     <TextInput
-                        label="Question about this passage"
+                        label={part ? 'Question about this part' : 'Question about this passage'}
                         isLabelHidden
-                        placeholder="Ask about this passage"
+                        placeholder={part ? `Ask about ${part.label}` : 'Ask about this passage'}
                         aria-describedby="branch-passage"
                         size="sm"
                         value={branch.question}

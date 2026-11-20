@@ -37,6 +37,17 @@ keys; do not add your own step controls or indicator.
 
 The frame holds only this visual, so CSS selectors need no id scoping.
 
+Visual parts are required in every SVG and HTML visual. Wrap every meaningful
+object the learner could ask about in a group or container carrying
+data-part="Name": an SVG g element, or an HTML element such as a div. Nest
+parts to show what belongs to what, at most three levels deep: a component
+holds its details, such as data-part="Reactor" holding data-part="Control rods".
+Names are short, one to four words in the learner's language. The host outlines
+the part under the pointer and asks about it on click. Never name controls
+(buttons, inputs, selects, sliders, the step controls) as parts; they keep
+working and never pick. Objects drawn by script get data-part in the script.
+Plain canvas drawings have no parts.
+
 Text budget: at most a few short sentences in the whole fragment, and short
 labels. Do not put explanatory paragraphs inside the fragment (a predict-then-reveal
 answer below is the one exception); the reply text carries the explanation.

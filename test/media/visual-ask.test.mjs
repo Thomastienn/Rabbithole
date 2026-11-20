@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
+import { conversation, json, mount } from '../support/chat-hooks-kit.mjs';
 const { default: VisualFrame } = await import('../../src/media/VisualFrame.tsx');
 
 const visual = (status) => ({
@@ -122,4 +123,148 @@ test('child chips sit under the visual in address order and family ink, and a ch
     await act(async () => chips[0].click());
     assert.deepEqual(opened, ['c2']);
     assert.equal(container.querySelector('[data-artifact=lonely] .visual-chips'), null);
+});
+
+const sized = (frame) => {
+    for (const [key, value] of Object.entries({ clientWidth: 600, clientHeight: 400 }))
+        Object.defineProperty(frame, key, { value });
+};
+const sender =
+    (act, frame) =>
+    (data, source = frame.contentWindow) =>
+        act(async () => window.dispatchEvent(new window.MessageEvent('message', { source, data })));
+
+test('hovering a visual part draws its rectangle and name, and one click asks about it with its trail and step', async (t) => {
+    const calls = [];
+    const { container, act, cleanup } = await render(
+        h(VisualFrame, {
+            artifact: visual('ready'),
+            onPart: (artifact, part, origin, box) =>
+                calls.push([artifact.id, part, origin.current, box]),
+        }),
+        ui,
+    );
+    t.after(cleanup);
+    const figure = container.querySelector('figure'),
+        frame = figure.querySelector('iframe'),
+        receive = sender(act, frame);
+    sized(frame);
+    const plant = { name: 'Nuclear plant', x: 0, y: 0, width: 600, height: 400 },
+        rods = { name: 'Control rods', x: 10, y: 20, width: 100, height: 40 };
+    await receive({ type: 'height', height: 400 });
+    await receive({ type: 'part', parts: [plant, rods] });
+    const box = () => figure.querySelector('.visual-part');
+    assert.equal(box().textContent, 'Control rods');
+    assert.equal(box().getAttribute('aria-hidden'), 'true');
+    assert.deepEqual(
+        ['left', 'top', 'width', 'height'].map((k) => box().style[k]),
+        ['10px', '20px', '100px', '40px'],
+    );
+    await receive({ type: 'part', parts: [plant] });
+    assert.equal(box().textContent, 'Nuclear plant', 'the component area outlines the component');
+    await receive({ type: 'leave' });
+    assert.equal(box(), null);
+    await receive({ type: 'part', parts: [{ ...rods, x: 590 }] });
+    await receive({ type: 'part', parts: [rods] }, window);
+    assert.equal(box(), null, 'out-of-frame or foreign part messages are ignored');
+    await receive({ type: 'pick', parts: [plant, rods], step: 2 });
+    assert.deepEqual(calls, [
+        [
+            'v-ready',
+            {
+                label: 'Control rods',
+                explanation: 'Two winners advance to the final.',
+                trail: ['Nuclear plant', 'Control rods'],
+                step: 2,
+            },
+            figure,
+            { x: 10, y: 20, width: 100, height: 40 },
+        ],
+    ]);
+});
+
+test('parts of a still-drawing visual neither outline nor pick', async (t) => {
+    const calls = [];
+    const { container, act, cleanup } = await render(
+        h(VisualFrame, {
+            artifact: { ...visual('pending'), source: '<svg></svg>' },
+            onPart: (...args) => calls.push(args),
+        }),
+        ui,
+    );
+    t.after(cleanup);
+    const frame = container.querySelector('iframe'),
+        receive = sender(act, frame);
+    sized(frame);
+    const parts = [{ name: 'Reactor', x: 0, y: 0, width: 10, height: 10 }];
+    await receive({ type: 'part', parts });
+    await receive({ type: 'pick', parts, step: null });
+    assert.equal(container.querySelector('.visual-part'), null);
+    assert.deepEqual(calls, []);
+});
+
+test('a picked part opens the ask box floating over it, and choosing an earlier trail entry widens the source', async (t) => {
+    const plant = {
+        ...visual('ready'),
+        id: 'plant',
+        conversation: 'a',
+        title: 'Nuclear plant',
+        description: 'How a plant makes electricity.',
+    };
+    const page = await mount(t, ({ path }) =>
+        path === '/api/trees/a'
+            ? json({
+                  ...conversation('a'),
+                  messages: [
+                      { id: 'reply', role: 'assistant', text: 'Heat.', status: 'completed' },
+                  ],
+                  artifacts: [plant],
+              })
+            : undefined,
+    );
+    await page.act(async () => page.current.trees.openConversation('a'));
+    const reply = document.body.appendChild(document.createElement('div'));
+    reply.dataset.chatMessage = 'reply';
+    const passage = reply.appendChild(document.createElement('div'));
+    passage.className = 'passage';
+    passage.getBoundingClientRect = () => ({ top: 100, left: 0, bottom: 200, right: 600 });
+    const part = {
+        label: 'Control rods',
+        explanation: plant.description,
+        trail: ['Nuclear plant', 'Reactor', 'Control rods'],
+        step: 2,
+    };
+    await page.act(async () =>
+        page.current.branch.openVisualPart(
+            plant,
+            part,
+            { current: passage },
+            {
+                x: 10,
+                y: 150,
+                width: 100,
+                height: 40,
+            },
+        ),
+    );
+    const source = {
+        messageId: 'reply',
+        artifactId: 'plant',
+        ...part,
+        text: 'Visual: Nuclear plant\nHow a plant makes electricity.\nPart: Nuclear plant › Reactor › Control rods',
+    };
+    assert.deepEqual(page.current.c.branch.anchor, { ...source, at: { x: 0, y: 50, below: 90 } });
+    await page.act(async () => page.current.branch.widenPart(2));
+    assert.deepEqual(page.current.c.branch.anchor, {
+        ...source,
+        label: 'Reactor',
+        trail: ['Nuclear plant', 'Reactor'],
+        text: 'Visual: Nuclear plant\nHow a plant makes electricity.\nPart: Nuclear plant › Reactor',
+        at: { x: 0, y: 50, below: 90 },
+    });
+    assert.deepEqual(
+        page.calls.filter((c) => c.path.endsWith('/prepare')).at(-1).body.trail,
+        ['Nuclear plant', 'Reactor'],
+        'branch preparation follows the widened part',
+    );
 });

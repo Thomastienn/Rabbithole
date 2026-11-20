@@ -7,6 +7,7 @@ import * as d3 from 'd3';
 import { gsap } from 'gsap';
 import { renderVisual } from './visualMarkup';
 import { reflectSvgHidden, stepThrough } from './stepThrough';
+import { trackPointerHandlers, watchParts } from './visualParts';
 import 'katex/dist/katex.min.css';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/600.css';
@@ -22,6 +23,7 @@ Object.assign(window, {
     stepThrough,
 });
 reflectSvgHidden(window);
+trackPointerHandlers(window);
 const root = document.getElementById('visual')!,
     tokens = document.head.appendChild(document.createElement('style'));
 let rendered = false;
@@ -54,7 +56,7 @@ addEventListener('message', (event) => {
     }
 });
 
-// The host validates these height reports against this frame's window; it accepts no other frame message.
+// The host validates these height reports and the part messages below against this frame's window.
 // A visual taller than the host's room scales down to fit, but never below half size.
 function report() {
     if (!rendered) return;
@@ -64,3 +66,4 @@ function report() {
     parent.postMessage({ type: 'height', height: Math.ceil(natural * scale) }, '*');
 }
 new ResizeObserver(report).observe(document.body);
+watchParts(window, root, (message) => parent.postMessage(message, '*'));

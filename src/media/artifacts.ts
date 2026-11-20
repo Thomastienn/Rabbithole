@@ -57,13 +57,65 @@ export type DiagramState =
 
 const KINDS = ['mermaid', 'video', 'visual', 'discussion'];
 
-// Visual frames may only report their height; branch shapes validate visual branch requests (label, explanation).
-export type VisualPart = { label: string; explanation: string };
-export type VisualMessage = { type: 'height'; height: number } | ({ type: 'branch' } & VisualPart);
+// Visual frames report their height and the visual part under the pointer; branch shapes validate visual
+// branch requests (label, explanation). A picked part adds its trail of names, outermost first, and its step.
+export type VisualPart = {
+    label: string;
+    explanation: string;
+    trail?: string[];
+    step?: number | null;
+};
+export type PartBox = { name: string; x: number; y: number; width: number; height: number };
+export type VisualMessage =
+    | { type: 'height'; height: number }
+    | ({ type: 'branch' } & VisualPart)
+    | { type: 'part'; parts: PartBox[] }
+    | { type: 'pick'; parts: PartBox[]; step: number | null }
+    | { type: 'leave' };
 export function visualPassage(visual: Pick<Artifact, 'title' | 'description'>, part: VisualPart) {
-    return `Visual: ${visual.title}\n${visual.description}\nPart: ${part.label}\n${part.explanation}`;
+    return part.trail
+        ? `Visual: ${visual.title}\n${visual.description}\nPart: ${part.trail.join(' › ')}`
+        : `Visual: ${visual.title}\n${visual.description}\nPart: ${part.label}\n${part.explanation}`;
 }
-export function visualMessage(data: unknown): VisualMessage | undefined {
+const partName = (v: unknown) =>
+    typeof v === 'string' &&
+    !!v.trim() &&
+    v.length <= 60 &&
+    !/[\u0000-\u001f\u007f-\u009f]/.test(v);
+// A part trail: one to three names, outermost first.
+export function partTrail(v: unknown): string[] | undefined {
+    if (Array.isArray(v) && v.length >= 1 && v.length <= 3 && v.every(partName))
+        return v.map((name: string) => name.trim());
+}
+const step = (v: unknown) => v === null || (Number.isInteger(v) && (v as number) >= 0);
+// Boxes from the sandbox must lie inside the frame; 1px absorbs subpixel rounding.
+function partBoxes(v: unknown, frame: { width: number; height: number }) {
+    const inside = (b: Record<string, unknown>) => {
+        const [x, y, w, h] = [b.x, b.y, b.width, b.height];
+        return (
+            [x, y, w, h].every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0) &&
+            (x as number) + (w as number) <= frame.width + 1 &&
+            (y as number) + (h as number) <= frame.height + 1
+        );
+    };
+    if (
+        !Array.isArray(v) ||
+        !v.every(
+            (b) =>
+                b &&
+                typeof b === 'object' &&
+                Object.keys(b).sort().join() === 'height,name,width,x,y' &&
+                inside(b),
+        )
+    )
+        return;
+    const names = partTrail(v.map((b) => b.name));
+    return names && v.map((b, i) => ({ ...b, name: names[i] }) as PartBox);
+}
+export function visualMessage(
+    data: unknown,
+    frame?: { width: number; height: number },
+): VisualMessage | undefined {
     if (!data || typeof data !== 'object') return;
     const m = data as Record<string, unknown>,
         keys = Object.keys(m).sort().join();
@@ -74,6 +126,11 @@ export function visualMessage(data: unknown): VisualMessage | undefined {
         Number.isFinite(m.height)
     )
         return { type: 'height', height: Math.min(Math.max(Math.ceil(m.height), 0), 4000) };
+    if (frame && m.type === 'leave' && keys === 'type') return { type: 'leave' };
+    const parts = frame && partBoxes(m.parts, frame);
+    if (parts && m.type === 'part' && keys === 'parts,type') return { type: 'part', parts };
+    if (parts && m.type === 'pick' && keys === 'parts,step,type' && step(m.step))
+        return { type: 'pick', parts, step: m.step as number | null };
     const bounded = (v: unknown, max: number) =>
         typeof v === 'string' && !!v.trim() && v.length <= max && !/[\r\n]/.test(v);
     if (
