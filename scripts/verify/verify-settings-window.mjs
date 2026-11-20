@@ -362,9 +362,9 @@ try {
   await b('reload');
   await wait(`document.querySelector('.band-contents')?.getClientRects().length`);
   await ev(`document.querySelector('.band-contents').click(); true`);
-  await wait(`document.querySelector('dialog[open] .drawer-settings')`);
+  await wait(`document.querySelector('dialog[open] .sidebar-foot > button.view-tab')`);
   await wait('document.getAnimations().every(a => a.playState !== "running")');
-  await ev(`document.querySelector('dialog[open] .drawer-settings').click(); true`);
+  await ev(`document.querySelector('dialog[open] .sidebar-foot > button.view-tab').click(); true`);
   await wait(
     `!document.querySelector('dialog.astryx-drawer[open]') && ${active}?.id === 'settings-heading'`,
   );
@@ -404,7 +404,7 @@ try {
   await closed();
   await wait(`${active}?.matches('.band-contents')`);
   await ev(`document.querySelector('.band-contents').click(); true`);
-  await wait(`document.querySelector('dialog[open] .drawer-settings')`);
+  await wait(`document.querySelector('dialog[open] .sidebar-foot > button.view-tab')`);
   step(
     `Narrow 390px page: section nav stacked above the content, keyboard section links open the page and focus its heading, padded content, no sideways scroll; Esc returns to the Contents button`,
   );

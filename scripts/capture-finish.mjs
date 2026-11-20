@@ -132,7 +132,7 @@ async function home() {
 const page = async (name) => {
   if (width === 'narrow') {
     await click('Contents');
-    await wait(`!!document.querySelector('dialog[open] .drawer-views') && ${idle}`);
+    await wait(`!!document.querySelector('dialog[open] .sidebar-views') && ${idle}`);
   }
   await click(name);
 };

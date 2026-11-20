@@ -4,12 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button, name } from '../support/ui.mjs';
-const {
-  default: ShellBand,
-  ContentsDrawer,
-  SaveAlert,
-  viewTab,
-} = await import('../../src/shell/ShellBand.tsx');
+const { default: ShellBand, SaveAlert, viewTab } = await import('../../src/shell/ShellBand.tsx');
 
 test('desktop sidebar and narrow band keep control order, current views, drawer actions and layout Retry', async (t) => {
   let update;
@@ -46,16 +41,6 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
         library: () => calls.push('library'),
         settings: () => calls.push('settings'),
       }),
-      value.mobile &&
-        h(ContentsDrawer, {
-          tab: value.tab,
-          drawer: value.drawer,
-          setDrawer,
-          views,
-          contents: h('button', null, '1 Fungi'),
-          library: () => calls.push('library'),
-          settings: () => calls.push('settings'),
-        }),
     );
   }
   const { container, act, cleanup } = await render(h(Fixture), ui);
@@ -102,28 +87,65 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
   assert.equal(band().querySelector('[role=alert]'), null);
   await act(async () => update({ mobile: true, drawer: false, tab: 'Map', failed: false }));
   band = () => container.querySelector('.shell-band');
-  assert.equal(container.querySelector('nav.sidebar'), null);
-  assert.deepEqual([...band().querySelectorAll('button, .band-mark')].map(name), [
+  assert.equal(container.querySelector('nav.sidebar:not(.sidebar-drawer)'), null, 'no side column');
+  assert.equal(document.querySelector('dialog[open]'), null, 'the drawer starts closed');
+  assert.deepEqual([...band().querySelectorAll('button')].map(name), [
     'Contents',
     'Rabbithole',
     'Hide top bar',
     'Search learning trees',
     'New chat',
   ]);
-  await act(async () => button(band(), 'Contents').click());
-  assert.equal(button(band(), 'Contents').getAttribute('aria-expanded'), 'true');
-  const drawer = document.querySelector('dialog[open]');
-  assert.ok(drawer);
-  assert.deepEqual([...drawer.querySelectorAll('.drawer-views button')].map(name), [
-    'Read',
-    'Map',
-    'Library',
-    'Knowledge',
-    'Videos',
-  ]);
-  await act(async () => button(drawer, 'Settings').click());
-  assert.equal(calls.at(-1), 'settings');
-  assert.equal(button(band(), 'Contents').getAttribute('aria-expanded'), 'false');
+  for (const [label, expected] of [
+    ['Search learning trees', 'search'],
+    ['New chat', 'new'],
+    ['Rabbithole', 'library'],
+  ]) {
+    await act(async () => button(band(), label).click());
+    assert.equal(calls.at(-1), expected);
+  }
+  const contents = button(band(), 'Contents');
+  // The drawer holds the whole sidebar; every choice in it closes the drawer and focus returns to Contents.
+  for (const [label, expected] of [
+    ['Close contents', undefined],
+    ['New chat', 'new'],
+    ['Search learning trees', 'search'],
+    ['Knowledge', 'Knowledge'],
+    ['Library', 'library'],
+    ['1 Fungi', undefined],
+    ['Settings', 'settings'],
+  ]) {
+    calls.length = 0;
+    await act(async () => {
+      contents.focus();
+      contents.click();
+    });
+    assert.equal(contents.getAttribute('aria-expanded'), 'true');
+    const drawer = document.querySelector('dialog[open]');
+    assert.ok(drawer?.querySelector('nav.sidebar-drawer'), label);
+    assert.deepEqual([...drawer.querySelectorAll('.sidebar-views button')].map(name), [
+      'Read',
+      'Map',
+      'Knowledge',
+      'Videos',
+      'Library',
+    ]);
+    assert.ok(drawer.querySelector('.sidebar-top + .contents'), 'the outline sits below the views');
+    assert.ok(button(drawer.querySelector('.sidebar-foot'), 'Settings'), 'Settings at the foot');
+    await act(async () => button(drawer, label).click());
+    assert.equal(calls.at(-1), expected, label);
+    assert.equal(contents.getAttribute('aria-expanded'), 'false', label);
+    // jsdom has no CSS transitions; finish the drawer exit without waiting for its timer.
+    const exit = new Event('transitionend', { bubbles: true });
+    Object.defineProperty(exit, 'propertyName', { value: 'transform' });
+    await act(async () => drawer.dispatchEvent(exit));
+    assert.equal(document.querySelector('dialog[open]'), null, label);
+    assert.ok(document.activeElement === contents, `${label} returns focus to Contents`);
+  }
+  await act(async () => contents.click());
+  const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  await act(async () => document.querySelector('dialog[open]').dispatchEvent(escape));
+  assert.equal(contents.getAttribute('aria-expanded'), 'false', 'Escape closes the drawer');
 });
 
 // Astryx renders a button's tooltip right after it, and skips aria-describedby when it only repeats the name.

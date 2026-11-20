@@ -154,13 +154,7 @@
   .shell-band {
     flex-wrap: wrap;
     height: auto;
-    min-height: calc(7 * var(--rabbithole-module));
-    padding-inline: var(--rabbithole-module);
-    overflow-x: visible;
-  }
-  .shell-band .band-mark {
-    margin-inline-start: var(--rabbithole-module);
-    font-size: 17px;
+    min-height: calc(6.5 * var(--rabbithole-module));
   }
   .shell-band .band-save {
     flex-basis: 100%;

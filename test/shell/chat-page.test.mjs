@@ -1,98 +1,11 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement as h } from 'react';
-import { render } from '../support/render.mjs';
 import { publicDiscussion } from '../fixtures/discussion.mjs';
-import { ui, button } from '../support/ui.mjs';
+import { button } from '../support/ui.mjs';
+import { mount, summary, tree } from '../support/chat-page-kit.mjs';
 
 // Composition check for the split ChatPage: its hooks load state, models and a chat into the regions.
-const models = {
-  models: [{ provider: 'claude', model: 'opus', label: 'Opus', isDefault: true, efforts: [] }],
-  providers: { claude: { label: 'Claude', connected: true } },
-};
-const tree = {
-  id: 't1',
-  title: 'Fungi',
-  provider: 'claude',
-  model: 'opus',
-  effort: null,
-  branch: null,
-  artifacts: [],
-  messages: [
-    { id: 'q1', role: 'user', text: 'What are hyphae?', status: 'completed' },
-    { id: 'a1', role: 'assistant', text: 'Thin threads.', status: 'completed' },
-  ],
-};
-
-async function mount(
-  t,
-  trees,
-  { mobile = false, contents = 'open', focus = 'off', vim = false, artifacts = [], respond } = {},
-) {
-  const calls = [];
-  const scrolls = [];
-  const saved = globalThis.fetch;
-  globalThis.fetch = async (path, options) => {
-    calls.push(path);
-    const response = await respond?.(path, options);
-    if (response) return response;
-    const body =
-      path === '/api/state'
-        ? { csrf: 'c', auth: { connected: true, email: null }, trees, active: [], videos: [] }
-        : path === '/api/models'
-          ? models
-          : path === '/api/settings/chat'
-            ? { provider: 'claude', model: null, effort: null }
-            : path === '/api/graph'
-              ? { concepts: [], links: [], topics: [] }
-              : path === '/api/videos'
-                ? []
-                : path === '/api/trees/t1'
-                  ? { ...tree, artifacts }
-                  : path.startsWith('/api/previews?') && artifacts.length
-                    ? { t1: [{ ...tree.messages[1], artifacts }] }
-                    : {};
-    return { ok: true, json: async () => body };
-  };
-  const { default: ChatPage } = await import('../../src/shell/ChatPage.tsx');
-  let stubs;
-  const page = await render(
-    h(ChatPage, { appearance: 'light', setAppearance() {}, theme: 'neutral', setTheme() {} }),
-    (w) => {
-      stubs = ui(w, { mobile });
-      w.Element.prototype.scrollIntoView = function (options) {
-        scrolls.push({ element: this, options });
-      };
-      w.localStorage.setItem('rabbithole.contents', contents);
-      w.localStorage.setItem('rabbithole.focus-mode', focus);
-      w.localStorage.setItem('rabbithole.vim', vim ? 'on' : 'off');
-      // Pacing is covered by the discussion card tests; here every discussion line counts as seen.
-      for (const a of artifacts)
-        if (a.discussion) w.localStorage.setItem(`rabbithole.discussion-seen.${a.id}`, '99');
-      w.DOMMatrixReadOnly = class {
-        m22 = 1;
-      };
-    },
-  );
-  t.after(async () => {
-    await page.cleanup();
-    globalThis.fetch = saved;
-  });
-  const settle = () =>
-    page.act(async () => {
-      stubs.frames();
-    });
-  await settle();
-  return { ...page, calls, settle, scrolls };
-}
-
-const summary = {
-  id: 't1',
-  title: 'Fungi',
-  parent: null,
-  layout: { folded: [], selected: 't1', panel: 'beside' },
-};
 
 test('inline discussion replies reach their card endpoint and main-thread closing removes the reply box live', async (t) => {
   let artifact = {
@@ -469,6 +382,36 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
     assert.equal((await key(container)).defaultPrevented, true);
     assert.equal(band(), null, label);
   }
+});
+
+test('Search from the narrow drawer returns focus to Contents when the palette closes', async (t) => {
+  const { container, act, settle } = await mount(t, [summary], { mobile: true });
+  const contents = button(container.querySelector('header.shell-band'), 'Contents');
+  await act(async () => {
+    contents.focus();
+    contents.click();
+  });
+  const drawer = document.querySelector('dialog[open]');
+  // A pointer press or Enter leaves focus on the drawer's Search; the palette takes it as its opener.
+  const search = button(drawer, 'Search learning trees');
+  await act(async () => {
+    search.focus();
+    search.click();
+  });
+  // jsdom has no CSS transitions; finish the drawer exit without waiting for its timer.
+  const exit = new Event('transitionend', { bubbles: true });
+  Object.defineProperty(exit, 'propertyName', { value: 'transform' });
+  await act(async () => drawer.dispatchEvent(exit));
+  const input = document.querySelector('dialog[open] input');
+  assert.ok(input, 'the palette opens');
+  await act(async () =>
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    ),
+  );
+  await settle();
+  assert.equal(document.querySelector('dialog[open]'), null);
+  assert.ok(document.activeElement === contents, 'focus returns to Contents');
 });
 
 test('narrow screens keep the header and contents drawer, also after saved focus mode', async (t) => {

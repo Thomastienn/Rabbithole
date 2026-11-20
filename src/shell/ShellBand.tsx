@@ -9,11 +9,11 @@ import {
   type MouseEvent,
 } from 'react';
 import { flushSync } from 'react-dom';
-import { HStack, Layout as Regions, LayoutContent, VStack } from '@astryxdesign/core/Layout';
+import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer';
+import { Drawer } from '@astryxdesign/core/Drawer';
 import {
   Bars3Icon,
   ChevronDoubleLeftIcon,
@@ -23,6 +23,7 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   RectangleStackIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { savedFocusMode, savePreference } from './preferences';
 import { Logo } from './Logo';
@@ -47,68 +48,6 @@ export const viewTab = (
     onClick={onClick}
   />
 );
-
-export function ContentsDrawer({
-  drawer,
-  setDrawer,
-  views,
-  contents,
-  library,
-  settings,
-  tab,
-}: {
-  tab: string;
-  drawer: boolean;
-  setDrawer: (open: boolean) => void;
-  views: ReactNode[];
-  contents: ReactNode;
-  library: () => void;
-  settings: () => void;
-}) {
-  return (
-    <Drawer
-      isOpen={drawer}
-      onOpenChange={setDrawer}
-      label="Contents"
-      side="start"
-      width={320}
-      padding={0}
-    >
-      <Regions
-        padding={2}
-        header={
-          <DrawerHeader className="drawer-head" title="Rabbithole" onOpenChange={setDrawer} />
-        }
-        content={
-          <LayoutContent padding={0}>
-            <VStack
-              gap={0}
-              className="band-drawer"
-              onClick={(e) => {
-                if ((e.target as Element).closest('button')) setDrawer(false);
-              }}
-            >
-              <nav aria-label="Views" className="drawer-views">
-                {views.slice(0, 2)}
-                {viewTab('Library', <RectangleStackIcon />, tab === 'library', library)}
-                {views.slice(2)}
-              </nav>
-              {contents}
-              <Button
-                className="view-tab drawer-settings"
-                label="Settings"
-                icon={<Cog6ToothIcon />}
-                variant="ghost"
-                size="md"
-                onClick={settings}
-              />
-            </VStack>
-          </LayoutContent>
-        }
-      />
-    </Drawer>
-  );
-}
 
 export function SaveAlert({ retry }: { retry: () => void }) {
   return (
@@ -266,23 +205,43 @@ export default function ShellBand({
         {saveAlert && <div className="focus-save">{saveAlert}</div>}
       </>
     );
+  const wordmark = (tooltip?: string) => (
+    <Button
+      className="sidebar-mark"
+      label="Rabbithole"
+      tooltip={tooltip}
+      variant="ghost"
+      size="md"
+      onClick={library}
+    >
+      <Logo />
+      <span className="band-mark">Rabbithole</span>
+    </Button>
+  );
   const sidebar = (
-    <nav className={rail ? 'sidebar sidebar-rail' : 'sidebar'} aria-label="App">
+    <nav
+      className={rail ? 'sidebar sidebar-rail' : mobile ? 'sidebar sidebar-drawer' : 'sidebar'}
+      aria-label="App"
+      // In the narrow drawer any choice closes it; the Downloads list stays open over it.
+      onClick={(e) => {
+        const target = e.target as Element;
+        if (mobile && target.closest('button') && !target.closest('.downloads-button'))
+          setDrawer(false);
+      }}
+    >
       <VStack gap={0} className="sidebar-top">
         <HStack gap={1} vAlign="center" className="sidebar-head">
-          {focusButton}
-          {!rail && (
-            <Button
-              className="sidebar-mark"
-              label="Rabbithole"
-              tooltip="Open the Library"
+          {!mobile && focusButton}
+          {/* In the drawer the mark opens under the pointer; a tooltip there would take the first Escape. */}
+          {!rail && wordmark(mobile ? undefined : 'Open the Library')}
+          {mobile && (
+            <IconButton
+              className="drawer-close"
+              label="Close contents"
+              icon={<XMarkIcon />}
               variant="ghost"
               size="md"
-              onClick={library}
-            >
-              <Logo />
-              <span className="band-mark">Rabbithole</span>
-            </Button>
+            />
           )}
         </HStack>
         <HStack gap={1} vAlign="center" className="sidebar-tools">
@@ -312,7 +271,7 @@ export default function ShellBand({
           {views.map(item)}
           {item(viewTab('Library', <RectangleStackIcon />, tab === 'library', library))}
         </VStack>
-        {!rail && saveAlert}
+        {!rail && !mobile && saveAlert}
       </VStack>
       {!rail && contents}
       <div className="sidebar-foot">
@@ -321,48 +280,58 @@ export default function ShellBand({
       </div>
     </nav>
   );
+  // Narrow (mockup Narrow): a small header, and the whole sidebar in a drawer.
   return mobile ? (
-    <header className="shell-band">
-      <IconButton
-        className="band-contents"
-        label="Contents"
-        tooltip="Contents"
-        icon={<Bars3Icon />}
-        variant="ghost"
-        size="md"
-        aria-haspopup="dialog"
-        aria-expanded={drawer}
-        onClick={() => setDrawer(true)}
-      />
-      <Logo />
-      <Text className="band-mark" weight="bold">
-        Rabbithole
-      </Text>
-      <HStack gap={1} vAlign="center" className="band-tools">
-        {focusButton}
+    <>
+      <header className="shell-band">
         <IconButton
-          className="tree-search"
-          label="Search learning trees"
-          tooltip="Search learning trees"
-          icon={<MagnifyingGlassIcon />}
+          className="band-contents"
+          label="Contents"
+          tooltip="Contents"
+          icon={<Bars3Icon />}
           variant="ghost"
           size="md"
           aria-haspopup="dialog"
-          onClick={search}
+          aria-expanded={drawer}
+          onClick={() => setDrawer(true)}
         />
-        <IconButton
-          className="new-chat"
-          label={busy ? 'Opening…' : 'New chat'}
-          tooltip="New chat"
-          icon={<PlusIcon />}
-          variant="ghost"
-          size="md"
-          isDisabled={busy}
-          onClick={newChat}
-        />
-      </HStack>
-      {saveAlert}
-    </header>
+        {wordmark('Open the Library')}
+        <HStack gap={0} vAlign="center" className="band-tools">
+          {focusButton}
+          <IconButton
+            className="tree-search"
+            label="Search learning trees"
+            tooltip="Search learning trees"
+            icon={<MagnifyingGlassIcon />}
+            variant="ghost"
+            size="md"
+            aria-haspopup="dialog"
+            onClick={search}
+          />
+          <IconButton
+            className="new-chat"
+            label={busy ? 'Opening…' : 'New chat'}
+            tooltip="New chat (Ctrl+Shift+O)"
+            icon={<PlusIcon />}
+            variant="ghost"
+            size="md"
+            isDisabled={busy}
+            onClick={newChat}
+          />
+        </HStack>
+        {saveAlert}
+      </header>
+      <Drawer
+        isOpen={drawer}
+        onOpenChange={setDrawer}
+        label="Contents"
+        side="start"
+        width={320}
+        padding={0}
+      >
+        {sidebar}
+      </Drawer>
+    </>
   ) : (
     <>
       {sidebar}

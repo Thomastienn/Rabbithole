@@ -66,7 +66,7 @@ html[data-interface-font='system'] [data-astryx-theme] {
     transition: none;
   }
 }
-/* Moss shell band (mockup Read): paper-toned text, focus ring and current tab on moss in both appearances. */
+/* Narrow header (mockup Narrow): menu, wordmark, then search and New chat as quiet icons on the deep field. */
 /* Overrides sit on the controls, not the header: tooltips and the palette render inside the band and keep popover colours. */
 .shell-band :is(button, .band-mark) {
   --color-text-primary: var(--rabbithole-band-ink);
@@ -83,11 +83,10 @@ html[data-interface-font='system'] [data-astryx-theme] {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--rabbithole-module);
-  height: calc(7 * var(--rabbithole-module));
-  padding-inline: calc(2 * var(--rabbithole-module));
-  overflow-x: auto;
-  scrollbar-width: none;
+  gap: 2px;
+  height: calc(6.5 * var(--rabbithole-module));
+  padding-inline: calc(0.75 * var(--rabbithole-module));
+  border-block-end: thin solid var(--color-border);
   background: var(--rabbithole-band);
   color: var(--rabbithole-band-ink);
 }
@@ -105,7 +104,7 @@ html[data-interface-font='system'] [data-astryx-theme] {
   letter-spacing: -0.01em;
   color: var(--rabbithole-band-ink);
 }
-.sidebar .band-mark {
+:is(.sidebar, .shell-band) .band-mark {
   font-family: var(--font-family-heading);
   font-weight: 700;
   line-height: 1;
@@ -208,10 +207,18 @@ html[data-interface-font='system'] [data-astryx-theme] {
   flex: none;
   margin-inline-start: auto;
 }
-.shell-band .new-chat {
-  height: 32px;
-  border: 1px solid color-mix(in srgb, var(--rabbithole-band-ink) 35%, transparent);
-  font-weight: 600;
+.shell-band .band-mark {
+  font-size: 18px;
+}
+/* The drawer holds the whole sidebar at the drawer's width; the sidebar scrolls inside it. */
+.sidebar-drawer {
+  flex: none;
+  width: 100%;
+  height: 100%;
+  border-inline-end: 0;
+}
+.sidebar-drawer .sidebar-head .sidebar-mark {
+  flex: 1;
 }
 .band-save {
   height: 24px;
