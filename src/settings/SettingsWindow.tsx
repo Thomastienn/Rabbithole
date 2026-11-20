@@ -26,7 +26,7 @@ import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
 import type { ModelSelection } from '../chat/types';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
-import InterfaceSettings, { Section } from './InterfaceSettings';
+import InterfaceSettings, { Done, Section } from './InterfaceSettings';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
 // tab: the section to scroll to (undefined opens at the top); focus is a selector to focus once open.
@@ -248,14 +248,16 @@ export default function SettingsWindow({
               title="Claude"
               description="Uses your own Claude plan through Claude Code on this computer."
             >
-              <Text type="supporting">
-                Claude:{' '}
-                {providers && !modelError
-                  ? providers.claude?.connected
-                    ? 'signed in through Claude Code'
-                    : 'run claude in a terminal and sign in'
-                  : 'sign-in status unavailable'}
-              </Text>
+              {providers && !modelError && providers.claude?.connected ? (
+                <Done>Claude: signed in through Claude Code</Done>
+              ) : (
+                <Text type="supporting">
+                  Claude:{' '}
+                  {providers && !modelError
+                    ? 'run claude in a terminal and sign in'
+                    : 'sign-in status unavailable'}
+                </Text>
+              )}
               {modelError && (
                 <Text type="supporting" role="alert">
                   {modelError}
@@ -274,10 +276,11 @@ export default function SettingsWindow({
             </Section>
             <Divider />
             <Section title="Codex" description="Uses your own ChatGPT plan.">
-              <Text type="supporting">
-                Codex:{' '}
-                {auth?.connected ? `connected ${auth.email ?? 'to ChatGPT'}` : 'not connected'}
-              </Text>
+              {auth?.connected ? (
+                <Done>Codex: connected {auth.email ?? 'to ChatGPT'}</Done>
+              ) : (
+                <Text type="supporting">Codex: not connected</Text>
+              )}
               <HStack>
                 <Button
                   label={auth?.connected ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'}

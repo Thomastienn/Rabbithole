@@ -162,9 +162,10 @@ test('reply API attributes retried visuals and every video call, reports running
     expected,
   );
   reopened.remove(root.id, root.id, () => {});
+  // Deleting the tree drops its live attribution; the counts stay.
   assert.deepEqual(
     reopened.usageEvents().events.map((u) => ({ ...u })),
-    history,
+    history.map((e) => ({ ...e, tree: null, treeTitle: null })),
   );
   assert.ok(
     reopened.db
@@ -188,11 +189,23 @@ test('older media events acquire identifiable reply links without inventing unav
   store.record(`diagram:${diagram.id}`, 'diagram', {}, null);
   store.record(`video:${video.attempt}:call`, 'video', {}, counts(20));
   store.db.exec('DROP INDEX usage_events_message; ALTER TABLE usage_events DROP COLUMN message');
-  const history = store.usageEvents();
+  // Read raw: the old schema has no message column for usageEvents() to join on.
+  const history = store.db
+    .prepare(
+      'SELECT at,provider,model,task,input,output,cacheRead,reasoning FROM usage_events ORDER BY at,rowid',
+    )
+    .all()
+    .map((e) => ({ ...e }));
   store.close();
   store = new Store(path);
   t.after(() => store.close());
-  assert.deepEqual(store.usageEvents(), history);
+  const { events } = store.usageEvents();
+  assert.deepEqual(
+    events.map(({ tree, treeTitle, ...e }) => ({ ...e })),
+    history,
+  );
+  // The upgrade's reply links also give the events their learning tree.
+  assert.ok(events.every((e) => e.tree === tree.id && e.treeTitle === 'Older media'));
   assert.deepEqual(
     store.tree(tree.id).messages[0].mediaUsage.map((u) => ({ ...u })),
     [

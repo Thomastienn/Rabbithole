@@ -3,7 +3,7 @@ import { HStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { TextInput } from '@astryxdesign/core/TextInput';
-import { Section } from './InterfaceSettings';
+import { Done, Section } from './InterfaceSettings';
 
 type SearchStatus = {
   url: string | null;
@@ -116,11 +116,7 @@ export default function SearchSettings({
           Checking SearXNG…
         </Text>
       )}
-      {message && (
-        <Text type="supporting" role="status">
-          {message}
-        </Text>
-      )}
+      {message && <Done>{message}</Done>}
       {error && (
         <Text type="supporting" role="alert" style={{ color: 'var(--color-text-error)' }}>
           {error}

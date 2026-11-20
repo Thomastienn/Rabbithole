@@ -17,9 +17,18 @@ const ev = (at, task, provider, model, counts) => ({
   cacheRead: counts?.[2] ?? null,
 });
 const events = [
-  { ...ev(+now - 1000, 'chat', 'claude', 'sonnet', [1200, 300, 800]), reasoning: 120 },
-  ev(+now - 900, 'suggestions', 'claude', 'haiku', [200, 50, 0]),
-  ev(+now - 800, 'chat', 'codex', 'gpt-5', null),
+  {
+    ...ev(+now - 1000, 'chat', 'claude', 'sonnet', [1200, 300, 800]),
+    reasoning: 120,
+    tree: 't1',
+    treeTitle: 'How do fungi trade?',
+  },
+  {
+    ...ev(+now - 900, 'suggestions', 'claude', 'haiku', [200, 50, 0]),
+    tree: 't1',
+    treeTitle: 'How do fungi trade?',
+  },
+  { ...ev(+now - 800, 'chat', 'codex', 'gpt-5', null), tree: 't2', treeTitle: 'TCP loss' },
   ev(+now - 700, 'chat', 'openai:local', 'qwen3:32b', null),
   ev(new Date(2026, 2, 1), 'chat', 'claude', 'sonnet', [400, 40, 80]),
   ev(new Date(2025, 11, 31, 23, 30), 'chat', null, null, [5000, 1000, 2000]),
@@ -62,8 +71,12 @@ async function mount(t, api) {
   const text = (selector) => container.querySelector(selector)?.textContent;
   const rows = () =>
     [...container.querySelectorAll('.usage-breakdown tbody tr')].map((r) => ({
-      cells: [...r.cells].map((c) => c.textContent),
-      share: r.querySelector('.usage-share').getAttribute('aria-label'),
+      // The name cell without its "No count reported" note.
+      cells: [...r.cells].map((c, i) =>
+        i ? c.textContent : c.textContent.replace(/No count reported$/, ''),
+      ),
+      share: r.querySelector('.usage-share')?.getAttribute('aria-label'),
+      note: r.querySelector('.usage-nocount')?.textContent,
     }));
   const bars = () => [...container.querySelectorAll('.usage-bar')];
   return { container, act, settle, radio, text, rows, bars, dom };
@@ -102,12 +115,23 @@ test('usage dashboard totals, charts and breakdowns agree, never estimate unrepo
   const unreported = models.find((r) => r.cells[0].startsWith('gpt-5'));
   assert.deepEqual(unreported.cells.slice(1, 5), ['—', '—', '—', '—']);
   assert.match(unreported.cells[5], /1 unreported/);
-  assert.equal(unreported.share, '0% of reported tokens');
+  assert.equal(unreported.share, undefined, 'no share bar for a model with no count');
+  assert.equal(unreported.note, 'No count reported');
   await radio('By task');
   assert.deepEqual(
     rows().map((r) => r.cells[0]),
     ['Chat replies', 'Suggestions'],
   );
+  await radio('By tree');
+  assert.deepEqual(
+    rows().map((r) => [r.cells[0], r.cells[4]]),
+    [
+      ['How do fungi trade?', '2,550'],
+      ['No tree (background work or deleted trees)', '520'],
+      ['TCP loss', '—'],
+    ],
+  );
+  await radio('By task');
 
   // A previous year: twelve months, all five tasks, unattributed records named.
   await radio('Year');

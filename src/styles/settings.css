@@ -131,6 +131,14 @@
     display: none;
   }
 }
+/* Success status: ink with a check (Line Diagram), never tinted. */
+.settings-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
 /* Settings sections: seams and small-caps labels, not cards (spec, Settings window). */
 .settings-panel h3 {
   font-size: var(--font-size-base);
@@ -270,21 +278,38 @@
   stroke-width: var(--focus-outline-width);
   vector-effect: non-scaling-stroke;
 }
+/* Series take line colours (mockup Usage: input cobalt, output green, cache read amber) and a fill
+   pattern each, so they read apart without colour. */
 [data-series='input'] {
-  fill: var(--color-icon-blue);
-  background: var(--color-icon-blue);
+  fill: var(--rabbithole-ink-1);
 }
 [data-series='output'] {
-  fill: var(--color-icon-green);
-  background: var(--color-icon-green);
+  fill: url(#usage-output);
 }
 [data-series='cacheRead'] {
-  fill: var(--color-icon-yellow);
-  background: var(--color-icon-yellow);
+  fill: url(#usage-cacheRead);
+}
+#usage-output .usage-fill {
+  fill: var(--rabbithole-ink-3);
+}
+#usage-cacheRead .usage-fill {
+  fill: var(--rabbithole-ink-2);
+}
+.usage-mark {
+  stroke: var(--color-background-body);
+  stroke-width: 0.8;
+}
+.usage-dot {
+  fill: var(--color-background-body);
+}
+.usage-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
 }
 .usage-swatch {
-  inline-size: 10px;
-  block-size: 10px;
+  inline-size: 12px;
+  block-size: 12px;
   border-radius: var(--radius-tick);
   display: inline-block;
 }

@@ -9,6 +9,9 @@ import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { start } from '../support/usage-kit.mjs';
 
+// The learning tree is looked up live, so deletion drops it while the counts stay.
+const bare = (list) => list.map(({ tree, treeTitle, ...e }) => e);
+
 test('usage history migrates once, keeps attribution and unavailable calls, survives restart and deletion, filters ranges and never duplicates', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'tt-usage-history-'));
   let env = await start(dir);
@@ -29,8 +32,9 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
 
   env = await start(dir);
   const migrated = (await env.get('/api/usage')).events;
+  assert.equal(migrated[0].tree, tree.id, 'a migrated reply still finds its learning tree');
   // Historical provider/model were never saved, so they stay unknown.
-  assert.deepEqual(migrated, [
+  assert.deepEqual(bare(migrated), [
     {
       at: new Date(2025, 11, 31, 23, 30).getTime(),
       provider: null,
@@ -49,7 +53,11 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
   await env.post(`/api/trees/${codex.id}/messages`, { text: 'Explain rounds' });
   const events = (await env.get('/api/usage')).events;
   assert.deepEqual(
-    events.slice(1).map(({ at, ...e }) => e),
+    events.map((e) => e.tree),
+    [tree.id, tree.id, codex.id],
+  );
+  assert.deepEqual(
+    bare(events.slice(1)).map(({ at, ...e }) => e),
     [
       {
         provider: 'claude',
@@ -109,7 +117,9 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
       ).status,
       200,
     );
-  assert.deepEqual((await env.get('/api/usage')).events, events);
+  const kept = (await env.get('/api/usage')).events;
+  assert.deepEqual(bare(kept), bare(events));
+  assert.ok(kept.every((e) => e.tree === null && e.treeTitle === null));
   assert.deepEqual(
     env.store.db
       .prepare('PRAGMA table_info(usage_events)')
@@ -137,7 +147,7 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
   );
   await env.close();
   env = await start(dir);
-  assert.deepEqual((await env.get('/api/usage')).events, events);
+  assert.deepEqual((await env.get('/api/usage')).events, kept);
 });
 
 test('background compaction and diagram calls record actual provider/model per logical call; failed calls keep reported counts and unreported stay unavailable', async (t) => {
@@ -172,7 +182,7 @@ test('background compaction and diagram calls record actual provider/model per l
     none = { input: null, output: null, cacheRead: null, reasoning: null };
   const events = (await env.get('/api/usage')).events;
   assert.deepEqual(
-    events.map(({ at, ...e }) => e),
+    bare(events).map(({ at, ...e }) => e),
     [
       { provider: 'claude', model: 'sonnet', task: 'diagram', ...claudeUsage },
       { provider: 'claude', model: 'sonnet', task: 'chat', ...claudeUsage },
@@ -194,7 +204,7 @@ test('background compaction and diagram calls record actual provider/model per l
       headers: env.headers,
       body: JSON.stringify({ conversation: id }),
     });
-  assert.deepEqual((await env.get('/api/usage')).events, events);
+  assert.deepEqual(bare((await env.get('/api/usage')).events), bare(events));
   assert.ok(
     !JSON.stringify(env.store.db.prepare('SELECT * FROM usage_events').all()).match(
       /bracket|round|Authoritative|flowchart/i,
@@ -294,7 +304,7 @@ test('video worker attempts record their own reported usage, including failed an
   const videos = store
     .usageEvents()
     .events.filter((e) => e.task === 'video')
-    .map(({ at, ...e }) => e);
+    .map(({ at, tree, treeTitle, ...e }) => e);
   const by = { provider: 'codex', model: 'worker-model', task: 'video', reasoning: null };
   assert.deepEqual(videos, [
     { ...by, input: 10, output: 5, cacheRead: 2 }, // failed attempt
@@ -359,5 +369,32 @@ test('video worker attempts record their own reported usage, including failed an
       .usageEvents()
       .events.filter((e) => e.task === 'chat')
       .every((e) => e.input === null),
+  );
+});
+
+test('usage events name the learning tree their message belongs to; branches roll up to their root', (t) => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-usage-trees-')), 'trees.sqlite'));
+  t.after(() => store.close());
+  const root = store.create('Fungi', 'codex');
+  const answer = store.message(root.id, 'assistant', 'Roots trade sugar.', 'completed');
+  const child = store.branch(
+    root,
+    { messageId: answer, start: 0, end: 5, text: 'Roots', question: 'Why roots?' },
+    'context',
+  );
+  const deep = store.message(child.id, 'assistant', 'Because.', 'completed');
+  const counts = { input: 1, output: 1, cacheRead: 0 };
+  store.record(`chat:${answer}`, 'chat', {}, counts, 1);
+  store.record(`chat:${deep}`, 'chat', {}, counts, 2);
+  store.record(`suggestions:${deep}`, 'suggestions', {}, counts, 3);
+  store.record('title-call', 'title', {}, counts, 4);
+  assert.deepEqual(
+    store.usageEvents().events.map((e) => [e.tree, e.treeTitle]),
+    [
+      [root.id, 'Fungi'],
+      [root.id, 'Fungi'],
+      [root.id, 'Fungi'],
+      [null, null], // background work carries no message
+    ],
   );
 });
