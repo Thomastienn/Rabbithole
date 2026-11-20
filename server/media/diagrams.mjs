@@ -5,7 +5,7 @@ import { Worker } from 'node:worker_threads';
 import { safeDiagramSource } from '../../src/media/diagramSource.ts';
 import { withAttachments } from '../attachments.mjs';
 import { TEACHING_SKILL, HUMANIZER_SKILL } from './skills.mjs';
-import { NOTES_RULE, readNotes } from '../suggestions.mjs';
+import { NOTES_RULE } from '../suggestions.mjs';
 import { stripMarkers } from './markers.mjs';
 import {
     jsonEnd,
@@ -49,9 +49,6 @@ export const VERDICT_RULE =
     "\n\nVerdict: after the first few sentences of each reply, write one fenced rabbithole-verdict block judging what the learner's latest message (including a selected passage and question about it) showed about each concept it touched. " +
     VERDICT_SHAPE +
     " When the message shows nothing about any concept, write no block. Keep the concept's usual short name. The learner never sees this block, so never mention it.";
-// With record_turn offered, its description carries the verdict and notes rules (ADR 0013).
-export const RECORD_RULE =
-    '\n\nRecord turn: end every reply with one record_turn call after all your text. The learner never sees it, so never mention it.';
 export const TUTOR_SKILLS =
     '\n\n' +
     TEACHING_SKILL +
@@ -114,11 +111,13 @@ export const tutorSystem = (tree) =>
                     textToolsRule(tree.textTools),
                 )
               : TUTOR_RULES) +
+            // With the app tools offered, quick thinking writes the verdict (ADR 0016).
             ([...(tree.tools ?? []), ...(tree.textTools ?? [])].some(
-                (t) => t.name === 'record_turn',
+                (t) => t.name === 'show_visual',
             )
-                ? RECORD_RULE
-                : VERDICT_RULE + DISCUSSION_RULE + NOTES_RULE) +
+                ? ''
+                : VERDICT_RULE + DISCUSSION_RULE) +
+            NOTES_RULE +
             (tree.tools?.some((t) => t.name === 'update_memory_note') ? MEMORY_RULE : '') +
             TUTOR_SKILLS +
             (tree.tutorStyle?.trim() || DEFAULT_TUTOR_STYLE)) +
@@ -257,13 +256,11 @@ export function diagramReply(raw, final = false) {
     for (const request of requests) request.position = marked.at(request.position);
     // Verdicts are not media: read them apart; null means no readable block.
     const verdicts = readVerdicts(requests.filter((r) => r.kind === 'verdict'));
-    // Notes carry suggestions and knowledge graph data; null means the reply wrote no block.
-    const notes = readNotes(requests.filter((r) => r.kind === 'notes'));
     // Tool calls run once each in order; one still arriving is left out until it closes or the reply ends.
     const calls = requests.filter((r) => r.kind === 'call' && (r.closed || final)).map(readCall);
     requests = requests.filter((r) => !['verdict', 'notes', 'call'].includes(r.kind));
     if (!requests.length)
-        return { text, requested: calls.length > 0, hidden, verdicts, notes, calls, markers };
+        return { text, requested: calls.length > 0, hidden, verdicts, calls, markers };
     // Tolerant: unknown keys are ignored and long fields trimmed; incomplete or unreadable blocks still reject with a learner-facing reason.
     // A rejected request keeps whatever fields were readable (partial) so an explicit Retry can rerun from it.
     const parse = (request) => {
@@ -322,7 +319,6 @@ export function diagramReply(raw, final = false) {
         text,
         requested: true,
         verdicts,
-        notes,
         calls,
         markers,
         requests: requests.map((request) => {

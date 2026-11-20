@@ -1,9 +1,52 @@
-import { RECORD_TURN } from './recordTurn.mjs';
 import { readCall } from '../media/reply-requests.mjs';
 import { PLAN_TEXT_TOOLS } from '../media/plan-calls.mjs';
 
 // The quick thinking model's structured answers (ADR 0013): one plain tool call each, checked by the server.
-const turn = RECORD_TURN.parameters.properties;
+const names = { type: 'array', items: { type: 'string' } };
+const turn = {
+    verdicts: {
+        type: 'array',
+        items: {
+            type: 'object',
+            properties: {
+                concept: { type: 'string' },
+                level: { type: 'integer', minimum: 0, maximum: 5 },
+                confidence: { type: 'string', enum: ['low', 'high'] },
+            },
+            required: ['concept', 'level', 'confidence'],
+        },
+    },
+    suggestions: {
+        type: 'array',
+        items: {
+            type: 'object',
+            properties: { text: { type: 'string' }, concept: { type: 'string' } },
+            required: ['text'],
+        },
+    },
+    groundwork: names,
+    concepts: {
+        type: 'array',
+        items: {
+            type: 'object',
+            properties: { name: { type: 'string' }, topics: names },
+            required: ['name', 'topics'],
+        },
+    },
+    links: {
+        type: 'array',
+        items: {
+            type: 'object',
+            properties: {
+                from: { type: 'string' },
+                to: { type: 'string' },
+                kind: { type: 'string', enum: ['related', 'builds on'] },
+            },
+            required: ['from', 'to', 'kind'],
+        },
+    },
+    next_questions: names,
+};
 
 export const NAME_CONVERSATION = {
     name: 'name_conversation',
@@ -34,13 +77,13 @@ export const RECORD_VERDICTS = {
 export const MARK_SUGGESTIONS = {
     name: 'mark_suggestions',
     description:
-        'Record the marked passages, groundwork, concepts and links. Call it exactly once; leave a list empty when nothing qualifies.',
+        'Record the marked passages, groundwork, concepts, links and next questions. Call it exactly once; leave a list empty or out when nothing qualifies.',
     parameters: {
         type: 'object',
         properties: Object.fromEntries(
-            ['suggestions', 'groundwork', 'concepts', 'links'].map((k) => [
+            ['suggestions', 'groundwork', 'concepts', 'links', 'next_questions'].map((k) => [
                 k,
-                { ...turn[k], description: undefined },
+                turn[k],
             ]),
         ),
         required: ['suggestions'],

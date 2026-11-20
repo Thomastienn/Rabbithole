@@ -1,12 +1,13 @@
-import { knownConcepts, marks, suggest } from '../../suggestions.mjs';
+import { knownConcepts, suggest } from '../../suggestions.mjs';
 
-// Fallback for a reply without a readable notes block. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
+// One quick thinking call after a completed reply (ADR 0016): the hidden notes for the tutor's marks, or every note for a reply that never ended. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
 export function suggestionJobs(ctx) {
     const { store, pick, suggesting } = ctx;
-    const startSuggestions = (conversation, message, question, answer) => {
+    // marked: the tutor's saved passages and groundwork, so the call only names concepts and writes the graph.
+    const startSuggestions = (conversation, message, question, answer, marked = null) => {
         const settings = store.suggestionSettings();
         if (!ctx.suggestions || !settings.enabled) return;
-        if (!store.pendingSuggestions(conversation, message)) return;
+        if (!marked && !store.pendingSuggestions(conversation, message)) return;
         const tree = store.tree(conversation),
             running = { controller: new AbortController(), conversation };
         suggesting.set(message, running);
@@ -36,9 +37,19 @@ export function suggestionJobs(ctx) {
                 {
                     capable: await ctx.toolCapable(selection).catch(() => false),
                     mcp: ctx.mcp,
+                    marked,
                 },
             );
             store.addGraph(result.graph, message);
+            if (marked)
+                return store.nameSuggestions(
+                    conversation,
+                    message,
+                    result.passages,
+                    result.usage,
+                    selection,
+                );
+            if (result.questions.length) store.nextQuestions(message, result.questions);
             store.finishSuggestions(
                 conversation,
                 message,
@@ -49,7 +60,7 @@ export function suggestionJobs(ctx) {
             );
         })()
             .catch((error) => {
-                if (!ctx.stopping)
+                if (!ctx.stopping && !marked)
                     store.finishSuggestions(
                         conversation,
                         message,
@@ -61,15 +72,19 @@ export function suggestionJobs(ctx) {
             .catch(() => {})
             .finally(() => suggesting.delete(message));
     };
-    // The tutor's notes block feeds the same store calls; only a completed reply without a readable block calls quick thinking.
+    // The tutor's marks are ready once the reply ends; a stopped reply keeps the marks that arrived.
     const noteSuggestions = (conversation, message, status, notes, question, answer) => {
         if (!answer.trim() || !store.tree(conversation) || !store.suggestionSettings().enabled)
             return;
-        if (notes?.readable || (notes && status === 'interrupted')) {
+        const marked =
+            notes.ended ||
+            (status === 'interrupted' && (notes.passages.length || notes.groundwork.length));
+        if (marked) {
             if (!store.pendingSuggestions(conversation, message)) return;
-            const { passages, groundwork, graph } = marks(notes, answer);
-            store.addGraph(graph, message);
+            const { passages, groundwork } = notes;
             store.finishSuggestions(conversation, message, passages, null, null, groundwork);
+            if (status === 'completed')
+                startSuggestions(conversation, message, question, answer, notes);
         } else if (status === 'completed')
             startSuggestions(conversation, message, question, answer);
     };

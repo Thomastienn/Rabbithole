@@ -15,7 +15,8 @@ test('underlines, manual highlights, late suggestions and streaming preserve pas
         status: 'pending',
         passages: [{ start: 10, end: 19, text: 'repeat 😀', concept: 'Repeat' }],
     };
-    await act(async () => update((v) => ({ ...v, suggestions: suggestion })));
+    // A quick thinking row is pending without passages.
+    await act(async () => update((v) => ({ ...v, suggestions: { ...suggestion, passages: [] } })));
     assert.equal(underline(), null);
     section().focus();
     const focus = document.activeElement;
@@ -120,6 +121,12 @@ test('underlines, manual highlights, late suggestions and streaming preserve pas
     assert.equal(container.querySelector('h3'), heading);
     assert.equal(container.querySelector('pre'), code);
     assert.match(code.textContent, /let second/);
+    // The tutor's mark underlines its term while the reply still streams.
+    const stable = { start: 2, end: 8, text: 'Stable' };
+    await act(async () =>
+        update((v) => ({ ...v, suggestions: { ...suggestion, passages: [stable] } })),
+    );
+    assert.match(underline().getAttribute('aria-label'), /Suggested passage: Stable/);
     await act(async () =>
         update((v) => ({ ...v, message: { ...v.message, status: 'completed' } })),
     );

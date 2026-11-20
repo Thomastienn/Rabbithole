@@ -55,7 +55,7 @@ A model uses tools when its saved tool flag says so (set by the learner or a
 probe), else when the catalogue reports `capabilities.tools`, else after a
 probe on first use: one small non-streamed request offering a `ping` tool.
 Such a model gets the learner's tutor tools and the app tools (`show_visual`,
-`make_video`, `start_discussion`, `record_turn`) as `tools` in each request.
+`make_video`, `start_discussion`) as `tools` in each request.
 A model without tool calling gets the app tools in its instructions instead
 and writes each call as `<tool_call>{...}</tool_call>` text, which the server
 runs and hides; no result goes back.
@@ -64,17 +64,9 @@ Streamed `tool_calls` deltas are joined per index. After a round with calls,
 the adapter appends the assistant message with its calls and one `tool`
 message per result, then calls the model again. The loop has no call cap: it
 ends when the model answers without calls, when a round holds only
-`record_turn` or `start_discussion`, when a quick thinking tool answer is
+`start_discussion`, when a quick thinking tool answer is
 accepted, or on Stop. Each model call stops after five silent minutes and the
 reply's usage sums every call's report.
-
-Some models end their text without the `record_turn` call (seen on
-`github/auto` through Omniroute). When a reply with shown text ends without
-one, the adapter makes one more request with the reply, a system nudge naming
-the expected arguments and `tool_choice` set to `record_turn`; text in that
-answer is dropped. If that request fails or brings no call, the reply still
-completes and the quick thinking model stands in for the verdict and
-suggestions, as for any reply without `record_turn`.
 
 ## Settings and credential boundary
 

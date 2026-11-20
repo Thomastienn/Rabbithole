@@ -46,7 +46,7 @@ async function launch(t, models) {
     };
     return { fake, env, id, ask };
 }
-const native = (body) => !!body.tools?.some((x) => x.function.name === 'record_turn');
+const native = (body) => !!body.tools?.some((x) => x.function.name === 'show_visual');
 const textFallback = (body) => !body.tools && /<tool_call>/.test(body.messages[0].content);
 
 test('the probe runs once per used model, picks native or text, and Retest drives the next turn', async (t) => {
