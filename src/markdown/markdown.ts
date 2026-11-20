@@ -1,7 +1,6 @@
 // Raw message text is canonical. Text leaves carry raw UTF-16 [data-o, data-e) markers.
 import { createElement as h, Fragment, type ReactNode } from 'react';
 import { decodeString } from 'micromark-util-decode-string';
-import katex from 'katex';
 import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
@@ -10,6 +9,7 @@ import { codeTokens } from './codeTokens.ts';
 import ReplyImage, { imageUrl, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
 import { figure, layout } from './layouts.ts';
+import { mathMarkup, widen } from './mathParts.ts';
 export { plainText };
 
 type Span = { start: number; end: number };
@@ -97,8 +97,8 @@ function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
     });
 }
 
-// Underlines are drawn on text leaves; the first piece of each is its single Tab stop.
-// shortcut: a passage covering only hidden syntax or math draws nothing; extend if suggestions target those.
+// Underlines are drawn on text leaves and formula symbols; the first piece of each is its single Tab stop.
+// shortcut: a passage covering only hidden syntax draws nothing; extend if suggestions target those.
 // Slots (inline visuals) go before the first top-level block starting at or after their offset, else at the end.
 export function renderMarkdown(
     raw: string,
@@ -129,6 +129,34 @@ export function renderMarkdown(
                     : [],
             ),
         });
+    // An underline piece's class, ink and, on its first piece, the Tab stop; formula pieces take them as MathML attributes.
+    const underline = (u: (typeof underlines)[number]) => {
+        const stop = !stops.has(u.start) && stops.add(u.start);
+        const name = plainText(raw.slice(u.start, u.end)) || raw.slice(u.start, u.end);
+        const opens = u.address ? `. Opens its chat, ${u.address}` : '. Opens its chat';
+        return {
+            className: u.child ? 'suggestion explored' : 'suggestion',
+            style: u.child && u.ink !== undefined ? inkStyle(u.ink) : undefined,
+            ...(stop && {
+                tabIndex: 0,
+                role: 'button',
+                'aria-label': u.child
+                    ? `Explored passage: ${name}${opens}`
+                    : `Suggested passage: ${name}`,
+            }),
+        };
+    };
+    // The address chip ends the passage; zero-width atomic offsets keep it out of selection and highlight maths.
+    const chip = (u: (typeof underlines)[number], style?: object) =>
+        h('sup', {
+            className: 'passage-address',
+            'aria-hidden': true,
+            'data-o': String(u.end),
+            'data-e': String(u.end),
+            'data-x': '',
+            style,
+            children: u.address,
+        });
     const leaf = (run: Run, className?: string): ReactNode => {
         const { start: s, end: e, value, atomic } = run;
         const attrs = {
@@ -154,40 +182,15 @@ export function renderMarkdown(
         if (u && !atomic && (u.start > s || u.end < e))
             return split(attrs, s, e, [Math.max(s, u.start), Math.min(e, u.end)], className);
         if (u) {
-            const stop = !stops.has(u.start) && stops.add(u.start);
-            const name = plainText(raw.slice(u.start, u.end)) || raw.slice(u.start, u.end);
-            const opens = u.address ? `. Opens its chat, ${u.address}` : '. Opens its chat';
-            // The address chip ends the passage; zero-width atomic offsets keep it out of selection and highlight maths.
-            const chip = u.child &&
-                u.address &&
-                e >= u.end && {
-                    className: 'passage-address',
-                    'aria-hidden': true,
-                    'data-o': String(u.end),
-                    'data-e': String(u.end),
-                    'data-x': '',
-                    children: u.address,
-                };
-            const ink = u.child && u.ink !== undefined ? inkStyle(u.ink) : undefined;
-            const under = h(
-                'u',
-                {
-                    ...attrs,
-                    className: [u.child ? 'suggestion explored' : 'suggestion', className]
-                        .filter(Boolean)
-                        .join(' '),
-                    style: ink,
-                    ...(stop && {
-                        tabIndex: 0,
-                        role: 'button',
-                        'aria-label': u.child
-                            ? `Explored passage: ${name}${opens}`
-                            : `Suggested passage: ${name}`,
-                    }),
-                },
-                value,
-            );
-            return chip ? h(Fragment, { key: s }, under, h('sup', { ...chip, style: ink })) : under;
+            const { className: under, ...props } = underline(u),
+                piece = h(
+                    'u',
+                    { ...attrs, ...props, className: [under, className].filter(Boolean).join(' ') },
+                    value,
+                );
+            return u.child && u.address && e >= u.end
+                ? h(Fragment, { key: s }, piece, chip(u, props.style))
+                : piece;
         }
         return h(Text, { ...attrs, type: 'inherit', children: value });
     };
@@ -380,31 +383,37 @@ export function renderMarkdown(
             }
             case 'math':
             case 'inlineMath': {
-                const mathml = katex
-                    .renderToString(n.value!, {
-                        output: 'mathml',
-                        throwOnError: false,
-                        trust: false,
-                        displayMode: n.type === 'math',
-                        errorColor: 'currentColor',
-                    })
-                    .match(/<math[^>]*>([\s\S]*)<\/math>/)?.[1];
-                if (mathml && hit(s, e)) revealed++;
-                return mathml
-                    ? h('math', {
-                          ...attrs,
-                          'data-o': s,
-                          'data-e': e,
-                          'data-x': '',
-                          display: n.type === 'math' ? 'block' : 'inline',
-                          ...(hit(s, e) && {
-                              'data-reveal': '',
-                              tabIndex: -1,
-                              'aria-label': 'Source passage',
-                          }),
-                          dangerouslySetInnerHTML: { __html: mathml },
-                      })
-                    : leaf({ start: s, end: e, value: n.value!, atomic: true });
+                // Symbols get offsets only when the LaTeX sits verbatim in the source (not under a quote or list prefix).
+                // A revealed formula is not underlined, like revealed text; a whole-formula underline is on <math>.
+                const at = raw.indexOf(n.value!, s),
+                    marked = hit(s, e) ? [] : underlines.filter((u) => u.start < e && u.end > s),
+                    whole = marked.find((u) => u.start <= s && u.end >= e),
+                    ends = marked.find((u) => u.child && u.address && u.end <= e);
+                const mathml = mathMarkup(
+                    n.value!,
+                    at < e ? at : -1,
+                    n.type === 'math',
+                    whole ? [] : marked.map((u) => ({ ...u, props: underline(u) })),
+                );
+                if (!mathml) return leaf({ start: s, end: e, value: n.value!, atomic: true });
+                if (hit(s, e)) revealed++;
+                const formula = h('math', {
+                    ...attrs,
+                    'data-o': s,
+                    'data-e': e,
+                    'data-x': '',
+                    display: n.type === 'math' ? 'block' : 'inline',
+                    ...(whole && underline(whole)),
+                    ...(hit(s, e) && {
+                        'data-reveal': '',
+                        tabIndex: -1,
+                        'aria-label': 'Source passage',
+                    }),
+                    dangerouslySetInnerHTML: { __html: mathml },
+                });
+                return ends
+                    ? h(Fragment, attrs, formula, chip(ends, underline(ends).style))
+                    : formula;
             }
             case 'link':
             case 'linkReference': {
@@ -475,6 +484,13 @@ export function renderMarkdown(
     return node(tree);
 }
 
+// KaTeX's hidden TeX annotation and its spaces (\, \quad) are no symbols, so they never extend a selection or highlight.
+const markerOf = (text: globalThis.Node) =>
+    text.parentElement?.closest('annotation') ||
+    (!text.textContent!.trim() && text.parentElement?.closest('math'))
+        ? null
+        : text.parentElement?.closest<HTMLElement>('[data-o]');
+
 // Text-node intersections avoid accidentally including adjacent markers at a selection boundary.
 export function rawOffsets(root: Element, range: Range): Span | undefined {
     if (
@@ -489,7 +505,7 @@ export function rawOffsets(root: Element, range: Range): Span | undefined {
     let text: globalThis.Node | null;
     while ((text = walker.nextNode())) {
         if (!range.intersectsNode(text)) continue;
-        const marker = text.parentElement?.closest<HTMLElement>('[data-o]');
+        const marker = markerOf(text);
         if (!marker) continue;
         const a = text === range.startContainer ? range.startOffset : 0,
             b = text === range.endContainer ? range.endOffset : text.textContent!.length;
@@ -499,7 +515,7 @@ export function rawOffsets(root: Element, range: Range): Span | undefined {
         start = Math.min(start, marker.hasAttribute('data-x') ? o : o + a);
         end = Math.max(end, marker.hasAttribute('data-x') ? e : o + b);
     }
-    return end > start ? { start, end } : undefined;
+    return end > start ? widen(root, { start, end }) : undefined;
 }
 
 // Inverse of rawOffsets: the DOM range covering raw [start, end); atomic leaves are covered whole.
@@ -509,7 +525,7 @@ export function rawRange(root: Element, start: number, end: number): Range | und
     let text: globalThis.Text | null,
         found = false;
     while ((text = walker.nextNode() as globalThis.Text | null)) {
-        const marker = text.parentElement?.closest<HTMLElement>('[data-o]');
+        const marker = markerOf(text);
         if (!marker) continue;
         const o = +marker.getAttribute('data-o')!,
             e = +marker.getAttribute('data-e')!,

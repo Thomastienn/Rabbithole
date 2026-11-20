@@ -159,6 +159,15 @@ test('a brief explanation is written once, shared, saved with usage and one weak
     assert.doesNotMatch(JSON.stringify(tutor.at(-1)), /Een mutex|shared number/);
 });
 
+test('the brief prompt asks for a paragraph skimmed in a second or two, inline marks only, with no word count', () => {
+    assert.match(PREFIX, /one paragraph of a few short sentences/);
+    assert.match(PREFIX, /skim in a second or two/);
+    assert.match(PREFIX, /what it is or why it holds in this reply/);
+    assert.match(PREFIX, /bold, italics, inline code and inline math/i);
+    assert.match(PREFIX, /no headings, lists or links/i);
+    assert.doesNotMatch(PREFIX, /\d|words/, 'no word count');
+});
+
 test('the usage task check widens to brief on an existing database and keeps video stages', () => {
     const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-brief-usage-')), 'trees.sqlite');
     const old = new Store(path);

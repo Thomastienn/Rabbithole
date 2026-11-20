@@ -10,6 +10,7 @@ import type { conversationAddresses } from '../map/treeList';
 import { underlineRanges, type Message, type Suggestions } from './turn';
 import { passageAnchor, type Anchor } from './branch';
 import { rawOffsets, rawRange } from '../markdown/markdown';
+import { renderInline } from '../markdown/inlineMarkdown';
 import type { Artifact, DiscussionReply } from '../media/artifacts';
 import { discussionSelection, type DiscussionBranch } from '../media/DiscussionCard';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
@@ -67,6 +68,7 @@ export default function Passage({
     const [tip, setTip] = useState<{
         start: number;
         text: string;
+        brief: boolean;
         at: React.CSSProperties;
         piece?: HTMLElement;
     }>();
@@ -174,6 +176,16 @@ export default function Passage({
         // A pointer highlight keeps the native selection (copy works) and only shows Ask; it wins over any underline it covers.
         const pointer = e.type === 'mouseup' && span.end > span.start;
         highlighted.current = pointer;
+        // A drag into a formula widens to whole terms; the native selection shows that widened span before Ask.
+        const snapped =
+            pointer &&
+            !said &&
+            [...root.querySelectorAll('math')].some((m) => range.intersectsNode(m)) &&
+            rawRange(root, span.start, span.end);
+        if (snapped) {
+            selection.removeAllRanges();
+            selection.addRange(snapped);
+        }
         capture(
             span.start,
             span.end,
@@ -183,10 +195,10 @@ export default function Passage({
         );
     }
     function underlineAt(target: EventTarget | null) {
-        const piece = (target as Element | null)?.closest?.('u.suggestion') as HTMLElement | null;
-        const u =
-            piece &&
-            underlines.find((u) => +piece.dataset.o! >= u.start && +piece.dataset.o! < u.end);
+        // Formula pieces are MathML elements, which have no dataset in every DOM.
+        const piece = (target as Element | null)?.closest?.('.suggestion') as HTMLElement | null,
+            o = Number(piece?.getAttribute('data-o'));
+        const u = piece && underlines.find((u) => o >= u.start && o < u.end);
         return u ? { piece: piece!, u } : {};
     }
     // A suggestion's saved brief explanation, else its child's first reply; never a model call.
@@ -196,10 +208,8 @@ export default function Passage({
             u &&
             suggestions?.status === 'ready' &&
             suggestions.passages.find((p) => p.start === u.start && p.end === u.end);
-        const text =
-            p &&
-            (briefs?.find((b) => b.start === p.start && b.end === p.end)?.explanation ??
-                (u.child ? p.preview : undefined));
+        const brief = p && briefs?.find((b) => b.start === p.start && b.end === p.end)?.explanation;
+        const text = brief ?? (p && u.child ? p.preview : undefined);
         if (!text || !piece) return setTip(undefined);
         const box = piece.getBoundingClientRect(),
             wrap = wrapper.current!.getBoundingClientRect();
@@ -209,6 +219,7 @@ export default function Passage({
                 : {
                       start: u.start,
                       text,
+                      brief: !!brief,
                       // An underline in the right half hangs its popup leftward so it stays inside the reply.
                       at:
                           box.left - wrap.left > wrap.width / 2
@@ -234,8 +245,8 @@ export default function Passage({
             return true;
         }
         const stop =
-            [...passage.current!.querySelectorAll<HTMLElement>('u.suggestion[tabindex]')].find(
-                (e) => +e.dataset.o! >= u.start && +e.dataset.o! < u.end,
+            [...passage.current!.querySelectorAll<HTMLElement>('.suggestion[tabindex]')].find(
+                (e) => +e.getAttribute('data-o')! >= u.start && +e.getAttribute('data-o')! < u.end,
             ) ?? piece;
         setAnchor(undefined);
         const stopBox = stop.getBoundingClientRect(),
@@ -355,7 +366,7 @@ export default function Passage({
                     style={tip.at}
                     onPointerLeave={() => setTip(undefined)}
                 >
-                    {tip.text}
+                    {tip.brief ? renderInline(tip.text) : tip.text}
                 </Text>
             )}
             {!!message.tools?.length && <ToolActivity tools={message.tools} />}
