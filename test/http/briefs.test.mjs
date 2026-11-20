@@ -159,6 +159,87 @@ test('a brief explanation is written once, shared, saved with usage and one weak
     assert.doesNotMatch(JSON.stringify(tutor.at(-1)), /Een mutex|shared number/);
 });
 
+test('a suggestion opened while its reply streams gets its brief explanation at once', async (t) => {
+    const store = new Store(
+        join(mkdtempSync(join(tmpdir(), 'rabbithole-briefs-live-')), 'trees.sqlite'),
+    );
+    const prompts = [];
+    let release;
+    const gate = new Promise((resolve) => (release = resolve));
+    const quick = {
+        models: async () => [{ model: 'quick-model', efforts: ['low'] }],
+        generate: async (tree, text, emit) => {
+            if (!text.startsWith(PREFIX)) return;
+            prompts.push(text);
+            emit({ type: 'item', item: 'a', text: 'A mutex lets one thread in at a time.' });
+            emit({ type: 'status', status: 'completed' });
+        },
+    };
+    const chat = {
+        generate: async (tree, text, emit) => {
+            emit({ type: 'delta', item: 'answer', text: 'A ' });
+            emit({ type: 'delta', item: 'answer', text: '**[[mutex]]** guards' });
+            await gate;
+            emit({ type: 'delta', item: 'answer', text: ' the shared counter.\n[[end]]' });
+            emit({ type: 'status', status: 'completed' });
+        },
+    };
+    // saveEvery is long: after the first delta only the suggestion's arrival saves the streamed text.
+    const app = createApp({
+        store,
+        providers: { codex: chat, claude: quick },
+        auth: { status: () => ({ connected: true }) },
+        log: () => {},
+        suggestions: true,
+        saveEvery: 60_000,
+    });
+    await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+    t.after(() => {
+        release();
+        app.stop();
+        store.close();
+    });
+    store.saveSuggestionSettings({
+        enabled: true,
+        model: { provider: 'claude', model: 'quick-model' },
+        effort: 'low',
+    });
+    const origin = `http://127.0.0.1:${app.server.address().port}`;
+    const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+    const post = (route, body) =>
+        fetch(`${origin}/api/trees${route}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
+            body: JSON.stringify(body),
+        });
+    const id = (await (await post('', {})).json()).id;
+    const reader = (await post(`/${id}/messages`, { text: 'How do threads share a counter?' })).body
+        .pipeThrough(new TextDecoderStream())
+        .getReader();
+    let seen = '';
+    while (!seen.includes('"suggestions"')) seen += (await reader.read()).value;
+    const reply = store.tree(id).messages.at(-1);
+    assert.equal(reply.status, 'streaming');
+    const brief = await post(`/${id}/brief`, {
+        messageId: reply.id,
+        start: 4,
+        end: 9,
+        text: 'mutex',
+        suggestion: true,
+    });
+    assert.equal(brief.status, 200);
+    assert.deepEqual(await brief.json(), { explanation: 'A mutex lets one thread in at a time.' });
+    assert.deepEqual(JSON.parse(prompts[0].slice(PREFIX.length)), {
+        reply: 'A mutex guards',
+        term: 'mutex',
+    });
+    release();
+    while (!(await reader.read()).done);
+    await app.settled();
+    assert.equal(store.tree(id).messages.at(-1).status, 'completed');
+    assert.equal(store.brief(reply.id, 4, 9), 'A mutex lets one thread in at a time.');
+});
+
 test('the brief prompt asks for a paragraph skimmed in a second or two, inline marks only, with no word count', () => {
     assert.match(PREFIX, /one paragraph of a few short sentences/);
     assert.match(PREFIX, /skim in a second or two/);

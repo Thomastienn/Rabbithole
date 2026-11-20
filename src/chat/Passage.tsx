@@ -236,10 +236,10 @@ export default function Passage({
         piece.setAttribute('aria-describedby', tipId);
         return () => piece.removeAttribute('aria-describedby');
     }, [tip, formOpen]);
-    // An unexplored underline opens the passage textbox; an explored one opens its existing child.
+    // An unexplored underline opens the passage textbox, also while the reply streams; an explored one opens its existing child.
     function activate(target: EventTarget) {
         const { piece, u } = underlineAt(target);
-        if (!u || !piece || !completed) return false;
+        if (!u || !piece) return false;
         if (u.child) {
             onOpenChild(u.child);
             return true;
