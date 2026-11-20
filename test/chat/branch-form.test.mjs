@@ -166,8 +166,9 @@ test('reopening the textbox for a selected passage shows its saved explanation w
     assert.equal(asked.length, 0, 'a saved explanation needs no call');
 });
 
-test('a picked visual part shows its trail, and choosing an earlier entry widens the question', async (t) => {
-    const widened = [];
+test('a picked visual part shows its trail, choosing an earlier entry widens the question, and it is explained only on request', async (t) => {
+    const widened = [],
+        asked = [];
     const part = {
         messageId: 'reply',
         artifactId: 'plant',
@@ -185,7 +186,7 @@ test('a picked visual part shows its trail, and choosing an earlier entry widens
             submit: () => {},
             close: () => {},
             setQuestion: () => {},
-            explain: async () => '',
+            explain: async (anchor) => (asked.push(anchor.trail), 'Rods absorb neutrons.'),
             widen: (depth) => widened.push(depth),
         }),
         (w) => ui(w),
@@ -201,11 +202,10 @@ test('a picked visual part shows its trail, and choosing an earlier entry widens
     await act(async () => button(trail, 'Reactor').click());
     assert.deepEqual(widened, [2]);
     assert.equal(container.querySelector('input').placeholder, 'Ask about Control rods');
-    assert.equal(
-        button(container, 'Explain briefly'),
-        undefined,
-        'no brief explanation for a part',
-    );
+    assert.deepEqual(asked, [], 'a part asks for no explanation on opening');
+    await act(async () => button(container, 'Explain briefly').click());
+    assert.deepEqual(asked, [part.trail]);
+    assert.equal(container.querySelector('.branch-brief').textContent, 'Rods absorb neutrons.');
 });
 
 test("the Ask button's box picks parts from the keyboard: arrows move at a level, Enter narrows, and the trail widens", async (t) => {

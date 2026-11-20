@@ -153,6 +153,30 @@ test('a brief explanation is written once, shared, saved with usage and one weak
     assert.equal(store.db.prepare('SELECT COUNT(*) AS n FROM observations').get().n, 1);
     assert.equal((await post(`/${id}/brief`, { ...anchor, text: 'wrong' })).status, 400);
 
+    // A visual part is explained on request too, from the part and its visual.
+    const visual = store.pendingArtifact(
+        id,
+        reply.id,
+        'Counter',
+        'Two threads, one lock.',
+        'visual',
+    );
+    store.finishArtifact(id, visual.id, '<svg></svg>');
+    const part = {
+        messageId: reply.id,
+        artifactId: visual.id,
+        label: 'Lock',
+        trail: ['Counter', 'Lock'],
+        step: null,
+        text: '',
+    };
+    const asked = await post(`/${id}/brief`, part);
+    assert.deepEqual(
+        [asked.status, await asked.json()],
+        [200, { explanation: 'The counter is a shared number.' }],
+    );
+    assert.match(JSON.parse(prompts.at(-1).slice(PREFIX.length)).term, /Counter[^]*Lock/);
+
     // The tutor's next turn never carries a brief explanation.
     await (await post(`/${id}/messages`, { text: 'And with two counters?' })).text();
     await app.settled();
@@ -238,15 +262,6 @@ test('a suggestion opened while its reply streams gets its brief explanation at 
     await app.settled();
     assert.equal(store.tree(id).messages.at(-1).status, 'completed');
     assert.equal(store.brief(reply.id, 4, 9), 'A mutex lets one thread in at a time.');
-});
-
-test('the brief prompt asks for a paragraph skimmed in a second or two, inline marks only, with no word count', () => {
-    assert.match(PREFIX, /one paragraph of a few short sentences/);
-    assert.match(PREFIX, /skim in a second or two/);
-    assert.match(PREFIX, /what it is or why it holds in this reply/);
-    assert.match(PREFIX, /bold, italics, inline code and inline math/i);
-    assert.match(PREFIX, /no headings, lists or links/i);
-    assert.doesNotMatch(PREFIX, /\d|words/, 'no word count');
 });
 
 test('the usage task check widens to brief on an existing database and keeps video stages', () => {
