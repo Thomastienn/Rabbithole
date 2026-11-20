@@ -213,7 +213,7 @@ test('a model without tool calling writes show_visual as <tool_call> text and ge
         assert.deepEqual(streamed.at(-1), { type: 'done', status: 'completed' });
         assert.deepEqual(offered, {
             tools: undefined,
-            text: ['show_visual', 'make_video', 'start_discussion', 'record_turn'],
+            text: ['show_visual', 'make_video', 'start_discussion'],
         });
         for (const e of streamed.filter((e) => e.type === 'text'))
             assert.doesNotMatch(e.text, /tool_call|[{}]/);

@@ -76,14 +76,15 @@ export default function Passage({
     const action = useRef<HTMLButtonElement>(null);
     const completed = message.status === 'completed';
     const branchKey = JSON.stringify(branched);
+    // Underlines appear as their terms stream; a stopped or failed reply keeps none.
     const underlines = useMemo(
         () =>
-            completed
+            completed || message.status === 'streaming'
                 ? underlineRanges(message.text, suggestions, branched).map((u) =>
                       u.child ? { ...u, ...addresses.get(u.child) } : u,
                   )
                 : [],
-        [completed, message.text, suggestions, branchKey, addresses],
+        [completed, message.status, message.text, suggestions, branchKey, addresses],
     );
     useLayoutEffect(() => {
         const box = floating.current;
@@ -360,7 +361,7 @@ export default function Passage({
             {!!message.tools?.length && <ToolActivity tools={message.tools} />}
             {/* Mounted before suggestions arrive so their arrival is announced once; reopened replies are not re-announced. */}
             <Text role="status" className="sr-only">
-                {underlines.length
+                {completed && underlines.length
                     ? `${underlines.length} suggested ${underlines.length === 1 ? 'passage' : 'passages'} in tutor reply ${index}`
                     : ''}
             </Text>

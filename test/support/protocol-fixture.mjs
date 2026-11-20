@@ -52,15 +52,17 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                       : text.startsWith('{') && JSON.parse(text).intent === 'Show each round.'
                         ? 'flowchart TD\n  W1[Round one] --> W2[Final]'
                         : text.endsWith('notes fixture reply')
-                          ? 'Authoritative original\n```rabbithole-notes\n{"question":"Why does originality matter?"}\n{"question":"What if two works match?"}\n{"suggestion":"original","concept":"Originality"}\n{"concept":"Originality","topics":["Writing"]}\n{"groundwork":"Copyright"}\n{"groundwork":" "}\n{"groundwork":"originality"}\nnot json\n```'
+                          ? '[[groundwork: Copyright; ]]\nAuthoritative [[original]]\n[[next: Why does originality matter?]]\n[[next: What if two works match?]]\n[[end]]'
                           : text.endsWith('cut notes fixture')
-                            ? 'Authoritative original\n```rabbithole-notes\n{"suggestion":"original"}'
+                            ? 'Authoritative [[original]]'
                             : text === 'Check phrase anchors'
                               ? '🪴 early | middle | early | late | shared \n\tstate | shared state | C++ (x.y) [z]? | a a a'
                               : 'Authoritative original';
     // Suggestion calls get phrase-only picks, including overlaps, unmatched and exhausted repeats.
     // The question decides failure ('suggestions fail') and delay ('slow suggestions'); a wrong cheap model yields invalid output.
-    const suggesting = (text) => text.startsWith('Mark every term');
+    // After a reply that ended, the same call names the concepts of the tutor's marks.
+    const suggesting = (text) =>
+        text.startsWith('Mark every term') || text.startsWith('The tutor already marked');
     const suggestion = (text, model, cheap) => {
         const { question, answer, knownConcepts } = JSON.parse(text.slice(text.indexOf('\n') + 1));
         if (question === 'Check phrase anchors') {
@@ -96,7 +98,13 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
         if (question.endsWith('suggestions fail') || model !== expected) return 'not json';
         return JSON.stringify({
             ...graph(question, knownConcepts),
-            ...(question.includes('cut notes') && { groundwork: ['Plagiarism', '', 'Copyright'] }),
+            ...(question.includes('cut notes') && {
+                groundwork: ['Plagiarism', '', 'Copyright'],
+                next_questions: ['What counts as plagiarism?', ' '],
+            }),
+            ...(question.includes('notes fixture reply') && {
+                concepts: [{ name: 'Originality', topics: ['Writing'] }],
+            }),
             suggestions: [
                 {
                     text: answer.slice(0, 13),
@@ -107,7 +115,10 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                     }),
                 },
                 { text: answer.slice(0, 18) },
-                { text: 'original' },
+                {
+                    text: 'original',
+                    ...(question.includes('notes fixture reply') && { concept: 'Originality' }),
+                },
                 { text: 'x' },
                 { text: 'original' },
             ],

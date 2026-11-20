@@ -1,7 +1,7 @@
 import { replyArtifacts } from '../reply-artifacts.mjs';
 import { nativeTools as nativeToolsFor } from '../../tools/runner.mjs';
 import { APP_TOOLS, appCalls, isAppTool } from '../app-calls.mjs';
-import { RECORD_TURN } from '../../tools/recordTurn.mjs';
+import { markerNotes } from '../../media/markers.mjs';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { diagramReply, generateDiagram, tutorContext } from '../../media/diagrams.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
@@ -149,8 +149,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         usage = null,
         called = false,
         questions = [],
-        // Model responses with text when record_turn ran; Claude and Codex may answer again after it, and that text is dropped.
-        recordedItems = null,
+        // The tutor's inline notes so far (ADR 0016); the learner sees each one as its marker closes.
+        notes = markerNotes('', []),
         // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
         saved = -Infinity;
     const heartbeat = setInterval(() => {
@@ -175,32 +175,41 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         isFinished: () => finished,
         getStatus: () => status,
     });
-    const calls = appCalls(ctx, {
-        reply,
-        showVisual,
-        moveVisual,
-        makeVideo,
-        startDiscussion,
-        hasMedia,
-        // Next questions show as soon as a record_turn call carries them.
-        questioned: (list) => {
-            if (list.length > questions.length)
-                send({ type: 'questions', questions: (questions = list) });
-        },
-    });
+    const calls = appCalls(ctx, { reply, showVisual, moveVisual, makeVideo, startDiscussion });
+    const suggesting = store.suggestionSettings().enabled;
+    const noted = (output) => {
+        const next = markerNotes(output.text, output.markers, hasMedia());
+        if (
+            suggesting &&
+            (next.passages.length > notes.passages.length ||
+                next.groundwork.length > notes.groundwork.length)
+        )
+            send({
+                type: 'suggestions',
+                suggestions: {
+                    message: reply,
+                    status: 'pending',
+                    passages: next.passages,
+                    groundwork: next.groundwork,
+                },
+            });
+        // Each next question shows once its marker closes.
+        if (next.questions.length > questions.length)
+            send({ type: 'questions', questions: (questions = next.questions) });
+        notes = next;
+    };
     const finish = () => {
         if (finished) return;
         finished = true;
         prepareArtifacts(diagramReply([...items.values()].join('\n\n'), true), true);
         clearInterval(heartbeat);
         controller.signal.removeEventListener('abort', interrupt);
-        const output = calls.record(
-            diagramReply([...items.values()].join('\n\n'), status === 'completed'),
-        );
+        const output = diagramReply([...items.values()].join('\n\n'), status === 'completed');
         if (output.text !== text) {
             text = output.text;
             send({ type: 'text', text });
         }
+        noted(output);
         if (controller.signal.aborted && !ctx.stopping) {
             store.cancelVisuals(id, reply);
             for (const artifact of artifacts.values())
@@ -262,13 +271,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         // No readable block: the quick thinking model judges the learner message in the background.
         if (status === 'completed' && !output.verdicts && text.trim() && store.tree(id))
             ctx.startVerdicts(id, user, body.text, text);
-        // Quick thinking fallback never writes next questions; only the tutor's block does.
-        if (output.notes?.questions.length) {
-            store.nextQuestions(reply, output.notes.questions);
-            if (output.notes.questions.length > questions.length)
-                send({ type: 'questions', questions: output.notes.questions });
-        }
-        ctx.noteSuggestions(id, reply, status, output.notes, body.text, text);
+        if (notes.questions.length) store.nextQuestions(reply, notes.questions);
+        ctx.noteSuggestions(id, reply, status, notes, body.text, text);
         if (output.requested || output.hidden) store.forgetThread(id);
         if (active.get(id) === controller) active.delete(id);
         send({ type: 'done', status });
@@ -375,12 +379,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                         if (!isAppTool(name))
                             return ctx.tools.run(name, input, { conversation: id, reply, signal });
                         if (finished) throw new Error('The reply has already ended.');
-                        // A repeat answer after record_turn (Claude Code asks for one after an empty response) runs no app calls.
-                        if (recordedItems) return 'The reply has already ended.';
-                        const result = calls.run(name, input, text.length, text);
-                        if (name === RECORD_TURN.name && text.trim())
-                            recordedItems ??= new Set(items.keys());
-                        return result;
+                        return calls.run(name, input, text.length, text);
                     },
                 }),
                 tutorStyle: store.tutorStyle(),
@@ -395,10 +394,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             prompt,
             (event) => {
                 if (finished) return;
-                if (
-                    (event.type === 'delta' || event.type === 'item') &&
-                    !(recordedItems && !recordedItems.has(event.item))
-                ) {
+                if (event.type === 'delta' || event.type === 'item') {
                     items.set(
                         event.item,
                         event.type === 'item'
@@ -412,11 +408,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                         store.update(reply, text, status);
                     }
                     send({ type: 'text', text });
-                    // Each next question streams once its line completes.
-                    if ((output.notes?.questions.length ?? 0) > questions.length) {
-                        questions = output.notes.questions;
-                        send({ type: 'questions', questions });
-                    }
+                    noted(output);
                     prepareArtifacts(output);
                     calls.place(output);
                     calls.runText(output);
