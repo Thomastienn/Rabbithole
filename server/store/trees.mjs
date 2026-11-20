@@ -47,19 +47,22 @@ export const trees = {
       'SELECT id, role, text, status FROM messages WHERE tree=? ORDER BY seq',
     );
     const artifacts = this.db.prepare(
-      "SELECT id,message,kind,title,status,CASE WHEN kind='discussion' THEN json_array_length(source,'$.classmates') END AS classmates FROM artifacts WHERE conversation=? ORDER BY created,rowid",
+      // A video's source tells live() whether its saved cuts can play; live() drops it before sending.
+      "SELECT id,message,kind,title,status,CASE WHEN kind='video' THEN source END AS source,CASE WHEN kind='discussion' THEN json_array_length(source,'$.classmates') END AS classmates FROM artifacts WHERE conversation=? ORDER BY created,rowid",
     );
     return Object.fromEntries(
       ids.map((id) => {
         const byMessage = new Map();
-        for (const { message, classmates, ...artifact } of artifacts.all(id)) {
+        for (const { message, classmates, source, ...artifact } of artifacts.all(id)) {
           if (!byMessage.has(message)) byMessage.set(message, []);
           byMessage
             .get(message)
             .push(
               artifact.kind === 'discussion'
                 ? { ...artifact, classmates: classmates ?? 0 }
-                : artifact,
+                : artifact.kind === 'video'
+                  ? { ...artifact, source }
+                  : artifact,
             );
         }
         return [

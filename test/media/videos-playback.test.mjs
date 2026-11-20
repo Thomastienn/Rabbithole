@@ -69,6 +69,12 @@ test('inline video exposes its phase and position, keeps inputs private, then se
     assert.equal(ready.progress, undefined);
     assert.equal(ready.position, pending.position);
     assert.equal(ready.exported, false);
+    assert.equal(ready.available, undefined);
+    // The map preview of a saved, unexported video reports it playable too.
+    const [preview] = (await (await env.get(`/api/previews?id=${tree.id}`)).json())[tree.id].at(
+      -1,
+    ).artifacts;
+    assert.deepEqual([preview.exported, preview.available], [false, undefined]);
     // An MP4 at the media path (an export, or a video saved before live saving) is served and counts as exported.
     const media = `/api/trees/${tree.id}/artifacts/${ready.id}/media`;
     assert.equal((await env.get(media)).status, 404);
