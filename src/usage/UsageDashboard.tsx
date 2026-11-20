@@ -55,14 +55,18 @@ const columns = (first: string, sum?: Totals) => [
       return (
         <div className="usage-name">
           {r.name}
-          {sum && (
-            <span
-              className="usage-share"
-              role="img"
-              aria-label={`${share.toLocaleString(undefined, { maximumFractionDigits: 1 })}% of reported tokens`}
-            >
-              <i style={{ width: `${share}%` }} />
-            </span>
+          {sum && r.calls === 0 && r.unavailable > 0 ? (
+            <small className="usage-unreported usage-nocount">No count reported</small>
+          ) : (
+            sum && (
+              <span
+                className="usage-share"
+                role="img"
+                aria-label={`${share.toLocaleString(undefined, { maximumFractionDigits: 1 })}% of reported tokens`}
+              >
+                <i style={{ width: `${share}%` }} />
+              </span>
+            )
           )}
         </div>
       );
@@ -90,6 +94,22 @@ const columns = (first: string, sum?: Totals) => [
     ),
   },
 ];
+
+// Fills that tell the series apart without colour: input solid, output striped, cache read dotted.
+function SeriesPatterns() {
+  return (
+    <defs>
+      <pattern id="usage-output" width={3} height={3} patternUnits="userSpaceOnUse">
+        <rect className="usage-fill" width={3} height={3} />
+        <path className="usage-mark" d="M0 3L3 0" />
+      </pattern>
+      <pattern id="usage-cacheRead" width={3} height={3} patternUnits="userSpaceOnUse">
+        <rect className="usage-fill" width={3} height={3} />
+        <circle className="usage-dot" cx={1.5} cy={1.5} r={0.6} />
+      </pattern>
+    </defs>
+  );
+}
 
 // Reads saved usage records only; viewing never calls a model.
 export default function UsageDashboard({
@@ -139,6 +159,7 @@ export default function UsageDashboard({
   const events = ready ? data.events : [],
     rows = buckets(events, s, cumulative),
     sum = totals(events);
+  const titles = new Map(events.flatMap((e) => (e.tree ? [[e.tree, e.treeTitle ?? '']] : [])));
   const max = Math.max(1, ...rows.map(total)),
     shown = rows[active];
   const rangeLabel = {
@@ -162,6 +183,9 @@ export default function UsageDashboard({
 
   return (
     <VStack gap={6} className="usage-dashboard" aria-busy={!ready && !error}>
+      <svg className="usage-defs" aria-hidden="true">
+        <SeriesPatterns />
+      </svg>
       <HStack gap={3} wrap="wrap" vAlign="end">
         <SegmentedControl
           label="Usage range"
@@ -200,7 +224,9 @@ export default function UsageDashboard({
             <HStack gap={4} wrap="wrap" vAlign="center" className="usage-legend">
               {SERIES.map(([key, name]) => (
                 <HStack key={key} gap={1} vAlign="center">
-                  <span className="usage-swatch" data-series={key} aria-hidden="true" />
+                  <svg className="usage-swatch" viewBox="0 0 10 10" aria-hidden="true">
+                    <rect data-series={key} width={10} height={10} />
+                  </svg>
                   <Text type="supporting" color="secondary">
                     <b>{cell(sum, key)}</b> {name.toLowerCase()}
                     {key === 'output' && reasoning(sum)}
@@ -372,6 +398,7 @@ export default function UsageDashboard({
                 <SegmentedControl label="Break down by" value={group} onChange={setGroup}>
                   <SegmentedControlItem value="model" label="By model" />
                   <SegmentedControlItem value="task" label="By task" />
+                  <SegmentedControlItem value="tree" label="By tree" />
                 </SegmentedControl>
               </HStack>
               <Table
@@ -380,6 +407,7 @@ export default function UsageDashboard({
                 textOverflow="wrap"
                 data={breakdown(events, (e) => {
                   if (group === 'task') return TASKS[e.task] ?? e.task;
+                  if (group === 'tree') return e.tree ?? '';
                   const provider = e.provider
                     ? (providers?.[e.provider]?.label ?? e.provider)
                     : null;
@@ -388,9 +416,19 @@ export default function UsageDashboard({
                     : provider
                       ? `${provider}, model not reported`
                       : 'Unknown model (saved before attribution)';
-                })}
-                idKey="name"
-                columns={columns(group === 'model' ? 'Model' : 'Task', sum)}
+                }).map((r) => ({
+                  ...r,
+                  id: r.name,
+                  name:
+                    group !== 'tree'
+                      ? r.name
+                      : (titles.get(r.name) ?? 'No tree (background work or deleted trees)'),
+                }))}
+                idKey="id"
+                columns={columns(
+                  { model: 'Model', task: 'Task', tree: 'Learning tree' }[group]!,
+                  sum,
+                )}
               />
               <Text type="supporting" color="secondary">
                 Counts are what providers reported. Calls without counts are listed, never

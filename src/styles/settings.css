@@ -131,6 +131,14 @@
     display: none;
   }
 }
+/* Success status: ink with a check (Line Diagram), never tinted. */
+.settings-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
 /* Settings sections: seams and small-caps labels, not cards (spec, Settings window). */
 .settings-panel h3 {
   font-size: var(--font-size-base);

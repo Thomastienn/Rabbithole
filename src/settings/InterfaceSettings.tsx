@@ -69,6 +69,16 @@ export function Section({
   );
 }
 
+// Success status reads as ink with a check, never tinted (Line Diagram rule).
+export function Done({ children }: { children: ReactNode }) {
+  return (
+    <Text type="supporting" role="status" className="settings-done">
+      <Icon icon={CheckIcon} size="sm" />
+      {children}
+    </Text>
+  );
+}
+
 // Owns its state: the choice lives on <html> and in storage, applied at startup by main.tsx.
 function FontChoice({
   kind,

@@ -8,6 +8,9 @@ export type UsageEvent = {
   output: number | null;
   cacheRead: number | null;
   reasoning?: number | null;
+  // Root learning tree, looked up live; null for background work and deleted trees.
+  tree?: string | null;
+  treeTitle?: string | null;
 };
 export type UsageRange = 'today' | 'week' | 'month' | 'year' | 'all';
 export type Unit = 'hour' | 'day' | 'month' | 'year';

@@ -70,7 +70,14 @@ export const usage = {
       first: this.db.prepare('SELECT MIN(at) AS at FROM usage_events').get().at,
       events: this.db
         .prepare(
-          'SELECT at,provider,model,task,input,output,cacheRead,reasoning FROM usage_events WHERE at>=? AND at<? ORDER BY at,rowid',
+          // The learning tree is looked up live (chat and suggestion ids carry their message), so deleting a tree drops it here.
+          `WITH RECURSIVE up(id,root) AS (SELECT id,id FROM trees WHERE id NOT IN (SELECT child FROM branches)
+            UNION ALL SELECT b.child,up.root FROM branches b JOIN up ON b.parent=up.id)
+          SELECT u.at,u.provider,u.model,u.task,u.input,u.output,u.cacheRead,u.reasoning,r.id AS tree,r.title AS treeTitle
+          FROM usage_events u
+          LEFT JOIN messages m ON m.id=coalesce(u.message,CASE WHEN u.task IN ('chat','suggestions') THEN substr(u.id,instr(u.id,':')+1) END)
+          LEFT JOIN up ON up.id=m.tree LEFT JOIN trees r ON r.id=up.root
+          WHERE u.at>=? AND u.at<? ORDER BY u.at,u.rowid`,
         )
         .all(from, to),
     };
