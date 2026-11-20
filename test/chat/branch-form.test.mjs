@@ -207,3 +207,79 @@ test('a picked visual part shows its trail, and choosing an earlier entry widens
         'no brief explanation for a part',
     );
 });
+
+test("the Ask button's box picks parts from the keyboard: arrows move at a level, Enter narrows, and the trail widens", async (t) => {
+    const shown = [];
+    let send;
+    const picker = { show: (path) => shown.push(path), listen: (set) => (send = set) };
+    const whole = {
+        messageId: 'reply',
+        artifactId: 'plant',
+        label: 'Nuclear plant',
+        explanation: 'How a plant makes electricity.',
+        text: 'Visual: Nuclear plant',
+    };
+    // Stands in for the chat's branch state: a pick or a widened trail becomes the source.
+    function Fixture() {
+        const [anchor, setAnchor] = useState(whole);
+        const choose = (trail, step) =>
+            setAnchor((a) => ({ ...a, label: trail.at(-1), trail, step: step ?? a.step }));
+        return h(BranchForm, {
+            branch: { parent: 'root', anchor, question: '', picker },
+            branching: false,
+            active: false,
+            submit: () => {},
+            close: () => {},
+            setQuestion: () => {},
+            pick: choose,
+            widen: (depth) => choose(anchor.trail.slice(0, depth)),
+        });
+    }
+    const { container, act, cleanup } = await render(h(Fixture), (w) => ui(w));
+    const box = { x: 0, y: 0, width: 10, height: 10 },
+        node = (name, parts = []) => ({ name, ...box, parts });
+    const parts = () => container.querySelector('[role=listbox]');
+    const options = () =>
+        [...parts().querySelectorAll('[role=option]')].map((o) => [
+            o.getAttribute('aria-label') ?? o.textContent,
+            o.getAttribute('aria-selected'),
+        ]);
+    const press = (k) => act(async () => key(parts(), k));
+    assert.deepEqual(shown, [[]], 'picking starts with nothing focused');
+    assert.equal(parts(), null, 'no list before the part tree');
+    await act(async () =>
+        send([node('Plant', [node('Reactor', [node('Rods')]), node('Pump'), node('Pump')])], 2),
+    );
+    assert.equal(parts().getAttribute('aria-label'), 'Parts of the visual');
+    assert.equal(parts().tabIndex, 0, 'the list takes focus');
+    assert.deepEqual(options(), [['Plant', 'false']]);
+    await press('ArrowDown');
+    assert.deepEqual(options(), [['Plant', 'true']]);
+    assert.equal(parts().getAttribute('aria-activedescendant'), 'branch-part-0');
+    assert.equal(container.querySelector('input').placeholder, 'Ask about Plant');
+    assert.deepEqual(shown.at(-1), [0], 'the rectangle follows the focused part');
+    await press('Enter');
+    assert.deepEqual(options(), [
+        ['Reactor, in Plant', 'true'],
+        ['Pump, in Plant', 'false'],
+        ['Pump, in Plant', 'false'],
+    ]);
+    assert.deepEqual(shown.at(-1), [0, 0]);
+    await press('ArrowDown');
+    await press('ArrowDown');
+    await press('ArrowDown');
+    assert.deepEqual(shown.at(-1), [0, 2], 'parts of the same name stay apart, and the end holds');
+    await press('ArrowUp');
+    assert.deepEqual(shown.at(-1), [0, 1]);
+    await press('Enter');
+    assert.equal(
+        document.activeElement,
+        container.querySelector('input'),
+        'a leaf goes to the question',
+    );
+    const trail = container.querySelector('nav[aria-label="Part of the visual"]');
+    await act(async () => button(trail, 'Plant').click());
+    assert.deepEqual(options(), [['Plant', 'true']], 'the trail widens the level');
+    cleanup();
+    assert.equal(shown.at(-1), undefined, 'closing the box ends picking');
+});

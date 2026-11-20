@@ -19,6 +19,7 @@ import {
     type Artifact,
     type PartBox,
     type PartMark,
+    type PartNode,
     type VisualPart,
 } from './artifacts';
 import { visualProgress } from './visualProgress';
@@ -26,11 +27,16 @@ import { visualProgress } from './visualProgress';
 export type VisualBranch = VisualPart & { child: string; address?: string; ink?: number };
 // box: a picked part's bounds in viewport coordinates, where the ask box floats.
 export type Box = { x: number; y: number; width: number; height: number };
+// The Ask button's box picks parts from the keyboard: show outlines the part at a path of tree indexes
+// ([] while picking with none focused, undefined once picking ends); listen receives the part tree.
+type TreeListener = (parts: PartNode[], step: number | null) => void;
+export type PartPicker = { show: (path?: number[]) => void; listen: (set: TreeListener) => void };
 export type PartAction = (
     artifact: Artifact,
     part: VisualPart,
     origin: React.RefObject<HTMLElement | null>,
     box?: Box,
+    picker?: PartPicker,
 ) => void;
 
 // Generated code runs only in this frame: scripts without allow-same-origin give it an opaque origin.
@@ -40,11 +46,15 @@ function Frame({
     onPick,
     inks = {},
     reveal,
+    focus,
+    onTree,
 }: {
     artifact: Artifact;
     onPick?: (part: VisualPart, box: Box) => void;
     inks?: Record<string, number>;
     reveal?: VisualPart;
+    focus?: number[];
+    onTree?: TreeListener;
 }) {
     const frame = useRef<HTMLIFrameElement>(null);
     const [height, setHeight] = useState<number>();
@@ -52,6 +62,9 @@ function Frame({
     const [hover, setHover] = useState<PartBox>();
     // Branched parts the visual currently draws, each outlined in its family ink.
     const [marked, setMarked] = useState<PartMark[]>([]);
+    const [tree, setTree] = useState<PartNode[]>([]);
+    const treeTo = useRef(onTree);
+    treeTo.current = onTree;
     const revealing = useRef<string>(undefined);
     const pick = useRef(onPick);
     pick.current = artifact.status === 'ready' ? onPick : undefined;
@@ -76,6 +89,10 @@ function Frame({
                 });
             if (message?.type === 'height') setHeight(message.height);
             if (message?.type === 'marks') setMarked(message.marks);
+            if (message?.type === 'tree') {
+                setTree(message.parts);
+                treeTo.current?.(message.parts, message.step);
+            }
             if (!pick.current) return;
             if (message?.type === 'leave') setHover(undefined);
             if (message?.type === 'part') setHover(message.parts.at(-1));
@@ -99,6 +116,19 @@ function Frame({
     useEffect(() => {
         if (frame.current) theme();
     }, [mode, name]);
+    // The frame sends its part tree only while the ask box picks from the keyboard.
+    const picking = focus !== undefined;
+    useEffect(() => {
+        if (loaded.current) post({ type: 'tree', watch: picking });
+    }, [picking]);
+    let level = tree,
+        focused: PartNode | undefined;
+    for (const i of focus ?? []) {
+        focused = level[i];
+        level = focused?.parts ?? [];
+    }
+    // The part focused from the keyboard outlines like the hovered one.
+    const shown = focused ?? hover;
     const trails = JSON.stringify(Object.keys(inks));
     const postMarks = () =>
         post({ type: 'marks', trails: Object.keys(inks).map((t) => JSON.parse(t)) });
@@ -203,19 +233,19 @@ function Frame({
                         )
                     );
                 })}
-            {hover && frame.current && (
+            {shown && frame.current && (
                 <span
                     className="visual-part"
                     aria-hidden
-                    data-inside={hover.y < 24 || undefined}
+                    data-inside={shown.y < 24 || undefined}
                     style={{
-                        left: frame.current.offsetLeft + hover.x,
-                        top: frame.current.offsetTop + hover.y,
-                        width: hover.width,
-                        height: hover.height,
+                        left: frame.current.offsetLeft + shown.x,
+                        top: frame.current.offsetTop + shown.y,
+                        width: shown.width,
+                        height: shown.height,
                     }}
                 >
-                    <span className="visual-part-name">{hover.name}</span>
+                    <span className="visual-part-name">{shown.name}</span>
                 </span>
             )}
         </>
@@ -262,6 +292,9 @@ export default function VisualFrame({
     for (const b of explored) if (b.trail) inks[JSON.stringify(b.trail)] ??= b.ink ?? 0;
     const figure = useRef<HTMLElement>(null);
     const viewer = useRef<HTMLDialogElement>(null);
+    const askButton = useRef<HTMLButtonElement>(null);
+    const [focus, setFocus] = useState<number[]>();
+    const listener = useRef<TreeListener>(undefined);
     const revealKey = reveal && JSON.stringify(reveal);
     // Returning to a visual's source shows the whole figure; tagged parts no longer take focus.
     useEffect(() => {
@@ -270,10 +303,17 @@ export default function VisualFrame({
         figure.current?.focus();
     }, [revealKey]);
     // The whole visual is the source: the existing visual-part request with its title and description.
+    // Its box picks parts from the keyboard, and Esc returns to the Ask button.
     const ask =
         onPart &&
         (() =>
-            onPart(artifact, { label: artifact.title, explanation: artifact.description }, figure));
+            onPart(
+                artifact,
+                { label: artifact.title, explanation: artifact.description },
+                askButton,
+                undefined,
+                { show: setFocus, listen: (set) => (listener.current = set) },
+            ));
     useEffect(() => {
         if (retried && artifact.status === 'ready' && document.activeElement === document.body)
             figure.current?.focus();
@@ -342,6 +382,8 @@ export default function VisualFrame({
                     artifact={artifact}
                     inks={inks}
                     reveal={reveal}
+                    focus={focus}
+                    onTree={(parts, step) => listener.current?.(parts, step)}
                     onPick={onPart && ((part, box) => onPart(artifact, part, figure, box))}
                 />
             )}
@@ -355,6 +397,7 @@ export default function VisualFrame({
                     <HStack className="visual-actions" gap={1} vAlign="center">
                         {ask && (
                             <Button
+                                ref={askButton}
                                 className="visual-ask"
                                 label="Ask"
                                 aria-label={`Ask about visual: ${artifact.title}`}

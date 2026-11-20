@@ -1,5 +1,6 @@
 // Runs inside the visual frame: reads the visual's named parts (data-part, nested, or flagged three.js
 // objects) and reports the part under the pointer and a click on it to the host, which validates every message.
+// While the host picks from the keyboard, it also reports the whole part tree.
 import { Box3, Raycaster, Vector2, Vector3 } from 'three';
 const CONTROLS =
     'button, input, select, textarea, label, summary, a, [role=button], [role=slider], [contenteditable]';
@@ -25,21 +26,36 @@ export function trackPointerHandlers(view: Window & typeof globalThis) {
 }
 
 const nameOf = (e: Element) => e.getAttribute('data-part')?.trim();
+const control = (e: Element) =>
+    e.matches(CONTROLS) ||
+    handled.has(e) ||
+    POINTER.some((type) => (e as unknown as Record<string, unknown>)[`on${type}`]);
 
 // The named parts holding target, outermost first and at most three; none under a control.
 function trail(target: EventTarget | null, root: Element) {
     const parts: Element[] = [];
     for (let e = target as Element | null; e && e !== root; e = e.parentElement) {
-        if (
-            e.matches(CONTROLS) ||
-            handled.has(e) ||
-            POINTER.some((type) => (e as unknown as Record<string, unknown>)[`on${type}`])
-        )
-            return;
+        if (control(e)) return;
         if (nameOf(e)) parts.unshift(e);
     }
     return parts.length ? parts.slice(-3) : undefined;
 }
+// A part in the tree the host picks from with the keyboard, down to the third level.
+type Node = { name: string; box: Box; parts: Node[] };
+const isDrawn = (e: Element, box: DOMRect) =>
+    box.width > 0 &&
+    box.height > 0 &&
+    e.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) !== false;
+// The drawn named parts directly inside e, none under a control.
+const domParts = (e: Element, depth = 1): Node[] =>
+    [...e.children].flatMap((c) => {
+        if (control(c)) return [];
+        if (!nameOf(c)) return domParts(c, depth);
+        const box = c.getBoundingClientRect();
+        return depth <= 3 && isDrawn(c, box)
+            ? [{ name: nameOf(c)!, box, parts: domParts(c, depth + 1) }]
+            : [];
+    });
 
 type Box = { left: number; top: number; right: number; bottom: number };
 // The three.js shapes used here; the module itself is untyped (src/vite-env.d.ts).
@@ -47,12 +63,65 @@ type Object3D = {
     name: string;
     visible: boolean;
     parent: Object3D | null;
+    children: Object3D[];
     userData: Record<string, unknown>;
 };
 type Camera = object;
 type Scene = { scene: Object3D; camera: Camera };
 const raycaster = new Raycaster();
 const shown = (o: Object3D | null): boolean => !o || (o.visible && shown(o.parent));
+const flagged = (o: Object3D) => o.userData.part === true && !!o.name.trim();
+
+// An object's on-screen box, clamped to the canvas.
+function screenBox(o: Object3D, camera: Camera, canvas: Box) {
+    const width = canvas.right - canvas.left,
+        height = canvas.bottom - canvas.top;
+    const b = new Box3().setFromObject(o),
+        box = {
+            left: canvas.right,
+            top: canvas.bottom,
+            right: canvas.left,
+            bottom: canvas.top,
+        };
+    // shortcut: corners behind the camera project wrongly; clamping hides it, upgrade if boxes jump.
+    for (let i = 0; i < 8; i++) {
+        const p = new Vector3(
+                i & 1 ? b.max.x : b.min.x,
+                i & 2 ? b.max.y : b.min.y,
+                i & 4 ? b.max.z : b.min.z,
+            ).project(camera),
+            px = Math.min(
+                canvas.right,
+                Math.max(canvas.left, canvas.left + ((p.x + 1) / 2) * width),
+            ),
+            py = Math.min(
+                canvas.bottom,
+                Math.max(canvas.top, canvas.top + ((1 - p.y) / 2) * height),
+            );
+        box.left = Math.min(box.left, px);
+        box.right = Math.max(box.right, px);
+        box.top = Math.min(box.top, py);
+        box.bottom = Math.max(box.bottom, py);
+    }
+    return box;
+}
+// The visible flagged objects directly inside o.
+const sceneParts = (o: Object3D, camera: Camera, canvas: Box, depth = 1): Node[] =>
+    o.children
+        .filter((c) => c.visible)
+        .flatMap((c) =>
+            !flagged(c)
+                ? sceneParts(c, camera, canvas, depth)
+                : depth <= 3
+                  ? [
+                        {
+                            name: c.name.trim(),
+                            box: screenBox(c, camera, canvas),
+                            parts: sceneParts(c, camera, canvas, depth + 1),
+                        },
+                    ]
+                  : [],
+        );
 
 // The flagged objects (userData.part) holding the nearest visible object under the pointer,
 // outermost first and at most three, each with its on-screen box clamped to the canvas.
@@ -65,37 +134,8 @@ function sceneTrail({ scene, camera }: Scene, canvas: Box, x: number, y: number)
     );
     const hit = raycaster.intersectObject(scene).find((h: { object: Object3D }) => shown(h.object));
     const parts: { name: string; box: Box }[] = [];
-    for (let o = hit?.object ?? null; o && o !== scene; o = o.parent) {
-        if (o.userData.part !== true || !o.name.trim()) continue;
-        const b = new Box3().setFromObject(o),
-            box = {
-                left: canvas.right,
-                top: canvas.bottom,
-                right: canvas.left,
-                bottom: canvas.top,
-            };
-        // shortcut: corners behind the camera project wrongly; clamping hides it, upgrade if boxes jump.
-        for (let i = 0; i < 8; i++) {
-            const p = new Vector3(
-                    i & 1 ? b.max.x : b.min.x,
-                    i & 2 ? b.max.y : b.min.y,
-                    i & 4 ? b.max.z : b.min.z,
-                ).project(camera),
-                px = Math.min(
-                    canvas.right,
-                    Math.max(canvas.left, canvas.left + ((p.x + 1) / 2) * width),
-                ),
-                py = Math.min(
-                    canvas.bottom,
-                    Math.max(canvas.top, canvas.top + ((1 - p.y) / 2) * height),
-                );
-            box.left = Math.min(box.left, px);
-            box.right = Math.max(box.right, px);
-            box.top = Math.min(box.top, py);
-            box.bottom = Math.max(box.bottom, py);
-        }
-        parts.unshift({ name: o.name.trim(), box });
-    }
+    for (let o = hit?.object ?? null; o && o !== scene; o = o.parent)
+        if (flagged(o)) parts.unshift({ name: o.name.trim(), box: screenBox(o, camera, canvas) });
     return parts.length ? parts.slice(-3) : undefined;
 }
 
@@ -107,7 +147,7 @@ export function watchParts(
     post: (message: object) => void,
 ) {
     const document = view.document;
-    const scenes = new WeakMap<Element, Scene>();
+    const scenes = new Map<Element, Scene>();
     // Bounds are clipped to the frame's viewport, the only area the host accepts.
     const clip = ({ name, box: r }: { name: string; box: Box }) => {
         const x = Math.max(0, r.left),
@@ -165,7 +205,10 @@ export function watchParts(
     let marked: string[] = [],
         wanted: number | undefined,
         queued = false,
-        lastMarks = '[]';
+        lastMarks = '[]',
+        // The part tree, posted on each change while the host picks from the keyboard.
+        watching = false,
+        lastTree = '';
     const bounds = (e: Element) => {
         const { name: _, ...box } = clip({ name: '', box: e.getBoundingClientRect() });
         return box;
@@ -177,6 +220,7 @@ export function watchParts(
             controls.dispatchEvent(new view.CustomEvent('tt-show', { detail: wanted }));
             wanted = undefined;
         }
+        if (watching) postTree();
         const drawn = new Map<string, Element>();
         for (const e of root.querySelectorAll('[data-part]')) {
             const names: string[] = [];
@@ -201,8 +245,24 @@ export function watchParts(
         lastMarks = key;
         post({ type: 'marks', marks });
     };
+    const out = (n: Node): object => ({ ...clip(n), parts: n.parts.map(out) });
+    const postTree = () => {
+        const parts = [
+                ...domParts(root),
+                ...[...scenes].flatMap(([canvas, { scene, camera }]) =>
+                    canvas.isConnected
+                        ? sceneParts(scene, camera, canvas.getBoundingClientRect())
+                        : [],
+                ),
+            ].map(out),
+            step = document.querySelector('.tt-steps')?.getAttribute('data-step'),
+            key = JSON.stringify([parts, step]);
+        if (key === lastTree) return;
+        lastTree = key;
+        post({ type: 'tree', parts, step: step ? Number(step) : null });
+    };
     const schedule = () => {
-        if (queued || (!marked.length && wanted === undefined)) return;
+        if (queued || (!marked.length && wanted === undefined && !watching)) return;
         queued = true;
         view.requestAnimationFrame(measure);
     };
@@ -217,6 +277,7 @@ export function watchParts(
     function drew(canvas: Element, scene: Object3D, camera: Camera) {
         scenes.set(canvas, { scene, camera });
         if (pointer?.target === canvas) hover(describe(canvas, pointer.x, pointer.y));
+        if (watching) schedule();
     }
     return Object.assign(drew, {
         mark(trails: string[][]) {
@@ -230,6 +291,11 @@ export function watchParts(
         // Opens a step-through visual at a stored step, once its controls exist.
         step(index: number) {
             wanted = index;
+            schedule();
+        },
+        watch(on: boolean) {
+            watching = on;
+            lastTree = '';
             schedule();
         },
     });

@@ -67,13 +67,16 @@ export type VisualPart = {
 };
 export type PartBox = { name: string; x: number; y: number; width: number; height: number };
 export type PartMark = Omit<PartBox, 'name'> & { trail: string[] };
+// The visual's parts, nested, that the ask box picks from with the keyboard.
+export type PartNode = PartBox & { parts: PartNode[] };
 export type VisualMessage =
     | { type: 'height'; height: number }
     | ({ type: 'branch' } & VisualPart)
     | { type: 'part'; parts: PartBox[] }
     | { type: 'pick'; parts: PartBox[]; step: number | null }
     | { type: 'leave' }
-    | { type: 'marks'; marks: PartMark[] };
+    | { type: 'marks'; marks: PartMark[] }
+    | { type: 'tree'; parts: PartNode[]; step: number | null };
 export function visualPassage(visual: Pick<Artifact, 'title' | 'description'>, part: VisualPart) {
     return part.trail
         ? `Visual: ${visual.title}\n${visual.description}\nPart: ${part.trail.join(' › ')}`
@@ -116,6 +119,22 @@ function partMarks(v: unknown, frame: Frame) {
     );
     if (marks.every(Boolean)) return marks as PartMark[];
 }
+// At most three levels and 200 parts, each inside the frame.
+function partTree(v: unknown, frame: Frame) {
+    let count = 0;
+    const level = (v: unknown, depth: number): PartNode[] | undefined => {
+        if (!Array.isArray(v) || (depth > 3 && v.length) || (count += v.length) > 200) return;
+        const nodes = v.map((b) => {
+            const parts =
+                inside(b, 'height,name,parts,width,x,y', frame) &&
+                partName(b.name) &&
+                level(b.parts, depth + 1);
+            return parts && ({ ...b, name: (b.name as string).trim(), parts } as PartNode);
+        });
+        if (nodes.every(Boolean)) return nodes as PartNode[];
+    };
+    return level(v, 1);
+}
 export function visualMessage(data: unknown, frame?: Frame): VisualMessage | undefined {
     if (!data || typeof data !== 'object') return;
     const m = data as Record<string, unknown>,
@@ -134,6 +153,9 @@ export function visualMessage(data: unknown, frame?: Frame): VisualMessage | und
         return { type: 'pick', parts, step: m.step as number | null };
     const marks = frame && m.type === 'marks' && keys === 'marks,type' && partMarks(m.marks, frame);
     if (marks) return { type: 'marks', marks };
+    const tree =
+        frame && m.type === 'tree' && keys === 'parts,step,type' && partTree(m.parts, frame);
+    if (tree && step(m.step)) return { type: 'tree', parts: tree, step: m.step as number | null };
     const bounded = (v: unknown, max: number) =>
         typeof v === 'string' && !!v.trim() && v.length <= max && !/[\r\n]/.test(v);
     if (

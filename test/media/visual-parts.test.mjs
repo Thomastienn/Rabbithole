@@ -256,3 +256,74 @@ test('host accepts only bounded mark messages with valid trails inside the frame
         assert.equal(visualMessage(bad, frame), undefined, JSON.stringify(bad));
     assert.equal(visualMessage({ type: 'marks', marks: [] }), undefined, 'marks need the frame');
 });
+
+test('while the host picks from the keyboard, the part tree posts with names, nesting and bounds, three levels deep, and follows each step', async () => {
+    const { w, posted, parts } = plant();
+    await frame(w);
+    assert.deepEqual(posted, [], 'no tree until the host asks');
+    parts.watch(true);
+    await frame(w);
+    const box = { x: 10, y: 20, width: 100, height: 40 },
+        leaf = (name, b = box) => ({ name, ...b, parts: [] }),
+        turbine = { x: 1000, y: 20, width: w.innerWidth - 1000, height: 40 };
+    assert.deepEqual(posted.pop(), {
+        type: 'tree',
+        step: null,
+        parts: [
+            {
+                name: 'Nuclear plant',
+                ...box,
+                parts: [
+                    { name: 'Reactor', ...box, parts: [leaf('Control rods')] },
+                    leaf('Turbine', turbine),
+                    leaf('Pump'),
+                ],
+            },
+        ],
+    });
+    const art = w.document.getElementById('art'),
+        group = w.document.getElementById('rod').parentElement,
+        control = stepThrough(art, [
+            () => group.removeAttribute('hidden'),
+            () => group.setAttribute('hidden', ''),
+        ]);
+    control.show(1);
+    await frame(w);
+    const tree = posted.pop();
+    assert.equal(tree.step, 1);
+    assert.deepEqual(tree.parts[0].parts[0].parts, [], 'a part the step hides leaves the tree');
+    await frame(w);
+    assert.deepEqual(posted, [], 'an unchanged tree posts once');
+    parts.watch(false);
+    control.show(0);
+    await frame(w);
+    assert.deepEqual(posted, [], 'picking over, no tree');
+});
+
+test('host accepts only a bounded part tree inside the frame, three levels deep', () => {
+    const frame = { width: 600, height: 400 },
+        box = { x: 10, y: 20, width: 100, height: 40 },
+        node = (name, parts = []) => ({ name, ...box, parts });
+    const deep = [node('Plant', [node('Reactor', [node(' Control rods ')])])];
+    assert.deepEqual(visualMessage({ type: 'tree', parts: deep, step: 1 }, frame), {
+        type: 'tree',
+        step: 1,
+        parts: [node('Plant', [node('Reactor', [node('Control rods')])])],
+    });
+    for (const bad of [
+        { type: 'tree', parts: [node('Plant', [node('A', [node('B', [node('C')])])])], step: null },
+        { type: 'tree', parts: [{ ...node('Plant'), x: 590 }], step: null },
+        { type: 'tree', parts: [node('Tab\there')], step: null },
+        { type: 'tree', parts: [{ ...node('Plant'), parts: 'Reactor' }], step: null },
+        { type: 'tree', parts: [{ name: 'Plant', ...box }], step: null },
+        { type: 'tree', parts: Array(201).fill(node('Plant')), step: null },
+        { type: 'tree', parts: [node('Plant')], step: -1 },
+        { type: 'tree', parts: [node('Plant')] },
+    ])
+        assert.equal(visualMessage(bad, frame), undefined, JSON.stringify(bad).slice(0, 80));
+    assert.equal(
+        visualMessage({ type: 'tree', parts: [], step: null }),
+        undefined,
+        'needs the frame',
+    );
+});

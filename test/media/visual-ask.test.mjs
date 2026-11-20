@@ -60,7 +60,13 @@ test('Ask appears only on ready visuals, opens the branch form with the whole vi
     );
     await act(async () => ask.click());
     const source = { label: 'Tournament rounds', explanation: 'Two winners advance to the final.' };
-    assert.deepEqual(calls.shift(), ['ask', 'v-ready', source, figure]);
+    // assert.ok: a failure reporting two elements would print all of jsdom.
+    const asked = () => {
+        const [kind, id, part, origin] = calls.shift();
+        assert.deepEqual([kind, id, part], ['ask', 'v-ready', source]);
+        assert.ok(origin === ask, 'Esc returns focus to the Ask button');
+    };
+    asked();
 
     const menuItem = async (label) => {
         await act(async () => trigger.click());
@@ -78,7 +84,7 @@ test('Ask appears only on ready visuals, opens the branch form with the whole vi
     const viewer = document.querySelector('dialog.visual-viewer, .visual-viewer');
     assert.ok(viewer, 'enlarged view opens');
     await act(async () => button(viewer, ASK).click());
-    assert.deepEqual(calls.shift(), ['ask', 'v-ready', source, figure]);
+    asked();
     assert.equal(document.querySelector('.visual-viewer'), null, 'asking closes the enlarged view');
 });
 
@@ -248,6 +254,51 @@ test('a branched part keeps a thin rectangle in its family ink, and returning to
     assert.equal(marks().length, 0, 'out-of-frame marks are ignored');
 });
 
+test("the Ask button's box picks parts from the keyboard: the frame sends its part tree, and the focused part shows its rectangle and name", async (t) => {
+    let picker;
+    const { container, act, cleanup } = await render(
+        h(VisualFrame, {
+            artifact: visual('ready'),
+            onPart: (...args) => (picker = args[4]),
+        }),
+        ui,
+    );
+    t.after(cleanup);
+    const figure = container.querySelector('figure'),
+        frame = figure.querySelector('iframe'),
+        receive = sender(act, frame),
+        posted = [];
+    sized(frame);
+    frame.contentWindow.postMessage = (data) => posted.push(data);
+    await act(async () => frame.dispatchEvent(new Event('load')));
+    await receive({ type: 'height', height: 400 });
+    await act(async () => button(figure, ASK).click());
+    const trees = [];
+    picker.listen((parts, step) => trees.push([parts.map((p) => p.name), step]));
+    await act(async () => picker.show([]));
+    assert.deepEqual(posted.at(-1), { type: 'tree', watch: true });
+    const box = { x: 10, y: 20, width: 100, height: 40 },
+        node = (name, parts = [], b = box) => ({ name, ...b, parts });
+    const tree = [node('Plant', [node('Reactor'), node('Turbine', [], { ...box, y: 200 })])];
+    await receive({ type: 'tree', parts: tree, step: 1 });
+    await receive({ type: 'tree', parts: [node('Bad', [], { ...box, x: 590 })], step: 1 });
+    assert.deepEqual(trees, [[['Plant'], 1]], 'only valid trees reach the ask box');
+    const rect = () => figure.querySelector('.visual-part');
+    assert.equal(rect(), null, 'nothing focused yet');
+    await act(async () => picker.show([0, 1]));
+    assert.equal(rect().textContent, 'Turbine');
+    assert.equal(rect().style.top, '200px');
+    await receive({
+        type: 'tree',
+        parts: [node('Plant', [node('Reactor'), node('Turbine')])],
+        step: 1,
+    });
+    assert.equal(rect().style.top, '20px', 'the rectangle follows the part');
+    await act(async () => picker.show(undefined));
+    assert.equal(rect(), null);
+    assert.deepEqual(posted.at(-1), { type: 'tree', watch: false });
+});
+
 test('parts of a still-drawing visual neither outline nor pick', async (t) => {
     const calls = [];
     const { container, act, cleanup } = await render(
@@ -331,6 +382,49 @@ test('a picked part opens the ask box floating over it, and choosing an earlier 
         page.calls.filter((c) => c.path.endsWith('/prepare')).at(-1).body.trail,
         ['Nuclear plant', 'Reactor'],
         'branch preparation follows the widened part',
+    );
+});
+
+test("a part picked from the keyboard in the Ask button's box becomes the source with its trail and step", async (t) => {
+    const plant = {
+        ...visual('ready'),
+        id: 'plant',
+        conversation: 'a',
+        title: 'Nuclear plant',
+        description: 'How a plant makes electricity.',
+    };
+    const page = await mount(t, ({ path }) =>
+        path === '/api/trees/a'
+            ? json({
+                  ...conversation('a'),
+                  messages: [
+                      { id: 'reply', role: 'assistant', text: 'Heat.', status: 'completed' },
+                  ],
+                  artifacts: [plant],
+              })
+            : undefined,
+    );
+    await page.act(async () => page.current.trees.openConversation('a'));
+    const picker = { show: () => {}, listen: () => {} },
+        whole = { label: plant.title, explanation: plant.description };
+    await page.act(async () =>
+        page.current.branch.openVisualPart(plant, whole, { current: null }, undefined, picker),
+    );
+    assert.equal(page.current.c.branch.picker, picker, 'the ask box gets the picker');
+    await page.act(async () => page.current.branch.pickPart(['Nuclear plant', 'Reactor'], 1));
+    assert.deepEqual(page.current.c.branch.anchor, {
+        messageId: 'reply',
+        artifactId: 'plant',
+        label: 'Reactor',
+        explanation: plant.description,
+        trail: ['Nuclear plant', 'Reactor'],
+        step: 1,
+        text: 'Visual: Nuclear plant\nHow a plant makes electricity.\nPart: Nuclear plant › Reactor',
+    });
+    assert.deepEqual(
+        page.calls.filter((c) => c.path.endsWith('/prepare')).at(-1).body.trail,
+        ['Nuclear plant', 'Reactor'],
+        'branch preparation follows the pick',
     );
 });
 
