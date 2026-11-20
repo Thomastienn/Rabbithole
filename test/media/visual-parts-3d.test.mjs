@@ -154,3 +154,27 @@ test('while the host picks from the keyboard, the scene posts its flagged object
     await frame();
     assert.deepEqual(posted, []);
 });
+
+test('a branched 3D object keeps its rectangle, which follows the camera, and a hidden one has none', async () => {
+    const { w, posted, draw, camera, drew } = atom();
+    const frame = () => new Promise((resolve) => w.requestAnimationFrame(() => resolve()));
+    drew.mark([
+        ['Atom', 'Nucleus'],
+        ['Atom', 'Ghost'],
+    ]);
+    await frame();
+    const { type, marks } = posted.pop();
+    assert.equal(type, 'marks');
+    assert.deepEqual(
+        marks.map((m) => m.trail),
+        [['Atom', 'Nucleus']],
+    );
+    assert.deepEqual(centre(marks[0]).map(Math.round), [100, 100]);
+    camera.position.x = 0.2;
+    draw();
+    await frame();
+    assert.ok(
+        centre(posted.pop().marks[0])[0] < centre(marks[0])[0] - 2,
+        'the rectangle moved left with the view',
+    );
+});
