@@ -23,6 +23,8 @@ export async function exportVideo({
   const total = cuts.reduce((n, c) => n + c.timing.durationInFrames, 0);
   const rendered = async (folder, frames, progress) => {
     await mkdir(join(folder, 'out'), { recursive: true, mode: 0o700 });
+    // The sandbox's TMPDIR; generation's cleanup removed it.
+    await mkdir(join(folder, 'tmp'), { recursive: true, mode: 0o700 });
     const output = join(folder, 'out', randomUUID() + '.mp4');
     const result = await render(folder, output, signal, progress);
     signal.throwIfAborted();

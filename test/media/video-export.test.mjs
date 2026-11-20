@@ -67,6 +67,8 @@ test('export renders each cut from saved code with progress, shares one job, the
   const { env, tree, video, logs, exportState, press } = await saved({
     videoRender: async (workspace, output, signal, progress) => {
       renders.push(workspace);
+      // The sandbox points TMPDIR here; generation's cleanup removed it.
+      assert.ok(existsSync(join(workspace, 'tmp')), 'render TMPDIR exists');
       if (existsSync(join(workspace, 'Video.tsx')))
         assert.equal(readFileSync(join(workspace, 'Video.tsx'), 'utf8'), composition);
       progress(0.5);
