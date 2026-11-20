@@ -24,7 +24,10 @@ export {
   Pin,
   Copies,
   Lights,
+  finish,
   type CameraKey,
+  type Finish,
+  type Pattern,
 } from './video-stock';
 
 export const palette = {

@@ -294,6 +294,15 @@ export function cutSource(raw, brief, names) {
       !styleValue(value, name)
     )
       styleError(`${name}: ${value.getText(file).slice(0, 60)}`);
+    // The kit's finish(kind, colour, pattern) colours a 3D material like a color style.
+    if (
+      ts.isCallExpression(n) &&
+      ts.isIdentifier(n.expression) &&
+      bindings.get(n.expression.text) === 'finish' &&
+      n.arguments[1] &&
+      !styleValue(n.arguments[1], 'color')
+    )
+      styleError(`finish colour: ${n.arguments[1].getText(file).slice(0, 60)}`);
     ts.forEachChild(n, check);
   };
   check(file);
