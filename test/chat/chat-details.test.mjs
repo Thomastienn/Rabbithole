@@ -31,7 +31,7 @@ test('chat details keep inherited context collapsed and read-only, show usage, a
     return h(
       'div',
       { role: 'log' },
-      h(InheritedContext, { branch: value.branch, parentTitle: 'Mutex basics', ink: 1 }),
+      h(InheritedContext, { branch: value.branch, parentTitle: 'Mutex basics' }),
       h('article', null, question.text),
       h(TokenStatsToggle, {
         open: value.open,
@@ -247,7 +247,7 @@ test('a discussion branch labels its speaker and shows the inherited discussion'
     snapshot: 'Fixed context.',
   };
   const { container, act, cleanup } = await render(
-    h(InheritedContext, { branch, parentTitle: 'Fungi', ink: 1 }),
+    h(InheritedContext, { branch, parentTitle: 'Fungi' }),
     ui,
   );
   t.after(cleanup);

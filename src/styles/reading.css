@@ -35,7 +35,9 @@
   text-wrap: balance;
 }
 /* Address chips (mockup .chip): filled with the family line (--ink, set inline), 4px corners. */
-.address-chip {
+.address-chip,
+.reply-md .passage-address,
+.visual-chips .passage-address {
   display: inline-block;
   padding: 3px 6px 2px;
   border-radius: var(--radius-inner);
@@ -345,15 +347,7 @@ mark {
 }
 .reply-md .passage-address,
 .visual-chips .passage-address {
-  display: inline-block;
   margin-inline-start: 2px;
-  padding: 3px 6px 2px;
-  border-radius: var(--radius-inner);
-  background: var(--ink);
-  color: var(--ink-on);
-  font: 700 12px/1 var(--font-family-heading);
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
   vertical-align: 2px;
   text-decoration: none;
   user-select: none;
@@ -361,9 +355,7 @@ mark {
 /* The interchange ring sits between the passage and its chip, outside the chip's fill. */
 .reply-md u.suggestion.explored + .passage-address {
   position: relative;
-  inset-block-start: 0;
   margin-inline-start: 22px;
-  vertical-align: 2px;
 }
 .reply-md u.suggestion.explored + .passage-address::before {
   content: '';

@@ -72,17 +72,14 @@ export function TokenStats({
 export function InheritedContext({
   branch,
   parentTitle,
-  ink,
 }: {
   branch: Branch | null;
   parentTitle: string;
-  ink: number;
 }) {
   return (
     <>
       {branch && (
         <Collapsible
-          style={inkStyle(ink)}
           className="inherited-context"
           defaultIsOpen={false}
           trigger={<Text weight="medium">Inherited from {parentTitle}</Text>}

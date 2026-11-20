@@ -274,6 +274,20 @@ test('a saved tree opens its conversation with the thread, title and map', async
   assert.ok(button(container, 'Copy tutor reply 1'));
 });
 
+test('a child shows its first question once, in the thread, not on the origin line', async (t) => {
+  const branch = { parent: 't0', messageId: 'm1', start: 0, end: 5, text: 'Spore' };
+  const { container } = await mount(t, [summary], {
+    respond: (path) =>
+      path === '/api/trees/t1' && {
+        ok: true,
+        json: async () => ({ ...tree, branch: { ...branch, question: 'What are hyphae?' } }),
+      },
+  });
+  assert.match(container.querySelector('.origin-line').textContent, /at Spore/);
+  assert.equal(container.querySelector('.origin-question'), null);
+  assert.equal(container.querySelector('.question-bubble').textContent, 'What are hyphae?');
+});
+
 test('map media chips open focused chat, focus and center the chosen artifact', async (t) => {
   const artifacts = [
     {

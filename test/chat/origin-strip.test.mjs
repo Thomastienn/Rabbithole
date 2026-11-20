@@ -14,7 +14,6 @@ async function strip(t, branch, question = 'Why does it bend so far?') {
       question,
       parentAddress: '1.2',
       parentTitle: 'Light bending',
-      ink: 2,
       openParent: (s) => opened.push(s),
     }),
   );
@@ -31,7 +30,6 @@ test('passage source: accessible origin, chip opens the parent at the passage', 
     text: 'refraction',
   });
   assert.ok(section.getAttribute('aria-label'), 'named for assistive tech');
-  assert.match(section.style.getPropertyValue('--ink'), /ink-2/);
   assert.equal(section.querySelector('.origin-source').textContent, 'refraction');
   assert.equal(section.querySelector('.origin-question').textContent, 'Why does it bend so far?');
   const [chip] = buttons();

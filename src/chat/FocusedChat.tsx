@@ -281,7 +281,6 @@ export default function FocusedChat(props: {
                 state?.trees.find((t) => t.id === tree.branch!.parent)?.title ??
                 'parent conversation'
               }
-              ink={addresses.get(tree.id)?.ink ?? 0}
               openParent={(source) => void openConversation(tree.branch!.parent, source)}
             />
           )}
@@ -290,7 +289,6 @@ export default function FocusedChat(props: {
             parentTitle={
               state?.trees.find((t) => t.id === tree.branch?.parent)?.title ?? 'parent conversation'
             }
-            ink={addresses.get(tree.id)?.ink ?? 0}
           />
           {!tree.messages.length && (
             <VStack gap={3} padding={6}>

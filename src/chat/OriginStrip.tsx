@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
-import { inkStyle } from '../map/treeList';
 import type { Source } from '../map/TreeOverview';
 import type { Branch } from './branch';
 
@@ -39,14 +38,12 @@ export default function OriginStrip({
   question,
   parentAddress,
   parentTitle,
-  ink,
   openParent,
 }: {
   branch: Branch;
   question?: string;
   parentAddress: string;
   parentTitle: string;
-  ink: number;
   openParent: (source: Source) => void;
 }) {
   const [all, setAll] = useState(false);
@@ -56,7 +53,7 @@ export default function OriginStrip({
     : branch.text.trim();
   const long = isLong(text);
   return (
-    <section className="origin-strip" aria-label="Conversation origin" style={inkStyle(ink)}>
+    <section className="origin-strip" aria-label="Conversation origin">
       <p className="origin-line">
         <span className="origin-ring" aria-hidden />
         <span>
