@@ -2,11 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { TextInput } from '@astryxdesign/core/TextInput';
-import { ArrowLeftIcon, CubeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MagnifyingGlassIcon,
+} from '@heroicons/react/24/outline';
 
 type PieceRow = {
   id: string;
@@ -81,12 +87,15 @@ export default function PieceLibrary({
   };
   return (
     <VStack gap={5} className="knowledge-content">
-      <VStack gap={2}>
-        <Heading level={1}>Pieces</Heading>
-        <Text color="secondary" className="library-intro">
-          The recurring objects videos draw, saved so later videos reuse them. Pieces are read-only.
-        </Text>
-      </VStack>
+      <HStack className="library-head">
+        <VStack gap={2}>
+          <Heading level={1}>Pieces</Heading>
+          <Text color="secondary" className="library-intro">
+            The recurring objects videos draw, saved so later videos reuse them. Pieces are
+            read-only.
+          </Text>
+        </VStack>
+      </HStack>
       {open ? (
         <VStack gap={4} className="piece-detail">
           <Button
@@ -118,10 +127,9 @@ export default function PieceLibrary({
           {!list && !error && <Text role="status">Loading pieces…</Text>}
           {list && !total && !searched && (
             <EmptyState
-              icon={<CubeIcon />}
               headingLevel={2}
               title="No saved pieces yet"
-              description="New videos save their recurring objects here, so later videos can reuse them."
+              description="When a video draws an object worth keeping, it is saved here."
             />
           )}
           {(searched || !!total) && (
@@ -170,24 +178,24 @@ export default function PieceLibrary({
             </section>
           )}
           {total > PAGE && (
-            <nav aria-label="Piece pages">
-              <HStack gap={2} vAlign="center">
-                <Button
-                  label="Previous page"
-                  variant="secondary"
-                  size="sm"
-                  isDisabled={offset === 0}
-                  onClick={() => page(Math.max(0, offset - PAGE))}
-                />
-                <Text color="secondary">
-                  Page {offset / PAGE + 1} of {Math.ceil(total / PAGE)}
+            <nav aria-label="Piece pages" className="piece-pages">
+              <HStack gap={1} vAlign="center" hAlign="end">
+                <Text type="supporting" color="secondary">
+                  {offset + 1}–{Math.min(offset + PAGE, total)} of {total}
                 </Text>
-                <Button
+                <IconButton
+                  label="Previous page"
+                  icon={<ChevronLeftIcon />}
+                  variant="ghost"
+                  isDisabled={offset === 0}
+                  clickAction={() => page(Math.max(0, offset - PAGE))}
+                />
+                <IconButton
                   label="Next page"
-                  variant="secondary"
-                  size="sm"
+                  icon={<ChevronRightIcon />}
+                  variant="ghost"
                   isDisabled={offset + PAGE >= total}
-                  onClick={() => page(offset + PAGE)}
+                  clickAction={() => page(offset + PAGE)}
                 />
               </HStack>
             </nav>

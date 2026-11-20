@@ -43,6 +43,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             description,
             duration: null,
             created,
+            origin: store.tree(conversation)?.title ?? null,
             live: conversation,
           })),
         // A video is exported once its MP4 exists; an unexported one plays live from its own saved cuts.

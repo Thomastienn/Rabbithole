@@ -265,6 +265,15 @@
   gap: 16px;
   overflow-wrap: anywhere;
 }
+/* Piece tiles (mockup Pieces) sit flat on the page: stills on the deep field, then name and notes. */
+.piece-library > .astryx-card {
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+.piece-library > .astryx-card:hover h3 {
+  text-decoration: underline;
+}
 /* A card's 2D and 3D stills side by side, each 16:9; a missing one keeps its place with a note. */
 .piece-stills {
   display: grid;
@@ -290,6 +299,9 @@
 .piece-detail .video-frame.piece-forms {
   aspect-ratio: 32 / 9;
   max-width: 1280px;
+}
+.piece-pages {
+  margin-top: calc(2 * var(--rabbithole-module));
 }
 .piece-detail > .astryx-button {
   align-self: start;

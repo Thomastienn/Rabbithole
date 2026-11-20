@@ -131,6 +131,9 @@ test('existing ready videos migrate into a global library that survives source d
     assert.ok(existsSync(mediaPath(dir, ids.kept)));
     const after = await (await env.get('/api/videos')).json();
     assert.deepEqual(after.map((v) => v.id).sort(), [ids.kept, ids.missing, ids.other].sort());
+    // Each row names the conversation still holding it; a deleted source leaves null.
+    assert.equal(after.find((v) => v.id === ids.kept).origin, null);
+    assert.equal(after.find((v) => v.id === ids.other).origin, 'Other chat');
     assert.doesNotMatch(
       JSON.stringify(after) + JSON.stringify(env.store.db.prepare('SELECT * FROM videos').all()),
       /SECRET|PRIVATE|conversation|message/,
@@ -180,6 +183,7 @@ test('a newly finished video joins the library in the same transaction as its re
         description: 'Final',
         duration: 3,
         created: video.created,
+        origin: 'Chat',
       },
     ]);
   } finally {
