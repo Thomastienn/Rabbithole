@@ -261,6 +261,13 @@ test('a saved tree opens its conversation with the thread, title and map', async
   const { container, calls } = await mount(t, [summary]);
   assert.ok(calls.includes('/api/trees/t1'));
   assert.equal(container.querySelector('#rename-conversation h2').textContent, 'Fungi');
+  const chip = container.querySelector('#rename-conversation .title-chip');
+  assert.equal(chip.textContent, '1');
+  assert.equal(
+    chip.style.getPropertyValue('--ink'),
+    'var(--rabbithole-paper)',
+    'trunk is porcelain',
+  );
   assert.equal(container.querySelector('.question-bubble').textContent, 'What are hyphae?');
   assert.match(container.querySelector('.chat-reply').textContent, /Thin threads\./);
   assert.ok(container.querySelector('#learning-tree-map'));

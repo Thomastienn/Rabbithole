@@ -13,6 +13,7 @@ import {
 import type { Summary } from '../map/TreeOverview';
 import { TokenStats, InheritedContext } from './ChatDetails';
 import TurnRail from './TurnRail';
+import { inkStyle } from '../map/treeList';
 import OriginStrip from './OriginStrip';
 import TitleEditor from './TitleEditor';
 import ChatHeadingRow from './ChatHeader';
@@ -244,6 +245,13 @@ export default function FocusedChat(props: {
                 size="sm"
                 onClick={() => setRenaming({ id: tree.id, place: 'header' })}
               >
+                <span
+                  className="address-chip title-chip"
+                  aria-hidden
+                  style={inkStyle(addresses.get(tree.id)?.ink ?? 0)}
+                >
+                  {addresses.get(tree.id)?.address}
+                </span>
                 <Heading
                   level={2}
                   style={{
@@ -264,7 +272,10 @@ export default function FocusedChat(props: {
           {tree.branch && (
             <OriginStrip
               branch={tree.branch}
-              question={tree.messages.find((m) => m.role === 'user')?.text ?? tree.branch.question}
+              // The thread's first bubble already shows the question; the origin line shows it only when no question is saved.
+              question={
+                tree.messages.some((m) => m.role === 'user') ? undefined : tree.branch.question
+              }
               parentAddress={addresses.get(tree.branch.parent)?.address ?? ''}
               parentTitle={
                 state?.trees.find((t) => t.id === tree.branch!.parent)?.title ??

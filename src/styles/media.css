@@ -331,11 +331,13 @@
   outline: medium solid var(--color-text-primary);
   outline-offset: var(--spacing-1);
 }
+/* Inherited context: a collapsible tonal section on raised enamel (mockup .inh). */
 .inherited-context {
   border-radius: var(--radius-container);
   background: var(--color-background-surface);
-  padding-inline: 12px;
+  padding-inline: 14px;
   color: var(--color-text-primary);
+  font-size: 13px;
 }
 .inherited-context .astryx-collapsible-trigger {
   padding: 10px 0;
@@ -355,8 +357,6 @@
   margin-block-start: var(--spacing-2);
 }
 .inherited-body dd:first-of-type {
-  border-inline-start: 2px solid var(--ink, var(--color-accent));
-  padding-inline-start: 12px;
   color: var(--color-text-primary);
 }
 .inherited-body dd {
@@ -403,18 +403,37 @@
   transform: translateY(-100%);
   margin-top: calc(-1 * var(--spacing-1));
 }
-.origin-strip {
-  border-inline-start: 3px solid var(--ink, var(--color-accent));
-  padding-inline-start: 12px;
+/* Origin line under the title (mockup .origin): a porcelain ring, then From <parent> at “passage”. */
+.origin-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
-.origin-chip {
+.origin-ring {
   flex: none;
-  font-variant-numeric: tabular-nums;
-  background: var(--ink);
-  color: var(--ink-on);
+  width: 13px;
+  height: 13px;
+  box-sizing: border-box;
+  align-self: center;
+  border: 3px solid var(--rabbithole-paper);
+  border-radius: 50%;
+  background: var(--color-background-body);
 }
-.origin-source-box {
-  min-width: 0;
+.origin-line .origin-chip {
+  display: inline;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  vertical-align: baseline;
 }
 .origin-source,
 .origin-question {
@@ -422,9 +441,8 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.origin-source {
-  color: var(--color-text-secondary);
-  font-family: var(--rabbithole-font-reading);
+.origin-question {
+  margin-block-start: var(--spacing-2);
 }
 .origin-source[data-clamped] {
   display: -webkit-box;

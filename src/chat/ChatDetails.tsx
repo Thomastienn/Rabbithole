@@ -3,6 +3,7 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import ChartBarIcon from '@heroicons/react/24/outline/ChartBarIcon';
+import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import { Button } from '@astryxdesign/core/Button';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Token } from '@astryxdesign/core/Token';
@@ -144,6 +145,9 @@ export function ReplyFeedback({
           vAlign="center"
           className={message.status === 'failed' ? 'failure-banner' : undefined}
         >
+          {message.status === 'failed' && (
+            <ExclamationTriangleIcon className="reply-failed-icon" aria-hidden />
+          )}
           <Text
             type="supporting"
             role="status"
