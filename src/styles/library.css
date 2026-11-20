@@ -251,6 +251,8 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* Contain absolute children (sr-only inputs) so they scroll with the panel, not stretch the page. */
+  position: relative;
 }
 .knowledge-content {
   max-width: 70rem;
