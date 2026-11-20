@@ -36,6 +36,7 @@ const inputs = () =>
     // The live video player bundles the video kit from server/.
     'server/media/video-kit.tsx',
     'server/media/video-stock.tsx',
+    'server/media/video-finish.tsx',
   ]);
 export function recordBuild() {
   writeFileSync(stamp, JSON.stringify({ inputs: inputs(), outputs: fingerprint(['dist']) }) + '\n');

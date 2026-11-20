@@ -12,13 +12,29 @@ import { REMOTION_SKILL } from './skills.mjs';
 import {
   cutSource,
   pieceChoices,
-  remapRoles,
   assemblePieces,
   libraryPieces,
   CUT_ATTEMPTS,
 } from './video-plan.mjs';
 import { patched, withSource } from './patches.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
+
+// A reused piece takes the new video's palette roles: kept when the brief has them, else the object's colorRole.
+// A role the piece saved as a true colour ({role: hex}) becomes that hex, so the real object keeps its colour.
+export function remapRoles(source, from, colorRole, brief, roles = {}, trueColors = {}) {
+  if (!from.length) return source;
+  // shortcut: a neutral object (no colorRole) falls back to the first brief role; map to palette neutrals if that reads wrong.
+  const fallback = colorRole ?? Object.keys(brief.paletteRoles)[0];
+  const to = (r) => roles[r] ?? (Object.hasOwn(brief.paletteRoles, r) ? r : fallback);
+  const alt = from.map(RegExp.escape).join('|');
+  return source.replace(
+    new RegExp(`\\bcolors\\s*(?:\\.\\s*(${alt})\\b|\\[\\s*['"\`](${alt})['"\`]\\s*\\])`, 'g'),
+    (_, a, b) =>
+      Object.hasOwn(trueColors, a ?? b)
+        ? JSON.stringify(trueColors[a ?? b])
+        : `colors.${to(a ?? b)}`,
+  );
+}
 
 // Saved true colours as brief trueColors that accept their hex literals, keyed apart from any brief role or ink.
 const prefixed = (colors) =>

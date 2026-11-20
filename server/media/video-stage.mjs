@@ -10,12 +10,15 @@ const runtime = readFileSync(new URL('./video-stock.tsx', import.meta.url), 'utf
   "from './kit'",
 );
 
+const finishes = readFileSync(new URL('./video-finish.tsx', import.meta.url), 'utf8');
+
 // The host's data path into a Remotion cut: stock.json beside the cut, read by setStock in the kit. It carries
 // the cut's exhibits by id, images inlined as data URLs read from the cut folder; a missing file drops one.
 // A clip is copied into the public folder for staticFile; before narration staging makes that folder only the
 // write-time check runs, which renders nothing. A clip with sound starts at its narration pause.
 async function stageHostData(dir, engine, exhibits = [], pause) {
   await writeFile(join(dir, 'video-stock.tsx'), runtime);
+  await writeFile(join(dir, 'video-finish.tsx'), finishes);
   if (engine === 'manim') return;
   const data = {};
   for (const { id, file, type, url, cut, ...shown } of exhibits) {

@@ -290,14 +290,18 @@ export function cutSource(raw, brief, names) {
       !literals.has(n.text.toLowerCase())
     )
       styleError(`"${n.text.slice(0, 60)}" is not a kit color`);
-    const name = n.name?.text;
-    const value = ts.isPropertyAssignment(n)
-      ? n.initializer
-      : ts.isJsxAttribute(n)
-        ? n.initializer && ts.isJsxExpression(n.initializer)
-          ? n.initializer.expression
-          : n.initializer
-        : null;
+    // The kit's finish(kind, colour, pattern) colours a 3D material like a color style.
+    const tint = ts.isCallExpression(n) && bindings.get(n.expression.getText(file)) === 'finish';
+    const name = tint ? 'color' : n.name?.text;
+    const value = tint
+      ? n.arguments[1]
+      : ts.isPropertyAssignment(n)
+        ? n.initializer
+        : ts.isJsxAttribute(n)
+          ? n.initializer && ts.isJsxExpression(n.initializer)
+            ? n.initializer.expression
+            : n.initializer
+          : null;
     if (
       value &&
       /^(?:color|background|backgroundColor|backgroundImage|fill|stroke|stopColor|tint|glow|border|borderColor|borderTop|borderRight|borderBottom|borderLeft|outline|outlineColor|boxShadow|textShadow|fontFamily|font)$/.test(
@@ -431,23 +435,6 @@ export function pieceChoices(raw, names, matches, brief, solid = false) {
     return { name, use: c.use, ...(piece && { piece }), ...(c.roles && { roles: c.roles }) };
   });
   return { code: answer.code, choices };
-}
-
-// A reused piece takes the new video's palette roles: kept when the brief has them, else the object's colorRole.
-// A role the piece saved as a true colour ({role: hex}) becomes that hex, so the real object keeps its colour.
-export function remapRoles(source, from, colorRole, brief, roles = {}, trueColors = {}) {
-  if (!from.length) return source;
-  // shortcut: a neutral object (no colorRole) falls back to the first brief role; map to palette neutrals if that reads wrong.
-  const fallback = colorRole ?? Object.keys(brief.paletteRoles)[0];
-  const to = (r) => roles[r] ?? (Object.hasOwn(brief.paletteRoles, r) ? r : fallback);
-  const alt = from.map(RegExp.escape).join('|');
-  return source.replace(
-    new RegExp(`\\bcolors\\s*(?:\\.\\s*(${alt})\\b|\\[\\s*['"\`](${alt})['"\`]\\s*\\])`, 'g'),
-    (_, a, b) =>
-      Object.hasOwn(trueColors, a ?? b)
-        ? JSON.stringify(trueColors[a ?? b])
-        : `colors.${to(a ?? b)}`,
-  );
 }
 
 // One set-piece module: merged imports, the written code, then each reused piece scoped so its helpers cannot clash.

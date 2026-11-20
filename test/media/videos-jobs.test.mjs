@@ -178,6 +178,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
         'narration.json',
         'public',
         'stock.json',
+        'video-finish.tsx',
         'video-stock.tsx',
       ],
     );

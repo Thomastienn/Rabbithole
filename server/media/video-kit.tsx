@@ -29,6 +29,7 @@ export {
   type CameraKey,
   type TargetMark,
 } from './video-stock';
+export { finish, type Finish, type Pattern } from './video-finish';
 import type { TargetMark } from './video-stock';
 
 export const palette = {
