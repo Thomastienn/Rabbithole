@@ -7,12 +7,14 @@ export function useKnowledge({ api, activity }: { api: Api; activity: string }) 
   const [error, setError] = useState(''),
     [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
-  const [merge, setMerge] = useState<string>(),
-    [into, setInto] = useState('');
+  // The merge dialog keeps one concept and folds the chosen duplicate into it.
+  const [keep, setKeep] = useState<string>(),
+    [duplicate, setDuplicate] = useState('');
   const origin = useRef<HTMLElement | null>(null);
   const mergedFocus = useRef<string>(undefined);
   const version = useRef(0);
   const [chosen, setChosen] = useState<string>();
+  const selected = graph?.concepts.find((c) => c.name === chosen) ?? graph?.concepts[0];
   useEffect(() => {
     // Native close completes the dialog's focus restoration before focusing the surviving concept.
     function restore() {
@@ -45,24 +47,26 @@ export function useKnowledge({ api, activity }: { api: Api; activity: string }) 
   }, [activity]);
   function closeMerge() {
     if (busy) return;
-    setMerge(undefined);
+    setKeep(undefined);
     requestAnimationFrame(() => origin.current?.focus());
   }
   async function submitMerge(e: React.FormEvent) {
     e.preventDefault();
-    if (!merge || !into || busy) return;
+    if (!keep || !duplicate || busy) return;
     version.current++;
     setBusy(true);
     setError('');
     setStatus('');
     try {
-      const data = await api('/api/graph/merge', { from: merge, into });
+      const data = await api('/api/graph/merge', { from: duplicate, into: keep });
       version.current++;
-      mergedFocus.current = into;
-      setChosen(into);
+      mergedFocus.current = keep;
+      setChosen(keep);
       setGraph(data);
-      setMerge(undefined);
-      setStatus(`Merged ${merge} into ${into}. Topics, observations and concept links combined.`);
+      setKeep(undefined);
+      setStatus(
+        `Merged ${duplicate} into ${keep}. Topics, observations and concept links combined.`,
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -72,18 +76,23 @@ export function useKnowledge({ api, activity }: { api: Api; activity: string }) 
   function beginMerge(name: string, opener: HTMLElement) {
     origin.current = opener;
     setError('');
-    setInto('');
-    setMerge(name);
+    setDuplicate('');
+    setKeep(name);
+  }
+  function chooseKeep(name: string) {
+    setKeep(name);
+    if (name === duplicate) setDuplicate('');
   }
   return {
     graph,
     error,
     status,
     busy,
-    merge,
-    into,
-    setInto,
-    chosen,
+    keep,
+    chooseKeep,
+    duplicate,
+    setDuplicate,
+    selected,
     setChosen,
     beginMerge,
     load,

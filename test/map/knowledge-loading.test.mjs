@@ -42,15 +42,16 @@ test('knowledge loading, empty/error states and refresh ignore stale activity re
   await act(async () => loads[2].resolve({ topics: [], concepts: [], links: [] }));
   assert.equal(container.querySelectorAll('[data-concept]').length, 2);
   assert.ok(calls.every(([p]) => p === '/api/graph'));
-  const trigger = button(container, 'Merge Mutex…');
+  const trigger = button(container, 'Merge concepts');
   await act(async () => {
     trigger.focus();
     trigger.click();
   });
   assert.ok(document.querySelector('dialog[open]'));
-  assert.equal(button(document, 'Merge concepts').disabled, true);
+  assert.match(document.querySelector('dialog button[aria-expanded]').textContent, /Mutex/);
+  assert.equal(button(document.querySelector('dialog'), 'Merge concepts').disabled, true);
   await act(async () => {
-    button(document, 'Cancel merge').click();
+    button(document.querySelector('dialog'), 'Cancel merge').click();
     dom.frames();
   });
   assert.equal(document.querySelector('dialog[open]'), null);
