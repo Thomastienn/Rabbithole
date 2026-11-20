@@ -47,6 +47,14 @@ export function AttachButton({
   );
 }
 
+// No model to answer: said in scarlet inside the composer frame, with the way forward.
+export const noModelNote = (
+  <p className="attachment-note">
+    <ExclamationTriangleIcon aria-hidden />
+    No model is connected. Open Settings, then Connections.
+  </p>
+);
+
 // Paperclip, paste and drop all add here: unsupported files are refused on the spot, the rest join the tray.
 // Spread `zone` on the composer; render `notices` (refusal line, drop note) inside its frame.
 export function useAttach(files: File[], setFiles: (files: File[]) => void, isDisabled = false) {

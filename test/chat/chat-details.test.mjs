@@ -331,3 +331,31 @@ test("groundwork shows as chips once a reply's suggestions are ready, chooses th
   await act(async () => update({ message: 'r', status: 'ready', passages: [], groundwork: [] }));
   assert.equal(container.querySelector('[aria-label="Groundwork"]'), null);
 });
+
+test('a streaming reply holds its place with sized skeleton lines until its first words arrive', async (t) => {
+  let update;
+  const question = { id: 'q', role: 'user', text: 'Why?', status: 'completed' };
+  const reply = { id: 'r', role: 'assistant', text: '', status: 'streaming' };
+  function Fixture() {
+    const [value, set] = useState({ message: reply, overview: false });
+    update = set;
+    return h(ReplyFeedback, {
+      ...value,
+      previous: question,
+      latest: true,
+      active: true,
+      retry: () => {},
+    });
+  }
+  const { container, act, cleanup } = await render(h(Fixture), ui);
+  t.after(cleanup);
+  const skeleton = container.querySelector('.reply-skeleton');
+  assert.equal(skeleton.getAttribute('aria-hidden'), 'true');
+  assert.equal(skeleton.querySelectorAll('.astryx-skeleton').length, 3);
+  assert.equal(container.querySelector('[role=status]').textContent, 'Responding…');
+  // The map overview never shows it; the first words replace it.
+  await act(async () => update({ message: reply, overview: true }));
+  assert.equal(container.querySelector('.reply-skeleton'), null);
+  await act(async () => update({ message: { ...reply, text: 'A hypha' }, overview: false }));
+  assert.equal(container.querySelector('.reply-skeleton'), null);
+});

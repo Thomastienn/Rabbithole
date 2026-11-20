@@ -7,6 +7,7 @@ import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTria
 import { Button } from '@astryxdesign/core/Button';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Token } from '@astryxdesign/core/Token';
+import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { inkStyle } from '../map/treeList';
 import {
   replyFeedback,
@@ -162,6 +163,14 @@ export function ReplyFeedback({
             />
           )}
         </HStack>
+      )}
+      {/* Sized skeleton lines hold the reply's place until its first words arrive. */}
+      {!overview && message.status === 'streaming' && !message.text && (
+        <VStack gap={2} className="reply-skeleton" aria-hidden>
+          <Skeleton height={12} width="92%" />
+          <Skeleton height={12} width="78%" />
+          <Skeleton height={12} width="55%" />
+        </VStack>
       )}
     </>
   );

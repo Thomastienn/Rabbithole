@@ -97,7 +97,10 @@ test('first question retains its controlled draft, selects a model before sendin
     }),
   );
   assert.equal(button(container, 'Send').disabled, true);
-  assert.match(container.textContent, /No model is available. Open Settings to connect one/);
+  assert.match(
+    container.querySelector('.astryx-chat-composer').textContent,
+    /No model is connected. Open Settings, then Connections./,
+  );
   assert.equal(container.querySelector('[role=textbox]').textContent, 'Keep my failed question');
   assert.equal(container.querySelector('[role=alert]'), null);
 });

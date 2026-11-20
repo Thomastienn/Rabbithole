@@ -90,6 +90,10 @@ test('a fresh install opens on setup; confirming the prefilled default model let
   assert.ok(container.querySelector('.first-run'));
   assert.equal(container.querySelector('.first-question'), null);
   assert.match(container.querySelector('.first-run').textContent, /Signed in through Claude Code/);
+  assert.deepEqual(
+    [...container.querySelectorAll('.first-run .connection-status')].map((e) => e.textContent),
+    ['Connected'],
+  );
   assert.match(container.querySelector('[aria-label="Chat model"]').textContent, /Opus/);
   assert.doesNotMatch(
     container.textContent,
@@ -134,11 +138,13 @@ test('a missing CLI shows its official install page and command; "Check again" f
   const { container, click } = await mount(t, { cli });
   const setup = container.querySelector('.first-run');
   assert.match(setup.textContent, /Claude Code is not installed/);
+  const status = setup.querySelector('.connection-status[data-state=missing]');
+  assert.equal(status.textContent, 'Not found');
   assert.match(setup.textContent, /curl -fsSL https:\/\/claude\.ai\/install\.sh \| bash/);
   assert.ok(setup.querySelector('a[href="https://code.claude.com/docs/en/setup"]'));
   cli.missing = false;
   await click('Check again');
-  assert.doesNotMatch(container.textContent, /not installed/);
+  assert.doesNotMatch(container.textContent, /not installed|Not found/);
   assert.match(container.querySelector('.first-run').textContent, /Signed in through Claude Code/);
 });
 

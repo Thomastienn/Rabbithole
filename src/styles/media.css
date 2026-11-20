@@ -308,10 +308,10 @@
   backdrop-filter: none !important;
   background: var(--color-overlay);
 }
-.astryx-lightbox :is(img, video),
-.visual-viewer {
+/* Enlarged media: raised enamel, 1.5px porcelain seam (the visual viewer's seam is the dialog's, in states.css). */
+.astryx-lightbox :is(img, video) {
   background: var(--color-background-popover);
-  outline: thin solid var(--color-border-emphasized);
+  outline: 1.5px solid var(--color-border-emphasized);
   border-radius: var(--radius-container);
 }
 .visual-viewer h2 {

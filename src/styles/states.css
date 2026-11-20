@@ -1,10 +1,22 @@
 /* Branch form, dialogs, menus, failures, turn rail, docked map and composer. Files load in main.tsx order, which is the cascade order. */
-/* Raised paper surfaces and a paper passage border (mockup States). */
-.branch-form {
-  margin-top: var(--spacing-2);
-  border: thin solid var(--rabbithole-paper);
+/* One focus ring everywhere (mockup States): 2px porcelain, 2px off the control; rules that draw their own ring win. */
+:where(:focus-visible) {
+  outline: 2px solid var(--focus-outline-color);
+  outline-offset: 2px;
+}
+/* Overlays (menus, popovers, the passage box, dialogs) sit flat on raised enamel with a 1.5px porcelain seam. */
+.branch-form,
+.astryx-popover,
+.astryx-dialog,
+.astryx-alert-dialog,
+.merge-dialog {
+  border: 1.5px solid var(--color-border-emphasized);
   border-radius: var(--radius-container);
   background: var(--color-background-popover);
+  box-shadow: none;
+}
+.branch-form {
+  margin-top: var(--spacing-2);
 }
 .branch-passage {
   flex: 1;
@@ -35,30 +47,14 @@
 .astryx-alert-dialog h2 {
   margin-block-end: var(--spacing-2);
 }
-.astryx-alert-dialog,
-.merge-dialog {
-  background: var(--color-background-popover);
-}
-/* Rose is failure-only; deletion is separated, outlined paper, filled on keyboard focus. */
-.astryx-alert-dialog .astryx-button[data-variant='destructive'] {
-  background: transparent;
-  color: var(--color-text-primary);
-  box-shadow: inset 0 0 0 1px var(--color-border-emphasized);
-}
-.astryx-alert-dialog .astryx-button[data-variant='destructive']:not(:first-child) {
-  margin-inline-start: 32px;
-}
-.astryx-alert-dialog .astryx-button[data-variant='destructive']:focus-visible {
-  background: var(--rabbithole-paper);
-  color: var(--rabbithole-paper-ink);
-  outline-color: var(--rabbithole-paper);
-}
-.delete-dialog[data-failed='true'] [id$='description'] {
-  color: var(--color-text-error);
-}
+/* Destructive items sit last in scarlet text, after a seam, and always confirm (mockup States). */
 .delete-menu-item {
   border-block-start: thin solid var(--color-border);
   margin-block-start: 4px;
+  color: var(--color-text-error);
+}
+.delete-dialog[data-failed='true'] [id$='description'] {
+  color: var(--color-text-error);
 }
 .astryx-dropdown-menu {
   background: var(--color-background-popover);
@@ -156,21 +152,46 @@
   font-weight: 700;
   text-align: center;
 }
+/* First run (mockup States): one raised enamel card; each connection names its state in words and an icon. */
 .first-run {
   width: min(100%, 520px);
   margin: 48px auto;
+  padding: 22px;
+  border-radius: var(--radius-container);
+  background: var(--color-background-surface);
   text-align: left;
 }
 .first-run h2 {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
+}
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.connection-status[data-state='missing'] {
+  color: var(--color-text-error);
+}
+.connection-status svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
 }
 .tree-loading {
   width: min(100%, 640px);
 }
+.reply-skeleton {
+  width: 100%;
+}
 @media (prefers-reduced-motion: reduce) {
   .tree-loading .astryx-skeleton,
-  .tree-loading .astryx-skeleton::after {
+  .tree-loading .astryx-skeleton::after,
+  .reply-skeleton .astryx-skeleton,
+  .reply-skeleton .astryx-skeleton::after {
     animation: none;
   }
 }
