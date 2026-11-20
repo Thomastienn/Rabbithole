@@ -239,8 +239,8 @@ export const tunnelTheme = {
     "--rabbithole-map-node-width": "16rem",
     "--rabbithole-sidebar-width": "14.5rem",
     "--rabbithole-branch-color": "light-dark(#151617, #ffffff)",
-    "--rabbithole-branch-width": "2px",
-    "--rabbithole-branch-focus-width": "2.5px",
+    "--rabbithole-branch-width": "7px",
+    "--rabbithole-branch-focus-width": "9px",
     "--rabbithole-branch-draw-duration": "350ms"
   },
   __localTokenOwners: {

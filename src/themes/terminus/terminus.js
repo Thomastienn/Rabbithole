@@ -239,8 +239,8 @@ export const terminusTheme = {
     "--rabbithole-map-node-width": "16rem",
     "--rabbithole-sidebar-width": "14.5rem",
     "--rabbithole-branch-color": "light-dark(#3a0f1c, #fff2dc)",
-    "--rabbithole-branch-width": "2px",
-    "--rabbithole-branch-focus-width": "2.5px",
+    "--rabbithole-branch-width": "7px",
+    "--rabbithole-branch-focus-width": "9px",
     "--rabbithole-branch-draw-duration": "350ms"
   },
   __localTokenOwners: {
