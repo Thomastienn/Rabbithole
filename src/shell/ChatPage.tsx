@@ -381,7 +381,6 @@ export default function ChatPage({
             modelError={modelError}
             loadModels={loadModels}
             profileActivated={model.profileActivated}
-            conceptNameTokens={state?.conceptNameTokens}
             auth={state?.auth}
             signIn={signIn}
             vim={vim}

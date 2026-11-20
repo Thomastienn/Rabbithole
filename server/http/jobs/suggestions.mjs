@@ -1,4 +1,4 @@
-import { knownConcepts, marks, nameTokens, suggest } from '../../suggestions.mjs';
+import { knownConcepts, marks, suggest } from '../../suggestions.mjs';
 
 // Fallback for a reply without a readable notes block. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
 export function suggestionJobs(ctx) {
@@ -6,8 +6,7 @@ export function suggestionJobs(ctx) {
   const startSuggestions = (conversation, message, question, answer) => {
     const settings = store.suggestionSettings();
     if (!ctx.suggestions || !settings.enabled) return;
-    const known = knownConcepts(store.graph());
-    if (!store.pendingSuggestions(conversation, message, nameTokens(known))) return;
+    if (!store.pendingSuggestions(conversation, message)) return;
     const tree = store.tree(conversation),
       running = { controller: new AbortController(), conversation };
     suggesting.set(message, running);
@@ -19,9 +18,11 @@ export function suggestionJobs(ctx) {
             question: tree.branch.question,
           }
         : null;
-      const familiarity = store.mentioned(
-        [tree.branch?.text, question, answer].filter(Boolean).join('\n'),
-      );
+      const text = [tree.branch?.text, question, answer].filter(Boolean).join('\n');
+      const familiarity = store.mentioned(text);
+      // Only the reply's concept neighbourhood is sent for matching, under every known topic.
+      const { concepts } = await ctx.neighbourhood(text, running.controller.signal);
+      const known = knownConcepts({ topics: store.graph().topics, concepts });
       const selection = settings.model ? { ...settings.model, effort: settings.effort } : tree;
       const result = await suggest(
         ctx.logged(pick(selection), 'suggestions', message, selection),

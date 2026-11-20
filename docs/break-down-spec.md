@@ -44,7 +44,7 @@ total, so background cost is never hidden.
 4. As a learner, I want a daily usage total in Settings, so that I can judge my overall spend.
 5. As a learner, I want "usage unavailable" shown when a provider does not report usage, so that I never see an invented number.
 6. As a learner, I want usage saved with each message, so that it is still visible after I reopen the tree.
-7. As a learner, I want a warning in Settings when a suggestion call's concept-name list grows past about 2k tokens, so that I know when matching has become expensive.
+7. As a learner, I want concept matching to send only the concepts near the reply, so that its cost stays small as my knowledge graph grows.
 
 ### Suggestions
 
@@ -116,7 +116,7 @@ total, so background cost is never hidden.
 
 ## Implementation Decisions
 
-- **Build order (Ralph order):** token stats, then suggestions with underlines and the passage textbox, then knowledge graph data, then the Knowledge tab. The local embedding pre-filter is a deferred follow-up.
+- **Build order (Ralph order):** token stats, then suggestions with underlines and the passage textbox, then knowledge graph data, then the Knowledge tab.
 - **Usage capture:** each provider adapter reads the usage the provider reports for a turn (input, output, cache-read tokens) and the server saves it with the resulting message. The Claude CLI's result reports usage; Codex app-server usage reporting is unverified and must be confirmed. Missing usage is stored as unavailable, never estimated.
 - **Suggestion run:** the server starts one suggestion-model call after a tutor reply is saved as completed, outside the tutor's session. Its input is the completed reply, the preceding learner question, the conversation's fixed inherited context, the learner's familiarity data for relevant concepts, and existing concept names of the reply's topics. Its output is a single structured result: suggestions, concepts in the reply, their topics and concept links.
 - **Suggestion model selection:** a Settings value chooses the suggestion model; unset means the cheap model of the conversation's provider (Haiku for Claude, Codex Luna for Codex; the exact Codex model ID must be confirmed). Calls use the same subscription adapters as the tutor and never substitute API-key access.
@@ -124,7 +124,7 @@ total, so background cost is never hidden.
 - **Persistence:** suggestions, their state (unexplored, explored with child reference, ignored) and usage are stored with their source message, separate from tutor messages. The stashed vm4.11 work adds a per-message suggestions record with a status; reuse it where it fits.
 - **Branch creation:** submitting the passage textbox uses the existing branch-creation flow with the passage and the learner's prompt; nothing is created until submission. The suggestion is marked explored only after the child is saved.
 - **Knowledge graph data:** global (not per learning tree) records for concepts, topics, concept-topic membership, concept links ("related" or "builds on") and evidence events. Familiarity is derived from evidence; learner corrections are stored as evidence that outranks inference; an ignored underline is weak evidence.
-- **Concept matching:** v1 sends the existing concept names of the reply's topics and instructs the model to reuse a matching name. No embedding model in v1.
+- **Concept matching:** the suggestion call sends every topic name, plus only the concept names in the reply's concept neighbourhood: the same lookup the chat model gets, run on the branch passage, question and answer (whole-name and alias matches, local embedding matches when the embedder is up, then linked concepts, at most 15). The model is told to reuse a matching name. A synonym outside the neighbourhood can become a duplicate, which the learner can merge by hand.
 - **Client rendering:** a pure function maps a reply's canonical text and its saved suggestions to underline ranges (dotted for unexplored, solid for explored), resolving overlap with the learner's own selection in favor of the selection.
 - **Knowledge tab:** a separate top-level view from the map and chat layout, reading the global graph through the server API.
 - **Isolation:** suggestion instructions, candidates, graph extraction output and diagnostics never enter tutor history or inherited context.
@@ -144,12 +144,10 @@ total, so background cost is never hidden.
 - A "New branch" option on an explored underline (manual highlighting covers it).
 - A visual node-and-link rendering of the knowledge graph (the Knowledge tab is a list).
 - Mastery scores or claims about the learner's ability beyond the familiarity estimate.
-- A local embedding model for concept matching (deferred follow-up, see Further Notes).
 - Using the suggestion model for inherited-context compaction.
 
 ## Further Notes
 
-- **Deferred upgrade:** when the Settings warning shows a suggestion call's concept-name list over about 2k tokens, add a local embedding pre-filter that narrows candidates to the nearest 20–50 names before the model matches. The 2k threshold is a starting guess.
 - **Naming in code:** the store's `trees` table holds conversations (messages and branches reference it), while the glossary reserves "learning tree" for a whole saved topic. New code should follow the glossary.
 - **Stashed partial work:** Ralph's stopped vm4.11 run left server suggestion plumbing, saved as the Git stash `vm4.11-partial`; review it with `git stash show -p stash^{/vm4.11-partial}` before implementation.
 - The 1.0 release (TreeTutor-sh8) ships without suggestions; manual highlighting remains the branching path there.

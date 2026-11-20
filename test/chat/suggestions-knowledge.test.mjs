@@ -39,10 +39,10 @@ test('the same suggestion call fills one global knowledge graph that survives re
 
   env = await start(dir);
   assert.deepEqual(shape(await env.get('/api/graph')), GRAPH);
-  // Another learning tree on another provider: the known names are sent, and the model reuses "Peterson's algorithm" instead of "Peterson lock".
+  // Another learning tree on another provider: the question names mutual exclusion, so its neighbourhood (with linked "Peterson's algorithm") is sent, and the model reuses that name instead of "Peterson lock".
   const b = JSON.parse(await env.post('/api/trees'));
   await env.post(`/api/trees/${b.id}/model`, { provider: 'codex', model: 'fixture-model' });
-  await env.post(`/api/trees/${b.id}/messages`, { text: 'Explain locks again' });
+  await env.post(`/api/trees/${b.id}/messages`, { text: 'Explain locks again, mutual exclusion' });
   await env.settled();
   assert.equal((await env.get(`/api/trees/${b.id}`)).suggestions[0].status, 'ready');
   // A differently cased name reuses its concept; the new link joins the existing concepts.
@@ -61,30 +61,11 @@ test('the same suggestion call fills one global knowledge graph that survives re
     assert.doesNotMatch(call.system + call.input, /Peterson|knownConcepts|"concepts"/);
   const last = env.suggestionCalls().at(-1).input,
     newline = last.indexOf('\n');
-  // The known topics go out as data after the instruction line.
+  // The known topics go out as data after the instruction line; a reply naming no concept sends every topic but no concept names.
   assert.deepEqual(JSON.parse(last.slice(newline + 1)).knownConcepts, {
-    Concurrency: ['Mutual exclusion', "Peterson's algorithm"],
-    'operating systems': ['Mutual exclusion'],
+    Concurrency: [],
+    'operating systems': [],
   });
-});
-
-test('state reports the concept-name list size so Settings can warn past about 2k tokens', async (t) => {
-  const dir = mkdtempSync(join(tmpdir(), 'tt-graph-warn-'));
-  let env = await start(dir);
-  t.after(async () => {
-    await env.close();
-  });
-  const tree = JSON.parse(await env.post('/api/trees'));
-  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain many concepts' });
-  await env.settled();
-  assert.ok((await env.get('/api/state')).conceptNameTokens < 2000);
-  await env.post(`/api/trees/${tree.id}/messages`, { text: 'Explain more' });
-  await env.settled();
-  const tokens = (await env.get('/api/state')).conceptNameTokens;
-  assert.ok(tokens > 2000, `${tokens} tokens`);
-  await env.close();
-  env = await start(dir);
-  assert.equal((await env.get('/api/state')).conceptNameTokens, tokens);
 });
 
 test('meeting replies, naming concepts, branching and ignored suggestions do not move familiarity', async (t) => {

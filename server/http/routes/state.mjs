@@ -17,7 +17,6 @@ export async function stateRoutes(req, res, url, ctx) {
       suggesting: [...new Set([...ctx.suggesting.values()].map((s) => s.conversation))],
       titling: [...ctx.titling.keys()],
       compacting: [...ctx.compactions].filter(([, c]) => !c.settled).map(([child]) => child),
-      conceptNameTokens: store.nameTokens(),
     });
   if (url.pathname === '/api/usage')
     return json(

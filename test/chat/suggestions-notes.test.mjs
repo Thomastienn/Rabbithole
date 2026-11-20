@@ -79,9 +79,15 @@ test('a stopped reply keeps its partial notes; a completed reply without a reada
     pendingSuggestions: (...args) => calls.push(['pending', ...args]) > 0,
     addGraph: (graph) => calls.push(['graph', graph]),
     finishSuggestions: (...args) => calls.push(['finish', ...args]),
-    graph: () => (calls.push(['fallback']), { topics: [], concepts: [] }),
+    graph: () => ({ topics: [], concepts: [] }),
+    mentioned: () => ({}),
   };
-  const { noteSuggestions } = suggestionJobs({ store, suggestions: true, suggesting: new Map() });
+  const { noteSuggestions } = suggestionJobs({
+    store,
+    suggestions: true,
+    suggesting: new Map(),
+    neighbourhood: async () => (calls.push(['fallback']), { concepts: [] }),
+  });
   const partial = diagramReply(
     'Use shared state.' + block.slice(0, block.indexOf('"topics"')),
   ).notes;

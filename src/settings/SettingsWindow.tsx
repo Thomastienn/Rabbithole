@@ -13,7 +13,7 @@ import {
   SwatchIcon,
 } from '@heroicons/react/24/outline';
 import EndpointSettings from './EndpointSettings';
-import SuggestionSettings, { ConceptCost, AutomaticSuggestions } from './SuggestionSettings';
+import SuggestionSettings, { AutomaticSuggestions } from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
 import SmartSettings from './SmartSettings';
 import ModelProfiles from './ModelProfiles';
@@ -71,7 +71,6 @@ export default function SettingsWindow({
   modelError,
   loadModels,
   profileActivated,
-  conceptNameTokens,
   auth,
   signIn,
   vim,
@@ -89,7 +88,6 @@ export default function SettingsWindow({
   modelError: string;
   loadModels: () => Promise<void>;
   profileActivated: (chat: ModelSelection) => void;
-  conceptNameTokens?: number;
   auth?: { connected: boolean; email: string | null };
   signIn: () => Promise<void>;
   vim: boolean;
@@ -223,13 +221,6 @@ export default function SettingsWindow({
             <Divider />
             <Section title="Suggestions">
               <AutomaticSuggestions api={api} />
-            </Section>
-            <Divider />
-            <Section
-              title="Concept matching"
-              description="Each suggestion call also sends your known concept names so it can match terms to them. A warning appears here when that list passes about 2,000 tokens."
-            >
-              <ConceptCost tokens={conceptNameTokens} />
             </Section>
             <Divider />
             <TutorToolsSettings api={api} />

@@ -1,18 +1,15 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement as h, useState } from 'react';
+import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
-const {
-  default: SuggestionSettings,
-  ConceptCost,
-  AutomaticSuggestions,
-} = await import('../../src/settings/SuggestionSettings.tsx');
+const { default: SuggestionSettings, AutomaticSuggestions } =
+  await import('../../src/settings/SuggestionSettings.tsx');
 
-test('suggestion settings toggle globally, save a pinned quick model and warn only above 2000 name tokens', async (t) => {
+test('suggestion settings toggle globally, and save a pinned quick model', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  let update, dom;
+  let dom;
   let saved = { enabled: true, model: null, effort: null };
   const writes = [];
   const api = async (path, body) => {
@@ -24,8 +21,6 @@ test('suggestion settings toggle globally, save a pinned quick model and warn on
     return saved;
   };
   function Fixture() {
-    const [tokens, set] = useState(2000);
-    update = set;
     return h(
       'div',
       null,
@@ -39,7 +34,6 @@ test('suggestion settings toggle globally, save a pinned quick model and warn on
           providers: { codex: { label: 'Codex', connected: true } },
         }),
       ),
-      h(ConceptCost, { tokens }),
     );
   }
   const { container, act, cleanup } = await render(h(Fixture), (w) => {
@@ -54,10 +48,6 @@ test('suggestion settings toggle globally, save a pinned quick model and warn on
     assert.equal(toggle.checked, value);
     assert.deepEqual(writes.at(-1), { enabled: value });
   }
-  assert.match(container.textContent, /Concept matching cost is within the normal range/);
-  await act(async () => update(2501));
-  assert.match(container.textContent, /Warning: concept matching is getting expensive/);
-  assert.match(container.textContent, /2,501 tokens of concept names/);
   const model = container.querySelector('[aria-label="Quick thinking model"]');
   assert.ok(model);
   await act(async () => model.click());

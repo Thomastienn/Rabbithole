@@ -137,8 +137,6 @@ export function knownConcepts(graph) {
   for (const c of graph.concepts) for (const t of c.topics) known[t].push(c.name);
   return known;
 }
-// shortcut: ~4 characters per token, upgrade to a provider tokenizer if the warning needs to be exact.
-export const nameTokens = (known) => Math.ceil(JSON.stringify(known).length / 4);
 
 // Unset quick thinking keeps the inexpensive provider default rather than the chat model.
 export const quickDefault = (tree, models) =>

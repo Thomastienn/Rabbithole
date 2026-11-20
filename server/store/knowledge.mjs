@@ -10,23 +10,13 @@ const mentions = (text, name) =>
 export const knowledge = {
   // INSERT OR IGNORE makes the run once-only per saved reply: reopening or switching providers never reruns it.
   // A stopped reply may keep the part of its notes block that arrived.
-  pendingSuggestions(conversation, message, nameTokens = null) {
+  pendingSuggestions(conversation, message) {
     return (
       this.db
         .prepare(
-          "INSERT OR IGNORE INTO suggestions(message,conversation,status,nameTokens) SELECT ?,?,'pending',? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant' AND status IN ('completed','interrupted'))",
+          "INSERT OR IGNORE INTO suggestions(message,conversation,status) SELECT ?,?,'pending' WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant' AND status IN ('completed','interrupted'))",
         )
-        .run(message, conversation, nameTokens, message, conversation).changes > 0
-    );
-  },
-  // The latest suggestion call's concept-name list size, for the Settings cost warning.
-  nameTokens() {
-    return (
-      this.db
-        .prepare(
-          'SELECT nameTokens FROM suggestions WHERE nameTokens IS NOT NULL ORDER BY rowid DESC LIMIT 1',
-        )
-        .get()?.nameTokens ?? 0
+        .run(message, conversation, message, conversation).changes > 0
     );
   },
   graph() {

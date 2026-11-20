@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Switch } from '@astryxdesign/core/Switch';
 import { VStack } from '@astryxdesign/core/Layout';
-import { Banner } from '@astryxdesign/core/Banner';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
 import ModelPicker from './ModelPicker';
@@ -182,22 +181,6 @@ export default function SuggestionSettings({
           )}
         </div>
       </div>
-    </>
-  );
-}
-
-export function ConceptCost({ tokens }: { tokens?: number }) {
-  return (
-    <>
-      {(tokens ?? 0) > 2000 ? (
-        <Banner
-          status="warning"
-          title="Warning: concept matching is getting expensive"
-          description={`The last suggestion call sent about ${tokens!.toLocaleString()} tokens of concept names.`}
-        />
-      ) : (
-        <Text type="supporting">Concept matching cost is within the normal range.</Text>
-      )}
     </>
   );
 }
