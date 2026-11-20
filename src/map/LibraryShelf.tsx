@@ -16,7 +16,7 @@ type Tree = { id: string; parent: string | null; created: number; title: string 
 // Library volumes by date group; ChatPage owns opening, renaming and deleting.
 export default function LibraryShelf({
   groups,
-  query = '',
+  query,
   layout,
   current,
   renaming,
@@ -29,7 +29,7 @@ export default function LibraryShelf({
   onNewChat,
 }: {
   groups: ReturnType<typeof treeGroups<Tree>>;
-  query?: string;
+  query: string;
   layout: 'shelf' | 'list';
   current?: string | null;
   renaming?: string;

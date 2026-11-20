@@ -64,8 +64,8 @@ test('volumes show date groups, counts, one spine tick per conversation and the 
     [...nav.querySelectorAll('[aria-current=true]')].map((e) => e.textContent),
     ['How do fungi trade?'],
   );
-  assert.ok(button(nav, 'Actions for Roman roads'));
   const trigger = button(nav, 'Actions for Roman roads');
+  assert.ok(trigger);
   await act(async () => trigger.click());
   const menu = document.getElementById(trigger.getAttribute('aria-controls'));
   const del = [...menu.querySelectorAll('[role=menuitem]')].find((e) =>
