@@ -99,7 +99,8 @@ function sceneTrail({ scene, camera }: Scene, canvas: Box, x: number, y: number)
     return parts.length ? parts.slice(-3) : undefined;
 }
 
-// Returns drew, which the sandbox's three.js renderer calls after each frame it draws on a canvas.
+// Returns drew, which the sandbox's three.js renderer calls after each frame it draws on a canvas,
+// with mark and step for the host's branched parts.
 export function watchParts(
     view: Window & typeof globalThis,
     root: Element,
@@ -159,9 +160,77 @@ export function watchParts(
         const step = (event.target as Element).closest('.tt-steps')?.getAttribute('data-step');
         post({ type: 'pick', parts, step: step ? Number(step) : null });
     });
+
+    // Branched parts the host marks: the first drawn part with each trail, re-measured whenever the visual changes.
+    let marked: string[] = [],
+        wanted: number | undefined,
+        queued = false,
+        lastMarks = '[]';
+    const bounds = (e: Element) => {
+        const { name: _, ...box } = clip({ name: '', box: e.getBoundingClientRect() });
+        return box;
+    };
+    const measure = () => {
+        queued = false;
+        const controls = wanted !== undefined && document.querySelector('.tt-steps');
+        if (controls) {
+            controls.dispatchEvent(new view.CustomEvent('tt-show', { detail: wanted }));
+            wanted = undefined;
+        }
+        const drawn = new Map<string, Element>();
+        for (const e of root.querySelectorAll('[data-part]')) {
+            const names: string[] = [];
+            for (let p: Element | null = e; p && p !== root; p = p.parentElement)
+                if (nameOf(p)) names.unshift(nameOf(p)!);
+            const key = JSON.stringify(names.slice(-3)),
+                box = bounds(e);
+            if (
+                marked.includes(key) &&
+                !drawn.has(key) &&
+                box.width &&
+                box.height &&
+                e.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) !== false
+            )
+                drawn.set(key, e);
+        }
+        const marks = marked
+                .filter((key) => drawn.has(key))
+                .map((key) => ({ trail: JSON.parse(key), ...bounds(drawn.get(key)!) })),
+            key = JSON.stringify(marks);
+        if (key === lastMarks) return;
+        lastMarks = key;
+        post({ type: 'marks', marks });
+    };
+    const schedule = () => {
+        if (queued || (!marked.length && wanted === undefined)) return;
+        queued = true;
+        view.requestAnimationFrame(measure);
+    };
+    new view.MutationObserver(schedule).observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+    });
+    for (const type of ['resize', 'transitionend', 'animationend'])
+        view.addEventListener(type, schedule);
     // Each frame re-reads the hovered object, so its rectangle follows the camera.
-    return function drew(canvas: Element, scene: Object3D, camera: Camera) {
+    function drew(canvas: Element, scene: Object3D, camera: Camera) {
         scenes.set(canvas, { scene, camera });
         if (pointer?.target === canvas) hover(describe(canvas, pointer.x, pointer.y));
-    };
+    }
+    return Object.assign(drew, {
+        mark(trails: string[][]) {
+            marked = trails.map((t) => JSON.stringify(t));
+            if (!marked.length) {
+                if (lastMarks !== '[]') post({ type: 'marks', marks: [] });
+                lastMarks = '[]';
+            }
+            schedule();
+        },
+        // Opens a step-through visual at a stored step, once its controls exist.
+        step(index: number) {
+            wanted = index;
+            schedule();
+        },
+    });
 }

@@ -57,6 +57,9 @@ export type Summary = {
     line?: number;
     label?: string;
     explanation?: string;
+    // A picked visual part's trail and step.
+    trail?: string[];
+    step?: number | null;
     x: number | null;
     y: number | null;
     layout?: Layout | null;

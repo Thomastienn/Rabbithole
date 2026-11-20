@@ -14,7 +14,13 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { inkStyle } from '../map/treeList';
-import { visualMessage, type Artifact, type PartBox, type VisualPart } from './artifacts';
+import {
+    visualMessage,
+    type Artifact,
+    type PartBox,
+    type PartMark,
+    type VisualPart,
+} from './artifacts';
 import { visualProgress } from './visualProgress';
 
 export type VisualBranch = VisualPart & { child: string; address?: string; ink?: number };
@@ -28,17 +34,25 @@ export type PartAction = (
 ) => void;
 
 // Generated code runs only in this frame: scripts without allow-same-origin give it an opaque origin.
+// inks: each branched part's family ink, keyed by its trail as JSON; reveal: the part returned to.
 function Frame({
     artifact,
     onPick,
+    inks = {},
+    reveal,
 }: {
     artifact: Artifact;
     onPick?: (part: VisualPart, box: Box) => void;
+    inks?: Record<string, number>;
+    reveal?: VisualPart;
 }) {
     const frame = useRef<HTMLIFrameElement>(null);
     const [height, setHeight] = useState<number>();
     // The smallest visual part under the pointer, outlined by the host over the frame.
     const [hover, setHover] = useState<PartBox>();
+    // Branched parts the visual currently draws, each outlined in its family ink.
+    const [marked, setMarked] = useState<PartMark[]>([]);
+    const revealing = useRef<string>(undefined);
     const pick = useRef(onPick);
     pick.current = artifact.status === 'ready' ? onPick : undefined;
     const loaded = useRef(false);
@@ -61,6 +75,7 @@ function Frame({
                     height: el.clientHeight,
                 });
             if (message?.type === 'height') setHeight(message.height);
+            if (message?.type === 'marks') setMarked(message.marks);
             if (!pick.current) return;
             if (message?.type === 'leave') setHover(undefined);
             if (message?.type === 'part') setHover(message.parts.at(-1));
@@ -84,6 +99,20 @@ function Frame({
     useEffect(() => {
         if (frame.current) theme();
     }, [mode, name]);
+    const trails = JSON.stringify(Object.keys(inks));
+    const postMarks = () =>
+        post({ type: 'marks', trails: Object.keys(inks).map((t) => JSON.parse(t)) });
+    useEffect(() => {
+        if (loaded.current) postMarks();
+    }, [trails]);
+    // Returning to a branched part opens the visual at its stored step and scrolls its rectangle into view.
+    const postStep = () =>
+        typeof reveal?.step === 'number' && post({ type: 'step', step: reveal.step });
+    const revealKey = reveal?.trail && JSON.stringify(reveal);
+    useEffect(() => {
+        revealing.current = reveal?.trail && JSON.stringify(reveal.trail);
+        if (loaded.current) postStep();
+    }, [revealKey]);
     // The frame scales its visual down to the room it has: the viewer's free height, else its scroll area's.
     const room = useRef(0);
     const fit = () => {
@@ -139,8 +168,41 @@ function Frame({
                     theme();
                     loaded.current = true;
                     render();
+                    postMarks();
+                    postStep();
                 }}
             />
+            {frame.current &&
+                marked.map((m) => {
+                    const key = JSON.stringify(m.trail),
+                        ink = inks[key];
+                    // 3px outside the part's bounds, so the line never covers it.
+                    return (
+                        ink !== undefined && (
+                            <span
+                                key={key}
+                                className="visual-mark"
+                                aria-hidden
+                                ref={
+                                    key === revealing.current
+                                        ? (el) => {
+                                              if (!el) return;
+                                              el.scrollIntoView({ block: 'nearest' });
+                                              revealing.current = undefined;
+                                          }
+                                        : undefined
+                                }
+                                style={{
+                                    ...inkStyle(ink),
+                                    left: frame.current!.offsetLeft + m.x - 3,
+                                    top: frame.current!.offsetTop + m.y - 3,
+                                    width: m.width + 6,
+                                    height: m.height + 6,
+                                }}
+                            />
+                        )
+                    );
+                })}
             {hover && frame.current && (
                 <span
                     className="visual-part"
@@ -195,6 +257,9 @@ export default function VisualFrame({
         return () => clearTimeout(timer);
     }, [nudge]);
     const progress = visualProgress(artifact, now);
+    // A part branched more than once keeps the ink of its first listed branch.
+    const inks: Record<string, number> = {};
+    for (const b of explored) if (b.trail) inks[JSON.stringify(b.trail)] ??= b.ink ?? 0;
     const figure = useRef<HTMLElement>(null);
     const viewer = useRef<HTMLDialogElement>(null);
     const revealKey = reveal && JSON.stringify(reveal);
@@ -275,6 +340,8 @@ export default function VisualFrame({
                 <Frame
                     key={artifact.id}
                     artifact={artifact}
+                    inks={inks}
+                    reveal={reveal}
                     onPick={onPart && ((part, box) => onPart(artifact, part, figure, box))}
                 />
             )}
@@ -364,6 +431,7 @@ export default function VisualFrame({
                             )}
                             <Frame
                                 artifact={artifact}
+                                inks={inks}
                                 // The ask box opens beside the figure once the enlarged view closes.
                                 onPick={
                                     onPart &&

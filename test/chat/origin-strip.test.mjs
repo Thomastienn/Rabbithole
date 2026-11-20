@@ -72,6 +72,22 @@ test('visual source shows the visual title and jumps to the visual part', async 
     ]);
 });
 
+test('the address chip of a picked part returns to its trail and stored step', async (t) => {
+    const trail = ['Prism', 'Red ray'],
+        text = 'Visual: Prism dispersion\nWhite light splits\nPart: Prism › Red ray';
+    const part = { artifactId: 'a1', label: 'Red ray', explanation: 'White light splits' };
+    const { buttons, opened, act } = await strip(t, {
+        start: null,
+        end: null,
+        text,
+        ...part,
+        trail,
+        step: 2,
+    });
+    await act(async () => buttons()[0].click());
+    assert.deepEqual(opened, [{ messageId: 'm1', text, ...part, trail, step: 2 }]);
+});
+
 test('long source clamps behind a toggle; the question is never clamped', async (t) => {
     const longQuestion = 'And what about '.repeat(30);
     const { section, buttons, act } = await strip(

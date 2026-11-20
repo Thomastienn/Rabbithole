@@ -54,6 +54,14 @@ addEventListener('message', (event) => {
         complete = data.complete === true;
         renderVisual(root, data.source, complete);
     }
+    if (
+        data?.type === 'marks' &&
+        Array.isArray(data.trails) &&
+        data.trails.every((t: unknown) => Array.isArray(t) && t.every((n) => typeof n === 'string'))
+    )
+        drew.mark(data.trails);
+    if (data?.type === 'step' && Number.isInteger(data.step) && data.step >= 0)
+        drew.step(data.step);
 });
 
 // The host validates these height reports and the part messages below against this frame's window.
