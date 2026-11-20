@@ -336,7 +336,7 @@ The grid is an 8px module (`--rabbithole-module`); gaps, bands and columns are m
 
 - **Desktop shell (no top bar).** A 272px sidebar on the deep field holds, top to bottom: wordmark, New chat (porcelain) with search beside it, the six views, the tree title, Contents as a vertical route strip, Figures, Resources, the context meter, then Settings (and Downloads only while the list is non-empty) pinned at the foot. The whole sidebar scrolls as one.
 - **Reading column.** The focused chat owns the centre at a 640px measure with 44px gutters (32px top, 24px bottom). The chat header row sits above on a seam; the composer floats at the foot on the ground colour, same width.
-- **Docked map.** To the right of the reading column behind a resizable seam, on the deep field, 440px by default. Below 1200px the docked map hides and Map stays one click away in the sidebar. Expand chat hides the map.
+- **Docked map.** To the right of the reading column behind a resizable seam, on the deep field, 440px by default. Below 1024px the docked map hides and Map stays one click away in the sidebar. Expand chat hides the map.
 - **Pages.** Library, Knowledge, Videos and Pieces sit on one 70rem column with Return to learning tree above the head. Settings is 1120px max with a 216px sticky section nav beside a 640px content column, 48px apart.
 - **Library shelf.** An auto-fill grid of cards at least 208px wide, 16px gaps.
 - **Narrow (48rem and below).** A 52px header on the deep field with menu, wordmark, search and New chat; the drawer holds the whole sidebar. One pane at a time; the reading gutters shrink to 16px; nothing scrolls sideways.

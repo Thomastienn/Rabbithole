@@ -556,8 +556,8 @@ kbd { font: 600 12px var(--ui); background: var(--up2); border-radius: 4px; padd
 
 /* after the finish review */
 .app.read > .map .node, .scr .map .node { width: 160px; } /* leaves an 88px gutter so lines run clear of the cards */
-@media (max-width: 1199px) {
-  .app.read { grid-template-columns: 272px minmax(0, 1fr); } /* too narrow for a 640px column beside the map: Map stays one click away in the sidebar */
+@media (max-width: 1023px) {
+  .app.read { grid-template-columns: 272px minmax(0, 1fr); } /* too narrow for a usable column beside the map: Map stays one click away in the sidebar */
   .app.read > .map { display: none; }
 }
 .vol { position: relative; }

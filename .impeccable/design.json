@@ -390,7 +390,7 @@
       },
       {
         "name": "docked-map",
-        "value": "1200px"
+        "value": "1024px"
       }
     ],
     "themes": [

@@ -254,8 +254,8 @@
   flex: 0 0 var(--map-width);
   border-left: thin solid var(--color-border);
 }
-/* Too narrow for a 640px reading column beside the map: Map stays one click away in the sidebar. */
-@media (max-width: 1199px) {
+/* Too narrow for a usable reading column beside the map: Map stays one click away in the sidebar. */
+@media (max-width: 1023px) {
   .overview[data-chat-open='true'],
   .chat-divider,
   .expand-chat {
