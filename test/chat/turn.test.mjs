@@ -176,7 +176,7 @@ test('the token line adds suggestion usage and never invents missing counts', ()
     assert.equal(replyUsageLine(null, null), 'Chat: not reported · Suggestions: not reported');
 });
 
-test('underline ranges are the exact saved slices, only once the suggestions are ready', () => {
+test('underline ranges are the exact slices, as they stream and once ready, never after a failure', () => {
     const text = 'Say same and same 😀 then `x = 1`.';
     const at = (t, from = 0) => ({
         start: text.indexOf(t, from),
@@ -202,9 +202,10 @@ test('underline ranges are the exact saved slices, only once the suggestions are
         underlineRanges(text, { message: 'm', status: 'ready', passages, usage: null }),
         [second, emoji, code].map(({ start, end }) => ({ start, end })),
     );
+    // The tutor's marks underline while the reply streams.
     assert.deepEqual(
         underlineRanges(text, { message: 'm', status: 'pending', passages, usage: null }),
-        [],
+        [second, emoji, code].map(({ start, end }) => ({ start, end })),
     );
     assert.deepEqual(
         underlineRanges(text, { message: 'm', status: 'failed', passages, usage: null }),
@@ -260,6 +261,9 @@ test('reply stream builds the live turn: saved, compacting, text, done; a retry 
     applyStreamEvent(turn, { type: 'status', status: 'thinking' }, 'c');
     assert.equal(turn.reply.phase, undefined);
     applyStreamEvent(turn, { type: 'text', text: 'Retried' }, 'c');
+    // The tutor's marks arrive while the reply streams and stand in for the saved row.
+    const marks = { message: 'r2', status: 'pending', passages: [], groundwork: ['Light'] };
+    assert.equal(applyStreamEvent(turn, { type: 'suggestions', suggestions: marks }, 'c'), true);
     applyStreamEvent(turn, { type: 'done', status: 'completed' }, 'c');
     assert.deepEqual(
         { text: turn.reply.text, status: turn.reply.status },
@@ -277,6 +281,7 @@ test('reply stream builds the live turn: saved, compacting, text, done; a retry 
         ],
         'one question, failed reply replaced in place',
     );
+    assert.deepEqual(withTurn({ ...saved, suggestions: [] }, turn).suggestions, [marks]);
 });
 
 test('turn rail marks the last question whose top reached the reading line', () => {

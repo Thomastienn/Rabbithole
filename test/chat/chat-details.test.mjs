@@ -317,7 +317,7 @@ test('next questions show under the latest reply only, wait for streaming, and a
     assert.equal(container.querySelector('.next-questions'), null);
 });
 
-test("groundwork shows as chips once a reply's suggestions are ready, chooses them, marks explored ones, and nothing without any", async (t) => {
+test("groundwork shows as chips once a reply's groundwork arrives, chooses them, marks explored ones, and nothing without any", async (t) => {
     let update;
     const chosen = [];
     const explored = [{ concept: 'Memory', address: '1.2', ink: 1 }];
@@ -333,8 +333,14 @@ test("groundwork shows as chips once a reply's suggestions are ready, chooses th
             .filter((e) => !e.children.length && e.textContent)
             .map((e) => e.textContent);
     assert.deepEqual(chips(), []);
+    // The tutor's groundwork shows while the reply still streams.
     await act(async () =>
-        update({ message: 'r', status: 'ready', passages: [], groundwork: ['Threads', 'Memory'] }),
+        update({
+            message: 'r',
+            status: 'pending',
+            passages: [],
+            groundwork: ['Threads', 'Memory'],
+        }),
     );
     assert.ok(chips().includes('Threads') && chips().includes('Memory'));
     const chip = (name) =>

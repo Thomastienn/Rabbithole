@@ -158,7 +158,8 @@ export function underlineRanges(
     suggestions?: Suggestions,
     branched: { start: number; end: number; text: string; child: string }[] = [],
 ) {
-    const suggested = suggestions?.status === 'ready' ? suggestions.passages : [];
+    // The tutor's marks underline as they stream and once saved; a pending quick thinking row has none yet.
+    const suggested = (suggestions?.status !== 'failed' && suggestions?.passages) || [];
     let end = 0;
     return [...suggested, ...branched.filter((b) => !suggested.some((p) => p.child === b.child))]
         .sort((a, b) => a.start - b.start)
@@ -174,7 +175,14 @@ export function underlineRanges(
         .map(({ start, end, child }) => (child ? { start, end, child } : { start, end }));
 }
 // replaced: the failed reply a Retry streams over, dropped from the list.
-export type Turn = { user?: Message; reply?: Message; artifacts?: Artifact[]; replaced?: string };
+// suggestions: the reply's notes as their markers close while it streams.
+export type Turn = {
+    user?: Message;
+    reply?: Message;
+    artifacts?: Artifact[];
+    replaced?: string;
+    suggestions?: Suggestions;
+};
 
 export function replyFeedback(
     message: Message,
@@ -247,6 +255,7 @@ export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
         };
     if (event.type === 'questions' && turn.reply)
         turn.reply = { ...turn.reply, questions: event.questions };
+    if (event.type === 'suggestions' && turn.reply) turn.suggestions = event.suggestions;
     if (event.type === 'tool' && turn.reply) {
         const tools = turn.reply.tools ?? [];
         const index = tools.findIndex((t) => t.id === event.tool.id);
@@ -266,16 +275,27 @@ export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
                 ? [{ id: event.artifact.message, role: 'assistant' }]
                 : []),
         ]);
-    return ['saved', 'status', 'text', 'done', 'artifact', 'tool', 'questions'].includes(
-        event.type,
-    );
+    return [
+        'saved',
+        'status',
+        'text',
+        'done',
+        'artifact',
+        'tool',
+        'questions',
+        'suggestions',
+    ].includes(event.type);
 }
 
 // Reconcile saved checkpoints with the latest events for this conversation only.
-export function withTurn<T extends { id?: string; messages: Message[]; artifacts?: Artifact[] }>(
-    conversation: T,
-    turn?: Turn,
-): T {
+export function withTurn<
+    T extends {
+        id?: string;
+        messages: Message[];
+        artifacts?: Artifact[];
+        suggestions?: Suggestions[];
+    },
+>(conversation: T, turn?: Turn): T {
     if (!turn) return conversation;
     const messages = conversation.messages.filter((m) => m.id !== turn.replaced);
     for (const message of [turn.user, turn.reply]) {
@@ -288,5 +308,16 @@ export function withTurn<T extends { id?: string; messages: Message[]; artifacts
     if (conversation.id)
         for (const artifact of turn.artifacts ?? [])
             artifacts = mergeArtifact(artifacts, artifact, conversation.id, messages);
-    return { ...conversation, messages, ...(turn.artifacts && { artifacts }) };
+    const marked = turn.suggestions;
+    return {
+        ...conversation,
+        messages,
+        ...(turn.artifacts && { artifacts }),
+        ...(marked && {
+            suggestions: [
+                ...(conversation.suggestions ?? []).filter((s) => s.message !== marked.message),
+                marked,
+            ],
+        }),
+    };
 }

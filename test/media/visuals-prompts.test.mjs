@@ -77,6 +77,7 @@ test('visual prompts receive the requested theme palette in light and dark, with
             );
             assert.ok(instructions.split('\nCurrent theme palette: ')[0].includes(ANALOGY_SKILL));
             assert.match(instructions, /data-part="Name"[\s\S]*at most three\s+levels deep/);
+            assert.match(instructions, /three\.js object with a name and userData\.part = true/);
             await until(async () =>
                 (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every(
                     (a) => a.status === 'ready',

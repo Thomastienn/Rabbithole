@@ -29,7 +29,6 @@ const root = document.getElementById('visual')!,
 let rendered = false;
 let complete = false;
 let room = Infinity;
-const parts = watchParts(window, root, (message) => parent.postMessage(message, '*'));
 
 addEventListener('message', (event) => {
     if (event.source !== parent) return;
@@ -60,9 +59,9 @@ addEventListener('message', (event) => {
         Array.isArray(data.trails) &&
         data.trails.every((t: unknown) => Array.isArray(t) && t.every((n) => typeof n === 'string'))
     )
-        parts.mark(data.trails);
+        drew.mark(data.trails);
     if (data?.type === 'step' && Number.isInteger(data.step) && data.step >= 0)
-        parts.step(data.step);
+        drew.step(data.step);
 });
 
 // The host validates these height reports and the part messages below against this frame's window.
@@ -75,3 +74,22 @@ function report() {
     parent.postMessage({ type: 'height', height: Math.ceil(natural * scale) }, '*');
 }
 new ResizeObserver(report).observe(document.body);
+const drew = watchParts(window, root, (message) => parent.postMessage(message, '*'));
+type Frame = Parameters<typeof drew>;
+// three.js sets render on each instance, so this subclass wraps it to learn each canvas's scene and camera.
+class WebGLRenderer extends THREE.WebGLRenderer {
+    constructor(...args: unknown[]) {
+        super(...args);
+        const render = this.render;
+        this.render = (scene: Frame[1], camera: Frame[2]) => {
+            render.call(this, scene, camera);
+            // Picking never breaks the visual's animation loop.
+            try {
+                drew(this.domElement, scene, camera);
+            } catch {
+                /* no part this frame */
+            }
+        };
+    }
+}
+Object.assign(window, { THREE: { ...THREE, WebGLRenderer } });
