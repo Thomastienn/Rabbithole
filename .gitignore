@@ -26,6 +26,7 @@ desktop/sandbox/target/
 .ralph-tui/session*.json
 .ralph-tui/progress.md
 .ralph-tui/pr-logs/
+.ralph-tui/agents
 
 prompt.txt
 
