@@ -12,17 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run format:check
-
+  # Format check shares the test job: minutes bill per job, rounded up, so a separate job paid for a second npm ci.
   test:
     runs-on: ubuntu-latest
     steps:
@@ -32,6 +22,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run format:check
       # `npm test` without its systemd-run memory scope, which runners lack. Keep the flags in step with package.json.
       - run: node scripts/check-size.mjs
       - run: >

@@ -236,7 +236,7 @@ export const tunnelTheme = {
     "--rabbithole-ink-3": "light-dark(#48720a, #a6e22e)",
     "--rabbithole-ink-4": "light-dark(#6a3fc4, #b48cff)",
     "--rabbithole-ink-on": "light-dark(#ffffff, #151617)",
-    "--rabbithole-map-node-width": "16rem",
+    "--rabbithole-map-node-width": "10rem",
     "--rabbithole-sidebar-width": "14.5rem",
     "--rabbithole-branch-color": "light-dark(#151617, #ffffff)",
     "--rabbithole-branch-width": "7px",

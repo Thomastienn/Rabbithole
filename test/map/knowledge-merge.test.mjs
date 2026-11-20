@@ -6,7 +6,7 @@ import { render } from '../support/render.mjs';
 import { button } from '../support/ui.mjs';
 import { initial, setup, KnowledgeFixture as KnowledgePage } from '../support/knowledge-kit.mjs';
 
-test('knowledge merge restores opener focus and retains the selected target after a failed write', async (t) => {
+test('knowledge merge keeps the selected concept, restores focus and retains the duplicate after a failed write', async (t) => {
   let graph = {
       ...initial(),
       concepts: initial()
@@ -37,28 +37,29 @@ test('knowledge merge restores opener focus and retains the selected target afte
       b.click();
     });
   };
-  await click('Merge Mutex…');
-  await act(async () => document.querySelector('dialog button[aria-expanded]').click());
-  const option = [...document.querySelectorAll('[role=option]')].find((e) =>
+  await click('Merge concepts');
+  const [keep, duplicate] = document.querySelectorAll('dialog button[aria-expanded]');
+  assert.match(keep.textContent, /Mutex/);
+  await act(async () => duplicate.click());
+  const listbox = document.getElementById(duplicate.getAttribute('aria-controls'));
+  const option = [...listbox.querySelectorAll('[role=option]')].find((e) =>
     e.textContent.includes('Mutual exclusion'),
   );
   assert.ok(option, document.querySelector('dialog').textContent);
   await act(async () => option.click());
-  await click('Merge concepts', document);
-  assert.match(document.querySelector('dialog [role=alert]').textContent, /Write failed/);
-  assert.match(
-    document.querySelector('dialog button[aria-expanded]').textContent,
-    /Mutual exclusion/,
-  );
+  const dialog = document.querySelector('dialog');
+  await click('Merge concepts', dialog);
+  assert.match(dialog.querySelector('[role=alert]').textContent, /Write failed/);
+  assert.match(dialog.querySelectorAll('button[aria-expanded]')[1].textContent, /Mutual exclusion/);
   failMerge = false;
-  await click('Merge concepts', document);
+  await click('Merge concepts', dialog);
   await act(async () => dom.frames());
-  assert.deepEqual(calls.at(-1), ['/api/graph/merge', { from: 'Mutex', into: 'Mutual exclusion' }]);
+  assert.deepEqual(calls.at(-1), ['/api/graph/merge', { from: 'Mutual exclusion', into: 'Mutex' }]);
   assert.equal(document.querySelector('dialog[open]'), null);
-  assert.equal(document.activeElement.dataset.concept, 'Mutual exclusion');
+  assert.equal(document.activeElement.dataset.concept, 'Mutex');
   assert.ok(
     [...container.querySelectorAll('[role=status]')].some((e) =>
-      e.textContent.includes('Merged Mutex into Mutual exclusion'),
+      e.textContent.includes('Merged Mutual exclusion into Mutex'),
     ),
   );
 });

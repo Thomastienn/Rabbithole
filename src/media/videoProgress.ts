@@ -63,6 +63,9 @@ export function videoStepDetail(job: VideoJob) {
 }
 
 export function elapsed(job: VideoJob, now: number) {
-  const seconds = Math.max(0, Math.floor((now - (job.startedAt ?? now)) / 1000));
+  return clock((now - (job.startedAt ?? now)) / 1000);
+}
+export function clock(time: number) {
+  const seconds = Math.max(0, Math.floor(time));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }

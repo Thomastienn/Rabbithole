@@ -30,10 +30,12 @@ test('the Pieces view searches and pages, with a no-results message', async (t) 
   const cards = () =>
     [...container.querySelectorAll('.piece-library h3')].map((e) => e.textContent);
   const button = (label) =>
-    [...container.querySelectorAll('button')].find((b) => b.textContent === label);
+    [...container.querySelectorAll('button')].find(
+      (b) => (b.textContent || b.getAttribute('aria-label')) === label,
+    );
   assert.equal(cards().length, 24);
   const pages = container.querySelector('nav[aria-label="Piece pages"]');
-  assert.match(pages.textContent, /Page 1 of 2/);
+  assert.match(pages.textContent, /1–24 of 30/);
   assert.ok(button('Previous page').disabled);
   await act(async () => button('Next page').click());
   await settle(act);
@@ -63,6 +65,16 @@ test('the Pieces view searches and pages, with a no-results message', async (t) 
   assert.match(status(), /No pieces match “zebra”/);
   assert.doesNotMatch(container.textContent, /No saved pieces yet/, 'not the empty-library state');
   assert.ok(container.querySelector('#piece-search'), 'the search bar stays to edit the query');
+});
+
+test('an empty Pieces view says how pieces get there', async (t) => {
+  const api = async () => ({ total: 0, pieces: [] });
+  const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+  t.after(cleanup);
+  await settle(act);
+  assert.equal(container.querySelector('h2').textContent, 'No saved pieces yet');
+  assert.match(container.textContent, /When a video draws an object worth keeping/);
+  assert.equal(container.querySelector('nav[aria-label="Piece pages"]'), null);
 });
 
 test('the Pieces view lists pieces and opens a read-only source with a preview in the isolated player frame', async (t) => {

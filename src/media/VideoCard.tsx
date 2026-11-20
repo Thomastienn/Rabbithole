@@ -10,12 +10,13 @@ import {
   FilmIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+import { PlayIcon } from '@heroicons/react/24/solid';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import type { Artifact } from './artifacts';
 import LivePlayer from './LivePlayer';
 import ExportButton from './ExportButton';
 import VideoUsage from './VideoUsage';
-import { elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
+import { clock, elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
 
 const STATUS = {
   pending: 'Creating video…',
@@ -70,6 +71,8 @@ export default function VideoCard({
   cuts = `/api/trees/${artifact.conversation}/artifacts/${artifact.id}/cuts`,
   actions,
   onExported,
+  origin,
+  duration,
 }: {
   artifact: Pick<
     Artifact,
@@ -97,6 +100,9 @@ export default function VideoCard({
   cuts?: string;
   actions?: ReactNode;
   onExported?: () => void;
+  // Library cards only: the source conversation's title (null once it is gone) and the length in seconds.
+  origin?: string | null;
+  duration?: number | null;
 }) {
   const id = useId();
   const [enlarged, setEnlarged] = useState(false);
@@ -113,6 +119,9 @@ export default function VideoCard({
     state === 'pending' && (artifact.phase === 'playable' || artifact.phase === 'saving');
   const exported = state === 'ready' && artifact.exported !== false;
   const stage = useRef<HTMLElement>(null);
+  // A library video rests behind one Play button; native controls appear once it starts.
+  const player = useRef<HTMLVideoElement>(null);
+  const [started, setStarted] = useState(inline);
   // The live player has no Lightbox form, so Open large shows its stage, with Export MP4, full screen.
   const enlarge = () =>
     exported ? setEnlarged(true) : void stage.current?.requestFullscreen().catch(() => {});
@@ -212,13 +221,36 @@ export default function VideoCard({
           )}
           {exported && (
             <video
+              ref={player}
               className="video-frame"
               src={media}
-              controls
+              controls={started}
               preload="metadata"
               aria-label={`Video: ${artifact.title}`}
               aria-describedby={`${id}-description`}
+              onPlay={() => setStarted(true)}
             />
+          )}
+          {exported && !started && (
+            <>
+              <IconButton
+                className="video-play"
+                label={`Play ${artifact.title}`}
+                icon={<PlayIcon />}
+                variant="primary"
+                clickAction={() => {
+                  // Controls come up now, not on the async play event, so the video is focusable when the button leaves.
+                  setStarted(true);
+                  void player.current?.play();
+                  requestAnimationFrame(() => player.current?.focus());
+                }}
+              />
+              {duration != null && (
+                <span className="video-duration" aria-hidden>
+                  {clock(duration)}
+                </span>
+              )}
+            </>
           )}
           <VStack gap={2} padding={3} hAlign="center" vAlign="center" className="video-controls">
             {inline &&
@@ -308,6 +340,11 @@ export default function VideoCard({
           <Heading level={3} id={`${id}-title`}>
             {artifact.title}
           </Heading>
+        )}
+        {!inline && (
+          <Text type="supporting" color="secondary" className="video-origin">
+            {origin ?? 'No longer in a conversation'}
+          </Text>
         )}
         {!inline && (
           <Text id={`${id}-description`} color="secondary">

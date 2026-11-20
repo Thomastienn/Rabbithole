@@ -1,61 +1,69 @@
 /* Map nodes, edges and fold stubs. Files load in main.tsx order, which is the cascade order. */
+/* Line Diagram cards (mockup Map): raised, flat, a header with the address chip and title over turn previews. */
 .conversation-box {
   width: var(--rabbithole-map-node-width);
-  border: thin solid var(--color-border);
+  border: thin solid transparent;
   border-radius: var(--radius-element);
   background: var(--color-background-surface);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
   overflow-wrap: anywhere;
   transition: border-color var(--duration-fast) ease-out;
 }
 .react-flow__node:hover .conversation-box {
-  border-color: var(--color-text-secondary);
+  border-color: var(--color-border-emphasized);
 }
+/* The current conversation wears the porcelain ring: a shape, so it reads without colour. */
 .conversation-box[data-focused='true'] {
-  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
-  outline-offset: var(--focus-outline-offset);
+  outline: 2.5px solid var(--rabbithole-paper);
+  outline-offset: 3px;
 }
 .conversation-box .node-band {
   margin: calc(-1 * var(--spacing-3)) calc(-1 * var(--spacing-3)) 0;
-  padding: var(--spacing-1) var(--spacing-2);
-  border-radius: calc(var(--radius-element) - 1px) calc(var(--radius-element) - 1px) 0 0;
-  background: var(--ink);
-  color: var(--ink-on);
+  padding: var(--spacing-2) var(--spacing-2) var(--spacing-2) 10px;
+  border-bottom: thin solid var(--color-border);
 }
 .conversation-box .node-band :is(h2, button, .astryx-icon) {
-  color: var(--ink-on);
+  color: var(--rabbithole-paper);
 }
-.conversation-box .node-band :focus-visible {
-  outline-color: var(--rabbithole-paper);
-  outline-offset: var(--spacing-2);
-}
-.conversation-box .node-band .activity-dot,
-.conversation-box[data-active='true'] .node-band .activity-dot {
-  background: var(--ink-on);
-}
+/* The address chip: filled with the family colour, porcelain for the trunk. */
 .node-address {
   flex: none;
-  color: inherit;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  padding: 3px 6px 2px;
+  border-radius: var(--radius-inner);
+  background: var(--ink);
+  color: var(--ink-on);
+  font: var(--font-weight-bold) var(--font-size-sm) / 1 var(--font-family-heading);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 .conversation-box .node-title {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
   justify-content: flex-start;
-  padding-inline: var(--spacing-1);
+  padding-inline: 0;
   text-align: start;
 }
 .conversation-box .node-title h2 {
+  font-family: var(--font-family-heading);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
-  line-height: 1.3;
+  line-height: 1.2;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
+/* Reveal floats over the title end, just before the fold toggle, on hover or focus, so 160px leaves the title its room. */
+.node-actions {
+  position: relative;
+  flex: none;
+  align-self: stretch;
+}
 .node-extra {
-  margin-inline-start: auto;
+  position: absolute;
+  inset-inline-end: 100%;
+  background: var(--color-background-surface);
   opacity: 0;
   transition: opacity 120ms ease-out;
 }
@@ -66,19 +74,20 @@
 }
 @media (hover: none) {
   .node-extra {
+    position: static;
     opacity: 1;
   }
 }
 .activity-dot {
-  display: inline-block;
+  display: none;
   flex: none;
   width: var(--spacing-2);
   height: var(--spacing-2);
   border-radius: 50%;
-  background: var(--color-text-secondary);
+  background: var(--rabbithole-paper);
 }
 .conversation-box[data-active='true'] .activity-dot {
-  background: var(--color-accent);
+  display: inline-block;
   animation: pulse var(--duration-slow-max) ease-in-out infinite;
 }
 @keyframes pulse {
@@ -129,7 +138,19 @@
 }
 .node-message[data-role='user'] .question-bubble {
   max-width: 85%;
-  padding: var(--spacing-1) var(--spacing-2);
+  padding: 3px var(--spacing-2);
+  border-radius: var(--radius-inner);
+  background: var(--color-neutral);
+}
+/* A reply arriving: the text grows behind a porcelain caret. */
+.node-arriving::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-inline-start: 2px;
+  vertical-align: -3px;
+  background: var(--rabbithole-paper);
 }
 .node-message {
   position: relative;
@@ -155,7 +176,8 @@
   color: var(--color-text-secondary);
 }
 .node-status[data-status='failed'] {
-  color: var(--color-error);
+  color: var(--color-text-error);
+  font-weight: var(--font-weight-semibold);
 }
 .node-status svg {
   flex: none;
@@ -236,9 +258,11 @@
   border-top: var(--rabbithole-branch-width) dashed var(--ink);
 }
 .fold-stub button {
-  background: var(--color-background-body);
-  border: thin dashed var(--color-border-emphasized);
-  padding: var(--spacing-1) var(--spacing-2);
+  gap: var(--spacing-2);
+  background: var(--color-background-surface);
+  border: 0;
+  border-radius: var(--radius-element);
+  padding: 6px 10px;
   white-space: nowrap;
   color: var(--color-text-secondary);
 }
@@ -289,27 +313,27 @@ section[role='alert'] {
   align-items: center;
   gap: var(--spacing-1);
   padding: var(--spacing-2);
-  border: thin dashed var(--color-border);
+  border: 1.5px dashed var(--color-border-emphasized);
   border-radius: var(--radius-element);
   background: transparent;
   color: var(--color-text-secondary);
-  opacity: 0.6;
   cursor: pointer;
-  transition: opacity var(--duration-fast) ease-out;
+  transition: border-color var(--duration-fast) ease-out;
 }
-.ghost-tree:is(:hover, :focus-visible) {
-  opacity: 1;
+.ghost-tree:hover {
+  border-color: var(--color-text-secondary);
 }
 .ghost-tree:focus-visible {
   outline: var(--focus-outline-width) solid var(--focus-outline-color);
   outline-offset: var(--focus-outline-offset);
 }
+/* Muted: a ghost tree's miniature drops its family colours. */
 .ghost-tree line {
-  stroke: var(--ink);
+  stroke: var(--color-text-secondary);
   stroke-width: 2;
 }
 .ghost-tree circle {
-  fill: var(--ink);
+  fill: var(--color-text-secondary);
 }
 .ghost-tree__title {
   max-width: 10rem;

@@ -3,7 +3,7 @@ import { HStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { Divider } from '@astryxdesign/core/Divider';
-import { Section } from './InterfaceSettings';
+import { Done, Section } from './InterfaceSettings';
 
 type Sandbox = { windows: boolean; ready: boolean };
 
@@ -45,15 +45,17 @@ export default function SandboxSettings({
         title="Video sandbox"
         description="Videos and Python run model-written code in a Windows sandbox. Turning it on asks once for administrator rights."
       >
-        <Text type="supporting" role="status">
-          {sandbox.ready
-            ? 'The sandbox is on.'
-            : declined
+        {sandbox.ready ? (
+          <Done>The sandbox is on.</Done>
+        ) : (
+          <Text type="supporting" role="status">
+            {declined
               ? `The sandbox was not enabled. Video making stays off until it is enabled${firstRun ? '; you can try again from Settings' : ''}.`
               : pending
                 ? 'Waiting for the administrator prompt…'
                 : 'The sandbox is off, so video making is unavailable.'}
-        </Text>
+          </Text>
+        )}
         {!sandbox.ready && !(firstRun && declined) && (
           <HStack>
             <Button

@@ -9,6 +9,7 @@ import { PlusIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outli
 import type { Model } from './models';
 import SearchOffer from './SearchOffer';
 import EndpointModels from './EndpointModels';
+import { Done } from './InterfaceSettings';
 
 export type Endpoint = {
   id: string;
@@ -361,11 +362,7 @@ export default function EndpointSettings({
           </VStack>
         ),
       )}
-      {message && (
-        <Text type="supporting" role="status">
-          {message}
-        </Text>
-      )}
+      {message && <Done>{message}</Done>}
       {offerSearch && (
         <SearchOffer
           api={api}

@@ -236,7 +236,7 @@ export const ferryTheme = {
     "--rabbithole-ink-3": "light-dark(#6046c7, #b9a2ff)",
     "--rabbithole-ink-4": "light-dark(#2a7a1c, #8fe07a)",
     "--rabbithole-ink-on": "light-dark(#ffffff, #07282f)",
-    "--rabbithole-map-node-width": "16rem",
+    "--rabbithole-map-node-width": "10rem",
     "--rabbithole-sidebar-width": "14.5rem",
     "--rabbithole-branch-color": "light-dark(#07282f, #f1fbff)",
     "--rabbithole-branch-width": "7px",

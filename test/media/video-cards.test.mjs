@@ -109,6 +109,7 @@ test('library cards lead with the frame; missing files offer only removal; trash
           description: 'A saved video.',
           duration: 3,
           created: 1,
+          origin: 'Fungi',
           exported: true,
         },
         {
@@ -117,6 +118,7 @@ test('library cards lead with the frame; missing files offer only removal; trash
           description: 'Saved, never exported.',
           duration: 3,
           created: 3,
+          origin: null,
           exported: false,
         },
         {
@@ -125,6 +127,7 @@ test('library cards lead with the frame; missing files offer only removal; trash
           description: 'Its file is missing.',
           duration: 3,
           created: 2,
+          origin: 'Fungi',
           available: false,
         },
       ];
@@ -150,10 +153,22 @@ test('library cards lead with the frame; missing files offer only removal; trash
     ['Open large', 'Show in folder', 'Move to trash'],
   );
   assert.equal(kept.querySelector('video').getAttribute('src'), '/api/videos/kept/media');
+  assert.equal(kept.querySelector('.video-origin').textContent, 'Fungi');
+  assert.equal(kept.querySelector('.video-duration').textContent, '0:03');
+  // At rest one Play button stands in for the native controls, which appear once playback starts.
+  const player = kept.querySelector('video');
+  assert.equal(player.hasAttribute('controls'), false);
+  player.play = () => player.dispatchEvent(new window.Event('play'));
+  await act(async () => button(kept, 'Play Kept').click());
+  assert.equal(player.hasAttribute('controls'), true);
+  assert.equal(button(kept, 'Play Kept'), undefined);
+  assert.equal(kept.querySelector('.video-duration'), null);
   // An unexported video plays live from its saved cuts and has no file to show.
   const fresh = card('fresh');
   assert.equal(fresh.querySelector('video'), null);
   assert.equal(fresh.querySelector('iframe').getAttribute('title'), 'Live video: Fresh');
+  // Its source conversation is gone: the card says so and still plays.
+  assert.equal(fresh.querySelector('.video-origin').textContent, 'No longer in a conversation');
   assert.deepEqual(
     [...fresh.querySelectorAll('.video-volume-actions button')].map((b) => b.textContent.trim()),
     ['Open large', 'Move to trash'],
@@ -184,6 +199,17 @@ test('library cards lead with the frame; missing files offer only removal; trash
     '/api/videos/kept/trash',
     '/api/videos/kept/trash',
   ]);
+});
+
+test('an empty library says how videos get there', async (t) => {
+  const { container, act, cleanup } = await render(
+    h(VideoLibrary, { api: async () => [], activity: '' }),
+    ui,
+  );
+  t.after(cleanup);
+  await act(async () => {});
+  assert.equal(container.querySelector('h2').textContent, 'No videos yet');
+  assert.match(container.textContent, /Ask the tutor to show something as a video/);
 });
 
 test('a pending video lists a row per cut and the set pieces being drawn in a polite live region', async (t) => {

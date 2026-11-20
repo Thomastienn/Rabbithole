@@ -68,6 +68,10 @@ test('conversation previews keep every row, accessible message jumps, source-row
   t.after(cleanup);
   const box = container.querySelector('.conversation-box');
   assert.equal(box.dataset.focused, 'true');
+  // The current conversation is named without colour, not only by its ring.
+  assert.equal(container.querySelector('#open-root').getAttribute('aria-current'), 'true');
+  assert.equal(box.querySelector('.node-band .node-address').textContent, '1');
+  assert.ok(box.querySelector('.node-arriving'), 'an arriving reply shows its caret');
   assert.equal(box.dataset.active, 'true');
   assert.equal(box.style.getPropertyValue('--ink'), 'var(--rabbithole-paper)');
   assert.equal(container.querySelector('h2').style.viewTransitionName, 'conversation');
@@ -214,6 +218,8 @@ test('fold stubs, source reveal and latest-failed-only Retry use distinct contro
     'Show hidden branch child, 1 more conversation hidden beneath',
   );
   assert.equal(stub.textContent, '1.2.1 · 2 folded');
+  assert.equal(stub.querySelector('.node-address').textContent, '1.2.1');
+  assert.equal(container.querySelector('#open-root').hasAttribute('aria-current'), false);
   assert.equal(stub.closest('[data-message]').dataset.message, 'answer');
   await act(async () => {
     stub.focus();
@@ -231,6 +237,7 @@ test('fold stubs, source reveal and latest-failed-only Retry use distinct contro
     'var(--rabbithole-ink-2)',
   );
   assert.equal(container.querySelector('.node-status').dataset.status, 'failed');
+  assert.equal(container.querySelector('.node-status').textContent, 'Reply failed');
   const retry = container.querySelector('.node-retry');
   assert.ok(retry);
   await act(async () => {

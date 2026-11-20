@@ -76,7 +76,7 @@ export const tunnelTheme = defineTheme({
     '--rabbithole-ink-3': line3,
     '--rabbithole-ink-4': line4,
     '--rabbithole-ink-on': onPorcelain,
-    '--rabbithole-map-node-width': '16rem',
+    '--rabbithole-map-node-width': '10rem',
     '--rabbithole-sidebar-width': '14.5rem',
     '--rabbithole-branch-color': porcelain,
     '--rabbithole-branch-width': '7px',

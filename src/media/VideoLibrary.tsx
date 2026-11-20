@@ -3,6 +3,7 @@ import { VStack, HStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { ArrowPathIcon, FolderOpenIcon, TrashIcon } from '@heroicons/react/24/outline';
 import VideoCard from './VideoCard';
 
@@ -13,6 +14,8 @@ export type LibraryVideo = {
   description: string;
   duration: number | null;
   created: number;
+  // Title of the conversation that still holds the video; null once it is deleted or regenerated.
+  origin: string | null;
   available?: false;
   exported?: boolean;
   // Conversation of a pending video that plays live while it is generating.
@@ -109,9 +112,11 @@ export default function VideoLibrary({
           </Text>
           {!videos && !error && <Text role="status">Loading videos…</Text>}
           {videos && !videos.length && (
-            <Text color="secondary">
-              No saved videos yet. Ask the tutor for a video in any conversation.
-            </Text>
+            <EmptyState
+              headingLevel={2}
+              title="No videos yet"
+              description="Ask the tutor to show something as a video and it is kept here."
+            />
           )}
         </VStack>
         {!!videos?.length && (
@@ -126,6 +131,8 @@ export default function VideoLibrary({
                 }
                 media={`/api/videos/${v.id}/media`}
                 cuts={v.live ? undefined : `/api/videos/${v.id}/cuts`}
+                origin={v.origin}
+                duration={v.duration}
                 onExported={() =>
                   setVideos((list) =>
                     list?.map((x) => (x.id === v.id ? { ...x, exported: true } : x)),
