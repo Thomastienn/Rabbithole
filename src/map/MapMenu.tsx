@@ -45,6 +45,7 @@ export default function MapMenu({
         { type: 'divider' },
         {
           label: tree?.branch ? 'Delete branch…' : 'Delete chat…',
+          variant: 'destructive',
           isDisabled: !tree,
           onClick: () => tree && askDelete(tree.id, mapMenuTrigger()),
         },
