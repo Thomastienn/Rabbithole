@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
         kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual','discussion')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
-        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER,
+        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER, side TEXT,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
@@ -58,6 +58,14 @@ export function open(path) {
         .some((c) => c.name === 'stopped')
     )
       this.db.exec('ALTER TABLE messages ADD COLUMN stopped TEXT');
+    // A visual's side beside the section after its position; NULL on older rows, which sit in the flow.
+    if (
+      !this.db
+        .prepare('PRAGMA table_info(artifacts)')
+        .all()
+        .some((c) => c.name === 'side')
+    )
+      this.db.exec('ALTER TABLE artifacts ADD COLUMN side TEXT');
     for (const name of ['effort', 'working_effort']) {
       if (
         !this.db
@@ -481,20 +489,5 @@ export const schema = {
       ${ARTIFACTS.replace('CREATE INDEX', 'DROP INDEX artifacts_conversation; CREATE INDEX')}
       INSERT INTO artifacts(${kept}) SELECT ${kept} FROM artifacts_old;
       DROP TABLE artifacts_old;`);
-  },
-  // Starting or stopping never resumes paid inference; saved partial text stays available.
-  interrupt() {
-    // Streaming saves skip citations; a reply cut off by a crash gets them here.
-    const cut = this.db.prepare("SELECT id,text FROM messages WHERE status='streaming'").all();
-    this.db
-      .exec(`UPDATE messages SET status='interrupted',stopped='shutdown' WHERE status='streaming';
-      UPDATE tool_calls SET status='failed',output='Tool call was interrupted when Rabbithole stopped.',elapsed=NULL WHERE status='running';
-      UPDATE suggestions SET status='failed' WHERE status='pending';
-      UPDATE artifacts SET status='interrupted',error='Video generation was interrupted when Rabbithole stopped.' WHERE status='pending' AND kind='video';
-      UPDATE artifacts SET status='failed',source=NULL,error=(CASE kind WHEN 'discussion' THEN 'Discussion' WHEN 'visual' THEN 'Visual' ELSE 'Diagram' END)||' generation was interrupted when Rabbithole stopped.' WHERE status='pending';`);
-    this.db.exec(
-      `UPDATE artifacts SET source=json_set(source,'$.turn.status','failed'),error='The discussion was interrupted when Rabbithole stopped.' WHERE kind='discussion' AND status='ready' AND json_extract(source,'$.turn.status')='streaming';`,
-    );
-    for (const m of cut) this.cite(m.id, m.text);
   },
 };

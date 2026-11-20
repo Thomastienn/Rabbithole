@@ -25,6 +25,8 @@ export type Artifact = ArtifactSummary & {
   error: string | null;
   created: number;
   position?: number | null;
+  // A visual beside the section after its position; null sits in the flow.
+  side?: 'left' | 'right' | null;
   phase?:
     | 'planning'
     | 'pieces'

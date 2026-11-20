@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { finish, palette } from '../../server/media/video-kit.tsx';
-import { patternTexture } from '../../server/media/video-stock.tsx';
-import { cutSource, remapRoles } from '../../server/media/video-plan.mjs';
+import { patternTexture } from '../../server/media/video-finish.tsx';
+import { cutSource } from '../../server/media/video-plan.mjs';
+import { remapRoles } from '../../server/media/video-pieces.mjs';
 import { CUT_3D, PIECES_3D, PIECE_IMPROVE_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { HOUSE_STYLE_SKILL } from '../../server/media/skills.mjs';
 import { styleBrief } from '../support/video-kit.mjs';

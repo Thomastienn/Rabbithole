@@ -205,3 +205,23 @@ test('the current media schema gains discussion artifacts without changing exist
     store.close();
   }
 });
+
+test('a database without visual sides gains the column; saved visuals keep their place in the flow', () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-side-upgrade-')), 'trees.sqlite');
+  let store = new Store(path);
+  const root = store.create('Saved visual', 'codex');
+  const message = store.message(root.id, 'assistant', 'Saved reply', 'completed');
+  store.pendingArtifact(root.id, message, 'Visual', 'Description', 'visual', null, 6);
+  store.db.exec('ALTER TABLE artifacts DROP COLUMN side');
+  store.close();
+  store = new Store(path);
+  try {
+    const [saved] = store.tree(root.id).artifacts;
+    assert.equal(saved.position, 6);
+    assert.equal(saved.side, null);
+    const sided = store.pendingArtifact(root.id, message, 'V', 'D', 'visual', null, 6, 'left');
+    assert.equal(sided.side, 'left');
+  } finally {
+    store.close();
+  }
+});

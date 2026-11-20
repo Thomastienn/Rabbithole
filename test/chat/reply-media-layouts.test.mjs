@@ -389,3 +389,50 @@ for (const options of ['', '{side=right ratio=wide}'])
     assert.equal(figure.hasAttribute('data-stacked'), false);
     assert.equal(figure.dataset.side, options.includes('right') ? 'right' : undefined);
   });
+
+test('a sided visual sits beside the section after it; without side or on a narrow reply it stays in flow', () => {
+  const source = 'Intro.\n\n## Halving\n\nCut the list.\n\nKeep one half.\n\n## Next\n\nAfter.',
+    at = source.indexOf('## Halving'),
+    slot = (side) => ({
+      at,
+      kind: 'visual',
+      side,
+      node: h('figure', { key: 'v', id: 'v' }, 'Visual'),
+    });
+  const d = shown(source, undefined, [], [slot('right')]),
+    fig = d.querySelector('.layout-figure');
+  assert.equal(fig.getAttribute('data-side'), 'right');
+  assert.ok(fig.querySelector('.layout-media #v'));
+  assert.deepEqual(
+    [...fig.querySelector('.layout-text').children].map((c) => c.textContent),
+    ['Halving', 'Cut the list.', 'Keep one half.'],
+  );
+  // Text before media for right, as in :::figure{side=right}.
+  assert.equal(fig.firstElementChild.className, 'layout-text');
+  assert.equal(
+    shown(source, undefined, [], [slot('left')]).querySelector('.layout-figure').firstElementChild
+      .className,
+    'layout-media',
+  );
+  for (const [side, flow] of [
+    [null, false],
+    ['right', true],
+  ]) {
+    const plain = shown(source, undefined, [], [slot(side)], {}, flow);
+    assert.equal(plain.querySelector('.reply-layout'), null);
+    assert.equal(plain.querySelector('#v').nextElementSibling.textContent, 'Halving');
+  }
+});
+
+test(':::figure images are unchanged by visual sides', () => {
+  const fig = shown(
+    ':::figure{side=right}\n![A cat](' + cat + ')\n\nCats.\n:::',
+    undefined,
+    [],
+    [],
+    sources,
+  ).querySelector('.layout-figure');
+  assert.equal(fig.getAttribute('data-side'), 'right');
+  assert.equal(fig.firstElementChild.className, 'layout-text');
+  assert.equal(fig.querySelectorAll('.layout-media img').length, 1);
+});

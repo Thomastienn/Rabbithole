@@ -22,6 +22,7 @@ import {
   palette,
   type Join,
   type Mark,
+  type TargetMark,
 } from '../../server/media/video-kit';
 
 type Caption = { text: string; startFrame: number; endFrame: number };
@@ -39,8 +40,12 @@ export type LiveCut = {
     // The narration pause where a clip with sound plays.
     pause?: { id: string; startFrame: number; frames: number };
   } | null;
-  emphasis?: Mark[];
-  Component?: ComponentType<{ sentences: Sentence[]; durationInFrames: number }>;
+  emphasis?: (Mark | TargetMark)[];
+  Component?: ComponentType<{
+    sentences: Sentence[];
+    durationInFrames: number;
+    emphasis: (Mark | TargetMark)[];
+  }>;
   audio?: string;
   clip?: string;
   // The clip-with-sound exhibit's URL, played during timing.pause.
@@ -127,7 +132,13 @@ function Narrated({ cut }: { cut: LiveCut }) {
               <Video src={cut.clip} muted style={{ width: '100%', height: '100%' }} />
             </AbsoluteFill>
           ) : (
-            Cut && <Cut sentences={timing.sentences} durationInFrames={timing.durationInFrames} />
+            Cut && (
+              <Cut
+                sentences={timing.sentences}
+                durationInFrames={timing.durationInFrames}
+                emphasis={cut.emphasis ?? []}
+              />
+            )
           )}
         </Contained>
         <Sketch marks={cut.emphasis} sentences={timing.sentences} />

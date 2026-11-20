@@ -89,6 +89,7 @@ const Reply = memo(function Reply({
             inlineArtifacts.map((v) => ({
               at: v.position!,
               kind: v.kind,
+              side: v.side,
               node:
                 v.kind === 'discussion' ? (
                   <DiscussionCard

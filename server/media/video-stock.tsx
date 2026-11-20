@@ -10,21 +10,16 @@ import {
 import { Img, Loop, OffthreadVideo, Sequence, random, staticFile, useCurrentFrame } from 'remotion';
 import { context as fiber, useFrame, useThree } from '@react-three/fiber';
 import {
-  Color,
-  DataTexture,
   Euler,
   InstancedMesh,
   Matrix4,
   PCFShadowMap,
   PMREMGenerator,
-  MeshStandardMaterial,
   Quaternion,
-  RepeatWrapping,
-  SRGBColorSpace,
   Vector3,
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { fonts, palette } from './video-kit';
+import { Cursor, Sketch, fonts, palette, type Mark } from './video-kit';
 
 // Exhibits the host delivered by id (ADR 0005): the render reads them from stock.json beside the cut, with
 // images as data URLs and clips as public files; live playback from the frame's message, with blob URLs.
@@ -244,6 +239,81 @@ export function Pin({
   );
 }
 
+// A 3D cut's pen and cursor marks name a target set piece (and optionally a part) instead of frame pixels.
+export type TargetMark = {
+  tool: 'cursor' | 'sketch';
+  sentence: number;
+  target: string;
+  part?: string;
+  label?: string;
+  shape?: 'circle' | 'underline' | 'arrow';
+};
+
+// A 3D cut's target marks at frame f as frame-pixel marks: each target (or "target.part") in at resolves to its
+// 3D point, projected through the camera keys, so marks follow the camera. Marks whose point is behind the
+// camera or unknown are left out.
+export function targetMarksAt(
+  marks: (Mark | TargetMark)[],
+  keys: CameraKey[],
+  at: Record<string, Vec3 | ((f: number) => Vec3)>,
+  f: number,
+  fov?: number,
+): Mark[] {
+  return marks.flatMap((m): Mark[] => {
+    if (!('target' in m)) return [];
+    const point = (m.part && at[`${m.target}.${m.part}`]) || at[m.target];
+    if (!point) return [];
+    const { x, y, front } = screenAt(keys, f, typeof point === 'function' ? point(f) : point, {
+      fov,
+    });
+    if (!front) return [];
+    if (m.tool === 'cursor')
+      return [{ tool: 'cursor', sentence: m.sentence, x, y, ...(m.label && { label: m.label }) }];
+    const shape = m.shape ?? 'circle';
+    const points: [number, number][] =
+      shape === 'circle'
+        ? [
+            [x - 90, y - 90],
+            [x + 90, y + 90],
+          ]
+        : shape === 'underline'
+          ? [
+              [x - 100, y + 80],
+              [x + 100, y + 80],
+            ]
+          : [
+              [x - 240, y - 170],
+              [x - 50, y - 40],
+            ];
+    // A fixed seed keeps the hand wobble steady while the points move with the camera.
+    return [{ tool: 'sketch', shape, sentence: m.sentence, points, seed: m.sentence + 1 }];
+  });
+}
+
+// The pen and cursor marks of a 3D cut, pinned to their set pieces: placed by the cut in the HTML layer above the
+// ThreeCanvas with the same keys as <Camera> and the 3D point of every target the marks name.
+export function Marks({
+  marks = [],
+  sentences,
+  keys,
+  at,
+  fov,
+}: {
+  marks?: (Mark | TargetMark)[];
+  sentences: { startFrame: number; endFrame: number }[];
+  keys: CameraKey[];
+  at: Record<string, Vec3 | ((f: number) => Vec3)>;
+  fov?: number;
+}) {
+  const resolved = targetMarksAt(marks, keys, at, useCurrentFrame(), fov);
+  return (
+    <>
+      <Sketch marks={resolved} sentences={sentences} />
+      <Cursor marks={resolved} sentences={sentences} />
+    </>
+  );
+}
+
 // Many copies of one set piece or part, such as a crowd: vary(i, rand) returns copy i's props (position or x and y,
 // scale, state, roles), rand() a seeded 0 to 1 sequence so every frame draws the same copies. Inside a ThreeCanvas
 // each mesh of the piece is drawn once per group of copies sharing their other props, with three.js instancing.
@@ -400,86 +470,4 @@ export function Lights() {
       </mesh>
     </>
   );
-}
-
-// House-style materials by name: finish(kind, colour, pattern?) for a mesh's material prop. The colour is the
-// material's colour; a pattern is a soft greyscale texture made in code, multiplied by it, with matching relief.
-export type Finish = 'matte' | 'plastic' | 'metal' | 'glass' | 'glow';
-export type Pattern =
-  'wood' | 'brushed metal' | 'panel lines' | 'fabric' | 'stone' | 'tiles' | 'bands';
-const SIZE = 256;
-const TAU = 2 * Math.PI;
-// Seeded lattice noise that wraps every `cells`, so patterns tile.
-const hash = (i: number, j: number) => {
-  const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
-  return v - Math.floor(v);
-};
-const noise = (x: number, y: number, cells: number) => {
-  const [u, v] = [(x / SIZE) * cells, (y / SIZE) * cells];
-  const [i, j] = [Math.floor(u), Math.floor(v)];
-  const [a, b] = [u - i, v - j].map((t) => t * t * (3 - 2 * t));
-  const h = (di: number, dj: number) => hash((i + di) % cells, (j + dj) % cells);
-  return (
-    h(0, 0) +
-    (h(1, 0) - h(0, 0)) * a +
-    (h(0, 1) - h(0, 0)) * b +
-    (h(0, 0) - h(1, 0) - h(0, 1) + h(1, 1)) * a * b
-  );
-};
-// Each returns 0 (groove) to 1 (face) for a pixel.
-const patterns: Record<Pattern, (x: number, y: number) => number> = {
-  wood: (x, y) => 0.5 + 0.5 * Math.sin(TAU * (6 * (x / SIZE) + 1.5 * noise(x, y, 4))),
-  'brushed metal': (x, y) => 0.6 * noise(x, y * 0.02, 64) + 0.4 * noise(x, y, 32),
-  'panel lines': (x, y) => (x % 128 < 3 || y % 128 < 3 ? 0 : 1),
-  fabric: (x, y) =>
-    // Over-under weave: each 8-pixel square runs its threads across or along.
-    0.5 + 0.5 * Math.sin((TAU * ((Math.floor(x / 8) + Math.floor(y / 8)) % 2 ? x : y)) / 8),
-  stone: (x, y) => 0.6 * noise(x, y, 8) + 0.4 * noise(x, y, 32),
-  tiles: (x, y) =>
-    x % 64 < 4 || y % 64 < 4 ? 0 : 0.7 + 0.3 * hash(Math.floor(x / 64), Math.floor(y / 64)),
-  bands: (x, y) => 0.5 + 0.5 * Math.sin((TAU * 4 * y) / SIZE),
-};
-// Generated once per name; low contrast keeps the object's own colour in charge.
-const textures = new Map<Pattern, InstanceType<typeof DataTexture>>();
-export function patternTexture(name: Pattern) {
-  if (!textures.has(name)) {
-    const data = new Uint8Array(SIZE * SIZE * 4);
-    for (let y = 0; y < SIZE; y++)
-      for (let x = 0; x < SIZE; x++) {
-        const grey = Math.round(255 * (0.82 + 0.18 * patterns[name](x, y)));
-        data.set([grey, grey, grey, 255], (y * SIZE + x) * 4);
-      }
-    const texture = new DataTexture(data, SIZE, SIZE);
-    texture.wrapS = texture.wrapT = RepeatWrapping;
-    texture.colorSpace = SRGBColorSpace;
-    texture.needsUpdate = true;
-    textures.set(name, texture);
-  }
-  return textures.get(name)!;
-}
-const looks: Record<Finish, object> = {
-  matte: { roughness: 0.85, metalness: 0 },
-  plastic: { roughness: 0.35, metalness: 0 },
-  metal: { roughness: 0.3, metalness: 0.9 },
-  glass: { roughness: 0.05, metalness: 0, transparent: true, opacity: 0.35, depthWrite: false },
-  glow: { roughness: 0.6, metalness: 0, emissiveIntensity: 0.9 },
-};
-// Cached so a render calling finish() every frame reuses one material.
-const materials = new Map<string, InstanceType<typeof MeshStandardMaterial>>();
-export function finish(kind: Finish, color: string, pattern?: Pattern) {
-  const key = `${kind}|${color}|${pattern}`;
-  if (!materials.has(key)) {
-    const tint = new Color(color.slice(0, 7)); // drop a neutral's alpha
-    const map = pattern && patterns[pattern] ? patternTexture(pattern) : null;
-    materials.set(
-      key,
-      new MeshStandardMaterial({
-        ...(looks[kind] ?? looks.matte),
-        color: tint,
-        ...(kind === 'glow' && { emissive: tint }),
-        ...(map && { map, bumpMap: map, bumpScale: 0.6 }),
-      }),
-    );
-  }
-  return materials.get(key)!;
 }

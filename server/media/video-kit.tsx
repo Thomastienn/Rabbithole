@@ -24,11 +24,13 @@ export {
   Pin,
   Copies,
   Lights,
-  finish,
+  Marks,
+  targetMarksAt,
   type CameraKey,
-  type Finish,
-  type Pattern,
+  type TargetMark,
 } from './video-stock';
+export { finish, type Finish, type Pattern } from './video-finish';
+import type { TargetMark } from './video-stock';
 
 export const palette = {
   ground: '#1a1613',
@@ -160,7 +162,8 @@ export const three = {
   },
 };
 // Emphasis overlay: the app draws these above every cut (Manim included) from the plan's cut.emphasis marks,
-// timed to narration sentence frames, in the shared 1920x1080 frame space.
+// timed to narration sentence frames, in the shared 1920x1080 frame space. A 3D cut's marks name a target set
+// piece (and optionally a part) instead; the cut draws those itself with <Marks>, so the overlay skips them.
 type Timed = { startFrame: number; endFrame: number };
 type Point = [number, number];
 export type Mark =
@@ -170,7 +173,10 @@ export type Mark =
       shape: 'circle' | 'underline' | 'arrow' | 'freehand';
       sentence: number;
       points: Point[];
+      seed?: number;
     };
+type Emphasis = (Mark | TargetMark)[];
+const onScreen = (marks: Emphasis) => marks.filter((m): m is Mark => !('target' in m));
 const GLIDE = 15,
   DRAW = 20,
   FADE = 10;
@@ -212,7 +218,7 @@ export function sketchAt(mark: Mark, sentences: Timed[], f: number) {
 
 // Hand-drawn wobble, deterministic per mark so every frame and render draws the same stroke.
 function sketchPoints(mark: Extract<Mark, { tool: 'sketch' }>) {
-  const seed = mark.points.flat().reduce((n, v) => n + v, 0);
+  const seed = mark.seed ?? mark.points.flat().reduce((n, v) => n + v, 0);
   const wobble = (i: number, k: number) => Math.sin(seed * 12.9898 + i * 78.233) * k;
   const [[ax, ay], [bx, by]] = mark.points;
   let pts: Point[] = [];
@@ -289,7 +295,7 @@ export function penAt(
   };
 }
 
-export function Sketch({ marks = [], sentences }: { marks?: Mark[]; sentences: Timed[] }) {
+export function Sketch({ marks = [], sentences }: { marks?: Emphasis; sentences: Timed[] }) {
   const f = useCurrentFrame();
   const reduced =
     typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -301,7 +307,7 @@ export function Sketch({ marks = [], sentences }: { marks?: Mark[]; sentences: T
       aria-hidden="true"
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
     >
-      {marks.map((mark, i) => {
+      {onScreen(marks).map((mark, i) => {
         if (mark.tool !== 'sketch') return null;
         const { draw, opacity } = sketchAt(mark, sentences, f);
         const tip = penAt(mark, sentences, f, reduced);
@@ -338,8 +344,8 @@ export function Sketch({ marks = [], sentences }: { marks?: Mark[]; sentences: T
   );
 }
 
-export function Cursor({ marks = [], sentences }: { marks?: Mark[]; sentences: Timed[] }) {
-  const at = cursorAt(marks, sentences, useCurrentFrame());
+export function Cursor({ marks = [], sentences }: { marks?: Emphasis; sentences: Timed[] }) {
+  const at = cursorAt(onScreen(marks), sentences, useCurrentFrame());
   if (!at || at.opacity <= 0) return null;
   return (
     <div

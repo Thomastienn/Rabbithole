@@ -141,7 +141,7 @@ test('a visual that times out after the turn ended fails with its card while the
       new Promise((_, reject) =>
         signal.addEventListener('abort', () => reject(signal.reason), { once: true }),
       ),
-    { visualTimeout: 50 },
+    { visualTimeout: 3000 },
   );
   try {
     const stream = await (

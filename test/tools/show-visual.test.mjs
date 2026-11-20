@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readShowVisual, SHOW_VISUAL, visualPosition } from '../../server/tools/showVisual.mjs';
+import {
+  readShowVisual,
+  SHOW_VISUAL,
+  visualPosition,
+  visualSide,
+} from '../../server/tools/showVisual.mjs';
 import { TOOL_VISUAL_RULES, tutorSystem } from '../../server/media/diagrams.mjs';
 import { roundText } from '../../server/providers/chatStream.mjs';
 
@@ -39,6 +44,15 @@ test('a visual lands after its anchor in its own response, else at the call', ()
   assert.throws(() => at(''), /show_visual needs after/);
   assert.throws(() => at('x'.repeat(121)), /after is 121 characters/);
   assert.equal(visualPosition({}, text, 0, 3, false), 3);
+});
+
+test('show_visual side is left, right or left out', () => {
+  assert.equal(visualSide({ ...call, side: 'right' }), 'right');
+  assert.equal(visualSide({ ...call, side: 'left' }), 'left');
+  assert.equal(visualSide(call), null);
+  assert.throws(() => visualSide({ ...call, side: 'top' }), /side must be left or right/);
+  assert.deepEqual(SHOW_VISUAL.parameters.properties.side.enum, ['left', 'right']);
+  assert.ok(!SHOW_VISUAL.parameters.required.includes('side'));
 });
 
 test('the tutor prompt keeps visuals out of :::figure', () => {
