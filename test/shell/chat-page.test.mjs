@@ -471,6 +471,36 @@ test('focus mode toggles from chat, map and non-chat pages without consuming com
   }
 });
 
+test('Search from the narrow drawer returns focus to Contents when the palette closes', async (t) => {
+  const { container, act, settle } = await mount(t, [summary], { mobile: true });
+  const contents = button(container.querySelector('header.shell-band'), 'Contents');
+  await act(async () => {
+    contents.focus();
+    contents.click();
+  });
+  const drawer = document.querySelector('dialog[open]');
+  // A pointer press or Enter leaves focus on the drawer's Search; the palette takes it as its opener.
+  const search = button(drawer, 'Search learning trees');
+  await act(async () => {
+    search.focus();
+    search.click();
+  });
+  // jsdom has no CSS transitions; finish the drawer exit without waiting for its timer.
+  const exit = new Event('transitionend', { bubbles: true });
+  Object.defineProperty(exit, 'propertyName', { value: 'transform' });
+  await act(async () => drawer.dispatchEvent(exit));
+  const input = document.querySelector('dialog[open] input');
+  assert.ok(input, 'the palette opens');
+  await act(async () =>
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    ),
+  );
+  await settle();
+  assert.equal(document.querySelector('dialog[open]'), null);
+  assert.ok(document.activeElement === contents, 'focus returns to Contents');
+});
+
 test('narrow screens keep the header and contents drawer, also after saved focus mode', async (t) => {
   const { container, act } = await mount(t, [summary], { mobile: true, focus: 'on' });
   assert.equal(container.querySelector('.shell-band'), null);

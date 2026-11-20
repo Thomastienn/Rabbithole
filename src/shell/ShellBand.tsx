@@ -205,6 +205,19 @@ export default function ShellBand({
         {saveAlert && <div className="focus-save">{saveAlert}</div>}
       </>
     );
+  const wordmark = (tooltip?: string) => (
+    <Button
+      className="sidebar-mark"
+      label="Rabbithole"
+      tooltip={tooltip}
+      variant="ghost"
+      size="md"
+      onClick={library}
+    >
+      <Logo />
+      <span className="band-mark">Rabbithole</span>
+    </Button>
+  );
   const sidebar = (
     <nav
       className={rail ? 'sidebar sidebar-rail' : mobile ? 'sidebar sidebar-drawer' : 'sidebar'}
@@ -219,20 +232,8 @@ export default function ShellBand({
       <VStack gap={0} className="sidebar-top">
         <HStack gap={1} vAlign="center" className="sidebar-head">
           {!mobile && focusButton}
-          {!rail && (
-            <Button
-              className="sidebar-mark"
-              label="Rabbithole"
-              // In the drawer the mark opens under the pointer; a tooltip there would take the first Escape.
-              tooltip={mobile ? undefined : 'Open the Library'}
-              variant="ghost"
-              size="md"
-              onClick={library}
-            >
-              <Logo />
-              <span className="band-mark">Rabbithole</span>
-            </Button>
-          )}
+          {/* In the drawer the mark opens under the pointer; a tooltip there would take the first Escape. */}
+          {!rail && wordmark(mobile ? undefined : 'Open the Library')}
           {mobile && (
             <IconButton
               className="drawer-close"
@@ -294,17 +295,7 @@ export default function ShellBand({
           aria-expanded={drawer}
           onClick={() => setDrawer(true)}
         />
-        <Button
-          className="sidebar-mark"
-          label="Rabbithole"
-          tooltip="Open the Library"
-          variant="ghost"
-          size="md"
-          onClick={library}
-        >
-          <Logo />
-          <span className="band-mark">Rabbithole</span>
-        </Button>
+        {wordmark('Open the Library')}
         <HStack gap={0} vAlign="center" className="band-tools">
           {focusButton}
           <IconButton

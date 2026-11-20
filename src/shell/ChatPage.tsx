@@ -51,6 +51,7 @@ export default function ChatPage({
   const settingsOpener = useRef<HTMLElement | null>(null),
     settingsFrom = useRef('learning');
   const [searching, setSearching] = useState(false);
+  const searchFromDrawer = useRef(false);
   // Only this boolean is stored, per browser and app origin; unreadable storage means off.
   const [vim, setVim] = useState(savedVim);
   const layout = useLayoutSaving(c);
@@ -158,7 +159,10 @@ export default function ChatPage({
       // The narrow drawer offers the outline from every tab, as the old drawer did.
       contents={(mobile || tab === 'learning') && contents()}
       setDrawer={setDrawer}
-      search={() => setSearching(true)}
+      search={() => {
+        searchFromDrawer.current = drawer;
+        setSearching(true);
+      }}
       newChat={newChat}
       library={() => setTab('library')}
       settings={(e) =>
@@ -220,7 +224,14 @@ export default function ChatPage({
       {/* Outside the band so the palette keeps popover colours. */}
       <TreeSearch
         isOpen={searching}
-        onOpenChange={setSearching}
+        onOpenChange={(open) => {
+          setSearching(open);
+          // The drawer's Search button leaves with the drawer; focus returns to the drawer's opener.
+          if (!open && searchFromDrawer.current)
+            requestAnimationFrame(() =>
+              document.querySelector<HTMLElement>('.band-contents')?.focus(),
+            );
+        }}
         searchSource={titleSearch}
         onValueChange={(id) => id && openTree(id)}
       />

@@ -140,7 +140,7 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
     Object.defineProperty(exit, 'propertyName', { value: 'transform' });
     await act(async () => drawer.dispatchEvent(exit));
     assert.equal(document.querySelector('dialog[open]'), null, label);
-    assert.equal(document.activeElement, contents, `${label} returns focus to Contents`);
+    assert.ok(document.activeElement === contents, `${label} returns focus to Contents`);
   }
   await act(async () => contents.click());
   const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
