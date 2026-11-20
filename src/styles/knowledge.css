@@ -1,5 +1,5 @@
 /* Knowledge and Videos pages. Files load in main.tsx order, which is the cascade order. */
-/* Knowledge and Videos (mockup Knowledge, Videos): concepts on the deep field, familiarity by ring form, paper focus and selection. */
+/* Knowledge and Videos (mockup Knowledge, Videos): concepts on the deep field, familiarity by ring form, porcelain focus and selection. */
 .knowledge-panel > .knowledge-header {
   width: 100%;
   max-width: 70rem;
@@ -16,13 +16,13 @@
 }
 .knowledge-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 360px);
-  gap: calc(4 * var(--rabbithole-module));
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 320px);
+  gap: calc(2 * var(--rabbithole-module));
   align-items: start;
 }
 .knowledge-field {
   position: relative;
-  height: 32rem;
+  height: 35rem;
   min-width: 0;
   overflow: hidden;
   border-radius: var(--radius-container);
@@ -32,6 +32,10 @@
 }
 .knowledge-field:active {
   cursor: grabbing;
+}
+.knowledge-field .map-toolbar {
+  left: auto;
+  right: var(--spacing-3);
 }
 .knowledge-map {
   position: absolute;
@@ -49,21 +53,20 @@
   overflow: visible;
   pointer-events: none;
 }
+/* Topics are ground-coloured islands on the deep field; colour stays with the learning tree lines. */
 .knowledge-regions circle {
-  fill: currentColor;
-  fill-opacity: 0.1;
-  stroke: currentColor;
-  stroke-opacity: 0.4;
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
+  fill: var(--color-background-body);
 }
 .topic-label {
   position: absolute;
   width: min-content;
-  color: var(--color-text-primary);
-  font-size: 14px;
-  line-height: 1.3;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-heading);
+  font-size: 12px;
+  line-height: 1.2;
   font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   text-align: center;
   /* break-word split words when the 1/k scale rounds a min-content line a hair short. */
   overflow-wrap: normal;
@@ -103,11 +106,9 @@
   width: 14px;
   height: 14px;
 }
-.concept-point .fam[data-fill='none'] {
-  background: var(--color-background-muted);
-}
-.concept-point:hover .fam {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-text-primary) 15%, transparent);
+.concept-point:hover:not([aria-pressed='true']) .fam {
+  outline: 2px solid var(--color-border-emphasized);
+  outline-offset: 3px;
 }
 .concept-point[aria-pressed='true'] .fam {
   outline: 2px solid var(--rabbithole-paper);
@@ -119,80 +120,93 @@
   padding: 0 4px;
   border-radius: var(--radius-inner);
   background: color-mix(in oklab, var(--color-background-muted) 88%, transparent);
-  font-size: 12px;
+  font-family: var(--font-family-heading);
+  font-size: 13px;
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.concept-point[aria-pressed='true'] .concept-name {
+  color: var(--rabbithole-paper);
+  font-size: 15px;
+}
+/* Familiarity is ring form (empty, half, full), never hue: readable without colour. */
 .fam {
   display: inline-block;
   flex: none;
   width: 10px;
   height: 10px;
-  border: 1.5px solid var(--color-text-primary);
+  border: 2px solid var(--rabbithole-paper);
   border-radius: 50%;
+  background: var(--color-background-muted);
 }
 .fam[data-fill='some'] {
-  background: linear-gradient(90deg, var(--color-text-primary) 50%, transparent 50%);
+  background: linear-gradient(
+    90deg,
+    var(--rabbithole-paper) 50%,
+    var(--color-background-muted) 50%
+  );
 }
 .fam[data-fill='full'] {
-  background: var(--color-text-primary);
+  background: var(--rabbithole-paper);
 }
 .knowledge-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-top: 12px;
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  display: grid;
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--radius-inner);
+  background: var(--color-background-muted);
   font-size: 12px;
   color: var(--color-text-secondary);
+  pointer-events: none;
 }
 .knowledge-key span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-.knowledge-key-links {
-  margin-inline-start: auto;
+  gap: 8px;
 }
 .knowledge-detail {
   position: sticky;
   top: 0;
-  padding: 4px 0 0;
+  padding: 18px;
+  border-radius: var(--radius-container);
+  background: var(--color-background-surface);
 }
 .knowledge-detail h2 {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
 }
-.knowledge-reading,
-.knowledge-reading.astryx-text {
-  font-family: var(--rabbithole-font-reading);
+.knowledge-detail h3 {
+  margin-top: 4px;
   font-size: 15px;
-  line-height: 1.6;
-  color: var(--color-text-secondary);
+  font-weight: 700;
 }
-.knowledge-reading strong {
-  color: var(--color-text-primary);
-  font-weight: 600;
-}
-.knowledge-evidence {
+.knowledge-facts {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 16px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
   margin: 0;
   font-size: 13px;
+}
+.knowledge-facts dt {
   color: var(--color-text-secondary);
 }
-.knowledge-evidence dd {
+.knowledge-facts dd {
   margin: 0;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: end;
 }
-.knowledge-evidence .knowledge-evidence-head {
-  grid-column: 1 / -1;
-  margin-top: 8px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+.knowledge-empty {
+  padding: 72px 0;
+  text-align: center;
+  align-items: center;
+}
+.knowledge-empty h2 {
+  font-size: 20px;
 }
 .knowledge-content .astryx-button[data-variant='secondary'] {
   background: transparent;
@@ -200,11 +214,6 @@
 }
 .knowledge-content .astryx-button[data-variant='secondary']:hover {
   background: color-mix(in oklab, var(--color-text-primary) 8%, transparent);
-}
-.knowledge-actions button[aria-pressed='true'] {
-  border-color: var(--color-accent);
-  box-shadow: inset 0 0 0 1px var(--color-accent);
-  background: var(--color-accent-muted);
 }
 @media (max-width: 48rem) {
   .knowledge-panel > .knowledge-header {
@@ -222,8 +231,5 @@
   }
   .knowledge-field {
     height: 22rem;
-  }
-  .knowledge-key-links {
-    margin-inline-start: 0;
   }
 }

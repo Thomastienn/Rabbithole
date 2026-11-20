@@ -5,7 +5,6 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { ArrowsPointingOutIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { layoutConcepts, POINT_SPACE } from './knowledgeLayout';
 import type { KnowledgeState } from './useKnowledge';
-import { KnowledgeActions } from './KnowledgeControls';
 import ConceptDetail from './ConceptDetail';
 import {
   level,
@@ -96,15 +95,8 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
               }}
             >
               <svg className="knowledge-regions" aria-hidden="true">
-                {regions.map((r, i) => (
-                  <circle
-                    key={r.name}
-                    data-topic={r.name}
-                    cx={r.x}
-                    cy={r.y}
-                    r={r.radius}
-                    style={{ color: `var(--rabbithole-ink-${(i % 4) + 1})` }}
-                  />
+                {regions.map((r) => (
+                  <circle key={r.name} data-topic={r.name} cx={r.x} cy={r.y} r={r.radius} />
                 ))}
               </svg>
               <svg className="knowledge-links" aria-hidden="true">
@@ -221,27 +213,25 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                 onClick={fit}
               />
             </HStack>
-          </div>
-          <div className="knowledge-key" aria-label="Key">
-            <span>
-              <i className="fam" data-fill="none" />
-              Unfamiliar
-            </span>
-            <span>
-              <i className="fam" data-fill="some" />
-              Some familiarity
-            </span>
-            <span>
-              <i className="fam" data-fill="full" />
-              Familiar
-            </span>
-            <span className="knowledge-key-links">Line: related</span>
-            <span>Arrow: builds on</span>
+            <div className="knowledge-key" aria-label="Key">
+              <span>
+                <i className="fam" data-fill="none" />
+                Unfamiliar
+              </span>
+              <span>
+                <i className="fam" data-fill="some" />
+                Some familiarity
+              </span>
+              <span>
+                <i className="fam" data-fill="full" />
+                Familiar
+              </span>
+              <span>Line: related</span>
+              <span>Arrow: builds on</span>
+            </div>
           </div>
         </div>
-        <ConceptDetail graph={graph} selected={selected}>
-          <KnowledgeActions {...knowledge} selected={selected} />
-        </ConceptDetail>
+        <ConceptDetail graph={graph} selected={selected} />
       </div>
     )
   );
