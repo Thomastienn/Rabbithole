@@ -363,6 +363,30 @@ test('the sidebar holds Contents on the reading and map views, and a map-view ro
   );
 });
 
+test('Return to learning tree on Videos and Pieces goes back to the open conversation', async (t) => {
+  const { container, act, settle } = await mount(t, [summary]);
+  const sidebar = () => container.querySelector('nav.sidebar');
+  const chat = () => container.querySelector('#focused-chat');
+  for (const [label, id] of [
+    ['Videos', 'return-from-videos'],
+    ['Pieces', 'return-from-pieces'],
+  ]) {
+    await act(async () => button(sidebar(), label).click());
+    const panel = container.querySelector(`main[aria-label=${label}]`);
+    assert.ok(!panel.hidden, label);
+    assert.ok(
+      panel.querySelector(`#${id}`).compareDocumentPosition(panel.querySelector('h1')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      `${label}: return sits above the page head`,
+    );
+    await act(async () => panel.querySelector(`#${id}`).click());
+    await settle();
+    assert.ok(panel.hidden, label);
+    assert.equal(chat().style.display, 'flex', label);
+    assert.match(chat().textContent, /What are hyphae\?/, `${label}: the same conversation`);
+  }
+});
+
 test('focus mode toggles from chat, map and non-chat pages without consuming composer or Vim keys', async (t) => {
   const { container, act } = await mount(t, [summary], { vim: true });
   const key = async (target, options = {}) => {

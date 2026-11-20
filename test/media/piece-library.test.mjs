@@ -30,10 +30,12 @@ test('the Pieces view searches and pages, with a no-results message', async (t) 
   const cards = () =>
     [...container.querySelectorAll('.piece-library h3')].map((e) => e.textContent);
   const button = (label) =>
-    [...container.querySelectorAll('button')].find((b) => b.textContent === label);
+    [...container.querySelectorAll('button')].find(
+      (b) => (b.textContent || b.getAttribute('aria-label')) === label,
+    );
   assert.equal(cards().length, 24);
   const pages = container.querySelector('nav[aria-label="Piece pages"]');
-  assert.match(pages.textContent, /Page 1 of 2/);
+  assert.match(pages.textContent, /1–24 of 30/);
   assert.ok(button('Previous page').disabled);
   await act(async () => button('Next page').click());
   await settle(act);

@@ -161,10 +161,11 @@ export const media = {
       .run(next, input, artifact.kind === 'video' ? randomUUID() : null, conversation, id);
     return result.changes ? this.artifact(conversation, next) : null;
   },
+  // `origin` is the title of the conversation still holding this video, or null once it is deleted or regenerated.
   library() {
     return this.db
       .prepare(
-        'SELECT id,title,description,duration,created FROM videos ORDER BY created DESC,rowid DESC',
+        "SELECT v.id,v.title,v.description,v.duration,v.created,t.title AS origin FROM videos v LEFT JOIN artifacts a ON a.id=v.id AND a.kind='video' LEFT JOIN trees t ON t.id=a.conversation ORDER BY v.created DESC,v.rowid DESC",
       )
       .all()
       .map((v) => ({ ...v }));
