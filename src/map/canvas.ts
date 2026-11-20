@@ -192,3 +192,39 @@ export function foldHierarchy<T extends { id: string; parent: string | null }>(
   }
   return result;
 }
+
+// Map line routing (epic Rabbithole-ldr): out of the source ring sideways, a 45° turn, a vertical run
+// through the gutter centre when the rise exceeds the run, a 45° turn and sideways into the target ring.
+// shortcut: only the two linked cards are avoided, not third cards in the gutter; pass all boxes if they collide.
+export function routeLine(source: Point, target: Point, from: Box, to: Box): Point[] {
+  const right = (box: Box) => box.x + box.width;
+  // A child left of its parent mirrors the rule; overlapping columns (above or below) run outside both cards.
+  const facing = to.x >= right(from) ? 1 : right(to) <= from.x ? -1 : 0;
+  const start = { x: facing < 0 ? from.x : right(from), y: source.y };
+  const end = { x: facing > 0 ? to.x : right(to), y: target.y };
+  const rise = Math.abs(end.y - start.y),
+    up = Math.sign(end.y - start.y);
+  if (rise < 1) return [start, { x: end.x, y: start.y }];
+  const bend = (x: number, k: number) => [
+    start,
+    { x: x - (facing || 1) * k, y: start.y },
+    { x, y: start.y + up * k },
+    { x, y: end.y - up * k },
+    { x: x + (facing || -1) * k, y: end.y },
+    end,
+  ];
+  if (!facing) return bend(Math.max(start.x, end.x) + 40, Math.min(16, rise / 2));
+  const middle = (start.x + end.x) / 2,
+    run = Math.abs(end.x - start.x);
+  // A rise within the run is one 45° diagonal centred in the gutter, with a short level stub at each ring.
+  if (rise <= run - 16)
+    return [
+      start,
+      { x: middle - (facing * rise) / 2, y: start.y },
+      { x: middle + (facing * rise) / 2, y: end.y },
+      end,
+    ];
+  return bend(middle, Math.min(16, run / 2, rise / 2));
+}
+
+export const linePath = (points: Point[]) => `M${points.map((p) => `${p.x} ${p.y}`).join('L')}`;

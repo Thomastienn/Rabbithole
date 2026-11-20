@@ -218,6 +218,7 @@ export default function TreeOverview({
               : noStubs,
             folded: folded.has(id),
             marked: marked.includes(id),
+            created: createdBranches.current.get(id),
             toggle,
           },
         };
@@ -287,7 +288,7 @@ export default function TreeOverview({
               ? cachedHandle.y + cachedHandle.height / 2
               : 0;
         const preferred = parent
-          ? { x: parent.position.x + parent.measured!.width! + 72, y: parent.position.y + offset }
+          ? { x: parent.position.x + parent.measured!.width! + 96, y: parent.position.y + offset }
           : { x: 0, y: 0 };
         const occupied = next
           .filter(

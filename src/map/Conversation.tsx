@@ -1,4 +1,4 @@
-import { createContext, memo, useContext, useEffect, useRef } from 'react';
+import { createContext, memo, useContext, useEffect, useRef, useState } from 'react';
 import {
   Handle,
   Position,
@@ -42,6 +42,8 @@ export type ConversationNode = Node<
     stubs: { child: Summary; beneath: number; address: string; ink: number }[];
     folded: boolean;
     marked?: boolean;
+    // When this conversation's branch was created on this map, for the station landing.
+    created?: number;
     toggle: (id: string) => void;
   },
   'conversation'
@@ -63,6 +65,10 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
     return () => cancelAnimationFrame(frame);
   }, [data.focus, data.focusControl, t.id, initialized]);
   const preview = data.preview;
+  // Negative delay keeps culling/remounts from landing the station again.
+  const [since] = useState(() =>
+    data.created ? Math.min(0, data.created - performance.now()) : 0,
+  );
   const handle = (child: Summary, style?: CSSProperties) => {
     const stub = data.stubs.find((s) => s.child === child);
     const name = `Show hidden branch ${child.title}${stub?.beneath ? `, ${stub.beneath} more ${stub.beneath === 1 ? 'conversation' : 'conversations'} hidden beneath` : ''}`;
@@ -109,7 +115,14 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
       data-marked={data.marked}
       style={inkStyle(data.ink)}
     >
-      {t.parent && <Handle type="target" position={Position.Left} />}
+      {t.parent && (
+        <Handle
+          type="target"
+          position={Position.Left}
+          className={data.created ? 'station-land' : undefined}
+          style={{ '--since': `${since}ms` } as CSSProperties}
+        />
+      )}
       <Handle id="ghost" type="source" position={Position.Right} className="ghost-handle" />
       <HStack gap={1} vAlign="center" className="node-band">
         {data.childCount > 0 && (

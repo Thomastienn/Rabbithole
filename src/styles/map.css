@@ -89,6 +89,7 @@
 @media (prefers-reduced-motion: reduce) {
   .conversation-box[data-active='true'] .activity-dot,
   .react-flow__edge .react-flow__edge-path.branch-new,
+  .react-flow__node .react-flow__handle.station-land,
   .selection-action,
   .reply-status::before,
   .visual-shimmer,
@@ -245,13 +246,24 @@
   stroke: var(--ink, var(--rabbithole-branch-color));
   stroke-width: var(--rabbithole-branch-width);
   stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .react-flow__edge.branch-focused .react-flow__edge-path {
   stroke: var(--ink, var(--color-accent));
   stroke-width: var(--rabbithole-branch-focus-width);
 }
+/* Exponential ease-out: the one motion of the Line Diagram world. */
 .react-flow__edge-path.branch-new {
-  animation: branch-draw var(--rabbithole-branch-draw-duration) ease-out;
+  animation: branch-draw var(--rabbithole-branch-draw-duration) cubic-bezier(0.16, 1, 0.3, 1);
+}
+.react-flow__handle.station-land {
+  animation: station-land var(--duration-fast) linear backwards;
+  animation-delay: calc(var(--rabbithole-branch-draw-duration) + var(--since));
+}
+@keyframes station-land {
+  from {
+    opacity: 0;
+  }
 }
 @keyframes branch-draw {
   from {

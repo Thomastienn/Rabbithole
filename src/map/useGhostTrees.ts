@@ -79,6 +79,7 @@ export function useGhostTrees({
       ghostNodes.flatMap(({ id, data: { ghost } }): Edge[] =>
         ghost.links.map((link) => ({
           id: `${id}-${link}`,
+          type: 'branch',
           source: link,
           sourceHandle: 'ghost',
           target: id,
