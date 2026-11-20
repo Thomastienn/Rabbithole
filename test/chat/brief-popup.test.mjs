@@ -22,6 +22,7 @@ test('pointing at or focusing a suggestion shows its saved brief explanation, el
     await act(async () => update((v) => ({ ...v, briefs })));
     await act(async () => point(underline()));
     assert.equal(tip().textContent, 'Do it again.');
+    assert.equal(tip().children.length, 0, 'a saved plain one stays plain text');
     assert.equal(underline().getAttribute('aria-describedby'), null, 'pointer leaves focus alone');
     await act(async () => underline().focus());
     assert.equal(underline().getAttribute('aria-describedby'), tip().id);
@@ -46,4 +47,32 @@ test('pointing at or focusing a suggestion shows its saved brief explanation, el
     assert.equal(tip().textContent, 'Repeating means…');
     await act(async () => underline().click());
     assert.deepEqual(opened, ['child'], 'clicking an explored one still opens its child');
+});
+
+test('a brief explanation shows bold, italics, code and math inline, never headings, lists or links', async (t) => {
+    const { container, act, update, underline } = await passage(t);
+    const explanation =
+        '# Loops\n\nTo **repeat** is to run *again*: `for` runs $n$ times.\n\n- once more\n\n[More](https://example.com)';
+    await act(async () =>
+        update((v) => ({
+            ...v,
+            suggestions: {
+                message: 'reply',
+                status: 'ready',
+                passages: [{ start: 10, end: 19, text: 'repeat 😀', concept: 'Repeat' }],
+            },
+            briefs: [{ message: 'reply', start: 10, end: 19, explanation }],
+        })),
+    );
+    await act(async () => point(underline()));
+    const tip = container.querySelector('[role="tooltip"]');
+    assert.equal(tip.querySelector('strong').textContent, 'repeat');
+    assert.equal(tip.querySelector('em').textContent, 'again');
+    assert.equal(tip.querySelector('code').textContent, 'for');
+    assert.ok(tip.querySelector('math'), 'inline math renders as a formula');
+    assert.equal(tip.querySelector('h1, h2, h3, h4, h5, h6, p, ul, ol, li, a'), null);
+    assert.match(
+        tip.textContent,
+        /^Loops To repeat is to run again: for runs .+ times\. once more More$/,
+    );
 });

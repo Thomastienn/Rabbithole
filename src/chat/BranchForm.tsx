@@ -6,6 +6,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Button } from '@astryxdesign/core/Button';
 import ArrowUpIcon from '@heroicons/react/24/outline/ArrowUpIcon';
 import type { Anchor } from './branch';
+import { renderInline } from '../markdown/inlineMarkdown';
 
 export default function BranchForm({
     branch,
@@ -80,7 +81,7 @@ export default function BranchForm({
         >
             <VStack padding={2} gap={2}>
                 {text ? (
-                    <Text className="branch-brief">{text}</Text>
+                    <Text className="branch-brief">{renderInline(text)}</Text>
                 ) : want && mine?.failed ? (
                     <HStack gap={1} vAlign="center" role="alert">
                         <Text className="branch-brief">{mine.failed}</Text>
