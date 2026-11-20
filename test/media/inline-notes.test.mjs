@@ -63,6 +63,18 @@ test('groundwork after reply text is ignored, a video offer beside media is skip
     });
 });
 
+test('text after [[end]] is dropped, while a call written after it still runs', () => {
+    const raw =
+        'A mutex guards state.\n[[next: Why?]]\n[[end]]\n\nA mutex guards state. [[next: Again?]]\n<tool_call>{"name":"show_visual","arguments":{"title":"Lock"}}</tool_call> More.\n[[end]]';
+    const out = diagramReply(raw, true);
+    assert.equal(out.text, 'A mutex guards state.\n\n');
+    assert.deepEqual(markerNotes(out.text, out.markers).questions, ['Why?']);
+    assert.equal(out.calls.length, 1);
+    assert.equal(out.calls[0].position, out.text.length);
+    // [[end]] inside code is text and ends nothing.
+    assert.equal(diagramReply('Write `[[end]]` last.', true).text, 'Write `[[end]]` last.');
+});
+
 test('notes stream as their markers close', () => {
     const raw = '[[groundwork: Threads]]\nA [[mutex]] guards state.\n[[next: Why?]]\n[[end]]';
     for (let i = 1; i <= raw.length; i++) {

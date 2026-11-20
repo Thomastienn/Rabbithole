@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
-import { STALLED } from './chatStream.mjs';
+import { ENDED, STALLED } from './chatStream.mjs';
 import { ClaudeRunner } from './claudeRunner.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
@@ -219,6 +219,8 @@ export class Claude {
             result;
         const nativeEvents = toolEvents(emit);
         const blocks = new Map();
+        // Each model message's usage, for a run the server ends before its final summary.
+        const messages = [];
         const nativeCall = (block) => ['WebSearch', 'WebFetch'].includes(block?.name);
         try {
             await new Promise((resolve, reject) => {
@@ -233,6 +235,7 @@ export class Claude {
                 };
                 idle();
                 const onLine = (line) => {
+                    if (signal.aborted) return;
                     idle();
                     let m;
                     try {
@@ -245,7 +248,11 @@ export class Claude {
                     if (m.type === 'stream_event' && m.event?.type === 'message_start') {
                         item = m.event.message?.id;
                         blocks.clear();
+                        messages.push({ ...m.event.message?.usage });
+                        emit({ type: 'response' });
                     }
+                    if (m.type === 'stream_event' && m.event?.type === 'message_delta')
+                        Object.assign(messages.at(-1) ?? {}, m.event.usage);
                     if (toolsOn && m.type === 'stream_event') {
                         const e = m.event;
                         if (e?.type === 'content_block_start' && nativeCall(e.content_block)) {
@@ -332,12 +339,23 @@ export class Claude {
             this.children.delete(child);
             if (warm) this.runner.release(child);
         }
-        if (signal.aborted) {
+        if (signal.aborted && signal.reason !== ENDED) {
             emit({ type: 'status', status: 'interrupted' });
             return;
         }
         // Cache writes are billed input, so they count as input; cache reads are shown separately. Failed runs keep what they report.
-        const u = result?.usage;
+        const sum = (key) => messages.reduce((n, u) => n + (u[key] ?? 0), 0);
+        const u =
+            signal.reason === ENDED
+                ? Object.fromEntries(
+                      [
+                          'input_tokens',
+                          'cache_creation_input_tokens',
+                          'cache_read_input_tokens',
+                          'output_tokens',
+                      ].map((k) => [k, sum(k)]),
+                  )
+                : result?.usage;
         const reportedModels = Object.values(result?.modelUsage ?? {});
         const contextWindow =
             reportedModels.length === 1 ? reportedModels[0]?.contextWindow : undefined;
@@ -351,7 +369,7 @@ export class Claude {
                     ...(contextWindow && { contextWindow }),
                 },
             });
-        if (!result || result.is_error) {
+        if (signal.reason !== ENDED && (!result || result.is_error)) {
             emit({ type: 'status', status: 'failed' });
             // A missing resumed session (num_turns 0) is dropped so the retry starts fresh with saved history.
             if (tree.thread && result?.subtype === 'error_during_execution' && !result.num_turns)

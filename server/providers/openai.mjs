@@ -20,6 +20,7 @@ import {
     chunkUsage,
     history,
     idleLimit,
+    ENDED,
     STALLED,
     redactStream,
     roundText,
@@ -341,6 +342,9 @@ class Endpoint {
             const total = { input: 0, output: 0, cacheRead: 0 };
             // No call cap: the loop ends when the model answers without tool calls or with only end-of-reply app calls, or on Stop.
             while (true) {
+                // The server may end the run here once the reply's end section is in (ADR 0016).
+                emit({ type: 'response' });
+                if (signal.reason === ENDED) break;
                 call = idleLimit(signal);
                 const response = await this.#fetch(saved, '/chat/completions', call, {
                     model,
