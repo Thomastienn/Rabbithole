@@ -398,12 +398,16 @@ test('rawRange paints exactly the raw passage rawOffsets would capture', () => {
             range = rawRange(root, start, start + text.length);
         assert.deepEqual(rawOffsets(root, range), { start, end: start + text.length }, text);
     }
-    const math = raw.indexOf('x^2'),
-        range = rawRange(root, math, math + 1);
+    const math = raw.indexOf('x^2');
     assert.deepEqual(
-        rawOffsets(root, range),
+        rawOffsets(root, rawRange(root, math, math + 1)),
+        { start: math, end: math + 1 },
+        'a formula symbol is its own LaTeX',
+    );
+    assert.deepEqual(
+        rawOffsets(root, rawRange(root, math, math + 3)),
         { start: math - 1, end: math + 4 },
-        'atomic math is covered whole',
+        'every symbol of a formula is the whole formula',
     );
     assert.equal(rawRange(root, raw.length, raw.length + 3), undefined);
 });

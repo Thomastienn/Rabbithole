@@ -36,3 +36,42 @@ test('keyboard passage selection keeps exact offsets and returns focus on Escape
     assert.equal(document.activeElement, section());
     assert.equal(button(container, 'Ask about selection'), undefined);
 });
+
+test('a drag inside a formula shows and asks about the widened term, which returns underlined', async (t) => {
+    const { container, act, update, branched, opened, section } = await passage(t);
+    const text = 'So $E = mc^2$ holds.';
+    await act(async () => update((v) => ({ ...v, message: { ...v.message, text } })));
+    const symbol = (s) =>
+        [...section().querySelectorAll('math *')].find(
+            (e) => !e.children.length && e.textContent === s,
+        ).firstChild;
+    const range = document.createRange();
+    range.setStart(symbol('m'), 0);
+    range.setEnd(symbol('c'), 1);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    await act(async () => section().dispatchEvent(new MouseEvent('mouseup', { bubbles: true })));
+    assert.equal(window.getSelection().toString(), 'mc2', 'the highlight snaps to the whole term');
+    await act(async () => button(container, 'Ask about selection').click());
+    assert.deepEqual(branched.at(-1)[0], {
+        messageId: 'reply',
+        start: 8,
+        end: 12,
+        text: 'mc^2',
+        at: { x: 0, y: 10, below: 25 },
+    });
+    await act(async () =>
+        update((v) => ({ ...v, branched: [{ start: 8, end: 12, text: 'mc^2', child: 'child' }] })),
+    );
+    const pieces = [...section().querySelectorAll('math .suggestion.explored')];
+    assert.deepEqual(
+        pieces.map((p) => p.textContent),
+        ['m', 'c2'],
+    );
+    window.getSelection().removeAllRanges();
+    await act(async () => {
+        section().dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        pieces[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    assert.deepEqual(opened, ['child']);
+});
