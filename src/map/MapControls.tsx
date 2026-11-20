@@ -8,80 +8,80 @@ import { inkStyle } from './treeList';
 import type { familyLegend } from './mapState';
 
 export function InkLegend({
-  legend,
-  root,
+    legend,
+    root,
 }: {
-  legend: ReturnType<typeof familyLegend>;
-  root: string;
+    legend: ReturnType<typeof familyLegend>;
+    root: string;
 }) {
-  return (
-    <aside className="ink-legend" aria-label="Branch family inks" tabIndex={0}>
-      <ul>
-        {legend.map((t) => (
-          <li key={t.id} style={inkStyle(t.ink)}>
-            <span className="contents-dot" aria-hidden />
-            <span>
-              {t.address} {t.title}
-              {t.id === root && ' · trunk'}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </aside>
-  );
+    return (
+        <aside className="ink-legend" aria-label="Branch family inks" tabIndex={0}>
+            <ul>
+                {legend.map((t) => (
+                    <li key={t.id} style={inkStyle(t.ink)}>
+                        <span className="contents-dot" aria-hidden />
+                        <span>
+                            {t.address} {t.title}
+                            {t.id === root && ' · trunk'}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        </aside>
+    );
 }
 
 export function MapToolbar({
-  zoom,
-  zoomOut,
-  zoomIn,
-  fitTree,
-  children,
+    zoom,
+    zoomOut,
+    zoomIn,
+    fitTree,
+    children,
 }: {
-  zoom: number;
-  zoomOut: () => void;
-  zoomIn: () => void;
-  fitTree: () => void;
-  children: ReactNode;
+    zoom: number;
+    zoomOut: () => void;
+    zoomIn: () => void;
+    fitTree: () => void;
+    children: ReactNode;
 }) {
-  return (
-    <HStack
-      padding={1}
-      gap={1}
-      vAlign="center"
-      className="map-toolbar"
-      role="group"
-      aria-label="Tree view controls"
-    >
-      <IconButton
-        label="Zoom out"
-        tooltip="Zoom out"
-        icon={<MinusIcon />}
-        variant="ghost"
-        size="sm"
-        onClick={zoomOut}
-      />
-      <Text className="sr-only">Current zoom</Text>
-      <Text data-zoom="" type="supporting" hasTabularNumbers>
-        {zoomLabel(zoom)}
-      </Text>
-      <IconButton
-        label="Zoom in"
-        tooltip="Zoom in"
-        icon={<PlusIcon />}
-        variant="ghost"
-        size="sm"
-        onClick={zoomIn}
-      />
-      <IconButton
-        label="Fit tree"
-        tooltip="Fit tree"
-        icon={<ArrowsPointingOutIcon />}
-        variant="ghost"
-        size="sm"
-        onClick={fitTree}
-      />
-      {children}
-    </HStack>
-  );
+    return (
+        <HStack
+            padding={1}
+            gap={1}
+            vAlign="center"
+            className="map-toolbar"
+            role="group"
+            aria-label="Tree view controls"
+        >
+            <IconButton
+                label="Zoom out"
+                tooltip="Zoom out"
+                icon={<MinusIcon />}
+                variant="ghost"
+                size="sm"
+                onClick={zoomOut}
+            />
+            <Text className="sr-only">Current zoom</Text>
+            <Text data-zoom="" type="supporting" hasTabularNumbers>
+                {zoomLabel(zoom)}
+            </Text>
+            <IconButton
+                label="Zoom in"
+                tooltip="Zoom in"
+                icon={<PlusIcon />}
+                variant="ghost"
+                size="sm"
+                onClick={zoomIn}
+            />
+            <IconButton
+                label="Fit tree"
+                tooltip="Fit tree"
+                icon={<ArrowsPointingOutIcon />}
+                variant="ghost"
+                size="sm"
+                onClick={fitTree}
+            />
+            {children}
+        </HStack>
+    );
 }

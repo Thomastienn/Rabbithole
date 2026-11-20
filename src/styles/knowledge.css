@@ -1,235 +1,235 @@
 /* Knowledge and Videos pages. Files load in main.tsx order, which is the cascade order. */
 /* Knowledge and Videos (mockup Knowledge, Videos): concepts on the deep field, familiarity by ring form, porcelain focus and selection. */
 .knowledge-panel > .knowledge-header {
-  width: 100%;
-  max-width: 70rem;
-  margin-inline: auto;
-  padding-inline: calc(4 * var(--rabbithole-module));
-  padding-block-end: 0;
+    width: 100%;
+    max-width: 70rem;
+    margin-inline: auto;
+    padding-inline: calc(4 * var(--rabbithole-module));
+    padding-block-end: 0;
 }
 .knowledge-panel > .knowledge-header + .knowledge-content {
-  padding-block-start: calc(3 * var(--rabbithole-module));
+    padding-block-start: calc(3 * var(--rabbithole-module));
 }
 .knowledge-content :focus-visible {
-  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
-  outline-offset: var(--focus-outline-offset);
+    outline: var(--focus-outline-width) solid var(--rabbithole-paper);
+    outline-offset: var(--focus-outline-offset);
 }
 .knowledge-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 320px);
-  gap: calc(2 * var(--rabbithole-module));
-  align-items: start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 320px);
+    gap: calc(2 * var(--rabbithole-module));
+    align-items: start;
 }
 .knowledge-field {
-  position: relative;
-  height: 35rem;
-  min-width: 0;
-  overflow: hidden;
-  border-radius: var(--radius-container);
-  background: var(--color-background-muted);
-  cursor: grab;
-  touch-action: none;
+    position: relative;
+    height: 35rem;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--radius-container);
+    background: var(--color-background-muted);
+    cursor: grab;
+    touch-action: none;
 }
 .knowledge-field:active {
-  cursor: grabbing;
+    cursor: grabbing;
 }
 .knowledge-field .map-toolbar {
-  left: auto;
-  right: var(--spacing-3);
+    left: auto;
+    right: var(--spacing-3);
 }
 .knowledge-map {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform-origin: 0 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
 }
 .knowledge-links,
 .knowledge-regions {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 1px;
-  height: 1px;
-  overflow: visible;
-  pointer-events: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    overflow: visible;
+    pointer-events: none;
 }
 /* Topics are ground-coloured islands on the deep field; colour stays with the learning tree lines. */
 .knowledge-regions circle {
-  fill: var(--color-background-body);
+    fill: var(--color-background-body);
 }
 .topic-label {
-  position: absolute;
-  width: min-content;
-  color: var(--color-text-secondary);
-  font-family: var(--font-family-heading);
-  font-size: 12px;
-  line-height: 1.2;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  text-align: center;
-  /* break-word split words when the 1/k scale rounds a min-content line a hair short. */
-  overflow-wrap: normal;
+    position: absolute;
+    width: min-content;
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-heading);
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    text-align: center;
+    /* break-word split words when the 1/k scale rounds a min-content line a hair short. */
+    overflow-wrap: normal;
 }
 .knowledge-links line {
-  stroke: var(--color-border-emphasized);
-  stroke-width: 1.5px;
-  stroke-linecap: round;
+    stroke: var(--color-border-emphasized);
+    stroke-width: 1.5px;
+    stroke-linecap: round;
 }
 .knowledge-links line[data-kind='builds on'] {
-  stroke: var(--color-text-secondary);
+    stroke: var(--color-text-secondary);
 }
 .knowledge-links line[data-selected='true'] {
-  stroke: var(--rabbithole-paper);
-  stroke-width: 2px;
+    stroke: var(--rabbithole-paper);
+    stroke-width: 2px;
 }
 .knowledge-links marker path {
-  fill: var(--color-text-secondary);
+    fill: var(--color-text-secondary);
 }
 /* Concept points: the ring sits on the layout position; the label hangs below it. */
 .concept-point {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-inner);
-  background: none;
-  color: var(--color-text-primary);
-  font: inherit;
-  cursor: pointer;
-  transform: translate(-50%, -7px);
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-inner);
+    background: none;
+    color: var(--color-text-primary);
+    font: inherit;
+    cursor: pointer;
+    transform: translate(-50%, -7px);
 }
 .concept-point .fam {
-  width: 14px;
-  height: 14px;
+    width: 14px;
+    height: 14px;
 }
 .concept-point:hover:not([aria-pressed='true']) .fam {
-  outline: 2px solid var(--color-border-emphasized);
-  outline-offset: 3px;
+    outline: 2px solid var(--color-border-emphasized);
+    outline-offset: 3px;
 }
 .concept-point[aria-pressed='true'] .fam {
-  outline: 2px solid var(--rabbithole-paper);
-  outline-offset: 3px;
+    outline: 2px solid var(--rabbithole-paper);
+    outline-offset: 3px;
 }
 .concept-name {
-  max-width: 11rem;
-  overflow: hidden;
-  padding: 0 4px;
-  border-radius: var(--radius-inner);
-  background: color-mix(in oklab, var(--color-background-muted) 88%, transparent);
-  font-family: var(--font-family-heading);
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+    max-width: 11rem;
+    overflow: hidden;
+    padding: 0 4px;
+    border-radius: var(--radius-inner);
+    background: color-mix(in oklab, var(--color-background-muted) 88%, transparent);
+    font-family: var(--font-family-heading);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 .concept-point[aria-pressed='true'] .concept-name {
-  color: var(--rabbithole-paper);
-  font-size: 15px;
+    color: var(--rabbithole-paper);
+    font-size: 15px;
 }
 /* Familiarity is ring form (empty, half, full), never hue: readable without colour. */
 .fam {
-  display: inline-block;
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--rabbithole-paper);
-  border-radius: 50%;
-  background: var(--color-background-muted);
+    display: inline-block;
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--rabbithole-paper);
+    border-radius: 50%;
+    background: var(--color-background-muted);
 }
 .fam[data-fill='some'] {
-  background: linear-gradient(
-    90deg,
-    var(--rabbithole-paper) 50%,
-    var(--color-background-muted) 50%
-  );
+    background: linear-gradient(
+        90deg,
+        var(--rabbithole-paper) 50%,
+        var(--color-background-muted) 50%
+    );
 }
 .fam[data-fill='full'] {
-  background: var(--rabbithole-paper);
+    background: var(--rabbithole-paper);
 }
 .knowledge-key {
-  position: absolute;
-  left: 14px;
-  bottom: 14px;
-  display: grid;
-  gap: 6px;
-  padding: 4px;
-  border-radius: var(--radius-inner);
-  background: var(--color-background-muted);
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  pointer-events: none;
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    display: grid;
+    gap: 6px;
+    padding: 4px;
+    border-radius: var(--radius-inner);
+    background: var(--color-background-muted);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    pointer-events: none;
 }
 .knowledge-key span {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 .knowledge-detail {
-  position: sticky;
-  top: 0;
-  padding: 18px;
-  border-radius: var(--radius-container);
-  background: var(--color-background-surface);
+    position: sticky;
+    top: 0;
+    padding: 18px;
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
 }
 .knowledge-detail h2 {
-  font-size: 24px;
-  font-weight: 700;
+    font-size: 24px;
+    font-weight: 700;
 }
 .knowledge-detail h3 {
-  margin-top: 4px;
-  font-size: 15px;
-  font-weight: 700;
+    margin-top: 4px;
+    font-size: 15px;
+    font-weight: 700;
 }
 .knowledge-facts {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px 12px;
-  margin: 0;
-  font-size: 13px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 12px;
+    margin: 0;
+    font-size: 13px;
 }
 .knowledge-facts dt {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }
 .knowledge-facts dd {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-variant-numeric: tabular-nums;
-  text-align: end;
+    margin: 0;
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
 }
 .knowledge-empty {
-  padding: 72px 0;
-  text-align: center;
-  align-items: center;
+    padding: 72px 0;
+    text-align: center;
+    align-items: center;
 }
 .knowledge-empty h2 {
-  font-size: 20px;
+    font-size: 20px;
 }
 .knowledge-content .astryx-button[data-variant='secondary'] {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--color-border-emphasized);
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--color-border-emphasized);
 }
 .knowledge-content .astryx-button[data-variant='secondary']:hover {
-  background: color-mix(in oklab, var(--color-text-primary) 8%, transparent);
+    background: color-mix(in oklab, var(--color-text-primary) 8%, transparent);
 }
 @media (max-width: 48rem) {
-  .knowledge-panel > .knowledge-header {
-    padding-inline: calc(2 * var(--rabbithole-module));
-  }
-  .knowledge-content {
-    padding: calc(3 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module))
-      calc(6 * var(--rabbithole-module));
-  }
-  .knowledge-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .knowledge-detail {
-    position: static;
-  }
-  .knowledge-field {
-    height: 22rem;
-  }
+    .knowledge-panel > .knowledge-header {
+        padding-inline: calc(2 * var(--rabbithole-module));
+    }
+    .knowledge-content {
+        padding: calc(3 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module))
+            calc(6 * var(--rabbithole-module));
+    }
+    .knowledge-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .knowledge-detail {
+        position: static;
+    }
+    .knowledge-field {
+        height: 22rem;
+    }
 }

@@ -1,499 +1,499 @@
 /* Visuals, videos, viewers, diagrams and the selection action. Files load in main.tsx order, which is the cascade order. */
 /* Visuals blend into the reply: no card chrome, full column width, height from the frame's reported content. */
 .visual {
-  position: relative;
-  margin: 20px 0;
-  min-width: 0;
+    position: relative;
+    margin: 20px 0;
+    min-width: 0;
 }
 .visual-shimmer {
-  display: block;
-  width: 100%;
-  height: 180px;
+    display: block;
+    width: 100%;
+    height: 180px;
 }
 .visual-frame {
-  display: block;
-  width: 100%;
-  height: 0;
-  border: 0;
-  background: transparent;
+    display: block;
+    width: 100%;
+    height: 0;
+    border: 0;
+    background: transparent;
 }
 /* Chrome skips rendering hidden cross-origin frames, so a loading frame sits transparent over the shimmer instead. */
 .visual-frame:not([data-ready]) {
-  position: absolute;
-  inset: 0;
-  height: 100%;
-  opacity: 0;
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    opacity: 0;
 }
 /* A visual's child branches: the passage address chip as a button, in a row under the figure. */
 .visual-chips {
-  margin-top: 6px;
+    margin-top: 6px;
 }
 .visual-chips .passage-address {
-  margin: 0;
-  border: 0;
-  vertical-align: baseline;
-  cursor: pointer;
+    margin: 0;
+    border: 0;
+    vertical-align: baseline;
+    cursor: pointer;
 }
 .visual-actions {
-  position: absolute;
-  inset: 0 0 auto auto;
-  gap: 2px;
-  padding: 2px;
-  border: thin solid var(--color-border);
-  background: var(--color-background-popover);
-  border-radius: var(--radius-container);
+    position: absolute;
+    inset: 0 0 auto auto;
+    gap: 2px;
+    padding: 2px;
+    border: thin solid var(--color-border);
+    background: var(--color-background-popover);
+    border-radius: var(--radius-container);
 }
 .diagram-card {
-  align-self: stretch;
-  min-width: 0;
-  max-width: 100%;
-  border-radius: var(--radius-container);
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-  overflow-wrap: anywhere;
+    align-self: stretch;
+    min-width: 0;
+    max-width: 100%;
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
 }
 .diagram-card h3 {
-  font-size: 14px;
-  font-weight: 600;
+    font-size: 14px;
+    font-weight: 600;
 }
 .diagram-open {
-  display: block;
-  max-width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: zoom-in;
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
 }
 .diagram-open img {
-  display: block;
-  max-width: 100%;
-  height: auto;
+    display: block;
+    max-width: 100%;
+    height: auto;
 }
 .video-library {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
-  gap: 24px 20px;
-  align-items: start;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: 24px 20px;
+    align-items: start;
 }
 .video-volume {
-  min-width: 0;
-  overflow-wrap: anywhere;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 /* Library cards (mockup Videos): deep-field frame, one porcelain Play disc and a raised duration chip. */
 .video-volume .video-frame {
-  background: var(--color-background-muted);
+    background: var(--color-background-muted);
 }
 .video-volume .video-play {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  translate: -50% -50%;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--rabbithole-paper);
-  color: var(--rabbithole-paper-ink);
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% -50%;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--rabbithole-paper);
+    color: var(--rabbithole-paper-ink);
 }
 .video-volume .video-play:focus-visible {
-  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
-  outline-offset: 3px;
+    outline: var(--focus-outline-width) solid var(--rabbithole-paper);
+    outline-offset: 3px;
 }
 .video-duration {
-  position: absolute;
-  inset: auto 8px 8px auto;
-  padding: 1px 6px;
-  border-radius: var(--radius-inner);
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+    position: absolute;
+    inset: auto 8px 8px auto;
+    padding: 1px 6px;
+    border-radius: var(--radius-inner);
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
 }
 .video-volume h3 {
-  margin-top: 4px;
-  font-size: 17px;
-  font-weight: 700;
+    margin-top: 4px;
+    font-size: 17px;
+    font-weight: 700;
 }
 .video-volume-actions {
-  margin-inline-start: -10px;
+    margin-inline-start: -10px;
 }
 .video-frame {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-container);
-  background: var(--color-background-body);
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-container);
+    background: var(--color-background-body);
 }
 .video-stage {
-  position: relative;
+    position: relative;
 }
 .video-stage > .astryx-skeleton,
 .video-controls {
-  position: absolute;
-  inset: 0;
+    position: absolute;
+    inset: 0;
 }
 .video-card[data-state='ready'] .video-controls {
-  inset: var(--spacing-2) var(--spacing-2) auto auto;
-  padding: 0;
-  background: var(--color-background-surface);
-  border-radius: var(--radius-element);
+    inset: var(--spacing-2) var(--spacing-2) auto auto;
+    padding: 0;
+    background: var(--color-background-surface);
+    border-radius: var(--radius-element);
 }
 .video-inline {
-  min-width: 0;
-  width: 100%;
-  overflow-wrap: anywhere;
+    min-width: 0;
+    width: 100%;
+    overflow-wrap: anywhere;
 }
 .video-inline .astryx-text {
-  font-family: var(--font-family-body);
-  font-size: var(--text-supporting-size);
-  line-height: var(--text-supporting-leading);
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
 }
 .video-inline .astryx-button,
 .video-inline .astryx-button .astryx-text {
-  font-family: var(--font-family-body);
-  font-size: var(--text-label-size);
-  line-height: var(--text-label-leading);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
 }
 .video-inline:not([data-state='ready']) .video-controls {
-  position: static;
-  flex-direction: row;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 4px 0;
+    position: static;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 4px 0;
 }
 .video-status-icon {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  color: var(--color-text-secondary);
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--color-text-secondary);
 }
 .video-inline .video-controls > [role='status'] {
-  min-width: 0;
+    min-width: 0;
 }
 .video-inline .video-controls > button {
-  flex: none;
+    flex: none;
 }
 .video-inline[data-state='ready'] .video-controls {
-  flex-direction: row;
-  opacity: 0;
+    flex-direction: row;
+    opacity: 0;
 }
 .video-inline[data-state='ready']:is(:hover, :focus-within) .video-controls {
-  opacity: 1;
+    opacity: 1;
 }
 @media (hover: none) {
-  .video-inline[data-state='ready'] .video-controls {
-    opacity: 1;
-  }
+    .video-inline[data-state='ready'] .video-controls {
+        opacity: 1;
+    }
 }
 @media (prefers-reduced-motion: reduce) {
-  .video-stage .astryx-skeleton,
-  .video-stage .astryx-skeleton::after {
-    animation: none;
-  }
+    .video-stage .astryx-skeleton,
+    .video-stage .astryx-skeleton::after {
+        animation: none;
+    }
 }
 /* Inline videos sit on the video's own dark paper in both appearances (docs/video-quality-spec.md); color-scheme: dark resolves the theme's dark values. */
 .video-inline video.video-frame {
-  color-scheme: dark;
-  background: var(--color-background-body);
+    color-scheme: dark;
+    background: var(--color-background-body);
 }
 /* Pending draft frame: storyboard ink drawn once behind one status line, elapsed time, estimated bar and Cancel. */
 .video-inline[data-state='pending'] .video-stage {
-  color-scheme: dark;
-  background: var(--color-background-body);
-  color: var(--rabbithole-paper);
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  border-radius: var(--radius-container);
-  overflow: hidden;
-  container-type: inline-size;
+    color-scheme: dark;
+    background: var(--color-background-body);
+    color: var(--rabbithole-paper);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    border-radius: var(--radius-container);
+    overflow: hidden;
+    container-type: inline-size;
 }
 .video-draft {
-  position: absolute;
-  inset: 0;
+    position: absolute;
+    inset: 0;
 }
 .video-sketch {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  fill: none;
-  stroke: var(--rabbithole-paper);
-  stroke-opacity: 0.2;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: var(--rabbithole-paper);
+    stroke-opacity: 0.2;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 .video-sketch path {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: video-sketch 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: video-sketch 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .video-sketch .video-sketch-mark {
-  stroke: var(--rabbithole-ink-1);
-  stroke-opacity: 0.55;
+    stroke: var(--rabbithole-ink-1);
+    stroke-opacity: 0.55;
 }
 @keyframes video-sketch {
-  to {
-    stroke-dashoffset: 0;
-  }
+    to {
+        stroke-dashoffset: 0;
+    }
 }
 .video-inline[data-state='pending'] .video-controls {
-  position: absolute;
-  inset: auto 16px 18px 24px;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  padding: 0;
+    position: absolute;
+    inset: auto 16px 18px 24px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
 }
 /* Live playback: the player fills the stage; status, elapsed time and Cancel sit top right, clear of its controls. */
 .video-card[data-live] .video-controls,
 .video-inline[data-state='pending'][data-live] .video-controls {
-  inset: var(--spacing-2) var(--spacing-2) auto auto;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 8px;
-  background: var(--color-background-surface);
-  border-radius: var(--radius-element);
+    inset: var(--spacing-2) var(--spacing-2) auto auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 8px;
+    background: var(--color-background-surface);
+    border-radius: var(--radius-element);
 }
 .video-live {
-  border: 0;
+    border: 0;
 }
 .video-inline[data-state='pending']:not([data-live]) .video-controls > [role='status'] {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font: 600 13px/1.35 var(--font-family-body);
-  color: var(--rabbithole-paper);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font: 600 13px/1.35 var(--font-family-body);
+    color: var(--rabbithole-paper);
 }
 .video-step-detail {
-  flex: none;
-  font: 400 12px/1.35 var(--font-family-body);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
+    flex: none;
+    font: 400 12px/1.35 var(--font-family-body);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
 }
 .video-inline[data-state='pending']:not([data-live]) .video-elapsed {
-  margin-inline-start: auto;
+    margin-inline-start: auto;
 }
 .video-elapsed {
-  font: 500 13px/1 var(--font-family-body);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
+    font: 500 13px/1 var(--font-family-body);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
 }
 .video-draft-bar {
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 3px;
-  background: var(--color-border);
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 3px;
+    background: var(--color-border);
 }
 .video-draft-bar > i {
-  display: block;
-  height: 100%;
-  background: var(--rabbithole-ink-1);
-  transform-origin: left;
-  transition: transform 1.2s linear;
+    display: block;
+    height: 100%;
+    background: var(--rabbithole-ink-1);
+    transform-origin: left;
+    transition: transform 1.2s linear;
 }
 @container (width < 440px) {
-  .video-step-detail {
-    display: none;
-  }
-  .video-sketch {
-    opacity: 0.6;
-  }
-  .video-inline[data-state='pending'] .video-controls {
-    inset: auto 12px 12px 16px;
-  }
+    .video-step-detail {
+        display: none;
+    }
+    .video-sketch {
+        opacity: 0.6;
+    }
+    .video-inline[data-state='pending'] .video-controls {
+        inset: auto 12px 12px 16px;
+    }
 }
 @media (prefers-reduced-motion: reduce) {
-  .video-sketch path {
-    animation: none;
-    stroke-dashoffset: 0;
-  }
-  .video-draft-bar > i {
-    transition: none;
-  }
+    .video-sketch path {
+        animation: none;
+        stroke-dashoffset: 0;
+    }
+    .video-draft-bar > i {
+        transition: none;
+    }
 }
 /* Figure caption under the player: title in the heading face, description in the reading face. */
 .video-caption {
-  padding-inline: 2px;
+    padding-inline: 2px;
 }
 .video-inline .video-caption :is(h3, h3 *) {
-  margin: 0;
-  font: 600 var(--text-label-size)/var(--text-label-leading) var(--font-family-heading);
-  color: var(--color-text-primary);
+    margin: 0;
+    font: 600 var(--text-label-size)/var(--text-label-leading) var(--font-family-heading);
+    color: var(--color-text-primary);
 }
 .video-inline .video-caption .astryx-text:not(h3, h3 *) {
-  max-width: 65ch;
-  font-family: var(--rabbithole-font-reading);
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--color-text-secondary);
+    max-width: 65ch;
+    font-family: var(--rabbithole-font-reading);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--color-text-secondary);
 }
 /* Lightbox caps media at natural size; generated videos are small, so fill the viewer (contain keeps 16:9). */
 .astryx-lightbox video {
-  width: 92vw;
-  height: calc(100dvh - 8rem);
+    width: 92vw;
+    height: calc(100dvh - 8rem);
 }
 /* Diagrams are vector, so the enlarged one fills the sheet rather than keeping its inline width. */
 .diagram-lightbox img {
-  width: min(960px, 92vw);
-  height: auto;
-  max-height: calc(100dvh - 8rem);
-  object-fit: contain;
+    width: min(960px, 92vw);
+    height: auto;
+    max-height: calc(100dvh - 8rem);
+    object-fit: contain;
 }
 /* Media viewers share the raised sheet and dimmed paper backdrop; no blur. */
 .astryx-lightbox::backdrop {
-  backdrop-filter: none !important;
-  background: var(--color-overlay);
+    backdrop-filter: none !important;
+    background: var(--color-overlay);
 }
 /* Enlarged media: raised enamel, 1.5px porcelain seam (the visual viewer's seam is the dialog's, in states.css). */
 .astryx-lightbox :is(img, video) {
-  background: var(--color-background-popover);
-  outline: 1.5px solid var(--color-border-emphasized);
-  border-radius: var(--radius-container);
+    background: var(--color-background-popover);
+    outline: 1.5px solid var(--color-border-emphasized);
+    border-radius: var(--radius-container);
 }
 .visual-viewer h2 {
-  margin: 0 32px 8px 0;
-  font-size: 16px;
-  font-weight: 700;
+    margin: 0 32px 8px 0;
+    font-size: 16px;
+    font-weight: 700;
 }
 .visual-viewer p {
-  margin-block-end: 16px;
-  color: var(--color-text-secondary);
+    margin-block-end: 16px;
+    color: var(--color-text-secondary);
 }
 .viewer-close {
-  position: absolute;
-  inset: 8px 8px auto auto;
+    position: absolute;
+    inset: 8px 8px auto auto;
 }
 .video-frame:focus-visible {
-  outline: medium solid var(--color-text-primary);
-  outline-offset: var(--spacing-1);
+    outline: medium solid var(--color-text-primary);
+    outline-offset: var(--spacing-1);
 }
 /* Inherited context: a collapsible tonal section on raised enamel (mockup .inh). */
 .inherited-context {
-  border-radius: var(--radius-container);
-  background: var(--color-background-surface);
-  padding-inline: 14px;
-  color: var(--color-text-primary);
-  font-size: 13px;
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
+    padding-inline: 14px;
+    color: var(--color-text-primary);
+    font-size: 13px;
 }
 .inherited-context .astryx-collapsible-trigger {
-  padding: 10px 0;
-  color: inherit;
-  font-weight: 600;
+    padding: 10px 0;
+    color: inherit;
+    font-weight: 600;
 }
 .inherited-body {
-  margin: 0;
-  padding: 0 var(--rabbithole-module) calc(2 * var(--rabbithole-module));
-  display: grid;
-  gap: var(--spacing-1);
-  font-size: var(--font-size-sm);
+    margin: 0;
+    padding: 0 var(--rabbithole-module) calc(2 * var(--rabbithole-module));
+    display: grid;
+    gap: var(--spacing-1);
+    font-size: var(--font-size-sm);
 }
 .inherited-body dt {
-  color: var(--color-text-secondary);
-  font-weight: 500;
-  margin-block-start: var(--spacing-2);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    margin-block-start: var(--spacing-2);
 }
 .inherited-body dd:first-of-type {
-  color: var(--color-text-primary);
+    color: var(--color-text-primary);
 }
 .inherited-body dd {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--color-text-secondary);
-  font-family: var(--rabbithole-font-reading);
-  font-size: var(--font-size-base);
-  line-height: 1.7;
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-family: var(--rabbithole-font-reading);
+    font-size: var(--font-size-base);
+    line-height: 1.7;
 }
 .diagram-source {
-  max-height: 12rem;
-  overflow: auto;
-  margin: 0;
-  padding: var(--spacing-2);
-  background: var(--color-background-body);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
+    max-height: 12rem;
+    overflow: auto;
+    margin: 0;
+    padding: var(--spacing-2);
+    background: var(--color-background-body);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
 }
 .diagram-card:focus-visible,
 .diagram-open:focus-visible,
 .diagram-source:focus-visible {
-  outline: medium solid var(--color-text-primary);
-  outline-offset: calc(-1 * var(--spacing-1));
+    outline: medium solid var(--color-text-primary);
+    outline-offset: calc(-1 * var(--spacing-1));
 }
 .selection-action {
-  position: absolute;
-  z-index: 3;
-  margin-top: var(--spacing-1);
-  transform: translateX(-50%);
-  animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1);
+    position: absolute;
+    z-index: 3;
+    margin-top: var(--spacing-1);
+    transform: translateX(-50%);
+    animation: rise 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes rise {
-  from {
-    opacity: 0;
-    transform: translate(-50%, var(--spacing-1));
-  }
+    from {
+        opacity: 0;
+        transform: translate(-50%, var(--spacing-1));
+    }
 }
 .passage-box {
-  position: absolute;
-  z-index: 3;
-  width: min(100%, 320px);
-  transform: translateY(-100%);
-  margin-top: calc(-1 * var(--spacing-1));
+    position: absolute;
+    z-index: 3;
+    width: min(100%, 320px);
+    transform: translateY(-100%);
+    margin-top: calc(-1 * var(--spacing-1));
 }
 /* Origin line under the title (mockup .origin): a porcelain ring, then From <parent> at “passage”. */
 .origin-line {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  overflow-wrap: anywhere;
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    overflow-wrap: anywhere;
 }
 .origin-ring {
-  flex: none;
-  width: 13px;
-  height: 13px;
-  box-sizing: border-box;
-  align-self: center;
-  border: 3px solid var(--rabbithole-paper);
-  border-radius: 50%;
-  background: var(--color-background-body);
+    flex: none;
+    width: 13px;
+    height: 13px;
+    box-sizing: border-box;
+    align-self: center;
+    border: 3px solid var(--rabbithole-paper);
+    border-radius: 50%;
+    background: var(--color-background-body);
 }
 .origin-line .origin-chip {
-  display: inline;
-  height: auto;
-  min-height: 0;
-  padding: 0;
-  font-size: inherit;
-  font-weight: 400;
-  color: var(--color-text-primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  vertical-align: baseline;
+    display: inline;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    font-size: inherit;
+    font-weight: 400;
+    color: var(--color-text-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    vertical-align: baseline;
 }
 .origin-source,
 .origin-question {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 .origin-question {
-  margin-block-start: var(--spacing-2);
+    margin-block-start: var(--spacing-2);
 }
 .origin-source[data-clamped] {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
 }
 .origin-question {
-  font-weight: 600;
-  color: var(--color-text-primary);
+    font-weight: 600;
+    color: var(--color-text-primary);
 }
 /* Visual progress badge above the figure; a partly drawn visual is dimmed until it finishes. */
 .visual-badge {
-  margin-bottom: 6px;
+    margin-bottom: 6px;
 }
 .visual[data-partial] .visual-frame[data-ready] {
-  opacity: 0.5;
+    opacity: 0.5;
 }

@@ -1,18 +1,18 @@
 /* Branch form, dialogs, menus, failures, turn rail, docked map and composer. Files load in main.tsx order, which is the cascade order. */
 /* One focus ring everywhere (mockup States): 2px porcelain, 2px off the control; rules that draw their own ring win. */
 :where(:focus-visible) {
-  outline: 2px solid var(--focus-outline-color);
-  outline-offset: 2px;
+    outline: 2px solid var(--focus-outline-color);
+    outline-offset: 2px;
 }
 /* Fields show focus on their own frame (mockup .field.on), so the control inside draws no second ring.
    The title search palette has no frame: its seam under the field turns porcelain instead. */
 .astryx-text-input :focus-visible,
 .astryx-command-palette-input :focus-visible,
 .astryx-chat-composer-input > [contenteditable] {
-  outline: none;
+    outline: none;
 }
 .astryx-layout-header:has(.astryx-command-palette-input :focus-visible) {
-  border-bottom-color: var(--rabbithole-paper);
+    border-bottom-color: var(--rabbithole-paper);
 }
 /* Overlays (menus, popovers, the passage box, dialogs) sit flat on raised enamel with a 1.5px porcelain seam. */
 .branch-form,
@@ -20,460 +20,460 @@
 .astryx-dialog,
 .astryx-alert-dialog,
 .merge-dialog {
-  border: 1.5px solid var(--color-border-emphasized);
-  border-radius: var(--radius-container);
-  background: var(--color-background-popover);
-  box-shadow: none;
+    border: 1.5px solid var(--color-border-emphasized);
+    border-radius: var(--radius-container);
+    background: var(--color-background-popover);
+    box-shadow: none;
 }
 .branch-form {
-  margin-top: var(--spacing-2);
+    margin-top: var(--spacing-2);
 }
 .branch-passage {
-  flex: 1;
-  min-width: 0;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  font-family: var(--rabbithole-font-reading);
+    flex: 1;
+    min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    font-family: var(--rabbithole-font-reading);
 }
 .branch-brief {
-  max-width: 60ch;
-  font-family: var(--rabbithole-font-reading);
+    max-width: 60ch;
+    font-family: var(--rabbithole-font-reading);
 }
 .branch-question {
-  flex: 1;
-  min-width: 0;
+    flex: 1;
+    min-width: 0;
 }
 /* One frame: the paper sheet is the edge; its field keeps only its focus ring. */
 .branch-form .astryx-text-input:not(:focus-within) {
-  border-color: transparent;
-  box-shadow: none;
+    border-color: transparent;
+    box-shadow: none;
 }
 .branch-send {
-  flex: none;
+    flex: none;
 }
 .astryx-alert-dialog h2 {
-  margin-block-end: var(--spacing-2);
+    margin-block-end: var(--spacing-2);
 }
 .delete-dialog[data-failed='true'] [id$='description'] {
-  color: var(--color-text-error);
+    color: var(--color-text-error);
 }
 .astryx-dropdown-menu {
-  background: var(--color-background-popover);
+    background: var(--color-background-popover);
 }
 /* Model menu: the current model wears the leaf check. */
 .astryx-dropdown-menu .astryx-dropdown-menu-radio {
-  background: none;
-  border-color: transparent;
+    background: none;
+    border-color: transparent;
 }
 .astryx-dropdown-menu .astryx-dropdown-menu-radio .astryx-radio-indicator-dot {
-  display: none;
+    display: none;
 }
 .astryx-dropdown-menu .astryx-dropdown-menu-radio[data-checked='checked']::after {
-  content: '';
-  width: 0.3rem;
-  height: 0.6rem;
-  border: solid var(--color-text-accent);
-  border-width: 0 2px 2px 0;
-  transform: translateY(-15%) rotate(45deg);
+    content: '';
+    width: 0.3rem;
+    height: 0.6rem;
+    border: solid var(--color-text-accent);
+    border-width: 0 2px 2px 0;
+    transform: translateY(-15%) rotate(45deg);
 }
 .failure-banner,
 .visual[data-state='failed'],
 .video-card:is([data-state='failed'], [data-state='unavailable']) .video-controls,
 .diagram-card[data-state='failed'] {
-  border: thin solid var(--color-border-error);
-  border-radius: var(--radius-element);
-  background: var(--color-error-muted);
-  padding: 8px 12px;
-  color: var(--color-text-primary);
-  overflow-wrap: anywhere;
+    border: thin solid var(--color-border-error);
+    border-radius: var(--radius-element);
+    background: var(--color-error-muted);
+    padding: 8px 12px;
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
 }
 .failure-banner {
-  flex-wrap: wrap;
+    flex-wrap: wrap;
 }
 .failure-banner button {
-  margin-inline-start: auto;
-  flex: none;
+    margin-inline-start: auto;
+    flex: none;
 }
 .workspace-failure {
-  margin: 8px 16px;
+    margin: 8px 16px;
 }
 .visual[data-state='failed'] {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 .visual[data-state='failed'] > button {
-  margin-inline-start: auto;
+    margin-inline-start: auto;
 }
 .failure-icon {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  color: var(--color-text-error);
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--color-text-error);
 }
 .title-editor {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  width: 100%;
-  align-items: end;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+    align-items: end;
 }
 .title-editor > [role='alert'] {
-  grid-column: 1 / -1;
+    grid-column: 1 / -1;
 }
 .title-editor > :last-child {
-  justify-content: flex-end;
+    justify-content: flex-end;
 }
 .first-question {
-  width: min(100%, 560px);
-  margin: 48px auto;
+    width: min(100%, 560px);
+    margin: 48px auto;
 }
 .first-question > .astryx-chat-composer {
-  width: 100%;
-  text-align: left;
+    width: 100%;
+    text-align: left;
 }
 /* Astryx and page-wide focus styles must not add rings inside the composer's frame. */
 .first-question .single-ring-composer > :first-child {
-  outline: none;
-  box-shadow: none;
+    outline: none;
+    box-shadow: none;
 }
 .first-question .single-ring-composer > :first-child:focus-within {
-  border-color: var(--rabbithole-paper);
-  outline: 2px solid var(--rabbithole-paper);
-  outline-offset: 0;
+    border-color: var(--rabbithole-paper);
+    outline: 2px solid var(--rabbithole-paper);
+    outline-offset: 0;
 }
 .first-question .single-ring-composer .astryx-chat-composer-input,
 .first-question .single-ring-composer .astryx-chat-composer-input > [contenteditable],
 .first-question .single-ring-composer .astryx-chat-composer-input > [aria-hidden='true'] {
-  outline: none;
-  box-shadow: none;
+    outline: none;
+    box-shadow: none;
 }
 .first-question h2 {
-  font-size: 20px;
-  font-weight: 700;
-  text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
 }
 /* First run (mockup States): one raised enamel card; each connection names its state in words and an icon. */
 .first-run {
-  width: min(100%, 520px);
-  margin: 48px auto;
-  padding: 22px;
-  border-radius: var(--radius-container);
-  background: var(--color-background-surface);
-  text-align: left;
+    width: min(100%, 520px);
+    margin: 48px auto;
+    padding: 22px;
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
+    text-align: left;
 }
 .first-run h2 {
-  font-size: 22px;
-  font-weight: 700;
+    font-size: 22px;
+    font-weight: 700;
 }
 .connection-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
 }
 .connection-status[data-state='missing'] {
-  color: var(--color-text-error);
+    color: var(--color-text-error);
 }
 .connection-status svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
+    flex: none;
+    width: 16px;
+    height: 16px;
 }
 .tree-loading {
-  width: min(100%, 640px);
+    width: min(100%, 640px);
 }
 .reply-skeleton {
-  width: 100%;
+    width: 100%;
 }
 @media (prefers-reduced-motion: reduce) {
-  .tree-loading .astryx-skeleton,
-  .tree-loading .astryx-skeleton::after,
-  .reply-skeleton .astryx-skeleton,
-  .reply-skeleton .astryx-skeleton::after {
-    animation: none;
-  }
+    .tree-loading .astryx-skeleton,
+    .tree-loading .astryx-skeleton::after,
+    .reply-skeleton .astryx-skeleton,
+    .reply-skeleton .astryx-skeleton::after {
+        animation: none;
+    }
 }
 .focused-chat {
-  flex: 1;
-  min-width: 0;
-  background: var(--color-background-body);
-  position: relative;
+    flex: 1;
+    min-width: 0;
+    background: var(--color-background-body);
+    position: relative;
 }
 /* Turn rail: one tick per learner question on the chat's right edge; the current one is long and inked. */
 .turn-rail {
-  position: absolute;
-  z-index: 3;
-  right: calc(3 * var(--rabbithole-module));
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  max-height: 60%;
-  overflow-y: auto;
-  scrollbar-width: none;
+    position: absolute;
+    z-index: 3;
+    right: calc(3 * var(--rabbithole-module));
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    max-height: 60%;
+    overflow-y: auto;
+    scrollbar-width: none;
 }
 .turn-rail .turn-tick {
-  min-width: 0;
-  min-height: 0;
-  width: var(--spacing-6);
-  height: var(--spacing-3);
-  padding: 0;
-  justify-content: flex-end;
-  border-radius: var(--radius-inner);
+    min-width: 0;
+    min-height: 0;
+    width: var(--spacing-6);
+    height: var(--spacing-3);
+    padding: 0;
+    justify-content: flex-end;
+    border-radius: var(--radius-inner);
 }
 .turn-rail .turn-tick span[aria-hidden] {
-  display: block;
-  width: 10px;
-  height: 2px;
-  background: var(--color-border);
-  transition:
-    width 120ms ease-out,
-    background-color 120ms ease-out;
+    display: block;
+    width: 10px;
+    height: 2px;
+    background: var(--color-border);
+    transition:
+        width 120ms ease-out,
+        background-color 120ms ease-out;
 }
 .turn-rail .turn-tick:hover span[aria-hidden] {
-  background: var(--color-text-secondary);
+    background: var(--color-text-secondary);
 }
 .turn-rail .turn-tick[aria-current='true'] span[aria-hidden] {
-  width: 18px;
-  background: var(--color-text-primary);
+    width: 18px;
+    background: var(--color-text-primary);
 }
 @media (prefers-reduced-motion: reduce) {
-  .turn-rail .turn-tick span[aria-hidden] {
-    transition: none;
-  }
+    .turn-rail .turn-tick span[aria-hidden] {
+        transition: none;
+    }
 }
 /* The map docks right of the reading column on the deep panel (mockup Read: 440px default, seam on its left edge). */
 .overview[data-chat-open='true'] {
-  flex: 0 0 var(--map-width);
-  border-left: thin solid var(--color-border);
+    flex: 0 0 var(--map-width);
+    border-left: thin solid var(--color-border);
 }
 /* Too narrow for a usable reading column beside the map: Map stays one click away in the sidebar. */
 @media (max-width: 1023px) {
-  .overview[data-chat-open='true'],
-  .chat-divider,
-  .expand-chat {
-    display: none;
-  }
+    .overview[data-chat-open='true'],
+    .chat-divider,
+    .expand-chat {
+        display: none;
+    }
 }
 .overview .tree-canvas,
 .overview .react-flow {
-  --xy-background-color: var(--color-background-muted);
-  background: var(--color-background-muted);
+    --xy-background-color: var(--color-background-muted);
+    background: var(--color-background-muted);
 }
 .chat-divider {
-  flex: none;
-  position: relative;
-  z-index: 5;
-  width: var(--spacing-2);
-  margin-inline: calc(-1 * var(--spacing-1));
-  cursor: col-resize;
-  touch-action: none;
+    flex: none;
+    position: relative;
+    z-index: 5;
+    width: var(--spacing-2);
+    margin-inline: calc(-1 * var(--spacing-1));
+    cursor: col-resize;
+    touch-action: none;
 }
 .chat-divider::after {
-  content: '';
-  position: absolute;
-  inset-block: 0;
-  left: 50%;
-  width: 2px;
-  transform: translateX(-50%);
-  background: transparent;
-  transition: background-color 120ms ease-out;
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: transparent;
+    transition: background-color 120ms ease-out;
 }
 .chat-divider:hover::after,
 .chat-divider:active::after,
 .chat-divider:focus-visible::after {
-  background: var(--rabbithole-paper);
+    background: var(--rabbithole-paper);
 }
 .chat-divider:focus-visible {
-  outline: medium solid var(--focus-outline-color);
-  outline-offset: 0;
+    outline: medium solid var(--focus-outline-color);
+    outline-offset: 0;
 }
 .focused-chat > .astryx-chat-layout {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
 }
 /* Floating composer: flat, only the composer itself is solid; the dock ignores pointers so passages above stay selectable. */
 .focused-chat .astryx-chat-layout > :last-child {
-  pointer-events: none;
+    pointer-events: none;
 }
 .focused-chat .astryx-chat-layout > :last-child > * {
-  pointer-events: auto;
+    pointer-events: auto;
 }
 .focused-chat .astryx-chat-layout > :last-child > :first-child {
-  pointer-events: none;
+    pointer-events: none;
 }
 .focused-chat .astryx-chat-layout > :last-child > :first-child button {
-  pointer-events: auto;
+    pointer-events: auto;
 }
 .focused-chat .astryx-chat-layout > :last-child > :nth-child(2) {
-  display: none;
+    display: none;
 }
 .focused-chat .astryx-chat-composer {
-  width: 100%;
-  max-width: calc(640px + 88px);
-  margin-inline: auto;
-  padding: 8px 44px 20px;
-  box-sizing: border-box;
-  background: var(--color-background-body);
+    width: 100%;
+    max-width: calc(640px + 88px);
+    margin-inline: auto;
+    padding: 8px 44px 20px;
+    box-sizing: border-box;
+    background: var(--color-background-body);
 }
 @media (max-width: 48rem) {
-  .focused-chat .astryx-chat-composer {
-    padding-inline: 16px;
-  }
+    .focused-chat .astryx-chat-composer {
+        padding-inline: 16px;
+    }
 }
 .focused-chat .astryx-chat-composer > :first-child {
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--spacing-2);
-  border: 1.5px solid var(--color-border-emphasized);
-  border-radius: var(--radius-container);
-  background: var(--color-background-surface);
-  padding: 12px 10px 10px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-2);
+    border: 1.5px solid var(--color-border-emphasized);
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
+    padding: 12px 10px 10px 16px;
 }
 .focused-chat .astryx-chat-composer > :first-child:focus-within {
-  border-color: var(--rabbithole-paper);
-  box-shadow: none;
+    border-color: var(--rabbithole-paper);
+    box-shadow: none;
 }
 .focused-chat .astryx-chat-composer > :first-child > :first-child {
-  min-width: 0;
+    min-width: 0;
 }
 .focused-chat .astryx-chat-composer > :first-child > :last-child {
-  min-width: 0;
+    min-width: 0;
 }
 .focused-chat .astryx-chat-composer > :first-child > :last-child > :first-child {
-  flex: 1;
-  min-width: 0;
+    flex: 1;
+    min-width: 0;
 }
 /* Let a wrapped empty placeholder size the editor instead of overlapping the footer. */
 .focused-chat .astryx-chat-composer-input {
-  display: grid;
+    display: grid;
 }
 .focused-chat .astryx-chat-composer-input > [aria-hidden='true'] {
-  position: static;
-  grid-area: 1 / 1;
+    position: static;
+    grid-area: 1 / 1;
 }
 .focused-chat .astryx-chat-composer-input > [contenteditable] {
-  grid-area: 1 / 1;
+    grid-area: 1 / 1;
 }
 .focused-chat .astryx-chat-send-button {
-  border-radius: var(--radius-element);
+    border-radius: var(--radius-element);
 }
 .tree-canvas {
-  flex: 1;
-  min-height: 0;
-  background: var(--color-background-body);
+    flex: 1;
+    min-height: 0;
+    background: var(--color-background-body);
 }
 .tree-canvas:focus-visible {
-  outline: var(--focus-outline-width) solid var(--focus-outline-color);
-  outline-offset: calc(-1 * var(--spacing-1));
+    outline: var(--focus-outline-width) solid var(--focus-outline-color);
+    outline-offset: calc(-1 * var(--spacing-1));
 }
 .tree-workspace[data-expanded='true'] .overview {
-  display: none;
+    display: none;
 }
 .tree-workspace[data-expanded='true'] .focused-chat {
-  flex: 1;
-  border-left: 0;
+    flex: 1;
+    border-left: 0;
 }
 ::view-transition {
-  pointer-events: none;
+    pointer-events: none;
 }
 ::view-transition-group(chat-panel) {
-  animation-duration: 220ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-duration: 220ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 ::view-transition-group(conversation) {
-  animation-duration: 220ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-duration: 220ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation: none;
-  }
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none;
+    }
 }
 /* Still drawing: an amber sweep circles the whole figure, so it shows from any scroll position, and the pointer shows work in progress. */
 .visual[data-state='pending'] {
-  cursor: progress;
+    cursor: progress;
 }
 @property --visual-sweep {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
 }
 .visual-drawing-ring {
-  position: absolute;
-  inset: -6px;
-  padding: 2px;
-  border-radius: var(--radius-container);
-  background:
-    conic-gradient(
-      from var(--visual-sweep),
-      transparent 0 62%,
-      var(--rabbithole-ink-1) 88%,
-      transparent 100%
-    ),
-    var(--color-border);
-  /* Only the 2px padding ring shows; the figure inside stays clear. */
-  mask:
-    linear-gradient(currentColor 0 0) content-box exclude,
-    linear-gradient(currentColor 0 0);
-  pointer-events: none;
-  animation: visual-sweep 2.4s linear infinite;
+    position: absolute;
+    inset: -6px;
+    padding: 2px;
+    border-radius: var(--radius-container);
+    background:
+        conic-gradient(
+            from var(--visual-sweep),
+            transparent 0 62%,
+            var(--rabbithole-ink-1) 88%,
+            transparent 100%
+        ),
+        var(--color-border);
+    /* Only the 2px padding ring shows; the figure inside stays clear. */
+    mask:
+        linear-gradient(currentColor 0 0) content-box exclude,
+        linear-gradient(currentColor 0 0);
+    pointer-events: none;
+    animation: visual-sweep 2.4s linear infinite;
 }
 @keyframes visual-sweep {
-  to {
-    --visual-sweep: 360deg;
-  }
+    to {
+        --visual-sweep: 360deg;
+    }
 }
 /* A click on a still-drawing visual says, where it landed, why nothing happened. */
 .visual-nudge {
-  position: absolute;
-  left: 50%;
-  translate: -50% -50%;
-  padding: 6px 12px;
-  border: thin solid var(--color-border);
-  background: var(--color-background-popover);
-  border-radius: var(--radius-container);
-  font: 500 13px/1.35 var(--font-family-body);
-  color: var(--color-text-primary);
-  width: max-content;
-  max-width: calc(100% - 16px);
-  text-align: center;
-  pointer-events: none;
-  animation: visual-nudge 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    position: absolute;
+    left: 50%;
+    translate: -50% -50%;
+    padding: 6px 12px;
+    border: thin solid var(--color-border);
+    background: var(--color-background-popover);
+    border-radius: var(--radius-container);
+    font: 500 13px/1.35 var(--font-family-body);
+    color: var(--color-text-primary);
+    width: max-content;
+    max-width: calc(100% - 16px);
+    text-align: center;
+    pointer-events: none;
+    animation: visual-nudge 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes visual-nudge {
-  from {
-    opacity: 0;
-  }
+    from {
+        opacity: 0;
+    }
 }
 @media (prefers-reduced-motion: reduce) {
-  .visual-drawing-ring {
-    animation: none;
-    background: var(--rabbithole-ink-1);
-  }
-  .visual-nudge {
-    animation: none;
-  }
+    .visual-drawing-ring {
+        animation: none;
+        background: var(--rabbithole-ink-1);
+    }
+    .visual-nudge {
+        animation: none;
+    }
 }
 /* A saved brief explanation, shown while a suggestion underline is pointed at or focused. */
 .brief-tip {
-  position: absolute;
-  z-index: 3;
-  max-width: min(100%, 40ch);
-  margin-top: var(--spacing-1);
-  padding: var(--spacing-2);
-  border: thin solid var(--rabbithole-paper);
-  border-radius: var(--radius-container);
-  background: var(--color-background-popover);
-  font-family: var(--rabbithole-font-reading);
+    position: absolute;
+    z-index: 3;
+    max-width: min(100%, 40ch);
+    margin-top: var(--spacing-1);
+    padding: var(--spacing-2);
+    border: thin solid var(--rabbithole-paper);
+    border-radius: var(--radius-container);
+    background: var(--color-background-popover);
+    font-family: var(--rabbithole-font-reading);
 }

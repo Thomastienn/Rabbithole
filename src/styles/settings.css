@@ -1,337 +1,337 @@
 /* Settings pages. Files load in main.tsx order, which is the cascade order. */
 /* Settings page (mockup Settings, Usage): page head, sticky section nav, one page at a time. */
 .settings-content {
-  --color-border-emphasized: var(--color-text-secondary);
-  max-width: 1120px;
-  margin-inline: auto;
-  padding: calc(5 * var(--rabbithole-module)) calc(4 * var(--rabbithole-module))
-    calc(8 * var(--rabbithole-module));
+    --color-border-emphasized: var(--color-text-secondary);
+    max-width: 1120px;
+    margin-inline: auto;
+    padding: calc(5 * var(--rabbithole-module)) calc(4 * var(--rabbithole-module))
+        calc(8 * var(--rabbithole-module));
 }
 .settings-content :focus-visible {
-  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
-  outline-offset: var(--focus-outline-offset);
+    outline: var(--focus-outline-width) solid var(--rabbithole-paper);
+    outline-offset: var(--focus-outline-offset);
 }
 .settings-head h1 {
-  font-size: 34px;
-  line-height: 1.12;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+    font-size: 34px;
+    line-height: 1.12;
+    font-weight: 700;
+    letter-spacing: -0.015em;
 }
 .settings-layout {
-  display: grid;
-  grid-template-columns: 216px minmax(0, 640px);
-  gap: 48px;
-  align-items: start;
+    display: grid;
+    grid-template-columns: 216px minmax(0, 640px);
+    gap: 48px;
+    align-items: start;
 }
 .settings-nav {
-  position: sticky;
-  top: 0;
-  width: auto;
-  height: auto;
-  background: transparent;
-  border: 0;
+    position: sticky;
+    top: 0;
+    width: auto;
+    height: auto;
+    background: transparent;
+    border: 0;
 }
 .settings-content :is(h1, h2) {
-  scroll-margin-top: calc(5 * var(--rabbithole-module));
+    scroll-margin-top: calc(5 * var(--rabbithole-module));
 }
 .settings-group > :first-child h2 {
-  font-size: 20px;
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+    font-size: 20px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.01em;
 }
 .settings-keys {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--spacing-2) var(--spacing-6);
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-text-secondary);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--spacing-2) var(--spacing-6);
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-text-secondary);
 }
 .settings-keys > div {
-  display: contents;
+    display: contents;
 }
 .settings-keys dd {
-  margin: 0;
-  display: flex;
-  gap: var(--spacing-1);
-  justify-content: end;
+    margin: 0;
+    display: flex;
+    gap: var(--spacing-1);
+    justify-content: end;
 }
 .settings-keys kbd {
-  min-width: 20px;
-  padding: 1px 5px;
-  border: thin solid var(--color-border-emphasized);
-  border-radius: var(--radius-element);
-  font: 12px/1.4 monospace;
-  text-align: center;
+    min-width: 20px;
+    padding: 1px 5px;
+    border: thin solid var(--color-border-emphasized);
+    border-radius: var(--radius-element);
+    font: 12px/1.4 monospace;
+    text-align: center;
 }
 /* Models page (mockup Models): profile bar, then one compact row per role; display: contents keeps ARIA rows inside the grid. */
 .settings-profile {
-  padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) var(--spacing-4);
-  border-radius: var(--radius-container);
-  background: var(--color-background-surface);
+    padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) var(--spacing-4);
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
 }
 .settings-profile .astryx-selector,
 .settings-profile > :first-child {
-  min-width: 180px;
+    min-width: 180px;
 }
 .settings-profile__note {
-  flex: 1 1 16rem;
+    flex: 1 1 16rem;
 }
 .settings-roles {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 248px 152px;
-  column-gap: var(--spacing-3);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 248px 152px;
+    column-gap: var(--spacing-3);
 }
 .settings-roles [role='cell']:not(.settings-roles__note) {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
 }
 .settings-roles__row {
-  display: contents;
+    display: contents;
 }
 .settings-roles [role='columnheader'] {
-  padding-bottom: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+    padding-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
 }
 .settings-roles [role='rowheader'],
 .settings-roles [role='rowheader'] ~ [role='cell'] {
-  padding: 10px 0;
-  border-top: thin solid var(--color-border);
+    padding: 10px 0;
+    border-top: thin solid var(--color-border);
 }
 .settings-roles__role b {
-  display: block;
-  font-weight: 600;
+    display: block;
+    font-weight: 600;
 }
 .settings-roles__role small {
-  display: block;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-secondary);
 }
 .settings-roles__note {
-  grid-column: 1 / -1;
+    grid-column: 1 / -1;
 }
 .settings-roles__note:not(:has(:not(:empty))) {
-  display: none;
+    display: none;
 }
 @media (max-width: 48rem) {
-  .settings-roles {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .settings-roles [role='rowheader'] {
-    grid-column: 1 / -1;
-  }
-  .settings-roles [role='rowheader'] ~ [role='cell'] {
-    border-top: 0;
-    padding-top: 0;
-  }
-  .settings-roles [role='columnheader'] {
-    display: none;
-  }
+    .settings-roles {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .settings-roles [role='rowheader'] {
+        grid-column: 1 / -1;
+    }
+    .settings-roles [role='rowheader'] ~ [role='cell'] {
+        border-top: 0;
+        padding-top: 0;
+    }
+    .settings-roles [role='columnheader'] {
+        display: none;
+    }
 }
 /* Success status: ink with a check (Line Diagram), never tinted. */
 .settings-done {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--color-text-primary);
 }
 /* Settings sections: seams and small-caps labels, not cards (spec, Settings window). */
 .settings-panel h3 {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  font-variant-caps: all-small-caps;
-  letter-spacing: 0.06em;
-  color: var(--color-text-secondary);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
 }
 * {
-  scrollbar-color: var(--color-border) var(--color-background-surface);
+    scrollbar-color: var(--color-border) var(--color-background-surface);
 }
 @media (max-width: 48rem) {
-  .shell-band {
-    flex-wrap: wrap;
-    height: auto;
-    min-height: calc(6.5 * var(--rabbithole-module));
-  }
-  .shell-band .band-save {
-    flex-basis: 100%;
-    flex-wrap: wrap;
-    height: auto;
-    margin-block-end: var(--rabbithole-module);
-  }
-  .workspace {
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .conversation {
-    min-height: 0;
-    flex: 1;
-  }
-  .overview[data-chat-open='true'] {
-    display: none;
-  }
-  .focused-chat {
-    flex: 1;
-    border-left: 0;
-  }
-  .expand-chat {
-    display: none;
-  }
-  .settings-content {
-    padding: calc(3 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module))
-      calc(6 * var(--rabbithole-module));
-  }
-  .settings-layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--spacing-6);
-  }
-  .settings-nav {
-    position: static;
-  }
+    .shell-band {
+        flex-wrap: wrap;
+        height: auto;
+        min-height: calc(6.5 * var(--rabbithole-module));
+    }
+    .shell-band .band-save {
+        flex-basis: 100%;
+        flex-wrap: wrap;
+        height: auto;
+        margin-block-end: var(--rabbithole-module);
+    }
+    .workspace {
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .conversation {
+        min-height: 0;
+        flex: 1;
+    }
+    .overview[data-chat-open='true'] {
+        display: none;
+    }
+    .focused-chat {
+        flex: 1;
+        border-left: 0;
+    }
+    .expand-chat {
+        display: none;
+    }
+    .settings-content {
+        padding: calc(3 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module))
+            calc(6 * var(--rabbithole-module));
+    }
+    .settings-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--spacing-6);
+    }
+    .settings-nav {
+        position: static;
+    }
 }
 .model-picker-field {
-  justify-content: space-between;
+    justify-content: space-between;
 }
 .model-picker-field[data-unavailable] {
-  border-color: var(--color-border-error);
+    border-color: var(--color-border-error);
 }
 /* Usage page: summary total, chart and breakdown. */
 .usage-total.astryx-text {
-  font-size: 34px;
-  line-height: 1.12;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+    font-size: 34px;
+    line-height: 1.12;
+    font-weight: 700;
+    letter-spacing: -0.015em;
 }
 .usage-total small {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--color-text-secondary);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-text-secondary);
 }
 .usage-legend b {
-  font-weight: 600;
-  color: var(--color-text-primary);
+    font-weight: 600;
+    color: var(--color-text-primary);
 }
 .usage-section {
-  padding-block-start: var(--spacing-6);
-  border-block-start: 1px solid var(--color-border);
+    padding-block-start: var(--spacing-6);
+    border-block-start: 1px solid var(--color-border);
 }
 .usage-section-head h3 {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }
 .usage-chart {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--spacing-2) var(--spacing-3);
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--spacing-2) var(--spacing-3);
 }
 .usage-chart svg {
-  width: 100%;
-  height: 11rem;
-  display: block;
-  overflow: visible;
+    width: 100%;
+    height: 11rem;
+    display: block;
+    overflow: visible;
 }
 .usage-scale {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 11rem;
-  text-align: end;
-  font-size: 11px;
-  color: var(--color-text-secondary);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 11rem;
+    text-align: end;
+    font-size: 11px;
+    color: var(--color-text-secondary);
 }
 .usage-grid {
-  stroke: var(--color-border);
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
+    stroke: var(--color-border);
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
 }
 .usage-axis {
-  grid-column: 2;
+    grid-column: 2;
 }
 .usage-axis .astryx-text {
-  font-size: 11px;
+    font-size: 11px;
 }
 .usage-bar {
-  outline: none;
-  cursor: default;
+    outline: none;
+    cursor: default;
 }
 .usage-hit {
-  fill: transparent;
+    fill: transparent;
 }
 .usage-bar[data-active='true'] .usage-hit {
-  fill: var(--color-background-muted);
+    fill: var(--color-background-muted);
 }
 .usage-bar:focus-visible .usage-hit {
-  stroke: var(--focus-outline-color);
-  stroke-width: var(--focus-outline-width);
-  vector-effect: non-scaling-stroke;
+    stroke: var(--focus-outline-color);
+    stroke-width: var(--focus-outline-width);
+    vector-effect: non-scaling-stroke;
 }
 /* Series take line colours (mockup Usage: input cobalt, output green, cache read amber) and a fill
    pattern each, so they read apart without colour. */
 [data-series='input'] {
-  fill: var(--rabbithole-ink-1);
+    fill: var(--rabbithole-ink-1);
 }
 [data-series='output'] {
-  fill: url(#usage-output);
+    fill: url(#usage-output);
 }
 [data-series='cacheRead'] {
-  fill: url(#usage-cacheRead);
+    fill: url(#usage-cacheRead);
 }
 #usage-output .usage-fill {
-  fill: var(--rabbithole-ink-3);
+    fill: var(--rabbithole-ink-3);
 }
 #usage-cacheRead .usage-fill {
-  fill: var(--rabbithole-ink-2);
+    fill: var(--rabbithole-ink-2);
 }
 .usage-mark {
-  stroke: var(--color-background-body);
-  stroke-width: 0.8;
+    stroke: var(--color-background-body);
+    stroke-width: 0.8;
 }
 .usage-dot {
-  fill: var(--color-background-body);
+    fill: var(--color-background-body);
 }
 .usage-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
+    position: absolute;
+    width: 0;
+    height: 0;
 }
 .usage-swatch {
-  inline-size: 12px;
-  block-size: 12px;
-  border-radius: var(--radius-tick);
-  display: inline-block;
+    inline-size: 12px;
+    block-size: 12px;
+    border-radius: var(--radius-tick);
+    display: inline-block;
 }
 .usage-dashboard {
-  font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums;
 }
 .usage-readout {
-  min-block-size: 1.5em;
+    min-block-size: 1.5em;
 }
 .usage-name {
-  overflow-wrap: anywhere;
+    overflow-wrap: anywhere;
 }
 .usage-share {
-  display: block;
-  height: 3px;
-  margin-block-start: var(--spacing-1);
-  border-radius: var(--radius-tick);
-  background: var(--color-border);
+    display: block;
+    height: 3px;
+    margin-block-start: var(--spacing-1);
+    border-radius: var(--radius-tick);
+    background: var(--color-border);
 }
 .usage-share i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-text-secondary);
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-text-secondary);
 }
 .usage-unreported {
-  display: block;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-secondary);
 }
 @media (max-width: 48rem) {
-  .usage-axis .astryx-text:nth-child(2):not(:last-child) {
-    display: none;
-  }
+    .usage-axis .astryx-text:nth-child(2):not(:last-child) {
+        display: none;
+    }
 }

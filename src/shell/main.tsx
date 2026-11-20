@@ -16,12 +16,12 @@ import { Theme } from '@astryxdesign/core/theme';
 import { defaultThemeSlug, themes } from '../astryx-themes';
 import ChatPage from './ChatPage';
 import {
-  applyFont,
-  savedAppearance,
-  savedFont,
-  savedTheme,
-  type Appearance,
-  type ThemeChoice,
+    applyFont,
+    savedAppearance,
+    savedFont,
+    savedTheme,
+    type Appearance,
+    type ThemeChoice,
 } from './appearance';
 import { savePreference } from './preferences';
 // Last, so the map and app styles follow every other stylesheet, in this order.
@@ -44,35 +44,35 @@ applyFont('reading-font', savedFont('reading-font'));
 applyFont('interface-font', savedFont('interface-font'));
 
 function App() {
-  const [appearance, setAppearance] = useState(savedAppearance);
-  // Read before the first render, so the saved theme is the first one painted.
-  const [theme, setTheme] = useState<ThemeChoice>(() => {
-    try {
-      return savedTheme(localStorage.getItem('rabbithole.theme'));
-    } catch {
-      return defaultThemeSlug;
-    }
-  });
-  return (
-    <Theme theme={themes[theme]} mode={appearance}>
-      <ChatPage
-        appearance={appearance}
-        setAppearance={(next) => {
-          setAppearance(next);
-          savePreference('appearance', next);
-        }}
-        theme={theme}
-        setTheme={(next) => {
-          setTheme(next);
-          savePreference('theme', next);
-        }}
-      />
-    </Theme>
-  );
+    const [appearance, setAppearance] = useState(savedAppearance);
+    // Read before the first render, so the saved theme is the first one painted.
+    const [theme, setTheme] = useState<ThemeChoice>(() => {
+        try {
+            return savedTheme(localStorage.getItem('rabbithole.theme'));
+        } catch {
+            return defaultThemeSlug;
+        }
+    });
+    return (
+        <Theme theme={themes[theme]} mode={appearance}>
+            <ChatPage
+                appearance={appearance}
+                setAppearance={(next) => {
+                    setAppearance(next);
+                    savePreference('appearance', next);
+                }}
+                theme={theme}
+                setTheme={(next) => {
+                    setTheme(next);
+                    savePreference('theme', next);
+                }}
+            />
+        </Theme>
+    );
 }
 
 createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+    <React.StrictMode>
+        <App />
+    </React.StrictMode>,
 );

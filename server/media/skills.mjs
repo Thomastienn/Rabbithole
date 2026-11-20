@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 // Hidden, fixed skills vendored from pinned upstream excerpts; sources and licences are in prompts/README.md.
 const read = (name) =>
-  readFileSync(new URL(`./prompts/${name}.md`, import.meta.url), 'utf8').trim();
+    readFileSync(new URL(`./prompts/${name}.md`, import.meta.url), 'utf8').trim();
 // The everyday-analogy guidance is Rabbithole's own text, appended to the vendored teaching excerpt.
 export const ANALOGY_SKILL = read('analogy');
 export const TEACHING_SKILL = `${read('teaching')}\n\n${ANALOGY_SKILL}`;

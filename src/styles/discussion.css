@@ -1,172 +1,172 @@
 .discussion-card {
-  min-width: 0;
-  margin: 20px 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-container);
-  background: var(--color-background-surface);
-  overflow-wrap: anywhere;
+    min-width: 0;
+    margin: 20px 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
+    overflow-wrap: anywhere;
 }
 .discussion-card:focus-visible {
-  outline: 2px solid var(--color-text-primary);
-  outline-offset: 2px;
+    outline: 2px solid var(--color-text-primary);
+    outline-offset: 2px;
 }
 .discussion-card__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 12px;
 }
 .discussion-card__head > svg {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--color-text-secondary);
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--color-text-secondary);
 }
 .discussion-card .discussion-card__title {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font-family: var(--font-family-body);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.4;
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-family-body);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
 }
 .discussion-card__count {
-  margin-inline-start: auto;
+    margin-inline-start: auto;
 }
 .discussion-card .discussion-card__lines {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 4px 12px 12px;
-  list-style: none;
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 4px 12px 12px;
+    list-style: none;
 }
 .discussion-card .discussion-card__lines > li {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
 }
 .discussion-card .discussion-card__avatar {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--color-overlay-hover);
-  color: var(--color-text-primary);
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--color-overlay-hover);
+    color: var(--color-text-primary);
 }
 .discussion-card .discussion-card__avatar--tutor {
-  background: var(--color-accent-muted);
-  color: var(--color-text-accent);
+    background: var(--color-accent-muted);
+    color: var(--color-text-accent);
 }
 .discussion-card__avatar svg {
-  width: 16px;
-  height: 16px;
+    width: 16px;
+    height: 16px;
 }
 .discussion-card .discussion-card__name,
 .discussion-card .discussion-card__count,
 .discussion-card .discussion-card__error {
-  font-family: var(--font-family-body);
-  font-size: 12px;
-  line-height: 1.6;
+    font-family: var(--font-family-body);
+    font-size: 12px;
+    line-height: 1.6;
 }
 .discussion-card .discussion-card__name {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }
 .discussion-card__line[data-speaker='tutor'] .discussion-card__name {
-  color: var(--color-text-accent);
+    color: var(--color-text-accent);
 }
 .discussion-card .discussion-card__text {
-  font-family: var(--rabbithole-font-reading);
-  font-size: 16px;
-  line-height: 1.6;
-  white-space: pre-wrap;
+    font-family: var(--rabbithole-font-reading);
+    font-size: 16px;
+    line-height: 1.6;
+    white-space: pre-wrap;
 }
 .discussion-card__skeleton {
-  display: grid;
-  gap: 12px;
-  padding: 4px 12px 12px;
+    display: grid;
+    gap: 12px;
+    padding: 4px 12px 12px;
 }
 .discussion-card__error {
-  display: block;
-  padding: 0 12px 12px;
+    display: block;
+    padding: 0 12px 12px;
 }
 .discussion-card[data-state='failed'] .discussion-card__head > svg {
-  color: var(--color-text-error);
+    color: var(--color-text-error);
 }
 .discussion-card__reply {
-  display: grid;
-  gap: var(--spacing-2);
-  padding: var(--spacing-3);
-  background: var(--color-background-body);
+    display: grid;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3);
+    background: var(--color-background-body);
 }
 .discussion-card .astryx-chat-composer {
-  padding: 0;
-  max-width: none;
+    padding: 0;
+    max-width: none;
 }
 .discussion-card .astryx-chat-composer > :first-child {
-  flex-direction: row;
-  align-items: flex-end;
-  border: 0;
-  border-radius: var(--radius-none);
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
+    flex-direction: row;
+    align-items: flex-end;
+    border: 0;
+    border-radius: var(--radius-none);
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
 }
 .discussion-card .astryx-chat-composer > :first-child:focus-within {
-  box-shadow: none;
-  outline: 2px solid var(--color-text-primary);
-  outline-offset: var(--spacing-1);
+    box-shadow: none;
+    outline: 2px solid var(--color-text-primary);
+    outline-offset: var(--spacing-1);
 }
 .discussion-card .astryx-chat-composer > :first-child > :first-child {
-  flex: 1;
+    flex: 1;
 }
 .discussion-card .astryx-chat-composer > :first-child > :last-child {
-  flex: none;
-  padding: 0;
+    flex: none;
+    padding: 0;
 }
 .discussion-card .astryx-chat-composer-input,
 .discussion-card .astryx-chat-composer-input > [contenteditable] {
-  outline: none;
-  box-shadow: none;
+    outline: none;
+    box-shadow: none;
 }
 .discussion-card__busy,
 .discussion-card__failure,
 .discussion-card__closed {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  margin: 0 var(--spacing-3) var(--spacing-3);
-  font-family: var(--font-family-body);
-  font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin: 0 var(--spacing-3) var(--spacing-3);
+    font-family: var(--font-family-body);
+    font-size: var(--font-size-sm);
 }
 .discussion-card__failure {
-  align-items: flex-start;
-  padding: var(--spacing-2) var(--spacing-3);
-  background: var(--color-error-muted);
+    align-items: flex-start;
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--color-error-muted);
 }
 .discussion-card__failure > svg {
-  flex: none;
-  width: var(--spacing-4);
-  height: var(--spacing-4);
-  color: var(--color-text-error);
+    flex: none;
+    width: var(--spacing-4);
+    height: var(--spacing-4);
+    color: var(--color-text-error);
 }
 .discussion-card__busy::before {
-  content: '';
-  width: var(--spacing-2);
-  height: var(--spacing-2);
-  border-radius: var(--radius-full);
-  background: var(--color-text-accent);
-  animation: pulse var(--duration-slow-max) ease-in-out infinite;
+    content: '';
+    width: var(--spacing-2);
+    height: var(--spacing-2);
+    border-radius: var(--radius-full);
+    background: var(--color-text-accent);
+    animation: pulse var(--duration-slow-max) ease-in-out infinite;
 }
 .discussion-card__line[data-speaker='learner'] .question-bubble {
-  white-space: pre-wrap;
+    white-space: pre-wrap;
 }
 @media (prefers-reduced-motion: reduce) {
-  .discussion-card .astryx-skeleton,
-  .discussion-card__busy::before {
-    animation: none;
-  }
+    .discussion-card .astryx-skeleton,
+    .discussion-card__busy::before {
+        animation: none;
+    }
 }

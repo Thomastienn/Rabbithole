@@ -11,181 +11,182 @@ import type { ReplyStream } from './useReplyStream';
 
 // Branch form: opening it from a passage or a visual's Ask button, inherited context preparation and submit.
 export function useBranchForm(
-  c: ChatState,
-  { refresh, openConversation }: LearningTrees,
-  { savingModel }: ChatModel,
-  { send }: ReplyStream,
+    c: ChatState,
+    { refresh, openConversation }: LearningTrees,
+    { savingModel }: ChatModel,
+    { send }: ReplyStream,
 ) {
-  const { tree, state, branch, setBranch, branchOrigin, selected, setError, api } = c;
-  const { overview, setOverview, overviewOrigin, focusComposer, request, setTree, setLoading } = c;
-  const { setDrafts } = c;
-  const [branching, setBranching] = useState(false);
-  // Escape returns focus to the passage or underline that opened the popup; an outside click keeps focus where it lands.
-  function closeBranch(refocus: boolean) {
-    setBranch(undefined);
-    requestAnimationFrame(() => {
-      if (refocus || !document.activeElement || document.activeElement === document.body)
-        branchOrigin.current?.current?.focus({ preventScroll: !refocus });
-    });
-  }
-  // Compaction never sees the question, so it starts when the form opens; closing cancels (a no-op after submit took it).
-  const prepareKey = branch && JSON.stringify([branch.parent, branchRequest(branch.anchor)]);
-  useEffect(() => {
-    if (!prepareKey) return;
-    const [parent, anchor] = JSON.parse(prepareKey);
-    return prepareBranch(parent, anchor, api);
-  }, [prepareKey]);
-  async function submitBranch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!branch || !branch.question.trim()) return;
-    await createBranch(branch.parent, branchRequest(branch.anchor, branch.question));
-  }
-  async function createBranch(parent: string, body: object) {
-    if (branching || savingModel === parent) return;
-    setBranching(true);
-    setError('');
-    try {
-      const next: Tree = await api(`/api/trees/${parent}/branches`, body);
-      const question = next.branch!.question;
-      setDrafts((d) => ({ ...d, [next.id]: question }));
-      overviewOrigin.current = undefined;
-      setBranch(undefined);
-      // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
-      if (selected.current === parent) {
-        focusComposer.current = true;
-        setOverview(false);
-        selected.current = next.id;
-        ++request.current;
-        setTree(next);
-        setLoading(false);
-      }
-      const sending = send(question, next);
-      await refresh();
-      await sending;
-    } catch (e) {
-      if (selected.current === parent) setError((e as Error).message);
-    } finally {
-      setBranching(false);
+    const { tree, state, branch, setBranch, branchOrigin, selected, setError, api } = c;
+    const { overview, setOverview, overviewOrigin, focusComposer, request, setTree, setLoading } =
+        c;
+    const { setDrafts } = c;
+    const [branching, setBranching] = useState(false);
+    // Escape returns focus to the passage or underline that opened the popup; an outside click keeps focus where it lands.
+    function closeBranch(refocus: boolean) {
+        setBranch(undefined);
+        requestAnimationFrame(() => {
+            if (refocus || !document.activeElement || document.activeElement === document.body)
+                branchOrigin.current?.current?.focus({ preventScroll: !refocus });
+        });
     }
-  }
-  const visualBranches: Record<string, VisualBranch[]> = {};
-  for (const t of state?.trees ?? [])
-    if (t.parent === tree?.id && t.artifactId && t.label && t.explanation)
-      (visualBranches[t.artifactId] ??= []).push({
-        child: t.id,
-        ...c.addresses.get(t.id),
-        label: t.label,
-        explanation: t.explanation,
-      });
-  const discussionBranches: Record<string, DiscussionBranch[]> = {};
-  for (const t of state?.trees ?? [])
-    if (
-      t.parent === tree?.id &&
-      t.artifactId &&
-      t.line !== undefined &&
-      t.start !== null &&
-      t.end !== null
-    )
-      (discussionBranches[t.artifactId] ??= []).push({
-        child: t.id,
-        ...c.addresses.get(t.id),
-        line: t.line,
-        start: t.start,
-        end: t.end,
-      });
-  // A groundwork branch has no start or end; its passage is the concept's name.
-  const groundworkBranches: Record<
-    string,
-    { concept: string; child: string; address?: string; ink?: number }[]
-  > = {};
-  for (const t of state?.trees ?? [])
-    if (t.parent === tree?.id && t.messageId && !t.artifactId && t.start === null && t.passage)
-      (groundworkBranches[t.messageId] ??= []).push({
-        concept: t.passage,
-        child: t.id,
-        ...c.addresses.get(t.id),
-      });
-  // Choosing a chip asks "What is <concept>?" at once; a chip already chosen opens its child.
-  function chooseGroundwork(messageId: string, concept: string) {
-    const child = groundworkBranches[messageId]?.find((b) => b.concept === concept)?.child;
-    if (child) return openConversation(child);
-    if (tree) return createBranch(tree.id, { messageId, groundwork: concept });
-  }
-  const openVisualPart: PartAction = (visual, part, origin) => {
-    if (
-      !tree ||
-      overview ||
-      visual.status !== 'ready' ||
-      visual.conversation !== tree.id ||
-      !tree.messages.some((m) => m.id === visual.message && m.status === 'completed')
-    )
-      return;
-    branchOrigin.current = origin;
-    setBranch({
-      parent: tree.id,
-      anchor: {
-        messageId: visual.message,
-        artifactId: visual.id,
-        ...part,
-        text: visualPassage(visual, part),
-      },
-      question: '',
-    });
-    setError('');
-  };
-  function startBranch(
-    parent: string,
-    anchor: Anchor,
-    origin: React.RefObject<HTMLElement | null>,
-  ) {
-    branchOrigin.current = origin;
-    setBranch({ parent, anchor, question: '' });
-    setError('');
-  }
-  // A brief explanation of a reply passage, saved by the server and served from storage on reopening.
-  // Kept on the open conversation so its popup and reopened textbox show it without reloading.
-  const explainBrief = (parent: string, anchor: Anchor) =>
-    api(`/api/trees/${parent}/brief`, branchRequest(anchor)).then(
-      ({ explanation }: { explanation: string }) => {
-        const saved = {
-          message: anchor.messageId,
-          start: anchor.start!,
-          end: anchor.end!,
-          explanation,
-        };
-        setTree((t) =>
-          t?.id === parent
-            ? {
-                ...t,
-                briefs: [
-                  ...(t.briefs ?? []).filter(
-                    (b) =>
-                      !(
-                        b.message === saved.message &&
-                        b.start === saved.start &&
-                        b.end === saved.end
-                      ),
-                  ),
-                  saved,
-                ],
-              }
-            : t,
+    // Compaction never sees the question, so it starts when the form opens; closing cancels (a no-op after submit took it).
+    const prepareKey = branch && JSON.stringify([branch.parent, branchRequest(branch.anchor)]);
+    useEffect(() => {
+        if (!prepareKey) return;
+        const [parent, anchor] = JSON.parse(prepareKey);
+        return prepareBranch(parent, anchor, api);
+    }, [prepareKey]);
+    async function submitBranch(e: React.FormEvent) {
+        e.preventDefault();
+        if (!branch || !branch.question.trim()) return;
+        await createBranch(branch.parent, branchRequest(branch.anchor, branch.question));
+    }
+    async function createBranch(parent: string, body: object) {
+        if (branching || savingModel === parent) return;
+        setBranching(true);
+        setError('');
+        try {
+            const next: Tree = await api(`/api/trees/${parent}/branches`, body);
+            const question = next.branch!.question;
+            setDrafts((d) => ({ ...d, [next.id]: question }));
+            overviewOrigin.current = undefined;
+            setBranch(undefined);
+            // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
+            if (selected.current === parent) {
+                focusComposer.current = true;
+                setOverview(false);
+                selected.current = next.id;
+                ++request.current;
+                setTree(next);
+                setLoading(false);
+            }
+            const sending = send(question, next);
+            await refresh();
+            await sending;
+        } catch (e) {
+            if (selected.current === parent) setError((e as Error).message);
+        } finally {
+            setBranching(false);
+        }
+    }
+    const visualBranches: Record<string, VisualBranch[]> = {};
+    for (const t of state?.trees ?? [])
+        if (t.parent === tree?.id && t.artifactId && t.label && t.explanation)
+            (visualBranches[t.artifactId] ??= []).push({
+                child: t.id,
+                ...c.addresses.get(t.id),
+                label: t.label,
+                explanation: t.explanation,
+            });
+    const discussionBranches: Record<string, DiscussionBranch[]> = {};
+    for (const t of state?.trees ?? [])
+        if (
+            t.parent === tree?.id &&
+            t.artifactId &&
+            t.line !== undefined &&
+            t.start !== null &&
+            t.end !== null
+        )
+            (discussionBranches[t.artifactId] ??= []).push({
+                child: t.id,
+                ...c.addresses.get(t.id),
+                line: t.line,
+                start: t.start,
+                end: t.end,
+            });
+    // A groundwork branch has no start or end; its passage is the concept's name.
+    const groundworkBranches: Record<
+        string,
+        { concept: string; child: string; address?: string; ink?: number }[]
+    > = {};
+    for (const t of state?.trees ?? [])
+        if (t.parent === tree?.id && t.messageId && !t.artifactId && t.start === null && t.passage)
+            (groundworkBranches[t.messageId] ??= []).push({
+                concept: t.passage,
+                child: t.id,
+                ...c.addresses.get(t.id),
+            });
+    // Choosing a chip asks "What is <concept>?" at once; a chip already chosen opens its child.
+    function chooseGroundwork(messageId: string, concept: string) {
+        const child = groundworkBranches[messageId]?.find((b) => b.concept === concept)?.child;
+        if (child) return openConversation(child);
+        if (tree) return createBranch(tree.id, { messageId, groundwork: concept });
+    }
+    const openVisualPart: PartAction = (visual, part, origin) => {
+        if (
+            !tree ||
+            overview ||
+            visual.status !== 'ready' ||
+            visual.conversation !== tree.id ||
+            !tree.messages.some((m) => m.id === visual.message && m.status === 'completed')
+        )
+            return;
+        branchOrigin.current = origin;
+        setBranch({
+            parent: tree.id,
+            anchor: {
+                messageId: visual.message,
+                artifactId: visual.id,
+                ...part,
+                text: visualPassage(visual, part),
+            },
+            question: '',
+        });
+        setError('');
+    };
+    function startBranch(
+        parent: string,
+        anchor: Anchor,
+        origin: React.RefObject<HTMLElement | null>,
+    ) {
+        branchOrigin.current = origin;
+        setBranch({ parent, anchor, question: '' });
+        setError('');
+    }
+    // A brief explanation of a reply passage, saved by the server and served from storage on reopening.
+    // Kept on the open conversation so its popup and reopened textbox show it without reloading.
+    const explainBrief = (parent: string, anchor: Anchor) =>
+        api(`/api/trees/${parent}/brief`, branchRequest(anchor)).then(
+            ({ explanation }: { explanation: string }) => {
+                const saved = {
+                    message: anchor.messageId,
+                    start: anchor.start!,
+                    end: anchor.end!,
+                    explanation,
+                };
+                setTree((t) =>
+                    t?.id === parent
+                        ? {
+                              ...t,
+                              briefs: [
+                                  ...(t.briefs ?? []).filter(
+                                      (b) =>
+                                          !(
+                                              b.message === saved.message &&
+                                              b.start === saved.start &&
+                                              b.end === saved.end
+                                          ),
+                                  ),
+                                  saved,
+                              ],
+                          }
+                        : t,
+                );
+                return explanation;
+            },
         );
-        return explanation;
-      },
-    );
-  return {
-    explainBrief,
-    branching,
-    closeBranch,
-    submitBranch,
-    visualBranches,
-    discussionBranches,
-    openVisualPart,
-    startBranch,
-    groundworkBranches,
-    chooseGroundwork,
-  };
+    return {
+        explainBrief,
+        branching,
+        closeBranch,
+        submitBranch,
+        visualBranches,
+        discussionBranches,
+        openVisualPart,
+        startBranch,
+        groundworkBranches,
+        chooseGroundwork,
+    };
 }
 
 export type BranchFormState = ReturnType<typeof useBranchForm>;

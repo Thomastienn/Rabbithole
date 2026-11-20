@@ -1,215 +1,215 @@
 /* Sent attachments (docs/mockups/attachments.html): files sit right-aligned above the question bubble.
    Documents are slips, images sent as images are plates; a files-only question draws no bubble. */
 .message-files {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: flex-end;
-  gap: var(--spacing-2);
-  max-width: 85%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: var(--spacing-2);
+    max-width: 85%;
 }
 .message-files + .question-bubble {
-  margin-block-start: var(--spacing-2);
+    margin-block-start: var(--spacing-2);
 }
 .attachment-slip {
-  position: relative;
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 24px;
-  align-items: center;
-  gap: 0 10px;
-  width: 240px;
-  max-width: 100%;
-  height: 48px;
-  padding: 0 4px 0 8px;
-  border-radius: var(--radius-element);
-  background: var(--color-background-surface);
-  text-align: start;
+    position: relative;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) 24px;
+    align-items: center;
+    gap: 0 10px;
+    width: 240px;
+    max-width: 100%;
+    height: 48px;
+    padding: 0 4px 0 8px;
+    border-radius: var(--radius-element);
+    background: var(--color-background-surface);
+    text-align: start;
 }
 .attachment-slip:has(.attachment-link:hover) {
-  background: color-mix(in oklab, var(--color-background-surface), var(--color-text-primary) 6%);
+    background: color-mix(in oklab, var(--color-background-surface), var(--color-text-primary) 6%);
 }
 .attachment-link {
-  display: grid;
-  min-width: 0;
-  color: var(--color-text-primary);
-  text-decoration: none;
+    display: grid;
+    min-width: 0;
+    color: var(--color-text-primary);
+    text-decoration: none;
 }
 .attachment-link::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
 }
 .attachment-link:focus-visible {
-  outline: 0;
+    outline: 0;
 }
 .attachment-slip:has(.attachment-link:focus-visible) {
-  outline: 2px solid var(--rabbithole-paper);
-  outline-offset: 2px;
+    outline: 2px solid var(--rabbithole-paper);
+    outline-offset: 2px;
 }
 .attachment-tile {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  overflow: hidden;
-  border-radius: var(--radius-inner);
-  background: var(--color-overlay-hover);
-  font: 700 11px/1 var(--font-family-body);
-  letter-spacing: 0.03em;
-  color: var(--color-text-secondary);
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    overflow: hidden;
+    border-radius: var(--radius-inner);
+    background: var(--color-overlay-hover);
+    font: 700 11px/1 var(--font-family-body);
+    letter-spacing: 0.03em;
+    color: var(--color-text-secondary);
 }
 .attachment-tile img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 .attachment-name,
 .attachment-delivery {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .attachment-name {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.35;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
 }
 .attachment-delivery {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
 }
 /* The end slot sits above the link overlay so the OCR magnifier stays its own control. */
 .attachment-end {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
 }
 .attachment-open {
-  width: 16px;
-  height: 16px;
-  color: var(--color-text-secondary);
-  opacity: 0;
-  transition: opacity 120ms ease;
+    width: 16px;
+    height: 16px;
+    color: var(--color-text-secondary);
+    opacity: 0;
+    transition: opacity 120ms ease;
 }
 :is(.attachment-slip, .attachment-plate):has(.attachment-link:is(:hover, :focus-visible))
-  .attachment-open {
-  opacity: 1;
+    .attachment-open {
+    opacity: 1;
 }
 .attachment-plate {
-  position: relative;
-  display: grid;
-  gap: 6px;
-  width: 160px;
+    position: relative;
+    display: grid;
+    gap: 6px;
+    width: 160px;
 }
 .attachment-plate-image {
-  display: block;
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-  border-radius: var(--radius-container);
-  background: var(--color-overlay-hover);
+    display: block;
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: var(--radius-container);
+    background: var(--color-overlay-hover);
 }
 .attachment-plate:has(.attachment-link:hover) .attachment-plate-image {
-  box-shadow: inset 0 0 0 1px var(--color-border-emphasized);
+    box-shadow: inset 0 0 0 1px var(--color-border-emphasized);
 }
 .attachment-plate:has(.attachment-link:focus-visible) .attachment-plate-image {
-  outline: 2px solid var(--rabbithole-paper);
-  outline-offset: 2px;
+    outline: 2px solid var(--rabbithole-paper);
+    outline-offset: 2px;
 }
 .attachment-plate-caption {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 4px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px;
 }
 /* OCR is a note, not a failure: never rose. */
 .attachment-ocr-note h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
 }
 .attachment-ocr-note p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--color-text-secondary);
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
 }
 @media (max-width: 48rem) {
-  .message-files {
-    max-width: 100%;
-  }
-  .attachment-plate {
-    width: calc(50% - var(--spacing-2) / 2);
-  }
-  .attachment-plate-image {
-    height: auto;
-    aspect-ratio: 4 / 3;
-  }
+    .message-files {
+        max-width: 100%;
+    }
+    .attachment-plate {
+        width: calc(50% - var(--spacing-2) / 2);
+    }
+    .attachment-plate-image {
+        height: auto;
+        aspect-ratio: 4 / 3;
+    }
 }
 /* Pending files: a grid of slips at the head of the composer, on Deep Panel so the composer stays the only frame.
    The tray rides in the input slot, so the frame's own padding is its inset. */
 .attachment-tray {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
-  gap: 8px;
-  margin-block-end: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+    gap: 8px;
+    margin-block-end: 8px;
 }
 .attachment-tray .attachment-slip {
-  width: auto;
-  background: var(--color-background-muted);
+    width: auto;
+    background: var(--color-background-muted);
 }
 /* A refused file: one rose line inside the composer, cleared on the next add or send. */
 .attachment-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: var(--color-text-error);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: var(--color-text-error);
 }
 .attachment-note svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
+    flex: none;
+    width: 16px;
+    height: 16px;
 }
 /* Drag over: the composer's own stroke turns dashed paper (no focus ring) and a note covers the field. */
 :is(.focused-chat, .first-question)
-  .astryx-chat-composer.attachment-composer.is-dropping
-  > :last-child {
-  border-style: dashed;
-  border-color: var(--rabbithole-paper);
-  box-shadow: none;
-  outline: none;
+    .astryx-chat-composer.attachment-composer.is-dropping
+    > :last-child {
+    border-style: dashed;
+    border-color: var(--rabbithole-paper);
+    box-shadow: none;
+    outline: none;
 }
 .attachment-drop {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 4px;
-  border-radius: inherit;
-  background: var(--color-background-surface);
-  text-align: center;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 4px;
+    border-radius: inherit;
+    background: var(--color-background-surface);
+    text-align: center;
 }
 .attachment-drop svg {
-  width: 20px;
-  height: 20px;
+    width: 20px;
+    height: 20px;
 }
 .attachment-drop b {
-  font-weight: 600;
+    font-weight: 600;
 }
 .attachment-drop small {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+    font-size: 12px;
+    color: var(--color-text-secondary);
 }
 @media (max-width: 48rem) {
-  .attachment-tray {
-    grid-template-columns: minmax(0, 1fr);
-  }
+    .attachment-tray {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }

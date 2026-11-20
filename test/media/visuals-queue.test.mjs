@@ -5,346 +5,364 @@ import assert from 'node:assert/strict';
 import { task, block, source, complete, deferred, until, open } from '../support/visual-kit.mjs';
 
 test('closed blocks start chat-model workers while text streams, queue in order at three, freeze requests and record every call', async () => {
-  const first = deferred(),
-    more = deferred(),
-    finish = deferred(),
-    holds = [],
-    calls = [],
-    chatCalls = [];
-  const env = await open(
-    {
-      generate: async (tree, text, emit, save) => {
-        chatCalls.push({ tree, text });
-        save('private-tutor-thread', 'smart');
-        if (text === 'Continue') return complete(emit, 'More about rounds.');
-        emit({ type: 'delta', item: 'answer', text: 'First paragraph.\n```rabbithole-vis' });
-        await first.promise;
-        emit({
-          type: 'delta',
-          item: 'answer',
-          text:
-            'ual\n' +
-            JSON.stringify({ ...task, title: 'Step 0', ignored: 'DO NOT FORWARD' }) +
-            '\n```',
+    const first = deferred(),
+        more = deferred(),
+        finish = deferred(),
+        holds = [],
+        calls = [],
+        chatCalls = [];
+    const env = await open(
+        {
+            generate: async (tree, text, emit, save) => {
+                chatCalls.push({ tree, text });
+                save('private-tutor-thread', 'smart');
+                if (text === 'Continue') return complete(emit, 'More about rounds.');
+                emit({
+                    type: 'delta',
+                    item: 'answer',
+                    text: 'First paragraph.\n```rabbithole-vis',
+                });
+                await first.promise;
+                emit({
+                    type: 'delta',
+                    item: 'answer',
+                    text:
+                        'ual\n' +
+                        JSON.stringify({ ...task, title: 'Step 0', ignored: 'DO NOT FORWARD' }) +
+                        '\n```',
+                });
+                await more.promise;
+                emit({
+                    type: 'delta',
+                    item: 'answer',
+                    text:
+                        Array.from({ length: 6 }, (_, i) => block(`Step ${i + 1}`)).join('') +
+                        '\n\nLast paragraph.',
+                });
+                await finish.promise;
+                emit({ type: 'status', status: 'completed' });
+            },
+        },
+        {
+            generate: async (tree, text, emit, save) => {
+                calls.push({ tree, input: JSON.parse(text) });
+                save('private-worker-thread', 'unrelated-worker-model');
+                const hold = deferred();
+                holds.push(hold);
+                await hold.promise;
+                complete(emit, source);
+            },
+        },
+        { saveEvery: 0 },
+    );
+    try {
+        env.store.message(env.tree.id, 'user', 'UNRELATED PRIVATE TRANSCRIPT', 'completed');
+        const response = await env.post(`/api/trees/${env.tree.id}/messages`, {
+            text: 'Explain seven steps',
         });
-        await more.promise;
-        emit({
-          type: 'delta',
-          item: 'answer',
-          text:
-            Array.from({ length: 6 }, (_, i) => block(`Step ${i + 1}`)).join('') +
-            '\n\nLast paragraph.',
+        let stream = '';
+        const consumed = (async () => {
+            for await (const chunk of response.body) {
+                stream += Buffer.from(chunk).toString();
+                notify();
+            }
+        })();
+        assert.equal(calls.length, 0, 'an unclosed block starts no worker');
+        first.resolve();
+        await until(() => calls.length === 1);
+        assert.equal(
+            (await env.get(`/api/trees/${env.tree.id}`)).messages.at(-1).status,
+            'streaming',
+        );
+        await until(() => stream.includes('"status":"pending"'));
+        more.resolve();
+        await until(() => calls.length === 3);
+        let saved = await env.get(`/api/trees/${env.tree.id}`);
+        assert.equal(
+            saved.artifacts.length,
+            7,
+            'all positions appear while the tutor is still writing',
+        );
+        assert.ok(saved.artifacts.every((a) => a.status === 'pending'));
+        assert.equal(saved.artifacts[0].position, 'First paragraph.'.length);
+        assert.equal(saved.messages.at(-1).text, 'First paragraph.\n\nLast paragraph.');
+        assert.doesNotMatch(
+            stream,
+            /rabbithole-|DO NOT FORWARD|private-worker|private-tutor|intent|excerpt/,
+        );
+        assert.equal(
+            (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Duplicate' })).status,
+            409,
+        );
+        await env.post('/api/settings/smart', {
+            model: { provider: 'claude', model: 'smart' },
+            followEffort: false,
+            effort: 'low',
         });
-        await finish.promise;
-        emit({ type: 'status', status: 'completed' });
-      },
-    },
-    {
-      generate: async (tree, text, emit, save) => {
-        calls.push({ tree, input: JSON.parse(text) });
-        save('private-worker-thread', 'unrelated-worker-model');
-        const hold = deferred();
-        holds.push(hold);
-        await hold.promise;
-        complete(emit, source);
-      },
-    },
-    { saveEvery: 0 },
-  );
-  try {
-    env.store.message(env.tree.id, 'user', 'UNRELATED PRIVATE TRANSCRIPT', 'completed');
-    const response = await env.post(`/api/trees/${env.tree.id}/messages`, {
-      text: 'Explain seven steps',
-    });
-    let stream = '';
-    const consumed = (async () => {
-      for await (const chunk of response.body) {
-        stream += Buffer.from(chunk).toString();
-        notify();
-      }
-    })();
-    assert.equal(calls.length, 0, 'an unclosed block starts no worker');
-    first.resolve();
-    await until(() => calls.length === 1);
-    assert.equal((await env.get(`/api/trees/${env.tree.id}`)).messages.at(-1).status, 'streaming');
-    await until(() => stream.includes('"status":"pending"'));
-    more.resolve();
-    await until(() => calls.length === 3);
-    let saved = await env.get(`/api/trees/${env.tree.id}`);
-    assert.equal(
-      saved.artifacts.length,
-      7,
-      'all positions appear while the tutor is still writing',
-    );
-    assert.ok(saved.artifacts.every((a) => a.status === 'pending'));
-    assert.equal(saved.artifacts[0].position, 'First paragraph.'.length);
-    assert.equal(saved.messages.at(-1).text, 'First paragraph.\n\nLast paragraph.');
-    assert.doesNotMatch(
-      stream,
-      /rabbithole-|DO NOT FORWARD|private-worker|private-tutor|intent|excerpt/,
-    );
-    assert.equal(
-      (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Duplicate' })).status,
-      409,
-    );
-    await env.post('/api/settings/smart', {
-      model: { provider: 'claude', model: 'smart' },
-      followEffort: false,
-      effort: 'low',
-    });
-    for (let i = 0; i < 7; i++) {
-      await until(() => !!holds[i]);
-      holds[i].resolve();
-      if (i < 4) await until(() => calls.length === i + 4);
+        for (let i = 0; i < 7; i++) {
+            await until(() => !!holds[i]);
+            holds[i].resolve();
+            if (i < 4) await until(() => calls.length === i + 4);
+        }
+        await until(async () =>
+            (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every(
+                (a) => a.status === 'ready',
+            ),
+        );
+        assert.equal(
+            (await env.get(`/api/trees/${env.tree.id}`)).messages.at(-1).status,
+            'streaming',
+            'visuals finish before the reply',
+        );
+        finish.resolve();
+        await consumed;
+        assert.deepEqual(
+            calls.map((c) => c.input.request.title),
+            Array.from({ length: 7 }, (_, i) => `Step ${i}`),
+        );
+        for (const [i, c] of calls.entries()) {
+            assert.equal(c.tree.provider, 'claude');
+            assert.equal(c.tree.model, 'smart');
+            assert.equal(c.tree.effort, 'high');
+            assert.equal(c.tree.thread, null);
+            assert.equal(c.tree.messages, undefined);
+            assert.equal(c.tree.branch, undefined);
+            assert.deepEqual(
+                c.input.earlierTitles,
+                Array.from({ length: i }, (_, j) => `Step ${j}`),
+            );
+            assert.deepEqual(c.input.request, { ...task, title: `Step ${i}` });
+            assert.doesNotMatch(
+                JSON.stringify(c),
+                /UNRELATED PRIVATE|DO NOT FORWARD|private-tutor|Explain seven steps/,
+            );
+        }
+        const usage = (await env.get('/api/usage')).events.filter((e) => e.task === 'diagram');
+        assert.equal(usage.length, 7);
+        assert.ok(
+            usage.every(
+                (e) =>
+                    e.provider === 'claude' &&
+                    e.model === 'unrelated-worker-model' &&
+                    e.input === 10 &&
+                    e.output === 3 &&
+                    e.cacheRead === 2,
+            ),
+        );
+        await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Continue' })).text();
+        const history = JSON.stringify(chatCalls.at(-1).tree);
+        assert.match(history, /Step 0|Two winners meet/);
+        assert.ok(history.includes(saved.artifacts[0].id));
+        assert.doesNotMatch(
+            history,
+            /<svg|Show the winners advancing|Winners advance\.|private-worker|earlierTitles|rabbithole-visual/,
+        );
+        assert.equal(chatCalls.at(-1).tree.thread, null);
+        assert.equal(
+            (await env.get(`/api/trees/${env.tree.id}`)).model,
+            'smart',
+            'worker sessions never replace the tutor session/model',
+        );
+    } finally {
+        first.resolve();
+        more.resolve();
+        finish.resolve();
+        holds.forEach((h) => h.resolve());
+        await env.close();
     }
-    await until(async () =>
-      (await env.get(`/api/trees/${env.tree.id}`)).artifacts.every((a) => a.status === 'ready'),
-    );
-    assert.equal(
-      (await env.get(`/api/trees/${env.tree.id}`)).messages.at(-1).status,
-      'streaming',
-      'visuals finish before the reply',
-    );
-    finish.resolve();
-    await consumed;
-    assert.deepEqual(
-      calls.map((c) => c.input.request.title),
-      Array.from({ length: 7 }, (_, i) => `Step ${i}`),
-    );
-    for (const [i, c] of calls.entries()) {
-      assert.equal(c.tree.provider, 'claude');
-      assert.equal(c.tree.model, 'smart');
-      assert.equal(c.tree.effort, 'high');
-      assert.equal(c.tree.thread, null);
-      assert.equal(c.tree.messages, undefined);
-      assert.equal(c.tree.branch, undefined);
-      assert.deepEqual(
-        c.input.earlierTitles,
-        Array.from({ length: i }, (_, j) => `Step ${j}`),
-      );
-      assert.deepEqual(c.input.request, { ...task, title: `Step ${i}` });
-      assert.doesNotMatch(
-        JSON.stringify(c),
-        /UNRELATED PRIVATE|DO NOT FORWARD|private-tutor|Explain seven steps/,
-      );
-    }
-    const usage = (await env.get('/api/usage')).events.filter((e) => e.task === 'diagram');
-    assert.equal(usage.length, 7);
-    assert.ok(
-      usage.every(
-        (e) =>
-          e.provider === 'claude' &&
-          e.model === 'unrelated-worker-model' &&
-          e.input === 10 &&
-          e.output === 3 &&
-          e.cacheRead === 2,
-      ),
-    );
-    await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Continue' })).text();
-    const history = JSON.stringify(chatCalls.at(-1).tree);
-    assert.match(history, /Step 0|Two winners meet/);
-    assert.ok(history.includes(saved.artifacts[0].id));
-    assert.doesNotMatch(
-      history,
-      /<svg|Show the winners advancing|Winners advance\.|private-worker|earlierTitles|rabbithole-visual/,
-    );
-    assert.equal(chatCalls.at(-1).tree.thread, null);
-    assert.equal(
-      (await env.get(`/api/trees/${env.tree.id}`)).model,
-      'smart',
-      'worker sessions never replace the tutor session/model',
-    );
-  } finally {
-    first.resolve();
-    more.resolve();
-    finish.resolve();
-    holds.forEach((h) => h.resolve());
-    await env.close();
-  }
 });
 
 test('Stop cancels every queued/running visual, preserves ready visuals, starts no more calls and ignores late output', async () => {
-  const chatHold = deferred(),
-    workerHolds = [],
-    signals = [],
-    emissions = [];
-  const env = await open(
-    {
-      generate: async (_tree, _text, emit) => {
-        emit({
-          type: 'item',
-          item: 'answer',
-          text:
-            'Keep this explanation.' +
-            Array.from({ length: 7 }, (_, i) => block(`Step ${i}`)).join(''),
+    const chatHold = deferred(),
+        workerHolds = [],
+        signals = [],
+        emissions = [];
+    const env = await open(
+        {
+            generate: async (_tree, _text, emit) => {
+                emit({
+                    type: 'item',
+                    item: 'answer',
+                    text:
+                        'Keep this explanation.' +
+                        Array.from({ length: 7 }, (_, i) => block(`Step ${i}`)).join(''),
+                });
+                await chatHold.promise;
+            },
+        },
+        {
+            generate: async (_tree, text, emit, _save, signal) => {
+                signals.push(signal);
+                emissions.push(emit);
+                if (JSON.parse(text).request.title === 'Step 0') return complete(emit, source);
+                const hold = deferred();
+                workerHolds.push(hold);
+                await hold.promise;
+            },
+        },
+    );
+    try {
+        const stream = env
+            .post(`/api/trees/${env.tree.id}/messages`, { text: 'Show steps' })
+            .then((r) => r.text());
+        await until(() => signals.length === 4);
+        assert.deepEqual(
+            (await env.get(`/api/trees/${env.tree.id}`)).artifacts.map((a) => a.status),
+            ['ready', ...Array(6).fill('pending')],
+        );
+        assert.equal((await env.post(`/api/trees/${env.tree.id}/stop`)).status, 200);
+        const events = await stream,
+            saved = await env.get(`/api/trees/${env.tree.id}`);
+        assert.deepEqual(
+            saved.artifacts.map((a) => a.status),
+            ['ready', ...Array(6).fill('failed')],
+        );
+        assert.ok(signals.slice(1).every((s) => s.aborted));
+        assert.equal(saved.messages.at(-1).status, 'interrupted');
+        assert.match(events, /"status":"failed"/);
+        assert.ok(
+            saved.artifacts.slice(1).every((a) => /canceled/.test(a.error) && a.source === null),
+        );
+        emissions.forEach((e) => complete(e, '<p>LATE PRIVATE RESULT</p>'));
+        workerHolds.forEach((h) => h.resolve());
+        chatHold.resolve();
+        await env.app.settled();
+        assert.equal(signals.length, 4);
+        assert.deepEqual(await env.get(`/api/trees/${env.tree.id}`), {
+            ...saved,
+            messages: saved.messages.map((m) =>
+                m.role === 'assistant'
+                    ? {
+                          ...m,
+                          // Late provider measurements still count; canceled content and unstarted calls stay unchanged.
+                          mediaUsage: [
+                              ...Array.from({ length: 4 }, () => ({
+                                  task: 'diagram',
+                                  input: 10,
+                                  output: 3,
+                                  cacheRead: 2,
+                              })),
+                              ...Array.from({ length: 3 }, () => ({
+                                  task: 'diagram',
+                                  input: null,
+                                  output: null,
+                                  cacheRead: null,
+                              })),
+                          ],
+                      }
+                    : m,
+            ),
         });
-        await chatHold.promise;
-      },
-    },
-    {
-      generate: async (_tree, text, emit, _save, signal) => {
-        signals.push(signal);
-        emissions.push(emit);
-        if (JSON.parse(text).request.title === 'Step 0') return complete(emit, source);
-        const hold = deferred();
-        workerHolds.push(hold);
-        await hold.promise;
-      },
-    },
-  );
-  try {
-    const stream = env
-      .post(`/api/trees/${env.tree.id}/messages`, { text: 'Show steps' })
-      .then((r) => r.text());
-    await until(() => signals.length === 4);
-    assert.deepEqual(
-      (await env.get(`/api/trees/${env.tree.id}`)).artifacts.map((a) => a.status),
-      ['ready', ...Array(6).fill('pending')],
-    );
-    assert.equal((await env.post(`/api/trees/${env.tree.id}/stop`)).status, 200);
-    const events = await stream,
-      saved = await env.get(`/api/trees/${env.tree.id}`);
-    assert.deepEqual(
-      saved.artifacts.map((a) => a.status),
-      ['ready', ...Array(6).fill('failed')],
-    );
-    assert.ok(signals.slice(1).every((s) => s.aborted));
-    assert.equal(saved.messages.at(-1).status, 'interrupted');
-    assert.match(events, /"status":"failed"/);
-    assert.ok(saved.artifacts.slice(1).every((a) => /canceled/.test(a.error) && a.source === null));
-    emissions.forEach((e) => complete(e, '<p>LATE PRIVATE RESULT</p>'));
-    workerHolds.forEach((h) => h.resolve());
-    chatHold.resolve();
-    await env.app.settled();
-    assert.equal(signals.length, 4);
-    assert.deepEqual(await env.get(`/api/trees/${env.tree.id}`), {
-      ...saved,
-      messages: saved.messages.map((m) =>
-        m.role === 'assistant'
-          ? {
-              ...m,
-              // Late provider measurements still count; canceled content and unstarted calls stay unchanged.
-              mediaUsage: [
-                ...Array.from({ length: 4 }, () => ({
-                  task: 'diagram',
-                  input: 10,
-                  output: 3,
-                  cacheRead: 2,
-                })),
-                ...Array.from({ length: 3 }, () => ({
-                  task: 'diagram',
-                  input: null,
-                  output: null,
-                  cacheRead: null,
-                })),
-              ],
-            }
-          : m,
-      ),
-    });
-    assert.equal(
-      (await env.post(`/api/trees/${env.tree.id}/artifacts/${saved.artifacts[1].id}/retry`)).status,
-      200,
-      'a stopped visual retries only on the learner’s explicit request',
-    );
-    await until(() => signals.length === 5);
-    workerHolds.at(-1).resolve();
-    complete(emissions.at(-1), source);
-    await env.app.settled();
-    assert.equal(env.store.artifact(env.tree.id, saved.artifacts[1].id).status, 'ready');
-  } finally {
-    workerHolds.forEach((h) => h.resolve());
-    chatHold.resolve();
-    await env.close();
-  }
+        assert.equal(
+            (await env.post(`/api/trees/${env.tree.id}/artifacts/${saved.artifacts[1].id}/retry`))
+                .status,
+            200,
+            'a stopped visual retries only on the learner’s explicit request',
+        );
+        await until(() => signals.length === 5);
+        workerHolds.at(-1).resolve();
+        complete(emissions.at(-1), source);
+        await env.app.settled();
+        assert.equal(env.store.artifact(env.tree.id, saved.artifacts[1].id).status, 'ready');
+    } finally {
+        workerHolds.forEach((h) => h.resolve());
+        chatHold.resolve();
+        await env.close();
+    }
 });
 
 test('concurrent replies get separate three-worker queues; deleting one aborts only its workers and cannot recreate content', async () => {
-  const chatHolds = [],
-    workerHolds = [],
-    workers = [];
-  let released = false;
-  const env = await open(
-    {
-      generate: async (_tree, text, emit) => {
-        emit({
-          type: 'item',
-          item: 'a',
-          text:
-            'Explanation.' + Array.from({ length: 5 }, (_, i) => block(`${text} ${i}`)).join(''),
-        });
-        const hold = deferred();
-        chatHolds.push(hold);
-        await hold.promise;
-        emit({ type: 'status', status: 'completed' });
-      },
-    },
-    {
-      generate: async (_tree, text, emit, _save, signal) => {
-        workers.push({ title: JSON.parse(text).request.title, signal });
-        const hold = deferred();
-        workerHolds.push(hold);
-        if (!released) await hold.promise;
-        complete(emit, source);
-      },
-    },
-  );
-  try {
-    const other = env.store.create('Other', 'claude', 'smart', 'high');
-    const first = env
-      .post(`/api/trees/${env.tree.id}/messages`, { text: 'First' })
-      .then((r) => r.text());
-    const second = env
-      .post(`/api/trees/${other.id}/messages`, { text: 'Second' })
-      .then((r) => r.text());
-    await until(() => workers.length === 6);
-    assert.equal(workers.filter((w) => w.title.startsWith('First')).length, 3);
-    assert.equal(workers.filter((w) => w.title.startsWith('Second')).length, 3);
-    assert.equal(
-      (await env.post(`/api/trees/${env.tree.id}/delete`, { conversation: env.tree.id })).status,
-      200,
+    const chatHolds = [],
+        workerHolds = [],
+        workers = [];
+    let released = false;
+    const env = await open(
+        {
+            generate: async (_tree, text, emit) => {
+                emit({
+                    type: 'item',
+                    item: 'a',
+                    text:
+                        'Explanation.' +
+                        Array.from({ length: 5 }, (_, i) => block(`${text} ${i}`)).join(''),
+                });
+                const hold = deferred();
+                chatHolds.push(hold);
+                await hold.promise;
+                emit({ type: 'status', status: 'completed' });
+            },
+        },
+        {
+            generate: async (_tree, text, emit, _save, signal) => {
+                workers.push({ title: JSON.parse(text).request.title, signal });
+                const hold = deferred();
+                workerHolds.push(hold);
+                if (!released) await hold.promise;
+                complete(emit, source);
+            },
+        },
     );
-    await first;
-    assert.ok(workers.filter((w) => w.title.startsWith('First')).every((w) => w.signal.aborted));
-    assert.ok(workers.filter((w) => w.title.startsWith('Second')).every((w) => !w.signal.aborted));
-    chatHolds.forEach((h) => h.resolve());
-    released = true;
-    workerHolds.forEach((h) => h.resolve());
-    await second;
-    await env.app.settled();
-    assert.equal((await fetch(`${env.origin}/api/trees/${env.tree.id}`)).status, 404);
-    assert.ok(
-      (await env.get(`/api/trees/${other.id}`)).artifacts.every((a) => a.status === 'ready'),
-    );
-    assert.equal(
-      workers.filter((w) => w.title.startsWith('First')).length,
-      3,
-      'deleted queue never drains',
-    );
-  } finally {
-    chatHolds.forEach((h) => h.resolve());
-    workerHolds.forEach((h) => h.resolve());
-    await env.close();
-  }
+    try {
+        const other = env.store.create('Other', 'claude', 'smart', 'high');
+        const first = env
+            .post(`/api/trees/${env.tree.id}/messages`, { text: 'First' })
+            .then((r) => r.text());
+        const second = env
+            .post(`/api/trees/${other.id}/messages`, { text: 'Second' })
+            .then((r) => r.text());
+        await until(() => workers.length === 6);
+        assert.equal(workers.filter((w) => w.title.startsWith('First')).length, 3);
+        assert.equal(workers.filter((w) => w.title.startsWith('Second')).length, 3);
+        assert.equal(
+            (await env.post(`/api/trees/${env.tree.id}/delete`, { conversation: env.tree.id }))
+                .status,
+            200,
+        );
+        await first;
+        assert.ok(
+            workers.filter((w) => w.title.startsWith('First')).every((w) => w.signal.aborted),
+        );
+        assert.ok(
+            workers.filter((w) => w.title.startsWith('Second')).every((w) => !w.signal.aborted),
+        );
+        chatHolds.forEach((h) => h.resolve());
+        released = true;
+        workerHolds.forEach((h) => h.resolve());
+        await second;
+        await env.app.settled();
+        assert.equal((await fetch(`${env.origin}/api/trees/${env.tree.id}`)).status, 404);
+        assert.ok(
+            (await env.get(`/api/trees/${other.id}`)).artifacts.every((a) => a.status === 'ready'),
+        );
+        assert.equal(
+            workers.filter((w) => w.title.startsWith('First')).length,
+            3,
+            'deleted queue never drains',
+        );
+    } finally {
+        chatHolds.forEach((h) => h.resolve());
+        workerHolds.forEach((h) => h.resolve());
+        await env.close();
+    }
 });
 
 test('a slow visual provider within the injected budget still yields a ready visual', async (t) => {
-  t.mock.timers.enable({ apis: ['setTimeout'] });
-  const started = deferred();
-  const provider = {
-    generate: async (_tree, _text, emit) => {
-      started.resolve();
-      await new Promise((r) => setTimeout(r, 100));
-      complete(emit, source);
-    },
-  };
-  const start = (budget) =>
-    generateVisual(provider, {}, { request: task }, new AbortController().signal, budget);
-  const rejected = assert.rejects(start(60), /Visual generation timed out/);
-  t.mock.timers.tick(60);
-  await rejected;
-  const ready = start(400);
-  await started.promise;
-  t.mock.timers.tick(100);
-  assert.equal(await ready, source);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const started = deferred();
+    const provider = {
+        generate: async (_tree, _text, emit) => {
+            started.resolve();
+            await new Promise((r) => setTimeout(r, 100));
+            complete(emit, source);
+        },
+    };
+    const start = (budget) =>
+        generateVisual(provider, {}, { request: task }, new AbortController().signal, budget);
+    const rejected = assert.rejects(start(60), /Visual generation timed out/);
+    t.mock.timers.tick(60);
+    await rejected;
+    const ready = start(400);
+    await started.promise;
+    t.mock.timers.tick(100);
+    assert.equal(await ready, source);
 });

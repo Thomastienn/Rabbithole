@@ -12,97 +12,98 @@ export const MAX_CLIP_SECONDS = 15;
 const MAX_CLIP_BYTES = 40 * 1024 * 1024;
 
 export const ffmpegInstall = (platform = process.platform) =>
-  platform === 'darwin' ? 'brew install ffmpeg' : 'sudo apt install ffmpeg';
+    platform === 'darwin' ? 'brew install ffmpeg' : 'sudo apt install ffmpeg';
 
 // A fresh probe per video plan, so a later install or a broken environment shows up without a restart.
 export function detectClips({
-  root = projectRoot,
-  probe = spawnSync,
-  platform = process.platform,
+    root = projectRoot,
+    probe = spawnSync,
+    platform = process.platform,
 } = {}) {
-  const ytDlp = join(root, '.venv', 'bin', 'yt-dlp');
-  const ok = (command, args) => probe(command, args, { timeout: 15000 }).status === 0;
-  if (!ok('ffmpeg', ['-version']))
-    return {
-      ready: false,
-      ytDlp,
-      error: `Clip exhibits unavailable: ffmpeg is missing. Run: ${ffmpegInstall(platform)}, then npm start; videos have no clips until then.`,
-    };
-  if (!ok(ytDlp, ['--version']))
-    return {
-      ready: false,
-      ytDlp,
-      error:
-        'Clip exhibits unavailable: yt-dlp is not installed in .venv. Run npm start to install it; videos have no clips until then.',
-    };
-  return { ready: true, ytDlp, ffmpeg: 'ffmpeg' };
+    const ytDlp = join(root, '.venv', 'bin', 'yt-dlp');
+    const ok = (command, args) => probe(command, args, { timeout: 15000 }).status === 0;
+    if (!ok('ffmpeg', ['-version']))
+        return {
+            ready: false,
+            ytDlp,
+            error: `Clip exhibits unavailable: ffmpeg is missing. Run: ${ffmpegInstall(platform)}, then npm start; videos have no clips until then.`,
+        };
+    if (!ok(ytDlp, ['--version']))
+        return {
+            ready: false,
+            ytDlp,
+            error: 'Clip exhibits unavailable: yt-dlp is not installed in .venv. Run npm start to install it; videos have no clips until then.',
+        };
+    return { ready: true, ytDlp, ffmpeg: 'ffmpeg' };
 }
 
 // Downloads seconds start..end of a video page and returns the trimmed MP4 bytes; any failure throws, including
 // a clip with sound whose source has no audio.
 export async function downloadClip(
-  { url, start, end, sound = false },
-  { clips, signal, run = promisify(execFile) },
+    { url, start, end, sound = false },
+    { clips, signal, run = promisify(execFile) },
 ) {
-  const work = await mkdtemp(join(tmpdir(), 'rabbithole-clip-'));
-  try {
-    const options = { signal, timeout: 300000, maxBuffer: 1024 * 1024 };
-    await run(
-      clips.ytDlp,
-      [
-        '--ignore-config',
-        '--no-playlist',
-        '--quiet',
-        '--no-warnings',
-        '--socket-timeout',
-        '20',
-        '--max-filesize',
-        '500M',
-        '-f',
-        sound
-          ? 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b'
-          : 'bv*[height<=720]/b[height<=720]/bv*/b',
-        '--download-sections',
-        `*${start}-${end}`,
-        '-o',
-        join(work, 'source.%(ext)s'),
-        '--',
-        url,
-      ],
-      options,
-    );
-    const source = (await readdir(work)).find((f) => f.startsWith('source.'));
-    if (!source) throw new Error('the downloader saved no video');
-    const out = join(work, 'clip.mp4');
-    // The section may start at an earlier keyframe; -t caps the length and the frame stays 16:9.
-    await run(
-      clips.ffmpeg,
-      [
-        '-v',
-        'error',
-        '-y',
-        '-i',
-        join(work, source),
-        '-t',
-        String(end - start),
-        ...(sound ? ['-map', '0:v:0', '-map', '0:a:0', '-c:a', 'aac', '-b:a', '128k'] : ['-an']),
-        '-vf',
-        'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30',
-        '-c:v',
-        'libx264',
-        '-pix_fmt',
-        'yuv420p',
-        '-movflags',
-        '+faststart',
-        out,
-      ],
-      options,
-    );
-    const bytes = await readFile(out);
-    if (!bytes.length || bytes.length > MAX_CLIP_BYTES)
-      throw new Error('the trimmed clip is empty or too large');
-    return bytes;
-  } finally {
-    await rm(work, { recursive: true, force: true });
-  }
+    const work = await mkdtemp(join(tmpdir(), 'rabbithole-clip-'));
+    try {
+        const options = { signal, timeout: 300000, maxBuffer: 1024 * 1024 };
+        await run(
+            clips.ytDlp,
+            [
+                '--ignore-config',
+                '--no-playlist',
+                '--quiet',
+                '--no-warnings',
+                '--socket-timeout',
+                '20',
+                '--max-filesize',
+                '500M',
+                '-f',
+                sound
+                    ? 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b'
+                    : 'bv*[height<=720]/b[height<=720]/bv*/b',
+                '--download-sections',
+                `*${start}-${end}`,
+                '-o',
+                join(work, 'source.%(ext)s'),
+                '--',
+                url,
+            ],
+            options,
+        );
+        const source = (await readdir(work)).find((f) => f.startsWith('source.'));
+        if (!source) throw new Error('the downloader saved no video');
+        const out = join(work, 'clip.mp4');
+        // The section may start at an earlier keyframe; -t caps the length and the frame stays 16:9.
+        await run(
+            clips.ffmpeg,
+            [
+                '-v',
+                'error',
+                '-y',
+                '-i',
+                join(work, source),
+                '-t',
+                String(end - start),
+                ...(sound
+                    ? ['-map', '0:v:0', '-map', '0:a:0', '-c:a', 'aac', '-b:a', '128k']
+                    : ['-an']),
+                '-vf',
+                'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30',
+                '-c:v',
+                'libx264',
+                '-pix_fmt',
+                'yuv420p',
+                '-movflags',
+                '+faststart',
+                out,
+            ],
+            options,
+        );
+        const bytes = await readFile(out);
+        if (!bytes.length || bytes.length > MAX_CLIP_BYTES)
+            throw new Error('the trimmed clip is empty or too large');
+        return bytes;
+    } finally {
+        await rm(work, { recursive: true, force: true });
+    }
 }

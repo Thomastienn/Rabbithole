@@ -16,22 +16,22 @@ export const GAP = DAY;
 const GROWTH = 3;
 
 const fade = (estimate, elapsed, stability) =>
-  FLOOR + (estimate - FLOOR) * Math.exp(-Math.max(0, elapsed) / stability);
+    FLOOR + (estimate - FLOOR) * Math.exp(-Math.max(0, elapsed) / stability);
 
 // observations: [{ level 0-5, confidence 'low'|'high', at ms }] in any order.
 export function familiarity(observations, now) {
-  let estimate = PRIOR,
-    weight = PRIOR_WEIGHT,
-    stability = START_STABILITY,
-    last = null;
-  for (const o of [...observations].sort((a, b) => a.at - b.at)) {
-    if (last !== null) estimate = fade(estimate, o.at - last, stability);
-    const w = WEIGHT[o.confidence] ?? WEIGHT.low;
-    estimate += (w / (weight + w)) * (o.level / 5 - estimate);
-    weight = Math.min(MAX_WEIGHT, weight + w);
-    if (o.level === 0) stability = START_STABILITY;
-    else if (o.level >= 2 && last !== null && o.at - last >= GAP) stability *= GROWTH;
-    last = o.at;
-  }
-  return last === null ? estimate : fade(estimate, now - last, stability);
+    let estimate = PRIOR,
+        weight = PRIOR_WEIGHT,
+        stability = START_STABILITY,
+        last = null;
+    for (const o of [...observations].sort((a, b) => a.at - b.at)) {
+        if (last !== null) estimate = fade(estimate, o.at - last, stability);
+        const w = WEIGHT[o.confidence] ?? WEIGHT.low;
+        estimate += (w / (weight + w)) * (o.level / 5 - estimate);
+        weight = Math.min(MAX_WEIGHT, weight + w);
+        if (o.level === 0) stability = START_STABILITY;
+        else if (o.level >= 2 && last !== null && o.at - last >= GAP) stability *= GROWTH;
+        last = o.at;
+    }
+    return last === null ? estimate : fade(estimate, now - last, stability);
 }

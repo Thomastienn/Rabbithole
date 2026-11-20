@@ -1,53 +1,53 @@
 // Stored per browser and app origin; unreadable storage means off.
 export function savedVim() {
-  try {
-    return localStorage.getItem('rabbithole.vim') === 'on';
-  } catch {
-    return false;
-  }
+    try {
+        return localStorage.getItem('rabbithole.vim') === 'on';
+    } catch {
+        return false;
+    }
 }
 
 export function savedFocusMode() {
-  try {
-    return localStorage.getItem('rabbithole.focus-mode') === 'on';
-  } catch {
-    return false;
-  }
+    try {
+        return localStorage.getItem('rabbithole.focus-mode') === 'on';
+    } catch {
+        return false;
+    }
 }
 
 // Ghost trees show unless they were switched off.
 export function savedGhostTrees() {
-  try {
-    return localStorage.getItem('rabbithole.ghost-trees') !== 'off';
-  } catch {
-    return true;
-  }
+    try {
+        return localStorage.getItem('rabbithole.ghost-trees') !== 'off';
+    } catch {
+        return true;
+    }
 }
 
 // Library opens as a shelf unless List was chosen.
 export function savedLibraryLayout(): 'shelf' | 'list' {
-  try {
-    return localStorage.getItem('rabbithole.library-layout') === 'list' ? 'list' : 'shelf';
-  } catch {
-    return 'shelf';
-  }
+    try {
+        return localStorage.getItem('rabbithole.library-layout') === 'list' ? 'list' : 'shelf';
+    } catch {
+        return 'shelf';
+    }
 }
 
 export function savePreference(
-  key:
-    | 'appearance'
-    | 'theme'
-    | 'vim'
-    | 'library-layout'
-    | 'focus-mode'
-    | 'ghost-trees'
-    | 'reading-font'
-    | 'interface-font',
-  value: string,
+    key:
+        | 'appearance'
+        | 'theme'
+        | 'vim'
+        | 'library-layout'
+        | 'focus-mode'
+        | 'ghost-trees'
+        | 'reading-font'
+        | 'interface-font',
+    value: string,
 ) {
-  try {
-    localStorage.setItem(`rabbithole.${key}`, value);
-  } catch {
-    /* Preference stays for this session only. */
-  }
+    try {
+        localStorage.setItem(`rabbithole.${key}`, value);
+    } catch {
+        /* Preference stays for this session only. */
+    }
 }

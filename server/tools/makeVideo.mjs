@@ -4,44 +4,44 @@ const TOPIC = 200;
 const CONTEXT = 6000;
 
 export const MAKE_VIDEO = {
-  name: 'make_video',
-  description:
-    "Start a narrated video only when you are sure the learner wants one, asked in any wording or language; never for an ordinary explanation. When the learner only hints at a video, or still does not follow after your explanation, do not start one: offer it instead as record_turn's video_offer, as a last resort. " +
-    'A video stands alone: in a reply with make_video, call no show_visual or start_discussion and make no other video. ' +
-    'Another model plans and makes the video from the topic and this conversation; never write video code yourself. The result is "queued": tell the learner in a sentence or two that the video is on its way.',
-  parameters: {
-    type: 'object',
-    properties: {
-      topic: {
-        type: 'string',
-        description: `What the video explains, at most ${TOPIC} characters, such as "How a binary search narrows a sorted list".`,
-      },
+    name: 'make_video',
+    description:
+        "Start a narrated video only when you are sure the learner wants one, asked in any wording or language; never for an ordinary explanation. When the learner only hints at a video, or still does not follow after your explanation, do not start one: offer it instead as record_turn's video_offer, as a last resort. " +
+        'A video stands alone: in a reply with make_video, call no show_visual or start_discussion and make no other video. ' +
+        'Another model plans and makes the video from the topic and this conversation; never write video code yourself. The result is "queued": tell the learner in a sentence or two that the video is on its way.',
+    parameters: {
+        type: 'object',
+        properties: {
+            topic: {
+                type: 'string',
+                description: `What the video explains, at most ${TOPIC} characters, such as "How a binary search narrows a sorted list".`,
+            },
+        },
+        required: ['topic'],
     },
-    required: ['topic'],
-  },
 };
 
 export function readMakeVideo(input) {
-  const topic = input?.topic;
-  if (typeof topic !== 'string' || !topic.trim())
-    throw new Error('make_video needs topic as non-empty text.');
-  const text = topic.trim();
-  if (text.length > TOPIC)
-    throw new Error(
-      `make_video topic is ${text.length} characters; shorten it to at most ${TOPIC}.`,
-    );
-  if (/[\u0000-\u001f]/.test(text))
-    throw new Error('make_video topic contains control characters; use plain text.');
-  return text;
+    const topic = input?.topic;
+    if (typeof topic !== 'string' || !topic.trim())
+        throw new Error('make_video needs topic as non-empty text.');
+    const text = topic.trim();
+    if (text.length > TOPIC)
+        throw new Error(
+            `make_video topic is ${text.length} characters; shorten it to at most ${TOPIC}.`,
+        );
+    if (/[\u0000-\u001f]/.test(text))
+        throw new Error('make_video topic contains control characters; use plain text.');
+    return text;
 }
 
 // The conversation so far as plain turns, newest last, bounded from the end.
 export const videoContext = (messages, question, replySoFar = '') =>
-  [
-    ...messages.map((m) => `${m.role === 'user' ? 'Learner' : 'Tutor'}: ${m.text}`),
-    `Learner: ${question}`,
-    replySoFar.trim() && `Tutor: ${replySoFar.trim()}`,
-  ]
-    .filter(Boolean)
-    .join('\n\n')
-    .slice(-CONTEXT);
+    [
+        ...messages.map((m) => `${m.role === 'user' ? 'Learner' : 'Tutor'}: ${m.text}`),
+        `Learner: ${question}`,
+        replySoFar.trim() && `Tutor: ${replySoFar.trim()}`,
+    ]
+        .filter(Boolean)
+        .join('\n\n')
+        .slice(-CONTEXT);

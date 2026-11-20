@@ -14,58 +14,58 @@ export default function Video() {
 
 // Python has its own pinned environment; only that environment and its interpreter are unmasked.
 export function manimBindings(python) {
-  const runtime = pythonRuntime(python);
-  return [
-    '--ro-bind',
-    runtime,
-    runtime,
-    '--ro-bind',
-    join(projectRoot, '.venv'),
-    join(projectRoot, '.venv'),
-    '--ro-bind',
-    join(projectRoot, 'server/media/manim-render.py'),
-    join(projectRoot, 'server/media/manim-render.py'),
-    // Downloaded TinyTeX, after the system tools as outside the sandbox.
-    ...(existsSync(texBin())
-      ? [
-          '--ro-bind',
-          dirname(dirname(texBin())),
-          dirname(dirname(texBin())),
-          '--setenv',
-          'PATH',
-          `/usr/bin:/bin:${texBin()}`,
-        ]
-      : []),
-  ];
+    const runtime = pythonRuntime(python);
+    return [
+        '--ro-bind',
+        runtime,
+        runtime,
+        '--ro-bind',
+        join(projectRoot, '.venv'),
+        join(projectRoot, '.venv'),
+        '--ro-bind',
+        join(projectRoot, 'server/media/manim-render.py'),
+        join(projectRoot, 'server/media/manim-render.py'),
+        // Downloaded TinyTeX, after the system tools as outside the sandbox.
+        ...(existsSync(texBin())
+            ? [
+                  '--ro-bind',
+                  dirname(dirname(texBin())),
+                  dirname(dirname(texBin())),
+                  '--setenv',
+                  'PATH',
+                  `/usr/bin:/bin:${texBin()}`,
+              ]
+            : []),
+    ];
 }
 
 export function sandboxManim(workspace, output, signal, onProgress, runtime) {
-  const timing = JSON.parse(readFileSync(join(workspace, 'narration.json'), 'utf8'));
-  return sandboxProcess(
-    workspace,
-    [
-      runtime.python,
-      '-I',
-      '-B',
-      join(projectRoot, 'server/media/manim-render.py'),
-      workspace,
-      output,
-      join(projectRoot, 'node_modules'),
-    ],
-    signal,
-    onProgress,
-    300000 + (timing.durationInFrames / 30) * 30000,
-    manimBindings(runtime.python),
-  );
+    const timing = JSON.parse(readFileSync(join(workspace, 'narration.json'), 'utf8'));
+    return sandboxProcess(
+        workspace,
+        [
+            runtime.python,
+            '-I',
+            '-B',
+            join(projectRoot, 'server/media/manim-render.py'),
+            workspace,
+            output,
+            join(projectRoot, 'node_modules'),
+        ],
+        signal,
+        onProgress,
+        300000 + (timing.durationInFrames / 30) * 30000,
+        manimBindings(runtime.python),
+    );
 }
 
 // Write-time check: the same sandbox and validator as a render, with no render.
 export const checkManim = (workspace, signal, runtime) =>
-  sandboxProcess(
-    workspace,
-    [runtime.python, '-I', '-B', join(projectRoot, 'server/media/manim-render.py'), '--check'],
-    signal,
-    () => {},
-    60000,
-    manimBindings(runtime.python),
-  );
+    sandboxProcess(
+        workspace,
+        [runtime.python, '-I', '-B', join(projectRoot, 'server/media/manim-render.py'), '--check'],
+        signal,
+        () => {},
+        60000,
+        manimBindings(runtime.python),
+    );

@@ -11,24 +11,24 @@ import { recovery } from './store/recovery.mjs';
 
 // Each record family's methods live in server/store/ and are installed on the Store prototype.
 export class Store {
-  constructor(path) {
-    open.call(this, path);
-  }
-  static roles = roles;
-  close() {
-    if (this.db.isOpen) this.db.close(); // tests' t.after cleanup may follow an inline restart close
-  }
+    constructor(path) {
+        open.call(this, path);
+    }
+    static roles = roles;
+    close() {
+        if (this.db.isOpen) this.db.close(); // tests' t.after cleanup may follow an inline restart close
+    }
 }
 Object.assign(
-  Store.prototype,
-  schema,
-  profiles,
-  trees,
-  knowledge,
-  media,
-  usage,
-  resources,
-  pieces,
-  discussions,
-  recovery,
+    Store.prototype,
+    schema,
+    profiles,
+    trees,
+    knowledge,
+    media,
+    usage,
+    resources,
+    pieces,
+    discussions,
+    recovery,
 );

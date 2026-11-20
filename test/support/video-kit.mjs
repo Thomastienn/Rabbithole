@@ -16,26 +16,26 @@ import { planBuilder } from '../../server/media/plan-calls.mjs';
 
 // The JSON task a fixer receives, with the raw source that follows it restored under its field.
 export const fixerTask = (text) => {
-  const at = text.search(/\n\n\w+:\n/);
-  if (at < 0) return JSON.parse(text);
-  const field = text.slice(at + 2, text.indexOf(':', at));
-  return { ...JSON.parse(text.slice(0, at)), [field]: text.slice(at + field.length + 4) };
+    const at = text.search(/\n\n\w+:\n/);
+    if (at < 0) return JSON.parse(text);
+    const field = text.slice(at + 2, text.indexOf(':', at));
+    return { ...JSON.parse(text.slice(0, at)), [field]: text.slice(at + field.length + 4) };
 };
 // A unified diff from one source to another, as a fixer answers.
 export const patchOf = (from, to) => createPatch('source', from, to);
 // A writer's answer: a repair of failed code answers the source as a patch of it; an unchanged source
 // gains a trailing newline, which validation trims, so the patch has a hunk.
 export const repairAnswer = (tree, text, source) => {
-  if (!tree.instructions.endsWith(REPAIR_PATCH_NOTE)) return source;
-  const { failedCode } = fixerTask(text);
-  return patchOf(failedCode, source === failedCode ? source + '\n' : source);
+    if (!tree.instructions.endsWith(REPAIR_PATCH_NOTE)) return source;
+    const { failedCode } = fixerTask(text);
+    return patchOf(failedCode, source === failedCode ? source + '\n' : source);
 };
 
 export const task = {
-  title: 'Winners advance',
-  description: 'Two winners meet in the final.',
-  intent: 'Animate two winners advancing.',
-  excerpt: 'A and B advance to the final.',
+    title: 'Winners advance',
+    description: 'Two winners meet in the final.',
+    intent: 'Animate two winners advancing.',
+    excerpt: 'A and B advance to the final.',
 };
 export const directive = '\n```rabbithole-video\n' + JSON.stringify(task) + '\n```';
 export const composition = `// Description: Two labelled boxes slide together into a final box.
@@ -70,193 +70,194 @@ class Cut(HouseScene):
         self.play(TransformMatchingTex(start, end), run_time=0.5)
 `;
 export const mp4 = Buffer.concat([
-  Buffer.from([0, 0, 0, 24]),
-  Buffer.from('ftypisom'),
-  Buffer.alloc(4096, 1),
+    Buffer.from([0, 0, 0, 24]),
+    Buffer.from('ftypisom'),
+    Buffer.alloc(4096, 1),
 ]);
 // Writes no stills, so the cut audit is skipped; audit tests inject their own snapshot.
 export const noSnapshot = async () => {};
 export const fakeRender = async (workspace, output) => {
-  writeFileSync(output, mp4);
-  return {
-    durationInFrames: JSON.parse(readFileSync(join(workspace, 'narration.json'))).durationInFrames,
-    fps: 30,
-  };
+    writeFileSync(output, mp4);
+    return {
+        durationInFrames: JSON.parse(readFileSync(join(workspace, 'narration.json')))
+            .durationInFrames,
+        fps: 30,
+    };
 };
 export const styleBrief = {
-  layoutAreas: [{ name: 'stage', description: 'Winner above the final at the centre.' }],
-  paletteRoles: { winner: 'amber' },
-  recurringObjects: [{ name: 'Winner', position: 'centre', colorRole: 'winner' }],
-  exactTerms: ['Winner', 'Final'],
+    layoutAreas: [{ name: 'stage', description: 'Winner above the final at the centre.' }],
+    paletteRoles: { winner: 'amber' },
+    recurringObjects: [{ name: 'Winner', position: 'centre', colorRole: 'winner' }],
+    exactTerms: ['Winner', 'Final'],
 };
 export const planFor = (source = composition, count = 1) => ({
-  title: task.title,
-  description: /^\/\/ Description: (.+)$/m.exec(source)?.[1] ?? task.description,
-  styleBrief,
-  cuts: Array.from({ length: count }, (_, i) => ({
-    purpose: `Step ${i + 1}`,
-    engine: 'remotion',
-    dimension: '2d',
-    narration: JSON.parse(/^\/\/ Narration: (.+)$/m.exec(source)?.[1] ?? '"Winners advance."'),
-    endState: `Winner at position ${i + 1}`,
-  })),
+    title: task.title,
+    description: /^\/\/ Description: (.+)$/m.exec(source)?.[1] ?? task.description,
+    styleBrief,
+    cuts: Array.from({ length: count }, (_, i) => ({
+        purpose: `Step ${i + 1}`,
+        engine: 'remotion',
+        dimension: '2d',
+        narration: JSON.parse(/^\/\/ Narration: (.+)$/m.exec(source)?.[1] ?? '"Winners advance."'),
+        endState: `Winner at position ${i + 1}`,
+    })),
 });
 // Calls written as <tool_call> text, the way a model without native tool calling answers.
 export const callText = (calls) =>
-  calls
-    .map(
-      ([name, input = {}]) =>
-        `<tool_call>${JSON.stringify({ name, arguments: input })}</tool_call>`,
-    )
-    .join('\n');
+    calls
+        .map(
+            ([name, input = {}]) =>
+                `<tool_call>${JSON.stringify({ name, arguments: input })}</tool_call>`,
+        )
+        .join('\n');
 // Today's plan shape as the planning calls that build it.
 export const planCalls = ({ title, description, styleBrief: b, cuts }) => [
-  ['start_video', { title, description }],
-  ...b.layoutAreas.map((a) => ['add_area', a]),
-  ...Object.entries(b.paletteRoles).map(([role, ink]) => [
-    'add_colour',
-    b.trueColors?.[ink] ? { role, name: ink, hex: b.trueColors[ink] } : { role, ink },
-  ]),
-  ...b.recurringObjects.map((o) => ['add_object', o]),
-  ...b.exactTerms.map((term) => ['add_term', { term }]),
-  ...cuts.flatMap(({ exhibits = [], ...cut }, i) => [
-    ['add_cut', cut],
-    ...exhibits.map((e) => ['add_exhibit', { cut: i + 1, ...e }]),
-  ]),
-  ['finish_video'],
+    ['start_video', { title, description }],
+    ...b.layoutAreas.map((a) => ['add_area', a]),
+    ...Object.entries(b.paletteRoles).map(([role, ink]) => [
+        'add_colour',
+        b.trueColors?.[ink] ? { role, name: ink, hex: b.trueColors[ink] } : { role, ink },
+    ]),
+    ...b.recurringObjects.map((o) => ['add_object', o]),
+    ...b.exactTerms.map((term) => ['add_term', { term }]),
+    ...cuts.flatMap(({ exhibits = [], ...cut }, i) => [
+        ['add_cut', cut],
+        ...exhibits.map((e) => ['add_exhibit', { cut: i + 1, ...e }]),
+    ]),
+    ['finish_video'],
 ];
 export const planText = (plan) => callText(planCalls(plan));
 // A plan run through the planning calls as a native model would; the first rejected call or unfinished plan throws.
 export const planThrough = (plan, options) => {
-  const builder = planBuilder(options);
-  for (const [name, input = {}] of planCalls(plan)) builder.run(name, input);
-  const problem = builder.problem();
-  if (problem) throw new Error(problem);
-  return builder.plan();
+    const builder = planBuilder(options);
+    for (const [name, input = {}] of planCalls(plan)) builder.run(name, input);
+    const problem = builder.problem();
+    if (problem) throw new Error(problem);
+    return builder.plan();
 };
 export const videoResponse = (tree, source = composition) =>
-  tree.instructions?.startsWith('You plan') && source.startsWith('// Description:')
-    ? planText(planFor(source))
-    : source;
+    tree.instructions?.startsWith('You plan') && source.startsWith('// Description:')
+        ? planText(planFor(source))
+        : source;
 export const complete = (emit, text) => {
-  emit({ type: 'item', item: 'answer', text });
-  emit({ type: 'status', status: 'completed' });
+    emit({ type: 'item', item: 'answer', text });
+    emit({ type: 'status', status: 'completed' });
 };
 // Answers a cut audit with its calls: natively through tree.runTool when given, else as <tool_call> text.
 export const audit = async (tree, emit, ...calls) => {
-  if (tree.runTool) for (const [name, input = {}] of calls) await tree.runTool(name, input);
-  complete(emit, tree.runTool ? '' : callText(calls));
+    if (tree.runTool) for (const [name, input = {}] of calls) await tree.runTool(name, input);
+    complete(emit, tree.runTool ? '' : callText(calls));
 };
 export const pass = ['pass_cut'];
 // Today's issue shape as the flag_problem calls that report it.
 export const problems = (issues) =>
-  issues.map((i) => ['flag_problem', { cut: i.where, problem: i.what }]);
+    issues.map((i) => ['flag_problem', { cut: i.where, problem: i.what }]);
 export { until } from './events.mjs';
 
 export async function open(provider, options = {}) {
-  observe(options, ['videoRender', 'videoNarrate', 'videoSnapshot']);
-  provider = { models: async () => [{ model: 'fixture-model', isDefault: true }], ...provider };
-  const dir = mkdtempSync(join(tmpdir(), 'tt-videos-'));
-  const store = observeStore(new Store(join(dir, 'trees.sqlite')));
-  const app = createApp({
-    store,
-    provider: observeProvider(provider),
-    auth: { status: () => ({ connected: true }) },
-    dir,
-    videoRender: fakeRender,
-    videoSnapshot: noSnapshot,
-    videoNarrate: fakeNarration,
-    ...options,
-  });
-  await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
-  const origin = `http://127.0.0.1:${app.server.address().port}`;
-  const { csrf } = await (await fetch(`${origin}/api/state`)).json();
-  return {
-    store,
-    app,
-    dir,
-    get: (path) => fetch(origin + path),
-    post: (path, body = {}) =>
-      fetch(origin + path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
-        body: JSON.stringify(body),
-      }),
-    close: () => {
-      app.stop();
-      store.close();
-    },
-  };
+    observe(options, ['videoRender', 'videoNarrate', 'videoSnapshot']);
+    provider = { models: async () => [{ model: 'fixture-model', isDefault: true }], ...provider };
+    const dir = mkdtempSync(join(tmpdir(), 'tt-videos-'));
+    const store = observeStore(new Store(join(dir, 'trees.sqlite')));
+    const app = createApp({
+        store,
+        provider: observeProvider(provider),
+        auth: { status: () => ({ connected: true }) },
+        dir,
+        videoRender: fakeRender,
+        videoSnapshot: noSnapshot,
+        videoNarrate: fakeNarration,
+        ...options,
+    });
+    await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${app.server.address().port}`;
+    const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+    return {
+        store,
+        app,
+        dir,
+        get: (path) => fetch(origin + path),
+        post: (path, body = {}) =>
+            fetch(origin + path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
+                body: JSON.stringify(body),
+            }),
+        close: () => {
+            app.stop();
+            store.close();
+        },
+    };
 }
 
 export async function job(render, mutate, source = composition, count = 1, options = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'tt-video-job-'));
-  const store = observeStore(new Store(join(dir, 'trees.sqlite')));
-  const tree = store.create('Video', 'codex');
-  const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
-  const artifact = store.pendingArtifact(
-    tree.id,
-    message,
-    'Title',
-    'Planned.',
-    'video',
-    '{"request":"Make a video."}',
-  );
-  mutate?.(store, artifact, dir);
-  const audits = [];
-  const provider = {
-    generate: async (t, text, emit) => {
-      if (t.images) audits.push(t.images);
-      await options.slow?.();
-      complete(
-        emit,
-        t.instructions.startsWith('You plan') &&
-          (options.plan || source.startsWith('// Description:'))
-          ? planText(options.plan ?? planFor(source, count))
-          : options.plan?.cuts.find((c) => c.purpose === JSON.parse(text).cut.purpose)?.engine ===
-              'manim'
-            ? manimCut
-            : source,
-      );
-    },
-  };
-  const phases = [];
-  const result = await generateVideo({
-    provider,
-    selection: {},
-    store,
-    dir,
-    artifact,
-    signal: new AbortController().signal,
-    // A real render also takes real snapshots.
-    snapshot: options.snapshot ?? (render ? noSnapshot : undefined),
-    narrate: fakeNarration,
-    onPhase: (...p) => phases.push(p),
-    manim: options.manim,
-    search: options.search,
-    exhibit: options.exhibit,
-    clips: options.clips,
-  }).then(
-    () => null,
-    (error) => error.message,
-  );
-  assert.ok(!existsSync(join(dir, 'video-work', artifact.id, artifact.attempt, 'out'))); // no leftover unpublished output
-  const row = store.artifact(tree.id, artifact.id);
-  return {
-    result,
-    row,
-    published: row.status === 'ready',
-    // Generation saves cuts, never an MP4 (an MP4 is the export).
-    exported: existsSync(mediaPath(dir, artifact.id)),
-    dir,
-    phases,
-    audits,
-  };
+    const dir = mkdtempSync(join(tmpdir(), 'tt-video-job-'));
+    const store = observeStore(new Store(join(dir, 'trees.sqlite')));
+    const tree = store.create('Video', 'codex');
+    const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
+    const artifact = store.pendingArtifact(
+        tree.id,
+        message,
+        'Title',
+        'Planned.',
+        'video',
+        '{"request":"Make a video."}',
+    );
+    mutate?.(store, artifact, dir);
+    const audits = [];
+    const provider = {
+        generate: async (t, text, emit) => {
+            if (t.images) audits.push(t.images);
+            await options.slow?.();
+            complete(
+                emit,
+                t.instructions.startsWith('You plan') &&
+                    (options.plan || source.startsWith('// Description:'))
+                    ? planText(options.plan ?? planFor(source, count))
+                    : options.plan?.cuts.find((c) => c.purpose === JSON.parse(text).cut.purpose)
+                            ?.engine === 'manim'
+                      ? manimCut
+                      : source,
+            );
+        },
+    };
+    const phases = [];
+    const result = await generateVideo({
+        provider,
+        selection: {},
+        store,
+        dir,
+        artifact,
+        signal: new AbortController().signal,
+        // A real render also takes real snapshots.
+        snapshot: options.snapshot ?? (render ? noSnapshot : undefined),
+        narrate: fakeNarration,
+        onPhase: (...p) => phases.push(p),
+        manim: options.manim,
+        search: options.search,
+        exhibit: options.exhibit,
+        clips: options.clips,
+    }).then(
+        () => null,
+        (error) => error.message,
+    );
+    assert.ok(!existsSync(join(dir, 'video-work', artifact.id, artifact.attempt, 'out'))); // no leftover unpublished output
+    const row = store.artifact(tree.id, artifact.id);
+    return {
+        result,
+        row,
+        published: row.status === 'ready',
+        // Generation saves cuts, never an MP4 (an MP4 is the export).
+        exported: existsSync(mediaPath(dir, artifact.id)),
+        dir,
+        phases,
+        audits,
+    };
 }
 
 const repo = fileURLToPath(new URL('../..', import.meta.url));
 const browser = join(
-  repo,
-  'node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell',
+    repo,
+    'node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell',
 );
 export const sandboxed = spawnSync('bwrap', ['--version']).status === 0 && existsSync(browser);

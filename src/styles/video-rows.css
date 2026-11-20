@@ -2,77 +2,77 @@
    part of the card; a ready cut reads quieter, one being worked on reads in paper ink. */
 /* .video-card outranks the reply's own list indent; the negative margin closes the card stack's gap. */
 .video-card .video-cut-rows {
-  margin: calc(-1 * var(--spacing-2)) 0 0;
-  padding: 12px 16px 14px 24px;
-  list-style: none;
-  display: grid;
-  gap: 6px;
-  font: 400 13px/1.35 var(--font-family-body);
-  color-scheme: dark;
-  background: var(--color-background-body);
-  color: var(--rabbithole-paper);
-  box-shadow:
-    inset 1px 0 var(--color-border),
-    inset -1px 0 var(--color-border),
-    inset 0 -1px var(--color-border);
-  border-radius: 0 0 var(--radius-container) var(--radius-container);
+    margin: calc(-1 * var(--spacing-2)) 0 0;
+    padding: 12px 16px 14px 24px;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+    font: 400 13px/1.35 var(--font-family-body);
+    color-scheme: dark;
+    background: var(--color-background-body);
+    color: var(--rabbithole-paper);
+    box-shadow:
+        inset 1px 0 var(--color-border),
+        inset -1px 0 var(--color-border),
+        inset 0 -1px var(--color-border);
+    border-radius: 0 0 var(--radius-container) var(--radius-container);
 }
 .video-inline[data-state='pending'] .video-stage:has(+ .video-cut-rows) {
-  border-end-start-radius: 0;
-  border-end-end-radius: 0;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
 }
 .video-cut-rows li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
 }
 /* State dot: a hollow ring pulses while the cut is worked on, a filled one marks it ready. */
 .video-cut-rows li::before {
-  content: '';
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--rabbithole-ink-1);
-  animation: video-cut-pulse 1.6s ease-in-out infinite;
+    content: '';
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px var(--rabbithole-ink-1);
+    animation: video-cut-pulse 1.6s ease-in-out infinite;
 }
 .video-cut-rows li > span {
-  flex: 1;
-  min-width: 0;
+    flex: 1;
+    min-width: 0;
 }
 .video-cut-rows small {
-  flex: none;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+    flex: none;
+    font-size: 12px;
+    color: var(--color-text-secondary);
 }
 .video-cut-rows li[data-state='ready'] {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }
 .video-cut-rows li[data-state='ready']::before {
-  background: var(--rabbithole-ink-1);
-  animation: none;
+    background: var(--rabbithole-ink-1);
+    animation: none;
 }
 @keyframes video-cut-pulse {
-  50% {
-    opacity: 0.3;
-  }
+    50% {
+        opacity: 0.3;
+    }
 }
 @media (prefers-reduced-motion: reduce) {
-  .video-cut-rows li::before {
-    animation: none;
-  }
+    .video-cut-rows li::before {
+        animation: none;
+    }
 }
 /* The token breakdown under a finished inline video, closed behind its "⋯" button. */
 .video-usage table {
-  border-collapse: collapse;
-  font: 500 12px/1.35 var(--font-family-body);
-  font-variant-numeric: tabular-nums;
+    border-collapse: collapse;
+    font: 500 12px/1.35 var(--font-family-body);
+    font-variant-numeric: tabular-nums;
 }
 .video-usage th,
 .video-usage td {
-  padding: 2px 12px 2px 0;
-  text-align: left;
+    padding: 2px 12px 2px 0;
+    text-align: left;
 }
 .video-usage th {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }

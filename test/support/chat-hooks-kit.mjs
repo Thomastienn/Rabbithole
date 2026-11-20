@@ -4,108 +4,114 @@ import { render } from './render.mjs';
 import { ui } from './ui.mjs';
 
 const [
-  { useChatState },
-  { useLearningTrees },
-  { useChatModel },
-  { useReplyStream },
-  { useBranchForm },
-  { useTreeActions },
-  { useLayoutSaving },
+    { useChatState },
+    { useLearningTrees },
+    { useChatModel },
+    { useReplyStream },
+    { useBranchForm },
+    { useTreeActions },
+    { useLayoutSaving },
 ] = await Promise.all([
-  import('../../src/chat/useChatState.ts'),
-  import('../../src/chat/useLearningTrees.ts'),
-  import('../../src/chat/useChatModel.ts'),
-  import('../../src/chat/useReplyStream.ts'),
-  import('../../src/chat/useBranchForm.ts'),
-  import('../../src/chat/useTreeActions.ts'),
-  import('../../src/map/useLayoutSaving.ts'),
+    import('../../src/chat/useChatState.ts'),
+    import('../../src/chat/useLearningTrees.ts'),
+    import('../../src/chat/useChatModel.ts'),
+    import('../../src/chat/useReplyStream.ts'),
+    import('../../src/chat/useBranchForm.ts'),
+    import('../../src/chat/useTreeActions.ts'),
+    import('../../src/map/useLayoutSaving.ts'),
 ]);
 
 export const conversation = (id) => ({
-  id,
-  title: id,
-  provider: 'claude',
-  model: 'opus',
-  effort: 'high',
-  branch: null,
-  artifacts: [],
-  messages: [],
+    id,
+    title: id,
+    provider: 'claude',
+    model: 'opus',
+    effort: 'high',
+    branch: null,
+    artifacts: [],
+    messages: [],
 });
 export const summary = (id, parent = null) => ({
-  id,
-  title: id,
-  parent,
-  created: 0,
-  layout: { folded: [], selected: id, panel: 'beside' },
+    id,
+    title: id,
+    parent,
+    created: 0,
+    layout: { folded: [], selected: id, panel: 'beside' },
 });
 export const deferred = () => Promise.withResolvers();
 export const json = (body, ok = true) => ({ ok, json: async () => structuredClone(body) });
 
 // Mount the same hook composition as ChatPage without the map or media DOM.
 export async function mount(t, intercept = () => {}) {
-  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
-  const savedFetch = globalThis.fetch;
-  const data = new Map(['a', 'b'].map((id) => [id, conversation(id)]));
-  const state = {
-    csrf: 'csrf',
-    auth: { connected: true, email: null },
-    trees: [summary('a'), summary('b')],
-    active: [],
-    videos: [],
-  };
-  const calls = [];
-  globalThis.fetch = async (path, init) => {
-    const call = {
-      path,
-      body: typeof init?.body === 'string' ? JSON.parse(init.body) : init?.body,
-      init,
+    t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+    const savedFetch = globalThis.fetch;
+    const data = new Map(['a', 'b'].map((id) => [id, conversation(id)]));
+    const state = {
+        csrf: 'csrf',
+        auth: { connected: true, email: null },
+        trees: [summary('a'), summary('b')],
+        active: [],
+        videos: [],
     };
-    calls.push(call);
-    const response = intercept(call, { data, state });
-    if (response !== undefined) return response;
-    if (path === '/api/state') return json(state);
-    if (path === '/api/models')
-      return json({
-        models: [
-          { provider: 'claude', model: 'opus', label: 'Opus', isDefault: true, efforts: ['high'] },
-          { provider: 'codex', model: 'gpt', label: 'GPT', isDefault: true, efforts: [] },
-        ],
-        providers: {
-          claude: { label: 'Claude', connected: true },
-          codex: { label: 'Codex', connected: true },
+    const calls = [];
+    globalThis.fetch = async (path, init) => {
+        const call = {
+            path,
+            body: typeof init?.body === 'string' ? JSON.parse(init.body) : init?.body,
+            init,
+        };
+        calls.push(call);
+        const response = intercept(call, { data, state });
+        if (response !== undefined) return response;
+        if (path === '/api/state') return json(state);
+        if (path === '/api/models')
+            return json({
+                models: [
+                    {
+                        provider: 'claude',
+                        model: 'opus',
+                        label: 'Opus',
+                        isDefault: true,
+                        efforts: ['high'],
+                    },
+                    { provider: 'codex', model: 'gpt', label: 'GPT', isDefault: true, efforts: [] },
+                ],
+                providers: {
+                    claude: { label: 'Claude', connected: true },
+                    codex: { label: 'Codex', connected: true },
+                },
+            });
+        if (path === '/api/settings/chat')
+            return json({ provider: 'claude', model: 'opus', effort: null });
+        if (path.startsWith('/api/previews?')) return json({});
+        if (data.has(path.split('/').at(-1))) return json(data.get(path.split('/').at(-1)));
+        if (/\/(layout|prepare|unprepare|stop)$/.test(path)) return json({});
+        throw new Error(`Unexpected request: ${path}`);
+    };
+    let current;
+    function Fixture() {
+        const c = useChatState();
+        const layout = useLayoutSaving(c);
+        const trees = useLearningTrees(c, layout);
+        const model = useChatModel(c);
+        const stream = useReplyStream(c, trees, model, { name: 'paperback', mode: 'light' });
+        const actions = useTreeActions(c, layout, trees, model, stream);
+        const branch = useBranchForm(c, trees, model, stream);
+        current = { c, layout, trees, model, stream, actions, branch };
+        return h('section', { ref: c.workspace });
+    }
+    const page = await render(h(Fixture), ui);
+    t.after(async () => {
+        await page.cleanup();
+        globalThis.fetch = savedFetch;
+    });
+    return {
+        ...page,
+        get current() {
+            return current;
         },
-      });
-    if (path === '/api/settings/chat')
-      return json({ provider: 'claude', model: 'opus', effort: null });
-    if (path.startsWith('/api/previews?')) return json({});
-    if (data.has(path.split('/').at(-1))) return json(data.get(path.split('/').at(-1)));
-    if (/\/(layout|prepare|unprepare|stop)$/.test(path)) return json({});
-    throw new Error(`Unexpected request: ${path}`);
-  };
-  let current;
-  function Fixture() {
-    const c = useChatState();
-    const layout = useLayoutSaving(c);
-    const trees = useLearningTrees(c, layout);
-    const model = useChatModel(c);
-    const stream = useReplyStream(c, trees, model, { name: 'paperback', mode: 'light' });
-    const actions = useTreeActions(c, layout, trees, model, stream);
-    const branch = useBranchForm(c, trees, model, stream);
-    current = { c, layout, trees, model, stream, actions, branch };
-    return h('section', { ref: c.workspace });
-  }
-  const page = await render(h(Fixture), ui);
-  t.after(async () => {
-    await page.cleanup();
-    globalThis.fetch = savedFetch;
-  });
-  return {
-    ...page,
-    get current() {
-      return current;
-    },
-    calls,
-    data,
-    state,
-  };
+        calls,
+        data,
+        state,
+    };
 }

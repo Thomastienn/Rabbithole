@@ -2,275 +2,275 @@
 html,
 body,
 #root {
-  height: 100%;
+    height: 100%;
 }
 body {
-  background: var(--color-background-body);
-  color: var(--color-text-primary);
+    background: var(--color-background-body);
+    color: var(--color-text-primary);
 }
 .react-flow {
-  --xy-background-color: var(--color-background-body);
+    --xy-background-color: var(--color-background-body);
 }
 html {
-  view-transition-name: none;
+    view-transition-name: none;
 }
 /* Font choices: unlayered, so they beat each theme's layered tokens; code keeps --font-family-code. */
 html[data-reading-font='system'],
 html[data-reading-font='system'] [data-astryx-theme] {
-  --rabbithole-font-reading: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --rabbithole-font-reading: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 html[data-interface-font='system'],
 html[data-interface-font='system'] [data-astryx-theme] {
-  --font-family-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-family-heading: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-family-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-family-heading: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 ::selection {
-  background: var(--rabbithole-selection);
-  color: var(--color-text-primary);
+    background: var(--rabbithole-selection);
+    color: var(--color-text-primary);
 }
 .workspace {
-  position: relative;
+    position: relative;
 }
 .focus-hot-zone {
-  position: fixed;
-  z-index: 6;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: calc(var(--rabbithole-module) / 2);
+    position: fixed;
+    z-index: 6;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(var(--rabbithole-module) / 2);
 }
 .focus-restore {
-  position: fixed;
-  z-index: 6;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  transition:
-    opacity 120ms ease-out,
-    transform 120ms ease-out;
-  width: calc(6 * var(--rabbithole-module));
-  height: calc(4 * var(--rabbithole-module));
-  background: var(--rabbithole-band);
-  color: var(--rabbithole-band-ink);
-  --color-overlay-hover: color-mix(in srgb, var(--rabbithole-band-ink) 12%, transparent);
-  --color-overlay-pressed: color-mix(in srgb, var(--rabbithole-band-ink) 16%, transparent);
-  --focus-outline-color: var(--rabbithole-band-ink);
+    position: fixed;
+    z-index: 6;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    transition:
+        opacity 120ms ease-out,
+        transform 120ms ease-out;
+    width: calc(6 * var(--rabbithole-module));
+    height: calc(4 * var(--rabbithole-module));
+    background: var(--rabbithole-band);
+    color: var(--rabbithole-band-ink);
+    --color-overlay-hover: color-mix(in srgb, var(--rabbithole-band-ink) 12%, transparent);
+    --color-overlay-pressed: color-mix(in srgb, var(--rabbithole-band-ink) 16%, transparent);
+    --focus-outline-color: var(--rabbithole-band-ink);
 }
 .focus-hot-zone[data-revealed='false'] .focus-restore {
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, -100%);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
 }
 @media (prefers-reduced-motion: reduce) {
-  .focus-restore {
-    transition: none;
-  }
+    .focus-restore {
+        transition: none;
+    }
 }
 /* Narrow header (mockup Narrow): menu, wordmark, then search and New chat as quiet icons on the deep field. */
 /* Overrides sit on the controls, not the header: tooltips and the palette render inside the band and keep popover colours. */
 .shell-band :is(button, .band-mark) {
-  --color-text-primary: var(--rabbithole-band-ink);
-  --color-text-secondary: var(--rabbithole-band-muted);
-  --color-icon-primary: var(--rabbithole-band-ink);
-  --color-icon-secondary: var(--rabbithole-band-muted);
-  --color-text-disabled: var(--rabbithole-band-muted);
-  --color-icon-disabled: var(--rabbithole-band-muted);
-  --color-overlay-hover: color-mix(in srgb, var(--rabbithole-band-ink) 12%, transparent);
-  --color-overlay-pressed: color-mix(in srgb, var(--rabbithole-band-ink) 16%, transparent);
-  --focus-outline-color: var(--rabbithole-band-ink);
+    --color-text-primary: var(--rabbithole-band-ink);
+    --color-text-secondary: var(--rabbithole-band-muted);
+    --color-icon-primary: var(--rabbithole-band-ink);
+    --color-icon-secondary: var(--rabbithole-band-muted);
+    --color-text-disabled: var(--rabbithole-band-muted);
+    --color-icon-disabled: var(--rabbithole-band-muted);
+    --color-overlay-hover: color-mix(in srgb, var(--rabbithole-band-ink) 12%, transparent);
+    --color-overlay-pressed: color-mix(in srgb, var(--rabbithole-band-ink) 16%, transparent);
+    --focus-outline-color: var(--rabbithole-band-ink);
 }
 .shell-band {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 2px;
-  height: calc(6.5 * var(--rabbithole-module));
-  padding-inline: calc(0.75 * var(--rabbithole-module));
-  border-block-end: thin solid var(--color-border);
-  background: var(--rabbithole-band);
-  color: var(--rabbithole-band-ink);
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 2px;
+    height: calc(6.5 * var(--rabbithole-module));
+    padding-inline: calc(0.75 * var(--rabbithole-module));
+    border-block-end: thin solid var(--color-border);
+    background: var(--rabbithole-band);
+    color: var(--rabbithole-band-ink);
 }
 .shell-band button {
-  color: var(--rabbithole-band-ink);
+    color: var(--rabbithole-band-ink);
 }
 .shell-band :focus-visible {
-  outline: var(--focus-outline-width) solid var(--rabbithole-band-ink);
-  outline-offset: var(--focus-outline-offset);
+    outline: var(--focus-outline-width) solid var(--rabbithole-band-ink);
+    outline-offset: var(--focus-outline-offset);
 }
 .band-mark {
-  flex: none;
-  margin-inline-end: var(--rabbithole-module);
-  font-size: 20px;
-  letter-spacing: -0.01em;
-  color: var(--rabbithole-band-ink);
+    flex: none;
+    margin-inline-end: var(--rabbithole-module);
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    color: var(--rabbithole-band-ink);
 }
 :is(.sidebar, .shell-band) .band-mark {
-  font-family: var(--font-family-heading);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--rabbithole-paper);
+    font-family: var(--font-family-heading);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--rabbithole-paper);
 }
 /* Desktop sidebar (mockup sidebar.html A-D): app controls above the page's contents, full height. */
 .sidebar {
-  /* The logo paints in band ink; on the muted sidebar it takes the text colour instead. */
-  --rabbithole-band-ink: var(--color-text-primary);
-  --rabbithole-band: var(--color-background-muted);
-  display: flex;
-  flex: 0 0 calc(34 * var(--rabbithole-module));
-  flex-direction: column;
-  width: calc(34 * var(--rabbithole-module));
-  min-height: 0;
-  border-inline-end: thin solid var(--color-border);
-  background: var(--color-background-muted);
+    /* The logo paints in band ink; on the muted sidebar it takes the text colour instead. */
+    --rabbithole-band-ink: var(--color-text-primary);
+    --rabbithole-band: var(--color-background-muted);
+    display: flex;
+    flex: 0 0 calc(34 * var(--rabbithole-module));
+    flex-direction: column;
+    width: calc(34 * var(--rabbithole-module));
+    min-height: 0;
+    border-inline-end: thin solid var(--color-border);
+    background: var(--color-background-muted);
 }
 /* Focus mode: the sidebar rail, its own controls as icons in one column. */
 .sidebar-rail {
-  flex: none;
-  width: auto;
+    flex: none;
+    width: auto;
 }
 .sidebar-rail :is(.sidebar-head, .sidebar-tools) {
-  flex-direction: column;
+    flex-direction: column;
 }
 .sidebar.sidebar-rail .view-tab {
-  justify-content: center;
+    justify-content: center;
 }
 .sidebar-toggle svg {
-  animation: sidebar-toggle-in 160ms ease-out;
+    animation: sidebar-toggle-in 160ms ease-out;
 }
 @keyframes sidebar-toggle-in {
-  from {
-    opacity: 0;
-    transform: rotate(-90deg);
-  }
+    from {
+        opacity: 0;
+        transform: rotate(-90deg);
+    }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-toggle svg {
-    animation: none;
-  }
+    .sidebar-toggle svg {
+        animation: none;
+    }
 }
 .sidebar-top {
-  flex: none;
-  padding: var(--rabbithole-module);
+    flex: none;
+    padding: var(--rabbithole-module);
 }
 .sidebar:has(.contents) .sidebar-top {
-  border-block-end: thin solid var(--color-border);
+    border-block-end: thin solid var(--color-border);
 }
 .sidebar-head {
-  /* The sidebar toggle leads, the logo beside it. */
-  padding-block: calc(0.75 * var(--rabbithole-module)) var(--rabbithole-module);
+    /* The sidebar toggle leads, the logo beside it. */
+    padding-block: calc(0.75 * var(--rabbithole-module)) var(--rabbithole-module);
 }
 .sidebar-mark {
-  justify-content: flex-start;
-  gap: var(--rabbithole-module);
+    justify-content: flex-start;
+    gap: var(--rabbithole-module);
 }
 /* The button wraps its children in a block span; lay the logo and name out in one row. */
 .sidebar-mark span:has(> svg) {
-  display: flex;
-  align-items: center;
-  gap: var(--rabbithole-module);
+    display: flex;
+    align-items: center;
+    gap: var(--rabbithole-module);
 }
 /* New chat leads the sidebar; search sits beside it as a quiet icon. */
 .sidebar-tools {
-  padding-block-end: var(--rabbithole-module);
+    padding-block-end: var(--rabbithole-module);
 }
 .sidebar-tools .new-chat {
-  flex: 1;
-  justify-content: flex-start;
+    flex: 1;
+    justify-content: flex-start;
 }
 .sidebar-views {
-  padding-block-start: 2px;
+    padding-block-start: 2px;
 }
 /* Settings stays reachable at the foot while the outline scrolls under it. */
 .sidebar-foot {
-  position: sticky;
-  bottom: 0;
-  margin-block-start: auto;
-  padding: var(--rabbithole-module);
-  border-block-start: thin solid var(--color-border);
-  background: var(--color-background-muted);
+    position: sticky;
+    bottom: 0;
+    margin-block-start: auto;
+    padding: var(--rabbithole-module);
+    border-block-start: thin solid var(--color-border);
+    background: var(--color-background-muted);
 }
 .sidebar .band-save {
-  height: auto;
-  flex-wrap: wrap;
-  margin-block-start: var(--rabbithole-module);
-  padding-block: 2px;
+    height: auto;
+    flex-wrap: wrap;
+    margin-block-start: var(--rabbithole-module);
+    padding-block: 2px;
 }
 .focus-save {
-  position: fixed;
-  z-index: 6;
-  bottom: var(--rabbithole-module);
-  inset-inline-start: var(--rabbithole-module);
+    position: fixed;
+    z-index: 6;
+    bottom: var(--rabbithole-module);
+    inset-inline-start: var(--rabbithole-module);
 }
 .band-tools {
-  flex: none;
-  margin-inline-start: auto;
+    flex: none;
+    margin-inline-start: auto;
 }
 .shell-band .band-mark {
-  font-size: 18px;
+    font-size: 18px;
 }
 /* The drawer holds the whole sidebar at the drawer's width; the sidebar scrolls inside it. */
 .sidebar-drawer {
-  flex: none;
-  width: 100%;
-  height: 100%;
-  border-inline-end: 0;
+    flex: none;
+    width: 100%;
+    height: 100%;
+    border-inline-end: 0;
 }
 .sidebar-drawer .sidebar-head .sidebar-mark {
-  flex: 1;
+    flex: 1;
 }
 .band-save {
-  height: 24px;
-  padding-inline: var(--rabbithole-module);
-  border-radius: var(--radius-element);
-  background: var(--color-error);
-  color: var(--color-on-error);
-  --color-text-primary: var(--color-on-error);
-  --color-text-secondary: var(--color-on-error);
+    height: 24px;
+    padding-inline: var(--rabbithole-module);
+    border-radius: var(--radius-element);
+    background: var(--color-error);
+    color: var(--color-on-error);
+    --color-text-primary: var(--color-on-error);
+    --color-text-secondary: var(--color-on-error);
 }
 .band-save button {
-  height: 20px;
-  color: var(--color-on-error);
-  text-decoration: underline;
+    height: 20px;
+    color: var(--color-on-error);
+    text-decoration: underline;
 }
 .downloads-button {
-  position: relative;
-  display: flex;
+    position: relative;
+    display: flex;
 }
 .downloads-ring {
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 0;
-  width: 32px;
-  height: 32px;
-  translate: 0 -50%;
-  rotate: -90deg;
-  pointer-events: none;
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: 0;
+    width: 32px;
+    height: 32px;
+    translate: 0 -50%;
+    rotate: -90deg;
+    pointer-events: none;
 }
 .downloads-ring circle {
-  fill: none;
-  stroke: var(--color-accent);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.3s ease;
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.3s ease;
 }
 .downloads-button[data-failed] .downloads-ring circle {
-  stroke: var(--color-error);
+    stroke: var(--color-error);
 }
 .downloads-list {
-  display: grid;
-  gap: var(--rabbithole-module);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+    display: grid;
+    gap: var(--rabbithole-module);
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 .downloads-list li {
-  display: grid;
-  gap: calc(var(--rabbithole-module) / 2);
+    display: grid;
+    gap: calc(var(--rabbithole-module) / 2);
 }
 @media (prefers-reduced-motion: reduce) {
-  .downloads-ring circle {
-    transition: none;
-  }
+    .downloads-ring circle {
+        transition: none;
+    }
 }

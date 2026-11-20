@@ -2,66 +2,66 @@ export const DISCUSSION_RULE = `\n\nDiscussion: create one only when the learner
 
 // Validate the model's output at the reply boundary; reject the whole opening instead of silently changing voices.
 export function readDiscussion(task) {
-  const bounded = (value, max) =>
-    typeof value === 'string' &&
-    !!value.trim() &&
-    value.length <= max &&
-    !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value);
-  if (!Array.isArray(task?.classmates) || ![3, 4].includes(task.classmates.length))
-    return { error: 'choose 3 or 4 classmates' };
-  const classmates = [];
-  for (const c of task.classmates) {
-    if (
-      !bounded(c?.name, 60) ||
-      /[\r\n]/.test(c.name) ||
-      !['below', 'near', 'above'].includes(c.level)
-    )
-      return { error: 'each classmate needs a name and a relative level' };
-    const name = c.name.trim();
-    if (
-      ['tutor', 'learner', ...classmates.map((p) => p.name.toLowerCase())].includes(
-        name.toLowerCase(),
-      )
-    )
-      return { error: 'classmate names must be distinct and cannot be Tutor or Learner' };
-    if (!bounded(c.voice, 500))
-      return { error: 'each classmate needs a voice describing how they talk and think' };
-    const voice = c.voice.trim();
-    if (classmates.some((p) => p.voice.toLowerCase() === voice.toLowerCase()))
-      return { error: 'classmate voices must be distinct' };
-    classmates.push({ name, level: c.level, voice });
-  }
-  if (!['below', 'above'].every((level) => classmates.some((c) => c.level === level)))
-    return { error: 'include classmates below and above the learner’s familiarity' };
-  if (!Array.isArray(task.lines) || task.lines.length < 4 || task.lines.length > 8)
-    return { error: 'the opening needs 4 to 8 lines' };
-  const speakers = ['Tutor', ...classmates.map((c) => c.name)];
-  const lines = [];
-  for (const line of task.lines) {
-    if (!speakers.includes(line?.speaker) || !bounded(line.text, 2000))
-      return { error: 'each line needs a classmate or Tutor speaker and short text' };
-    lines.push({ speaker: line.speaker, text: line.text.trim() });
-  }
-  if (!/[?？][\s”’"')]*$/.test(lines.at(-1).text))
-    return { error: 'end the opening with a question to the learner' };
-  return { task: { classmates, lines } };
+    const bounded = (value, max) =>
+        typeof value === 'string' &&
+        !!value.trim() &&
+        value.length <= max &&
+        !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value);
+    if (!Array.isArray(task?.classmates) || ![3, 4].includes(task.classmates.length))
+        return { error: 'choose 3 or 4 classmates' };
+    const classmates = [];
+    for (const c of task.classmates) {
+        if (
+            !bounded(c?.name, 60) ||
+            /[\r\n]/.test(c.name) ||
+            !['below', 'near', 'above'].includes(c.level)
+        )
+            return { error: 'each classmate needs a name and a relative level' };
+        const name = c.name.trim();
+        if (
+            ['tutor', 'learner', ...classmates.map((p) => p.name.toLowerCase())].includes(
+                name.toLowerCase(),
+            )
+        )
+            return { error: 'classmate names must be distinct and cannot be Tutor or Learner' };
+        if (!bounded(c.voice, 500))
+            return { error: 'each classmate needs a voice describing how they talk and think' };
+        const voice = c.voice.trim();
+        if (classmates.some((p) => p.voice.toLowerCase() === voice.toLowerCase()))
+            return { error: 'classmate voices must be distinct' };
+        classmates.push({ name, level: c.level, voice });
+    }
+    if (!['below', 'above'].every((level) => classmates.some((c) => c.level === level)))
+        return { error: 'include classmates below and above the learner’s familiarity' };
+    if (!Array.isArray(task.lines) || task.lines.length < 4 || task.lines.length > 8)
+        return { error: 'the opening needs 4 to 8 lines' };
+    const speakers = ['Tutor', ...classmates.map((c) => c.name)];
+    const lines = [];
+    for (const line of task.lines) {
+        if (!speakers.includes(line?.speaker) || !bounded(line.text, 2000))
+            return { error: 'each line needs a classmate or Tutor speaker and short text' };
+        lines.push({ speaker: line.speaker, text: line.text.trim() });
+    }
+    if (!/[?？][\s”’"')]*$/.test(lines.at(-1).text))
+        return { error: 'end the opening with a question to the learner' };
+    return { task: { classmates, lines } };
 }
 
 // Levels and voices stay in the saved source for the model; the browser sees names and lines only.
 export function discussionArtifact({ source, ...artifact }) {
-  const discussion = source ? JSON.parse(source) : null;
-  return {
-    ...artifact,
-    classmates: discussion?.classmates.length ?? artifact.classmates ?? 0,
-    ...(discussion && {
-      discussion: {
-        classmates: discussion.classmates.map((c) => c.name),
-        lines: discussion.lines.map(({ speaker, text }) => ({ speaker, text })),
-        ...(discussion.closed && { closed: true }),
-        ...(discussion.turn && {
-          turn: { start: discussion.turn.start, status: discussion.turn.status },
+    const discussion = source ? JSON.parse(source) : null;
+    return {
+        ...artifact,
+        classmates: discussion?.classmates.length ?? artifact.classmates ?? 0,
+        ...(discussion && {
+            discussion: {
+                classmates: discussion.classmates.map((c) => c.name),
+                lines: discussion.lines.map(({ speaker, text }) => ({ speaker, text })),
+                ...(discussion.closed && { closed: true }),
+                ...(discussion.turn && {
+                    turn: { start: discussion.turn.start, status: discussion.turn.status },
+                }),
+            },
         }),
-      },
-    }),
-  };
+    };
 }

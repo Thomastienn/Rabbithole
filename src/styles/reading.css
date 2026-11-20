@@ -2,414 +2,414 @@
 /* Read (Line Diagram mockup): the focused chat owns the centre at a 640px measure; list and composer share it. */
 .chat-reply,
 .chat-reply > * {
-  max-width: 100%;
+    max-width: 100%;
 }
 .focused-chat .astryx-chat-message-list {
-  width: 100%;
-  max-width: calc(640px + 88px);
-  margin-inline: auto;
-  padding: 32px 44px 24px;
-  box-sizing: border-box;
+    width: 100%;
+    max-width: calc(640px + 88px);
+    margin-inline: auto;
+    padding: 32px 44px 24px;
+    box-sizing: border-box;
 }
 .focused-chat .astryx-chat-message-list > :first-child {
-  padding: 0;
+    padding: 0;
 }
 /* Narrow: the 44px gutters shrink so the column keeps its text. */
 @media (max-width: 48rem) {
-  .focused-chat .astryx-chat-message-list {
-    max-width: calc(640px + 32px);
-    padding-inline: 16px;
-  }
+    .focused-chat .astryx-chat-message-list {
+        max-width: calc(640px + 32px);
+        padding-inline: 16px;
+    }
 }
 .conv-title .rename-title {
-  height: auto;
-  white-space: normal;
-  text-align: start;
+    height: auto;
+    white-space: normal;
+    text-align: start;
 }
 .conv-title h2 {
-  font-family: var(--font-family-heading);
-  font-size: 38px;
-  line-height: 1.08;
-  font-weight: 700;
-  color: var(--rabbithole-paper);
-  text-wrap: balance;
+    font-family: var(--font-family-heading);
+    font-size: 38px;
+    line-height: 1.08;
+    font-weight: 700;
+    color: var(--rabbithole-paper);
+    text-wrap: balance;
 }
 /* Address chips (mockup .chip): filled with the family line (--ink, set inline), 4px corners. */
 .address-chip,
 .reply-md .passage-address,
 .visual-chips .passage-address {
-  display: inline-block;
-  padding: 3px 6px 2px;
-  border-radius: var(--radius-inner);
-  background: var(--ink);
-  color: var(--ink-on);
-  font: 700 12px/1 var(--font-family-heading);
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+    display: inline-block;
+    padding: 3px 6px 2px;
+    border-radius: var(--radius-inner);
+    background: var(--ink);
+    color: var(--ink-on);
+    font: 700 12px/1 var(--font-family-heading);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 .conv-title .rename-title span:has(> .title-chip) {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
 }
 .conv-title .title-chip {
-  flex: none;
-  margin-block-start: 7px;
-  padding: 5px 8px 4px;
-  font-size: 16px;
+    flex: none;
+    margin-block-start: 7px;
+    padding: 5px 8px 4px;
+    font-size: 16px;
 }
 .chat-header .chat-heading-row {
-  min-height: calc(5 * var(--rabbithole-module));
+    min-height: calc(5 * var(--rabbithole-module));
 }
 .crumbs {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--color-text-secondary);
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--color-text-secondary);
 }
 .crumbs .crumb {
-  flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  padding-inline: 4px;
-  font-weight: 400;
-  color: var(--color-text-secondary);
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    padding-inline: 4px;
+    font-weight: 400;
+    color: var(--color-text-secondary);
 }
 .crumbs .crumb:hover {
-  color: var(--color-text-primary);
+    color: var(--color-text-primary);
 }
 .crumbs strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-  color: var(--rabbithole-paper);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--rabbithole-paper);
 }
 .crumbs .addr {
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
 }
 .crumbs strong .addr.address-chip {
-  color: var(--ink-on);
-  vertical-align: 1px;
+    color: var(--ink-on);
+    vertical-align: 1px;
 }
 .crumb-sep {
-  flex: none;
-  width: 16px;
-  height: 16px;
+    flex: none;
+    width: 16px;
+    height: 16px;
 }
 .stats-toggle[aria-pressed='true'] {
-  background: var(--color-overlay-pressed);
+    background: var(--color-overlay-pressed);
 }
 /* Replies: Atkinson Hyperlegible Next 17px/1.68, no bubble (mockup Read). Code keeps the theme's code face. */
 .reply-md,
 .reply-md .astryx-text {
-  font-family: var(--rabbithole-font-reading);
-  font-size: 17px;
-  line-height: 1.68;
+    font-family: var(--rabbithole-font-reading);
+    font-size: 17px;
+    line-height: 1.68;
 }
 .reply-md pre .astryx-text,
 .reply-md code .astryx-text {
-  font-size: 13px;
-  line-height: 1.6;
+    font-size: 13px;
+    line-height: 1.6;
 }
 .reply-md :not(pre) > code {
-  padding: 1px 4px;
-  border-radius: var(--radius-inner);
-  background: var(--color-overlay-hover);
-  font-size: 0.82em;
+    padding: 1px 4px;
+    border-radius: var(--radius-inner);
+    background: var(--color-overlay-hover);
+    font-size: 0.82em;
 }
 .reply-md :is(h3, h4, h5, h6),
 .reply-md :is(h3, h4, h5, h6) .astryx-text {
-  font-family: var(--font-family-heading);
-  font-weight: 700;
-  color: var(--rabbithole-paper);
+    font-family: var(--font-family-heading);
+    font-weight: 700;
+    color: var(--rabbithole-paper);
 }
 /* The shallowest heading level the reply uses is its section title (mockup 22px). */
 .reply-md h3,
 .reply-md h3 .astryx-text,
 .reply-md:not(:has(> h3)) > h4,
 .reply-md:not(:has(> h3)) > h4 .astryx-text {
-  font-size: 22px;
-  line-height: 1.2;
+    font-size: 22px;
+    line-height: 1.2;
 }
 .reply-md table,
 .reply-md table .astryx-text {
-  font-family: var(--font-family-body);
-  font-size: 14px;
-  line-height: 1.45;
+    font-family: var(--font-family-body);
+    font-size: 14px;
+    line-height: 1.45;
 }
 .reply-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  font-size: 12px;
-  color: var(--color-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: 12px;
+    color: var(--color-text-secondary);
 }
 .reply-status[data-status='streaming']::before {
-  content: '';
-  flex: none;
-  width: var(--spacing-2);
-  height: var(--spacing-2);
-  border-radius: 50%;
-  background: var(--color-accent);
-  animation: pulse 1.2s ease-in-out infinite;
+    content: '';
+    flex: none;
+    width: var(--spacing-2);
+    height: var(--spacing-2);
+    border-radius: 50%;
+    background: var(--color-accent);
+    animation: pulse 1.2s ease-in-out infinite;
 }
 .reply-status[data-status='failed'] {
-  color: var(--color-text-error);
-  font-weight: 600;
+    color: var(--color-text-error);
+    font-weight: 600;
 }
 .reply-failed-icon {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  color: var(--color-text-error);
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--color-text-error);
 }
 .chat-question:not(:first-child) {
-  margin-block-start: calc(3 * var(--rabbithole-module));
+    margin-block-start: calc(3 * var(--rabbithole-module));
 }
 /* Streaming: a leaf caret after the last written block (mockup Read). */
 .chat-reply:has(.reply-status[data-status='streaming'])
-  .reply-md
-  > :last-child:is(p, ul, ol, blockquote)::after {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 1.1em;
-  margin-inline-start: 2px;
-  background: var(--color-accent);
-  vertical-align: -0.2em;
+    .reply-md
+    > :last-child:is(p, ul, ol, blockquote)::after {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 1.1em;
+    margin-inline-start: 2px;
+    background: var(--color-accent);
+    vertical-align: -0.2em;
 }
 .code-copy {
-  position: absolute;
-  inset-block-start: var(--spacing-1);
-  inset-inline-end: var(--spacing-1);
-  opacity: 0;
-  transition: opacity 120ms ease;
+    position: absolute;
+    inset-block-start: var(--spacing-1);
+    inset-inline-end: var(--spacing-1);
+    opacity: 0;
+    transition: opacity 120ms ease;
 }
 .reply-md pre:is(:hover, :focus-within) .code-copy {
-  opacity: 1;
+    opacity: 1;
 }
 @media (hover: none) {
-  .code-copy {
-    opacity: 1;
-  }
+    .code-copy {
+        opacity: 1;
+    }
 }
 .chat-title .rename-title {
-  width: 100%;
-  min-width: 0;
-  justify-content: flex-start;
-  padding-inline: 0;
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+    padding-inline: 0;
 }
 .focused-chat .model-picker {
-  flex-shrink: 1;
-  min-width: 0;
-  max-width: 100%;
-  height: 24px;
-  background: var(--color-overlay-hover);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+    height: 24px;
+    background: var(--color-overlay-hover);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
 }
 .focused-chat .model-picker .chat-model {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .passage {
-  position: relative;
-  align-self: stretch;
+    position: relative;
+    align-self: stretch;
 }
 .reply-md {
-  display: block;
-  min-width: 0;
-  overflow-wrap: anywhere;
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 .reply-md > * + * {
-  margin-block-start: calc(2 * var(--rabbithole-module));
+    margin-block-start: calc(2 * var(--rabbithole-module));
 }
 .reply-md p,
 .reply-md figure {
-  margin-inline: 0;
+    margin-inline: 0;
 }
 .reply-md :is(h3, h4, h5, h6) {
-  margin-block-start: var(--spacing-5);
-  margin-block-end: var(--spacing-2);
+    margin-block-start: var(--spacing-5);
+    margin-block-end: var(--spacing-2);
 }
 .reply-md > :first-child {
-  margin-block-start: 0;
+    margin-block-start: 0;
 }
 /* Top-level sections: the shallowest heading level the reply uses gets more air above. */
 .reply-md > h3:not(:first-child),
 .reply-md:not(:has(> h3)) > h4:not(:first-child) {
-  margin-block-start: 28px;
+    margin-block-start: 28px;
 }
 .reply-md :is(ul, ol) {
-  padding-inline-start: var(--spacing-5);
-  list-style-position: outside;
+    padding-inline-start: var(--spacing-5);
+    list-style-position: outside;
 }
 .reply-md ul {
-  list-style-type: disc;
+    list-style-type: disc;
 }
 .reply-md ol {
-  list-style-type: decimal;
+    list-style-type: decimal;
 }
 .reply-md li + li {
-  margin-block-start: var(--spacing-1);
+    margin-block-start: var(--spacing-1);
 }
 .reply-md blockquote {
-  margin-inline: 0;
-  padding-inline-start: var(--spacing-3);
-  border-inline-start: thin solid var(--color-border-emphasized);
-  color: var(--color-text-secondary);
+    margin-inline: 0;
+    padding-inline-start: var(--spacing-3);
+    border-inline-start: thin solid var(--color-border-emphasized);
+    color: var(--color-text-secondary);
 }
 .reply-md pre {
-  position: relative;
-  margin-inline: 0;
-  padding: 12px 48px 12px 16px;
-  background: var(--color-background-muted);
-  border-radius: var(--radius-container);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+    position: relative;
+    margin-inline: 0;
+    padding: 12px 48px 12px 16px;
+    background: var(--color-background-muted);
+    border-radius: var(--radius-container);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 .reply-md pre > code {
-  display: block;
-  padding: 0;
-  background: transparent;
-  white-space: inherit;
-  font-size: var(--font-size-sm);
+    display: block;
+    padding: 0;
+    background: transparent;
+    white-space: inherit;
+    font-size: var(--font-size-sm);
 }
 .reply-md code .astryx-text {
-  font-family: inherit;
-  white-space: inherit;
+    font-family: inherit;
+    white-space: inherit;
 }
 .reply-md a {
-  color: var(--color-text-primary);
-  text-decoration: underline;
-  text-underline-offset: var(--spacing-1);
+    color: var(--color-text-primary);
+    text-decoration: underline;
+    text-underline-offset: var(--spacing-1);
 }
 .reply-md .md-table {
-  max-width: 100%;
-  overflow-x: auto;
+    max-width: 100%;
+    overflow-x: auto;
 }
 .reply-md table {
-  width: 100%;
-  border-collapse: collapse;
+    width: 100%;
+    border-collapse: collapse;
 }
 .reply-md :is(th, td) {
-  padding: 9px 12px;
-  border-bottom: thin solid var(--color-border);
-  text-align: start;
+    padding: 9px 12px;
+    border-bottom: thin solid var(--color-border);
+    text-align: start;
 }
 .reply-md th,
 .reply-md th .astryx-text {
-  padding-block: 8px;
-  border-bottom: 1.5px solid var(--color-border-emphasized);
-  color: var(--color-text-secondary);
-  font: 600 12px/1.2 var(--font-family-heading);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+    padding-block: 8px;
+    border-bottom: 1.5px solid var(--color-border-emphasized);
+    color: var(--color-text-secondary);
+    font: 600 12px/1.2 var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
 }
 .reply-md math[display='block'] {
-  padding-block: var(--spacing-2);
-  max-width: 100%;
-  overflow-x: auto;
+    padding-block: var(--spacing-2);
+    max-width: 100%;
+    overflow-x: auto;
 }
 .reply-md [data-reveal],
 mark {
-  background: var(--rabbithole-selection);
-  color: var(--color-text-primary);
-  border-radius: var(--radius-inner);
+    background: var(--rabbithole-selection);
+    color: var(--color-text-primary);
+    border-radius: var(--radius-inner);
 }
 ::highlight(passage) {
-  background-color: var(--rabbithole-selection);
-  color: var(--color-text-primary);
+    background-color: var(--rabbithole-selection);
+    color: var(--color-text-primary);
 }
 /* Suggestions are a muted dotted underline; a branched (explored) passage wears a 3px underline in its family line (--ink, set inline), a porcelain interchange ring and its address chip. */
 .reply-md u.suggestion {
-  text-decoration: underline dotted var(--color-text-secondary);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 5px;
+    text-decoration: underline dotted var(--color-text-secondary);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 5px;
 }
 .reply-md u.suggestion {
-  cursor: pointer;
+    cursor: pointer;
 }
 .reply-md u.suggestion.explored {
-  text-decoration-style: solid;
-  text-decoration-color: var(--ink, var(--color-accent));
-  text-decoration-thickness: 3px;
+    text-decoration-style: solid;
+    text-decoration-color: var(--ink, var(--color-accent));
+    text-decoration-thickness: 3px;
 }
 .reply-md .passage-address,
 .visual-chips .passage-address {
-  margin-inline-start: 2px;
-  vertical-align: 2px;
-  text-decoration: none;
-  user-select: none;
+    margin-inline-start: 2px;
+    vertical-align: 2px;
+    text-decoration: none;
+    user-select: none;
 }
 /* The interchange ring sits between the passage and its chip, outside the chip's fill. */
 .reply-md u.suggestion.explored + .passage-address {
-  position: relative;
-  margin-inline-start: 22px;
+    position: relative;
+    margin-inline-start: 22px;
 }
 .reply-md u.suggestion.explored + .passage-address::before {
-  content: '';
-  position: absolute;
-  inset-inline-end: calc(100% + 4px);
-  inset-block-start: 50%;
-  width: 13px;
-  height: 13px;
-  box-sizing: border-box;
-  translate: 0 -50%;
-  border: 3px solid var(--rabbithole-paper);
-  border-radius: 50%;
-  background: var(--color-background-body);
+    content: '';
+    position: absolute;
+    inset-inline-end: calc(100% + 4px);
+    inset-block-start: 50%;
+    width: 13px;
+    height: 13px;
+    box-sizing: border-box;
+    translate: 0 -50%;
+    border: 3px solid var(--rabbithole-paper);
+    border-radius: 50%;
+    background: var(--color-background-body);
 }
 .reply-md u.suggestion:hover {
-  text-decoration-color: var(--color-text-primary);
+    text-decoration-color: var(--color-text-primary);
 }
 .reply-md u.suggestion.explored:hover {
-  text-decoration-color: var(--ink, var(--color-accent));
+    text-decoration-color: var(--ink, var(--color-accent));
 }
 .reply-md u.suggestion:focus-visible {
-  outline: medium solid var(--focus-outline-color);
-  outline-offset: var(--spacing-1);
-  border-radius: var(--radius-element);
+    outline: medium solid var(--focus-outline-color);
+    outline-offset: var(--spacing-1);
+    border-radius: var(--radius-element);
 }
 .reply-md .md-source-syntax {
-  white-space: pre-wrap;
-  font-family: monospace;
+    white-space: pre-wrap;
+    font-family: monospace;
 }
 .tool-activity {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }
 .tool-calls {
-  margin: 0;
-  padding: 0 0 var(--spacing-2);
-  list-style: none;
-  display: grid;
-  gap: var(--spacing-3);
+    margin: 0;
+    padding: 0 0 var(--spacing-2);
+    list-style: none;
+    display: grid;
+    gap: var(--spacing-3);
 }
 .tool-calls li {
-  display: grid;
-  gap: var(--spacing-1);
+    display: grid;
+    gap: var(--spacing-1);
 }
 .tool-calls pre {
-  max-height: 12rem;
-  overflow: auto;
-  margin: 0;
-  padding: var(--spacing-2);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  background: var(--color-background-body);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
+    max-height: 12rem;
+    overflow: auto;
+    margin: 0;
+    padding: var(--spacing-2);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: var(--color-background-body);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
 }
 .tool-calls pre:focus-visible {
-  outline: medium solid var(--color-text-primary);
+    outline: medium solid var(--color-text-primary);
 }

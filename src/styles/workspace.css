@@ -1,460 +1,460 @@
 /* Tree workspace: contents, drawer, map overview, chat header, theme tiles. Files load in main.tsx order, which is the cascade order. */
 .tree-workspace {
-  position: relative;
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-  flex-direction: row;
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: row;
 }
 .reading-workspace {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
 }
 .contents {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 calc(34 * var(--rabbithole-module));
-  width: calc(34 * var(--rabbithole-module));
-  min-height: 0;
-  border-inline-end: thin solid var(--color-border);
-  background: var(--color-background-muted);
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 calc(34 * var(--rabbithole-module));
+    width: calc(34 * var(--rabbithole-module));
+    min-height: 0;
+    border-inline-end: thin solid var(--color-border);
+    background: var(--color-background-muted);
 }
 .contents-panel {
-  flex: 1;
-  min-height: 0;
+    flex: 1;
+    min-height: 0;
 }
 .contents-head {
-  flex: none;
-  padding: calc(2 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module)) 2px;
+    flex: none;
+    padding: calc(2 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module)) 2px;
 }
 .contents-head h2 {
-  font-family: var(--font-family-heading);
-  font-size: 22px;
-  line-height: 1.15;
-  font-weight: 700;
-  color: var(--rabbithole-paper);
-  overflow-wrap: anywhere;
+    font-family: var(--font-family-heading);
+    font-size: 22px;
+    line-height: 1.15;
+    font-weight: 700;
+    color: var(--rabbithole-paper);
+    overflow-wrap: anywhere;
 }
 .contents-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 0 var(--rabbithole-module) calc(2 * var(--rabbithole-module));
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 0 var(--rabbithole-module) calc(2 * var(--rabbithole-module));
 }
 .contents-label {
-  padding: calc(2 * var(--rabbithole-module)) var(--rabbithole-module) 6px;
-  font-family: var(--font-family-heading);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
+    padding: calc(2 * var(--rabbithole-module)) var(--rabbithole-module) 6px;
+    font-family: var(--font-family-heading);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
 }
 .contents-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 .contents .contents-row {
-  display: flex;
-  width: 100%;
-  height: auto;
-  min-height: 30px;
-  justify-content: flex-start;
-  padding: 5px var(--rabbithole-module);
-  border-radius: var(--radius-element);
-  text-align: start;
-  font-size: 13px;
-  font-weight: 400;
+    display: flex;
+    width: 100%;
+    height: auto;
+    min-height: 30px;
+    justify-content: flex-start;
+    padding: 5px var(--rabbithole-module);
+    border-radius: var(--radius-element);
+    text-align: start;
+    font-size: 13px;
+    font-weight: 400;
 }
 .contents .contents-row:hover {
-  background: var(--color-background-gray);
+    background: var(--color-background-gray);
 }
 /* Route strip (mockup Read): the strip sits on the bare deep field; the row tint starts at the address. */
 .contents-strip > li {
-  position: relative;
-  padding-inline-start: calc(7 * var(--rabbithole-module));
+    position: relative;
+    padding-inline-start: calc(7 * var(--rabbithole-module));
 }
 .contents-route {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 4px;
-  width: calc(7 * var(--rabbithole-module));
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 4px;
+    width: calc(7 * var(--rabbithole-module));
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
 }
 .contents-route line {
-  stroke: var(--ink);
-  stroke-width: 5;
-  stroke-linecap: round;
+    stroke: var(--ink);
+    stroke-width: 5;
+    stroke-linecap: round;
 }
 .contents-station {
-  fill: var(--color-background-muted);
-  stroke: var(--rabbithole-paper);
-  stroke-width: 2.5;
+    fill: var(--color-background-muted);
+    stroke: var(--rabbithole-paper);
+    stroke-width: 2.5;
 }
 .contents-here {
-  fill: var(--rabbithole-paper);
+    fill: var(--rabbithole-paper);
 }
 /* The first line's centre lands on the station, 18px below the row top, however the title wraps. */
 .contents .contents-strip .contents-row {
-  min-height: 36px;
-  padding: 9px var(--rabbithole-module);
-  font-size: 14px;
-  line-height: 18px;
+    min-height: 36px;
+    padding: 9px var(--rabbithole-module);
+    font-size: 14px;
+    line-height: 18px;
 }
 .contents .contents-row[aria-current] {
-  background: var(--color-background-surface);
-  color: var(--rabbithole-paper);
-  font-weight: 600;
+    background: var(--color-background-surface);
+    color: var(--rabbithole-paper);
+    font-weight: 600;
 }
 button.contents-row > span:first-child > span {
-  flex: 1;
-  min-width: 0;
+    flex: 1;
+    min-width: 0;
 }
 .contents-row-body {
-  display: flex;
-  width: 100%;
-  align-items: baseline;
-  gap: 6px;
+    display: flex;
+    width: 100%;
+    align-items: baseline;
+    gap: 6px;
 }
 .contents-address {
-  flex: none;
-  min-width: 30px;
-  font-size: 12px;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
+    flex: none;
+    min-width: 30px;
+    font-size: 12px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
 }
 .contents-dot {
-  flex: none;
-  width: var(--spacing-2);
-  height: var(--spacing-2);
-  border-radius: 50%;
-  background: var(--ink);
+    flex: none;
+    width: var(--spacing-2);
+    height: var(--spacing-2);
+    border-radius: 50%;
+    background: var(--ink);
 }
 .contents-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 /* Whole titles, one 18px line each, so every first line meets its station. */
 .contents .contents-strip :is(.contents-name, .contents-address) {
-  overflow: visible;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: inherit;
-  -webkit-line-clamp: none;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: inherit;
+    -webkit-line-clamp: none;
 }
 .contents-row .contents-busy {
-  display: flex;
-  flex: none;
-  align-self: center;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--color-text-primary);
+    display: flex;
+    flex: none;
+    align-self: center;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--color-text-primary);
 }
 .contents-busy svg {
-  width: 14px;
-  height: 14px;
+    width: 14px;
+    height: 14px;
 }
 .contents .contents-resource {
-  flex-direction: column;
-  gap: 2px;
-  border-radius: var(--radius-inner);
-  color: inherit;
-  text-decoration: none;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: var(--radius-inner);
+    color: inherit;
+    text-decoration: none;
 }
 .contents-resource:hover {
-  background: var(--color-background-surface);
+    background: var(--color-background-surface);
 }
 .contents-resource-meta {
-  padding-inline-start: 36px;
-  overflow-wrap: anywhere;
+    padding-inline-start: 36px;
+    overflow-wrap: anywhere;
 }
 .citation-chip {
-  display: inline-block;
-  min-width: 1.6em;
-  padding: 0 0.4em;
-  border-radius: var(--radius-full);
-  background: var(--color-background-surface);
-  border: thin solid var(--color-border);
-  font-size: 0.75em;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.5;
-  text-align: center;
-  text-decoration: none;
-  vertical-align: 0.15em;
-  color: inherit;
+    display: inline-block;
+    min-width: 1.6em;
+    padding: 0 0.4em;
+    border-radius: var(--radius-full);
+    background: var(--color-background-surface);
+    border: thin solid var(--color-border);
+    font-size: 0.75em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: 0.15em;
+    color: inherit;
 }
 .citation-chip:hover {
-  border-color: var(--color-accent);
+    border-color: var(--color-accent);
 }
 .contents-empty {
-  display: block;
-  padding-inline: var(--rabbithole-module);
+    display: block;
+    padding-inline: var(--rabbithole-module);
 }
 .contents-context {
-  flex: none;
-  padding: 12px calc(2 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module));
-  border-block-start: thin solid var(--color-border);
-  font-variant-numeric: tabular-nums;
+    flex: none;
+    padding: 12px calc(2 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module));
+    border-block-start: thin solid var(--color-border);
+    font-variant-numeric: tabular-nums;
 }
 .contents-context meter {
-  display: block;
-  width: 100%;
-  height: 4px;
-  appearance: none;
-  border: none;
-  border-radius: var(--radius-inner);
-  background: var(--color-border);
+    display: block;
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    border: none;
+    border-radius: var(--radius-inner);
+    background: var(--color-border);
 }
 .contents-context meter::-webkit-meter-bar {
-  height: 4px;
-  border: none;
-  border-radius: var(--radius-inner);
-  background: var(--color-border);
+    height: 4px;
+    border: none;
+    border-radius: var(--radius-inner);
+    background: var(--color-border);
 }
 .contents-context meter::-webkit-meter-optimum-value {
-  background: var(--color-text-secondary);
-  border-radius: var(--radius-inner);
+    background: var(--color-text-secondary);
+    border-radius: var(--radius-inner);
 }
 .contents-context meter::-moz-meter-bar {
-  background: var(--color-text-secondary);
-  border-radius: var(--radius-inner);
+    background: var(--color-text-secondary);
+    border-radius: var(--radius-inner);
 }
 .sidebar .view-tab {
-  width: 100%;
-  justify-content: flex-start;
-  font-weight: 400;
+    width: 100%;
+    justify-content: flex-start;
+    font-weight: 400;
 }
 .sidebar .view-tab[aria-current='page'] {
-  background: var(--color-background-surface);
-  color: var(--rabbithole-paper);
-  font-weight: 600;
+    background: var(--color-background-surface);
+    color: var(--rabbithole-paper);
+    font-weight: 600;
 }
 .sidebar .view-tab:not([aria-current='page']) svg {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }
 .sidebar .contents {
-  flex: 1;
-  width: 100%;
-  border: 0;
-  background: none;
+    flex: 1;
+    width: 100%;
+    border: 0;
+    background: none;
 }
 /* The whole sidebar scrolls as one; the outline grows to fit instead of scrolling on its own. */
 .sidebar {
-  overflow-y: auto;
+    overflow-y: auto;
 }
 .sidebar :is(.contents, .contents-panel, .contents-scroll) {
-  flex: 1 0 auto;
-  overflow: visible;
+    flex: 1 0 auto;
+    overflow: visible;
 }
 .sidebar :focus-visible,
 .contents :focus-visible,
 .focused-chat [data-artifact]:focus-visible {
-  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
-  outline-offset: calc(-1 * var(--spacing-1));
+    outline: var(--focus-outline-width) solid var(--rabbithole-paper);
+    outline-offset: calc(-1 * var(--spacing-1));
 }
 .focused-chat,
 .overview {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
 }
 .overview {
-  position: relative;
-  background: var(--color-background-body);
+    position: relative;
+    background: var(--color-background-body);
 }
 /* Mockup Map: controls on the bottom edge, the line key top left, both flat on the map field. */
 .map-toolbar {
-  position: absolute;
-  z-index: 5;
-  bottom: var(--spacing-3);
-  left: var(--spacing-3);
-  border-radius: var(--radius-element);
-  background: var(--color-background-surface);
-  color: var(--color-text-secondary);
+    position: absolute;
+    z-index: 5;
+    bottom: var(--spacing-3);
+    left: var(--spacing-3);
+    border-radius: var(--radius-element);
+    background: var(--color-background-surface);
+    color: var(--color-text-secondary);
 }
 .ink-legend {
-  position: absolute;
-  z-index: 4;
-  left: 14px;
-  top: 14px;
-  max-width: min(18rem, calc(100% - 28px));
-  max-height: 25%;
-  overflow: auto;
-  padding: var(--spacing-1);
-  background: var(--color-background-muted);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+    position: absolute;
+    z-index: 4;
+    left: 14px;
+    top: 14px;
+    max-width: min(18rem, calc(100% - 28px));
+    max-height: 25%;
+    overflow: auto;
+    padding: var(--spacing-1);
+    background: var(--color-background-muted);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
 }
 .ink-legend ul {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 .ink-legend li {
-  display: flex;
-  align-items: baseline;
-  gap: var(--spacing-2);
-  overflow-wrap: anywhere;
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-2);
+    overflow-wrap: anywhere;
 }
 /* A short length of the line itself, not a bar beside the text. */
 .ink-legend .contents-dot {
-  align-self: center;
-  width: 22px;
-  height: 5px;
-  border-radius: var(--radius-full);
+    align-self: center;
+    width: 22px;
+    height: 5px;
+    border-radius: var(--radius-full);
 }
 .overview :focus-visible {
-  outline: var(--focus-outline-width) solid var(--rabbithole-paper);
-  outline-offset: var(--focus-outline-offset);
+    outline: var(--focus-outline-width) solid var(--rabbithole-paper);
+    outline-offset: var(--focus-outline-offset);
 }
 .empty-map {
-  flex: 1;
-  text-align: center;
-  width: 100%;
-  max-width: none;
-  margin-inline: auto;
+    flex: 1;
+    text-align: center;
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
 }
 .empty-map > button {
-  color: var(--color-text-accent);
+    color: var(--color-text-accent);
 }
 .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }
 .focus-reveal:not(:focus-visible) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 .chat-header {
-  padding: calc(var(--rabbithole-module) / 2) calc(2 * var(--rabbithole-module));
-  flex: none;
-  max-height: 40dvh;
-  overflow: auto;
-  border-bottom: thin solid var(--color-border);
+    padding: calc(var(--rabbithole-module) / 2) calc(2 * var(--rabbithole-module));
+    flex: none;
+    max-height: 40dvh;
+    overflow: auto;
+    border-bottom: thin solid var(--color-border);
 }
 .chat-heading-row > button:not(.model-picker) {
-  flex-shrink: 0;
+    flex-shrink: 0;
 }
 .chat-stats-body {
-  font-variant-numeric: tabular-nums;
-  max-height: 20dvh;
-  overflow: auto;
-  padding-block: var(--spacing-1) var(--spacing-2);
-  padding-inline: var(--spacing-2);
-  overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+    max-height: 20dvh;
+    overflow: auto;
+    padding-block: var(--spacing-1) var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    overflow-wrap: anywhere;
 }
 /* Theme swatches (mockup Settings): each wears its own theme; the checked one gets a porcelain ring and a check. */
 .theme-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-  gap: var(--spacing-3);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: var(--spacing-3);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
 }
 .theme-choice {
-  display: grid;
-  border-radius: var(--radius-element);
-  cursor: pointer;
+    display: grid;
+    border-radius: var(--radius-element);
+    cursor: pointer;
 }
 .theme-choice:has(input:focus-visible) {
-  outline: var(--focus-outline-width) solid var(--focus-outline-color);
-  outline-offset: 4px;
+    outline: var(--focus-outline-width) solid var(--focus-outline-color);
+    outline-offset: 4px;
 }
 .theme-choice > [data-astryx-theme] {
-  display: grid;
+    display: grid;
 }
 .theme-tile {
-  display: grid;
-  gap: 2px;
-  align-content: start;
-  padding: var(--spacing-3);
-  border-radius: var(--radius-element);
-  background: var(--color-background-muted);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: 1.35;
-  box-shadow: inset 0 0 0 1px var(--color-border);
+    display: grid;
+    gap: 2px;
+    align-content: start;
+    padding: var(--spacing-3);
+    border-radius: var(--radius-element);
+    background: var(--color-background-muted);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: 1.35;
+    box-shadow: inset 0 0 0 1px var(--color-border);
 }
 .theme-tile > svg {
-  width: 100%;
-  height: auto;
-  margin-bottom: var(--spacing-2);
+    width: 100%;
+    height: auto;
+    margin-bottom: var(--spacing-2);
 }
 .theme-tile > svg path {
-  fill: none;
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 .theme-tile > svg circle {
-  fill: var(--color-background-muted);
-  stroke: var(--rabbithole-paper);
-  stroke-width: 2.5;
+    fill: var(--color-background-muted);
+    stroke: var(--rabbithole-paper);
+    stroke-width: 2.5;
 }
 .theme-choice-name {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: var(--font-family-heading);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--rabbithole-paper);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-family-heading);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--rabbithole-paper);
 }
 .theme-choice input:checked + * .theme-tile {
-  box-shadow: inset 0 0 0 2px var(--rabbithole-paper);
+    box-shadow: inset 0 0 0 2px var(--rabbithole-paper);
 }
 /* Questions: right-aligned bubbles on raised enamel (mockup .q). */
 .question-bubble {
-  max-width: 520px;
-  margin-inline-start: auto;
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-  border-radius: var(--radius-chat);
-  padding: 9px 14px;
-  overflow-wrap: anywhere;
+    max-width: 520px;
+    margin-inline-start: auto;
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+    border-radius: var(--radius-chat);
+    padding: 9px 14px;
+    overflow-wrap: anywhere;
 }
 /* Learner markdown keeps the bubble's face, not the reply reading face; code keeps the code face. */
 .question-bubble .reply-md,
 .question-bubble .reply-md .astryx-text:not(pre *, code *) {
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
 }
 /* Sidebar outline: figure and resource titles wrap to two lines; Contents titles wrap whole beside their station. */
 .sidebar .contents-name {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  white-space: normal;
-  overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }

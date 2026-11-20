@@ -12,8 +12,8 @@ const HUES = ['amber', 'leaf', 'rust', 'lichen'];
 
 // Frame 0 is the 2D form on the ground; frame 1, when present, the 3D form at the turntable's camera, turned 3/4.
 const entry = (
-  name,
-  solid,
+    name,
+    solid,
 ) => `import { AbsoluteFill, Composition, Sequence, continueRender, delayRender, registerRoot } from 'remotion';
 import * as flat from './pieces';
 import { Lights, frame, palette, three } from './kit';
@@ -30,92 +30,96 @@ registerRoot(() => <Composition id="Video" component={Still} width={frame.width}
 // JPEG stills of a piece's forms (a store pieceTree, drawn with its parts), rendered in the cut audit's
 // sandbox by its snapshot path.
 export async function renderPieceStills(piece, { dir, snapshot, signal }) {
-  const { source, source3d, roles, trueColors } = withParts(piece);
-  // Three levels below dir, like a video attempt, so the sandbox hides the app's data directory.
-  const work = join(dir, 'piece-work', piece.id, randomUUID());
-  try {
-    for (const sub of ['out', 'tmp', 'public'])
-      await mkdir(join(work, sub), { recursive: true, mode: 0o700 });
-    await stageCut({
-      dir: work,
-      cut: { engine: 'remotion', code: '' },
-      plan: {
-        styleBrief: {
-          paletteRoles: Object.fromEntries(
-            roles.map((r, i) => [r, trueColors[r] ? r : HUES[i % HUES.length]]),
-          ),
-          trueColors,
-        },
-      },
-      pieces: source,
-      kit: KIT,
-      emphasis: [],
-    });
-    if (source3d) await writeFile(join(work, 'pieces3d.tsx'), source3d);
-    await writeFile(join(work, 'index.tsx'), entry(piece.name, !!source3d));
-    const stills = (source3d ? [0, 1] : [0]).map((frame) => ({
-      frame,
-      file: join(work, 'out', `${frame}.jpg`),
-    }));
-    await snapshot(work, stills, signal);
-    const out = await realpath(join(work, 'out'));
-    const [still, still3d = null] = await Promise.all(
-      stills.map(async ({ frame, file }) => {
-        const stat = await lstat(file).catch(() => null);
-        if (
-          !stat?.isFile() ||
-          !stat.size ||
-          stat.size > 2 * 1024 * 1024 ||
-          (await realpath(file)) !== join(out, `${frame}.jpg`)
-        )
-          throw new Error('Piece still is unreadable.');
-        return readFile(file);
-      }),
-    );
-    return { still, still3d };
-  } finally {
-    await rm(join(dir, 'piece-work', piece.id), { recursive: true, force: true });
-  }
+    const { source, source3d, roles, trueColors } = withParts(piece);
+    // Three levels below dir, like a video attempt, so the sandbox hides the app's data directory.
+    const work = join(dir, 'piece-work', piece.id, randomUUID());
+    try {
+        for (const sub of ['out', 'tmp', 'public'])
+            await mkdir(join(work, sub), { recursive: true, mode: 0o700 });
+        await stageCut({
+            dir: work,
+            cut: { engine: 'remotion', code: '' },
+            plan: {
+                styleBrief: {
+                    paletteRoles: Object.fromEntries(
+                        roles.map((r, i) => [r, trueColors[r] ? r : HUES[i % HUES.length]]),
+                    ),
+                    trueColors,
+                },
+            },
+            pieces: source,
+            kit: KIT,
+            emphasis: [],
+        });
+        if (source3d) await writeFile(join(work, 'pieces3d.tsx'), source3d);
+        await writeFile(join(work, 'index.tsx'), entry(piece.name, !!source3d));
+        const stills = (source3d ? [0, 1] : [0]).map((frame) => ({
+            frame,
+            file: join(work, 'out', `${frame}.jpg`),
+        }));
+        await snapshot(work, stills, signal);
+        const out = await realpath(join(work, 'out'));
+        const [still, still3d = null] = await Promise.all(
+            stills.map(async ({ frame, file }) => {
+                const stat = await lstat(file).catch(() => null);
+                if (
+                    !stat?.isFile() ||
+                    !stat.size ||
+                    stat.size > 2 * 1024 * 1024 ||
+                    (await realpath(file)) !== join(out, `${frame}.jpg`)
+                )
+                    throw new Error('Piece still is unreadable.');
+                return readFile(file);
+            }),
+        );
+        return { still, still3d };
+    } finally {
+        await rm(join(dir, 'piece-work', piece.id), { recursive: true, force: true });
+    }
 }
 
 // Fills missing stills one piece at a time in the background. A piece whose stills fail is skipped until it is
 // improved or the app restarts, so a broken piece is not rendered again on every list request.
 export function pieceStills({ store, dir, snapshot, onWarning }) {
-  const controller = new AbortController(),
-    failed = new Set();
-  let running = null,
-    again = false;
-  const run = async () => {
-    do {
-      again = false;
-      for (const { id, improved } of store.unstilledPieces()) {
-        if (controller.signal.aborted) return;
-        if (failed.has(`${id}:${improved}`)) continue;
-        const piece = store.pieceTree(id);
-        try {
-          if (piece)
-            store.stillPiece(
-              id,
-              piece.improved,
-              await renderPieceStills(piece, { dir, snapshot, signal: controller.signal }),
-            );
-        } catch (error) {
-          if (controller.signal.aborted) return;
-          failed.add(`${id}:${piece.improved}`);
-          onWarning(error);
-        }
-      }
-    } while (again);
-  };
-  return {
-    fill() {
-      if (running) again = true;
-      else
-        running = run()
-          .catch(onWarning)
-          .finally(() => (running = null));
-      return running;
-    },
-    stop: () => controller.abort(),
-  };
+    const controller = new AbortController(),
+        failed = new Set();
+    let running = null,
+        again = false;
+    const run = async () => {
+        do {
+            again = false;
+            for (const { id, improved } of store.unstilledPieces()) {
+                if (controller.signal.aborted) return;
+                if (failed.has(`${id}:${improved}`)) continue;
+                const piece = store.pieceTree(id);
+                try {
+                    if (piece)
+                        store.stillPiece(
+                            id,
+                            piece.improved,
+                            await renderPieceStills(piece, {
+                                dir,
+                                snapshot,
+                                signal: controller.signal,
+                            }),
+                        );
+                } catch (error) {
+                    if (controller.signal.aborted) return;
+                    failed.add(`${id}:${piece.improved}`);
+                    onWarning(error);
+                }
+            }
+        } while (again);
+    };
+    return {
+        fill() {
+            if (running) again = true;
+            else
+                running = run()
+                    .catch(onWarning)
+                    .finally(() => (running = null));
+            return running;
+        },
+        stop: () => controller.abort(),
+    };
 }
