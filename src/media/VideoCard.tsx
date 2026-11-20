@@ -239,8 +239,9 @@ export default function VideoCard({
                 icon={<PlayIcon />}
                 variant="primary"
                 clickAction={() => {
+                  // Controls come up now, not on the async play event, so the video is focusable when the button leaves.
+                  setStarted(true);
                   void player.current?.play();
-                  // The button leaves once playback starts; focus moves to the now-controlled video.
                   requestAnimationFrame(() => player.current?.focus());
                 }}
               />

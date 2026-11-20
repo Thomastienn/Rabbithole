@@ -134,8 +134,8 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
     assert.equal((await env.get(`/api/trees/other/artifacts/${id}/cuts`)).status, 404);
     // The library plays the live version while the video is generating.
     assert.deepEqual(
-      (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.live]),
-      [[id, tree.id]],
+      (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.live, v.origin]),
+      [[id, tree.id, 'Video']],
     );
     await release('third');
     await until(async () => (await artifact()).status === 'ready');

@@ -67,6 +67,16 @@ test('the Pieces view searches and pages, with a no-results message', async (t) 
   assert.ok(container.querySelector('#piece-search'), 'the search bar stays to edit the query');
 });
 
+test('an empty Pieces view says how pieces get there', async (t) => {
+  const api = async () => ({ total: 0, pieces: [] });
+  const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+  t.after(cleanup);
+  await settle(act);
+  assert.equal(container.querySelector('h2').textContent, 'No saved pieces yet');
+  assert.match(container.textContent, /When a video draws an object worth keeping/);
+  assert.equal(container.querySelector('nav[aria-label="Piece pages"]'), null);
+});
+
 test('the Pieces view lists pieces and opens a read-only source with a preview in the isolated player frame', async (t) => {
   const calls = [];
   const piece = {
