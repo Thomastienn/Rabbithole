@@ -72,11 +72,13 @@ export function useChatState() {
     const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
     const [figureTarget, setFigureTarget] = useState<{ conversation: string; artifact: string }>();
     const [messageTarget, setMessageTarget] = useState<{ conversation: string; message: string }>();
+    // pending: the question was sent while its reply streams and waits for the reply to complete.
     const [branch, setBranch] = useState<{
         parent: string;
         anchor: Anchor;
         question: string;
         picker?: PartPicker;
+        pending?: boolean;
     }>();
     const [selectingMessage, setSelectingMessage] = useState<string>();
     // The ask button remounts after the branch form closes, so keep its ref, not the element.

@@ -5,6 +5,7 @@ import { markerNotes } from '../../media/markers.mjs';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { diagramReply, generateDiagram, tutorContext } from '../../media/diagrams.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
+import { ENDED } from '../../providers/chatStream.mjs';
 import { withAttachments } from '../../attachments.mjs';
 import { attachmentParts, prepareUploads, prepareRetry, savePrepared } from '../attachments.mjs';
 import { join } from 'node:path';
@@ -179,6 +180,9 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     const suggesting = store.suggestionSettings().enabled;
     const noted = (output) => {
         const next = markerNotes(output.text, output.markers, hasMedia());
+        // A new suggestion can be opened at once, so its brief reads the saved text up to its term.
+        if (!finished && next.passages.length > notes.passages.length)
+            store.update(reply, text, status);
         if (
             suggesting &&
             (next.passages.length > notes.passages.length ||
@@ -368,6 +372,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         );
         if (finished) return true;
         called = true;
+        // Ends the tutor's run once the end section is in and a later model response begins (ADR 0016).
+        const run = new AbortController();
         await ctx.logged(pick(tree), 'chat', reply, tree).generate(
             {
                 ...tutorContext(tree),
@@ -413,6 +419,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                     calls.place(output);
                     calls.runText(output);
                 }
+                if (event.type === 'response' && notes.ended) run.abort(ENDED);
                 if (event.type === 'status') status = event.status;
                 // App tools are machinery, not tool activity.
                 if (event.type === 'tool' && !isAppTool(event.tool.name)) {
@@ -437,7 +444,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             (thread, model) => {
                 if (!finished) store.thread(id, thread, model);
             },
-            controller.signal,
+            AbortSignal.any([controller.signal, run.signal]),
         );
         if (status === 'streaming')
             status = controller.signal.aborted ? 'interrupted' : 'completed';

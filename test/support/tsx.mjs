@@ -1,7 +1,19 @@
 // node --import ./test/support/tsx.mjs: lets node --test import .tsx, extensionless src imports and CSS.
 import { createRequire, registerHooks } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+
+// Local test runs share one memory and CPU limit (scripts/limited.mjs); CI runs without it.
+if (
+    !process.env.CI &&
+    existsSync('/proc/self/cgroup') &&
+    !readFileSync('/proc/self/cgroup', 'utf8').includes('rabbithole-tests.slice')
+) {
+    console.error(
+        'Run tests through npm so they share the local limit: npm test, npm run test:file -- <files>.',
+    );
+    process.exit(1);
+}
 
 // registerHooks is synchronous, so use the esbuild copy vite ships (transformSync) rather than
 // vite's async transformWithEsbuild wrapper.

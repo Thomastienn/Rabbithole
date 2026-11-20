@@ -136,7 +136,10 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
             const timedOut =
                 signal?.reason?.name === 'TimeoutError' ||
                 /timed out|ran over/i.test(signal?.reason?.message ?? '');
-            const stopped = (signal?.aborted && !timedOut) || status === 'interrupted';
+            // A run the server ended at the reply's end section reports completed, not stopped.
+            const stopped =
+                (signal?.aborted && !timedOut && status !== 'completed') ||
+                status === 'interrupted';
             const failed = failure || timedOut || status === 'failed';
             const valid =
                 usage &&

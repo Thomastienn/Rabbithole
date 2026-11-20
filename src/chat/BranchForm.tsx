@@ -23,7 +23,13 @@ export default function BranchForm({
     widen,
     pick,
 }: {
-    branch: { parent: string; anchor: Anchor; question: string; picker?: PartPicker };
+    branch: {
+        parent: string;
+        anchor: Anchor;
+        question: string;
+        pending?: boolean;
+        picker?: PartPicker;
+    };
     branching: boolean;
     active: boolean;
     submit: (e: React.FormEvent) => void;
@@ -35,6 +41,8 @@ export default function BranchForm({
     pick?: (trail: string[], step: number | null) => void;
 }) {
     const { anchor } = branch;
+    // A question sent while its reply streams waits for the reply; Escape still drops it.
+    const pending = !!branch.pending;
     // A picked visual part, named by its trail.
     const part = 'trail' in anchor && anchor.trail ? anchor : undefined;
     // Reply passages can have a brief explanation; only an unexplored suggestion asks on opening, a selection waits for its button.
@@ -101,14 +109,15 @@ export default function BranchForm({
     };
     const text = saved ?? mine?.text;
     useEffect(() => {
-        if (branching) return;
+        // A waiting question survives outside clicks, such as the reply's Stop button.
+        if (branching || pending) return;
         // Capture phase so the popup closes before a new selection or underline reopens it.
         const outside = (e: PointerEvent) => {
             if (!(e.target as Element).closest?.('.branch-form')) close(false);
         };
         document.addEventListener('pointerdown', outside, true);
         return () => document.removeEventListener('pointerdown', outside, true);
-    }, [branching]);
+    }, [branching, pending]);
     return (
         <form
             className="branch-form"
@@ -233,21 +242,32 @@ export default function BranchForm({
                         size="sm"
                         value={branch.question}
                         onChange={(question) => setQuestion(question)}
-                        isDisabled={branching}
+                        isDisabled={branching || pending}
                         hasAutoFocus
                         containerClassName="branch-question"
                     />
                     <IconButton
                         className="branch-send"
-                        label={branching ? 'Preparing context…' : 'Create focused chat'}
+                        label={
+                            branching
+                                ? 'Preparing context…'
+                                : pending
+                                  ? 'Waiting for the reply…'
+                                  : 'Create focused chat'
+                        }
                         type="submit"
                         icon={<ArrowUpIcon />}
                         variant="primary"
                         size="sm"
-                        isLoading={branching}
-                        isDisabled={branching || !branch.question.trim() || active}
+                        isLoading={branching || pending}
+                        isDisabled={branching || pending || !branch.question.trim() || active}
                     />
                 </HStack>
+                {pending && (
+                    <Text type="supporting" color="secondary" role="status">
+                        Sends when the reply finishes.
+                    </Text>
+                )}
             </VStack>
         </form>
     );

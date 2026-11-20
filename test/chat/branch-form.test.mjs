@@ -283,3 +283,32 @@ test("the Ask button's box picks parts from the keyboard: arrows move at a level
     cleanup();
     assert.equal(shown.at(-1), undefined, 'closing the box ends picking');
 });
+
+test('a question sent while the reply streams shows as waiting and survives outside clicks such as Stop', async (t) => {
+    const closed = [];
+    const { container, act, cleanup } = await render(
+        h(BranchForm, {
+            branch: { parent: 'root', anchor, question: 'Why?', pending: true },
+            branching: false,
+            active: false,
+            submit: () => {},
+            close: (refocus) => closed.push(refocus),
+            setQuestion: () => {},
+        }),
+        (w) => ui(w),
+    );
+    t.after(cleanup);
+    const input = container.querySelector('input');
+    assert.equal(input.value, 'Why?');
+    assert.equal(input.getAttribute('aria-disabled'), 'true');
+    assert.equal(button(container, 'Waiting for the reply…').disabled, true);
+    assert.ok(
+        [...container.querySelectorAll('[role="status"]')].some(
+            (s) => s.textContent === 'Sends when the reply finishes.',
+        ),
+    );
+    await act(async () => document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })));
+    assert.deepEqual(closed, [], 'an outside click keeps the waiting question');
+    await act(async () => key(input, 'Escape'));
+    assert.deepEqual(closed, [true], 'Escape still closes the box');
+});

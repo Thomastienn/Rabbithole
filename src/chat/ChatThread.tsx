@@ -168,7 +168,8 @@ export default function ChatThread({
                                           <BranchForm
                                               branch={branch}
                                               branching={branching}
-                                              active={active}
+                                              // A question about the streaming reply itself waits for it instead.
+                                              active={active && message.status !== 'streaming'}
                                               submit={submitBranch}
                                               close={closeBranch}
                                               setQuestion={(question) =>
