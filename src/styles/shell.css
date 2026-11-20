@@ -105,15 +105,23 @@ html[data-interface-font='system'] [data-astryx-theme] {
   letter-spacing: -0.01em;
   color: var(--rabbithole-band-ink);
 }
+.sidebar .band-mark {
+  font-family: var(--font-family-heading);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--rabbithole-paper);
+}
 /* Desktop sidebar (mockup sidebar.html A-D): app controls above the page's contents, full height. */
 .sidebar {
   /* The logo paints in band ink; on the muted sidebar it takes the text colour instead. */
   --rabbithole-band-ink: var(--color-text-primary);
   --rabbithole-band: var(--color-background-muted);
   display: flex;
-  flex: 0 0 calc(33 * var(--rabbithole-module));
+  flex: 0 0 calc(34 * var(--rabbithole-module));
   flex-direction: column;
-  width: calc(33 * var(--rabbithole-module));
+  width: calc(34 * var(--rabbithole-module));
   min-height: 0;
   border-inline-end: thin solid var(--color-border);
   background: var(--color-background-muted);
@@ -173,8 +181,7 @@ html[data-interface-font='system'] [data-astryx-theme] {
   justify-content: flex-start;
 }
 .sidebar-views {
-  padding-block-start: var(--rabbithole-module);
-  border-block-start: thin solid var(--color-border);
+  padding-block-start: 2px;
 }
 /* Settings stays reachable at the foot while the outline scrolls under it. */
 .sidebar-foot {
