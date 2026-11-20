@@ -14,6 +14,7 @@ export function useKnowledge({ api, activity }: { api: Api; activity: string }) 
   const mergedFocus = useRef<string>(undefined);
   const version = useRef(0);
   const [chosen, setChosen] = useState<string>();
+  const selected = graph?.concepts.find((c) => c.name === chosen) ?? graph?.concepts[0];
   useEffect(() => {
     // Native close completes the dialog's focus restoration before focusing the surviving concept.
     function restore() {
@@ -91,7 +92,7 @@ export function useKnowledge({ api, activity }: { api: Api; activity: string }) 
     chooseKeep,
     duplicate,
     setDuplicate,
-    chosen,
+    selected,
     setChosen,
     beginMerge,
     load,

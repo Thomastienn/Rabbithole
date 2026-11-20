@@ -9,7 +9,7 @@ import type { KnowledgeState } from './useKnowledge';
 
 export function KnowledgeHeader({
   graph,
-  chosen,
+  selected,
   error,
   status,
   busy,
@@ -17,7 +17,6 @@ export function KnowledgeHeader({
   beginMerge,
   load,
 }: KnowledgeState) {
-  const selected = graph?.concepts.find((c) => c.name === chosen) ?? graph?.concepts[0];
   return (
     <VStack gap={2}>
       <HStack gap={4} vAlign="end" wrap="wrap" className="library-head">

@@ -16,12 +16,11 @@ import {
   fitKnowledge,
 } from './knowledge';
 export default function KnowledgeMap(knowledge: KnowledgeState) {
-  const { graph, chosen, setChosen } = knowledge;
+  const { graph, selected, setChosen } = knowledge;
   const field = useRef<HTMLDivElement>(null);
   const zoomer = useRef<ZoomBehavior<HTMLDivElement, unknown>>(undefined);
   const fitted = useRef('');
   const [view, setView] = useState(zoomIdentity);
-  const selected = graph?.concepts.find((c) => c.name === chosen) ?? graph?.concepts[0];
   const hasMap = !!(graph && selected);
   // Familiarity refreshes leave points in place; only concepts, topic membership or links refit the view.
   const shape = graph ? graphShape(graph) : '';

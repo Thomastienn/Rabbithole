@@ -74,6 +74,11 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
   );
   await act(async () => container.querySelector('[data-concept=Scheduler]').click());
   assert.equal(detail().querySelector('h2').textContent, 'Scheduler');
+  assert.match(detail().textContent, /Related toMutual exclusionMet in replies/);
+  // Relations read from the other end too: Leads to reverses builds on, Related to runs both ways.
+  await act(async () => container.querySelector('[data-concept="Mutual exclusion"]').click());
+  assert.match(detail().textContent, /Leads toMutexRelated toSchedulerMet in replies/);
+  await act(async () => container.querySelector('[data-concept=Scheduler]').click());
   assert.deepEqual(
     [...container.querySelectorAll('.concept-name:not(.sr-only)')].map((e) => e.textContent),
     ['Scheduler'],
