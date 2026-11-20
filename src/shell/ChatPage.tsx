@@ -5,7 +5,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { ShareIcon, FilmIcon, BookOpenIcon, MapIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@astryxdesign/core/theme';
 import TreeSearch from './TreeSearch';
-import ShellBand, { ContentsDrawer, SaveAlert, viewTab } from './ShellBand';
+import ShellBand, { SaveAlert, viewTab } from './ShellBand';
 import { savedVim, savePreference } from './preferences';
 import LibraryPanel from './LibraryPanel';
 import ReturnPanel from './ReturnPanel';
@@ -143,20 +143,6 @@ export default function ChatPage({
         }}
       />
     );
-  // Narrow band (mockup Narrow): views, the outline and Settings move into this drawer; any choice inside closes it.
-  const narrowDrawer = (
-    <ContentsDrawer
-      tab={tab}
-      drawer={drawer}
-      setDrawer={setDrawer}
-      views={views}
-      contents={contents()}
-      library={() => setTab('library')}
-      settings={() =>
-        openSettings(undefined, undefined, document.querySelector<HTMLElement>('.band-contents'))
-      }
-    />
-  );
   const band = (
     <ShellBand
       mobile={mobile}
@@ -169,12 +155,20 @@ export default function ChatPage({
         state &&
         layout.layoutFailed && <SaveAlert retry={() => void layout.saver.current?.flush()} />
       }
-      contents={tab === 'learning' && contents()}
+      // The narrow drawer offers the outline from every tab, as the old drawer did.
+      contents={(mobile || tab === 'learning') && contents()}
       setDrawer={setDrawer}
       search={() => setSearching(true)}
       newChat={newChat}
       library={() => setTab('library')}
-      settings={(e) => openSettings(undefined, undefined, e.currentTarget)}
+      settings={(e) =>
+        openSettings(
+          undefined,
+          undefined,
+          // The drawer's Settings button leaves with the drawer; focus returns to its opener.
+          mobile ? document.querySelector<HTMLElement>('.band-contents') : e.currentTarget,
+        )
+      }
     />
   );
   const modelMenu = (
@@ -223,7 +217,6 @@ export default function ChatPage({
       }}
     >
       {mobile && band}
-      {mobile && narrowDrawer}
       {/* Outside the band so the palette keeps popover colours. */}
       <TreeSearch
         isOpen={searching}

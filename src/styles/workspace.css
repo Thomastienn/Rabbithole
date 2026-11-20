@@ -231,35 +231,20 @@ button.contents-row > span:first-child > span {
   background: var(--color-text-secondary);
   border-radius: var(--radius-inner);
 }
-/* Narrow contents drawer (mockup Narrow): view links, the outline, then Settings. */
-.drawer-head {
-  padding: var(--rabbithole-module) var(--rabbithole-module) var(--rabbithole-module)
-    calc(2 * var(--rabbithole-module));
-}
-.band-drawer {
-  min-height: 100%;
-  background: var(--color-background-muted);
-}
-.drawer-views {
-  display: flex;
-  flex-direction: column;
-  padding: var(--rabbithole-module);
-  border-block-end: thin solid var(--color-border);
-}
-:is(.band-drawer, .sidebar) .view-tab {
+.sidebar .view-tab {
   width: 100%;
   justify-content: flex-start;
   font-weight: 400;
 }
-:is(.band-drawer, .sidebar) .view-tab[aria-current='page'] {
+.sidebar .view-tab[aria-current='page'] {
   background: var(--color-background-surface);
   color: var(--rabbithole-paper);
   font-weight: 600;
 }
-:is(.band-drawer, .sidebar) .view-tab:not([aria-current='page']) svg {
+.sidebar .view-tab:not([aria-current='page']) svg {
   color: var(--color-text-secondary);
 }
-:is(.band-drawer, .sidebar) .contents {
+.sidebar .contents {
   flex: 1;
   width: 100%;
   border: 0;
@@ -273,11 +258,7 @@ button.contents-row > span:first-child > span {
   flex: 1 0 auto;
   overflow: visible;
 }
-.band-drawer .drawer-settings {
-  margin: var(--rabbithole-module);
-  width: auto;
-}
-:is(.band-drawer, .sidebar) :focus-visible,
+.sidebar :focus-visible,
 .contents :focus-visible,
 .focused-chat [data-artifact]:focus-visible {
   outline: var(--focus-outline-width) solid var(--rabbithole-paper);
