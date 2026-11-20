@@ -57,10 +57,12 @@
   justify-content: space-between;
   margin-bottom: var(--rabbithole-module);
 }
+/* Date groups wear the caps label. */
 .tree-date-heading {
-  margin: calc(4 * var(--rabbithole-module)) 0 12px;
-  font-size: 13px;
-  font-weight: 600;
+  margin: 28px 0 10px;
+  font: 600 12px/1.2 var(--font-family-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
   color: var(--color-text-secondary);
 }
 .shelf,
@@ -69,62 +71,55 @@
   margin: 0;
   padding: 0;
 }
+/* Shelf: raised line cards, flat; the current tree wears a porcelain border, focus a porcelain outline. */
 .shelf {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 176px);
-  gap: calc(4 * var(--rabbithole-module)) calc(3 * var(--rabbithole-module));
+  grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+  gap: 16px;
 }
 .shelf .volume {
   position: relative;
-  display: grid;
-  grid-template-rows: 144px auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-element);
+  display: flex;
+  flex-direction: column;
+  min-height: 172px;
+  padding: 14px 8px 12px 14px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-container);
   background: var(--color-background-surface);
 }
 .shelf .volume:hover {
-  border-color: var(--color-border-emphasized);
+  background: var(--color-neutral);
 }
 .shelf .volume[data-current='true'] {
-  box-shadow:
-    0 0 0 3px var(--color-background-body),
-    0 0 0 5px var(--rabbithole-paper);
+  border-color: var(--rabbithole-paper);
 }
 .shelf .volume[data-renaming='true'] {
   grid-column: span 2;
-  grid-template-rows: auto;
-  padding: 12px;
+  min-height: 0;
 }
 .shelf .volume-band {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  padding: 12px;
-  border-radius: calc(var(--radius-element) - 1px) calc(var(--radius-element) - 1px) 0 0;
-  background: var(--rabbithole-paper);
-  --color-text-primary: var(--rabbithole-paper-ink);
-  --color-text-secondary: var(--rabbithole-paper-ink);
+  gap: 6px;
+  padding-inline-end: 36px;
   --color-overlay-hover: transparent;
   --color-overlay-pressed: transparent;
-  color: var(--rabbithole-paper-ink);
 }
-/* The title button covers the whole volume, so the spine and date open it too; the menu sits above it. */
+/* The title button covers the whole card, so the ticks and date open it too; the menu sits above it. */
 .shelf .saved-chat-title {
   position: static;
   transform: none;
   height: auto;
-  padding: 0 20px 0 0;
-  font-size: 17px;
-  line-height: 1.15;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  min-height: 0;
+  padding: 6px 0 0;
+  font: 700 19px/1.15 var(--font-family-heading);
   text-wrap: balance;
   white-space: normal;
   overflow-wrap: anywhere;
   text-align: start;
   justify-content: flex-start;
   align-items: flex-start;
-  color: var(--rabbithole-paper-ink);
+  color: var(--rabbithole-paper);
 }
 .shelf .saved-chat-title::after {
   content: '';
@@ -135,47 +130,51 @@
 .shelf .saved-chat-title:focus-visible {
   outline: none;
 }
-.shelf .volume-date {
-  margin-top: auto;
-  font-weight: 600;
-  color: var(--rabbithole-paper-ink);
+.volume-date {
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 .volume-meta {
-  display: grid;
-  gap: var(--rabbithole-module);
-  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 8px;
 }
+/* The strip: one short line tick per conversation, in its family's line colour. */
 .volume-spine {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 3px;
+  margin-top: auto;
+  padding-top: 16px;
 }
 .volume-spine i {
-  flex: 0 0 4px;
-  height: 6px;
+  flex: none;
+  width: 14px;
+  height: 5px;
   border-radius: var(--radius-full);
   background: var(--ink);
 }
+.volume-counts {
+  font-size: 12px;
+}
 .shelf .tree-row-actions {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 8px;
+  right: 8px;
   z-index: 1;
-  color: var(--rabbithole-paper-ink);
 }
-.library-list {
-  border-top: 1px solid var(--color-border);
-}
+/* List: title, date, counts, strip and menu in one row over a hairline seam. */
 .library-list .volume {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) 120px 200px 160px 36px;
   align-items: center;
-  gap: calc(2 * var(--rabbithole-module));
+  gap: 16px;
   min-height: 48px;
   border-bottom: 1px solid var(--color-border);
 }
 .library-list .volume[data-current='true'] {
-  background: var(--color-neutral);
+  background: var(--color-background-surface);
 }
 .library-list .volume[data-renaming='true'] {
   display: block;
@@ -186,7 +185,9 @@
   display: contents;
 }
 .library-list .volume-spine {
-  display: none;
+  order: 3;
+  margin: 0;
+  padding: 0;
 }
 .library-list .saved-chat-title {
   justify-content: flex-start;
@@ -195,23 +196,43 @@
   white-space: normal;
   overflow-wrap: anywhere;
   text-align: start;
-  font-weight: 600;
+  font: 600 16px var(--font-family-heading);
+  color: var(--rabbithole-paper);
 }
 .library-list .volume-date {
   order: 1;
-  min-width: 7rem;
-  color: var(--color-text-secondary);
+  font-size: inherit;
+}
+.library-list .volume-counts {
+  order: 2;
+  font-size: inherit;
 }
 .library-list .tree-row-actions {
-  order: 2;
+  order: 4;
 }
 @media (max-width: 48rem) {
   .library-list .volume {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto 36px;
   }
-  .library-list .volume-date {
+  .library-list .volume-date,
+  .library-list .volume-spine {
     display: none;
   }
+}
+/* No match: centred heading, a way forward and New chat. */
+.library-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 72px 0;
+  text-align: center;
+}
+.library-empty h2 {
+  font-size: 20px;
+}
+.library-empty .astryx-text {
+  max-width: 44ch;
+  margin-bottom: 10px;
 }
 .conversation {
   flex: 1;

@@ -2,7 +2,12 @@ import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu, DropdownMenuItem } from '@astryxdesign/core/DropdownMenu';
-import { EllipsisHorizontalIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  EllipsisHorizontalIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import TitleEditor from '../chat/TitleEditor';
 import { inkStyle, volumeCounts, type treeGroups } from './treeList';
 
@@ -11,6 +16,7 @@ type Tree = { id: string; parent: string | null; created: number; title: string 
 // Library volumes by date group; ChatPage owns opening, renaming and deleting.
 export default function LibraryShelf({
   groups,
+  query,
   layout,
   current,
   renaming,
@@ -20,8 +26,10 @@ export default function LibraryShelf({
   onCancelRename,
   onStartRename,
   onDelete,
+  onNewChat,
 }: {
   groups: ReturnType<typeof treeGroups<Tree>>;
+  query: string;
   layout: 'shelf' | 'list';
   current?: string | null;
   renaming?: string;
@@ -31,6 +39,7 @@ export default function LibraryShelf({
   onCancelRename: () => void;
   onStartRename: (id: string) => void;
   onDelete: (id: string, origin: HTMLElement | null) => void;
+  onNewChat?: () => void;
 }) {
   return (
     <nav aria-label="Saved learning trees" className="tree-list" data-layout={layout}>
@@ -97,7 +106,12 @@ export default function LibraryShelf({
                           <i key={i} style={inkStyle(ink)} />
                         ))}
                       </span>
-                      <Text type="supporting" color="secondary" id={`branch-count-${t.id}`}>
+                      <Text
+                        type="supporting"
+                        color="secondary"
+                        id={`branch-count-${t.id}`}
+                        className="volume-counts"
+                      >
                         {volumeCounts(branches)}
                       </Text>
                     </span>
@@ -122,7 +136,7 @@ export default function LibraryShelf({
                         onClick={() => onStartRename(t.id)}
                       />
                       <DropdownMenuItem
-                        className="delete-menu-item"
+                        variant="destructive"
                         label="Delete chat…"
                         icon={<TrashIcon />}
                         onClick={() =>
@@ -137,7 +151,13 @@ export default function LibraryShelf({
           </ul>
         </section>
       ))}
-      {!groups.length && <Text color="secondary">No learning tree titles match.</Text>}
+      {!groups.length && (
+        <div className="library-empty">
+          <Heading level={2}>No learning tree matches “{query.trim()}”</Heading>
+          <Text color="secondary">Check the spelling, or start a new chat with that question.</Text>
+          {onNewChat && <Button label="New chat" icon={<PlusIcon />} onClick={onNewChat} />}
+        </div>
+      )}
     </nav>
   );
 }
