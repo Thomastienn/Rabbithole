@@ -80,6 +80,7 @@ export async function settingsRoutes(req, res, url, ctx, body) {
                 return json(res, 409, {
                     error: 'Keep at least one profile. Create another before deleting this one.',
                 });
+            ctx.readyQuick();
             return json(res, 200, profiles());
         }
         // Duplicate names itself "<name> copy", then "<name> copy 2", … until free.
@@ -109,6 +110,7 @@ export async function settingsRoutes(req, res, url, ctx, body) {
             return json(res, 404, {
                 error: 'Profile not found. Reopen Settings and choose a listed profile.',
             });
+        ctx.readyQuick();
         return json(res, 200, profiles());
     }
     if (url.pathname === '/api/settings/tutor-style') {
@@ -134,7 +136,9 @@ export async function settingsRoutes(req, res, url, ctx, body) {
         };
         const invalid = await selectionError(selection);
         if (invalid) return json(res, invalid.status, { error: invalid.error });
-        return json(res, 200, store.saveChatSettings(selection));
+        const saved = store.saveChatSettings(selection);
+        ctx.readyQuick();
+        return json(res, 200, saved);
     }
     if (url.pathname === '/api/settings/smart') {
         const has = (key) => Object.hasOwn(body ?? {}, key),
@@ -194,15 +198,13 @@ export async function settingsRoutes(req, res, url, ctx, body) {
             const invalid = await selectionError({ ...model, effort });
             if (invalid) return json(res, invalid.status, { error: invalid.error });
         }
-        return json(
-            res,
-            200,
-            store.saveSuggestionSettings({
-                enabled: has('enabled') ? body.enabled : settings.enabled,
-                model,
-                effort,
-            }),
-        );
+        const saved = store.saveSuggestionSettings({
+            enabled: has('enabled') ? body.enabled : settings.enabled,
+            model,
+            effort,
+        });
+        ctx.readyQuick();
+        return json(res, 200, saved);
     }
     if (
         endpoint &&
