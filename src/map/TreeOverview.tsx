@@ -86,6 +86,7 @@ export type MapActions = {
 const noStubs: ConversationNode['data']['stubs'] = [];
 const noMarks: string[] = [];
 const nodeTypes = { conversation: Conversation, ghost: GhostTree };
+
 const edgeTypes = { branch: Branch };
 
 export default function TreeOverview({

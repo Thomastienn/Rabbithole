@@ -317,7 +317,9 @@ section[role='alert'] {
 }
 .react-flow__edge.ghost-link .react-flow__edge-path {
   stroke: var(--color-text-secondary);
-  stroke-dasharray: 6 6;
+  /* Thinner than the 7px map line, or the round caps close the dash gaps. */
+  stroke-width: 3px;
+  stroke-dasharray: 2 9;
 }
 .react-flow__handle.ghost-handle,
 .react-flow__node-ghost .react-flow__handle {

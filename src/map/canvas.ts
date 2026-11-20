@@ -205,12 +205,12 @@ export function routeLine(source: Point, target: Point, from: Box, to: Box): Poi
   const rise = Math.abs(end.y - start.y),
     up = Math.sign(end.y - start.y);
   if (rise < 1) return [start, { x: end.x, y: start.y }];
-  const bend = (x: number, k: number) => [
+  const bend = (x: number, turn: number) => [
     start,
-    { x: x - (facing || 1) * k, y: start.y },
-    { x, y: start.y + up * k },
-    { x, y: end.y - up * k },
-    { x: x + (facing || -1) * k, y: end.y },
+    { x: x - (facing || 1) * turn, y: start.y },
+    { x, y: start.y + up * turn },
+    { x, y: end.y - up * turn },
+    { x: x + (facing || -1) * turn, y: end.y },
     end,
   ];
   if (!facing) return bend(Math.max(start.x, end.x) + 40, Math.min(16, rise / 2));
