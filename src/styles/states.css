@@ -229,8 +229,16 @@
   flex: 0 0 var(--map-width);
   border-left: thin solid var(--color-border);
 }
-.overview[data-chat-open='true'] .tree-canvas,
-.overview[data-chat-open='true'] .react-flow {
+/* Too narrow for a 640px reading column beside the map: Map stays one click away in the sidebar. */
+@media (max-width: 1199px) {
+  .overview[data-chat-open='true'],
+  .chat-divider,
+  .expand-chat {
+    display: none;
+  }
+}
+.overview .tree-canvas,
+.overview .react-flow {
   --xy-background-color: var(--color-background-muted);
   background: var(--color-background-muted);
 }

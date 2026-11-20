@@ -236,7 +236,7 @@ export const enamelTheme = {
     "--rabbithole-ink-3": "light-dark(#b23a2a, #ff9a8a)",
     "--rabbithole-ink-4": "light-dark(#7a3fb3, #d6a8ff)",
     "--rabbithole-ink-on": "light-dark(#ffffff, #0b2a22)",
-    "--rabbithole-map-node-width": "16rem",
+    "--rabbithole-map-node-width": "10rem",
     "--rabbithole-sidebar-width": "14.5rem",
     "--rabbithole-branch-color": "light-dark(#07271e, #fff6df)",
     "--rabbithole-branch-width": "7px",

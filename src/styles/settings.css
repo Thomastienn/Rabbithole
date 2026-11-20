@@ -143,10 +143,6 @@
   scrollbar-color: var(--color-border) var(--color-background-surface);
 }
 @media (max-width: 48rem) {
-  .ink-legend {
-    bottom: calc(2 * var(--spacing-3) + var(--spacing-10));
-    max-width: calc(100% - 2 * var(--spacing-4));
-  }
   .shell-band {
     flex-wrap: wrap;
     height: auto;

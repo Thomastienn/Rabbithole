@@ -96,7 +96,10 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
               }}
             >
               <Text type="supporting" hasTabularNumbers>
-                {stub.address} · {1 + stub.beneath} folded
+                <Text type="inherit" className="node-address" hasTabularNumbers>
+                  {stub.address}
+                </Text>{' '}
+                · {1 + stub.beneath} folded
               </Text>
             </Button>
           </HStack>
@@ -125,6 +128,32 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
       )}
       <Handle id="ghost" type="source" position={Position.Right} className="ghost-handle" />
       <HStack gap={1} vAlign="center" className="node-band">
+        <Text className="node-address" hasTabularNumbers>
+          {data.address}
+        </Text>
+        <Text
+          className="activity-dot"
+          role={data.active ? 'status' : undefined}
+          aria-hidden={!data.active || undefined}
+        >
+          {data.active && <Text className="sr-only">Responding</Text>}
+        </Text>
+        <Button
+          id={`open-${t.id}`}
+          className="node-title nodrag nopan"
+          label={`Open ${t.title}`}
+          aria-current={data.focused || undefined}
+          variant="ghost"
+          size="sm"
+          onClick={() => data.open(t.id)}
+        >
+          <Heading
+            level={2}
+            style={{ viewTransitionName: transition === t.id ? 'conversation' : undefined }}
+          >
+            {t.title}
+          </Heading>
+        </Button>
         {data.childCount > 0 && (
           <IconButton
             id={`fold-${t.id}`}
@@ -141,31 +170,6 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
             }}
           />
         )}
-        <Text
-          className="activity-dot"
-          role={data.active ? 'status' : undefined}
-          aria-hidden={!data.active || undefined}
-        >
-          {data.active && <Text className="sr-only">Responding</Text>}
-        </Text>
-        <Text className="node-address" hasTabularNumbers>
-          {data.address}
-        </Text>
-        <Button
-          id={`open-${t.id}`}
-          className="node-title nodrag nopan"
-          label={`Open ${t.title}`}
-          variant="ghost"
-          size="sm"
-          onClick={() => data.open(t.id)}
-        >
-          <Heading
-            level={2}
-            style={{ viewTransitionName: transition === t.id ? 'conversation' : undefined }}
-          >
-            {t.title}
-          </Heading>
-        </Button>
         {t.parent && (
           <IconButton
             id={`reveal-${t.id}`}
@@ -211,7 +215,13 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                     <Text
                       type="supporting"
                       color={m.role === 'user' ? 'primary' : 'secondary'}
-                      className={m.role === 'user' ? 'question-bubble' : undefined}
+                      className={
+                        m.role === 'user'
+                          ? 'question-bubble'
+                          : m.status === 'streaming'
+                            ? 'node-arriving'
+                            : undefined
+                      }
                       maxLines={3}
                       hasTruncateTooltip={false}
                     >
@@ -225,7 +235,7 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                 {m.role === 'assistant' && m.status !== 'completed' && (
                   <Text type="supporting" className="node-status" data-status={m.status}>
                     {m.status === 'failed' && <ExclamationTriangleIcon aria-hidden />}
-                    {m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}.`}
+                    {m.status === 'streaming' ? 'Replying…' : `Reply ${m.status}`}
                   </Text>
                 )}
                 {m.role === 'assistant' &&

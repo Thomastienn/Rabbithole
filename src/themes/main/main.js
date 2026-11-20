@@ -236,7 +236,7 @@ export const mainTheme = {
     "--rabbithole-ink-3": "light-dark(#157a3a, #22b14c)",
     "--rabbithole-ink-4": "light-dark(#b8297a, #f06bb0)",
     "--rabbithole-ink-on": "light-dark(#ffffff, #0b1230)",
-    "--rabbithole-map-node-width": "16rem",
+    "--rabbithole-map-node-width": "10rem",
     "--rabbithole-sidebar-width": "14.5rem",
     "--rabbithole-branch-color": "light-dark(#0b1230, #ffffff)",
     "--rabbithole-branch-width": "7px",
