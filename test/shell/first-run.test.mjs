@@ -5,10 +5,11 @@ import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
 
-// A fresh install: no trees, no chat model, nothing signed in until `signedIn`.
+// A fresh install: no trees unless `tree`, no chat model, nothing signed in until `signedIn`.
 async function mount(
   t,
   {
+    tree,
     firstRun = true,
     signedIn = true,
     cli = { missing: false },
@@ -25,7 +26,7 @@ async function mount(
         ? {
             csrf: 'c',
             auth: { connected: false, email: null },
-            trees: [],
+            trees: tree ? [{ id: tree.id, title: tree.title, parent: null }] : [],
             active: [],
             videos: [],
             firstRun,
@@ -57,11 +58,13 @@ async function mount(
               : { provider: null, model: null, effort: null }
             : path === '/api/setup'
               ? { firstRun: false }
-              : path === '/api/setup/system'
-                ? system.body
-                : path === '/api/setup/sandbox'
-                  ? sandbox
-                  : {};
+              : path === `/api/trees/${tree?.id}`
+                ? tree
+                : path === '/api/setup/system'
+                  ? system.body
+                  : path === '/api/setup/sandbox'
+                    ? sandbox
+                    : {};
     return { ok: true, json: async () => body };
   };
   const { default: ChatPage } = await import('../../src/shell/ChatPage.tsx');
@@ -70,6 +73,9 @@ async function mount(
     h(ChatPage, { appearance: 'light', setAppearance() {}, theme: 'neutral', setTheme() {} }),
     (w) => {
       stubs = ui(w);
+      w.DOMMatrixReadOnly = class {
+        m22 = 1;
+      };
     },
   );
   t.after(async () => {
@@ -90,6 +96,10 @@ test('a fresh install opens on setup; confirming the prefilled default model let
   assert.ok(container.querySelector('.first-run'));
   assert.equal(container.querySelector('.first-question'), null);
   assert.match(container.querySelector('.first-run').textContent, /Signed in through Claude Code/);
+  assert.deepEqual(
+    [...container.querySelectorAll('.first-run .connection-status')].map((e) => e.textContent),
+    ['Connected'],
+  );
   assert.match(container.querySelector('[aria-label="Chat model"]').textContent, /Opus/);
   assert.doesNotMatch(
     container.textContent,
@@ -134,11 +144,13 @@ test('a missing CLI shows its official install page and command; "Check again" f
   const { container, click } = await mount(t, { cli });
   const setup = container.querySelector('.first-run');
   assert.match(setup.textContent, /Claude Code is not installed/);
+  const status = setup.querySelector('.connection-status[data-state=missing]');
+  assert.equal(status.textContent, 'Not found');
   assert.match(setup.textContent, /curl -fsSL https:\/\/claude\.ai\/install\.sh \| bash/);
   assert.ok(setup.querySelector('a[href="https://code.claude.com/docs/en/setup"]'));
   cli.missing = false;
   await click('Check again');
-  assert.doesNotMatch(container.textContent, /not installed/);
+  assert.doesNotMatch(container.textContent, /not installed|Not found/);
   assert.match(container.querySelector('.first-run').textContent, /Signed in through Claude Code/);
 });
 
@@ -196,4 +208,21 @@ test('Windows setup asks once for admin rights; declining explains and setup sti
   await click('Start asking');
   assert.deepEqual(posts.at(-1), ['/api/setup', {}]);
   assert.equal(setup(), null);
+});
+
+test('with no model connected, an open conversation says so inside its composer', async (t) => {
+  const tree = {
+    id: 't1',
+    title: 'Fungi',
+    provider: 'claude',
+    model: 'opus',
+    effort: null,
+    branch: null,
+    artifacts: [],
+    messages: [],
+  };
+  const { container } = await mount(t, { tree, firstRun: false, signedIn: false });
+  const note = container.querySelector('.focused-chat .astryx-chat-composer .attachment-note');
+  assert.equal(note.textContent, 'No model is connected. Open Settings, then Connections.');
+  assert.equal(note.getAttribute('role'), null, 'not an alert');
 });

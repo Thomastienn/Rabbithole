@@ -6,7 +6,13 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { ChatComposer, ChatComposerInput } from '@astryxdesign/core/Chat';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { ArrowUpIcon } from '@heroicons/react/24/outline';
-import { AttachButton, PendingAttachments, pendingPlaceholder, useAttach } from './Attachments';
+import {
+  AttachButton,
+  PendingAttachments,
+  noModelNote,
+  pendingPlaceholder,
+  useAttach,
+} from './Attachments';
 
 export function FirstQuestion({
   draft,
@@ -82,6 +88,7 @@ export function FirstQuestion({
               files={files}
               remove={(i) => setFiles(files.filter((_, j) => j !== i))}
             />
+            {noModels && noModelNote}
             {attach.notices}
             <ChatComposerInput
               label="Your question"
@@ -120,9 +127,6 @@ export function FirstQuestion({
             onClick={(e) => openSettings(e.currentTarget)}
           />
         </HStack>
-      )}
-      {noModels && (
-        <Text color="secondary">No model is available. Open Settings to connect one.</Text>
       )}
     </VStack>
   );

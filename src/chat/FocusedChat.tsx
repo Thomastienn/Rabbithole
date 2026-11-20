@@ -18,7 +18,13 @@ import OriginStrip from './OriginStrip';
 import TitleEditor from './TitleEditor';
 import ChatHeadingRow from './ChatHeader';
 import ChatThread from './ChatThread';
-import { AttachButton, PendingAttachments, pendingPlaceholder, useAttach } from './Attachments';
+import {
+  AttachButton,
+  PendingAttachments,
+  noModelNote,
+  pendingPlaceholder,
+  useAttach,
+} from './Attachments';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { ChatModel } from './useChatModel';
@@ -204,6 +210,7 @@ export default function FocusedChat(props: {
                   files={files}
                   remove={(i) => setFiles(files.filter((_, j) => j !== i))}
                 />
+                {models && !models.length && noModelNote}
                 {attach.notices}
                 <ChatComposerInput
                   handleRef={composer}

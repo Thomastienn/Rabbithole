@@ -6,6 +6,7 @@ import ModelPicker from '../settings/ModelPicker';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
 import { Code } from '@astryxdesign/core/Code';
+import { CheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import SandboxSettings from '../settings/SandboxSettings';
 import type { Model } from '../settings/models';
 import type { ModelSelection, Providers } from '../chat/types';
@@ -76,6 +77,36 @@ function VideoPackages({ api }: { api: (path: string) => Promise<unknown> }) {
   );
 }
 
+// A connection's state beside its name: scarlet "Not found" when the CLI is missing, a tick when connected.
+function Connection({
+  name,
+  missing,
+  connected,
+}: {
+  name: string;
+  missing: boolean;
+  connected: boolean;
+}) {
+  return (
+    <HStack gap={2} vAlign="center" wrap="wrap">
+      <Heading level={3}>{name}</Heading>
+      {missing ? (
+        <span className="connection-status" data-state="missing">
+          <ExclamationTriangleIcon aria-hidden />
+          Not found
+        </span>
+      ) : (
+        connected && (
+          <span className="connection-status">
+            <CheckIcon aria-hidden />
+            Connected
+          </span>
+        )
+      )}
+    </HStack>
+  );
+}
+
 const key = (m: Pick<Model, 'provider' | 'model'>) => `${m.provider}\n${m.model}`;
 
 // First-run setup: sign in through the existing flows, confirm a prefilled chat model, or leave it for later.
@@ -131,7 +162,7 @@ export default function FirstRunSetup({
         </Text>
       </VStack>
       <VStack gap={2}>
-        <Heading level={3}>Claude</Heading>
+        <Connection name="Claude" missing={missing('claude')} connected={!!claude} />
         {missing('claude') ? (
           <Install cli="claude" check={loadModels} />
         ) : (
@@ -156,7 +187,7 @@ export default function FirstRunSetup({
       </VStack>
       <Divider />
       <VStack gap={2}>
-        <Heading level={3}>Codex</Heading>
+        <Connection name="Codex" missing={missing('codex')} connected={!!auth?.connected} />
         {missing('codex') ? (
           <Install cli="codex" check={loadModels} />
         ) : (
