@@ -25,7 +25,7 @@ export function processOutput(child) {
           resolve(match);
         } else if (child.exitCode !== null) failed();
       };
-      const timer = setTimeout(failed, 20000);
+      const timer = setTimeout(failed, 60000); // CI runs slow tests 8-way parallel; 20s starved cold startups.
       for (const pipe of [child.stdout, child.stderr]) pipe.on('data', check);
       child.once('exit', failed);
       child.once('error', failed);
