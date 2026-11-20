@@ -78,6 +78,11 @@ jobs:
         with:
           path: installers
           merge-multiple: true
+      # Fixed names so the README's releases/latest/download links never change.
+      - name: Rename installers
+        run: |
+          mv installers/*.AppImage installers/Rabbithole-linux-x86_64.AppImage
+          mv installers/*-setup.exe installers/Rabbithole-windows-x64-setup.exe
       # A draft: the owner reviews, renames the tag if wanted and publishes it by hand.
       - name: Create draft release
         env:

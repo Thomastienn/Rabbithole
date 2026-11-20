@@ -49,7 +49,12 @@ Claude and Codex use your plan's sign-in. Rabbithole has no API-key fallback for
 
 ## Desktop app
 
-`npm run desktop:build` builds a Linux AppImage or an unsigned Windows installer. It needs Rust and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). See [Setup](docs/guide/setup.md#linux-desktop-app).
+[![Download for Linux](https://img.shields.io/badge/Download-Linux%20AppImage-2ea44f?logo=linux&logoColor=white)](https://github.com/Thomastienn/Rabbithole/releases/latest/download/Rabbithole-linux-x86_64.AppImage)
+[![Download for Windows](https://img.shields.io/badge/Download-Windows%20installer-0078d4?logo=windows&logoColor=white)](https://github.com/Thomastienn/Rabbithole/releases/latest/download/Rabbithole-windows-x64-setup.exe)
+
+The installers are unsigned, so Windows SmartScreen shows a warning on first run. On Linux, run `chmod +x Rabbithole-linux-x86_64.AppImage` before you open it.
+
+To build it yourself, `npm run desktop:build` builds a Linux AppImage or an unsigned Windows installer. It needs Rust and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). See [Setup](docs/guide/setup.md#linux-desktop-app).
 
 ## Data and privacy
 
