@@ -18,7 +18,7 @@ test('chat header row: return to parent, path crumbs, stats and map toggles, clo
       current: { id: 'child', title: 'Why one at a time?' },
       addresses: new Map([
         ['root', { address: '1' }],
-        ['child', { address: '1.1' }],
+        ['child', { address: '1.1', ink: 2 }],
       ]),
       open: (id) => calls.push(['open', id]),
       openParent: () => calls.push(['parent']),
@@ -41,6 +41,11 @@ test('chat header row: return to parent, path crumbs, stats and map toggles, clo
   assert.ok(nav.getAttribute('aria-label'), 'named for assistive tech');
   assert.deepEqual([...nav.querySelectorAll('button')].map(name), ['1 Mutex basics']);
   assert.equal(nav.querySelector('[aria-current=location]').textContent, '1.1 Why one at a time?');
+  assert.match(
+    nav.querySelector('[aria-current=location] .address-chip').style.getPropertyValue('--ink'),
+    /ink-2/,
+    'the current chip wears its family line',
+  );
   await act(async () => button(container, 'Return to parent conversation').click());
   await act(async () => button(container, '1 Mutex basics').click());
   await act(async () => button(container, 'Return to tree').click());

@@ -12,6 +12,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { TokenStatsToggle } from './ChatDetails';
+import { inkStyle } from '../map/treeList';
 
 type Conversation = { id: string; title: string };
 
@@ -33,7 +34,7 @@ export default function ChatHeadingRow({
   parentTitle?: string;
   ancestors: Conversation[];
   current: Conversation;
-  addresses: Map<string, { address: string }>;
+  addresses: Map<string, { address: string; ink?: number }>;
   open: (id: string) => void;
   openParent: () => void;
   statsOpen: boolean;
@@ -71,7 +72,10 @@ export default function ChatHeadingRow({
           </Fragment>
         ))}
         <strong aria-current="location">
-          <span className="addr">{addresses.get(current.id)?.address}</span> {current.title}
+          <span className="addr address-chip" style={inkStyle(addresses.get(current.id)?.ink ?? 0)}>
+            {addresses.get(current.id)?.address}
+          </span>{' '}
+          {current.title}
         </strong>
       </nav>
       <TokenStatsToggle open={statsOpen} toggle={toggleStats} />

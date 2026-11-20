@@ -261,10 +261,31 @@ test('a saved tree opens its conversation with the thread, title and map', async
   const { container, calls } = await mount(t, [summary]);
   assert.ok(calls.includes('/api/trees/t1'));
   assert.equal(container.querySelector('#rename-conversation h2').textContent, 'Fungi');
+  const chip = container.querySelector('#rename-conversation .title-chip');
+  assert.equal(chip.textContent, '1');
+  assert.equal(
+    chip.style.getPropertyValue('--ink'),
+    'var(--rabbithole-paper)',
+    'trunk is porcelain',
+  );
   assert.equal(container.querySelector('.question-bubble').textContent, 'What are hyphae?');
   assert.match(container.querySelector('.chat-reply').textContent, /Thin threads\./);
   assert.ok(container.querySelector('#learning-tree-map'));
   assert.ok(button(container, 'Copy tutor reply 1'));
+});
+
+test('a child shows its first question once, in the thread, not on the origin line', async (t) => {
+  const branch = { parent: 't0', messageId: 'm1', start: 0, end: 5, text: 'Spore' };
+  const { container } = await mount(t, [summary], {
+    respond: (path) =>
+      path === '/api/trees/t1' && {
+        ok: true,
+        json: async () => ({ ...tree, branch: { ...branch, question: 'What are hyphae?' } }),
+      },
+  });
+  assert.match(container.querySelector('.origin-line').textContent, /at Spore/);
+  assert.equal(container.querySelector('.origin-question'), null);
+  assert.equal(container.querySelector('.question-bubble').textContent, 'What are hyphae?');
 });
 
 test('map media chips open focused chat, focus and center the chosen artifact', async (t) => {
