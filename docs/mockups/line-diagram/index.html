@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Index · Line Diagram mockup</title><link rel="stylesheet" href="ld.css"></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Line Diagram mockup</b><a href="index.html" aria-current=page>Index</a><a href="read.html">Read</a><a href="map.html">Map</a><a href="library.html">Library</a><a href="knowledge.html">Knowledge</a><a href="videos.html">Videos</a><a href="pieces.html">Pieces</a><a href="themes.html">Themes</a><a href="settings.html">Settings</a><a href="usage.html">Usage</a><a href="states.html">States and overlays</a><a href="narrow.html">Narrow</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Line Diagram</h1><p>Rabbithole drawn as a transit diagram. A learning tree is a network: the trunk is the white line, each branch off it is a coloured line, and every conversation is a station. Use the bar above to move between screens, and the Light box to see the light scheme.</p></header>
+<ul class="rules">
+<li>Lines turn only at 45 or 90 degrees, with round ends. They are 5px in the sidebar and 7px on the map.</li>
+<li>A map line leaves its ring sideways, turns 45 degrees, runs straight up or down the middle of the gap between cards when the rise is longer than the run, turns 45 degrees again and enters the next ring sideways. Two rings at the same height join with one straight line.</li>
+<li>A conversation is a white-ringed station. The larger ring with a dot is where you are.</li>
+<li>Colour belongs to the lines. Text is never tinted to decorate, and no coloured bar sits beside text.</li>
+<li>An address chip filled with the line's colour leads each conversation title.</li>
+<li>Scarlet means something failed, and it always comes with words and a way forward.</li>
+<li>One motion: a new branch draws its line out of the ring it starts from, then the station lands. With reduced motion it appears at once.</li>
+</ul>
+<table class="tbl idx"><thead><tr><th>Screen</th><th>What it shows</th></tr></thead><tbody>
+<tr><td><a href="read.html">Read</a></td><td class="mut">The three-column shell: sidebar with the route strip, reading column, docked map.</td></tr><tr><td><a href="map.html">Map</a></td><td class="mut">The full map: conversation cards joined by family lines, a folded branch, a failed reply, a reply arriving, one ghost tree.</td></tr><tr><td><a href="themes.html">Themes</a></td><td class="mut">The six themes, each in dark and light, side by side.</td></tr><tr><td><a href="library.html">Library</a></td><td class="mut">Shelf and List, date groups, a search with no match.</td></tr><tr><td><a href="knowledge.html">Knowledge</a></td><td class="mut">Concept field by topic, concept detail, merge dialog, empty state.</td></tr><tr><td><a href="videos.html">Videos</a></td><td class="mut">Video cards, a video whose source is gone, empty state.</td></tr><tr><td><a href="pieces.html">Pieces</a></td><td class="mut">Saved pieces, read-only source, paging, empty state.</td></tr><tr><td><a href="settings.html">Settings</a></td><td class="mut">Interface, Models and Connections.</td></tr><tr><td><a href="usage.html">Usage</a></td><td class="mut">Totals, the daily chart, breakdown by model and by tree, empty state.</td></tr><tr><td><a href="states.html">States and overlays</a></td><td class="mut">Menus, dialogs, composer and reply states, first run, media states, focus.</td></tr><tr><td><a href="narrow.html">Narrow</a></td><td class="mut">Read, the Contents drawer and Map at 390px.</td></tr></tbody></table>
+<div class="intro" style="padding-top:0"><h2>Where this differs from the sketch you picked</h2></div>
+<ul class="rules">
+<li>No top bar. The shipped app steers from the left sidebar, so views, search, New chat and Settings stay there.</li>
+<li>No coloured bar beside the title, and no small capitals line above it.</li>
+<li>Pieces is added as the sixth view. The sketch had four.</li>
+<li>The map keeps conversation cards with previews of each turn. Lines leave from a ring beside the message a branch started from.</li>
+</ul>
+<div class="intro"><h2>Colours</h2><p>Each is a light and dark pair. Tick Light to compare, and pick a theme in the bar to see its set. The names below are Main Line's.</p></div>
+<div class="tokens"><div><s style="background:var(--g)"></s>Ground</div><div><s style="background:var(--deep)"></s>Sidebar and map field</div><div><s style="background:var(--up)"></s>Raised</div><div><s style="background:var(--up2)"></s>Hover</div><div><s style="background:var(--w)"></s>Trunk, rings, focus, primary</div><div><s style="background:var(--ink)"></s>Text</div><div><s style="background:var(--mut)"></s>Quiet text</div><div><s style="background:var(--l1)"></s>Cobalt line</div><div><s style="background:var(--l2)"></s>Amber line</div><div><s style="background:var(--l3)"></s>Green line</div><div><s style="background:var(--l4)"></s>Magenta line</div><div><s style="background:var(--fail-fill)"></s>Scarlet</div></div>
+<div class="intro" style="padding-bottom:64px"><h2>Open questions</h2><p>Does the route strip beside Contents, and the small line swatches in keys and legends, pass the rule against a coloured line beside text? How should a line run when a card sits left of or above the card it branched from? Should a far-zoomed map shrink cards to bare stations? None of these is drawn here.</p></div>
+<script src="ld.js"></script>
+</body></html>
