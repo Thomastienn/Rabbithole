@@ -179,6 +179,9 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     const suggesting = store.suggestionSettings().enabled;
     const noted = (output) => {
         const next = markerNotes(output.text, output.markers, hasMedia());
+        // A new suggestion can be opened at once, so its brief reads the saved text up to its term.
+        if (!finished && next.passages.length > notes.passages.length)
+            store.update(reply, text, status);
         if (
             suggesting &&
             (next.passages.length > notes.passages.length ||

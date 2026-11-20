@@ -127,6 +127,19 @@ test('underlines, manual highlights, late suggestions and streaming preserve pas
         update((v) => ({ ...v, suggestions: { ...suggestion, passages: [stable] } })),
     );
     assert.match(underline().getAttribute('aria-label'), /Suggested passage: Stable/);
+    // Opening it before the reply finishes asks about it, as on a finished reply.
+    await act(async () => {
+        underline().dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        underline().click();
+    });
+    assert.deepEqual(branched.at(-1)[0], {
+        messageId: 'reply',
+        start: 2,
+        end: 8,
+        text: 'Stable',
+        suggestion: true,
+        at: { x: 0, y: 0, below: 0 },
+    });
     await act(async () =>
         update((v) => ({ ...v, message: { ...v.message, status: 'completed' } })),
     );

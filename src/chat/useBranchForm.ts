@@ -29,8 +29,17 @@ export function useBranchForm(
                 branchOrigin.current?.current?.focus({ preventScroll: !refocus });
         });
     }
-    // Compaction never sees the question, so it starts when the form opens; closing cancels (a no-op after submit took it).
-    const prepareKey = branch && JSON.stringify([branch.parent, branchRequest(branch.anchor)]);
+    // The status of the reply the open form asks about; a streaming one holds the question until it ends.
+    const replyStatus =
+        branch?.parent === tree?.id
+            ? tree?.messages.find((m) => m.id === branch?.anchor.messageId)?.status
+            : undefined;
+    // Compaction never sees the question, so it starts when the form opens, or once its reply completes; closing cancels (a no-op after submit took it).
+    const prepareKey =
+        branch &&
+        !branch.pending &&
+        replyStatus !== 'streaming' &&
+        JSON.stringify([branch.parent, branchRequest(branch.anchor)]);
     useEffect(() => {
         if (!prepareKey) return;
         const [parent, anchor] = JSON.parse(prepareKey);
@@ -39,8 +48,18 @@ export function useBranchForm(
     async function submitBranch(e: React.FormEvent) {
         e.preventDefault();
         if (!branch || !branch.question.trim()) return;
+        if (replyStatus === 'streaming') return setBranch({ ...branch, pending: true });
         await createBranch(branch.parent, branchRequest(branch.anchor, branch.question));
     }
+    // A completed reply sends the waiting question, so the child inherits the whole reply; a stopped or failed one gives it back.
+    useEffect(() => {
+        if (!branch?.pending || replyStatus === 'streaming') return;
+        if (replyStatus !== 'completed') return setBranch({ ...branch, pending: false });
+        // A refused branch keeps the box open with its error; the question can be sent again.
+        void createBranch(branch.parent, branchRequest(branch.anchor, branch.question)).then(() =>
+            setBranch((b) => b && { ...b, pending: false }),
+        );
+    }, [branch?.pending, replyStatus]);
     async function createBranch(parent: string, body: object) {
         if (branching || savingModel === parent) return;
         setBranching(true);
