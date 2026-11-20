@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { branchRequest, prepareBranch, type Anchor } from './branch';
-import { visualPassage } from '../media/artifacts';
+import { partTrail, visualPassage } from '../media/artifacts';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import type { DiscussionBranch } from '../media/DiscussionCard';
 import type { Tree } from './types';
@@ -132,7 +132,7 @@ export function useBranchForm(
         if (child) return openConversation(child);
         if (tree) return createBranch(tree.id, { messageId, groundwork: concept });
     }
-    const openVisualPart: PartAction = (visual, part, origin, box) => {
+    const openVisualPart: PartAction = (visual, part, origin, box, picker) => {
         if (
             !tree ||
             overview ||
@@ -161,20 +161,30 @@ export function useBranchForm(
                     }),
             },
             question: '',
+            picker,
         });
         setError('');
     };
-    // Choosing an earlier trail entry widens the source to that ancestor part, keeping its first depth names.
-    function widenPart(depth: number) {
+    // A part picked from the keyboard, or an earlier trail entry, becomes the visual's source.
+    function pickPart(trail: string[], step?: number | null) {
         setBranch((b) => {
             const a = b?.anchor,
                 visual = tree?.artifacts?.find((v) => v.id === a?.artifactId);
-            if (!b || !a || !('trail' in a) || !a.trail || !visual) return b;
-            if (depth < 1 || depth >= a.trail.length) return b;
-            const trail = a.trail.slice(0, depth),
-                part = { label: trail.at(-1)!, explanation: a.explanation, trail, step: a.step };
+            if (!b || !a || !('label' in a) || !visual || !partTrail(trail)) return b;
+            const part = {
+                label: trail.at(-1)!,
+                explanation: a.explanation,
+                trail,
+                step: step === undefined ? a.step : step,
+            };
             return { ...b, anchor: { ...a, ...part, text: visualPassage(visual, part) } };
         });
+    }
+    // Choosing an earlier trail entry widens the source to that ancestor part, keeping its first depth names.
+    function widenPart(depth: number) {
+        const a = branch?.anchor,
+            trail = a && 'trail' in a ? a.trail : undefined;
+        if (trail && depth >= 1 && depth < trail.length) pickPart(trail.slice(0, depth));
     }
     function startBranch(
         parent: string,
@@ -226,6 +236,7 @@ export function useBranchForm(
         discussionBranches,
         openVisualPart,
         widenPart,
+        pickPart,
         startBranch,
         groundworkBranches,
         chooseGroundwork,

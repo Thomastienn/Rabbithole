@@ -42,6 +42,28 @@
     max-width: 60ch;
     font-family: var(--rabbithole-font-reading);
 }
+/* Keyboard picking: the parts at the focused level, the focused one in the crumbs' current weight. */
+.branch-parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    border-radius: var(--radius-inner);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+}
+.branch-parts:focus-visible {
+    outline: 2px solid var(--color-text-primary);
+    outline-offset: 2px;
+}
+.branch-part {
+    cursor: pointer;
+}
+.branch-part[aria-selected='true'] {
+    font-weight: 600;
+    color: var(--rabbithole-paper);
+    text-decoration: underline 2px;
+    text-underline-offset: 3px;
+}
 .branch-question {
     flex: 1;
     min-width: 0;

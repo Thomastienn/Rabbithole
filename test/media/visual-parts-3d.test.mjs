@@ -57,7 +57,7 @@ function atom() {
         w.document
             .getElementById(id)
             .dispatchEvent(new w.MouseEvent(type, { bubbles: true, clientX, clientY }));
-    return { posted, at, draw, camera };
+    return { w, posted, at, draw, camera, drew };
 }
 
 // Pixels per world unit at the origin: fov 50 at distance 5 over 200px.
@@ -124,4 +124,33 @@ test('one click asks about the object, and dragging to orbit never picks', () =>
     assert.equal(pick.type, 'pick');
     assert.deepEqual(names(pick), ['Atom', 'Nucleus']);
     assert.equal(pick.step, null);
+});
+
+test('while the host picks from the keyboard, the scene posts its flagged objects as parts, and their bounds follow the camera', async () => {
+    const { w, posted, draw, camera, drew } = atom();
+    const frame = () => new Promise((resolve) => w.requestAnimationFrame(() => resolve()));
+    drew.watch(true);
+    await frame();
+    const { type, parts, step } = posted.pop();
+    assert.deepEqual([type, step], ['tree', null]);
+    const [atomPart] = parts;
+    assert.deepEqual(
+        [atomPart.name, atomPart.parts.map((p) => p.name)],
+        ['Atom', ['Nucleus', 'Electron']],
+        'unflagged and hidden objects are no parts',
+    );
+    const nucleus = atomPart.parts[0];
+    assert.deepEqual(centre(nucleus).map(Math.round), [100, 100]);
+    camera.position.x = 0.2;
+    draw();
+    await frame();
+    assert.ok(
+        centre(posted.pop().parts[0].parts[0])[0] < centre(nucleus)[0] - 2,
+        'the box moved left with the view',
+    );
+    drew.watch(false);
+    camera.position.x = 0;
+    draw();
+    await frame();
+    assert.deepEqual(posted, []);
 });

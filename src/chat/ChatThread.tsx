@@ -52,6 +52,7 @@ export default function ChatThread({
     const { branching, submitBranch, closeBranch, openVisualPart, visualBranches, widenPart } =
         branchForm;
     const { discussionBranches, groundworkBranches, chooseGroundwork, explainBrief } = branchForm;
+    const { pickPart } = branchForm;
     return tree.messages.map((message) => {
         const suggestions = tree.suggestions?.find((s) => s.message === message.id),
             index =
@@ -178,6 +179,7 @@ export default function ChatThread({
                                                   explainBrief(branch.parent, anchor)
                                               }
                                               widen={widenPart}
+                                              pick={pickPart}
                                               saved={
                                                   tree.briefs?.find(
                                                       (b) =>

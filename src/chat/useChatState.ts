@@ -4,6 +4,7 @@ import type { ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import type { Preview, Source } from '../map/TreeOverview';
 import type { Turn } from './turn';
 import type { Anchor } from './branch';
+import type { PartPicker } from '../media/VisualFrame';
 import type { State, Tree } from './types';
 import { conversationAddresses } from '../map/treeList';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
@@ -76,6 +77,7 @@ export function useChatState() {
         parent: string;
         anchor: Anchor;
         question: string;
+        picker?: PartPicker;
         pending?: boolean;
     }>();
     const [selectingMessage, setSelectingMessage] = useState<string>();

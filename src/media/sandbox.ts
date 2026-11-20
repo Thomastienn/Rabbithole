@@ -62,6 +62,7 @@ addEventListener('message', (event) => {
         drew.mark(data.trails);
     if (data?.type === 'step' && Number.isInteger(data.step) && data.step >= 0)
         drew.step(data.step);
+    if (data?.type === 'tree' && typeof data.watch === 'boolean') drew.watch(data.watch);
 });
 
 // The host validates these height reports and the part messages below against this frame's window.
