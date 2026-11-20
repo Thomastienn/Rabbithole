@@ -155,6 +155,52 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
         };
     };
     const slow = (text) => suggesting(text) && text.includes('slow suggestions');
+    // The quick thinking runner: one stream-json message per line, settings by control request, /clear between calls.
+    if (
+        argv.includes('--input-format') &&
+        !argv.includes('--session-id') &&
+        !argv.includes('--resume')
+    ) {
+        let context = 0;
+        for await (const line of createInterface({ input: stdin })) {
+            const m = JSON.parse(line);
+            if (m.type === 'control_request') {
+                send({
+                    type: 'control_response',
+                    response: { subtype: 'success', request_id: m.request_id },
+                });
+                continue;
+            }
+            const text = m.message.content;
+            if (text === '/clear') {
+                context = 0;
+                send({ type: 'result', subtype: 'success', is_error: false, result: '' });
+                continue;
+            }
+            context++;
+            send({ type: 'system', subtype: 'init', session_id: `runner-${context}` });
+            send({
+                type: 'assistant',
+                message: {
+                    id: 'answer',
+                    content: [
+                        { type: 'text', text: context > 1 ? 'Saw an earlier call.' : reply(text) },
+                    ],
+                },
+            });
+            send({
+                type: 'result',
+                is_error: false,
+                usage: {
+                    input_tokens: 3,
+                    cache_creation_input_tokens: 100,
+                    cache_read_input_tokens: 40,
+                    output_tokens: 7,
+                },
+            });
+        }
+        return;
+    }
     if (argv.includes('--output-format')) {
         let input = '';
         for await (const chunk of stdin) input += chunk;

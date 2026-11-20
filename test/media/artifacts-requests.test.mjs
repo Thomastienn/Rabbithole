@@ -121,7 +121,8 @@ for (const name of [TEST_PROVIDER])
         const calls = [];
         const launch = (command, args, options) => {
             const call = { command, args, options, input: [] };
-            calls.push(call);
+            // The quick thinking runner started ahead of time is not one of the reply's sessions.
+            if (!args.includes('--input-format') || args.includes('--session-id')) calls.push(call);
             const fixture = fileURLToPath(
                 new URL('../support/protocol-fixture.mjs', import.meta.url),
             );

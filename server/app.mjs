@@ -180,6 +180,7 @@ export function createApp({
         : { fill: () => {}, stop: () => {} };
     Object.assign(ctx, roles(ctx));
     ctx.syncEndpoints();
+    ctx.readyQuick();
     Object.assign(
         ctx,
         compactionJobs(ctx),

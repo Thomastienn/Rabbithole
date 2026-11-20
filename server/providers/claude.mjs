@@ -8,6 +8,7 @@ import { tutorSystem } from '../media/diagrams.mjs';
 import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
 import { STALLED } from './chatStream.mjs';
+import { ClaudeRunner } from './claudeRunner.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [
@@ -25,6 +26,38 @@ export class Claude {
         this.run = run;
         this.bin = bin;
         this.children = new Set();
+        // Slash commands stay on so /clear works; every message starts with the app's own instructions, never a slash.
+        this.runner = new ClaudeRunner(() => {
+            mkdirSync(this.cwd, { recursive: true, mode: 0o700 });
+            // Effort is set per call; this variable would override it for the whole process.
+            const { CLAUDE_CODE_EFFORT_LEVEL, ...env } = this.env();
+            return this.launch(
+                ...launchArgs(this.cli(), [
+                    '-p',
+                    '--input-format',
+                    'stream-json',
+                    '--output-format',
+                    'stream-json',
+                    '--verbose',
+                    '--include-partial-messages',
+                    '--tools',
+                    '',
+                    '--strict-mcp-config',
+                    '--mcp-config',
+                    JSON.stringify({ mcpServers: {} }),
+                    '--setting-sources',
+                    '',
+                    '--system-prompt',
+                    'Follow the task given in each message.',
+                ]),
+                { cwd: this.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] },
+            );
+        });
+    }
+    // Only the chosen quick thinking provider keeps its runner ready.
+    ready(on) {
+        if (on) this.runner.open();
+        else this.runner.close();
     }
     // No API key fallback: the CLI must use the learner's own subscription login.
     env() {
@@ -136,41 +169,50 @@ export class Claude {
             emit({ type: 'status', status: 'interrupted' });
             return;
         }
+        if (!tree.thread && tree.instructions) this.runner.touch();
+        // A call the learner waits for takes the ready runner; background calls and a busy runner start their own process.
+        const warm = tree.urgent && !toolsOn && !hasImages && !tree.thread && this.runner.take();
         // The CLI gives its environment effort precedence over --effort.
-        const child = this.launch(...launchArgs(this.cli(), args), {
-            cwd: this.cwd,
-            env: {
-                ...this.env(),
-                ...(tree.effort != null && { CLAUDE_CODE_EFFORT_LEVEL: tree.effort }),
-            },
-            stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        const child =
+            warm ||
+            this.launch(...launchArgs(this.cli(), args), {
+                cwd: this.cwd,
+                env: {
+                    ...this.env(),
+                    ...(tree.effort != null && { CLAUDE_CODE_EFFORT_LEVEL: tree.effort }),
+                },
+                stdio: ['pipe', 'pipe', 'pipe'],
+            });
         this.children.add(child);
-        child.stdin.end(
-            hasImages
-                ? JSON.stringify({
-                      type: 'user',
-                      message: {
-                          role: 'user',
-                          content: parts.map((p, index) =>
-                              p.image
-                                  ? {
-                                        type: 'image',
-                                        source: {
-                                            type: 'base64',
-                                            media_type: p.image.type,
-                                            data: readFileSync(p.image.path).toString('base64'),
+        if (!warm)
+            child.stdin.end(
+                hasImages
+                    ? JSON.stringify({
+                          type: 'user',
+                          message: {
+                              role: 'user',
+                              content: parts.map((p, index) =>
+                                  p.image
+                                      ? {
+                                            type: 'image',
+                                            source: {
+                                                type: 'base64',
+                                                media_type: p.image.type,
+                                                data: readFileSync(p.image.path).toString('base64'),
+                                            },
+                                        }
+                                      : {
+                                            type: 'text',
+                                            text: (index === 0 ? prefix : '') + p.text,
                                         },
-                                    }
-                                  : { type: 'text', text: (index === 0 ? prefix : '') + p.text },
-                          ),
-                      },
-                  }) + '\n'
-                : prompt,
-        );
+                              ),
+                          },
+                      }) + '\n'
+                    : prompt,
+            );
         // Never forward CLI stderr: diagnostics can include account details.
         child.stderr.resume();
-        const kill = () => child.kill();
+        const kill = warm ? () => this.runner.restart() : () => child.kill();
         signal.addEventListener('abort', kill, { once: true });
         let item,
             started = session,
@@ -190,7 +232,7 @@ export class Claude {
                     }, 300000);
                 };
                 idle();
-                createInterface({ input: child.stdout }).on('line', (line) => {
+                const onLine = (line) => {
                     idle();
                     let m;
                     try {
@@ -256,7 +298,19 @@ export class Claude {
                                     m.tool_use_result,
                                 );
                     if (m.type === 'result') result = m;
-                });
+                };
+                if (warm)
+                    return void this.runner
+                        .ask(
+                            { model: selectedModel, effortLevel: tree.effort ?? null },
+                            system + '\n\n' + prompt,
+                            onLine,
+                        )
+                        .then(() => {
+                            clearTimeout(timeout);
+                            resolve();
+                        });
+                createInterface({ input: child.stdout }).on('line', onLine);
                 child.on('error', (error) => {
                     clearTimeout(timeout);
                     reject(
@@ -276,6 +330,7 @@ export class Claude {
             nativeEvents.close();
             signal.removeEventListener('abort', kill);
             this.children.delete(child);
+            if (warm) this.runner.release(child);
         }
         if (signal.aborted) {
             emit({ type: 'status', status: 'interrupted' });
@@ -317,6 +372,7 @@ export class Claude {
         emit({ type: 'status', status: 'completed' });
     }
     close() {
+        this.runner.close();
         for (const child of this.children) child.kill();
         this.children.clear();
     }
