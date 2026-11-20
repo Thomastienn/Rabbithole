@@ -145,8 +145,8 @@ test('hovering a visual part draws its rectangle and name, and one click asks ab
     const { container, act, cleanup } = await render(
         h(VisualFrame, {
             artifact: visual('ready'),
-            onPart: (artifact, part, origin, box) =>
-                calls.push([artifact.id, part, origin.current, box]),
+            onPart: (artifact, part, origin, box, picker) =>
+                calls.push([artifact.id, part, origin.current, box, picker]),
         }),
         ui,
     );
@@ -185,8 +185,20 @@ test('hovering a visual part draws its rectangle and name, and one click asks ab
             },
             figure,
             { x: 10, y: 20, width: 100, height: 40 },
+            calls[0][4],
         ],
     ]);
+    // The picked part's box picks from the keyboard too: focusing a part outlines it.
+    const picker = calls[0][4];
+    picker.listen(() => {});
+    await act(async () => picker.show([]));
+    await receive({
+        type: 'tree',
+        parts: [{ ...plant, parts: [{ ...rods, parts: [] }] }],
+        step: 2,
+    });
+    await act(async () => picker.show([0, 0]));
+    assert.equal(box().textContent, 'Control rods');
 });
 
 test('a branched part keeps a thin rectangle in its family ink, and returning to it opens the stored step and brings it into view', async (t) => {

@@ -27,7 +27,7 @@ import { visualProgress } from './visualProgress';
 export type VisualBranch = VisualPart & { child: string; address?: string; ink?: number };
 // box: a picked part's bounds in viewport coordinates, where the ask box floats.
 export type Box = { x: number; y: number; width: number; height: number };
-// The Ask button's box picks parts from the keyboard: show outlines the part at a path of tree indexes
+// An ask box on the visual picks parts from the keyboard: show outlines the part at a path of tree indexes
 // ([] while picking with none focused, undefined once picking ends); listen receives the part tree.
 type TreeListener = (parts: PartNode[], step: number | null) => void;
 export type PartPicker = { show: (path?: number[]) => void; listen: (set: TreeListener) => void };
@@ -295,6 +295,11 @@ export default function VisualFrame({
     const askButton = useRef<HTMLButtonElement>(null);
     const [focus, setFocus] = useState<number[]>();
     const listener = useRef<TreeListener>(undefined);
+    // Every ask box on this visual, from Ask or a picked part, picks parts from the keyboard.
+    const picker = useRef<PartPicker>({
+        show: setFocus,
+        listen: (set) => (listener.current = set),
+    }).current;
     const revealKey = reveal && JSON.stringify(reveal);
     // Returning to a visual's source shows the whole figure; tagged parts no longer take focus.
     useEffect(() => {
@@ -312,7 +317,7 @@ export default function VisualFrame({
                 { label: artifact.title, explanation: artifact.description },
                 askButton,
                 undefined,
-                { show: setFocus, listen: (set) => (listener.current = set) },
+                picker,
             ));
     useEffect(() => {
         if (retried && artifact.status === 'ready' && document.activeElement === document.body)
@@ -384,7 +389,7 @@ export default function VisualFrame({
                     reveal={reveal}
                     focus={focus}
                     onTree={(parts, step) => listener.current?.(parts, step)}
-                    onPick={onPart && ((part, box) => onPart(artifact, part, figure, box))}
+                    onPick={onPart && ((part, box) => onPart(artifact, part, figure, box, picker))}
                 />
             )}
             {drawing && nudge !== null && (
@@ -480,7 +485,7 @@ export default function VisualFrame({
                                     onPart &&
                                     ((part) => {
                                         setEnlarged(false);
-                                        onPart(artifact, part, figure);
+                                        onPart(artifact, part, figure, undefined, picker);
                                     })
                                 }
                             />
