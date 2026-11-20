@@ -1,113 +1,118 @@
 import { VStack, HStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { Selector } from '@astryxdesign/core/Selector';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import type { Concept } from './knowledge';
 import type { KnowledgeState } from './useKnowledge';
 
-export function KnowledgeHeader({ graph, error, status, busy, merge, load }: KnowledgeState) {
+export function KnowledgeHeader({
+  graph,
+  selected,
+  error,
+  status,
+  busy,
+  keep,
+  beginMerge,
+  load,
+}: KnowledgeState) {
   return (
     <VStack gap={2}>
       <HStack gap={4} vAlign="end" wrap="wrap" className="library-head">
         <VStack gap={2}>
           <Heading level={1}>Knowledge</Heading>
           <Text color="secondary" className="library-intro">
-            Concepts from all your learning trees. Familiarity is an estimate from what you write,
-            not measured mastery.
+            Concepts you have explored across every tree, grouped by topic. Familiarity is an
+            estimate from what you write, not measured mastery.
           </Text>
         </VStack>
-        <Button
-          label="Refresh Knowledge"
-          variant="secondary"
-          icon={<ArrowPathIcon />}
-          isDisabled={busy}
-          onClick={() => void load()}
-        />
+        <HStack gap={2} vAlign="center">
+          <Button
+            label="Merge concepts"
+            variant="secondary"
+            isDisabled={busy || !selected || graph!.concepts.length < 2}
+            onClick={(e) => beginMerge(selected!.name, e.currentTarget)}
+          />
+          <IconButton
+            label="Refresh Knowledge"
+            tooltip="Refresh Knowledge"
+            variant="ghost"
+            icon={<ArrowPathIcon />}
+            isDisabled={busy}
+            onClick={() => void load()}
+          />
+        </HStack>
       </HStack>
       <Text role="status">{status}</Text>
-      {error && !merge && <Text role="alert">{error}</Text>}
+      {error && !keep && <Text role="alert">{error}</Text>}
       {!graph && !error && <Text role="status">Loading knowledge…</Text>}
       {graph && !graph.concepts.length && (
-        <Text>No concepts yet. Concepts appear here as you explore ideas in your chats.</Text>
+        <VStack gap={2} className="knowledge-empty">
+          <Heading level={2}>No concepts yet</Heading>
+          <Text color="secondary">Concepts appear here as you explore ideas in your chats.</Text>
+        </VStack>
       )}
     </VStack>
   );
 }
 
-export function KnowledgeActions({
-  selected,
-  graph,
-  busy,
-  beginMerge,
-}: KnowledgeState & { selected: Concept }) {
-  return (
-    <HStack
-      gap={2}
-      wrap="wrap"
-      role="group"
-      aria-label={`Actions for ${selected.name}`}
-      className="knowledge-actions"
-    >
-      <Button
-        label={`Merge ${selected.name}…`}
-        size="sm"
-        variant="ghost"
-        isDisabled={busy || graph!.concepts.length < 2}
-        onClick={(e) => beginMerge(selected.name, e.currentTarget)}
-      >
-        Merge…
-      </Button>
-    </HStack>
-  );
-}
-
 export function KnowledgeMerge({
-  merge,
+  keep,
+  chooseKeep,
+  duplicate,
+  setDuplicate,
   closeMerge,
   busy,
   submitMerge,
   graph,
-  into,
-  setInto,
   error,
 }: KnowledgeState) {
+  const names = graph?.concepts.map((c) => c.name) ?? [];
   return (
     <Dialog
       className="merge-dialog"
-      isOpen={!!merge}
+      isOpen={!!keep}
       onOpenChange={(open) => {
         if (!open) closeMerge();
       }}
       purpose={busy ? 'required' : 'form'}
-      width="32rem"
+      width="29rem"
     >
       <DialogHeader title="Merge duplicate concepts" />
       <form onSubmit={submitMerge}>
         <VStack padding={5} gap={4}>
-          <Text>
-            Merge “{merge}” into another concept. Keep the chosen name and combine topics,
+          <Text color="secondary">
+            Everything recorded for the duplicate moves to the concept you keep: topics,
             observations and links. This cannot be undone.
           </Text>
           <Selector
             label="Concept to keep"
+            options={names}
+            value={keep ?? ''}
+            onChange={chooseKeep}
+            hasSearch
+            isDisabled={busy}
+            width="100%"
+          />
+          <Selector
+            label="Duplicate"
             placeholder="Choose the duplicate concept"
-            options={graph?.concepts.filter((c) => c.name !== merge).map((c) => c.name) ?? []}
-            value={into}
-            onChange={setInto}
+            options={names.filter((n) => n !== keep)}
+            value={duplicate}
+            onChange={setDuplicate}
             hasSearch
             isDisabled={busy}
             width="100%"
           />
           {error && <Text role="alert">{error}</Text>}
-          <HStack gap={2} wrap="wrap">
+          <HStack gap={2} wrap="wrap" hAlign="between">
+            <Button label="Cancel merge" variant="ghost" isDisabled={busy} onClick={closeMerge} />
             <Button
               label={busy ? 'Merging…' : 'Merge concepts'}
               type="submit"
-              isDisabled={busy || !into}
+              isDisabled={busy || !duplicate}
             />
-            <Button label="Cancel merge" variant="ghost" isDisabled={busy} onClick={closeMerge} />
           </HStack>
         </VStack>
       </form>

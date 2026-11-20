@@ -25,20 +25,27 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
     });
   };
   const detail = () => container.querySelector('#concept-detail');
-  // Read-only: observation counts by level in level order with zeros, and no correction controls.
-  assert.match(
+  // Read-only: facts, then observation counts by level in level order with zeros, and no controls.
+  assert.equal(
     detail().textContent,
-    /Mutex.*Estimated familiarity: unfamiliar\..*Topics: Concurrency.*Met in replies2From your messagesMisconception1Heard of it0Partial2Explains it1Applies it0Teaches it0/s,
+    'MutexTopicsConcurrencyFamiliarityUnfamiliarBuilds onMutual exclusionMet in replies2' +
+      'From your messagesMisconception1Heard of it0Partial2Explains it1Applies it0Teaches it0',
   );
   assert.equal(detail().querySelector('[aria-label="Evidence for Mutex"]').tagName, 'DL');
+  assert.equal(detail().querySelectorAll('button').length, 0);
+  // Familiarity reads without colour: ring form plus words for screen readers.
   assert.deepEqual(
-    [...detail().querySelectorAll('button')].map((b) => b.textContent),
-    ['Merge…'],
+    [...container.querySelectorAll('[data-concept]')].map((b) => [
+      b.querySelector('.fam').dataset.fill,
+      b.querySelector('.sr-only:last-child').textContent,
+    ]),
+    [
+      ['none', ', Unfamiliar'],
+      ['none', ', Unfamiliar'],
+      ['none', ', Unfamiliar'],
+    ],
   );
-  assert.equal(
-    detail().querySelector('[role=group]').getAttribute('aria-label'),
-    'Actions for Mutex',
-  );
+  assert.ok(container.querySelector('.knowledge-field .knowledge-key'));
   assert.equal(
     container.querySelector('[data-concept=Mutex]').getAttribute('aria-controls'),
     'concept-detail',
@@ -67,6 +74,11 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
   );
   await act(async () => container.querySelector('[data-concept=Scheduler]').click());
   assert.equal(detail().querySelector('h2').textContent, 'Scheduler');
+  assert.match(detail().textContent, /Related toMutual exclusionMet in replies/);
+  // Relations read from the other end too: Leads to reverses builds on, Related to runs both ways.
+  await act(async () => container.querySelector('[data-concept="Mutual exclusion"]').click());
+  assert.match(detail().textContent, /Leads toMutexRelated toSchedulerMet in replies/);
+  await act(async () => container.querySelector('[data-concept=Scheduler]').click());
   assert.deepEqual(
     [...container.querySelectorAll('.concept-name:not(.sr-only)')].map((e) => e.textContent),
     ['Scheduler'],

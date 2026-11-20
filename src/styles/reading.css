@@ -1,19 +1,25 @@
-/* Focused chat reading column, replies, usage figures and passages. Files load in main.tsx order, which is the cascade order. */
-/* Read (mockup): the focused chat owns the centre at a 720px book measure; header, list and composer share it. */
+/* Focused chat reading column, replies and passages. Files load in main.tsx order, which is the cascade order. */
+/* Read (Line Diagram mockup): the focused chat owns the centre at a 640px measure; list and composer share it. */
 .chat-reply,
 .chat-reply > * {
   max-width: 100%;
 }
 .focused-chat .astryx-chat-message-list {
   width: 100%;
-  max-width: calc(720px + 6 * var(--rabbithole-module));
+  max-width: calc(640px + 88px);
   margin-inline: auto;
-  padding: calc(4 * var(--rabbithole-module)) calc(3 * var(--rabbithole-module))
-    calc(5 * var(--rabbithole-module));
+  padding: 32px 44px 24px;
   box-sizing: border-box;
 }
 .focused-chat .astryx-chat-message-list > :first-child {
   padding: 0;
+}
+/* Narrow: the 44px gutters shrink so the column keeps its text. */
+@media (max-width: 48rem) {
+  .focused-chat .astryx-chat-message-list {
+    max-width: calc(640px + 32px);
+    padding-inline: 16px;
+  }
 }
 .conv-title .rename-title {
   height: auto;
@@ -21,11 +27,37 @@
   text-align: start;
 }
 .conv-title h2 {
-  font-size: 34px;
-  line-height: 1.12;
+  font-family: var(--font-family-heading);
+  font-size: 38px;
+  line-height: 1.08;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  color: var(--rabbithole-paper);
   text-wrap: balance;
+}
+/* Address chips (mockup .chip): filled with the family line (--ink, set inline), 4px corners. */
+.address-chip,
+.reply-md .passage-address,
+.visual-chips .passage-address {
+  display: inline-block;
+  padding: 3px 6px 2px;
+  border-radius: var(--radius-inner);
+  background: var(--ink);
+  color: var(--ink-on);
+  font: 700 12px/1 var(--font-family-heading);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.conv-title .rename-title span:has(> .title-chip) {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.conv-title .title-chip {
+  flex: none;
+  margin-block-start: 7px;
+  padding: 5px 8px 4px;
+  font-size: 16px;
 }
 .chat-header .chat-heading-row {
   min-height: calc(5 * var(--rabbithole-module));
@@ -57,11 +89,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--rabbithole-paper);
 }
 .crumbs .addr {
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
+}
+.crumbs strong .addr.address-chip {
+  color: var(--ink-on);
+  vertical-align: 1px;
 }
 .crumb-sep {
   flex: none;
@@ -71,12 +107,12 @@
 .stats-toggle[aria-pressed='true'] {
   background: var(--color-overlay-pressed);
 }
-/* Replies: the reading face, 16px/1.6, no bubble (mockup Read). Code keeps the theme's code face. */
+/* Replies: Atkinson Hyperlegible Next 17px/1.68, no bubble (mockup Read). Code keeps the theme's code face. */
 .reply-md,
 .reply-md .astryx-text {
   font-family: var(--rabbithole-font-reading);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 17px;
+  line-height: 1.68;
 }
 .reply-md pre .astryx-text,
 .reply-md code .astryx-text {
@@ -91,13 +127,17 @@
 }
 .reply-md :is(h3, h4, h5, h6),
 .reply-md :is(h3, h4, h5, h6) .astryx-text {
-  font-family: var(--rabbithole-font-reading);
-  font-weight: 600;
+  font-family: var(--font-family-heading);
+  font-weight: 700;
+  color: var(--rabbithole-paper);
 }
+/* The shallowest heading level the reply uses is its section title (mockup 22px). */
 .reply-md h3,
-.reply-md h3 .astryx-text {
-  font-size: 20px;
-  line-height: 1.3;
+.reply-md h3 .astryx-text,
+.reply-md:not(:has(> h3)) > h4,
+.reply-md:not(:has(> h3)) > h4 .astryx-text {
+  font-size: 22px;
+  line-height: 1.2;
 }
 .reply-md table,
 .reply-md table .astryx-text {
@@ -123,7 +163,13 @@
 }
 .reply-status[data-status='failed'] {
   color: var(--color-text-error);
-  border-inline-start-color: var(--color-border-error);
+  font-weight: 600;
+}
+.reply-failed-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-error);
 }
 .chat-question:not(:first-child) {
   margin-block-start: calc(3 * var(--rabbithole-module));
@@ -139,142 +185,6 @@
   margin-inline-start: 2px;
   background: var(--color-accent);
   vertical-align: -0.2em;
-}
-.usage-total.astryx-text {
-  font-size: 34px;
-  line-height: 1.12;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-}
-.usage-total small {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--color-text-secondary);
-}
-.usage-legend b {
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-.usage-section {
-  padding-block-start: var(--spacing-6);
-  border-block-start: 1px solid var(--color-border);
-}
-.usage-section-head h3 {
-  color: var(--color-text-secondary);
-}
-.usage-chart {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--spacing-2) var(--spacing-3);
-}
-.usage-chart svg {
-  width: 100%;
-  height: 11rem;
-  display: block;
-  overflow: visible;
-}
-.usage-scale {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 11rem;
-  text-align: end;
-  font-size: 11px;
-  color: var(--color-text-secondary);
-}
-.usage-grid {
-  stroke: var(--color-border);
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
-}
-.usage-axis {
-  grid-column: 2;
-}
-.usage-axis .astryx-text {
-  font-size: 11px;
-}
-.usage-bar {
-  outline: none;
-  cursor: default;
-}
-.usage-hit {
-  fill: transparent;
-}
-.usage-bar[data-active='true'] .usage-hit {
-  fill: var(--color-background-muted);
-}
-.usage-bar:focus-visible .usage-hit {
-  stroke: var(--focus-outline-color);
-  stroke-width: var(--focus-outline-width);
-  vector-effect: non-scaling-stroke;
-}
-/* Series take line colours (mockup Usage: input cobalt, output green, cache read amber) and a fill
-   pattern each, so they read apart without colour. */
-[data-series='input'] {
-  fill: var(--rabbithole-ink-1);
-}
-[data-series='output'] {
-  fill: url(#usage-output);
-}
-[data-series='cacheRead'] {
-  fill: url(#usage-cacheRead);
-}
-#usage-output .usage-fill {
-  fill: var(--rabbithole-ink-3);
-}
-#usage-cacheRead .usage-fill {
-  fill: var(--rabbithole-ink-2);
-}
-.usage-mark {
-  stroke: var(--color-background-body);
-  stroke-width: 0.8;
-}
-.usage-dot {
-  fill: var(--color-background-body);
-}
-.usage-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-.usage-swatch {
-  inline-size: 12px;
-  block-size: 12px;
-  border-radius: var(--radius-tick);
-  display: inline-block;
-}
-.usage-dashboard {
-  font-variant-numeric: tabular-nums;
-}
-.usage-readout {
-  min-block-size: 1.5em;
-}
-.usage-name {
-  overflow-wrap: anywhere;
-}
-.usage-share {
-  display: block;
-  height: 3px;
-  margin-block-start: var(--spacing-1);
-  border-radius: var(--radius-tick);
-  background: var(--color-border);
-}
-.usage-share i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-text-secondary);
-}
-.usage-unreported {
-  display: block;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-@media (max-width: 48rem) {
-  .usage-axis .astryx-text:nth-child(2):not(:last-child) {
-    display: none;
-  }
 }
 .code-copy {
   position: absolute;
@@ -335,12 +245,10 @@
 .reply-md > :first-child {
   margin-block-start: 0;
 }
-/* Top-level sections: the shallowest heading level the reply uses gets a light rule and more air above. */
+/* Top-level sections: the shallowest heading level the reply uses gets more air above. */
 .reply-md > h3:not(:first-child),
 .reply-md:not(:has(> h3)) > h4:not(:first-child) {
-  margin-block-start: var(--spacing-8);
-  padding-block-start: var(--spacing-5);
-  border-block-start: thin solid var(--color-border);
+  margin-block-start: 28px;
 }
 .reply-md :is(ul, ol) {
   padding-inline-start: var(--spacing-5);
@@ -395,17 +303,18 @@
   border-collapse: collapse;
 }
 .reply-md :is(th, td) {
-  padding: 8px 12px;
+  padding: 9px 12px;
   border-bottom: thin solid var(--color-border);
   text-align: start;
 }
-.reply-md th {
-  border-bottom-color: var(--color-border-emphasized);
+.reply-md th,
+.reply-md th .astryx-text {
+  padding-block: 8px;
+  border-bottom: 1.5px solid var(--color-border-emphasized);
   color: var(--color-text-secondary);
-}
-.reply-md th {
-  background: var(--color-overlay-hover);
-  font-weight: 600;
+  font: 600 12px/1.2 var(--font-family-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 .reply-md math[display='block'] {
   padding-block: var(--spacing-2);
@@ -422,11 +331,11 @@ mark {
   background-color: var(--rabbithole-selection);
   color: var(--color-text-primary);
 }
-/* Suggestions hint in muted dotted chalk; a branched (explored) passage wears its branch family's ink (--ink, set inline) and address chip, shared with its map line and node band. */
+/* Suggestions are a muted dotted underline; a branched (explored) passage wears a 3px underline in its family line (--ink, set inline), a porcelain interchange ring and its address chip. */
 .reply-md u.suggestion {
   text-decoration: underline dotted var(--color-text-secondary);
   text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
+  text-underline-offset: 5px;
 }
 .reply-md u.suggestion {
   cursor: pointer;
@@ -434,21 +343,32 @@ mark {
 .reply-md u.suggestion.explored {
   text-decoration-style: solid;
   text-decoration-color: var(--ink, var(--color-accent));
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 3px;
 }
 .reply-md .passage-address,
 .visual-chips .passage-address {
-  display: inline-block;
   margin-inline-start: 2px;
-  padding: 0 4px;
-  border-radius: var(--radius-inner);
-  background: var(--ink);
-  color: var(--ink-on);
-  font: var(--font-weight-bold) var(--font-size-xs)/1.45 var(--font-family-body);
-  font-variant-numeric: tabular-nums;
-  vertical-align: 5px;
+  vertical-align: 2px;
   text-decoration: none;
   user-select: none;
+}
+/* The interchange ring sits between the passage and its chip, outside the chip's fill. */
+.reply-md u.suggestion.explored + .passage-address {
+  position: relative;
+  margin-inline-start: 22px;
+}
+.reply-md u.suggestion.explored + .passage-address::before {
+  content: '';
+  position: absolute;
+  inset-inline-end: calc(100% + 4px);
+  inset-block-start: 50%;
+  width: 13px;
+  height: 13px;
+  box-sizing: border-box;
+  translate: 0 -50%;
+  border: 3px solid var(--rabbithole-paper);
+  border-radius: 50%;
+  background: var(--color-background-body);
 }
 .reply-md u.suggestion:hover {
   text-decoration-color: var(--color-text-primary);

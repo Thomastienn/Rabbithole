@@ -14,7 +14,6 @@ async function strip(t, branch, question = 'Why does it bend so far?') {
       question,
       parentAddress: '1.2',
       parentTitle: 'Light bending',
-      ink: 2,
       openParent: (s) => opened.push(s),
     }),
   );
@@ -31,12 +30,16 @@ test('passage source: accessible origin, chip opens the parent at the passage', 
     text: 'refraction',
   });
   assert.ok(section.getAttribute('aria-label'), 'named for assistive tech');
-  assert.match(section.style.getPropertyValue('--ink'), /ink-2/);
   assert.equal(section.querySelector('.origin-source').textContent, 'refraction');
   assert.equal(section.querySelector('.origin-question').textContent, 'Why does it bend so far?');
   const [chip] = buttons();
   assert.equal(buttons().length, 1, 'short source has no Show all');
-  assert.equal(chip.textContent, '1.2');
+  assert.equal(chip.textContent, '1.2 · Light bending');
+  assert.equal(
+    section.querySelector('.origin-line').textContent,
+    'From 1.2 · Light bending at refraction',
+  );
+  assert.equal(section.querySelector('.origin-ring').getAttribute('aria-hidden'), 'true');
   assert.equal(chip.getAttribute('aria-label'), 'Open 1.2 Light bending at the source');
   await act(async () => chip.click());
   assert.deepEqual(opened, [{ messageId: 'm1', start: 4, end: 14, text: 'refraction' }]);
@@ -94,4 +97,9 @@ test('unavailable passage says so and still shows the question', async (t) => {
   const source = section.querySelector('.origin-source').textContent;
   assert.ok(source.trim(), 'says the passage is unavailable');
   assert.equal(section.querySelector('.origin-question').textContent, 'Why does it bend so far?');
+});
+
+test('the question shows on the origin line only when the thread has none', async (t) => {
+  const { section } = await strip(t, { start: 0, end: 5, text: 'Snell' }, '');
+  assert.ok(!section.querySelector('.origin-question'));
 });

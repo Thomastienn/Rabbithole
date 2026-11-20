@@ -23,7 +23,6 @@ export const LEVELS = [
 ];
 export const level = (c: Concept) =>
   c.familiarity >= 0.8 ? 'Familiar' : c.familiarity >= 0.35 ? 'Some familiarity' : 'Unfamiliar';
-export const familiarity = (c: Concept) => `Estimated familiarity: ${level(c).toLowerCase()}`;
 // Familiarity is drawn by form (empty, half, full ring), never hue alone.
 export const fill = (c: Concept) =>
   c.familiarity >= 0.8 ? 'full' : c.familiarity >= 0.35 ? 'some' : 'none';

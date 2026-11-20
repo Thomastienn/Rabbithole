@@ -1,6 +1,6 @@
 import { HStack } from '@astryxdesign/core/Layout';
 import { Button } from '@astryxdesign/core/Button';
-import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 // A full-page tab (Knowledge, Videos, Pieces) with a button back to the learning tree.
 export default function ReturnPanel({
@@ -27,7 +27,7 @@ export default function ReturnPanel({
               id={returnId}
               label="Return to learning tree"
               variant="ghost"
-              icon={<ArrowUturnLeftIcon />}
+              icon={<ArrowLeftIcon />}
               onClick={() => {
                 back();
                 requestAnimationFrame(() =>

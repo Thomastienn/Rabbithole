@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { HStack, VStack } from '@astryxdesign/core/Layout';
-import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
-import { inkStyle } from '../map/treeList';
 import type { Source } from '../map/TreeOverview';
 import type { Branch } from './branch';
 
@@ -35,20 +32,18 @@ export function originSource(branch: Branch): Source {
         };
 }
 
-// The top of a child conversation: parent chip (jumps to the source), the source and the first question.
+// The origin line under a child's title: "From <parent> at “passage”"; the parent link jumps to the source.
 export default function OriginStrip({
   branch,
   question,
   parentAddress,
   parentTitle,
-  ink,
   openParent,
 }: {
   branch: Branch;
-  question: string;
+  question?: string;
   parentAddress: string;
   parentTitle: string;
-  ink: number;
   openParent: (source: Source) => void;
 }) {
   const [all, setAll] = useState(false);
@@ -58,9 +53,11 @@ export default function OriginStrip({
     : branch.text.trim();
   const long = isLong(text);
   return (
-    <section className="origin-strip" aria-label="Conversation origin" style={inkStyle(ink)}>
-      <VStack gap={1}>
-        <HStack gap={2} vAlign="start">
+    <section className="origin-strip" aria-label="Conversation origin">
+      <p className="origin-line">
+        <span className="origin-ring" aria-hidden />
+        <span>
+          From{' '}
           <Button
             className="origin-chip"
             label={`Open ${parentAddress} ${parentTitle} at the source`.replace(/\s+/g, ' ')}
@@ -68,17 +65,18 @@ export default function OriginStrip({
             size="sm"
             onClick={() => openParent(originSource(branch))}
           >
-            {parentAddress || parentTitle}
-          </Button>
+            {[parentAddress, parentTitle].filter(Boolean).join(' · ')}
+          </Button>{' '}
           {text ? (
-            <VStack gap={0} className="origin-source-box">
-              <p
+            <>
+              at{' '}
+              <q
                 id="origin-source"
                 className="origin-source"
                 data-clamped={long && !all ? '' : undefined}
               >
                 {text}
-              </p>
+              </q>
               {long && (
                 <Button
                   label={all ? 'Show less' : 'Show all'}
@@ -89,15 +87,15 @@ export default function OriginStrip({
                   onClick={() => setAll((a) => !a)}
                 />
               )}
-            </VStack>
+            </>
           ) : (
-            <Text color="secondary" className="origin-source">
-              Source passage unavailable
-            </Text>
+            <>
+              · <span className="origin-source">Source passage unavailable</span>
+            </>
           )}
-        </HStack>
-        <p className="origin-question">{question}</p>
-      </VStack>
+        </span>
+      </p>
+      {question && <p className="origin-question">{question}</p>}
     </section>
   );
 }

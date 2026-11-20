@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { layoutConcepts, POINT_SPACE } from '../../src/knowledge/knowledgeLayout.ts';
 import {
-  familiarity,
   level,
   fill,
   graphShape,
@@ -122,7 +121,6 @@ test('familiarity labels and ring forms agree at thresholds', () => {
     const c = { familiarity: score };
     assert.equal(level(c), label);
     assert.equal(fill(c), form);
-    assert.equal(familiarity(c), `Estimated familiarity: ${label.toLowerCase()}`);
   }
 });
 
