@@ -69,6 +69,29 @@ function Figure(props: FigureProps) {
   });
 }
 
+// Media beside its explanation; a show_visual side uses the same figure as :::figure.
+export const figure = (
+  key: string,
+  right: boolean,
+  wide: boolean,
+  media: ReactNode[],
+  text: ReactNode[],
+) => {
+  const explanation = h('div', { className: 'layout-text' }, text);
+  return h(
+    Figure,
+    {
+      key,
+      className: 'reply-layout layout-figure',
+      'data-side': right ? 'right' : undefined,
+      'data-ratio': wide ? 'wide' : undefined,
+    },
+    right && explanation,
+    h('div', { className: 'layout-media' }, media),
+    !right && explanation,
+  );
+};
+
 // `pending` is the renderer's sorted slot queue; media layouts remove the visuals they place.
 export function layout(
   n: MarkdownNode,
@@ -125,20 +148,19 @@ export function layout(
           h('div', { key: `slot-${i}`, className: 'layout-item' }, slot.node),
         ),
       ];
-      const right = n.name === 'figure' && n.attributes?.side === 'right',
-        explanation = n.name === 'figure' && h('div', { className: 'layout-text' }, text.map(node));
+      if (n.name === 'figure')
+        return figure(
+          `${n.type}-${s}`,
+          n.attributes?.side === 'right',
+          n.attributes?.ratio === 'wide',
+          items,
+          text.map(node),
+        );
       return h(
-        n.name === 'figure' ? Figure : 'div',
-        {
-          key: `${n.type}-${s}`,
-          className: `reply-layout layout-${n.name}`,
-          'data-side': right ? 'right' : undefined,
-          'data-ratio': n.name === 'figure' && n.attributes?.ratio === 'wide' ? 'wide' : undefined,
-        },
+        'div',
+        { key: `${n.type}-${s}`, className: `reply-layout layout-${n.name}` },
         n.name === 'gallery' && text.map(node),
-        right && explanation,
         h('div', { className: 'layout-media' }, items),
-        !right && explanation,
       );
     }
   }

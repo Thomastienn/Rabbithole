@@ -1,4 +1,4 @@
-import { SHOW_VISUAL, readShowVisual, visualPosition } from '../tools/showVisual.mjs';
+import { SHOW_VISUAL, readShowVisual, visualPosition, visualSide } from '../tools/showVisual.mjs';
 import { RECORD_TURN, readRecordTurn } from '../tools/recordTurn.mjs';
 import { MAKE_VIDEO, readMakeVideo } from '../tools/makeVideo.mjs';
 import { START_DISCUSSION, readStartDiscussion } from '../tools/startDiscussion.mjs';
@@ -43,6 +43,7 @@ export function appCalls(
         responseStart === null
           ? position
           : visualPosition(input, replySoFar, responseStart, position, !textCall),
+        visualSide(input),
       );
       return 'queued';
     }
