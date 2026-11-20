@@ -95,6 +95,28 @@ test('callout is a labelled region and timeline is an ordered list with one head
   );
 });
 
+test('stages, terms and check render one titled entry per heading, and bad shapes stay plain flow', () => {
+  const entries = (name, count) =>
+    `:::${name}\n${Array.from({ length: count }, (_, i) => `### T${i}\nBody ${i}.`).join('\n\n')}\n:::`;
+  const stages = shown(entries('stages', 3));
+  assert.equal(stages.querySelectorAll('.layout-stages ol > li.layout-card').length, 3);
+  const terms = shown(entries('terms', 2));
+  assert.deepEqual(
+    [...terms.querySelectorAll('.layout-terms .layout-card')].map((c) => c.textContent),
+    ['T0Body 0.', 'T1Body 1.'],
+  );
+  const check = shown(entries('check', 1)).querySelector('.layout-check .layout-card');
+  assert.equal(check.firstElementChild.textContent, 'T0');
+  assert.equal(check.querySelector('button').textContent, 'Show answer');
+  assert.equal(check.querySelector('button').getAttribute('aria-expanded'), 'false');
+  for (const source of [
+    entries('stages', 5),
+    entries('terms', 1),
+    ':::check\n### Question with no answer\n:::',
+  ])
+    assert.equal(shown(source).querySelector('.reply-layout'), null, source);
+});
+
 test('empty callouts and malformed timelines stay plain flow', () => {
   for (const source of [
     ':::callout\n:::',

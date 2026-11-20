@@ -7,6 +7,7 @@ import {
   type HTMLAttributes,
   type ReactNode,
 } from 'react';
+import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Section } from '@astryxdesign/core/Section';
 import type { MarkdownNode } from './markdownText.ts';
 import './layouts.css';
@@ -166,13 +167,16 @@ export function layout(
   }
   const name =
     ((n.name === 'comparison' && sections.length >= 2 && sections.length <= 3) ||
-      (n.name === 'steps' && sections.length >= 2) ||
+      (n.name === 'stages' && sections.length >= 2 && sections.length <= 4) ||
+      ((n.name === 'steps' || n.name === 'terms') && sections.length >= 2) ||
+      // Every check question needs an answer to hide.
+      (n.name === 'check' && sections.length >= 1 && sections.every((x) => x.length > 1)) ||
       (n.name === 'timeline' &&
         sections.length >= 2 &&
         children.filter((c) => c.type === 'heading').length === sections.length)) &&
     n.name;
   if (!name) return;
-  const ordered = name === 'steps' || name === 'timeline',
+  const ordered = name === 'steps' || name === 'timeline' || name === 'stages',
     intro = children.slice(0, first).map(node),
     cards = sections.map((section) =>
       h(
@@ -181,7 +185,21 @@ export function layout(
           key: pos(section[0]).start,
           className: name === 'timeline' ? 'timeline-entry' : 'layout-card',
         },
-        section.map(node),
+        name === 'check'
+          ? [
+              node(section[0]),
+              h(
+                Collapsible,
+                {
+                  key: 'answer',
+                  trigger: 'Show answer',
+                  defaultIsOpen: false,
+                  chevronPosition: 'start',
+                },
+                section.slice(1).map(node),
+              ),
+            ]
+          : section.map(node),
       ),
     );
   return h(

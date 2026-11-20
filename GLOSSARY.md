@@ -175,7 +175,7 @@ A web page, image, video or document the tutor drew on while answering or making
 _Avoid_: Source (alone), reference, link
 
 **Reply layout**:
-The arrangement the tutor chooses for one section of a reply, from a fixed set: plain flow, figure beside text, image gallery, side-by-side comparison or step cards.
+The arrangement the tutor chooses for one section of a reply, from a fixed set: plain flow, figure beside text, image gallery, side-by-side comparison, steps, stages, key terms, callout, timeline, check or wide.
 _Avoid_: Template, theme, design
 
 **Visual**:

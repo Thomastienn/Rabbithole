@@ -124,7 +124,7 @@ test('the tool-path tutor prompt before learner data is at most half its pre-too
   );
   const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
   for (const prompt of [native, text]) assert.ok(prompt.length <= BEFORE / 2, `${prompt.length}`);
-  for (const part of ['Math: write every formula', 'Reply layouts: there are eight', MEMORY_RULE])
+  for (const part of ['Math: write every formula', 'Reply layouts: there are eleven', MEMORY_RULE])
     assert.ok(native.includes(part), part);
   assert.ok(native.endsWith(TUTOR_SKILLS + DEFAULT_TUTOR_STYLE));
   const neighbourhood = { concepts: [{ name: 'Recursion', familiarity: 0.9 }], links: [] };

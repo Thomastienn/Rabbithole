@@ -175,3 +175,58 @@
 .layout-wide .reply-image img {
   max-height: none;
 }
+/* Stages: stations along one horizontal line, read left to right. */
+.reply-md .layout-stages .layout-cards {
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+.layout-stages .layout-card {
+  position: relative;
+  padding-block-start: 28px;
+  padding-inline-end: var(--spacing-4);
+}
+.layout-stages .layout-card::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 2.5px solid var(--rabbithole-paper);
+  border-radius: 50%;
+}
+.layout-stages .layout-card:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline: 16px 4px;
+  border-block-start: 1.5px solid var(--color-border-emphasized);
+}
+/* Terms: the term in a left column, its meaning beside it, rows divided by seams. */
+.layout-terms .layout-card {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 5fr);
+  column-gap: var(--spacing-5);
+  padding-block: var(--spacing-3);
+  border-block-start: thin solid var(--color-border);
+}
+.layout-terms .layout-card:last-child {
+  border-block-end: thin solid var(--color-border);
+}
+.reply-md .layout-terms .layout-card > :first-child {
+  grid-row: 1 / span 20;
+  margin-block-end: 0;
+  /* Lines the 18px term up with the first line of its 17px meaning. */
+  padding-block-start: 3px;
+}
+.layout-terms .layout-card > :not(:first-child) {
+  grid-column: 2;
+}
+/* Check: the question stays readable; its answer waits behind the reveal. */
+.reply-md .layout-check .layout-card + .layout-card {
+  margin-block-start: var(--spacing-5);
+}
+.reply-md .layout-check .layout-card > :first-child + * {
+  margin-block-start: var(--spacing-1);
+}
