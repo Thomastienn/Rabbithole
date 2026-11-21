@@ -332,3 +332,11 @@ test('the largest typed message embeds at most a fixed number of paragraphs', as
     );
     assert.equal(batches[0].length, PARAGRAPH_LIMIT + 1, 'paragraphs plus the one pending name');
 });
+
+test('a message with nothing typed embeds nothing', async (t) => {
+    const env = await launch(t);
+    add(env.store, ['Mutex']);
+    let calls = 0;
+    await retrieveNeighbourhood(env.store, async () => ++calls && [], ' \n');
+    assert.equal(calls, 0);
+});

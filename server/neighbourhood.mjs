@@ -79,7 +79,8 @@ export function conceptNeighbourhood(graph, names, text, matches = []) {
 async function matched(store, embed, text, signal) {
     let rows = store.conceptEmbeddings();
     let matches = [];
-    if (embed && rows.length) {
+    // Nothing typed (a message of attachments only) has nothing to match.
+    if (embed && rows.length && text.trim()) {
         try {
             const pending = rows.filter((c) => !c.embedding);
             // One vector per paragraph: a long reply in one vector is truncated by the model and blurred by averaging.
@@ -88,7 +89,6 @@ async function matched(store, embed, text, signal) {
                 .map((p) => p.trim())
                 .filter(Boolean)
                 .slice(0, PARAGRAPH_LIMIT);
-            if (!chunks.length) chunks.push(text);
             const output = await embed([...chunks, ...pending.map((c) => c.name)]);
             const queries = output.slice(0, chunks.length),
                 vectors = output.slice(chunks.length);
