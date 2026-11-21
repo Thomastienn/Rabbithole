@@ -45,7 +45,7 @@ The exact contiguous text of a tutor reply, or of a line in a discussion, that a
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
-A term or short phrase in a tutor reply that the tutor marked, while answering, as worth breaking down into a branch: a technical, academic or uncommon term likely unfamiliar to the learner, even when the reply glosses it. Its underline appears as the term arrives, so the learner can branch while still reading. It carries no proposed question.
+A term or short phrase in a tutor reply that the tutor marked, while answering, as worth breaking down into a branch: a technical, academic or uncommon term the learner may not know or may want to explore, even when the reply explains it. Its underline appears as the term arrives, so the learner can branch while still reading. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
 
 **Brief explanation**:
