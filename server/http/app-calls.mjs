@@ -10,10 +10,10 @@ export const isAppTool = (name) => APP_TOOLS.some((t) => t.name === name);
 
 // One reply's app calls, native or written as <tool_call> text, and its visual markers.
 export function appCalls(ctx, { conversation, reply, showVisual, makeVideo, startDiscussion }) {
-    let ranCalls = 0,
-        // Visual markers already read; the titles drawn in this reply.
-        placed = 0;
-    const titles = new Set();
+    let ranCalls = 0;
+    // How many visual markers of each value were read; the titles drawn in this reply.
+    const placed = new Map(),
+        titles = new Set();
     // Titles match ignoring case and whitespace.
     const key = (text) => text.toLowerCase().replace(/\s+/g, '');
     // Every refused call is logged with its reason, its input values redacted.
@@ -69,9 +69,14 @@ export function appCalls(ctx, { conversation, reply, showVisual, makeVideo, star
         );
     // Each visual marker starts its visual as soon as it closes, at its place (ADR 0018); one that cannot be drawn is dropped and logged.
     const place = (output) => {
-        const visuals = (output.markers ?? []).filter((m) => m.kind === 'visual');
-        for (const m of visuals.slice(placed)) {
-            placed++;
+        // Counted per value, not by index: a marker can leave the list when later text turns it into code.
+        const seen = new Map();
+        for (const m of output.markers ?? []) {
+            if (m.kind !== 'visual') continue;
+            const n = (seen.get(m.value) ?? 0) + 1;
+            seen.set(m.value, n);
+            if (n <= (placed.get(m.value) ?? 0)) continue;
+            placed.set(m.value, n);
             const request =
                 m.closed === false
                     ? { cause: 'not closed by the end of its line' }

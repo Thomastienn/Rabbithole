@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readVisualMarker } from '../../server/media/markers.mjs';
+import { readVisualMarker, stripMarkers } from '../../server/media/markers.mjs';
 import { TOOL_VISUAL_RULES, tutorSystem } from '../../server/media/diagrams.mjs';
-import { APP_TOOLS } from '../../server/http/app-calls.mjs';
+import { APP_TOOLS, appCalls } from '../../server/http/app-calls.mjs';
 import { roundText } from '../../server/providers/chatStream.mjs';
 
 test('a visual marker reads its fields, cutting long ones and filling a missing title or alt', () => {
@@ -33,6 +33,18 @@ test('a visual marker reads its fields, cutting long ones and filling a missing 
     assert.equal(long.alt, 'ab');
     assert.equal(readVisualMarker(' | shows: Only shows').title, 'Only shows');
     assert.deepEqual(readVisualMarker('rounds | title: T | shows:  '), { cause: 'no shows' });
+});
+
+test('a visual marker that turns into code does not hide a later one', () => {
+    const drawn = [];
+    const calls = appCalls(
+        { log: () => {} },
+        { showVisual: (request) => drawn.push(request.shows) },
+    );
+    const start = 'Look `[[visual: a | shows: b]]';
+    calls.place(stripMarkers(start));
+    calls.place(stripMarkers(start + '` then\n[[visual: c | shows: d]]'));
+    assert.deepEqual(drawn, ['b', 'd']);
 });
 
 test('the tutor prompt describes the visual marker and no show_visual tool or queued result', () => {
