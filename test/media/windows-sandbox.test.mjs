@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, win32 } from 'node:path';
 import {
     SANDBOX,
     launcherArgs,
     sandboxCommand,
     sandboxMissing,
     windowsSandbox,
+    sandboxOutput,
 } from '../../server/media/video-sandbox.mjs';
 import { EventEmitter } from 'node:events';
 import { pythonRuntime } from '../../server/media/manim.mjs';
@@ -147,4 +148,19 @@ test('enabling the Windows sandbox runs the launcher setup once and reports what
         ['l.exe', '--setup'],
         ['l.exe', '--setup'],
     ]);
+});
+
+test('sandbox output is accepted only as an ordinary file directly in the output folder', async () => {
+    const workspace = mkdtempSync(join(tmpdir(), 'rabbithole-out-')),
+        out = join(workspace, 'out');
+    mkdirSync(out);
+    writeFileSync(join(out, 'still.jpg'), 'jpg');
+    writeFileSync(join(workspace, 'secret.jpg'), 'secret');
+    symlinkSync(join(workspace, 'secret.jpg'), join(out, 'link.jpg'));
+    assert.equal((await sandboxOutput(workspace, join(out, 'still.jpg'))).size, 3);
+    assert.equal(await sandboxOutput(workspace, join(out, 'link.jpg')), null);
+    assert.equal(await sandboxOutput(workspace, join(workspace, 'secret.jpg')), null);
+    assert.equal(await sandboxOutput(workspace, join(out, 'missing.jpg')), null);
+    // The check names the file with node:path, so Windows separators resolve; the old '/' split kept the whole path.
+    assert.equal(win32.basename('C:\\data\\cut-0\\out\\still.jpg'), 'still.jpg');
 });
