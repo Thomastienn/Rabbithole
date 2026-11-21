@@ -5,9 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { briefPrompt } from '../../server/http/jobs/briefs.mjs';
+import { briefPrompt, briefsPrompt } from '../../server/http/jobs/briefs.mjs';
 
 const PREFIX = briefPrompt('', '').split('{')[0];
+const BATCH = briefsPrompt('', []).split('{')[0];
 const REPLY = 'A **[[mutex]]** guards the shared counter.\n[[end]]';
 // Quick thinking names the concept of the tutor's marked suggestion.
 const named = JSON.stringify({
@@ -21,10 +22,12 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
     );
     let write;
     const prompts = [],
-        tutor = [];
+        tutor = [],
+        logs = [];
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
+            if (text.startsWith(BATCH)) throw new Error('Fixture batch failure');
             if (text.startsWith('The tutor already marked')) {
                 emit({ type: 'item', item: 'answer', text: named });
                 return emit({ type: 'status', status: 'completed' });
@@ -45,8 +48,9 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         store,
         providers: { codex: chat, claude: quick },
         auth: { status: () => ({ connected: true }) },
-        log: () => {},
+        log: (line) => logs.push(line),
         suggestions: true,
+        briefs: true,
     });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
     t.after(() => {
@@ -83,6 +87,10 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
     const mutex = () => store.graph().concepts.find((c) => c.name === 'Mutex');
     const briefEvents = () => store.usageEvents().events.filter((e) => e.task === 'brief');
     assert.equal(mutex().familiarity, 0.3);
+
+    // The batch failed: it is logged, saved nothing, and opening falls back to an on-demand brief.
+    assert.ok(logs.some((l) => /brief/.test(l) && /saved nothing ahead/.test(l)));
+    assert.equal(store.brief(reply.id, passage.start, passage.end), undefined);
 
     // A failed call stores nothing, records nothing and returns an error.
     write = async () => {
@@ -127,7 +135,7 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         reply: 'A mutex guards the shared counter.',
         term: 'mutex',
     });
-    assert.equal(briefEvents().length, 2, 'the failed and the written call');
+    assert.equal(briefEvents().length, 3, 'the failed batch, the failed and the written call');
     assert.ok(briefEvents().every((e) => e.model === 'quick-model'));
     assert.deepEqual(mutex().observations, [0, 0, 1, 0, 0, 0]);
     assert.equal(mutex().familiarity, 0.35);
@@ -196,6 +204,131 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         assert.equal((await (await brief(nextAnchor)).json()).explanation, 'Saved ahead.');
     assert.equal(prompts.length, asksBefore);
     assert.equal(total(), before + 1);
+});
+
+test('every suggestion gets its brief ahead of time; an early open is written on demand and kept', async (t) => {
+    const store = new Store(
+        join(mkdtempSync(join(tmpdir(), 'rabbithole-briefs-ahead-')), 'trees.sqlite'),
+    );
+    const prompts = [],
+        batches = [];
+    let release;
+    const gate = new Promise((resolve) => (release = resolve));
+    const quick = {
+        models: async () => [{ model: 'quick-model', efforts: ['low'] }],
+        generate: async (tree, text, emit) => {
+            if (text.startsWith(BATCH)) {
+                batches.push(text);
+                await gate;
+                assert.deepEqual(
+                    tree.tools.map((tool) => tool.name),
+                    ['write_briefs'],
+                );
+                await assert.rejects(async () => tree.runTool('write_briefs', {}), /briefs must/);
+                await tree.runTool('write_briefs', {
+                    briefs: [
+                        { term: 'mutex', explanation: 'Ahead mutex.' },
+                        { term: 'shared counter', explanation: 'Ahead counter.' },
+                    ],
+                });
+                return emit({ type: 'status', status: 'completed' });
+            }
+            if (text.startsWith('The tutor already marked')) {
+                emit({
+                    type: 'item',
+                    item: 'answer',
+                    text: JSON.stringify({
+                        suggestions: [
+                            { text: 'mutex', concept: 'Mutex' },
+                            { text: 'shared counter', concept: 'Shared state' },
+                        ],
+                        concepts: [
+                            { name: 'Mutex', topics: ['Concurrency'] },
+                            { name: 'Shared state', topics: ['Concurrency'] },
+                        ],
+                    }),
+                });
+                return emit({ type: 'status', status: 'completed' });
+            }
+            if (!text.startsWith(PREFIX)) return;
+            prompts.push(text);
+            emit({ type: 'item', item: 'a', text: 'On demand mutex.' });
+            emit({ type: 'status', status: 'completed' });
+        },
+    };
+    const chat = {
+        generate: async (tree, text, emit) => {
+            emit({
+                type: 'item',
+                item: 'answer',
+                text: 'A **[[mutex]]** guards the **[[shared counter]]**.\n[[end]]',
+            });
+            emit({ type: 'status', status: 'completed' });
+        },
+    };
+    const app = createApp({
+        store,
+        providers: { codex: chat, claude: quick },
+        auth: { status: () => ({ connected: true }) },
+        log: () => {},
+        suggestions: true,
+        briefs: true,
+    });
+    await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+    t.after(() => {
+        release();
+        app.stop();
+        store.close();
+    });
+    store.saveSuggestionSettings({
+        enabled: true,
+        model: { provider: 'claude', model: 'quick-model' },
+        effort: 'low',
+    });
+    const origin = `http://127.0.0.1:${app.server.address().port}`;
+    const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+    const post = (route, body) =>
+        fetch(`${origin}/api/trees${route}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
+            body: JSON.stringify(body),
+        });
+    const id = (await (await post('', {})).json()).id;
+    await (await post(`/${id}/messages`, { text: 'How do threads share a counter?' })).text();
+    // The batch waits on the gate; naming the concepts finishes meanwhile.
+    while (!batches.length || store.tree(id).suggestions[0].passages.some((p) => !p.concept))
+        await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.deepEqual(JSON.parse(batches[0].slice(BATCH.length)), {
+        reply: 'A mutex guards the shared counter.',
+        terms: ['mutex', 'shared counter'],
+    });
+    const reply = store.tree(id).messages.at(-1);
+    const [mutex, counter] = store.tree(id).suggestions[0].passages;
+    const open = (p) =>
+        post(`/${id}/brief`, {
+            messageId: reply.id,
+            start: p.start,
+            end: p.end,
+            text: p.text,
+            suggestion: true,
+        }).then((r) => r.json());
+    const observations = () => store.db.prepare('SELECT COUNT(*) AS n FROM observations').get().n;
+
+    // Opened before the batch answers: written on demand, and the batch keeps it.
+    assert.equal((await open(mutex)).explanation, 'On demand mutex.');
+    release();
+    await app.settled();
+    assert.equal(store.brief(reply.id, mutex.start, mutex.end), 'On demand mutex.');
+    assert.equal(store.brief(reply.id, counter.start, counter.end), 'Ahead counter.');
+    assert.equal(batches.length, 1);
+    assert.equal(observations(), 1, 'the batch records no familiarity evidence');
+
+    // A brief saved ahead opens with no model call and counts once.
+    assert.equal((await open(counter)).explanation, 'Ahead counter.');
+    assert.equal(prompts.length, 1);
+    assert.equal(observations(), 2);
+    const briefs = store.usageEvents().events.filter((e) => e.task === 'brief');
+    assert.equal(briefs.length, 2, 'the batch and the on-demand call');
 });
 
 test('a suggestion opened while its reply streams gets its brief explanation at once', async (t) => {

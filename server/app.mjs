@@ -77,6 +77,8 @@ export function createApp({
     suggestions = false,
     // Off in tests like suggestions, so fake replies without a verdict block make no extra calls.
     verdicts = false,
+    // Off in tests like verdicts, so suggestion tests count no brief batch calls.
+    briefs = false,
     suggestionTimeout,
     desktop = systemDesktop,
     recognize = tesseractOcr(dir),
@@ -111,6 +113,7 @@ export function createApp({
         log,
         suggestions,
         verdicts,
+        briefs,
         suggestionTimeout,
         desktop,
         recognize,
