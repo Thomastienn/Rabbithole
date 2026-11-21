@@ -109,21 +109,30 @@ export const trees = {
                 throw new Error('Conversation does not belong to this chat.');
             const parent = this.tree(id).branch?.parent ?? null,
                 deleted = this.descendants(id);
-            const artifacts = deleted.flatMap((conversation) => this.tree(conversation).artifacts);
-            for (const conversation of deleted)
-                this.db.prepare('DELETE FROM artifacts WHERE conversation=?').run(conversation);
-            for (const conversation of deleted)
-                this.db.prepare('DELETE FROM suggestions WHERE conversation=?').run(conversation);
-            for (const conversation of deleted)
-                this.db.prepare('DELETE FROM attachments WHERE conversation=?').run(conversation);
-            for (const conversation of deleted)
-                this.db.prepare('DELETE FROM branches WHERE child=?').run(conversation);
-            for (const conversation of deleted)
-                this.db.prepare('DELETE FROM messages WHERE tree=?').run(conversation);
-            for (const conversation of deleted)
-                this.db.prepare('DELETE FROM trees WHERE id=?').run(conversation);
+            // One set-based statement per table; foreign keys are checked when each statement ends.
+            const ids = JSON.stringify(deleted),
+                inDeleted = 'IN (SELECT value FROM json_each(?))';
+            const artifacts = this.db
+                .prepare(
+                    `SELECT * FROM artifacts WHERE conversation ${inDeleted} ORDER BY created,rowid`,
+                )
+                .all(ids);
+            for (const [table, column] of [
+                ['artifacts', 'conversation'],
+                ['suggestions', 'conversation'],
+                ['attachments', 'conversation'],
+                ['branches', 'child'],
+                ['messages', 'tree'],
+                ['trees', 'id'],
+            ])
+                this.db.prepare(`DELETE FROM ${table} WHERE ${column} ${inDeleted}`).run(ids);
             if (parent) {
-                const layout = this.list().find((t) => t.id === root)?.layout;
+                let layout = null;
+                try {
+                    layout = JSON.parse(
+                        this.db.prepare('SELECT layout FROM trees WHERE id=?').get(root).layout,
+                    );
+                } catch {}
                 if (layout)
                     this.db.prepare('UPDATE trees SET layout=? WHERE id=?').run(
                         JSON.stringify({
