@@ -2,6 +2,7 @@ import { withoutPaths } from './media/video-sandbox.mjs';
 
 const FIELDS = new Set([
     'id',
+    'conversation',
     'task',
     'tool',
     'provider',
