@@ -15,7 +15,7 @@ import {
 import { foldHierarchy } from '../../src/map/canvas.ts';
 import { conversationAddresses, inkStyle, markLibraryScrolling } from '../../src/map/treeList.ts';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../../src/map/previews.ts';
-import { treeSearchSource } from '../../src/shell/treeSearch.ts';
+import { treeSearchSource } from '../../src/shell/treeSearchSource.ts';
 
 const tree = (id, parent = null, created = 0) => ({
     id,

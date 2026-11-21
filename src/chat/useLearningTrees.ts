@@ -3,7 +3,7 @@ import type { Summary, Source, Preview } from '../map/TreeOverview';
 import { restoredTree } from '../map/mapState';
 import type { GhostTree } from '../map/ghostTrees';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
-import { treeSearchSource } from '../shell/treeSearch';
+import { treeSearchSource } from '../shell/treeSearchSource';
 import { withTurn } from './turn';
 import type { State, Tree } from './types';
 import type { ChatState } from './useChatState';
