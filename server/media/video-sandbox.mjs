@@ -186,7 +186,6 @@ export function sandboxProcess(workspace, command, signal, onProgress, budget, b
     });
 }
 
-// Absolute paths (and file:// URLs) name private directories; the line and column after them stay.
 // A file the sandbox wrote, as its stat when it is an ordinary file (not a link) directly in the workspace's output, else null.
 export async function sandboxOutput(workspace, file) {
     const stat = await lstat(file).catch(() => null);
@@ -194,6 +193,7 @@ export async function sandboxOutput(workspace, file) {
     return stat?.isFile() && (await realpath(file).catch(() => null)) === expected ? stat : null;
 }
 
+// Absolute paths (and file:// URLs) name private directories; the line and column after them stay.
 export const withoutPaths = (text) =>
     text.replace(/(?:file:\/\/)?(?<![\w.~-])(?:\/[^\s'"`:()<>,/]+)+\/?/g, '[path]');
 
