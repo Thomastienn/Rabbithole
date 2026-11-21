@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,10 +9,11 @@ import {
     ensureLatex,
     ensureUv,
     MANIM_TEX_PACKAGES,
+    UV_SHA256,
     UV_VERSION,
 } from '../../scripts/tools-setup.mjs';
 
-// Fake downloads: fetch answers a 4-byte archive; `tar` writes the given files into the -C folder.
+// Fake downloads: fetch answers a 4-byte archive, pinned in `hashes`; `tar` writes the given files into the -C folder.
 function fixture(t, files = []) {
     const root = mkdtempSync(join(tmpdir(), 'rabbithole-tools-'));
     const fetched = [],
@@ -39,7 +41,9 @@ function fixture(t, files = []) {
     const probe = (command) => ({
         status: command.startsWith(root) && existsSync(command) ? 0 : 1,
     });
-    return { root, fetched, reports, calls, run, probe, report: (r) => reports.push(r) };
+    const data = createHash('sha256').update('data').digest('hex');
+    const hashes = Object.fromEntries(Object.keys(UV_SHA256).map((triple) => [triple, data]));
+    return { root, fetched, reports, calls, run, probe, hashes, report: (r) => reports.push(r) };
 }
 
 test('missing uv downloads its pinned official release into .tools/uv and leaves no partial files', async (t) => {
@@ -64,6 +68,17 @@ test('a failed uv download asks for Retry and installs nothing', async (t) => {
         /uv download failed \(HTTP 503\)\. Check your connection and Retry/,
     );
     assert.equal(existsSync(uvDir(f.root)), false);
+});
+
+test('a uv download that does not match its pinned SHA-256 is refused before anything unpacks or runs', async (t) => {
+    const f = fixture(t, ['uv']);
+    await assert.rejects(
+        ensureUv({ ...f, hashes: UV_SHA256, platform: 'linux', arch: 'x64', log: () => {} }),
+        /uv download does not match its pinned SHA-256, so it was not installed\. Retry the download/,
+    );
+    assert.deepEqual(f.calls, []);
+    assert.equal(existsSync(uvDir(f.root)), false);
+    assert.equal(existsSync(`${uvDir(f.root)}.download.gz`), false);
 });
 
 test("missing LaTeX downloads TinyTeX and installs Manim's packages; Retry after tlmgr fails skips the download", async (t) => {
