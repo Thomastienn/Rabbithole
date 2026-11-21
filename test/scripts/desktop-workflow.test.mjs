@@ -13,19 +13,22 @@ test('the desktop build runs only when the owner triggers it', () => {
     assert.deepEqual(on.trim().split('\n'), ['workflow_dispatch:']);
 });
 
-test('each build job restores npm, Cargo and Tauri caches and uploads its installer', () => {
+test('each build job restores npm and Electron caches and uploads its installer', () => {
     for (const [name, os, installer] of [
-        ['linux', 'ubuntu', 'appimage/*.AppImage'],
-        ['windows', 'windows', 'nsis/*-setup.exe'],
+        ['linux', 'ubuntu', '*.AppImage'],
+        ['windows', 'windows', '*-setup.exe'],
     ]) {
         const steps = job(name);
         assert.match(steps, new RegExp(`runs-on: ${os}`));
         assert.match(steps, /cache: npm/);
-        assert.match(steps, /Swatinem\/rust-cache/);
-        assert.match(steps, /path: .*tauri\n/);
-        assert.ok(steps.includes(`bundle/${installer}`));
+        assert.match(steps, /desktop\/package-lock\.json/);
+        assert.match(steps, /electron-builder/);
+        assert.ok(steps.includes(`path: desktop/dist/${installer}`));
+        assert.doesNotMatch(steps, /tauri/i);
     }
-    assert.match(job('windows'), /desktop\/sandbox -> target/);
+    // Only the Windows sandbox launcher is Rust.
+    assert.match(job('windows'), /workspaces: desktop\/sandbox -> target/);
+    assert.doesNotMatch(job('linux'), /rust/);
 });
 
 test('both installers go to one draft release', () => {

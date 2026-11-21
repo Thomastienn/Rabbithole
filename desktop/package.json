@@ -1,0 +1,41 @@
+{
+    "name": "rabbithole-desktop",
+    "version": "1.0.0",
+    "description": "Rabbithole desktop app",
+    "private": true,
+    "type": "module",
+    "main": "main.mjs",
+    "scripts": {
+        "build": "electron-builder"
+    },
+    "devDependencies": {
+        "electron": "45.4.1",
+        "electron-builder": "26.18.0"
+    },
+    "build": {
+        "appId": "dev.rabbithole.desktop",
+        "productName": "Rabbithole",
+        "files": [
+            "main.mjs",
+            "shell.mjs",
+            "starting.html",
+            "icons/icon.png"
+        ],
+        "extraResources": [
+            {
+                "from": "stage",
+                "to": "."
+            },
+            "LICENSES.md"
+        ],
+        "directories": {
+            "output": "dist"
+        },
+        "publish": null,
+        "linux": {
+            "target": "AppImage",
+            "category": "Education",
+            "icon": "icons/icon.png"
+        }
+    }
+}

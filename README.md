@@ -58,7 +58,7 @@ Claude and Codex use your plan's sign-in. Rabbithole has no API-key fallback for
 
 The download buttons are at the top of this page. The installers are unsigned, so Windows SmartScreen shows a warning on first run. On Linux, run `chmod +x Rabbithole-linux-x86_64.AppImage` before you open it.
 
-To build it yourself, `npm run desktop:build` builds a Linux AppImage or an unsigned Windows installer. It needs Rust and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). See [Setup](docs/guide/setup.md#linux-desktop-app).
+To build it yourself, `npm run desktop:build` builds a Linux AppImage with Electron and the bundled video tools. See [Setup](docs/guide/setup.md#linux-desktop-app).
 
 ## Data and privacy
 
@@ -68,11 +68,11 @@ The server only listens on `127.0.0.1`, and the app has no telemetry. Your quest
 
 ## Architecture
 
-Rabbithole is one local Node server plus a React app in the browser. The desktop app is a Tauri window around the same server.
+Rabbithole is one local Node server plus a React app in the browser. The desktop app is an Electron window around the same server.
 
 ```mermaid
 flowchart LR
-    subgraph Client["Browser or Tauri window (desktop/)"]
+    subgraph Client["Browser or Electron window (desktop/)"]
         UI["React UI (src/)<br/>shell · chat · map · media · settings"]
     end
 
