@@ -308,13 +308,17 @@ export async function treeRoutes(req, res, url, ctx, body) {
         )
             return json(res, 400, { error: 'Select a passage of a completed tutor reply.' });
         const { messageId: message, start, end, text } = anchor;
-        // Briefs are saved by reply offsets, which a visual part has none of.
-        const saved = !anchor.artifactId && store.brief(message, start, end);
-        if (saved) return json(res, 200, { explanation: saved });
         // Only the reply's own suggestion supplies a concept; a selected passage carries none.
         const concept = tree.suggestions
             .find((s) => s.message === message && s.status === 'ready')
             ?.passages.find((p) => p.start === start && p.end === end)?.concept;
+        const opened = () => concept && store.observeBrief({ message, start, end, concept });
+        // Briefs are saved by reply offsets, which a visual part has none of.
+        const saved = !anchor.artifactId && store.brief(message, start, end);
+        if (saved) {
+            opened();
+            return json(res, 200, { explanation: saved });
+        }
         const reply = tree.messages.find((m) => m.id === message).text;
         try {
             const explanation = await ctx.writeBrief(id, reply, {
@@ -324,6 +328,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
                 text,
                 concept,
             });
+            opened();
             return json(res, 200, { explanation });
         } catch {
             return json(res, 502, { error: 'Brief explanation failed. Retry.' });
