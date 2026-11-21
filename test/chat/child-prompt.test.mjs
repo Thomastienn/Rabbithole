@@ -13,6 +13,7 @@ import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI } from '../support/fake-openai.mjs';
 import { compacted } from '../support/branch-first.mjs';
 import { TEST_PROVIDER } from '../support/test-provider.mjs';
+import { inlineArgs } from '../support/tool-protocol.mjs';
 
 const ANCHOR =
     /first message asks about the selected passage; "this", "it" and "that" refer to the passage unless the learner says otherwise\. Explain the passage even if the inherited context says it was skipped/;
@@ -23,7 +24,7 @@ for (const name of [TEST_PROVIDER, 'openai'])
             store = new Store(join(dir, 'trees.sqlite')),
             calls = [];
         const launch = (command, args, options) => {
-            const call = { args, input: [] };
+            const call = { args: inlineArgs(args), input: [] };
             calls.push(call);
             const child = spawn(
                 process.execPath,

@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { Claude } from '../../server/providers/claude.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
+import { inlineArgs } from '../support/tool-protocol.mjs';
 
 // Fake CLI child that replays stream-json lines once stdin closes.
 function fakeLaunch(lines, calls) {
@@ -31,7 +32,7 @@ function fakeLaunch(lines, calls) {
         };
         calls.push({
             cmd,
-            args,
+            args: inlineArgs(args),
             options,
             get input() {
                 return input;

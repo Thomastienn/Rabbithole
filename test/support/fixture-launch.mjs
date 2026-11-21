@@ -3,7 +3,7 @@ import { PassThrough } from 'node:stream';
 import { protocol } from './protocol-fixture.mjs';
 
 // Real provider adapters, in-memory protocol peer. Native subprocess transport stays covered in providers/.
-export function fixtureLaunch(command, args) {
+export function fixtureLaunch(command, args, options) {
     const child = new EventEmitter();
     child.stdin = new PassThrough();
     child.stdout = new PassThrough();
@@ -30,6 +30,7 @@ export function fixtureLaunch(command, args) {
                 args,
                 child.kill,
                 () => held.promise,
+                options?.env,
             );
             if (command === 'claude') child.kill(0);
         } catch (error) {
