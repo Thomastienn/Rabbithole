@@ -171,6 +171,15 @@
     height: 16px;
     color: var(--color-text-error);
 }
+/* Next questions wrap instead of the one-line button truncating or widening a narrow chat column. */
+.next-questions .astryx-button {
+    height: auto;
+    min-height: var(--size-element-sm);
+    padding-block: var(--spacing-1);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: start;
+}
 .chat-question:not(:first-child) {
     margin-block-start: calc(3 * var(--rabbithole-module));
 }
