@@ -2,10 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
-import { existsSync, mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+    existsSync,
+    mkdtempSync,
+    mkdirSync,
+    readdirSync,
+    symlinkSync,
+    writeFileSync,
+} from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { detectPython, OUTPUT_LIMIT, pythonTool, runPython } from '../../server/tools/python.mjs';
+import {
+    detectPython,
+    OUTPUT_LIMIT,
+    pythonSandbox,
+    pythonTool,
+    runPython,
+} from '../../server/tools/python.mjs';
 import { toolRunner } from '../../server/tools/runner.mjs';
 
 // A fake venv whose python is a symlink, like uv's, so the sandbox can resolve its runtime.
@@ -73,7 +87,9 @@ test('run_python sends code to a fresh bwrap sandbox with no network, hidden hom
         ['--tmpfs', dir],
     ])
         assert.equal(args[args.indexOf(path) - 1], flag, path);
-    assert.ok(pair('--ro-bind', '/'));
+    // Only the system folders, never the whole disk with its sockets under /run and drives under /media and /mnt.
+    assert.ok(!pair('--ro-bind', '/'), 'the whole disk is not mounted');
+    assert.ok(pair('--ro-bind', '/usr'));
     assert.ok(pair('--bind', workspace));
     assert.ok(pair('--ro-bind', join(root, 'runtime')));
     assert.ok(pair('--ro-bind', join(root, '.venv-python')));
@@ -201,3 +217,48 @@ test('detectPython reports missing bubblewrap or venv with setup steps', async (
         python: join(root, '.venv-python', 'bin', 'python'),
     });
 });
+
+const bwrap = spawnSync('bwrap', ['--version']).status === 0 && existsSync('/usr/bin/python3');
+
+test(
+    'real run_python sandbox sees no /run, /media, /mnt, home or data and reaches no socket under /run',
+    { skip: !bwrap && 'bwrap or /usr/bin/python3 missing' },
+    () => {
+        const data = mkdtempSync(join(tmpdir(), 'rabbithole-pyreal-')),
+            workspace = join(data, 'python', 'c1');
+        mkdirSync(workspace, { recursive: true });
+        writeFileSync(join(data, 'trees.sqlite'), 'LEARNING DATA');
+        // The sockets directly in the host's /run, plus the usual Docker, D-Bus and libvirt paths.
+        const sockets = [
+            '/run/docker.sock',
+            '/run/dbus/system_bus_socket',
+            '/run/libvirt/libvirt-sock',
+            ...readdirSync('/run', { withFileTypes: true })
+                .filter((entry) => entry.isSocket())
+                .map((entry) => join('/run', entry.name)),
+        ];
+        const code = `import json, os, socket
+r = {d: os.path.exists(d) and os.listdir(d) for d in ['/run', '/media', '/mnt', ${JSON.stringify(homedir())}, ${JSON.stringify(data)}]}
+r['connected'] = []
+for path in ${JSON.stringify(sockets)}:
+    try:
+        socket.socket(socket.AF_UNIX).connect(path)
+        r['connected'].append(path)
+    except OSError:
+        pass
+print(json.dumps(r))`;
+        const run = spawnSync('bwrap', pythonSandbox(workspace, '/usr/bin/python3', data), {
+            input: code,
+            encoding: 'utf8',
+        });
+        assert.equal(run.status, 0, run.stderr);
+        assert.deepEqual(JSON.parse(run.stdout), {
+            '/run': false,
+            '/media': false,
+            '/mnt': false,
+            [homedir()]: [],
+            [data]: ['python'],
+            connected: [],
+        });
+    },
+);
