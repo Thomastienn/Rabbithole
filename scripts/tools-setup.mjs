@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+    createWriteStream,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+} from 'node:fs';
 import { dirname, extname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -13,6 +21,15 @@ const UV_TARGETS = {
     'darwin-arm64': 'aarch64-apple-darwin',
     'win32-x64': 'x86_64-pc-windows-msvc',
     'win32-arm64': 'aarch64-pc-windows-msvc',
+};
+// SHA-256 of each UV_VERSION archive, from the release's .sha256 files; bump them with the version.
+export const UV_SHA256 = {
+    'x86_64-unknown-linux-gnu': 'a7fbaff2b9a271d85c1bdb540941090fd1ce011797b4abeb48e4dcd39c2471d5',
+    'aarch64-unknown-linux-gnu': '0797542018e541a9288855df555c8077eed06f7a47d206362030480e8ecc9f3d',
+    'x86_64-apple-darwin': '617a3211261b0fc739562f0071aa34e9739797c510208ede8e2977c30903d041',
+    'aarch64-apple-darwin': '5aeca67f2283f75235de40d0bd9c0a5bbc5fce23b6d48b3bf9fa1b2db08382ca',
+    'x86_64-pc-windows-msvc': 'edd61f7f5728a56cc62455386661860bdfc7bab65872f39b0c25bdcc1d8e1beb',
+    'aarch64-pc-windows-msvc': '72eed595983a4d7d22d79f21065b0f4479cc7e5c7a89104bb410c8f47559a878',
 };
 // shortcut: TinyTeX's rolling "daily" bundle, because tlmgr installs from the current CTAN year anyway and a pinned older bundle stops working at the next TeX Live release.
 const TINYTEX = {
@@ -51,7 +68,8 @@ async function download(url, file, report, signal) {
 
 // Unpacks beside the target and renames, so an interrupted download leaves no half tool behind.
 // `extract` fills the part folder and returns an exit code; `inner` names the archive's top folder, if it keeps one.
-async function unpack(url, dir, { report, signal, name, extract, inner = '' }) {
+// `sha256`, when given, must match the archive before anything is unpacked.
+async function unpack(url, dir, { report, signal, name, extract, inner = '', sha256 }) {
     const part = `${dir}.part`,
         archive = `${dir}.download${extname(url)}`;
     rmSync(part, { recursive: true, force: true });
@@ -64,6 +82,10 @@ async function unpack(url, dir, { report, signal, name, extract, inner = '' }) {
                 `${name} download failed (${error.message}). Check your connection and Retry.`,
             );
         });
+        if (sha256 && createHash('sha256').update(readFileSync(archive)).digest('hex') !== sha256)
+            throw new Error(
+                `${name} download does not match its pinned SHA-256, so it was not installed. Retry the download.`,
+            );
         if (await extract(archive, part))
             throw new Error(`${name} could not be unpacked. Retry the download.`);
     } finally {
@@ -100,11 +122,13 @@ export async function ensureUv({
     report = () => {},
     signal,
     log = console.log,
+    hashes = UV_SHA256,
 }) {
     if (uvReady({ probe })) return;
-    const windows = platform === 'win32';
+    const windows = platform === 'win32',
+        triple = target(UV_TARGETS, platform, arch, 'uv');
     // The Windows zip holds uv.exe at its root; the tarballs keep one top folder.
-    const asset = `uv-${target(UV_TARGETS, platform, arch, 'uv')}.${windows ? 'zip' : 'tar.gz'}`;
+    const asset = `uv-${triple}.${windows ? 'zip' : 'tar.gz'}`;
     log(`Downloading uv ${UV_VERSION}. Internet access is needed.`);
     const dir = uvDir(root);
     mkdirSync(dirname(dir), { recursive: true });
@@ -113,6 +137,7 @@ export async function ensureUv({
         signal,
         name: 'uv',
         extract: untar(run, !windows),
+        sha256: hashes[triple],
     });
     if (!found(probe, join(dir, 'uv')))
         throw new Error('Downloaded uv does not run. Retry the download.');
