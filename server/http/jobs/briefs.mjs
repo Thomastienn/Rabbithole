@@ -29,8 +29,6 @@ export function briefJobs(ctx) {
                     model: quick.model,
                     effort: quick.effort,
                     thread: null,
-                    // A learner waits for this call, so it takes the ready runner first.
-                    urgent: true,
                     quick: true,
                     instructions:
                         'You explain terms briefly. Never request or generate media. Do not use tools, access files or execute code.',

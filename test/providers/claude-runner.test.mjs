@@ -29,7 +29,6 @@ function setup(t) {
                 model: 'haiku',
                 effort: null,
                 thread: null,
-                urgent: true,
                 quick: true,
                 instructions: 'You explain terms briefly.',
                 ...tree,
@@ -98,19 +97,20 @@ test('Claude quick thinking: a brief explanation is not delayed behind backgroun
     const { claude, launches, runners, call, text } = setup(t);
     claude.ready(true);
     let backgroundDone = false;
-    // A background call (no learner waiting) starts its own process; this one holds until released.
+    // A background call (no learner waiting) takes the free runner and holds it until released.
     const background = call(
         'Mark every term\n' +
             JSON.stringify({ question: 'slow suggestions', answer: 'x', knownConcepts: {} }),
-        { urgent: undefined, quick: true },
     ).then(() => (backgroundDone = true));
     await settle();
-    const own = launches.find((l) => l.args.includes('--session-id'));
-    assert.ok(own, 'the background call started its own process');
+    assert.equal(launches.length, 1, 'the background call took the runner');
     assert.equal(text(await call('Explain "a".')), 'Authoritative original');
     assert.equal(backgroundDone, false, 'the brief finished while the background call ran');
-    assert.equal(runners().length, 1);
-    own.child.release();
+    assert.ok(
+        launches.some((l) => l.args.includes('--session-id')),
+        'the brief started its own process',
+    );
+    runners()[0].child.release();
     await background;
 });
 
@@ -122,7 +122,7 @@ test('Claude quick thinking: the runner closes after 10 minutes without a quick 
     await settle();
     t.mock.timers.tick(300000);
     // Another thread-less call with instructions, such as a visual writer, is no quick thinking call.
-    await call('Draw it.', { urgent: undefined, quick: undefined });
+    await call('Draw it.', { quick: undefined });
     t.mock.timers.tick(299999);
     assert.equal(runners()[0].child.exitCode, null, 'a quick call restarts the countdown');
     t.mock.timers.tick(1);
@@ -137,7 +137,13 @@ test('Claude quick thinking: a stopped call frees the runner and a fresh one wai
     const controller = new AbortController(),
         events = [];
     await claude.generate(
-        { model: 'haiku', effort: null, thread: null, urgent: true, instructions: 'Brief.' },
+        {
+            model: 'haiku',
+            effort: null,
+            thread: null,
+            quick: true,
+            instructions: 'Brief.',
+        },
         'Explain "a".',
         (e) => {
             events.push(e);
