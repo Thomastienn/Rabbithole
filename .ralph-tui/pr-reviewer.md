@@ -14,10 +14,17 @@ the worker's worktree, so you work on a detached HEAD.
    line), `gh pr view <pr>`, `git diff origin/<base>...HEAD`, and `AGENTS.md`
    with the docs it links for the touched areas (`docs/agents/testing.md`,
    `GLOSSARY.md`, `docs/adr/`).
-3. **Review** the diff in one pass against every item of the checklist below.
-   Confirm each finding in the code before acting on it: read the callers, run
-   the one test file that proves it. Drop a finding you cannot confirm.
-4. **Fix** every confirmed finding yourself, commit, and push with
+3. **Review**: you MUST invoke the `ponytail:ponytail-review` skill with the
+   Skill tool before anything else in this step. Do not review from memory or
+   by reading the diff yourself instead: a review without the skill does not
+   count. Pass it the range `origin/<base>...HEAD`, the PR number and the
+   task's acceptance criteria. The skill only lists findings; you still fix
+   them in step 4. Then check the diff against every item of the checklist
+   below that the skill does not cover. Confirm each finding in the code
+   before acting on it: read the callers, run the one test file that proves
+   it. Drop a finding you cannot confirm.
+4. **Fix** every confirmed finding yourself (the skill's Must fix and Should
+   fix, and checklist gaps), commit, and push with
    `git push origin HEAD:<branch>`. Run only the test files covering your
    fixes (`npm run test:file -- test/<file>`) and `npx prettier --write` on the files
    you changed; CI runs the full fast suite.
