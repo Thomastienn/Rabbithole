@@ -253,6 +253,8 @@ button.contents-row > span:first-child > span {
 /* The whole sidebar scrolls as one; the outline grows to fit instead of scrolling on its own. */
 .sidebar {
     overflow-y: auto;
+    /* Contain absolute children (sr-only text) so they scroll with the sidebar, not stretch the page. */
+    position: relative;
 }
 .sidebar :is(.contents, .contents-panel, .contents-scroll) {
     flex: 1 0 auto;
