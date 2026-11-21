@@ -95,6 +95,8 @@ Every finished video renders a full MP4 in the background, even though it alread
 
 ### C. Desktop app
 
+Replaced on 2026-11-21 by [the Electron desktop spec](electron-desktop-spec.md) and [ADR 0019](adr/0019-electron-desktop-with-bundled-video-tools.md); the Windows sandbox, data folders and Windows desktop actions below still apply.
+
 - **Shell.** A Tauri 2 app in `desktop/`. It bundles a Node 24 runtime and the built app (`dist`, `server`, production `node_modules`) as resources, starts `server/main.mjs` as a sidecar on a free loopback port, and points the webview at that address once the server is listening. Closing the window stops the server. The server's existing Host, Origin and CSRF checks apply unchanged.
 - **Per-OS builds.** Linux and Windows are built from the same source, each on its own OS, because npm installs per-OS binaries (Remotion's compositor, chrome-headless-shell, `onnxruntime`). Linux ships an AppImage that uses the system `bwrap`; Windows ships an NSIS installer. Neither is signed.
 - **Data folder.** Linux keeps `$XDG_DATA_HOME/rabbithole`. Windows uses `%APPDATA%\rabbithole`. `npm start` and the desktop app on the same machine share it.
