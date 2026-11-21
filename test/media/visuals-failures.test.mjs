@@ -159,7 +159,8 @@ test('server validation catches document, resource, library, syntax and size mis
         // The standard SVG namespace names a format, not a network dependency.
         invalid = source
             .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
-            .replace('A → Final ← B', 'Chart: Worker 1');
+            .replace('A → Final ← B', 'Chart: Worker 1')
+            .concat('<script>const NS = "http://www.w3.org/2000/svg";</script>');
         const before = count;
         await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw' })).text();
         assert.equal(count, before + 1);

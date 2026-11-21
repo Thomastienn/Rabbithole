@@ -136,9 +136,9 @@ async function validate(source) {
     if (Buffer.byteLength(source) > MAX_SOURCE) invalid('the fragment exceeds 64 KiB');
     if (/```|<!doctype|<\/?\s*(?:html|head|body)\b/i.test(source))
         invalid('return a fragment without document tags or Markdown fences');
-    // SVG namespace declarations identify a format; they never load a remote resource.
+    // Quoted SVG/XHTML namespaces (xmlns attributes, createElementNS) identify a format; they never load a remote resource.
     const checked = source.replace(
-        /\bxmlns(?::\w+)?\s*=\s*(["'])http:\/\/www\.w3\.org\/(?:2000\/svg|1999\/xlink|1999\/xhtml)\1/g,
+        /(["'`])http:\/\/www\.w3\.org\/(?:2000\/svg|1999\/xlink|1999\/xhtml)\1/g,
         '',
     );
     if (/(?:https?|wss?|ftp|file|data|blob|javascript):|(?:["'`(=]|^)\s*\/\/[\w.-]/i.test(checked))
