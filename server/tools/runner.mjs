@@ -242,7 +242,7 @@ export function toolRunner(options = {}) {
             const search =
                 (settings.web_search !== false || settings.find_images !== false) &&
                 options.search &&
-                (await options.search.status({ signal })).ready;
+                (await options.search.ready({ signal }));
             const python =
                 settings.run_python !== false &&
                 options.python &&

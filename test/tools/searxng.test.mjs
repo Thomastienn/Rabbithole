@@ -4,10 +4,10 @@ import { fakeSearxng } from '../support/fake-searxng.mjs';
 import { searxngSearch, searxngUrl } from '../../server/tools/searxng.mjs';
 import { toolRunner } from '../../server/tools/runner.mjs';
 
-function client(fake) {
+function client(fake, own = { ready: true, url: fake.url, error: null }) {
     let url = null;
     return searxngSearch({
-        managed: () => ({ ready: true, url: fake.url, error: null }),
+        managed: () => ({ ...own }),
         store: {
             searxngUrl: () => url,
             saveSearxngUrl: (value) => {
@@ -31,7 +31,8 @@ test('runner offers reachable search tools by provider and returns web and image
         { title: 'No image', url: 'https://example.org/text' },
         null,
     ];
-    const search = client(fake),
+    const own = { ready: true, url: fake.url, error: null },
+        search = client(fake, own),
         runner = toolRunner({ search });
     const names = async (provider, capable = true) =>
         (await runner.tools({ provider, capable })).map((d) => d.name);
@@ -67,13 +68,30 @@ test('runner offers reachable search tools by provider and returns web and image
     assert.equal(fake.hits.at(-1).searchParams.get('categories'), 'images');
     assert.equal(fake.hits.at(-2).searchParams.get('q'), 'binary heap & arrays');
     assert.equal(fake.hits.at(-2).searchParams.has('categories'), false);
-    fake.status = 503;
+    own.ready = false;
     for (const provider of ['openai', 'claude', 'codex']) {
         assert.deepEqual(await names(provider), provider === 'claude' ? [] : ['read_page']);
     }
-    fake.status = 200;
-    fake.data = { results: [] };
-    assert.equal((await search.status()).ready, true, 'recovers without restarting the app');
+    own.ready = true;
+    assert.deepEqual(
+        await names('codex'),
+        ['find_images', 'read_page'],
+        'recovers without restarting the app',
+    );
+});
+
+test('offering tools probes a typed address at most once a minute; Settings status always probes', async (t) => {
+    const fake = await fakeSearxng(t),
+        search = client(fake),
+        runner = toolRunner({ search });
+    for (let i = 0; i < 10; i++) await runner.tools({ provider: 'openai', capable: true });
+    assert.equal(fake.hits.length, 0, 'the managed instance answers from its own state');
+    search.save(fake.url + '/typed');
+    for (let i = 0; i < 10; i++) await runner.tools({ provider: 'openai', capable: true });
+    assert.equal(fake.hits.length, 1);
+    await search.status();
+    await search.status({ url: fake.url });
+    assert.equal(fake.hits.length, 3);
 });
 
 test('JSON-disabled, invalid JSON/schema, HTTP and network failures have specific diagnoses', async (t) => {

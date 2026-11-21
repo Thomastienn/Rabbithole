@@ -15,7 +15,8 @@ async function launch(t) {
         store = new Store(path);
     const managed = await fakeSearxng(t),
         custom = await fakeSearxng(t),
-        model = await fakeOpenAI(t);
+        model = await fakeOpenAI(t),
+        own = { ready: true, url: managed.url, error: null };
     model.models = [{ id: 'tooled', capabilities: { tools: true } }];
     const app = createApp({
         store,
@@ -25,7 +26,7 @@ async function launch(t) {
         auth: { status: () => ({ connected: false }) },
         log: () => {},
         endpoint: new OpenAI(dir),
-        searxng: () => ({ ready: true, url: managed.url, error: null }),
+        searxng: () => ({ ...own }),
     });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
     t.after(async () => {
@@ -44,7 +45,7 @@ async function launch(t) {
             },
             body: JSON.stringify(body),
         });
-    return { store, path, managed, custom, model, get, post, origin };
+    return { store, path, managed, own, custom, model, get, post, origin };
 }
 
 test('Settings defaults to managed search; Test diagnoses without saving; override persists and resets', async (t) => {
@@ -162,7 +163,7 @@ test('custom model searches and finds images through the default runner, stores 
         JSON.parse(reply.tools[1].output).results[0].sourceUrl,
         'https://example.org/heap',
     );
-    env.managed.status = 503;
+    env.own.ready = false;
     env.model.reply = (req, res, body) => {
         assert.deepEqual(
             body.tools.map((d) => d.function.name),

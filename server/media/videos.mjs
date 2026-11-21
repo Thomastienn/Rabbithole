@@ -193,7 +193,7 @@ export async function generateVideo({
             !prior?.plan &&
             !!search &&
             store.tutorTools().web_search !== false &&
-            (await search.status({ signal: controller.signal })).ready;
+            (await search.ready({ signal: controller.signal }));
         const clipping = searching && clips();
         // The smart model builds the plan through calls; one stop without a valid finish gets a retry with the problem.
         const planned = async (note = '') => {

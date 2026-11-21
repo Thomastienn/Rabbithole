@@ -120,7 +120,21 @@ export function searxngSearch({ store, managed }) {
             customUrl = store.searxngUrl();
         return { ...own, url: customUrl ?? own.url, customUrl, managedUrl: own.url };
     };
+    let probed = null;
     return {
+        // Deciding which tools to offer makes no outside request: the managed instance knows its own
+        // state, and a typed address reuses its last probe for a minute. Settings calls status().
+        async ready({ signal } = {}) {
+            const state = config();
+            if (!state.customUrl) return state.ready;
+            if (probed?.url !== state.url || Date.now() - probed.at > 60000)
+                probed = {
+                    url: state.url,
+                    ready: (await this.status({ signal })).ready,
+                    at: Date.now(),
+                };
+            return probed.ready;
+        },
         async status({ url, signal } = {}) {
             const state = config();
             if (url !== undefined) state.url = searxngUrl(url) ?? state.managedUrl;
