@@ -47,7 +47,9 @@ test('HTTP Claude defaults are saved before inference and override the learner e
     const provider = new Claude(
         dir,
         (command, args, options) => {
-            calls.push({ args, env: options.env });
+            // The quick thinking runner starts ahead of time and waits; it runs no inference until a quick call.
+            if (args.includes('--session-id') || args.includes('--resume'))
+                calls.push({ args, env: options.env });
             return spawn(process.execPath, ['test/support/protocol-fixture.mjs', ...args], {
                 ...options,
                 cwd: process.cwd(),

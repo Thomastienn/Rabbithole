@@ -51,7 +51,7 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 test('Claude quick thinking: the runner starts ahead of time and each call sees only its own task', async (t) => {
     const { claude, launches, runners, call, text } = setup(t);
-    claude.ready(true);
+    claude.keepRunner(true);
     assert.equal(launches.length, 1, 'started before any call');
     const first = await call('Explain "a".');
     await settle();
@@ -76,7 +76,7 @@ test('Claude quick thinking: the runner starts ahead of time and each call sees 
 
 test('Claude quick thinking: a changed model or effort applies to the next call without a restart', async (t) => {
     const { claude, launches, runners, call } = setup(t);
-    claude.ready(true);
+    claude.keepRunner(true);
     await call('Explain "a".');
     await settle();
     const events = await call('Explain "b".', { model: 'sonnet', effort: 'high' });
@@ -95,7 +95,7 @@ test('Claude quick thinking: a changed model or effort applies to the next call 
 
 test('Claude quick thinking: a brief explanation is not delayed behind background notes', async (t) => {
     const { claude, launches, runners, call, text } = setup(t);
-    claude.ready(true);
+    claude.keepRunner(true);
     let backgroundDone = false;
     // A background call (no learner waiting) takes the free runner and holds it until released.
     const background = call(
@@ -117,7 +117,7 @@ test('Claude quick thinking: a brief explanation is not delayed behind backgroun
 test('Claude quick thinking: the runner closes after 10 minutes without a quick call, and the next call still works', async (t) => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const { claude, runners, call, text } = setup(t);
-    claude.ready(true);
+    claude.keepRunner(true);
     await call('Explain "a".');
     await settle();
     t.mock.timers.tick(300000);
@@ -133,7 +133,7 @@ test('Claude quick thinking: the runner closes after 10 minutes without a quick 
 
 test('Claude quick thinking: a stopped call frees the runner and a fresh one waits for the next call', async (t) => {
     const { claude, runners, call } = setup(t);
-    claude.ready(true);
+    claude.keepRunner(true);
     const controller = new AbortController(),
         events = [];
     await claude.generate(

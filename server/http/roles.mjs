@@ -231,7 +231,8 @@ export function roles({ store, providers, endpoint, defaultProvider, log }) {
     // Only the chosen quick thinking model's provider keeps a ready runner; an unset model follows the chat default.
     const readyQuick = () => {
         const chosen = store.suggestionSettings().model?.provider ?? chatDefault().provider;
-        for (const [id, provider] of Object.entries(providers)) provider?.ready?.(id === chosen);
+        for (const [id, provider] of Object.entries(providers))
+            provider?.keepRunner?.(id === chosen);
     };
     return {
         syncEndpoints,

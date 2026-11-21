@@ -31,7 +31,7 @@ test('Claude quick thinking runner: no start-up wait, clean context per call, li
             ms: performance.now() - started,
         };
     };
-    claude.ready(true);
+    claude.keepRunner(true);
     await new Promise((resolve) => setTimeout(resolve, 8000)); // the start-up happens before any call
     const first = await call('The secret word is banana. Reply OK.', 'haiku');
     assert.equal(first.status, 'completed');

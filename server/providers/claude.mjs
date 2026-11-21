@@ -55,7 +55,7 @@ export class Claude {
         });
     }
     // Only the chosen quick thinking provider keeps its runner ready.
-    ready(on) {
+    keepRunner(on) {
         if (on) this.runner.open();
         else this.runner.close();
     }
