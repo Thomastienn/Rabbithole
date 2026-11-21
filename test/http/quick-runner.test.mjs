@@ -9,7 +9,7 @@ import { createApp } from '../../server/app.mjs';
 // Providers that only list one model and record whether they keep a quick thinking runner ready.
 const fake = (ready) => ({
     models: async () => [{ model: 'quick', label: 'Quick', isDefault: true, efforts: [] }],
-    ready: (on) => ready.push(on),
+    keepRunner: (on) => ready.push(on),
 });
 
 test('only the chosen quick thinking provider keeps a runner, and switching provider closes the old one', async (t) => {
