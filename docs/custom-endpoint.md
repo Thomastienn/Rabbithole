@@ -54,9 +54,9 @@ Responses API support is outside this adapter.
 A model uses tools when its saved tool flag says so (set by the learner or a
 probe), else when the catalogue reports `capabilities.tools`, else after a
 probe on first use: one small non-streamed request offering a `ping` tool.
-Such a model gets the learner's tutor tools and the app tools (`make_video`,
-`start_discussion`) as `tools` in each request; visuals come from
-`[[visual: …]]` markers in the reply text, not a tool.
+Such a model gets the learner's tutor tools and the app tool `make_video` as `tools` in each
+request; visuals and discussions come from `[[visual: …]]` and
+`[[discussion: …]]` markers in the reply text, not tools.
 A model without tool calling gets the app tools in its instructions instead
 and writes each call as `<tool_call>{...}</tool_call>` text, which the server
 runs and hides; no result goes back.
@@ -64,9 +64,8 @@ runs and hides; no result goes back.
 Streamed `tool_calls` deltas are joined per index. After a round with calls,
 the adapter appends the assistant message with its calls and one `tool`
 message per result, then calls the model again. The loop has no call cap: it
-ends when the model answers without calls, when a round holds only
-`start_discussion`, when a quick thinking tool answer is
-accepted, or on Stop. Each model call stops after five silent minutes and the
+ends when the model answers without calls, when a quick thinking tool answer
+is accepted, or on Stop. Each model call stops after five silent minutes and the
 reply's usage sums every call's report.
 
 ## Settings and credential boundary

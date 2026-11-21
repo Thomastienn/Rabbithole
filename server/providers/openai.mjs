@@ -454,7 +454,7 @@ class Endpoint {
                     // An accepted quick thinking answer is the whole reply; a rejected one goes back to be fixed.
                     answered &&= QUICK_TOOLS.includes(c.name) && !content.startsWith('Error:');
                 }
-                if (answered || round.every((c) => c.name === 'start_discussion')) break;
+                if (answered) break;
             }
             // A call that reports through tools may end silently; its caller checks what the tools received.
             if (!reply.shown && !answered && !(tree.reportsByTools && messages.at(-1).tool_call_id))

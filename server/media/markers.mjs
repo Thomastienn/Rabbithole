@@ -1,8 +1,9 @@
 import { parse } from '../../src/markdown/markdownText.ts';
 
 // A closed marker, an unclosed one at the end of its line or of the text, or a lone [ that may start one.
-// A visual marker's fields may hold single brackets, so a stray one cannot leave its check answer as text.
-const MARKER = /\[\[(\s*visual\s*:(?:[^\]\r\n]|\](?!\]))*|[^[\]\r\n]*)(\]\]|\]?$|(?=\r?\n))|\[$/gi;
+// A visual or discussion marker's fields may hold single brackets, so a stray one cannot leave its check answer as text.
+const MARKER =
+    /\[\[(\s*(?:visual|discussion)\s*:(?:[^\]\r\n]|\](?!\]))*|[^[\]\r\n]*)(\]\]|\]?$|(?=\r?\n))|\[$/gi;
 const KIND = /^\s*([a-z]+(?: [a-z]+)*)\s*:(.*)$/i;
 
 // Code and math keep [[ as written; the reply renderer's own parse finds them.
@@ -18,7 +19,8 @@ const literal = (text) => {
 
 // The streaming marker stripper (ADR 0016, 0017): [[kind: value]] leaves the text and [[words]] keeps its words.
 // While streaming, one still arriving at the end is held back; an unclosed one at the end of its line stays as plain text,
-// except a visual marker, which is removed whole and recorded with closed: false (ADR 0018).
+// except a visual or discussion marker, which is removed whole and recorded with closed: false (ADR 0018).
+// The reply ends at a closed discussion marker: text after it is dropped, and only the end section's markers are read.
 // at(p) maps a position in text to the stripped text; marker positions are already mapped.
 export function stripMarkers(text, final = false) {
     const found = [...text.matchAll(MARKER)];
@@ -26,6 +28,7 @@ export function stripMarkers(text, final = false) {
     const spans = literal(text),
         cuts = [],
         markers = [];
+    let discussed = false;
     for (const m of found) {
         const [whole, body = '', close] = m,
             start = m.index,
@@ -37,21 +40,35 @@ export function stripMarkers(text, final = false) {
             const kind = KIND.exec(body) ?? /^\s*(end)\s*$/i.exec(body);
             // The reply ends at [[end]] (ADR 0016): text after it is dropped.
             if (kind?.[1].toLowerCase() === 'end') {
-                cuts.push([start, text.length]);
+                if (!discussed) cuts.push([start, text.length]);
                 markers.push({ kind: 'end', value: '', start });
                 break;
             }
-            if (kind) cuts.push([start, end]);
+            if (discussed) {
+                if (['next', 'video offer'].includes(kind?.[1].toLowerCase()))
+                    markers.push({ kind: kind[1].toLowerCase(), value: kind[2].trim(), start });
+                continue;
+            }
+            if (kind?.[1].toLowerCase() === 'discussion') {
+                discussed = true;
+                cuts.push([start, text.length]);
+            } else if (kind) cuts.push([start, end]);
             else cuts.push([start, start + 2], [end - 2, end]);
             markers.push({
                 kind: kind?.[1].toLowerCase() ?? null,
                 value: (kind ? (kind[2] ?? '') : body).trim(),
                 start,
             });
-        } else if (end === text.length && !final) cuts.push([start, end]);
-        else if (KIND.exec(body)?.[1].toLowerCase() === 'visual') {
+        } else if (discussed) continue;
+        else if (end === text.length && !final) cuts.push([start, end]);
+        else if (['visual', 'discussion'].includes(KIND.exec(body)?.[1].toLowerCase())) {
             cuts.push([start, end]);
-            markers.push({ kind: 'visual', value: '', closed: false, start });
+            markers.push({
+                kind: KIND.exec(body)[1].toLowerCase(),
+                value: '',
+                closed: false,
+                start,
+            });
         } else if (whole !== '[')
             cuts.push([start, start + 2], ...(whole.endsWith(']') ? [[end - 1, end]] : []));
     }
@@ -146,4 +163,35 @@ export function readVisualMarker(value, replySoFar = '') {
         ...(fields.check && { check_answer: fields.check }),
         ...(context && { context }),
     };
+}
+
+// A discussion marker (ADR 0018): classmates "Name (level): voice", then lines "Speaker > text", split by |.
+const CLASSMATE = /^([^()>|]+?)\s*\(\s*(below|near|above)\s*\)\s*:(.*)$/i;
+const LINE = /^([^>]+?)\s*>(.*)$/;
+
+// The discussion's opening, repaired rather than refused; { cause } when it cannot start.
+export function readDiscussionMarker(value) {
+    const classmates = [],
+        lines = [];
+    for (const part of value.split('|')) {
+        const c = !lines.length && CLASSMATE.exec(part.trim());
+        if (c) {
+            const name = field(c[1], 60),
+                voice = field(c[3], 500);
+            const taken = ['tutor', 'learner', ...classmates.map((p) => p.name.toLowerCase())];
+            if (name && voice && !taken.includes(name.toLowerCase()) && classmates.length < 4)
+                classmates.push({ name, level: c[2].toLowerCase(), voice });
+            continue;
+        }
+        const l = LINE.exec(part.trim());
+        if (!l) continue;
+        const speaker = field(l[1], 60),
+            text = field(l[2], 2000);
+        // A line whose speaker is not a classmate or Tutor is dropped.
+        if (text && (speaker === 'Tutor' || classmates.some((p) => p.name === speaker)))
+            lines.push({ speaker, text });
+    }
+    if (classmates.length < 3) return { cause: 'fewer than three classmates' };
+    if (lines.length < 4) return { cause: 'fewer than four lines' };
+    return { task: { classmates, lines: lines.slice(0, 8) } };
 }

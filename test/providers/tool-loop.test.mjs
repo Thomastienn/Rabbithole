@@ -118,7 +118,6 @@ test('a tools-capable endpoint model reads a page through read_page and answers 
         [
             ['function', 'read_page'],
             ['function', 'make_video'],
-            ['function', 'start_discussion'],
         ],
     );
     assert.doesNotMatch(first.body.messages[0].content, /Do not use tools/);
@@ -434,7 +433,7 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
         (m) => m.model === 'tooled',
     ).provider;
     assert.deepEqual(await uses(), { tooled: true, plain: false });
-    assert.deepEqual(await offered('tooled'), ['read_page', 'make_video', 'start_discussion']);
+    assert.deepEqual(await offered('tooled'), ['read_page', 'make_video']);
     assert.equal(await offered('plain'), null);
 
     const toggle = async (model, usesTutorTools) =>
@@ -446,7 +445,7 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
     await toggle('plain', true);
     assert.deepEqual(await uses(), { tooled: false, plain: true });
     assert.equal(await offered('tooled'), null);
-    assert.deepEqual(await offered('plain'), ['read_page', 'make_video', 'start_discussion']);
+    assert.deepEqual(await offered('plain'), ['read_page', 'make_video']);
     assert.equal(
         (await env.post('/api/settings/endpoints/model', { id, model: 'plain', usesTutorTools: 1 }))
             .status,
@@ -458,7 +457,7 @@ test('uses tutor tools: override, else reported tools, else off; tool switches r
         await env.post('/api/settings/tutor-tools', { name: 'read_page', enabled: false })
     ).json();
     assert.equal(switched.find((x) => x.name === 'read_page').enabled, false);
-    assert.deepEqual(await offered('plain'), ['make_video', 'start_discussion']);
+    assert.deepEqual(await offered('plain'), ['make_video']);
     assert.doesNotMatch(env.chats().at(-1).body.messages[0].content, /rabbithole-visual/);
     assert.equal(
         (await env.post('/api/settings/tutor-tools', { name: 'nope', enabled: false })).status,

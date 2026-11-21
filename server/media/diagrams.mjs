@@ -54,7 +54,7 @@ export const TUTOR_SKILLS =
     '\n\n' +
     HUMANIZER_SKILL +
     '\n\nTutor style (follow it where it differs from the skills above):\n';
-// With the app tools offered, visuals are visual markers (ADR 0018); the video and discussion tool descriptions carry their rules (ADR 0013).
+// With the app tools offered, visuals and discussions are markers (ADR 0018); the video tool description carries its rules (ADR 0013).
 const cut = (text, from, to) => {
     const start = text.indexOf(from),
         end = text.indexOf(to, start);
@@ -74,7 +74,7 @@ const VISUAL_MARKER_RULE =
     'name is a short slug such as fission-chain, at most 40 characters. title is the finished visual\'s short title, at most 120. shows says exactly what the visual shows, at most 280, such as "Artemis I to IV with year and status, then longer-term goals". alt is the text alternative, at most 280: say in words what the visual shows; for a check, only the starting state and the prediction question. Leave check out unless the visual is a check. ' +
     'Keep the whole marker on one line, keep [, ], | and line breaks out of its fields, and write math in words inside it. ' +
     'Another model draws the visual from the marker and your reply so far; never write visual code yourself. The learner never sees the marker. Put the marker inside :::wide for a full-width visual, or inside :::figure to set the visual beside its explanation. Ready visuals appear in later history only as artifact id, title and description. ' +
-    'Request a video with make_video and a discussion with start_discussion; never write a fenced media block.';
+    'Request a video with make_video and a discussion with a discussion marker; never write a fenced media block.';
 const [beforeCheck, afterCheck] = cut(
     beforeVisuals + VISUAL_MARKER_RULE + afterVisuals,
     'Check yourself:',
@@ -90,6 +90,15 @@ export const TOOL_VISUAL_RULES = (
         'To show an image beside its explanation, put that section between a line :::figure and a line :::, with the image (from find_images) and',
         'To show an image or visual beside its explanation, put that section between a line :::figure and a line :::, with the image (from find_images) or visual marker and',
     );
+// The discussion marker carries what start_discussion took (ADR 0018); the wording the benchmark used.
+const DISCUSSION_MARKER_RULE =
+    '\n\nDiscussion: start one only when the learner asks for a discussion; never start one unasked or treat an ordinary question as a request. ' +
+    'Write it as one discussion marker on one line, the last thing before the end section, since its lines appear one at a time and text after it is dropped: [[discussion: Name (level): voice | … | Speaker > line | …]]. ' +
+    'First 3 or 4 classmates, each Name (level): voice, with a short distinct name of at most 60 characters, never Tutor or Learner, a level of below, near or above and a voice of at most 500 characters; then 4 to 8 opening lines, each Speaker > line, the speaker an exact classmate name or Tutor and the line at most 2000 characters, the last a question to the learner. ' +
+    "Each hidden level is relative to the learner's familiarity with the discussion's concepts, with at least one below and one above. Use the available familiarity context and what the learner has shown about these concepts; when unknown, assume an ordinary starting explanation and spread the classmates around it. " +
+    'The voice is one or two sentences on how they talk and how they think, fitting their level and distinct from the others. Keep levels and voices private; never mention or label them in the lines or your text. ' +
+    "Classmates write like casual online chat in the learner's language: everyday words and slang, contractions, the odd swear word or typo, short lines, rarely an emoji, no buzzwords or performed eagerness. The natural-writing guidance still applies to their lines but never flattens these voices into the tutor's register. Classmates have honest misunderstandings, ask each other questions and draw the learner in; only relevant classmates speak. The Tutor steps in only to untangle or confirm, in plain clear lines. " +
+    "Never write learner lines or invent the learner's answer. Keep [, ], | and line breaks out of names, voices and lines, and write math in words inside the marker. Classmates belong only to this discussion and keep their levels and voices.";
 // A model without native tool calling writes Hermes-style calls as text; no result comes back.
 const textToolsRule = (tools) =>
     'You cannot call tools natively. Call each tool below by writing <tool_call>{"name": "tool name", "arguments": {...}}</tool_call> in your reply exactly where the call belongs, with the arguments as one JSON object. The app runs the call and hides it from the learner. No result comes back; continue your reply right after it. Call no other tools, and do not access files or execute code. Tools (name, description and JSON Schema parameters): ' +
@@ -117,7 +126,7 @@ export const tutorSystem = (tree) =>
               : TUTOR_RULES) +
             // With the app tools offered, quick thinking writes the verdict (ADR 0016).
             ([...(tree.tools ?? []), ...(tree.textTools ?? [])].some((t) => t.name === 'make_video')
-                ? ''
+                ? DISCUSSION_MARKER_RULE
                 : VERDICT_RULE + DISCUSSION_RULE) +
             NOTES_RULE +
             (tree.tools?.some((t) => t.name === 'update_memory_note') ? MEMORY_RULE : '') +

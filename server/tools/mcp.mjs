@@ -7,7 +7,6 @@ import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv
 import { runTool } from '../providers/chatStream.mjs';
 import { MAKE_VIDEO } from './makeVideo.mjs';
 import { QUICK_TOOLS } from './quickTools.mjs';
-import { START_DISCUSSION } from './startDiscussion.mjs';
 
 // The runner already owns JSON Schemas; the SDK's low-level server keeps those authoritative.
 export function toolMcp() {
@@ -48,9 +47,9 @@ export function toolMcp() {
             const definition = entry.tree.tools.find((tool) => tool.name === params.name);
             if (!definition) throw new Error('Tool is unavailable for this turn.');
             const input = params.arguments ?? {};
-            // App tools validate themselves so their result names the argument or entry.
+            // make_video validates itself so its result names the argument.
             if (
-                ![MAKE_VIDEO, START_DISCUSSION].some((t) => t.name === definition.name) &&
+                definition.name !== MAKE_VIDEO.name &&
                 !QUICK_TOOLS.includes(definition.name) &&
                 !validator.getValidator(definition.parameters)(input).valid
             )
