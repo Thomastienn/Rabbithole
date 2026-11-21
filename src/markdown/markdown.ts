@@ -112,7 +112,7 @@ export function renderMarkdown(
     let revealed = 0;
     let imageLink: string | undefined;
     let inLink = false;
-    const stops = new Set<number>();
+    const stops = new Set<(typeof underlines)[number]>();
     const hit = (s: number, e: number) => !!reveal && s < reveal.end && e > reveal.start;
     const split = (attrs: object, s: number, e: number, cuts: number[], className?: string) =>
         h(Text, {
@@ -131,12 +131,14 @@ export function renderMarkdown(
         });
     // An underline piece's class, ink and, on its first piece, the Tab stop; formula pieces take them as MathML attributes.
     const underline = (u: (typeof underlines)[number]) => {
-        const stop = !stops.has(u.start) && stops.add(u.start);
+        const stop = !stops.has(u) && stops.add(u);
         const name = plainText(raw.slice(u.start, u.end)) || raw.slice(u.start, u.end);
         const opens = u.address ? `. Opens its chat, ${u.address}` : '. Opens its chat';
         return {
             className: u.child ? 'suggestion explored' : 'suggestion',
             style: u.child && u.ink !== undefined ? inkStyle(u.ink) : undefined,
+            // Which underline a piece belongs to; overlapping explored passages nest one element per passage.
+            'data-u': String(underlines.indexOf(u)),
             ...(stop && {
                 tabIndex: 0,
                 role: 'button',
@@ -178,19 +180,41 @@ export function renderMarkdown(
                 [Math.max(s, reveal!.start), Math.min(e, reveal!.end)],
                 className,
             );
-        const u = underlines.find((u) => s < u.end && e > u.start);
-        if (u && !atomic && (u.start > s || u.end < e))
-            return split(attrs, s, e, [Math.max(s, u.start), Math.min(e, u.end)], className);
-        if (u) {
-            const { className: under, ...props } = underline(u),
-                piece = h(
-                    'u',
-                    { ...attrs, ...props, className: [under, className].filter(Boolean).join(' ') },
-                    value,
-                );
-            return u.child && u.address && e >= u.end
-                ? h(Fragment, { key: s }, piece, chip(u, props.style))
-                : piece;
+        // Wider passages first: they wrap the narrower ones and take the upper lanes of a shared underline.
+        const covering = underlines
+                .filter((u) => s < u.end && e > u.start)
+                .sort((a, b) => b.end - b.start - (a.end - a.start)),
+            cuts = [...new Set(covering.flatMap((u) => [u.start, u.end]))]
+                .filter((a) => a > s && a < e)
+                .sort((a, b) => a - b);
+        if (cuts.length && !atomic) return split(attrs, s, e, cuts, className);
+        if (covering.length) {
+            const lanes = covering.length,
+                piece = covering.reduceRight<ReactNode>((inner, u, lane) => {
+                    const { className: under, style, ...props } = underline(u);
+                    return h(
+                        'u',
+                        {
+                            ...(lane === lanes - 1 ? attrs : { key: s }),
+                            ...props,
+                            className: [
+                                under,
+                                lanes > 1 && 'shared',
+                                lane === lanes - 1 && className,
+                            ]
+                                .filter(Boolean)
+                                .join(' '),
+                            style:
+                                lanes > 1 ? { ...style, '--lane': lane, '--lanes': lanes } : style,
+                        },
+                        inner,
+                    );
+                }, value),
+                chips = covering
+                    .filter((u) => u.child && u.address && e >= u.end)
+                    .reverse()
+                    .map((u) => chip(u, underline(u).style));
+            return chips.length ? h(Fragment, { key: s }, piece, ...chips) : piece;
         }
         return h(Text, { ...attrs, type: 'inherit', children: value });
     };
@@ -385,6 +409,7 @@ export function renderMarkdown(
             case 'inlineMath': {
                 // Symbols get offsets only when the LaTeX sits verbatim in the source (not under a quote or list prefix).
                 // A revealed formula is not underlined, like revealed text; a whole-formula underline is on <math>.
+                // shortcut: overlapping explored passages in one formula draw only the first; nest them like text if learners branch inside formulas.
                 const at = raw.indexOf(n.value!, s),
                     marked = hit(s, e) ? [] : underlines.filter((u) => u.start < e && u.end > s),
                     whole = marked.find((u) => u.start <= s && u.end >= e),

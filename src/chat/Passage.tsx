@@ -6,7 +6,7 @@ import { TextArea } from '@astryxdesign/core/TextArea';
 import { ChatBubbleBottomCenterTextIcon } from '@heroicons/react/24/outline';
 import type { Point } from '../map/canvas';
 import type { Source } from '../map/TreeOverview';
-import type { conversationAddresses } from '../map/treeList';
+import { inkStyle, type conversationAddresses } from '../map/treeList';
 import { underlineRanges, type Message, type Suggestions } from './turn';
 import { passageAnchor, type Anchor } from './branch';
 import { rawOffsets, rawRange } from '../markdown/markdown';
@@ -52,7 +52,7 @@ export default function Passage({
     onDiscussionReply?: DiscussionReply;
     suggestions?: Suggestions;
     briefs?: Brief[];
-    branched: { start: number; end: number; text: string; child: string }[];
+    branched: { start: number; end: number; text: string; child: string; title?: string }[];
     onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void;
     onOpenChild: (id: string) => void;
     reveal?: Source;
@@ -72,6 +72,13 @@ export default function Passage({
         at: React.CSSProperties;
         piece?: HTMLElement;
     }>();
+    // The chats of an overlap piece the learner clicked, innermost passage first.
+    const [picker, setPicker] = useState<{
+        at: React.CSSProperties;
+        piece: HTMLElement;
+        branches: { child: string; address?: string; ink?: number }[];
+    }>();
+    const pickerBox = useRef<HTMLDivElement>(null);
     const wrapper = useRef<HTMLElement>(null);
     const floating = useRef<HTMLDivElement>(null);
     const passage = useRef<HTMLElement>(null);
@@ -194,28 +201,53 @@ export default function Passage({
             said && { messageId: message.id, ...said },
         );
     }
-    // Whether an underline piece lies in u; formula pieces are MathML elements, which have no dataset in every DOM.
-    const within = (piece: Element, u: { start: number; end: number }) => {
-        const o = Number(piece.getAttribute('data-o'));
-        return o >= u.start && o < u.end;
-    };
-    function underlineAt(target: EventTarget | null) {
-        const piece = (target as Element | null)?.closest?.('.suggestion') as HTMLElement | null;
-        const u = piece && underlines.find((u) => within(piece, u));
-        return u ? { piece: piece!, u } : {};
+    // The underlines under a target, innermost first: overlapping passages nest one element each.
+    // Formula pieces are MathML elements, which have no dataset in every DOM.
+    function underlinesAt(target: EventTarget | null) {
+        const out: { piece: HTMLElement; u: (typeof underlines)[number] }[] = [];
+        for (
+            let piece = (target as Element | null)?.closest?.('[data-u]') as HTMLElement | null;
+            piece && passage.current?.contains(piece);
+            piece = piece.parentElement?.closest('[data-u]') as HTMLElement | null
+        ) {
+            const u = underlines[Number(piece.getAttribute('data-u'))];
+            if (u) out.push({ piece, u });
+        }
+        return out;
+    }
+    // A floating box under a piece; one in the right half hangs leftward so it stays inside the reply.
+    function below(piece: HTMLElement): React.CSSProperties {
+        const box = piece.getBoundingClientRect(),
+            wrap = wrapper.current!.getBoundingClientRect();
+        return box.left - wrap.left > wrap.width / 2
+            ? { right: wrap.right - box.right, top: box.bottom - wrap.top }
+            : { left: box.left - wrap.left, top: box.bottom - wrap.top };
+    }
+    // Pointing at explored passages lights each one whole, so an overlap shows every chat it holds.
+    // A class, not a CSS highlight: Chrome repaints underlines inside a highlight in the text colour, losing their ink.
+    function light(passages: (typeof underlines)[number][]) {
+        const lit = new Set(
+            passages.filter((u) => u.child).map((u) => String(underlines.indexOf(u))),
+        );
+        passage.current
+            ?.querySelectorAll('[data-u]')
+            .forEach((piece) =>
+                piece.classList.toggle('lit', lit.has(piece.getAttribute('data-u')!)),
+            );
     }
     // A suggestion's saved brief explanation, else its child's first reply; never a model call.
     function point(target: EventTarget | null, focused: boolean) {
-        const { piece, u } = underlineAt(target);
+        const under = underlinesAt(target);
+        if (!focused) light(under.map((x) => x.u));
+        // A focused stop is its own passage; an overlap the pointer rests on has no single tip.
+        const { piece, u } = (focused || under.length === 1) && under[0] ? under[0] : {};
         const p =
             u &&
             suggestions?.status === 'ready' &&
             suggestions.passages.find((p) => p.start === u.start && p.end === u.end);
         const brief = p && briefs?.find((b) => b.start === p.start && b.end === p.end)?.explanation;
         const text = brief ?? (p && u.child ? p.preview : undefined);
-        if (!text || !piece) return setTip(undefined);
-        const box = piece.getBoundingClientRect(),
-            wrap = wrapper.current!.getBoundingClientRect();
+        if (!text || !piece || !u) return setTip(undefined);
         setTip((t) =>
             t?.start === u.start && t.text === text && !!t.piece === focused
                 ? t
@@ -223,11 +255,7 @@ export default function Passage({
                       start: u.start,
                       text,
                       brief: !!brief,
-                      // An underline in the right half hangs its popup leftward so it stays inside the reply.
-                      at:
-                          box.left - wrap.left > wrap.width / 2
-                              ? { right: wrap.right - box.right, top: box.bottom - wrap.top }
-                              : { left: box.left - wrap.left, top: box.bottom - wrap.top },
+                      at: below(piece),
                       piece: focused ? piece : undefined,
                   },
         );
@@ -240,16 +268,27 @@ export default function Passage({
         return () => piece.removeAttribute('aria-describedby');
     }, [tip, formOpen]);
     // An unexplored underline opens the passage textbox, also while the reply streams; an explored one opens its existing child.
-    function activate(target: EventTarget) {
-        const { piece, u } = underlineAt(target);
-        if (!u || !piece) return false;
+    // A click on an overlap asks which chat; a keyboard stop is one passage and opens it.
+    function activate(target: EventTarget, keyboard: boolean) {
+        const under = underlinesAt(target);
+        if (!under.length) return false;
+        if (!keyboard && under.length > 1) {
+            setTip(undefined);
+            setPicker({
+                at: below(under[0].piece),
+                piece: under[0].piece,
+                branches: under.map(({ u }) => ({ child: u.child!, ...addresses.get(u.child!) })),
+            });
+            return true;
+        }
+        const { piece, u } = under[0];
         if (u.child) {
             onOpenChild(u.child);
             return true;
         }
         const stop =
-            [...passage.current!.querySelectorAll<HTMLElement>('.suggestion[tabindex]')].find((e) =>
-                within(e, u),
+            passage.current!.querySelector<HTMLElement>(
+                `[data-u="${underlines.indexOf(u)}"][tabindex]`,
             ) ?? piece;
         setAnchor(undefined);
         const stopBox = stop.getBoundingClientRect(),
@@ -268,7 +307,11 @@ export default function Passage({
         return true;
     }
     useEffect(() => {
+        pickerBox.current?.querySelector('button')?.focus();
+    }, [picker]);
+    useEffect(() => {
         function dismiss(e: PointerEvent) {
+            if (!pickerBox.current?.contains(e.target as Node)) setPicker(undefined);
             if (
                 !passage.current?.contains(e.target as Node) &&
                 !action.current?.contains(e.target as Node) &&
@@ -304,6 +347,13 @@ export default function Passage({
             gap={2}
             className="passage"
             onKeyDown={(e) => {
+                if (e.key === 'Escape' && picker) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    picker.piece.closest<HTMLElement>('[tabindex]')?.focus();
+                    setPicker(undefined);
+                    return;
+                }
                 if (e.key === 'Escape' && tip && !anchor && !selecting && !formOpen) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -324,6 +374,7 @@ export default function Passage({
                 tabIndex={-1}
                 onPointerOver={(e) => point(e.target, false)}
                 onPointerLeave={(e) => {
+                    light([]);
                     if (!(e.relatedTarget as Element | null)?.closest?.('.brief-tip'))
                         setTip(undefined);
                 }}
@@ -332,10 +383,10 @@ export default function Passage({
                 onMouseUp={captureSelection}
                 onKeyUp={captureSelection}
                 onClick={(e) => {
-                    if (!highlighted.current) activate(e.target);
+                    if (!highlighted.current) activate(e.target, false);
                 }}
                 onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && activate(e.target))
+                    if ((e.key === 'Enter' || e.key === ' ') && activate(e.target, true))
                         e.preventDefault();
                 }}
             >
@@ -371,6 +422,35 @@ export default function Passage({
                 >
                     {tip.brief ? renderInline(tip.text) : tip.text}
                 </Text>
+            )}
+            {picker && (
+                <VStack
+                    ref={pickerBox}
+                    role="group"
+                    aria-label="Chats from this passage"
+                    className="branch-picker"
+                    style={picker.at}
+                >
+                    {picker.branches.map((b) => (
+                        <Button
+                            key={b.child}
+                            label={branched.find((x) => x.child === b.child)?.title ?? 'Open chat'}
+                            variant="ghost"
+                            size="sm"
+                            icon={
+                                b.address && (
+                                    <span className="passage-address" style={inkStyle(b.ink ?? 0)}>
+                                        {b.address}
+                                    </span>
+                                )
+                            }
+                            onClick={() => {
+                                setPicker(undefined);
+                                onOpenChild(b.child);
+                            }}
+                        />
+                    ))}
+                </VStack>
             )}
             {!!message.tools?.length && <ToolActivity tools={message.tools} />}
             {/* Mounted before suggestions arrive so their arrival is announced once; reopened replies are not re-announced. */}

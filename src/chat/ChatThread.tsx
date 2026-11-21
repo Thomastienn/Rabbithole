@@ -151,6 +151,7 @@ export default function ChatThread({
                                               end: t.end,
                                               text: t.passage,
                                               child: t.id,
+                                              title: t.title,
                                           },
                                       ]
                                     : [],

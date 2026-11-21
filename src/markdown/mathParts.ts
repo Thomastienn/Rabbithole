@@ -250,7 +250,8 @@ export function mathMarkup(tex: string, at: number, display: boolean, marks: Mat
                     .join('; '),
             );
         for (const [k, v] of Object.entries(stop)) m.setAttribute(k.toLowerCase(), String(v));
-        mk.props = { className, style };
+        // Every piece keeps which underline it belongs to; only the Tab stop attributes are first-piece only.
+        mk.props = { className, style, 'data-u': stop['data-u'] };
     }
     if (tree && top && at >= 0) {
         tree.forEach(locate);

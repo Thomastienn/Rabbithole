@@ -37,7 +37,8 @@
 /* Address chips (mockup .chip): filled with the family line (--ink, set inline), 4px corners. */
 .address-chip,
 .reply-md .passage-address,
-.visual-chips .passage-address {
+.visual-chips .passage-address,
+.branch-picker .passage-address {
     display: inline-block;
     padding: 3px 6px 2px;
     border-radius: var(--radius-inner);
@@ -384,6 +385,29 @@ mark {
 }
 .reply-md .suggestion.explored:hover {
     text-decoration-color: var(--ink, var(--color-accent));
+}
+/* Overlapping explored passages share the 3px underline: one lane per passage, each in its family line, widest on top. */
+.reply-md .suggestion.explored.shared {
+    text-decoration-thickness: calc(3px / var(--lanes));
+    text-underline-offset: calc(5px + 3px * var(--lane) / var(--lanes));
+}
+/* The explored passages under the pointer, each lit whole; an overlap stacks both tints. */
+.reply-md .suggestion.lit {
+    background-color: color-mix(in srgb, var(--rabbithole-selection) 50%, transparent);
+}
+/* Which chat an overlap opens: a list under the clicked piece, styled like the brief tip. */
+.branch-picker {
+    position: absolute;
+    z-index: 3;
+    max-width: min(100%, 40ch);
+    margin-top: var(--spacing-1);
+    padding: var(--spacing-1);
+    border: thin solid var(--rabbithole-paper);
+    border-radius: var(--radius-container);
+    background: var(--color-background-popover);
+}
+.branch-picker button {
+    justify-content: flex-start;
 }
 .reply-md .suggestion:focus-visible {
     outline: medium solid var(--focus-outline-color);

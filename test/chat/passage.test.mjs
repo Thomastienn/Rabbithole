@@ -145,3 +145,65 @@ test('underlines, manual highlights, late suggestions and streaming preserve pas
     );
     assert.equal(container.querySelector('pre'), code);
 });
+
+test('overlapping explored passages: each part opens its own chat, an overlap asks which', async (t) => {
+    const { container, act, update, opened } = await passage(t);
+    const outer = {
+            start: 0,
+            end: 19,
+            text: 'repeat 😀 repeat 😀',
+            child: 'outer',
+            title: 'Outer chat',
+        },
+        inner = { start: 10, end: 16, text: 'repeat', child: 'inner', title: 'Inner chat' };
+    await act(async () => update((v) => ({ ...v, branched: [inner, outer] })));
+    const pieces = (u) => [...container.querySelectorAll(`[data-u="${u}"]`)];
+    // Outer is index 0 (wider first): it covers three pieces and wraps the one inner piece.
+    assert.equal(pieces(0).length, 3);
+    assert.equal(pieces(1).length, 1);
+    assert.equal(pieces(1)[0].parentElement, pieces(0)[1]);
+    assert.deepEqual(
+        [...container.querySelectorAll('.shared')].map((u) => u.style.getPropertyValue('--lane')),
+        ['0', '1'],
+    );
+    // Hovering the overlap lights both passages whole; leaving clears them.
+    await act(async () =>
+        pieces(1)[0].dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
+    );
+    const lit = () =>
+        [...container.querySelectorAll('.lit')].map((u) => u.getAttribute('data-u')).join(' ');
+    assert.equal(lit(), '0 0 1 0');
+    await act(async () =>
+        container
+            .querySelector('.passage > section')
+            .dispatchEvent(new MouseEvent('pointerout', { bubbles: true })),
+    );
+    assert.equal(lit(), '');
+    // A part only the outer passage covers opens it directly.
+    await act(async () => pieces(0)[0].click());
+    assert.deepEqual(opened, ['outer']);
+    // The overlap asks which chat, innermost first; choosing one opens it and closes the picker.
+    await act(async () => pieces(1)[0].click());
+    const picker = container.querySelector('.branch-picker');
+    assert.deepEqual(
+        [...picker.querySelectorAll('button')].map((b) => b.textContent),
+        ['Inner chat', 'Outer chat'],
+    );
+    assert.equal(document.activeElement, picker.querySelector('button'));
+    await act(async () => picker.querySelectorAll('button')[1].click());
+    assert.deepEqual(opened, ['outer', 'outer']);
+    assert.equal(container.querySelector('.branch-picker'), null);
+    // Escape closes the picker without opening anything.
+    await act(async () => pieces(1)[0].click());
+    await act(async () => key(container.querySelector('.branch-picker button'), 'Escape'));
+    assert.equal(container.querySelector('.branch-picker'), null);
+    // Each passage has its own Tab stop, and Enter opens that passage's chat.
+    const stops = [...container.querySelectorAll('u[tabindex]')];
+    assert.deepEqual(
+        stops.map((u) => u.getAttribute('data-u')),
+        ['0', '1'],
+    );
+    await act(async () => key(stops[1], 'Enter'));
+    await act(async () => key(stops[0], 'Enter'));
+    assert.deepEqual(opened, ['outer', 'outer', 'inner', 'outer']);
+});

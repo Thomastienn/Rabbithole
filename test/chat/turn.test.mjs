@@ -237,6 +237,24 @@ test('underline ranges are the exact slices, as they stream and once ready, neve
         ),
         [{ start: emoji.start, end: emoji.end, child: 'c1' }],
     );
+    // Explored passages may overlap or nest, outer first; an unexplored suggestion overlapping one is dropped.
+    const slice = (start, end) => ({ start, end, text: text.slice(start, end) });
+    assert.deepEqual(
+        underlineRanges(
+            text,
+            { message: 'm', status: 'ready', passages: [slice(1, 3)], usage: null },
+            [
+                { ...slice(2, 4), child: 'inner' },
+                { ...slice(0, 6), child: 'outer' },
+                { ...slice(2, 4), child: 'twin' },
+            ],
+        ),
+        [
+            { start: 0, end: 6, child: 'outer' },
+            { start: 2, end: 4, child: 'inner' },
+            { start: 2, end: 4, child: 'twin' },
+        ],
+    );
 });
 
 test('reply stream splits SSE frames across chunks and keeps the unfinished tail', () => {
