@@ -30,6 +30,7 @@ function setup(t) {
                 effort: null,
                 thread: null,
                 urgent: true,
+                quick: true,
                 instructions: 'You explain terms briefly.',
                 ...tree,
             },
@@ -101,7 +102,7 @@ test('Claude quick thinking: a brief explanation is not delayed behind backgroun
     const background = call(
         'Mark every term\n' +
             JSON.stringify({ question: 'slow suggestions', answer: 'x', knownConcepts: {} }),
-        { urgent: undefined },
+        { urgent: undefined, quick: true },
     ).then(() => (backgroundDone = true));
     await settle();
     const own = launches.find((l) => l.args.includes('--session-id'));
@@ -119,8 +120,11 @@ test('Claude quick thinking: the runner closes after 10 minutes without a quick 
     claude.ready(true);
     await call('Explain "a".');
     await settle();
-    t.mock.timers.tick(599999);
-    assert.equal(runners()[0].child.exitCode, null, 'a call restarts the countdown');
+    t.mock.timers.tick(300000);
+    // Another thread-less call with instructions, such as a visual writer, is no quick thinking call.
+    await call('Draw it.', { urgent: undefined, quick: undefined });
+    t.mock.timers.tick(299999);
+    assert.equal(runners()[0].child.exitCode, null, 'a quick call restarts the countdown');
     t.mock.timers.tick(1);
     assert.notEqual(runners()[0].child.exitCode, null, 'no runner process remains');
     assert.equal(text(await call('Explain "b".')), 'Authoritative original');

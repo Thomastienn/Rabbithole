@@ -169,7 +169,7 @@ export class Claude {
             emit({ type: 'status', status: 'interrupted' });
             return;
         }
-        if (!tree.thread && tree.instructions) this.runner.touch();
+        if (tree.quick) this.runner.touch();
         // A call the learner waits for takes the ready runner; background calls and a busy runner start their own process.
         const warm = tree.urgent && !toolsOn && !hasImages && !tree.thread && this.runner.take();
         // The CLI gives its environment effort precedence over --effort.

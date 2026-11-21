@@ -208,6 +208,7 @@ export async function suggest(
             model,
             effort: pinnedModel ? (tree.effort ?? null) : null,
             thread: null,
+            quick: true,
             instructions: INSTRUCTIONS + call.instructions,
             ...call.request,
         },
