@@ -8,7 +8,10 @@ export const APP_TOOLS = [SHOW_VISUAL, MAKE_VIDEO, START_DISCUSSION];
 export const isAppTool = (name) => APP_TOOLS.some((t) => t.name === name);
 
 // One reply's app calls, native or written as <tool_call> text.
-export function appCalls(ctx, { reply, showVisual, moveVisual, makeVideo, startDiscussion }) {
+export function appCalls(
+    ctx,
+    { conversation, reply, showVisual, moveVisual, makeVideo, startDiscussion },
+) {
     let ranCalls = 0,
         // The reply's markers so far; each drawn visual by name; the titles drawn in this reply.
         markers = [];
@@ -86,5 +89,18 @@ export function appCalls(ctx, { reply, showVisual, moveVisual, makeVideo, startD
                 visuals.set(name, moveVisual(artifact, at));
         }
     };
-    return { run, runText, place };
+    // The stripper removes every visual marker; one with no drawn visual is logged so the loss shows.
+    const dropped = (output) => {
+        const drawn = new Set(visuals.keys());
+        for (const m of output.markers ?? [])
+            if (m.kind === 'visual' && !drawn.delete(key(m.value)))
+                ctx.log(
+                    formatLog('warn', 'chat', 'visual marker dropped', {
+                        id: reply,
+                        conversation,
+                        cause: 'no matching show_visual call',
+                    }),
+                );
+    };
+    return { run, runText, place, dropped };
 }

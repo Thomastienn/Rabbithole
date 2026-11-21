@@ -15,7 +15,7 @@ const named = JSON.stringify({
     concepts: [{ name: 'Mutex', topics: ['Concurrency'] }],
 });
 
-test('a brief explanation is written once, shared, saved with usage and one weak observation, and never reaches the tutor', async (t) => {
+test('a brief explanation is written once, shared, saved with usage, counted once when opened, and never reaches the tutor', async (t) => {
     const store = new Store(
         join(mkdtempSync(join(tmpdir(), 'rabbithole-briefs-')), 'trees.sqlite'),
     );
@@ -79,6 +79,7 @@ test('a brief explanation is written once, shared, saved with usage and one weak
         text: passage.text,
     };
     const brief = (body = anchor) => post(`/${id}/brief`, { ...body, suggestion: true });
+    assert.match(PREFIX, /about two or three short sentences/);
     const mutex = () => store.graph().concepts.find((c) => c.name === 'Mutex');
     const briefEvents = () => store.usageEvents().events.filter((e) => e.task === 'brief');
     assert.equal(mutex().familiarity, 0.3);
@@ -181,6 +182,20 @@ test('a brief explanation is written once, shared, saved with usage and one weak
     await (await post(`/${id}/messages`, { text: 'And with two counters?' })).text();
     await app.settled();
     assert.doesNotMatch(JSON.stringify(tutor.at(-1)), /Een mutex|shared number/);
+
+    // A brief saved before anyone opens it records nothing; opening it serves it with no call and records once.
+    const next = store.tree(id).messages.at(-1);
+    const [later] = store.tree(id).suggestions.find((s) => s.message === next.id).passages;
+    const total = () => mutex().observations.reduce((a, b) => a + b, 0);
+    const before = total();
+    store.saveBrief({ ...later, message: next.id }, 'Saved ahead.');
+    assert.equal(total(), before);
+    const nextAnchor = { messageId: next.id, start: later.start, end: later.end, text: later.text };
+    const asksBefore = prompts.length;
+    for (const _ of [1, 2])
+        assert.equal((await (await brief(nextAnchor)).json()).explanation, 'Saved ahead.');
+    assert.equal(prompts.length, asksBefore);
+    assert.equal(total(), before + 1);
 });
 
 test('a suggestion opened while its reply streams gets its brief explanation at once', async (t) => {

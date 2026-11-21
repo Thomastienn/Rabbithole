@@ -156,25 +156,19 @@ export const knowledge = {
             .prepare('SELECT explanation FROM briefs WHERE message=? AND start=? AND end=?')
             .get(message, start, end)?.explanation;
     },
-    // Saved once per passage; a suggestion's concept gets one weak observation keyed by this brief explanation.
+    // Saved once per passage; never overwrites one already saved.
     saveBrief({ message, start, end, text, concept }, explanation) {
-        const at = Date.now();
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
-            const saved = this.db
-                .prepare('INSERT OR IGNORE INTO briefs VALUES (?,?,?,?,?,?,?)')
-                .run(message, start, end, text, concept ?? null, explanation, at).changes;
-            if (saved && concept)
-                this.db
-                    .prepare(
-                        "INSERT OR IGNORE INTO observations(concept,message,level,confidence,at) VALUES (?,?,2,'low',?)",
-                    )
-                    .run(this.conceptId(concept), `brief:${message}:${start}:${end}`, at);
-            this.db.exec('COMMIT');
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        this.db
+            .prepare('INSERT OR IGNORE INTO briefs VALUES (?,?,?,?,?,?,?)')
+            .run(message, start, end, text, concept ?? null, explanation, Date.now());
+    },
+    // Opening a suggestion's brief explanation is one weak observation of its concept, keyed by the passage so it counts once.
+    observeBrief({ message, start, end, concept }) {
+        this.db
+            .prepare(
+                "INSERT OR IGNORE INTO observations(concept,message,level,confidence,at) VALUES (?,?,2,'low',?)",
+            )
+            .run(this.conceptId(concept), `brief:${message}:${start}:${end}`, Date.now());
     },
     mergeConcepts(from, into) {
         const source = this.concept(from),
