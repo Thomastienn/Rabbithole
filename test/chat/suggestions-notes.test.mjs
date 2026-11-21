@@ -30,6 +30,7 @@ test('a stopped reply keeps its marks; a completed reply calls quick thinking on
         suggestions: true,
         suggesting: new Map(),
         neighbourhood: async () => (calls.push(['quick']), { concepts: [] }),
+        startBriefs: (...args) => calls.push(['briefs', ...args]),
     });
     const partial = notesOf('Use [[shared state]] and');
     noteSuggestions('c', 'r', 'interrupted', partial, 'Q', 'Use shared state and');
@@ -49,6 +50,7 @@ test('a stopped reply keeps its marks; a completed reply calls quick thinking on
         ['quick'],
         ['pending', 'c', 'r'],
         ['finish', 'c', 'r', [], null, null, []],
+        ['briefs', 'c', 'r'],
         ['quick'],
     ]);
 });

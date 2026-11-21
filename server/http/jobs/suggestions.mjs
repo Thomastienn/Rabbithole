@@ -58,6 +58,7 @@ export function suggestionJobs(ctx) {
                 selection,
                 result.groundwork,
             );
+            ctx.startBriefs(conversation, message);
         })()
             .catch((error) => {
                 if (!ctx.stopping && !marked)
@@ -83,8 +84,10 @@ export function suggestionJobs(ctx) {
             if (!store.pendingSuggestions(conversation, message)) return;
             const { passages, groundwork } = notes;
             store.finishSuggestions(conversation, message, passages, null, null, groundwork);
-            if (status === 'completed')
+            if (status === 'completed') {
+                ctx.startBriefs(conversation, message);
                 startSuggestions(conversation, message, question, answer, notes);
+            }
         } else if (status === 'completed')
             startSuggestions(conversation, message, question, answer);
     };
