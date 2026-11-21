@@ -80,25 +80,17 @@ export const profiles = {
     },
     // Refused for the last profile; deleting the active one activates the first remaining profile.
     deleteProfile(id) {
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        return this.transaction(() => {
             const next = this.db
                 .prepare('SELECT id FROM profiles WHERE id<>? ORDER BY rowid LIMIT 1')
                 .get(id);
-            if (!next) {
-                this.db.exec('ROLLBACK');
-                return false;
-            }
+            if (!next) return false;
             this.db
                 .prepare('UPDATE active_profile SET profile=? WHERE id=1 AND profile=?')
                 .run(next.id, id);
             this.db.prepare('DELETE FROM profiles WHERE id=?').run(id);
-            this.db.exec('COMMIT');
             return true;
-        } catch (e) {
-            this.db.exec('ROLLBACK');
-            throw e;
-        }
+        });
     },
     // Never checks model availability: an unavailable role fails visibly when used.
     activateProfile(id) {

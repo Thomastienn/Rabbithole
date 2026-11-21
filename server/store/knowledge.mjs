@@ -105,8 +105,7 @@ export const knowledge = {
     },
     // A conversation's explored concept is set once; a later name never replaces it.
     explore(conversation, name) {
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        this.transaction(() => {
             if (
                 this.db
                     .prepare('SELECT 1 FROM trees WHERE id=? AND concept IS NULL')
@@ -115,11 +114,7 @@ export const knowledge = {
                 this.db
                     .prepare('UPDATE trees SET concept=? WHERE id=?')
                     .run(this.conceptId(name), conversation);
-            this.db.exec('COMMIT');
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        });
     },
     evidence(concept, kind, source) {
         this.db
@@ -130,8 +125,7 @@ export const knowledge = {
     // Names resolve like reply concepts; an unknown name becomes a new concept with no topic.
     observe(message, verdicts) {
         const at = Date.now();
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        this.transaction(() => {
             this.db.prepare('DELETE FROM observations WHERE message=?').run(message);
             for (const v of verdicts) {
                 let concept = this.concept(v.concept)?.id;
@@ -145,11 +139,7 @@ export const knowledge = {
                     )
                     .run(concept, message, v.level, v.confidence, at);
             }
-            this.db.exec('COMMIT');
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        });
     },
     brief(message, start, end) {
         return this.db
@@ -176,8 +166,7 @@ export const knowledge = {
         if (!source || !target || source.id === target.id) return false;
         const a = source.id,
             b = target.id;
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        return this.transaction(() => {
             this.db
                 .prepare(
                     'INSERT OR IGNORE INTO concept_topics SELECT ?, topic FROM concept_topics WHERE concept=?',
@@ -225,12 +214,8 @@ export const knowledge = {
                 .prepare('INSERT INTO concept_aliases(name,concept) VALUES (?,?)')
                 .run(source.name, b);
             this.db.prepare('DELETE FROM concepts WHERE id=?').run(a);
-            this.db.exec('COMMIT');
             return true;
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        });
     },
     // Names resolve case-insensitively to existing rows; a link needs both ends in the graph after this reply's concepts are added.
     // Every concept in the reply was met there; the message id makes it count once per reply.
@@ -239,8 +224,7 @@ export const knowledge = {
             this.db.prepare(`INSERT OR IGNORE INTO ${table}(name) VALUES (?)`).run(name);
             return this.db.prepare(`SELECT id FROM ${table} WHERE name=?`).get(name).id;
         };
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        this.transaction(() => {
             for (const c of concepts) {
                 const concept = this.concept(c.name)?.id ?? id('concepts', c.name);
                 if (message) this.evidence(concept, 'met', message);
@@ -258,11 +242,7 @@ export const knowledge = {
                         .prepare('INSERT OR IGNORE INTO concept_links VALUES (?,?,?)')
                         .run(a, b, l.kind);
             }
-            this.db.exec('COMMIT');
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        });
     },
     // No selection: the tutor's own notes block, so no call is recorded and the reply shows no suggestions usage.
     finishSuggestions(conversation, message, passages, usage, selection, groundwork = []) {
