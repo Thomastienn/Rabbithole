@@ -109,3 +109,45 @@ test('a Claude reply with inline notes underlines at once and quick thinking nam
     assert.deepEqual(saved.suggestions.at(-1).groundwork, ['Plagiarism', 'Copyright']);
     assert.ok(env.store.graph().concepts.some((c) => c.name === 'Plagiarism'));
 });
+
+test('a completed reply without [[end]] starts its briefs once quick thinking has marked it', async () => {
+    const calls = [];
+    const store = {
+        tree: () => ({ provider: 'claude' }),
+        suggestionSettings: () => ({ enabled: true }),
+        pendingSuggestions: () => true,
+        finishSuggestions: (...args) => calls.push(['finish', ...args.slice(0, 3)]),
+        nextQuestions: () => {},
+        addGraph: () => {},
+        graph: () => ({ topics: [], concepts: [] }),
+        mentioned: () => ({}),
+    };
+    const quick = {
+        models: async () => [{ model: 'haiku' }],
+        generate: async (tree, text, emit) => {
+            emit({
+                type: 'item',
+                item: 'a',
+                text: JSON.stringify({ suggestions: [{ text: 'shared state', concept: 'State' }] }),
+            });
+            emit({ type: 'status', status: 'completed' });
+        },
+    };
+    const suggesting = new Map();
+    const { noteSuggestions } = suggestionJobs({
+        store,
+        suggestions: true,
+        suggesting,
+        neighbourhood: async () => ({ concepts: [] }),
+        pick: () => quick,
+        logged: (provider) => provider,
+        toolCapable: async () => false,
+        startBriefs: (...args) => calls.push(['briefs', ...args]),
+    });
+    noteSuggestions('c', 'r', 'completed', notesOf('Use shared state'), 'Q', 'Use shared state');
+    await suggesting.get('r').done;
+    assert.deepEqual(calls, [
+        ['finish', 'c', 'r', [{ start: 4, end: 16, text: 'shared state', concept: 'State' }]],
+        ['briefs', 'c', 'r'],
+    ]);
+});
