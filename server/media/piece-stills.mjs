@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { mkdir, writeFile, readFile, rm, lstat, realpath } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { FONTS } from './video-cut.mjs';
 import { stageCut } from './video-stage.mjs';
 import { withParts } from './video-pieces.mjs';
+import { sandboxOutput } from './video-sandbox.mjs';
 
 const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
 // Pieces colour only through roles; like the library view, each role borrows a house hue in order.
@@ -58,16 +59,10 @@ export async function renderPieceStills(piece, { dir, snapshot, signal }) {
             file: join(work, 'out', `${frame}.jpg`),
         }));
         await snapshot(work, stills, signal);
-        const out = await realpath(join(work, 'out'));
         const [still, still3d = null] = await Promise.all(
-            stills.map(async ({ frame, file }) => {
-                const stat = await lstat(file).catch(() => null);
-                if (
-                    !stat?.isFile() ||
-                    !stat.size ||
-                    stat.size > 2 * 1024 * 1024 ||
-                    (await realpath(file)) !== join(out, `${frame}.jpg`)
-                )
+            stills.map(async ({ file }) => {
+                const stat = await sandboxOutput(work, file);
+                if (!stat?.size || stat.size > 2 * 1024 * 1024)
                     throw new Error('Piece still is unreadable.');
                 return readFile(file);
             }),

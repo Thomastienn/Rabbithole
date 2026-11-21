@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readFile, lstat, realpath } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import {
@@ -19,7 +19,7 @@ import { unfenced, auditReport, auditFix } from './audit-answers.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from './manim-cut.mjs';
 import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL, MOTION_DESIGN_SKILL } from './skills.mjs';
 import { stageNarration } from './narration.mjs';
-import { withoutPaths } from './video-sandbox.mjs';
+import { withoutPaths, sandboxOutput } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
 
 export { auditReport, auditFix };
@@ -293,15 +293,9 @@ export async function writeCuts({
         );
         await snapshot(dir, stills, signal);
         signal.throwIfAborted();
-        const out = await realpath(join(dir, 'out'));
         for (const { file } of stills) {
-            const stat = await lstat(file).catch(() => null);
-            if (
-                !stat?.isFile() ||
-                !stat.size ||
-                stat.size > 2 * 1024 * 1024 ||
-                (await realpath(file)) !== join(out, file.slice(file.lastIndexOf('/') + 1))
-            )
+            const stat = await sandboxOutput(dir, file);
+            if (!stat?.size || stat.size > 2 * 1024 * 1024)
                 throw new Error('Video snapshot is unreadable.');
         }
         return stills.map(({ file }) => ({ path: file, type: 'image/jpeg' }));

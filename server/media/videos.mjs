@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { mkdir, realpath, lstat, open, rm, copyFile, cp, access } from 'node:fs/promises';
-import { join, basename } from 'node:path';
+import { mkdir, open, rm, copyFile, cp, access } from 'node:fs/promises';
+import { join } from 'node:path';
 import { edgeNarration } from './narration.mjs';
 import { libraryPieces, PLAN_INSTRUCTIONS, EXHIBITS_NOTE, CLIPS_NOTE } from './video-plan.mjs';
 import { fetchExhibit, videoMedia } from './exhibits.mjs';
@@ -12,7 +12,7 @@ import { planBuilder } from './plan-calls.mjs';
 
 export { playable };
 import { improvePiece } from './video-pieces.mjs';
-import { sandboxProcess, REPO } from './video-sandbox.mjs';
+import { sandboxProcess, sandboxOutput, REPO } from './video-sandbox.mjs';
 import { detectManim } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
 
@@ -72,10 +72,8 @@ export function sandboxSnapshot(workspace, stills, signal) {
 
 // Accept only the server-chosen file inside this attempt's private output, as a regular readable MP4.
 export async function validateOutput(workspace, output) {
-    const expected = join(await realpath(workspace), 'out', basename(output));
-    const stat = await lstat(output).catch(() => null);
-    if (!stat?.isFile() || (await realpath(output).catch(() => null)) !== expected)
-        throw new Error('Rendered video is outside its workspace.');
+    const stat = await sandboxOutput(workspace, output);
+    if (!stat) throw new Error('Rendered video is outside its workspace.');
     if (stat.size < 1024 || stat.size > MAX_MEDIA) throw new Error('Rendered video is unreadable.');
     const file = await open(output, 'r');
     try {
