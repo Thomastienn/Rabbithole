@@ -28,6 +28,13 @@ tests are never the check for a routine ticket.
 4. **Browser (E2E).** These are the smoke scripts in `scripts/verify/`, which drive a real
    Chromium. Run them only for release tickets, or when the acceptance names one.
 
+## Real models
+
+Tickets never call a real model: their tests use fake providers. Model quality (prompt wording,
+marker formats, tool shapes) is judged in planning sessions, where the agent benchmarks with
+the owner's real usage only when the owner asks, and the owner's approval of the results
+decides what a ticket ships.
+
 ## Layout
 
 Test files live in folders by area: `test/http`, `test/store`, `test/providers`,

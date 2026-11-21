@@ -4,7 +4,7 @@ Tutor replies embedded fenced JSON blocks for visuals, videos, discussions, the 
 
 ADR 0008 still holds that the chat model marks suggestions and next questions itself; only their delivery changes from a hidden block to a tool call.
 
-ADR 0016 later moved the verdict and notes out of the tutor's tool calls: the tutor marks its notes inline, and quick thinking writes the verdict. ADR 0017 places each visual by a marker in the text.
+ADR 0016 later moved the verdict and notes out of the tutor's tool calls: the tutor marks its notes inline, and quick thinking writes the verdict. ADR 0017 places each visual by a marker in the text. ADR 0018 moves visuals and discussions from tool calls to markers that carry their fields; videos stay tool calls.
 
 ## Considered Options
 
