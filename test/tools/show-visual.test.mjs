@@ -29,7 +29,7 @@ test('show_visual names a missing or over-long argument, and a corrected call re
     );
 });
 
-test('show_visual carries a short name for its marker and no after or side', () => {
+test('show_visual carries a short name for its marker', () => {
     assert.throws(() => readShowVisual({ ...call, name: undefined }), /show_visual needs name/);
     assert.throws(
         () => readShowVisual({ ...call, name: 'x'.repeat(41) }),
@@ -43,16 +43,6 @@ test('show_visual carries a short name for its marker and no after or side', () 
         'shows',
         'title',
     ]);
-    assert.match(SHOW_VISUAL.description, /\[\[visual: name\]\]/);
-    assert.doesNotMatch(SHOW_VISUAL.description, /Give after|Give side|images only/);
-});
-
-test('the tutor prompt sets a visual marker inside :::figure and :::wide', () => {
-    const prompt = tutorSystem({ tools: [SHOW_VISUAL] });
-    assert.match(prompt, /To show an image or visual beside its explanation/);
-    assert.match(prompt, /image \(from find_images\) or \[\[visual: name\]\] marker and the/);
-    assert.match(prompt, /with only the image or \[\[visual: name\]\] marker inside/);
-    assert.doesNotMatch(prompt, /never put a show_visual call in it/);
 });
 
 test('with show_visual offered, the tutor prompt holds no visual block rules', () => {

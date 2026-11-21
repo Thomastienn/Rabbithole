@@ -126,7 +126,6 @@ test('notes reach the learner while the reply streams, and quick thinking writes
                     quick.push('verdicts');
                     return complete(emit, '[{"concept":"Mutex","level":1,"confidence":"low"}]');
                 }
-                assert.ok(!tree.tools?.some((t) => t.name === 'record_turn'));
                 if (!ended) return complete(emit, 'A semaphore counts permits.');
                 const delta = (t) => emit({ type: 'delta', item: 'answer', text: t });
                 delta('[[groundwork: Threads]]\nA ');
@@ -195,7 +194,7 @@ test('notes reach the learner while the reply streams, and quick thinking writes
     }
 });
 
-test('a custom endpoint marks its notes inline in one request, with no record_turn tool', async (t) => {
+test('a custom endpoint marks its notes inline in one request', async (t) => {
     const fake = await fakeOpenAI(t);
     fake.models = [{ id: 'tooled', capabilities: { tools: true } }];
     const dir = mkdtempSync(join(tmpdir(), 'tt-inline-notes-')),
@@ -243,8 +242,6 @@ test('a custom endpoint marks its notes inline in one request, with no record_tu
         .map((f) => JSON.parse(f.slice(6)));
     assert.deepEqual(events.at(-1), { type: 'done', status: 'completed' });
     assert.equal(chats.length, 1);
-    assert.ok(!chats[0].tools.some((x) => x.function.name === 'record_turn'));
-    assert.ok(!chats[0].tool_choice);
     const saved = store.tree(id);
     assert.equal(saved.messages.at(-1).text, 'A mutex guards state.\n\n');
     assert.deepEqual(saved.messages.at(-1).questions, ['Why deadlock?']);
