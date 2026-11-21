@@ -180,7 +180,7 @@ export function renderMarkdown(
                 [Math.max(s, reveal!.start), Math.min(e, reveal!.end)],
                 className,
             );
-        // Wider passages first: they wrap the narrower ones and take the upper lanes of a shared underline.
+        // Wider passages first: they wrap the narrower ones, whose line paints over the wider one's.
         const covering = underlines
                 .filter((u) => s < u.end && e > u.start)
                 .sort((a, b) => b.end - b.start - (a.end - a.start)),
@@ -197,15 +197,10 @@ export function renderMarkdown(
                         {
                             ...(lane === lanes - 1 ? attrs : { key: s }),
                             ...props,
-                            className: [
-                                under,
-                                lanes > 1 && 'shared',
-                                lane === lanes - 1 && className,
-                            ]
+                            className: [under, lane === lanes - 1 && className]
                                 .filter(Boolean)
                                 .join(' '),
-                            style:
-                                lanes > 1 ? { ...style, '--lane': lane, '--lanes': lanes } : style,
+                            style,
                         },
                         inner,
                     );

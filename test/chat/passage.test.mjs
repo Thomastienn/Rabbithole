@@ -162,10 +162,6 @@ test('overlapping explored passages: each part opens its own chat, an overlap as
     assert.equal(pieces(0).length, 3);
     assert.equal(pieces(1).length, 1);
     assert.equal(pieces(1)[0].parentElement, pieces(0)[1]);
-    assert.deepEqual(
-        [...container.querySelectorAll('.shared')].map((u) => u.style.getPropertyValue('--lane')),
-        ['0', '1'],
-    );
     // Hovering the overlap lights both passages whole; leaving clears them.
     await act(async () =>
         pieces(1)[0].dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),

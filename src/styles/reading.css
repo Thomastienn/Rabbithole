@@ -386,11 +386,6 @@ mark {
 .reply-md .suggestion.explored:hover {
     text-decoration-color: var(--ink, var(--color-accent));
 }
-/* Overlapping explored passages share the 3px underline: one lane per passage, each in its family line, widest on top. */
-.reply-md .suggestion.explored.shared {
-    text-decoration-thickness: calc(3px / var(--lanes));
-    text-underline-offset: calc(5px + 3px * var(--lane) / var(--lanes));
-}
 /* The explored passages under the pointer, each lit whole; an overlap stacks both tints. */
 .reply-md .suggestion.lit {
     background-color: color-mix(in srgb, var(--rabbithole-selection) 50%, transparent);
