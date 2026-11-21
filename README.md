@@ -1,3 +1,5 @@
+<p align="center"><img src="public/logo.svg" alt="Rabbithole logo" width="96"></p>
+
 # Rabbithole
 
 A local learning workspace where every side question gets its own branch.
@@ -9,7 +11,7 @@ Windows warns on first run because the installers are unsigned. See [Desktop app
 
 Ask a question, highlight a passage you don't understand, and explore it in a child conversation. The original thread stays intact, and every conversation shows up as a box on a map you can pan, fold and come back to. Everything runs and saves on your computer.
 
-<!-- Demo video and screenshots go here. -->
+https://github.com/user-attachments/assets/bdd3add1-b358-472a-903a-9716c0718048
 
 ## Features
 
