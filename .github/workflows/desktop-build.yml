@@ -60,6 +60,8 @@ jobs:
           path: ~\AppData\Local\tauri
           key: tauri-tools-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: tauri-tools-${{ runner.os }}-
+      # Cargo's libgit2 checkout of the Codex sources exceeds Windows' 260-character path limit.
+      - run: git config --global core.longpaths true
       - run: npm ci
       - run: npm run desktop:build
       - uses: actions/upload-artifact@v4
