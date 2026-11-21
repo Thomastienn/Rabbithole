@@ -45,6 +45,7 @@ export function verdictJobs(ctx) {
                     model: quick.model,
                     effort: quick.effort,
                     thread: null,
+                    quick: true,
                     instructions:
                         'You judge what a learner understands. Never answer questions, request or generate media. Do not access files or execute code.' +
                         call.instructions,

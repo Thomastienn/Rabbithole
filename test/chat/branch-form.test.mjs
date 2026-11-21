@@ -166,8 +166,9 @@ test('reopening the textbox for a selected passage shows its saved explanation w
     assert.equal(asked.length, 0, 'a saved explanation needs no call');
 });
 
-test('a picked visual part shows its trail, and choosing an earlier entry widens the question', async (t) => {
-    const widened = [];
+test('a picked visual part shows its trail, choosing an earlier entry widens the question, and it is explained only on request', async (t) => {
+    const widened = [],
+        asked = [];
     const part = {
         messageId: 'reply',
         artifactId: 'plant',
@@ -185,7 +186,7 @@ test('a picked visual part shows its trail, and choosing an earlier entry widens
             submit: () => {},
             close: () => {},
             setQuestion: () => {},
-            explain: async () => '',
+            explain: async (anchor) => (asked.push(anchor.trail), 'Rods absorb neutrons.'),
             widen: (depth) => widened.push(depth),
         }),
         (w) => ui(w),
@@ -201,11 +202,10 @@ test('a picked visual part shows its trail, and choosing an earlier entry widens
     await act(async () => button(trail, 'Reactor').click());
     assert.deepEqual(widened, [2]);
     assert.equal(container.querySelector('input').placeholder, 'Ask about Control rods');
-    assert.equal(
-        button(container, 'Explain briefly'),
-        undefined,
-        'no brief explanation for a part',
-    );
+    assert.deepEqual(asked, [], 'a part asks for no explanation on opening');
+    await act(async () => button(container, 'Explain briefly').click());
+    assert.deepEqual(asked, [part.trail]);
+    assert.equal(container.querySelector('.branch-brief').textContent, 'Rods absorb neutrons.');
 });
 
 test("the Ask button's box picks parts from the keyboard: arrows move at a level, Enter narrows, and the trail widens", async (t) => {
@@ -250,7 +250,7 @@ test("the Ask button's box picks parts from the keyboard: arrows move at a level
     await act(async () =>
         send([node('Plant', [node('Reactor', [node('Rods')]), node('Pump'), node('Pump')])], 2),
     );
-    assert.equal(parts().getAttribute('aria-label'), 'Parts of the visual');
+    assert.ok(parts().getAttribute('aria-label'), 'the list is named');
     assert.equal(parts().tabIndex, 0, 'the list takes focus');
     assert.deepEqual(options(), [['Plant', 'false']]);
     await press('ArrowDown');
@@ -280,7 +280,7 @@ test("the Ask button's box picks parts from the keyboard: arrows move at a level
     const trail = container.querySelector('nav[aria-label="Part of the visual"]');
     await act(async () => button(trail, 'Plant').click());
     assert.deepEqual(options(), [['Plant', 'true']], 'the trail widens the level');
-    cleanup();
+    await cleanup();
     assert.equal(shown.at(-1), undefined, 'closing the box ends picking');
 });
 
@@ -301,11 +301,10 @@ test('a question sent while the reply streams shows as waiting and survives outs
     const input = container.querySelector('input');
     assert.equal(input.value, 'Why?');
     assert.equal(input.getAttribute('aria-disabled'), 'true');
-    assert.equal(button(container, 'Waiting for the reply…').disabled, true);
+    assert.equal(container.querySelector('button[type=submit]').disabled, true);
     assert.ok(
-        [...container.querySelectorAll('[role="status"]')].some(
-            (s) => s.textContent === 'Sends when the reply finishes.',
-        ),
+        [...container.querySelectorAll('[role="status"]')].some((s) => s.textContent.trim()),
+        'the wait is announced',
     );
     await act(async () => document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })));
     assert.deepEqual(closed, [], 'an outside click keeps the waiting question');

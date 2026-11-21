@@ -18,8 +18,8 @@
     border-radius: 0 0 var(--radius-container) var(--radius-container);
 }
 .video-inline[data-state='pending'] .video-stage:has(+ .video-cut-rows) {
-    border-end-start-radius: 0;
-    border-end-end-radius: 0;
+    border-end-start-radius: var(--radius-none);
+    border-end-end-radius: var(--radius-none);
 }
 .video-cut-rows li {
     display: flex;

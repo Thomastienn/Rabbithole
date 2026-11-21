@@ -6,9 +6,8 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Button } from '@astryxdesign/core/Button';
 import ArrowUpIcon from '@heroicons/react/24/outline/ArrowUpIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
-import type { Anchor } from './branch';
+import type { Anchor, BranchState } from './branch';
 import type { PartNode } from '../media/artifacts';
-import type { PartPicker } from '../media/VisualFrame';
 import { renderInline } from '../markdown/inlineMarkdown';
 
 export default function BranchForm({
@@ -23,13 +22,7 @@ export default function BranchForm({
     widen,
     pick,
 }: {
-    branch: {
-        parent: string;
-        anchor: Anchor;
-        question: string;
-        pending?: boolean;
-        picker?: PartPicker;
-    };
+    branch: BranchState;
     branching: boolean;
     active: boolean;
     submit: (e: React.FormEvent) => void;
@@ -45,11 +38,12 @@ export default function BranchForm({
     const pending = !!branch.pending;
     // A picked visual part, named by its trail.
     const part = 'trail' in anchor && anchor.trail ? anchor : undefined;
-    // Reply passages can have a brief explanation; only an unexplored suggestion asks on opening, a selection waits for its button.
+    // Reply passages and visual parts can have a brief explanation, discussion lines cannot; only an unexplored
+    // suggestion asks on opening, a selection or a part waits for its button. The text tells parts apart.
     const briefKey =
         !!explain &&
-        anchor.artifactId === undefined &&
-        JSON.stringify([branch.parent, anchor.messageId, anchor.start, anchor.end]);
+        (anchor.artifactId === undefined || 'label' in anchor) &&
+        JSON.stringify([branch.parent, anchor.messageId, anchor.start, anchor.end, anchor.text]);
     const [asked, setAsked] = useState<string>();
     const [brief, setBrief] = useState<{
         attempt: number;
@@ -235,7 +229,9 @@ export default function BranchForm({
                         {branch.anchor.text}
                     </Text>
                     <TextInput
-                        label={part ? 'Question about this part' : 'Question about this passage'}
+                        label={
+                            part ? 'Question about this visual part' : 'Question about this passage'
+                        }
                         isLabelHidden
                         placeholder={part ? `Ask about ${part.label}` : 'Ask about this passage'}
                         aria-describedby="branch-passage"

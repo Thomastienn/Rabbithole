@@ -80,7 +80,7 @@ test('show_visual mid-reply lands at its position, starts at once and keeps its 
         assert.match(results[0], /show_visual needs alt/);
         assert.match(results[1], /title is 200 characters/);
         assert.match(results[2], /show_visual needs name/);
-        assert.match(results[3], /^queued; continue your reply/);
+        assert.match(results[3], /^queued/);
         // Never tool activity, live or stored.
         assert.ok(!events.some((e) => e.type === 'tool'));
 

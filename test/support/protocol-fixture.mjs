@@ -188,6 +188,8 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                 send({ type: 'result', subtype: 'success', is_error: false, result: '' });
                 continue;
             }
+            // Runner messages start with the task's instructions, so the delay word may sit anywhere.
+            if (text.includes('slow suggestions')) await wait();
             context++;
             send({ type: 'system', subtype: 'init', session_id: `runner-${context}` });
             send({

@@ -341,6 +341,8 @@ export class Codex {
                     }, 300000);
                 };
                 idle();
+                // Set once a tool call finishes; only then does reasoning or a message begin a later model response.
+                let toolDone = false;
                 const listener = (message) => {
                     if (signal.aborted) return;
                     const p = message.params;
@@ -356,12 +358,14 @@ export class Codex {
                     }
                     if ((p.turnId && p.turnId !== turnId) || (p.turn?.id && p.turn.id !== turnId))
                         return;
-                    // Reasoning or a message after earlier items begins a later model response.
-                    if (
-                        message.method === 'item/started' &&
-                        ['reasoning', 'agentMessage'].includes(p.item?.type)
-                    )
+                    const said = ['userMessage', 'reasoning', 'agentMessage'].includes(
+                        p.item?.type,
+                    );
+                    if (message.method === 'item/completed' && p.item && !said) toolDone = true;
+                    if (message.method === 'item/started' && said && toolDone) {
+                        toolDone = false;
                         emit({ type: 'response' });
+                    }
                     if (message.method === 'item/agentMessage/delta')
                         emit({ type: 'delta', item: p.itemId, text: p.delta });
                     if (message.method === 'item/completed' && p.item?.type === 'agentMessage')

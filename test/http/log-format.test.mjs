@@ -121,7 +121,7 @@ test('a failed endpoint call logs its HTTP status, request id and request shape'
                         },
                     ],
                     tools: [{}],
-                    tool_choice: { type: 'function', function: { name: 'record_turn' } },
+                    tool_choice: { type: 'function', function: { name: 'mark_suggestions' } },
                 }),
             });
         },
@@ -140,7 +140,7 @@ test('a failed endpoint call logs its HTTP status, request id and request shape'
     );
     assert.match(
         logs[1],
-        / ERROR model failed .*status=400 requestId="req-1" request="messages=2 chars=16 images=1 tools=1 effort=none forced=record_turn"/,
+        / ERROR model failed .*status=400 requestId="req-1" request="messages=2 chars=16 images=1 tools=1 effort=none forced=mark_suggestions"/,
     );
     assert.doesNotMatch(logs.join('\n'), /PRIVATE_SYSTEM/);
 });
@@ -217,7 +217,7 @@ test('a failure cause keeps words that only app tool schemas contain', async () 
             throw new Error('Custom endpoint said: model PRIVATE_MODEL is missing.');
         },
     };
-    const tools = [{ name: 'record_turn', parameters: { required: ['to', 'text', 'name'] } }];
+    const tools = [{ name: 'mark_suggestions', parameters: { required: ['to', 'text', 'name'] } }];
     await assert.rejects(
         loggedProvider((line) => logs.push(line), provider, 'chat', 'call-id', {
             provider: 'openai',

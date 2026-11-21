@@ -1,9 +1,18 @@
 import type { Source } from '../map/TreeOverview.tsx';
 import type { Point } from '../map/canvas.ts';
 import type { Message } from './turn.ts';
+import type { PartPicker } from '../media/VisualFrame.tsx';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
 export type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
+// The open ask box; pending: the question was sent while its reply streams and waits for the reply to complete.
+export type BranchState = {
+    parent: string;
+    anchor: Anchor;
+    question: string;
+    picker?: PartPicker;
+    pending?: boolean;
+};
 export type Branch = {
     parent: string;
     messageId: string;

@@ -11,7 +11,7 @@ export const briefPrompt = (reply, term) => BRIEF + JSON.stringify({ reply, term
 export function briefJobs(ctx) {
     const { store, pick, metered, briefing } = ctx;
     const writeBrief = (conversation, reply, passage) => {
-        const key = JSON.stringify([passage.message, passage.start, passage.end]);
+        const key = JSON.stringify([passage.message, passage.start, passage.end, passage.text]);
         if (briefing.has(key)) return briefing.get(key).done;
         const running = { controller: new AbortController(), conversation };
         briefing.set(key, running);
@@ -29,8 +29,7 @@ export function briefJobs(ctx) {
                     model: quick.model,
                     effort: quick.effort,
                     thread: null,
-                    // A learner waits for this call, so it takes the ready runner first.
-                    urgent: true,
+                    quick: true,
                     instructions:
                         'You explain terms briefly. Never request or generate media. Do not use tools, access files or execute code.',
                 },
@@ -52,7 +51,8 @@ export function briefJobs(ctx) {
             if (status !== 'completed' || !explanation)
                 throw new Error('Quick thinking returned no explanation.');
             if (ctx.stopping || !store.tree(conversation)) throw new Error('Conversation closed.');
-            store.saveBrief(passage, explanation);
+            // shortcut: a visual part's brief is not saved (briefs are keyed by reply offsets); add a key if reopening must skip the call.
+            if (passage.start !== undefined) store.saveBrief(passage, explanation);
             return explanation;
         })()
             .catch((error) => {

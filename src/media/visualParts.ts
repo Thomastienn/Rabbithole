@@ -2,6 +2,7 @@
 // objects) and reports the part under the pointer and a click on it to the host, which validates every message.
 // While the host picks from the keyboard, it also reports the whole part tree.
 import { Box3, Raycaster, Vector2, Vector3 } from 'three';
+import { PART_DEPTH } from './artifacts';
 const CONTROLS =
     'button, input, select, textarea, label, summary, a, [role=button], [role=slider], [contenteditable]';
 const POINTER = [
@@ -38,7 +39,7 @@ function trail(target: EventTarget | null, root: Element) {
         if (control(e)) return;
         if (nameOf(e)) parts.unshift(e);
     }
-    return parts.length ? parts.slice(-3) : undefined;
+    return parts.length ? parts.slice(-PART_DEPTH) : undefined;
 }
 // A part in the tree the host picks from with the keyboard, down to the third level.
 type Node = { name: string; box: Box; parts: Node[] };
@@ -52,12 +53,16 @@ const domParts = (e: Element, depth = 1): Node[] =>
         if (control(c)) return [];
         if (!nameOf(c)) return domParts(c, depth);
         const box = c.getBoundingClientRect();
-        return depth <= 3 && isDrawn(c, box)
+        return depth <= PART_DEPTH && isDrawn(c, box)
             ? [{ name: nameOf(c)!, box, parts: domParts(c, depth + 1) }]
             : [];
     });
 
 type Box = { left: number; top: number; right: number; bottom: number };
+const stepOf = (steps: Element | null) => {
+    const step = steps?.getAttribute('data-step');
+    return step ? Number(step) : null;
+};
 // The three.js shapes used here; the module itself is untyped (src/vite-env.d.ts).
 type Object3D = {
     name: string;
@@ -65,12 +70,19 @@ type Object3D = {
     parent: Object3D | null;
     children: Object3D[];
     userData: Record<string, unknown>;
+    traverseVisible(visit: (o: Object3D) => void): void;
 };
 type Camera = object;
 type Scene = { scene: Object3D; camera: Camera };
 const raycaster = new Raycaster();
 const shown = (o: Object3D | null): boolean => !o || (o.visible && shown(o.parent));
 const flagged = (o: Object3D) => o.userData.part === true && !!o.name.trim();
+// The flagged objects holding o, o included, outermost first and at most three.
+function objectTrail(o: Object3D | null, scene: Object3D) {
+    const parts: Object3D[] = [];
+    for (; o && o !== scene; o = o.parent) if (flagged(o)) parts.unshift(o);
+    return parts.slice(-PART_DEPTH);
+}
 
 // An object's on-screen box, clamped to the canvas.
 function screenBox(o: Object3D, camera: Camera, canvas: Box) {
@@ -112,7 +124,7 @@ const sceneParts = (o: Object3D, camera: Camera, canvas: Box, depth = 1): Node[]
         .flatMap((c) =>
             !flagged(c)
                 ? sceneParts(c, camera, canvas, depth)
-                : depth <= 3
+                : depth <= PART_DEPTH
                   ? [
                         {
                             name: c.name.trim(),
@@ -133,10 +145,11 @@ function sceneTrail({ scene, camera }: Scene, canvas: Box, x: number, y: number)
         camera,
     );
     const hit = raycaster.intersectObject(scene).find((h: { object: Object3D }) => shown(h.object));
-    const parts: { name: string; box: Box }[] = [];
-    for (let o = hit?.object ?? null; o && o !== scene; o = o.parent)
-        if (flagged(o)) parts.unshift({ name: o.name.trim(), box: screenBox(o, camera, canvas) });
-    return parts.length ? parts.slice(-3) : undefined;
+    const parts = objectTrail(hit?.object ?? null, scene).map((o) => ({
+        name: o.name.trim(),
+        box: screenBox(o, camera, canvas),
+    }));
+    return parts.length ? parts : undefined;
 }
 
 // Returns drew, which the sandbox's three.js renderer calls after each frame it draws on a canvas,
@@ -197,8 +210,7 @@ export function watchParts(
         if (Math.hypot(event.clientX - down.x, event.clientY - down.y) > 4) return;
         const parts = describe(event.target, event.clientX, event.clientY);
         if (!parts) return;
-        const step = (event.target as Element).closest('.tt-steps')?.getAttribute('data-step');
-        post({ type: 'pick', parts, step: step ? Number(step) : null });
+        post({ type: 'pick', parts, step: stepOf((event.target as Element).closest('.tt-steps')) });
     });
 
     // Branched parts the host marks: the first drawn part with each trail, re-measured whenever the visual changes.
@@ -209,8 +221,8 @@ export function watchParts(
         // The part tree, posted on each change while the host picks from the keyboard.
         watching = false,
         lastTree = '';
-    const bounds = (e: Element) => {
-        const { name: _, ...box } = clip({ name: '', box: e.getBoundingClientRect() });
+    const bounds = (r: Box) => {
+        const { name: _, ...box } = clip({ name: '', box: r });
         return box;
     };
     const measure = () => {
@@ -221,25 +233,34 @@ export function watchParts(
             wanted = undefined;
         }
         if (watching) postTree();
-        const drawn = new Map<string, Element>();
+        const drawn = new Map<string, ReturnType<typeof bounds>>();
+        const add = (names: string[], box: ReturnType<typeof bounds>) => {
+            const key = JSON.stringify(names);
+            if (marked.includes(key) && !drawn.has(key) && box.width && box.height)
+                drawn.set(key, box);
+        };
         for (const e of root.querySelectorAll('[data-part]')) {
-            const names: string[] = [];
-            for (let p: Element | null = e; p && p !== root; p = p.parentElement)
-                if (nameOf(p)) names.unshift(nameOf(p)!);
-            const key = JSON.stringify(names.slice(-3)),
-                box = bounds(e);
-            if (
-                marked.includes(key) &&
-                !drawn.has(key) &&
-                box.width &&
-                box.height &&
-                e.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) !== false
-            )
-                drawn.set(key, e);
+            const parts = nameOf(e) && trail(e, root),
+                r = e.getBoundingClientRect();
+            if (parts && isDrawn(e, r))
+                add(
+                    parts.map((p) => nameOf(p)!),
+                    bounds(r),
+                );
         }
+        // A scene's flagged objects, as a click on each would name them.
+        for (const [canvas, { scene, camera }] of scenes)
+            if (canvas.isConnected)
+                scene.traverseVisible((o) => {
+                    if (flagged(o))
+                        add(
+                            objectTrail(o, scene).map((p) => p.name.trim()),
+                            bounds(screenBox(o, camera, canvas.getBoundingClientRect())),
+                        );
+                });
         const marks = marked
                 .filter((key) => drawn.has(key))
-                .map((key) => ({ trail: JSON.parse(key), ...bounds(drawn.get(key)!) })),
+                .map((key) => ({ trail: JSON.parse(key), ...drawn.get(key)! })),
             key = JSON.stringify(marks);
         if (key === lastMarks) return;
         lastMarks = key;
@@ -255,11 +276,11 @@ export function watchParts(
                         : [],
                 ),
             ].map(out),
-            step = document.querySelector('.tt-steps')?.getAttribute('data-step'),
+            step = stepOf(document.querySelector('.tt-steps')),
             key = JSON.stringify([parts, step]);
         if (key === lastTree) return;
         lastTree = key;
-        post({ type: 'tree', parts, step: step ? Number(step) : null });
+        post({ type: 'tree', parts, step });
     };
     const schedule = () => {
         if (queued || (!marked.length && wanted === undefined && !watching)) return;
@@ -273,11 +294,11 @@ export function watchParts(
     });
     for (const type of ['resize', 'transitionend', 'animationend'])
         view.addEventListener(type, schedule);
-    // Each frame re-reads the hovered object, so its rectangle follows the camera.
+    // Each frame re-reads the hovered object, the marks and the tree, so their rectangles follow the camera.
     function drew(canvas: Element, scene: Object3D, camera: Camera) {
         scenes.set(canvas, { scene, camera });
         if (pointer?.target === canvas) hover(describe(canvas, pointer.x, pointer.y));
-        if (watching) schedule();
+        schedule();
     }
     return Object.assign(drew, {
         mark(trails: string[][]) {

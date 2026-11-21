@@ -84,6 +84,7 @@ test('Claude CLI: fresh session receives saved history once, resume does not, no
         assert.equal(first.options.env.ANTHROPIC_API_KEY, undefined);
         assert.deepEqual(saved, [['s-1', 'sonnet']]);
         assert.deepEqual(events, [
+            { type: 'response' },
             { type: 'delta', item: 'm1', text: 'Hel' },
             { type: 'item', item: 'm1', text: 'Hello' },
             { type: 'status', status: 'completed' },

@@ -87,9 +87,11 @@ const partName = (v: unknown) =>
     !!v.trim() &&
     v.length <= 60 &&
     !/[\u0000-\u001f\u007f-\u009f]/.test(v);
+// Visual parts nest at most this deep; trails and the part tree stop there.
+export const PART_DEPTH = 3;
 // A part trail: one to three names, outermost first.
 export function partTrail(v: unknown): string[] | undefined {
-    if (Array.isArray(v) && v.length >= 1 && v.length <= 3 && v.every(partName))
+    if (Array.isArray(v) && v.length >= 1 && v.length <= PART_DEPTH && v.every(partName))
         return v.map((name: string) => name.trim());
 }
 const step = (v: unknown) => v === null || (Number.isInteger(v) && (v as number) >= 0);
@@ -123,7 +125,8 @@ function partMarks(v: unknown, frame: Frame) {
 function partTree(v: unknown, frame: Frame) {
     let count = 0;
     const level = (v: unknown, depth: number): PartNode[] | undefined => {
-        if (!Array.isArray(v) || (depth > 3 && v.length) || (count += v.length) > 200) return;
+        if (!Array.isArray(v) || (depth > PART_DEPTH && v.length) || (count += v.length) > 200)
+            return;
         const nodes = v.map((b) => {
             const parts =
                 inside(b, 'height,name,parts,width,x,y', frame) &&

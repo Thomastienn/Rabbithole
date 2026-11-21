@@ -210,7 +210,7 @@ test('clearing settings interrupts in-flight generations; timeout releases resou
         ),
         /stopped responding/,
     );
-    assert.deepEqual(events, [{ type: 'status', status: 'failed' }]);
+    assert.deepEqual(events, [{ type: 'response' }, { type: 'status', status: 'failed' }]);
 });
 
 test('a saved video retry fails cleanly when its selected endpoint has been cleared', async (t) => {

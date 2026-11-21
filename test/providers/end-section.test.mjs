@@ -236,6 +236,8 @@ test('a Codex run the server ends at [[end]] interrupts its turn and completes w
                 ['item/started', { item: { type: 'agentMessage', id: 'a1' } }],
                 ['item/agentMessage/delta', { itemId: 'a1', delta: 'Cut.\n[[end]]' }],
                 ['thread/tokenUsage/updated', { tokenUsage: { last: tokens, total: tokens } }],
+                // Reasoning inside the same model response, before its tool call.
+                ['item/started', { item: { type: 'reasoning', id: 'r1' } }],
                 ['item/started', { item: { type: 'webSearch', id: 'w1', query: 'halving' } }],
                 ['item/completed', { item: { type: 'webSearch', id: 'w1', query: 'halving' } }],
                 ['item/started', { item: { type: 'reasoning', id: 'r2' } }],
@@ -264,6 +266,10 @@ test('a Codex run the server ends at [[end]] interrupts its turn and completes w
         codex.close();
     }
     assert.equal(text, 'Cut.\n[[end]]');
+    assert.ok(
+        events.some((e) => e.type === 'tool' && e.tool.id === 'w1'),
+        "the response's tool call still runs",
+    );
     assert.ok(requests.includes('turn/interrupt'));
     assert.deepEqual(
         events.filter((e) => e.type === 'status').map((e) => e.status),

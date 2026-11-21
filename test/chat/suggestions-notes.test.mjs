@@ -7,6 +7,8 @@ import { diagramReply } from '../../server/media/diagrams.mjs';
 import { markerNotes } from '../../server/media/markers.mjs';
 import { suggestionJobs } from '../../server/http/jobs/suggestions.mjs';
 import { start } from '../support/suggestion-kit.mjs';
+// The conversation data a quick thinking call sends after its task line.
+const data = (call) => JSON.parse(call.input.slice(call.input.lastIndexOf('\n') + 1));
 
 const notesOf = (raw, final) => {
     const out = diagramReply(raw, final);
@@ -70,7 +72,11 @@ test('a Claude reply with inline notes underlines at once and quick thinking nam
     ]);
     // One quick thinking call names the concept of each marked suggestion and fills the graph.
     assert.equal(env.suggestionCalls().length, 1);
-    assert.match(env.suggestionCalls()[0].input, /^The tutor already marked/);
+    assert.deepEqual(
+        data(env.suggestionCalls()[0]).suggestions,
+        ['original'],
+        'it gets the marked terms',
+    );
     assert.equal(saved.suggestions[0].status, 'ready');
     assert.deepEqual(saved.suggestions[0].passages, [
         { start: 15, end: 23, text: 'original', concept: 'Originality' },
@@ -88,7 +94,11 @@ test('a Claude reply with inline notes underlines at once and quick thinking nam
     await env.settled();
     saved = await env.get(`/api/trees/${tree.id}`);
     assert.equal(env.suggestionCalls().length, 2);
-    assert.match(env.suggestionCalls()[1].input, /^Mark every term/);
+    assert.equal(
+        data(env.suggestionCalls()[1]).suggestions,
+        undefined,
+        'it marks the terms itself',
+    );
     // Quick thinking stands in for the end section's next questions too.
     assert.deepEqual(saved.messages.at(-1).questions, ['What counts as plagiarism?']);
     assert.equal(saved.suggestions.at(-1).status, 'ready');

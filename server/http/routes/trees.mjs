@@ -296,14 +296,20 @@ export async function treeRoutes(req, res, url, ctx, body) {
         }
         return json(res, 202, {});
     }
-    // A brief explanation of a tutor reply passage: saved one at once, else one quick thinking call, returned whole.
+    // A brief explanation of a tutor reply passage or a visual part: saved one at once, else one quick thinking call, returned whole.
     // It runs beside the reply, so a suggestion opened while the reply streams is explained from its text so far.
     if (action === 'brief') {
         const anchor = anchorOf(tree, body, true);
-        if (!anchor || anchor.error || anchor.artifactId || anchor.groundwork)
+        if (
+            !anchor ||
+            anchor.error ||
+            (anchor.artifactId && anchor.label === undefined) ||
+            anchor.groundwork
+        )
             return json(res, 400, { error: 'Select a passage of a completed tutor reply.' });
         const { messageId: message, start, end, text } = anchor;
-        const saved = store.brief(message, start, end);
+        // Briefs are saved by reply offsets, which a visual part has none of.
+        const saved = !anchor.artifactId && store.brief(message, start, end);
         if (saved) return json(res, 200, { explanation: saved });
         // Only the reply's own suggestion supplies a concept; a selected passage carries none.
         const concept = tree.suggestions

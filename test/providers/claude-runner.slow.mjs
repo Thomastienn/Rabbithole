@@ -15,7 +15,7 @@ test('Claude quick thinking runner: no start-up wait, clean context per call, li
             events = [],
             started = performance.now();
         await claude.generate(
-            { model, effort: 'low', thread: null, urgent: true, instructions: 'Answer tersely.' },
+            { model, effort: 'low', thread: null, quick: true, instructions: 'Answer tersely.' },
             text,
             (e) => {
                 events.push(e);
