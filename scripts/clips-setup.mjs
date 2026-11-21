@@ -1,12 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
 import { detectClips } from '../server/media/clips.mjs';
-import { projectRoot } from '../server/media/manim.mjs';
+import { toolRoot } from '../server/media/manim.mjs';
 
 // Clip exhibits are optional: yt-dlp joins Manim's .venv; a failure warns and videos simply have no clips.
 export async function ensureClips({
     run,
-    root = projectRoot,
+    root = toolRoot,
     probe = spawnSync,
     platform = process.platform,
     log = console.log,
@@ -17,15 +16,7 @@ export async function ensureClips({
     if (/ffmpeg/.test(clips.error)) return (warn(clips.error), clips);
     log('Installing yt-dlp in .venv with uv for clip exhibits. Internet access may be needed.');
     try {
-        if (
-            await run('uv', [
-                'pip',
-                'install',
-                '--python',
-                join(root, '.venv/bin/python'),
-                'yt-dlp',
-            ])
-        )
+        if (await run('uv', ['pip', 'install', '--python', clips.python, 'yt-dlp']))
             throw new Error('uv pip install yt-dlp failed');
     } catch (error) {
         warn(

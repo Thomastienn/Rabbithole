@@ -113,7 +113,7 @@ async function run({
         },
         clips: () =>
             clips
-                ? { ready: true, ytDlp: 'yt-dlp', ffmpeg: 'ffmpeg' }
+                ? { ready: true, python: 'python', ffmpeg: 'ffmpeg' }
                 : { ready: false, error: 'no yt-dlp' },
     }).then(
         () => null,

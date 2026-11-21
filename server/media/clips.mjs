@@ -6,7 +6,7 @@ import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { projectRoot } from './manim.mjs';
+import { pythonIn, toolRoot } from './manim.mjs';
 
 export const MAX_CLIP_SECONDS = 15;
 const MAX_CLIP_BYTES = 40 * 1024 * 1024;
@@ -16,25 +16,25 @@ export const ffmpegInstall = (platform = process.platform) =>
 
 // A fresh probe per video plan, so a later install or a broken environment shows up without a restart.
 export function detectClips({
-    root = projectRoot,
+    root = toolRoot,
     probe = spawnSync,
     platform = process.platform,
 } = {}) {
-    const ytDlp = join(root, '.venv', 'bin', 'yt-dlp');
+    const python = pythonIn(join(root, '.venv'), platform);
     const ok = (command, args) => probe(command, args, { timeout: 15000 }).status === 0;
     if (!ok('ffmpeg', ['-version']))
         return {
             ready: false,
-            ytDlp,
+            python,
             error: `Clip exhibits unavailable: ffmpeg is missing. Run: ${ffmpegInstall(platform)}, then npm start; videos have no clips until then.`,
         };
-    if (!ok(ytDlp, ['--version']))
+    if (!ok(python, ['-m', 'yt_dlp', '--version']))
         return {
             ready: false,
-            ytDlp,
+            python,
             error: 'Clip exhibits unavailable: yt-dlp is not installed in .venv. Run npm start to install it; videos have no clips until then.',
         };
-    return { ready: true, ytDlp, ffmpeg: 'ffmpeg' };
+    return { ready: true, python, ffmpeg: 'ffmpeg' };
 }
 
 // Downloads seconds start..end of a video page and returns the trimmed MP4 bytes; any failure throws, including
@@ -47,8 +47,10 @@ export async function downloadClip(
     try {
         const options = { signal, timeout: 300000, maxBuffer: 1024 * 1024 };
         await run(
-            clips.ytDlp,
+            clips.python,
             [
+                '-m',
+                'yt_dlp',
                 '--ignore-config',
                 '--no-playlist',
                 '--quiet',
