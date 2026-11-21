@@ -2,7 +2,8 @@ import http from 'node:http';
 import https from 'node:https';
 import { lookup as dnsLookup } from 'node:dns';
 import { BlockList, isIP } from 'node:net';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
@@ -169,7 +170,15 @@ export async function readPage(
         let saved = [];
         if (save_as !== undefined) {
             await mkdir(workspace, { recursive: true, mode: 0o700 });
-            await writeFile(join(workspace, save_as), bytes);
+            // Sandboxed Python may leave a link under this name: write a fresh file, then rename it over the entry.
+            const part = join(workspace, `.${randomUUID()}.part`);
+            try {
+                await writeFile(part, bytes, { flag: 'wx' });
+                await rename(part, join(workspace, save_as));
+            } catch (error) {
+                await rm(part, { force: true });
+                throw error;
+            }
             saved = [`Saved ${bytes.length} bytes as ${save_as} in the Python workspace.`];
             // Binary or very large saves skip text extraction; Python reads the file instead.
             if (!textual || bytes.length > MAX_BYTES)

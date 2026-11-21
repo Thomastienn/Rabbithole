@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, get } from 'node:http';
 import { isIP } from 'node:net';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { lstatSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readPage, publicAddress, PAGE_SIZE } from '../../server/tools/readPage.mjs';
@@ -357,4 +357,24 @@ test('read_page and find_images record resources of the learning tree and tell t
             kind: 'image',
         },
     ]);
+});
+
+test('read_page save_as replaces a link left in the workspace instead of writing through it', async (t) => {
+    const { site, options } = await pageServer(t);
+    const root = mkdtempSync(join(tmpdir(), 'rabbithole-link-'));
+    const workspace = join(root, 'python', 'c');
+    const target = join(root, 'bashrc');
+    writeFileSync(target, 'original');
+    await readPage({ url: `${site}/data.csv`, save_as: 'old.csv' }, { ...options, workspace });
+    symlinkSync(target, join(workspace, 'data.csv'));
+
+    await readPage({ url: `${site}/data.csv`, save_as: 'data.csv' }, { ...options, workspace });
+    assert.equal(readFileSync(target, 'utf8'), 'original');
+    assert.ok(lstatSync(join(workspace, 'data.csv')).isFile());
+    assert.equal(readFileSync(join(workspace, 'data.csv'), 'utf8'), 'x,y\n1,2\n');
+
+    // An ordinary file of the same name is still replaced.
+    writeFileSync(join(workspace, 'old.csv'), 'stale');
+    await readPage({ url: `${site}/data.csv`, save_as: 'old.csv' }, { ...options, workspace });
+    assert.equal(readFileSync(join(workspace, 'old.csv'), 'utf8'), 'x,y\n1,2\n');
 });
