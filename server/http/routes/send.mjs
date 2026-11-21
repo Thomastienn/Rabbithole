@@ -268,12 +268,12 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         if (status === 'completed' || status === 'failed')
             store.finishModel(id, status === 'completed');
         // The verdict judges the learner message, so a retried reply replaces that message's observations.
-        if ((status === 'completed' || output.verdicts) && store.tree(id)) {
+        if ((status === 'completed' || output.verdicts) && store.live(id)) {
             ctx.verdicting.get(user)?.controller.abort();
             store.observe(user, output.verdicts ?? []);
         }
         // No readable block: the quick thinking model judges the learner message in the background.
-        if (status === 'completed' && !output.verdicts && text.trim() && store.tree(id))
+        if (status === 'completed' && !output.verdicts && text.trim() && store.live(id))
             ctx.startVerdicts(id, user, body.text, text);
         if (notes.questions.length) store.nextQuestions(reply, notes.questions);
         ctx.noteSuggestions(id, reply, status, notes, body.text, text);
@@ -423,7 +423,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                 if (event.type === 'status') status = event.status;
                 // App tools are machinery, not tool activity.
                 if (event.type === 'tool' && !isAppTool(event.tool.name)) {
-                    if (store.tree(id)) store.toolCall(id, reply, event.tool);
+                    if (store.live(id)) store.toolCall(id, reply, event.tool);
                     send({ type: 'tool', tool: event.tool });
                 }
                 if (event.type === 'usage')

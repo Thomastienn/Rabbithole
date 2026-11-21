@@ -61,7 +61,7 @@ export function replyArtifacts(
     });
     // Legacy diagrams retain their completed-reply policy.
     const prepareArtifacts = (output, final = false) => {
-        if (!store.tree(id)) return;
+        if (!store.live(id)) return;
         for (const [index, request] of (output.requests ?? []).entries()) {
             if (request.kind === 'discussion') {
                 let artifact = artifacts.get(index);
@@ -180,7 +180,7 @@ export function replyArtifacts(
         [...artifacts.values()].filter((a) => ['visual', 'video', 'discussion'].includes(a.kind));
     // A video stands alone in its reply: a plain error lets the tutor carry on without the extra media.
     const besideVideo = (name) => {
-        if (!store.tree(id)) throw new Error('This conversation was deleted.');
+        if (!store.live(id)) throw new Error('This conversation was deleted.');
         if (media().some((a) => a.kind === 'video'))
             throw new Error(`${name} cannot join a video: a video stands alone in its reply.`);
     };
