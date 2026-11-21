@@ -70,7 +70,7 @@ function Figure(props: FigureProps) {
     });
 }
 
-// Media beside its explanation; a show_visual side uses the same figure as :::figure.
+// Media beside its explanation; a visual's side uses the same figure as :::figure.
 export const figure = (
     key: string,
     right: boolean,

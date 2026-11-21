@@ -1,26 +1,21 @@
-import { SHOW_VISUAL, readShowVisual } from '../tools/showVisual.mjs';
 import { MAKE_VIDEO, readMakeVideo } from '../tools/makeVideo.mjs';
 import { START_DISCUSSION, readStartDiscussion } from '../tools/startDiscussion.mjs';
+import { readVisualMarker } from '../media/markers.mjs';
 import { formatLog, errorCause, privateValues } from '../log.mjs';
 
 // App tools the server runs itself for the tutor; never learner-toggled tutor tools or tool activity.
-export const APP_TOOLS = [SHOW_VISUAL, MAKE_VIDEO, START_DISCUSSION];
+// Visuals come from markers, not a tool (ADR 0018).
+export const APP_TOOLS = [MAKE_VIDEO, START_DISCUSSION];
 export const isAppTool = (name) => APP_TOOLS.some((t) => t.name === name);
 
-// One reply's app calls, native or written as <tool_call> text.
-export function appCalls(
-    ctx,
-    { conversation, reply, showVisual, moveVisual, makeVideo, startDiscussion },
-) {
-    let ranCalls = 0,
-        // The reply's markers so far; each drawn visual by name; the titles drawn in this reply.
-        markers = [];
-    const visuals = new Map(),
+// One reply's app calls, native or written as <tool_call> text, and its visual markers.
+export function appCalls(ctx, { conversation, reply, showVisual, makeVideo, startDiscussion }) {
+    let ranCalls = 0;
+    // How many visual markers of each value were read; the titles drawn in this reply.
+    const placed = new Map(),
         titles = new Set();
-    // Names and titles match ignoring case and whitespace.
+    // Titles match ignoring case and whitespace.
     const key = (text) => text.toLowerCase().replace(/\s+/g, '');
-    const markerAt = (name) =>
-        markers.find((m) => m.kind === 'visual' && key(m.value) === name)?.position;
     // Every refused call is logged with its reason, its input values redacted.
     const refused = (name, input, error) =>
         ctx.log(
@@ -39,19 +34,6 @@ export function appCalls(
         }
     };
     const runCall = (name, input, position, replySoFar) => {
-        // A show_visual call queues its visual at its marker, or at the call until the marker arrives (ADR 0017).
-        if (name === SHOW_VISUAL.name) {
-            const { name: label, ...request } = readShowVisual(input, replySoFar);
-            // A repeat answer may call it again; the same title is never drawn twice in one reply.
-            if (titles.has(key(request.title))) {
-                refused(name, input, new Error('A visual with this title was already shown.'));
-                return 'already shown; continue your reply without repeating it.';
-            }
-            visuals.set(key(label), showVisual(request, markerAt(key(label)) ?? position));
-            titles.add(key(request.title));
-            // A bare "queued" read as the end of the reply to Claude, which then skipped the rest of its answer.
-            return 'queued; continue your reply where you stopped, without repeating any text.';
-        }
         if (name === MAKE_VIDEO.name) {
             makeVideo(readMakeVideo(input), position, replySoFar);
             return 'queued';
@@ -80,27 +62,36 @@ export function appCalls(
                 }
         }
     };
-    // Each visual moves to its marker once the marker streams in.
+    // Marker names and fields are model text, so only the cause is logged.
+    const dropped = (cause) =>
+        ctx.log(
+            formatLog('warn', 'chat', 'visual marker dropped', { id: reply, conversation, cause }),
+        );
+    // Each visual marker starts its visual as soon as it closes, at its place (ADR 0018); one that cannot be drawn is dropped and logged.
     const place = (output) => {
-        markers = output.markers ?? [];
-        for (const [name, artifact] of visuals) {
-            const at = markerAt(name);
-            if (at !== undefined && at !== artifact.position)
-                visuals.set(name, moveVisual(artifact, at));
+        // Counted per value, not by index: a marker can leave the list when later text turns it into code.
+        const seen = new Map();
+        for (const m of output.markers ?? []) {
+            if (m.kind !== 'visual') continue;
+            const n = (seen.get(m.value) ?? 0) + 1;
+            seen.set(m.value, n);
+            if (n <= (placed.get(m.value) ?? 0)) continue;
+            placed.set(m.value, n);
+            const request =
+                m.closed === false
+                    ? { cause: 'not closed by the end of its line' }
+                    : readVisualMarker(m.value, output.text.slice(0, m.position));
+            if (request.cause) dropped(request.cause);
+            // A repeat answer may ask again; the same title is never drawn twice in one reply.
+            else if (titles.has(key(request.title))) dropped('title already shown in this reply');
+            else
+                try {
+                    showVisual(request, m.position);
+                    titles.add(key(request.title));
+                } catch (error) {
+                    dropped(errorCause(error));
+                }
         }
     };
-    // The stripper removes every visual marker; one with no drawn visual is logged so the loss shows.
-    const dropped = (output) => {
-        const drawn = new Set(visuals.keys());
-        for (const m of output.markers ?? [])
-            if (m.kind === 'visual' && !drawn.delete(key(m.value)))
-                ctx.log(
-                    formatLog('warn', 'chat', 'visual marker dropped', {
-                        id: reply,
-                        conversation,
-                        cause: 'no matching show_visual call',
-                    }),
-                );
-    };
-    return { run, runText, place, dropped };
+    return { run, runText, place };
 }

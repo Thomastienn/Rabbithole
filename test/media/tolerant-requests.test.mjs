@@ -43,9 +43,9 @@ test('broken colon and layout forms become the request they meant', () => {
     // A colon block inside a figure leaves the figure's own closing line.
     const inside = diagramReply(`:::figure\nWords.\n:::rabbithole-visual ${json}\n:::\nAfter.`);
     assert.equal(inside.text, ':::figure\nWords.\n:::\nAfter.');
-    // show_visual arguments in a broken block run as that call.
+    // Old show_visual arguments in a broken block are hidden and run no call.
     const call = diagramReply(`:::wide\n${JSON.stringify(args)}\n:::`, true);
-    assert.deepEqual(call.calls, [{ name: 'show_visual', input: args, position: 7 }]);
+    assert.deepEqual(call.calls, []);
     assert.equal(call.text, ':::wide\n:::');
 });
 

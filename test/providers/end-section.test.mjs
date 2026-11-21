@@ -17,14 +17,9 @@ import { observeStore, until } from '../support/events.mjs';
 
 const SVG =
     '<svg viewBox="0 0 10 10" role="img" aria-label="Dot"><circle cx="5" cy="5" r="2"/></svg>';
-const call = {
-    title: 'Halving',
-    shows: 'A list cut in half',
-    alt: 'A list split at its midpoint.',
-    name: 'halving',
-};
 
-test('a custom endpoint reply ends at [[end]]: its call still runs and no further request answers again', async (t) => {
+test('a custom endpoint reply ends at [[end]]: its visual and call still run and no further request answers again', async (t) => {
+    const logs = [];
     const fake = await fakeOpenAI(t);
     fake.models = [{ id: 'tooled', capabilities: { tools: true } }];
     const dir = mkdtempSync(join(tmpdir(), 'tt-end-section-')),
@@ -36,7 +31,7 @@ test('a custom endpoint reply ends at [[end]]: its call still runs and no furthe
         providers: {},
         defaultProvider: 'claude',
         auth: { status: () => ({ connected: false }) },
-        log: () => {},
+        log: (line) => logs.push(line),
     });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
     t.after(async () => {
@@ -64,14 +59,14 @@ test('a custom endpoint reply ends at [[end]]: its call still runs and no furthe
     fake.reply = async (req, res, body) => {
         if (body.messages[0].content.startsWith('You create one self-contained visual'))
             return streamReply(res, [SVG]);
-        if (!body.tools?.some((tool) => tool.function.name === 'show_visual'))
+        if (!body.tools?.some((tool) => tool.function.name === 'make_video'))
             return streamReply(res, ['[]']);
         tutor.push(body);
         if (tutor.length > 1) return streamReply(res, ['Cut. Then search one half.\n[[end]]']);
         return streamToolCalls(
             res,
-            [{ name: 'show_visual', input: call }],
-            'Cut. [[visual: halving]]\n[[next: Why halve?]]\n[[end]]\nCut again.',
+            [{ name: 'make_video', input: { topic: 'Halving' } }],
+            'Cut. [[visual: halving | shows: A list cut in half]]\n[[next: Why halve?]]\n[[end]]\nCut again.',
             'tool_calls',
             { prompt_tokens: 40, completion_tokens: 9 },
         );
@@ -92,6 +87,8 @@ test('a custom endpoint reply ends at [[end]]: its call still runs and no furthe
     assert.equal(saved.artifacts.length, 1);
     assert.equal(saved.artifacts[0].position, 'Cut. '.length);
     await until(() => store.tree(id).artifacts[0]?.status === 'ready');
+    // The call ran: beside the visual its video is refused.
+    assert.ok(logs.some((l) => /tool="make_video" cause="make_video stands alone/.test(l)));
     assert.deepEqual(
         store
             .usageEvents()

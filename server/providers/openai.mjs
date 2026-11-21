@@ -445,7 +445,7 @@ class Endpoint {
                         function: { name: c.name, arguments: c.arguments },
                     })),
                 });
-                // Text before the call is on screen before the tool runs, so show_visual lands after it.
+                // Text before the call is on screen before the tool runs, so make_video lands after it.
                 output('', true);
                 answered = true;
                 for (const c of round) {

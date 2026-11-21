@@ -17,20 +17,11 @@ export function jsonEnd(raw, start) {
 // Text inside an open :::figure or :::wide layout, where bare request JSON stands for a visual.
 export const inMediaLayout = (text) =>
     ['figure', 'wide'].includes([...text.matchAll(/^[ \t]*:{3,}[ \t]*([\w-]*)/gm)].at(-1)?.[1]);
-// show_visual arguments (alt, no description) written as a block become that call.
-export const visualCall = (json) => {
-    try {
-        const task = JSON.parse(json);
-        if (typeof task?.alt === 'string' && task.description === undefined)
-            return { name: 'show_visual', arguments: task };
-    } catch {}
-    return null;
-};
 // A Hermes-style <tool_call>{"name", "arguments"}</tool_call>; arguments may arrive as a JSON string.
 export function readCall(request) {
-    let call = request.call;
+    let call;
     try {
-        call ??= JSON.parse(request.json);
+        call = JSON.parse(request.json);
         if (typeof call?.arguments === 'string')
             call = { ...call, arguments: JSON.parse(call.arguments) };
     } catch {

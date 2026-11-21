@@ -1,7 +1,8 @@
 import { parse } from '../../src/markdown/markdownText.ts';
 
 // A closed marker, an unclosed one at the end of its line or of the text, or a lone [ that may start one.
-const MARKER = /\[\[([^[\]\r\n]*)(\]\]|\]?$|(?=\r?\n))|\[$/g;
+// A visual marker's fields may hold single brackets, so a stray one cannot leave its check answer as text.
+const MARKER = /\[\[(\s*visual\s*:(?:[^\]\r\n]|\](?!\]))*|[^[\]\r\n]*)(\]\]|\]?$|(?=\r?\n))|\[$/gi;
 const KIND = /^\s*([a-z]+(?: [a-z]+)*)\s*:(.*)$/i;
 
 // Code and math keep [[ as written; the reply renderer's own parse finds them.
@@ -16,7 +17,8 @@ const literal = (text) => {
 };
 
 // The streaming marker stripper (ADR 0016, 0017): [[kind: value]] leaves the text and [[words]] keeps its words.
-// While streaming, one still arriving at the end is held back; an unclosed one at the end of its line stays as plain text.
+// While streaming, one still arriving at the end is held back; an unclosed one at the end of its line stays as plain text,
+// except a visual marker, which is removed whole and recorded with closed: false (ADR 0018).
 // at(p) maps a position in text to the stripped text; marker positions are already mapped.
 export function stripMarkers(text, final = false) {
     const found = [...text.matchAll(MARKER)];
@@ -47,7 +49,10 @@ export function stripMarkers(text, final = false) {
                 start,
             });
         } else if (end === text.length && !final) cuts.push([start, end]);
-        else if (whole !== '[')
+        else if (KIND.exec(body)?.[1].toLowerCase() === 'visual') {
+            cuts.push([start, end]);
+            markers.push({ kind: 'visual', value: '', closed: false, start });
+        } else if (whole !== '[')
             cuts.push([start, start + 2], ...(whole.endsWith(']') ? [[end - 1, end]] : []));
     }
     let out = '',
@@ -109,4 +114,36 @@ export function markerNotes(text, markers, hasMedia = false) {
         } else if (m.kind === 'end') notes.ended = true;
     }
     return notes;
+}
+
+// A visual marker's fields (ADR 0018): name first, then key: value parts split by |.
+const VISUAL_LIMITS = { name: 40, title: 120, shows: 280, alt: 280, check: 600 };
+// The writer reads the reply so far as context; a resource bound, not a rule the tutor sees.
+const VISUAL_CONTEXT = 6000;
+const field = (text, limit) =>
+    text
+        .replace(/[\u0000-\u001f\u007f]/g, '')
+        .trim()
+        .slice(0, limit)
+        .trim();
+
+// The visual writer's request, repaired rather than refused; { cause } when it cannot be drawn.
+export function readVisualMarker(value, replySoFar = '') {
+    const [name, ...parts] = value.split('|');
+    const fields = { name: field(name, VISUAL_LIMITS.name) };
+    for (const part of parts) {
+        const colon = part.indexOf(':'),
+            key = part.slice(0, colon).trim().toLowerCase();
+        if (colon > 0 && Object.hasOwn(VISUAL_LIMITS, key) && key !== 'name')
+            fields[key] ||= field(part.slice(colon + 1), VISUAL_LIMITS[key]);
+    }
+    if (!fields.shows) return { cause: 'no shows' };
+    const context = replySoFar.trim().slice(-VISUAL_CONTEXT);
+    return {
+        title: fields.title || fields.name || fields.shows.slice(0, VISUAL_LIMITS.title).trim(),
+        shows: fields.shows,
+        alt: fields.alt || fields.shows,
+        ...(fields.check && { check_answer: fields.check }),
+        ...(context && { context }),
+    };
 }
