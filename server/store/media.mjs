@@ -54,12 +54,6 @@ export const media = {
             .run(error ? 'failed' : 'ready', error ? null : source, error, conversation, id);
         return this.artifact(conversation, id);
     },
-    moveArtifact(conversation, id, position) {
-        this.db
-            .prepare('UPDATE artifacts SET position=? WHERE conversation=? AND id=?')
-            .run(position, conversation, id);
-        return this.artifact(conversation, id);
-    },
     visualInput(conversation, id, input) {
         return (
             this.db

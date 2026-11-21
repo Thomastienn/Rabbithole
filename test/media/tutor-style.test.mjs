@@ -115,18 +115,20 @@ test('the default tutor style ends with the readability paragraph after the unch
     assert.doesNotMatch(readability, /\d/);
 });
 
-test('the tool-path tutor prompt before learner data is at most half its pre-tool-call size and keeps its core rules', async () => {
+test('the tool-path tutor prompt before learner data is no larger than before visual markers and keeps its core rules', async () => {
     const { APP_TOOLS } = await import('../../server/http/app-calls.mjs');
     const { NEIGHBOURHOOD_RULE } = await import('../../server/neighbourhood.mjs');
-    // tutorSystem({ tools: [update_memory_note, find_images] }) at 8475eed^, before epic Rabbithole-tcl.
-    const BEFORE = 20265;
     const tools = [...APP_TOOLS, { name: 'update_memory_note' }, { name: 'find_images' }];
     const native = tutorSystem({ tools });
     const definitions = JSON.stringify(
         APP_TOOLS.map(({ name, description, parameters }) => ({ name, description, parameters })),
     );
     const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
-    for (const prompt of [native, text]) assert.ok(prompt.length <= BEFORE / 2, `${prompt.length}`);
+    // The visual marker rules replaced the show_visual tool (ADR 0018), so they count against the
+    // tool-path total at 3b6b9d0: that prompt plus its app tool definitions.
+    const MARKER_BEFORE = 9987 + 6121;
+    for (const prompt of [native, text])
+        assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     for (const part of [
         'Math: write every formula',
         'Reply layouts: there are eleven',

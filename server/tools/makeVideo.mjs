@@ -7,8 +7,8 @@ export const MAKE_VIDEO = {
     name: 'make_video',
     description:
         'Start a narrated video only when you are sure the learner wants one, asked in any wording or language; never for an ordinary explanation. When the learner only hints at a video, or still does not follow after your explanation, do not start one: offer it instead as a [[video offer: question]] next question, as a last resort. ' +
-        'A video stands alone: in a reply with make_video, call no show_visual or start_discussion and make no other video. ' +
-        'Another model plans and makes the video from the topic and this conversation; never write video code yourself. The result is "queued": tell the learner in a sentence or two that the video is on its way.',
+        'A video stands alone: in a reply with make_video, write no visual marker, call no start_discussion and make no other video. ' +
+        'Another model plans and makes the video from the topic and this conversation; never write video code yourself. Once you start it, tell the learner in a sentence or two that the video is on its way.',
     parameters: {
         type: 'object',
         properties: {

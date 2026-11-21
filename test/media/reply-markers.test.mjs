@@ -30,11 +30,28 @@ test('a marker split across stream chunks never shows', () => {
 });
 
 test('an unclosed marker at the end of its line stays as plain text without its brackets', () => {
-    assert.equal(diagramReply('See [[visual: x\nMore.').text, 'See visual: x\nMore.');
-    assert.deepEqual(diagramReply('See [[visual: x\nMore.').markers, []);
+    assert.equal(diagramReply('See [[fission\nMore.').text, 'See fission\nMore.');
+    assert.deepEqual(diagramReply('See [[fission\nMore.').markers, []);
     // At the end of the reply it waits while streaming and stays as text once the reply ends.
     assert.equal(diagramReply('See [[fission').text, 'See ');
     assert.equal(diagramReply('See [[fission', true).text, 'See fission');
+});
+
+test('an unclosed visual marker is removed whole, so none of its check shows', () => {
+    const raw =
+        'See [[visual: x | shows: S | check: secret [1] answer\nMore. [[Visual: y | check: tail';
+    const done = diagramReply(raw, true);
+    assert.equal(done.text, 'See \nMore. ');
+    assert.deepEqual(done.markers, [
+        { kind: 'visual', value: '', closed: false, position: 4 },
+        { kind: 'visual', value: '', closed: false, position: 11 },
+    ]);
+    for (let i = 1; i <= raw.length; i++)
+        assert.doesNotMatch(diagramReply(raw.slice(0, i)).text, /secret|answer|tail|\[/);
+    // A single bracket inside a closed visual marker stays inside it.
+    const closed = diagramReply('A [[visual: x | shows: f [n] | check: no]] B', true);
+    assert.equal(closed.text, 'A  B');
+    assert.equal(closed.markers[0].value, 'x | shows: f [n] | check: no');
 });
 
 test('[[ inside code or math stays as written', () => {

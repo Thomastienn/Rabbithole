@@ -10,7 +10,6 @@ import { stripMarkers } from './markers.mjs';
 import {
     jsonEnd,
     inMediaLayout,
-    visualCall,
     readCall,
     readVerdicts,
     VERDICT_SHAPE,
@@ -55,7 +54,7 @@ export const TUTOR_SKILLS =
     '\n\n' +
     HUMANIZER_SKILL +
     '\n\nTutor style (follow it where it differs from the skills above):\n';
-// With the app tools offered, their descriptions carry the visual, check-yourself, video and discussion rules (ADR 0013).
+// With the app tools offered, visuals are visual markers (ADR 0018); the video and discussion tool descriptions carry their rules (ADR 0013).
 const cut = (text, from, to) => {
     const start = text.indexOf(from),
         end = text.indexOf(to, start);
@@ -67,28 +66,33 @@ const [beforeVisuals, afterVisuals] = cut(
     'Visualize structures',
     'Do not write video code yourself.',
 );
+const VISUAL_MARKER_RULE =
+    'Show a visual for structures, processes, quantities, comparisons and spatial ideas that land better seen than read; keep short factual answers and casual turns text-only; always show one when the learner asks for a visual. ' +
+    'Place it where the visual belongs in the explanation, as early as that is; never collect visuals at the end. Use one visual per idea; for a complex idea, use several small visuals in order. ' +
+    'A visual is a section of your reply that the learner reads in place, so let your text carry what the visual cannot, and keep technical detail and precise terms in your text. ' +
+    'To show a visual, write one visual marker on its own line exactly where the visual goes: [[visual: name | title: short title | shows: what it shows | alt: text alternative | check: hidden answer]]. ' +
+    'name is a short slug such as fission-chain, at most 40 characters. title is the finished visual\'s short title, at most 120. shows says exactly what the visual shows, at most 280, such as "Artemis I to IV with year and status, then longer-term goals". alt is the text alternative, at most 280: say in words what the visual shows; for a check, only the starting state and the prediction question. Leave check out unless the visual is a check. ' +
+    'Keep the whole marker on one line, keep [, ], | and line breaks out of its fields, and write math in words inside it. ' +
+    'Another model draws the visual from the marker and your reply so far; never write visual code yourself. The learner never sees the marker. Put the marker inside :::wide for a full-width visual, or inside :::figure to set the visual beside its explanation. Ready visuals appear in later history only as artifact id, title and description. ' +
+    'Request a video with make_video and a discussion with start_discussion; never write a fenced media block.';
 const [beforeCheck, afterCheck] = cut(
-    beforeVisuals +
-        'Request each visual with the show_visual tool where it belongs in your reply, a video with make_video and a discussion with start_discussion; never write a fenced media block.' +
-        afterVisuals,
+    beforeVisuals + VISUAL_MARKER_RULE + afterVisuals,
     'Check yourself:',
     'unless a check is requested in their intent.',
 );
 export const TOOL_VISUAL_RULES = (
     beforeCheck +
-    'Check yourself: offer at most one optional predict-then-reveal check per reply, through show_visual with check_answer.' +
+    'Check yourself: at most once per reply, give a visual marker a check field to make a predict-then-reveal check when predicting the next step or an outcome would help the learner test an idea, after enough context to reason about it. The check holds the prediction question, the correct outcome and a short reason, at most 600 characters; it stays hidden until the learner reveals it. Honor requests for a check and requests to skip quizzes; never quiz on short factual answers, casual turns or when the learner wants a direct explanation; never require an answer, grade the learner or hold back the explanation. Keep title, alt and your text free of the hidden answer.' +
     afterCheck
 )
-    .replaceAll('rabbithole-visual block', 'show_visual call')
-    // A native call cannot sit between two lines of text; its visual marker can (ADR 0017).
-    .replace('the image or show_visual call inside', 'the image or [[visual: name]] marker inside')
+    .replaceAll('rabbithole-visual block', 'visual marker')
     .replace(
         'To show an image beside its explanation, put that section between a line :::figure and a line :::, with the image (from find_images) and',
-        'To show an image or visual beside its explanation, put that section between a line :::figure and a line :::, with the image (from find_images) or [[visual: name]] marker and',
+        'To show an image or visual beside its explanation, put that section between a line :::figure and a line :::, with the image (from find_images) or visual marker and',
     );
 // A model without native tool calling writes Hermes-style calls as text; no result comes back.
 const textToolsRule = (tools) =>
-    'You cannot call tools natively. Call each tool below by writing <tool_call>{"name": "tool name", "arguments": {...}}</tool_call> in your reply exactly where the call belongs, with the arguments as one JSON object. The app runs the call and hides it from the learner. No result comes back: treat it as "queued" and continue your reply right after it. Call no other tools, and do not access files or execute code. Tools (name, description and JSON Schema parameters): ' +
+    'You cannot call tools natively. Call each tool below by writing <tool_call>{"name": "tool name", "arguments": {...}}</tool_call> in your reply exactly where the call belongs, with the arguments as one JSON object. The app runs the call and hides it from the learner. No result comes back; continue your reply right after it. Call no other tools, and do not access files or execute code. Tools (name, description and JSON Schema parameters): ' +
     JSON.stringify(
         tools.map(({ name, description, parameters }) => ({ name, description, parameters })),
     ) +
@@ -98,7 +102,7 @@ export const tutorSystem = (tree) =>
     // Fixed text first (rules, then skills) so provider prompt caching covers it; per-learner and per-call data follow.
     (tree.instructions ??
         (tree.tools?.length || tree.nativeTools?.length
-            ? (tree.tools?.some((t) => t.name === 'show_visual')
+            ? (tree.tools?.some((t) => t.name === 'make_video')
                   ? TOOL_VISUAL_RULES
                   : TUTOR_RULES
               ).replace(
@@ -112,9 +116,7 @@ export const tutorSystem = (tree) =>
                 )
               : TUTOR_RULES) +
             // With the app tools offered, quick thinking writes the verdict (ADR 0016).
-            ([...(tree.tools ?? []), ...(tree.textTools ?? [])].some(
-                (t) => t.name === 'show_visual',
-            )
+            ([...(tree.tools ?? []), ...(tree.textTools ?? [])].some((t) => t.name === 'make_video')
                 ? ''
                 : VERDICT_RULE + DISCUSSION_RULE) +
             NOTES_RULE +
@@ -209,12 +211,10 @@ export function diagramReply(raw, final = false) {
         }
         text = before;
         const json = raw.slice(start, end ?? raw.length);
-        const call = kind === 'visual' && end !== undefined ? visualCall(json) : null;
         // position: where the block was removed in the stored text; earlier text before it is already final.
         requests.push({
-            kind: call ? 'call' : kind === 'diagram' ? 'mermaid' : kind,
+            kind: kind === 'diagram' ? 'mermaid' : kind,
             json,
-            ...(call && { call }),
             closed: end !== undefined,
             extra: match[4]?.trim() ?? '',
             position: text.length,

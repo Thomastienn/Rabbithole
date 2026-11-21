@@ -5,7 +5,6 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv-provider.js';
 import { runTool } from '../providers/chatStream.mjs';
-import { SHOW_VISUAL } from './showVisual.mjs';
 import { MAKE_VIDEO } from './makeVideo.mjs';
 import { QUICK_TOOLS } from './quickTools.mjs';
 import { START_DISCUSSION } from './startDiscussion.mjs';
@@ -51,9 +50,7 @@ export function toolMcp() {
             const input = params.arguments ?? {};
             // App tools validate themselves so their result names the argument or entry.
             if (
-                ![SHOW_VISUAL, MAKE_VIDEO, START_DISCUSSION].some(
-                    (t) => t.name === definition.name,
-                ) &&
+                ![MAKE_VIDEO, START_DISCUSSION].some((t) => t.name === definition.name) &&
                 !QUICK_TOOLS.includes(definition.name) &&
                 !validator.getValidator(definition.parameters)(input).valid
             )

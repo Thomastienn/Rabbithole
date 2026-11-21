@@ -54,8 +54,9 @@ Responses API support is outside this adapter.
 A model uses tools when its saved tool flag says so (set by the learner or a
 probe), else when the catalogue reports `capabilities.tools`, else after a
 probe on first use: one small non-streamed request offering a `ping` tool.
-Such a model gets the learner's tutor tools and the app tools (`show_visual`,
-`make_video`, `start_discussion`) as `tools` in each request.
+Such a model gets the learner's tutor tools and the app tools (`make_video`,
+`start_discussion`) as `tools` in each request; visuals come from
+`[[visual: …]]` markers in the reply text, not a tool.
 A model without tool calling gets the app tools in its instructions instead
 and writes each call as `<tool_call>{...}</tool_call>` text, which the server
 runs and hides; no result goes back.

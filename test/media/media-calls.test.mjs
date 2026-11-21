@@ -60,18 +60,14 @@ async function callAll(tree, emit, signal, calls) {
     return results;
 }
 
-const visual = {
-    title: 'Orbit',
-    shows: 'Earth circling the Sun',
-    alt: 'Earth circles the Sun.',
-    name: 'orbit',
-};
+const visual = '\n[[visual: orbit | title: Orbit | shows: Earth circling the Sun]]\n';
 
 test('make_video plans from the conversation; other media beside it gets a plain error', async () => {
     const plans = [],
         logs = [];
     let calls,
         results,
+        lead = 'Sure.',
         offer = '';
     const env = await open(
         {
@@ -80,7 +76,7 @@ test('make_video plans from the conversation; other media beside it gets a plain
                     if (tree.instructions.startsWith('You plan')) plans.push(JSON.parse(text));
                     return complete(emit, videoResponse(tree));
                 }
-                emit({ type: 'item', item: 'a', text: 'Sure.' });
+                emit({ type: 'item', item: 'a', text: lead });
                 results = await callAll(tree, emit, signal, calls);
                 complete(emit, 'On its way.' + offer);
             },
@@ -92,15 +88,14 @@ test('make_video plans from the conversation; other media beside it gets a plain
         calls = [
             ['make_video', { topic: '' }],
             ['make_video', { topic: 'How Earth orbits the Sun' }],
-            ['show_visual', visual],
             ['make_video', { topic: 'Again' }],
         ];
+        offer = visual;
         const ask = 'Make a video of how Earth orbits the Sun.';
         await (await env.post(`/api/trees/${tree.id}/messages`, { text: ask })).text();
         assert.match(results[0], /make_video needs topic/);
         assert.equal(results[1], 'queued');
-        assert.match(results[2], /show_visual cannot join a video/);
-        assert.match(results[3], /make_video cannot join a video/);
+        assert.match(results[2], /make_video cannot join a video/);
         const [video, ...rest] = env.store.tree(tree.id).artifacts;
         assert.equal(rest.length, 0);
         assert.equal(video.kind, 'video');
@@ -113,25 +108,30 @@ test('make_video plans from the conversation; other media beside it gets a plain
         // Each refusal is a warn line with tool, reply id and reason, never the input values.
         const reply = env.store.tree(tree.id).messages.at(-1).id;
         const refusals = logs.filter((l) => / WARN chat app tool call refused /.test(l));
-        assert.equal(refusals.length, 3);
+        assert.equal(refusals.length, 2);
         assert.match(
             refusals[0],
             new RegExp(`id="${reply}" tool="make_video" cause="make_video needs topic`),
         );
-        assert.match(refusals[1], /tool="show_visual" cause="show_visual cannot join a video/);
-        assert.ok(!refusals.some((l) => /Orbit|Again|Earth circl/.test(l)));
+        // A visual marker beside the video is dropped and logged.
+        assert.ok(
+            logs.some((l) => /visual marker dropped .*cause="A visual cannot join a video/.test(l)),
+        );
+        assert.ok(!logs.some((l) => /Orbit|Again|Earth circl/.test(l)));
 
         // A visual first: the video is refused, and so is a video offer beside it.
-        calls = [
-            ['show_visual', visual],
-            ['make_video', { topic: 'Orbits' }],
-        ];
+        calls = [['make_video', { topic: 'Orbits' }]];
+        lead = 'Sure.' + visual;
         offer = '\n[[video offer: Can you make a video of an orbit?]]\n[[end]]';
         const other = env.store.create('Mixed', 'codex');
         await (await env.post(`/api/trees/${other.id}/messages`, { text: ask })).text();
-        assert.match(results[0], /^queued; continue your reply/);
-        assert.match(results[1], /make_video stands alone/);
+        assert.match(results[0], /make_video stands alone/);
         assert.equal(env.store.tree(other.id).messages.at(-1).questions, undefined);
+        assert.deepEqual(
+            env.store.tree(other.id).artifacts.map((a) => a.kind),
+            ['visual'],
+        );
+        lead = 'Sure.';
         offer = '';
         // The tutor judges the ask: no trigger words and other languages start a video too.
         for (const text of [

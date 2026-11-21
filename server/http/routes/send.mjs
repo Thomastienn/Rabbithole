@@ -157,30 +157,22 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     const heartbeat = setInterval(() => {
         if (!res.destroyed) res.write(': keepalive\n\n');
     }, 15000);
-    const {
-        artifacts,
-        prepareArtifacts,
-        showVisual,
-        moveVisual,
-        makeVideo,
-        startDiscussion,
-        hasMedia,
-    } = replyArtifacts(ctx, {
-        id,
-        tree,
-        user,
-        reply,
-        body,
-        send,
-        controller,
-        isFinished: () => finished,
-        getStatus: () => status,
-    });
+    const { artifacts, prepareArtifacts, showVisual, makeVideo, startDiscussion, hasMedia } =
+        replyArtifacts(ctx, {
+            id,
+            tree,
+            user,
+            reply,
+            body,
+            send,
+            controller,
+            isFinished: () => finished,
+            getStatus: () => status,
+        });
     const calls = appCalls(ctx, {
         conversation: id,
         reply,
         showVisual,
-        moveVisual,
         makeVideo,
         startDiscussion,
     });
@@ -221,7 +213,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             send({ type: 'text', text });
         }
         noted(output);
-        calls.dropped(output);
+        calls.place(output);
         if (controller.signal.aborted && !ctx.stopping) {
             store.cancelVisuals(id, reply);
             for (const artifact of artifacts.values())
@@ -362,7 +354,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         const capable = await ctx.toolCapable(tree);
         const settings = store.tutorTools();
         const nativeTools = nativeToolsFor({ provider: tree.provider, capable, settings });
-        // show_visual is always offered to a tool-capable model, after the learner's tutor tools.
+        // The app tools are always offered to a tool-capable model, after the learner's tutor tools.
         const tools = [
             ...(await ctx.tools.tools({
                 provider: tree.provider,
