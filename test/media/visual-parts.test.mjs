@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { visualMessage } from '../../src/media/artifacts.ts';
 import { renderVisual } from '../../src/media/visualMarkup.ts';
@@ -329,7 +330,6 @@ test('host accepts only a bounded part tree inside the frame, three levels deep'
 });
 
 test('the visual writer prompt groups parts by named object and regroups them at each step', async () => {
-    const { readFile } = await import('node:fs/promises');
     const prompt = (
         await readFile(new URL('../../server/media/prompts/visual.md', import.meta.url), 'utf8')
     ).replace(/\s+/g, ' ');
