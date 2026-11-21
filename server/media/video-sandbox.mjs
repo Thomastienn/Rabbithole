@@ -1,9 +1,10 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { lstat, realpath } from 'node:fs/promises';
-import { join, basename, resolve } from 'node:path';
+import { join, basename, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { videoBrowser } from './manim.mjs';
 
 export const REPO = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
 
@@ -31,6 +32,10 @@ export const SANDBOX = (workspace) => [
     '--ro-bind',
     join(REPO, 'server', 'media', 'video-render.mjs'),
     join(REPO, 'server', 'media', 'video-render.mjs'),
+    // The video browser, which a tool root keeps outside node_modules; no network means no download in the sandbox.
+    ...(existsSync(videoBrowser())
+        ? ['--ro-bind', dirname(videoBrowser()), dirname(videoBrowser())]
+        : []),
     '--bind',
     workspace,
     workspace,

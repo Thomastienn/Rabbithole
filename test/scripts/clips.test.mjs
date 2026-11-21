@@ -5,12 +5,12 @@ import { detectClips } from '../../server/media/clips.mjs';
 import { ensureClips } from '../../scripts/clips-setup.mjs';
 
 const root = '/project with spaces';
-const ytDlp = join(root, '.venv/bin/yt-dlp');
+const python = join(root, '.venv/bin/python');
 const probes = (missing) => (command) => ({ status: missing().includes(command) ? 1 : 0 });
 const quiet = () => {};
 
 test('first run installs yt-dlp into the Manim .venv with uv; later starts install nothing', async () => {
-    let missing = [ytDlp];
+    let missing = [python];
     const calls = [],
         logs = [];
     const result = await ensureClips({
@@ -25,9 +25,7 @@ test('first run installs yt-dlp into the Manim .venv with uv; later starts insta
         },
     });
     assert.equal(result.ready, true);
-    assert.deepEqual(calls, [
-        ['uv', ['pip', 'install', '--python', join(root, '.venv/bin/python'), 'yt-dlp']],
-    ]);
+    assert.deepEqual(calls, [['uv', ['pip', 'install', '--python', python, 'yt-dlp']]]);
     assert.match(logs.at(-1), /Clip exhibits ready/);
     assert.equal(
         (await ensureClips({ root, probe: probes(() => []), run: assert.fail, log: quiet })).ready,
@@ -63,7 +61,7 @@ test('missing ffmpeg or a failed install warns that videos have no clips, and st
         const warnings = [];
         const result = await ensureClips({
             root,
-            probe: probes(() => [ytDlp]),
+            probe: probes(() => [python]),
             run,
             log: quiet,
             warn: (line) => warnings.push(line),
@@ -75,7 +73,7 @@ test('missing ffmpeg or a failed install warns that videos have no clips, and st
     const warnings = [];
     await ensureClips({
         root,
-        probe: probes(() => [ytDlp]),
+        probe: probes(() => [python]),
         run: async () => 0,
         log: quiet,
         warn: (line) => warnings.push(line),
@@ -86,7 +84,7 @@ test('missing ffmpeg or a failed install warns that videos have no clips, and st
 test('detection reports the project-local yt-dlp and ffmpeg, never throwing', () => {
     assert.deepEqual(detectClips({ root, probe: probes(() => []) }), {
         ready: true,
-        ytDlp,
+        python,
         ffmpeg: 'ffmpeg',
     });
     assert.equal(

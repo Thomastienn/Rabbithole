@@ -11,7 +11,7 @@ import {
 import { dirname, extname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { projectRoot, texBin, uvDir } from '../server/media/manim.mjs';
+import { texBin, toolRoot, uvDir } from '../server/media/manim.mjs';
 
 export const UV_VERSION = '0.13.9';
 const UV_TARGETS = {
@@ -115,7 +115,7 @@ export const latexReady = ({ probe = spawnSync } = {}) =>
 // uv from its official release, into .tools/uv, when none is on PATH.
 export async function ensureUv({
     run,
-    root = projectRoot,
+    root = toolRoot,
     probe = spawnSync,
     platform = process.platform,
     arch = process.arch,
@@ -146,7 +146,7 @@ export async function ensureUv({
 // TinyTeX plus Manim's LaTeX packages, into .tools/TinyTeX, when latex or dvisvgm is missing.
 export async function ensureLatex({
     run,
-    root = projectRoot,
+    root = toolRoot,
     probe = spawnSync,
     platform = process.platform,
     arch = process.arch,

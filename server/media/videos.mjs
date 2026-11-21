@@ -13,7 +13,7 @@ import { planBuilder } from './plan-calls.mjs';
 export { playable };
 import { improvePiece } from './video-pieces.mjs';
 import { sandboxProcess, sandboxOutput, REPO } from './video-sandbox.mjs';
-import { detectManim } from './manim.mjs';
+import { detectManim, videoBrowser } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
 
 const MAX_MEDIA = 1024 * 1024 * 1024;
@@ -45,6 +45,7 @@ export function sandboxRender(workspace, output, signal, onProgress = () => {}, 
             workspace,
             output,
             join(REPO, 'node_modules'),
+            videoBrowser(),
         ],
         signal,
         onProgress,
@@ -62,6 +63,7 @@ export function sandboxSnapshot(workspace, stills, signal) {
             workspace,
             '',
             join(REPO, 'node_modules'),
+            videoBrowser(),
             JSON.stringify(stills),
         ],
         signal,

@@ -139,7 +139,7 @@ test('image types come from the bytes, never SVG', () => {
     assert.equal(imageType(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')), null);
 });
 
-const clips = { ready: true, ytDlp: '/venv/bin/yt-dlp', ffmpeg: 'ffmpeg' };
+const clips = { ready: true, python: '/venv/bin/python', ffmpeg: 'ffmpeg' };
 const publicLookup = (_host, _options, callback) =>
     callback(null, [{ address: '93.184.215.14', family: 4 }]);
 const clipPlan = {
@@ -225,7 +225,7 @@ test('the downloader fetches the planned section with yt-dlp, then ffmpeg trims 
     const calls = [];
     const run = async (command, args) => {
         calls.push([command, args]);
-        if (command === clips.ytDlp)
+        if (command === clips.python)
             await writeFile(args[args.indexOf('-o') + 1].replace('%(ext)s', 'webm'), 'source');
         else await writeFile(args.at(-1), 'trimmed');
     };
@@ -235,7 +235,8 @@ test('the downloader fetches the planned section with yt-dlp, then ffmpeg trims 
     );
     assert.equal(bytes.toString(), 'trimmed');
     const [[yt, ytArgs], [ff, ffArgs]] = calls;
-    assert.equal(yt, clips.ytDlp);
+    assert.equal(yt, clips.python);
+    assert.deepEqual(ytArgs.slice(0, 2), ['-m', 'yt_dlp']);
     assert.deepEqual(
         ytArgs.slice(
             ytArgs.indexOf('--download-sections'),

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { downloadManager } from '../../server/downloads.mjs';
+import { videoTools } from '../../server/media/video-tools.mjs';
+import { MANIM_VERSION, videoBrowser } from '../../server/media/manim.mjs';
 import { open } from '../support/video-kit.mjs';
 
 // A fake tool: ready() answers from `installed`; run() waits for the test to settle it.
@@ -188,4 +190,33 @@ test('an on-request download waits to be added, then queues once; a requested on
     await tick();
     assert.deepEqual(states(again), ['searxng:running'], 'a cut-short request re-queues on launch');
     again.stop();
+});
+
+test('a tool root holding every video tool queues no video download; web search can still be queued', async () => {
+    const root = '/opt/rabbithole/tools',
+        browser = videoBrowser(root, 'linux');
+    const tools = videoTools({
+        root,
+        platform: 'linux',
+        probe: () => ({ status: 0, stdout: `${MANIM_VERSION}\n` }),
+        check: async () => true,
+        exists: (file) => file === browser,
+    });
+    const { tools: fake, runs, pending } = fakeTools();
+    const downloads = downloadManager([...tools, fake.find((t) => t.id === 'searxng')]);
+    await downloads.start();
+    assert.deepEqual(downloads.list(), [], 'no video tool is queued');
+    downloads.add('searxng');
+    await tick();
+    assert.deepEqual(runs, ['searxng']);
+    pending.searxng.resolve();
+    await downloads.idle();
+    assert.deepEqual(states(downloads), ['searxng:ready']);
+
+    const missing = videoTools({ root, platform: 'win32', exists: (file) => file === browser });
+    assert.equal(
+        await missing.find((t) => t.id === 'browser').ready(),
+        false,
+        'the Windows browser is looked up at its own path',
+    );
 });

@@ -7,9 +7,9 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { generateVideo, mediaPath } from '../../server/media/videos.mjs';
+import { videoBrowser } from '../../server/media/manim.mjs';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { createPatch } from 'diff';
 import { REPAIR_PATCH_NOTE } from '../../server/media/video-cut.mjs';
 import { planBuilder } from '../../server/media/plan-calls.mjs';
@@ -255,9 +255,5 @@ export async function job(render, mutate, source = composition, count = 1, optio
     };
 }
 
-const repo = fileURLToPath(new URL('../..', import.meta.url));
-const browser = join(
-    repo,
-    'node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell',
-);
-export const sandboxed = spawnSync('bwrap', ['--version']).status === 0 && existsSync(browser);
+export const sandboxed =
+    spawnSync('bwrap', ['--version']).status === 0 && existsSync(videoBrowser());

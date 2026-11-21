@@ -1,12 +1,12 @@
 // Runs inside the bubblewrap sandbox from videos.mjs; argv: workspace, output file, dependency directory,
-// and for snapshots a JSON list of {frame, file, sheet?} stills instead of a video.
+// the video browser, and for snapshots a JSON list of {frame, file, sheet?} stills instead of a video.
 import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { bundle } from '@remotion/bundler';
 import { selectComposition, renderMedia, renderStill, RenderInternals } from '@remotion/renderer';
 
-const [workspace, output, modules, stills] = process.argv.slice(2);
+const [workspace, output, modules, browserExecutable, stills] = process.argv.slice(2);
 if (existsSync(join(workspace, 'cuts.json'))) {
     const cuts = JSON.parse(readFileSync(join(workspace, 'cuts.json'), 'utf8'));
     const durationInFrames = cuts.reduce((n, c) => n + c.durationInFrames, 0);
@@ -63,11 +63,6 @@ const serveUrl = await bundle({
         resolve: { ...config.resolve, modules: [modules] },
     }),
 });
-// The sandbox has no network, so use the browser installed beside the dependencies instead of downloading one.
-const browserExecutable = join(
-    modules,
-    '.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell',
-);
 const composition = await selectComposition({
     serveUrl,
     id: 'Video',

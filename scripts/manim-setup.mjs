@@ -5,12 +5,12 @@ import {
     checkManimDependencies,
     detectManim,
     MANIM_VERSION,
-    projectRoot,
+    toolRoot,
 } from '../server/media/manim.mjs';
 
 export async function ensureManim({
     run,
-    root = projectRoot,
+    root = toolRoot,
     probe = spawnSync,
     platform = process.platform,
     log = console.log,

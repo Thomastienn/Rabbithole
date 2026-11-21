@@ -1,13 +1,15 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync, realpathSync } from 'node:fs';
-import { delimiter, dirname, join } from 'node:path';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { basename, delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const MANIM_VERSION = '0.22.1';
 export const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
-// Downloaded uv and TinyTeX live in the project's .tools; bin names follow each archive's layout.
-export const uvDir = (root = projectRoot) => join(root, '.tools', 'uv');
-export const texBin = (root = projectRoot, platform = process.platform, arch = process.arch) =>
+// Every video tool sits in the tool root with the project folder's layout; the desktop app points it at its bundled tools.
+export const toolRoot = process.env.RABBITHOLE_TOOLS_DIR || projectRoot;
+// Downloaded uv and TinyTeX live in the tool root's .tools; bin names follow each archive's layout.
+export const uvDir = (root = toolRoot) => join(root, '.tools', 'uv');
+export const texBin = (root = toolRoot, platform = process.platform, arch = process.arch) =>
     join(
         root,
         '.tools',
@@ -22,13 +24,48 @@ export const texBin = (root = projectRoot, platform = process.platform, arch = p
 // After the system PATH, so a learner's own uv or LaTeX wins over the downloads.
 process.env.PATH = [process.env.PATH, uvDir(), texBin()].join(delimiter);
 
-// A venv's base interpreter folder, which the sandbox must let it read: uv links it on Linux, pyvenv.cfg names it on Windows.
-export const pythonRuntime = (python, platform = process.platform) =>
-    platform === 'win32'
-        ? /^home\s*=\s*(.+?)\s*$/m.exec(
-              readFileSync(join(dirname(dirname(python)), 'pyvenv.cfg'), 'utf8'),
-          )[1]
-        : dirname(dirname(realpathSync(python)));
+// The interpreter in a venv or in a standalone Python (the desktop bundle's, which has no venv); always run as `python -m`.
+export function pythonIn(dir, platform = process.platform, exists = existsSync) {
+    const files = (
+        platform === 'win32' ? ['Scripts/python.exe', 'python.exe'] : ['bin/python', 'bin/python3']
+    ).map((file) => join(dir, ...file.split('/')));
+    return files.find((file) => exists(file)) ?? files[0];
+}
+// The venv or standalone Python folder an interpreter belongs to.
+export const pythonEnv = (python) =>
+    /^(bin|Scripts)$/.test(basename(dirname(python))) ? dirname(dirname(python)) : dirname(python);
+
+// A Python's base interpreter folder, which the sandbox must let it read: uv links it on Linux, a Windows venv's
+// pyvenv.cfg names it, and a standalone Python is its own.
+export function pythonRuntime(python, platform = process.platform) {
+    if (platform !== 'win32') return dirname(dirname(realpathSync(python)));
+    const cfg = join(pythonEnv(python), 'pyvenv.cfg');
+    return existsSync(cfg)
+        ? /^home\s*=\s*(.+?)\s*$/m.exec(readFileSync(cfg, 'utf8'))[1]
+        : pythonEnv(python);
+}
+
+// Remotion's headless browser, where its ensureBrowser puts it for this OS.
+export function videoBrowser(root = toolRoot, platform = process.platform, arch = process.arch) {
+    const os =
+        platform === 'win32'
+            ? 'win64'
+            : platform === 'darwin'
+              ? `mac-${arch === 'arm64' ? 'arm64' : 'x64'}`
+              : arch === 'arm64'
+                ? 'linux-arm64'
+                : 'linux64';
+    const shell = `chrome-headless-shell${platform === 'win32' ? '.exe' : ''}`;
+    return join(
+        root,
+        'node_modules',
+        '.remotion',
+        'chrome-headless-shell',
+        os,
+        `chrome-headless-shell-${os}`,
+        shell,
+    );
+}
 
 export const LINUX_PACKAGES =
     'sudo apt install bubblewrap libcairo2-dev libpango1.0-dev pkg-config python3-dev build-essential';
@@ -85,14 +122,11 @@ export function checkManimDependencies({ platform = process.platform, probe = sp
 
 // A fresh probe lets later video jobs detect a broken environment without blocking other features.
 export function detectManim({
-    root = projectRoot,
+    root = toolRoot,
     probe = spawnSync,
     platform = process.platform,
 } = {}) {
-    const python =
-        platform === 'win32'
-            ? join(root, '.venv', 'Scripts', 'python.exe')
-            : join(root, '.venv', 'bin', 'python');
+    const python = pythonIn(join(root, '.venv'), platform);
     try {
         checkManimDependencies({ probe, platform });
         const result = probe(python, ['-I', '-c', 'import manim; print(manim.__version__)'], {
