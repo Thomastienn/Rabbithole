@@ -79,16 +79,24 @@ function osRelease() {
 }
 
 // First-run setup's Linux line: null when bwrap, pkg-config and the Cairo/Pango headers are present.
+// Bundled tools ship a built Manim, so they need only bwrap at runtime.
 export function systemPackages({
     platform = process.platform,
     probe = spawnSync,
     release = osRelease(),
+    bundled = toolRoot !== projectRoot,
 } = {}) {
     if (platform !== 'linux') return null;
     const ok = (command, args) => probe(command, args, { timeout: 10000 }).status === 0;
-    if (ok('bwrap', ['--version']) && ok('pkg-config', ['--exists', 'cairo', 'pangocairo']))
+    if (
+        ok('bwrap', ['--version']) &&
+        (bundled || ok('pkg-config', ['--exists', 'cairo', 'pangocairo']))
+    )
         return null;
-    return /^ID(_LIKE)?=.*\b(debian|ubuntu)\b/m.test(release)
+    const debian = /^ID(_LIKE)?=.*\b(debian|ubuntu)\b/m.test(release);
+    if (bundled)
+        return debian ? { command: 'sudo apt install bubblewrap' } : { words: 'bubblewrap' };
+    return debian
         ? { command: LINUX_PACKAGES }
         : {
               words: 'bubblewrap, pkg-config, the Cairo and Pango development headers, the Python 3 development headers and the C build tools',
