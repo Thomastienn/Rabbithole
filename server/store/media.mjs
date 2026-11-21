@@ -89,8 +89,7 @@ export const media = {
         );
     },
     finishVideo(conversation, id, attempt, { title, description, duration } = {}, error = null) {
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        this.transaction(() => {
             const done = this.db
                 .prepare(
                     "UPDATE artifacts SET status=?,title=COALESCE(?,title),description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
@@ -111,11 +110,7 @@ export const media = {
                         'INSERT INTO videos(id,title,description,duration,created,source,attempt) SELECT id,title,description,duration,created,source,attempt FROM artifacts WHERE id=? ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,duration=excluded.duration,source=excluded.source,attempt=excluded.attempt',
                     )
                     .run(id);
-            this.db.exec('COMMIT');
-        } catch (e) {
-            this.db.exec('ROLLBACK');
-            throw e;
-        }
+        });
         return this.artifact(conversation, id);
     },
     cancelVideo(conversation, id) {

@@ -80,15 +80,10 @@ export const trees = {
         );
     },
     layout(id, layout, positions = {}) {
-        this.db.exec('BEGIN');
-        try {
+        this.transaction(() => {
             this.db.prepare('UPDATE trees SET layout=? WHERE id=?').run(JSON.stringify(layout), id);
             for (const [p, at] of Object.entries(positions)) this.position(p, at.x, at.y);
-            this.db.exec('COMMIT');
-        } catch (e) {
-            this.db.exec('ROLLBACK');
-            throw e;
-        }
+        });
     },
     position(id, x, y) {
         this.db.prepare('UPDATE trees SET x=?,y=? WHERE id=?').run(x, y, id);
@@ -109,8 +104,7 @@ export const trees = {
             .map((t) => t.id);
     },
     remove(root, id, stageFiles) {
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        return this.transaction(() => {
             if (this.tree(root)?.branch || !this.descendants(root).includes(id))
                 throw new Error('Conversation does not belong to this chat.');
             const parent = this.tree(id).branch?.parent ?? null,
@@ -141,12 +135,8 @@ export const trees = {
                     );
             }
             stageFiles(artifacts);
-            this.db.exec('COMMIT');
             return { deleted, parent };
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        });
     },
     tree(id) {
         const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
@@ -256,8 +246,7 @@ export const trees = {
         return this.tree(id);
     },
     branch(parent, anchor, snapshot) {
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        return this.transaction(() => {
             const child = this.create(
                 anchor.question.trim().slice(0, 200),
                 parent.provider,
@@ -310,12 +299,8 @@ export const trees = {
                     .prepare('UPDATE suggestions SET passages=? WHERE conversation=? AND message=?')
                     .run(JSON.stringify(passages), parent.id, anchor.messageId);
             }
-            this.db.exec('COMMIT');
             return this.tree(child.id);
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        });
     },
     // Inherited context is written once, when the branch's background compaction finishes.
     compacted(child, snapshot) {
@@ -451,8 +436,7 @@ export const trees = {
     },
     // Retry drops the failed reply and its artifacts; library videos live in their own table and are kept.
     discardReply(conversation, message) {
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
+        this.transaction(() => {
             this.db
                 .prepare('DELETE FROM artifacts WHERE conversation=? AND message=?')
                 .run(conversation, message);
@@ -462,11 +446,7 @@ export const trees = {
             this.db
                 .prepare("DELETE FROM messages WHERE tree=? AND id=? AND role='assistant'")
                 .run(conversation, message);
-            this.db.exec('COMMIT');
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        });
     },
     // Completed messages across every learning tree, newest first, for search_conversations.
     recallMessages() {

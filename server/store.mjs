@@ -15,6 +15,18 @@ export class Store {
         open.call(this, path);
     }
     static roles = roles;
+    // Runs write under the write lock and returns its result; a throw rolls every write back.
+    transaction(write) {
+        this.db.exec('BEGIN IMMEDIATE');
+        try {
+            const result = write();
+            this.db.exec('COMMIT');
+            return result;
+        } catch (error) {
+            this.db.exec('ROLLBACK');
+            throw error;
+        }
+    }
     close() {
         if (this.db.isOpen) this.db.close(); // tests' t.after cleanup may follow an inline restart close
     }

@@ -33,14 +33,10 @@ export function open(path) {
         }
         this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
         if (version < 1) {
-            this.db.exec('BEGIN IMMEDIATE');
-            try {
+            this.transaction(() => {
                 this.migrate(fresh);
-                this.db.exec('PRAGMA user_version=1; COMMIT');
-            } catch (error) {
-                this.db.exec('ROLLBACK');
-                throw error;
-            }
+                this.db.exec('PRAGMA user_version=1');
+            });
         }
         // Additive nullable column: older Rabbithole builds still open the database.
         if (
@@ -132,14 +128,15 @@ export function open(path) {
                 .get()
                 .sql.includes("'verdict'")
         )
-            this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE usage_events RENAME TO usage_events_old;
+            this.transaction(() =>
+                this.db.exec(`ALTER TABLE usage_events RENAME TO usage_events_old;
           CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict')),
             input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
           INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message) SELECT id,at,provider,model,task,input,output,cacheRead,message FROM usage_events_old;
           DROP TABLE usage_events_old;
           CREATE INDEX usage_events_at ON usage_events(at);
-          CREATE INDEX usage_events_message ON usage_events(message);
-          COMMIT;`);
+          CREATE INDEX usage_events_message ON usage_events(message);`),
+            );
         // Video calls name their stage and, for one-cut calls, the cut number; older rows keep NULL (not recorded).
         if (
             !this.db
@@ -157,14 +154,15 @@ export function open(path) {
                 .get()
                 .sql.includes("'brief'")
         )
-            this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE usage_events RENAME TO usage_events_old;
+            this.transaction(() =>
+                this.db.exec(`ALTER TABLE usage_events RENAME TO usage_events_old;
           CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief')),
             input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL, stage TEXT, cut INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
           INSERT INTO usage_events SELECT id,at,provider,model,task,input,output,cacheRead,message,stage,cut FROM usage_events_old;
           DROP TABLE usage_events_old;
           CREATE INDEX usage_events_at ON usage_events(at);
-          CREATE INDEX usage_events_message ON usage_events(message);
-          COMMIT;`);
+          CREATE INDEX usage_events_message ON usage_events(message);`),
+            );
         // Reasoning tokens are part of output, kept apart where the provider reports them; older rows keep NULL (not reported).
         if (
             !this.db
@@ -212,17 +210,13 @@ export function open(path) {
                 .all()
                 .some((c) => c.name === 'uses_tutor_tools')
         ) {
-            this.db.exec('BEGIN IMMEDIATE');
-            try {
+            this.transaction(() => {
                 this.db.exec('ALTER TABLE endpoint_models RENAME TO endpoint_models_old');
                 this.db.exec(endpointModels);
                 this.db.exec(
-                    'INSERT INTO endpoint_models(endpoint,model,reads_images) SELECT endpoint,model,reads_images FROM endpoint_models_old; DROP TABLE endpoint_models_old; COMMIT',
+                    'INSERT INTO endpoint_models(endpoint,model,reads_images) SELECT endpoint,model,reads_images FROM endpoint_models_old; DROP TABLE endpoint_models_old',
                 );
-            } catch (error) {
-                this.db.exec('ROLLBACK');
-                throw error;
-            }
+            });
         }
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS tutor_tools (name TEXT PRIMARY KEY, enabled INTEGER NOT NULL CHECK(enabled IN (0,1)))',
@@ -242,12 +236,16 @@ export function open(path) {
                 .prepare("SELECT sql FROM sqlite_master WHERE name='resources'")
                 .get()
                 .sql.includes("'quote'")
-        )
-            this.db.exec(`PRAGMA foreign_keys=OFF; BEGIN IMMEDIATE;
-          CREATE TABLE resources_new (tree TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE, number INTEGER NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL, site TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('page','image','file','quote','clip')), first_seen INTEGER NOT NULL, PRIMARY KEY(tree, number), UNIQUE(tree, url));
+        ) {
+            this.db.exec('PRAGMA foreign_keys=OFF');
+            this.transaction(() =>
+                this.db
+                    .exec(`CREATE TABLE resources_new (tree TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE, number INTEGER NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL, site TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('page','image','file','quote','clip')), first_seen INTEGER NOT NULL, PRIMARY KEY(tree, number), UNIQUE(tree, url));
           INSERT INTO resources_new SELECT tree,number,url,title,site,kind,first_seen FROM resources;
-          DROP TABLE resources; ALTER TABLE resources_new RENAME TO resources;
-          COMMIT; PRAGMA foreign_keys=ON;`);
+          DROP TABLE resources; ALTER TABLE resources_new RENAME TO resources;`),
+            );
+            this.db.exec('PRAGMA foreign_keys=ON');
+        }
         // Smart role: a NULL model follows the chat default model; follow_effort=1 follows the chat default effort.
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS smart_settings (id INTEGER PRIMARY KEY CHECK(id=1), provider TEXT, model TEXT, follow_effort INTEGER NOT NULL CHECK(follow_effort IN (0,1)), effort TEXT)',
@@ -255,14 +253,15 @@ export function open(path) {
         // Model profiles: each holds the chat, smart and quick thinking roles; the old role rows seed "Default" once and stay for older builds.
         // Every existing database seeds "Default" (its trees may need a provider); a fresh one starts with none.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='profiles'").get()) {
-            this.db.exec(`BEGIN IMMEDIATE;
-          CREATE TABLE profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE, chat_provider TEXT, chat_model TEXT, chat_effort TEXT,
+            this.transaction(() =>
+                this.db
+                    .exec(`CREATE TABLE profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE, chat_provider TEXT, chat_model TEXT, chat_effort TEXT,
             smart_provider TEXT, smart_model TEXT, smart_follow_effort INTEGER NOT NULL CHECK(smart_follow_effort IN (0,1)), smart_effort TEXT, quick_provider TEXT, quick_model TEXT, quick_effort TEXT);
           CREATE TABLE active_profile (id INTEGER PRIMARY KEY CHECK(id=1), profile TEXT NOT NULL REFERENCES profiles(id));
           INSERT INTO profiles SELECT '${randomUUID()}','Default',c.provider,c.model,c.effort,s.provider,s.model,coalesce(s.follow_effort,1),s.effort,q.provider,q.model,q.effort
             FROM (SELECT 1) LEFT JOIN chat_settings c ON c.id=1 LEFT JOIN smart_settings s ON s.id=1 LEFT JOIN suggestion_settings q ON q.id=1 WHERE ${+!fresh};
-          INSERT INTO active_profile SELECT 1,id FROM profiles;
-          COMMIT;`);
+          INSERT INTO active_profile SELECT 1,id FROM profiles;`),
+            );
         }
         // Additive global tables: one knowledge graph across all learning trees; NOCASE names make a matching concept or topic reuse its row.
         this.db
@@ -286,8 +285,7 @@ export function open(path) {
                 .all()
                 .some((c) => c.name === 'concept')
         ) {
-            this.db.exec('BEGIN IMMEDIATE');
-            try {
+            this.transaction(() => {
                 this.db.exec(
                     'ALTER TABLE trees ADD COLUMN concept INTEGER REFERENCES concepts(id)',
                 );
@@ -300,11 +298,7 @@ export function open(path) {
                     for (const p of JSON.parse(row.passages))
                         if (p.child && p.concept && this.live(p.child))
                             explore.run(this.conceptId(p.concept), p.child);
-                this.db.exec('COMMIT');
-            } catch (error) {
-                this.db.exec('ROLLBACK');
-                throw error;
-            }
+            });
         }
         // Saved messages get a Float32 embedding for recall, filled lazily when the local embedder is usable.
         if (
@@ -325,11 +319,12 @@ export function open(path) {
         // Observations: the tutor's verdict on what one learner message showed about a concept; familiarity derives from them.
         // Created once: the old familiarity evidence (asked, used, ignored and corrections) was test data and goes; met stays.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='observations'").get())
-            this.db.exec(`BEGIN IMMEDIATE;
-          CREATE TABLE observations (concept INTEGER NOT NULL REFERENCES concepts(id), message TEXT NOT NULL, level INTEGER NOT NULL CHECK(level BETWEEN 0 AND 5), confidence TEXT NOT NULL CHECK(confidence IN ('low','high')), at INTEGER NOT NULL, PRIMARY KEY(concept, message));
+            this.transaction(() =>
+                this.db
+                    .exec(`CREATE TABLE observations (concept INTEGER NOT NULL REFERENCES concepts(id), message TEXT NOT NULL, level INTEGER NOT NULL CHECK(level BETWEEN 0 AND 5), confidence TEXT NOT NULL CHECK(confidence IN ('low','high')), at INTEGER NOT NULL, PRIMARY KEY(concept, message));
           CREATE INDEX observations_message ON observations(message);
-          DELETE FROM evidence WHERE kind<>'met';
-          COMMIT;`);
+          DELETE FROM evidence WHERE kind<>'met';`),
+            );
         // Library ownership: ready videos outlive their source conversation; only title, description and timing are kept.
         // Created once, so existing ready videos migrate without generation and later library removals stay removed.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='videos'").get()) {
@@ -344,11 +339,11 @@ export function open(path) {
                 .all()
                 .some((c) => c.name === 'source')
         )
-            this.db.exec(`BEGIN IMMEDIATE;
-          ALTER TABLE videos ADD COLUMN source TEXT;
+            this.transaction(() =>
+                this.db.exec(`ALTER TABLE videos ADD COLUMN source TEXT;
           ALTER TABLE videos ADD COLUMN attempt TEXT;
-          UPDATE videos SET (source,attempt)=(SELECT source,attempt FROM artifacts WHERE artifacts.id=videos.id AND kind='video' AND status='ready');
-          COMMIT;`);
+          UPDATE videos SET (source,attempt)=(SELECT source,attempt FROM artifacts WHERE artifacts.id=videos.id AND kind='video' AND status='ready');`),
+            );
         // Piece library: one saved Remotion set piece per row, shared across videos; the embedding is a Float32 blob of its look.
         this.db
             .exec(`CREATE TABLE IF NOT EXISTS pieces (id TEXT PRIMARY KEY, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, roles TEXT NOT NULL, embedding BLOB, created INTEGER NOT NULL, improved INTEGER NOT NULL);
@@ -388,14 +383,7 @@ export function open(path) {
         )
             this.db.exec('ALTER TABLE pieces ADD COLUMN true_colors TEXT');
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
-            this.rebuildArtifacts("'discussion'");
-            this.db.exec('COMMIT');
-        } catch (error) {
-            this.db.exec('ROLLBACK');
-            throw error;
-        }
+        this.transaction(() => this.rebuildArtifacts("'discussion'"));
         // Visual passages keep their source artifact and part instead of inventing reply offsets.
         if (
             !this.db
@@ -403,10 +391,12 @@ export function open(path) {
                 .all()
                 .some((c) => c.name === 'artifactId')
         ) {
-            this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE branches RENAME TO branches_old;
+            this.transaction(() =>
+                this.db.exec(`ALTER TABLE branches RENAME TO branches_old;
           ${BRANCHES}
           INSERT INTO branches(child,parent,messageId,start,end,text,question,snapshot) SELECT child,parent,messageId,start,end,text,question,snapshot FROM branches_old;
-          DROP TABLE branches_old; COMMIT;`);
+          DROP TABLE branches_old;`),
+            );
         }
         // Discussion passages keep their line index, its speaker and the discussion context fixed at branch time.
         if (
@@ -415,14 +405,18 @@ export function open(path) {
                 .all()
                 .some((c) => c.name === 'line')
         )
-            this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE branches ADD COLUMN line INTEGER;
-          ALTER TABLE branches ADD COLUMN speaker TEXT; ALTER TABLE branches ADD COLUMN discussion TEXT; COMMIT;`);
+            this.transaction(() =>
+                this.db.exec(`ALTER TABLE branches ADD COLUMN line INTEGER;
+          ALTER TABLE branches ADD COLUMN speaker TEXT; ALTER TABLE branches ADD COLUMN discussion TEXT;`),
+            );
         // A picked visual part keeps its trail (JSON names, outermost first) and the step it was picked on.
         if (
             !this.db.prepare("SELECT 1 FROM pragma_table_info('branches') WHERE name='trail'").get()
         )
-            this.db.exec(`BEGIN IMMEDIATE; ALTER TABLE branches ADD COLUMN trail TEXT;
-          ALTER TABLE branches ADD COLUMN step INTEGER; COMMIT;`);
+            this.transaction(() =>
+                this.db.exec(`ALTER TABLE branches ADD COLUMN trail TEXT;
+          ALTER TABLE branches ADD COLUMN step INTEGER;`),
+            );
         // First-run setup: decided once; an upgraded database with a profile (holding any chosen model) or a tree skips it.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='first_run'").get())
             this.db
