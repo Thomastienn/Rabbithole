@@ -107,7 +107,7 @@ test('a standalone Python with no venv runs Manim, clips and run_python', async 
         version: MANIM_VERSION,
     });
     assert.equal(detectClips({ root, probe, platform: 'linux' }).python, manim);
-    assert.ok(probed.some((call) => call.join(' ') === `${manim} -m yt_dlp --version`));
+    assert.ok(probed.some((call) => call.join(' ') === `${manim} -B -m yt_dlp --version`));
     const python = await detectPython({ root, check: async () => true, platform: 'linux' });
     assert.deepEqual(python, { ready: true, python: offline });
 

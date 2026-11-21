@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fetchExhibit, imageType } from '../../server/media/exhibits.mjs';
 import { downloadClip } from '../../server/media/clips.mjs';
 
@@ -229,14 +231,17 @@ test('the downloader fetches the planned section with yt-dlp, then ffmpeg trims 
             await writeFile(args[args.indexOf('-o') + 1].replace('%(ext)s', 'webm'), 'source');
         else await writeFile(args.at(-1), 'trimmed');
     };
+    // The job's own tmp folder holds the download, so nothing lands outside the data folder.
+    const tmp = await mkdtemp(join(tmpdir(), 'rabbithole-job-tmp-'));
     const bytes = await downloadClip(
         { url: 'https://v.example/1', start: 30, end: 36 },
-        { clips, run },
+        { clips, run, tmp },
     );
     assert.equal(bytes.toString(), 'trimmed');
     const [[yt, ytArgs], [ff, ffArgs]] = calls;
     assert.equal(yt, clips.python);
-    assert.deepEqual(ytArgs.slice(0, 2), ['-m', 'yt_dlp']);
+    assert.ok(ytArgs[ytArgs.indexOf('-o') + 1].startsWith(tmp + '/'));
+    assert.deepEqual(ytArgs.slice(0, 3), ['-B', '-m', 'yt_dlp']);
     assert.deepEqual(
         ytArgs.slice(
             ytArgs.indexOf('--download-sections'),

@@ -137,7 +137,7 @@ export function detectManim({
     const python = pythonIn(join(root, '.venv'), platform);
     try {
         checkManimDependencies({ probe, platform });
-        const result = probe(python, ['-I', '-c', 'import manim; print(manim.__version__)'], {
+        const result = probe(python, ['-I', '-B', '-c', 'import manim; print(manim.__version__)'], {
             encoding: 'utf8',
             timeout: 15000,
         });
