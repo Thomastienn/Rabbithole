@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { pythonEnv, pythonIn, pythonRuntime, toolRoot } from '../media/manim.mjs';
-import { sandboxCommand } from '../media/video-sandbox.mjs';
+import { sandboxCommand, systemBinds } from '../media/video-sandbox.mjs';
 
 export const PYTHON_PACKAGES = ['numpy==2.5.4', 'scipy==1.18.1', 'sympy==1.14.0', 'pandas==3.1.1'];
 export const pythonVenv = (root = toolRoot) => join(root, '.venv-python');
@@ -55,16 +55,15 @@ export async function detectPython({
     return { ready: true, python };
 }
 
-// Model-written code: no network, empty home, read-only system, app data hidden, only the workspace writable.
+// Model-written code: no network, empty home, only the read-only system folders, app data hidden, only the workspace writable.
 export function pythonSandbox(workspace, python, dataDir) {
     const runtime = pythonRuntime(python),
         venv = pythonEnv(python);
     return [
-    '--ro-bind', '/', '/',
+    ...systemBinds(),
     '--tmpfs', homedir(),
     '--tmpfs', dataDir,
     '--tmpfs', '/tmp',
-    '--tmpfs', '/run/user',
     '--ro-bind', runtime, runtime,
     '--ro-bind', venv, venv,
     '--bind', workspace, workspace,
