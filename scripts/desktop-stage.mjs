@@ -70,7 +70,9 @@ export function foreignBinaries(dir, platform = process.platform, arch = process
                     : 'other-arch'
                 : head.readUInt16BE(0) === 0x4d5a
                   ? 'win32'
-                  : [0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe].includes(magic)
+                  : [0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe].includes(magic) ||
+                      // A universal Mach-O counts its CPUs next; a Java class shares the magic and has its version (45 or more) there.
+                      (magic === 0xcafebabe && head.readUInt32BE(4) < 45)
                     ? 'darwin'
                     : null;
         if (kind && kind !== platform) found.push(relative(dir, file));
