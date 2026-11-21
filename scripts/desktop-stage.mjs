@@ -1,15 +1,34 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+    closeSync,
+    cpSync,
+    existsSync,
+    mkdirSync,
+    openSync,
+    readdirSync,
+    readFileSync,
+    readSync,
+    renameSync,
+    rmSync,
+    statSync,
+    symlinkSync,
+    writeFileSync,
+} from 'node:fs';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildIsCurrent } from './build-state.mjs';
+import { ensureLatex, ensureUv } from './tools-setup.mjs';
+import { MANIM_VERSION, pythonIn, texBin, uvDir, videoBrowser } from '../server/media/manim.mjs';
+import { PYTHON_PACKAGES } from '../server/tools/python.mjs';
 
-// Packs the built app, production node_modules and the official Node 24 runtime into desktop/stage/app.tar for Tauri to bundle.
+// Stages the desktop resources in desktop/stage, run in place by the shell with no copy and no tool download:
+// node (the official Node 24), app (the built app with production dependencies) and tools (the tool root).
 // On Windows it also builds the sandbox launcher and its Codex helpers into desktop/stage.
 const root = fileURLToPath(new URL('..', import.meta.url));
 const stage = join(root, 'desktop', 'stage');
-const app = join(stage, 'app');
+const app = join(stage, 'app'),
+    tools = join(stage, 'tools');
 // Pinned official build; a distro or Homebrew node may link shared libraries the learner lacks.
 const NODE = {
     version: '24.22.3',
@@ -20,49 +39,180 @@ const windows = process.platform === 'win32';
 // Windows needs a shell to run npm.cmd; its arguments here are fixed words.
 const run = (command, args, cwd = root) =>
     execFileSync(command, args, { cwd, stdio: 'inherit', shell: windows && command === 'npm' });
+// The tools-setup form: resolves to the exit code.
+const runCode = async (command, args) => spawnSync(command, args, { stdio: 'inherit' }).status ?? 1;
 // Windows' own bsdtar reads zips and C:\ paths; a Git-for-Windows GNU tar earlier on PATH does neither.
 const tar = windows ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
 
-if (!buildIsCurrent()) run('npm', ['run', 'build']);
-rmSync(stage, { recursive: true, force: true });
-mkdirSync(app, { recursive: true });
-for (const name of ['dist', 'server', 'scripts', 'src', 'package.json', 'package-lock.json'])
-    cpSync(join(root, name), join(app, name), { recursive: true });
-run('npm', ['ci', '--omit=dev', '--no-audit', '--no-fund'], app);
-const target = `${process.platform}-${process.arch}`;
-if (!NODE[target])
-    throw new Error(`The desktop app builds on linux-x64 and win32-x64 only; this is ${target}.`);
-const name = `node-v${NODE.version}-${target.replace('win32', 'win')}`;
-const file = `${name}.${windows ? 'zip' : 'tar.xz'}`;
-const archive = join(stage, file);
-run('curl', ['-fsSL', '-o', archive, `https://nodejs.org/dist/v${NODE.version}/${file}`]);
-if (createHash('sha256').update(readFileSync(archive)).digest('hex') !== NODE[target])
-    throw new Error(`${file} does not match its pinned SHA-256; not bundling it.`);
-if (windows) run(tar, ['-xf', archive, '-C', app, '--strip-components', '1', `${name}/node.exe`]);
-else run(tar, ['-xJf', archive, '-C', app, '--strip-components', '2', `${name}/bin/node`]);
-rmSync(archive);
-if (windows) {
-    // The Codex helpers must sit beside the launcher (desktop/sandbox/Cargo.toml).
-    const bins = ['rabbithole-sandbox', 'codex-command-runner', 'codex-windows-sandbox-setup'];
-    const sandbox = join(root, 'desktop', 'sandbox');
-    run(
-        'cargo',
-        [
-            'build',
-            '--release',
-            '-p',
-            'rabbithole-sandbox',
-            '-p',
-            'codex-windows-sandbox',
-            ...bins.flatMap((bin) => ['--bin', bin]),
-        ],
-        sandbox,
-    );
-    for (const bin of bins)
-        cpSync(join(sandbox, 'target', 'release', `${bin}.exe`), join(stage, `${bin}.exe`));
+// Every regular file below dir; readdirSync's recursive mode would also walk the .venv-python link.
+const files = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+        const path = join(dir, entry.name);
+        return entry.isDirectory() ? files(path) : entry.isFile() ? [path] : [];
+    });
+
+// ELF machine numbers by Node arch; Mach-O and PE are other OSes' formats.
+const ELF_MACHINE = { x64: 62, arm64: 183 };
+// Native binaries the stage must not hold: other OSes' formats, and ELF for another CPU.
+export function foreignBinaries(dir, platform = process.platform, arch = process.arch) {
+    const found = [],
+        head = Buffer.alloc(20);
+    for (const file of files(dir)) {
+        const fd = openSync(file, 'r');
+        const size = readSync(fd, head, 0, 20, 0);
+        closeSync(fd);
+        if (size < 20) continue;
+        const magic = head.readUInt32BE(0);
+        const kind =
+            magic === 0x7f454c46
+                ? head.readUInt16LE(18) === ELF_MACHINE[arch]
+                    ? 'linux'
+                    : 'other-arch'
+                : head.readUInt16BE(0) === 0x4d5a
+                  ? 'win32'
+                  : [0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe].includes(magic)
+                    ? 'darwin'
+                    : null;
+        if (kind && kind !== platform) found.push(relative(dir, file));
+    }
+    return found;
 }
-// The shell re-extracts the app when this stamp differs from the one it wrote after the last extraction.
-const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-writeFileSync(join(stage, 'app.build'), `${commit} ${new Date().toISOString()}\n`);
-run(tar, ['-cf', join(stage, 'app.tar'), '-C', app, '.']);
-rmSync(app, { recursive: true, force: true });
+
+// Every bundled tool, probed by its own path in the tool root, so a tool on this machine's PATH cannot pass for it.
+function missingTools(dir) {
+    const ok = (command, args) =>
+        spawnSync(command, args, { encoding: 'utf8', timeout: 60000 }).status === 0;
+    const manim = spawnSync(
+        pythonIn(join(dir, '.venv')),
+        ['-I', '-c', 'import manim; print(manim.__version__)'],
+        { encoding: 'utf8', timeout: 60000 },
+    );
+    return [
+        !ok(join(uvDir(dir), windows ? 'uv.exe' : 'uv'), ['--version']) && 'uv',
+        !ok(join(texBin(dir), 'latex'), ['--version']) && 'latex',
+        !ok(join(texBin(dir), 'dvisvgm'), ['--version']) && 'dvisvgm',
+        manim.stdout?.trim() !== MANIM_VERSION && `Manim ${MANIM_VERSION}`,
+        !ok(pythonIn(join(dir, '.venv')), ['-I', '-m', 'yt_dlp', '--version']) && 'yt-dlp',
+        !ok(pythonIn(join(dir, '.venv-python')), [
+            '-I',
+            '-c',
+            'import numpy, scipy, sympy, pandas',
+        ]) && 'offline Python packages',
+        !existsSync(videoBrowser(dir)) && 'video browser',
+    ].filter(Boolean);
+}
+
+// The tool root with the project folder's layout (server/media/manim.mjs), every tool installed at build time.
+async function stageTools() {
+    mkdirSync(tools, { recursive: true });
+    // Only tools probed by their path count, so both setups install their own copy even when this machine has uv or LaTeX on PATH.
+    const probe = (command, ...rest) =>
+        /[\\/]/.test(command) ? spawnSync(command, ...rest) : { status: 1 };
+    await ensureUv({ run: runCode, root: tools, probe });
+    await ensureLatex({ run: runCode, root: tools, probe });
+    const uv = join(uvDir(tools), windows ? 'uv.exe' : 'uv');
+    // A venv records absolute paths and the AppImage mount moves each launch, so install a relocatable standalone Python.
+    const pythons = join(stage, 'pythons');
+    run(uv, ['python', 'install', '3.12', '--install-dir', pythons, '--no-bin']);
+    // uv also links the minor version (cpython-3.12-…) to the build folder; move the folder itself.
+    const [build] = readdirSync(pythons, { withFileTypes: true }).filter(
+        (entry) => entry.isDirectory() && entry.name.startsWith('cpython-'),
+    );
+    renameSync(join(pythons, build.name), join(tools, '.venv'));
+    rmSync(pythons, { recursive: true, force: true });
+    // Manim's and the offline Python's pins resolve together, so one Python serves both tool folders.
+    // pycairo and manimpango have no Linux wheels: they build here against Cairo and Pango and link their runtime libraries.
+    run(uv, [
+        'pip',
+        'install',
+        '--python',
+        pythonIn(join(tools, '.venv')),
+        '--break-system-packages',
+        '--compile-bytecode',
+        `manim==${MANIM_VERSION}`,
+        'yt-dlp',
+        ...PYTHON_PACKAGES,
+    ]);
+    // pip is unused (uv installs) and carries distlib's Windows launchers.
+    run(uv, [
+        'pip',
+        'uninstall',
+        '--python',
+        pythonIn(join(tools, '.venv')),
+        '--break-system-packages',
+        'pip',
+    ]);
+    symlinkSync('.venv', join(tools, '.venv-python'), 'dir');
+    // Remotion downloads into node_modules beside the nearest package.json.
+    writeFileSync(join(tools, 'package.json'), '{}\n');
+    run(process.execPath, [join(root, 'scripts', 'browser-setup.mjs')], tools);
+    rmSync(join(tools, 'package.json'));
+}
+
+// Imported by its test for foreignBinaries; run as a script, it stages.
+if (import.meta.main) {
+    if (!buildIsCurrent()) run('npm', ['run', 'build']);
+    rmSync(stage, { recursive: true, force: true });
+    mkdirSync(app, { recursive: true });
+    for (const name of ['dist', 'server', 'scripts', 'src', 'package.json', 'package-lock.json'])
+        cpSync(join(root, name), join(app, name), { recursive: true });
+    run('npm', ['ci', '--omit=dev', '--no-audit', '--no-fund'], app);
+    const target = `${process.platform}-${process.arch}`;
+    if (!NODE[target])
+        throw new Error(
+            `The desktop app builds on linux-x64 and win32-x64 only; this is ${target}.`,
+        );
+    const name = `node-v${NODE.version}-${target.replace('win32', 'win')}`;
+    const file = `${name}.${windows ? 'zip' : 'tar.xz'}`;
+    const archive = join(stage, file);
+    run('curl', ['-fsSL', '-o', archive, `https://nodejs.org/dist/v${NODE.version}/${file}`]);
+    if (createHash('sha256').update(readFileSync(archive)).digest('hex') !== NODE[target])
+        throw new Error(`${file} does not match its pinned SHA-256; not bundling it.`);
+    if (windows)
+        run(tar, ['-xf', archive, '-C', stage, '--strip-components', '1', `${name}/node.exe`]);
+    else run(tar, ['-xJf', archive, '-C', stage, '--strip-components', '2', `${name}/bin/node`]);
+    rmSync(archive);
+    if (windows) {
+        // The Codex helpers must sit beside the launcher (desktop/sandbox/Cargo.toml).
+        const bins = ['rabbithole-sandbox', 'codex-command-runner', 'codex-windows-sandbox-setup'];
+        const sandbox = join(root, 'desktop', 'sandbox');
+        run(
+            'cargo',
+            [
+                'build',
+                '--release',
+                '-p',
+                'rabbithole-sandbox',
+                '-p',
+                'codex-windows-sandbox',
+                ...bins.flatMap((bin) => ['--bin', bin]),
+            ],
+            sandbox,
+        );
+        for (const bin of bins)
+            cpSync(join(sandbox, 'target', 'release', `${bin}.exe`), join(stage, `${bin}.exe`));
+    }
+    await stageTools();
+    // onnxruntime-node ships every OS's runtime, and GPU providers the CPU-only embedder never loads: most of its 548 MB.
+    // The check below catches other packages that ship other OSes' binaries.
+    const onnx = join(app, 'node_modules', 'onnxruntime-node', 'bin');
+    for (const napi of readdirSync(onnx))
+        for (const os of readdirSync(join(onnx, napi)))
+            for (const cpu of readdirSync(join(onnx, napi, os))) {
+                const dir = join(onnx, napi, os, cpu);
+                if (`${os}-${cpu}` !== target) rmSync(dir, { recursive: true });
+                else
+                    for (const lib of readdirSync(dir))
+                        if (/providers_(cuda|tensorrt)/.test(lib)) rmSync(join(dir, lib));
+            }
+    const foreign = foreignBinaries(stage);
+    if (foreign.length)
+        throw new Error(
+            `The stage holds other OSes' native binaries; prune them in scripts/desktop-stage.mjs:\n${foreign.join('\n')}`,
+        );
+    const missing = missingTools(tools);
+    if (missing.length)
+        throw new Error(`The stage is missing bundled tools: ${missing.join(', ')}.`);
+    const bytes = files(stage).reduce((sum, file) => sum + statSync(file).size, 0);
+    console.log(`Staged ${stage}: ${(bytes / 2 ** 20).toFixed(0)} MiB.`);
+}
