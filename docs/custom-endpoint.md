@@ -80,10 +80,6 @@ POST also requires JSON and the server's CSRF token.
 | `POST /api/settings/endpoints/edit` | Edit `{ id, name, baseUrl, apiKey? }`. Without `apiKey` the saved key is kept, but only for the same base URL; a new base URL without a key returns 400 with `The base URL changed. Enter the API key again so the saved key is never sent to a new host.` The id stays, so conversations and profiles follow. Any change clears `lastTest` and aborts the endpoint's in-flight requests. |
 | `POST /api/settings/endpoints/test` | Test `{ id }` by listing models (no chat message); store the result with the endpoint (it survives restarts) and return the list. A failed test stays until the next test or save. |
 | `POST /api/settings/endpoints/remove` | Remove `{ id }`: delete its key, abort its in-flight requests and unregister only that provider; return the list. Saved discussions and profiles keep their content and fail visibly when used. |
-| `GET /api/settings/endpoint` | Compatibility: `{ configured, baseUrl }` of the `openai` endpoint. |
-| `POST /api/settings/endpoint` | Compatibility: save `{ baseUrl, apiKey }` into the `openai` endpoint (named "Custom endpoint" when new). |
-| `POST /api/settings/endpoint/test` | Compatibility: test the `openai` endpoint with model listing; return status and URL, or a fixed actionable error. |
-| `POST /api/settings/endpoint/clear` | Compatibility: remove the `openai` endpoint. |
 
 Names are 1–80 characters without control characters and must not contain the
 key. All URLs and keys are stored as one list in `openai-endpoints.json` in the server's app-data

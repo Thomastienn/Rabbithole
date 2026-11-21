@@ -74,8 +74,17 @@ for (const name of [TEST_PROVIDER, 'openai'])
                 headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
                 body: JSON.stringify(body),
             });
-        if (fake)
-            await post('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey: 'fixture-key' });
+        const provider = fake
+            ? (
+                  await (
+                      await post('/api/settings/endpoints', {
+                          name: 'Custom endpoint',
+                          baseUrl: fake.baseUrl,
+                          apiKey: 'fixture-key',
+                      })
+                  ).json()
+              )[0].id
+            : name;
         // The tutor system prompt each provider received, newest last; compaction and suggestion calls carry other instructions.
         const prompts = () =>
             name === 'openai'
@@ -88,7 +97,7 @@ for (const name of [TEST_PROVIDER, 'openai'])
                         .map((r) => r.params.baseInstructions);
         const tutor = () => prompts().filter((p) => p.includes('You are Rabbithole'));
 
-        const root = store.create('Root', name);
+        const root = store.create('Root', provider);
         store.model(
             root.id,
             { claude: 'sonnet', codex: 'fixture-model', openai: 'local-tutor' }[name],

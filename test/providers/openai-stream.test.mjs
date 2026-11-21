@@ -8,12 +8,9 @@ import { open } from '../support/openai-kit.mjs';
 test('custom endpoint saves locally, lists models and streams each turn with saved history and fixed branch context', async (t) => {
     const fake = await fakeOpenAI(t),
         env = await open(t);
-    const { get, post, store, dir } = env,
+    const { get, post, store, dir, addEndpoint } = env,
         apiKey = 'fixture-custom-endpoint-secret';
-    assert.deepEqual(await (await get('/api/settings/endpoint')).json(), {
-        configured: false,
-        baseUrl: null,
-    });
+    assert.deepEqual(await (await get('/api/settings/endpoints')).json(), []);
     const unconfigured = await get('/api/models');
     assert.equal(unconfigured.status, 502);
     // Provider names come from the server even when nothing connects, so the client keeps no label list.
@@ -22,10 +19,7 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
         codex: { label: 'Codex', connected: false },
         openai: { label: 'Custom endpoint', connected: false },
     });
-    assert.equal(
-        (await post('/api/settings/endpoint', { baseUrl: fake.baseUrl + '/', apiKey })).status,
-        200,
-    );
+    const id = await addEndpoint(fake.baseUrl + '/', apiKey);
     assert.equal(fake.calls.length, 0, 'save does not contact the endpoint');
     const path = join(dir, 'openai-endpoints.json');
     assert.equal(statSync(path).mode & 0o777, 0o600);
@@ -33,7 +27,7 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
     const catalogue = await (await get('/api/models')).json();
     assert.deepEqual(catalogue.models, [
         {
-            provider: 'openai',
+            provider: id,
             model: 'local-tutor',
             label: 'local-tutor',
             isDefault: true,
@@ -42,7 +36,7 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
             usesTutorTools: false,
         },
         {
-            provider: 'openai',
+            provider: id,
             model: 'second-model',
             label: 'second-model',
             isDefault: false,
@@ -57,11 +51,15 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
         [
             ['claude', 'Claude', false],
             ['codex', 'Codex', false],
-            ['openai', 'Custom endpoint', true],
+            ['openai', 'Custom endpoint', false],
+            [id, 'Custom endpoint', true],
         ],
     );
-    assert.equal((await post('/api/settings/endpoint/test')).status, 200);
-    const root = store.create('Parent', 'openai');
+    assert.equal(
+        (await (await post('/api/settings/endpoints/test', { id })).json())[0].lastTest.ok,
+        true,
+    );
+    const root = store.create('Parent', id);
     const source = store.message(root.id, 'assistant', 'Peterson passage', 'completed');
     const child = store.branch(
         root,
@@ -102,9 +100,9 @@ test('custom endpoint saves locally, lists models and streams each turn with sav
 
 test('Stop cancels the upstream socket, saves partial output and allows another turn without replaying partial replies', async (t) => {
     const fake = await fakeOpenAI(t),
-        { post, store, endpoint } = await open(t);
-    await post('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey: 'abort-fixture-secret' });
-    const tree = store.create('Stop', 'openai');
+        { post, store, endpoint, addEndpoint } = await open(t);
+    const id = await addEndpoint(fake.baseUrl, 'abort-fixture-secret');
+    const tree = store.create('Stop', id);
     store.model(tree.id, 'local-tutor');
     const closed = Promise.withResolvers();
     fake.reply = (req, res) => {
@@ -153,7 +151,7 @@ test('Stop cancels the upstream socket, saves partial output and allows another 
         events = [],
         controller = new AbortController();
     controller.abort();
-    await endpoint.generate(
+    await endpoint.providers()[id].generate(
         {},
         'Never sent',
         (e) => events.push(e),
@@ -166,9 +164,9 @@ test('Stop cancels the upstream socket, saves partial output and allows another 
 
 test('upstream HTTP, malformed streams, truncation and filtering fail honestly and leave the conversation usable', async (t) => {
     const fake = await fakeOpenAI(t),
-        { post, store } = await open(t);
-    await post('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey: 'error-fixture-secret' });
-    const tree = store.create('Errors', 'openai');
+        { post, store, addEndpoint } = await open(t);
+    const id = await addEndpoint(fake.baseUrl, 'error-fixture-secret');
+    const tree = store.create('Errors', id);
     store.model(tree.id, 'local-tutor');
     for (const [status, reason] of [
         [401, /API key/],
@@ -256,7 +254,7 @@ test('upstream HTTP, malformed streams, truncation and filtering fail honestly a
         await (await post(`/api/trees/${tree.id}/messages`, { text: 'Recovery' })).text(),
         /"status":"completed"/,
     );
-    assert.equal(store.tree(tree.id).provider, 'openai');
+    assert.equal(store.tree(tree.id).provider, id);
     assert.ok(
         fake.calls
             .at(-1)
@@ -268,12 +266,9 @@ test('upstream HTTP, malformed streams, truncation and filtering fail honestly a
 
 test('SSE decoding handles fragmented UTF-8, CRLF and multiline data without leaking other choices or metadata', async (t) => {
     const fake = await fakeOpenAI(t),
-        { post, store } = await open(t);
-    await post('/api/settings/endpoint', {
-        baseUrl: fake.baseUrl,
-        apiKey: 'framing-fixture-secret',
-    });
-    const tree = store.create('Framing', 'openai');
+        { post, store, addEndpoint } = await open(t);
+    const id = await addEndpoint(fake.baseUrl, 'framing-fixture-secret');
+    const tree = store.create('Framing', id);
     store.model(tree.id, 'local-tutor');
     fake.reply = async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/event-stream' });
