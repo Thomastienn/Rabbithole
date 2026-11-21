@@ -155,7 +155,9 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
         saved = -Infinity,
         // The trailing update for tokens that arrived inside the current interval.
-        pending = null;
+        pending = null,
+        // An error from the trailing update; thrown where the provider's errors fail the reply, not out of the timer.
+        late = null;
     const heartbeat = setInterval(() => {
         if (!res.destroyed) res.write(': keepalive\n\n');
     }, 15000);
@@ -418,6 +420,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             prompt,
             (event) => {
                 if (finished) return;
+                if (late) throw late;
                 if (event.type === 'delta' || event.type === 'item') {
                     items.set(
                         event.item,
@@ -427,7 +430,14 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                     );
                     const wait = ctx.saveEvery - (performance.now() - saved);
                     if (wait <= 0) flush();
-                    else pending ??= setTimeout(flush, wait);
+                    else
+                        pending ??= setTimeout(() => {
+                            try {
+                                flush();
+                            } catch (error) {
+                                late = error;
+                            }
+                        }, wait);
                 }
                 if (event.type === 'response' && pending) flush();
                 if (event.type === 'response' && notes.ended) run.abort(ENDED);
@@ -457,6 +467,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             },
             AbortSignal.any([controller.signal, run.signal]),
         );
+        if (late) throw late;
         if (pending) flush();
         if (status === 'streaming')
             status = controller.signal.aborted ? 'interrupted' : 'completed';
