@@ -46,7 +46,7 @@ export async function detectPython({
             bwrap: false,
             error: `bubblewrap is missing. ${PYTHON_SETUP}`,
         };
-    if (!(await check(python, ['-I', '-c', 'import numpy, scipy, sympy, pandas'])))
+    if (!(await check(python, ['-I', '-B', '-c', 'import numpy, scipy, sympy, pandas'])))
         return {
             ready: false,
             python,

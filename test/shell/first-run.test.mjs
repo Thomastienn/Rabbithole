@@ -189,6 +189,17 @@ test('Linux setup shows the one install line while packages are missing; "Check 
     assert.equal(setup(), null);
 });
 
+test('with bundled tools setup shows only the bubblewrap line and "Check again"', async (t) => {
+    const system = { body: { command: 'sudo apt install bubblewrap' } };
+    const { container, click } = await mount(t, { system });
+    const setup = () => container.querySelector('.first-run');
+    assert.equal(setup().querySelector('code').textContent, 'sudo apt install bubblewrap');
+    assert.doesNotMatch(setup().textContent, /pkg-config|libcairo|build-essential/);
+    system.body = {};
+    await click('Check again');
+    assert.doesNotMatch(setup().textContent, /Video tools|sudo apt/);
+});
+
 test('other distros get the package list in words; setup still ends with the line unresolved', async (t) => {
     const { container, click } = await mount(t, {
         system: { body: { words: 'bubblewrap, pkg-config and the Cairo headers' } },

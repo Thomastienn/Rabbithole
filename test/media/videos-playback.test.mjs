@@ -142,7 +142,7 @@ test(
             audio: 'OWNED AUDIO',
             mutateAudio: 'denied',
             mutateTiming: 'denied',
-            env: 'HOME,PATH,PWD,TMPDIR',
+            env: 'HOME,PATH,PWD,TEXMFVAR,TMPDIR',
             docker: 'denied',
             network: 'denied',
         });

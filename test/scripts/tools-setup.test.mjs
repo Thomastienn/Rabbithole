@@ -159,10 +159,18 @@ test('Windows gets the uv zip and the TinyTeX self-extractor, and tlmgr runs thr
 test('the Linux line shows only when bwrap, pkg-config or Cairo/Pango headers are missing', () => {
     const probe = (missing) => (command) => ({ status: missing.includes(command) ? 1 : 0 });
     const mint = 'ID=linuxmint\nID_LIKE="ubuntu debian"\n';
-    assert.equal(systemPackages({ platform: 'linux', probe: probe([]), release: mint }), null);
+    assert.equal(
+        systemPackages({ platform: 'linux', probe: probe([]), release: mint, bundled: false }),
+        null,
+    );
     for (const missing of [['bwrap'], ['pkg-config']])
         assert.deepEqual(
-            systemPackages({ platform: 'linux', probe: probe(missing), release: mint }),
+            systemPackages({
+                platform: 'linux',
+                probe: probe(missing),
+                release: mint,
+                bundled: false,
+            }),
             {
                 command: LINUX_PACKAGES,
             },
@@ -172,7 +180,12 @@ test('the Linux line shows only when bwrap, pkg-config or Cairo/Pango headers ar
         'sudo apt install bubblewrap libcairo2-dev libpango1.0-dev pkg-config python3-dev build-essential',
     );
     assert.deepEqual(
-        systemPackages({ platform: 'linux', probe: probe(['bwrap']), release: 'ID=debian\n' }),
+        systemPackages({
+            platform: 'linux',
+            probe: probe(['bwrap']),
+            release: 'ID=debian\n',
+            bundled: false,
+        }),
         {
             command: LINUX_PACKAGES,
         },
@@ -181,7 +194,18 @@ test('the Linux line shows only when bwrap, pkg-config or Cairo/Pango headers ar
         platform: 'linux',
         probe: probe(['bwrap']),
         release: 'ID=fedora\n',
+        bundled: false,
     });
     assert.match(fedora.words, /bubblewrap, pkg-config, the Cairo and Pango development headers/);
     assert.equal(systemPackages({ platform: 'darwin', probe: probe(['bwrap']) }), null);
+});
+
+test('with bundled tools the Linux line asks only for bwrap, never pkg-config or headers', () => {
+    const probe = (missing) => (command) => ({ status: missing.includes(command) ? 1 : 0 });
+    const linux = (missing, release = 'ID=ubuntu\n') =>
+        systemPackages({ platform: 'linux', probe: probe(missing), release, bundled: true });
+    assert.equal(linux([]), null);
+    assert.equal(linux(['pkg-config']), null);
+    assert.deepEqual(linux(['bwrap', 'pkg-config']), { command: 'sudo apt install bubblewrap' });
+    assert.deepEqual(linux(['bwrap'], 'ID=fedora\n'), { words: 'bubblewrap' });
 });
