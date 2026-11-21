@@ -153,7 +153,11 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         // The tutor's inline notes so far (ADR 0016); the learner sees each one as its marker closes.
         notes = markerNotes('', []),
         // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
-        saved = -Infinity;
+        saved = -Infinity,
+        // The trailing update for tokens that arrived inside the current interval.
+        pending = null,
+        // An error from the trailing update; thrown where the provider's errors fail the reply, not out of the timer.
+        late = null;
     const heartbeat = setInterval(() => {
         if (!res.destroyed) res.write(': keepalive\n\n');
     }, 15000);
@@ -179,9 +183,6 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     const suggesting = store.suggestionSettings().enabled;
     const noted = (output) => {
         const next = markerNotes(output.text, output.markers, hasMedia());
-        // A new suggestion can be opened at once, so its brief reads the saved text up to its term.
-        if (!finished && next.passages.length > notes.passages.length)
-            store.update(reply, text, status);
         if (
             suggesting &&
             (next.passages.length > notes.passages.length ||
@@ -201,8 +202,25 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             send({ type: 'questions', questions: (questions = next.questions) });
         notes = next;
     };
+    // Parses the text so far and updates the page and the saved row, at most once per ctx.saveEvery ms while tokens arrive.
+    // A new suggestion can be opened at once, so its brief reads the text saved here.
+    const flush = () => {
+        clearTimeout(pending);
+        pending = null;
+        if (finished) return;
+        const output = diagramReply([...items.values()].join('\n\n'));
+        text = output.text;
+        saved = performance.now();
+        store.update(reply, text, status);
+        send({ type: 'text', text });
+        noted(output);
+        prepareArtifacts(output);
+        calls.place(output);
+        calls.runText(output);
+    };
     const finish = () => {
         if (finished) return;
+        if (pending) flush();
         finished = true;
         prepareArtifacts(diagramReply([...items.values()].join('\n\n'), true), true);
         clearInterval(heartbeat);
@@ -386,6 +404,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                         if (!isAppTool(name))
                             return ctx.tools.run(name, input, { conversation: id, reply, signal });
                         if (finished) throw new Error('The reply has already ended.');
+                        if (pending) flush();
                         return calls.run(name, input, text.length, text);
                     },
                 }),
@@ -401,6 +420,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             prompt,
             (event) => {
                 if (finished) return;
+                if (late) throw late;
                 if (event.type === 'delta' || event.type === 'item') {
                     items.set(
                         event.item,
@@ -408,18 +428,18 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                             ? event.text
                             : (items.get(event.item) ?? '') + event.text,
                     );
-                    const output = diagramReply([...items.values()].join('\n\n'));
-                    text = output.text;
-                    if (performance.now() - saved >= ctx.saveEvery) {
-                        saved = performance.now();
-                        store.update(reply, text, status);
-                    }
-                    send({ type: 'text', text });
-                    noted(output);
-                    prepareArtifacts(output);
-                    calls.place(output);
-                    calls.runText(output);
+                    const wait = ctx.saveEvery - (performance.now() - saved);
+                    if (wait <= 0) flush();
+                    else
+                        pending ??= setTimeout(() => {
+                            try {
+                                flush();
+                            } catch (error) {
+                                late = error;
+                            }
+                        }, wait);
                 }
+                if (event.type === 'response' && pending) flush();
                 if (event.type === 'response' && notes.ended) run.abort(ENDED);
                 if (event.type === 'status') status = event.status;
                 // App tools are machinery, not tool activity.
@@ -447,6 +467,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             },
             AbortSignal.any([controller.signal, run.signal]),
         );
+        if (late) throw late;
+        if (pending) flush();
         if (status === 'streaming')
             status = controller.signal.aborted ? 'interrupted' : 'completed';
         if (!finished) {

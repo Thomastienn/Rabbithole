@@ -60,7 +60,7 @@ export function createApp({
     defaultProvider = 'codex',
     assets = resolve('dist'),
     diagramTimeout,
-    // Minimum ms between mid-stream reply saves; tests pass 0 to read the saved row after each delta.
+    // Minimum ms between mid-stream reply saves and page updates; tests pass 0 to see each delta.
     saveEvery = 250,
     diagramParse,
     visualTimeout,

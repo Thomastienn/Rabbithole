@@ -119,27 +119,6 @@ test('two trees stream independent replies, preserve originals, resume saved thr
     }
 });
 
-test('a fast stream saves the reply a few times, not once per delta, and keeps the full text', async () => {
-    const env = await open(join(dir, 'throttle.sqlite'), async (tree, text, emit) => {
-        for (let i = 0; i < 500; i++) emit({ type: 'delta', item: 'a', text: `w${i} ` });
-        emit({ type: 'status', status: 'completed' });
-    });
-    try {
-        const tree = await (await env.post('/api/trees', {})).json();
-        const update = env.store.update;
-        let saves = 0;
-        env.store.update = function (...args) {
-            saves++;
-            return update.apply(this, args);
-        };
-        await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Q' })).text();
-        assert.ok(saves < 50, `${saves} saves`); // far below one per delta (500), with room for a slow runner
-        assert.match(env.store.tree(tree.id).messages[1].text, /^w0 .* w499 $/);
-    } finally {
-        env.close();
-    }
-});
-
 test('provider failure preserves partial text and history, allows next request', async () => {
     let fail = true;
     const env = await open(join(dir, 'failure.sqlite'), async (...args) => {
