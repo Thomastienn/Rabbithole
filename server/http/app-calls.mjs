@@ -1,17 +1,16 @@
 import { MAKE_VIDEO, readMakeVideo } from '../tools/makeVideo.mjs';
-import { START_DISCUSSION, readStartDiscussion } from '../tools/startDiscussion.mjs';
-import { readVisualMarker } from '../media/markers.mjs';
+import { readDiscussionMarker, readVisualMarker } from '../media/markers.mjs';
 import { formatLog, errorCause, privateValues } from '../log.mjs';
 
 // App tools the server runs itself for the tutor; never learner-toggled tutor tools or tool activity.
-// Visuals come from markers, not a tool (ADR 0018).
-export const APP_TOOLS = [MAKE_VIDEO, START_DISCUSSION];
+// Visuals and discussions come from markers, not tools (ADR 0018).
+export const APP_TOOLS = [MAKE_VIDEO];
 export const isAppTool = (name) => APP_TOOLS.some((t) => t.name === name);
 
-// One reply's app calls, native or written as <tool_call> text, and its visual markers.
+// One reply's app calls, native or written as <tool_call> text, and its visual and discussion markers.
 export function appCalls(ctx, { conversation, reply, showVisual, makeVideo, startDiscussion }) {
     let ranCalls = 0;
-    // How many visual markers of each value were read; the titles drawn in this reply.
+    // How many media markers of each kind and value were read; the titles drawn in this reply.
     const placed = new Map(),
         titles = new Set();
     // Titles match ignoring case and whitespace.
@@ -38,10 +37,6 @@ export function appCalls(ctx, { conversation, reply, showVisual, makeVideo, star
             makeVideo(readMakeVideo(input), position, replySoFar);
             return 'queued';
         }
-        if (name === START_DISCUSSION.name) {
-            startDiscussion(readStartDiscussion(input), position);
-            return 'started; end your reply now.';
-        }
         throw new Error(`${name} is not a text tool.`);
     };
     // <tool_call> text (the text fallback or a leaked native call) runs once each; nothing goes back to the model.
@@ -63,33 +58,47 @@ export function appCalls(ctx, { conversation, reply, showVisual, makeVideo, star
         }
     };
     // Marker names and fields are model text, so only the cause is logged.
-    const dropped = (cause) =>
+    const dropped = (kind, cause) =>
         ctx.log(
-            formatLog('warn', 'chat', 'visual marker dropped', { id: reply, conversation, cause }),
+            formatLog('warn', 'chat', `${kind} marker dropped`, { id: reply, conversation, cause }),
         );
-    // Each visual marker starts its visual as soon as it closes, at its place (ADR 0018); one that cannot be drawn is dropped and logged.
+    // Each visual or discussion marker starts its media as soon as it closes, at its place (ADR 0018); one that cannot start is dropped and logged.
     const place = (output) => {
         // Counted per value, not by index: a marker can leave the list when later text turns it into code.
         const seen = new Map();
         for (const m of output.markers ?? []) {
-            if (m.kind !== 'visual') continue;
-            const n = (seen.get(m.value) ?? 0) + 1;
-            seen.set(m.value, n);
-            if (n <= (placed.get(m.value) ?? 0)) continue;
-            placed.set(m.value, n);
-            const request =
-                m.closed === false
-                    ? { cause: 'not closed by the end of its line' }
-                    : readVisualMarker(m.value, output.text.slice(0, m.position));
-            if (request.cause) dropped(request.cause);
+            if (m.kind !== 'visual' && m.kind !== 'discussion') continue;
+            const id = `${m.kind}:${m.value}`,
+                n = (seen.get(id) ?? 0) + 1;
+            seen.set(id, n);
+            if (n <= (placed.get(id) ?? 0)) continue;
+            placed.set(id, n);
+            if (m.closed === false) {
+                dropped(m.kind, 'not closed by the end of its line');
+                continue;
+            }
+            if (m.kind === 'discussion') {
+                const { task, cause } = readDiscussionMarker(m.value);
+                if (cause) dropped('discussion', cause);
+                else
+                    try {
+                        startDiscussion(task, m.position);
+                    } catch (error) {
+                        dropped('discussion', errorCause(error));
+                    }
+                continue;
+            }
+            const request = readVisualMarker(m.value, output.text.slice(0, m.position));
+            if (request.cause) dropped('visual', request.cause);
             // A repeat answer may ask again; the same title is never drawn twice in one reply.
-            else if (titles.has(key(request.title))) dropped('title already shown in this reply');
+            else if (titles.has(key(request.title)))
+                dropped('visual', 'title already shown in this reply');
             else
                 try {
                     showVisual(request, m.position);
                     titles.add(key(request.title));
                 } catch (error) {
-                    dropped(errorCause(error));
+                    dropped('visual', errorCause(error));
                 }
         }
     };

@@ -3,21 +3,14 @@ import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { videoResponse, complete, until, open } from '../support/video-kit.mjs';
-import { discussion, publicDiscussion } from '../fixtures/discussion.mjs';
 import { readMakeVideo, videoContext } from '../../server/tools/makeVideo.mjs';
-import { readStartDiscussion } from '../../server/tools/startDiscussion.mjs';
 import { tutorSystem } from '../../server/media/diagrams.mjs';
 import { APP_TOOLS } from '../../server/http/app-calls.mjs';
 
-test('make_video and start_discussion name a bad argument; their rules live in the tool descriptions', () => {
+test('make_video names a bad argument; its rules live in its tool description', () => {
     assert.throws(() => readMakeVideo({}), /make_video needs topic/);
     assert.throws(() => readMakeVideo({ topic: 'x'.repeat(201) }), /topic is 201 characters/);
     assert.equal(readMakeVideo({ topic: ' Orbits ' }), 'Orbits');
-    assert.throws(
-        () => readStartDiscussion({ classmates: [] }),
-        /^Error: start_discussion: choose 3/,
-    );
-    assert.deepEqual(readStartDiscussion(discussion), discussion);
     assert.equal(
         videoContext(
             [
@@ -35,7 +28,7 @@ test('make_video and start_discussion name a bad argument; their rules live in t
     ]) {
         assert.doesNotMatch(
             prompt,
-            /rabbithole-(video|discussion)|Discussion: create one|video request stands alone/,
+            /rabbithole-(video|discussion)|Discussion: create one|video request stands alone|start_discussion/,
         );
         assert.match(prompt, /make_video/);
     }
@@ -144,42 +137,6 @@ test('make_video plans from the conversation; other media beside it gets a plain
             assert.equal(results[0], 'queued');
             assert.equal(env.store.tree(asked.id).artifacts[0].kind, 'video');
         }
-    } finally {
-        await env.close();
-    }
-});
-
-test('start_discussion opens a discussion at its position with private levels and voices', async () => {
-    let results;
-    const env = await open({
-        generate: async (tree, text, emit, _save, signal) => {
-            emit({ type: 'item', item: 'a', text: 'Let us talk.' });
-            results = await callAll(tree, emit, signal, [
-                ['start_discussion', { ...discussion, lines: discussion.lines.slice(0, 2) }],
-                ['start_discussion', discussion],
-            ]);
-            emit({ type: 'status', status: 'completed' });
-        },
-    });
-    try {
-        const tree = env.store.create('Fungi', 'codex');
-        const stream = await (
-            await env.post(`/api/trees/${tree.id}/messages`, {
-                text: 'Discuss this with classmates.',
-            })
-        ).text();
-        assert.match(results[0], /start_discussion: the opening needs 4 to 8 lines/);
-        assert.match(results[1], /^started/);
-        assert.doesNotMatch(stream, /"level"|"voice"|sceptical/);
-        const saved = await (await env.get(`/api/trees/${tree.id}`)).json();
-        const [ready] = saved.artifacts;
-        assert.equal(saved.artifacts.length, 1);
-        assert.equal(ready.kind, 'discussion');
-        assert.equal(ready.status, 'ready');
-        assert.equal(ready.position, 'Let us talk.'.length);
-        assert.deepEqual(ready.discussion, publicDiscussion);
-        assert.deepEqual(JSON.parse(env.store.tree(tree.id).artifacts[0].source), discussion);
-        assert.equal(saved.messages.at(-1).text, 'Let us talk.');
     } finally {
         await env.close();
     }

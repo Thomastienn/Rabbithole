@@ -238,9 +238,9 @@ export function replyArtifacts(
         mediaQueue.push(artifact);
         pumpMedia();
     };
-    // A start_discussion call: its opening is saved at once, and the learner sees its lines one at a time.
+    // A discussion marker: its opening is saved at once, and the learner sees its lines one at a time.
     const startDiscussion = (task, position) => {
-        besideVideo('start_discussion');
+        besideVideo('A discussion');
         const pending = store.pendingArtifact(
             id,
             reply,
