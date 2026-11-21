@@ -1,11 +1,16 @@
 import { familiarity } from '../familiarity.mjs';
 import { blob, vector } from './embeddings.mjs';
-// Whole-word, case-insensitive name match.
-const mentions = (text, name) =>
-    new RegExp(
-        `(^|[^\\p{L}\\p{N}])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`,
-        'iu',
-    ).test(text);
+import { mentions } from '../neighbourhood.mjs';
+
+const summary = (observations, met) => {
+    const counts = [0, 0, 0, 0, 0, 0];
+    for (const o of observations) counts[o.level]++;
+    return {
+        familiarity: Math.round(familiarity(observations, Date.now()) * 100) / 100,
+        met,
+        observations: counts,
+    };
+};
 
 export const knowledge = {
     // INSERT OR IGNORE makes the run once-only per saved reply: reopening or switching providers never reruns it.
@@ -30,6 +35,19 @@ export const knowledge = {
                 'SELECT a.name AS "from", b.name AS "to", l.kind FROM concept_links l JOIN concepts a ON a.id=l.concept JOIN concepts b ON b.id=l.target ORDER BY a.name,b.name,l.kind',
             )
             .all();
+        // Every concept's observations and met count in one query each, so the query count stays fixed.
+        const observed = Map.groupBy(
+            this.db.prepare('SELECT concept, level, confidence, at FROM observations').all(),
+            (o) => o.concept,
+        );
+        const met = new Map(
+            this.db
+                .prepare(
+                    "SELECT concept, COUNT(*) AS n FROM evidence WHERE kind='met' GROUP BY concept",
+                )
+                .all()
+                .map((r) => [r.concept, r.n]),
+        );
         return {
             topics: this.db
                 .prepare('SELECT name FROM topics ORDER BY name')
@@ -38,25 +56,21 @@ export const knowledge = {
             concepts: concepts.map((c) => ({
                 name: c.name,
                 topics: JSON.parse(c.topics),
-                ...this.familiarity(c.id),
+                ...summary(observed.get(c.id) ?? [], met.get(c.id) ?? 0),
             })),
             links: links.map((l) => ({ ...l })),
         };
     },
     // Familiarity is derived from observations, never stored; "met" is counted for display and never moves it.
     familiarity(concept) {
-        const observations = this.db
-            .prepare('SELECT level, confidence, at FROM observations WHERE concept=?')
-            .all(concept);
-        const counts = [0, 0, 0, 0, 0, 0];
-        for (const o of observations) counts[o.level]++;
-        return {
-            familiarity: Math.round(familiarity(observations, Date.now()) * 100) / 100,
-            met: this.db
+        return summary(
+            this.db
+                .prepare('SELECT level, confidence, at FROM observations WHERE concept=?')
+                .all(concept),
+            this.db
                 .prepare("SELECT COUNT(*) AS n FROM evidence WHERE concept=? AND kind='met'")
                 .get(concept).n,
-            observations: counts,
-        };
+        );
     },
     conceptEmbeddings() {
         return this.db

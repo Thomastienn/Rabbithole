@@ -154,6 +154,30 @@ test('Claude replies and auth checks use the found path; a missing CLI is not co
     assert.equal(commands.length, 2, 'nothing runs without a CLI');
 });
 
+test('Claude reuses a signed-in check for 30 seconds; a sign-in check or a signed-out answer is never reused', async (t) => {
+    t.mock.timers.enable({ apis: ['Date'] });
+    let runs = 0,
+        loggedIn = true;
+    const claude = new Claude(
+        mkdtempSync(join(tmpdir(), 'tt-claude-auth-')),
+        () => {},
+        (_cmd, _args, _opts, cb) => (runs++, cb(null, JSON.stringify({ loggedIn }))),
+        () => '/bin/claude',
+    );
+    await claude.models();
+    await claude.models();
+    assert.equal(runs, 1);
+    t.mock.timers.tick(30_000);
+    await claude.models();
+    assert.equal(runs, 2);
+    loggedIn = false;
+    assert.equal((await claude.status()).connected, false);
+    await assert.rejects(claude.models(), /not signed in/);
+    loggedIn = true;
+    await claude.models();
+    assert.equal(runs, 5);
+});
+
 test('Codex launches the found path; a missing CLI fails its model list', async () => {
     const commands = [];
     let bin = null;

@@ -272,7 +272,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             store.usage(reply, {
                 ...usage,
                 ...(usage.context && {
-                    context: { ...usage.context, model: store.tree(id)?.model ?? tree.model },
+                    context: { ...usage.context, model: store.header(id)?.model ?? tree.model },
                 }),
             });
         // History keeps any reported measurement, including failed or stopped calls; unreported ones stay unavailable.
@@ -280,7 +280,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             store.record(
                 `chat:${reply}`,
                 'chat',
-                { provider: tree.provider, model: store.tree(id)?.model ?? tree.model },
+                { provider: tree.provider, model: store.header(id)?.model ?? tree.model },
                 usage,
             );
         if (status === 'completed' || status === 'failed')
@@ -308,7 +308,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     send({
         type: 'saved',
         id: reply,
-        title: store.tree(id).title,
+        title: store.header(id).title,
         user: {
             id: user,
             role: 'user',
@@ -357,7 +357,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             if (finished) return true;
             if (compaction.error)
                 throw Object.assign(new Error(compaction.error), { compaction: true });
-            tree.branch = store.tree(id).branch;
+            tree.branch = store.branchOf(id);
         }
         send({ type: 'status', status: 'thinking' });
         if (!tree.model) {
@@ -487,7 +487,10 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                         formatLog('info', 'media', 'started', { id: artifact.id, task: 'diagram' }),
                     );
                     try {
-                        const selection = { provider: tree.provider, model: store.tree(id).model };
+                        const selection = {
+                            provider: tree.provider,
+                            model: store.header(id).model,
+                        };
                         const source = await generateDiagram(
                             ctx.metered(pick(tree), 'diagram', artifact.id, selection, {
                                 message: artifact.message,
