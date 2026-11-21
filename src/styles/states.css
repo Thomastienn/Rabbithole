@@ -49,17 +49,17 @@
     gap: 4px 12px;
     border-radius: var(--radius-inner);
     color: var(--color-text-secondary);
-    font-size: 13px;
+    font-size: var(--text-supporting-size);
 }
 .branch-parts:focus-visible {
-    outline: 2px solid var(--color-text-primary);
-    outline-offset: 2px;
+    outline: var(--focus-outline-width) solid var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
 }
 .branch-part {
     cursor: pointer;
 }
 .branch-part[aria-selected='true'] {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--rabbithole-paper);
     text-decoration: underline 2px;
     text-underline-offset: 3px;
