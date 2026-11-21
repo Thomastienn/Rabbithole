@@ -42,6 +42,12 @@ object the learner could ask about in a group or container carrying
 data-part="Name": an SVG g element, or an HTML element such as a div. Nest
 parts to show what belongs to what, at most three levels deep: a component
 holds its details, such as data-part="Reactor" holding data-part="Control rods".
+A part is one object the learner would name, never a collection of like things:
+each nucleus is its own part, not one part for all nucleons or one for all
+labels. A label sits inside the part it names. When objects merge, split or
+change identity between steps, the script renames and regroups the parts at each
+step to match what that step shows: two nuclei that fuse become one part named
+for the new nucleus. Step captions and legends are not parts.
 Names are short, one to four words in the learner's language. The host outlines
 the part under the pointer and asks about it on click. Never name controls
 (buttons, inputs, selects, sliders, the step controls) as parts; they keep

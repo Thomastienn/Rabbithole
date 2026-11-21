@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { visualMessage } from '../../src/media/artifacts.ts';
 import { renderVisual } from '../../src/media/visualMarkup.ts';
@@ -326,4 +327,18 @@ test('host accepts only a bounded part tree inside the frame, three levels deep'
         undefined,
         'needs the frame',
     );
+});
+
+test('the visual writer prompt groups parts by named object and regroups them at each step', async () => {
+    const prompt = (
+        await readFile(new URL('../../server/media/prompts/visual.md', import.meta.url), 'utf8')
+    ).replace(/\s+/g, ' ');
+    for (const rule of [
+        'A part is one object the learner would name, never a collection of like things',
+        'not one part for all nucleons or one for all labels',
+        'A label sits inside the part it names.',
+        'When objects merge, split or change identity between steps, the script renames and regroups the parts at each step to match what that step shows',
+        'Step captions and legends are not parts.',
+    ])
+        assert.ok(prompt.includes(rule), rule);
 });
