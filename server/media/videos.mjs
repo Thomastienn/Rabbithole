@@ -239,7 +239,12 @@ export async function generateVideo({
             from: prior?.plan && join(dir, 'video-work', artifact.id, previous.attempt),
             searching,
             fetch: (planned) =>
-                exhibit(planned, { search, signal: controller.signal, clips: clipping }),
+                exhibit(planned, {
+                    search,
+                    signal: controller.signal,
+                    clips: clipping,
+                    tmp: join(workspace, 'tmp'),
+                }),
             workspace,
             signal: controller.signal,
             wait: (promise) => wait(promise, Math.max(1, deadline - Date.now()), OVERRUN),

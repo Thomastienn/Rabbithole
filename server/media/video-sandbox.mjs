@@ -63,6 +63,10 @@ export const SANDBOX = (workspace) => [
     '--setenv',
     'TMPDIR',
     join(workspace, 'tmp'),
+    // LaTeX's font and format caches; TinyTeX would otherwise write them into its own read-only folder.
+    '--setenv',
+    'TEXMFVAR',
+    join(workspace, 'tmp', 'texmf-var'),
 ];
 
 // bwrap flags and how many values follow each; the first other word starts the command.
