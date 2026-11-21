@@ -64,6 +64,69 @@ Trees, messages and videos are stored in `~/.local/share/rabbithole` (or `$XDG_D
 
 The server only listens on `127.0.0.1`, and the app has no telemetry. Your questions and their branch context go to the provider you choose. Video narration goes to Microsoft's Edge TTS service.
 
+## Architecture
+
+Rabbithole is one local Node server plus a React app in the browser. The desktop app is a Tauri window around the same server.
+
+```mermaid
+flowchart LR
+    subgraph Client["Browser or Tauri window (desktop/)"]
+        UI["React UI (src/)<br/>shell · chat · map · media · settings"]
+    end
+
+    subgraph Server["Node server on 127.0.0.1 (server/)"]
+        HTTP["HTTP routes + security<br/>(server/http/routes)"]
+        Jobs["Background jobs<br/>titles · suggestions · briefs · compaction · media"]
+        Providers["Providers<br/>(server/providers)"]
+        Tools["Tutor tools<br/>search · read page · Python · memory · recall"]
+        Media["Media pipeline<br/>diagrams · visuals · videos (server/media)"]
+        Store[("SQLite store + files<br/>(server/store)")]
+    end
+
+    subgraph Local["Local helpers"]
+        Sandbox["Sandbox (bwrap / Windows launcher)<br/>Remotion · Manim · Python"]
+        SearXNG["Local SearXNG"]
+        ML["Embeddings + OCR<br/>transformers.js · tesseract.js"]
+    end
+
+    subgraph Remote["Outside your computer"]
+        Claude["Claude Code CLI"]
+        Codex["Codex CLI"]
+        Endpoint["OpenAI-compatible endpoint"]
+        TTS["Edge TTS (narration)"]
+        Web["Web pages"]
+    end
+
+    UI -- "fetch + streamed events" --> HTTP
+    HTTP --> Jobs
+    HTTP --> Store
+    HTTP --> Providers
+    Jobs --> Providers
+    Jobs --> Media
+    Providers --> Claude
+    Providers --> Codex
+    Providers --> Endpoint
+    Providers -- "tool calls" --> Tools
+    Tools --> SearXNG
+    Tools --> Web
+    Tools --> Sandbox
+    Tools --> Store
+    Media --> Sandbox
+    Media --> TTS
+    Media --> Store
+    HTTP --> ML
+    ML --> Store
+```
+
+A reply works like this:
+
+1. The UI sends the message.
+2. The server saves it, then asks the chosen provider for a reply and streams it back to the UI.
+3. While it writes the reply, the model can call tutor tools.
+4. After the reply, jobs add titles, branch suggestions and media.
+
+Design decisions are in [docs/adr/](docs/adr/).
+
 ## Documentation
 
 - [Setup](docs/guide/setup.md): install details, desktop builds, providers and custom endpoints
