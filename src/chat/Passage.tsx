@@ -194,11 +194,14 @@ export default function Passage({
             said && { messageId: message.id, ...said },
         );
     }
+    // Whether an underline piece lies in u; formula pieces are MathML elements, which have no dataset in every DOM.
+    const within = (piece: Element, u: { start: number; end: number }) => {
+        const o = Number(piece.getAttribute('data-o'));
+        return o >= u.start && o < u.end;
+    };
     function underlineAt(target: EventTarget | null) {
-        // Formula pieces are MathML elements, which have no dataset in every DOM.
-        const piece = (target as Element | null)?.closest?.('.suggestion') as HTMLElement | null,
-            o = Number(piece?.getAttribute('data-o'));
-        const u = piece && underlines.find((u) => o >= u.start && o < u.end);
+        const piece = (target as Element | null)?.closest?.('.suggestion') as HTMLElement | null;
+        const u = piece && underlines.find((u) => within(piece, u));
         return u ? { piece: piece!, u } : {};
     }
     // A suggestion's saved brief explanation, else its child's first reply; never a model call.
@@ -245,8 +248,8 @@ export default function Passage({
             return true;
         }
         const stop =
-            [...passage.current!.querySelectorAll<HTMLElement>('.suggestion[tabindex]')].find(
-                (e) => +e.getAttribute('data-o')! >= u.start && +e.getAttribute('data-o')! < u.end,
+            [...passage.current!.querySelectorAll<HTMLElement>('.suggestion[tabindex]')].find((e) =>
+                within(e, u),
             ) ?? piece;
         setAnchor(undefined);
         const stopBox = stop.getBoundingClientRect(),

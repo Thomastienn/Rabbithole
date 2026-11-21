@@ -6,9 +6,8 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Button } from '@astryxdesign/core/Button';
 import ArrowUpIcon from '@heroicons/react/24/outline/ArrowUpIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
-import type { Anchor } from './branch';
+import type { Anchor, BranchState } from './branch';
 import type { PartNode } from '../media/artifacts';
-import type { PartPicker } from '../media/VisualFrame';
 import { renderInline } from '../markdown/inlineMarkdown';
 
 export default function BranchForm({
@@ -23,13 +22,7 @@ export default function BranchForm({
     widen,
     pick,
 }: {
-    branch: {
-        parent: string;
-        anchor: Anchor;
-        question: string;
-        pending?: boolean;
-        picker?: PartPicker;
-    };
+    branch: BranchState;
     branching: boolean;
     active: boolean;
     submit: (e: React.FormEvent) => void;

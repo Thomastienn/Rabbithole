@@ -3,7 +3,8 @@ import { PLAN_TEXT_TOOLS } from '../media/plan-calls.mjs';
 
 // The quick thinking model's structured answers (ADR 0013): one plain tool call each, checked by the server.
 const names = { type: 'array', items: { type: 'string' } };
-const turn = {
+// Argument schemas the quick tools share.
+const fields = {
     verdicts: {
         type: 'array',
         items: {
@@ -70,7 +71,7 @@ export const RECORD_VERDICTS = {
         'Record what the message showed about each concept it touched. Call it exactly once; an empty list when it shows nothing.',
     parameters: {
         type: 'object',
-        properties: { verdicts: { ...turn.verdicts, description: 'One entry per concept.' } },
+        properties: { verdicts: { ...fields.verdicts, description: 'One entry per concept.' } },
         required: ['verdicts'],
     },
 };
@@ -83,7 +84,7 @@ export const MARK_SUGGESTIONS = {
         properties: Object.fromEntries(
             ['suggestions', 'groundwork', 'concepts', 'links', 'next_questions'].map((k) => [
                 k,
-                turn[k],
+                fields[k],
             ]),
         ),
         required: ['suggestions'],

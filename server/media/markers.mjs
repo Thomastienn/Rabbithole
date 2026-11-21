@@ -67,7 +67,11 @@ export function stripMarkers(text, final = false) {
     };
 }
 
-const name = (v) => (v && v.length <= 200 && !/[\u0000-\u001f]/.test(v) ? v : null);
+// A note's name, as the notes reader bounds it: trimmed, at most 200 characters, no control characters.
+export const noteName = (v) => {
+    const t = typeof v === 'string' ? v.trim() : '';
+    return t && t.length <= 200 && !/[\u0000-\u001f]/.test(t) ? t : null;
+};
 const same = (list, v) => list.some((x) => (x.text ?? x).toLowerCase() === v.toLowerCase());
 
 // The notes the learner sees, read from the reply's markers (ADR 0016) with the notes reader's limits.
@@ -81,7 +85,7 @@ export function markerNotes(text, markers, hasMedia = false) {
             // Only the first groundwork line counts, and only before any reply text.
             if (grounded || text.slice(0, m.position).trim()) continue;
             grounded = true;
-            for (const g of m.value.split(';').map((g) => name(g.trim())))
+            for (const g of m.value.split(';').map(noteName))
                 if (g && notes.groundwork.length < 3 && !same(notes.groundwork, g))
                     notes.groundwork.push(g);
         } else if (m.kind === null) {
