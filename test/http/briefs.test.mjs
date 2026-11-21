@@ -50,6 +50,7 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         auth: { status: () => ({ connected: true }) },
         log: (line) => logs.push(line),
         suggestions: true,
+        briefs: true,
     });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
     t.after(() => {
@@ -271,6 +272,7 @@ test('every suggestion gets its brief ahead of time; an early open is written on
         auth: { status: () => ({ connected: true }) },
         log: () => {},
         suggestions: true,
+        briefs: true,
     });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
     t.after(() => {

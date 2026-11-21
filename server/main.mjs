@@ -72,6 +72,7 @@ try {
         dir,
         suggestions: true,
         verdicts: true,
+        briefs: true,
         searxng: searxng.status,
         python: pythonTool({ dir }),
         videoEmbed: embed,

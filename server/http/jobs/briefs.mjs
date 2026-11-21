@@ -106,7 +106,7 @@ export function briefJobs(ctx) {
         )
             .map((p) => ({ ...p, message }))
             .filter((p) => !store.brief(message, p.start, p.end));
-        if (!reply || !passages.length) return;
+        if (!ctx.briefs || !reply || !passages.length) return;
         const running = { controller: new AbortController(), conversation };
         const key = `batch:${message}`;
         briefing.set(key, running);
