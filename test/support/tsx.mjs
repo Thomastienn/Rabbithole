@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { isMainThread } from 'node:worker_threads';
 
 // Local test runs share one memory and CPU limit (scripts/limited.mjs); CI runs without it.
-// Workers skip the check: some start with an empty env, which hides CI.
+// A worker shares its parent's process, and may run with env: {}, so only the main thread checks.
 if (
     isMainThread &&
     !process.env.CI &&

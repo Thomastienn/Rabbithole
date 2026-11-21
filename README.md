@@ -2,6 +2,11 @@
 
 A local learning workspace where every side question gets its own branch.
 
+[![Download for Linux](https://img.shields.io/badge/Download-Linux%20AppImage-2ea44f?logo=linux&logoColor=white)](https://github.com/Thomastienn/Rabbithole/releases/latest/download/Rabbithole-linux-x86_64.AppImage)
+[![Download for Windows](https://img.shields.io/badge/Download-Windows%20installer-0078d4?logo=windows&logoColor=white)](https://github.com/Thomastienn/Rabbithole/releases/latest/download/Rabbithole-windows-x64-setup.exe)
+
+Windows warns on first run because the installers are unsigned. See [Desktop app](#desktop-app).
+
 Ask a question, highlight a passage you don't understand, and explore it in a child conversation. The original thread stays intact, and every conversation shows up as a box on a map you can pan, fold and come back to. Everything runs and saves on your computer.
 
 <!-- Demo video and screenshots go here. -->
@@ -49,10 +54,7 @@ Claude and Codex use your plan's sign-in. Rabbithole has no API-key fallback for
 
 ## Desktop app
 
-[![Download for Linux](https://img.shields.io/badge/Download-Linux%20AppImage-2ea44f?logo=linux&logoColor=white)](https://github.com/Thomastienn/Rabbithole/releases/latest/download/Rabbithole-linux-x86_64.AppImage)
-[![Download for Windows](https://img.shields.io/badge/Download-Windows%20installer-0078d4?logo=windows&logoColor=white)](https://github.com/Thomastienn/Rabbithole/releases/latest/download/Rabbithole-windows-x64-setup.exe)
-
-The installers are unsigned, so Windows SmartScreen shows a warning on first run. On Linux, run `chmod +x Rabbithole-linux-x86_64.AppImage` before you open it.
+The download buttons are at the top of this page. The installers are unsigned, so Windows SmartScreen shows a warning on first run. On Linux, run `chmod +x Rabbithole-linux-x86_64.AppImage` before you open it.
 
 To build it yourself, `npm run desktop:build` builds a Linux AppImage or an unsigned Windows installer. It needs Rust and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). See [Setup](docs/guide/setup.md#linux-desktop-app).
 
