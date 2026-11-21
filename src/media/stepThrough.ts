@@ -88,7 +88,31 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
     controls.addEventListener('keyup', (event) => event.key === ' ' && event.preventDefault());
     // The host opens a branched visual part at the step it was picked on.
     controls.addEventListener('tt-show', (event) => show((event as CustomEvent).detail, false));
-    show(0, false);
+    // Root keeps its tallest step's height, so stepping never moves the controls or rescales the frame.
+    // Steps are states by contract, so running each once at duration 0 is safe; measure again when width or fonts change.
+    const measure = () => {
+        root.style.minHeight = '';
+        const style = view.getComputedStyle(root),
+            frame = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'].reduce(
+                (sum, key) => sum + (parseFloat(style[key as 'paddingTop']) || 0),
+                0,
+            );
+        let tallest = 0;
+        steps.forEach((step, i) => {
+            (typeof step === 'function' ? step : step.show)({ index: i, duration: 0 });
+            tallest = Math.max(tallest, root.offsetHeight);
+        });
+        if (tallest) root.style.minHeight = `${tallest - frame}px`;
+        show(index, false);
+    };
+    measure();
+    let width = root.offsetWidth;
+    view.addEventListener('resize', () => {
+        if (root.offsetWidth === width) return;
+        width = root.offsetWidth;
+        measure();
+    });
+    document.fonts?.ready.then(measure);
     return { show };
 }
 

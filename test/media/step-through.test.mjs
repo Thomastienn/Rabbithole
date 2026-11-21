@@ -14,6 +14,7 @@ const setup = (reduce = false) => {
             root.textContent = `Stage ${n}`;
         });
     const control = stepThrough(root, steps);
+    calls.splice(0, steps.length); // the measuring pass runs every step once
     const [previous, next] = window.document.querySelectorAll('.tt-steps button');
     const indicator = window.document.querySelector('.tt-steps [aria-live="polite"]');
     const key = (target, k, type = 'keydown') => {
@@ -116,6 +117,7 @@ test('a scene step fades root out, runs its show function, fades back in; contro
             },
         });
     stepThrough(root, [scene(0), (state) => calls.push({ n: 1, ...state }), scene(2)]);
+    calls.splice(0, 3); // the measuring pass
     const [previous, next] = window.document.querySelectorAll('.tt-steps button');
     const indicator = window.document.querySelector('.tt-steps [aria-live="polite"]');
     assert.deepEqual(calls, [{ n: 0, index: 0, duration: 0 }], 'first render switches instantly');
@@ -151,9 +153,32 @@ test('a scene step under reduced motion switches instantly', () => {
         durations = [],
         scene = { scene: true, show: ({ duration }) => durations.push(duration) };
     const control = stepThrough(root, [scene, scene]);
+    durations.splice(0, 2); // the measuring pass
     control.show(1);
     assert.deepEqual(durations, [0, 0]);
     assert.equal(root.style.opacity, '');
+});
+
+test('root keeps its tallest step height so the controls and frame never move, and measures again on a width change', () => {
+    const { window } = new JSDOM('<div id="visual"><div id="root"></div></div>');
+    const root = window.document.getElementById('root'),
+        tall = { 'Stage 0': 40, 'Stage 1': 90, 'Stage 2': 60 };
+    let width = 300;
+    Object.defineProperty(root, 'offsetHeight', {
+        get: () => (root.style.minHeight ? 0 : tall[root.textContent]),
+    });
+    Object.defineProperty(root, 'offsetWidth', { get: () => width });
+    root.style.padding = '5px 0';
+    const steps = [0, 1, 2].map((n) => () => (root.textContent = `Stage ${n}`));
+    stepThrough(root, steps);
+    assert.equal(root.style.minHeight, '80px', 'tallest border box less vertical padding');
+    assert.equal(root.textContent, 'Stage 0', 'measuring ends back on the first step');
+    tall['Stage 2'] = 120;
+    window.dispatchEvent(new window.Event('resize'));
+    assert.equal(root.style.minHeight, '80px', 'same width: no remeasure');
+    width = 200;
+    window.dispatchEvent(new window.Event('resize'));
+    assert.equal(root.style.minHeight, '110px');
 });
 
 test('hidden on an SVG group hides and shows it; HTML keeps native hidden', () => {
