@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
-import { retrieveNeighbourhood } from '../../server/neighbourhood.mjs';
+import { PARAGRAPH_LIMIT, retrieveNeighbourhood } from '../../server/neighbourhood.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 import { open } from '../support/openai-kit.mjs';
 
@@ -289,4 +289,46 @@ test('semantic matching scores each concept by its closest paragraph', async (t)
         ['Mutex'],
         'a whole-reply vector would have missed it',
     );
+});
+
+test('attachment text is never embedded; only the typed question is', async (t) => {
+    const batches = [];
+    const env = await launch(t, async (texts) => {
+        batches.push(texts);
+        return texts.map(() => [1, 0, 0]);
+    });
+    add(env.store, ['Mutex']);
+    const { csrf } = await (await env.get('/api/state')).json();
+    const form = new FormData();
+    form.set('text', 'What is this file about?');
+    form.append(
+        'files',
+        new File([Array(600).fill('A long paragraph about locks.').join('\n\n')], 'notes.txt', {
+            type: 'text/plain',
+        }),
+    );
+    const response = await fetch(`${env.origin}/api/trees/${env.tree.id}/messages`, {
+        method: 'POST',
+        headers: { 'X-Rabbithole-CSRF': csrf },
+        body: form,
+    });
+    assert.match(await response.text(), /"status":"completed"/);
+    assert.deepEqual(batches, [['What is this file about?', 'Mutex']]);
+});
+
+test('the largest typed message embeds at most a fixed number of paragraphs', async (t) => {
+    const env = await launch(t);
+    add(env.store, ['Mutex']);
+    const batches = [];
+    // The send route accepts at most 100,000 characters of typed text.
+    const text = Array(20_000).fill('Lock.').join('\n\n').slice(0, 100_000);
+    await retrieveNeighbourhood(
+        env.store,
+        async (texts) => {
+            batches.push(texts);
+            return texts.map(() => [1, 0, 0]);
+        },
+        text,
+    );
+    assert.equal(batches[0].length, PARAGRAPH_LIMIT + 1, 'paragraphs plus the one pending name');
 });

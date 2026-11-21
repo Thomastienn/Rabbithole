@@ -366,8 +366,9 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         ];
         // Without native tool calling the tutor writes app tool calls as <tool_call> text.
         const textTools = capable ? [] : APP_TOOLS;
+        // Attachment text stays out: embedding a long file takes gigabytes of memory.
         const neighbourhood = await ctx.neighbourhood(
-            [prompt, tree.branch?.text].filter(Boolean).join('\n'),
+            [body.text, tree.branch?.text].filter(Boolean).join('\n'),
             controller.signal,
         );
         if (finished) return true;
