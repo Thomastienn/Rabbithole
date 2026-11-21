@@ -176,7 +176,14 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         isFinished: () => finished,
         getStatus: () => status,
     });
-    const calls = appCalls(ctx, { reply, showVisual, moveVisual, makeVideo, startDiscussion });
+    const calls = appCalls(ctx, {
+        conversation: id,
+        reply,
+        showVisual,
+        moveVisual,
+        makeVideo,
+        startDiscussion,
+    });
     const suggesting = store.suggestionSettings().enabled;
     const noted = (output) => {
         const next = markerNotes(output.text, output.markers, hasMedia());
@@ -214,6 +221,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             send({ type: 'text', text });
         }
         noted(output);
+        calls.dropped(output);
         if (controller.signal.aborted && !ctx.stopping) {
             store.cancelVisuals(id, reply);
             for (const artifact of artifacts.values())

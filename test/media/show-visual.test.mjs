@@ -161,10 +161,42 @@ test('a visual shows at its call until its marker streams in, and one reply neve
                 new RegExp(`app tool call refused id="${reply.id}" tool="show_visual"`).test(l),
             ),
         );
+        // A marker with a matching call logs no drop.
+        assert.ok(!logs.some((l) => /visual marker dropped/.test(l)));
         // A later reply may show a visual with the same title.
         await ask();
         assert.match(results[2], /^queued/);
         assert.equal(env.store.tree(env.tree.id).artifacts.length, 2);
+    } finally {
+        await env.close();
+    }
+});
+
+test('a visual marker with no show_visual call is removed and logged', async () => {
+    const logs = [];
+    const env = await open(
+        {
+            generate: async (tree, text, emit) =>
+                complete(emit, 'Fusion.\n\n[[visual: lost]]\n\nEnd.'),
+        },
+        { generate: async (tree, text, emit) => complete(emit, source) },
+        { log: (line) => logs.push(line) },
+    );
+    try {
+        const streamed = await events(
+            await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Show me.' }),
+        );
+        assert.deepEqual(streamed.at(-1), { type: 'done', status: 'completed' });
+        const saved = env.store.tree(env.tree.id);
+        const reply = saved.messages.at(-1);
+        assert.equal(reply.text, 'Fusion.\n\n\n\nEnd.');
+        assert.equal(saved.artifacts.length, 0);
+        const drops = logs.filter((l) => /visual marker dropped/.test(l));
+        assert.equal(drops.length, 1);
+        assert.match(drops[0], /^\S+ WARN chat visual marker dropped /);
+        assert.match(drops[0], new RegExp(`id="${reply.id}"`));
+        assert.match(drops[0], new RegExp(`conversation="${env.tree.id}"`));
+        assert.match(drops[0], /cause="no matching show_visual call"/);
     } finally {
         await env.close();
     }
