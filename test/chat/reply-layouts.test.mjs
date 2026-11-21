@@ -221,12 +221,24 @@ test('conversation node previews strip layouts to plain text', () => {
     );
 });
 
+const diagram = 'https://img.example/diagram.png';
+const tools = [
+    {
+        id: 't',
+        name: 'find_images',
+        status: 'done',
+        output: JSON.stringify({
+            results: [{ imageUrl: diagram, sourceUrl: 'https://img.example/' }],
+        }),
+    },
+];
+
 test('Reply falls back to plain flow under the width threshold and restores the layout when wide', async (t) => {
     const source = raw + '\n\n' + additions;
     let width = 700,
         resize;
     const { container, act, cleanup } = await render(
-        h(Reply, { text: source, underlines: [] }),
+        h(Reply, { text: source, underlines: [], tools }),
         (w) => {
             ui(w);
             w.ResizeObserver = class {

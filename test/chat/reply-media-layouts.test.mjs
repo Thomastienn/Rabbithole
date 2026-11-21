@@ -28,7 +28,23 @@ const raw = [
     `[![A dog](${dog})](https://dogs.example/page)`,
     ':::',
 ].join('\n');
-const sources = { [cat]: { source: 'https://cats.example/page', resource: 2 } };
+const sources = {
+    [cat]: { source: 'https://cats.example/page', resource: 2 },
+    [dog]: { source: 'https://dogs.example/page' },
+};
+const tools = [
+    {
+        id: 't',
+        name: 'find_images',
+        status: 'done',
+        output: JSON.stringify({
+            results: Object.entries(sources).map(([imageUrl, s]) => ({
+                imageUrl,
+                sourceUrl: s.source,
+            })),
+        }),
+    },
+];
 const doc = (markup) => new JSDOM(`<section id="r">${markup}</section>`).window.document;
 const shown = (...args) => doc(renderToStaticMarkup(h('div', null, renderMarkdown(...args))));
 
@@ -297,7 +313,7 @@ test('wrong shapes and flow mode render plain flow; previews show plain text', (
         const d = shown(source);
         assert.equal(d.querySelector('.reply-layout'), null, source);
     }
-    const flow = shown(raw, undefined, [], [], {}, true);
+    const flow = shown(raw, undefined, [], [], sources, true);
     assert.equal(flow.querySelector('.reply-layout'), null);
     assert.equal(flow.querySelectorAll('img').length, 3);
     assert.equal(
@@ -312,7 +328,7 @@ for (const options of ['', '{side=right}', '{ratio=wide}', '{side=right ratio=wi
         let width = 700,
             resize;
         const { container, act, cleanup } = await render(
-            h(Reply, { text: source, underlines: [] }),
+            h(Reply, { text: source, underlines: [], tools }),
             (w) => {
                 ui(w);
                 w.ResizeObserver = class {
