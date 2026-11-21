@@ -2,9 +2,12 @@
 import { createRequire, registerHooks } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { isMainThread } from 'node:worker_threads';
 
 // Local test runs share one memory and CPU limit (scripts/limited.mjs); CI runs without it.
+// A worker shares its parent's process, and may run with env: {}, so only the main thread checks.
 if (
+    isMainThread &&
     !process.env.CI &&
     existsSync('/proc/self/cgroup') &&
     !readFileSync('/proc/self/cgroup', 'utf8').includes('rabbithole-tests.slice')
