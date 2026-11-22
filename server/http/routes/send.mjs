@@ -268,21 +268,15 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             )
         )
             usage = null;
+        const model = store.header(id)?.model ?? tree.model;
         if (status === 'completed' && usage)
             store.usage(reply, {
                 ...usage,
-                ...(usage.context && {
-                    context: { ...usage.context, model: store.header(id)?.model ?? tree.model },
-                }),
+                ...(usage.context && { context: { ...usage.context, model } }),
             });
         // History keeps any reported measurement, including failed or stopped calls; unreported ones stay unavailable.
         if (called)
-            store.record(
-                `chat:${reply}`,
-                'chat',
-                { provider: tree.provider, model: store.header(id)?.model ?? tree.model },
-                usage,
-            );
+            store.record(`chat:${reply}`, 'chat', { provider: tree.provider, model }, usage);
         if (status === 'completed' || status === 'failed')
             store.finishModel(id, status === 'completed');
         // The verdict judges the learner message, so a retried reply replaces that message's observations.
