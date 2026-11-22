@@ -192,6 +192,16 @@ export default function ShellBand({
                   } as object,
               )
             : node;
+    // The rail has no room for the card; a dot on Settings marks the update.
+    const marked = rail && update;
+    const settingsTab = item(
+        viewTab(
+            marked ? `Settings. Rabbithole ${marked.version} is available` : 'Settings',
+            <Cog6ToothIcon />,
+            tab === 'settings',
+            settings,
+        ),
+    );
     // Narrow screens: a hot zone along the top edge; the restore button stays in the tab order but shows only on hover or focus.
     // The save alert stays mounted outside it so its alert role is still announced while hidden.
     if (focusMode && mobile)
@@ -284,21 +294,7 @@ export default function ShellBand({
             <div className="sidebar-foot">
                 {!rail && update && <UpdateBanner update={update} act={act} />}
                 <Downloads rail={rail} />
-                {/* The rail has no room for the card; a dot on Settings marks the update. */}
-                {rail && update ? (
-                    <span className="update-dot">
-                        {item(
-                            viewTab(
-                                `Settings. Rabbithole ${update.version} is available`,
-                                <Cog6ToothIcon />,
-                                tab === 'settings',
-                                settings,
-                            ),
-                        )}
-                    </span>
-                ) : (
-                    item(viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings))
-                )}
+                {marked ? <span className="update-dot">{settingsTab}</span> : settingsTab}
             </div>
         </nav>
     );

@@ -44,7 +44,11 @@ function offerUpdates(window, restart) {
     );
     autoUpdater.on('download-progress', (progress) => set({ type: 'progress', ...progress }));
     autoUpdater.on('update-downloaded', () => set({ type: 'downloaded' }));
-    autoUpdater.on('error', (error) => set({ type: 'error', message: error?.message }));
+    autoUpdater.on('error', (error) => {
+        // A failed install does not quit, and the server is already stopped: close, so the old version opens again.
+        if (update?.stage === 'restarting') return app.quit();
+        set({ type: 'error', message: error?.message });
+    });
     ipcMain.handle('update', async (event, action) => {
         if (!event.senderFrame?.url.startsWith(`${origin}/`)) return null;
         if (action === 'install' && ['available', 'failed'].includes(update?.stage)) {
