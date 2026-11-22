@@ -89,7 +89,8 @@ async function unpack(url, dir, { report, signal, name, extract, inner = '', sha
         if (await extract(archive, part))
             throw new Error(`${name} could not be unpacked. Retry the download.`);
     } finally {
-        rmSync(archive, { force: true });
+        // Windows holds a self-extractor's file for a moment after it exits (EPERM); rmSync retries only when recursive.
+        rmSync(archive, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
     rmSync(dir, { recursive: true, force: true });
     renameSync(join(part, inner), dir);
