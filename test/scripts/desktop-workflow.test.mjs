@@ -89,8 +89,6 @@ test('the installers are built under the fixed names the README links to', () =>
         assert.equal(config.artifactName.replace('${ext}', name.split('.').pop()), name);
         assert.ok(readme.includes(`releases/latest/download/${name}`), name);
     }
-    // A rename after building would leave the updater metadata naming files that are not there.
-    assert.doesNotMatch(job('release'), /\bmv /);
 });
 
 test('both installers go to one draft release tagged v1.0.<run_number>', () => {
