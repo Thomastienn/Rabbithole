@@ -62,7 +62,7 @@ export async function discussionRoutes(req, res, url, ctx, body) {
             lines = discussionTurn(raw, data.classmates).lines;
             const output = discussionTurn(raw, data.classmates, status === 'completed');
             if (output.error) error ??= output.error;
-            const saved = store.updateDiscussion(
+            const row = store.updateDiscussion(
                 conversation,
                 id,
                 turn.id,
@@ -70,9 +70,9 @@ export async function discussionRoutes(req, res, url, ctx, body) {
                 error ? 'failed' : 'completed',
                 error,
             );
-            if (saved) {
+            if (row) {
                 if (output.verdicts) store.observe(turn.id, output.verdicts);
-                send({ type: 'artifact', artifact: ctx.live(saved) });
+                send({ type: 'artifact', artifact: ctx.live(row) });
             }
         }
         if (!res.headersSent)

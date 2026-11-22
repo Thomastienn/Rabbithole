@@ -296,11 +296,9 @@ test('closing during a streamed card turn cancels it and late events cannot muta
         {
             generate: async (tree, _, emit, __, signal) => {
                 if (tree.instructions?.startsWith('Continue this discussion')) {
-                    emit({
-                        type: 'delta',
-                        item: 'turn',
-                        text: '{"speaker":"Jun","text":"In flight',
-                    });
+                    // The second token is inside the save interval: only the stop saves it.
+                    for (const text of ['{"speaker":"Jun","text":"In', ' flight'])
+                        emit({ type: 'delta', item: 'turn', text });
                     started.resolve(signal);
                     await late.promise;
                     emit({ type: 'delta', item: 'turn', text: ' LATE"}' });
@@ -308,7 +306,7 @@ test('closing during a streamed card turn cancels it and late events cannot muta
                 } else complete(emit, 'A compact paragraph.');
             },
         },
-        { log: () => {} },
+        { log: () => {}, saveEvery: 60_000 },
     );
     t.after(env.close);
     const { id } = await (await env.post('/api/trees')).json();
