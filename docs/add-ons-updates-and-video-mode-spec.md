@@ -119,7 +119,7 @@ Switching Settings pages no longer moves the scroll.
 
 - The desktop shell uses `electron-updater` with the GitHub provider against this repository's published releases. It checks once on launch, without auto-download or auto-install-on-quit. A newer version becomes an in-app banner through a small bridge from the shell to the page. Install starts the download and reports progress. When the update is downloaded, the banner offers Restart, which first runs the existing pending-layout save, then quits and installs.
 - The update decision (no update, available, downloading with percent, ready, failed with reason) is a plain function or state machine in the shell module, beside the existing navigation and start-error helpers.
-- The desktop build workflow stamps the app version as `1.0.<run_number>` before building, tags the release `v1.0.<run_number>` and uploads the updater's metadata files and blockmaps with the installers. Installer artifact names are set to the fixed README names directly, so the metadata and the files agree. Releases stay drafts until the owner publishes them; the updater only sees published ones.
+- The desktop build workflow stamps the app version as `1.0.<run_number>` before building, tags the release `v1.0.<run_number>` and uploads the updater's metadata files and blockmaps with the installers. Installer artifact names are set to the fixed README names directly, so the metadata and the files agree. A run publishes its release, marked latest, only when every job passes, and re-pins the Windows sandbox for `npm start` when its source changed; the updater only sees published ones.
 - Builds stay unsigned. The Windows updater skips publisher verification when there is no signature.
 
 ### Loading screen

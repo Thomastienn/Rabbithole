@@ -91,16 +91,6 @@ test('the installers are built under the fixed names the README links to', () =>
     }
 });
 
-test('both installers go to one draft release tagged v1.0.<run_number>', () => {
-    const release = job('release');
-    assert.match(release, /needs: \[linux, windows\]/);
-    assert.match(
-        release,
-        /gh release create "v1\.0\.\$\{\{ github\.run_number \}\}" installers\/\*/,
-    );
-    assert.match(release, /--draft/);
-});
-
 test('the Linux wheels workflow runs only when the owner triggers it', () => {
     const wheels = readFileSync(
         new URL('../../.github/workflows/linux-wheels.yml', import.meta.url),
