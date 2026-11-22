@@ -7,12 +7,13 @@ import type { BranchState } from './branch';
 import type { State, Tree } from './types';
 import { conversationAddresses } from '../map/treeList';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
-import { session } from '../media/ExportButton';
+// api stays a prop until views call the server access module themselves.
+import { request as api, setCsrf } from '../serverAccess';
 
 // State and refs shared by the ChatPage hooks and regions; each hook takes this object.
 export function useChatState() {
     const [state, setState] = useState<State>();
-    session.csrf = state?.csrf ?? '';
+    setCsrf(state?.csrf ?? '');
     const [tree, setTree] = useState<Tree>();
     const addresses = useMemo(() => conversationAddresses(state?.trees ?? []), [state?.trees]);
     const [previews, setPreviews] = useState<Record<string, Preview>>({});
@@ -142,30 +143,6 @@ export function useChatState() {
         if (!overviewOrigin.current && tree)
             overviewOrigin.current = { id: tree.id, control: `open-${tree.id}` };
         changeView(true, overviewOrigin.current?.id);
-    }
-
-    // keepalive lets a write outlive the page that sends it, for saves while the page closes.
-    async function api(path: string, body?: unknown, keepalive = false) {
-        const response = await fetch(
-            path,
-            body === undefined
-                ? undefined
-                : {
-                      method: 'POST',
-                      keepalive,
-                      headers: {
-                          'Content-Type': 'application/json',
-                          'X-Rabbithole-CSRF': state?.csrf ?? '',
-                      },
-                      body: JSON.stringify(body),
-                  },
-        );
-        const data = await response.json();
-        if (!response.ok)
-            throw Object.assign(new Error(data.error ?? 'Request failed. Reload and try again.'), {
-                data,
-            });
-        return data;
     }
 
     return {
