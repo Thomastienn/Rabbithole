@@ -30,6 +30,7 @@ import { withoutPaths, sandboxOutput } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
 
 import { stageCut } from './video-stage.mjs';
+import { cutWork } from './video-workspace.mjs';
 
 // A cut plays live once its code and measured narration exist and its audit settled; Manim also needs its clip.
 export const playable = (cut) =>
@@ -204,7 +205,7 @@ export async function writeCuts({
             cuts[index].engine === 'manim' ? unfenced(raw) : cutSource(raw, plan.styleBrief);
         if (cuts[index].engine === 'manim' && check)
             try {
-                await mkdir(join(workspace, `cut-${index}`), { recursive: true, mode: 0o700 });
+                await mkdir(cutWork(workspace, index), { recursive: true, mode: 0o700 });
                 await check(await stage(index));
             } catch (e) {
                 signal.throwIfAborted();
@@ -303,7 +304,7 @@ export async function writeCuts({
     };
     const stage = (index) =>
         stageCut({
-            dir: join(workspace, `cut-${index}`),
+            dir: cutWork(workspace, index),
             cut: cuts[index],
             plan,
             pieces: data.pieces,
@@ -454,7 +455,7 @@ export async function writeCuts({
         persist();
     };
     const writing = cuts.map(async (cut, index) => {
-        const dir = join(workspace, `cut-${index}`);
+        const dir = cutWork(workspace, index);
         cut.status = 'writing';
         persist();
         const operations = [

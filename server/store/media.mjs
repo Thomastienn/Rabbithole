@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { writeSaved } from '../media/video-workspace.mjs';
 
 export const media = {
     artifact(conversation, id) {
@@ -85,7 +86,7 @@ export const media = {
                 .prepare(
                     "UPDATE artifacts SET source=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
                 )
-                .run(JSON.stringify(data), conversation, id, attempt).changes > 0
+                .run(writeSaved(data), conversation, id, attempt).changes > 0
         );
     },
     finishVideo(conversation, id, attempt, { title, description, duration } = {}, error = null) {

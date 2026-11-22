@@ -8,6 +8,7 @@ import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
 import { exportVideo } from '../../media/video-export.mjs';
 import { sandboxMissing } from '../../media/video-sandbox.mjs';
+import { workRoot, videoWork, readSaved } from '../../media/video-workspace.mjs';
 
 export const STOPPED = new Error('Rabbithole stopped.');
 const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
@@ -15,7 +16,7 @@ const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playa
 // A crash before commit restores staged files; a crash after commit finishes removing them.
 // The suffix records the owning artifact, including legacy workspaces named only by attempt.
 export function recoverStaged(store, dir) {
-    for (const folder of [join(dir, 'videos'), join(dir, 'video-work')]) {
+    for (const folder of [join(dir, 'videos'), workRoot(dir)]) {
         for (const name of existsSync(folder) ? readdirSync(folder) : []) {
             const match = /^(.*)\.deleting-([0-9a-f-]{36})$/.exec(name);
             if (!match) continue;
@@ -27,14 +28,6 @@ export function recoverStaged(store, dir) {
 }
 
 // Ready videos whose file is missing or unreadable are reported unavailable, so the learner can regenerate them.
-// Whether a saved video's source holds cuts the live player can play.
-export const savedCuts = (source) => {
-    try {
-        return Array.isArray(JSON.parse(source)?.cuts);
-    } catch {
-        return false;
-    }
-};
 export const readable = (path) => {
     try {
         accessSync(path, constants.R_OK);
@@ -78,7 +71,7 @@ export function mediaJobs(ctx) {
         return {
             ...a,
             exported: false,
-            ...((!savedCuts(artifact.source) || !existsSync(join(dir, 'video-work', a.id))) && {
+            ...((!readSaved(artifact.source) || !existsSync(videoWork(dir, a.id))) && {
                 available: false,
             }),
         };

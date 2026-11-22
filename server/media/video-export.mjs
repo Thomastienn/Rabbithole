@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { stageCut } from './video-stage.mjs';
 import { withoutPaths } from './video-sandbox.mjs';
 import { KIT, MANIM_KIT, sandboxRender, validateOutput, mediaPath } from './videos.mjs';
+import { attemptWork, cutWork, readSaved } from './video-workspace.mjs';
 
 // Renders a saved video's cuts, concatenates them and keeps the MP4 at mediaPath (ADR 0012).
 // It never rewrites cut code: the learner already watched this version, so a failure only ends the export.
@@ -16,10 +17,10 @@ export async function exportVideo({
     render = sandboxRender,
     onProgress = () => {},
 }) {
-    const data = JSON.parse(source),
+    const data = readSaved(source),
         { plan, cuts } = data;
-    const workspace = join(dir, 'video-work', id, attempt);
-    const folders = [workspace, ...cuts.map((_, i) => join(workspace, `cut-${i}`))];
+    const workspace = attemptWork(dir, id, attempt);
+    const folders = [workspace, ...cuts.map((_, i) => cutWork(workspace, i))];
     const total = cuts.reduce((n, c) => n + c.timing.durationInFrames, 0);
     const rendered = async (folder, frames, progress) => {
         await mkdir(join(folder, 'out'), { recursive: true, mode: 0o700 });
