@@ -13,13 +13,14 @@ import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 import { tutorSystem } from '../../server/media/diagrams.mjs';
 import { APP_TOOLS } from '../../server/http/app-calls.mjs';
+import { inlineArgs } from '../support/tool-protocol.mjs';
 
 test('all six provider switches preserve root and nested history/context, inherit choices, and repeat after restart', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-three-providers-')),
         fake = await fakeOpenAI(t),
         traffic = [];
     const launch = (command, args, options) => {
-        const call = { command, args, input: [] };
+        const call = { command, args: inlineArgs(args), input: [] };
         traffic.push(call);
         const child = spawn(
             process.execPath,

@@ -2,6 +2,7 @@ import { observeStore, observeProvider } from './events.mjs';
 export { until } from './events.mjs';
 import { join } from 'node:path';
 import { fixtureLaunch } from './fixture-launch.mjs';
+import { inlineArgs } from './tool-protocol.mjs';
 import { Store } from '../../server/store.mjs';
 import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
@@ -18,15 +19,16 @@ export async function start(dir, suggestions = true, connected = { claude: true,
         requests = [],
         turns = [],
         children = [];
-    const launch = (command, args) => {
-        const child = fixtureLaunch(command, args);
+    const launch = (command, args, options) => {
+        const child = fixtureLaunch(command, args, options);
         children.push(child);
         if (command === 'claude') {
+            const inline = inlineArgs(args);
             const end = child.stdin.end.bind(child.stdin);
             child.stdin.end = (input) => {
                 requests.push(input);
                 calls.push({
-                    system: args[args.indexOf('--system-prompt') + 1],
+                    system: inline[inline.indexOf('--system-prompt') + 1],
                     model: args.includes('--model') ? args[args.indexOf('--model') + 1] : null,
                     effort: args.includes('--effort') ? args[args.indexOf('--effort') + 1] : null,
                     input,

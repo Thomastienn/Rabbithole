@@ -2,9 +2,17 @@ import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { planFor, planText } from './video-kit.mjs';
-import { appTool, codexMcp, claudeSearch } from './tool-protocol.mjs';
+import { appTool, codexMcp, claudeSearch, inlineArgs } from './tool-protocol.mjs';
 
-export async function protocol(stdin, stdout, argv, exit, wait = async () => {}) {
+export async function protocol(
+    stdin,
+    stdout,
+    args,
+    exit,
+    wait = async () => {},
+    env = process.env,
+) {
+    const argv = inlineArgs(args);
     const send = (obj) => stdout.write(JSON.stringify(obj) + '\n');
     const threadModels = new Map();
     const video = `// Description: A winner moves upward.
@@ -365,7 +373,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                     item: {
                         type: 'agentMessage',
                         id: 'tool-answer',
-                        text: await appTool(codexMcp(argv)),
+                        text: await appTool(codexMcp(argv, env)),
                     },
                 },
             });

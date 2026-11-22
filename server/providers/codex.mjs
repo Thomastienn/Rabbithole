@@ -72,7 +72,8 @@ export class Codex {
                 ...(this.toolSession.mcp && {
                     'mcp_servers.rabbithole': {
                         url: this.toolSession.mcp.url,
-                        http_headers: this.toolSession.mcp.headers,
+                        // The token travels in the environment, which other accounts cannot read, not on the command line.
+                        env_http_headers: { Authorization: 'RABBITHOLE_MCP_AUTHORIZATION' },
                         enabled_tools: this.toolSession.tools.map((t) => t.name),
                         default_tools_approval_mode: 'approve',
                     },
@@ -99,7 +100,14 @@ export class Codex {
         ];
         const child = this.launch(...launchArgs(bin, args), {
             cwd,
-            env: { PATH: process.env.PATH, CODEX_HOME: home, ACCESS_TOKEN: token },
+            env: {
+                PATH: process.env.PATH,
+                CODEX_HOME: home,
+                ACCESS_TOKEN: token,
+                ...(this.toolSession?.mcp && {
+                    RABBITHOLE_MCP_AUTHORIZATION: this.toolSession.mcp.headers.Authorization,
+                }),
+            },
             stdio: ['pipe', 'pipe', 'pipe'],
         });
         this.process = child;
