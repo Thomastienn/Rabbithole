@@ -18,7 +18,7 @@ export function useBranchForm(
     { send, setDraft }: ReplyStream,
 ) {
     const { setError, overview, setOverview, overviewOrigin } = c;
-    const { focusComposer } = trees.targets;
+    const { focusNext } = trees.targets;
     const { tree, state, addresses, setTree, refresh, openConversation, openId, show } = trees;
     const [branch, setBranch] = useState<BranchState>();
     const [selectingMessage, setSelectingMessage] = useState<string>();
@@ -91,7 +91,7 @@ export function useBranchForm(
             created?.();
             // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
             if (openId() === opener) {
-                focusComposer.current = true;
+                focusNext();
                 setOverview(false);
                 show(next);
             }

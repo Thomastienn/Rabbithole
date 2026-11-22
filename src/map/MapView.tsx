@@ -33,7 +33,7 @@ export default function MapView({
     const { workspaceWidth, workspace, overviewOrigin } = c;
     const { state, tree, previews, changeView, openConversation, openGhost } = trees;
     const { folded, setFolded, ghostMarks, shownMapWidth, setMapWidth } = trees.map;
-    const { focusComposer } = trees.targets;
+    const { focusNext } = trees.targets;
     const marks = ghostMarks?.root === root ? ghostMarks : undefined;
     const [ghostsShown, setGhostsShown] = useState(savedGhostTrees);
     return (
@@ -73,7 +73,7 @@ export default function MapView({
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => {
-                                            focusComposer.current = true;
+                                            focusNext();
                                             changeView(false, tree.id);
                                         }}
                                     />

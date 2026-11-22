@@ -61,7 +61,7 @@ export default function ChatPage({
     const { visibleIds, addresses, previews } = trees;
     const { workspace } = c;
     const { shownMapWidth } = trees.map;
-    const { focusComposer } = trees.targets;
+    const { focusNext } = trees.targets;
     const { drafts, setDraft, pendingFiles, setFiles, busy, create } = stream;
     const visibleSet = new Set(visibleIds);
     const { branch } = branchForm;
@@ -108,7 +108,7 @@ export default function ChatPage({
         viewTab('Read', <BookOpenIcon />, reading, () => {
             setTab('learning');
             if (overview && root) {
-                focusComposer.current = true;
+                focusNext();
                 changeView(false, tree?.id);
             }
         }),

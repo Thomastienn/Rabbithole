@@ -21,7 +21,7 @@ export function useTreeActions(
     const { reload, leave, retitle, forget } = trees;
     const { saver, setLayoutFailed } = trees.layout;
     const { overviewOrigin, tab } = c;
-    const { focusComposer, drop: dropTargets } = trees.targets;
+    const { focusNext, drop: dropTargets } = trees.targets;
     const { drop: dropFolds } = trees.map;
     const [deletion, setDeletion] = useState<{
         id: string;
@@ -177,7 +177,7 @@ export function useTreeActions(
             setDeletion(undefined);
             if (result.parent && root === deletion.root) {
                 overviewOrigin.current = undefined;
-                focusComposer.current = true;
+                focusNext();
                 setOverview(false);
                 await select(result.parent);
             } else if (root === deletion.root) {
@@ -189,7 +189,7 @@ export function useTreeActions(
                 const next =
                     tab === 'library' ? undefined : roots[Math.min(index, roots.length - 1)];
                 if (next) {
-                    focusComposer.current = true;
+                    focusNext();
                     openTree(next.id, trees);
                 } else {
                     leave();

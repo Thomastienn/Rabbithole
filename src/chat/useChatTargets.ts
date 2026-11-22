@@ -70,7 +70,11 @@ export function useChatTargets({ overview }: ChatState, tree: Tree | undefined) 
         setMessageTarget({ conversation, message });
     // Deleted conversations keep no passage to reveal.
     const drop = (ids: Set<string>) => setReveal((r) => (r && ids.has(r.tree) ? undefined : r));
-    return { reveal, composer, focusComposer, goTo, jump, drop };
+    // The next chat to show opens on its composer.
+    const focusNext = () => {
+        focusComposer.current = true;
+    };
+    return { reveal, composer, focusNext, goTo, jump, drop };
 }
 
 export type ChatTargets = ReturnType<typeof useChatTargets>;

@@ -18,7 +18,7 @@ export function useReplyStream(
     theme: { name: string; mode: string },
 ) {
     const { setError, overviewOrigin } = c;
-    const { focusComposer, composer } = trees.targets;
+    const { focusNext, composer } = trees.targets;
     const { refresh, activeKey, tree, state, setState, setTree, setPreviews } = trees;
     const { openId, reload, change, retitle, isRemoved, select, leave } = trees;
     const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -194,7 +194,7 @@ export function useReplyStream(
                     send: (question, next) => send(question, next, false, files),
                     open: async (next) => {
                         overviewOrigin.current = undefined;
-                        focusComposer.current = true;
+                        focusNext();
                         c.setRoot(next.id);
                         c.setTab('learning');
                         c.setOverview(false);
