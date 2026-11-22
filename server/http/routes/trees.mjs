@@ -164,7 +164,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
             for (const [path, moved] of staged.reverse()) renameSync(moved, path);
             throw error;
         }
-        // Every job of a deleted conversation ends before its files go.
+        // Every job of a deleted conversation stops; those writing files end before the files go.
         await jobs.stop(result.deleted);
         // A job may have been finishing a filesystem operation while its directory was moved.
         for (const path of files) rmSync(path, { recursive: true, force: true });

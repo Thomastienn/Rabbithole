@@ -43,18 +43,23 @@ test('a kept job stays after it settles until it is removed, and can take over a
     assert.deepEqual(jobs.list(), []);
 });
 
-test('stopping a conversation aborts and removes every kind of its jobs and waits for them to end', async () => {
+test('stopping a conversation aborts and removes every kind of its jobs, waiting only for those writing files', async () => {
     const jobs = backgroundJobs();
     const until = (job) => new Promise((r) => job.controller.signal.addEventListener('abort', r));
     let videoEnded = false;
-    for (const kind of ['title', 'verdict', 'suggestion', 'brief', 'reply'])
-        jobs.start(kind, 'c', 'c', until);
-    jobs.start('video', 'v', 'c', (job) => until(job).then(() => (videoEnded = true)));
+    const kinds = ['title', 'verdict', 'suggestion', 'brief'];
+    const stopped = kinds.map((kind) => jobs.start(kind, 'c', 'c', until));
+    // A reply whose provider ignores the abort does not hold up the delete.
+    jobs.start('reply', 'c', 'c', () => new Promise(() => {}), { settle: false });
+    jobs.start('video', 'v', 'c', (job) => until(job).then(() => (videoEnded = true)), {
+        files: true,
+    });
     jobs.start('compaction', 'c', 'c', async () => {}, { keep: true });
     const other = jobs.start('title', 'd', 'd', until);
     const library = jobs.start('export', 'v', null, until);
     await jobs.stop(['c']);
-    assert.ok(videoEnded, 'stopping waits for each job to end');
+    assert.ok(videoEnded, 'stopping waits for a job writing files to end');
+    assert.ok(stopped.every((job) => job.controller.signal.aborted));
     assert.deepEqual(jobs.list(), [other, library]);
     assert.ok(!other.controller.signal.aborted && !library.controller.signal.aborted);
     await jobs.stop();

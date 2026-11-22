@@ -13,14 +13,15 @@ export function backgroundJobs() {
         // A kept job stays after it settles, to be reused or retried, until remove(job).
         // A controller passed in lets a job take over work that is already running.
         // settled() skips a job started with settle: false, one that ends with its request or waits for the learner.
+        // A job started with files: true writes its conversation's files, so stopping the conversation waits for it.
         start(
             kind,
             key,
             conversation,
             run,
-            { keep = false, controller = new AbortController(), settle = true } = {},
+            { keep = false, controller = new AbortController(), settle = true, files = false } = {},
         ) {
-            const job = { kind, key, conversation, controller, settle };
+            const job = { kind, key, conversation, controller, settle, files };
             jobs.set(id(kind, key), job);
             job.done = run(job);
             if (!keep) job.done = job.done.finally(() => remove(job));
@@ -37,7 +38,8 @@ export function backgroundJobs() {
                     .filter((job) => job.settle && (!key || job.key === key))
                     .map((job) => job.done),
             ),
-        // Aborts and removes every job, or those of the given conversations; resolves once each has ended.
+        // Aborts and removes every job, or those of the given conversations, and resolves once each has ended;
+        // for given conversations only once those writing files have, as an aborted provider call may answer late.
         stop(conversations) {
             const ending = list().filter(
                 (job) => !conversations || conversations.includes(job.conversation),
@@ -46,7 +48,9 @@ export function backgroundJobs() {
                 job.controller.abort();
                 remove(job);
             }
-            return Promise.allSettled(ending.map((job) => job.done));
+            return Promise.allSettled(
+                ending.filter((job) => !conversations || job.files).map((job) => job.done),
+            );
         },
     };
 }

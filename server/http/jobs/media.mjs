@@ -84,8 +84,12 @@ export function mediaJobs(ctx) {
     };
     // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
     const startVideo = (job, parentSignal, previous) =>
-        jobs.start('video', job.id, job.conversation, (running) =>
-            runVideo(running, job, parentSignal, previous),
+        jobs.start(
+            'video',
+            job.id,
+            job.conversation,
+            (running) => runVideo(running, job, parentSignal, previous),
+            { files: true },
         );
     const runVideo = (running, job, parentSignal, previous) => {
         Object.assign(running, {
