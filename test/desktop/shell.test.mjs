@@ -6,7 +6,7 @@ test('closing the window waits for the page layout save, but not for a hung or b
     const order = [];
     await saveLayout(async (code) => {
         assert.equal(code, 'globalThis.rabbitholeSaveLayout?.()');
-        await new Promise((done) => setTimeout(done, 5));
+        await Promise.resolve();
         order.push('saved');
     });
     order.push('closed');
