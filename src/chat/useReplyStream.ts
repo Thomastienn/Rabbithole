@@ -11,7 +11,8 @@ import { firstQuestion as startFirstQuestion } from './firstQuestion';
 import { replyStream, request as api } from '../serverAccess';
 
 // Reply stream: sends a question or retry, applies SSE events live, then reloads the saved tree.
-// It owns the live turns, running streams, the first question's busy flag, drafts and pending files.
+// It writes the live turns held by useLearningTrees (trees.live) and owns the running streams,
+// the first question's busy flag, drafts and pending files.
 export function useReplyStream(
     c: Pick<
         ChatState,

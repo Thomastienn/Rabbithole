@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import { remPx } from '../map/mapWidth';
 
 // View state and refs shared by the ChatPage hooks and regions; learning tree data lives in useLearningTrees,
-// live turns, drafts and pending files in useReplyStream, the branch form in useBranchForm,
+// drafts and pending files in useReplyStream, the branch form in useBranchForm,
 // chat targets in useChatTargets and map view state in useMapViewState.
 export function useChatState() {
     const [error, setError] = useState('');
