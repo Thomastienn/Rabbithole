@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { mediaPath } from '../../media/videos.mjs';
+import { videoWork, legacyWork } from '../../media/video-workspace.mjs';
 import { pythonWorkspace } from '../../tools/python.mjs';
 import { LABELS, isEndpoint } from '../roles.mjs';
 import { anchorOf, compactionPrompt, freeAnchorOf } from '../jobs/compaction.mjs';
@@ -144,8 +145,8 @@ export async function treeRoutes(req, res, url, ctx, body) {
                     for (const path of [
                         ...(store.libraryVideo(a.id)
                             ? []
-                            : [mediaPath(dir, a.id), join(dir, 'video-work', a.id)]),
-                        ...(a.attempt ? [join(dir, 'video-work', a.attempt)] : []),
+                            : [mediaPath(dir, a.id), videoWork(dir, a.id)]),
+                        ...(a.attempt ? [legacyWork(dir, a.attempt)] : []),
                     ]) {
                         files.push(path);
                         // Live jobs can have filesystem operations in flight; stop and remove those after commit.
