@@ -8,10 +8,10 @@ import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
 import { exportVideo } from '../../media/video-export.mjs';
 import { sandboxMissing } from '../../media/video-sandbox.mjs';
+import { PHASES } from '../../media/cut-state.mjs';
 import { workRoot, videoWork, readSaved } from '../../media/video-workspace.mjs';
 
 export const STOPPED = new Error('Rabbithole stopped.');
-const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
 
 // A crash before commit restores staged files; a crash after commit finishes removing them.
 // The suffix records the owning artifact, including legacy workspaces named only by attempt.
