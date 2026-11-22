@@ -2,6 +2,7 @@ import { TUTOR_TOOLS } from '../../tools/runner.mjs';
 import { EndpointError } from '../../providers/openai.mjs';
 import { DEFAULT_TUTOR_STYLE } from '../../media/diagrams.mjs';
 import { systemPackages } from '../../media/manim.mjs';
+import { MEMORY_NOTE_LIMIT, tooLong } from '../../tools/memoryNote.mjs';
 
 // Model profiles, chat, smart and suggestion settings, and custom endpoints.
 export async function settingsRoutes(req, res, url, ctx, body) {
@@ -124,6 +125,10 @@ export async function settingsRoutes(req, res, url, ctx, body) {
     if (url.pathname === '/api/settings/memory-note') {
         if (typeof body?.note !== 'string')
             return json(res, 400, { error: 'Send the memory note as text; empty text clears it.' });
+        if (tooLong(body.note, store.memoryNote()))
+            return json(res, 400, {
+                error: `The memory note is limited to ${MEMORY_NOTE_LIMIT.toLocaleString('en-US')} characters; shorten it and save again.`,
+            });
         return json(res, 200, { note: store.saveMemoryNote(body.note) });
     }
     if (url.pathname === '/api/settings/chat') {

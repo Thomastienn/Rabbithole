@@ -86,6 +86,18 @@ test('the runner offers the tool to every provider, follows its switch and saves
     assert.equal(saved, '- Knows Python\n- Likes diagrams');
     await assert.rejects(run({ operation: 'delete', old_text: 'Rust' }), /not in the memory note/);
     assert.equal(saved, '- Knows Python\n- Likes diagrams');
+    saved = 'x'.repeat(7991);
+    assert.equal(await run({ operation: 'add', text: '- at cap' }), 'Updated memory note.');
+    assert.equal(saved.length, 8000);
+    await assert.rejects(run({ operation: 'add', text: '- one more' }), /rewrite or delete/);
+    await assert.rejects(
+        run({ operation: 'rewrite', old_text: 'at cap', text: 'a longer cap' }),
+        /limit/,
+    );
+    assert.equal(saved.length, 8000);
+    saved = 'y'.repeat(9000) + '\n- old';
+    assert.equal(await run({ operation: 'delete', old_text: '- old' }), 'Updated memory note.');
+    assert.equal(saved, 'y'.repeat(9000));
     await assert.rejects(
         toolRunner().run('update_memory_note', { operation: 'add', text: 'x' }, turn),
         /unavailable/,
