@@ -21,7 +21,7 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
     const api = async (path, body) => {
         if (body) calls.push([path, body]);
         if (path === '/api/settings/searxng') return { ready: false, url: null, customUrl: null };
-        if (path === '/api/downloads/searxng') return [];
+        if (path === '/api/downloads/addons/web-search') return [];
         if (path === '/api/settings/endpoints' && body) {
             if (list.some((e) => e.name.toLowerCase() === body.name.toLowerCase()))
                 throw new Error(
@@ -107,7 +107,7 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
     // Adding an endpoint while web search is unavailable offers its download.
     assert.match(container.textContent, /Most endpoints cannot search the web/);
     await act(async () => button(container, 'Download web search').click());
-    assert.deepEqual(calls.at(-1), ['/api/downloads/searxng', {}]);
+    assert.deepEqual(calls.at(-1), ['/api/downloads/addons/web-search', {}]);
     assert.match(container.textContent, /Web search is downloading\. Follow it in Downloads\./);
     assert.equal(container.querySelector('.endpoint-search-offer'), null);
 

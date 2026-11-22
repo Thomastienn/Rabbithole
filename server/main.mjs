@@ -57,7 +57,9 @@ try {
     store = new Store(join(dir, 'trees.sqlite'));
     if (store.backupPath) console.log(`Saved pre-upgrade backup: ${store.backupPath}`);
     store.pruneEmpty();
-    const downloads = downloadManager([...videoTools(), searxng.tool]);
+    const downloads = downloadManager([...videoTools(), searxng.tool], {
+        file: join(dir, 'addons.json'),
+    });
     const auth = new Auth(dir),
         claude = new Claude(dir, spawn, execFile, cliPath('claude')),
         endpoint = new OpenAI(dir),
@@ -93,7 +95,7 @@ try {
         })
             .on('error', () => {})
             .unref();
-    // Downloads begin once first-run setup has ended; POST /api/setup starts them otherwise.
+    // Installed add-ons are checked for updates once first-run setup has ended; POST /api/setup starts it otherwise.
     if (store.setupFinished()) void downloads.start();
     // Local diagnostics only. Start listening first so a missing or slow CLI cannot prevent reading saved trees.
     const installed = (command) =>

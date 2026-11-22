@@ -1,9 +1,51 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+
+// Add-ons group the tools (ADR 0020). Sizes are approximate downloads of the pinned tools.
+export const ADDONS = [
+    {
+        id: 'video-tools',
+        name: 'Video tools',
+        enables: 'Narrated videos the tutor makes for you.',
+        size: 500e6,
+        dependency: 'offline-python',
+        tools: ['uv', 'latex', 'manim', 'browser'],
+    },
+    {
+        id: 'offline-python',
+        name: 'Offline Python',
+        enables: 'Python code the tutor runs on this computer.',
+        size: 50e6,
+        dependency: null,
+        tools: ['python'],
+    },
+    {
+        id: 'web-search',
+        name: 'Web search',
+        enables: 'Web search with any model, through a private SearXNG.',
+        size: 40e6,
+        dependency: null,
+        tools: ['searxng'],
+    },
+];
+
+const remembered = (file) => {
+    try {
+        const ids = JSON.parse(readFileSync(file, 'utf8'));
+        return Array.isArray(ids) ? ids : [];
+    } catch {
+        return [];
+    }
+};
+
 // Tool downloads run one at a time. State lives only in memory, so a tool that is not ready queues again on the next launch.
 // tools: [{ id, name, video?, requested?: () => boolean, ready: () => Promise<boolean>, run: ({ report, signal }) => Promise<void> }]
-export function downloadManager(tools) {
+// file: where the data folder remembers which add-ons the learner installed.
+export function downloadManager(tools, { addons = ADDONS, file = null } = {}) {
     const items = new Map(),
         listeners = new Set(),
-        controller = new AbortController();
+        controller = new AbortController(),
+        installed = new Set(file ? remembered(file) : []),
+        found = new Set();
     let chain = Promise.resolve(),
         started;
     const view = (item) => ({
@@ -48,31 +90,91 @@ export function downloadManager(tools) {
         chain = chain.then(() => run(item));
         changed();
     };
+    const byId = (id) => addons.find((a) => a.id === id);
+    const toolsOf = (addon) =>
+        addon.tools.map((id) => tools.find((t) => t.id === id)).filter(Boolean);
+    const ready = (tool) => tool.ready().catch(() => false);
+    // Queues the add-on's dependency first, then each of its tools a check finds not ready; tools found ready never list.
+    const queue = async (addon) => {
+        if (addon.dependency) await queue(byId(addon.dependency));
+        for (const tool of toolsOf(addon)) {
+            const item = items.get(tool.id);
+            if (item && item.state !== 'failed') continue;
+            const isReady = await ready(tool);
+            if (controller.signal.aborted) return;
+            if (isReady) found.add(tool.id);
+            else enqueue(item ?? { id: tool.id, name: tool.name, tool });
+        }
+    };
+    const remember = (addon) => {
+        if (addon.dependency) remember(byId(addon.dependency));
+        if (installed.has(addon.id)) return;
+        installed.add(addon.id);
+        if (file) writeFileSync(file, JSON.stringify([...installed]));
+    };
+    // A web search folder from before add-ons still counts as asked for.
+    const requested = (addon) =>
+        installed.has(addon.id) || toolsOf(addon).some((t) => t.requested?.());
+    const addonView = (addon) => {
+        const parts = toolsOf(addon).map((t) =>
+            found.has(t.id) ? { state: 'ready' } : (items.get(t.id) ?? { state: 'missing' }),
+        );
+        const failed = parts.find((p) => p.state === 'failed');
+        const state = failed
+            ? 'failed'
+            : parts.some((p) => p.state === 'queued' || p.state === 'running')
+              ? 'downloading'
+              : parts.every((p) => p.state === 'ready')
+                ? 'installed'
+                : 'not-installed';
+        const percent =
+            state === 'downloading'
+                ? Math.round(
+                      parts.reduce(
+                          (sum, p) => sum + (p.state === 'ready' ? 100 : (p.percent ?? 0)),
+                          0,
+                      ) / parts.length,
+                  )
+                : null;
+        const { id, name, enables, size, dependency } = addon;
+        return {
+            id,
+            name,
+            enables,
+            size,
+            dependency,
+            state,
+            percent,
+            ...(failed && { error: failed.error }),
+        };
+    };
     return {
         list,
+        addons: () => addons.map(addonView),
         subscribe(listener) {
             listeners.add(listener);
             return () => listeners.delete(listener);
         },
-        // Called once first-run setup has ended; tools found ready are never listed.
+        // Called once first-run setup has ended: only add-ons the learner installed are checked and queued for update.
         start() {
             return (started ??= (async () => {
-                for (const tool of tools) {
-                    // An on-request tool is checked only once the learner has asked for it.
-                    if (tool.requested && !tool.requested()) continue;
-                    const ready = await tool.ready().catch(() => false);
+                for (const addon of addons) {
+                    if (requested(addon)) await queue(addon);
+                    // A quiet look that never queues, so tools already in the tool root count as installed.
+                    else if (!toolsOf(addon).some((t) => t.requested))
+                        for (const tool of toolsOf(addon))
+                            if (await ready(tool)) found.add(tool.id);
                     if (controller.signal.aborted) return;
-                    if (!ready) enqueue({ id: tool.id, name: tool.name, tool });
                 }
                 await chain;
             })());
         },
-        // Queues an on-request tool; a no-op while it is already listed and not failed.
-        add(id) {
-            const tool = tools.find((t) => t.id === id);
-            if (!tool) return false;
-            const item = items.get(id);
-            if (!item || item.state === 'failed') enqueue(item ?? { id, name: tool.name, tool });
+        // Installs an add-on, or retries its failed tools; false for an unknown id.
+        async install(id) {
+            const addon = byId(id);
+            if (!addon) return false;
+            remember(addon);
+            await queue(addon);
             return true;
         },
         retry(id) {
