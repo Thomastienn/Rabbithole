@@ -48,7 +48,10 @@ export default function Passage({
     onVisualPart?: PartAction;
     visualBranches?: Record<string, VisualBranch[]>;
     discussionBranches?: Record<string, DiscussionBranch[]>;
-    onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
+    onArtifactAction?: (
+        id: string,
+        action: 'cancel' | 'retry' | 'regenerate' | 'install',
+    ) => Promise<void>;
     onDiscussionReply?: DiscussionReply;
     suggestions?: Suggestions;
     briefs?: Brief[];

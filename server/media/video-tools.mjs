@@ -46,21 +46,18 @@ export function videoTools({
         {
             id: 'uv',
             name: 'uv',
-            video: true,
             ready: async () => uvReady({ probe }),
             run: ({ report, signal }) => ensureUv({ run: runner(signal), root, report, signal }),
         },
         {
             id: 'latex',
             name: 'LaTeX',
-            video: true,
             ready: async () => latexReady({ probe }),
             run: ({ report, signal }) => ensureLatex({ run: runner(signal), root, report, signal }),
         },
         {
             id: 'manim',
             name: 'Manim',
-            video: true,
             ready: async () => detectManim({ root, probe, platform }).ready,
             run: async ({ signal }) => {
                 await ensureManim({ run: runner(signal), root });
@@ -71,7 +68,6 @@ export function videoTools({
         {
             id: 'browser',
             name: 'Video browser',
-            video: true,
             ready: async () => exists(videoBrowser(root, platform)),
             run: async ({ report, signal }) => {
                 const code = await browser(

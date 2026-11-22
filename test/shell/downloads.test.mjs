@@ -116,6 +116,35 @@ test('a video asked for before its tools are ready shows the unavailable state w
     assert.deepEqual(calls, ['retry']);
 });
 
+test('a video asked for without video tools offers to install them with the download size', async (t) => {
+    const calls = [];
+    const { container, act, cleanup } = await render(
+        h(VideoCard, {
+            artifact: {
+                id: 'video',
+                conversation: 'root',
+                title: 'Winners',
+                description: 'Two winners meet.',
+                status: 'failed',
+                error: "Video tools aren't installed (about 500 MB).",
+            },
+            inline: true,
+            onAction: async (action) => {
+                calls.push(action);
+            },
+        }),
+        ui,
+    );
+    t.after(cleanup);
+    assert.equal(container.querySelector('[data-artifact=video]').dataset.state, 'unavailable');
+    assert.match(
+        container.querySelector('[role=status]').textContent,
+        /Video tools aren't installed \(about 500 MB\)\./,
+    );
+    await act(async () => button(container, 'Install video tools').click());
+    assert.deepEqual(calls, ['install']);
+});
+
 test('a video asked for before the Windows sandbox is set up shows the unavailable state with that reason', async (t) => {
     const error = 'Video making needs the Windows sandbox. Enable it in Settings, then ask again.';
     const { container, cleanup } = await render(

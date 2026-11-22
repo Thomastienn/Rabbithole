@@ -12,10 +12,9 @@ import { open } from '../support/video-kit.mjs';
 function fakeTools(installed = {}) {
     const runs = [],
         pending = {};
-    const tool = (id, video) => ({
+    const tool = (id) => ({
         id,
         name: id.toUpperCase(),
-        video,
         ready: async () => Boolean(installed[id]),
         run: ({ report }) =>
             new Promise((resolve, reject) => {
@@ -25,7 +24,7 @@ function fakeTools(installed = {}) {
     });
     const search = { ...tool('searxng'), requested: () => Boolean(installed.requested) };
     return {
-        tools: [tool('manim', true), tool('browser', true), tool('python'), search],
+        tools: [tool('manim'), tool('browser'), tool('python'), search],
         runs,
         pending,
     };
@@ -51,6 +50,7 @@ test('nothing downloads after setup; video tools queue offline Python first and 
         state: 'not-installed',
         percent: null,
     });
+    assert.equal(manager.videoWaiting(), "Video tools aren't installed (about 500 MB).");
     assert.equal(await manager.install('video-tools'), true);
     await tick();
     assert.deepEqual(states(manager), ['python:running', 'manim:queued', 'browser:queued']);
@@ -157,11 +157,17 @@ test('installed add-ons are remembered: a stopped or outdated one updates on the
     assert.deepEqual(current.runs, [], 'an add-on whose versions match does nothing on launch');
 });
 
-test('routes stream the list, install and retry add-ons, retry failures and mark seen; a video waits for its tools', async (t) => {
+test('routes stream the list, install and retry add-ons, retry failures and mark seen; a waiting video installs its tools and renders once they are ready', async (t) => {
     const { tools, pending } = fakeTools({ python: true });
     const downloads = downloadManager(tools);
+    let planned = 0;
     const env = await open(
-        { generate: async () => assert.fail('no video work starts') },
+        {
+            generate: async () => {
+                planned++;
+                throw new Error('Planning stops here.');
+            },
+        },
         { downloads },
     );
     t.after(env.close);
@@ -174,8 +180,37 @@ test('routes stream the list, install and retry add-ons, retry failures and mark
         ['video-tools:not-installed', 'offline-python:installed', 'web-search:not-installed'],
     );
     assert.equal((await env.post('/api/downloads/addons/nothing')).status, 404);
-    const installing = await (await env.post('/api/downloads/addons/video-tools')).json();
-    assert.equal(installing[0].state, 'downloading');
+
+    const tree = env.store.create('Video', 'codex');
+    const message = env.store.message(tree.id, 'assistant', 'Reply.', 'completed');
+    const artifact = env.store.pendingArtifact(
+        tree.id,
+        message,
+        'Title',
+        'Planned.',
+        'video',
+        '{"request":"Make a video."}',
+    );
+    const card = `/api/trees/${tree.id}/artifacts/${artifact.id}`;
+    const ask = async () => {
+        assert.equal((await env.post(`${card}/retry`)).status, 200);
+        await env.app.settled(artifact.id);
+        return env.store.artifact(tree.id, artifact.id);
+    };
+    env.store.finishVideo(tree.id, artifact.id, artifact.attempt, {}, 'Earlier failure.');
+    const kept = await ask();
+    assert.equal(kept.status, 'failed', 'the video is kept');
+    assert.equal(kept.error, "Video tools aren't installed (about 500 MB).");
+    assert.deepEqual((await (await env.get('/api/state')).json()).videos, []);
+
+    const installing = await (await env.post(`${card}/install`)).json();
+    assert.equal(installing.error, 'Video tools are still downloading (0%).');
+    assert.equal(downloads.addons()[0].state, 'downloading');
+    assert.deepEqual(
+        (await (await env.get('/api/state')).json()).videos,
+        [tree.id],
+        'a waiting card polls while its tools download',
+    );
     await tick();
     const stream = await env.get('/api/downloads');
     assert.equal(stream.headers.get('content-type'), 'text/event-stream');
@@ -188,25 +223,12 @@ test('routes stream the list, install and retry add-ons, retry failures and mark
     await reader.cancel();
 
     pending.manim.report({ percent: 80 });
-    const tree = env.store.create('Video', 'codex');
-    const message = env.store.message(tree.id, 'assistant', 'Reply.', 'completed');
-    const artifact = env.store.pendingArtifact(
-        tree.id,
-        message,
-        'Title',
-        'Planned.',
-        'video',
-        '{"request":"Make a video."}',
-    );
-    env.store.finishVideo(tree.id, artifact.id, artifact.attempt, {}, 'Earlier failure.');
     assert.equal(
-        (await env.post(`/api/trees/${tree.id}/artifacts/${artifact.id}/retry`)).status,
-        200,
+        (await (await env.get(card)).json()).error,
+        'Video tools are still downloading (40%).',
+        'the card shows the download as it is now',
     );
-    await env.app.settled(artifact.id);
-    const row = env.store.artifact(tree.id, artifact.id);
-    assert.equal(row.status, 'failed');
-    assert.equal(row.error, 'Video tools are still downloading (40%).');
+    assert.equal((await ask()).error, 'Video tools are still downloading (40%).');
 
     pending.manim.reject(new Error('Network down.'));
     await tick();
@@ -222,8 +244,12 @@ test('routes stream the list, install and retry add-ons, retry failures and mark
     assert.equal(again[0].state, 'downloading');
     pending.manim.resolve();
     await tick();
+    assert.equal(planned, 0, 'nothing renders before every tool is ready');
     pending.browser.resolve();
     await downloads.idle();
+    await env.app.settled(artifact.id);
+    assert.equal(planned, 1, 'the waiting video renders without being asked again');
+    assert.doesNotMatch(env.store.artifact(tree.id, artifact.id).error, /^Video tools /);
     assert.deepEqual(await (await env.post('/api/downloads/seen')).json(), []);
 });
 
