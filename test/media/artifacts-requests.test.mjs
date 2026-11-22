@@ -65,8 +65,10 @@ test('diagram request saves an owned artifact and keeps directive, worker prompt
             'instructions',
             'model',
             'provider',
+            'role',
             'thread',
         ]);
+        assert.equal(worker.tree.role, 'diagram');
         assert.doesNotMatch(
             JSON.stringify(worker),
             /tutor-thread-secret|UNRELATED PRIVATE TRANSCRIPT|Explain winners/,

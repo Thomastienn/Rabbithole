@@ -1,4 +1,3 @@
-import { collectText } from '../providers/chatStream.mjs';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { savedTheme, themeChoices } from '../../src/shell/appearance.ts';
@@ -12,7 +11,7 @@ import {
     GSAP_SKILL,
 } from './skills.mjs';
 import { readCall } from './reply-requests.mjs';
-import { providerError } from '../log.mjs';
+import { mediaCall, raced } from './media-call.mjs';
 import { patched, withSource } from './patches.mjs';
 import { DIFF } from './video-cut.mjs';
 
@@ -73,6 +72,14 @@ const INSTRUCTIONS =
     ANALOGY_SKILL +
     SKILL_RULES;
 const MAX_SOURCE = 64 * 1024;
+const VISUAL_CALL = {
+    role: 'visual',
+    bytes: MAX_SOURCE,
+    overflow: 'Visual output is invalid: the fragment exceeds its size limit.',
+    incomplete: 'Visual generation did not complete. Retry to try again.',
+    failed: (reason) =>
+        `Visual provider could not generate a result: ${reason.replace(/\.$/, '')}. Check the conversation’s chat model, then Retry.`,
+};
 
 // Read Astryx's built colours so the worker prompt and browser share one palette.
 const palettes = Object.fromEntries(
@@ -211,16 +218,6 @@ export async function generateVisual(
     const cancel = () => controller.abort(new Error('Visual generation canceled.'));
     parentSignal.addEventListener('abort', cancel, { once: true });
     if (parentSignal.aborted) cancel();
-    const timer = setTimeout(
-        () => controller.abort(new Error('Visual generation timed out.')),
-        timeout,
-    );
-    let rejectAbort;
-    const aborted = new Promise((_, reject) => {
-        rejectAbort = () => reject(controller.signal.reason);
-        controller.signal.addEventListener('abort', rejectAbort, { once: true });
-        if (controller.signal.aborted) rejectAbort();
-    });
     const run = async () => {
         const { JSDOM } = await import('jsdom');
         const document = JSDOM.fragment('').ownerDocument;
@@ -238,75 +235,45 @@ export async function generateVisual(
             };
             // One writer call; returns its answer with any text tool calls, or overflow when it outgrew the limit.
             const ask = async (note, text, stream) => {
-                const streamed = collectText();
-                const { items } = streamed;
-                let overflow;
                 if (stream) onPartial('');
                 try {
-                    await provider.generate(
-                        {
-                            ...selection,
-                            thread: null,
-                            ...(capable && {
-                                tools: [LOAD_SKILL],
-                                mcp,
-                                runTool: (_name, input) => {
-                                    const skill = SKILLS[input?.name];
-                                    if (!skill)
-                                        throw new Error(
-                                            `Choose a skill: ${Object.keys(SKILLS).join(' or ')}.`,
-                                        );
-                                    loaded.add(input.name);
-                                    return skill.text;
-                                },
-                            }),
-                            instructions:
-                                INSTRUCTIONS +
-                                (capable ? '' : TEXT_TOOL) +
-                                [...given].map((name) => '\n\n' + SKILLS[name].text).join('') +
-                                (input.differentVersion
-                                    ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
-                                    : '') +
-                                '\nCurrent theme palette: ' +
-                                JSON.stringify(paletteFor(input.theme)) +
-                                note,
+                    const answer = await mediaCall(provider, selection, VISUAL_CALL, {
+                        instructions:
+                            INSTRUCTIONS +
+                            [...given].map((name) => '\n\n' + SKILLS[name].text).join('') +
+                            (input.differentVersion
+                                ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
+                                : '') +
+                            '\nCurrent theme palette: ' +
+                            JSON.stringify(paletteFor(input.theme)) +
+                            note,
+                        input: text,
+                        signal: controller.signal,
+                        onText: stream
+                            ? (_bytes, partial) =>
+                                  onPartial(visualMarkup(partial.replace(CALLS, ''), document))
+                            : undefined,
+                        tools: {
+                            capable,
+                            textTools: TEXT_TOOL,
+                            tools: [LOAD_SKILL],
+                            mcp,
+                            runTool: (_name, input) => {
+                                const skill = SKILLS[input?.name];
+                                if (!skill)
+                                    throw new Error(
+                                        `Choose a skill: ${Object.keys(SKILLS).join(' or ')}.`,
+                                    );
+                                loaded.add(input.name);
+                                return skill.text;
+                            },
                         },
-                        text,
-                        (event) => {
-                            if (controller.signal.aborted || !streamed.onEvent(event)) return;
-                            // Past the limit nothing is kept.
-                            if (overflow) return items.clear();
-                            if (
-                                items.size > 32 ||
-                                [...items.values()].reduce(
-                                    (n, text) => n + Buffer.byteLength(text),
-                                    0,
-                                ) > MAX_SOURCE
-                            ) {
-                                overflow =
-                                    'Visual output is invalid: the fragment exceeds its size limit.';
-                                items.clear();
-                            }
-                            if (stream)
-                                onPartial(
-                                    visualMarkup(
-                                        streamed.text('\n\n').replace(CALLS, ''),
-                                        document,
-                                    ),
-                                );
-                        },
-                        () => {},
-                        controller.signal,
-                    );
+                    });
+                    return { answer };
                 } catch (error) {
-                    throw new Error(
-                        `Visual provider could not generate a result: ${providerError(error).replace(/\.$/, '')}. Check the conversation’s chat model, then Retry.`,
-                    );
+                    if (!error.invalidOutput) throw error;
+                    return { answer: '', overflow: error.message };
                 }
-                if (controller.signal.aborted) throw controller.signal.reason;
-                if (streamed.status !== 'completed')
-                    throw new Error('Visual generation did not complete. Retry to try again.');
-                return { answer: streamed.text('\n\n'), overflow };
             };
             // A retry of a written fragment answers a patch; when it does not apply, one whole fragment, as cut repairs do.
             const fix = previous
@@ -353,10 +320,8 @@ export async function generateVisual(
         }
     };
     try {
-        return await Promise.race([aborted, run()]);
+        return await raced(controller, run(), timeout, 'Visual generation timed out.');
     } finally {
-        clearTimeout(timer);
         parentSignal.removeEventListener('abort', cancel);
-        controller.signal.removeEventListener('abort', rejectAbort);
     }
 }
