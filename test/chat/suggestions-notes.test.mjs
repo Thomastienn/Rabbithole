@@ -142,6 +142,7 @@ test('a completed reply without [[end]] starts its briefs once quick thinking ha
         pick: () => quick,
         logged: (provider) => provider,
         toolCapable: async () => false,
+        quickModel: async () => ({ provider: 'claude', model: 'haiku', effort: null }),
         startBriefs: (...args) => calls.push(['briefs', ...args]),
     });
     noteSuggestions('c', 'r', 'completed', notesOf('Use shared state'), 'Q', 'Use shared state');

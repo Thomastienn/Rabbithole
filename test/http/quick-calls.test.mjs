@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { OpenAI } from '../../server/providers/openai.mjs';
+import { quickCall } from '../../server/http/quick.mjs';
 import { NAME_CONVERSATION, quickTool } from '../../server/tools/quickTools.mjs';
 import { fakeOpenAI, streamReply, streamToolCalls } from '../support/fake-openai.mjs';
 
@@ -42,7 +43,8 @@ test('a quick tool answers natively, through <tool_call> text, or through the pl
 
 test('title, verdicts and suggestions arrive through native tool calls; a bad call gets a plain error', async (t) => {
     const store = new Store(join(mkdtempSync(join(tmpdir(), 'rabbithole-quick-')), 'trees.sqlite'));
-    const errors = {};
+    const errors = {},
+        roles = [];
     const calls = {
         name_conversation: [{}, { title: '**Heaps**.', concept: 'Binary heap' }],
         record_verdicts: [
@@ -65,6 +67,7 @@ test('title, verdicts and suggestions arrive through native tool calls; a bad ca
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
+            roles.push(tree.role);
             assert.equal(tree.tools.length, 1);
             assert.doesNotMatch(tree.instructions, /<tool_call>/);
             const name = tree.tools[0].name;
@@ -113,6 +116,8 @@ test('title, verdicts and suggestions arrive through native tool calls; a bad ca
     await (await post(`/${id}/messages`, { text: 'A heap keeps the smallest on top?' })).text();
     await app.settled();
 
+    // Each call names its role on the request.
+    assert.deepEqual(roles.sort(), ['suggestions', 'title', 'verdict']);
     assert.deepEqual(errors, {
         name_conversation: 'title must be a short plain title.',
         record_verdicts:
@@ -217,4 +222,36 @@ test('a custom endpoint without tool support names the conversation through <too
     assert.equal(bodies.length, 1);
     assert.equal(bodies[0].tools, undefined);
     assert.match(bodies[0].messages[0].content, /<tool_call>/);
+});
+
+test('a quick call names its role, joins text with the caller separator, and fails as stopped, unfinished or empty', async () => {
+    const quick = { provider: 'claude', model: 'haiku', effort: null };
+    let request;
+    const provider = (events) => ({
+        generate: async (tree, text, emit) => {
+            request = tree;
+            for (const event of events) emit(event);
+        },
+    });
+    const text = (item, value) => ({ type: 'item', item, text: value });
+    const done = { type: 'status', status: 'completed' };
+    const ask = (events, signal = new AbortController().signal) =>
+        quickCall(provider(events), 'brief', quick, {
+            instructions: 'Explain.',
+            prompt: 'p',
+            read: (answer) => answer.trim(),
+            separator: '|',
+            signal,
+            missing: 'missing',
+            stopped: 'stopped',
+        });
+
+    assert.equal(await ask([text('a', 'one'), text('b', 'two'), done]), 'one|two');
+    assert.deepEqual(
+        { role: request.role, quick: request.quick, thread: request.thread },
+        { role: 'brief', quick: true, thread: null },
+    );
+    await assert.rejects(ask([text('a', 'one'), done], AbortSignal.abort()), /^Error: stopped$/);
+    await assert.rejects(ask([text('a', 'one')]), /^Error: missing$/);
+    await assert.rejects(ask([text('a', ' '), done]), /^Error: missing$/);
 });

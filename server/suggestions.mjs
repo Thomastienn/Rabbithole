@@ -1,6 +1,5 @@
-import { collectText } from './providers/chatStream.mjs';
-import { isEndpoint } from './http/roles.mjs';
-import { MARK_SUGGESTIONS, quickTool } from './tools/quickTools.mjs';
+import { quickCall } from './http/quick.mjs';
+import { MARK_SUGGESTIONS } from './tools/quickTools.mjs';
 import { noteName as name } from './media/markers.mjs';
 
 const INSTRUCTIONS =
@@ -157,86 +156,56 @@ export const quickDefault = (tree, models) =>
         ? 'haiku'
         : (models.find((m) => /luna/i.test(m.model))?.model ?? tree.model ?? null);
 
-// A separate thread-less request: nothing here enters tutor history.
+// A separate thread-less request: nothing here enters tutor history. quick is the resolved quick thinking model.
 // capable: whether the model calls tools natively; mcp serves Claude and Codex the call.
 export async function suggest(
     provider,
-    tree,
+    quick,
     input,
     signal,
     timeout = 120000,
-    pinnedModel = null,
     { capable = false, mcp, marked = null } = {},
 ) {
-    const streamed = collectText(),
-        bounded = AbortSignal.any([signal, AbortSignal.timeout(timeout)]);
     let usage = null;
-    // Without a quick thinking model the cheap default needs a subscription conversation; a pinned model may be any connected provider.
-    if (!pinnedModel && !['claude', 'codex'].includes(tree.provider))
-        throw new Error('Suggestions require a signed-in subscription provider.');
-    const models = await provider.models();
-    const pinned = pinnedModel && models.find((m) => m.model === pinnedModel);
-    if (pinnedModel && !pinned) throw new Error('Suggestion model is unavailable.');
-    // A typed custom endpoint effort was validated when saved; the endpoint itself judges it.
-    if (
-        pinned &&
-        tree.effort != null &&
-        !isEndpoint(tree.provider) &&
-        !(pinned.efforts ?? []).includes(tree.effort)
-    )
-        throw new Error('Quick thinking effort is no longer supported by its model.');
-    const model = pinnedModel ?? quickDefault(tree, models);
-    const call = quickTool(
-        MARK_SUGGESTIONS,
-        (result) => {
-            if (!Array.isArray(result?.suggestions))
-                throw new Error(
-                    'suggestions must be a list of {text, concept}; use [] when none qualify.',
-                );
-            return marked ? named(result, marked) : notes(result, input.answer);
-        },
-        capable,
-        mcp,
-    );
-    // The unset default never borrows the conversation's effort, which belongs to the chat model.
-    await provider.generate(
-        {
-            provider: tree.provider,
-            model,
-            effort: pinnedModel ? (tree.effort ?? null) : null,
-            thread: null,
-            quick: true,
-            instructions: INSTRUCTIONS + call.instructions,
-            ...call.request,
-        },
-        marked
-            ? NAMING + JSON.stringify({ ...input, suggestions: marked.passages.map((p) => p.text) })
-            : PROMPT + JSON.stringify(input),
-        (event) => {
-            streamed.onEvent(event);
-            if (
-                event.type === 'usage' &&
-                ['input', 'output', 'cacheRead'].every(
-                    (k) => Number.isSafeInteger(event.usage[k]) && event.usage[k] >= 0,
-                )
-            )
-                usage = {
-                    input: event.usage.input,
-                    output: event.usage.output,
-                    cacheRead: event.usage.cacheRead,
-                    reasoning: event.usage.reasoning,
-                };
-        },
-        () => {},
-        bounded,
-    );
-    if (bounded.aborted || streamed.status !== 'completed')
-        throw Object.assign(new Error('Suggestions did not complete.'), { usage });
     try {
-        // A model that answered in text: the JSON object it wrote.
-        const result = call.answer(streamed.text('\n\n'), (text) =>
-            marked ? named(json(text), marked) : parse(text, input.answer),
-        );
+        const result = await quickCall(provider, 'suggestions', quick, {
+            instructions: INSTRUCTIONS,
+            prompt: marked
+                ? NAMING +
+                  JSON.stringify({ ...input, suggestions: marked.passages.map((p) => p.text) })
+                : PROMPT + JSON.stringify(input),
+            tool: {
+                spec: MARK_SUGGESTIONS,
+                read: (result) => {
+                    if (!Array.isArray(result?.suggestions))
+                        throw new Error(
+                            'suggestions must be a list of {text, concept}; use [] when none qualify.',
+                        );
+                    return marked ? named(result, marked) : notes(result, input.answer);
+                },
+            },
+            capable,
+            mcp,
+            // A model that answered in text: the JSON object it wrote.
+            read: (text) => (marked ? named(json(text), marked) : parse(text, input.answer)),
+            separator: '\n\n',
+            signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]),
+            missing: 'Suggestions did not complete.',
+            onEvent: (event) => {
+                if (
+                    event.type === 'usage' &&
+                    ['input', 'output', 'cacheRead'].every(
+                        (k) => Number.isSafeInteger(event.usage[k]) && event.usage[k] >= 0,
+                    )
+                )
+                    usage = {
+                        input: event.usage.input,
+                        output: event.usage.output,
+                        cacheRead: event.usage.cacheRead,
+                        reasoning: event.usage.reasoning,
+                    };
+            },
+        });
         return { ...result, usage };
     } catch (error) {
         throw Object.assign(error, { usage });

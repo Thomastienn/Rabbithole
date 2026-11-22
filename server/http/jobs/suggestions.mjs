@@ -27,13 +27,15 @@ export function suggestionJobs(ctx) {
             const selection = settings.model
                 ? { ...settings.model, effort: settings.effort }
                 : tree;
+            // Without a quick thinking model the cheap default needs a subscription conversation; a pinned model may be any connected provider.
+            if (!settings.model && !['claude', 'codex'].includes(tree.provider))
+                throw new Error('Suggestions require a signed-in subscription provider.');
             const result = await suggest(
                 ctx.logged(pick(selection), 'suggestions', message, selection),
-                selection,
+                await ctx.quickModel(tree, true),
                 { inheritedContext, question, answer, knownConcepts: known, familiarity },
                 running.controller.signal,
                 ctx.suggestionTimeout,
-                settings.model?.model,
                 {
                     capable: await ctx.toolCapable(selection).catch(() => false),
                     mcp: ctx.mcp,

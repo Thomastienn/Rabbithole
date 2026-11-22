@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-import { collectText } from '../../providers/chatStream.mjs';
 import { compactionMessages } from '../../media/diagrams.mjs';
 import { anchored } from '../../suggestions.mjs';
 import { partTrail, visualMessage, visualPassage } from '../../../src/media/artifacts.ts';
@@ -158,39 +156,20 @@ export const freeAnchorOf = (tree, body) => {
 
 // Compaction and branch preparation; reads ctx.stopping at settle time.
 export function compactionJobs(ctx) {
-    const { store, pick, metered, compactions, prepared } = ctx;
+    const { store, compactions, prepared } = ctx;
     // One quick-thinking call; resolves to the one-paragraph snapshot or throws. Metered even when cancelled.
     const compact = (prompt, quick, controller) =>
-        (async () => {
-            const streamed = collectText();
-            await metered(pick(quick), 'compaction', randomUUID(), quick).generate(
-                {
-                    provider: quick.provider,
-                    model: quick.model,
-                    effort: quick.effort,
-                    thread: null,
-                    quick: true,
-                    instructions:
-                        'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.',
-                },
-                prompt,
-                streamed.onEvent,
-                () => {},
-                controller.signal,
-            );
+        ctx.askQuick('compaction', quick, {
+            instructions:
+                'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.',
+            prompt,
             // One paragraph by layout only; no length cap, so nothing is cut.
-            const snapshot = streamed
-                .text(' ')
-                .replace(/\s*\n\s*/g, ' ')
-                .trim();
-            if (controller.signal.aborted || streamed.status !== 'completed' || !snapshot)
-                throw new Error(
-                    controller.signal.aborted
-                        ? 'Context preparation was stopped.'
-                        : 'Quick thinking did not return a complete summary.',
-                );
-            return snapshot;
-        })();
+            read: (text) => text.replace(/\s*\n\s*/g, ' ').trim(),
+            separator: ' ',
+            signal: controller.signal,
+            missing: 'Quick thinking did not return a complete summary.',
+            stopped: 'Context preparation was stopped.',
+        });
     const unprepare = (parent) => {
         const p = prepared.get(parent);
         p?.controller.abort();
