@@ -43,7 +43,7 @@ test('card replies stream saved named lines, carry context and hidden levels, an
                 emit({ type: 'usage', usage: { input: 40, output: 30, cacheRead: 0 } });
             },
         },
-        { log: () => {} },
+        { log: () => {}, saveEvery: 0 },
     );
     t.after(env.close);
     const { id } = await (await env.post('/api/trees')).json();
@@ -115,6 +115,44 @@ test('card replies stream saved named lines, carry context and hidden levels, an
     const reopened = new Store(env.path);
     assert.deepEqual(reopened.discussion(id, artifact.id).lines.slice(-2), responseLines);
     reopened.close();
+});
+
+test('a streamed turn saves and sends at most once per save interval and always saves its end', async (t) => {
+    let mode = 'complete';
+    const env = await open(
+        {
+            generate: async (_, __, emit) => {
+                for (const character of continuation)
+                    emit({ type: 'delta', item: 'turn', text: character });
+                if (mode === 'fail') throw new Error('Fixture provider timed out');
+                emit({ type: 'status', status: 'completed' });
+            },
+        },
+        { log: () => {}, saveEvery: 60_000 },
+    );
+    t.after(env.close);
+    const { id } = await (await env.post('/api/trees')).json();
+    const artifact = seed(env.store, id);
+    let writes = 0;
+    const update = env.store.updateDiscussion.bind(env.store);
+    env.store.updateDiscussion = (...args) => (writes++, update(...args));
+    for (mode of ['complete', 'fail']) {
+        writes = 0;
+        const updates = events(
+            await (
+                await env.post(`/api/trees/${id}/discussions/${artifact.id}/replies`, {
+                    text: 'I think both benefit.',
+                })
+            ).text(),
+        ).filter((e) => e.type === 'artifact');
+        // The learner's line, the first token, and the end.
+        assert.equal(writes, 2);
+        assert.equal(updates.length, 3);
+        const last = updates.at(-1).artifact.discussion;
+        assert.deepEqual(last.lines.slice(-2), responseLines);
+        assert.equal(last.turn.status, mode === 'fail' ? 'failed' : 'completed');
+        assert.deepEqual(env.store.discussion(id, artifact.id).lines.slice(-2), responseLines);
+    }
 });
 
 test('discussions saved before voices still load and accept replies', async (t) => {
