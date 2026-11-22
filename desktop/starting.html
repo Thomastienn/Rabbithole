@@ -3,12 +3,71 @@
   <head>
     <meta charset="utf-8" />
     <title>Rabbithole</title>
+    <!-- Self-contained: no network, no app CSS. Platform colours, the app default: the learner's theme loads with the app. -->
     <style>
-      body { font: 16px system-ui, sans-serif; display: grid; place-items: center; height: 100vh; margin: 0; }
-      pre { white-space: pre-wrap; max-width: 60rem; }
+      :root {
+        color-scheme: light dark;
+        --bg: light-dark(#f6f8fa, #14171d);
+        --fg: light-dark(#191e27, #f3f5f9);
+        --mute: light-dark(#5a616c, #9ea3ad);
+        --line: light-dark(#191e2724, #ffffff22);
+      }
+      * { box-sizing: border-box; margin: 0; }
+      body {
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--fg);
+        display: grid;
+        place-items: center;
+        align-content: center;
+        gap: 18px;
+        padding: 32px;
+        font: 15px/1.5 Barlow, "Segoe UI", Helvetica, Arial, sans-serif;
+        text-align: center;
+      }
+      svg { width: 96px; height: 96px; overflow: visible; }
+      .ln { fill: none; stroke: var(--fg); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; }
+      .stn { fill: var(--bg); stroke: var(--fg); stroke-width: 2.5; }
+      .ping { fill: none; stroke: var(--fg); stroke-width: 0.6; transform-origin: 5px 13px; opacity: 0; }
+      .word { font: 700 22px/1 "Barlow Semi Condensed", Barlow, "Segoe UI", Helvetica, Arial, sans-serif; letter-spacing: 0.09em; text-transform: uppercase; }
+      #status { color: var(--mute); font-size: 14px; margin-top: -8px; }
+      .fail, .next { display: none; }
+      /* The trunk leaves the station, the two branches fork off it, the drawing holds, then fades and starts again. */
+      .trunk { animation: trunk 2.8s cubic-bezier(.4, 0, .2, 1) infinite; }
+      .branch { animation: branch 2.8s cubic-bezier(.4, 0, .2, 1) infinite; }
+      .ping { animation: ping 2.8s ease-out infinite; }
+      @keyframes trunk { 0% { stroke-dashoffset: 1; opacity: 1; } 22% { stroke-dashoffset: 0; } 84% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+      @keyframes branch { 0%, 20% { stroke-dashoffset: 1; opacity: 1; } 52% { stroke-dashoffset: 0; } 84% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+      @keyframes ping { 0% { transform: scale(1); opacity: .7; } 40% { transform: scale(2); opacity: 0; } 100% { opacity: 0; } }
+      /* Reduced motion: the finished mark, still. Only the caption breathes, slowly. */
+      @media (prefers-reduced-motion: reduce) {
+        .trunk, .branch { animation: none; stroke-dashoffset: 0; }
+        .ping { animation: none; }
+        #status { animation: breathe 3s ease-in-out infinite; }
+      }
+      @keyframes breathe { 50% { opacity: .55; } }
+      /* Start error: main.mjs swaps #status for <pre id=status>. The page reacts with CSS alone. */
+      body:has(pre#status) .trunk, body:has(pre#status) .branch { animation: none; stroke-dashoffset: 0; opacity: .35; }
+      body:has(pre#status) .ping { animation: none; }
+      body:has(pre#status) svg { width: 56px; height: 56px; }
+      body:has(pre#status) .word { display: none; }
+      body:has(pre#status) .fail, body:has(pre#status) .next { display: block; }
+      .fail { font: 600 20px/1.2 "Barlow Semi Condensed", Barlow, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--fg); margin: -4px 0 0; }
+      pre#status { margin: 0; color: var(--fg); text-align: left; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; max-width: min(60rem, 100%); max-height: 40vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; user-select: text; }
+      .next { color: var(--mute); font-size: 13px; max-width: 46ch; margin: 0; }
     </style>
   </head>
   <body>
-    <p id="status">Starting Rabbithole…</p>
+    <svg viewBox="0 0 26 26" aria-hidden="true">
+      <circle class="ping" cx="5" cy="13" r="3.4" />
+      <path class="ln trunk" pathLength="1" d="M5 13H12" />
+      <path class="ln branch" pathLength="1" d="M12 13L18 7H22" />
+      <path class="ln branch" pathLength="1" d="M12 13L18 19H22" />
+      <circle class="stn" cx="5" cy="13" r="3.4" />
+    </svg>
+    <div class="word">Rabbithole</div>
+    <h1 class="fail">Rabbithole could not start</h1>
+    <p id="status" role="status">Starting…</p>
+    <p class="next">Close the app and open it again. If this keeps happening, copy the text above into an issue.</p>
   </body>
 </html>
