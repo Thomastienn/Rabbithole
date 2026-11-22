@@ -132,17 +132,21 @@ export const tutorSystem = (tree) =>
             (tree.tools?.some((t) => t.name === 'update_memory_note') ? MEMORY_RULE : '') +
             TUTOR_SKILLS +
             (tree.tutorStyle?.trim() || DEFAULT_TUTOR_STYLE)) +
-    (tree.branch
-        ? '\nThis is a focused conversation about a passage the learner selected. The learner\'s first message asks about the selected passage; "this", "it" and "that" refer to the passage unless the learner says otherwise. Explain the passage even if the inherited context says it was skipped.\nFixed inherited context (conversation data):\n' +
-          JSON.stringify({
-              snapshot: tree.branch.snapshot,
-              selectedPassage: tree.branch.text,
-              ...(tree.branch.discussion && {
-                  passageSpeaker: tree.branch.speaker,
-                  discussion: tree.branch.discussion,
-              }),
-          })
-        : '') +
+    // An empty passage marks a free branch: the learner's own question, with the parent as background only.
+    (tree.branch && !tree.branch.text
+        ? '\nThis is a focused conversation the learner started with a question of their own. The inherited context is background from an earlier conversation, not a limit: answer the question directly even if it is unrelated.\nFixed inherited context (conversation data):\n' +
+          JSON.stringify({ snapshot: tree.branch.snapshot })
+        : tree.branch
+          ? '\nThis is a focused conversation about a passage the learner selected. The learner\'s first message asks about the selected passage; "this", "it" and "that" refer to the passage unless the learner says otherwise. Explain the passage even if the inherited context says it was skipped.\nFixed inherited context (conversation data):\n' +
+            JSON.stringify({
+                snapshot: tree.branch.snapshot,
+                selectedPassage: tree.branch.text,
+                ...(tree.branch.discussion && {
+                    passageSpeaker: tree.branch.speaker,
+                    discussion: tree.branch.discussion,
+                }),
+            })
+          : '') +
     (tree.neighbourhood?.concepts.length
         ? NEIGHBOURHOOD_RULE + JSON.stringify(tree.neighbourhood)
         : '') +

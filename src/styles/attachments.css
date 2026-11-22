@@ -213,3 +213,13 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+/* Ask on the side's fork: a line leaving the trunk, drawn in the button's ink. */
+.ask-side .fork-icon {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}

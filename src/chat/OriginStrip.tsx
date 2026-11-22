@@ -33,7 +33,7 @@ export function originSource(branch: Branch): Source {
             };
 }
 
-// The origin line under a child's title: "From <parent> at “passage”"; the parent link jumps to the source.
+// The origin line under a child's title: "From <parent> at “passage”", or "Asked on the side of <parent>" for a free branch; the parent link jumps to the source.
 export default function OriginStrip({
     branch,
     question,
@@ -45,7 +45,7 @@ export default function OriginStrip({
     question?: string;
     parentAddress: string;
     parentTitle: string;
-    openParent: (source: Source) => void;
+    openParent: (source?: Source) => void;
 }) {
     const [all, setAll] = useState(false);
     // Visual branches store a composed passage; its first line carries the visual's title.
@@ -53,12 +53,14 @@ export default function OriginStrip({
         ? (/^Visual: (.*)/.exec(branch.text)?.[1] ?? branch.text)
         : branch.text.trim();
     const long = isLong(text);
+    // An empty passage marks a free branch, asked after the parent's latest reply.
+    const free = branch.text === '';
     return (
         <section className="origin-strip" aria-label="Conversation origin">
             <p className="origin-line">
                 <span className="origin-ring" aria-hidden />
                 <span>
-                    From{' '}
+                    {free ? 'Asked on the side of' : 'From'}{' '}
                     <Button
                         className="origin-chip"
                         label={`Open ${parentAddress} ${parentTitle} at the source`.replace(
@@ -67,12 +69,15 @@ export default function OriginStrip({
                         )}
                         variant="ghost"
                         size="sm"
-                        onClick={() => openParent(originSource(branch))}
+                        onClick={() => openParent(free ? undefined : originSource(branch))}
                     >
                         {[parentAddress, parentTitle].filter(Boolean).join(' · ')}
-                    </Button>{' '}
-                    {text ? (
+                    </Button>
+                    {free ? (
+                        ', after its latest reply'
+                    ) : text ? (
                         <>
+                            {' '}
                             at{' '}
                             <q
                                 id="origin-source"
@@ -94,6 +99,7 @@ export default function OriginStrip({
                         </>
                     ) : (
                         <>
+                            {' '}
                             · <span className="origin-source">Source passage unavailable</span>
                         </>
                     )}

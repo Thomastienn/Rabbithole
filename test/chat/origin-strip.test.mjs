@@ -119,3 +119,10 @@ test('the question shows on the origin line only when the thread has none', asyn
     const { section } = await strip(t, { start: 0, end: 5, text: 'Snell' }, '');
     assert.ok(!section.querySelector('.origin-question'));
 });
+
+test('a free branch says it was asked on the side and its chip opens the parent', async (t) => {
+    const { section, buttons, opened, act } = await strip(t, { start: null, end: null, text: '' });
+    assert.ok(!section.querySelector('.origin-source'), 'no passage');
+    await act(async () => buttons()[0].click());
+    assert.deepEqual(opened, [undefined]);
+});

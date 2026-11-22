@@ -64,6 +64,18 @@ export default function FocusedChat(props: {
         ancestors.unshift(parent);
         id = parent.parent ?? undefined;
     }
+    // Ask on the side needs a finished reply to inherit, a typed question and no files; before the first reply it is not drawn.
+    const draft = (drafts[tree.id] ?? '').trim();
+    const replied = tree.messages.some((m) => m.role === 'assistant' && m.status === 'completed');
+    const sideBlocked = active
+        ? 'Wait for the reply to finish'
+        : files.length
+          ? 'A side question carries no files. Remove them to ask on the side.'
+          : !draft
+            ? 'Type a question to ask it on the side'
+            : models && !models.length
+              ? 'Sign in to a provider to ask'
+              : undefined;
     const source = !overview && reveal?.tree === tree?.id ? reveal?.source : undefined;
     const validSource =
         source &&
@@ -190,6 +202,27 @@ export default function FocusedChat(props: {
                                     }}
                                 />
                             ) : undefined
+                        }
+                        sendActions={
+                            replied && (
+                                <Button
+                                    className="ask-side"
+                                    label="Ask on the side"
+                                    variant="secondary"
+                                    size="md"
+                                    icon={
+                                        <svg viewBox="0 0 16 16" aria-hidden className="fork-icon">
+                                            <path d="M2 8H6L10 4H14M6 8L10 12H14" />
+                                        </svg>
+                                    }
+                                    tooltip={
+                                        sideBlocked ??
+                                        'Opens a new branch with this question, keeping this conversation clean'
+                                    }
+                                    isDisabled={!!sideBlocked || props.branchForm.branching}
+                                    onClick={() => void props.branchForm.askOnSide(draft)}
+                                />
+                            )
                         }
                         footerActions={
                             <>
