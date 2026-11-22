@@ -280,6 +280,46 @@ test('branch preparation excludes the question and the saved child opens before 
     });
 });
 
+test("the map's + asks on the side of another node and opens the child from the map", async (t) => {
+    let controller;
+    const page = await mount(t, ({ path, body }, { data, state }) => {
+        if (path === '/api/trees/b/branches') {
+            const child = {
+                ...conversation('child'),
+                branch: { parent: 'b', messageId: 'reply', text: '', question: body.question },
+            };
+            data.set('child', child);
+            state.trees.push(summary('child', 'b'));
+            return json(child);
+        }
+        if (path === '/api/trees/child/messages')
+            return new Response(new ReadableStream({ start: (value) => (controller = value) }));
+    });
+    assert.equal(page.current.c.tree.id, 'a');
+    await page.act(async () => {
+        page.current.c.setOverview(true);
+        page.current.c.setDrafts({ a: 'Keep this draft', b: 'And this one' });
+    });
+    let created = 0,
+        asked;
+    await page.act(async () => {
+        asked = page.current.branch.askFromMap('b', 'Lichens?', () => created++);
+    });
+    assert.deepEqual(page.calls.find((c) => c.path.endsWith('/branches')).body, {
+        free: true,
+        question: 'Lichens?',
+    });
+    assert.equal(created, 1);
+    assert.equal(page.current.c.tree.id, 'child');
+    assert.equal(page.current.c.overview, false, "the child's focused chat opens");
+    assert.equal(page.current.c.drafts.a, 'Keep this draft');
+    assert.equal(page.current.c.drafts.b, 'And this one', "the parent's draft is not the question");
+    await page.act(async () => {
+        controller.close();
+        await asked;
+    });
+});
+
 test('choosing a groundwork chip creates its child at once and choosing it again opens that child', async (t) => {
     let controller;
     const page = await mount(t, ({ path, body }, { data, state }) => {

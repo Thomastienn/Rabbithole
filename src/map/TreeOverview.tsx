@@ -98,6 +98,7 @@ export default function TreeOverview({
     active,
     open,
     retry,
+    ask,
     focus,
     focusControl,
     transition,
@@ -130,6 +131,7 @@ export default function TreeOverview({
     active: string[];
     open: Open;
     retry: (id: string) => void;
+    ask: ConversationNode['data']['ask'];
     focus?: string;
     focusControl?: string;
     transition?: string;
@@ -138,13 +140,17 @@ export default function TreeOverview({
     save: (positions: Record<string, Point>) => void;
 }) {
     const { mode } = useTheme();
-    const callbacks = useRef({ open, retry, save });
-    callbacks.current = { open, retry, save };
+    const callbacks = useRef({ open, retry, ask, save });
+    callbacks.current = { open, retry, ask, save };
     const openNode = useCallback<Open>(
         (id, source, message, artifact) => callbacks.current.open(id, source, message, artifact),
         [],
     );
     const retryNode = useCallback((id: string) => callbacks.current.retry(id), []);
+    const askNode = useCallback<ConversationNode['data']['ask']>(
+        (id, question, created) => callbacks.current.ask(id, question, created),
+        [],
+    );
     const [nodes, setNodes, onNodesChange] = useNodesState<ConversationNode>([]);
     const { flow, savedViewport, navigated, zoom, setZoom, pan, zoomOut, zoomIn, fitTree } =
         useMapViewport({ root, trees, nodes, selected });
@@ -208,6 +214,7 @@ export default function TreeOverview({
                         preview: previews[id],
                         open: openNode,
                         retry: retryNode,
+                        ask: askNode,
                         active: active.includes(id),
                         focused: current === id,
                         focus: focus === id && !hidden,
@@ -231,6 +238,7 @@ export default function TreeOverview({
             active,
             openNode,
             retryNode,
+            askNode,
             focus,
             focusControl,
             current,

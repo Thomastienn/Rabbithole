@@ -8,6 +8,7 @@ import type { ChatState } from '../chat/useChatState';
 import type { LayoutSaving } from './useLayoutSaving';
 import type { LearningTrees } from '../chat/useLearningTrees';
 import type { ReplyStream } from '../chat/useReplyStream';
+import type { BranchFormState } from '../chat/useBranchForm';
 import { savedGhostTrees, savePreference } from '../shell/preferences';
 
 // The learning tree map beside or instead of the focused chat, with its resize divider.
@@ -16,6 +17,7 @@ export default function MapView({
     layout: { savePositions, saveViewport, saveGhost },
     trees: { openConversation, openGhost },
     stream: { retryFromMap },
+    branchForm: { askFromMap },
     vim,
     menu,
 }: {
@@ -23,6 +25,7 @@ export default function MapView({
     layout: LayoutSaving;
     trees: LearningTrees;
     stream: ReplyStream;
+    branchForm: BranchFormState;
     vim: boolean;
     menu: (actions?: MapActions) => React.ReactNode;
 }) {
@@ -85,6 +88,7 @@ export default function MapView({
                             void openConversation(id, source, artifact, message)
                         }
                         retry={retryFromMap}
+                        ask={askFromMap}
                         save={savePositions}
                         saveViewport={saveViewport}
                         focus={overview ? overviewOrigin.current?.id : undefined}

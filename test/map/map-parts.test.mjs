@@ -345,3 +345,72 @@ test('returning from chat focuses the originating control; fold remount never st
     });
     assert.equal(document.activeElement.id, 'map-control');
 });
+
+test('the + asks on the side only from a node with a completed reply, and Escape returns to it', async (t) => {
+    const { button, inputValue } = await import('../support/ui.mjs');
+    const asks = [];
+    let finish;
+    const data = {
+        conversation: summary('root'),
+        sources: [],
+        preview: [message('q', 'user', 'Why roots?'), message('a', 'assistant', '', 'streaming')],
+        open: () => {},
+        retry: () => {},
+        ask: (...args) => (asks.push(args), new Promise((resolve) => (finish = resolve))),
+        toggle: () => {},
+        active: true,
+        focused: false,
+        focus: false,
+        childCount: 0,
+        address: '1.2',
+        ink: 2,
+        stubs: [],
+        folded: false,
+    };
+    let update;
+    function Fixture() {
+        const [value, set] = useState(data);
+        update = set;
+        return h(ReactFlowProvider, null, h(Conversation, { id: 'root', data: value }));
+    }
+    const { container, act, cleanup } = await render(h(Fixture));
+    t.after(cleanup);
+    const label = 'Ask on the side from 1.2 · root';
+    assert.equal(button(container, label), undefined, 'no + while the first reply arrives');
+    await act(async () =>
+        update({ ...data, preview: [data.preview[0], message('a', 'assistant', 'x', 'failed')] }),
+    );
+    assert.equal(button(container, label), undefined, 'no + after a failed first reply');
+    await act(async () =>
+        update({ ...data, preview: [data.preview[0], message('a', 'assistant', 'Thin.')] }),
+    );
+    const plus = button(container, label);
+    assert.equal(plus.tabIndex, 0, 'reachable by keyboard');
+    assert.equal(plus.getAttribute('aria-expanded'), 'false');
+    await act(async () => plus.click());
+    const box = container.querySelector('[role=dialog]');
+    assert.equal(box.getAttribute('aria-label'), 'Ask on the side from 1.2');
+    assert.equal(plus.getAttribute('aria-expanded'), 'true');
+    assert.equal(box.querySelector('.branch-passage'), null, 'no passage quote');
+    assert.equal(button(box, 'Explain briefly'), undefined);
+    const input = box.querySelector('input');
+    await act(async () =>
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
+    );
+    assert.equal(container.querySelector('[role=dialog]'), null);
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    assert.equal(document.activeElement, plus, 'Escape returns focus to the +');
+    await act(async () => plus.click());
+    await act(async () => inputValue(container.querySelector('[role=dialog] input'), 'Lichens?'));
+    await act(async () => button(container, 'Create focused chat').click());
+    assert.deepEqual(
+        asks.map((a) => a.slice(0, 2)),
+        [['root', 'Lichens?']],
+    );
+    // A refused branch keeps the box and its question.
+    await act(async () => finish());
+    assert.equal(container.querySelector('[role=dialog] input').value, 'Lichens?');
+    await act(async () => button(container, 'Create focused chat').click());
+    await act(async () => asks[1][2]());
+    assert.equal(container.querySelector('[role=dialog]'), null, 'a saved child closes the box');
+});

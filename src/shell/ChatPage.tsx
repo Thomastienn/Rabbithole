@@ -359,6 +359,7 @@ export default function ChatPage({
                                     layout={layout}
                                     trees={trees}
                                     stream={stream}
+                                    branchForm={branchForm}
                                     vim={vim}
                                     menu={menu}
                                 />

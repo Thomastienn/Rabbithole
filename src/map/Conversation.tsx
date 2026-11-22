@@ -19,11 +19,13 @@ import PhotoIcon from '@heroicons/react/24/outline/PhotoIcon';
 import RectangleStackIcon from '@heroicons/react/24/outline/RectangleStackIcon';
 import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
 import FilmIcon from '@heroicons/react/24/outline/FilmIcon';
+import PlusIcon from '@heroicons/react/24/outline/PlusIcon';
 import type { CSSProperties } from 'react';
 import type { Summary, Preview } from './TreeOverview';
 import { inkStyle } from './treeList';
 import { snippet, sourceOf, type Open } from './mapState';
 import { visualsReady } from '../media/visualProgress';
+import FreeBranchForm from './FreeBranchForm';
 
 export type ConversationNode = Node<
     {
@@ -32,6 +34,8 @@ export type ConversationNode = Node<
         preview?: Preview;
         open: Open;
         retry: (id: string) => void;
+        // A free branch from this conversation; created runs once the child is saved.
+        ask: (parent: string, question: string, created: () => void) => Promise<void>;
         active: boolean;
         focused: boolean;
         focus: boolean;
@@ -65,6 +69,9 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
         return () => cancelAnimationFrame(frame);
     }, [data.focus, data.focusControl, t.id, initialized]);
     const preview = data.preview;
+    // The + needs a finished reply for the free branch to inherit.
+    const replied = preview?.some((m) => m.role === 'assistant' && m.status === 'completed');
+    const [asking, setAsking] = useState(false);
     // Negative delay keeps culling/remounts from landing the station again.
     const [since] = useState(() =>
         data.created ? Math.min(0, data.created - performance.now()) : 0,
@@ -159,21 +166,37 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                     </Heading>
                 </Button>
                 <HStack gap={1} vAlign="center" className="node-actions">
-                    {t.parent && (
-                        <IconButton
-                            id={`reveal-${t.id}`}
-                            className="node-extra nodrag nopan"
-                            label={`Reveal source passage for ${t.title}`}
-                            // An empty passage marks a free branch: it has no source to reveal.
-                            tooltip={t.passage === '' ? 'Asked on the side' : `From “${t.passage}”`}
-                            icon={<LinkIcon />}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                                data.open(t.parent!, t.passage === '' ? undefined : sourceOf(t))
-                            }
-                        />
-                    )}
+                    <HStack gap={0} className="node-extra">
+                        {t.parent && (
+                            <IconButton
+                                id={`reveal-${t.id}`}
+                                className="nodrag nopan"
+                                label={`Reveal source passage for ${t.title}`}
+                                // An empty passage marks a free branch: it has no source to reveal.
+                                tooltip={
+                                    t.passage === '' ? 'Asked on the side' : `From “${t.passage}”`
+                                }
+                                icon={<LinkIcon />}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                    data.open(t.parent!, t.passage === '' ? undefined : sourceOf(t))
+                                }
+                            />
+                        )}
+                        {replied && (
+                            <IconButton
+                                id={`ask-${t.id}`}
+                                className="node-add nodrag nopan"
+                                label={`Ask on the side from ${data.address} · ${t.title}`}
+                                aria-expanded={asking}
+                                icon={<PlusIcon />}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAsking(true)}
+                            />
+                        )}
+                    </HStack>
                     {data.childCount > 0 && (
                         <IconButton
                             id={`fold-${t.id}`}
@@ -407,6 +430,21 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
             {data.sources
                 .filter((child) => !preview?.some((m) => m.id === child.messageId))
                 .map((child) => handle(child))}
+            {asking && replied && (
+                <FreeBranchForm
+                    address={data.address}
+                    ask={(question, created) => data.ask(t.id, question, created)}
+                    close={(refocus) => {
+                        setAsking(false);
+                        if (refocus)
+                            requestAnimationFrame(() =>
+                                document
+                                    .getElementById(`ask-${t.id}`)
+                                    ?.focus({ preventScroll: true }),
+                            );
+                    }}
+                />
+            )}
         </VStack>
     );
 });
