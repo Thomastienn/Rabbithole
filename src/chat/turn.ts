@@ -1,5 +1,6 @@
 import { mergeArtifact, type Artifact, type ArtifactSummary } from '../media/artifacts.ts';
 import type { Attachment } from './Attachments';
+import type { StreamEvent } from '../serverAccess';
 
 export type Usage = {
     input: number;
@@ -229,20 +230,8 @@ export function currentQuestion(
     return id;
 }
 
-// Split complete SSE frames off the buffer; the unfinished tail waits for the next chunk.
-export function sseFrames(buffer: string) {
-    const events: any[] = [];
-    let end;
-    while ((end = buffer.indexOf('\n\n')) >= 0) {
-        const frame = buffer.slice(0, end);
-        buffer = buffer.slice(end + 2);
-        if (frame.startsWith('data: ')) events.push(JSON.parse(frame.slice(6)));
-    }
-    return { events, rest: buffer };
-}
-
 // Fold one reply stream event into the live turn; true when the view must redraw.
-export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
+export function applyStreamEvent(turn: Turn, event: StreamEvent, conversation: string) {
     if (event.type === 'saved') {
         turn.user = event.user;
         turn.replaced = event.replaced;
@@ -254,12 +243,9 @@ export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
             ...turn.reply,
             phase: event.status === 'compacting' ? 'compacting' : undefined,
         };
-    if (turn.reply && (event.type === 'text' || event.type === 'done'))
-        turn.reply = {
-            ...turn.reply,
-            text: event.text ?? turn.reply.text,
-            status: event.status ?? turn.reply.status,
-        };
+    if (turn.reply && event.type === 'text') turn.reply = { ...turn.reply, text: event.text };
+    if (turn.reply && event.type === 'done')
+        turn.reply = { ...turn.reply, status: event.status ?? turn.reply.status };
     if (event.type === 'questions' && turn.reply)
         turn.reply = { ...turn.reply, questions: event.questions };
     if (event.type === 'suggestions' && turn.reply) turn.suggestions = event.suggestions;
@@ -282,16 +268,7 @@ export function applyStreamEvent(turn: Turn, event: any, conversation: string) {
                 ? [{ id: event.artifact.message, role: 'assistant' }]
                 : []),
         ]);
-    return [
-        'saved',
-        'status',
-        'text',
-        'done',
-        'artifact',
-        'tool',
-        'questions',
-        'suggestions',
-    ].includes(event.type);
+    return event.type !== 'error';
 }
 
 // Reconcile saved checkpoints with the latest events for this conversation only.
