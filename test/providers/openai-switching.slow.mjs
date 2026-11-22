@@ -11,6 +11,7 @@ import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 import { compacted } from '../support/branch-first.mjs';
 import { open } from '../support/openai-kit.mjs';
 import { TEST_PROVIDER } from '../support/test-provider.mjs';
+import { inlineArgs } from '../support/tool-protocol.mjs';
 
 for (const name of [TEST_PROVIDER])
     test(`custom endpoint compaction and nested switching to/from ${name} preserve history through real adapters with protocol fixtures`, async (t) => {
@@ -18,7 +19,7 @@ for (const name of [TEST_PROVIDER])
             dir = mkdtempSync(join(tmpdir(), 'tt-openai-native-')),
             calls = [];
         const launch = (command, args, options) => {
-            const call = { command, args, options, input: [] };
+            const call = { command, args: inlineArgs(args), options, input: [] };
             calls.push(call);
             const child = spawn(
                 process.execPath,
