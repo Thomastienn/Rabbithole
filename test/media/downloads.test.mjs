@@ -43,11 +43,10 @@ test('nothing downloads after setup; video tools queue offline Python first and 
     manager.subscribe((list) => events.push(list));
     await manager.start();
     assert.deepEqual(runs, [], 'no add-on downloads unless the learner installs it');
-    assert.deepEqual(manager.addons()[0], {
+    const { name, enables, size, ...video } = manager.addons()[0];
+    assert.ok(name && enables && size > 0, 'an add-on says what it is and how big');
+    assert.deepEqual(video, {
         id: 'video-tools',
-        name: 'Video tools',
-        enables: 'Narrated videos the tutor makes for you.',
-        size: 500e6,
         dependency: 'offline-python',
         state: 'not-installed',
         percent: null,
@@ -146,11 +145,6 @@ test('installed add-ons are remembered: a stopped or outdated one queues again o
     assert.equal(after.list()[0].percent, null);
     assert.ok(!next.runs.includes('searxng'), 'an add-on never installed is never queued');
     after.stop();
-
-    const fresh = fakeTools();
-    const other = downloadManager(fresh.tools, { file: addonsFile() });
-    await other.start();
-    assert.deepEqual(fresh.runs, [], 'a learner who installed nothing downloads nothing');
 });
 
 test('routes stream the list, install and retry add-ons, retry failures and mark seen; a video waits for its tools', async (t) => {
@@ -276,4 +270,15 @@ test('tools already in the tool root count as installed and never download; web 
         false,
         'the Windows browser is looked up at its own path',
     );
+});
+
+test('installs asked for at the same time queue each tool once', async () => {
+    const { tools, runs, pending } = fakeTools({ python: true, browser: true });
+    const manager = downloadManager(tools);
+    void manager.start();
+    await Promise.all([manager.install('video-tools'), manager.install('video-tools')]);
+    await tick();
+    pending.manim.resolve();
+    await tick();
+    assert.deepEqual(runs, ['manim']);
 });

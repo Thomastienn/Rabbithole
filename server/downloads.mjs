@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 // Add-ons group the tools (ADR 0020). Sizes are approximate downloads of the pinned tools.
-export const ADDONS = [
+const ADDONS = [
     {
         id: 'video-tools',
         name: 'Video tools',
@@ -40,13 +40,14 @@ const remembered = (file) => {
 // Tool downloads run one at a time. State lives only in memory, so a tool that is not ready queues again on the next launch.
 // tools: [{ id, name, video?, requested?: () => boolean, ready: () => Promise<boolean>, run: ({ report, signal }) => Promise<void> }]
 // file: where the data folder remembers which add-ons the learner installed.
-export function downloadManager(tools, { addons = ADDONS, file = null } = {}) {
+export function downloadManager(tools, { file = null } = {}) {
     const items = new Map(),
         listeners = new Set(),
         controller = new AbortController(),
         installed = new Set(file ? remembered(file) : []),
         found = new Set();
     let chain = Promise.resolve(),
+        queuing = Promise.resolve(),
         started;
     const view = (item) => ({
         id: item.id,
@@ -90,13 +91,13 @@ export function downloadManager(tools, { addons = ADDONS, file = null } = {}) {
         chain = chain.then(() => run(item));
         changed();
     };
-    const byId = (id) => addons.find((a) => a.id === id);
+    const byId = (id) => ADDONS.find((a) => a.id === id);
     const toolsOf = (addon) =>
         addon.tools.map((id) => tools.find((t) => t.id === id)).filter(Boolean);
     const ready = (tool) => tool.ready().catch(() => false);
     // Queues the add-on's dependency first, then each of its tools a check finds not ready; tools found ready never list.
-    const queue = async (addon) => {
-        if (addon.dependency) await queue(byId(addon.dependency));
+    const queueNow = async (addon) => {
+        if (addon.dependency) await queueNow(byId(addon.dependency));
         for (const tool of toolsOf(addon)) {
             const item = items.get(tool.id);
             if (item && item.state !== 'failed') continue;
@@ -106,6 +107,8 @@ export function downloadManager(tools, { addons = ADDONS, file = null } = {}) {
             else enqueue(item ?? { id: tool.id, name: tool.name, tool });
         }
     };
+    // One at a time: a second install must see what the first one listed.
+    const queue = (addon) => (queuing = queuing.then(() => queueNow(addon)));
     const remember = (addon) => {
         if (addon.dependency) remember(byId(addon.dependency));
         if (installed.has(addon.id)) return;
@@ -150,7 +153,7 @@ export function downloadManager(tools, { addons = ADDONS, file = null } = {}) {
     };
     return {
         list,
-        addons: () => addons.map(addonView),
+        addons: () => ADDONS.map(addonView),
         subscribe(listener) {
             listeners.add(listener);
             return () => listeners.delete(listener);
@@ -158,7 +161,7 @@ export function downloadManager(tools, { addons = ADDONS, file = null } = {}) {
         // Called once first-run setup has ended: only add-ons the learner installed are checked and queued for update.
         start() {
             return (started ??= (async () => {
-                for (const addon of addons) {
+                for (const addon of ADDONS) {
                     if (requested(addon)) await queue(addon);
                     // A quiet look that never queues, so tools already in the tool root count as installed.
                     else if (!toolsOf(addon).some((t) => t.requested))
