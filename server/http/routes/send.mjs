@@ -13,8 +13,9 @@ import { attachmentParts, prepareUploads, prepareRetry, savePrepared } from '../
 import { join } from 'node:path';
 
 // Conversation send and Retry: streams one tutor reply as server-sent events and starts its media jobs.
-export async function sendRoute(res, ctx, id, tree, action, body, controller) {
-    const { store, json, active, compactions, pick, selectionError, live } = ctx;
+export async function sendRoute(res, ctx, id, tree, action, body, job) {
+    const { store, json, jobs, pick, selectionError, live } = ctx;
+    const { controller } = job;
     const preparation = {
         // Only a send with files lists the endpoint's models to learn whether this model reads images.
         readsImages: action === 'retry' || body.files?.length ? await ctx.readsImages(tree) : false,
@@ -54,7 +55,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         if (
             tree.branch &&
             !tree.branch.snapshot &&
-            !(compactions.get(id) && !compactions.get(id).error)
+            !(jobs.get('compaction', id) && !jobs.get('compaction', id).error)
         ) {
             const parent = store.tree(tree.branch.parent);
             if (!parent)
@@ -103,7 +104,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             error: 'Choose a chat model in Settings.',
             code: 'chat_model_unset',
         });
-    const compaction = tree.branch && !tree.branch.snapshot ? compactions.get(id) : null;
+    const compaction = tree.branch && !tree.branch.snapshot ? jobs.get('compaction', id) : null;
     if (
         tree.branch &&
         !tree.branch.snapshot &&
@@ -298,7 +299,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         if (notes.questions.length) store.nextQuestions(reply, notes.questions);
         ctx.noteSuggestions(id, reply, status, notes, body.text, text);
         if (output.requested || output.hidden) store.forgetThread(id);
-        if (active.get(id) === controller) active.delete(id);
+        jobs.remove(job);
         send({ type: 'done', status });
         res.end();
     };

@@ -173,7 +173,7 @@ test('a canceled Codex reply keeps no usage', async (t) => {
     const tree = JSON.parse(await env.post('/api/trees'));
     await env.post(`/api/trees/${tree.id}/model`, { provider: 'codex', model: 'fixture-model' });
     const pending = env.post(`/api/trees/${tree.id}/messages`, { text: 'hold' });
-    await until(() => env.app.active.has(tree.id) && env.store.tree(tree.id).thread);
+    await until(() => !!env.app.jobs.get('reply', tree.id) && env.store.tree(tree.id).thread);
     await env.post(`/api/trees/${tree.id}/stop`);
     await pending;
     assert.deepEqual(replies(await env.get(`/api/trees/${tree.id}`)), [

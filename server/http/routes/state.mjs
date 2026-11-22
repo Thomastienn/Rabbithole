@@ -10,13 +10,17 @@ export async function stateRoutes(req, res, url, ctx) {
             auth: ctx.auth.status(),
             firstRun: !store.setupFinished(),
             trees: store.list(),
-            active: [...ctx.active.keys()],
-            discussing: [...new Set([...ctx.discussing.values()].map((j) => j.conversation))],
+            active: ctx.jobs.list('reply').map((r) => r.key),
+            discussing: [...new Set(ctx.jobs.list('discussion').map((j) => j.conversation))],
             usage: store.usageSince(new Date().setHours(0, 0, 0, 0)),
             videos: [...new Set([...ctx.videos.values()].map((v) => v.conversation))],
             suggesting: [...new Set(ctx.jobs.list('suggestion').map((s) => s.conversation))],
             titling: ctx.jobs.list('title').map((t) => t.conversation),
-            compacting: [...ctx.compactions].filter(([, c]) => !c.settled).map(([child]) => child),
+            // A failed compaction stays for retry; only running ones are compacting.
+            compacting: ctx.jobs
+                .list('compaction')
+                .filter((c) => !c.error)
+                .map((c) => c.key),
         });
     if (url.pathname === '/api/usage')
         return json(

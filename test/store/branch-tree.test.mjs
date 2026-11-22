@@ -47,7 +47,7 @@ test('sibling branches interleave independent saved turns while another tree sub
         const other = store.create('Other tree', 'codex');
         const owners = [a, b, other];
         const responses = await Promise.all(owners.map((t) => post(t.id, t.title)));
-        assert.equal(app.active.size, 3);
+        assert.equal(app.jobs.list('reply').length, 3);
         assert.equal((await post(a.id, 'Duplicate')).status, 409);
         const transcripts = responses.map((r) => r.text());
         for (let step = 1; step <= 3; step++) {
@@ -82,7 +82,7 @@ test('sibling branches interleave independent saved turns while another tree sub
             for (const foreign of owners.filter((t) => t.id !== owners[i].id))
                 assert.ok(!streams[i].includes(foreign.title));
         }
-        assert.equal(app.active.size, 0);
+        assert.equal(app.jobs.list('reply').length, 0);
         assert.equal((await get(root.id)).messages.length, 1);
         app.stop();
         store.close();

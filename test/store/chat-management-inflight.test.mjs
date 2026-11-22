@@ -34,7 +34,7 @@ test('failure at commit rolls back the complete cascade, root layout and staged 
         assert.deepEqual(snapshot(env.store), before);
         env.paths.forEach((path, i) => assert.deepEqual(readFileSync(path), files[i]));
         assert.equal(turns[0].signal.aborted, false);
-        assert.equal(env.app.active.has(env.child.id), true);
+        assert.equal(!!env.app.jobs.get('reply', env.child.id), true);
         assert.ok(
             readdirSync(join(env.dir, 'videos')).every((name) => !name.includes('.deleting-')),
         );

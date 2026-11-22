@@ -333,7 +333,7 @@ test('positions migrate, save during streaming, reject invalid coordinates and s
             body: JSON.stringify(body),
         });
     try {
-        app.active.set(child.id, new AbortController());
+        app.jobs.start('reply', child.id, child.id, () => new Promise(() => {}));
         for (const body of [{ x: null, y: 1 }, { x: '1', y: 2 }, { x: 2 }, { x: 1e7, y: 0 }])
             assert.equal((await post(child.id, body)).status, 400);
         assert.equal((await post('missing', { x: 0, y: 0 })).status, 404);
