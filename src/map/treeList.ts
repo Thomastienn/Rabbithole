@@ -70,10 +70,22 @@ export function conversationAddresses(trees: readonly LearningTree[]) {
     return out;
 }
 // A conversation and every descendant: what deleting it removes.
+// Breadth-first, siblings in list order; grouping by parent keeps it linear in the library size.
 export function subtreeIds(id: string, trees: readonly { id: string; parent: string | null }[]) {
-    const ids = [id];
+    const children = new Map<string, string[]>();
+    for (const t of trees)
+        if (t.parent) {
+            if (!children.has(t.parent)) children.set(t.parent, []);
+            children.get(t.parent)!.push(t.id);
+        }
+    const ids = [id],
+        seen = new Set(ids);
     for (let i = 0; i < ids.length; i++)
-        for (const t of trees) if (t.parent === ids[i] && !ids.includes(t.id)) ids.push(t.id);
+        for (const child of children.get(ids[i]) ?? [])
+            if (!seen.has(child)) {
+                seen.add(child);
+                ids.push(child);
+            }
     return ids;
 }
 // Confirmation copy for deleting a chat or branch with its descendants.

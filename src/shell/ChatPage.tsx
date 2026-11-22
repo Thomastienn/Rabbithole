@@ -64,6 +64,7 @@ export default function ChatPage({
     const branchForm = useBranchForm(c, trees, model, stream);
     const { visibleIds, addresses, previews, drafts, setDrafts, shownMapWidth, workspace } = c;
     const { pendingFiles, setPendingFiles } = c;
+    const visibleSet = new Set(visibleIds);
     const { branch, api } = c;
     const { openTree, openConversation, loadInitial, select, titleSearch, activeKey } = trees;
     const { models, providers, modelError, loadModels, signIn, currentModel } = model;
@@ -130,7 +131,7 @@ export default function ChatPage({
         state && (
             <Contents
                 root={root}
-                trees={state.trees.filter((t) => visibleIds.includes(t.id))}
+                trees={state.trees.filter((t) => visibleSet.has(t.id))}
                 addresses={addresses}
                 previews={previews}
                 current={tree}
