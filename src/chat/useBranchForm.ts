@@ -15,10 +15,10 @@ export function useBranchForm(
     c: ChatState,
     trees: LearningTrees,
     { savingModel }: ChatModel,
-    { send }: ReplyStream,
+    { send, setDraft }: ReplyStream,
 ) {
     const { branch, setBranch, branchOrigin, setError } = c;
-    const { overview, setOverview, overviewOrigin, focusComposer, setDrafts } = c;
+    const { overview, setOverview, overviewOrigin, focusComposer } = c;
     const { tree, state, addresses, setTree, refresh, openConversation, openId, show } = trees;
     const [branching, setBranching] = useState(false);
     // Escape returns focus to the passage or underline that opened the popup; an outside click keeps focus where it lands.
@@ -74,7 +74,7 @@ export function useBranchForm(
         try {
             const next: Tree = await api(`/api/trees/${parent}/branches`, body);
             const question = next.branch!.question;
-            setDrafts((d) => ({ ...d, [next.id]: question }));
+            setDraft(next.id, question);
             overviewOrigin.current = undefined;
             setBranch(undefined);
             created?.();
@@ -139,10 +139,7 @@ export function useBranchForm(
     }
     // Ask on the side: the typed question becomes a free branch hung off the latest completed reply, taking the parent's draft.
     const askOnSide = (question: string) =>
-        tree &&
-        createBranch(tree.id, { free: true, question }, () =>
-            setDrafts((d) => ({ ...d, [tree.id]: '' })),
-        );
+        tree && createBranch(tree.id, { free: true, question }, () => setDraft(tree.id, ''));
     // The map's + asks on the side of any conversation and opens the child from wherever the learner is.
     const askFromMap = (parent: string, question: string, created: () => void) =>
         createBranch(parent, { free: true, question }, created, true);

@@ -44,7 +44,7 @@ export default function ChatPage({
 }) {
     const { mode } = useTheme();
     const c = useChatState();
-    const { error, setError, busy, mobile, tab, setTab, drawer, setDrawer } = c;
+    const { error, setError, mobile, tab, setTab, drawer, setDrawer } = c;
     const { root, overview, expanded, focusComposer } = c;
     const [settings, setSettings] = useState<SettingsRequest>();
     const settingsOpener = useRef<HTMLElement | null>(null),
@@ -58,18 +58,18 @@ export default function ChatPage({
     const model = useChatModel(c, trees);
     useChatTargets(c, tree);
     const stream = useReplyStream(c, trees, model, { name: theme, mode });
-    const actions = useTreeActions(c, trees, model, stream);
+    const actions = useTreeActions(c, trees, stream);
     const branchForm = useBranchForm(c, trees, model, stream);
     const { visibleIds, addresses, previews } = trees;
-    const { drafts, setDrafts, shownMapWidth, workspace } = c;
-    const { pendingFiles, setPendingFiles } = c;
+    const { shownMapWidth, workspace } = c;
+    const { drafts, setDraft, pendingFiles, setFiles, busy, create } = stream;
     const visibleSet = new Set(visibleIds);
     const { branch } = c;
     const { openTree, openConversation, loadInitial, select, titleSearch, activeKey } = trees;
     const opened = trees.openId();
     const { models, providers, modelError, loadModels, signIn, currentModel } = model;
     const { cancelDelete } = actions;
-    const { newChat, create, askDelete } = actions;
+    const { newChat, askDelete } = actions;
     const active = !!tree && !!state?.active.includes(tree.id);
     function openSettings(
         section?: SettingsTab,
@@ -193,9 +193,9 @@ export default function ChatPage({
     const firstQuestion = (
         <FirstQuestion
             draft={drafts.first ?? ''}
-            setDraft={(value) => setDrafts((d) => ({ ...d, first: value }))}
+            setDraft={(value) => setDraft('first', value)}
             files={pendingFiles.first ?? []}
-            setFiles={(files) => setPendingFiles((p) => ({ ...p, first: files }))}
+            setFiles={(files) => setFiles('first', files)}
             busy={busy}
             available={!!currentModel}
             modelMenu={modelMenu}
@@ -368,6 +368,7 @@ export default function ChatPage({
                     </main>
                     <LibraryPanel
                         c={c}
+                        busy={busy}
                         trees={trees}
                         actions={actions}
                         firstQuestion={firstQuestion}

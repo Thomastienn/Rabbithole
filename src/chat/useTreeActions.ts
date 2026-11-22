@@ -3,28 +3,18 @@ import type { Layout } from '../map/TreeOverview';
 import { rootOf } from '../map/mapState';
 import { subtreeIds } from '../map/treeList';
 import type { Artifact } from '../media/artifacts';
-import { firstQuestion as startFirstQuestion } from './firstQuestion';
-import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import { request as api } from '../serverAccess';
 import type { LearningTrees } from './useLearningTrees';
-import type { ChatModel } from './useChatModel';
 import type { ReplyStream } from './useReplyStream';
 
-// Tree management: new chat, first question, rename, delete and artifact actions.
-export function useTreeActions(
-    c: ChatState,
-    trees: LearningTrees,
-    { firstModel, currentModel }: ChatModel,
-    { send }: ReplyStream,
-) {
-    const { setDrafts, setError, busy, setBusy, pendingFiles, setPendingFiles } = c;
-    const { root, setRoot, setTab, setOverview, setExpanded, renaming, setRenaming } = c;
-    const { turns, streams } = c;
+// Tree management: new chat, rename, delete and artifact actions.
+export function useTreeActions(c: ChatState, trees: LearningTrees, { isLive, drop }: ReplyStream) {
+    const { setError, root, setTab, setOverview, setExpanded, renaming, setRenaming } = c;
     const { state, setState, setTree, setPreviews, refresh, select, openTree } = trees;
     const { openId, reload, leave, retitle, forget } = trees;
     const { saver, setLayoutFailed } = trees.layout;
-    const { overviewOrigin, focusComposer, composer, setFolds, setBranch, setReveal } = c;
+    const { overviewOrigin, focusComposer, setFolds, setBranch, setReveal } = c;
     const { setSelectingMessage, tab } = c;
     const [deletion, setDeletion] = useState<{
         id: string;
@@ -68,9 +58,9 @@ export function useTreeActions(
                             ?.focus();
                 });
             // A job that settled before this refresh never starts polling, so load its result once.
-            if (!(await refresh()).videos.includes(id) && !turns.current.has(id))
+            if (!(await refresh()).videos.includes(id) && !isLive(id))
                 await reload(id, (saved) => {
-                    if (!turns.current.has(id)) setTree((t) => (t?.id === id ? saved : t));
+                    if (!isLive(id)) setTree((t) => (t?.id === id ? saved : t));
                 });
         } catch (e) {
             setError((e as Error).message);
@@ -86,50 +76,6 @@ export function useTreeActions(
         requestAnimationFrame(() =>
             document.querySelector<HTMLElement>('.first-question [role=textbox]')?.focus(),
         );
-    }
-    async function create(question: string) {
-        if (busy) return;
-        setBusy(true);
-        setError('');
-        // The first question's files move with its draft to the new conversation, and back if unsaved.
-        const files = pendingFiles.first ?? [];
-        try {
-            const result = await startFirstQuestion<Tree>(
-                question,
-                firstModel && currentModel ? { ...firstModel, model: currentModel.model } : {},
-                {
-                    refresh,
-                    send: (question, next) => send(question, next, false, files),
-                    open: async (next) => {
-                        overviewOrigin.current = undefined;
-                        focusComposer.current = true;
-                        setRoot(next.id);
-                        setTab('learning');
-                        setOverview(false);
-                        setExpanded(false);
-                        await select(next.id);
-                        setDrafts((d) => ({ ...d, first: '', [next.id]: question }));
-                        setPendingFiles((p) => ({ ...p, first: [], [next.id]: files }));
-                    },
-                },
-            );
-            if (result.empty) {
-                // Keep send's error on screen; only drop the selection so the blank composer returns.
-                leave();
-                setDrafts((d) => ({ ...d, first: question }));
-                setPendingFiles((p) => ({ ...p, first: files }));
-                return;
-            }
-            requestAnimationFrame(() => {
-                if (openId() === result.id) composer.current?.focus();
-            });
-        } catch (e) {
-            setError((e as Error).message);
-            setDrafts((d) => ({ ...d, first: d.first || question }));
-            setPendingFiles((p) => ({ ...p, first: p.first?.length ? p.first : files }));
-        } finally {
-            setBusy(false);
-        }
     }
     function finishRename() {
         const target = renaming;
@@ -180,10 +126,7 @@ export function useTreeActions(
             const ids = new Set(result.deleted),
                 pending = saver.current?.pending().get(deletion.root);
             forget(ids);
-            for (const id of ids) {
-                streams.current.get(id)?.abort();
-                turns.current.delete(id);
-            }
+            drop(ids);
             saver.current?.discard(deletion.root);
             const cleanLayout = (layout: Layout): Layout => ({
                 ...layout,
@@ -216,7 +159,6 @@ export function useTreeActions(
                     },
             );
             setFolds((f) => f && { ...f, ids: f.ids.filter((id) => !ids.has(id)) });
-            setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => !ids.has(id))));
             setPreviews((p) =>
                 Object.fromEntries(Object.entries(p).filter(([id]) => !ids.has(id))),
             );
@@ -280,7 +222,6 @@ export function useTreeActions(
         deleteError,
         videoAction,
         newChat,
-        create,
         finishRename,
         rename,
         askDelete,
