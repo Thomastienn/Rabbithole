@@ -288,12 +288,10 @@ test('setup ends with every add-on; Skip installs nothing and says where to find
     const setup = container.querySelector('.first-run');
     assert.equal(container.ownerDocument.activeElement.textContent, 'Add what you need');
     assert.deepEqual(
-        [...setup.querySelectorAll('.addon-row')].map(
-            (r) => r.querySelector('button')?.textContent,
-        ),
+        [...setup.querySelectorAll('.addon')].map((r) => r.querySelector('button')?.textContent),
         ['Install', 'Install', 'Install'],
     );
-    assert.match(setup.textContent, /About 500 MB · Also installs offline Python/);
+    assert.match(setup.textContent, /About 500 MBAlso installs offline Python/);
     assert.match(setup.textContent, /later in Settings, under Add-ons/);
     await click('Skip');
     assert.deepEqual(setupPosts(posts), posts, 'no add-on was installed');
