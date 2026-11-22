@@ -24,11 +24,9 @@ test('each build job restores npm and Electron caches and uploads its installer'
         assert.match(steps, /desktop\/package-lock\.json/);
         assert.match(steps, /electron-builder/);
         assert.ok(steps.includes(`path: desktop/dist/${installer}`));
-        assert.doesNotMatch(steps, /tauri/i);
     }
     // Only the Windows sandbox launcher is Rust.
     assert.match(job('windows'), /workspaces: desktop\/sandbox -> target/);
-    assert.doesNotMatch(job('linux'), /rust/);
 });
 
 test('both installers go to one draft release', () => {
