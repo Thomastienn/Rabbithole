@@ -8,6 +8,7 @@ import { createApp } from '../../server/app.mjs';
 import { OpenAI } from '../../server/providers/openai.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 import { observeStore, until } from '../support/events.mjs';
+import { taskOf } from '../support/model-task.mjs';
 
 const SVG =
     '<svg viewBox="0 0 10 10" role="img" aria-label="Dot"><circle cx="5" cy="5" r="2"/></svg>';
@@ -53,8 +54,7 @@ test('a custom endpoint places each visual at its marker in one request, with no
         'Halve the list.\n[[visual: halve | shows: A list cut in half]]\nCompare the middle. [[visual: compare | title: Compare | shows: The middle against the target]] Search one half.';
     const text = 'Halve the list.\n\nCompare the middle.  Search one half.';
     fake.reply = async (req, res, body) => {
-        if (body.messages[0].content.startsWith('You create one self-contained visual'))
-            return streamReply(res, [SVG]);
+        if (taskOf(body.messages.at(-1).content)?.request) return streamReply(res, [SVG]);
         return streamReply(res, [reply.slice(0, 30), reply.slice(30, 90), reply.slice(90)]);
     };
     const id = store.create('Visuals', endpoint, 'tooled').id;

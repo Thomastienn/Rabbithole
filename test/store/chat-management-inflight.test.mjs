@@ -144,7 +144,7 @@ test('delete cancels a video worker that ignores abort, removes all work files a
         '\n```';
     const env = await fixture({
         generate: async (tree, text, emit, save, signal) => {
-            if (tree.instructions?.includes('Remotion'))
+            if (tree.role === 'video')
                 return new Promise((resolve) => {
                     worker = { emit, signal, resolve };
                 });
@@ -243,12 +243,13 @@ test('delete stops an active video job and removes its partial files without int
                 emit({
                     type: 'item',
                     item: 'a',
-                    text: tree.instructions?.includes('Remotion')
-                        ? videoResponse(
-                              tree,
-                              '// Description: Roots.\n// Narration: "Roots grow."\nexport default function Video() { return null; }',
-                          )
-                        : 'Video follows.' + directive,
+                    text:
+                        tree.role === 'video'
+                            ? videoResponse(
+                                  tree,
+                                  '// Description: Roots.\n// Narration: "Roots grow."\nexport default function Video() { return null; }',
+                              )
+                            : 'Video follows.' + directive,
                 });
                 emit({ type: 'status', status: 'completed' });
             },

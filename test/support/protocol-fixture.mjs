@@ -2,6 +2,7 @@ import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { planFor, planText } from './video-kit.mjs';
+import { taskOf } from './model-task.mjs';
 import { appTool, codexMcp, claudeSearch, inlineArgs } from './tool-protocol.mjs';
 
 export async function protocol(
@@ -69,8 +70,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
     // Suggestion calls get phrase-only picks, including overlaps, unmatched and exhausted repeats.
     // The question decides failure ('suggestions fail') and delay ('slow suggestions'); a wrong cheap model yields invalid output.
     // After a reply that ended, the same call names the concepts of the tutor's marks.
-    const suggesting = (text) =>
-        text.startsWith('Mark every term') || text.startsWith('The tutor already marked');
+    const suggesting = (text) => taskOf(text)?.answer !== undefined;
     const suggestion = (text, model, cheap) => {
         const { question, answer, knownConcepts } = JSON.parse(text.slice(text.indexOf('\n') + 1));
         if (question === 'Check phrase anchors') {

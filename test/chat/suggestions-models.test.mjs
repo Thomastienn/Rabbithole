@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 import { start } from '../support/suggestion-kit.mjs';
+import { taskOf } from '../support/model-task.mjs';
 
 test('a saved suggestion model applies across conversations and restart; unpinning restores each provider’s cheap model', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-suggest-settings-'));
@@ -208,7 +209,7 @@ test('quick thinking routes suggestions to its own provider, model and effort, i
     fake.models[0].supported_reasoning_efforts = ['low', 'high'];
     const quick = [];
     fake.reply = (req, res, body) => {
-        if (!body.messages[0].content.startsWith('You mark'))
+        if (!taskOf(body.messages.at(-1).content)?.answer)
             return streamReply(res, ['Peterson ', 'uses two flags.']);
         quick.push(body);
         streamReply(res, [JSON.stringify({ suggestions: [{ text: 'two flags' }] })]);

@@ -114,9 +114,9 @@ test('suggestion and compaction calls log their task and selected model at exist
                 emit({ type: 'usage', usage });
                 complete(
                     emit,
-                    tree.instructions?.startsWith('You mark')
+                    tree.role === 'suggestions'
                         ? '{"suggestions":[]}'
-                        : tree.instructions?.startsWith('You write the background')
+                        : tree.role === 'compaction'
                           ? 'PRIVATE compact summary.'
                           : 'PRIVATE parent reply.',
                 );

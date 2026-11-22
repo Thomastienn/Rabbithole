@@ -40,7 +40,7 @@ test('reply API attributes retried visuals and every video call, reports running
                 }
                 // A failed explicit Retry (it reuses the plan, so this is its cut call) reports no measurement.
                 if (regenerating) throw new Error('Fixture unavailable');
-                if (tree.instructions.startsWith('You plan')) {
+                if (tree.stage === 'plan') {
                     emit({ type: 'usage', usage: counts(20) });
                     await planGate.promise;
                     return complete(emit, planText(planFor()));

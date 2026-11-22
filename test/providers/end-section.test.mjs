@@ -14,6 +14,7 @@ import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { fakeOpenAI, streamReply, streamToolCalls } from '../support/fake-openai.mjs';
 import { observeStore, until } from '../support/events.mjs';
+import { taskOf } from '../support/model-task.mjs';
 
 const SVG =
     '<svg viewBox="0 0 10 10" role="img" aria-label="Dot"><circle cx="5" cy="5" r="2"/></svg>';
@@ -57,8 +58,7 @@ test('a custom endpoint reply ends at [[end]]: its visual and call still run and
     ).at(-1).id;
     const tutor = [];
     fake.reply = async (req, res, body) => {
-        if (body.messages[0].content.startsWith('You create one self-contained visual'))
-            return streamReply(res, [SVG]);
+        if (taskOf(body.messages.at(-1).content)?.request) return streamReply(res, [SVG]);
         if (!body.tools?.some((tool) => tool.function.name === 'make_video'))
             return streamReply(res, ['[]']);
         tutor.push(body);
