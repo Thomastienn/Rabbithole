@@ -7,8 +7,8 @@
  */
 
 import { neutralTheme } from '@astryxdesign/theme-neutral';
-import { terminusIcons } from './icons';
-const themeIcons = {...neutralTheme["icons"], ...terminusIcons};
+import { lineDiagramIcons } from '../icons';
+const themeIcons = {...neutralTheme["icons"], ...lineDiagramIcons};
 /**
  * terminus theme — built by `npx astryx theme build`
  * Import the CSS file alongside this module:

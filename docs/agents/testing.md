@@ -104,8 +104,9 @@ Do not write these, and delete them when you meet them:
 - Run `npm run format` before committing; `npm run format:check` must pass. Prettier uses
   print width 100, tab width 4 and single quotes.
 - Keep hand-written JS, TS, TSX and CSS files in `src`, `server`, `scripts` and `test` at
-  550 lines or fewer; split by behaviour instead of adding exemptions. `npm test` and
-  `node scripts/check-size.mjs` enforce this rule. Generated Astryx theme output and test fixtures stay excluded.
+  550 lines or fewer; answer a cap hit as "File size cap" below says, never with an exemption.
+  `npm test` and `node scripts/check-size.mjs` enforce this rule. Generated Astryx theme output
+  and test fixtures stay excluded.
 - While you work, run only the test files covering the change:
   `npm run test:file -- test/<file>`.
 - At the end of a ticket run `node scripts/check-size.mjs`, `npm run format:check` and
@@ -118,6 +119,14 @@ Do not write these, and delete them when you meet them:
 
 Tests must not sleep for real. Inject a clock or a budget, or await the event the code
 already exposes.
+
+## File size cap
+
+When a file reaches the cap, deepen a module or split the file by concept: each new file owns
+one concept behind a small interface, and its callers import it from where it lives. Never move
+a block unchanged into a sibling file, and never fold lines or inline a named value to get under
+the cap. Those pass the check while adding an interface, or removing a name, and leave no
+module deeper.
 
 ## Smoke set
 

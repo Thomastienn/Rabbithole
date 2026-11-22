@@ -6,6 +6,7 @@ import type { ChatState } from './useChatState';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
 import { mergeArtifact, type DiscussionReply } from '../media/artifacts';
+import { serverFetch } from '../serverAccess';
 
 // Reply stream: sends a question or retry, applies SSE events live, then reloads the saved tree.
 export function useReplyStream(
@@ -83,12 +84,9 @@ export function useReplyStream(
                 for (const file of files) form.append('files', file);
             }
             const multipart = form.has('text');
-            const response = await fetch(`/api/trees/${id}/${retry ? 'retry' : 'messages'}`, {
+            const response = await serverFetch(`/api/trees/${id}/${retry ? 'retry' : 'messages'}`, {
                 method: 'POST',
-                headers: {
-                    ...(!multipart && { 'Content-Type': 'application/json' }),
-                    'X-Rabbithole-CSRF': state?.csrf ?? '',
-                },
+                headers: { ...(!multipart && { 'Content-Type': 'application/json' }) },
                 body: multipart ? form : JSON.stringify({ ...(!retry && { text }), theme }),
                 signal: controller.signal,
             });
@@ -159,9 +157,9 @@ export function useReplyStream(
     }
     const replyDiscussion: DiscussionReply = async (artifact, text) => {
         const id = artifact.conversation;
-        const response = await fetch(`/api/trees/${id}/discussions/${artifact.id}/replies`, {
+        const response = await serverFetch(`/api/trees/${id}/discussions/${artifact.id}/replies`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': state?.csrf ?? '' },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text }),
         });
         if (!response.ok) throw new Error((await response.json()).error);

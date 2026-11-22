@@ -7,8 +7,8 @@
  */
 
 import { neutralTheme } from '@astryxdesign/theme-neutral';
-import { enamelIcons } from './icons';
-const themeIcons = {...neutralTheme["icons"], ...enamelIcons};
+import { lineDiagramIcons } from '../icons';
+const themeIcons = {...neutralTheme["icons"], ...lineDiagramIcons};
 /**
  * enamel theme — built by `npx astryx theme build`
  * Import the CSS file alongside this module:

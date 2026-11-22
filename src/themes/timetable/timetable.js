@@ -7,8 +7,8 @@
  */
 
 import { neutralTheme } from '@astryxdesign/theme-neutral';
-import { timetableIcons } from './icons';
-const themeIcons = {...neutralTheme["icons"], ...timetableIcons};
+import { lineDiagramIcons } from '../icons';
+const themeIcons = {...neutralTheme["icons"], ...lineDiagramIcons};
 /**
  * timetable theme — built by `npx astryx theme build`
  * Import the CSS file alongside this module:

@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { Text } from '@astryxdesign/core/Text';
+import { request } from '../serverAccess';
 
 type Row = {
     stage: string | null;
@@ -31,8 +32,7 @@ export default function VideoUsage({ url, title }: { url: string; title: string 
         setOpen(!open);
         if (open) return;
         try {
-            const response = await fetch(url);
-            setRows(response.ok ? await response.json() : 'error');
+            setRows(await request(url));
         } catch {
             setRows('error');
         }

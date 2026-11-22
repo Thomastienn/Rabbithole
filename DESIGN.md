@@ -245,7 +245,7 @@ The system ships as interchangeable themes that share every role and differ only
 
 ## Colors
 
-A midnight enamel ground carrying one porcelain trunk and four equal-weight family lines; scarlet is held back for failure. Frontmatter and the role values below are Main Line, dark appearance; Platform, the default, is in the theme table; every role is defined as a `light-dark()` pair in each theme source (`src/themes/<name>/<name>Theme.ts`).
+A midnight enamel ground carrying one porcelain trunk and four equal-weight family lines; scarlet is held back for failure. Frontmatter and the role values below are Main Line, dark appearance; Platform, the default, is in the theme table; every role is a `light-dark()` pair; the roles and icons are shared in `src/themes/lineDiagram.ts` and `src/themes/icons.ts`, and each theme source (`src/themes/<name>/<name>Theme.ts`) holds only its name and palette.
 
 ### Primary
 - **Porcelain** (#ffffff dark / #0b1230 light): the trunk line, every station and interchange ring, the focus ring, conversation titles and current-item text, and the one action fill (New chat, Send, the primary button). Text on it is **On Porcelain** (#0b1230 dark / #ffffff light), which is also the text on any filled line chip.
@@ -289,7 +289,7 @@ Each theme keeps every role above and changes only the palette. Values are dark 
 
 Ink, muted ink, hover, seams and selection follow the same recipe in every theme (see each theme source). Selection is always line 1 at reduced alpha.
 
-**Adding a theme.** Copy an existing `src/themes/<slug>/` folder and change only the palette, then:
+**Adding a theme.** Copy an existing `<slug>Theme.ts` into a new `src/themes/<slug>/` folder and change only its name and palette, then:
 1. `npx astryx theme build src/themes/<slug>/<slug>Theme.ts`, then `npx astryx theme add <slug>`; this regenerates `src/astryx-themes.ts`.
 2. Add the entry to `themeChoices` in `src/shell/appearance.ts`; settings swatches and the visuals palette read it.
 3. Add a `[data-theme="<slug>"]` block to `docs/mockups/line-diagram/ld.css`; `test/shell/themes.test.mjs` checks each shipped theme against it.

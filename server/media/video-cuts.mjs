@@ -11,10 +11,17 @@ import {
     REPAIR_PATCH_NOTE,
     FIX_NOTE,
     SUBMIT_NOTE,
+    SUBMIT_CUT,
 } from './video-cut.mjs';
-import { cutJoin, cutSource, pieceNames, CUT_ATTEMPTS, CUT_PAUSE_FRAMES } from './video-plan.mjs';
+import {
+    cutJoin,
+    cutSource,
+    pieceNames,
+    CUT_ATTEMPTS,
+    CUT_CHECKS,
+    CUT_PAUSE_FRAMES,
+} from './video-plan.mjs';
 import { patched, withSource } from './patches.mjs';
-import { cutSubmission } from './video-cut-submit.mjs';
 import { unfenced, auditReport, auditFix } from './audit-answers.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from './manim-cut.mjs';
 import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL, MOTION_DESIGN_SKILL } from './skills.mjs';
@@ -22,7 +29,6 @@ import { stageNarration } from './narration.mjs';
 import { withoutPaths, sandboxOutput } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
 
-export { auditReport, auditFix };
 import { stageCut } from './video-stage.mjs';
 
 // A cut plays live once its code and measured narration exist and its audit settled; Manim also needs its clip.
@@ -43,6 +49,41 @@ export const cutError = (reason, index, count) =>
     new Error(
         `Cut ${index + 1} of ${count}: ${withoutPaths(reason).replace(/\.$/, '')}. Retry keeps the other cuts.`,
     );
+
+// A tool-calling writer submits through submit_cut until one submission validates; each error goes back to it.
+// validate(code) checks a submission and returns the accepted cut code; failed is this attempt's failed code.
+function cutSubmission(validate, failed, mcp) {
+    const submission = { accepted: null, rejected: null, fatal: null };
+    let checks = 0;
+    submission.tool = {
+        tools: [SUBMIT_CUT],
+        mcp,
+        runTool: async (_name, input) => {
+            if (submission.fatal) throw submission.fatal;
+            if (submission.accepted !== null) return 'The cut is already accepted; end your turn.';
+            if (checks >= CUT_CHECKS) throw new Error('No checks left; end your turn.');
+            const diff = typeof input?.patch === 'string',
+                base = submission.rejected?.code ?? failed,
+                code = diff ? base && patched(base, input.patch) : input?.code;
+            if (typeof code !== 'string' || !code.trim())
+                throw new Error(
+                    diff
+                        ? 'patch does not apply; submit the whole source as code.'
+                        : 'Submit code, the whole cut source, or patch, a diff of it.',
+                );
+            checks++;
+            try {
+                submission.accepted = await validate(code);
+            } catch (e) {
+                if (e.manimUnavailable) submission.fatal = e;
+                submission.rejected = { error: e, code };
+                throw e;
+            }
+            return 'Cut accepted. End your turn.';
+        },
+    };
+    return submission;
+}
 
 export async function writeCuts({
     plan,

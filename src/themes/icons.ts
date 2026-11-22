@@ -33,7 +33,7 @@ import {
 // Heroicons 24 outline for every library icon, sized to the surrounding text like the app's own icons.
 const hero = (icon: typeof XMarkIcon) =>
     createElement(icon, { width: '1em', height: '1em', 'aria-hidden': true });
-export const tunnelIcons = {
+export const lineDiagramIcons = {
     close: hero(XMarkIcon),
     chevronDown: hero(ChevronDownIcon),
     chevronLeft: hero(ChevronLeftIcon),

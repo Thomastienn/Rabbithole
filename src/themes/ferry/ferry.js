@@ -7,8 +7,8 @@
  */
 
 import { neutralTheme } from '@astryxdesign/theme-neutral';
-import { ferryIcons } from './icons';
-const themeIcons = {...neutralTheme["icons"], ...ferryIcons};
+import { lineDiagramIcons } from '../icons';
+const themeIcons = {...neutralTheme["icons"], ...lineDiagramIcons};
 /**
  * ferry theme — built by `npx astryx theme build`
  * Import the CSS file alongside this module:

@@ -3,9 +3,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Button } from '@astryxdesign/core/Button';
 import { Text } from '@astryxdesign/core/Text';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
-
-// The CSRF token from /api/state, set by the chat state so cards anywhere can start an export.
-export const session = { csrf: '' };
+import { request, serverFetch } from '../serverAccess';
 
 type ExportState = { exported: boolean; exporting?: true; progress?: number; error?: string };
 
@@ -42,7 +40,9 @@ export default function ExportButton({
         let stopped = false;
         const timer = setInterval(async () => {
             try {
-                const next: ExportState = await (await fetch(`/api/videos/${id}/export`)).json();
+                const next: ExportState = await (
+                    await serverFetch(`/api/videos/${id}/export`)
+                ).json();
                 if (!stopped) settle(next);
             } catch {}
         }, 1000);
@@ -54,15 +54,16 @@ export default function ExportButton({
     const start = async () => {
         wanted.current = true;
         try {
-            const response = await fetch(`/api/videos/${id}/export`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': session.csrf },
-                body: '{}',
+            settle(await request(`/api/videos/${id}/export`, {}));
+        } catch (e) {
+            // data is set only when the server answered with a failure.
+            const data = (e as { data?: { error?: string } }).data;
+            settle({
+                exported: false,
+                error: data
+                    ? (data.error ?? 'Export failed.')
+                    : 'Could not reach Rabbithole. Retry the export.',
             });
-            const next = await response.json();
-            settle(response.ok ? next : { exported: false, error: next.error ?? 'Export failed.' });
-        } catch {
-            settle({ exported: false, error: 'Could not reach Rabbithole. Retry the export.' });
         }
     };
     const progress = state.progress ?? 0;
