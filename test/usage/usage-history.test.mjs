@@ -236,7 +236,7 @@ test('video worker attempts record their own reported usage, including failed an
     const provider = {
         models: async () => [{ model: 'worker-model', isDefault: true }],
         generate: async (tree, text, emit, saveThread, signal) => {
-            if (!tree.instructions?.includes('Remotion'))
+            if (tree.role !== 'video')
                 return done(emit, 'Here.\n```rabbithole-video\n' + JSON.stringify(task) + '\n```');
             if (text.includes('silent')) return emit({ type: 'status', status: 'failed' }); // no usage reported: never estimated
             emit({ type: 'usage', usage: { input: 10 + attempt, output: 5, cacheRead: 2 } });

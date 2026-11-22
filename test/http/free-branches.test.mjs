@@ -10,10 +10,7 @@ const env = async (calls) =>
         {
             generate: async (tree, prompt, emit) => {
                 calls.push({ tree, prompt });
-                const compacting = tree.instructions?.includes(
-                    'background a new focused conversation',
-                );
-                complete(emit, compacting ? SUMMARY : 'Answer.');
+                complete(emit, tree.role === 'compaction' ? SUMMARY : 'Answer.');
             },
         },
         { log: () => {} },

@@ -12,6 +12,7 @@ import { compacted } from '../support/branch-first.mjs';
 import { open } from '../support/openai-kit.mjs';
 import { TEST_PROVIDER } from '../support/test-provider.mjs';
 import { inlineArgs } from '../support/tool-protocol.mjs';
+import { taskOf } from '../support/model-task.mjs';
 
 for (const name of [TEST_PROVIDER])
     test(`custom endpoint compaction and nested switching to/from ${name} preserve history through real adapters with protocol fixtures`, async (t) => {
@@ -50,7 +51,7 @@ for (const name of [TEST_PROVIDER])
             reply = rootBefore.messages.at(-1);
         fake.reply = (req, res, body) =>
             streamReply(res, [
-                body.messages[0].content.startsWith('You write the background')
+                taskOf(body.messages.at(-1).content)?.messages
                     ? 'Frozen compaction fact'
                     : 'Peterson uses two flags.',
             ]);

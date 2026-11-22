@@ -442,7 +442,7 @@ test('empty first run: with no chat default or smart model, a chosen chat model 
     const provider = observeProvider({
         models: async () => [{ model: 'chat', isDefault: true, efforts: [] }],
         generate: async (tree, text, emit) => {
-            const visual = tree.instructions?.startsWith('You create one self-contained visual');
+            const visual = tree.role === 'visual';
             emit({
                 type: 'item',
                 item: 'a',

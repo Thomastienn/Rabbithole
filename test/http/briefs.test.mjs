@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { briefPrompt, briefsPrompt } from '../../server/http/jobs/briefs.mjs';
+import { taskOf } from '../support/model-task.mjs';
 
 const PREFIX = briefPrompt('', '').split('{')[0];
 const BATCH = briefsPrompt('', []).split('{')[0];
@@ -27,12 +28,13 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
-            if (text.startsWith(BATCH)) throw new Error('Fixture batch failure');
-            if (text.startsWith('The tutor already marked')) {
+            if (tree.role === 'brief' && taskOf(text).terms)
+                throw new Error('Fixture batch failure');
+            if (tree.role === 'suggestions') {
                 emit({ type: 'item', item: 'answer', text: named });
                 return emit({ type: 'status', status: 'completed' });
             }
-            if (!text.startsWith(PREFIX)) return; // title calls
+            if (tree.role !== 'brief') return; // title calls
             prompts.push(text);
             await write(emit);
         },
@@ -217,7 +219,7 @@ test('every suggestion gets its brief ahead of time; an early open is written on
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
-            if (text.startsWith(BATCH)) {
+            if (tree.role === 'brief' && taskOf(text).terms) {
                 batches.push(text);
                 await gate;
                 assert.deepEqual(
@@ -233,7 +235,7 @@ test('every suggestion gets its brief ahead of time; an early open is written on
                 });
                 return emit({ type: 'status', status: 'completed' });
             }
-            if (text.startsWith('The tutor already marked')) {
+            if (tree.role === 'suggestions') {
                 emit({
                     type: 'item',
                     item: 'answer',
@@ -250,7 +252,7 @@ test('every suggestion gets its brief ahead of time; an early open is written on
                 });
                 return emit({ type: 'status', status: 'completed' });
             }
-            if (!text.startsWith(PREFIX)) return;
+            if (tree.role !== 'brief') return;
             prompts.push(text);
             emit({ type: 'item', item: 'a', text: 'On demand mutex.' });
             emit({ type: 'status', status: 'completed' });
@@ -341,7 +343,7 @@ test('a suggestion opened while its reply streams gets its brief explanation at 
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
-            if (!text.startsWith(PREFIX)) return;
+            if (tree.role !== 'brief') return;
             prompts.push(text);
             emit({ type: 'item', item: 'a', text: 'A mutex lets one thread in at a time.' });
             emit({ type: 'status', status: 'completed' });

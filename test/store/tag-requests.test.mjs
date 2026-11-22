@@ -36,9 +36,9 @@ test('tag-style visual, diagram and video blocks become artifacts; broken JSON s
             }
             complete(
                 emit,
-                tree.instructions?.includes('Remotion')
+                tree.role === 'video'
                     ? videoResponse(tree)
-                    : tree.instructions?.includes('Mermaid')
+                    : tree.role === 'diagram'
                       ? 'flowchart TD\n  A --> B'
                       : '<svg viewBox="0 0 10 10"></svg>',
             );

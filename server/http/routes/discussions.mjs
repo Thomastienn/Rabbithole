@@ -110,6 +110,8 @@ export async function discussionRoutes(req, res, url, ctx, body) {
                     artifacts: tree.artifacts.filter((a) => a.id !== id),
                     thread: null,
                     working_thread: null,
+                    // For test fakes, as on quick thinking calls; adapters ignore it.
+                    role: 'discussion',
                     instructions: DISCUSSION_TURN_RULE,
                     memoryNote: store.memoryNote(),
                 });

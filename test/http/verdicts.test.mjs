@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { open } from '../support/diagram-kit.mjs';
 import { tutorSystem, VERDICT_RULE } from '../../server/media/tutor-instructions.mjs';
-import { verdictPrompt } from '../../server/http/jobs/verdicts.mjs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -116,7 +115,7 @@ test('a reply with no readable verdict block asks quick thinking once and saves 
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
-            if (!text.startsWith(verdictPrompt('', '').split('{')[0])) return; // title calls
+            if (tree.role !== 'verdict') return; // title calls
             prompts.push({ tree, text });
             await judge(emit);
         },

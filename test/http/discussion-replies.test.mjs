@@ -193,12 +193,9 @@ test('main-thread send closes every open discussion once and uses paragraphs in 
         {
             generate: async (tree, prompt, emit, saveThread) => {
                 calls.push({ tree, prompt });
-                const compacting = tree.instructions?.includes(
-                    'background a new focused conversation',
-                );
                 complete(
                     emit,
-                    compacting
+                    tree.role === 'compaction'
                         ? 'The classmates discussed a useful exchange. The learner explained its limits.'
                         : 'Continue with the topic.',
                 );
@@ -295,7 +292,7 @@ test('closing during a streamed card turn cancels it and late events cannot muta
     const env = await open(
         {
             generate: async (tree, _, emit, __, signal) => {
-                if (tree.instructions?.startsWith('Continue this discussion')) {
+                if (tree.role === 'discussion') {
                     // The second token is inside the save interval: only the stop saves it.
                     for (const text of ['{"speaker":"Jun","text":"In', ' flight'])
                         emit({ type: 'delta', item: 'turn', text });
@@ -340,7 +337,7 @@ test('failed compaction keeps cards closed, refuses a chat without context, and 
     const env = await open(
         {
             generate: async (tree, _, emit) => {
-                if (tree.instructions?.includes('background a new focused conversation')) {
+                if (tree.role === 'compaction') {
                     compactions++;
                     if (fail) throw new Error('Fixture quick thinking unavailable');
                     complete(emit, 'Recovered discussion paragraph.');
