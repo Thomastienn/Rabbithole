@@ -25,7 +25,13 @@ const step = (name) => console.log(`\nsmoke: ${name}`);
 
 // A saved one-cut video, as a finished job leaves it, so the export renders it through the video sandbox.
 const line = { text: 'Smoke test.', startMs: 0, endMs: 1000, startFrame: 0, endFrame: 30 };
-const timing = { fps: 30, durationInFrames: 30, sentences: [line], captions: [line] };
+const timing = {
+    fps: 30,
+    durationInFrames: 30,
+    audioFrames: 24,
+    sentences: [line],
+    captions: [line],
+};
 const code = `import { AbsoluteFill } from 'remotion';
 export default function Video() {
   return <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', fontSize: 96 }}>Smoke test</AbsoluteFill>;
@@ -74,20 +80,27 @@ try {
     const page = await fetch(origin + '/');
     assert.equal(page.status, 200);
     assert.match(await page.text(), /<title>Rabbithole<\/title>/);
+    const { trees, csrf } = await (await fetch(origin + '/api/state')).json();
     assert.deepEqual(
-        (await (await fetch(origin + '/api/state')).json()).trees.map((t) => t.title),
+        trees.map((t) => t.title),
         ['Smoke test'],
     );
+    // Every POST carries the token the page reads from /api/state (server/app.mjs).
+    const post = {
+        method: 'POST',
+        body: '{}',
+        headers: { 'content-type': 'application/json', 'x-rabbithole-csrf': csrf },
+    };
 
     if (windows) {
         step('run the Windows sandbox setup');
-        const setup = await fetch(origin + '/api/setup/sandbox', { method: 'POST' });
+        const setup = await fetch(origin + '/api/setup/sandbox', post);
         assert.deepEqual(await setup.json(), { windows: true, ready: true });
     }
 
     step('render the fixture cut through the video sandbox');
     const exporting = `${origin}/api/videos/${video.id}/export`;
-    let state = await (await fetch(exporting, { method: 'POST' })).json();
+    let state = await (await fetch(exporting, post)).json();
     for (const deadline = Date.now() + 600000; state.exporting && Date.now() < deadline;) {
         await new Promise((done) => setTimeout(done, 2000));
         state = await (await fetch(exporting)).json();
