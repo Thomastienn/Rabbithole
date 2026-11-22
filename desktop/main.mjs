@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, nativeTheme, shell } from 'electron';
 import { navigation, saveLayout, serverUrl, startError } from './shell.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -75,6 +75,8 @@ app.whenReady().then(() => {
         title: 'Rabbithole',
         icon: join(here, 'icons', 'icon.png'),
         autoHideMenuBar: true,
+        // starting.html's --bg, so the window does not flash white before the page paints.
+        backgroundColor: nativeTheme.shouldUseDarkColors ? '#14171d' : '#f6f8fa',
         webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
     });
     const guard = (event) => {
