@@ -77,7 +77,17 @@ jobs:
         shell: pwsh
         run: |
           Start-Process -FilePath (Get-Item desktop/dist/*-setup.exe).FullName -ArgumentList '/S' -Wait
-          node scripts/desktop-smoke.mjs (Get-Item "$env:LOCALAPPDATA/Programs/*/resources/node.exe").DirectoryName
+          # Without a path the smoke test would check desktop/stage instead of the installed app.
+          $resources = (Get-Item "$env:LOCALAPPDATA/Programs/*/resources/node.exe").DirectoryName
+          if (-not $resources) { throw 'The installer did not install the app.' }
+          node scripts/desktop-smoke.mjs $resources
+      # The launcher and its setup helper log here (desktop/sandbox/src/main.rs, sandbox_home).
+      - name: Show the sandbox logs
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-ChildItem "$env:LOCALAPPDATA/rabbithole/sandbox" -Recurse -Force -Include *.log, setup_error.json -ErrorAction SilentlyContinue |
+            ForEach-Object { "== $($_.FullName)"; Get-Content $_.FullName -Tail 400 }
       - uses: actions/upload-artifact@v4
         with:
           name: windows

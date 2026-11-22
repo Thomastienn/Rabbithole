@@ -80,7 +80,25 @@ fn run(request: Request) -> Result<i32, String> {
     use codex_windows_sandbox as sandbox;
 
     let home = sandbox_home();
-    let ready = sandbox::sandbox_setup_is_complete(&home);
+    // Remotion serves its bundle to the video browser and drives it over loopback, which the sandbox
+    // account's firewall rules block unless setup allowed local binding. Setup, the check and every
+    // run use the same setting: a run that differs from the setup marker re-runs setup behind UAC.
+    let local_binding = || {
+        (
+            "CODEX_NETWORK_ALLOW_LOCAL_BINDING".to_string(),
+            "1".to_string(),
+        )
+    };
+    let complete = || {
+        sandbox::sandbox_setup_is_complete_with_settings(
+            &home,
+            &sandbox::WindowsSandboxProvisioningSettings {
+                proxy_ports: Vec::new(),
+                allow_local_binding: true,
+            },
+        )
+    };
+    let ready = complete();
     let profile = PermissionProfile::workspace_write_with(
         &[],
         NetworkSandboxPolicy::Restricted,
@@ -88,31 +106,35 @@ fn run(request: Request) -> Result<i32, String> {
         /*exclude_slash_tmp*/ true,
     );
     if request == Request::Setup {
-        if ready {
-            return Ok(0);
-        }
-        // The one UAC prompt; per-run read and write roots are applied at spawn time.
-        std::fs::create_dir_all(&home).map_err(|e| e.to_string())?;
-        let root = AbsolutePathBuf::from_absolute_path(&home).map_err(|e| e.to_string())?;
-        let permissions =
-            sandbox::ResolvedWindowsSandboxPermissions::try_from_permission_profile_for_workspace_roots(
-                &profile,
-                std::slice::from_ref(&root),
-            )
+        if !ready {
+            // The one UAC prompt; per-run read and write roots are applied at spawn time.
+            std::fs::create_dir_all(&home).map_err(|e| e.to_string())?;
+            let root = AbsolutePathBuf::from_absolute_path(&home).map_err(|e| e.to_string())?;
+            let permissions =
+                sandbox::ResolvedWindowsSandboxPermissions::try_from_permission_profile_for_workspace_roots(
+                    &profile,
+                    std::slice::from_ref(&root),
+                )
+                .map_err(|e| format!("{e:#}"))?;
+            sandbox::run_elevated_setup(sandbox::SandboxSetupRequest {
+                permissions: &permissions,
+                command_cwd: &home,
+                env_map: &HashMap::from([local_binding()]),
+                codex_home: &home,
+                proxy_enforced: false,
+            })
             .map_err(|e| format!("{e:#}"))?;
-        sandbox::run_elevated_setup(sandbox::SandboxSetupRequest {
-            permissions: &permissions,
-            command_cwd: &home,
-            env_map: &HashMap::new(),
-            codex_home: &home,
-            proxy_enforced: false,
-        })
-        .map_err(|e| format!("{e:#}"))?;
-        return Ok(if sandbox::sandbox_setup_is_complete(&home) {
-            0
-        } else {
-            1
-        });
+        }
+        // The launcher's folder holds Node, the server and every tool. Granting that big tree takes
+        // a while, so it happens here, where no render or run_python timeout can cut it short.
+        if let Some(folder) = std::env::current_exe()
+            .ok()
+            .as_deref()
+            .and_then(|exe| exe.parent())
+        {
+            grant_reads(&[folder.to_path_buf()], None);
+        }
+        return Ok(if complete() { 0 } else { 1 });
     }
     let Request::Run {
         workspace,
@@ -138,6 +160,8 @@ fn run(request: Request) -> Result<i32, String> {
     for key in ["TEMP", "TMP"] {
         env.insert(key.into(), workspace.to_string_lossy().into_owned());
     }
+    env.extend([local_binding()]);
+    grant_reads(&reads, Some(&workspace));
     let writes = [workspace.clone()];
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -170,6 +194,50 @@ fn run(request: Request) -> Result<i32, String> {
         .map_err(|e| format!("{e:#}"))?;
         Ok(sandbox::forward_sandbox_session_stdio(spawned).await)
     })
+}
+
+// The sandbox crate grants read roots from a background helper, so the first command can start before
+// its own program is readable. Grant them here first, as the learner who owns them; the helper
+// stays the fallback for a root this account cannot change (Program Files is readable anyway).
+// The workspace and what lies in it stay out: the crate grants those to this run alone.
+// Node resolves a script by reading the attributes of every folder above it, and the sandbox
+// account sees nothing under the learner's profile: let it read those attributes, never the contents.
+#[cfg(windows)]
+fn grant_reads(reads: &[PathBuf], workspace: Option<&std::path::Path>) {
+    use codex_windows_sandbox as sandbox;
+    const READ_EXECUTE: u32 = 0x0012_00A9; // FILE_GENERIC_READ | FILE_GENERIC_EXECUTE
+    const READ_ATTRIBUTES: u32 = 0x80;
+    const INHERIT: u32 = 0x3; // OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE
+    let Ok(group) = sandbox::resolve_sid(sandbox::SANDBOX_USERS_GROUP) else {
+        return;
+    };
+    let group = [group.as_ptr() as *mut std::ffi::c_void];
+    // A path every account already reads needs no grant, as in the crate's own helper.
+    let everyone: Vec<Vec<u8>> = ["Users", "Authenticated Users", "Everyone"]
+        .iter()
+        .filter_map(|name| sandbox::resolve_sid(name).ok())
+        .collect();
+    let mut readers: Vec<*mut std::ffi::c_void> =
+        everyone.iter().map(|sid| sid.as_ptr() as *mut _).collect();
+    readers.extend(group);
+    let grant = |path: &std::path::Path, mask: u32, inherit: u32| {
+        if !sandbox::path_mask_allows(path, &readers, mask, true).unwrap_or(false) {
+            let _ = unsafe {
+                sandbox::ensure_allow_mask_aces_with_inheritance(path, &group, mask, inherit)
+            };
+        }
+    };
+    let mut above = std::collections::BTreeSet::new();
+    for root in reads.iter().filter(|root| root.exists()) {
+        above.extend(root.ancestors().skip(1).map(PathBuf::from));
+        if !workspace.is_some_and(|workspace| root.starts_with(workspace)) {
+            // A file takes no inheritance flags.
+            grant(root, READ_EXECUTE, if root.is_dir() { INHERIT } else { 0 });
+        }
+    }
+    for folder in above.iter().filter(|folder| folder.parent().is_some()) {
+        grant(folder, READ_ATTRIBUTES, 0);
+    }
 }
 
 #[cfg(not(windows))]

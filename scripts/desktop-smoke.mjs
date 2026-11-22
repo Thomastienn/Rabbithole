@@ -18,6 +18,8 @@ const data = mkdtempSync(join(tmpdir(), 'rabbithole-smoke-'));
 Object.assign(process.env, {
     RABBITHOLE_DATA_DIR: data,
     RABBITHOLE_TOOLS_DIR: join(resources, 'tools'),
+    // The server prints a sandboxed render's whole error output, not only "Video rendering failed."
+    RABBITHOLE_SANDBOX_STDERR: '1',
     ...(windows && { RABBITHOLE_SANDBOX: join(resources, 'rabbithole-sandbox.exe') }),
 });
 const build = (path) => import(pathToFileURL(join(app, path)).href);
@@ -125,5 +127,10 @@ try {
 } finally {
     server.kill();
     await closed;
-    rmSync(data, { recursive: true, force: true, maxRetries: 5 });
+    // A sandboxed process can hold a file for a moment after it exits (Windows); leftovers must not fail the checks.
+    try {
+        rmSync(data, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
+    } catch (error) {
+        console.warn(`smoke: left ${data} behind (${error.code})`);
+    }
 }

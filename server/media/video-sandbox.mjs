@@ -183,6 +183,9 @@ export function sandboxProcess(workspace, command, signal, onProgress, budget, b
         child.stderr.on('data', (chunk) => {
             err = (err + chunk).slice(0, 65536);
         });
+        // The release smoke test asks for the whole output, so a failed run names its cause in the build log.
+        if (process.env.RABBITHOLE_SANDBOX_STDERR)
+            child.stderr.pipe(process.stderr, { end: false });
         const kill = () => child.kill('SIGKILL');
         // Rendering scales with narration; retain a finite attempt budget without a short-video duration cap.
         const timer = setTimeout(kill, budget);

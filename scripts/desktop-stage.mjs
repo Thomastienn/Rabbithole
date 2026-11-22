@@ -166,7 +166,14 @@ if (import.meta.main) {
     const name = `node-v${NODE.version}-${target.replace('win32', 'win')}`;
     const file = `${name}.${windows ? 'zip' : 'tar.xz'}`;
     const archive = join(stage, file);
-    run('curl', ['-fsSL', '-o', archive, `https://nodejs.org/dist/v${NODE.version}/${file}`]);
+    run('curl', [
+        '-fsSL',
+        '--retry',
+        '3',
+        '-o',
+        archive,
+        `https://nodejs.org/dist/v${NODE.version}/${file}`,
+    ]);
     if (createHash('sha256').update(readFileSync(archive)).digest('hex') !== NODE[target])
         throw new Error(`${file} does not match its pinned SHA-256; not bundling it.`);
     if (windows)
