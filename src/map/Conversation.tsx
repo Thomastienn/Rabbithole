@@ -36,6 +36,8 @@ export type ConversationNode = Node<
         retry: (id: string) => void;
         // A free branch from this conversation; created runs once the child is saved.
         ask: (parent: string, question: string, created: () => void) => Promise<void>;
+        // Another branch is still being created, so a new ask would be dropped.
+        branching: boolean;
         active: boolean;
         focused: boolean;
         focus: boolean;
@@ -433,6 +435,7 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
             {asking && replied && (
                 <FreeBranchForm
                     address={data.address}
+                    busy={data.branching}
                     ask={(question, created) => data.ask(t.id, question, created)}
                     close={(refocus) => {
                         setAsking(false);

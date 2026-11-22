@@ -9,10 +9,12 @@ import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 // The map's branch question box: the passage box minus its quote and brief, beside the node it asks from.
 export default function FreeBranchForm({
     address,
+    busy,
     ask,
     close,
 }: {
     address: string;
+    busy: boolean;
     ask: (question: string, created: () => void) => Promise<void>;
     close: (refocus: boolean) => void;
 }) {
@@ -37,7 +39,7 @@ export default function FreeBranchForm({
             className="branch-form free-branch-form nodrag nopan nowheel"
             onSubmit={(e) => {
                 e.preventDefault();
-                if (sending || !question.trim()) return;
+                if (sending || busy || !question.trim()) return;
                 setSending(true);
                 // A refused branch keeps the box and its question; the workspace banner names the reason.
                 void ask(question, () => close(false)).finally(() => setSending(false));
@@ -86,7 +88,7 @@ export default function FreeBranchForm({
                         variant="primary"
                         size="sm"
                         isLoading={sending}
-                        isDisabled={sending || !question.trim()}
+                        isDisabled={sending || busy || !question.trim()}
                     />
                 </HStack>
             </VStack>

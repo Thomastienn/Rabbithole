@@ -99,6 +99,7 @@ export default function TreeOverview({
     open,
     retry,
     ask,
+    branching,
     focus,
     focusControl,
     transition,
@@ -132,6 +133,7 @@ export default function TreeOverview({
     open: Open;
     retry: (id: string) => void;
     ask: ConversationNode['data']['ask'];
+    branching: boolean;
     focus?: string;
     focusControl?: string;
     transition?: string;
@@ -215,6 +217,7 @@ export default function TreeOverview({
                         open: openNode,
                         retry: retryNode,
                         ask: askNode,
+                        branching,
                         active: active.includes(id),
                         focused: current === id,
                         focus: focus === id && !hidden,
@@ -239,6 +242,7 @@ export default function TreeOverview({
             openNode,
             retryNode,
             askNode,
+            branching,
             focus,
             focusControl,
             current,

@@ -358,6 +358,7 @@ test('the + asks on the side only from a node with a completed reply, and Escape
         retry: () => {},
         ask: (...args) => (asks.push(args), new Promise((resolve) => (finish = resolve))),
         toggle: () => {},
+        branching: false,
         active: true,
         focused: false,
         focus: false,
@@ -389,7 +390,7 @@ test('the + asks on the side only from a node with a completed reply, and Escape
     assert.equal(plus.getAttribute('aria-expanded'), 'false');
     await act(async () => plus.click());
     const box = container.querySelector('[role=dialog]');
-    assert.equal(box.getAttribute('aria-label'), 'Ask on the side from 1.2');
+    assert.match(box.getAttribute('aria-label'), /1\.2/, 'named by the node address');
     assert.equal(plus.getAttribute('aria-expanded'), 'true');
     assert.equal(box.querySelector('.branch-passage'), null, 'no passage quote');
     assert.equal(button(box, 'Explain briefly'), undefined);
@@ -402,6 +403,10 @@ test('the + asks on the side only from a node with a completed reply, and Escape
     assert.equal(document.activeElement, plus, 'Escape returns focus to the +');
     await act(async () => plus.click());
     await act(async () => inputValue(container.querySelector('[role=dialog] input'), 'Lichens?'));
+    // While another branch is being created the ask would be dropped, so Send waits.
+    await act(async () => update((d) => ({ ...d, branching: true })));
+    assert.equal(button(container, 'Create focused chat').disabled, true);
+    await act(async () => update((d) => ({ ...d, branching: false })));
     await act(async () => button(container, 'Create focused chat').click());
     assert.deepEqual(
         asks.map((a) => a.slice(0, 2)),

@@ -17,7 +17,7 @@ export default function MapView({
     layout: { savePositions, saveViewport, saveGhost },
     trees: { openConversation, openGhost },
     stream: { retryFromMap },
-    branchForm: { askFromMap },
+    branchForm: { askFromMap, branching },
     vim,
     menu,
 }: {
@@ -89,6 +89,7 @@ export default function MapView({
                         }
                         retry={retryFromMap}
                         ask={askFromMap}
+                        branching={branching}
                         save={savePositions}
                         saveViewport={saveViewport}
                         focus={overview ? overviewOrigin.current?.id : undefined}
