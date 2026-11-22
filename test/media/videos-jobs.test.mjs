@@ -148,11 +148,13 @@ test('explicit video request creates one job with frozen input, publishes owned 
             'reportsByTools',
             'role',
             'runTool',
+            'stage',
             'thread',
             'tools',
         ]);
         assert.equal(workers[0].tree.thread, null);
         assert.equal(workers[0].tree.role, 'video');
+        assert.equal(workers[0].tree.stage, 'plan');
         // planFor cuts are 2D, so the cut writer gets no 3D guidance.
         assert.ok(!workers[1].tree.instructions.includes(CUT_3D));
         assert.equal(
