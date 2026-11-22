@@ -18,7 +18,8 @@ export async function raced(controller, promise, budget, timedOut) {
     }
 }
 
-// One visual, diagram or video model call. kind: { role, bytes, overflow, tooManyItems?, incomplete, failed(reason) }.
+// One visual, diagram or video model call. kind: { role, bytes, overflow, tooManyItems?, overflowFirst?, incomplete, failed(reason) }.
+// overflowFirst: the overflow message outranks an unfinished stream (diagrams, which used to abort at the overflow).
 // tools: { capable, textTools, ...native fields }; a model without native tool calls gets textTools in its instructions.
 // cut: the 1-based cut a call serves, passed past the provider's signal for the usage meter only.
 export async function mediaCall(
@@ -62,7 +63,8 @@ export async function mediaCall(
         throw new Error(kind.failed(providerError(error)));
     }
     signal.throwIfAborted();
-    if (streamed.status !== 'completed') throw new Error(kind.incomplete);
+    if (streamed.status !== 'completed' && !(overflow && kind.overflowFirst))
+        throw new Error(kind.incomplete);
     if (overflow) throw Object.assign(new Error(overflow), { invalidOutput: true });
     return streamed.text('\n\n');
 }

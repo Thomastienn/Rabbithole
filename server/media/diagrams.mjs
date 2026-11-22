@@ -22,6 +22,7 @@ const DIAGRAM_CALL = {
     bytes: MAX_SOURCE,
     overflow: 'Diagram output exceeds 16 KiB.',
     tooManyItems: 'Diagram output exceeds 32 message items.',
+    overflowFirst: true,
     incomplete: 'Diagram generation did not complete.',
     failed: () => 'Diagram provider failed to generate a result.',
 };
