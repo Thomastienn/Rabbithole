@@ -14,6 +14,8 @@ const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY RE
 export function open(path) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
+    const hasColumn = (table, name) =>
+        this.db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name=?').get(table, name);
     try {
         const version = this.db.prepare('PRAGMA user_version').get().user_version;
         if (version > 1)
@@ -39,36 +41,16 @@ export function open(path) {
             });
         }
         // Additive nullable column: older Rabbithole builds still open the database.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(messages)')
-                .all()
-                .some((c) => c.name === 'usage')
-        )
+        if (!hasColumn('messages', 'usage'))
             this.db.exec('ALTER TABLE messages ADD COLUMN usage TEXT');
         // Why an interrupted reply stopped: 'learner' (Stop) or 'shutdown' (crash or quit); NULL on older rows, so those never offer Retry.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(messages)')
-                .all()
-                .some((c) => c.name === 'stopped')
-        )
+        if (!hasColumn('messages', 'stopped'))
             this.db.exec('ALTER TABLE messages ADD COLUMN stopped TEXT');
         // A visual's side beside the section after its position; NULL on older rows, which sit in the flow.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(artifacts)')
-                .all()
-                .some((c) => c.name === 'side')
-        )
+        if (!hasColumn('artifacts', 'side'))
             this.db.exec('ALTER TABLE artifacts ADD COLUMN side TEXT');
         for (const name of ['effort', 'working_effort']) {
-            if (
-                !this.db
-                    .prepare('PRAGMA table_info(trees)')
-                    .all()
-                    .some((c) => c.name === name)
-            )
+            if (!hasColumn('trees', name))
                 this.db.exec(`ALTER TABLE trees ADD COLUMN ${name} TEXT`);
         }
         this.db.exec(
@@ -83,20 +65,10 @@ export function open(path) {
         this.db
             .exec(`CREATE TABLE IF NOT EXISTS suggestions (message TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed')), passages TEXT, usage TEXT,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree))`);
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(suggestions)')
-                .all()
-                .some((c) => c.name === 'nameTokens')
-        )
+        if (!hasColumn('suggestions', 'nameTokens'))
             this.db.exec('ALTER TABLE suggestions ADD COLUMN nameTokens INTEGER');
         // Groundwork names saved with the reply's suggestions, a JSON array; NULL reads as none.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(suggestions)')
-                .all()
-                .some((c) => c.name === 'groundwork')
-        )
+        if (!hasColumn('suggestions', 'groundwork'))
             this.db.exec('ALTER TABLE suggestions ADD COLUMN groundwork TEXT');
         // Durable usage: counts, time and attribution only, so deleting content never shrinks history. NULL counts = not reported.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='usage_events'").get()) {
@@ -107,12 +79,7 @@ export function open(path) {
           INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'chat:'||id,usage->>'at','chat',usage->>'input',usage->>'output',usage->>'cacheRead' FROM messages WHERE usage IS NOT NULL;
           INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'suggestions:'||message,usage->>'at','suggestions',usage->>'input',usage->>'output',usage->>'cacheRead' FROM suggestions WHERE usage IS NOT NULL;`);
         }
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(usage_events)')
-                .all()
-                .some((c) => c.name === 'message')
-        ) {
+        if (!hasColumn('usage_events', 'message')) {
             this.db
                 .exec(`ALTER TABLE usage_events ADD COLUMN message TEXT REFERENCES messages(id) ON DELETE SET NULL;
         CREATE INDEX usage_events_message ON usage_events(message);
@@ -138,12 +105,7 @@ export function open(path) {
           CREATE INDEX usage_events_message ON usage_events(message);`),
             );
         // Video calls name their stage and, for one-cut calls, the cut number; older rows keep NULL (not recorded).
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(usage_events)')
-                .all()
-                .some((c) => c.name === 'stage')
-        )
+        if (!hasColumn('usage_events', 'stage'))
             this.db.exec(
                 'ALTER TABLE usage_events ADD COLUMN stage TEXT; ALTER TABLE usage_events ADD COLUMN cut INTEGER;',
             );
@@ -164,11 +126,7 @@ export function open(path) {
           CREATE INDEX usage_events_message ON usage_events(message);`),
             );
         // Reasoning tokens are part of output, kept apart where the provider reports them; older rows keep NULL (not reported).
-        if (
-            !this.db
-                .prepare("SELECT 1 FROM pragma_table_info('usage_events') WHERE name='reasoning'")
-                .get()
-        )
+        if (!hasColumn('usage_events', 'reasoning'))
             this.db.exec('ALTER TABLE usage_events ADD COLUMN reasoning INTEGER');
         // Additive table: brief explanations sit beside tutor replies, keyed by reply and passage; the tutor never reads them.
         this.db.exec(
@@ -178,12 +136,7 @@ export function open(path) {
             `CREATE TABLE IF NOT EXISTS suggestion_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), provider TEXT, model TEXT)`,
         );
         // The suggestion row is the quick thinking role; its pinned model migrates in place and effort is additive.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(suggestion_settings)')
-                .all()
-                .some((c) => c.name === 'effort')
-        )
+        if (!hasColumn('suggestion_settings', 'effort'))
             this.db.exec('ALTER TABLE suggestion_settings ADD COLUMN effort TEXT');
         // Tutor style: no row or NULL text means the built-in default.
         this.db.exec(
@@ -204,12 +157,7 @@ export function open(path) {
         const endpointModels =
             'CREATE TABLE IF NOT EXISTS endpoint_models (endpoint TEXT NOT NULL, model TEXT NOT NULL, reads_images INTEGER CHECK(reads_images IN (0,1)), uses_tutor_tools INTEGER CHECK(uses_tutor_tools IN (0,1)), PRIMARY KEY(endpoint, model))';
         this.db.exec(endpointModels);
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(endpoint_models)')
-                .all()
-                .some((c) => c.name === 'uses_tutor_tools')
-        ) {
+        if (!hasColumn('endpoint_models', 'uses_tutor_tools')) {
             this.transaction(() => {
                 this.db.exec('ALTER TABLE endpoint_models RENAME TO endpoint_models_old');
                 this.db.exec(endpointModels);
@@ -271,20 +219,10 @@ export function open(path) {
         CREATE TABLE IF NOT EXISTS concept_topics (concept INTEGER NOT NULL REFERENCES concepts(id), topic INTEGER NOT NULL REFERENCES topics(id), PRIMARY KEY(concept, topic));
         CREATE TABLE IF NOT EXISTS concept_links (concept INTEGER NOT NULL REFERENCES concepts(id), target INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('related','builds on')), PRIMARY KEY(concept, target, kind), CHECK(concept <> target));
         CREATE TABLE IF NOT EXISTS evidence (concept INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('met','asked','used','ignored','known','unknown')), source TEXT, at INTEGER NOT NULL, UNIQUE(concept, kind, source));`);
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(concepts)')
-                .all()
-                .some((c) => c.name === 'embedding')
-        )
+        if (!hasColumn('concepts', 'embedding'))
             this.db.exec('ALTER TABLE concepts ADD COLUMN embedding BLOB');
         // Explored concept, set once per conversation. Added once: conversations already branched from a saved suggestion take its concept.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(trees)')
-                .all()
-                .some((c) => c.name === 'concept')
-        ) {
+        if (!hasColumn('trees', 'concept')) {
             this.transaction(() => {
                 this.db.exec(
                     'ALTER TABLE trees ADD COLUMN concept INTEGER REFERENCES concepts(id)',
@@ -301,20 +239,10 @@ export function open(path) {
             });
         }
         // Saved messages get a Float32 embedding for recall, filled lazily when the local embedder is usable.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(messages)')
-                .all()
-                .some((c) => c.name === 'embedding')
-        )
+        if (!hasColumn('messages', 'embedding'))
             this.db.exec('ALTER TABLE messages ADD COLUMN embedding BLOB');
         // Next questions from the tutor's notes block, a JSON array; NULL when the reply had none.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(messages)')
-                .all()
-                .some((c) => c.name === 'questions')
-        )
+        if (!hasColumn('messages', 'questions'))
             this.db.exec('ALTER TABLE messages ADD COLUMN questions TEXT');
         // Observations: the tutor's verdict on what one learner message showed about a concept; familiarity derives from them.
         // Created once: the old familiarity evidence (asked, used, ignored and corrections) was test data and goes; met stays.
@@ -333,12 +261,7 @@ export function open(path) {
           INSERT INTO videos(id,title,description,duration,created) SELECT id,title,description,duration,created FROM artifacts WHERE kind='video' AND status='ready';`);
         }
         // Library playback: a library video keeps its cut source and attempt; saved videos backfill from their tree.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(videos)')
-                .all()
-                .some((c) => c.name === 'source')
-        )
+        if (!hasColumn('videos', 'source'))
             this.transaction(() =>
                 this.db.exec(`ALTER TABLE videos ADD COLUMN source TEXT;
           ALTER TABLE videos ADD COLUMN attempt TEXT;
@@ -349,48 +272,22 @@ export function open(path) {
             .exec(`CREATE TABLE IF NOT EXISTS pieces (id TEXT PRIMARY KEY, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, roles TEXT NOT NULL, embedding BLOB, created INTEGER NOT NULL, improved INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS piece_videos (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, video TEXT NOT NULL, PRIMARY KEY(piece, video));`);
         // A piece's optional 3D form; pieces saved before it have none and stay 2D-only.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(pieces)')
-                .all()
-                .some((c) => c.name === 'source3d')
-        )
+        if (!hasColumn('pieces', 'source3d'))
             this.db.exec('ALTER TABLE pieces ADD COLUMN source3d TEXT');
         // JPEG stills of both forms for the library cards; pieces saved before them are backfilled.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(pieces)')
-                .all()
-                .some((c) => c.name === 'still')
-        )
+        if (!hasColumn('pieces', 'still'))
             this.db.exec(
                 'ALTER TABLE pieces ADD COLUMN still BLOB; ALTER TABLE pieces ADD COLUMN still3d BLOB',
             );
         // The library pieces a piece is built from, as [{name, id}]; pieces saved before parts have none.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(pieces)')
-                .all()
-                .some((c) => c.name === 'parts')
-        )
-            this.db.exec('ALTER TABLE pieces ADD COLUMN parts TEXT');
+        if (!hasColumn('pieces', 'parts')) this.db.exec('ALTER TABLE pieces ADD COLUMN parts TEXT');
         // The true colours a piece keeps on reuse, as {role or name: hex}; older pieces have none (ADR 0009).
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(pieces)')
-                .all()
-                .some((c) => c.name === 'true_colors')
-        )
+        if (!hasColumn('pieces', 'true_colors'))
             this.db.exec('ALTER TABLE pieces ADD COLUMN true_colors TEXT');
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
         this.transaction(() => this.rebuildArtifacts("'discussion'"));
         // Visual passages keep their source artifact and part instead of inventing reply offsets.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(branches)')
-                .all()
-                .some((c) => c.name === 'artifactId')
-        ) {
+        if (!hasColumn('branches', 'artifactId')) {
             this.transaction(() =>
                 this.db.exec(`ALTER TABLE branches RENAME TO branches_old;
           ${BRANCHES}
@@ -399,20 +296,13 @@ export function open(path) {
             );
         }
         // Discussion passages keep their line index, its speaker and the discussion context fixed at branch time.
-        if (
-            !this.db
-                .prepare('PRAGMA table_info(branches)')
-                .all()
-                .some((c) => c.name === 'line')
-        )
+        if (!hasColumn('branches', 'line'))
             this.transaction(() =>
                 this.db.exec(`ALTER TABLE branches ADD COLUMN line INTEGER;
           ALTER TABLE branches ADD COLUMN speaker TEXT; ALTER TABLE branches ADD COLUMN discussion TEXT;`),
             );
         // A picked visual part keeps its trail (JSON names, outermost first) and the step it was picked on.
-        if (
-            !this.db.prepare("SELECT 1 FROM pragma_table_info('branches') WHERE name='trail'").get()
-        )
+        if (!hasColumn('branches', 'trail'))
             this.transaction(() =>
                 this.db.exec(`ALTER TABLE branches ADD COLUMN trail TEXT;
           ALTER TABLE branches ADD COLUMN step INTEGER;`),
