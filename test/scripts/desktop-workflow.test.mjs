@@ -61,3 +61,12 @@ test('both installers go to one draft release', () => {
     assert.match(release, /gh release create .* installers\/\*/);
     assert.match(release, /--draft/);
 });
+
+test('the Linux wheels workflow runs only when the owner triggers it', () => {
+    const wheels = readFileSync(
+        new URL('../../.github/workflows/linux-wheels.yml', import.meta.url),
+        'utf8',
+    );
+    const on = wheels.match(/^on:\n((?: .*\n)+)/m)[1];
+    assert.deepEqual(on.trim().split('\n'), ['workflow_dispatch:']);
+});

@@ -1,0 +1,60 @@
+# Builds the manylinux wheels of pycairo and manimpango that Manim's Linux install finds with --find-links (ADR 0020).
+# Manual trigger only: the owner runs it (AGENTS.md).
+name: Linux wheels
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The versions uv resolves for manim==MANIM_VERSION (server/media/manim.mjs) on Python 3.12.
+  PYCAIRO_VERSION: 1.29.2
+  MANIMPANGO_VERSION: 0.7.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # glibc 2.28, so the wheels run on any current distro.
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - name: Install Cairo and Pango headers
+        run: dnf install -y cairo-devel pango-devel pkgconf-pkg-config
+      - name: Build the wheels
+        run: >
+          /opt/python/cp312-cp312/bin/pip wheel --no-deps -w raw
+          "pycairo==$PYCAIRO_VERSION" "manimpango==$MANIMPANGO_VERSION"
+      # Copies Cairo, Pango and their dependencies into each wheel so no system package is needed.
+      - name: Repair the wheels
+        run: |
+          auditwheel repair --plat manylinux_2_28_x86_64 -w wheels raw/*.whl
+          cd wheels && sha256sum *.whl | tee SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: wheels/*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels
+          path: wheels
+      # One fixed tag, so the setup scripts' pinned URLs keep working; recreating it drops earlier copies.
+      - name: Replace the wheels release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view linux-wheels > /dev/null 2>&1; then
+            gh release delete linux-wheels --yes --cleanup-tag
+          fi
+          gh release create linux-wheels wheels/* --target "${{ github.sha }}" --latest=false \
+            --title "Linux wheels for Manim" \
+            --notes "pycairo $PYCAIRO_VERSION and manimpango $MANIMPANGO_VERSION, manylinux_2_28 x86_64, CPython 3.12, from ${{ github.sha }}."
