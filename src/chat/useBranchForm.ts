@@ -60,23 +60,26 @@ export function useBranchForm(
             setBranch((b) => b && { ...b, pending: false }),
         );
     }, [branch?.pending, replyStatus]);
-    async function createBranch(parent: string, body: object) {
+    // follow: open the child from whichever conversation is selected (the map's +), unless the learner moves on.
+    async function createBranch(
+        parent: string,
+        body: object,
+        created?: () => void,
+        follow = false,
+    ) {
         if (branching || savingModel === parent) return;
+        const opener = follow ? selected.current : parent;
         setBranching(true);
         setError('');
         try {
             const next: Tree = await api(`/api/trees/${parent}/branches`, body);
             const question = next.branch!.question;
-            // Ask on the side took the parent's draft as the child's question.
-            setDrafts((d) => ({
-                ...d,
-                [next.id]: question,
-                ...('free' in body && { [parent]: '' }),
-            }));
+            setDrafts((d) => ({ ...d, [next.id]: question }));
             overviewOrigin.current = undefined;
             setBranch(undefined);
+            created?.();
             // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
-            if (selected.current === parent) {
+            if (selected.current === opener) {
                 focusComposer.current = true;
                 setOverview(false);
                 selected.current = next.id;
@@ -88,7 +91,7 @@ export function useBranchForm(
             await refresh();
             await sending;
         } catch (e) {
-            if (selected.current === parent) setError((e as Error).message);
+            if (selected.current === opener) setError((e as Error).message);
         } finally {
             setBranching(false);
         }
@@ -137,8 +140,15 @@ export function useBranchForm(
         if (child) return openConversation(child);
         if (tree) return createBranch(tree.id, { messageId, groundwork: concept });
     }
-    // Ask on the side: the typed question becomes a free branch hung off the latest completed reply.
-    const askOnSide = (question: string) => tree && createBranch(tree.id, { free: true, question });
+    // Ask on the side: the typed question becomes a free branch hung off the latest completed reply, taking the parent's draft.
+    const askOnSide = (question: string) =>
+        tree &&
+        createBranch(tree.id, { free: true, question }, () =>
+            setDrafts((d) => ({ ...d, [tree.id]: '' })),
+        );
+    // The map's + asks on the side of any conversation and opens the child from wherever the learner is.
+    const askFromMap = (parent: string, question: string, created: () => void) =>
+        createBranch(parent, { free: true, question }, created, true);
     const openVisualPart: PartAction = (visual, part, origin, box, picker) => {
         if (
             !tree ||
@@ -250,6 +260,7 @@ export function useBranchForm(
         groundworkBranches,
         chooseGroundwork,
         askOnSide,
+        askFromMap,
     };
 }
 

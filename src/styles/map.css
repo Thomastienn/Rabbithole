@@ -54,7 +54,7 @@
     -webkit-line-clamp: 2;
     overflow: hidden;
 }
-/* Reveal floats over the title end, just before the fold toggle, on hover or focus, so 160px leaves the title its room. */
+/* Reveal and the free-branch + float over the title end, just before the fold toggle, on hover or focus, so 160px leaves the title its room. */
 .node-actions {
     position: relative;
     flex: none;
@@ -68,9 +68,31 @@
     transition: opacity 120ms ease-out;
 }
 .react-flow__node:hover .node-extra,
-.react-flow__node:focus-within .node-extra,
-.node-extra:focus-visible {
+.react-flow__node:focus-within .node-extra {
     opacity: 1;
+}
+/* The map's branch question box opens to the right of its node, over neighbouring nodes. */
+.react-flow__node:has(.free-branch-form) {
+    z-index: 1001 !important;
+}
+.free-branch-form {
+    position: absolute;
+    top: 0;
+    left: calc(100% + var(--spacing-3));
+    width: 300px;
+    margin-top: 0;
+}
+/* The + is quiet until hovered, like the mockup's muted control. */
+.conversation-box .node-band .node-add:not(:hover, :focus-visible, [aria-expanded='true']),
+.conversation-box
+    .node-band
+    .node-add:not(:hover, :focus-visible, [aria-expanded='true'])
+    .astryx-icon {
+    color: var(--color-text-secondary);
+}
+.free-branch-head {
+    flex: 1;
+    min-width: 0;
 }
 @media (hover: none) {
     .node-extra {
