@@ -16,7 +16,7 @@ import {
     pass,
     planText,
 } from '../support/video-kit.mjs';
-import { improvePiece } from '../../server/media/video-pieces.mjs';
+import { improvePiece, improveSaved } from '../../server/media/video-pieces.mjs';
 import { REMOTION_SKILL, HOUSE_STYLE_SKILL } from '../../server/media/skills.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top';
@@ -214,4 +214,20 @@ test('a piece patch that does not apply gets exactly one whole-source rewrite wi
     assert.equal(calls[1].source, piece.source);
     assert.equal(calls[1].source3d, piece.source3d);
     assert.match(entry.source, /Crowned winner/);
+});
+
+test('a piece improvement cut short by a stopped job never rejects', async () => {
+    const controller = new AbortController();
+    controller.abort(new Error('cut failed'));
+    const warnings = [];
+    await improveSaved({ signal: controller.signal }, 'p1', 'why', {
+        store: {
+            piece: () => {
+                throw new Error('gone');
+            },
+        },
+        stills() {},
+        onWarning: (w) => warnings.push(w),
+    });
+    assert.deepEqual(warnings, []);
 });

@@ -423,7 +423,8 @@ export async function improveSaved(video, id, why, deps) {
             deps.stills();
         }
     } catch (error) {
-        video.signal.throwIfAborted();
+        // Never rejects: the pipeline may stop before it awaits this.
+        if (video.signal.aborted) return;
         deps.onWarning(`WARN video piece improvement kept the saved piece: ${error.message}`);
     }
 }
