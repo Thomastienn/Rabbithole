@@ -87,7 +87,7 @@ test('credential-bearing auth keeps tokens out of browser state, catalog, replie
     }
 });
 
-test('main-entry custom endpoint keeps the key in its owner-only file across restart, hostile upstream output, errors and clear', async (t) => {
+test('main-entry custom endpoint keeps the key in its owner-only file across restart, hostile upstream output, errors and remove', async (t) => {
     const fake = await fakeOpenAI(t),
         dir = mkdtempSync(join(tmpdir(), 'tt-endpoint-credentials-'));
     const apiKey = 'canary-custom-endpoint-secret-47',
@@ -141,24 +141,26 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
         return { request, stop, origin };
     };
     let app = await launch();
-    assert.deepEqual(JSON.parse(await app.request('/api/settings/endpoint')), {
-        configured: false,
-        baseUrl: null,
-    });
-    await app.request('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey });
+    assert.deepEqual(JSON.parse(await app.request('/api/settings/endpoints')), []);
+    const [{ id }] = JSON.parse(
+        await app.request('/api/settings/endpoints', {
+            name: 'Custom endpoint',
+            baseUrl: fake.baseUrl,
+            apiKey,
+        }),
+    );
     assert.equal(statSync(join(dir, 'openai-endpoints.json')).mode & 0o777, 0o600);
     assert.equal(statSync(dir).mode & 0o777, 0o700);
     assert.equal(JSON.parse(readFileSync(join(dir, 'openai-endpoints.json')))[0].apiKey, apiKey);
     await app.stop();
     app = await launch();
-    assert.deepEqual(JSON.parse(await app.request('/api/settings/endpoint')), {
-        configured: true,
-        baseUrl: fake.baseUrl,
-    });
+    assert.deepEqual(JSON.parse(await app.request('/api/settings/endpoints')), [
+        { id, name: 'Custom endpoint', baseUrl: fake.baseUrl, lastTest: null },
+    ]);
     const catalogue = JSON.parse(await app.request('/api/models'));
     assert.deepEqual(catalogue.models, [
         {
-            provider: 'openai',
+            provider: id,
             model: 'local-tutor',
             label: 'local-tutor',
             isDefault: true,
@@ -167,8 +169,8 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
             usesTutorTools: false,
         },
     ]);
-    assert.equal(catalogue.providers.openai.connected, true);
-    await app.request('/api/settings/endpoint/test', {});
+    assert.equal(catalogue.providers[id].connected, true);
+    await app.request('/api/settings/endpoints/test', { id });
     const tree = JSON.parse(await app.request('/api/trees', {}, 201));
     assert.equal(
         tree.provider,
@@ -184,7 +186,7 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
         0,
         'an unset chat model never falls back to the custom endpoint',
     );
-    await app.request(`/api/trees/${tree.id}/model`, { provider: 'openai', model: 'local-tutor' });
+    await app.request(`/api/trees/${tree.id}/model`, { provider: id, model: 'local-tutor' });
     fake.reply = (req, res) =>
         streamReply(res, [
             'Safe: ',
@@ -223,13 +225,12 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
     assert.equal(child.branch.snapshot, 'Safe: [redacted] [redacted][redacted] End.');
     fake.modelStatus = 401;
     fake.error = { message: apiKey };
-    await app.request('/api/settings/endpoint/test', {}, 502);
-    await app.request('/api/models', undefined, 502);
-    await app.request(
-        `/api/trees/${tree.id}/model`,
-        { provider: 'openai', model: 'local-tutor' },
-        502,
+    assert.equal(
+        JSON.parse(await app.request('/api/settings/endpoints/test', { id }))[0].lastTest.ok,
+        false,
     );
+    await app.request('/api/models', undefined, 502);
+    await app.request(`/api/trees/${tree.id}/model`, { provider: id, model: 'local-tutor' }, 502);
     fake.modelStatus = 200;
     fake.reply = (req, res) => {
         res.writeHead(429, { 'X-Secret': apiKey });
@@ -264,13 +265,13 @@ test('main-entry custom endpoint keeps the key in its owner-only file across res
     }
     app = await launch();
     await app.request(`/api/trees/${tree.id}`);
-    await app.request('/api/settings/endpoint/clear', {});
+    await app.request('/api/settings/endpoints/remove', { id });
     assert.equal(existsSync(join(dir, 'openai-endpoints.json')), false);
     assert.equal(
         readdirSync(dir).some((name) => name.endsWith('.tmp')),
         false,
     );
-    await app.request(`/api/trees/${tree.id}/messages`, { text: 'Endpoint cleared' });
+    await app.request(`/api/trees/${tree.id}/messages`, { text: 'Endpoint removed' });
     await app.stop();
     assert.ok(!logs.join('').includes(apiKey), 'stdout/stderr contains the key');
     assert.ok(bodies.length >= 20, 'scan covers successful, failed and restarted responses');

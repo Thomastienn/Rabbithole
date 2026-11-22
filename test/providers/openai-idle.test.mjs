@@ -24,9 +24,9 @@ function endpoint(t) {
         return new Response(body, { headers: { 'content-type': 'text/event-stream' } });
     });
     const openai = new OpenAI(mkdtempSync(join(tmpdir(), 'idle-')));
-    openai.save({ baseUrl: 'http://127.0.0.1:9/v1', apiKey: 'key' });
+    const [{ id }] = openai.add({ name: 'Idle', baseUrl: 'http://127.0.0.1:9/v1', apiKey: 'key' });
     const events = [];
-    const reply = openai.generate(
+    const reply = openai.providers()[id].generate(
         { model: 'm', messages: [] },
         'Hi',
         (e) => events.push(e),

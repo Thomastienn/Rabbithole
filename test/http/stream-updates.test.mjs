@@ -89,3 +89,28 @@ test('a failed save in the trailing update fails the reply and leaves the server
         env.close();
     }
 });
+
+test('a reply reads its title and model without loading the conversation again', async () => {
+    const env = await open({
+        generate: async (tree, text, emit) => {
+            emit({ type: 'delta', item: 'a', text: 'Answer' });
+            emit({ type: 'usage', usage: { input: 1, output: 1, cacheRead: 0 } });
+            emit({ type: 'status', status: 'completed' });
+        },
+    });
+    try {
+        const tree = await (await env.post('/api/trees', {})).json();
+        const load = env.store.tree;
+        let loads = 0;
+        env.store.tree = function (id) {
+            if (id === tree.id) loads++;
+            return load.call(this, id);
+        };
+        const body = await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Q' })).text();
+        assert.match(body, /"type":"done","status":"completed"/);
+        // The route itself, closing discussions, the discussion summary check and suggestions.
+        assert.equal(loads, 4);
+    } finally {
+        env.close();
+    }
+});

@@ -9,8 +9,8 @@ import { open } from '../support/openai-kit.mjs';
 async function launch(t, embed = null) {
     const fake = await fakeOpenAI(t);
     const env = await open(t, {}, { videoEmbed: embed, log: () => {} });
-    await env.post('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey: 'fixture-key' });
-    const created = await env.post('/api/trees', { provider: 'openai', model: 'local-tutor' });
+    const provider = await env.addEndpoint(fake.baseUrl, 'fixture-key');
+    const created = await env.post('/api/trees', { provider, model: 'local-tutor' });
     assert.equal(created.status, 201);
     const tree = await created.json();
     const system = () =>

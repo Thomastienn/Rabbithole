@@ -412,15 +412,18 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
         await env.app.stop();
         env.store.close();
     });
-    await env.post('/api/settings/endpoint', {
-        baseUrl: fake.baseUrl,
-        apiKey: 'video-smart-fixture',
-    });
+    const [{ id }] = await (
+        await env.post('/api/settings/endpoints', {
+            name: 'Custom endpoint',
+            baseUrl: fake.baseUrl,
+            apiKey: 'video-smart-fixture',
+        })
+    ).json();
     await env.post('/api/settings/chat', { provider: 'codex', model: 'chat-model', effort: 'low' });
     assert.equal(
         (
             await env.post('/api/settings/smart', {
-                model: { provider: 'openai', model: 'local-tutor' },
+                model: { provider: id, model: 'local-tutor' },
                 followEffort: false,
                 effort: 'high',
             })
@@ -439,7 +442,7 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
     await until(() => upstream);
     const original = env.store.tree(tree.id).artifacts[0],
         input = JSON.parse(original.input);
-    assert.deepEqual(input.selection, { provider: 'openai', model: 'local-tutor', effort: 'high' });
+    assert.deepEqual(input.selection, { provider: id, model: 'local-tutor', effort: 'high' });
     assert.equal(upstream.model, 'local-tutor');
     assert.equal(upstream.reasoning_effort, 'high');
     assert.deepEqual(
@@ -484,7 +487,7 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
     }
     // A separate failed attempt stays failed until explicit Retry and keeps the original smart pin.
     await env.post('/api/settings/smart', {
-        model: { provider: 'openai', model: 'local-tutor' },
+        model: { provider: id, model: 'local-tutor' },
         followEffort: false,
         effort: 'high',
     });
@@ -505,7 +508,7 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
     await until(() => env.store.artifact(tree.id, failed.id).status === 'ready');
     assert.equal(fake.calls.filter((c) => c.body).at(-1).body.reasoning_effort, 'high');
     assert.equal(fake.calls.filter((c) => c.body).length, count + 1);
-    // A cleared endpoint is an explicit failure, even though chat remains connected and Settings now follow it.
+    // A removed endpoint is an explicit failure, even though chat remains connected and Settings now follow it.
     env.store.cancelVideo(
         tree.id,
         env.store.pendingArtifact(
@@ -518,7 +521,7 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
         ).id,
     );
     const offline = env.store.tree(tree.id).artifacts.at(-1);
-    await env.post('/api/settings/endpoint/clear');
+    await env.post('/api/settings/endpoints/remove', { id });
     await env.post(`/api/trees/${tree.id}/artifacts/${offline.id}/retry`);
     await until(() => env.store.artifact(tree.id, offline.id).status === 'failed');
     assert.equal(fake.calls.filter((c) => c.body).length, count + 1);
