@@ -91,11 +91,17 @@ test('the installers are built under the fixed names the README links to', () =>
     }
 });
 
-test('the Linux wheels workflow runs only when the owner triggers it', () => {
+test('the Linux wheels workflow runs only by hand or from the Desktop build run', () => {
     const wheels = readFileSync(
         new URL('../../.github/workflows/linux-wheels.yml', import.meta.url),
         'utf8',
     );
     const on = wheels.match(/^on:\n((?: .*\n)+)/m)[1];
-    assert.deepEqual(on.trim().split('\n'), ['workflow_dispatch:']);
+    assert.deepEqual(
+        on
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean),
+        ['workflow_dispatch:', 'workflow_call:'],
+    );
 });

@@ -10,6 +10,8 @@ import {
 } from '../server/media/manim.mjs';
 
 // PyPI has no Linux wheels of pycairo and manimpango; the linux-wheels release (.github/workflows/linux-wheels.yml) has them, hashes from its SHA256SUMS.
+// The file names carry the versions uv resolves for manim==MANIM_VERSION on Python 3.12: to move one, edit its
+// version here and the Desktop build run rebuilds the wheels and re-pins names and hashes (scripts/linux-wheels-pin.mjs).
 export const LINUX_WHEELS = {
     'pycairo-1.29.2-cp312-cp312-manylinux_2_28_x86_64.whl':
         'aa87b09008a2bcba92fc755deef2c37c7ac17a8151591fa860f2f2a5a8e9690f',
