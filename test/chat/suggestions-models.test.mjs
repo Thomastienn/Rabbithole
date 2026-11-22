@@ -169,6 +169,8 @@ test('only signed-in subscription models can be pinned; stale pins fail without 
     connected.claude = true;
     await env.post('/api/settings/suggestions', { model: { provider: 'claude', model: 'sonnet' } });
     connected.claude = false;
+    // Signing out reaches the app on its next sign-in check; models() reuses a signed-in answer for 30 s.
+    await env.claude.status();
     const tree = JSON.parse(await env.post('/api/trees'));
     await env.post(`/api/trees/${tree.id}/model`, { provider: 'codex', model: 'fixture-model' });
     await env.post(`/api/trees/${tree.id}/messages`, { text: 'Stale Claude pin' });

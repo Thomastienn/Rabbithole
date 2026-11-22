@@ -108,6 +108,21 @@ test('met evidence has no effect; observations replace per message and unknown n
     ]);
     store.mergeConcepts('Met', 'Brand new');
     assert.deepEqual(of('Brand new').observations, [1, 0, 0, 0, 0, 1]);
+    // The graph runs the same number of queries however many concepts it holds.
+    const queries = () => {
+        const prepare = store.db.prepare;
+        let n = 0;
+        store.db.prepare = (...args) => (n++, prepare.apply(store.db, args));
+        store.graph();
+        store.db.prepare = prepare;
+        return n;
+    };
+    const few = queries();
+    graph(
+        Array.from({ length: 20 }, (_, i) => `Extra ${i}`),
+        'm-extra',
+    );
+    assert.equal(queries(), few);
 });
 
 test('the schema upgrade deletes old familiarity evidence and keeps met', () => {
