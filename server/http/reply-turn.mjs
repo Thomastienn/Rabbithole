@@ -1,9 +1,7 @@
 import { replyArtifacts } from './reply-artifacts.mjs';
 import { appCalls, isAppTool } from './app-calls.mjs';
 import { markerNotes } from '../media/markers.mjs';
-import { formatLog, errorCause, privateValues } from '../log.mjs';
 import { diagramReply } from '../media/reply-parser.mjs';
-import { generateDiagram } from '../media/diagram-generator.mjs';
 import { ENDED, collectText } from '../providers/chatStream.mjs';
 
 const CLOCK = {
@@ -18,7 +16,7 @@ export function replyTurn(
     ctx,
     { id, tree, user, reply, body, job, emit, saveEvery, clock = CLOCK },
 ) {
-    const { store, live } = ctx;
+    const { store } = ctx;
     const { controller } = job;
     const streamed = collectText();
     let text = '',
@@ -37,28 +35,25 @@ export function replyTurn(
         late = null;
     // Ends the tutor's run once the end section is in and a later model response begins (ADR 0016).
     const run = new AbortController();
-    const { artifacts, prepareArtifacts, showVisual, makeVideo, startDiscussion, hasMedia } =
-        replyArtifacts(ctx, {
-            id,
-            tree,
-            user,
-            reply,
-            body,
-            send: emit,
-            controller,
-            isFinished: () => finished,
-            getStatus: () => status,
-        });
+    const slots = replyArtifacts(ctx, {
+        id,
+        tree,
+        user,
+        reply,
+        body,
+        emit,
+        signal: controller.signal,
+    });
     const calls = appCalls(ctx, {
         conversation: id,
         reply,
-        showVisual,
-        makeVideo,
-        startDiscussion,
+        showVisual: slots.showVisual,
+        makeVideo: slots.makeVideo,
+        startDiscussion: slots.startDiscussion,
     });
     const suggesting = store.suggestionSettings().enabled;
     const noted = (output) => {
-        const next = markerNotes(output.text, output.markers, hasMedia());
+        const next = markerNotes(output.text, output.markers, slots.hasMedia());
         if (
             suggesting &&
             (next.passages.length > notes.passages.length ||
@@ -90,7 +85,7 @@ export function replyTurn(
         store.update(reply, text, status);
         emit({ type: 'text', text });
         noted(output);
-        prepareArtifacts(output);
+        slots.prepare(output);
         calls.place(output);
         calls.runText(output);
     };
@@ -98,7 +93,7 @@ export function replyTurn(
         if (finished) return;
         if (pending) flush();
         finished = true;
-        prepareArtifacts(diagramReply(streamed.text('\n\n'), true), true);
+        slots.end(diagramReply(streamed.text('\n\n'), true), status);
         controller.signal.removeEventListener('abort', interrupt);
         const output = diagramReply(streamed.text('\n\n'), status === 'completed');
         if (output.text !== text) {
@@ -107,22 +102,8 @@ export function replyTurn(
         }
         noted(output);
         calls.place(output);
-        if (controller.signal.aborted && !ctx.stopping) {
-            store.cancelVisuals(id, reply);
-            for (const artifact of artifacts.values())
-                if (['visual', 'video'].includes(artifact.kind)) {
-                    if (artifact.kind === 'video') store.cancelVideo(id, artifact.id);
-                    const current = store.artifact(id, artifact.id);
-                    if (current) emit({ type: 'artifact', artifact: live(current) });
-                }
-        }
+        if (controller.signal.aborted && !ctx.stopping) slots.cancel();
         for (const tool of store.stopToolCalls(reply)) emit({ type: 'tool', tool });
-        for (const artifact of artifacts.values())
-            if (
-                artifact.kind === 'mermaid' &&
-                store.artifact(id, artifact.id)?.status === 'pending'
-            )
-                store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
         store.update(
             reply,
             text,
@@ -217,53 +198,6 @@ export function replyTurn(
                     }),
             };
     };
-    // Legacy diagrams run in reply order; visuals and videos already run detached.
-    const drawDiagrams = async () => {
-        for (let artifact of artifacts.values()) {
-            if (finished) break;
-            if (artifact.status !== 'pending' || artifact.kind !== 'mermaid') continue;
-            ctx.log(formatLog('info', 'media', 'started', { id: artifact.id, task: 'diagram' }));
-            try {
-                const { model } = store.header(id);
-                const selection = { provider: tree.provider, model };
-                const source = await generateDiagram(
-                    ctx.metered(ctx.pick(tree), 'diagram', artifact.id, selection, {
-                        message: artifact.message,
-                    }),
-                    selection,
-                    JSON.parse(artifact.input),
-                    controller.signal,
-                    ctx.diagramTimeout,
-                    ctx.diagramParse,
-                );
-                if (!finished) {
-                    artifact = store.finishArtifact(id, artifact.id, source);
-                    ctx.log(
-                        formatLog('info', 'media', 'saved', { id: artifact.id, task: 'diagram' }),
-                    );
-                }
-            } catch (error) {
-                ctx.log(
-                    formatLog(
-                        controller.signal.aborted ? 'info' : 'error',
-                        'media',
-                        controller.signal.aborted ? 'stopped' : 'failed',
-                        {
-                            id: artifact.id,
-                            task: 'diagram',
-                            ...(!controller.signal.aborted && {
-                                cause: errorCause(error, privateValues(artifact.input)),
-                                next: 'Check the selected model, then Retry the diagram.',
-                            }),
-                        },
-                    ),
-                );
-                if (!finished)
-                    artifact = store.finishArtifact(id, artifact.id, null, error.message);
-            }
-            if (!finished) emit({ type: 'artifact', artifact: live(artifact) });
-        }
-    };
     return {
         get finished() {
             return finished;
@@ -289,8 +223,7 @@ export function replyTurn(
             text = output.text;
             store.update(reply, text, status);
             store.forgetThread(id);
-            prepareArtifacts(output, true);
-            await drawDiagrams();
+            await slots.draw(output, status);
         },
         // An app tool sees the reply saved up to the call.
         runAppTool(name, input) {
