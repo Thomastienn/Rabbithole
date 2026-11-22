@@ -1,7 +1,7 @@
 import { isEndpoint } from '../http/roles.mjs';
 import { readPage } from './readPage.mjs';
 import { pythonWorkspace } from './python.mjs';
-import { editMemoryNote } from './memoryNote.mjs';
+import { editMemoryNote, MEMORY_NOTE_LIMIT, tooLong } from './memoryNote.mjs';
 
 export const TUTOR_TOOLS = {
     web_search: 'Web search',
@@ -131,7 +131,13 @@ const TOOLS = {
         },
         // Synchronous read and save, so concurrent turns cannot interleave an edit.
         run: (input, turn, options) => {
-            options.memory.saveMemoryNote(editMemoryNote(options.memory.memoryNote(), input));
+            const current = options.memory.memoryNote();
+            const next = editMemoryNote(current, input);
+            if (tooLong(next, current))
+                throw new Error(
+                    `The memory note would pass its ${MEMORY_NOTE_LIMIT}-character limit; rewrite or delete entries to make room.`,
+                );
+            options.memory.saveMemoryNote(next);
             return 'Updated memory note.';
         },
     },

@@ -1,3 +1,9 @@
+// The whole note goes into every prompt, so it has a size cap.
+export const MEMORY_NOTE_LIMIT = 8000;
+// A note saved before the cap may be longer; any edit that shortens it still passes.
+export const tooLong = (next, current) =>
+    next.length > MEMORY_NOTE_LIMIT && next.length > current.length;
+
 const find = (note, old) => {
     if (typeof old !== 'string' || !old.trim())
         throw new Error('Give old_text: the exact entry text to change.');

@@ -54,4 +54,25 @@ test('memory note saves through Settings and reaches the next chat prompt as dat
     for (const bad of [undefined, null, 3])
         assert.equal((await post('/api/settings/memory-note', { note: bad })).status, 400);
     assert.equal(store.memoryNote(), note);
+    const atLimit = 'a'.repeat(8000);
+    assert.equal((await post('/api/settings/memory-note', { note: atLimit })).status, 200);
+    const over = await post('/api/settings/memory-note', { note: atLimit + 'a' });
+    assert.equal(over.status, 400);
+    assert.match((await over.json()).error, /8,000 characters/);
+    assert.equal(store.memoryNote(), atLimit);
+    // A note saved before the limit still loads and can be shortened.
+    store.saveMemoryNote('b'.repeat(20_000));
+    assert.equal(
+        (await (await fetch(`${origin}/api/settings/memory-note`)).json()).note.length,
+        20_000,
+    );
+    assert.equal(
+        (await post('/api/settings/memory-note', { note: 'b'.repeat(15_000) })).status,
+        200,
+    );
+    assert.equal(
+        (await post('/api/settings/memory-note', { note: 'b'.repeat(15_001) })).status,
+        400,
+    );
+    assert.equal(store.memoryNote().length, 15_000);
 });
