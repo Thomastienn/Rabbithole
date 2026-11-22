@@ -1,7 +1,14 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+    existsSync,
+    mkdtempSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkManimDependencies, detectManim, MANIM_VERSION } from '../../server/media/manim.mjs';
@@ -99,6 +106,9 @@ test('first Linux run installs pinned Manim from the verified project wheels and
     const calls = [],
         logs = [];
     fetched = [];
+    // A cached wheel that no longer matches its pin is downloaded again, never installed.
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'pycairo-fixture.whl'), 'tampered wheel');
     const result = await ensure({
         root,
         probe,
@@ -115,6 +125,7 @@ test('first Linux run installs pinned Manim from the verified project wheels and
         'https://github.com/Thomastienn/Rabbithole/releases/download/linux-wheels/manimpango-fixture.whl',
     ]);
     assert.deepEqual(readdirSync(dir).sort(), ['manimpango-fixture.whl', 'pycairo-fixture.whl']);
+    assert.equal(readFileSync(join(dir, 'pycairo-fixture.whl'), 'utf8'), 'wheel');
     assert.deepEqual(calls, [
         ['uv', ['venv', '--python', '3.12', join(root, '.venv')]],
         [
