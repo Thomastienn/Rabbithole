@@ -4,7 +4,7 @@ import { DEFAULT_TUTOR_STYLE } from '../../media/tutor-instructions.mjs';
 import { systemPackages } from '../../media/manim.mjs';
 import { MEMORY_NOTE_LIMIT, tooLong } from '../../tools/memoryNote.mjs';
 
-// Model profiles, chat, smart and suggestion settings, and custom endpoints.
+// Model profiles, chat, smart and suggestion settings, video mode, and custom endpoints.
 export async function settingsRoutes(req, res, url, ctx, body) {
     const { store, json, endpoint, selectionError, chatDefault, smart, profiles } = ctx;
     const tutorTools = async () => {
@@ -38,6 +38,8 @@ export async function settingsRoutes(req, res, url, ctx, body) {
             return json(res, 200, { style: store.tutorStyle(), default: DEFAULT_TUTOR_STYLE });
         if (url.pathname === '/api/settings/memory-note')
             return json(res, 200, { note: store.memoryNote() });
+        if (url.pathname === '/api/settings/video-mode')
+            return json(res, 200, { mode: store.videoMode() });
         return false;
     }
     if (req.method !== 'POST') return false;
@@ -121,6 +123,11 @@ export async function settingsRoutes(req, res, url, ctx, body) {
         const text = body.style?.trim() || null;
         store.saveTutorStyle(text === DEFAULT_TUTOR_STYLE ? null : text);
         return json(res, 200, { style: store.tutorStyle(), default: DEFAULT_TUTOR_STYLE });
+    }
+    if (url.pathname === '/api/settings/video-mode') {
+        if (!['quality', 'saving'].includes(body?.mode))
+            return json(res, 400, { error: 'Choose Quality or Saving as the video mode.' });
+        return json(res, 200, { mode: store.saveVideoMode(body.mode) });
     }
     if (url.pathname === '/api/settings/memory-note') {
         if (typeof body?.note !== 'string')

@@ -7,7 +7,7 @@ import { ui, button, inputValue } from '../support/ui.mjs';
 import { fakeServer } from '../support/fake-server.mjs';
 const { default: ModelProfiles } = await import('../../src/settings/ModelProfiles.tsx');
 const { default: ChatSettings } = await import('../../src/settings/ChatSettings.tsx');
-const { default: SmartSettings } = await import('../../src/settings/SmartSettings.tsx');
+const { default: SmartSettings, VideoMode } = await import('../../src/settings/SmartSettings.tsx');
 const { default: SuggestionSettings } = await import('../../src/settings/SuggestionSettings.tsx');
 
 const models = [
@@ -278,4 +278,39 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
     const last = (await menu()).find((e) => e.textContent.includes('Delete Local'));
     assert.match(last.textContent, /Keep at least one profile/);
     assert.equal(last.getAttribute('aria-disabled'), 'true');
+});
+
+test('Video mode shows Quality by default and saves Saving', async (t) => {
+    let dom,
+        mode = 'quality';
+    const writes = [];
+    fakeServer(t, async (path, body) => {
+        assert.equal(path, '/api/settings/video-mode');
+        if (body) {
+            writes.push(body);
+            mode = body.mode;
+        }
+        return { mode };
+    });
+    const { container, act, cleanup } = await render(h(VideoMode), (w) => {
+        dom = ui(w);
+    });
+    t.after(cleanup);
+    const settle = () => act(async () => dom.frames());
+    await settle();
+    const trigger = [...container.querySelectorAll('[aria-haspopup]')].find((e) =>
+        named(e).startsWith('Video mode'),
+    );
+    assert.match(trigger.textContent, /Quality/);
+    await act(async () => trigger.click());
+    await settle();
+    const saving = [
+        ...document
+            .getElementById(trigger.getAttribute('aria-controls'))
+            .querySelectorAll('[role=option],[role=menuitemradio]'),
+    ].find((e) => e.textContent.trim().startsWith('Saving'));
+    await act(async () => saving.click());
+    await settle();
+    assert.deepEqual(writes, [{ mode: 'saving' }]);
+    assert.match(trigger.textContent, /Saving/);
 });
