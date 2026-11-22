@@ -197,6 +197,8 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
                             timing: timing(75),
                         },
                         { engine: 'remotion', playable: false, code: null, timing: null },
+                        // Played from its clip: no code.
+                        { engine: 'manim', playable: true, code: null, timing: timing(75) },
                     ],
                 }),
             };
@@ -247,12 +249,16 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
     assert.deepEqual(requests, [
         '/api/trees/root/artifacts/v1/cuts',
         '/api/trees/root/artifacts/v1/cuts/0/narration',
+        '/api/trees/root/artifacts/v1/cuts/2/narration',
+        '/api/trees/root/artifacts/v1/cuts/2/clip',
     ]);
     assert.equal(posted[0].type, 'cuts');
     assert.deepEqual(posted[0].paletteRoles, { winner: 'amber', earth: 'earthBlue' });
     assert.deepEqual(posted[0].trueColors, { earthBlue: '#2f6fb5' });
     assert.ok(posted[0].cuts[0].audio instanceof Blob);
     assert.equal(posted[0].cuts[1].audio, undefined);
+    assert.equal(posted[0].cuts[0].clip, undefined);
+    assert.ok(posted[0].cuts[2].clip instanceof Blob);
     await act(async () => set((a) => ({ ...a, phase: undefined, status: 'ready' })));
     assert.equal(card.querySelector('iframe'), null);
     assert.equal(

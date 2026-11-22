@@ -43,7 +43,8 @@ export default function LivePlayer({ cuts, title }: { cuts: string; title: strin
                                     ? []
                                     : [
                                           blob(`${i}/narration`),
-                                          ...(cut.engine === 'manim' ? [blob(`${i}/clip`)] : []),
+                                          // A cut played from its clip arrives without code.
+                                          ...(cut.code ? [] : [blob(`${i}/clip`)]),
                                       ],
                             ),
                             ...(data.exhibits ?? []).flatMap((e, i) =>
