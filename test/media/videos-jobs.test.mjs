@@ -507,8 +507,8 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
     await env.app.settled();
     assert.equal(fake.calls.filter((c) => c.body).length, count);
     await env.post('/api/settings/smart', { model: null, followEffort: true });
-    fake.reply = (_req, res, body) =>
-        streamReply(res, [videoResponse({ instructions: body.messages[0].content })]);
+    // The retry's only endpoint call is the plan.
+    fake.reply = (_req, res) => streamReply(res, [planText(planFor())]);
     await env.post(`/api/trees/${tree.id}/artifacts/${failed.id}/retry`);
     await until(() => env.store.artifact(tree.id, failed.id).status === 'ready');
     assert.equal(fake.calls.filter((c) => c.body).at(-1).body.reasoning_effort, 'high');
