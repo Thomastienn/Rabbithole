@@ -56,13 +56,14 @@ jobs:
               --title "Linux wheels for Manim" \
               --notes "manylinux_2_28 x86_64 wheels of pycairo and manimpango for CPython 3.12. Each run adds its new versions; SHA256SUMS lists them all."
           assets=$(gh release view linux-wheels --json assets -q '.assets[].name')
-          mkdir sums
-          gh release download linux-wheels -p SHA256SUMS -D sums || touch sums/SHA256SUMS
           for wheel in wheels/*.whl; do
             name=$(basename "$wheel")
             # A released file stays as it is: installed apps pin its hash.
             grep -qxF "$name" <<< "$assets" && continue
             gh release upload linux-wheels "$wheel"
-            grep -F "  $name" wheels/SHA256SUMS >> sums/SHA256SUMS
           done
-          gh release upload linux-wheels sums/SHA256SUMS --clobber
+          # Hashed from the released files, so a run that failed between uploads cannot leave a wheel without its hash.
+          mkdir released
+          gh release download linux-wheels -p '*.whl' -D released
+          (cd released && sha256sum *.whl > SHA256SUMS)
+          gh release upload linux-wheels released/SHA256SUMS --clobber
