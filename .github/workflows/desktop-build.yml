@@ -126,6 +126,8 @@ jobs:
   # Runs only when both jobs pass, so a failed build publishes nothing and moves no pin.
   release:
     needs: [linux, windows]
+    # A run from another branch only builds: its commits must not reach master through the pin push.
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: write
