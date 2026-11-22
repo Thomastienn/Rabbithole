@@ -181,6 +181,15 @@
     overflow-wrap: anywhere;
     text-align: start;
 }
+/* Free-branch row (mockup .side-row): wraps when full; a long title truncates, the address chip never does. */
+.free-branches .astryx-button {
+    max-width: 100%;
+    padding-inline-start: 5px;
+}
+.free-branches .astryx-button span:has(> .address-chip) {
+    width: auto;
+    height: auto;
+}
 .chat-question:not(:first-child) {
     margin-block-start: calc(3 * var(--rabbithole-module));
 }

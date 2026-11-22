@@ -247,6 +247,108 @@ test('the reply line renders task usage while media runs, including when the rep
     );
 });
 
+test('free branches end their own reply as address chips in family ink, open their child, and renumber after a delete', async (t) => {
+    const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
+    const { conversationAddresses } = await import('../../src/map/treeList.ts');
+    const child = (id, messageId, created, title, passage = '', start = null) => ({
+        id,
+        parent: 'root',
+        messageId,
+        created,
+        title,
+        passage,
+        start,
+        end: start === null ? null : start + 4,
+    });
+    const all = [
+        { id: 'root', parent: null, created: 0, title: 'Fungi' },
+        child('pass', 'a1', 1, 'Passage branch', 'Thin', 0),
+        child('f3', 'a2', 5, 'Is turgor the same as blood pressure?'),
+        child('f2', 'a1', 3, 'Who first saw hyphae?'),
+        child('f1', 'a1', 2, 'Do lichens trade the same way?'),
+        child('ground', 'a1', 4, 'What is Memory?', 'Memory'),
+    ];
+    const opened = [];
+    let setTrees;
+    function Fixture() {
+        const [trees, set] = useState(all);
+        setTrees = set;
+        return h(ChatThread, {
+            tree: {
+                id: 'root',
+                artifacts: [],
+                messages: [
+                    { id: 'q1', role: 'user', status: 'completed', text: 'What are hyphae?' },
+                    { id: 'a1', role: 'assistant', status: 'completed', text: 'Thin threads.' },
+                    { id: 'q2', role: 'user', status: 'completed', text: 'How do they grow?' },
+                    {
+                        id: 'a2',
+                        role: 'assistant',
+                        status: 'completed',
+                        text: 'At the tip.',
+                        questions: ['What sets the pressure?'],
+                    },
+                ],
+            },
+            c: {
+                overview: false,
+                addresses: conversationAddresses(trees),
+                state: { trees },
+                setSelectingMessage() {},
+            },
+            model: { modelLabel: () => 'Fixture' },
+            trees: { openConversation: (id) => opened.push(id) },
+            stream: { send() {} },
+            branchForm: { visualBranches: {}, groundworkBranches: {} },
+            actions: { videoAction() {} },
+            active: false,
+        });
+    }
+    const { container, act, cleanup } = await render(h(Fixture), ui);
+    t.after(cleanup);
+    const rows = () =>
+        [...container.querySelectorAll('[data-chat-message]')].map((m) =>
+            [...m.querySelectorAll('[aria-label="Asked on the side after this reply"] button')].map(
+                (b) => [b.querySelector('.address-chip').textContent, b.getAttribute('aria-label')],
+            ),
+        );
+    assert.deepEqual(rows(), [
+        [],
+        [
+            ['1.2', 'Open 1.2 Do lichens trade the same way?'],
+            ['1.3', 'Open 1.3 Who first saw hyphae?'],
+        ],
+        [],
+        [['1.5', 'Open 1.5 Is turgor the same as blood pressure?']],
+    ]);
+    const chip = (address) =>
+        [...container.querySelectorAll('.free-branches .address-chip')].find(
+            (e) => e.textContent === address,
+        );
+    // Trunk children start their own families, so each chip carries its own line colour.
+    assert.equal(chip('1.2').style.getPropertyValue('--ink'), 'var(--rabbithole-ink-2)');
+    assert.equal(chip('1.3').style.getPropertyValue('--ink'), 'var(--rabbithole-ink-3)');
+    const latest = container.querySelector('[data-chat-message="a2"]');
+    assert.ok(
+        latest
+            .querySelector('.free-branches')
+            .compareDocumentPosition(latest.querySelector('.next-questions')) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        'the row sits above the next questions',
+    );
+    const lichens = chip('1.2').closest('button');
+    assert.equal(lichens.tabIndex, 0);
+    await act(async () => lichens.click());
+    assert.deepEqual(opened, ['f1']);
+    await act(async () => setTrees(all.filter((t) => t.id !== 'f1')));
+    assert.deepEqual(rows(), [
+        [],
+        [['1.2', 'Open 1.2 Who first saw hyphae?']],
+        [],
+        [['1.4', 'Open 1.4 Is turgor the same as blood pressure?']],
+    ]);
+});
+
 test('a discussion branch labels its speaker and shows the inherited discussion', async (t) => {
     const branch = {
         parent: 'root',

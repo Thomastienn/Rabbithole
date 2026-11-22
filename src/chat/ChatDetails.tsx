@@ -225,6 +225,44 @@ export function Groundwork({
     );
 }
 
+// Free branches asked after this reply, in address order: each child's address chip in family ink, then its title.
+export function FreeBranches({
+    branches,
+    open,
+}: {
+    branches: { child: string; title: string; address?: string; ink?: number }[];
+    open: (id: string) => void;
+}) {
+    if (!branches.length) return null;
+    return (
+        <HStack
+            gap={1}
+            vAlign="center"
+            wrap="wrap"
+            className="free-branches"
+            role="group"
+            aria-label="Asked on the side after this reply"
+        >
+            <span className="origin-ring" aria-hidden />
+            {branches.map((b) => (
+                <Button
+                    key={b.child}
+                    label={b.title}
+                    aria-label={`Open ${[b.address, b.title].filter(Boolean).join(' ')}`}
+                    variant="secondary"
+                    size="sm"
+                    icon={
+                        <span className="address-chip" style={inkStyle(b.ink ?? 0)}>
+                            {b.address}
+                        </span>
+                    }
+                    onClick={() => open(b.child)}
+                />
+            ))}
+        </HStack>
+    );
+}
+
 export function NextQuestions({
     message,
     latest,
