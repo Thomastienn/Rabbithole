@@ -54,7 +54,7 @@ export type StreamEvent =
     | { type: 'error'; error: string };
 
 // Split complete SSE frames off the buffer; the unfinished tail waits for the next chunk and keepalive comments drop.
-export function sseFrames(buffer: string) {
+function sseFrames(buffer: string) {
     const events: StreamEvent[] = [];
     let end;
     while ((end = buffer.indexOf('\n\n')) >= 0) {
