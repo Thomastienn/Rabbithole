@@ -164,11 +164,14 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                             id={`reveal-${t.id}`}
                             className="node-extra nodrag nopan"
                             label={`Reveal source passage for ${t.title}`}
-                            tooltip={`From “${t.passage}”`}
+                            // An empty passage marks a free branch: it has no source to reveal.
+                            tooltip={t.passage === '' ? 'Asked on the side' : `From “${t.passage}”`}
                             icon={<LinkIcon />}
                             variant="ghost"
                             size="sm"
-                            onClick={() => data.open(t.parent!, sourceOf(t))}
+                            onClick={() =>
+                                data.open(t.parent!, t.passage === '' ? undefined : sourceOf(t))
+                            }
                         />
                     )}
                     {data.childCount > 0 && (

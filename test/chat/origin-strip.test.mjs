@@ -123,6 +123,10 @@ test('the question shows on the origin line only when the thread has none', asyn
 test('a free branch says it was asked on the side and its chip opens the parent', async (t) => {
     const { section, buttons, opened, act } = await strip(t, { start: null, end: null, text: '' });
     assert.ok(!section.querySelector('.origin-source'), 'no passage');
+    assert.match(
+        section.querySelector('.origin-line').textContent,
+        /^Asked on the side of .*, after its latest reply$/,
+    );
     await act(async () => buttons()[0].click());
     assert.deepEqual(opened, [undefined]);
 });
