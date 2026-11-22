@@ -135,8 +135,10 @@ test('enabling the Windows sandbox runs the launcher setup once and reports what
         return child;
     };
     const linux = windowsSandbox({ platform: 'linux', launcher: 'l.exe', probe, run });
-    assert.deepEqual(await linux.enable(), { windows: false, ready: true });
+    assert.deepEqual(await linux.enable(), { windows: false, ready: false }, 'bwrap missing');
     assert.deepEqual(runs, []);
+    const bwrap = windowsSandbox({ platform: 'linux', probe: () => ({ status: 0 }), run });
+    assert.deepEqual(bwrap.status(), { windows: false, ready: true });
 
     const declined = windowsSandbox({
         platform: 'win32',

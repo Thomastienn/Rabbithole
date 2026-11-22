@@ -5,7 +5,7 @@ const ADDONS = [
     {
         id: 'video-tools',
         name: 'Video tools',
-        enables: 'Narrated videos the tutor makes for you.',
+        enables: 'Let the tutor make short narrated videos, with animation and equations.',
         size: 500e6,
         dependency: 'offline-python',
         tools: ['uv', 'latex', 'manim', 'browser'],
@@ -13,7 +13,8 @@ const ADDONS = [
     {
         id: 'offline-python',
         name: 'Offline Python',
-        enables: 'Python code the tutor runs on this computer.',
+        enables:
+            'Lets the tutor run Python on this computer to calculate, check its work and draw charts. Videos use it too.',
         size: 50e6,
         dependency: null,
         tools: ['python'],
@@ -21,7 +22,7 @@ const ADDONS = [
     {
         id: 'web-search',
         name: 'Web search',
-        enables: 'Web search with any model, through a private SearXNG.',
+        enables: 'Lets the tutor search the web and cite what it finds.',
         size: 40e6,
         dependency: null,
         tools: ['searxng'],

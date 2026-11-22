@@ -10,6 +10,7 @@ import {
     ChartBarIcon,
     CpuChipIcon,
     LinkIcon,
+    PuzzlePieceIcon,
     SwatchIcon,
 } from '@heroicons/react/24/outline';
 import EndpointSettings from './EndpointSettings';
@@ -21,14 +22,14 @@ import TutorStyleSettings from './TutorStyleSettings';
 import MemoryNoteSettings from './MemoryNoteSettings';
 import SearchSettings from './SearchSettings';
 import TutorToolsSettings from './TutorToolsSettings';
-import SandboxSettings from './SandboxSettings';
+import AddonsSettings from './AddonsSettings';
 import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
 import type { ModelSelection } from '../chat/types';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
 import InterfaceSettings, { Done, Section } from './InterfaceSettings';
 
-export type SettingsTab = 'models' | 'connections' | 'interface' | 'usage';
+export type SettingsTab = 'models' | 'connections' | 'interface' | 'addons' | 'usage';
 // tab: the section to scroll to (undefined opens at the top); focus is a selector to focus once open.
 export type SettingsRequest = { tab?: SettingsTab; focus?: string };
 
@@ -52,6 +53,13 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
         description:
             'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.',
         icon: LinkIcon,
+    },
+    {
+        id: 'addons',
+        label: 'Add-ons',
+        description:
+            'Optional parts of Rabbithole. Chat works without any of them. Install one when you want what it adds. It downloads in the background while you keep chatting.',
+        icon: PuzzlePieceIcon,
     },
     {
         id: 'usage',
@@ -168,6 +176,7 @@ export default function SettingsWindow({
     const panel = (
         <VStack gap={8} className="settings-panel">
             {tab === 'usage' && group('usage', <UsageDashboard providers={providers} />)}
+            {tab === 'addons' && group('addons', <AddonsSettings />)}
             {tab === 'interface' &&
                 group(
                     'interface',
@@ -219,7 +228,6 @@ export default function SettingsWindow({
                         </Section>
                         <Divider />
                         <TutorToolsSettings />
-                        <SandboxSettings />
                         <Divider />
                         <TutorStyleSettings />
                         <Divider />

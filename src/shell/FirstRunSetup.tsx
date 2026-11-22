@@ -258,7 +258,7 @@ export default function FirstRunSetup({
             </VStack>
             <Divider />
             <VideoPackages />
-            <SandboxSettings firstRun />
+            <SandboxSettings />
             <VStack gap={2}>
                 <Heading level={3}>Chat model</Heading>
                 {chosen ? (
