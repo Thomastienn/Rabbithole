@@ -7,8 +7,8 @@
  */
 
 import { neutralTheme } from '@astryxdesign/theme-neutral';
-import { mainIcons } from './icons';
-const themeIcons = {...neutralTheme["icons"], ...mainIcons};
+import { lineDiagramIcons } from '../icons';
+const themeIcons = {...neutralTheme["icons"], ...lineDiagramIcons};
 /**
  * main theme — built by `npx astryx theme build`
  * Import the CSS file alongside this module:
