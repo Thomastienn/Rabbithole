@@ -4,11 +4,24 @@ import { layoutSaver, type Batch } from './layoutSave';
 import type { Point, Viewport } from './canvas';
 import { rootOf } from './mapState';
 import type { ChatState } from '../chat/useChatState';
+import type { State, Tree } from '../chat/types';
 import { request as api } from '../serverAccess';
 
 // Map layout saving for ChatPage: pending batches, snapshots and drag or viewport saves.
-export function useLayoutSaving(c: ChatState) {
-    const { state, setState, tree, root, overview, expanded, folds } = c;
+// useLearningTrees calls it with the learning tree data it owns.
+export function useLayoutSaving(
+    c: ChatState,
+    {
+        state,
+        setState,
+        tree,
+    }: {
+        state?: State;
+        setState: React.Dispatch<React.SetStateAction<State | undefined>>;
+        tree?: Tree;
+    },
+) {
+    const { root, overview, expanded, folds } = c;
     const [layoutFailed, setLayoutFailed] = useState(false);
     const saver = useRef<ReturnType<typeof layoutSaver<Layout>>>(undefined);
     const writeLayout = useRef<(root: string, batch: Batch<Layout>) => Promise<unknown>>(undefined);

@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { effortSupported, effortWasReset, type Model } from '../settings/models';
 import type { ModelSelection, Providers } from './types';
 import type { ChatState } from './useChatState';
+import type { LearningTrees } from './useLearningTrees';
 import { request as api } from '../serverAccess';
 
 // Chat model choice: the model list, the composer's menu and the saved selection per conversation.
-export function useChatModel(c: ChatState) {
-    const { state, tree, setTree, selected, setError } = c;
+export function useChatModel(c: ChatState, { state, tree, openId, change }: LearningTrees) {
+    const { setError } = c;
     const [firstModel, setFirstModel] = useState<ModelSelection>();
     const [models, setModels] = useState<Model[]>();
     const [providers, setProviders] = useState<Providers>();
@@ -37,7 +38,7 @@ export function useChatModel(c: ChatState) {
         if (state) void loadModels();
     }, [!!state, state?.auth.connected]);
     useEffect(() => {
-        if (!state || tree || selected.current || c.tab === 'settings') return;
+        if (!state || tree || openId() || c.tab === 'settings') return;
         let canceled = false;
         void api('/api/settings/chat')
             .then((value) => {
@@ -49,18 +50,18 @@ export function useChatModel(c: ChatState) {
         return () => {
             canceled = true;
         };
-    }, [!!state, !tree && !selected.current, c.tab === 'settings']);
+    }, [!!state, !tree && !openId(), c.tab === 'settings']);
     async function openModels(open: boolean) {
         if (!open) {
             setModelMenuOpen(false);
             return;
         }
         if (openingModels) return;
-        const id = selected.current;
+        const id = openId();
         setOpeningModels(true);
         await loadModels();
         setOpeningModels(false);
-        if (selected.current === id) setModelMenuOpen(true);
+        if (openId() === id) setModelMenuOpen(true);
     }
     async function changeModel(provider: string, model: string | null, effort: string | null) {
         if (!tree || savingModel) return;
@@ -70,16 +71,15 @@ export function useChatModel(c: ChatState) {
         setModelNotice('');
         try {
             const saved = await api(`/api/trees/${id}/model`, { provider, model, effort });
-            ++c.checkpoints.current;
-            setTree((t) =>
+            change((t) =>
                 t?.id === id
                     ? { ...t, provider: saved.provider, model: saved.model, effort: saved.effort }
                     : t,
             );
-            if (selected.current === id && effortWasReset(tree, { provider, model, effort }))
+            if (openId() === id && effortWasReset(tree, { provider, model, effort }))
                 setModelNotice('Effort changed to Provider default for this model.');
         } catch (e) {
-            if (selected.current === id) setError((e as Error).message);
+            if (openId() === id) setError((e as Error).message);
         } finally {
             setSavingModel(undefined);
         }

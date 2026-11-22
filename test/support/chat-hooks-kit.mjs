@@ -11,7 +11,6 @@ const [
     { useReplyStream },
     { useBranchForm },
     { useTreeActions },
-    { useLayoutSaving },
 ] = await Promise.all([
     import('../../src/chat/useChatState.ts'),
     import('../../src/chat/useLearningTrees.ts'),
@@ -19,7 +18,6 @@ const [
     import('../../src/chat/useReplyStream.ts'),
     import('../../src/chat/useBranchForm.ts'),
     import('../../src/chat/useTreeActions.ts'),
-    import('../../src/map/useLayoutSaving.ts'),
 ]);
 
 export const conversation = (id) => ({
@@ -84,11 +82,11 @@ export async function mount(t, intercept = () => {}) {
     let current;
     function Fixture() {
         const c = useChatState();
-        const layout = useLayoutSaving(c);
-        const trees = useLearningTrees(c, layout);
-        const model = useChatModel(c);
+        const trees = useLearningTrees(c);
+        const layout = trees.layout;
+        const model = useChatModel(c, trees);
         const stream = useReplyStream(c, trees, model, { name: 'paperback', mode: 'light' });
-        const actions = useTreeActions(c, layout, trees, model, stream);
+        const actions = useTreeActions(c, trees, model, stream);
         const branch = useBranchForm(c, trees, model, stream);
         current = { c, layout, trees, model, stream, actions, branch };
         return h('section', { ref: c.workspace });

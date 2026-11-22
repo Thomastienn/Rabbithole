@@ -13,14 +13,13 @@ import type { ReplyStream } from './useReplyStream';
 // Branch form: opening it from a passage or a visual's Ask button, inherited context preparation and submit.
 export function useBranchForm(
     c: ChatState,
-    { refresh, openConversation }: LearningTrees,
+    trees: LearningTrees,
     { savingModel }: ChatModel,
     { send }: ReplyStream,
 ) {
-    const { tree, state, branch, setBranch, branchOrigin, selected, setError } = c;
-    const { overview, setOverview, overviewOrigin, focusComposer, request, setTree, setLoading } =
-        c;
-    const { setDrafts } = c;
+    const { branch, setBranch, branchOrigin, setError } = c;
+    const { overview, setOverview, overviewOrigin, focusComposer, setDrafts } = c;
+    const { tree, state, addresses, setTree, refresh, openConversation, openId, show } = trees;
     const [branching, setBranching] = useState(false);
     // Escape returns focus to the passage or underline that opened the popup; an outside click keeps focus where it lands.
     function closeBranch(refocus: boolean) {
@@ -69,7 +68,7 @@ export function useBranchForm(
         follow = false,
     ) {
         if (branching || savingModel === parent) return;
-        const opener = follow ? selected.current : parent;
+        const opener = follow ? openId() : parent;
         setBranching(true);
         setError('');
         try {
@@ -80,19 +79,16 @@ export function useBranchForm(
             setBranch(undefined);
             created?.();
             // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
-            if (selected.current === opener) {
+            if (openId() === opener) {
                 focusComposer.current = true;
                 setOverview(false);
-                selected.current = next.id;
-                ++request.current;
-                setTree(next);
-                setLoading(false);
+                show(next);
             }
             const sending = send(question, next);
             await refresh();
             await sending;
         } catch (e) {
-            if (selected.current === opener) setError((e as Error).message);
+            if (openId() === opener) setError((e as Error).message);
         } finally {
             setBranching(false);
         }
@@ -102,7 +98,7 @@ export function useBranchForm(
         if (t.parent === tree?.id && t.artifactId && t.label && t.explanation)
             (visualBranches[t.artifactId] ??= []).push({
                 child: t.id,
-                ...c.addresses.get(t.id),
+                ...addresses.get(t.id),
                 label: t.label,
                 explanation: t.explanation,
                 ...(t.trail && { trail: t.trail, step: t.step }),
@@ -118,7 +114,7 @@ export function useBranchForm(
         )
             (discussionBranches[t.artifactId] ??= []).push({
                 child: t.id,
-                ...c.addresses.get(t.id),
+                ...addresses.get(t.id),
                 line: t.line,
                 start: t.start,
                 end: t.end,
@@ -133,7 +129,7 @@ export function useBranchForm(
             (groundworkBranches[t.messageId] ??= []).push({
                 concept: t.passage,
                 child: t.id,
-                ...c.addresses.get(t.id),
+                ...addresses.get(t.id),
             });
     // Choosing a chip asks "What is <concept>?" at once; a chip already chosen opens its child.
     function chooseGroundwork(messageId: string, concept: string) {

@@ -10,7 +10,7 @@ test('slow selections cannot replace the current conversation and drafts stay pe
         delay && path === '/api/trees/a' ? slow.promise : undefined,
     );
     const { act } = page;
-    assert.equal(page.current.c.tree.id, 'a');
+    assert.equal(page.current.trees.tree.id, 'a');
     await act(async () => page.current.c.setDrafts({ a: 'Draft A', b: 'Draft B' }));
     delay = true;
     let selecting;
@@ -22,8 +22,8 @@ test('slow selections cannot replace the current conversation and drafts stay pe
         slow.resolve(json(conversation('a')));
         await selecting;
     });
-    assert.equal(page.current.c.tree.id, 'b');
-    assert.equal(page.current.c.loading, false);
+    assert.equal(page.current.trees.tree.id, 'b');
+    assert.equal(page.current.trees.loading, false);
     assert.equal(page.current.c.overview, false);
     assert.deepEqual(page.current.c.drafts, { a: 'Draft A', b: 'Draft B' });
 });
@@ -42,8 +42,8 @@ test('model saving never replaces a newly selected conversation', async (t) => {
         save.resolve(json({ provider: 'codex', model: 'gpt', effort: null }));
         await saving;
     });
-    assert.equal(page.current.c.tree.id, 'b');
-    assert.equal(page.current.c.tree.provider, 'claude');
+    assert.equal(page.current.trees.tree.id, 'b');
+    assert.equal(page.current.trees.tree.provider, 'claude');
     assert.equal(page.current.model.modelNotice, '');
     assert.equal(page.current.model.savingModel, undefined);
     assert.deepEqual(page.calls.find((c) => c.path.endsWith('/model')).body, {
@@ -108,11 +108,11 @@ test('interleaved replies update their own previews and retry preserves the comp
             ],
         });
     }
-    assert.equal(page.current.c.tree.id, 'b');
-    assert.equal(page.current.c.tree.messages.at(-1).text, 'Reply b');
-    assert.equal(page.current.c.previews.a.at(-1).text, 'Reply a');
-    assert.equal(page.current.c.previews.b.at(-1).text, 'Reply b');
-    assert.deepEqual(new Set(page.current.c.state.active), new Set(['a', 'b']));
+    assert.equal(page.current.trees.tree.id, 'b');
+    assert.equal(page.current.trees.tree.messages.at(-1).text, 'Reply b');
+    assert.equal(page.current.trees.previews.a.at(-1).text, 'Reply a');
+    assert.equal(page.current.trees.previews.b.at(-1).text, 'Reply b');
+    assert.deepEqual(new Set(page.current.trees.state.active), new Set(['a', 'b']));
     await page.act(async () => page.current.stream.stop('a'));
     assert.ok(page.calls.some((c) => c.path === '/api/trees/a/stop'));
     await page.act(async () => {
@@ -120,7 +120,7 @@ test('interleaved replies update their own previews and retry preserves the comp
         streams.get('b').close();
         await Promise.all(replies);
     });
-    assert.deepEqual(page.current.c.state.active, []);
+    assert.deepEqual(page.current.trees.state.active, []);
     await page.act(async () => page.current.c.setDrafts({ b: 'Keep this draft' }));
     let retry;
     await page.act(async () => {
@@ -148,7 +148,7 @@ test('layout changes survive stale refreshes and batch into one write with the l
     });
     page.state.csrf = 'latest-csrf';
     await page.act(async () => page.current.trees.refresh());
-    const root = page.current.c.state.trees.find((t) => t.id === 'a');
+    const root = page.current.trees.state.trees.find((t) => t.id === 'a');
     assert.equal(root.x, 120);
     assert.deepEqual(root.layout.viewport, { x: -3, y: 10, zoom: 0.8 });
     assert.equal(page.calls.filter((c) => c.path.endsWith('/layout')).length, 0);
@@ -192,7 +192,7 @@ test('reopened replies poll saved checkpoints until the server reports completio
     const page = await mount(t, ({ path }, { state, data }) => {
         if (path === '/api/state' && !data.get('a').messages.length) state.active = ['a'];
     });
-    assert.deepEqual(page.current.c.state.active, ['a']);
+    assert.deepEqual(page.current.trees.state.active, ['a']);
     page.data.set('a', {
         ...conversation('a'),
         messages: [
@@ -206,8 +206,8 @@ test('reopened replies poll saved checkpoints until the server reports completio
     });
     page.state.active = [];
     await page.act(async () => t.mock.timers.tick(1500));
-    assert.equal(page.current.c.tree.messages[0].text, 'Recovered reply');
-    assert.deepEqual(page.current.c.state.active, []);
+    assert.equal(page.current.trees.tree.messages[0].text, 'Recovered reply');
+    assert.deepEqual(page.current.trees.state.active, []);
 });
 
 test('a failed send restores the unsaved question and reports its error', async (t) => {
@@ -217,8 +217,8 @@ test('a failed send restores the unsaved question and reports its error', async 
     await page.act(async () => page.current.stream.send('Keep my question'));
     assert.equal(page.current.c.drafts.a, 'Keep my question');
     assert.equal(page.current.c.error, 'Provider unavailable');
-    assert.deepEqual(page.current.c.tree.messages, []);
-    assert.deepEqual(page.current.c.state.active, []);
+    assert.deepEqual(page.current.trees.tree.messages, []);
+    assert.deepEqual(page.current.trees.state.active, []);
 });
 
 test('a send the server refuses keeps the pending files and the question for another try', async (t) => {
@@ -230,7 +230,7 @@ test('a send the server refuses keeps the pending files and the question for ano
     const sheet = new File(['x'], 'worksheet.png', { type: 'image/png' });
     await page.act(async () => page.current.c.setPendingFiles({ a: [sheet] }));
     await page.act(async () =>
-        page.current.stream.send('Is trial 3 right?', page.current.c.tree, false, [sheet]),
+        page.current.stream.send('Is trial 3 right?', page.current.trees.tree, false, [sheet]),
     );
     const sent = page.calls.find((call) => call.path.endsWith('/messages'));
     assert.ok(sent.body instanceof FormData, 'files go as multipart');
@@ -287,10 +287,10 @@ test('branch preparation excludes the question and the saved child opens before 
     await page.act(async () => {
         submitted = page.current.branch.submitBranch({ preventDefault() {} });
     });
-    assert.equal(page.current.c.tree.id, 'child');
+    assert.equal(page.current.trees.tree.id, 'child');
     assert.equal(page.current.c.overview, false);
     assert.equal(page.current.c.branch, undefined);
-    assert.ok(page.current.c.state.trees.some((t) => t.id === 'child'));
+    assert.ok(page.current.trees.state.trees.some((t) => t.id === 'child'));
     assert.deepEqual(page.calls.find((c) => c.path.endsWith('/branches')).body, {
         messageId: 'reply',
         start: 0,
@@ -321,7 +321,7 @@ test("the map's + asks on the side of another node and opens the child from the 
         if (path === '/api/trees/child/messages')
             return new Response(new ReadableStream({ start: (value) => (controller = value) }));
     });
-    assert.equal(page.current.c.tree.id, 'a');
+    assert.equal(page.current.trees.tree.id, 'a');
     await page.act(async () => {
         page.current.c.setOverview(true);
         page.current.c.setDrafts({ a: 'Keep this draft', b: 'And this one' });
@@ -336,7 +336,7 @@ test("the map's + asks on the side of another node and opens the child from the 
         question: 'Lichens?',
     });
     assert.equal(created, 1);
-    assert.equal(page.current.c.tree.id, 'child');
+    assert.equal(page.current.trees.tree.id, 'child');
     assert.equal(page.current.c.overview, false, "the child's focused chat opens");
     assert.equal(page.current.c.drafts.a, 'Keep this draft');
     assert.equal(page.current.c.drafts.b, 'And this one', "the parent's draft is not the question");
@@ -387,7 +387,7 @@ test('choosing a groundwork chip creates its child at once and choosing it again
         messageId: 'reply',
         groundwork: 'Mutexes',
     });
-    assert.equal(page.current.c.tree.id, 'child');
+    assert.equal(page.current.trees.tree.id, 'child');
     const sent = page.calls.find((c) => c.path === '/api/trees/child/messages');
     assert.equal(sent.body.text, 'What is Mutexes?');
     await page.act(async () => {
@@ -400,7 +400,7 @@ test('choosing a groundwork chip creates its child at once and choosing it again
         [['Mutexes', 'child']],
     );
     await page.act(async () => page.current.branch.chooseGroundwork('reply', 'Mutexes'));
-    assert.equal(page.current.c.tree.id, 'child');
+    assert.equal(page.current.trees.tree.id, 'child');
     assert.equal(page.calls.filter((c) => c.path.endsWith('/branches')).length, 1);
 });
 
@@ -418,13 +418,13 @@ test('deleting the open learning tree discards pending layout and opens the next
         page.current.actions.askDelete('a', null);
     });
     await page.act(async () => page.current.actions.deleteConversation());
-    assert.equal(page.current.c.tree.id, 'b');
+    assert.equal(page.current.trees.tree.id, 'b');
     assert.equal(page.current.c.root, 'b');
     assert.equal(page.current.c.focusComposer.current, true);
     assert.equal(page.current.layout.saver.current.pending().has('a'), false);
     assert.deepEqual(page.current.c.drafts, { b: 'Keep me' });
     assert.deepEqual(
-        page.current.c.state.trees.map((t) => t.id),
+        page.current.trees.state.trees.map((t) => t.id),
         ['b'],
     );
     assert.equal(page.current.actions.deletion, undefined);
@@ -444,10 +444,10 @@ test('deleting the open learning tree from the library keeps the library and ope
     });
     await page.act(async () => page.current.actions.deleteConversation());
     assert.equal(page.current.c.tab, 'library');
-    assert.equal(page.current.c.tree, undefined);
+    assert.equal(page.current.trees.tree, undefined);
     assert.equal(page.current.c.root, undefined);
     assert.deepEqual(
-        page.current.c.state.trees.map((t) => t.id),
+        page.current.trees.state.trees.map((t) => t.id),
         ['b'],
     );
     assert.ok(!page.calls.some((c) => c.path === '/api/trees/b'), 'no neighbour opens');
@@ -499,12 +499,12 @@ test('polling refreshes media usage during an owning reply stream while preservi
         ],
     });
     await page.act(async () => t.mock.timers.tick(1500));
-    assert.equal(page.current.c.tree.messages.at(-1).text, 'Latest streamed text');
-    assert.deepEqual(page.current.c.tree.messages.at(-1).mediaUsage, mediaUsage);
+    assert.equal(page.current.trees.tree.messages.at(-1).text, 'Latest streamed text');
+    assert.deepEqual(page.current.trees.tree.messages.at(-1).mediaUsage, mediaUsage);
     await page.act(async () => {
         emit({ type: 'text', text: 'Even newer text' });
     });
-    assert.deepEqual(page.current.c.tree.messages.at(-1).mediaUsage, mediaUsage);
+    assert.deepEqual(page.current.trees.tree.messages.at(-1).mediaUsage, mediaUsage);
     await page.act(async () => {
         stream.close();
         await sending;
