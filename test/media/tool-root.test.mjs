@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -10,6 +10,7 @@ import {
     projectRoot,
     pythonIn,
     pythonRuntime,
+    runtimeBinds,
     videoBrowser,
 } from '../../server/media/manim.mjs';
 import { detectClips } from '../../server/media/clips.mjs';
@@ -77,6 +78,34 @@ test('Python resolves to a venv or a standalone interpreter on each OS', () => {
     const standalone = mkdtempSync(join(tmpdir(), 'rabbithole-standalone-'));
     assert.equal(pythonRuntime(join(standalone, 'python.exe'), 'win32'), standalone);
 });
+
+// uv 0.13 links a venv's python through cpython-3.12-…, itself a link to the installed patch version.
+test(
+    'both sandboxes keep the folder link a uv venv reaches its Python through',
+    { skip: process.platform === 'win32' },
+    () => {
+        const root = mkdtempSync(join(tmpdir(), 'rabbithole-uv-link-'));
+        const patch = join(root, 'cpython-3.12.16'),
+            minor = join(root, 'cpython-3.12'),
+            python = join(root, '.venv', 'bin', 'python');
+        mkdirSync(join(patch, 'bin'), { recursive: true });
+        mkdirSync(join(root, '.venv', 'bin'), { recursive: true });
+        writeFileSync(join(patch, 'bin', 'python3.12'), '');
+        symlinkSync(patch, minor);
+        symlinkSync(join(minor, 'bin', 'python3.12'), python);
+        const binds = ['--ro-bind', patch, patch, '--symlink', patch, minor];
+        assert.deepEqual(runtimeBinds(python), binds);
+        for (const args of [manimBindings(python), pythonSandbox(join(root, 'work'), python, root)])
+            assert.deepEqual(args.slice(args.indexOf(patch) - 1).slice(0, 6), binds);
+        // python3 linking to python inside the venv adds nothing either.
+        symlinkSync('python', join(root, '.venv', 'bin', 'python3'));
+        assert.deepEqual(runtimeBinds(join(root, '.venv', 'bin', 'python3')), binds);
+        // A venv linked straight to its runtime, as older uv makes it, needs no link.
+        const direct = join(root, 'direct');
+        symlinkSync(join(patch, 'bin', 'python3.12'), direct);
+        assert.deepEqual(runtimeBinds(direct), ['--ro-bind', patch, patch]);
+    },
+);
 
 test('the video browser path follows the OS', () => {
     const shell = (os) =>

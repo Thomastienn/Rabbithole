@@ -2,7 +2,7 @@ import { spawn as spawnProcess } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { pythonEnv, pythonIn, pythonRuntime, toolRoot } from '../media/manim.mjs';
+import { pythonEnv, pythonIn, runtimeBinds, toolRoot } from '../media/manim.mjs';
 import { sandboxCommand, systemBinds } from '../media/video-sandbox.mjs';
 
 export const PYTHON_PACKAGES = ['numpy==2.5.4', 'scipy==1.18.1', 'sympy==1.14.0', 'pandas==3.1.1'];
@@ -57,14 +57,13 @@ export async function detectPython({
 
 // Model-written code: no network, empty home, only the read-only system folders, app data hidden, only the workspace writable.
 export function pythonSandbox(workspace, python, dataDir) {
-    const runtime = pythonRuntime(python),
-        venv = pythonEnv(python);
+    const venv = pythonEnv(python);
     return [
     ...systemBinds(),
     '--tmpfs', homedir(),
     '--tmpfs', dataDir,
     '--tmpfs', '/tmp',
-    '--ro-bind', runtime, runtime,
+    ...runtimeBinds(python),
     '--ro-bind', venv, venv,
     '--bind', workspace, workspace,
     '--chdir', workspace,

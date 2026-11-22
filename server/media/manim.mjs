@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { basename, delimiter, dirname, join } from 'node:path';
+import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
+import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const MANIM_VERSION = '0.22.1';
@@ -43,6 +43,22 @@ export function pythonRuntime(python, platform = process.platform) {
     return existsSync(cfg)
         ? /^home\s*=\s*(.+?)\s*$/m.exec(readFileSync(cfg, 'utf8'))[1]
         : pythonEnv(python);
+}
+
+// The sandbox mounts that let a Python read its runtime. uv links a venv's python through a folder link named after
+// the minor version (cpython-3.12-… to cpython-3.12.16-…), so each folder on the link chain reappears as a link.
+export function runtimeBinds(python, platform = process.platform) {
+    const runtime = pythonRuntime(python, platform);
+    const binds = ['--ro-bind', runtime, runtime];
+    if (platform === 'win32') return binds;
+    for (let file = python; lstatSync(file).isSymbolicLink();) {
+        file = resolve(dirname(file), readlinkSync(file));
+        const dir = dirname(dirname(file));
+        // Only a folder that is another name for the runtime, never the venv's own bin links.
+        if (!binds.includes(dir) && realpathSync(dir) === runtime)
+            binds.push('--symlink', runtime, dir);
+    }
+    return binds;
 }
 
 // Remotion's headless browser, where its ensureBrowser puts it for this OS.
