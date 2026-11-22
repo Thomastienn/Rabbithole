@@ -276,7 +276,12 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
     } catch (error) {
         turn.fail(error);
     } finally {
-        turn.finish();
+        try {
+            turn.finish();
+        } finally {
+            // A finish that throws emits no 'done'.
+            clearInterval(heartbeat);
+        }
     }
     return true;
 }
