@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -46,15 +46,22 @@ export default function FocusedChat(props: {
     modelMenu: React.ReactNode;
 }) {
     const { tree, c, model, trees, stream, actions, active, modelMenu } = props;
-    const { state, addresses, overview, reveal, drafts, setDrafts, renaming, setRenaming } = c;
-    const { expanded, toggleExpanded, returnToTree, statsOpen, setStatsOpen, statsPanel } = c;
+    const { overview, reveal, drafts, setDrafts, renaming, setRenaming } = c;
+    const { expanded, toggleExpanded, statsOpen, setStatsOpen, statsPanel } = c;
     const { mobile, transitionBox, composer, setMessageTarget, pendingFiles, setPendingFiles } = c;
     const files = pendingFiles[tree.id] ?? [];
     const setFiles = (next: File[]) => setPendingFiles((p) => ({ ...p, [tree.id]: next }));
     const { modelNotice, unavailableSelection, codexFallback, modelError, models, loadModels } =
         model;
     const attach = useAttach(files, setFiles, active || (!!models && !models.length));
-    const { openConversation } = trees;
+    const { openConversation, state, addresses, returnToTree } = trees;
+    useEffect(() => {
+        if (!statsOpen) return;
+        const frame = requestAnimationFrame(() =>
+            statsPanel.current?.scrollIntoView({ block: 'nearest' }),
+        );
+        return () => cancelAnimationFrame(frame);
+    }, [statsOpen, tree.id]);
     const { send } = stream;
     const { rename, finishRename } = actions;
     const ancestors: Summary[] = [];

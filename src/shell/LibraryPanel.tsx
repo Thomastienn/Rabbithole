@@ -20,7 +20,7 @@ import type { TreeActions } from '../chat/useTreeActions';
 // The Library tab: every learning tree as shelf volumes or a list, with search.
 export default function LibraryPanel({
     c,
-    trees: { openTree },
+    trees: { openTree, state },
     actions: { newChat, rename, finishRename, askDelete },
     firstQuestion,
 }: {
@@ -29,7 +29,7 @@ export default function LibraryPanel({
     actions: TreeActions;
     firstQuestion: React.ReactNode;
 }) {
-    const { tab, busy, error, state, root, renaming, setRenaming, today } = c;
+    const { tab, busy, error, root, renaming, setRenaming, today } = c;
     const [libraryQuery, setLibraryQuery] = useState('');
     const scrollQuiet = useRef<ReturnType<typeof setTimeout>>(undefined);
     const [libraryLayout, setLibraryLayout] = useState(savedLibraryLayout);

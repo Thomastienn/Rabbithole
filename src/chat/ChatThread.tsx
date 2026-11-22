@@ -28,7 +28,7 @@ export default function ChatThread({
     tree,
     c,
     model: { modelLabel },
-    trees: { openConversation },
+    trees: { openConversation, addresses, state },
     stream: { send, replyDiscussion },
     branchForm,
     actions: { videoAction },
@@ -47,8 +47,7 @@ export default function ChatThread({
     source?: Source;
     validSource?: boolean;
 }) {
-    const { overview, addresses, state, branch, setBranch, selectingMessage, setSelectingMessage } =
-        c;
+    const { overview, branch, setBranch, selectingMessage, setSelectingMessage } = c;
     const { branching, submitBranch, closeBranch, openVisualPart, visualBranches, widenPart } =
         branchForm;
     const { discussionBranches, groundworkBranches, chooseGroundwork, explainBrief } = branchForm;

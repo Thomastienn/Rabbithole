@@ -1,34 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { ChatComposerInputHandle } from '@astryxdesign/core/Chat';
-import type { Preview, Source } from '../map/TreeOverview';
+import type { Source } from '../map/TreeOverview';
 import type { Turn } from './turn';
 import type { BranchState } from './branch';
-import type { State, Tree } from './types';
-import { conversationAddresses, subtreeIds } from '../map/treeList';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
-import { setCsrf } from '../serverAccess';
 
-// State and refs shared by the ChatPage hooks and regions; each hook takes this object.
+// View state and refs shared by the ChatPage hooks and regions; learning tree data lives in useLearningTrees.
 export function useChatState() {
-    const [state, setState] = useState<State>();
-    setCsrf(state?.csrf ?? '');
-    const [tree, setTree] = useState<Tree>();
-    const addresses = useMemo(() => conversationAddresses(state?.trees ?? []), [state?.trees]);
-    const [previews, setPreviews] = useState<Record<string, Preview>>({});
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     // Pending composer files, keyed like drafts: a conversation id, or 'first' for the first question.
     const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
-    const [loading, setLoading] = useState(false);
     const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 48rem)').matches);
     const [today, setToday] = useState(() => new Date());
     const [tab, setTab] = useState('learning');
     const [drawer, setDrawer] = useState(false);
     const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'library' }>();
-    const removed = useRef(new Set<string>());
-    const renamed = useRef(new Map<string, string>());
     const streams = useRef(new Map<string, AbortController>());
     const [mapWidth, setMapWidth] = useState(() => {
         try {
@@ -56,13 +45,6 @@ export function useChatState() {
     const [expanded, setExpanded] = useState(false);
     const [statsOpen, setStatsOpen] = useState(false);
     const statsPanel = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (!statsOpen) return;
-        const frame = requestAnimationFrame(() =>
-            statsPanel.current?.scrollIntoView({ block: 'nearest' }),
-        );
-        return () => cancelAnimationFrame(frame);
-    }, [statsOpen, tree?.id]);
     const [folds, setFolds] = useState<{ root: string; ids: string[] }>();
     // Conversations marked after arriving from a ghost tree on map `from`.
     const [ghostMarks, setGhostMarks] = useState<{ root: string; from: string; ids: string[] }>();
@@ -77,10 +59,7 @@ export function useChatState() {
     const branchOrigin = useRef<React.RefObject<HTMLElement | null>>(undefined);
     const composer = useRef<ChatComposerInputHandle>(null);
     const focusComposer = useRef(false);
-    const selected = useRef<string | undefined>(undefined);
-    const request = useRef(0);
     const turns = useRef(new Map<string, Turn>());
-    const checkpoints = useRef(0);
     useEffect(() => {
         const media = window.matchMedia('(max-width: 48rem)');
         const resize = () => {
@@ -97,21 +76,6 @@ export function useChatState() {
         return () => clearTimeout(timer);
     }, [today]);
 
-    const trees = state?.trees;
-    const visibleIds = useMemo(() => (root && trees ? subtreeIds(root, trees) : []), [root, trees]);
-    function changeView(showOverview: boolean, id?: string) {
-        // Snapshotting thousands of preview rows stalls large maps; their viewport still animates.
-        if (
-            visibleIds.length > 50 ||
-            !document.startViewTransition ||
-            window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        ) {
-            setOverview(showOverview);
-            return;
-        }
-        flushSync(() => setTransitionBox(id));
-        document.startViewTransition(() => flushSync(() => setOverview(showOverview)));
-    }
     // Map stays mounted while hidden, so its pan and zoom are intact when it returns.
     function toggleExpanded() {
         const panel = document.querySelector<HTMLElement>('.focused-chat');
@@ -130,22 +94,7 @@ export function useChatState() {
                 panel.style.viewTransitionName = '';
             });
     }
-    function returnToTree() {
-        setExpanded(false);
-        // Chats reached by branching have no map origin; return focus to their own box.
-        if (!overviewOrigin.current && tree)
-            overviewOrigin.current = { id: tree.id, control: `open-${tree.id}` };
-        changeView(true, overviewOrigin.current?.id);
-    }
-
     return {
-        state,
-        setState,
-        tree,
-        setTree,
-        addresses,
-        previews,
-        setPreviews,
         drafts,
         setDrafts,
         pendingFiles,
@@ -154,8 +103,6 @@ export function useChatState() {
         setError,
         busy,
         setBusy,
-        loading,
-        setLoading,
         mobile,
         today,
         tab,
@@ -164,8 +111,6 @@ export function useChatState() {
         setDrawer,
         renaming,
         setRenaming,
-        removed,
-        renamed,
         streams,
         setMapWidth,
         workspaceWidth,
@@ -185,6 +130,7 @@ export function useChatState() {
         ghostMarks,
         setGhostMarks,
         transitionBox,
+        setTransitionBox,
         overviewOrigin,
         reveal,
         setReveal,
@@ -199,14 +145,8 @@ export function useChatState() {
         branchOrigin,
         composer,
         focusComposer,
-        selected,
-        request,
         turns,
-        checkpoints,
-        visibleIds,
-        changeView,
         toggleExpanded,
-        returnToTree,
     };
 }
 

@@ -11,7 +11,7 @@ async function waiting(t, intercept) {
     const page = await mount(t, intercept);
     const streaming = (status) =>
         page.act(async () =>
-            page.current.c.setTree((tree) => ({ ...tree, messages: [reply(status)] })),
+            page.current.trees.setTree((tree) => ({ ...tree, messages: [reply(status)] })),
         );
     await streaming('streaming');
     await page.act(async () => page.current.branch.startBranch('a', anchor, { current: null }));
@@ -48,7 +48,7 @@ test('a question sent while the reply streams creates its branch once the reply 
         ...anchor,
         question: 'Why?',
     });
-    assert.equal(page.current.c.tree.id, 'child');
+    assert.equal(page.current.trees.tree.id, 'child');
     assert.equal(page.current.c.branch, undefined);
     await page.act(async () => controller.close());
 });

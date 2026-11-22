@@ -14,7 +14,6 @@ import type { Appearance, ThemeChoice } from './appearance';
 import type { MapActions } from '../map/TreeOverview';
 import MapMenu from '../map/MapMenu';
 import MapView from '../map/MapView';
-import { useLayoutSaving } from '../map/useLayoutSaving';
 import KnowledgePage from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
 import PieceLibrary from '../media/PieceLibrary';
@@ -45,9 +44,8 @@ export default function ChatPage({
 }) {
     const { mode } = useTheme();
     const c = useChatState();
-    const { state, tree, error, setError, busy, loading, mobile, tab, setTab, drawer, setDrawer } =
-        c;
-    const { root, overview, expanded, selected, focusComposer, changeView, returnToTree } = c;
+    const { error, setError, busy, mobile, tab, setTab, drawer, setDrawer } = c;
+    const { root, overview, expanded, focusComposer } = c;
     const [settings, setSettings] = useState<SettingsRequest>();
     const settingsOpener = useRef<HTMLElement | null>(null),
         settingsFrom = useRef('learning');
@@ -55,18 +53,20 @@ export default function ChatPage({
     const searchFromDrawer = useRef(false);
     // Only this boolean is stored, per browser and app origin; unreadable storage means off.
     const [vim, setVim] = useState(savedVim);
-    const layout = useLayoutSaving(c);
-    const trees = useLearningTrees(c, layout);
-    const model = useChatModel(c);
-    useChatTargets(c);
+    const trees = useLearningTrees(c);
+    const { state, tree, loading, layout, changeView, returnToTree } = trees;
+    const model = useChatModel(c, trees);
+    useChatTargets(c, tree);
     const stream = useReplyStream(c, trees, model, { name: theme, mode });
-    const actions = useTreeActions(c, layout, trees, model, stream);
+    const actions = useTreeActions(c, trees, model, stream);
     const branchForm = useBranchForm(c, trees, model, stream);
-    const { visibleIds, addresses, previews, drafts, setDrafts, shownMapWidth, workspace } = c;
+    const { visibleIds, addresses, previews } = trees;
+    const { drafts, setDrafts, shownMapWidth, workspace } = c;
     const { pendingFiles, setPendingFiles } = c;
     const visibleSet = new Set(visibleIds);
     const { branch } = c;
     const { openTree, openConversation, loadInitial, select, titleSearch, activeKey } = trees;
+    const opened = trees.openId();
     const { models, providers, modelError, loadModels, signIn, currentModel } = model;
     const { cancelDelete } = actions;
     const { newChat, create, askDelete } = actions;
@@ -322,9 +322,9 @@ export default function ChatPage({
                                                     />
                                                 ) : loading || !state ? (
                                                     <TreeLoading />
-                                                ) : selected.current ? (
+                                                ) : opened ? (
                                                     <TreeLoadFailure
-                                                        retry={() => void select(selected.current!)}
+                                                        retry={() => void select(opened)}
                                                     />
                                                 ) : state.firstRun ? (
                                                     <FirstRunSetup
@@ -335,7 +335,7 @@ export default function ChatPage({
                                                         loadModels={() => void loadModels()}
                                                         signIn={signIn}
                                                         done={(chat) => {
-                                                            c.setState(
+                                                            trees.setState(
                                                                 (s) =>
                                                                     s && { ...s, firstRun: false },
                                                             );

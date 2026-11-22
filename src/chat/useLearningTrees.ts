@@ -1,19 +1,97 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { Summary, Source, Preview } from '../map/TreeOverview';
 import { restoredTree } from '../map/mapState';
 import type { GhostTree } from '../map/ghostTrees';
+import { conversationAddresses, subtreeIds } from '../map/treeList';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
 import { treeSearchSource } from '../shell/treeSearchSource';
 import { withTurn } from './turn';
 import type { State, Tree } from './types';
 import type { ChatState } from './useChatState';
-import { request as api } from '../serverAccess';
-import type { LayoutSaving } from '../map/useLayoutSaving';
+import { request as api, setCsrf } from '../serverAccess';
+import { useLayoutSaving } from '../map/useLayoutSaving';
 
-// Learning tree loading: state refresh, map previews, conversation selection and status polling.
-export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
-    const { state, setState, setTree, setPreviews, setDrafts, setError, setLoading } = c;
-    const { selected, request, checkpoints, turns, removed, renamed, overviewOrigin } = c;
+type TreeUpdate = Tree | undefined | ((t: Tree | undefined) => Tree | undefined);
+
+// Learning tree data and loading: app state, the open conversation, map previews, conversation
+// selection, status polling, and the counters that tell whether a server answer is still current.
+export function useLearningTrees(c: ChatState) {
+    const { setDrafts, setError, turns, overviewOrigin } = c;
+    const [state, setState] = useState<State>();
+    setCsrf(state?.csrf ?? '');
+    const [tree, setTree] = useState<Tree>();
+    const addresses = useMemo(() => conversationAddresses(state?.trees ?? []), [state?.trees]);
+    const [previews, setPreviews] = useState<Record<string, Preview>>({});
+    const [loading, setLoading] = useState(false);
+    const removed = useRef(new Set<string>());
+    const renamed = useRef(new Map<string, string>());
+    // The open conversation, a request number bumped on every open or leave, and a checkpoint
+    // number bumped on every local change; only the functions below touch them.
+    const selected = useRef<string | undefined>(undefined);
+    const request = useRef(0);
+    const checkpoints = useRef(0);
+    const layout = useLayoutSaving(c, { state, setState, tree });
+
+    // The one stale-answer check: an answer for `id` started now stays current while `id` is still
+    // open and no newer request started; `unchanged` also drops it once a local change landed.
+    function since(id: string) {
+        const version = request.current,
+            checkpoint = checkpoints.current;
+        return (unchanged = false) =>
+            selected.current === id &&
+            request.current === version &&
+            (!unchanged || checkpoints.current === checkpoint);
+    }
+    // Reloads conversation `id` and hands it to `apply` only while that answer is current.
+    async function reload(id: string | undefined, apply: (next: Tree) => void, unchanged = false) {
+        if (!id) return;
+        const current = since(id);
+        const next: Tree = await api(`/api/trees/${id}`);
+        if (current(unchanged)) apply(next);
+    }
+    // A local change to a learning tree: answers started before it that ask for `unchanged` drop.
+    function change(update?: TreeUpdate) {
+        ++checkpoints.current;
+        if (update) setTree(update);
+    }
+    // Shows a conversation the caller already has, as if it were selected and loaded.
+    function show(next: Tree) {
+        selected.current = next.id;
+        ++request.current;
+        setTree(next);
+        setLoading(false);
+    }
+    // Leaves the open conversation: nothing is selected and answers still on the way drop.
+    function leave() {
+        ++request.current;
+        selected.current = undefined;
+        setTree(undefined);
+        c.setRoot(undefined);
+        setLoading(false);
+    }
+    const openId = () => selected.current;
+    // `local` marks a rename by the learner, which wins over titles that later refreshes bring.
+    function retitle(id: string, title: string, local = false) {
+        if (local) {
+            renamed.current.set(id, title);
+            change();
+        }
+        title = renamed.current.get(id) ?? title;
+        setTree((t) => (t?.id === id ? { ...t, title } : t));
+        setState(
+            (s) => s && { ...s, trees: s.trees.map((t) => (t.id === id ? { ...t, title } : t)) },
+        );
+    }
+    // Deleted conversations stay out of every later refresh.
+    function forget(ids: Set<string>) {
+        for (const id of ids) {
+            removed.current.add(id);
+            renamed.current.delete(id);
+        }
+        change();
+    }
+    const isRemoved = (id: string) => removed.current.has(id);
 
     async function refresh() {
         const data: State = await api('/api/state');
@@ -45,7 +123,10 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
         });
         return data;
     }
-    const previewKey = JSON.stringify(c.visibleIds);
+    const trees = state?.trees,
+        root = c.root;
+    const visibleIds = useMemo(() => (root && trees ? subtreeIds(root, trees) : []), [root, trees]);
+    const previewKey = JSON.stringify(visibleIds);
     // Running video jobs and suggestion calls poll like replies until they settle.
     const activeKey = [
         ...(state?.active ?? []),
@@ -84,24 +165,23 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
     }, [previewKey, activeKey]);
     async function select(id: string) {
         selected.current = id;
-        const version = ++request.current;
-        const checkpoint = checkpoints.current;
+        ++request.current;
+        const current = since(id);
         setError('');
         setTree(undefined);
         setLoading(true);
         try {
             let next: Tree = await api(`/api/trees/${id}`);
-            if (request.current === version && checkpoints.current !== checkpoint)
-                next = await api(`/api/trees/${id}`);
-            if (request.current === version) {
+            if (current() && !current(true)) next = await api(`/api/trees/${id}`);
+            if (current()) {
                 setTree(withTurn(next, turns.current.get(id)));
                 if (next.branch && !next.messages.length)
                     setDrafts((d) => ({ ...d, [id]: d[id] ?? next.branch!.question }));
             }
         } catch (e) {
-            if (request.current === version) setError((e as Error).message);
+            if (current()) setError((e as Error).message);
         } finally {
-            if (request.current === version) setLoading(false);
+            if (current()) setLoading(false);
         }
     }
     function loadInitial() {
@@ -115,6 +195,26 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
     }
     useEffect(loadInitial, []);
     const titleSearch = useMemo(() => treeSearchSource(setError), []);
+    function changeView(showOverview: boolean, id?: string) {
+        // Snapshotting thousands of preview rows stalls large maps; their viewport still animates.
+        if (
+            visibleIds.length > 50 ||
+            !document.startViewTransition ||
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ) {
+            c.setOverview(showOverview);
+            return;
+        }
+        flushSync(() => c.setTransitionBox(id));
+        document.startViewTransition(() => flushSync(() => c.setOverview(showOverview)));
+    }
+    function returnToTree() {
+        c.setExpanded(false);
+        // Chats reached by branching have no map origin; return focus to their own box.
+        if (!overviewOrigin.current && tree)
+            overviewOrigin.current = { id: tree.id, control: `open-${tree.id}` };
+        changeView(true, overviewOrigin.current?.id);
+    }
     async function openConversation(
         id: string,
         source?: Source,
@@ -133,7 +233,7 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
         c.setMessageTarget(message ? { conversation: id, message } : undefined);
         c.focusComposer.current = !source && !artifact && !message;
         await select(id);
-        if (selected.current === id) c.changeView(false, overviewOrigin.current?.id ?? id);
+        if (selected.current === id) changeView(false, overviewOrigin.current?.id ?? id);
     }
     // A message match opens its own conversation in chat; otherwise the tree reopens as saved.
     function openTree(id: string, trees = state?.trees ?? [], focus?: string, read = false) {
@@ -155,9 +255,29 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
         if (!c.overview || c.root !== c.ghostMarks?.root) c.setGhostMarks(undefined);
     }, [c.overview, c.root]);
     return {
+        state,
+        setState,
+        tree,
+        setTree,
+        addresses,
+        previews,
+        setPreviews,
+        loading,
+        visibleIds,
+        layout,
+        openId,
+        reload,
+        change,
+        show,
+        leave,
+        retitle,
+        forget,
+        isRemoved,
         refresh,
         select,
         loadInitial,
+        changeView,
+        returnToTree,
         openConversation,
         openTree,
         openGhost,
