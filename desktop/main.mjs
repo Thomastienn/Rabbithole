@@ -3,8 +3,9 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, nativeTheme, shell } from 'electron';
-import { navigation, saveLayout, serverUrl, startError } from './shell.mjs';
+import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron';
+import electronUpdater from 'electron-updater';
+import { navigation, saveLayout, serverUrl, startError, updateState } from './shell.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The staged resources (scripts/desktop-stage.mjs), run in place: the AppImage mount is read-only and nothing is copied.
@@ -16,6 +17,54 @@ let server,
 
 const running = () =>
     server?.pid !== undefined && server.exitCode === null && server.signalCode === null;
+
+// SIGTERM lets the server stop jobs, close the database and release its data-folder lock.
+function stopServer() {
+    return new Promise((done) => {
+        if (!running()) return done();
+        server.once('close', done);
+        // shortcut: Windows has no SIGTERM, so kill() ends the server at once and its lock goes stale after 10 s; add a stop request if reopening quickly matters.
+        server.kill('SIGTERM');
+        setTimeout(() => server.kill('SIGKILL'), 10000).unref();
+    });
+}
+
+// Checks published releases once; nothing downloads until the page asks, and nothing installs on quit.
+function offerUpdates(window, restart) {
+    const { autoUpdater } = electronUpdater;
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
+    let update = null;
+    const set = (event) => {
+        update = updateState(update, event);
+        if (!window.isDestroyed()) window.webContents.send('update', update);
+    };
+    autoUpdater.on('update-available', ({ version }) =>
+        set({ type: 'available', version, current: app.getVersion() }),
+    );
+    autoUpdater.on('download-progress', (progress) => set({ type: 'progress', ...progress }));
+    autoUpdater.on('update-downloaded', () => set({ type: 'downloaded' }));
+    autoUpdater.on('error', (error) => {
+        // A failed install does not quit, and the server is already stopped: close, so the old version opens again.
+        if (update?.stage === 'restarting') return app.quit();
+        set({ type: 'error', message: error?.message });
+    });
+    ipcMain.handle('update', async (event, action) => {
+        if (!event.senderFrame?.url.startsWith(`${origin}/`)) return null;
+        if (action === 'install' && ['available', 'failed'].includes(update?.stage)) {
+            set({ type: 'install' });
+            // A failed download also emits 'error', which the banner shows.
+            autoUpdater.downloadUpdate().catch(() => {});
+        } else if (action === 'restart' && update?.stage === 'ready') {
+            set({ type: 'restart' });
+            await restart();
+            autoUpdater.quitAndInstall();
+        }
+        return update;
+    });
+    // A failed check (offline, no published release) also emits 'error', which leaves the banner hidden.
+    autoUpdater.checkForUpdates().catch(() => {});
+}
 
 function showError(window, message) {
     if (window.isDestroyed()) return;
@@ -77,7 +126,12 @@ app.whenReady().then(() => {
         autoHideMenuBar: true,
         // starting.html's --bg, so the window does not flash white before the page paints.
         backgroundColor: nativeTheme.shouldUseDarkColors ? '#14171d' : '#f6f8fa',
-        webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
+            preload: join(here, 'preload.cjs'),
+        },
     });
     const guard = (event) => {
         if (!event.isMainFrame) return;
@@ -110,19 +164,21 @@ app.whenReady().then(() => {
     // Loading the server's address aborts this page's load; the error only matters for showError's wait.
     const loaded = window.loadFile(join(here, 'starting.html')).catch(() => {});
     startServer(window, loaded);
+    // Restart saves the layout and stops the server first, so the new version finds the data folder free.
+    offerUpdates(window, async () => {
+        await saveLayout((code) => window.webContents.executeJavaScript(code));
+        saved = true;
+        await stopServer();
+    });
 });
 
 app.on('window-all-closed', () => app.quit());
 
-// SIGTERM lets the server stop jobs, close the database and release its data-folder lock.
 app.on('before-quit', (event) => {
     if (!running()) return;
     event.preventDefault();
     // A menu quit or Cmd+Q closes the window first so its page saves; window-all-closed then quits again.
     const open = BrowserWindow.getAllWindows();
     if (open.length) return open.forEach((w) => w.close());
-    server.once('close', () => app.quit());
-    // shortcut: Windows has no SIGTERM, so kill() ends the server at once and its lock goes stale after 10 s; add a stop request if reopening quickly matters.
-    server.kill('SIGTERM');
-    setTimeout(() => server.kill('SIGKILL'), 10000).unref();
+    void stopServer().then(() => app.quit());
 });

@@ -28,6 +28,7 @@ import {
 import { savedFocusMode, savePreference } from './preferences';
 import { Logo } from './Logo';
 import Downloads from './Downloads';
+import UpdateBanner, { useDesktopUpdate } from './UpdateBanner';
 
 export const viewTab = (
     label: string,
@@ -93,6 +94,7 @@ export default function ShellBand({
 }) {
     const [focusMode, setFocusMode] = useState(savedFocusMode);
     const [revealed, setRevealed] = useState(false);
+    const [update, act] = useDesktopUpdate();
     const focusToggle = useRef<HTMLButtonElement>(null);
     const toggleFocusMode = useCallback(() => {
         const restoreFocus = document.activeElement === focusToggle.current;
@@ -190,6 +192,16 @@ export default function ShellBand({
                   } as object,
               )
             : node;
+    // The rail has no room for the card; a dot on Settings marks the update.
+    const marked = rail && update;
+    const settingsTab = item(
+        viewTab(
+            marked ? `Settings. Rabbithole ${marked.version} is available` : 'Settings',
+            <Cog6ToothIcon />,
+            tab === 'settings',
+            settings,
+        ),
+    );
     // Narrow screens: a hot zone along the top edge; the restore button stays in the tab order but shows only on hover or focus.
     // The save alert stays mounted outside it so its alert role is still announced while hidden.
     if (focusMode && mobile)
@@ -280,8 +292,9 @@ export default function ShellBand({
             </VStack>
             {!rail && contents}
             <div className="sidebar-foot">
+                {!rail && update && <UpdateBanner update={update} act={act} />}
                 <Downloads rail={rail} />
-                {item(viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings))}
+                {marked ? <span className="update-dot">{settingsTab}</span> : settingsTab}
             </div>
         </nav>
     );
