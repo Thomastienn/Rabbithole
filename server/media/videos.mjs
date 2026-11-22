@@ -144,21 +144,25 @@ export async function generateVideo({
     const wait = (promise, budget, message) => raced(controller, promise, budget, message);
     // Calls stop only when the model stalls (the providers' idle limit); this guards against a runaway loop.
     const deadline = Date.now() + (timeout ?? 7200000);
+    // stage: plan, pieces, improve, audit, repair, fix or cut, for the usage meter, with the cut it serves.
     // tools: { tools, mcp, runTool, textTools } for a call that reports through tool calls.
-    const caller = (base, choice, capable) => (instructions, input, onText, images, cut, tools) =>
-        wait(
-            mediaCall(base, choice, VIDEO_CALL, {
-                instructions,
-                input,
-                signal: controller.signal,
-                onText,
-                images,
-                cut,
-                tools: tools && { ...tools, capable, reportsByTools: true },
-            }),
-            Math.max(1, deadline - Date.now()),
-            OVERRUN,
-        );
+    const caller =
+        (base, choice, capable) =>
+        (instructions, input, { stage, cut, onText, images, tools }) =>
+            wait(
+                mediaCall(base, choice, VIDEO_CALL, {
+                    instructions,
+                    input,
+                    signal: controller.signal,
+                    onText,
+                    images,
+                    stage,
+                    cut,
+                    tools: tools && { ...tools, capable, reportsByTools: true },
+                }),
+                Math.max(1, deadline - Date.now()),
+                OVERRUN,
+            );
     const call = caller(provider, selection, capable),
         write = caller(chat.provider, chat.selection, writerCapable);
     let published = false,
@@ -203,18 +207,19 @@ export async function generateVideo({
                         : '') +
                     note,
                 artifact.input,
-                (bytes) => onPhase('planning', undefined, { characters: bytes }),
-                undefined,
-                undefined,
                 {
-                    tools: builder.tools,
-                    textTools: builder.textTools,
-                    mcp,
-                    runTool: (name, input) => {
-                        const result = builder.run(name, input);
-                        characters += JSON.stringify(input).length;
-                        onPhase('planning', undefined, { characters });
-                        return result;
+                    stage: 'plan',
+                    onText: (bytes) => onPhase('planning', undefined, { characters: bytes }),
+                    tools: {
+                        tools: builder.tools,
+                        textTools: builder.textTools,
+                        mcp,
+                        runTool: (name, input) => {
+                            const result = builder.run(name, input);
+                            characters += JSON.stringify(input).length;
+                            onPhase('planning', undefined, { characters });
+                            return result;
+                        },
                     },
                 },
             );

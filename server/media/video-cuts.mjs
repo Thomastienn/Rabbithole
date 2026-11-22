@@ -244,19 +244,18 @@ export async function writeCuts({
                     ...task(index),
                     ...(error && { validationError: error.message, previousLastFrame: !!previous }),
                 };
-                const call = (note, text) =>
-                    write(
-                        writerInstructions(index) + (submit ? SUBMIT_NOTE : '') + note,
-                        text,
-                        undefined,
-                        previous ? [previous] : undefined,
-                        index + 1,
-                        submit,
-                    );
+                const call = (stage, note, text) =>
+                    write(writerInstructions(index) + (submit ? SUBMIT_NOTE : '') + note, text, {
+                        stage,
+                        cut: index + 1,
+                        images: previous ? [previous] : undefined,
+                        tools: submit,
+                    });
                 // A repair of failed code answers a patch; when it does not apply, one whole-source call within this attempt.
                 // A writer that submitted through submit_cut is settled by its submissions.
                 if (error && failed) {
                     const answer = await call(
+                        'repair',
                         REPAIR_PATCH_NOTE,
                         withSource(input, 'failedCode', failed),
                     );
@@ -266,6 +265,7 @@ export async function writeCuts({
                             : '';
                 }
                 raw ??= await call(
+                    error ? 'repair' : 'cut',
                     error ? REPAIR_NOTE : '',
                     JSON.stringify({ ...input, ...(error && failed && { failedCode: failed }) }),
                 );
@@ -380,10 +380,17 @@ export async function writeCuts({
                         snapshots: own.length - 1,
                         ...(photos.length && { referencePhotos: photos.map((r) => r.name) }),
                     }),
-                    undefined,
-                    [...own, ...(previous ? [previous] : []), ...photos.map(photo)],
-                    index + 1,
-                    { tools: report.tools, textTools: report.textTools, mcp, runTool: report.run },
+                    {
+                        stage: 'audit',
+                        cut: index + 1,
+                        images: [...own, ...(previous ? [previous] : []), ...photos.map(photo)],
+                        tools: {
+                            tools: report.tools,
+                            textTools: report.textTools,
+                            mcp,
+                            runTool: report.run,
+                        },
+                    },
                 );
                 report.read(answer);
                 // The video keeps the pieces it started with; a flagged piece is improved in the library alongside.
@@ -402,9 +409,11 @@ export async function writeCuts({
                     const answer = await write(
                         writerInstructions(index) + FIX_NOTE,
                         withSource({ ...rest, issues }, 'code', code),
-                        undefined,
-                        previous ? [previous] : undefined,
-                        index + 1,
+                        {
+                            stage: 'fix',
+                            cut: index + 1,
+                            images: previous ? [previous] : undefined,
+                        },
                     );
                     try {
                         Object.assign(

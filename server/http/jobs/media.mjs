@@ -8,15 +8,6 @@ import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
 import { exportVideo } from '../../media/video-export.mjs';
 import { sandboxMissing } from '../../media/video-sandbox.mjs';
-import {
-    PIECES_INSTRUCTIONS,
-    AUDIT_INSTRUCTIONS,
-    REPAIR_NOTE,
-    REPAIR_PATCH_NOTE,
-    FIX_NOTE,
-    PIECE_IMPROVE_INSTRUCTIONS,
-} from '../../media/video-cut.mjs';
-import { MANIM_AUDIT_INSTRUCTIONS } from '../../media/manim-cut.mjs';
 
 export const STOPPED = new Error('Rabbithole stopped.');
 const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
@@ -153,24 +144,8 @@ export function mediaJobs(ctx) {
                 const meter = (base, choice) => ({
                     generate: (...args) =>
                         metered(base, 'video', `${job.attempt}:${randomUUID()}`, choice, {
-                            stage: args[0].instructions.startsWith('You plan')
-                                ? 'plan'
-                                : args[0].instructions.startsWith(PIECES_INSTRUCTIONS)
-                                  ? 'pieces'
-                                  : args[0].instructions.startsWith(PIECE_IMPROVE_INSTRUCTIONS)
-                                    ? 'improve'
-                                    : [AUDIT_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS].some((i) =>
-                                            args[0].instructions.startsWith(i),
-                                        )
-                                      ? 'audit'
-                                      : [REPAIR_NOTE, REPAIR_PATCH_NOTE].some((n) =>
-                                              args[0].instructions.endsWith(n),
-                                          )
-                                        ? 'repair'
-                                        : args[0].instructions.endsWith(FIX_NOTE)
-                                          ? 'fix'
-                                          : 'cut',
-                            ...(args[5] && { cut: args[5] }),
+                            stage: args[0].stage,
+                            ...(args[0].cut && { cut: args[0].cut }),
                             message: job.message,
                         }).generate(...args),
                 });
