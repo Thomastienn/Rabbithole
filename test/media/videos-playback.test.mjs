@@ -5,7 +5,8 @@ import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { SANDBOX, mediaPath } from '../../server/media/videos.mjs';
+import { mediaPath } from '../../server/media/videos.mjs';
+import { SANDBOX } from '../../server/media/video-sandbox.mjs';
 import {
     task,
     directive,

@@ -10,7 +10,6 @@ import { writeCuts, playable, cutRows } from './video-cuts.mjs';
 import { videoCall } from './video-call.mjs';
 import { planBuilder } from './plan-calls.mjs';
 
-export { playable };
 import { improvePiece } from './video-pieces.mjs';
 import { sandboxProcess, sandboxOutput, REPO } from './video-sandbox.mjs';
 import { detectManim, videoBrowser } from './manim.mjs';
@@ -27,8 +26,6 @@ export const asksForVideo = (text) =>
     /\b(?:make|create|generate|render|produce|show|give|want|need)\b[^.!?\n]{0,120}\b(?:video|animation|clip|movie)\b|\banimate\b|\b(?:video|animation|clip|movie)\s*,?\s+please\b/i.test(
         text,
     );
-
-export { SANDBOX } from './video-sandbox.mjs';
 
 export function sandboxRender(workspace, output, signal, onProgress = () => {}, timeout) {
     const budget =
