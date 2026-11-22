@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+# One release at a time: a second run waits, so two runs never race the pin or the tag.
+concurrency:
+  group: desktop-build
+
 jobs:
   linux:
     # The oldest supported runner, so the AppImage runs on older glibc.
@@ -107,36 +111,70 @@ jobs:
             desktop/dist/*-setup.exe.blockmap
             desktop/dist/latest.yml
           if-no-files-found: error
-      # npm start on Windows downloads this zip (SANDBOX_RELEASE in scripts/tools-setup.mjs); the log prints its SHA-256.
+      # npm start on Windows downloads this zip (SANDBOX_RELEASE in scripts/tools-setup.mjs); the release job re-pins it.
       - name: Zip the sandbox launcher for npm start
         shell: pwsh
         run: |
           $bins = 'rabbithole-sandbox', 'codex-command-runner', 'codex-windows-sandbox-setup' | ForEach-Object { "desktop/sandbox/target/release/$_.exe" }
           Compress-Archive -Path $bins -DestinationPath rabbithole-sandbox-windows-x64.zip
-          (Get-FileHash rabbithole-sandbox-windows-x64.zip -Algorithm SHA256).Hash.ToLower()
       - uses: actions/upload-artifact@v4
         with:
           name: windows-sandbox
           path: rabbithole-sandbox-windows-x64.zip
           if-no-files-found: error
 
+  # Runs only when both jobs pass, so a failed build publishes nothing and moves no pin.
   release:
     needs: [linux, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.${{ github.run_number }}
     steps:
+      # The commit the other jobs built, with history and tags to compare the sandbox against its pinned release.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
-          path: installers
+          path: ${{ runner.temp }}/installers
           merge-multiple: true
-      # A draft: the owner reviews and publishes it by hand; the updater only sees published releases.
       # The installers already carry the README's fixed names (desktop/package.json artifactName).
-      - name: Create draft release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "v1.0.${{ github.run_number }}" installers/*
-          --repo "${{ github.repository }}" --target "${{ github.sha }}" --draft
-          --title "Rabbithole 1.0.${{ github.run_number }}"
-          --notes "Unsigned AppImage and Windows installer from ${{ github.sha }}."
+      - name: Re-pin the sandbox and publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          pin=scripts/tools-setup.mjs
+          pinned=$(sed -n "/^export const SANDBOX_RELEASE/,/^};/s/^    tag: '\(.*\)',$/\1/p" "$pin")
+          # Every build hashes the zip differently, so the pin moves only when the sandbox source did; a missing tag counts as changed.
+          if git diff --quiet "$pinned" HEAD -- desktop/sandbox; then
+            echo "The sandbox is unchanged since $pinned; the pin stays."
+            moved=
+          else
+            sha=$(sha256sum "$RUNNER_TEMP/installers/rabbithole-sandbox-windows-x64.zip" | cut -d' ' -f1)
+            # Only the two pin values change, directly on the built commit, so the tag's source points at its own zip.
+            sed -i -e "/^export const SANDBOX_RELEASE/,/^};/{s/^    tag: '.*',$/    tag: '$TAG',/;s/^    sha256: '.*',$/    sha256: '$sha',/}" "$pin"
+            git diff --stat --exit-code -- "$pin" && { echo "The pin did not change."; exit 1; }
+            git commit -qm "chore: pin the Windows sandbox to $TAG" -- "$pin"
+            moved=$(git rev-parse HEAD)
+          fi
+          # The tag sits on the built commit or its pin commit, never on code this run did not build.
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
+          # A draft first: if any later step fails, nothing is published.
+          gh release create "$TAG" "$RUNNER_TEMP"/installers/* --repo "${{ github.repository }}" --verify-tag --draft \
+            --title "Rabbithole 1.0.${{ github.run_number }}" \
+            --notes "Unsigned AppImage and Windows installer from ${{ github.sha }}."
+          if [ -n "$moved" ]; then
+            # If master moved during the run, the same pin change lands on top of it as its own commit.
+            git push origin "$moved:refs/heads/master" || {
+              git fetch origin master
+              git checkout -q FETCH_HEAD
+              git cherry-pick "$moved"
+              git push origin HEAD:refs/heads/master
+            }
+          fi
+          # Latest, so the README download links and the update banner find it.
+          gh release edit "$TAG" --repo "${{ github.repository }}" --draft=false --latest
