@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -6,8 +6,9 @@ import ModelPicker from '../settings/ModelPicker';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
 import { Code } from '@astryxdesign/core/Code';
-import { CheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import SandboxSettings from '../settings/SandboxSettings';
+import FirstRunAddOns from './FirstRunAddOns';
 import type { Model } from '../settings/models';
 import type { ModelSelection, Providers } from '../chat/types';
 import { request as api } from '../serverAccess';
@@ -26,11 +27,20 @@ const INSTALL = {
     },
 };
 
-function Install({ cli, check }: { cli: keyof typeof INSTALL; check: () => void }) {
+function Install({
+    cli,
+    check,
+    optional,
+}: {
+    cli: keyof typeof INSTALL;
+    check: () => void;
+    optional: boolean;
+}) {
     const { name, page, command } = INSTALL[cli];
     return (
         <VStack gap={2}>
             <Text type="supporting">
+                {optional && 'Optional. '}
                 {name} is not installed. Install it from{' '}
                 <Link href={page} isExternalLink>
                     the official {name} setup page
@@ -38,7 +48,12 @@ function Install({ cli, check }: { cli: keyof typeof INSTALL; check: () => void 
                 or run <Code>{command}</Code> in a terminal, then check again.
             </Text>
             <HStack>
-                <Button label="Check again" variant="secondary" size="sm" onClick={check} />
+                <Button
+                    label="Check again"
+                    variant={optional ? 'ghost' : 'secondary'}
+                    size="sm"
+                    onClick={check}
+                />
             </HStack>
         </VStack>
     );
@@ -78,31 +93,20 @@ function VideoPackages() {
     );
 }
 
-// A connection's state beside its name: scarlet "Not found" when the CLI is missing, a tick when connected.
-function Connection({
-    name,
-    missing,
-    connected,
-}: {
-    name: string;
-    missing: boolean;
-    connected: boolean;
-}) {
+// A connection's state beside its name: a tick when connected, plain grey otherwise, since one provider is enough.
+function Connection({ name, connected }: { name: string; connected: boolean }) {
     return (
         <HStack gap={2} vAlign="center" wrap="wrap">
             <Heading level={3}>{name}</Heading>
-            {missing ? (
-                <span className="connection-status" data-state="missing">
-                    <ExclamationTriangleIcon aria-hidden />
-                    Not found
+            {connected ? (
+                <span className="connection-status">
+                    <CheckIcon aria-hidden />
+                    Connected
                 </span>
             ) : (
-                connected && (
-                    <span className="connection-status">
-                        <CheckIcon aria-hidden />
-                        Connected
-                    </span>
-                )
+                <span className="connection-status" data-state="off">
+                    Not set up
+                </span>
             )}
         </HStack>
     );
@@ -110,7 +114,7 @@ function Connection({
 
 const key = (m: Pick<Model, 'provider' | 'model'>) => `${m.provider}\n${m.model}`;
 
-// First-run setup: sign in through the existing flows, confirm a prefilled chat model, or leave it for later.
+// First-run setup: sign in and confirm a prefilled chat model, then offer the add-ons; "Set up later" skips both.
 export default function FirstRunSetup({
     models,
     providers,
@@ -130,7 +134,14 @@ export default function FirstRunSetup({
 }) {
     const [picked, setPicked] = useState<string>(),
         [pending, setPending] = useState(false),
-        [error, setError] = useState('');
+        [error, setError] = useState(''),
+        [step, setStep] = useState<1 | 2>(1);
+    const moved = useRef(false);
+    // Each step change moves focus to the new heading; the first render leaves focus alone.
+    useEffect(() => {
+        if (moved.current) document.getElementById('first-run-heading')?.focus();
+        moved.current = true;
+    }, [step]);
     const available = (models ?? []).filter((m) => providers?.[m.provider]?.connected);
     // Prefilled with the first signed-in provider's default model at its default effort.
     const chosen =
@@ -150,35 +161,65 @@ export default function FirstRunSetup({
             setPending(false);
         }
     }
-    const claude = providers?.claude?.connected;
+    const claude = !!providers?.claude?.connected,
+        codex = !!auth?.connected;
     const missing = (cli: string) => providers?.[cli]?.installed === false;
-    return (
-        <VStack className="first-run" gap={5} role="region" aria-labelledby="first-run-heading">
+    const region = (children: ReactNode) => (
+        <VStack
+            className="first-run"
+            data-step={step}
+            gap={5}
+            role="region"
+            aria-labelledby="first-run-heading"
+        >
+            {children}
+        </VStack>
+    );
+    if (step === 2)
+        return region(
+            <FirstRunAddOns
+                pending={pending}
+                back={() => setStep(1)}
+                leave={() =>
+                    void finish(
+                        chosen
+                            ? { provider: chosen.provider, model: chosen.model, effort: null }
+                            : null,
+                    )
+                }
+                error={error}
+            />,
+        );
+    return region(
+        <>
             <VStack gap={2}>
-                <Heading level={2} id="first-run-heading">
+                <Text type="supporting" className="first-run-step">
+                    Step 1 of 2
+                </Text>
+                <Heading level={2} id="first-run-heading" tabIndex={-1}>
                     Before your first question
                 </Heading>
                 <Text color="secondary">
-                    Sign in to Claude or Codex with your own plan, then confirm the model that
-                    answers you.
+                    Sign in to Claude or Codex. One is enough, and you can add the other later in
+                    Settings.
                 </Text>
             </VStack>
             <VStack gap={2}>
-                <Connection name="Claude" missing={missing('claude')} connected={!!claude} />
+                <Connection name="Claude" connected={claude} />
                 {missing('claude') ? (
-                    <Install cli="claude" check={loadModels} />
+                    <Install cli="claude" check={loadModels} optional={codex} />
                 ) : (
                     <>
                         <Text type="supporting">
                             {claude
                                 ? 'Signed in through Claude Code.'
-                                : 'Run claude in a terminal and sign in, then check again.'}
+                                : `${codex ? 'Optional. ' : ''}Run claude in a terminal and sign in, then check again.`}
                         </Text>
                         {!claude && (
                             <HStack>
                                 <Button
                                     label="Check again"
-                                    variant="secondary"
+                                    variant={codex ? 'ghost' : 'secondary'}
                                     size="sm"
                                     onClick={() => loadModels()}
                                 />
@@ -189,21 +230,21 @@ export default function FirstRunSetup({
             </VStack>
             <Divider />
             <VStack gap={2}>
-                <Connection name="Codex" missing={missing('codex')} connected={!!auth?.connected} />
+                <Connection name="Codex" connected={codex} />
                 {missing('codex') ? (
-                    <Install cli="codex" check={loadModels} />
+                    <Install cli="codex" check={loadModels} optional={claude} />
                 ) : (
                     <>
                         <Text type="supporting">
-                            {auth?.connected
-                                ? `Connected ${auth.email ?? 'to ChatGPT'}.`
-                                : 'Sign in with your ChatGPT account.'}
+                            {codex
+                                ? `Connected ${auth?.email ?? 'to ChatGPT'}.`
+                                : `${claude ? 'Optional. ' : ''}Sign in with your ChatGPT account.`}
                         </Text>
-                        {!auth?.connected && (
+                        {!codex && (
                             <HStack>
                                 <Button
                                     label="Continue with ChatGPT"
-                                    variant="secondary"
+                                    variant={claude ? 'ghost' : 'secondary'}
                                     size="sm"
                                     data-oai-siwc-button=""
                                     onClick={() =>
@@ -238,7 +279,7 @@ export default function FirstRunSetup({
                     />
                 ) : (
                     <Text type="supporting">
-                        {models ? 'Sign in above to choose a chat model.' : 'Loading models…'}
+                        {models ? 'Sign in to either one to pick a chat model.' : 'Loading models…'}
                     </Text>
                 )}
                 {modelError && !chosen && (
@@ -260,19 +301,13 @@ export default function FirstRunSetup({
                     onClick={() => void finish(null)}
                 />
                 <Button
-                    label="Start asking"
+                    label="Continue"
                     variant="primary"
                     isDisabled={!chosen || pending}
-                    onClick={() =>
-                        chosen &&
-                        void finish({
-                            provider: chosen.provider,
-                            model: chosen.model,
-                            effort: null,
-                        })
-                    }
+                    endContent={<ChevronRightIcon aria-hidden />}
+                    onClick={() => setStep(2)}
                 />
             </HStack>
-        </VStack>
+        </>,
     );
 }

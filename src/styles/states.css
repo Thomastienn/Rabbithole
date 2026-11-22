@@ -178,35 +178,6 @@
     font-weight: 700;
     text-align: center;
 }
-/* First run (mockup States): one raised enamel card; each connection names its state in words and an icon. */
-.first-run {
-    width: min(100%, 520px);
-    margin: 48px auto;
-    padding: 22px;
-    border-radius: var(--radius-container);
-    background: var(--color-background-surface);
-    text-align: left;
-}
-.first-run h2 {
-    font-size: 22px;
-    font-weight: 700;
-}
-.connection-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-}
-.connection-status[data-state='missing'] {
-    color: var(--color-text-error);
-}
-.connection-status svg {
-    flex: none;
-    width: 16px;
-    height: 16px;
-}
 .tree-loading {
     width: min(100%, 640px);
 }

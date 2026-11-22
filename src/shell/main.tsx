@@ -37,6 +37,7 @@ import '../styles/export.css';
 import '../styles/video-rows.css';
 import '../styles/discussion.css';
 import '../styles/states.css';
+import '../styles/first-run.css';
 import '../styles/map.css';
 import '../styles/settings.css';
 

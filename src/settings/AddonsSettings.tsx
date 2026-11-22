@@ -83,7 +83,7 @@ function Row({
     );
 }
 
-function AddonRow({
+export function AddonRow({
     addon: a,
     dependency: dep,
     install,
@@ -234,8 +234,8 @@ function SandboxRow() {
     );
 }
 
-// Settings > Add-ons (mockup Rabbithole-aon.2): one row per add-on, then the code sandbox. Nothing removes an add-on.
-export default function AddonsSettings() {
+// The add-on list, kept fresh by the download stream, and install or retry by row.
+export function useAddons() {
     const [addons, setAddons] = useState<Addon[]>([]),
         [error, setError] = useState('');
     useEffect(() => {
@@ -253,10 +253,16 @@ export default function AddonsSettings() {
     function install(addon: Addon) {
         setError('');
         const retry = addon.state === 'failed' ? '/retry' : '';
-        api(`/api/downloads/addons/${addon.id}${retry}`, {})
+        return api(`/api/downloads/addons/${addon.id}${retry}`, {})
             .then((a) => setAddons(a as Addon[]))
             .catch((e) => setError((e as Error).message));
     }
+    return { addons, error, install };
+}
+
+// Settings > Add-ons (mockup Rabbithole-aon.2): one row per add-on, then the code sandbox. Nothing removes an add-on.
+export default function AddonsSettings() {
+    const { addons, error, install } = useAddons();
     return (
         <VStack gap={6}>
             <ul className="addons" aria-label="Add-ons">

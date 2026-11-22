@@ -1,0 +1,54 @@
+/* First run (mockup States): one raised enamel card; each connection names its state in words and an icon. */
+.first-run {
+    width: min(100%, 520px);
+    margin: 48px auto;
+    padding: 22px;
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
+    text-align: left;
+}
+.first-run h2 {
+    font-size: 22px;
+    font-weight: 700;
+}
+.connection-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+.connection-status[data-state='off'] {
+    font-weight: 400;
+    color: var(--color-text-secondary);
+}
+.connection-status svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+/* The add-ons step is wider for its three rows (mockup Rabbithole-aon.3). */
+.first-run[data-step='2'] {
+    width: min(100%, 580px);
+}
+.first-run-step {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-secondary);
+}
+/* Tighter rows than the Settings page. */
+.first-run .addon {
+    padding: 12px 0;
+}
+.first-run .addon:first-child {
+    padding-top: 0;
+}
+.first-run-later svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+}
