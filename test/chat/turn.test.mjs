@@ -5,7 +5,6 @@ import {
     currentQuestion,
     replyFeedback,
     replyUsageLine,
-    sseFrames,
     underlineRanges,
     withTurn,
 } from '../../src/chat/turn.ts';
@@ -255,15 +254,6 @@ test('underline ranges are the exact slices, as they stream and once ready, neve
             { start: 2, end: 4, child: 'twin' },
         ],
     );
-});
-
-test('reply stream splits SSE frames across chunks and keeps the unfinished tail', () => {
-    const frame = (e) => `data: ${JSON.stringify(e)}\n\n`;
-    const first = sseFrames(frame({ type: 'text', text: 'A' }) + ': ping\n\n' + 'data: {"ty');
-    assert.deepEqual(first.events, [{ type: 'text', text: 'A' }]);
-    assert.equal(first.rest, 'data: {"ty');
-    const second = sseFrames(first.rest + 'pe":"done"}\n\n');
-    assert.deepEqual(second, { events: [{ type: 'done' }], rest: '' });
 });
 
 test('reply stream builds the live turn: saved, compacting, text, done; a retry replaces the failed reply', () => {

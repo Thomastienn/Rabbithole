@@ -1,3 +1,6 @@
+import type { Message, Suggestions, ToolCall } from './chat/turn';
+import type { Artifact } from './media/artifacts';
+
 // Every request to the server goes through this module, so the CSRF token and header live here only.
 let csrf = '';
 
@@ -36,4 +39,55 @@ export async function request(path: string, body?: unknown, keepalive = false) {
             data,
         });
     return data;
+}
+
+// Every event the reply and discussion streams send; keep in step with server/http/routes/send.mjs and discussions.mjs.
+export type StreamEvent =
+    | { type: 'saved'; id: string; title: string; user: Message; replaced?: string }
+    | { type: 'status'; status: 'compacting' | 'thinking' }
+    | { type: 'text'; text: string }
+    | { type: 'done'; status?: string }
+    | { type: 'questions'; questions: string[] }
+    | { type: 'suggestions'; suggestions: Suggestions }
+    | { type: 'tool'; tool: ToolCall }
+    | { type: 'artifact'; artifact: Artifact }
+    | { type: 'error'; error: string };
+
+// Split complete SSE frames off the buffer; the unfinished tail waits for the next chunk and keepalive comments drop.
+function sseFrames(buffer: string) {
+    const events: StreamEvent[] = [];
+    let end;
+    while ((end = buffer.indexOf('\n\n')) >= 0) {
+        const frame = buffer.slice(0, end);
+        buffer = buffer.slice(end + 2);
+        if (frame.startsWith('data: ')) events.push(JSON.parse(frame.slice(6)));
+    }
+    return { events, rest: buffer };
+}
+
+// Opens a streamed reply, failing with the server's message, then yields its events as they arrive.
+// An abort or a dropped connection rejects the iteration.
+export async function replyStream(
+    path: string,
+    init: RequestInit & { headers?: Record<string, string> },
+) {
+    const response = await serverFetch(path, { method: 'POST', ...init });
+    if (!response.ok) throw new Error((await response.json()).error);
+    return (async function* () {
+        const reader = response.body!.getReader(),
+            decoder = new TextDecoder();
+        let buffer = '';
+        try {
+            while (true) {
+                const result = await reader.read();
+                buffer += decoder.decode(result.value, { stream: !result.done });
+                const frames = sseFrames(buffer);
+                buffer = frames.rest;
+                yield* frames.events;
+                if (result.done) return;
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    })();
 }
