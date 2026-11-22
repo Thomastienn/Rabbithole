@@ -92,6 +92,17 @@ test('offering tools probes a typed address at most once a minute; Settings stat
     await search.status();
     await search.status({ url: fake.url });
     assert.equal(fake.hits.length, 3);
+    const offered = async () =>
+        (await runner.tools({ provider: 'openai', capable: true })).map((d) => d.name);
+    fake.status = 503;
+    assert.equal((await search.status()).ready, false);
+    assert.deepEqual(await offered(), ['read_page'], 'a failed Settings check hides the tools');
+    fake.status = 200;
+    assert.equal(fake.hits.length, 4);
+    t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+    t.mock.timers.tick(60001);
+    assert.ok((await offered()).includes('web_search'), 'probes again after a minute');
+    assert.equal(fake.hits.length, 5);
 });
 
 test('JSON-disabled, invalid JSON/schema, HTTP and network failures have specific diagnoses', async (t) => {
