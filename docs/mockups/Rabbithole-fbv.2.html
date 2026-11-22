@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Free-branch chips · Rabbithole-fbv.2 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. The row of free branches that hang off one reply. */
+.side-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 12px; }
+.side-row > .ring { margin: 0 2px 0 0; }
+.side-row .btn { min-height: 30px; padding: 0 10px 0 5px; font-size: 13px; font-weight: 500; gap: 8px; max-width: 100%; }
+.side-row .btn span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.box { border: 1px solid var(--seam); border-radius: 8px; padding: 24px 28px 8px; justify-self: stretch; }
+.narrow { max-width: 390px; }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Free branches</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-fbv.1.html">fbv.1 Ask on the side</a><a href="Rabbithole-fbv.2.html" aria-current=page>fbv.2 Chips</a><a href="Rabbithole-fbv.3.html">fbv.3 Map +</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Free-branch chips</h1><p>Rabbithole-fbv.2. In the parent's focused chat, a reply that free branches hang off ends with one row of them. Spec: <code>docs/free-branch-and-interactive-visuals-spec.md</code>. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>The row starts with a station ring, the same mark a passage branch carries, so it reads as "lines leave here".</li>
+<li>Each entry is the existing address chip in its family ink, followed by the branch title, as a conversation title is anywhere else. The title is plain text; colour stays on the chip.</li>
+<li>Address order, one row, wrapping when full. A long title truncates, never the chip.</li>
+<li>On the latest reply the row sits after the reply's footer and above Next questions.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>In the parent: two replies, three free branches</h2><p>Conversation 1.2. Two side questions were asked after the first reply, one after the second. Each row sits under its own reply.</p><div class="stage">
+<div class="box"><div class="col reply">
+<div class="q">What are hyphae?</div>
+<div class="by">Tutor · Claude · Opus 4</div>
+<p class="p">Hyphae are the thread-like cells a fungus is built from. Each one is a tube <span class="x c2">a few micrometres wide</span><span class="ring"></span><span class="chip c2" aria-hidden="true">1.2.1</span> that grows only at its tip and branches as it goes.</p>
+<p class="p">Together the threads form the <span class="sug">mycelium</span>, a network that can run for metres through soil.</p>
+<div class="rfoot"><button class="ib" aria-label="Copy reply"><i class="i i-clipboard-document"></i></button><span>2,300 tokens</span></div>
+<div class="side-row" role="group" aria-label="Asked on the side after this reply" style="margin-top:-20px;margin-bottom:28px"><span class="ring" aria-hidden="true"></span>
+<button class="btn" aria-label="1.2.3 Do lichens trade the same way? Opens its chat"><span class="chip c2">1.2.3</span><span>Do lichens trade the same way?</span></button>
+<button class="btn" aria-label="1.2.4 Who first saw hyphae? Opens its chat"><span class="chip c2">1.2.4</span><span>Who first saw hyphae?</span></button></div>
+<div class="q">Show me how a hypha grows, and give me the numbers.</div>
+<div class="by">Tutor · Claude · Opus 4</div>
+<p class="p">A hypha lengthens only at its last few micrometres. Vesicles carry wall material forward, the wall softens at the tip, and pressure from inside pushes it out.</p>
+<div class="rfoot"><button class="ib" aria-label="Copy reply"><i class="i i-clipboard-document"></i></button><span>3,100 tokens</span></div>
+<div class="side-row" role="group" aria-label="Asked on the side after this reply" style="margin-top:-20px;margin-bottom:20px"><span class="ring" aria-hidden="true"></span>
+<button class="btn hover" aria-label="1.2.5 Is turgor the same as blood pressure? Opens its chat"><span class="chip c2">1.2.5</span><span>Is turgor the same as blood pressure?</span></button></div>
+<div class="cap" style="margin-bottom:8px" id="nq">Next questions</div>
+<div class="next" aria-labelledby="nq"><button class="btn">What sets the pressure inside a hypha?</button><button class="btn">How fast can a tip grow in a day?</button></div>
+</div></div>
+</div></section>
+
+<section class="spec"><h2>From the trunk: each a new family</h2><p>Free branches from conversation 1 start new families, so each chip takes its own line colour, as 1.4 and 1.5 do on the map.</p><div class="stage">
+<div class="box"><div class="col reply">
+<p class="p">Mycorrhizal fungi trade phosphorus for sugar. The fungus threads its hyphae between root cells and extends the reach of the plant.</p>
+<div class="rfoot"><button class="ib" aria-label="Copy reply"><i class="i i-clipboard-document"></i></button><span>1,900 tokens</span></div>
+<div class="side-row" role="group" aria-label="Asked on the side after this reply" style="margin-top:-20px"><span class="ring" aria-hidden="true"></span>
+<button class="btn" aria-label="1.4 Are truffles mycorrhizal? Opens its chat"><span class="chip c4">1.4</span><span>Are truffles mycorrhizal?</span></button>
+<button class="btn" aria-label="1.5 Unrelated: how do I cite a paper? Opens its chat"><span class="chip c1">1.5</span><span>How do I cite a paper in APA?</span></button></div>
+</div></div>
+</div></section>
+
+<section class="spec"><h2>Many, wrapping at 390px</h2><p>The row wraps onto as many lines as it needs and never scrolls sideways. A title too long for the column truncates with an ellipsis; the full title is in the label.</p><div class="stage">
+<div class="box narrow"><div class="col reply">
+<div class="side-row" role="group" aria-label="Asked on the side after this reply"><span class="ring" aria-hidden="true"></span>
+<button class="btn"><span class="chip c2">1.2.3</span><span>Do lichens trade?</span></button>
+<button class="btn"><span class="chip c2">1.2.4</span><span>Who first saw hyphae?</span></button>
+<button class="btn"><span class="chip c2">1.2.5</span><span>Turgor vs blood pressure</span></button>
+<button class="btn"><span class="chip c2">1.2.6</span><span>Can I grow hyphae at home?</span></button>
+<button class="btn" aria-label="1.2.7 Why do some mushrooms glow in the dark, and is it the same fungus? Opens its chat"><span class="chip c2">1.2.7</span><span>Why do some mushrooms glow in the dark, and is it the same fungus?</span></button>
+</div></div></div>
+</div></section>
+
+<section class="spec"><h2>States</h2><p>Rest, hover, keyboard focus. Choosing one opens that child's focused chat. Deleting a free branch removes its entry and renumbers the later siblings, as for any branch.</p><div class="stage row">
+<button class="btn" style="min-height:30px;padding:0 10px 0 5px;font-size:13px;font-weight:500"><span class="chip c2">1.2.3</span>Do lichens trade?</button>
+<button class="btn hover" style="min-height:30px;padding:0 10px 0 5px;font-size:13px;font-weight:500"><span class="chip c2">1.2.3</span>Do lichens trade?</button>
+<button class="btn focus" style="min-height:30px;padding:0 10px 0 5px;font-size:13px;font-weight:500"><span class="chip c2">1.2.3</span>Do lichens trade?</button>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

@@ -47,6 +47,24 @@
         ],
         "createdAt": "2026-11-16T03:42:31.115Z",
         "reason": "agent: comes from shared mock.css, not this file; predates this session"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/mockups/Rabbithole-fbv.1.html"
+        ],
+        "createdAt": "2026-11-22T02:18:24.887Z",
+        "reason": "agent: flagged .chead is the shipped Line Diagram header pattern, same finding on line-diagram/read.html; content is vertically centred in a 52px band"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/mockups/Rabbithole-fbv.3.html"
+        ],
+        "createdAt": "2026-11-22T02:18:24.896Z",
+        "reason": "agent: flagged .map wrappers hold absolutely positioned nodes placed 14-24px from each edge, so content is inset; matches the existing map mockup"
       }
     ]
   }

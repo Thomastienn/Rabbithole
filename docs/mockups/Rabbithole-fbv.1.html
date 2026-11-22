@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ask on the side · Rabbithole-fbv.1 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. "Ask on the side" sits between the effort pill and Send. */
+.comp .row .btn.side { margin-left: auto; font-weight: 500; display: inline-flex; flex-flow: row nowrap; height: 36px; min-height: 36px; }
+.comp .row .side + .btn { margin-left: 0; }
+.fork { display: inline-block; width: 16px; height: 16px; flex: none; }
+.fork path { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tip { background: var(--up2); color: var(--ink); font-size: 12px; padding: 5px 8px; border-radius: 6px; justify-self: start; margin-left: 330px; margin-top: -6px; }
+.chat.box { border: 1px solid var(--seam); border-radius: 8px; height: auto; justify-self: stretch; }
+.chat.box .scroll { padding: 24px 28px 12px; }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Free branches</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-fbv.1.html" aria-current=page>fbv.1 Ask on the side</a><a href="Rabbithole-fbv.2.html">fbv.2 Chips</a><a href="Rabbithole-fbv.3.html">fbv.3 Map +</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Ask on the side</h1><p>Rabbithole-fbv.1. The focused chat's question box sends what the learner typed as a free branch: a child conversation that inherits this one up to now, with no passage. It opens at once, like any branch. Spec: <code>docs/free-branch-and-interactive-visuals-spec.md</code>. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>One secondary button, left of Send, always in view while typing. Send stays the primary action.</li>
+<li>The icon is the brand's fork: a line leaving the trunk. It says "branch" without words, and the label says the rest.</li>
+<li>Unavailable is shown, not hidden, once the conversation has a reply, so the learner learns the control exists. On a first question, before any reply, it is not drawn at all.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>Typing, ready to ask on the side</h2><p>The conversation has a completed reply, is not responding, and the box has text. Tab order: attach, model, effort, Ask on the side, Send. Enter still sends into this conversation.</p><div class="stage">
+<div class="comp on"><div class="ta v">Wait, do lichens trade the same way?<span class="cursor"></span></div><div class="row"><button class="ib" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="pill" aria-label="Model for next reply"><i class="i i--sm i-adjustments-horizontal"></i>Claude · Opus 4</button><button class="pill" aria-label="Effort for next reply">High</button><button class="btn sm side hover" aria-label="Ask on the side: opens a new branch with this question" title="Opens a new branch with this question, keeping this conversation clean"><svg class="fork" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8H6L10 4H14M6 8L10 12H14"/></svg>Ask on the side</button><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div>
+<div class="tip" role="tooltip">Opens a new branch with this question, keeping this conversation clean</div>
+</div></section>
+
+<section class="spec"><h2>Keyboard focus</h2><p>The one focus ring, on the button itself.</p><div class="stage">
+<div class="comp on"><div class="ta v">Wait, do lichens trade the same way?</div><div class="row"><button class="ib" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="pill" aria-label="Model for next reply"><i class="i i--sm i-adjustments-horizontal"></i>Claude · Opus 4</button><button class="pill" aria-label="Effort for next reply">High</button><button class="btn sm side focus" aria-label="Ask on the side: opens a new branch with this question"><svg class="fork" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8H6L10 4H14M6 8L10 12H14"/></svg>Ask on the side</button><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div>
+</div></section>
+
+<section class="spec"><h2>Unavailable</h2><p>Same place, dimmed, with the reason as its tooltip. Empty box; reply streaming (Send has become Stop); files attached, since a side question carries none.</p><div class="stage">
+<div class="comp"><div class="ta">What would you like to understand?</div><div class="row"><button class="ib" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="pill" aria-label="Model for next reply"><i class="i i--sm i-adjustments-horizontal"></i>Claude · Opus 4</button><button class="pill" aria-label="Effort for next reply">High</button><button class="btn sm side off" aria-disabled="true" title="Type a question to ask it on the side"><svg class="fork" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8H6L10 4H14M6 8L10 12H14"/></svg>Ask on the side</button><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div>
+<div class="comp on"><div class="ta v">Wait, do lichens trade the same way?</div><div class="row"><button class="ib" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="pill" aria-label="Model for next reply"><i class="i i--sm i-adjustments-horizontal"></i>Claude · Opus 4</button><button class="pill" aria-label="Effort for next reply">High</button><button class="btn sm side off" aria-disabled="true" title="Wait for the reply to finish"><svg class="fork" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8H6L10 4H14M6 8L10 12H14"/></svg>Ask on the side</button><button class="btn pri sq" aria-label="Stop reply"><i class="i i-stop"></i></button></div></div>
+<div class="comp on"><div class="tray"><div class="file"><span class="ty">PDF</span><span>Week 6 – Mycorrhizae.pdf<small>24 pages · 1.8 MB</small></span><button class="ib" aria-label="Remove Week 6 – Mycorrhizae.pdf"><i class="i i-xmark"></i></button></div></div><div class="ta v">Do lichens trade the same way?</div><div class="row"><button class="ib" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="pill" aria-label="Model for next reply"><i class="i i--sm i-adjustments-horizontal"></i>Claude · Opus 4</button><button class="pill" aria-label="Effort for next reply">High</button><button class="btn sm side off" aria-disabled="true" title="A side question carries no files. Remove them to ask on the side."><svg class="fork" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8H6L10 4H14M6 8L10 12H14"/></svg>Ask on the side</button><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div>
+<div class="tip" role="tooltip">A side question carries no files. Remove them to ask on the side.</div>
+</div></section>
+
+<section class="spec"><h2>First question: not drawn</h2><p>Before the conversation's first completed reply there is nothing to inherit, so the button is absent, not dimmed.</p><div class="stage">
+<div class="hero"><h2>Your first tree starts with a question.</h2><div class="comp"><div class="ta">What would you like to understand?</div><div class="row"><button class="ib" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="pill" aria-label="Model for next reply"><i class="i i--sm i-adjustments-horizontal"></i>Claude · Opus 4</button><button class="pill" aria-label="Effort for next reply">High</button><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</div></section>
+
+<section class="spec"><h2>After asking: the child opens</h2><p>The new branch takes the next address and its family ink, and opens in the focused chat like any branch. The origin line says it was asked on the side, after which reply; there is no quoted passage. The question box is empty again.</p><div class="stage">
+<main class="chat box"><div class="chead" style="padding-left:16px"><span class="chip c2">1.2.3</span><b>Do lichens trade the same way?</b><span class="end"><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to 1.2 · What are hyphae?"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="scroll"><div class="col reply">
+<h1 class="title"><span class="chip c2">1.2.3</span><span>Do lichens trade the same way?</span></h1>
+<div class="origin"><span class="ring" style="margin:0"></span><span>Asked on the side of <a href="line-diagram/read.html">1.2 · What are hyphae?</a>, after its latest reply</span></div>
+<button class="inh" aria-expanded="false"><i class="i i--sm i-chevron-right"></i><span><b>Context the tutor received</b> · 1.2 up to its latest reply · 1,610 tokens</span></button>
+<div class="q">Wait, do lichens trade the same way?</div>
+<div class="by">Tutor · Claude · Opus 4</div>
+<p class="p" style="margin:0">Partly. A lichen is also a fungus in partnership, but its partner is an alga, and the alga lives inside the fungus<span class="cursor"></span></p>
+</div></div>
+<div class="cfoot" style="padding:8px 28px 16px"><div class="comp"><div class="ta">What would you like to understand?</div><div class="row"><button class="ib" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="pill" aria-label="Model for next reply"><i class="i i--sm i-adjustments-horizontal"></i>Claude · Opus 4</button><button class="pill" aria-label="Effort for next reply">High</button><button class="btn sm side off" aria-disabled="true" title="Wait for the reply to finish"><svg class="fork" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8H6L10 4H14M6 8L10 12H14"/></svg>Ask on the side</button><button class="btn pri sq" aria-label="Stop reply"><i class="i i-stop"></i></button></div></div></div></main>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

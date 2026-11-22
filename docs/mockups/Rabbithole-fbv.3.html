@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Map + · Rabbithole-fbv.3 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. The subtle + on a conversation node, and the branch question box it opens. */
+.field-map { position: relative; width: 100%; height: 340px; border-radius: 8px; }
+.field-map .node { width: 184px; }
+.nh .add { margin-left: auto; width: 24px; height: 24px; border-radius: 6px; color: var(--mut); }
+.nh .add .i { width: 16px; height: 16px; }
+.nh .add:hover, .nh .add.hover { color: var(--ink); }
+.field-map .pop { position: absolute; width: 300px; }
+.pop .head { display: flex; gap: 8px; align-items: center; padding: 2px 2px 2px 6px; font-size: 13px; color: var(--mut); }
+.pop .head .ib { margin-left: auto; width: 28px; height: 28px; }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Free branches</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-fbv.1.html">fbv.1 Ask on the side</a><a href="Rabbithole-fbv.2.html">fbv.2 Chips</a><a href="Rabbithole-fbv.3.html" aria-current=page>fbv.3 Map +</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Free branch from the map</h1><p>Rabbithole-fbv.3. A conversation node shows a quiet + on hover and on keyboard focus. It opens the branch question box beside the node, with no passage. Sending creates the free branch and opens the child. Spec: <code>docs/free-branch-and-interactive-visuals-spec.md</code>. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>The + sits at the right end of the node's title band, in quiet text, 24px. It takes no space at rest: the band looks as it does today.</li>
+<li>It appears only on a node whose conversation has a completed tutor reply.</li>
+<li>The box is the branch question box learners already know, minus the quoted passage and the Explain briefly row.</li>
+</ul>
+<main class="specs">
+
+<section class="spec"><h2>Rest, hover, focus</h2><p>At rest no +. Hover or focus the node, or Tab onto it, and the + shows. Its label: "Ask on the side from 1.2 · What are hyphae?".</p><div class="stage">
+<div class="map field-map" style="height:172px">
+<div class="node" style="left:14px;top:20px"><div class="nh"><span class="chip c2">1.2</span>What are hyphae?</div><div class="nq">What are hyphae?</div><div class="nr">Thread-like cells a fungus is built from.</div></div>
+<div class="node" style="left:226px;top:20px;outline:1.5px solid var(--seam2)"><div class="nh"><span class="chip c2">1.2</span>What are hyphae?<button class="ib add" aria-label="Ask on the side from 1.2 · What are hyphae?"><i class="i i-plus"></i></button></div><div class="nq">What are hyphae?</div><div class="nr">Thread-like cells a fungus is built from.</div></div>
+</div>
+<div class="map field-map" style="height:172px">
+<div class="node" style="left:14px;top:20px"><div class="nh"><span class="chip c2">1.2</span>What are hyphae?<button class="ib add focus" aria-label="Ask on the side from 1.2 · What are hyphae?"><i class="i i-plus"></i></button></div><div class="nq">What are hyphae?</div><div class="nr">Thread-like cells a fungus is built from.</div></div>
+<p class="mut" style="position:absolute;left:226px;top:28px;width:180px;font-size:13px">Keyboard: Tab from the node reaches its +; Enter opens the box.</p>
+</div>
+</div></section>
+
+<section class="spec"><h2>No completed reply: no +</h2><p>Hovered or focused, these nodes still show none: a first reply still arriving, and a first reply that failed.</p><div class="stage">
+<div class="map field-map" style="height:172px">
+<div class="node" style="left:14px;top:20px;outline:1.5px solid var(--seam2)"><div class="nh"><span class="chip c2">1.2.1</span>How thin is thin?</div><div class="nq">How thin is thin?</div><div class="nx"><span class="mut">Responding…</span></div></div>
+<div class="node" style="left:226px;top:20px;outline:1.5px solid var(--seam2)"><div class="nh"><span class="chip c3">1.3</span>Phosphorus in soil</div><div class="nq">Where does soil phosphorus come from?</div><div class="nx"><span class="err"><i class="i i--sm i-exclamation-triangle"></i>Reply failed</span></div></div>
+</div>
+</div></section>
+
+<section class="spec" style="grid-column:1/-1"><h2>The box, beside the node</h2><p>Opens to the right of the node, focused on the field. No quote: the header names the conversation it inherits from. Enter or the arrow sends; Escape or the cross closes and returns focus to the +.</p><div class="stage">
+<div class="map field-map">
+<div class="node on" style="left:24px;top:40px"><div class="nh"><span class="chip c2">1.2</span>What are hyphae?<button class="ib add" aria-label="Ask on the side from 1.2 · What are hyphae?" aria-expanded="true"><i class="i i-plus"></i></button></div><div class="nq">What are hyphae?</div><div class="nr">Thread-like cells a fungus is built from. Each one is a tube a few micrometres wide.</div><div class="nq">Show me how a hypha grows</div><div class="nr">A hypha lengthens only at its last few micrometres.</div></div>
+<div class="pop" role="dialog" aria-label="Ask on the side from 1.2" style="left:232px;top:40px"><div class="head"><span class="chip c2">1.2</span><span>Ask on the side, after its latest reply</span><button class="ib" aria-label="Close"><i class="i i-xmark"></i></button></div><div class="row"><div class="field on">Do lichens trade the same way?<span class="cursor"></span></div><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div>
+</div>
+</div></section>
+
+<section class="spec" style="grid-column:1/-1"><h2>After sending</h2><p>The new branch line draws out of the ring beside 1.2's latest reply, then the station lands. Branch lines already attach by reply, so this is today's layout. The focused chat opens on 1.2.3.</p><div class="stage">
+<div class="map field-map" style="height:300px">
+<div class="node" style="left:24px;top:40px"><div class="nh"><span class="chip c2">1.2</span>What are hyphae?</div><div class="nq">What are hyphae?</div><div class="nr">Thread-like cells a fungus is built from. Each one is a tube a few micrometres wide.</div><div class="nq">Show me how a hypha grows</div><div class="nr">A hypha lengthens only at its last few micrometres.</div></div>
+<div class="node on" style="left:296px;top:150px"><div class="nh"><span class="chip c2">1.2.3</span>Do lichens trade?</div><div class="nq">Do lichens trade the same way?</div><div class="nx"><span class="mut">Responding…</span></div></div>
+<svg width="640" height="300" aria-hidden="true"><path class="ln m c2 wip" d="M208 196H251L281 166H296"/><g class="stn m"><circle cx="208" cy="196" r="4.5"/><circle cx="296" cy="166" r="6"/></g></svg>
+</div>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

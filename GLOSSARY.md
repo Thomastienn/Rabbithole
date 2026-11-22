@@ -29,8 +29,12 @@ The full view of one conversation, where the learner reads replies, asks questio
 _Avoid_: Chat page, conversation view
 
 **Branch**:
-The parent-to-child link created when the learner asks about a passage of a conversation or chooses one of its groundwork concepts.
+The parent-to-child link created when the learner asks about a passage of a conversation, chooses one of its groundwork concepts, or asks a free branch from it.
 _Avoid_: Edge, connection, subtree
+
+**Free branch**:
+A branch the learner starts with their own question instead of from a passage, groundwork or visual part. Like any child, it inherits the parent conversation up to that moment, so the learner can ask on the side, even about something unrelated, without cluttering the parent or switching to another learning tree. A learning tree still has one root; a thought the learner wants apart from it starts a new learning tree.
+_Avoid_: Side question (for the link), forest, new root
 
 **Address**:
 A conversation's place in its learning tree: the root conversation (trunk) is 1, its children 1.1, 1.2 and so on down (1.1.2). Siblings are numbered in the order they were created (ties by id), so adding a branch never renumbers the conversations before it. Deleting a branch renumbers its later siblings.
@@ -141,7 +145,7 @@ A simulated fellow learner in a discussion, played by the chat model; only class
 _Avoid_: Student, peer, persona
 
 **Inherited context**:
-The fixed background a child conversation receives at branch creation: the exact passage and a compact paragraph combining its parent's inherited context with the parent conversation, preserving important ideas. It supplies context without answering the child's question; that question is a separate learner message.
+The fixed background a child conversation receives at branch creation: the exact passage, when it has one, and a compact paragraph combining its parent's inherited context with the parent conversation, preserving important ideas. It supplies context without answering the child's question; that question is a separate learner message.
 _Avoid_: Summary, compacted context
 
 **Memory note**:
