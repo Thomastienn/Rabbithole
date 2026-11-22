@@ -5,7 +5,7 @@ import { accessSync, constants, existsSync, renameSync, rmSync, readdirSync } fr
 import { join } from 'node:path';
 import { generateDiagram } from '../../media/diagram-generator.mjs';
 import { generateVisual } from '../../media/visuals.mjs';
-import { generateVideo, mediaPath } from '../../media/videos.mjs';
+import { generateVideo, videoCall, videoEngines, mediaPath } from '../../media/videos.mjs';
 import { exportVideo } from '../../media/video-export.mjs';
 import { sandboxMissing } from '../../media/video-sandbox.mjs';
 import { PHASES } from '../../media/cut-state.mjs';
@@ -147,68 +147,79 @@ export function mediaJobs(ctx) {
                             message: job.message,
                         }).generate(...args),
                 });
-                await generateVideo({
-                    provider: meter(provider, selection),
-                    selection,
-                    chat: { provider: meter(chatProvider, chat), selection: chat },
-                    store,
-                    dir,
-                    artifact: { ...job, input: frozen },
-                    previous,
-                    signal: running.controller.signal,
-                    timeout: ctx.videoTimeout,
-                    snapshot: ctx.videoSnapshot,
-                    narrate: ctx.videoNarrate,
-                    manim: ctx.videoManim,
-                    embed: ctx.videoEmbed,
-                    stills: () => ctx.pieceStills.fill(),
-                    search: ctx.search,
-                    readsImages: await ctx.readsImages(chat).catch(() => false),
-                    capable: await ctx.toolCapable(selection).catch(() => false),
-                    writerCapable: await ctx.toolCapable(chat).catch(() => false),
-                    mcp: ctx.mcp,
-                    onWarning: (cause) =>
-                        ctx.log(
-                            formatLog('warn', 'media', 'warning', {
-                                ...fields,
-                                cause: errorCause(cause, privateValues(input)),
-                                next: 'Run npm start to check or repair the video runtime, then request a new video.',
-                            }),
-                        ),
-                    onStage: stage,
-                    onPhase: (phase, progress, detail = {}) => {
-                        if (
-                            jobs.get('video', job.id) !== running ||
-                            running.controller.signal.aborted
-                        )
-                            return;
-                        // Cut rows may move back (ready to repairing) even when the phase cannot.
-                        if (detail.cutRows) running.cutRows = detail.cutRows;
-                        running.drawing = detail.drawing;
-                        // Phases only advance, so the reported step and bar never move backward.
-                        if (PHASES.indexOf(phase) < PHASES.indexOf(running.phase)) return;
-                        if (running.phase !== phase) {
-                            running.phaseStartedAt = Date.now();
-                            if (phase === 'saving') stage('saving');
-                        }
-                        if (phase === 'saving' && Number.isFinite(progress)) {
-                            const step = Math.min(4, Math.floor(progress * 4));
-                            while (progressStep < step)
-                                stage('render', { progress: ++progressStep * 25 });
-                        }
-                        running.phase = phase;
-                        running.progress = Number.isFinite(progress)
-                            ? Math.min(1, Math.max(0, progress))
-                            : undefined;
-                        // Counts only: planning reports characters written, cut phases n of N, saving the total frame count.
-                        running.characters = Number.isFinite(detail.characters)
-                            ? detail.characters
-                            : undefined;
-                        running.frames = Number.isFinite(detail.frames) ? detail.frames : undefined;
-                        running.cut = Number.isFinite(detail.cut) ? detail.cut : undefined;
-                        running.cuts = Number.isFinite(detail.cuts) ? detail.cuts : undefined;
+                const writerCapable = await ctx.toolCapable(chat).catch(() => false);
+                await generateVideo(
+                    {
+                        dir,
+                        artifact: { ...job, input: frozen },
+                        previous,
+                        signal: running.controller.signal,
                     },
-                });
+                    {
+                        call: videoCall(
+                            meter(provider, selection),
+                            selection,
+                            await ctx.toolCapable(selection).catch(() => false),
+                        ),
+                        write: videoCall(meter(chatProvider, chat), chat, writerCapable),
+                        writerCapable,
+                        readsImages: await ctx.readsImages(chat).catch(() => false),
+                        engines: videoEngines({
+                            snapshot: ctx.videoSnapshot,
+                            manim: ctx.videoManim,
+                        }),
+                        store,
+                        narrate: ctx.videoNarrate,
+                        timeout: ctx.videoTimeout,
+                        embed: ctx.videoEmbed,
+                        stills: () => ctx.pieceStills.fill(),
+                        search: ctx.search,
+                        mcp: ctx.mcp,
+                        onWarning: (cause) =>
+                            ctx.log(
+                                formatLog('warn', 'media', 'warning', {
+                                    ...fields,
+                                    cause: errorCause(cause, privateValues(input)),
+                                    next: 'Run npm start to check or repair the video runtime, then request a new video.',
+                                }),
+                            ),
+                        onStage: stage,
+                        onPhase: (phase, progress, detail = {}) => {
+                            if (
+                                jobs.get('video', job.id) !== running ||
+                                running.controller.signal.aborted
+                            )
+                                return;
+                            // Cut rows may move back (ready to repairing) even when the phase cannot.
+                            if (detail.cutRows) running.cutRows = detail.cutRows;
+                            running.drawing = detail.drawing;
+                            // Phases only advance, so the reported step and bar never move backward.
+                            if (PHASES.indexOf(phase) < PHASES.indexOf(running.phase)) return;
+                            if (running.phase !== phase) {
+                                running.phaseStartedAt = Date.now();
+                                if (phase === 'saving') stage('saving');
+                            }
+                            if (phase === 'saving' && Number.isFinite(progress)) {
+                                const step = Math.min(4, Math.floor(progress * 4));
+                                while (progressStep < step)
+                                    stage('render', { progress: ++progressStep * 25 });
+                            }
+                            running.phase = phase;
+                            running.progress = Number.isFinite(progress)
+                                ? Math.min(1, Math.max(0, progress))
+                                : undefined;
+                            // Counts only: planning reports characters written, cut phases n of N, saving the total frame count.
+                            running.characters = Number.isFinite(detail.characters)
+                                ? detail.characters
+                                : undefined;
+                            running.frames = Number.isFinite(detail.frames)
+                                ? detail.frames
+                                : undefined;
+                            running.cut = Number.isFinite(detail.cut) ? detail.cut : undefined;
+                            running.cuts = Number.isFinite(detail.cuts) ? detail.cuts : undefined;
+                        },
+                    },
+                );
             })
             // A job stopped with the app stays pending, so the next start marks it interrupted.
             .catch((error) => {

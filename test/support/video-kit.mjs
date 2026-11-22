@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { generateVideo, mediaPath } from '../../server/media/videos.mjs';
+import { generateVideo, videoCall, videoEngines, mediaPath } from '../../server/media/videos.mjs';
 import { videoBrowser } from '../../server/media/manim.mjs';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -138,6 +138,12 @@ export const planThrough = (plan, options) => {
     if (problem) throw new Error(problem);
     return builder.plan();
 };
+// A fake provider as the pipeline's two model calls, the smart model's and the chat model's.
+export const models = (provider, { capable = false, writerCapable = false } = {}) => ({
+    call: videoCall(provider, {}, capable),
+    write: videoCall(provider, {}, writerCapable),
+    writerCapable,
+});
 export const videoResponse = (tree, source = composition) =>
     tree.stage === 'plan' && source.startsWith('// Description:')
         ? planText(planFor(source))
@@ -224,23 +230,26 @@ export async function job(render, mutate, source = composition, count = 1, optio
         },
     };
     const phases = [];
-    const result = await generateVideo({
-        provider,
-        selection: {},
-        store,
-        dir,
-        artifact,
-        signal: new AbortController().signal,
-        // A real render also takes real snapshots.
-        snapshot: options.snapshot ?? (render ? noSnapshot : undefined),
-        narrate: fakeNarration,
-        onPhase: (...p) => phases.push(p),
-        manim: options.manim,
-        engines: options.engines,
-        search: options.search,
-        exhibit: options.exhibit,
-        clips: options.clips,
-    }).then(
+    const result = await generateVideo(
+        { dir, artifact, signal: new AbortController().signal },
+        {
+            ...models(provider),
+            store,
+            engines: (job) => ({
+                ...videoEngines({
+                    // A real render also takes real snapshots.
+                    snapshot: options.snapshot ?? (render ? noSnapshot : undefined),
+                    manim: options.manim,
+                })(job),
+                ...options.engines,
+            }),
+            narrate: fakeNarration,
+            onPhase: (...p) => phases.push(p),
+            search: options.search,
+            exhibit: options.exhibit,
+            clips: options.clips,
+        },
+    ).then(
         () => null,
         (error) => error.message,
     );

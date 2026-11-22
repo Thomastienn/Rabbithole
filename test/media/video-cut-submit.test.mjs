@@ -4,7 +4,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
-import { generateVideo } from '../../server/media/videos.mjs';
+import { generateVideo, videoEngines } from '../../server/media/videos.mjs';
 import { SUBMIT_NOTE } from '../../server/media/video-cut.mjs';
 import { CUT_ATTEMPTS, CUT_CHECKS } from '../../server/media/video-plan.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
@@ -17,6 +17,7 @@ import {
     pass,
     patchOf,
     fixerTask,
+    models,
 } from '../support/video-kit.mjs';
 
 const broken = "import fs from 'node:fs';\n" + composition;
@@ -37,32 +38,36 @@ async function video(submissions) {
     );
     const writers = [],
         results = [];
-    const error = await generateVideo({
-        provider: {
-            generate: async (t, text, emit) => {
-                if (t.stage === 'plan') return complete(emit, planText(planFor()));
-                if (t.stage === 'audit') return audit(t, emit, pass);
-                writers.push({ tree: t, task: fixerTask(text) });
-                for (const s of submissions)
-                    try {
-                        results.push(
-                            await t.runTool('submit_cut', typeof s === 'string' ? { code: s } : s),
-                        );
-                    } catch (e) {
-                        results.push(`Error: ${e.message}`);
-                    }
-                complete(emit, '');
-            },
+    const error = await generateVideo(
+        { dir, artifact, signal: new AbortController().signal },
+        {
+            ...models(
+                {
+                    generate: async (t, text, emit) => {
+                        if (t.stage === 'plan') return complete(emit, planText(planFor()));
+                        if (t.stage === 'audit') return audit(t, emit, pass);
+                        writers.push({ tree: t, task: fixerTask(text) });
+                        for (const s of submissions)
+                            try {
+                                results.push(
+                                    await t.runTool(
+                                        'submit_cut',
+                                        typeof s === 'string' ? { code: s } : s,
+                                    ),
+                                );
+                            } catch (e) {
+                                results.push(`Error: ${e.message}`);
+                            }
+                        complete(emit, '');
+                    },
+                },
+                { writerCapable: true },
+            ),
+            store,
+            engines: videoEngines({ snapshot: async () => {} }),
+            narrate: fakeNarration,
         },
-        selection: {},
-        store,
-        dir,
-        artifact,
-        signal: new AbortController().signal,
-        snapshot: async () => {},
-        narrate: fakeNarration,
-        writerCapable: true,
-    }).then(
+    ).then(
         () => null,
         (e) => e.message,
     );
