@@ -1,3 +1,4 @@
+import { collectText } from '../providers/chatStream.mjs';
 import { DISCUSSION_RULE, readDiscussion } from './discussions.mjs';
 import { discussionText } from './discussion-context.mjs';
 import { NEIGHBOURHOOD_RULE } from '../neighbourhood.mjs';
@@ -460,8 +461,8 @@ export async function generateDiagram(
         if (controller.signal.aborted) rejectAbort();
     });
     const run = async () => {
-        const items = new Map();
-        let status;
+        const streamed = collectText();
+        const { items } = streamed;
         if (controller.signal.aborted) throw controller.signal.reason;
         try {
             await provider.generate(
@@ -473,24 +474,14 @@ export async function generateDiagram(
                 },
                 JSON.stringify(task),
                 (event) => {
-                    if (controller.signal.aborted) return;
-                    if (event.type === 'delta' || event.type === 'item') {
-                        const text =
-                            event.type === 'item'
-                                ? event.text
-                                : (items.get(event.item) ?? '') + event.text;
-                        items.set(event.item, text);
-                        if (items.size > 32)
-                            controller.abort(new Error('Diagram output exceeds 32 message items.'));
-                        else if (
-                            [...items.values()].reduce(
-                                (n, value) => n + Buffer.byteLength(value),
-                                0,
-                            ) > MAX_SOURCE
-                        )
-                            controller.abort(new Error('Diagram output exceeds 16 KiB.'));
-                    }
-                    if (event.type === 'status') status = event.status;
+                    if (controller.signal.aborted || !streamed.onEvent(event)) return;
+                    if (items.size > 32)
+                        controller.abort(new Error('Diagram output exceeds 32 message items.'));
+                    else if (
+                        [...items.values()].reduce((n, value) => n + Buffer.byteLength(value), 0) >
+                        MAX_SOURCE
+                    )
+                        controller.abort(new Error('Diagram output exceeds 16 KiB.'));
                 },
                 () => {},
                 controller.signal,
@@ -499,8 +490,9 @@ export async function generateDiagram(
             throw new Error('Diagram provider failed to generate a result.');
         }
         if (controller.signal.aborted) throw controller.signal.reason;
-        if (status !== 'completed') throw new Error('Diagram generation did not complete.');
-        const source = safeDiagramSource([...items.values()].join('\n\n'));
+        if (streamed.status !== 'completed')
+            throw new Error('Diagram generation did not complete.');
+        const source = safeDiagramSource(streamed.text('\n\n'));
         if (parse) {
             if (!(await parse(source))) throw new Error('Invalid Mermaid syntax.');
             return source;

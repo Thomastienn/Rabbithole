@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { collectText } from '../../providers/chatStream.mjs';
 import { errorCause, formatLog } from '../../log.mjs';
 import { plainText } from '../../../src/markdown/markdownText.ts';
 import { WRITE_BRIEFS, quickTool } from '../../tools/quickTools.mjs';
@@ -46,8 +47,7 @@ export function briefJobs(ctx) {
             const { quick, error } = await ctx.quickFor(store.tree(conversation));
             if (error) throw new Error(error);
             if (!quick.model) throw new Error('Quick thinking model is not set.');
-            const items = new Map();
-            let status;
+            const streamed = collectText();
             await metered(pick(quick), 'brief', randomUUID(), quick, {
                 message: passage.message,
             }).generate(
@@ -60,21 +60,12 @@ export function briefJobs(ctx) {
                     instructions: INSTRUCTIONS,
                 },
                 briefPrompt(plainText(reply), termOf(passage)),
-                (event) => {
-                    if (event.type === 'delta' || event.type === 'item')
-                        items.set(
-                            event.item,
-                            event.type === 'item'
-                                ? event.text
-                                : (items.get(event.item) ?? '') + event.text,
-                        );
-                    if (event.type === 'status') status = event.status;
-                },
+                streamed.onEvent,
                 () => {},
                 running.controller.signal,
             );
-            const explanation = [...items.values()].join('\n').trim();
-            if (status !== 'completed' || !explanation)
+            const explanation = streamed.text('\n').trim();
+            if (streamed.status !== 'completed' || !explanation)
                 throw new Error('Quick thinking returned no explanation.');
             if (ctx.stopping || !store.tree(conversation)) throw new Error('Conversation closed.');
             // shortcut: a visual part's brief is not saved (briefs are keyed by reply offsets); add a key if reopening must skip the call.
@@ -120,8 +111,7 @@ export function briefJobs(ctx) {
                 await ctx.toolCapable(quick).catch(() => false),
                 ctx.mcp,
             );
-            const items = new Map();
-            let status;
+            const streamed = collectText();
             await metered(pick(quick), 'brief', randomUUID(), quick, { message }).generate(
                 {
                     provider: quick.provider,
@@ -135,21 +125,12 @@ export function briefJobs(ctx) {
                     ...call.request,
                 },
                 briefsPrompt(plainText(reply), [...new Set(passages.map(termOf))]),
-                (event) => {
-                    if (event.type === 'delta' || event.type === 'item')
-                        items.set(
-                            event.item,
-                            event.type === 'item'
-                                ? event.text
-                                : (items.get(event.item) ?? '') + event.text,
-                        );
-                    if (event.type === 'status') status = event.status;
-                },
+                streamed.onEvent,
                 () => {},
                 running.controller.signal,
             );
-            const briefs = call.answer([...items.values()].join(''), () => null);
-            if (status !== 'completed' || !briefs)
+            const briefs = call.answer(streamed.text(''), () => null);
+            if (streamed.status !== 'completed' || !briefs)
                 throw new Error('Quick thinking returned no explanations.');
             if (ctx.stopping || !store.tree(conversation)) throw new Error('Conversation closed.');
             for (const passage of passages) {

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { collectText } from '../../providers/chatStream.mjs';
 import { errorCause, formatLog } from '../../log.mjs';
 import { readVerdicts, VERDICT_SHAPE } from '../../media/diagrams.mjs';
 import { RECORD_VERDICTS, quickTool } from '../../tools/quickTools.mjs';
@@ -22,8 +23,7 @@ export function verdictJobs(ctx) {
             const { quick, error } = await ctx.quickFor(store.tree(conversation));
             if (error) throw new Error(error);
             if (!quick.model) throw new Error('Quick thinking model is not set.');
-            const items = new Map();
-            let status;
+            const streamed = collectText();
             const call = quickTool(
                 RECORD_VERDICTS,
                 (input) => {
@@ -52,24 +52,15 @@ export function verdictJobs(ctx) {
                     ...call.request,
                 },
                 verdictPrompt(question, answer),
-                (event) => {
-                    if (event.type === 'delta' || event.type === 'item')
-                        items.set(
-                            event.item,
-                            event.type === 'item'
-                                ? event.text
-                                : (items.get(event.item) ?? '') + event.text,
-                        );
-                    if (event.type === 'status') status = event.status;
-                },
+                streamed.onEvent,
                 () => {},
                 running.controller.signal,
             );
             // A model that answered in text: the JSON array it wrote.
-            const verdicts = call.answer([...items.values()].join(''), (text) =>
+            const verdicts = call.answer(streamed.text(''), (text) =>
                 readVerdicts([{ closed: true, json: text.replace(/^```[\w-]*\s*|\s*```$/g, '') }]),
             );
-            if (status !== 'completed' || !verdicts)
+            if (streamed.status !== 'completed' || !verdicts)
                 throw new Error('Quick thinking returned no verdicts.');
             // A retry aborts this job, so a stale answer never replaces the new reply's verdicts.
             if (!running.controller.signal.aborted && !ctx.stopping && store.tree(conversation))

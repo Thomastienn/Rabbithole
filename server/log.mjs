@@ -1,3 +1,4 @@
+import { collectText } from './providers/chatStream.mjs';
 import { withoutPaths } from './media/video-sandbox.mjs';
 
 const FIELDS = new Set([
@@ -102,9 +103,8 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
         // Tool definitions are app text; their short schema words would redact ordinary causes.
         const { tools, textTools, ...data } = tree;
         const privateText = [...privateValues(data), ...privateValues(text)];
-        const items = new Map();
+        const streamed = collectText();
         let usage = null,
-            status,
             failure;
         log(formatLog('info', 'model', 'started', fields));
         try {
@@ -113,15 +113,7 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
                 text,
                 (event) => {
                     if (event.type === 'usage') usage = event.usage;
-                    if (event.type === 'status') status = event.status;
-                    if (event.type === 'delta' || event.type === 'item') {
-                        items.set(
-                            event.item,
-                            event.type === 'item'
-                                ? event.text
-                                : (items.get(event.item) ?? '') + event.text,
-                        );
-                    }
+                    streamed.onEvent(event);
                     emit(event);
                 },
                 (thread, model) => {
@@ -139,9 +131,9 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
                 /timed out|ran over/i.test(signal?.reason?.message ?? '');
             // A run the server ended at the reply's end section reports completed, not stopped.
             const stopped =
-                (signal?.aborted && !timedOut && status !== 'completed') ||
-                status === 'interrupted';
-            const failed = failure || timedOut || status === 'failed';
+                (signal?.aborted && !timedOut && streamed.status !== 'completed') ||
+                streamed.status === 'interrupted';
+            const failed = failure || timedOut || streamed.status === 'failed';
             const valid =
                 usage &&
                 ['input', 'output', 'cacheRead'].every(
@@ -162,7 +154,7 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
                             !stopped && {
                                 cause: errorCause(
                                     failure ?? signal?.reason ?? 'Provider reported a failed call.',
-                                    [...privateText, ...items.values()],
+                                    [...privateText, ...streamed.items.values()],
                                 ),
                                 next: 'Check provider sign-in or endpoint settings, then retry.',
                                 // A custom endpoint's HTTP status, request id and request shape, to match its own logs.

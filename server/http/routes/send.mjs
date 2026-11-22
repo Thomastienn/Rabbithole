@@ -5,7 +5,7 @@ import { markerNotes } from '../../media/markers.mjs';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { diagramReply, generateDiagram, tutorContext } from '../../media/diagrams.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
-import { ENDED } from '../../providers/chatStream.mjs';
+import { ENDED, collectText } from '../../providers/chatStream.mjs';
 import { withAttachments } from '../../attachments.mjs';
 import { attachmentParts, prepareUploads, prepareRetry, savePrepared } from '../attachments.mjs';
 import { join } from 'node:path';
@@ -143,7 +143,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     const send = (data) => {
         if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
-    const items = new Map();
+    const streamed = collectText();
     let text = '',
         status = 'streaming',
         finished = false,
@@ -208,7 +208,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         clearTimeout(pending);
         pending = null;
         if (finished) return;
-        const output = diagramReply([...items.values()].join('\n\n'));
+        const output = diagramReply(streamed.text('\n\n'));
         text = output.text;
         saved = performance.now();
         store.update(reply, text, status);
@@ -222,10 +222,10 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         if (finished) return;
         if (pending) flush();
         finished = true;
-        prepareArtifacts(diagramReply([...items.values()].join('\n\n'), true), true);
+        prepareArtifacts(diagramReply(streamed.text('\n\n'), true), true);
         clearInterval(heartbeat);
         controller.signal.removeEventListener('abort', interrupt);
-        const output = diagramReply([...items.values()].join('\n\n'), status === 'completed');
+        const output = diagramReply(streamed.text('\n\n'), status === 'completed');
         if (output.text !== text) {
             text = output.text;
             send({ type: 'text', text });
@@ -423,13 +423,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             (event) => {
                 if (finished) return;
                 if (late) throw late;
-                if (event.type === 'delta' || event.type === 'item') {
-                    items.set(
-                        event.item,
-                        event.type === 'item'
-                            ? event.text
-                            : (items.get(event.item) ?? '') + event.text,
-                    );
+                if (streamed.onEvent(event)) {
                     const wait = ctx.saveEvery - (performance.now() - saved);
                     if (wait <= 0) flush();
                     else
@@ -474,7 +468,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
         if (status === 'streaming')
             status = controller.signal.aborted ? 'interrupted' : 'completed';
         if (!finished) {
-            const output = diagramReply([...items.values()].join('\n\n'), true);
+            const output = diagramReply(streamed.text('\n\n'), true);
             if (status === 'completed') calls.runText(output);
             if (output.requested) {
                 text = output.text;

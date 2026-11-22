@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { collectText } from '../../providers/chatStream.mjs';
 import { compactionMessages } from '../../media/diagrams.mjs';
 import { anchored } from '../../suggestions.mjs';
 import { partTrail, visualMessage, visualPassage } from '../../../src/media/artifacts.ts';
@@ -161,8 +162,7 @@ export function compactionJobs(ctx) {
     // One quick-thinking call; resolves to the one-paragraph snapshot or throws. Metered even when cancelled.
     const compact = (prompt, quick, controller) =>
         (async () => {
-            const items = new Map();
-            let status;
+            const streamed = collectText();
             await metered(pick(quick), 'compaction', randomUUID(), quick).generate(
                 {
                     provider: quick.provider,
@@ -174,25 +174,16 @@ export function compactionJobs(ctx) {
                         'You write the background a new focused conversation inherits. Never answer questions, request or generate media. Do not use tools, access files or execute code.',
                 },
                 prompt,
-                (event) => {
-                    if (event.type === 'delta' || event.type === 'item')
-                        items.set(
-                            event.item,
-                            event.type === 'item'
-                                ? event.text
-                                : (items.get(event.item) ?? '') + event.text,
-                        );
-                    if (event.type === 'status') status = event.status;
-                },
+                streamed.onEvent,
                 () => {},
                 controller.signal,
             );
             // One paragraph by layout only; no length cap, so nothing is cut.
-            const snapshot = [...items.values()]
-                .join(' ')
+            const snapshot = streamed
+                .text(' ')
                 .replace(/\s*\n\s*/g, ' ')
                 .trim();
-            if (controller.signal.aborted || status !== 'completed' || !snapshot)
+            if (controller.signal.aborted || streamed.status !== 'completed' || !snapshot)
                 throw new Error(
                     controller.signal.aborted
                         ? 'Context preparation was stopped.'

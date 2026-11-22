@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { collectText } from '../../providers/chatStream.mjs';
 import { errorCause, formatLog } from '../../log.mjs';
 import { lookUpConcept } from '../../neighbourhood.mjs';
 import { NAME_CONVERSATION, quickTool } from '../../tools/quickTools.mjs';
@@ -93,8 +94,7 @@ export function titleJobs(ctx) {
                           )
                       ).concepts.map((c) => c.name)
                     : [];
-            const items = new Map();
-            let status;
+            const streamed = collectText();
             const call = quickTool(
                 NAME_CONVERSATION,
                 (input) => {
@@ -118,21 +118,12 @@ export function titleJobs(ctx) {
                     ...call.request,
                 },
                 titlePrompt(tree, question, nearest),
-                (event) => {
-                    if (event.type === 'delta' || event.type === 'item')
-                        items.set(
-                            event.item,
-                            event.type === 'item'
-                                ? event.text
-                                : (items.get(event.item) ?? '') + event.text,
-                        );
-                    if (event.type === 'status') status = event.status;
-                },
+                streamed.onEvent,
                 () => {},
                 running.controller.signal,
             );
-            const { title, concept } = call.answer([...items.values()].join(' '), readTitle);
-            if (status !== 'completed' || !title)
+            const { title, concept } = call.answer(streamed.text(' '), readTitle);
+            if (streamed.status !== 'completed' || !title)
                 throw new Error('Quick thinking returned no title.');
             if (ctx.stopping) return;
             store.retitle(conversation, title);
