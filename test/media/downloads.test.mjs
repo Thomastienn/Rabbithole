@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { downloadManager } from '../../server/downloads.mjs';
 import { videoTools } from '../../server/media/video-tools.mjs';
 import { MANIM_VERSION, videoBrowser } from '../../server/media/manim.mjs';
@@ -29,43 +32,70 @@ function fakeTools(installed = {}) {
 }
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const states = (manager) => manager.list().map((d) => `${d.id}:${d.state}`);
+const addonStates = (manager) =>
+    Object.fromEntries(manager.addons().map((a) => [a.id, `${a.state}:${a.percent}`]));
+const addonsFile = () => join(mkdtempSync(join(tmpdir(), 'tt-addons-')), 'addons.json');
 
-test('downloads run one at a time in order, skip ready tools, and list ready ones until seen', async () => {
-    const { tools, runs, pending } = fakeTools({ python: true });
-    const manager = downloadManager(tools);
+test('nothing downloads after setup; video tools queue offline Python first and run one at a time', async () => {
+    const { tools, runs, pending } = fakeTools();
+    const manager = downloadManager(tools, { file: addonsFile() });
     const events = [];
     manager.subscribe((list) => events.push(list));
-    const done = manager.start();
+    await manager.start();
+    assert.deepEqual(runs, [], 'no add-on downloads unless the learner installs it');
+    const { name, enables, size, ...video } = manager.addons()[0];
+    assert.ok(name && enables && size > 0, 'an add-on says what it is and how big');
+    assert.deepEqual(video, {
+        id: 'video-tools',
+        dependency: 'offline-python',
+        state: 'not-installed',
+        percent: null,
+    });
+    assert.equal(await manager.install('video-tools'), true);
     await tick();
-    assert.deepEqual(states(manager), ['manim:running', 'browser:queued']);
-    assert.deepEqual(runs, ['manim'], 'one at a time');
+    assert.deepEqual(states(manager), ['python:running', 'manim:queued', 'browser:queued']);
+    assert.deepEqual(runs, ['python'], 'offline Python first, one at a time');
+    pending.python.report({ percent: 50 });
+    assert.deepEqual(addonStates(manager), {
+        'video-tools': 'downloading:0',
+        'offline-python': 'downloading:50',
+        'web-search': 'not-installed:null',
+    });
+    pending.python.resolve();
+    await tick();
     pending.manim.report({ percent: 40.2 });
-    assert.equal(manager.list()[0].percent, 40);
+    assert.equal(manager.list()[1].percent, 40);
     assert.equal(manager.videoWaiting(), 'Video tools are still downloading (20%).');
+    assert.equal(addonStates(manager)['video-tools'], 'downloading:20');
     pending.manim.resolve();
     await tick();
-    assert.deepEqual(runs, ['manim', 'browser']);
+    assert.deepEqual(runs, ['python', 'manim', 'browser']);
     pending.browser.report({ bytes: 5e6, total: 1e8, percent: 5 });
     assert.deepEqual(
-        { bytes: manager.list()[1].bytes, total: manager.list()[1].total },
+        { bytes: manager.list()[2].bytes, total: manager.list()[2].total },
         { bytes: 5e6, total: 1e8 },
     );
     pending.browser.resolve();
-    await done;
-    assert.deepEqual(states(manager), ['manim:ready', 'browser:ready'], 'ready stays listed');
+    await manager.idle();
+    assert.deepEqual(addonStates(manager), {
+        'video-tools': 'installed:null',
+        'offline-python': 'installed:null',
+        'web-search': 'not-installed:null',
+    });
     assert.equal(manager.videoWaiting(), null);
     assert.ok(events.length > 3, 'every change streams');
     manager.seen();
     assert.deepEqual(manager.list(), [], 'opening the list once clears ready downloads');
+    assert.equal(await manager.install('nothing'), false, 'an unknown add-on is refused');
 });
 
-test('a failed download keeps its message until Retry runs it again', async () => {
+test('a failed download keeps its message until the add-on is installed again', async () => {
     const { tools, runs, pending } = fakeTools({ browser: true, python: true });
     const manager = downloadManager(tools);
-    const done = manager.start();
+    await manager.install('video-tools');
     await tick();
     pending.manim.reject(new Error('Manim setup requires uv.'));
-    await done;
+    await manager.idle();
     assert.deepEqual(manager.list(), [
         {
             id: 'manim',
@@ -77,38 +107,47 @@ test('a failed download keeps its message until Retry runs it again', async () =
             error: 'Manim setup requires uv.',
         },
     ]);
+    assert.equal(manager.addons()[0].state, 'failed');
+    assert.equal(manager.addons()[0].error, 'Manim setup requires uv.');
     manager.seen();
     assert.equal(manager.list().length, 1, 'a failure is not cleared by opening the list');
     assert.equal(manager.retry('python'), false, 'only a failed download retries');
-    assert.equal(manager.retry('manim'), true);
+    await manager.install('video-tools');
     await tick();
-    assert.deepEqual(runs, ['manim', 'manim']);
+    assert.deepEqual(runs, ['manim', 'manim'], 'only the failed tool runs again');
     assert.deepEqual(states(manager), ['manim:running']);
     pending.manim.resolve();
     await manager.idle();
     assert.deepEqual(states(manager), ['manim:ready']);
+    assert.equal(manager.addons()[0].state, 'installed');
 });
 
-test('a download stopped mid-way restarts from the start on the next launch', async () => {
-    const installed = { python: true };
+test('installed add-ons are remembered: a stopped or outdated one queues again on the next launch', async () => {
+    const file = addonsFile(),
+        installed = { python: true };
     const first = fakeTools(installed);
-    const before = downloadManager(first.tools);
-    void before.start();
+    const before = downloadManager(first.tools, { file });
+    await before.install('video-tools');
     await tick();
     first.pending.manim.report({ percent: 70 });
     before.stop();
     first.pending.manim.reject(new Error('aborted'));
     await tick();
     assert.equal(before.list()[0].state, 'running', 'a stopped download is not reported failed');
+    assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), ['offline-python', 'video-tools']);
+
+    // The browser was installed, but an app update now needs a newer one.
     const next = fakeTools(installed);
-    const after = downloadManager(next.tools);
+    const after = downloadManager(next.tools, { file });
     void after.start();
     await tick();
     assert.deepEqual(states(after), ['manim:running', 'browser:queued']);
     assert.equal(after.list()[0].percent, null);
+    assert.ok(!next.runs.includes('searxng'), 'an add-on never installed is never queued');
+    after.stop();
 });
 
-test('routes stream the list, retry failures, mark seen, and setup starts downloads; a video waits for its tools', async (t) => {
+test('routes stream the list, install and retry add-ons, retry failures and mark seen; a video waits for its tools', async (t) => {
     const { tools, pending } = fakeTools({ python: true });
     const downloads = downloadManager(tools);
     const env = await open(
@@ -116,8 +155,17 @@ test('routes stream the list, retry failures, mark seen, and setup starts downlo
         { downloads },
     );
     t.after(env.close);
-    assert.equal(downloads.list().length, 0, 'nothing downloads before setup ends');
     await (await env.post('/api/setup')).json();
+    await downloads.idle();
+    assert.deepEqual(downloads.list(), [], 'nothing downloads after setup');
+    const listed = await (await env.get('/api/downloads/addons')).json();
+    assert.deepEqual(
+        listed.map((a) => `${a.id}:${a.state}`),
+        ['video-tools:not-installed', 'offline-python:installed', 'web-search:not-installed'],
+    );
+    assert.equal((await env.post('/api/downloads/addons/nothing')).status, 404);
+    const installing = await (await env.post('/api/downloads/addons/video-tools')).json();
+    assert.equal(installing[0].state, 'downloading');
     await tick();
     const stream = await env.get('/api/downloads');
     assert.equal(stream.headers.get('content-type'), 'text/event-stream');
@@ -158,28 +206,26 @@ test('routes stream the list, retry failures, mark seen, and setup starts downlo
         retried.map((d) => d.state),
         ['queued', 'running'],
     );
-    pending.browser.resolve();
+    pending.browser.reject(new Error('Network down.'));
     await tick();
+    const again = await (await env.post('/api/downloads/addons/video-tools/retry')).json();
+    assert.equal(again[0].state, 'downloading');
     pending.manim.resolve();
+    await tick();
+    pending.browser.resolve();
     await downloads.idle();
     assert.deepEqual(await (await env.post('/api/downloads/seen')).json(), []);
 });
 
-test('an on-request download waits to be added, then queues once; a requested one checks on launch', async (t) => {
+test('web search installs once on request; a folder from before add-ons queues it on launch', async () => {
     const { tools, runs, pending } = fakeTools({ manim: true, browser: true, python: true });
     const downloads = downloadManager(tools);
-    const env = await open({ generate: async () => assert.fail('no video work') }, { downloads });
-    t.after(env.close);
     await downloads.start();
     assert.deepEqual(runs, [], 'a fresh install does not download web search');
-    assert.equal((await env.post('/api/downloads/nothing')).status, 404);
-    assert.deepEqual(
-        (await (await env.post('/api/downloads/searxng')).json()).map((d) => d.state),
-        ['queued'],
-    );
-    downloads.add('searxng');
+    await downloads.install('web-search');
+    await downloads.install('web-search');
     await tick();
-    assert.deepEqual(runs, ['searxng'], 'adding again while listed is a no-op');
+    assert.deepEqual(runs, ['searxng'], 'installing again while listed is a no-op');
     pending.searxng.resolve();
     await downloads.idle();
     assert.deepEqual(states(downloads), ['searxng:ready']);
@@ -192,7 +238,7 @@ test('an on-request download waits to be added, then queues once; a requested on
     again.stop();
 });
 
-test('a tool root holding every video tool queues no video download; web search can still be queued', async () => {
+test('tools already in the tool root count as installed and never download; web search can still be queued', async () => {
     const root = '/opt/rabbithole/tools',
         browser = videoBrowser(root, 'linux');
     const tools = videoTools({
@@ -205,8 +251,13 @@ test('a tool root holding every video tool queues no video download; web search 
     const { tools: fake, runs, pending } = fakeTools();
     const downloads = downloadManager([...tools, fake.find((t) => t.id === 'searxng')]);
     await downloads.start();
+    assert.deepEqual(
+        downloads.addons().map((a) => a.state),
+        ['installed', 'installed', 'not-installed'],
+    );
+    await downloads.install('video-tools');
     assert.deepEqual(downloads.list(), [], 'no video tool is queued');
-    downloads.add('searxng');
+    await downloads.install('web-search');
     await tick();
     assert.deepEqual(runs, ['searxng']);
     pending.searxng.resolve();
@@ -219,4 +270,15 @@ test('a tool root holding every video tool queues no video download; web search 
         false,
         'the Windows browser is looked up at its own path',
     );
+});
+
+test('installs asked for at the same time queue each tool once', async () => {
+    const { tools, runs, pending } = fakeTools({ python: true, browser: true });
+    const manager = downloadManager(tools);
+    void manager.start();
+    await Promise.all([manager.install('video-tools'), manager.install('video-tools')]);
+    await tick();
+    pending.manim.resolve();
+    await tick();
+    assert.deepEqual(runs, ['manim']);
 });

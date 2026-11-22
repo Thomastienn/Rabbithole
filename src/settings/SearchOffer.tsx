@@ -26,7 +26,7 @@ export default function SearchOffer({
                     onClick={async () => {
                         close();
                         try {
-                            await api('/api/downloads/searxng', {});
+                            await api('/api/downloads/addons/web-search', {});
                             done('Web search is downloading. Follow it in Downloads.');
                         } catch (e) {
                             failed((e as Error).message);
