@@ -69,7 +69,7 @@
     place-items: center;
     width: 40px;
     height: 40px;
-    border-radius: 8px;
+    border-radius: var(--radius-element);
     background: var(--color-background-muted);
     color: var(--color-text-accent);
 }
