@@ -13,6 +13,7 @@ import {
     ChevronRightIcon,
     MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
+import { request as api } from '../serverAccess';
 
 type PieceRow = {
     id: string;
@@ -41,11 +42,7 @@ const date = (t: number) =>
 const PAGE = 24;
 
 // Read-only: the library is listed and previewed here, never edited or deleted.
-export default function PieceLibrary({
-    api,
-}: {
-    api: (path: string, body?: unknown) => Promise<any>;
-}) {
+export default function PieceLibrary() {
     const [list, setList] = useState<{ pieces: PieceRow[]; total: number }>();
     const [query, setQuery] = useState('');
     const [offset, setOffset] = useState(0);

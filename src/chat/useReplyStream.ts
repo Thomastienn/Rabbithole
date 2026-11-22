@@ -6,7 +6,7 @@ import type { ChatState } from './useChatState';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
 import { mergeArtifact, type DiscussionReply } from '../media/artifacts';
-import { replyStream } from '../serverAccess';
+import { replyStream, request as api } from '../serverAccess';
 
 // Reply stream: sends a question or retry, applies SSE events live, then reloads the saved tree.
 export function useReplyStream(
@@ -15,17 +15,7 @@ export function useReplyStream(
     { savingModel }: ChatModel,
     theme: { name: string; mode: string },
 ) {
-    const {
-        tree,
-        state,
-        setState,
-        setTree,
-        setPreviews,
-        setDrafts,
-        setPendingFiles,
-        setError,
-        api,
-    } = c;
+    const { tree, state, setState, setTree, setPreviews, setDrafts, setPendingFiles, setError } = c;
     const { turns, streams, checkpoints, removed, renamed, selected, request } = c;
     // Reopening a page during a turn recovers saved checkpoints without tying work to focus.
     useEffect(() => {

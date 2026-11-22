@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const statuses = (c) => [...c.querySelectorAll('[role=status]')].map((e) => e.textContent);
 const { default: TutorStyleSettings } = await import('../../src/settings/TutorStyleSettings.tsx');
 
@@ -18,7 +19,8 @@ test('tutor style section prefills the default, saves edits, restores the defaul
         }
         return saved;
     };
-    const { container, act, cleanup } = await render(h(TutorStyleSettings, { api }), (w) => ui(w));
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(TutorStyleSettings), (w) => ui(w));
     t.after(cleanup);
     await act(async () => {});
     const box = container.querySelector('textarea');

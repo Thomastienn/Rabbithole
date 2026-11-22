@@ -1,7 +1,7 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-const { replyStream, request, setCsrf } = await import('../../src/serverAccess.ts');
+const { replyStream, request, setAdapter, setCsrf } = await import('../../src/serverAccess.ts');
 
 test('requests post JSON with the CSRF header and fail with the server message', async (t) => {
     const calls = [],
@@ -11,13 +11,12 @@ test('requests post JSON with the CSRF header and fail with the server message',
             [500, {}],
             [200, []],
         ];
-    const fetch = globalThis.fetch;
-    globalThis.fetch = async (url, init) => {
+    const replaced = setAdapter(async (url, init) => {
         calls.push([url, init?.method, init?.headers]);
         const [status, body] = answers.shift();
         return { ok: status < 400, json: async () => body };
-    };
-    t.after(() => (globalThis.fetch = fetch));
+    });
+    t.after(() => setAdapter(replaced));
     setCsrf('token');
     assert.deepEqual(await request('/api/a', { x: 1 }), { ok: 1 });
     await assert.rejects(request('/api/b', {}), { message: 'Busy.', data: { error: 'Busy.' } });
@@ -35,8 +34,6 @@ test('requests post JSON with the CSRF header and fail with the server message',
 });
 
 test('a reply stream yields events split across chunks, skips keepalives and rejects on failure', async (t) => {
-    const fetch = globalThis.fetch;
-    t.after(() => (globalThis.fetch = fetch));
     const frame = (e) => `data: ${JSON.stringify(e)}\n\n`;
     const body = (chunks, drop) =>
         new ReadableStream({
@@ -60,7 +57,10 @@ test('a reply stream yields events split across chunks, skips keepalives and rej
         Response.json({ error: 'Busy.' }, { status: 409 }),
     ];
     const calls = [];
-    globalThis.fetch = async (url, init) => (calls.push([url, init.method]), answers.shift());
+    const replaced = setAdapter(
+        async (url, init) => (calls.push([url, init.method]), answers.shift()),
+    );
+    t.after(() => setAdapter(replaced));
     const events = [];
     for await (const event of await replyStream('/api/trees/a/messages', { body: '{}' }))
         events.push(event);

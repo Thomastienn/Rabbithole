@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: SandboxSettings } = await import('../../src/settings/SandboxSettings.tsx');
 
 // `accept` lists the UAC answers in order; each POST runs the launcher setup once.
@@ -15,7 +16,8 @@ async function mount(t, { windows = true, accept = [] } = {}) {
         if (body) (posts.push(path), (ready = accept.shift()));
         return { windows, ready };
     };
-    const page = await render(h(SandboxSettings, { api }), (w) => ui(w));
+    fakeServer(t, api);
+    const page = await render(h(SandboxSettings), (w) => ui(w));
     t.after(page.cleanup);
     await page.act(async () => {});
     const click = (label) => page.act(async () => button(page.container, label).click());

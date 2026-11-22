@@ -65,7 +65,7 @@ export default function ChatPage({
     const { visibleIds, addresses, previews, drafts, setDrafts, shownMapWidth, workspace } = c;
     const { pendingFiles, setPendingFiles } = c;
     const visibleSet = new Set(visibleIds);
-    const { branch, api } = c;
+    const { branch } = c;
     const { openTree, openConversation, loadInitial, select, titleSearch, activeKey } = trees;
     const { models, providers, modelError, loadModels, signIn, currentModel } = model;
     const { cancelDelete } = actions;
@@ -328,7 +328,6 @@ export default function ChatPage({
                                                     />
                                                 ) : state.firstRun ? (
                                                     <FirstRunSetup
-                                                        api={api}
                                                         models={models}
                                                         providers={providers}
                                                         modelError={modelError}
@@ -380,7 +379,7 @@ export default function ChatPage({
                         overview={overview}
                         back={() => setTab('learning')}
                     >
-                        <KnowledgePage api={c.api} activity={activeKey} />
+                        <KnowledgePage activity={activeKey} />
                     </ReturnPanel>
                     <ReturnPanel
                         label="Videos"
@@ -389,7 +388,7 @@ export default function ChatPage({
                         overview={overview}
                         back={() => setTab('learning')}
                     >
-                        <VideoLibrary api={c.api} activity={activeKey} />
+                        <VideoLibrary activity={activeKey} />
                     </ReturnPanel>
                     <ReturnPanel
                         label="Pieces"
@@ -398,12 +397,11 @@ export default function ChatPage({
                         overview={overview}
                         back={() => setTab('learning')}
                     >
-                        <PieceLibrary api={c.api} />
+                        <PieceLibrary />
                     </ReturnPanel>
                     <SettingsWindow
                         request={tab === 'settings' ? settings : undefined}
                         close={closeSettings}
-                        api={api}
                         models={models}
                         providers={providers}
                         modelError={modelError}

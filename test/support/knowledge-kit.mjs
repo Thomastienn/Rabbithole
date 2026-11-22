@@ -32,8 +32,8 @@ export function setup(w) {
 }
 
 // Exercise the real controls/controller without D3; concept buttons supply only its focus targets.
-export function KnowledgeFixture({ api, activity }) {
-    const state = useKnowledge({ api, activity });
+export function KnowledgeFixture({ activity }) {
+    const state = useKnowledge({ activity });
     return h(
         'div',
         null,

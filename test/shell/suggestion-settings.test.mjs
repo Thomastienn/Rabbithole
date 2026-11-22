@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: SuggestionSettings, AutomaticSuggestions } =
     await import('../../src/settings/SuggestionSettings.tsx');
 
@@ -24,12 +25,11 @@ test('suggestion settings toggle globally, and save a pinned quick model', async
         return h(
             'div',
             null,
-            h(AutomaticSuggestions, { api }),
+            h(AutomaticSuggestions),
             h(
                 'div',
                 { role: 'table' },
                 h(SuggestionSettings, {
-                    api,
                     models: [
                         {
                             provider: 'codex',
@@ -43,6 +43,7 @@ test('suggestion settings toggle globally, and save a pinned quick model', async
             ),
         );
     }
+    fakeServer(t, api);
     const { container, act, cleanup } = await render(h(Fixture), (w) => {
         dom = ui(w);
     });

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button, name } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: Downloads } = await import('../../src/shell/Downloads.tsx');
 const { default: VideoCard } = await import('../../src/media/VideoCard.tsx');
 
@@ -16,12 +17,10 @@ test('Downloads icon shows progress, lists name, size, progress and Retry, and h
         }
         close() {}
     };
-    const posts = [];
-    const fetchBefore = globalThis.fetch;
-    globalThis.fetch = async (path, init) => (posts.push([path, init.method]), new Response('[]'));
+    const calls = fakeServer(t, () => []);
+    const posts = () => calls.map((c) => [c.path, c.init.method]);
     t.after(() => {
         delete globalThis.EventSource;
-        globalThis.fetch = fetchBefore;
     });
     const { container, act, cleanup } = await render(h(Downloads, { rail: false }), ui);
     t.after(cleanup);
@@ -59,14 +58,14 @@ test('Downloads icon shows progress, lists name, size, progress and Retry, and h
     assert.match(list.textContent, /Manim.*Failed: Network down\./);
     assert.match(list.textContent, /Video browser100 MB.*Downloading, 50%/);
     await act(async () => button(list, 'Retry Manim').click());
-    assert.deepEqual(posts, [['/api/downloads/manim/retry', 'POST']]);
+    assert.deepEqual(posts(), [['/api/downloads/manim/retry', 'POST']]);
     await act(async () =>
         document.dispatchEvent(
             new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
         ),
     );
     assert.deepEqual(
-        posts.at(-1),
+        posts().at(-1),
         ['/api/downloads/seen', 'POST'],
         'closing the opened list marks ready ones seen',
     );

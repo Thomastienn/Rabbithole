@@ -4,6 +4,16 @@ import type { Artifact } from './media/artifacts';
 // Every request to the server goes through this module, so the CSRF token and header live here only.
 let csrf = '';
 
+type Adapter = (path: string, init?: RequestInit) => Promise<Response>;
+let adapter: Adapter = (path, init) => fetch(path, init);
+
+// Tests swap in a fake server; returns the adapter it replaced.
+export function setAdapter(next: Adapter) {
+    const replaced = adapter;
+    adapter = next;
+    return replaced;
+}
+
 // The chat state sets this from /api/state once it has loaded.
 export function setCsrf(token: string) {
     csrf = token;
@@ -14,7 +24,7 @@ export function serverFetch(
     path: string,
     init?: RequestInit & { headers?: Record<string, string> },
 ) {
-    return fetch(
+    return adapter(
         path,
         init && { ...init, headers: { ...init.headers, 'X-Rabbithole-CSRF': csrf } },
     );

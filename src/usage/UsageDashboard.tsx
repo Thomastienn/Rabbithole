@@ -17,6 +17,7 @@ import {
     type UsageEvent,
     type UsageRange,
 } from './usage';
+import { request as api } from '../serverAccess';
 
 const SERIES = [
     ['input', 'Input'],
@@ -113,10 +114,8 @@ function SeriesPatterns() {
 
 // Reads saved usage records only; viewing never calls a model.
 export default function UsageDashboard({
-    api,
     providers,
 }: {
-    api: (path: string) => Promise<any>;
     providers?: Record<string, { label: string }>;
 }) {
     const now = new Date();

@@ -12,6 +12,7 @@ import {
     type ChatSelection,
 } from './models';
 import CustomEffort from './CustomEffort';
+import { request as api } from '../serverAccess';
 
 type Smart = {
     model: Pick<Model, 'provider' | 'model'> | null;
@@ -27,13 +28,11 @@ const key = (m: Pick<Model, 'provider' | 'model'>) =>
 
 // Smart follows the global chat default per field until that field is pinned here.
 export default function SmartSettings({
-    api,
     models,
     providers,
     chatVersion,
     onSaved,
 }: {
-    api: (path: string, body?: unknown) => Promise<Smart>;
     models?: Model[];
     providers?: Record<string, { label: string; connected: boolean }>;
     chatVersion: number;

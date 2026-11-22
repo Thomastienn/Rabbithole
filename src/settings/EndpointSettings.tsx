@@ -10,6 +10,7 @@ import type { Model } from './models';
 import SearchOffer from './SearchOffer';
 import EndpointModels from './EndpointModels';
 import { Done } from './InterfaceSettings';
+import { request as api } from '../serverAccess';
 
 export type Endpoint = {
     id: string;
@@ -28,11 +29,9 @@ const when = (at: string) => {
 };
 
 export default function EndpointSettings({
-    api,
     models,
     changed,
 }: {
-    api: (path: string, body?: unknown) => Promise<any>;
     models?: Model[];
     changed: () => void | Promise<void>;
 }) {
@@ -388,7 +387,6 @@ export default function EndpointSettings({
             {message && <Done>{message}</Done>}
             {offerSearch && (
                 <SearchOffer
-                    api={api}
                     close={() => setOfferSearch(false)}
                     done={setMessage}
                     failed={setError}

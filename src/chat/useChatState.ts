@@ -7,8 +7,7 @@ import type { BranchState } from './branch';
 import type { State, Tree } from './types';
 import { conversationAddresses, subtreeIds } from '../map/treeList';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
-// api stays a prop until views call the server access module themselves.
-import { request as api, setCsrf } from '../serverAccess';
+import { setCsrf } from '../serverAccess';
 
 // State and refs shared by the ChatPage hooks and regions; each hook takes this object.
 export function useChatState() {
@@ -208,7 +207,6 @@ export function useChatState() {
         changeView,
         toggleExpanded,
         returnToTree,
-        api,
     };
 }
 

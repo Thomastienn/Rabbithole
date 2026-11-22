@@ -13,17 +13,16 @@ import {
     type ChatSelection,
 } from './models';
 import CustomEffort from './CustomEffort';
+import { request as api } from '../serverAccess';
 
 const key = (selection: Pick<Model, 'provider' | 'model'>) =>
     JSON.stringify({ provider: selection.provider, model: selection.model });
 
 export default function ChatSettings({
-    api,
     models,
     providers,
     onSaved,
 }: {
-    api: (path: string, body?: unknown) => Promise<ChatSelection>;
     models?: Model[];
     providers?: Record<string, { label: string; connected: boolean }>;
     onSaved?: () => void;

@@ -12,6 +12,7 @@ import {
     keptEffort,
     typedEffort,
 } from '../../src/settings/models.ts';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: ChatSettings } = await import('../../src/settings/ChatSettings.tsx');
 
 test('effort carries to a model only when offered; options add a disabled unavailable saved effort', () => {
@@ -109,8 +110,9 @@ test('chat defaults save model and effort, keep only offered efforts and flag un
     function Fixture() {
         const [list, set] = useState(models);
         update = set;
-        return h('div', { role: 'table' }, h(ChatSettings, { api, models: list, providers }));
+        return h('div', { role: 'table' }, h(ChatSettings, { models: list, providers }));
     }
+    fakeServer(t, api);
     const { container, act, cleanup } = await render(h(Fixture), (w) => {
         dom = ui(w);
     });
@@ -149,12 +151,13 @@ test('a fresh install shows Not set for chat and the smart role that follows it,
         path === '/api/settings/chat'
             ? unset
             : { model: null, followEffort: true, effort: null, resolved: unset };
+    fakeServer(t, api);
     const { container, act, cleanup } = await render(
         h(
             'div',
             { role: 'table' },
-            h(ChatSettings, { api, models, providers }),
-            h(SmartSettings, { api, models, providers }),
+            h(ChatSettings, { models, providers }),
+            h(SmartSettings, { models, providers }),
         ),
         ui,
     );
@@ -174,8 +177,9 @@ test('Custom… reveals a field that saves a trimmed typed effort and rejects in
         return saved;
     };
     let dom;
+    fakeServer(t, api);
     const { container, act, cleanup } = await render(
-        h('div', { role: 'table' }, h(ChatSettings, { api, models, providers })),
+        h('div', { role: 'table' }, h(ChatSettings, { models, providers })),
         (w) => {
             dom = ui(w);
         },

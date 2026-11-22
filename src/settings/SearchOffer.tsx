@@ -1,15 +1,14 @@
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { request as api } from '../serverAccess';
 
 // Shown after adding a custom endpoint while web search is unavailable; accepting queues SearXNG in Downloads.
 export default function SearchOffer({
-    api,
     close,
     done,
     failed,
 }: {
-    api: (path: string, body?: unknown) => Promise<unknown>;
     close: () => void;
     done: (message: string) => void;
     failed: (error: string) => void;
