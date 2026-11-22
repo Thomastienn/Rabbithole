@@ -349,7 +349,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             ctx.startDrawing(
                 job,
                 tree.messages.find((m) => m.id === job.message)?.status === 'streaming'
-                    ? ctx.active.get(id)?.signal
+                    ? ctx.jobs.get('reply', id)?.controller.signal
                     : undefined,
             );
         return json(res, 200, live(job));
@@ -359,7 +359,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         const label = artifact.kind === 'visual' ? 'visual' : 'diagram';
         const job =
             artifact.status === 'failed' &&
-            !ctx.active.has(id) &&
+            !ctx.jobs.get('reply', id) &&
             !videos.has(artifactId) &&
             store.retryArtifact(id, artifactId);
         if (!job)

@@ -156,7 +156,7 @@ export const freeAnchorOf = (tree, body) => {
 
 // Compaction and branch preparation; reads ctx.stopping at settle time.
 export function compactionJobs(ctx) {
-    const { store, compactions, prepared } = ctx;
+    const { store } = ctx;
     // One quick-thinking call; resolves to the one-paragraph snapshot or throws. Metered even when cancelled.
     const compact = (prompt, quick, controller) =>
         ctx.askQuick('compaction', quick, {
@@ -170,31 +170,45 @@ export function compactionJobs(ctx) {
             missing: 'Quick thinking did not return a complete summary.',
             stopped: 'Context preparation was stopped.',
         });
+    // A parent's compaction started when the branch form opened { input, passage, failed? }; submit reuses it while input matches.
     const unprepare = (parent) => {
-        const p = prepared.get(parent);
-        p?.controller.abort();
-        p?.run.catch(() => {});
-        prepared.delete(parent);
+        const p = ctx.jobs.get('prepared-compaction', parent);
+        if (!p) return;
+        p.controller.abort();
+        p.done.catch(() => {});
+        ctx.jobs.remove(p);
     };
-    const startCompaction = (child, prompt, quick, reuse) => {
-        const compaction = {
-            controller: reuse?.controller ?? new AbortController(),
-            settled: false,
-        };
-        compactions.set(child, compaction);
-        compaction.done = (reuse?.run ?? compact(prompt, quick, compaction.controller))
-            .then((snapshot) => {
-                if (!ctx.stopping) store.compacted(child, snapshot);
-                if (compactions.get(child) === compaction) compactions.delete(child);
-            })
-            .catch((error) => {
-                // Provider limits (context, output, usage) surface as-is instead of dropping history.
-                compaction.error = `Context preparation failed. ${error.message.replace(/ ?Partial reply saved; try again\.$/, '')} Retry, or choose another quick thinking model in Settings if this repeats.`;
-            })
-            .finally(() => {
-                compaction.settled = true;
-            });
-        return compaction;
+    const prepare = (parent, prompt, quick, passage) => {
+        ctx.unprepare(parent);
+        const job = ctx.jobs.start(
+            'prepared-compaction',
+            parent,
+            parent,
+            (job) => compact(prompt, quick, job.controller),
+            { keep: true },
+        );
+        Object.assign(job, { input: JSON.stringify([prompt, quick]), passage });
+        job.done.catch(() => {
+            job.failed = true;
+        }); // reopening the form or submitting after a failure runs again
     };
-    return { compact, unprepare, startCompaction };
+    // Branch-first: a child's background compaction { error? }; kept after failure for retry, removed on success.
+    const startCompaction = (child, prompt, quick, reuse) =>
+        ctx.jobs.start(
+            'compaction',
+            child,
+            child,
+            (job) =>
+                (reuse?.done ?? compact(prompt, quick, job.controller))
+                    .then((snapshot) => {
+                        if (!ctx.stopping) store.compacted(child, snapshot);
+                        ctx.jobs.remove(job);
+                    })
+                    .catch((error) => {
+                        // Provider limits (context, output, usage) surface as-is instead of dropping history.
+                        job.error = `Context preparation failed. ${error.message.replace(/ ?Partial reply saved; try again\.$/, '')} Retry, or choose another quick thinking model in Settings if this repeats.`;
+                    }),
+            { keep: true, controller: reuse?.controller },
+        );
+    return { compact, unprepare, prepare, startCompaction };
 }

@@ -142,7 +142,7 @@ test('unsupported selections and catalog failures keep prior model and all saved
         assert.match((await response.json()).error, /previous selection is saved/);
         assert.equal((await fetch(`${env.origin}/api/models`)).status, 502);
         assert.deepEqual(env.store.tree(tree.id), before);
-        assert.equal(env.app.active.size, 0);
+        assert.equal(env.app.jobs.list('reply').length, 0);
     } finally {
         env.close();
     }

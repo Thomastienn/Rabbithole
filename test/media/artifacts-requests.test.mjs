@@ -360,7 +360,7 @@ test('invalid, unsafe and oversized worker results save honest failures without 
                 stream + JSON.stringify(saved),
                 /credential-canary|Private provider diagnostic/,
             );
-            assert.equal(env.app.active.size, 0);
+            assert.equal(env.app.jobs.list('reply').length, 0);
         }
         asked = true;
         const tree = env.store.list()[0];
