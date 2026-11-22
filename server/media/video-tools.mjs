@@ -10,9 +10,13 @@ import { ensurePython } from '../../scripts/python-setup.mjs';
 import { ensureLatex, ensureUv, latexReady, uvReady } from '../../scripts/tools-setup.mjs';
 
 // The existing terminal setups, run by the download manager; stopping the app kills the running step.
-const runner = (signal) => (command, args) =>
+const runner = (signal) => (command, args, env) =>
     new Promise((resolve, reject) => {
-        const child = spawn(command, args, { stdio: ['ignore', 'inherit', 'inherit'], signal });
+        const child = spawn(command, args, {
+            stdio: ['ignore', 'inherit', 'inherit'],
+            signal,
+            env,
+        });
         child.once('error', reject);
         child.once('exit', (code) => resolve(code ?? 1));
     });

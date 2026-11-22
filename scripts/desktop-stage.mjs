@@ -42,8 +42,8 @@ const run = (command, args, cwd = root) =>
 // Windows' own bsdtar reads zips and C:\ paths; a Git-for-Windows GNU tar earlier on PATH does neither.
 const tar = windows ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
 // The tools-setup form: resolves to the exit code. Its tar unpacks uv's Windows zip, so it gets the same bsdtar.
-const runCode = async (command, args) =>
-    spawnSync(command === 'tar' ? tar : command, args, { stdio: 'inherit' }).status ?? 1;
+const runCode = async (command, args, env) =>
+    spawnSync(command === 'tar' ? tar : command, args, { stdio: 'inherit', env }).status ?? 1;
 
 // Every regular file below dir; readdirSync's recursive mode would also walk the .venv-python link.
 const files = (dir) =>

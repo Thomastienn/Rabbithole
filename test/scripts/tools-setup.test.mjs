@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { LINUX_PACKAGES, systemPackages, texBin, uvDir } from '../../server/media/manim.mjs';
 import {
     ensureLatex,
@@ -132,9 +132,11 @@ test('Windows gets the uv zip and the TinyTeX self-extractor, and tlmgr runs thr
 
     const tex = join(f.root, '.tools', 'TinyTeX'),
         perl = join(tex, 'tlpkg', 'tlperl', 'bin', 'perl.exe');
-    const run = async (command, args) => {
+    let env;
+    const run = async (command, args, given) => {
         if (command !== perl) return f.run(command, args);
         f.calls.push([command, args]);
+        env = given;
         writeFileSync(join(texBin(f.root, 'win32', 'x64'), 'dvisvgm.exe'), '');
         return 0;
     };
@@ -152,6 +154,9 @@ test('Windows gets the uv zip and the TinyTeX self-extractor, and tlmgr runs thr
             ...MANIM_TEX_PACKAGES,
         ],
     ]);
+    // tlmgr.pl finds kpsewhich and its modules only through what tlmgr.bat would set.
+    assert.equal(env.PERL5LIB, join(tex, 'tlpkg', 'tlperl', 'lib'));
+    assert.ok(env.PATH.startsWith(`${dirname(perl)};${join(tex, 'bin', 'windows')};`));
     assert.equal(texBin(f.root, 'win32', 'x64'), join(tex, 'bin', 'windows'));
     assert.deepEqual(readdirSync(join(f.root, '.tools')).sort(), ['TinyTeX', 'uv']);
 });

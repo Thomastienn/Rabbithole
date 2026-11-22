@@ -165,6 +165,15 @@ export async function ensureLatex({
               [join(dir, 'texmf-dist', 'scripts', 'texlive', 'tlmgr.pl')],
           ]
         : [join(bin, 'tlmgr'), []];
+    // The environment tlmgr.bat sets: tlmgr.pl finds kpsewhich on PATH and its Perl modules on PERL5LIB.
+    // On Windows the env key match is case-insensitive and the first in sorted order wins, so PATH beats Path.
+    const env = windows
+        ? {
+              ...process.env,
+              PERL5LIB: join(dir, 'tlpkg', 'tlperl', 'lib'),
+              PATH: [dirname(tlmgr), bin, process.env.PATH].join(';'),
+          }
+        : undefined;
     // A bundle already unpacked only needs its packages, so Retry after a failed tlmgr skips the download.
     if (!existsSync(tlmgr)) {
         const bundle = `TinyTeX-1-${target(TINYTEX, platform, arch, 'LaTeX')}.${windows ? 'exe' : 'tar.xz'}`;
@@ -188,7 +197,7 @@ export async function ensureLatex({
         report({ ...size, percent: null });
     }
     log("Installing Manim's LaTeX packages with tlmgr.");
-    if (await run(tlmgr, [...tlmgrArgs, 'install', ...MANIM_TEX_PACKAGES]))
+    if (await run(tlmgr, [...tlmgrArgs, 'install', ...MANIM_TEX_PACKAGES], env))
         throw new Error('LaTeX package install failed. Check your connection and Retry.');
     if (
         !['latex', 'dvisvgm'].every((tool) => existsSync(join(bin, windows ? `${tool}.exe` : tool)))

@@ -16,9 +16,9 @@ if (Number(process.versions.node.split('.')[0]) < 24) {
 process.chdir(fileURLToPath(new URL('..', import.meta.url)));
 let child;
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child?.kill(signal));
-function run(command, args) {
+function run(command, args, env) {
     return new Promise((resolve, reject) => {
-        child = spawn(command, args, { stdio: 'inherit' });
+        child = spawn(command, args, { stdio: 'inherit', env });
         child.once('error', reject);
         child.once('exit', (code, signal) => {
             child = null;
