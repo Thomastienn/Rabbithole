@@ -293,9 +293,7 @@ test('branch preparation excludes the question and the saved child opens before 
         at: { x: 1, y: 2 },
     };
     await page.act(async () => page.current.branch.startBranch('a', anchor, { current: null }));
-    await page.act(async () =>
-        page.current.c.setBranch((b) => ({ ...b, question: 'Why threads?' })),
-    );
+    await page.act(async () => page.current.branch.setQuestion('Why threads?'));
     assert.deepEqual(page.calls.find((c) => c.path.endsWith('/prepare')).body, {
         messageId: 'reply',
         start: 0,
@@ -308,7 +306,7 @@ test('branch preparation excludes the question and the saved child opens before 
     });
     assert.equal(page.current.trees.tree.id, 'child');
     assert.equal(page.current.c.overview, false);
-    assert.equal(page.current.c.branch, undefined);
+    assert.equal(page.current.branch.branch, undefined);
     assert.ok(page.current.trees.state.trees.some((t) => t.id === 'child'));
     assert.deepEqual(page.calls.find((c) => c.path.endsWith('/branches')).body, {
         messageId: 'reply',
@@ -441,10 +439,18 @@ test('deleting the open learning tree discards pending layout and opens the next
         page.current.stream.setDraft('a', 'Delete me');
         page.current.stream.setDraft('b', 'Keep me');
         page.current.stream.setFiles('a', [new File(['x'], 'gone.png')]);
+        page.current.branch.startBranch(
+            'a',
+            { messageId: 'reply', text: 'Gone' },
+            { current: null },
+        );
+        page.current.branch.setSelectingMessage('reply');
         page.current.actions.askDelete('a', null);
     });
     await page.act(async () => page.current.actions.deleteConversation());
     assert.equal(page.current.trees.tree.id, 'b');
+    assert.equal(page.current.branch.branch, undefined, 'its branch form closes');
+    assert.equal(page.current.branch.selectingMessage, undefined);
     assert.equal(page.current.c.root, 'b');
     assert.equal(page.current.c.focusComposer.current, true);
     assert.equal(page.current.layout.saver.current.pending().has('a'), false);

@@ -381,9 +381,12 @@ test('a picked part opens the ask box floating over it, and choosing an earlier 
         ...part,
         text: 'Visual: Nuclear plant\nHow a plant makes electricity.\nPart: Nuclear plant › Reactor › Control rods',
     };
-    assert.deepEqual(page.current.c.branch.anchor, { ...source, at: { x: 0, y: 50, below: 90 } });
+    assert.deepEqual(page.current.branch.branch.anchor, {
+        ...source,
+        at: { x: 0, y: 50, below: 90 },
+    });
     await page.act(async () => page.current.branch.widenPart(2));
-    assert.deepEqual(page.current.c.branch.anchor, {
+    assert.deepEqual(page.current.branch.branch.anchor, {
         ...source,
         label: 'Reactor',
         trail: ['Nuclear plant', 'Reactor'],
@@ -422,9 +425,9 @@ test("a part picked from the keyboard in the Ask button's box becomes the source
     await page.act(async () =>
         page.current.branch.openVisualPart(plant, whole, { current: null }, undefined, picker),
     );
-    assert.equal(page.current.c.branch.picker, picker, 'the ask box gets the picker');
+    assert.equal(page.current.branch.branch.picker, picker, 'the ask box gets the picker');
     await page.act(async () => page.current.branch.pickPart(['Nuclear plant', 'Reactor'], 1));
-    assert.deepEqual(page.current.c.branch.anchor, {
+    assert.deepEqual(page.current.branch.branch.anchor, {
         messageId: 'reply',
         artifactId: 'plant',
         label: 'Reactor',

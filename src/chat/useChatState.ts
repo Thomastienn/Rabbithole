@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import type { Source } from '../map/TreeOverview';
-import type { BranchState } from './branch';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
 
 // View state and refs shared by the ChatPage hooks and regions; learning tree data lives in useLearningTrees,
-// live turns, drafts and pending files in useReplyStream.
+// live turns, drafts and pending files in useReplyStream, the branch form in useBranchForm.
 export function useChatState() {
     const [error, setError] = useState('');
     const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 48rem)').matches);
@@ -48,10 +47,6 @@ export function useChatState() {
     const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
     const [figureTarget, setFigureTarget] = useState<{ conversation: string; artifact: string }>();
     const [messageTarget, setMessageTarget] = useState<{ conversation: string; message: string }>();
-    const [branch, setBranch] = useState<BranchState>();
-    const [selectingMessage, setSelectingMessage] = useState<string>();
-    // The ask button remounts after the branch form closes, so keep its ref, not the element.
-    const branchOrigin = useRef<React.RefObject<HTMLElement | null>>(undefined);
     const composer = useRef<ChatComposerInputHandle>(null);
     const focusComposer = useRef(false);
     useEffect(() => {
@@ -125,11 +120,6 @@ export function useChatState() {
         setFigureTarget,
         messageTarget,
         setMessageTarget,
-        branch,
-        setBranch,
-        selectingMessage,
-        setSelectingMessage,
-        branchOrigin,
         composer,
         focusComposer,
         toggleExpanded,

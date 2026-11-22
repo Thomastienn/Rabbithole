@@ -7,15 +7,20 @@ import type { ChatState } from './useChatState';
 import { request as api } from '../serverAccess';
 import type { LearningTrees } from './useLearningTrees';
 import type { ReplyStream } from './useReplyStream';
+import type { BranchFormState } from './useBranchForm';
 
 // Tree management: new chat, rename, delete and artifact actions.
-export function useTreeActions(c: ChatState, trees: LearningTrees, { isLive, drop }: ReplyStream) {
+export function useTreeActions(
+    c: ChatState,
+    trees: LearningTrees,
+    { isLive, drop }: ReplyStream,
+    branchForm: BranchFormState,
+) {
     const { setError, root, setTab, setOverview, setExpanded, renaming, setRenaming } = c;
     const { state, setState, setTree, setPreviews, refresh, select, openTree } = trees;
-    const { openId, reload, leave, retitle, forget } = trees;
+    const { reload, leave, retitle, forget } = trees;
     const { saver, setLayoutFailed } = trees.layout;
-    const { overviewOrigin, focusComposer, setFolds, setBranch, setReveal } = c;
-    const { setSelectingMessage, tab } = c;
+    const { overviewOrigin, focusComposer, setFolds, setReveal, tab } = c;
     const [deletion, setDeletion] = useState<{
         id: string;
         root: string;
@@ -163,10 +168,8 @@ export function useTreeActions(c: ChatState, trees: LearningTrees, { isLive, dro
                 Object.fromEntries(Object.entries(p).filter(([id]) => !ids.has(id))),
             );
             setRenaming((r) => (r && ids.has(r.id) ? undefined : r));
-            setBranch((b) => (b && ids.has(b.parent) ? undefined : b));
+            branchForm.drop(ids);
             setReveal((r) => (r && ids.has(r.tree) ? undefined : r));
-            const open = openId();
-            if (open && ids.has(open)) setSelectingMessage(undefined);
             setError('');
             setLayoutFailed(false);
             setDeletion(undefined);
