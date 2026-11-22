@@ -10,7 +10,7 @@ import CopyButton from '../markdown/CopyButton';
 import { artifactsAt } from '../media/artifacts';
 import { visualsReady } from '../media/visualProgress';
 import { replyUsageLine } from './turn';
-import { Groundwork, NextQuestions, ReplyFeedback } from './ChatDetails';
+import { FreeBranches, Groundwork, NextQuestions, ReplyFeedback } from './ChatDetails';
 import Passage from './Passage';
 import Reply from './Reply';
 import BranchForm from './BranchForm';
@@ -284,6 +284,24 @@ export default function ChatThread({
                     previous={tree.messages.at(-2)}
                     compactionError={tree.compaction?.error}
                     retry={(text) => void send(text, tree, true)}
+                />
+                {/* An empty passage marks a free branch; its row sits between the reply and its next questions. */}
+                <FreeBranches
+                    branches={(state?.trees ?? [])
+                        .filter(
+                            (t) =>
+                                t.parent === tree.id &&
+                                t.messageId === message.id &&
+                                !t.artifactId &&
+                                t.passage === '',
+                        )
+                        .map((t) => ({ child: t.id, title: t.title, ...addresses.get(t.id) }))
+                        .sort((a, b) =>
+                            (a.address ?? '').localeCompare(b.address ?? '', undefined, {
+                                numeric: true,
+                            }),
+                        )}
+                    open={(id) => void openConversation(id)}
                 />
                 <NextQuestions
                     message={message}
