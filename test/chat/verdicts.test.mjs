@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { diagramReply, tutorSystem, VERDICT_RULE } from '../../server/media/diagrams.mjs';
+import { diagramReply } from '../../server/media/reply-parser.mjs';
+import { tutorSystem, VERDICT_RULE } from '../../server/media/tutor-instructions.mjs';
 
 const verdicts = [{ concept: 'Mutex', level: 3, confidence: 'high' }];
 const json = JSON.stringify(verdicts);

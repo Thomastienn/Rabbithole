@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { diagramReply } from '../../server/media/diagrams.mjs';
+import { diagramReply } from '../../server/media/reply-parser.mjs';
 import { markerNotes } from '../../server/media/markers.mjs';
 import { suggestionJobs } from '../../server/http/jobs/suggestions.mjs';
 import { start } from '../support/suggestion-kit.mjs';

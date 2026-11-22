@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Store } from '../../server/store.mjs';
-import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { tutorSystem } from '../../server/media/tutor-instructions.mjs';
 import { open, complete } from '../support/diagram-kit.mjs';
 
 const SUMMARY = 'The fungus trades minerals for sugar.';

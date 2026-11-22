@@ -1,7 +1,7 @@
 import { readFileSync, mkdirSync, chmodSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { tutorSystem } from '../media/diagrams.mjs';
+import { tutorSystem } from '../media/tutor-instructions.mjs';
 import { inputParts } from '../attachments.mjs';
 import {
     catalogue,

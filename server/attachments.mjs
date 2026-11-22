@@ -63,6 +63,9 @@ export async function prepareAttachment(
 // A learner message as the models read it: the typed question, then each attachment's prepared text.
 export const withAttachments = (text, attachments = []) =>
     [text, ...attachments.map((a) => a.text).filter(Boolean)].filter((t) => t.trim()).join('\n\n');
+// Models read a learner message with its attachments' prepared text; the chips' metadata stays out.
+export const modelMessage = ({ attachments, ...message }) =>
+    attachments ? { ...message, text: withAttachments(message.text, attachments) } : message;
 
 // PDF turns interleave text and images; older callers still supply one text prompt plus images.
 export const inputParts = (tree, text) =>

@@ -1,4 +1,4 @@
-import { LIMITS } from '../media/diagrams.mjs';
+import { LIMITS } from '../media/reply-parser.mjs';
 import { visualTheme } from '../media/visuals.mjs';
 import { asksForVideo } from '../media/videos.mjs';
 import { videoContext } from '../tools/makeVideo.mjs';

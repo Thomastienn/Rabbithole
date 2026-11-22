@@ -1,5 +1,6 @@
 import { errorCause, formatLog } from '../../log.mjs';
-import { readVerdicts, VERDICT_SHAPE } from '../../media/reply-requests.mjs';
+import { readVerdicts } from '../../media/reply-parser.mjs';
+import { VERDICT_SHAPE } from '../../media/tutor-instructions.mjs';
 import { RECORD_VERDICTS } from '../../tools/quickTools.mjs';
 
 const VERDICT =

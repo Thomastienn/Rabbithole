@@ -4,7 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { videoResponse, complete, until, open } from '../support/video-kit.mjs';
 import { readMakeVideo, videoContext } from '../../server/tools/makeVideo.mjs';
-import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { tutorSystem } from '../../server/media/tutor-instructions.mjs';
 import { APP_TOOLS } from '../../server/http/app-calls.mjs';
 
 test('make_video names a bad argument; its rules live in its tool description', () => {

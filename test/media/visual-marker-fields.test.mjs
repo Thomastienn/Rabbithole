@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readVisualMarker, stripMarkers } from '../../server/media/markers.mjs';
-import { TOOL_VISUAL_RULES, tutorSystem } from '../../server/media/diagrams.mjs';
+import { TOOL_VISUAL_RULES, tutorSystem } from '../../server/media/tutor-instructions.mjs';
 import { APP_TOOLS, appCalls } from '../../server/http/app-calls.mjs';
 import { roundText } from '../../server/providers/chatStream.mjs';
 

@@ -1,5 +1,5 @@
 import { DISCUSSION_TURN_RULE, discussionTurn } from '../../media/discussion-turn.mjs';
-import { tutorContext } from '../../media/diagrams.mjs';
+import { tutorContext } from '../../media/tutor-context.mjs';
 import { collectText } from '../../providers/chatStream.mjs';
 
 export async function discussionRoutes(req, res, url, ctx, body) {

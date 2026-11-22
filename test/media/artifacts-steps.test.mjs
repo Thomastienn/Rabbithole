@@ -83,7 +83,8 @@ test('a complex reply becomes several small ordered diagram steps; each worker g
             ['pending', 'pending', 'pending', 'pending', 'failed'],
             'all step cards appear before workers run; rejected requests fail immediately',
         );
-        const { tutorContext, TUTOR_RULES } = await import('../../server/media/diagrams.mjs');
+        const { tutorContext } = await import('../../server/media/tutor-context.mjs');
+        const { TUTOR_RULES } = await import('../../server/media/tutor-instructions.mjs');
         assert.match(
             TUTOR_RULES,
             /several small visual steps[\s\S]*text stays accurate[\s\S]*text alternative/,

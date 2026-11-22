@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { tutorSystem } from '../../server/media/tutor-instructions.mjs';
 
 test('the chat prompt lists the tree resources and a reply citing one shows as its citing conversation', async (t) => {
     const store = new Store(

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { tutorSystem } from '../../server/media/tutor-instructions.mjs';
 
 test('memory note saves through Settings and reaches the next chat prompt as data', async (t) => {
     const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-memory-')), 'trees.sqlite'));

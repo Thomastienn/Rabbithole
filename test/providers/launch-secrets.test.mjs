@@ -7,7 +7,7 @@ import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { toolMcp } from '../../server/tools/mcp.mjs';
 import { toolRunner } from '../../server/tools/runner.mjs';
-import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { tutorSystem } from '../../server/media/tutor-instructions.mjs';
 import { fixtureLaunch } from '../support/fixture-launch.mjs';
 
 const definitions = await toolRunner().tools({ provider: 'codex', capable: true });

@@ -7,7 +7,7 @@ import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { OpenAI } from '../../server/providers/openai.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
-import { diagramReply } from '../../server/media/diagrams.mjs';
+import { diagramReply } from '../../server/media/reply-parser.mjs';
 import { markerNotes } from '../../server/media/markers.mjs';
 import { complete, open, until } from '../support/visual-kit.mjs';
 

@@ -1,6 +1,6 @@
 import { cutSource, emphasisMark } from './video-plan.mjs';
 import { patched } from './patches.mjs';
-import { readCall } from './reply-requests.mjs';
+import { readCall } from './reply-parser.mjs';
 
 export const unfenced = (raw) =>
     raw.replace(/^[ \t]*(?:`{3,}|~{3,})[\w-]*[ \t]*(?:\n|$)/gm, '').trim();

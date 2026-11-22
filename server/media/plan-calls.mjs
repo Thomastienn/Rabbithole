@@ -1,6 +1,6 @@
 import { cutProblem, planProblem } from './video-plan.mjs';
 import { inks, trueColorsOk } from './video-colors.mjs';
-import { readCall } from './reply-requests.mjs';
+import { readCall } from './reply-parser.mjs';
 import { MAX_CLIP_SECONDS } from './clips.mjs';
 
 const str = (description) => ({ type: 'string', description });

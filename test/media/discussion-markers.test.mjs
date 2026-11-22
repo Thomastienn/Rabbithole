@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readDiscussionMarker, stripMarkers } from '../../server/media/markers.mjs';
-import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { tutorSystem } from '../../server/media/tutor-instructions.mjs';
 import { APP_TOOLS } from '../../server/http/app-calls.mjs';
 import { complete, open } from '../support/visual-kit.mjs';
 import { discussion, publicDiscussion } from '../fixtures/discussion.mjs';
