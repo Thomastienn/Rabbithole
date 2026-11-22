@@ -32,6 +32,10 @@ jobs:
       - name: Install the stage's Linux prerequisites
         run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libpango1.0-dev pkg-config
       - run: npm ci
+      # The updater compares versions, so every build gets a newer one without a hand bump.
+      - name: Stamp the version
+        working-directory: desktop
+        run: npm version "1.0.${{ github.run_number }}" --no-git-tag-version
       - run: npm run desktop:build
       # Opens the AppImage's own output without FUSE or a display; bubblewrap is the sandbox the learner installs.
       - name: Smoke-test the AppImage
@@ -42,7 +46,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: desktop/dist/*.AppImage
+          # The AppImage embeds its blockmap; latest-linux.yml is the updater's metadata.
+          path: |
+            desktop/dist/*.AppImage
+            desktop/dist/latest-linux.yml
           if-no-files-found: error
 
   windows:
@@ -71,6 +78,10 @@ jobs:
       # Cargo's libgit2 checkout of the Codex sources exceeds Windows' 260-character path limit.
       - run: git config --global core.longpaths true
       - run: npm ci
+      # The updater compares versions, so every build gets a newer one without a hand bump.
+      - name: Stamp the version
+        working-directory: desktop
+        run: npm version "1.0.${{ github.run_number }}" --no-git-tag-version
       - run: npm run desktop:build
       # Installs per user as a learner would; runners have admin rights, so the sandbox setup's UAC prompt passes.
       - name: Smoke-test the installer
@@ -91,7 +102,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: desktop/dist/*-setup.exe
+          path: |
+            desktop/dist/*-setup.exe
+            desktop/dist/*-setup.exe.blockmap
+            desktop/dist/latest.yml
           if-no-files-found: error
       # npm start on Windows downloads this zip (SANDBOX_RELEASE in scripts/tools-setup.mjs); the log prints its SHA-256.
       - name: Zip the sandbox launcher for npm start
@@ -116,17 +130,13 @@ jobs:
         with:
           path: installers
           merge-multiple: true
-      # Fixed names so the README's releases/latest/download links never change.
-      - name: Rename installers
-        run: |
-          mv installers/*.AppImage installers/Rabbithole-linux-x86_64.AppImage
-          mv installers/*-setup.exe installers/Rabbithole-windows-x64-setup.exe
-      # A draft: the owner reviews, renames the tag if wanted and publishes it by hand.
+      # A draft: the owner reviews and publishes it by hand; the updater only sees published releases.
+      # The installers already carry the README's fixed names (desktop/package.json artifactName).
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "desktop-build-${{ github.run_number }}" installers/*
+          gh release create "v1.0.${{ github.run_number }}" installers/*
           --repo "${{ github.repository }}" --target "${{ github.sha }}" --draft
-          --title "Rabbithole desktop build ${{ github.run_number }}"
+          --title "Rabbithole 1.0.${{ github.run_number }}"
           --notes "Unsigned AppImage and Windows installer from ${{ github.sha }}."

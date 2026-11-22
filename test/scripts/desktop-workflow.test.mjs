@@ -6,6 +6,9 @@ const workflow = readFileSync(
     new URL('../../.github/workflows/desktop-build.yml', import.meta.url),
     'utf8',
 );
+const builder = JSON.parse(
+    readFileSync(new URL('../../desktop/package.json', import.meta.url), 'utf8'),
+).build;
 const job = (name) => workflow.split(/^ {2}(?=\w)/m).find((part) => part.startsWith(`${name}:`));
 
 test('the desktop build runs only when the owner triggers it', () => {
@@ -23,7 +26,7 @@ test('each build job restores npm and Electron caches and uploads its installer'
         assert.match(steps, /cache: npm/);
         assert.match(steps, /desktop\/package-lock\.json/);
         assert.match(steps, /electron-builder/);
-        assert.ok(steps.includes(`path: desktop/dist/${installer}`));
+        assert.ok(steps.includes(`path: |\n            desktop/dist/${installer}\n`));
     }
     // Only the Windows sandbox launcher is Rust.
     assert.match(job('windows'), /workspaces: desktop\/sandbox -> target/);
@@ -55,9 +58,47 @@ test('the Windows build also uploads the sandbox zip that npm start downloads', 
     assert.match(steps, /path: rabbithole-sandbox-windows-x64\.zip/);
 });
 
-test('both installers go to one draft release', () => {
+test('each build job stamps the version 1.0.<run_number> before building', () => {
+    for (const name of ['linux', 'windows']) {
+        const steps = job(name);
+        const stamp = steps.search(
+            /working-directory: desktop\n\s+run: npm version "1\.0\.\$\{\{ github\.run_number \}\}" --no-git-tag-version/,
+        );
+        assert.ok(stamp >= 0 && stamp < steps.indexOf('npm run desktop:build'), name);
+    }
+});
+
+test('each build job uploads the updater metadata and blockmaps with its installer', () => {
+    // electron-builder writes latest*.yml only with a publish provider; the AppImage embeds its blockmap.
+    assert.deepEqual(builder.publish, {
+        provider: 'github',
+        owner: 'Thomastienn',
+        repo: 'Rabbithole',
+    });
+    assert.ok(job('linux').includes('desktop/dist/latest-linux.yml'));
+    assert.ok(job('windows').includes('desktop/dist/latest.yml'));
+    assert.ok(job('windows').includes('desktop/dist/*-setup.exe.blockmap'));
+});
+
+test('the installers are built under the fixed names the README links to', () => {
+    const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+    for (const [config, name] of [
+        [builder.linux, 'Rabbithole-linux-x86_64.AppImage'],
+        [builder.nsis, 'Rabbithole-windows-x64-setup.exe'],
+    ]) {
+        assert.equal(config.artifactName.replace('${ext}', name.split('.').pop()), name);
+        assert.ok(readme.includes(`releases/latest/download/${name}`), name);
+    }
+    // A rename after building would leave the updater metadata naming files that are not there.
+    assert.doesNotMatch(job('release'), /\bmv /);
+});
+
+test('both installers go to one draft release tagged v1.0.<run_number>', () => {
     const release = job('release');
     assert.match(release, /needs: \[linux, windows\]/);
-    assert.match(release, /gh release create .* installers\/\*/);
+    assert.match(
+        release,
+        /gh release create "v1\.0\.\$\{\{ github\.run_number \}\}" installers\/\*/,
+    );
     assert.match(release, /--draft/);
 });
