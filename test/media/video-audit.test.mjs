@@ -26,6 +26,7 @@ import {
     REPAIR_PATCH_NOTE,
 } from '../../server/media/video-cut.mjs';
 import { auditFix, auditReport } from '../../server/media/audit-answers.mjs';
+import { ENGINES } from '../../server/media/cut-engines.mjs';
 
 const twoCuts = () => {
     const plan = planFor(composition, 2);
@@ -460,7 +461,7 @@ test('audit calls assemble into ok or issues, each bad call gets an error naming
             JSON.stringify({ patch: patchOf(source, fixed) }),
             styleBrief,
             1,
-            'remotion',
+            ENGINES.remotion,
             source,
         ),
         { code: fixed },
@@ -470,19 +471,19 @@ test('audit calls assemble into ok or issues, each bad call gets an error naming
             JSON.stringify({ patch: patchOf(source, fixed), emphasis: moved }),
             styleBrief,
             1,
-            'remotion',
+            ENGINES.remotion,
             source,
         ),
         { code: fixed, emphasis: moved },
     );
     for (const bad of [fixed, '{"code":"x"}', JSON.stringify({ patch: patchOf(fixed, source) })])
-        assert.throws(() => auditFix(bad, styleBrief, 1, 'remotion', source));
+        assert.throws(() => auditFix(bad, styleBrief, 1, ENGINES.remotion, source));
     assert.throws(() =>
         auditFix(
             JSON.stringify({ patch: patchOf(source, fixed), emphasis: moved }),
             styleBrief,
             0,
-            'remotion',
+            ENGINES.remotion,
             source,
         ),
     );

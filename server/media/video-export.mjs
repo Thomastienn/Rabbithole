@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stageCut } from './video-stage.mjs';
-import { withoutPaths } from './video-sandbox.mjs';
-import { KIT, MANIM_KIT, sandboxRender, validateOutput, mediaPath } from './videos.mjs';
+import { withoutPaths, validateOutput } from './video-sandbox.mjs';
+import { KIT, sandboxRender, mediaPath } from './videos.mjs';
 
 // Renders a saved video's cuts, concatenates them and keeps the MP4 at mediaPath (ADR 0012).
 // It never rewrites cut code: the learner already watched this version, so a failure only ends the export.
@@ -44,7 +44,6 @@ export async function exportVideo({
                 plan,
                 pieces: data.pieces,
                 kit: KIT,
-                manimKit: MANIM_KIT,
                 emphasis: cut.emphasis ?? plan.cuts[i].emphasis ?? [],
                 exhibits: (data.exhibits ?? []).filter((e) => e.cut === i),
             });

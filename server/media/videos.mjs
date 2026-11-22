@@ -1,6 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { mkdir, open, rm, copyFile, cp, access } from 'node:fs/promises';
+import { mkdir, rm, cp, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { edgeNarration } from './narration.mjs';
 import {
@@ -17,13 +16,12 @@ import { mediaCall, raced } from './media-call.mjs';
 import { planBuilder } from './plan-calls.mjs';
 
 import { improvePiece } from './video-pieces.mjs';
-import { sandboxProcess, sandboxOutput, REPO } from './video-sandbox.mjs';
+import { sandboxProcess, REPO } from './video-sandbox.mjs';
 import { detectManim, videoBrowser } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
+import { cutEngines } from './cut-engines.mjs';
 
-const MAX_MEDIA = 1024 * 1024 * 1024;
 export const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
-export const MANIM_KIT = readFileSync(new URL('./manim-kit.py', import.meta.url), 'utf8');
 // The learner must name a video; the tutor's block alone never starts one.
 export const asksForVideo = (text) =>
     !/\b(?:don['’]t|do not|never)\s+(?:\w+\s+){0,3}(?:make|create|generate|render|produce|show|give|animate)\b/i.test(
@@ -75,22 +73,6 @@ export function sandboxSnapshot(workspace, stills, signal) {
     );
 }
 
-// Accept only the server-chosen file inside this attempt's private output, as a regular readable MP4.
-export async function validateOutput(workspace, output) {
-    const stat = await sandboxOutput(workspace, output);
-    if (!stat) throw new Error('Rendered video is outside its workspace.');
-    if (stat.size < 1024 || stat.size > MAX_MEDIA) throw new Error('Rendered video is unreadable.');
-    const file = await open(output, 'r');
-    try {
-        const head = Buffer.alloc(12);
-        await file.read(head, 0, 12, 0);
-        if (head.toString('latin1', 4, 8) !== 'ftyp')
-            throw new Error('Rendered video is unreadable.');
-    } finally {
-        await file.close();
-    }
-}
-
 const OVERRUN = 'Video generation ran over two hours.';
 const VIDEO_CALL = {
     role: 'video',
@@ -119,6 +101,8 @@ export async function generateVideo({
     stills = () => {},
     onPhase = () => {},
     manim = { detect: detectManim, render: sandboxManim, check: checkManim },
+    // Fake engines by kind ({ remotion, manim }) in place of the job's own.
+    engines = {},
     onWarning = console.warn,
     // Texts to look vectors; null saves new pieces without an embedding.
     embed = null,
@@ -233,11 +217,25 @@ export async function generateVideo({
             );
         if (builder?.problem()) throw new Error(`Video plan is incomplete: ${builder.problem()}.`);
         const plan = prior?.plan ?? builder.plan();
+        const kinds = {
+            ...cutEngines({
+                snapshot,
+                manim,
+                signal: controller.signal,
+                stop: (error) => controller.abort(error),
+                onWarning,
+            }),
+            ...engines,
+        };
+        // Each cut's engine, chosen once; an engine that cannot run here stops the video before any cut is written.
+        const cutEngine = plan.cuts.map((c) => kinds[c.engine]);
+        for (const engine of cutEngine) engine.ready();
         const { exhibits, references } = await videoMedia({
             plan,
             prior,
             from: prior?.plan && join(dir, 'video-work', artifact.id, previous.attempt),
             searching,
+            pictures: cutEngine.some((e) => e.pictures),
             fetch: (planned) =>
                 exhibit(planned, {
                     search,
@@ -251,14 +249,6 @@ export async function generateVideo({
             onWarning,
             credit: (resource) => store.addResource(artifact.conversation, resource),
         });
-        let runtime;
-        if (plan.cuts.some((c) => c.engine === 'manim')) {
-            runtime = manim.detect();
-            if (!runtime.ready) {
-                onWarning(`WARN video ${runtime.error}`);
-                throw new Error(runtime.error);
-            }
-        }
         count = plan.cuts.length;
         onStage('cuts', { cuts: count });
         // Each looked-up look's vector, for saving the named pieces and parts that draw it.
@@ -301,32 +291,10 @@ export async function generateVideo({
             plan,
             workspace,
             kit: KIT,
-            manimKit: MANIM_KIT,
             call,
             write,
             narrate,
-            snapshot,
-            check: manim.check && ((cutDir) => manim.check(cutDir, controller.signal, runtime)),
-            clip: async (cutDir, durationInFrames) => {
-                const clip = join(cutDir, 'out', randomUUID() + '.mp4');
-                try {
-                    const result = await manim.render(
-                        cutDir,
-                        clip,
-                        controller.signal,
-                        () => {},
-                        runtime,
-                    );
-                    controller.signal.throwIfAborted();
-                    await validateOutput(cutDir, clip);
-                    if (result?.fps !== 30 || result.durationInFrames !== durationInFrames)
-                        throw new Error('Rendered Manim cut is unreadable.');
-                } catch (error) {
-                    if (error.manimUnavailable) onWarning(`WARN video ${error.message}`);
-                    throw error;
-                }
-                await copyFile(clip, join(cutDir, 'public', 'manim.mp4'));
-            },
+            engines: cutEngine,
             signal: controller.signal,
             wait,
             stop: (error) => controller.abort(error),

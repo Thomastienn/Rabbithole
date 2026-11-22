@@ -179,12 +179,12 @@ export async function fetchExhibits(
 
 // One photo per set piece whose object carries a reference query, fetched once per distinct query before set pieces
 // are drawn; a failed or empty search leaves that piece without one. Files sit in the attempt's references folder,
-// never in a cut folder, so no cut can show them.
+// never in a cut folder, so no cut can show them. pictures: some cut's engine draws set pieces.
 export async function fetchReferences(
     plan,
-    { fetch, workspace, signal, wait, onWarning, onReference },
+    { fetch, workspace, signal, wait, onWarning, onReference, pictures },
 ) {
-    if (!plan.cuts.some((c) => c.engine === 'remotion')) return [];
+    if (!pictures) return [];
     const names = pieceNames(plan),
         objects = plan.styleBrief.recurringObjects.filter((o) => o.look);
     const queries = [...new Set(objects.map((o) => o.referenceQuery).filter(Boolean))];

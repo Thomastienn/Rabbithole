@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { block as visualBlock } from '../support/visual-kit.mjs';
 import { MANIM_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 import { CUT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
+import { ENGINES } from '../../server/media/cut-engines.mjs';
 import {
     open,
     complete,
@@ -18,6 +19,7 @@ import {
     fixerTask,
     repairAnswer,
     planText,
+    job,
 } from '../support/video-kit.mjs';
 
 test('Python cut validation accepts kit math and rejects imports and off-brief styles without executing scenes', () => {
@@ -25,6 +27,39 @@ test('Python cut validation accepts kit math and rejects imports and off-brief s
         encoding: 'utf8',
     });
     assert.equal(result.status, 0, result.stderr || result.error?.message);
+});
+
+test('a fake engine stands in for either kind of cut', async () => {
+    const plan = planFor(composition, 2);
+    plan.cuts[1].engine = 'manim';
+    const asked = [];
+    const fake = (kind, clip) => ({
+        ...ENGINES[kind],
+        ready: () => asked.push(`${kind} ready`),
+        check: async () => asked.push(`${kind} check`),
+        play: async () => (asked.push(`${kind} play`), clip),
+        // Writes no stills, so the audit is skipped.
+        stills: async () => asked.push(`${kind} stills`),
+    });
+    const { result, row } = await job(null, null, composition, 2, {
+        plan,
+        engines: { remotion: fake('remotion', null), manim: fake('manim', 'public/fake.mp4') },
+    });
+    assert.equal(result, null);
+    assert.equal(row.status, 'ready');
+    assert.deepEqual(
+        JSON.parse(row.source).cuts.map((c) => c.clip),
+        [undefined, 'cut-1/public/fake.mp4'],
+    );
+    assert.deepEqual(asked.sort(), [
+        'manim check',
+        'manim play',
+        'manim ready',
+        'manim stills',
+        'remotion check',
+        'remotion ready',
+        'remotion stills',
+    ]);
 });
 
 for (const repair of [false, true])

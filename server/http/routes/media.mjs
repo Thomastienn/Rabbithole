@@ -209,7 +209,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                         engine: cut.engine,
                         emphasis: cut.emphasis ?? data.plan.cuts[i].emphasis ?? [],
                         timing: cut.timing,
-                        code: playable(cut) && cut.engine !== 'manim' ? compileCut(cut.code) : null,
+                        // A cut played from its clip sends no code.
+                        code: playable(cut) && !cut.clip ? compileCut(cut.code) : null,
                         playable: playable(cut),
                     })),
                 });
@@ -233,7 +234,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                 return true;
             }
             const cut = data.cuts[Number(index)];
-            if (!cut || !playable(cut) || (file === 'clip' && cut.engine !== 'manim'))
+            if (!cut || !playable(cut) || (file === 'clip' && !cut.clip))
                 return json(res, 404, { error: 'Cut not available.' });
             const path = join(
                 dir,
