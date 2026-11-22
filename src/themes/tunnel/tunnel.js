@@ -7,8 +7,8 @@
  */
 
 import { neutralTheme } from '@astryxdesign/theme-neutral';
-import { tunnelIcons } from './icons';
-const themeIcons = {...neutralTheme["icons"], ...tunnelIcons};
+import { lineDiagramIcons } from '../icons';
+const themeIcons = {...neutralTheme["icons"], ...lineDiagramIcons};
 /**
  * tunnel theme — built by `npx astryx theme build`
  * Import the CSS file alongside this module:
