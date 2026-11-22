@@ -153,10 +153,7 @@ test('interleaved replies update their own previews and retry preserves the comp
 
 test('layout changes survive stale refreshes and batch into one write with the latest CSRF', async (t) => {
     const page = await mount(t);
-    await page.act(async () => {
-        page.current.c.setFolds({ root: 'a', ids: [] });
-        page.current.c.setOverview(false);
-    });
+    await page.act(async () => page.current.c.setOverview(false));
     await page.act(async () => {
         page.current.layout.savePositions({ a: { x: 120, y: 70 } });
         page.current.layout.saveViewport({ x: -3, y: 10, zoom: 0.8 });
@@ -185,7 +182,7 @@ test('closing the page writes pending layout at once with keepalive, and nothing
     await page.act(async () => window.dispatchEvent(new Event('pagehide')));
     assert.equal(layoutWrites().length, before, 'no pending layout sends no save');
     await page.act(async () => {
-        page.current.c.setFolds({ root: 'a', ids: ['b'] });
+        page.current.trees.map.setFolded((saved) => new Set([...saved, 'b']));
         page.current.c.setOverview(false);
     });
     await page.act(async () => {
@@ -201,6 +198,21 @@ test('closing the page writes pending layout at once with keepalive, and nothing
     assert.equal(write.body.selected, 'a');
     assert.deepEqual(write.body.viewport, { x: -3, y: 10, zoom: 0.8 });
     assert.equal(page.current.layout.saver.current.pending().size, 0);
+});
+
+test('a map shows its saved folds until the learner changes them, and keeps the change on return', async (t) => {
+    const page = await mount(t, ({ path }, { state }) => {
+        if (path === '/api/state') state.trees[0].layout.folded = ['x'];
+    });
+    const folds = () => [...page.current.trees.map.folded];
+    assert.deepEqual(folds(), ['x']);
+    await page.act(async () => page.current.trees.map.setFolded(new Set(['y'])));
+    assert.deepEqual(folds(), ['y']);
+    await page.act(async () => page.current.trees.openTree('b'));
+    assert.deepEqual(folds(), []);
+    await page.act(async () => page.current.trees.map.setFolded(new Set(['z'])));
+    await page.act(async () => page.current.trees.openTree('a'));
+    assert.deepEqual(folds(), ['y'], 'the snapshot saved the change into its layout');
 });
 
 test('reopened replies poll saved checkpoints until the server reports completion', async (t) => {
@@ -447,12 +459,14 @@ test('deleting the open learning tree discards pending layout and opens the next
         page.current.branch.setSelectingMessage('reply');
         page.current.actions.askDelete('a', null);
     });
+    let composerFocused = 0;
+    page.current.trees.targets.composer.current = { focus: () => composerFocused++ };
     await page.act(async () => page.current.actions.deleteConversation());
     assert.equal(page.current.trees.tree.id, 'b');
     assert.equal(page.current.branch.branch, undefined, 'its branch form closes');
     assert.equal(page.current.branch.selectingMessage, undefined);
     assert.equal(page.current.c.root, 'b');
-    assert.equal(page.current.c.focusComposer.current, true);
+    assert.equal(composerFocused, 1, 'the next conversation opens on its composer');
     assert.equal(page.current.layout.saver.current.pending().has('a'), false);
     assert.deepEqual(page.current.stream.drafts, { b: 'Keep me' });
     assert.deepEqual(page.current.stream.pendingFiles, {}, 'its pending files go too');

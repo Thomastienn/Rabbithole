@@ -17,7 +17,8 @@ export function useReplyStream(
     { savingModel, firstModel, currentModel }: ChatModel,
     theme: { name: string; mode: string },
 ) {
-    const { setError, overviewOrigin, focusComposer, composer } = c;
+    const { setError, overviewOrigin } = c;
+    const { focusComposer, composer } = trees.targets;
     const { refresh, activeKey, tree, state, setState, setTree, setPreviews } = trees;
     const { openId, reload, change, retitle, isRemoved, select, leave } = trees;
     const [drafts, setDrafts] = useState<Record<string, string>>({});

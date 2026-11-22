@@ -20,7 +20,9 @@ export function useTreeActions(
     const { state, setState, setTree, setPreviews, refresh, select, openTree } = trees;
     const { reload, leave, retitle, forget } = trees;
     const { saver, setLayoutFailed } = trees.layout;
-    const { overviewOrigin, focusComposer, setFolds, setReveal, tab } = c;
+    const { overviewOrigin, tab } = c;
+    const { focusComposer, drop: dropTargets } = trees.targets;
+    const { drop: dropFolds } = trees.map;
     const [deletion, setDeletion] = useState<{
         id: string;
         root: string;
@@ -163,13 +165,13 @@ export function useTreeActions(
                         videos: s.videos.filter((id) => !ids.has(id)),
                     },
             );
-            setFolds((f) => f && { ...f, ids: f.ids.filter((id) => !ids.has(id)) });
+            dropFolds(ids);
             setPreviews((p) =>
                 Object.fromEntries(Object.entries(p).filter(([id]) => !ids.has(id))),
             );
             setRenaming((r) => (r && ids.has(r.id) ? undefined : r));
             branchForm.drop(ids);
-            setReveal((r) => (r && ids.has(r.tree) ? undefined : r));
+            dropTargets(ids);
             setError('');
             setLayoutFailed(false);
             setDeletion(undefined);

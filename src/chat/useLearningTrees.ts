@@ -11,6 +11,8 @@ import type { State, Tree } from './types';
 import type { ChatState } from './useChatState';
 import { request as api, setCsrf } from '../serverAccess';
 import { useLayoutSaving } from '../map/useLayoutSaving';
+import { useMapViewState } from '../map/useMapViewState';
+import { useChatTargets } from './useChatTargets';
 
 type TreeUpdate = Tree | undefined | ((t: Tree | undefined) => Tree | undefined);
 
@@ -33,7 +35,9 @@ export function useLearningTrees(c: ChatState) {
     const checkpoints = useRef(0);
     // The reply stream's live turns, read here only: the reply stream is built after this hook.
     const turns = useRef<ReadonlyMap<string, Turn>>(new Map());
-    const layout = useLayoutSaving(c, { state, setState, tree });
+    const map = useMapViewState(c, state);
+    const layout = useLayoutSaving(c, { state, setState, tree, folded: map.folded });
+    const targets = useChatTargets(c, tree);
 
     // The one stale-answer check: an answer for `id` started now stays current while `id` is still
     // open and no newer request started; `unchanged` also drops it once a local change landed.
@@ -226,10 +230,7 @@ export function useLearningTrees(c: ChatState) {
                 ? { id: box, control: control!.id || `open-${box}` }
                 : undefined;
         }
-        c.setReveal(source ? { tree: id, source } : undefined);
-        c.setFigureTarget(artifact ? { conversation: id, artifact } : undefined);
-        c.setMessageTarget(message ? { conversation: id, message } : undefined);
-        c.focusComposer.current = !source && !artifact && !message;
+        targets.goTo(id, source, artifact, message);
         await select(id);
         if (selected.current === id) changeView(false, overviewOrigin.current?.id ?? id);
     }
@@ -247,11 +248,8 @@ export function useLearningTrees(c: ChatState) {
     function openGhost(ghost: GhostTree, from: string) {
         openTree(ghost.root);
         c.setOverview(true);
-        c.setGhostMarks({ root: ghost.root, from, ids: ghost.matches });
+        map.setGhostMarks({ root: ghost.root, from, ids: ghost.matches });
     }
-    useEffect(() => {
-        if (!c.overview || c.root !== c.ghostMarks?.root) c.setGhostMarks(undefined);
-    }, [c.overview, c.root]);
     return {
         state,
         setState,
@@ -263,6 +261,8 @@ export function useLearningTrees(c: ChatState) {
         loading,
         visibleIds,
         layout,
+        map,
+        targets,
         live: turns,
         openId,
         reload,

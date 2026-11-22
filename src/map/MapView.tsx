@@ -30,9 +30,10 @@ export default function MapView({
     menu: (actions?: MapActions) => React.ReactNode;
 }) {
     const { root, overview, expanded, mobile, transitionBox } = c;
-    const { shownMapWidth, workspaceWidth, workspace, setMapWidth, overviewOrigin } = c;
-    const { focusComposer, setFolds, ghostMarks } = c;
+    const { workspaceWidth, workspace, overviewOrigin } = c;
     const { state, tree, previews, changeView, openConversation, openGhost } = trees;
+    const { folded, setFolded, ghostMarks, shownMapWidth, setMapWidth } = trees.map;
+    const { focusComposer } = trees.targets;
     const marks = ghostMarks?.root === root ? ghostMarks : undefined;
     const [ghostsShown, setGhostsShown] = useState(savedGhostTrees);
     return (
@@ -98,8 +99,8 @@ export default function MapView({
                         transition={overview ? transitionBox : undefined}
                         selected={overview ? undefined : tree?.id}
                         current={tree?.id}
-                        initialFolded={state.trees.find((t) => t.id === root)?.layout?.folded}
-                        onFold={(ids) => setFolds({ root, ids })}
+                        folded={folded}
+                        setFolded={setFolded}
                         marked={marks?.ids}
                         from={marks?.from}
                         ghosts={{

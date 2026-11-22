@@ -46,9 +46,9 @@ export default function FocusedChat(props: {
     modelMenu: React.ReactNode;
 }) {
     const { tree, c, model, trees, stream, actions, active, modelMenu } = props;
-    const { overview, reveal, renaming, setRenaming } = c;
+    const { overview, renaming, setRenaming } = c;
     const { expanded, toggleExpanded, statsOpen, setStatsOpen, statsPanel } = c;
-    const { mobile, transitionBox, composer, setMessageTarget } = c;
+    const { mobile, transitionBox } = c;
     const { drafts, setDraft, pendingFiles } = stream;
     const files = pendingFiles[tree.id] ?? [];
     const setFiles = (next: File[]) => stream.setFiles(tree.id, next);
@@ -56,6 +56,7 @@ export default function FocusedChat(props: {
         model;
     const attach = useAttach(files, setFiles, active || (!!models && !models.length));
     const { openConversation, state, addresses, returnToTree } = trees;
+    const { reveal, composer, jump } = trees.targets;
     useEffect(() => {
         if (!statsOpen) return;
         const frame = requestAnimationFrame(() =>
@@ -374,10 +375,7 @@ export default function FocusedChat(props: {
                 </ChatMessageList>
             </ChatLayout>
             {!mobile && !overview && questions.length > 1 && (
-                <TurnRail
-                    questions={questions}
-                    jump={(message) => setMessageTarget({ conversation: tree.id, message })}
-                />
+                <TurnRail questions={questions} jump={(message) => jump(tree.id, message)} />
             )}
         </>
     );
