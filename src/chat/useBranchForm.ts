@@ -67,7 +67,12 @@ export function useBranchForm(
         try {
             const next: Tree = await api(`/api/trees/${parent}/branches`, body);
             const question = next.branch!.question;
-            setDrafts((d) => ({ ...d, [next.id]: question }));
+            // Ask on the side took the parent's draft as the child's question.
+            setDrafts((d) => ({
+                ...d,
+                [next.id]: question,
+                ...('free' in body && { [parent]: '' }),
+            }));
             overviewOrigin.current = undefined;
             setBranch(undefined);
             // Branch-first: the saved child opens at once from the response; its reply waits on the server for compaction.
@@ -132,6 +137,8 @@ export function useBranchForm(
         if (child) return openConversation(child);
         if (tree) return createBranch(tree.id, { messageId, groundwork: concept });
     }
+    // Ask on the side: the typed question becomes a free branch hung off the latest completed reply.
+    const askOnSide = (question: string) => tree && createBranch(tree.id, { free: true, question });
     const openVisualPart: PartAction = (visual, part, origin, box, picker) => {
         if (
             !tree ||
@@ -242,6 +249,7 @@ export function useBranchForm(
         startBranch,
         groundworkBranches,
         chooseGroundwork,
+        askOnSide,
     };
 }
 

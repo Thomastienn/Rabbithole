@@ -237,6 +237,11 @@ test('fold stubs, source reveal and latest-failed-only Retry use distinct contro
         'parent',
         { messageId: 'answer', start: 2, end: 7, text: 'Roots' },
     ]);
+    // A free branch has no passage: its reveal opens the parent with no source.
+    const free = summary('root', 'parent', { start: null, end: null, passage: '' });
+    await act(async () => update({ ...data, conversation: free }));
+    await act(async () => container.querySelector('#reveal-root').click());
+    assert.deepEqual(opens.at(-2), ['parent', undefined]);
     assert.equal(
         container.querySelector('.conversation-box').style.getPropertyValue('--ink'),
         'var(--rabbithole-ink-2)',

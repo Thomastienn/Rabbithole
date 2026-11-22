@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { mediaPath } from '../../media/videos.mjs';
 import { pythonWorkspace } from '../../tools/python.mjs';
 import { LABELS, isEndpoint } from '../roles.mjs';
-import { anchorOf, compactionPrompt } from '../jobs/compaction.mjs';
+import { anchorOf, compactionPrompt, freeAnchorOf } from '../jobs/compaction.mjs';
 import { sendRoute } from './send.mjs';
 import { IMAGE_TYPES } from '../../attachments.mjs';
 
@@ -373,7 +373,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
         }
     }
     if (action === 'branches') {
-        const anchor = anchorOf(tree, body);
+        const anchor = body && 'free' in body ? freeAnchorOf(tree, body) : anchorOf(tree, body);
         if (anchor?.error) return json(res, 400, anchor);
         if (!anchor || typeof anchor.question !== 'string' || !anchor.question.trim())
             return json(res, 400, {
