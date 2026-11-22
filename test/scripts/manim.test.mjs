@@ -1,10 +1,34 @@
-import { test } from 'node:test';
+import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+    existsSync,
+    mkdtempSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkManimDependencies, detectManim, MANIM_VERSION } from '../../server/media/manim.mjs';
 import { ensureManim } from '../../scripts/manim-setup.mjs';
+
+// Fake wheel downloads: fetch answers `served`, and the fixture wheels pin the hash of 'wheel'.
+const pin = createHash('sha256').update('wheel').digest('hex');
+const wheels = { 'pycairo-fixture.whl': pin, 'manimpango-fixture.whl': pin };
+let fetched = [],
+    served = 'wheel',
+    saved;
+before(() => {
+    saved = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+        fetched.push(url);
+        return new Response(served);
+    };
+});
+after(() => (globalThis.fetch = saved));
+const ensure = (options) => ensureManim({ platform: 'linux', arch: 'x64', wheels, ...options });
 
 function probes(missing = [], version = MANIM_VERSION) {
     return (command) => ({
@@ -14,48 +38,49 @@ function probes(missing = [], version = MANIM_VERSION) {
     });
 }
 
-for (const [platform, headers, latex] of [
-    [
-        'linux',
-        'sudo apt install build-essential python3-dev pkg-config libcairo2-dev libpango1.0-dev',
-        'LaTeX or dvisvgm is missing; it downloads as TinyTeX',
-    ],
-    [
-        'darwin',
-        'brew install pkg-config cairo pango',
-        'LaTeX or dvisvgm is missing; it downloads as TinyTeX',
-    ],
-]) {
-    test(`${platform}: dependency probes pass, or give exact commands for missing headers and LaTeX`, () => {
-        assert.doesNotThrow(() => checkManimDependencies({ platform, probe: probes() }));
-        for (const [missing, commands] of [
-            [['pkg-config'], ['Run: ' + headers]],
-            [['latex'], [latex]],
-            [['dvisvgm'], [latex]],
-            [
-                ['pkg-config', 'latex'],
-                ['Run: ' + headers, latex],
-            ],
-        ]) {
-            assert.throws(
-                () => checkManimDependencies({ platform, probe: probes(missing) }),
-                (error) => {
-                    for (const command of commands) assert.ok(error.message.includes(command));
-                    assert.match(error.message, /run npm start/);
-                    return true;
-                },
-            );
-        }
+const latex = 'LaTeX or dvisvgm is missing; it downloads as TinyTeX';
+
+test('darwin: dependency probes pass, or give exact commands for missing headers and LaTeX', () => {
+    const platform = 'darwin',
+        headers = 'Run: brew install pkg-config cairo pango';
+    assert.doesNotThrow(() => checkManimDependencies({ platform, probe: probes() }));
+    for (const [missing, commands] of [
+        [['pkg-config'], [headers]],
+        [['latex'], [latex]],
+        [['dvisvgm'], [latex]],
+        [
+            ['pkg-config', 'latex'],
+            [headers, latex],
+        ],
+    ]) {
         assert.throws(
-            () =>
-                checkManimDependencies({
-                    platform,
-                    probe: () => ({ error: new Error('ENOENT'), status: null }),
-                }),
-            /Run:/,
+            () => checkManimDependencies({ platform, probe: probes(missing) }),
+            (error) => {
+                for (const command of commands) assert.ok(error.message.includes(command));
+                assert.match(error.message, /run npm start/);
+                return true;
+            },
         );
-    });
-}
+    }
+    assert.throws(
+        () =>
+            checkManimDependencies({
+                platform,
+                probe: () => ({ error: new Error('ENOENT'), status: null }),
+            }),
+        /Run:/,
+    );
+});
+
+test('linux: missing Cairo and Pango headers never block, only LaTeX does', () => {
+    assert.doesNotThrow(() =>
+        checkManimDependencies({ platform: 'linux', probe: probes(['pkg-config']) }),
+    );
+    assert.throws(
+        () => checkManimDependencies({ platform: 'linux', probe: probes(['dvisvgm']) }),
+        new RegExp(latex),
+    );
+});
 
 test('runtime detection returns project-local Python and pinned version; broken Manim is unavailable, never thrown', () => {
     const root = '/project with spaces';
@@ -72,14 +97,19 @@ test('runtime detection returns project-local Python and pinned version; broken 
     }
 });
 
-test('first run provisions a local Python environment and pinned Manim; later starts need no uv', async () => {
+test('first Linux run installs pinned Manim from the verified project wheels and builds nothing; later starts need no uv', async () => {
     const root = mkdtempSync(join(tmpdir(), 'rabbithole-manim-'));
     const python = join(root, '.venv/bin/python');
+    const dir = join(root, '.tools', 'wheels');
     let installed = false;
     const probe = (command) => probes(installed ? [] : [python])(command);
     const calls = [],
         logs = [];
-    const result = await ensureManim({
+    fetched = [];
+    // A cached wheel that no longer matches its pin is downloaded again, never installed.
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'pycairo-fixture.whl'), 'tampered wheel');
+    const result = await ensure({
         root,
         probe,
         log: (line) => logs.push(line),
@@ -90,15 +120,51 @@ test('first run provisions a local Python environment and pinned Manim; later st
         },
     });
     assert.equal(result.ready, true);
+    assert.deepEqual(fetched, [
+        'https://github.com/Thomastienn/Rabbithole/releases/download/linux-wheels/pycairo-fixture.whl',
+        'https://github.com/Thomastienn/Rabbithole/releases/download/linux-wheels/manimpango-fixture.whl',
+    ]);
+    assert.deepEqual(readdirSync(dir).sort(), ['manimpango-fixture.whl', 'pycairo-fixture.whl']);
+    assert.equal(readFileSync(join(dir, 'pycairo-fixture.whl'), 'utf8'), 'wheel');
     assert.deepEqual(calls, [
         ['uv', ['venv', '--python', '3.12', join(root, '.venv')]],
-        ['uv', ['pip', 'install', '--python', python, `manim==${MANIM_VERSION}`]],
+        [
+            'uv',
+            [
+                'pip',
+                'install',
+                '--python',
+                python,
+                '--find-links',
+                dir,
+                '--only-binary',
+                'pycairo',
+                '--only-binary',
+                'manimpango',
+                `manim==${MANIM_VERSION}`,
+            ],
+        ],
     ]);
     assert.match(logs.at(-1), /Manim ready:/);
     assert.equal(
-        (await ensureManim({ root, probe: probes(['uv']), run: assert.fail, log: () => {} })).ready,
+        (await ensure({ root, probe: probes(['uv']), run: assert.fail, log: () => {} })).ready,
         true,
     );
+});
+
+test('a wheel whose hash does not match is refused before uv installs anything', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'rabbithole-manim-hash-'));
+    const python = join(root, '.venv/bin/python');
+    served = 'tampered wheel';
+    try {
+        await assert.rejects(
+            ensure({ root, probe: probes([python]), run: assert.fail, log: () => {} }),
+            /pycairo-fixture\.whl does not match its pinned SHA-256, so it was not installed/,
+        );
+    } finally {
+        served = 'wheel';
+    }
+    assert.equal(existsSync(join(root, '.tools', 'wheels', 'pycairo-fixture.whl')), false);
 });
 
 test('Windows setup needs no system packages: Manim installs into .venv/Scripts with only TinyTeX checked', async () => {
@@ -107,6 +173,7 @@ test('Windows setup needs no system packages: Manim installs into .venv/Scripts 
     let installed = false;
     const probe = (command) => probes(installed ? ['pkg-config'] : ['pkg-config', python])(command);
     const calls = [];
+    fetched = [];
     const result = await ensureManim({
         root,
         probe,
@@ -124,6 +191,7 @@ test('Windows setup needs no system packages: Manim installs into .venv/Scripts 
         'uv',
         ['pip', 'install', '--python', python, `manim==${MANIM_VERSION}`],
     ]);
+    assert.deepEqual(fetched, []);
     assert.throws(
         () => checkManimDependencies({ platform: 'win32', probe: probes(['dvisvgm']) }),
         /downloads as TinyTeX/,
@@ -135,7 +203,7 @@ test('an interrupted or wrong-version install repairs the existing environment w
     mkdirSync(join(root, '.venv/bin'), { recursive: true });
     writeFileSync(join(root, '.venv/bin/python'), 'existing environment fixture');
     let version = '0.19.0';
-    const result = await ensureManim({
+    const result = await ensure({
         root,
         probe: (command) => probes([], version)(command),
         log: () => {},
@@ -152,19 +220,19 @@ test('startup stops for missing prerequisites, failed installation or an unusabl
     const root = mkdtempSync(join(tmpdir(), 'rabbithole-manim-failure-'));
     const python = join(root, '.venv/bin/python');
     await assert.rejects(
-        ensureManim({ root, probe: probes(['latex']), run: assert.fail }),
+        ensure({ root, probe: probes(['latex']), run: assert.fail }),
         /downloads as TinyTeX/,
     );
     await assert.rejects(
-        ensureManim({ root, probe: probes([python, 'uv']), run: assert.fail }),
+        ensure({ root, probe: probes([python, 'uv']), run: assert.fail }),
         /requires uv, which downloads first/,
     );
     await assert.rejects(
-        ensureManim({ root, probe: probes([python]), run: async () => 1, log: () => {} }),
+        ensure({ root, probe: probes([python]), run: async () => 1, log: () => {} }),
         /Manim setup failed: uv venv/,
     );
     await assert.rejects(
-        ensureManim({
+        ensure({
             root,
             probe: probes([python]),
             run: async () => {
@@ -175,7 +243,7 @@ test('startup stops for missing prerequisites, failed installation or an unusabl
         /Could not start uv: uv ENOENT/,
     );
     await assert.rejects(
-        ensureManim({ root, probe: probes([python]), run: async () => 0, log: () => {} }),
+        ensure({ root, probe: probes([python]), run: async () => 0, log: () => {} }),
         /Manim unavailable: fixture import error/,
     );
 });

@@ -40,7 +40,7 @@ npm run serve                # start without opening a browser
 npm start -- --port 4318     # use another port (or set RABBITHOLE_PORT)
 ```
 
-Startup checks for system libraries such as Cairo and Pango and prints the install command for anything missing. Videos and offline Python run in a sandbox: bubblewrap on Linux, and on Windows a launcher that startup downloads and first-run setup turns on with one admin prompt.
+On macOS, startup checks for Cairo and Pango and prints the install command if they are missing; Linux and Windows need neither. Videos and offline Python run in a sandbox: bubblewrap on Linux, and on Windows a launcher that startup downloads and first-run setup turns on with one admin prompt.
 
 ## Connect a model
 
