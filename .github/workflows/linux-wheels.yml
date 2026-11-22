@@ -1,17 +1,13 @@
 # Builds the manylinux wheels of pycairo and manimpango that Manim's Linux install finds with --find-links (ADR 0020).
-# Manual trigger only: the owner runs it (AGENTS.md).
+# The owner runs it by hand, or the Desktop build run calls it when a pinned version is not released yet (AGENTS.md).
 name: Linux wheels
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
-
-env:
-  # The versions uv resolves for manim==MANIM_VERSION (server/media/manim.mjs) on Python 3.12.
-  PYCAIRO_VERSION: 1.29.2
-  MANIMPANGO_VERSION: 0.7.1
 
 jobs:
   build:
@@ -19,12 +15,15 @@ jobs:
     # glibc 2.28, so the wheels run on any current distro.
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
+      - uses: actions/checkout@v4
       - name: Install Cairo and Pango headers
         run: dnf install -y cairo-devel pango-devel pkgconf-pkg-config
+      # The versions come from the pinned file names in LINUX_WHEELS, e.g. pycairo==1.29.2.
       - name: Build the wheels
-        run: >
-          /opt/python/cp312-cp312/bin/pip wheel --no-deps -w raw
-          "pycairo==$PYCAIRO_VERSION" "manimpango==$MANIMPANGO_VERSION"
+        run: |
+          versions=$(sed -n "s/^    '\([a-z]*\)-\([^-]*\)-cp312-.*\.whl':$/\1==\2/p" scripts/manim-setup.mjs)
+          test -n "$versions"
+          /opt/python/cp312-cp312/bin/pip wheel --no-deps -w raw $versions
       # Copies Cairo, Pango and their dependencies into each wheel so no system package is needed.
       - name: Repair the wheels
         run: |
@@ -46,15 +45,25 @@ jobs:
         with:
           name: wheels
           path: wheels
-      # One fixed tag, so the setup scripts' pinned URLs keep working; recreating it drops earlier copies.
-      - name: Replace the wheels release
+      # One fixed tag that keeps every version, so an installed app pinning an older wheel still installs video tools.
+      - name: Add the new wheels to the release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          if gh release view linux-wheels > /dev/null 2>&1; then
-            gh release delete linux-wheels --yes --cleanup-tag
-          fi
-          gh release create linux-wheels wheels/* --target "${{ github.sha }}" --latest=false \
-            --title "Linux wheels for Manim" \
-            --notes "pycairo $PYCAIRO_VERSION and manimpango $MANIMPANGO_VERSION, manylinux_2_28 x86_64, CPython 3.12, from ${{ github.sha }}."
+          gh release view linux-wheels > /dev/null 2>&1 ||
+            gh release create linux-wheels --target "${{ github.sha }}" --latest=false \
+              --title "Linux wheels for Manim" \
+              --notes "manylinux_2_28 x86_64 wheels of pycairo and manimpango for CPython 3.12. Each run adds its new versions; SHA256SUMS lists them all."
+          assets=$(gh release view linux-wheels --json assets -q '.assets[].name')
+          for wheel in wheels/*.whl; do
+            name=$(basename "$wheel")
+            # A released file stays as it is: installed apps pin its hash.
+            grep -qxF "$name" <<< "$assets" && continue
+            gh release upload linux-wheels "$wheel"
+          done
+          # Hashed from the released files, so a run that failed between uploads cannot leave a wheel without its hash.
+          mkdir released
+          gh release download linux-wheels -p '*.whl' -D released
+          (cd released && sha256sum *.whl > SHA256SUMS)
+          gh release upload linux-wheels released/SHA256SUMS --clobber

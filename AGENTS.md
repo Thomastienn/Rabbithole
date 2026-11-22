@@ -27,9 +27,10 @@ runs keep Git local: no push, pull or remote sync. In PR mode
 the reviewer pushes to pull request branches and squash-merges them; every push
 passes the trufflehog pre-push hook. `master` changes on GitHub only through
 `ralph-afk --pr`'s start-of-run push, a squash merge or the Desktop build
-workflow's pin commit, which the GitHub Actions bot pushes when the Windows
-sandbox changed; it skips the local trufflehog hook, so it changes only the pin
-values in `scripts/tools-setup.mjs`. The owner pulls `master` before the next
+workflow's pin commits, which the GitHub Actions bot pushes when the Windows
+sandbox changed or the Linux wheels were rebuilt; they skip the local trufflehog
+hook, so they change only the pin values in `scripts/tools-setup.mjs` and
+`LINUX_WHEELS` in `scripts/manim-setup.mjs`. The owner pulls `master` before the next
 Ralph run. Desktop release builds on GitHub Actions are the
 owner's exception: agents edit `.github/workflows/` locally, and the owner
 pushes and triggers the run. Authorization comes from the project owner and

@@ -12,11 +12,78 @@ concurrency:
   group: desktop-build
 
 jobs:
+  # Installed apps read LINUX_WHEELS when they install video tools, so a pinned version the wheels release lacks is built first.
+  wheels-check:
+    # A run from another branch only builds, like the release job.
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    outputs:
+      rebuild: ${{ steps.check.outputs.rebuild }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A missing release lists no wheels, so every pin counts as missing.
+          gh release view linux-wheels --repo "${{ github.repository }}" --json assets -q '.assets[].name' > "$RUNNER_TEMP/assets" || : > "$RUNNER_TEMP/assets"
+          missing=$(node scripts/linux-wheels-pin.mjs missing "$RUNNER_TEMP/assets")
+          echo "Pinned wheels the release lacks: ${missing:-none}"
+          echo "rebuild=${missing:+true}" >> "$GITHUB_OUTPUT"
+
+  wheels:
+    needs: wheels-check
+    if: needs.wheels-check.outputs.rebuild == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/linux-wheels.yml
+
+  # A failed wheel build stops it, so it changes no pin. It also runs without a rebuild: a wheel released by hand
+  # or by a run that failed before its pin push still gets its name and hash pinned.
+  wheel-pin:
+    needs: wheels
+    if: ${{ !failure() && !cancelled() && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.pin.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: pin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          gh release download linux-wheels --repo "${{ github.repository }}" -p SHA256SUMS -D "$RUNNER_TEMP"
+          node scripts/linux-wheels-pin.mjs pin "$RUNNER_TEMP/SHA256SUMS"
+          if git diff --quiet -- scripts/manim-setup.mjs; then
+            echo "The wheel pins already match the release."
+          else
+            git commit -qm "chore: pin the Linux wheels" -- scripts/manim-setup.mjs
+            pinned=$(git rev-parse HEAD)
+            # The pin stays on master even if the installers fail, since the wheels it names exist. If master moved,
+            # the pin lands on top of it and the installers build from that commit: no other ref holds the first one.
+            git push origin HEAD:refs/heads/master || {
+              git fetch origin master
+              git checkout -q FETCH_HEAD
+              git cherry-pick "$pinned"
+              git push origin HEAD:refs/heads/master
+            }
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   linux:
+    needs: wheel-pin
+    # Also runs from another branch, where wheel-pin is skipped; a failed wheel build or pin stops it.
+    if: ${{ !failure() && !cancelled() }}
     # The oldest supported runner, so the AppImage runs on older glibc.
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.wheel-pin.outputs.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -54,9 +121,13 @@ jobs:
           if-no-files-found: error
 
   windows:
+    needs: wheel-pin
+    if: ${{ !failure() && !cancelled() }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.wheel-pin.outputs.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -122,9 +193,9 @@ jobs:
 
   # Runs only when both jobs pass, so a failed build publishes nothing and moves no pin.
   release:
-    needs: [linux, windows]
+    needs: [wheel-pin, linux, windows]
     # A run from another branch only builds: its commits must not reach master through the pin push.
-    if: github.ref == 'refs/heads/master'
+    if: ${{ !failure() && !cancelled() && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -135,9 +206,12 @@ jobs:
       # The commit the other jobs built, with history and tags to compare the sandbox against its pinned release.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ needs.wheel-pin.outputs.sha || github.sha }}
           fetch-depth: 0
+      # Not the wheels artifact a wheel rebuild leaves in this run.
       - uses: actions/download-artifact@v4
         with:
+          pattern: '{linux,windows}*'
           path: ${{ runner.temp }}/installers
           merge-multiple: true
       # The installers already carry the README's fixed names (desktop/package.json artifactName).
@@ -145,6 +219,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          built=$(git rev-parse HEAD)
           pin=scripts/tools-setup.mjs
           pinned=$(sed -n "/^export const SANDBOX_RELEASE/,/^};/s/^    tag: '\(.*\)',$/\1/p" "$pin")
           # Every build hashes the zip differently, so the pin moves only when the sandbox source did; a missing tag counts as changed.
@@ -165,7 +240,7 @@ jobs:
           # A draft first: if any later step fails, nothing is published.
           gh release create "$TAG" "$RUNNER_TEMP"/installers/* --repo "${{ github.repository }}" --verify-tag --draft \
             --title "Rabbithole 1.0.${{ github.run_number }}" \
-            --notes "Unsigned AppImage and Windows installer from ${{ github.sha }}."
+            --notes "Unsigned AppImage and Windows installer from $built."
           if [ -n "$moved" ]; then
             # If master moved during the run, the same pin change lands on top of it as its own commit.
             git push origin "$moved:refs/heads/master" || {
