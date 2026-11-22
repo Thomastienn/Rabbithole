@@ -122,7 +122,7 @@ test('a failed download keeps its message until the add-on is installed again', 
     assert.equal(manager.addons()[0].state, 'installed');
 });
 
-test('installed add-ons are remembered: a stopped or outdated one queues again on the next launch', async () => {
+test('installed add-ons are remembered: a stopped or outdated one updates on the next launch, a current one does nothing', async () => {
     const file = addonsFile(),
         installed = { python: true };
     const first = fakeTools(installed);
@@ -143,8 +143,18 @@ test('installed add-ons are remembered: a stopped or outdated one queues again o
     await tick();
     assert.deepEqual(states(after), ['manim:running', 'browser:queued']);
     assert.equal(after.list()[0].percent, null);
+    assert.ok(after.list()[0].update, 'an installed add-on downloading again is an update');
+    assert.deepEqual(addonStates(after), {
+        'video-tools': 'updating:0',
+        'offline-python': 'installed:null',
+        'web-search': 'not-installed:null',
+    });
     assert.ok(!next.runs.includes('searxng'), 'an add-on never installed is never queued');
     after.stop();
+
+    const current = fakeTools({ manim: true, browser: true, python: true });
+    await downloadManager(current.tools, { file }).start();
+    assert.deepEqual(current.runs, [], 'an add-on whose versions match does nothing on launch');
 });
 
 test('routes stream the list, install and retry add-ons, retry failures and mark seen; a video waits for its tools', async (t) => {

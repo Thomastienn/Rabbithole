@@ -6,6 +6,8 @@ export type Download = {
     total: number | null;
     percent: number | null;
     error?: string;
+    // An installed add-on fetching the newer version an app update needs.
+    update?: boolean;
 };
 
 // The ring shows the running total: ready tools count as done, unknown progress as nothing yet.
@@ -26,5 +28,5 @@ export const downloadStatus = (d: Download) =>
           : d.state === 'failed'
             ? `Failed: ${d.error}`
             : d.percent === null
-              ? 'Downloading…'
-              : `Downloading, ${d.percent}%`;
+              ? `${d.update ? 'Updating' : 'Downloading'}…`
+              : `${d.update ? 'Updating' : 'Downloading'}, ${d.percent}%`;
