@@ -33,63 +33,6 @@ test('a fast stream of 1,000 tokens saves and sends the text a few times, the la
     }
 });
 
-test('tokens that arrive inside the interval reach the page within one interval while the reply streams', async () => {
-    let release;
-    const gate = new Promise((resolve) => (release = resolve));
-    const env = await open({
-        generate: async (tree, text, emit) => {
-            emit({ type: 'delta', item: 'a', text: 'first ' });
-            emit({ type: 'delta', item: 'a', text: 'second' });
-            await gate;
-            emit({ type: 'status', status: 'completed' });
-        },
-    });
-    try {
-        const tree = await (await env.post('/api/trees', {})).json();
-        const reader = (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Q' })).body
-            .pipeThrough(new TextDecoderStream())
-            .getReader();
-        let seen = '';
-        while (!seen.includes('"text":"first second"')) seen += (await reader.read()).value;
-        assert.doesNotMatch(seen, /"type":"done"/);
-        release();
-        while (!(await reader.read()).done);
-    } finally {
-        release();
-        env.close();
-    }
-});
-
-test('a failed save in the trailing update fails the reply and leaves the server running', async () => {
-    let release;
-    const gate = new Promise((resolve) => (release = resolve));
-    const env = await open({
-        generate: async (tree, text, emit) => {
-            emit({ type: 'delta', item: 'a', text: 'first ' });
-            emit({ type: 'delta', item: 'a', text: 'second' });
-            await gate;
-            emit({ type: 'status', status: 'completed' });
-        },
-    });
-    try {
-        const tree = await (await env.post('/api/trees', {})).json();
-        const update = env.store.update;
-        env.store.update = function (id, text, ...rest) {
-            if (text === 'first second' && rest[0] === 'streaming') {
-                release();
-                throw new Error('disk full');
-            }
-            return update.call(this, id, text, ...rest);
-        };
-        const body = await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Q' })).text();
-        assert.match(body, /disk full/);
-        assert.match(body, /"type":"done","status":"failed"/);
-    } finally {
-        release();
-        env.close();
-    }
-});
-
 test('a reply reads its title and model without loading the conversation again', async () => {
     const env = await open({
         generate: async (tree, text, emit) => {

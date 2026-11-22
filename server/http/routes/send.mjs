@@ -1,13 +1,8 @@
-import { replyArtifacts } from '../reply-artifacts.mjs';
 import { nativeTools as nativeToolsFor } from '../../tools/runner.mjs';
-import { APP_TOOLS, appCalls, isAppTool } from '../app-calls.mjs';
-import { markerNotes } from '../../media/markers.mjs';
-import { formatLog, errorCause, privateValues } from '../../log.mjs';
-import { diagramReply } from '../../media/reply-parser.mjs';
-import { generateDiagram } from '../../media/diagram-generator.mjs';
+import { APP_TOOLS, isAppTool } from '../app-calls.mjs';
+import { replyTurn } from '../reply-turn.mjs';
 import { tutorContext } from '../../media/tutor-context.mjs';
 import { compactionPrompt } from '../jobs/compaction.mjs';
-import { ENDED, collectText } from '../../providers/chatStream.mjs';
 import { withAttachments } from '../../attachments.mjs';
 import { attachmentParts, prepareUploads, prepareRetry, savePrepared } from '../attachments.mjs';
 import { join } from 'node:path';
@@ -143,171 +138,26 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
         ctx.startTitle(id, body.text.trim() ? body.text : prompt.slice(0, 4000));
     const reply = store.message(id, 'assistant', '', 'streaming');
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
-    const send = (data) => {
-        if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`);
-    };
-    const streamed = collectText();
-    let text = '',
-        status = 'streaming',
-        finished = false,
-        usage = null,
-        called = false,
-        questions = [],
-        // The tutor's inline notes so far (ADR 0016); the learner sees each one as its marker closes.
-        notes = markerNotes('', []),
-        // shortcut: a crash mid-reply loses up to ctx.saveEvery ms of streamed text; save every delta only if that matters.
-        saved = -Infinity,
-        // The trailing update for tokens that arrived inside the current interval.
-        pending = null,
-        // An error from the trailing update; thrown where the provider's errors fail the reply, not out of the timer.
-        late = null;
     const heartbeat = setInterval(() => {
         if (!res.destroyed) res.write(': keepalive\n\n');
     }, 15000);
-    const { artifacts, prepareArtifacts, showVisual, makeVideo, startDiscussion, hasMedia } =
-        replyArtifacts(ctx, {
-            id,
-            tree,
-            user,
-            reply,
-            body,
-            send,
-            controller,
-            isFinished: () => finished,
-            getStatus: () => status,
-        });
-    const calls = appCalls(ctx, {
-        conversation: id,
+    const send = (data) => {
+        if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`);
+        if (data.type === 'done') {
+            clearInterval(heartbeat);
+            res.end();
+        }
+    };
+    const turn = replyTurn(ctx, {
+        id,
+        tree,
+        user,
         reply,
-        showVisual,
-        makeVideo,
-        startDiscussion,
+        body,
+        job,
+        emit: send,
+        saveEvery: ctx.saveEvery,
     });
-    const suggesting = store.suggestionSettings().enabled;
-    const noted = (output) => {
-        const next = markerNotes(output.text, output.markers, hasMedia());
-        if (
-            suggesting &&
-            (next.passages.length > notes.passages.length ||
-                next.groundwork.length > notes.groundwork.length)
-        )
-            send({
-                type: 'suggestions',
-                suggestions: {
-                    message: reply,
-                    status: 'pending',
-                    passages: next.passages,
-                    groundwork: next.groundwork,
-                },
-            });
-        // Each next question shows once its marker closes.
-        if (next.questions.length > questions.length)
-            send({ type: 'questions', questions: (questions = next.questions) });
-        notes = next;
-    };
-    // Parses the text so far and updates the page and the saved row, at most once per ctx.saveEvery ms while tokens arrive.
-    // A new suggestion can be opened at once, so its brief reads the text saved here.
-    const flush = () => {
-        clearTimeout(pending);
-        pending = null;
-        if (finished) return;
-        const output = diagramReply(streamed.text('\n\n'));
-        text = output.text;
-        saved = performance.now();
-        store.update(reply, text, status);
-        send({ type: 'text', text });
-        noted(output);
-        prepareArtifacts(output);
-        calls.place(output);
-        calls.runText(output);
-    };
-    const finish = () => {
-        if (finished) return;
-        if (pending) flush();
-        finished = true;
-        prepareArtifacts(diagramReply(streamed.text('\n\n'), true), true);
-        clearInterval(heartbeat);
-        controller.signal.removeEventListener('abort', interrupt);
-        const output = diagramReply(streamed.text('\n\n'), status === 'completed');
-        if (output.text !== text) {
-            text = output.text;
-            send({ type: 'text', text });
-        }
-        noted(output);
-        calls.place(output);
-        if (controller.signal.aborted && !ctx.stopping) {
-            store.cancelVisuals(id, reply);
-            for (const artifact of artifacts.values())
-                if (['visual', 'video'].includes(artifact.kind)) {
-                    if (artifact.kind === 'video') store.cancelVideo(id, artifact.id);
-                    const current = store.artifact(id, artifact.id);
-                    if (current) send({ type: 'artifact', artifact: live(current) });
-                }
-        }
-        for (const tool of store.stopToolCalls(reply)) send({ type: 'tool', tool });
-        for (const artifact of artifacts.values())
-            if (
-                artifact.kind === 'mermaid' &&
-                store.artifact(id, artifact.id)?.status === 'pending'
-            )
-                store.finishArtifact(id, artifact.id, null, 'Diagram generation cancelled.');
-        store.update(
-            reply,
-            text,
-            status,
-            status === 'interrupted'
-                ? ctx.stopping
-                    ? 'shutdown'
-                    : controller.signal.aborted
-                      ? 'learner'
-                      : null
-                : null,
-        );
-        // Provider-reported counts only; failed, partial and canceled replies keep no usage.
-        if (
-            usage &&
-            !['input', 'output', 'cacheRead'].every(
-                (k) => Number.isSafeInteger(usage[k]) && usage[k] >= 0,
-            )
-        )
-            usage = null;
-        if (status === 'completed' && usage)
-            store.usage(reply, {
-                ...usage,
-                ...(usage.context && {
-                    context: { ...usage.context, model: store.header(id)?.model ?? tree.model },
-                }),
-            });
-        // History keeps any reported measurement, including failed or stopped calls; unreported ones stay unavailable.
-        if (called)
-            store.record(
-                `chat:${reply}`,
-                'chat',
-                { provider: tree.provider, model: store.header(id)?.model ?? tree.model },
-                usage,
-            );
-        if (status === 'completed' || status === 'failed')
-            store.finishModel(id, status === 'completed');
-        // The verdict judges the learner message, so a retried reply replaces that message's observations.
-        if ((status === 'completed' || output.verdicts) && store.live(id)) {
-            ctx.jobs.get('verdict', user)?.controller.abort();
-            store.observe(user, output.verdicts ?? []);
-        }
-        // No readable block: the quick thinking model judges the learner message in the background.
-        if (status === 'completed' && !output.verdicts && text.trim() && store.live(id))
-            ctx.startVerdicts(id, user, body.text, text);
-        if (notes.questions.length) store.nextQuestions(reply, notes.questions);
-        ctx.noteSuggestions(id, reply, status, notes, body.text, text);
-        if (output.requested || output.hidden) store.forgetThread(id);
-        jobs.remove(job);
-        send({ type: 'done', status });
-        res.end();
-    };
-    const interrupt = () => {
-        status = 'interrupted';
-        finish();
-    };
-    controller.signal.addEventListener('abort', interrupt, { once: true });
     send({
         type: 'saved',
         id: reply,
@@ -346,7 +196,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
             } catch (error) {
                 throw Object.assign(error, { compaction: true });
             }
-            if (finished) return true;
+            if (turn.finished) return true;
         }
         // The child's first reply waits for its inherited context; the stream shows each phase.
         if (compaction) {
@@ -357,7 +207,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
                     controller.signal.addEventListener('abort', resolve, { once: true }),
                 ),
             ]);
-            if (finished) return true;
+            if (turn.finished) return true;
             if (compaction.error)
                 throw Object.assign(new Error(compaction.error), { compaction: true });
             tree.branch = store.branchOf(id);
@@ -365,7 +215,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
         send({ type: 'status', status: 'thinking' });
         if (!tree.model) {
             tree.model = (await pick(tree).model?.(tree)) ?? null;
-            if (finished) return true;
+            if (turn.finished) return true;
             if (tree.model) store.model(id, tree.model);
         }
         if (tree.effort !== null) {
@@ -392,156 +242,46 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
             [body.text, tree.branch?.text].filter(Boolean).join('\n'),
             controller.signal,
         );
-        if (finished) return true;
-        called = true;
-        // Ends the tutor's run once the end section is in and a later model response begins (ADR 0016).
-        const run = new AbortController();
-        await ctx.logged(pick(tree), 'chat', reply, tree).generate(
-            {
-                ...tutorContext(tree),
-                ...(textTools.length && { textTools }),
-                ...((nativeTools.length || tools.length) && { nativeTools, mcp: ctx.mcp }),
-                ...(tools.length && {
-                    tools,
-                    runTool: (name, input, signal) => {
-                        if (!isAppTool(name))
-                            return ctx.tools.run(name, input, { conversation: id, reply, signal });
-                        if (finished) throw new Error('The reply has already ended.');
-                        if (pending) flush();
-                        return calls.run(name, input, text.length, text);
-                    },
-                }),
-                tutorStyle: store.tutorStyle(),
-                memoryNote: store.memoryNote(),
-                neighbourhood,
-                resources: store
-                    .resources(id)
-                    .slice(-50) // only the newest resources, so a large tree keeps the prompt bounded
-                    .reverse()
-                    .map(({ number, title, site }) => ({ number, title, site })),
-                ...(images.length && { images }),
-                ...(attachments.some((a) => a.type === 'application/pdf') && { parts }),
-            },
-            prompt,
-            (event) => {
-                if (finished) return;
-                if (late) throw late;
-                if (streamed.onEvent(event)) {
-                    const wait = ctx.saveEvery - (performance.now() - saved);
-                    if (wait <= 0) flush();
-                    else
-                        pending ??= setTimeout(() => {
-                            try {
-                                flush();
-                            } catch (error) {
-                                late = error;
-                            }
-                        }, wait);
-                }
-                if (event.type === 'response' && pending) flush();
-                if (event.type === 'response' && notes.ended) run.abort(ENDED);
-                if (event.type === 'status') status = event.status;
-                // App tools are machinery, not tool activity.
-                if (event.type === 'tool' && !isAppTool(event.tool.name)) {
-                    if (store.live(id)) store.toolCall(id, reply, event.tool);
-                    send({ type: 'tool', tool: event.tool });
-                }
-                if (event.type === 'usage')
-                    usage = {
-                        input: event.usage.input,
-                        output: event.usage.output,
-                        cacheRead: event.usage.cacheRead,
-                        reasoning: event.usage.reasoning,
-                        ...(Number.isSafeInteger(event.usage.contextWindow) &&
-                            event.usage.contextWindow > 0 && {
-                                context: {
-                                    limit: event.usage.contextWindow,
-                                    provider: tree.provider,
-                                },
-                            }),
-                    };
-            },
-            (thread, model) => {
-                if (!finished) store.thread(id, thread, model);
-            },
-            AbortSignal.any([controller.signal, run.signal]),
+        if (turn.finished) return true;
+        await turn.stream((onEvent, onThread, signal) =>
+            ctx.logged(pick(tree), 'chat', reply, tree).generate(
+                {
+                    ...tutorContext(tree),
+                    ...(textTools.length && { textTools }),
+                    ...((nativeTools.length || tools.length) && { nativeTools, mcp: ctx.mcp }),
+                    ...(tools.length && {
+                        tools,
+                        runTool: (name, input, signal) =>
+                            isAppTool(name)
+                                ? turn.runAppTool(name, input)
+                                : ctx.tools.run(name, input, { conversation: id, reply, signal }),
+                    }),
+                    tutorStyle: store.tutorStyle(),
+                    memoryNote: store.memoryNote(),
+                    neighbourhood,
+                    resources: store
+                        .resources(id)
+                        .slice(-50) // only the newest resources, so a large tree keeps the prompt bounded
+                        .reverse()
+                        .map(({ number, title, site }) => ({ number, title, site })),
+                    ...(images.length && { images }),
+                    ...(attachments.some((a) => a.type === 'application/pdf') && { parts }),
+                },
+                prompt,
+                onEvent,
+                onThread,
+                signal,
+            ),
         );
-        if (late) throw late;
-        if (pending) flush();
-        if (status === 'streaming')
-            status = controller.signal.aborted ? 'interrupted' : 'completed';
-        if (!finished) {
-            const output = diagramReply(streamed.text('\n\n'), true);
-            if (status === 'completed') calls.runText(output);
-            if (output.requested) {
-                text = output.text;
-                store.update(reply, text, status);
-                store.forgetThread(id);
-                prepareArtifacts(output, true);
-                // Legacy diagrams run in reply order; visuals and videos already run detached.
-                for (let artifact of artifacts.values()) {
-                    if (finished) break;
-                    if (artifact.status !== 'pending' || artifact.kind !== 'mermaid') continue;
-                    ctx.log(
-                        formatLog('info', 'media', 'started', { id: artifact.id, task: 'diagram' }),
-                    );
-                    try {
-                        const { model } = store.header(id);
-                        const selection = { provider: tree.provider, model };
-                        const source = await generateDiagram(
-                            ctx.metered(pick(tree), 'diagram', artifact.id, selection, {
-                                message: artifact.message,
-                            }),
-                            selection,
-                            JSON.parse(artifact.input),
-                            controller.signal,
-                            ctx.diagramTimeout,
-                            ctx.diagramParse,
-                        );
-                        if (!finished) {
-                            artifact = store.finishArtifact(id, artifact.id, source);
-                            ctx.log(
-                                formatLog('info', 'media', 'saved', {
-                                    id: artifact.id,
-                                    task: 'diagram',
-                                }),
-                            );
-                        }
-                    } catch (error) {
-                        ctx.log(
-                            formatLog(
-                                controller.signal.aborted ? 'info' : 'error',
-                                'media',
-                                controller.signal.aborted ? 'stopped' : 'failed',
-                                {
-                                    id: artifact.id,
-                                    task: 'diagram',
-                                    ...(!controller.signal.aborted && {
-                                        cause: errorCause(error, privateValues(artifact.input)),
-                                        next: 'Check the selected model, then Retry the diagram.',
-                                    }),
-                                },
-                            ),
-                        );
-                        if (!finished)
-                            artifact = store.finishArtifact(id, artifact.id, null, error.message);
-                    }
-                    if (!finished) send({ type: 'artifact', artifact: live(artifact) });
-                }
-            }
-        }
     } catch (error) {
-        if (!finished) {
-            status = 'failed';
-            send({
-                type: 'error',
-                error: error.compaction
-                    ? error.message
-                    : error.message + ' The last working model selection will be restored.',
-            });
-        }
+        turn.fail(error);
     } finally {
-        finish();
+        try {
+            turn.finish();
+        } finally {
+            // A finish that throws emits no 'done'.
+            clearInterval(heartbeat);
+        }
     }
     return true;
 }
