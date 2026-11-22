@@ -12,7 +12,8 @@ import {
 } from './video-plan.mjs';
 import { fetchExhibit, videoMedia } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
-import { writeCuts, playable, cutRows } from './video-cuts.mjs';
+import { writeCuts, cutRows } from './video-cuts.mjs';
+import { CUT_STATES, cutState, playable } from './cut-state.mjs';
 import { mediaCall, raced } from './media-call.mjs';
 import { planBuilder } from './plan-calls.mjs';
 
@@ -281,18 +282,19 @@ export async function generateVideo({
             const ready = live.cuts.filter(playable).length;
             if (live.pieces === null) return say('pieces');
             const waiting = live.cuts.slice(0, 2).find((c) => !playable(c));
-            if (waiting)
-                return !waiting.code
-                    ? say('writing', undefined, {
-                          cut: live.cuts.filter((c) => c.code).length,
-                          cuts: count,
-                      })
-                    : !waiting.timing
-                      ? say('narrating')
-                      : say('auditing', undefined, {
-                            cut: live.cuts.filter((c) => c.audited).length,
-                            cuts: count,
-                        });
+            const phase = waiting && CUT_STATES[cutState(waiting)].phase;
+            if (phase === 'writing')
+                return say(phase, undefined, {
+                    cut: live.cuts.filter((c) => c.code).length,
+                    cuts: count,
+                });
+            if (phase === 'auditing')
+                return say(phase, undefined, {
+                    cut: live.cuts.filter((c) => c.audited).length,
+                    cuts: count,
+                });
+            // A failed cut reports no phase; its rows still update.
+            if (waiting) return say(phase);
             if (!playableStage) onStage('playable', { cut: ready, cuts: count });
             playableStage = true;
             say('playable', undefined, { cut: ready, cuts: count });

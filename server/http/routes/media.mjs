@@ -3,7 +3,7 @@ import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { mediaPath } from '../../media/videos.mjs';
-import { playable } from '../../media/video-cuts.mjs';
+import { playable } from '../../media/cut-state.mjs';
 import { withParts } from '../../media/video-pieces.mjs';
 import { readable, savedCuts } from '../jobs/media.mjs';
 import { formatLog, errorCause } from '../../log.mjs';

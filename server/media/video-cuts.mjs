@@ -30,19 +30,11 @@ import { withoutPaths, sandboxOutput } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
 
 import { stageCut } from './video-stage.mjs';
+import { cutState } from './cut-state.mjs';
 
-// A cut plays live once its code and measured narration exist and its audit settled; Manim also needs its clip.
-export const playable = (cut) =>
-    !!(cut.code && cut.timing && cut.audited && (cut.engine !== 'manim' || cut.clip));
 // Live rows: a row's state may move back (ready to repairing) while the job phase only moves forward.
 export const cutRows = (cuts, plan) =>
-    cuts.map((c, i) => ({
-        cut: i + 1,
-        title: plan.cuts[i].purpose,
-        state:
-            c.step ??
-            (playable(c) ? 'ready' : !c.code ? 'writing' : !c.timing ? 'narrating' : 'auditing'),
-    }));
+    cuts.map((c, i) => ({ cut: i + 1, title: plan.cuts[i].purpose, state: cutState(c) }));
 
 // A cut's final validation or render failure; provider, sign-in and runtime errors keep their own wording.
 export const cutError = (reason, index, count) =>

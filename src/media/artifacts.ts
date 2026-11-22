@@ -47,7 +47,7 @@ export type Artifact = ArtifactSummary & {
     cutRows?: {
         cut: number;
         title: string;
-        state: 'writing' | 'narrating' | 'auditing' | 'fixing' | 'repairing' | 'ready';
+        state: 'writing' | 'narrating' | 'auditing' | 'fixing' | 'repairing' | 'ready' | 'failed';
     }[];
     drawing?: { drawing: string[]; drawn: number; total: number };
 };
