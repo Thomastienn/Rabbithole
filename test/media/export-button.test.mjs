@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
-const { default: ExportButton, session } = await import('../../src/media/ExportButton.tsx');
+const { default: ExportButton } = await import('../../src/media/ExportButton.tsx');
+const { setCsrf } = await import('../../src/serverAccess.ts');
 const { default: VideoCard } = await import('../../src/media/VideoCard.tsx');
 
 // Fake server answers in order; downloads are captured instead of navigating.
@@ -20,7 +21,7 @@ async function mount(t, answers, element) {
         return { ok: status < 400, json: async () => body };
     };
     t.after(() => (globalThis.fetch = fetch));
-    session.csrf = 'token';
+    setCsrf('token');
     const view = await render(element, (w) => {
         ui(w);
         w.HTMLAnchorElement.prototype.click = function () {
@@ -62,6 +63,7 @@ test('an exported video downloads at once; a failed export shows its error with 
             [200, { exported: true }],
             [200, { exported: false, error: 'Video rendering failed.' }],
             [200, { exported: true }],
+            [500, {}],
         ],
         h(ExportButton, { id: 'v2', title: 'Finals' }),
     );
@@ -76,6 +78,11 @@ test('an exported video downloads at once; a failed export shows its error with 
     assert.equal(container.querySelector('[role=alert]'), null);
     assert.equal(calls.length, 3);
     assert.equal(downloads.length, 2);
+    const alert = () => container.querySelector('[role=alert]').textContent;
+    await act(async () => button(container, 'Export MP4: Finals').click());
+    assert.equal(alert(), 'Export failed: Export failed.', 'a failed response without a message');
+    await act(async () => button(container, 'Retry').click());
+    assert.equal(alert(), 'Export failed: Could not reach Rabbithole. Retry the export.');
 });
 
 test('the same Export MP4 button sits on the inline card and the library card of a ready video', async (t) => {

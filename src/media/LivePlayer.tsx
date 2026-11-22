@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { serverFetch } from '../serverAccess';
 
 type LiveCuts = {
     paletteRoles: Record<string, string>;
@@ -27,13 +28,13 @@ export default function LivePlayer({ cuts, title }: { cuts: string; title: strin
             blobs = new Map<string, Blob>();
         const blob = async (key: string) => {
             if (blobs.has(key)) return;
-            const response = await fetch(`${base}/${key}`);
+            const response = await serverFetch(`${base}/${key}`);
             if (response.ok) blobs.set(key, await response.blob());
         };
         (async () => {
             while (!stopped) {
                 try {
-                    const response = await fetch(base);
+                    const response = await serverFetch(base);
                     if (response.ok) {
                         const data: LiveCuts = await response.json();
                         await Promise.all([

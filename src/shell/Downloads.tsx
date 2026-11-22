@@ -4,15 +4,11 @@ import { Popover } from '@astryxdesign/core/Popover';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import { Text } from '@astryxdesign/core/Text';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
-import { session } from '../media/ExportButton';
+import { request } from '../serverAccess';
 import { downloadStatus, formatSize, overallPercent, type Download } from './downloadProgress';
 
 const post = (path: string): Promise<void> =>
-    fetch(path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': session.csrf },
-        body: '{}',
-    }).then(
+    request(path, {}).then(
         () => {},
         () => {},
     );
