@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import {
     snippet,
@@ -335,15 +336,27 @@ test('message jump labels flatten and bound text; source reveal keeps exact UTF-
     );
 });
 
-test('preview requests batch at 500 and encode IDs; polling excludes idle and other learning trees', () => {
+test('preview requests batch at 300 and encode IDs; polling excludes idle and other learning trees', () => {
     assert.deepEqual(previewRequests([]), []);
+    assert.equal(previewRequests(['only']).length, 1);
+    const uuids = Array.from({ length: 1000 }, () => randomUUID());
+    const uuidRequests = previewRequests(uuids);
+    assert.deepEqual(
+        uuidRequests
+            .map((path) => new URL(path, 'http://localhost').searchParams.getAll('id'))
+            .flat(),
+        uuids,
+    );
+    // Node refuses headers over 16,384 bytes; leave 4 KB for the browser's other headers.
+    for (const path of uuidRequests)
+        assert.ok(`GET ${path} HTTP/1.1\r\n`.length < 12288, path.length);
     const ids = Array.from({ length: 1001 }, (_, i) => `${i} &=?`);
     const batches = previewRequests(ids).map((path) =>
         new URL(path, 'http://localhost').searchParams.getAll('id'),
     );
     assert.deepEqual(
         batches.map((b) => b.length),
-        [500, 500, 1],
+        [300, 300, 300, 101],
     );
     assert.deepEqual(batches.flat(), ids);
     assert.deepEqual(replyingPreviews(['root', 'child', 'idle'], 'root,other,child'), [
