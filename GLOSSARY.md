@@ -78,12 +78,16 @@ The model that answers learner messages in a conversation. Its Settings default 
 The learner-chosen model for planning videos and auditing their cuts; the chat model writes visuals and cut code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
 
 **First-run setup**:
-The short screen a fresh install shows before anything else, where the learner signs in to Claude or Codex and chooses a chat model so they can start asking. It appears only on first run and is quick to finish; later changes happen in Settings.
+The short screen a fresh install shows before anything else, where the learner signs in to Claude or Codex, chooses a chat model so they can start asking, and last picks any add-ons to install, or skips them. It appears only on first run and is quick to finish; later changes happen in Settings.
 _Avoid_: Onboarding, wizard, setup screen
 
+**Add-on**:
+An optional part of the app the learner installs only if they want the feature it enables: video tools, offline Python or web search. The base app chats without any add-on. The learner installs add-ons from first-run setup or the Add-ons page in Settings, and an installed add-on updates itself when a new app version needs a newer one.
+_Avoid_: Component, plugin, extension, module
+
 **Download**:
-A tool the app fetches for itself in the background so a feature can run, such as the video tools or web search. The learner sees running, failed and newly finished downloads in the sidebar; saving a video as an MP4 is an export, not a download.
-_Avoid_: Install, update, export
+The app fetching an add-on in the background after the learner asked to install it, or when an installed add-on needs an update. The learner sees running, failed and newly finished downloads in the sidebar; saving a video as an MP4 is an export, not a download.
+_Avoid_: Update (for the app itself), export
 
 **Model profile**:
 A named set of model choices the learner can swap between: a model and effort for the chat model default, the smart model and the quick thinking model.
@@ -244,6 +248,10 @@ _Avoid_: Cut (for the join itself)
 **Cut audit**:
 A single review of one written cut by the smart model, from its code and still frames, against the video plan, its set pieces and the previous cut's last frame. It reports problems with layout, consistency, house style, emphasis placement, labels crowding the focal object and missing or unnecessary detail without rewriting the cut; the chat model fixes a flagged cut before it becomes playable.
 _Avoid_: Final pass, whole-video audit
+
+**Video mode**:
+The learner's one app-wide choice of how much model work a video gets: Quality, the default, or Saving. Saving skips cut audits, piece improvements and reference photos, keeping only what a playable video needs. A video uses the mode set when it starts, including a Retry, and keeps how it was made.
+_Avoid_: Quality setting, budget mode, cheap mode
 
 **Focus mode**:
 The learner's choice to shrink the app's sidebar to the sidebar rail on any page, giving the current page's content the rest of the width. One button at the top of the sidebar switches between the full sidebar and the rail. The sidebar is never fully hidden outside narrow screens.

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Update banner · Rabbithole-upd.2 mockup</title><link rel="stylesheet" href="line-diagram/ld.css"><link rel="stylesheet" href="add-ons.css">
+<style>
+/* Mockup only. The banner lives in the sidebar, above Settings, where the save alert already sits. */
+.ucard { margin: 0 8px 8px; padding: 12px; border-radius: 8px; background: var(--up); border: 1.5px solid var(--seam2); font-size: 13px; display: grid; gap: 8px; }
+.ucard .h { display: flex; gap: 8px; align-items: flex-start; }
+.ucard .h > .i { color: var(--w); margin-top: 1px; }
+.ucard .h b { font-weight: 600; color: var(--ink); flex: 1; }
+.ucard .h .ib { margin: -6px -6px 0 0; width: 28px; height: 28px; min-height: 28px; }
+.ucard p { color: var(--mut); }
+.ucard .bar { margin-top: 0; }
+.ucard .bar b { background: var(--w); }
+.ucard .btn { justify-self: start; }
+.colbox { width: 272px; background: var(--deep); border-radius: 8px; padding: 8px 0 0; }
+.stage.row { gap: 20px; align-items: flex-start; }
+.dot { position: relative; }
+.dot::after { content: ""; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--w); box-shadow: 0 0 0 2px var(--deep); }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Add-ons, updates, loading</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-aon.2.html">aon.2 Add-ons page</a><a href="Rabbithole-aon.3.html">aon.3 First-run add-ons</a><a href="Rabbithole-upd.2.html" aria-current=page>upd.2 Update banner</a><a href="Rabbithole-dpl.1.html">dpl.1 Loading screen</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Update banner in the desktop app</h1><p>Rabbithole-upd.2. On launch the desktop app checks for a newer published release once. When there is one, a small card in the sidebar offers it: one click to download, one click to restart into it. Only the desktop app shows it, never <code>npm start</code>. Spec: <code>docs/add-ons-updates-and-video-mode-spec.md</code>. Where this mockup and the spec differ, follow the spec.</p></header>
+<ul class="rules">
+<li>The card sits in the sidebar above Settings, where the save alert already lives. It never covers the reading column and never opens a dialog.</li>
+<li>One action at a time: Install, then Restart to update, or Retry after a failed download.</li>
+<li>If the app is offline or the check fails, nothing is shown. A failed download shows a short reason and Retry.</li>
+<li>The × hides the card until the next launch. Downloading continues if it has started. (Mockup addition, not in the spec.)</li>
+</ul>
+
+<section class="intro"><h2>In place</h2><p>An update is available while the learner reads.</p></section>
+<div class="app" style="margin-top:20px;border-top:1px solid var(--seam);height:760px;min-height:0"><nav class="side" aria-label="Sidebar"><div class="top"><button class="ib" aria-label="Shrink sidebar to rail"><i class="i i-rail"></i></button><a class="mark" href="line-diagram/library.html"><svg viewBox="0 0 26 26" aria-hidden="true"><path class="ln" style="stroke-width:3.5" d="M5 13H12L18 7H22M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg>Rabbithole</a></div><div class="new"><a class="btn pri" href="line-diagram/read.html"><i class="i i--sm i-plus"></i>New chat</a><button class="ib" aria-label="Search learning trees"><i class="i i-magnifying-glass"></i></button></div><div class="views"><a class="view" href="line-diagram/read.html" aria-current=page><i class="i i-book-open"></i>Read</a><a class="view" href="line-diagram/map.html"><i class="i i-map"></i>Map</a><a class="view" href="line-diagram/knowledge.html"><i class="i i-share"></i>Knowledge</a><a class="view" href="line-diagram/videos.html"><i class="i i-film"></i>Videos</a><a class="view" href="line-diagram/pieces.html"><i class="i i-cube"></i>Pieces</a><a class="view" href="line-diagram/library.html"><i class="i i-rectangle-stack"></i>Library</a></div><div style="flex:1"></div>
+<div class="ucard" role="status"><div class="h"><i class="i i--sm i-sparkles"></i><b>Rabbithole 1.0.214 is available</b><button class="ib" aria-label="Hide until next launch"><i class="i i--sm i-xmark"></i></button></div><p>You have 1.0.198. Your trees stay as they are.</p><button class="btn sm"><i class="i i--sm i-arrow-down-tray"></i>Install</button></div>
+<div class="foot"><a class="view" href="line-diagram/settings.html"><i class="i i-cog-6-tooth"></i>Settings</a><button class="ib" aria-label="Downloads"><i class="i i-tray"></i></button></div></nav>
+<main class="page"><div class="col reply" style="max-width:68ch"><h1 class="title"><span class="chip c2">1.2</span><span>What are hyphae?</span></h1><div class="by">Tutor · Claude · Opus 4</div><p class="p">A hypha is a single thread of a fungus, a tube one cell wide. Thousands of them together make the mycelium, the web you see as white fuzz under a log.</p><p class="p">Because a thread is so thin, it reaches pores no root can enter, and that is where much of the phosphorus sits.</p></div></main></div>
+
+<main class="specs">
+
+<section class="spec"><h2>Every banner state</h2><p>Available, downloading, ready, and a failed download. The card keeps its height steady, so the sidebar does not jump between states.</p><div class="stage row">
+<div class="colbox"><div class="ucard" role="status"><div class="h"><i class="i i--sm i-sparkles"></i><b>Rabbithole 1.0.214 is available</b><button class="ib" aria-label="Hide until next launch"><i class="i i--sm i-xmark"></i></button></div><p>You have 1.0.198. Your trees stay as they are.</p><button class="btn sm"><i class="i i--sm i-arrow-down-tray"></i>Install</button></div></div>
+<div class="colbox"><div class="ucard" role="status"><div class="h"><i class="i i--sm i-arrow-down-tray"></i><b>Downloading 1.0.214 · 46%</b><button class="ib" aria-label="Hide until next launch"><i class="i i--sm i-xmark"></i></button></div><p>58 of 126 MB. Keep working; nothing changes until you restart.</p><div class="bar"><b style="width:46%"></b></div></div></div>
+<div class="colbox"><div class="ucard" role="status"><div class="h"><i class="i i--sm i-check-circle"></i><b>1.0.214 is ready</b><button class="ib" aria-label="Hide until next launch"><i class="i i--sm i-xmark"></i></button></div><p>Restart to finish. Your map layout is saved first.</p><button class="btn sm pri"><i class="i i--sm i-arrow-path"></i>Restart to update</button></div></div>
+<div class="colbox"><div class="ucard" role="alert"><div class="h"><i class="i i--sm i-exclamation-triangle" style="color:var(--fail)"></i><b>The update did not download</b><button class="ib" aria-label="Hide until next launch"><i class="i i--sm i-xmark"></i></button></div><p>The connection dropped. Check it, then retry.</p><button class="btn sm"><i class="i i--sm i-arrow-path"></i>Retry</button></div></div>
+</div></section>
+
+<section class="spec"><h2>Restarting</h2><p>Restart to update saves the pending map layout, then quits and installs. The app reopens on the new version. If a reply is still streaming, it is interrupted, exactly as when the learner quits.</p><div class="stage"><div class="colbox"><div class="ucard" role="status"><div class="h"><i class="i i--sm i-arrow-path"></i><b>Restarting…</b></div><p>Saving your map layout.</p></div></div></div></section>
+
+<section class="spec"><h2>Sidebar as a rail</h2><p>With the sidebar shrunk to icons, the card cannot fit. A dot on the Settings icon marks the update. Its label says so, and opening the sidebar shows the card.</p><div class="stage row"><div class="rail-side" style="border-radius:8px;border:0;height:330px;grid-template-rows:repeat(5,auto) 1fr auto"><button class="ib" aria-label="Expand sidebar"><i class="i i-view-columns"></i></button><button class="ib" aria-label="New chat"><i class="i i-plus"></i></button><button class="ib" aria-label="Search learning trees"><i class="i i-magnifying-glass"></i></button><button class="ib" aria-label="Read"><i class="i i-book-open"></i></button><button class="ib" aria-label="Map"><i class="i i-map"></i></button><div style="flex:1"></div><button class="ib dot" aria-label="Settings. Rabbithole 1.0.214 is available"><i class="i i-cog-6-tooth"></i></button></div></div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>First-run add-ons · Rabbithole-aon.3 mockup</title><link rel="stylesheet" href="line-diagram/ld.css"><link rel="stylesheet" href="add-ons.css">
+<style>
+/* Mockup only. The add-ons step uses the first-run card, made wider for three rows. */
+.first.wide { max-width: 580px; }
+.first .step { font: 600 12px/1.2 var(--cond); text-transform: uppercase; letter-spacing: 0.07em; color: var(--mut); margin-bottom: 6px; }
+.first > p { color: var(--mut); font-size: 14px; margin-bottom: 14px; }
+.first .addon { padding: 12px 0; }
+.first .addon:first-child { padding-top: 0; }
+.first .later { font-size: 13px; color: var(--mut); margin-top: 14px; display: flex; gap: 8px; align-items: flex-start; }
+.first .row { align-items: center; }
+.first .row .end { display: flex; gap: 8px; }
+.first .sub { color: var(--mut); font-size: 14px; margin-bottom: 4px; }
+.first .conn .state { margin-left: 6px; }
+.pair { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.arrow { align-self: center; color: var(--mut); }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Add-ons, updates, loading</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-aon.2.html">aon.2 Add-ons page</a><a href="Rabbithole-aon.3.html" aria-current=page>aon.3 First-run add-ons</a><a href="Rabbithole-upd.2.html">upd.2 Update banner</a><a href="Rabbithole-dpl.1.html">dpl.1 Loading screen</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>First-run setup offers add-ons</h1><p>Rabbithole-aon.3. First-run setup gets a last step after sign-in and the chat model. It lists the add-ons from the Settings page (Rabbithole-aon.2), with Install on each row, Install all and Skip. Spec: <code>docs/add-ons-updates-and-video-mode-spec.md</code>. Where this mockup and the spec differ, follow the spec.</p></header>
+<ul class="rules">
+<li>Two steps in one card. Step 1 is sign-in and the chat model. It asks for Claude or Codex, since one is enough, and its main button becomes Continue. Step 2 is the add-ons.</li>
+<li>The rows are the Add-ons page rows, with the same copy, sizes and states, so the learner meets them again in Settings.</li>
+<li>Leaving the step never waits. Downloads keep running in the background, and the sidebar tray shows them.</li>
+<li>The step always says where to find add-ons later, so skipping is safe.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>Step 1: one provider is enough</h2><p>Claude and Codex are alternatives. The card asks for either one, and a provider that is not set up is shown in plain grey, never as an error. Once one is connected, the other is marked optional and its button drops to a quiet one. On Windows the sandbox section stays in this step. The Linux video-packages section is gone: the project wheels remove the need for it (Rabbithole-aon.7), and bubblewrap is reported on the Add-ons page.</p><div class="stage row" style="align-items:flex-start"><div class="first"><div class="step">Step 1 of 2</div><h2>Before your first question</h2><p class="sub">Sign in to Claude or Codex. One is enough, and you can add the other later in Settings.</p><div class="conn"><div><b>Claude</b> <span class="ok"><i class="i i--sm i-check"></i>Connected</span></div><p>Signed in through Claude Code on this computer.</p></div><div class="conn"><div><b>Codex</b> <span class="state">Not set up</span></div><p>Optional. Install Codex and sign in to use it as well.</p><button class="btn sm ghost">Check again</button></div><span class="lab">Chat model</span><button class="selb">Claude · Opus 4<i class="i i--sm i-chevron-down"></i></button><div class="row"><button class="btn ghost">Set up later</button><button class="btn pri">Continue<i class="i i--sm i-chevron-right"></i></button></div></div><div class="first"><div class="step">Step 1 of 2</div><h2>Before your first question</h2><p class="sub">Sign in to Claude or Codex. One is enough, and you can add the other later in Settings.</p><div class="conn"><div><b>Claude</b> <span class="state">Not set up</span></div><p>Install Claude Code and sign in, then check again.</p><button class="btn sm">Check again</button></div><div class="conn"><div><b>Codex</b> <span class="state">Not set up</span></div><p>Install Codex and sign in, then check again.</p><button class="btn sm">Check again</button></div><p class="hint" style="margin-top:14px">Sign in to either one to pick a chat model.</p><div class="row"><button class="btn ghost">Set up later</button><button class="btn pri off" aria-disabled="true">Continue<i class="i i--sm i-chevron-right"></i></button></div></div></div></section>
+
+<section class="spec"><h2>Step 2: add-ons, nothing installed yet</h2><p>Focus starts on the heading. Tab order: each row's Install, then Back, Skip, Install all. Skip finishes setup with nothing installed. "Set up later" on step 1 also skips this step.</p><div class="stage"><div class="first wide"><div class="step">Step 2 of 2</div><h2 tabindex="-1">Add what you need</h2><p>Chat works without any of these. Each one adds a feature and downloads in the background, so you can start chatting right away.</p>
+<div class="addons">
+<div class="addon"><span class="tile"><i class="i i-film"></i></span><div><div class="name"><b>Video tools</b></div><p>Let the tutor make short narrated videos, with animation and equations.</p><div class="meta mut"><span>About 520 MB</span><span>Also installs offline Python</span></div></div><div class="act"><button class="btn sm"><i class="i i--sm i-arrow-down-tray"></i>Install</button></div></div>
+<div class="addon"><span class="tile"><i class="i i-command-line"></i></span><div><div class="name"><b>Offline Python</b></div><p>Lets the tutor run Python on this computer to calculate, check its work and draw charts.</p><div class="meta mut"><span>About 130 MB</span></div></div><div class="act"><button class="btn sm"><i class="i i--sm i-arrow-down-tray"></i>Install</button></div></div>
+<div class="addon"><span class="tile"><i class="i i-globe-alt"></i></span><div><div class="name"><b>Web search</b></div><p>Lets the tutor search the web and cite what it finds.</p><div class="meta mut"><span>About 60 MB</span></div></div><div class="act"><button class="btn sm"><i class="i i--sm i-arrow-down-tray"></i>Install</button></div></div>
+</div>
+<p class="later"><i class="i i--sm i-information-circle"></i><span>You can install or retry any of these later in Settings, under Add-ons.</span></p>
+<div class="row"><button class="btn ghost"><i class="i i--sm i-chevron-left"></i>Back</button><span class="end"><button class="btn">Skip</button><button class="btn pri"><i class="i i--sm i-arrow-down-tray"></i>Install all · about 710 MB</button></span></div></div></div></section>
+
+<section class="spec"><h2>After Install on one row</h2><p>The row shows its progress at once. Skip becomes Start chatting, which is now the main button. Install all stays while any add-on is not installed, and installs only those.</p><div class="stage"><div class="first wide"><div class="step">Step 2 of 2</div><h2>Add what you need</h2><p>Chat works without any of these. Each one adds a feature and downloads in the background, so you can start chatting right away.</p>
+<div class="addons">
+<div class="addon"><span class="tile"><i class="i i-film"></i></span><div><div class="name"><b>Video tools</b><span class="state live" role="status">Waiting for offline Python</span></div><p>Let the tutor make short narrated videos, with animation and equations.</p><div class="meta mut"><span>About 520 MB</span><span>Starts when offline Python is ready</span></div><div class="bar"><b style="width:0"></b></div></div><div class="act"></div></div>
+<div class="addon"><span class="tile"><i class="i i-command-line"></i></span><div><div class="name"><b>Offline Python</b><span class="state live" role="status">Downloading 8%</span></div><p>Lets the tutor run Python on this computer to calculate, check its work and draw charts.</p><div class="meta mut"><span>10 of 130 MB</span></div><div class="bar"><b style="width:8%"></b></div></div><div class="act"></div></div>
+<div class="addon"><span class="tile"><i class="i i-globe-alt"></i></span><div><div class="name"><b>Web search</b></div><p>Lets the tutor search the web and cite what it finds.</p><div class="meta mut"><span>About 60 MB</span></div></div><div class="act"><button class="btn sm"><i class="i i--sm i-arrow-down-tray"></i>Install</button></div></div>
+</div>
+<p class="later"><i class="i i--sm i-information-circle"></i><span>Downloads keep going while you chat. Follow them in the sidebar, or in Settings under Add-ons.</span></p>
+<div class="row"><button class="btn ghost"><i class="i i--sm i-chevron-left"></i>Back</button><span class="end"><button class="btn">Install all · about 60 MB</button><button class="btn pri">Start chatting</button></span></div></div></div></section>
+
+<section class="spec"><h2>After Install all</h2><p>Every row is downloading or waiting, so only Start chatting is left. Pressing it opens the first question with the downloads still running.</p><div class="stage pair"><div class="first wide"><div class="step">Step 2 of 2</div><h2>Add what you need</h2><p>Chat works without any of these. Each one adds a feature and downloads in the background, so you can start chatting right away.</p>
+<div class="addons">
+<div class="addon"><span class="tile"><i class="i i-film"></i></span><div><div class="name"><b>Video tools</b><span class="state live" role="status">Waiting for offline Python</span></div><p>Let the tutor make short narrated videos, with animation and equations.</p><div class="meta mut"><span>About 520 MB</span><span>Starts when offline Python is ready</span></div><div class="bar"><b style="width:0"></b></div></div><div class="act"></div></div>
+<div class="addon"><span class="tile"><i class="i i-command-line"></i></span><div><div class="name"><b>Offline Python</b><span class="state live" role="status">Downloading 41%</span></div><p>Lets the tutor run Python on this computer to calculate, check its work and draw charts.</p><div class="meta mut"><span>53 of 130 MB</span></div><div class="bar"><b style="width:41%"></b></div></div><div class="act"></div></div>
+<div class="addon"><span class="tile"><i class="i i-globe-alt"></i></span><div><div class="name"><b>Web search</b><span class="state ok"><i class="i i--sm i-check"></i>Installed</span></div><p>Lets the tutor search the web and cite what it finds.</p><div class="meta mut"><span>About 60 MB</span></div></div><div class="act"></div></div>
+</div>
+<p class="later"><i class="i i--sm i-information-circle"></i><span>Downloads keep going while you chat. Follow them in the sidebar, or in Settings under Add-ons.</span></p>
+<div class="row"><button class="btn ghost"><i class="i i--sm i-chevron-left"></i>Back</button><span class="end"><button class="btn pri">Start chatting</button></span></div></div>
+<i class="i i-chevron-right arrow" aria-hidden="true"></i>
+<div class="hero"><h2>Your first tree starts with a question.</h2><div class="comp"><div class="ta">What would you like to understand?</div><div class="row"><button class="ib" aria-label="Attach files"><i class="i i-paper-clip"></i></button><button class="pill" aria-label="Model for next reply"><i class="i i--sm i-adjustments-horizontal"></i>Claude · Opus 4</button><button class="pill" aria-label="Effort for next reply">High</button><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</div></section>
+
+<section class="spec"><h2>A failure during setup</h2><p>A failed row offers Retry in place and never blocks leaving. The same failure shows on the Add-ons page and in the sidebar tray.</p><div class="stage"><div class="first wide"><div class="addons">
+<div class="addon"><span class="tile"><i class="i i-globe-alt"></i></span><div><div class="name"><b>Web search</b><span class="state err"><i class="i i--sm i-exclamation-triangle"></i>Download failed</span></div><p>Lets the tutor search the web and cite what it finds.</p><p class="err why">Could not reach github.com. Check your connection, then retry.</p></div><div class="act"><button class="btn sm"><i class="i i--sm i-arrow-path"></i>Retry</button></div></div>
+</div></div></div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

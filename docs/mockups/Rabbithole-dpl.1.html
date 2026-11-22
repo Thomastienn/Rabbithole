@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Desktop loading screen · Rabbithole-dpl.1 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup frames. Everything under .boot is the proposed desktop/starting.html, scoped so it can be shown
+   several times on one page. Real page: drop the .boot scope, put it on body, and replace .still with
+   @media (prefers-reduced-motion: reduce). It must stay self-contained: no network, no app CSS. */
+.win { border: 1.5px solid var(--seam2); border-radius: 10px; overflow: hidden; display: grid; grid-template-rows: 30px 1fr; width: 100%; }
+.win .chrome { background: var(--deep); display: flex; align-items: center; justify-content: center; font: 500 12px/1 var(--ui); color: var(--mut); border-bottom: 1px solid var(--seam); }
+.win.big { height: min(72vh, 640px); }
+.win.small { width: 460px; height: 320px; }
+.win.light { color-scheme: light; }
+.win.dark { color-scheme: dark; }
+
+/* ---- proposed starting page ---- */
+.boot {
+  /* Platform theme, the app default: the shell cannot know the learner's theme before the server is up. */
+  --bg: light-dark(#f6f8fa, #14171d);
+  --fg: light-dark(#191e27, #f3f5f9);
+  --mute: light-dark(#5a616c, #9ea3ad);
+  --line: light-dark(#191e2724, #ffffff22);
+  --bad: light-dark(#be222a, #f17070);
+  background: var(--bg); color: var(--fg);
+  display: grid; place-items: center; align-content: center; gap: 18px; padding: 32px; min-height: 0;
+  font: 15px/1.5 Barlow, "Segoe UI", Helvetica, Arial, sans-serif; text-align: center;
+}
+.boot svg { width: 96px; height: 96px; overflow: visible; }
+.boot .ln { fill: none; stroke: var(--fg); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; }
+.boot .stn { fill: var(--bg); stroke: var(--fg); stroke-width: 2.5; }
+.boot .ping { fill: none; stroke: var(--fg); stroke-width: 0.6; transform-origin: 5px 13px; opacity: 0; }
+.boot .word { font: 700 22px/1 Barlow Semi Condensed, Barlow, "Segoe UI", Helvetica, Arial, sans-serif; letter-spacing: 0.09em; text-transform: uppercase; }
+.boot #status { color: var(--mute); font-size: 14px; margin-top: -8px; }
+.boot .fail, .boot .next { display: none; }
+/* The trunk leaves the station, the two branches fork off it, the drawing holds, then fades and starts again. */
+.boot .trunk { animation: trunk 2.8s cubic-bezier(.4,0,.2,1) infinite; }
+.boot .branch { animation: branch 2.8s cubic-bezier(.4,0,.2,1) infinite; }
+.boot .ping { animation: ping 2.8s ease-out infinite; }
+@keyframes trunk { 0% { stroke-dashoffset: 1; opacity: 1; } 22% { stroke-dashoffset: 0; } 84% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes branch { 0%, 20% { stroke-dashoffset: 1; opacity: 1; } 52% { stroke-dashoffset: 0; } 84% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes ping { 0% { transform: scale(1); opacity: .7; } 40% { transform: scale(2); opacity: 0; } 100% { opacity: 0; } }
+/* Reduced motion: the finished mark, still. Only the caption breathes, slowly. */
+.boot.still .trunk, .boot.still .branch { animation: none; stroke-dashoffset: 0; }
+.boot.still .ping { animation: none; }
+.boot.still #status { animation: breathe 3s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: .55; } }
+/* Start error: the shell swaps #status for <pre id=status>. The page reacts with CSS alone. */
+.boot:has(pre#status) .trunk, .boot:has(pre#status) .branch { animation: none; stroke-dashoffset: 0; opacity: .35; }
+.boot:has(pre#status) .ping { animation: none; }
+.boot:has(pre#status) .fail, .boot:has(pre#status) .next { display: block; }
+.boot .fail { font: 600 20px/1.2 Barlow Semi Condensed, Barlow, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--fg); margin-top: -4px; }
+.boot pre#status { margin: 0; color: var(--fg); text-align: left; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; max-width: min(60rem, 100%); max-height: 40vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; user-select: text; }
+.win.small.tall { height: 420px; }
+.win.small pre#status { max-height: 110px; }
+.boot .next { color: var(--mute); font-size: 13px; max-width: 46ch; }
+.boot .next b { color: var(--bad); font-weight: 600; }
+/* ---- end proposed page ---- */
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Add-ons, updates, loading</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-aon.2.html">aon.2 Add-ons page</a><a href="Rabbithole-aon.3.html">aon.3 First-run add-ons</a><a href="Rabbithole-upd.2.html">upd.2 Update banner</a><a href="Rabbithole-dpl.1.html" aria-current=page>dpl.1 Loading screen</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Branded desktop loading screen</h1><p>Rabbithole-dpl.1. This replaces the plain "Starting Rabbithole…" on white that shows while the desktop app's server starts. Spec: <code>docs/add-ons-updates-and-video-mode-spec.md</code>. Where this mockup and the spec differ, follow the spec.</p></header>
+<ul class="rules">
+<li>The brand mark draws itself. The trunk leaves its station, two branches fork off, the drawing holds, then it starts again, about every 3 seconds. It shows no progress, because the shell has none to show.</li>
+<li>Platform colours, the app's default theme, follow the system's light or dark setting. The learner's own theme loads with the app a moment later.</li>
+<li>Under reduced motion the mark is drawn and still, and only the caption fades slowly.</li>
+<li>One page, no network. Fonts come from the app's bundled copies, falling back to system fonts. The start error needs no new script: CSS reacts when the shell swaps in its <code>&lt;pre&gt;</code>.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>Starting</h2><p>Live. Use Light in the bar to switch scheme.</p><div class="stage" style="justify-items:stretch"><div class="win big"><div class="chrome">Rabbithole</div>
+<div class="boot"><svg viewBox="0 0 26 26" aria-hidden="true"><circle class="ping" cx="5" cy="13" r="3.4"/><path class="ln trunk" pathLength="1" d="M5 13H12"/><path class="ln branch" pathLength="1" d="M12 13L18 7H22"/><path class="ln branch" pathLength="1" d="M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg><div class="word">Rabbithole</div><h1 class="fail">Rabbithole could not start</h1><p id="status" role="status">Starting…</p><p class="next">Close the app and open it again. If this keeps happening, copy the text above into an issue.</p></div>
+</div></div></section>
+
+</main>
+<main class="specs">
+
+<section class="spec"><h2>Dark</h2><p>System set to dark.</p><div class="stage"><div class="win small dark"><div class="chrome">Rabbithole</div>
+<div class="boot"><svg viewBox="0 0 26 26" aria-hidden="true"><circle class="ping" cx="5" cy="13" r="3.4"/><path class="ln trunk" pathLength="1" d="M5 13H12"/><path class="ln branch" pathLength="1" d="M12 13L18 7H22"/><path class="ln branch" pathLength="1" d="M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg><div class="word">Rabbithole</div><p id="status" role="status">Starting…</p></div>
+</div></div></section>
+
+<section class="spec"><h2>Light</h2><p>System set to light.</p><div class="stage"><div class="win small light"><div class="chrome">Rabbithole</div>
+<div class="boot"><svg viewBox="0 0 26 26" aria-hidden="true"><circle class="ping" cx="5" cy="13" r="3.4"/><path class="ln trunk" pathLength="1" d="M5 13H12"/><path class="ln branch" pathLength="1" d="M12 13L18 7H22"/><path class="ln branch" pathLength="1" d="M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg><div class="word">Rabbithole</div><p id="status" role="status">Starting…</p></div>
+</div></div></section>
+
+<section class="spec"><h2>Reduced motion</h2><p>The mark is drawn and still. Only the caption fades slowly.</p><div class="stage"><div class="win small dark"><div class="chrome">Rabbithole</div>
+<div class="boot still"><svg viewBox="0 0 26 26" aria-hidden="true"><circle class="ping" cx="5" cy="13" r="3.4"/><path class="ln trunk" pathLength="1" d="M5 13H12"/><path class="ln branch" pathLength="1" d="M12 13L18 7H22"/><path class="ln branch" pathLength="1" d="M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg><div class="word">Rabbithole</div><p id="status" role="status">Starting…</p></div>
+</div></div></section>
+
+<section class="spec"><h2>The server failed to start</h2><p>The shell swaps the caption for its error text, as it does today. The mark stops and dims, a heading appears, and the text scrolls and can be selected and copied.</p><div class="stage"><div class="win small tall dark"><div class="chrome">Rabbithole</div>
+<div class="boot"><svg viewBox="0 0 26 26" aria-hidden="true" style="width:56px;height:56px"><circle class="ping" cx="5" cy="13" r="3.4"/><path class="ln trunk" pathLength="1" d="M5 13H12"/><path class="ln branch" pathLength="1" d="M12 13L18 7H22"/><path class="ln branch" pathLength="1" d="M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg><h1 class="fail">Rabbithole could not start</h1><pre id="status">Error: EACCES: permission denied, open '/home/learner/.local/share/rabbithole/rabbithole.db'
+    at Object.openSync (node:fs:573:18)
+    at openStore (server/store/open.mjs:41:9)
+Rabbithole's server stopped before it started (exit code 1).</pre><p class="next">Close the app and open it again. If this keeps happening, copy the text above into an issue.</p></div>
+</div></div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>
