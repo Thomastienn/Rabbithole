@@ -65,6 +65,12 @@
         ],
         "createdAt": "2026-11-22T02:18:24.896Z",
         "reason": "agent: flagged .map wrappers hold absolutely positioned nodes placed 14-24px from each edge, so content is inset; matches the existing map mockup"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "semi condensed\",barlow,\"segoe ui\",helvetica,arial,sans-serif",
+        "createdAt": "2026-11-22T20:34:24.040Z",
+        "reason": "agent: same heading stack as DESIGN.md typography and src/themes/*.css --font-family-heading, differs only in quoting"
       }
     ]
   }
