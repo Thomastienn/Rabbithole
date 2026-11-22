@@ -1,11 +1,18 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ChatComposerInputHandle } from '@astryxdesign/core/Chat';
+import type { Source } from '../map/TreeOverview';
 import type { ChatState } from './useChatState';
 import type { Tree } from './types';
 
-// Focus targets on opening a chat: the composer, a figure picked in Contents or a bubble picked on the map.
-export function useChatTargets(c: ChatState, tree: Tree | undefined) {
-    const { overview, composer, focusComposer, figureTarget, setFigureTarget } = c;
-    const { messageTarget, setMessageTarget } = c;
+// Targets on opening a chat: the composer, a passage to reveal, a figure picked in Contents or a bubble picked on the map.
+// useLearningTrees calls it with the open conversation it owns.
+export function useChatTargets({ overview }: ChatState, tree: Tree | undefined) {
+    const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
+    const [figureTarget, setFigureTarget] = useState<{ conversation: string; artifact: string }>();
+    const [messageTarget, setMessageTarget] = useState<{ conversation: string; message: string }>();
+    const composer = useRef<ChatComposerInputHandle>(null);
+    // Set to focus the composer once the next chat shows.
+    const focusComposer = useRef(false);
     useEffect(() => {
         if (!overview && tree && focusComposer.current) {
             composer.current?.focus();
@@ -50,4 +57,24 @@ export function useChatTargets(c: ChatState, tree: Tree | undefined) {
         frame = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(frame);
     }, [tree?.id, overview, messageTarget]);
+
+    // Conversation `id` opens on one target, or on the composer when none is given.
+    function goTo(id: string, source?: Source, artifact?: string, message?: string) {
+        setReveal(source ? { tree: id, source } : undefined);
+        setFigureTarget(artifact ? { conversation: id, artifact } : undefined);
+        setMessageTarget(message ? { conversation: id, message } : undefined);
+        focusComposer.current = !source && !artifact && !message;
+    }
+    // A turn rail pick scrolls the open conversation to that message and keeps its other targets.
+    const jump = (conversation: string, message: string) =>
+        setMessageTarget({ conversation, message });
+    // Deleted conversations keep no passage to reveal.
+    const drop = (ids: Set<string>) => setReveal((r) => (r && ids.has(r.tree) ? undefined : r));
+    // The next chat to show opens on its composer.
+    const focusNext = () => {
+        focusComposer.current = true;
+    };
+    return { reveal, composer, focusNext, goTo, jump, drop };
 }
+
+export type ChatTargets = ReturnType<typeof useChatTargets>;

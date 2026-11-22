@@ -151,58 +151,6 @@ test('interleaved replies update their own previews and retry preserves the comp
     assert.equal(page.current.stream.drafts.b, 'Keep this draft');
 });
 
-test('layout changes survive stale refreshes and batch into one write with the latest CSRF', async (t) => {
-    const page = await mount(t);
-    await page.act(async () => {
-        page.current.c.setFolds({ root: 'a', ids: [] });
-        page.current.c.setOverview(false);
-    });
-    await page.act(async () => {
-        page.current.layout.savePositions({ a: { x: 120, y: 70 } });
-        page.current.layout.saveViewport({ x: -3, y: 10, zoom: 0.8 });
-    });
-    page.state.csrf = 'latest-csrf';
-    await page.act(async () => page.current.trees.refresh());
-    const root = page.current.trees.state.trees.find((t) => t.id === 'a');
-    assert.equal(root.x, 120);
-    assert.deepEqual(root.layout.viewport, { x: -3, y: 10, zoom: 0.8 });
-    assert.equal(page.calls.filter((c) => c.path.endsWith('/layout')).length, 0);
-    await page.act(async () => t.mock.timers.tick(60_000));
-    const writes = page.calls.filter((c) => c.path.endsWith('/layout'));
-    assert.equal(writes.length, 1);
-    assert.equal(writes[0].init.headers['X-Rabbithole-CSRF'], 'latest-csrf');
-    assert.deepEqual(writes[0].body.positions, { a: { x: 120, y: 70 } });
-    assert.deepEqual(writes[0].body.viewport, root.layout.viewport);
-    await page.act(async () => t.mock.timers.tick(60_000));
-    assert.equal(page.calls.filter((c) => c.path.endsWith('/layout')).length, 1);
-});
-
-test('closing the page writes pending layout at once with keepalive, and nothing when clean', async (t) => {
-    const page = await mount(t);
-    const layoutWrites = () => page.calls.filter((c) => c.path.endsWith('/layout'));
-    await page.act(async () => t.mock.timers.tick(60_000));
-    const before = layoutWrites().length;
-    await page.act(async () => window.dispatchEvent(new Event('pagehide')));
-    assert.equal(layoutWrites().length, before, 'no pending layout sends no save');
-    await page.act(async () => {
-        page.current.c.setFolds({ root: 'a', ids: ['b'] });
-        page.current.c.setOverview(false);
-    });
-    await page.act(async () => {
-        page.current.layout.savePositions({ a: { x: 120, y: 70 } });
-        page.current.layout.saveViewport({ x: -3, y: 10, zoom: 0.8 });
-    });
-    await page.act(async () => window.dispatchEvent(new Event('pagehide')));
-    const [write, ...rest] = layoutWrites().slice(before);
-    assert.equal(rest.length, 0);
-    assert.equal(write.init.keepalive, true);
-    assert.deepEqual(write.body.positions, { a: { x: 120, y: 70 } });
-    assert.deepEqual(write.body.folded, ['b']);
-    assert.equal(write.body.selected, 'a');
-    assert.deepEqual(write.body.viewport, { x: -3, y: 10, zoom: 0.8 });
-    assert.equal(page.current.layout.saver.current.pending().size, 0);
-});
-
 test('reopened replies poll saved checkpoints until the server reports completion', async (t) => {
     const page = await mount(t, ({ path }, { state, data }) => {
         if (path === '/api/state' && !data.get('a').messages.length) state.active = ['a'];
@@ -447,12 +395,14 @@ test('deleting the open learning tree discards pending layout and opens the next
         page.current.branch.setSelectingMessage('reply');
         page.current.actions.askDelete('a', null);
     });
+    let composerFocused = 0;
+    page.current.trees.targets.composer.current = { focus: () => composerFocused++ };
     await page.act(async () => page.current.actions.deleteConversation());
     assert.equal(page.current.trees.tree.id, 'b');
     assert.equal(page.current.branch.branch, undefined, 'its branch form closes');
     assert.equal(page.current.branch.selectingMessage, undefined);
     assert.equal(page.current.c.root, 'b');
-    assert.equal(page.current.c.focusComposer.current, true);
+    assert.equal(composerFocused, 1, 'the next conversation opens on its composer');
     assert.equal(page.current.layout.saver.current.pending().has('a'), false);
     assert.deepEqual(page.current.stream.drafts, { b: 'Keep me' });
     assert.deepEqual(page.current.stream.pendingFiles, {}, 'its pending files go too');

@@ -26,7 +26,6 @@ import ModelMenu from '../chat/ModelMenu';
 import { useChatState } from '../chat/useChatState';
 import { useLearningTrees } from '../chat/useLearningTrees';
 import { useChatModel } from '../chat/useChatModel';
-import { useChatTargets } from '../chat/useChatTargets';
 import { useReplyStream } from '../chat/useReplyStream';
 import { useBranchForm } from '../chat/useBranchForm';
 import { useTreeActions } from '../chat/useTreeActions';
@@ -45,7 +44,7 @@ export default function ChatPage({
     const { mode } = useTheme();
     const c = useChatState();
     const { error, setError, mobile, tab, setTab, drawer, setDrawer } = c;
-    const { root, overview, expanded, focusComposer } = c;
+    const { root, overview, expanded } = c;
     const [settings, setSettings] = useState<SettingsRequest>();
     const settingsOpener = useRef<HTMLElement | null>(null),
         settingsFrom = useRef('learning');
@@ -56,12 +55,13 @@ export default function ChatPage({
     const trees = useLearningTrees(c);
     const { state, tree, loading, layout, changeView, returnToTree } = trees;
     const model = useChatModel(c, trees);
-    useChatTargets(c, tree);
     const stream = useReplyStream(c, trees, model, { name: theme, mode });
     const branchForm = useBranchForm(c, trees, model, stream);
     const actions = useTreeActions(c, trees, stream, branchForm);
     const { visibleIds, addresses, previews } = trees;
-    const { shownMapWidth, workspace } = c;
+    const { workspace } = c;
+    const { shownMapWidth } = trees.map;
+    const { focusNext } = trees.targets;
     const { drafts, setDraft, pendingFiles, setFiles, busy, create } = stream;
     const visibleSet = new Set(visibleIds);
     const { branch } = branchForm;
@@ -108,7 +108,7 @@ export default function ChatPage({
         viewTab('Read', <BookOpenIcon />, reading, () => {
             setTab('learning');
             if (overview && root) {
-                focusComposer.current = true;
+                focusNext();
                 changeView(false, tree?.id);
             }
         }),

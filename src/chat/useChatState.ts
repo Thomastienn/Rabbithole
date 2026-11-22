@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import type { ChatComposerInputHandle } from '@astryxdesign/core/Chat';
-import type { Source } from '../map/TreeOverview';
-import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
+import { remPx } from '../map/mapWidth';
 
 // View state and refs shared by the ChatPage hooks and regions; learning tree data lives in useLearningTrees,
-// live turns, drafts and pending files in useReplyStream, the branch form in useBranchForm.
+// live turns, drafts and pending files in useReplyStream, the branch form in useBranchForm,
+// chat targets in useChatTargets and map view state in useMapViewState.
 export function useChatState() {
     const [error, setError] = useState('');
     const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 48rem)').matches);
@@ -13,19 +12,7 @@ export function useChatState() {
     const [tab, setTab] = useState('learning');
     const [drawer, setDrawer] = useState(false);
     const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'library' }>();
-    const [mapWidth, setMapWidth] = useState(() => {
-        try {
-            return savedMapWidth(localStorage.getItem('rabbithole.map-width'));
-        } catch {
-            return DEFAULT_MAP_WIDTH;
-        }
-    });
     const [workspaceWidth, setWorkspaceWidth] = useState(() => window.innerWidth / remPx());
-    useEffect(() => {
-        try {
-            localStorage.setItem('rabbithole.map-width', String(mapWidth));
-        } catch {}
-    }, [mapWidth]);
     const workspace = useRef<HTMLElement>(null);
     useEffect(() => {
         const el = workspace.current!,
@@ -33,22 +20,13 @@ export function useChatState() {
         observer.observe(el);
         return () => observer.disconnect();
     }, []);
-    const shownMapWidth = clampMapWidth(mapWidth, workspaceWidth);
     const [root, setRoot] = useState<string>();
     const [overview, setOverview] = useState(true);
     const [expanded, setExpanded] = useState(false);
     const [statsOpen, setStatsOpen] = useState(false);
     const statsPanel = useRef<HTMLDivElement>(null);
-    const [folds, setFolds] = useState<{ root: string; ids: string[] }>();
-    // Conversations marked after arriving from a ghost tree on map `from`.
-    const [ghostMarks, setGhostMarks] = useState<{ root: string; from: string; ids: string[] }>();
     const [transitionBox, setTransitionBox] = useState<string>();
     const overviewOrigin = useRef<{ id: string; control: string }>(undefined);
-    const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
-    const [figureTarget, setFigureTarget] = useState<{ conversation: string; artifact: string }>();
-    const [messageTarget, setMessageTarget] = useState<{ conversation: string; message: string }>();
-    const composer = useRef<ChatComposerInputHandle>(null);
-    const focusComposer = useRef(false);
     useEffect(() => {
         const media = window.matchMedia('(max-width: 48rem)');
         const resize = () => {
@@ -94,10 +72,8 @@ export function useChatState() {
         setDrawer,
         renaming,
         setRenaming,
-        setMapWidth,
         workspaceWidth,
         workspace,
-        shownMapWidth,
         root,
         setRoot,
         overview,
@@ -107,21 +83,9 @@ export function useChatState() {
         statsOpen,
         setStatsOpen,
         statsPanel,
-        folds,
-        setFolds,
-        ghostMarks,
-        setGhostMarks,
         transitionBox,
         setTransitionBox,
         overviewOrigin,
-        reveal,
-        setReveal,
-        figureTarget,
-        setFigureTarget,
-        messageTarget,
-        setMessageTarget,
-        composer,
-        focusComposer,
         toggleExpanded,
     };
 }

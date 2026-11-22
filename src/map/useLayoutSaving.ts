@@ -8,20 +8,22 @@ import type { State, Tree } from '../chat/types';
 import { request as api } from '../serverAccess';
 
 // Map layout saving for ChatPage: pending batches, snapshots and drag or viewport saves.
-// useLearningTrees calls it with the learning tree data it owns.
+// useLearningTrees calls it with the learning tree data it owns and the map's folds.
 export function useLayoutSaving(
     c: ChatState,
     {
         state,
         setState,
         tree,
+        folded,
     }: {
         state?: State;
         setState: React.Dispatch<React.SetStateAction<State | undefined>>;
         tree?: Tree;
+        folded: Set<string>;
     },
 ) {
-    const { root, overview, expanded, folds } = c;
+    const { root, overview, expanded } = c;
     const [layoutFailed, setLayoutFailed] = useState(false);
     const saver = useRef<ReturnType<typeof layoutSaver<Layout>>>(undefined);
     const writeLayout = useRef<(root: string, batch: Batch<Layout>) => Promise<unknown>>(undefined);
@@ -85,24 +87,17 @@ export function useLayoutSaving(
         };
     // One current snapshot per root: fold IDs, selected conversation, panel mode and viewport.
     useEffect(() => {
-        if (
-            !root ||
-            !state ||
-            !tree ||
-            folds?.root !== root ||
-            rootOf(tree.id, state.trees) !== root
-        )
-            return;
+        if (!root || !state || !tree || rootOf(tree.id, state.trees) !== root) return;
         const current = state.trees.find((t) => t.id === root)?.layout;
         const layout: Layout = {
-            folded: folds.ids,
+            folded: [...folded],
             selected: tree.id,
             panel: overview ? 'collapsed' : expanded ? 'expanded' : 'beside',
             ...(current?.viewport && { viewport: current.viewport }),
             ...(current?.ghosts && { ghosts: current.ghosts }),
         };
         if (JSON.stringify(layout) !== JSON.stringify(current)) markLayout(root, layout);
-    }, [root, tree?.id, overview, expanded, folds, state?.trees]);
+    }, [root, tree?.id, overview, expanded, folded, state?.trees]);
 
     function savePositions(positions: Record<string, Point>) {
         if (root) markLayout(root, layoutOf(root), positions);

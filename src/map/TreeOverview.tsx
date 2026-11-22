@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlow, useNodesState } from '@xyflow/react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
-import type { ReactNode } from 'react';
+import type { ReactNode, SetStateAction } from 'react';
 import {
     MIN_ZOOM,
     foldHierarchy,
@@ -109,8 +109,8 @@ export default function TreeOverview({
     toolbar,
     selected,
     current,
-    initialFolded,
-    onFold,
+    folded,
+    setFolded,
     vim,
     marked = noMarks,
     from,
@@ -123,8 +123,8 @@ export default function TreeOverview({
     ghosts: GhostOptions;
     toolbar?: ReactNode;
     saveViewport: (viewport: Viewport) => void;
-    initialFolded?: string[];
-    onFold: (folded: string[]) => void;
+    folded: Set<string>;
+    setFolded: (update: SetStateAction<Set<string>>) => void;
     menu: (actions: MapActions) => ReactNode;
     root: string;
     trees: Summary[];
@@ -157,8 +157,6 @@ export default function TreeOverview({
     const { flow, savedViewport, navigated, zoom, setZoom, pan, zoomOut, zoomIn, fitTree } =
         useMapViewport({ root, trees, nodes, selected });
     const [canCull, setCanCull] = useState(false);
-    const [folded, setFolded] = useState<Set<string>>(() => new Set(initialFolded));
-    useEffect(() => onFold([...folded]), [folded]);
     const known = useRef(new Set(trees.map((t) => t.id)));
     const createdBranches = useRef(new Map<string, number>());
     useEffect(() => {
