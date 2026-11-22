@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import {
     PIECES_INSTRUCTIONS,
     PIECES_LIBRARY_NOTE,
@@ -339,4 +340,91 @@ export async function improvePiece({ piece, why, call }) {
         ));
     // The saved true colours stay as they were; the rewrite draws through the same roles.
     return { ...libraryPieces(cutSource(raw, brief, names), brief, [name])[0], trueColors };
+}
+
+// The pipeline's set-piece step: a new video whose cuts draw pieces writes them once, from library matches when the
+// embedder is usable, and saves them to the piece library; video.library maps each piece to its library id, so audits
+// can flag a poor one. The library never fails the video.
+export async function drawPieces(video, deps) {
+    const { plan, names, data, signal, artifact } = video;
+    video.library = {};
+    if (!names.length || data.pieces) return;
+    // Each looked-up look's vector, for saving the named pieces and parts that draw it.
+    const vectors = new Map();
+    // Each look's top library matches; the same call embeds pieces saved while no embedder was usable.
+    const matches = async (looks) => {
+        if (!deps.embed) return [];
+        try {
+            const pending = deps.store.unembeddedPieces();
+            const out = await deps.embed([...looks, ...pending.map((p) => p.look)]);
+            signal.throwIfAborted();
+            for (const [i, p] of pending.entries())
+                if (out[looks.length + i]) deps.store.embedPiece(p.id, out[looks.length + i]);
+            looks.forEach((look, i) => out[i] && vectors.set(look, out[i]));
+            return looks.map((_, i) => (out[i] ? deps.store.nearestPieces(out[i]) : []));
+        } catch (error) {
+            signal.throwIfAborted();
+            deps.onWarning(`WARN video piece library unavailable: ${error.message}`);
+            return [];
+        }
+    };
+    const { source, choices, parts } = await writeSetPieces({
+        plan,
+        names,
+        write: deps.write,
+        matches,
+        signal,
+        onDrawing: video.onDrawing,
+        // The piece writer sees the reference photos only if it reads images.
+        photos: deps.readsImages
+            ? video.references.map((r) => ({
+                  name: r.name,
+                  image: { path: join(video.workspace, r.file), type: r.type },
+              }))
+            : [],
+    });
+    data.pieces = source;
+    video.persist();
+    // Accepted variant and new pieces join the library, reused ones record this video. Parts are saved before the
+    // pieces built from them, which record their ids instead of copies.
+    try {
+        for (const c of choices?.filter((c) => c.use === 'reuse') ?? []) {
+            deps.store.usePiece(c.piece.id, artifact.id);
+            video.library[c.name] = c.piece.id;
+        }
+        const entries = libraryPieces(source, plan.styleBrief, names, parts);
+        const save = (entry) =>
+            (video.library[entry.name] ??= deps.store.savePiece(
+                {
+                    ...entry,
+                    parts: entry.parts.map((name) => ({
+                        name,
+                        id: save(entries.find((e) => e.name === name)),
+                    })),
+                    embedding: vectors.get(entry.look) ?? null,
+                },
+                artifact.id,
+            ));
+        entries.forEach(save);
+        deps.stills();
+    } catch (error) {
+        signal.throwIfAborted();
+        deps.onWarning(`WARN video piece library: ${error.message}`);
+    }
+}
+
+// The smart model rewrites a library piece an audit flagged, for future videos only; only a rewrite that validates
+// replaces the saved entry, and it never fails the video.
+export async function improveSaved(video, id, why, deps) {
+    try {
+        const piece = deps.store.piece(id);
+        if (piece) {
+            deps.store.improvePiece(id, await improvePiece({ piece, why, call: deps.call }));
+            deps.stills();
+        }
+    } catch (error) {
+        // Never rejects: the pipeline may stop before it awaits this.
+        if (video.signal.aborted) return;
+        deps.onWarning(`WARN video piece improvement kept the saved piece: ${error.message}`);
+    }
 }

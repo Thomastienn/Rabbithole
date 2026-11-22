@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
-import { generateVideo } from '../../server/media/videos.mjs';
+import { generateVideo, videoEngines } from '../../server/media/videos.mjs';
 import { EXHIBITS_NOTE, CLIPS_NOTE } from '../../server/media/video-plan.mjs';
 import { EXHIBIT_NOTE } from '../../server/media/video-cut.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
@@ -15,6 +15,7 @@ import {
     fakeRender,
     noSnapshot,
     open,
+    models,
 } from '../support/video-kit.mjs';
 
 const png = Buffer.concat([
@@ -90,32 +91,34 @@ async function run({
     const calls = [],
         staged = [],
         warnings = [];
-    const result = await generateVideo({
-        provider: {
-            generate: async (t, text, emit) => {
-                calls.push({ instructions: t.instructions, input: JSON.parse(text) });
-                complete(emit, t.stage === 'plan' ? planText(plan) : cut);
+    const result = await generateVideo(
+        { dir, artifact, signal: new AbortController().signal },
+        {
+            ...models({
+                generate: async (t, text, emit) => {
+                    calls.push({ instructions: t.instructions, input: JSON.parse(text) });
+                    complete(emit, t.stage === 'plan' ? planText(plan) : cut);
+                },
+            }),
+            store,
+            engines: videoEngines({ snapshot: noSnapshot }),
+            narrate,
+            onWarning: (w) => warnings.push(w),
+            search: { ready: async () => ready },
+            exhibit: async (p, options) => {
+                if (p.kind === 'clip') assert.equal(options.clips.ready, true);
+                if (!fetched[p.query]) throw new Error('image returned HTTP 404');
+                return {
+                    ...fetched[p.query],
+                    ...(p.sound && { sound: true, sentence: p.sentence }),
+                };
             },
+            clips: () =>
+                clips
+                    ? { ready: true, python: 'python', ffmpeg: 'ffmpeg' }
+                    : { ready: false, error: 'no yt-dlp' },
         },
-        selection: {},
-        store,
-        dir,
-        artifact,
-        signal: new AbortController().signal,
-        snapshot: noSnapshot,
-        narrate,
-        onWarning: (w) => warnings.push(w),
-        search: { ready: async () => ready },
-        exhibit: async (p, options) => {
-            if (p.kind === 'clip') assert.equal(options.clips.ready, true);
-            if (!fetched[p.query]) throw new Error('image returned HTTP 404');
-            return { ...fetched[p.query], ...(p.sound && { sound: true, sentence: p.sentence }) };
-        },
-        clips: () =>
-            clips
-                ? { ready: true, python: 'python', ffmpeg: 'ffmpeg' }
-                : { ready: false, error: 'no yt-dlp' },
-    }).then(
+    ).then(
         () => null,
         (error) => error.message,
     );

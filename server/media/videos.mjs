@@ -3,7 +3,7 @@ import { mkdir, rm, cp, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { edgeNarration } from './narration.mjs';
 import {
-    libraryPieces,
+    pieceNames,
     PLAN_INSTRUCTIONS,
     EXHIBITS_NOTE,
     CLIPS_NOTE,
@@ -11,12 +11,11 @@ import {
 } from './video-plan.mjs';
 import { fetchExhibit, videoMedia } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
-import { writeCuts, cutRows } from './video-cuts.mjs';
+import { startCuts, makeCut, cutRows } from './video-cuts.mjs';
 import { CUT_STATES, cutState, playable } from './cut-state.mjs';
 import { mediaCall, raced } from './media-call.mjs';
 import { planBuilder } from './plan-calls.mjs';
-
-import { improvePiece } from './video-pieces.mjs';
+import { drawPieces } from './video-pieces.mjs';
 import { sandboxProcess, REPO } from './video-sandbox.mjs';
 import { detectManim, videoBrowser } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
@@ -86,42 +85,64 @@ const VIDEO_CALL = {
 
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
 
-export async function generateVideo({
-    provider,
-    selection,
-    // The chat model writes set pieces, cuts and repairs; the smart model plans and audits (ADR 0004).
-    chat = { provider, selection },
-    store,
-    dir,
-    artifact,
-    previous,
-    signal,
-    timeout,
-    snapshot = sandboxSnapshot,
-    narrate = edgeNarration,
-    // Renders stills of saved or improved library pieces in the background.
-    stills = () => {},
-    onPhase = () => {},
-    manim = { detect: detectManim, render: sandboxManim, check: checkManim },
-    // Fake engines by kind ({ remotion, manim }) in place of the job's own.
-    engines = {},
-    onWarning = console.warn,
-    // Texts to look vectors; null saves new pieces without an embedding.
-    embed = null,
-    onStage = () => {},
-    // The SearXNG web search tool; when it is ready and switched on the planner may name exhibits (ADR 0005).
-    search = null,
-    exhibit = fetchExhibit,
-    // Probes yt-dlp and ffmpeg; when they are not ready the planner gets no clip option.
-    clips = detectClips,
-    // Whether the chat model reads images; only then does the set piece writer see reference photos.
-    readsImages = false,
-    // Whether the smart model calls tools natively, and the MCP server for its audit calls.
-    capable = false,
-    // Whether the chat model calls tools natively; then cut writers submit through submit_cut.
-    writerCapable = false,
-    mcp,
-}) {
+// The model call the pipeline asks, on one provider and selection; capable: the model calls tools natively.
+// (instructions, input, { signal, stage, cut, onText, images, tools }): stage (plan, pieces, improve, audit, repair,
+// fix or cut) and the cut it serves ride along for the usage meter; tools: { tools, mcp, runTool, textTools } for a
+// call that reports through tool calls.
+export const videoCall =
+    (provider, selection, capable = false) =>
+    (instructions, input, { tools, ...options }) =>
+        mediaCall(provider, selection, VIDEO_CALL, {
+            instructions,
+            input,
+            ...options,
+            tools: tools && { ...tools, capable, reportsByTools: true },
+        });
+
+// Each kind's engine for one job ({ signal, stop, onWarning }): snapshot renders audit stills, manim is
+// { detect, render, check? }.
+export const videoEngines =
+    ({
+        snapshot = sandboxSnapshot,
+        manim = { detect: detectManim, render: sandboxManim, check: checkManim },
+    } = {}) =>
+    (job) =>
+        cutEngines({ snapshot, manim, ...job });
+
+// The pipeline's one set of dependencies, passed as deps to every step; a missing one is the real thing.
+// call and write: the smart and the chat model calls (videoCall); the chat model writes set pieces, cuts, repairs
+// and fixes, the smart model plans and audits (ADR 0004). writerCapable: the chat model calls tools natively, so cut
+// writers submit through submit_cut; readsImages: it reads images, so the set piece writer sees reference photos.
+// engines(job): each kind's engine for this job (videoEngines). store, narrate(script, signal), and timeout: the
+// clock's budget for the whole job in ms. embed: texts to look vectors, or null to save pieces without one; stills:
+// renders saved or improved library pieces in the background. search: the SearXNG web search tool, with which the
+// planner may name exhibits (ADR 0005); exhibit: the exhibit fetcher; clips: probes yt-dlp and ffmpeg, without which
+// the planner gets no clip option. mcp: the MCP server tool calls reach. onPhase, onStage and onWarning report the
+// learner's progress, log stages and warn.
+const DEPS = {
+    writerCapable: false,
+    readsImages: false,
+    engines: videoEngines(),
+    narrate: edgeNarration,
+    timeout: 7200000,
+    embed: null,
+    stills: () => {},
+    search: null,
+    exhibit: fetchExhibit,
+    clips: detectClips,
+    onPhase: () => {},
+    onStage: () => {},
+    onWarning: (warning) => console.warn(warning),
+};
+
+// The video pipeline, in order: the attempt's workspace and the cuts Retry keeps, the plan, each cut's engine,
+// exhibits, set pieces, every cut written, narrated and audited in parallel, then the finished video.
+// job: { dir, artifact, previous, signal }; deps: see DEPS.
+export async function generateVideo({ dir, artifact, previous, signal }, given) {
+    const deps = {
+        ...DEPS,
+        ...Object.fromEntries(Object.entries(given).filter(([, v]) => v !== undefined)),
+    };
     const workspace = attemptWork(dir, artifact.id, artifact.attempt);
     const controller = new AbortController();
     const cancel = () => controller.abort(signal.reason);
@@ -129,289 +150,95 @@ export async function generateVideo({
     if (signal.aborted) cancel();
     const wait = (promise, budget, message) => raced(controller, promise, budget, message);
     // Calls stop only when the model stalls (the providers' idle limit); this guards against a runaway loop.
-    const deadline = Date.now() + (timeout ?? 7200000);
-    // stage: plan, pieces, improve, audit, repair, fix or cut, for the usage meter, with the cut it serves.
-    // tools: { tools, mcp, runTool, textTools } for a call that reports through tool calls.
-    const caller =
-        (base, choice, capable) =>
-        (instructions, input, { stage, cut, onText, images, tools }) =>
-            wait(
-                mediaCall(base, choice, VIDEO_CALL, {
-                    instructions,
-                    input,
-                    signal: controller.signal,
-                    onText,
-                    images,
-                    stage,
-                    cut,
-                    tools: tools && { ...tools, capable, reportsByTools: true },
-                }),
-                Math.max(1, deadline - Date.now()),
-                OVERRUN,
-            );
-    const call = caller(provider, selection, capable),
-        write = caller(chat.provider, chat.selection, writerCapable);
-    let published = false,
-        count = 0;
+    const deadline = Date.now() + deps.timeout;
+    const overrun = (promise) => wait(promise, Math.max(1, deadline - Date.now()), OVERRUN);
+    // Every model call of this job stops with the job and at its deadline.
+    for (const role of ['call', 'write']) {
+        const model = deps[role];
+        deps[role] = (instructions, input, options) =>
+            overrun(model(instructions, input, { ...options, signal: controller.signal }));
+    }
+    const video = {
+        dir,
+        artifact,
+        previous,
+        workspace,
+        kit: KIT,
+        signal: controller.signal,
+        stop: (error) => controller.abort(error),
+        wait,
+    };
+    let published = false;
     try {
         controller.signal.throwIfAborted();
         await mkdir(join(workspace, 'out'), { recursive: true, mode: 0o700 });
         await mkdir(join(workspace, 'tmp'), { recursive: true, mode: 0o700 });
         const prior = previous?.source ? readSaved(previous.source) : null;
-        const kept = [];
-        if (prior?.plan)
-            for (const [i, cut] of prior.cuts.entries()) {
-                const from = cutWork(attemptWork(dir, artifact.id, previous.attempt), i),
-                    to = cutWork(workspace, i);
-                // Copy, never share, the old cut folder; timing counts only if its audio came along.
-                const timing =
-                    cut.timing &&
-                    (await cp(from, to, { recursive: true })
-                        .then(() => access(cutAudio(to)))
-                        .then(
-                            () => cut.timing,
-                            () => rm(to, { recursive: true, force: true }).then(() => null),
-                        ));
-                kept.push({ ...cut, timing });
-            }
+        const kept = prior?.plan ? await keptCuts(video, prior) : [];
         const searching =
             !prior?.plan &&
-            !!search &&
-            store.tutorTools().web_search !== false &&
-            (await search.ready({ signal: controller.signal }));
-        const clipping = searching && clips();
-        // The smart model builds the plan through calls; one stop without a valid finish gets a retry with the problem.
-        const planned = async (note = '') => {
-            const builder = planBuilder({ exhibits: searching, clips: !!clipping?.ready });
-            let characters = 0;
-            const answer = await call(
-                PLAN_INSTRUCTIONS +
-                    (searching ? EXHIBITS_NOTE : '') +
-                    (clipping?.ready ? CLIPS_NOTE : '') +
-                    (JSON.parse(artifact.input).differentVersion
-                        ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
-                        : '') +
-                    note,
-                artifact.input,
-                {
-                    stage: 'plan',
-                    onText: (bytes) => onPhase('planning', undefined, { characters: bytes }),
-                    tools: {
-                        tools: builder.tools,
-                        textTools: builder.textTools,
-                        mcp,
-                        runTool: (name, input) => {
-                            const result = builder.run(name, input);
-                            characters += JSON.stringify(input).length;
-                            onPhase('planning', undefined, { characters });
-                            return result;
-                        },
-                    },
-                },
-            );
-            builder.read(answer);
-            return builder;
-        };
-        let builder = prior?.plan ? null : await planned();
-        if (builder?.problem())
-            builder = await planned(
-                `\nYour previous attempt stopped without a valid finish: ${builder.problem()}. Plan the whole video again through the tools and end with finish_video.`,
-            );
-        if (builder?.problem()) throw new Error(`Video plan is incomplete: ${builder.problem()}.`);
-        const plan = prior?.plan ?? builder.plan();
-        const kinds = {
-            ...cutEngines({
-                snapshot,
-                manim,
-                signal: controller.signal,
-                stop: (error) => controller.abort(error),
-                onWarning,
-            }),
-            ...engines,
-        };
+            !!deps.search &&
+            deps.store.tutorTools().web_search !== false &&
+            (await deps.search.ready({ signal: controller.signal }));
+        const clipping = searching && deps.clips();
+        const plan = (video.plan =
+            prior?.plan ?? (await planVideo(video, deps, searching, clipping)));
+        const kinds = deps.engines({
+            signal: controller.signal,
+            stop: video.stop,
+            onWarning: deps.onWarning,
+        });
         // Each cut's engine, chosen once; an engine that cannot run here stops the video before any cut is written.
-        const cutEngine = plan.cuts.map((c) => kinds[c.engine]);
-        for (const engine of cutEngine) engine.ready();
-        const { exhibits, references } = await videoMedia({
+        video.engines = plan.cuts.map((c) => kinds[c.engine]);
+        for (const engine of video.engines) engine.ready();
+        Object.assign(
+            video,
+            await videoMedia({
+                plan,
+                prior,
+                from: prior?.plan && attemptWork(dir, artifact.id, previous.attempt),
+                searching,
+                pictures: video.engines.some((e) => e.pictures),
+                fetch: (planned) =>
+                    deps.exhibit(planned, {
+                        search: deps.search,
+                        signal: controller.signal,
+                        clips: clipping,
+                        tmp: join(workspace, 'tmp'),
+                    }),
+                workspace,
+                signal: controller.signal,
+                wait: overrun,
+                onWarning: deps.onWarning,
+                credit: (resource) => deps.store.addResource(artifact.conversation, resource),
+            }),
+        );
+        deps.onStage('cuts', { cuts: plan.cuts.length });
+        video.names = video.engines.some((e) => e.pictures) ? pieceNames(plan) : [];
+        video.data = {
             plan,
-            prior,
-            from: prior?.plan && attemptWork(dir, artifact.id, previous.attempt),
-            searching,
-            pictures: cutEngine.some((e) => e.pictures),
-            fetch: (planned) =>
-                exhibit(planned, {
-                    search,
-                    signal: controller.signal,
-                    clips: clipping,
-                    tmp: join(workspace, 'tmp'),
-                }),
-            workspace,
-            signal: controller.signal,
-            wait: (promise) => wait(promise, Math.max(1, deadline - Date.now()), OVERRUN),
-            onWarning,
-            credit: (resource) => store.addResource(artifact.conversation, resource),
-        });
-        count = plan.cuts.length;
-        onStage('cuts', { cuts: count });
-        // Each looked-up look's vector, for saving the named pieces and parts that draw it.
-        const vectors = new Map();
-        let writtenCuts = 0,
-            narratedCuts = 0,
-            playableStage = false,
-            live,
-            drawing;
-        // Live phase from real cut state: cuts 1 and 2 (every cut when there are two or fewer) decide when playback
-        // can start, so the learner rarely waits at the first join; saving needs every cut playable.
-        const report = () => {
-            // Per-cut rows and set piece drawing ride along with every phase report.
-            const say = (phase, progress, detail) =>
-                onPhase(phase, progress, {
-                    ...detail,
-                    cutRows: cutRows(live.cuts, plan),
-                    ...(live.pieces === null && drawing && { drawing }),
-                });
-            const ready = live.cuts.filter(playable).length;
-            if (live.pieces === null) return say('pieces');
-            const waiting = live.cuts.slice(0, 2).find((c) => !playable(c));
-            const phase = waiting && CUT_STATES[cutState(waiting)].phase;
-            if (phase === 'writing')
-                return say(phase, undefined, {
-                    cut: live.cuts.filter((c) => c.code).length,
-                    cuts: count,
-                });
-            if (phase === 'auditing')
-                return say(phase, undefined, {
-                    cut: live.cuts.filter((c) => c.audited).length,
-                    cuts: count,
-                });
-            // A failed cut reports no phase; its rows still update.
-            if (waiting) return say(phase);
-            if (!playableStage) onStage('playable', { cut: ready, cuts: count });
-            playableStage = true;
-            say('playable', undefined, { cut: ready, cuts: count });
+            cuts: startCuts(video, kept),
+            ...(video.names.length && { pieces: prior?.pieces ?? null }),
+            ...(video.exhibits.length && { exhibits: video.exhibits }),
+            ...(video.references.length && { references: video.references }),
         };
-        const work = await writeCuts({
-            plan,
-            workspace,
-            kit: KIT,
-            call,
-            write,
-            narrate,
-            engines: cutEngine,
-            signal: controller.signal,
-            wait,
-            stop: (error) => controller.abort(error),
-            kept,
-            exhibits,
-            references,
-            readsImages,
-            writerCapable,
-            mcp,
-            pieces: prior?.pieces,
-            onDrawing: (value) => {
-                drawing = value;
-                if (live) report();
-            },
-            // Each look's top library matches; the same call embeds pieces saved while no embedder was usable.
-            matches: async (looks) => {
-                if (!embed) return [];
-                try {
-                    const pending = store.unembeddedPieces();
-                    const out = await embed([...looks, ...pending.map((p) => p.look)]);
-                    controller.signal.throwIfAborted();
-                    for (const [i, p] of pending.entries())
-                        if (out[looks.length + i]) store.embedPiece(p.id, out[looks.length + i]);
-                    looks.forEach((look, i) => out[i] && vectors.set(look, out[i]));
-                    return looks.map((_, i) => (out[i] ? store.nearestPieces(out[i]) : []));
-                } catch (error) {
-                    controller.signal.throwIfAborted();
-                    onWarning(`WARN video piece library unavailable: ${error.message}`);
-                    return [];
-                }
-            },
-            // Accepted variant and new pieces join the piece library, reused ones record this video; the library never fails the video.
-            // Returns each set piece's library id, so audits can flag a poor one.
-            // Parts are saved before the pieces built from them, which record their ids instead of copies.
-            onPieces: async (source, names, choices, parts = []) => {
-                const ids = {};
-                try {
-                    for (const c of choices?.filter((c) => c.use === 'reuse') ?? []) {
-                        store.usePiece(c.piece.id, artifact.id);
-                        ids[c.name] = c.piece.id;
-                    }
-                    const entries = libraryPieces(source, plan.styleBrief, names, parts);
-                    const save = (entry) =>
-                        (ids[entry.name] ??= store.savePiece(
-                            {
-                                ...entry,
-                                parts: entry.parts.map((name) => ({
-                                    name,
-                                    id: save(entries.find((e) => e.name === name)),
-                                })),
-                                embedding: vectors.get(entry.look) ?? null,
-                            },
-                            artifact.id,
-                        ));
-                    entries.forEach(save);
-                    stills();
-                } catch (error) {
-                    controller.signal.throwIfAborted();
-                    onWarning(`WARN video piece library: ${error.message}`);
-                }
-                return ids;
-            },
-            // The smart model rewrites a flagged piece; only a rewrite that validates replaces the library entry.
-            onPoorPiece: async (id, why) => {
-                try {
-                    const piece = store.piece(id);
-                    if (piece) {
-                        store.improvePiece(id, await improvePiece({ piece, why, call }));
-                        stills();
-                    }
-                } catch (error) {
-                    controller.signal.throwIfAborted();
-                    onWarning(
-                        `WARN video piece improvement kept the saved piece: ${error.message}`,
-                    );
-                }
-            },
-            save: (data) => {
-                const written = data.cuts.filter((c) => c.status === 'written').length;
-                if (written > writtenCuts) onStage('cuts written', { cut: written, cuts: count });
-                writtenCuts = Math.max(writtenCuts, written);
-                const narrated = data.cuts.filter((c) => c.timing).length;
-                if (narrated > narratedCuts) onStage('narration', { cut: narrated, cuts: count });
-                narratedCuts = Math.max(narratedCuts, narrated);
-                if (!store.videoData(artifact.conversation, artifact.id, artifact.attempt, data))
-                    throw new Error('Video job no longer owns this output.');
-                live = data;
-                report();
-            },
-        });
-        const { cuts } = work.data;
-        const frames = { frames: cuts.reduce((n, c) => n + c.timing.durationInFrames, 0) };
-        // Piece improvements run alongside the last audits and never fail the video.
-        await Promise.all(work.improving);
-        onPhase('saving');
-        const owner = store.artifact(artifact.conversation, artifact.id);
-        if (
-            owner?.attempt !== artifact.attempt ||
-            owner.status !== 'pending' ||
-            controller.signal.aborted
-        )
-            throw new Error('Video job no longer owns this output.');
-        // The saved video is its playable cuts; an MP4 is rendered only when the learner exports it.
-        let ready;
+        progress(video, deps);
+        video.persist();
+        await drawPieces(video, deps);
+        const making = video.cuts.map((_, index) => makeCut(video, index, deps));
         try {
-            ready = store.finishVideo(artifact.conversation, artifact.id, artifact.attempt, {
-                title: plan.title,
-                description: plan.description,
-                duration: frames.frames / 30,
-            });
-        } catch {}
-        if (ready?.status !== 'ready') throw new Error('Video could not be saved.');
+            await Promise.all(making);
+        } catch (error) {
+            video.stop(error);
+            await Promise.allSettled(making);
+            // Siblings fail with AbortError once one cut stops the job; report the first real cause.
+            throw controller.signal.reason ?? error;
+        }
+        // Piece improvements run alongside the last audits and never fail the video.
+        await Promise.all(video.improving);
+        const ready = finish(video, deps);
         published = true;
-        onStage('saved');
+        deps.onStage('saved');
         return ready;
     } catch (error) {
         controller.abort(error);
@@ -420,6 +247,7 @@ export async function generateVideo({
         signal.removeEventListener('abort', cancel);
         // Keep private code and timing; discard bundles, temporary clips, and audio of canceled or stopped attempts.
         // A failed attempt keeps its audio so Retry can reuse the narration.
+        const count = video.cuts?.length ?? 0;
         await Promise.all(
             [workspace, ...Array.from({ length: count }, (_, i) => cutWork(workspace, i))].flatMap(
                 (folder) =>
@@ -433,4 +261,142 @@ export async function generateVideo({
             ),
         );
     }
+}
+
+// The previous attempt's cuts for Retry. Copy, never share, the old cut folder; timing counts only if its audio
+// came along.
+async function keptCuts({ dir, artifact, previous, workspace }, prior) {
+    const kept = [];
+    for (const [i, cut] of prior.cuts.entries()) {
+        const from = cutWork(attemptWork(dir, artifact.id, previous.attempt), i),
+            to = cutWork(workspace, i);
+        const timing =
+            cut.timing &&
+            (await cp(from, to, { recursive: true })
+                .then(() => access(cutAudio(to)))
+                .then(
+                    () => cut.timing,
+                    () => rm(to, { recursive: true, force: true }).then(() => null),
+                ));
+        kept.push({ ...cut, timing });
+    }
+    return kept;
+}
+
+// The smart model builds the plan through calls; one stop without a valid finish gets a retry with the problem.
+async function planVideo({ artifact }, deps, searching, clipping) {
+    const planned = async (note = '') => {
+        const builder = planBuilder({ exhibits: searching, clips: !!clipping?.ready });
+        let characters = 0;
+        const answer = await deps.call(
+            PLAN_INSTRUCTIONS +
+                (searching ? EXHIBITS_NOTE : '') +
+                (clipping?.ready ? CLIPS_NOTE : '') +
+                (JSON.parse(artifact.input).differentVersion
+                    ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
+                    : '') +
+                note,
+            artifact.input,
+            {
+                stage: 'plan',
+                onText: (bytes) => deps.onPhase('planning', undefined, { characters: bytes }),
+                tools: {
+                    tools: builder.tools,
+                    textTools: builder.textTools,
+                    mcp: deps.mcp,
+                    runTool: (name, input) => {
+                        const result = builder.run(name, input);
+                        characters += JSON.stringify(input).length;
+                        deps.onPhase('planning', undefined, { characters });
+                        return result;
+                    },
+                },
+            },
+        );
+        builder.read(answer);
+        return builder;
+    };
+    let builder = await planned();
+    if (builder.problem())
+        builder = await planned(
+            `\nYour previous attempt stopped without a valid finish: ${builder.problem()}. Plan the whole video again through the tools and end with finish_video.`,
+        );
+    if (builder.problem()) throw new Error(`Video plan is incomplete: ${builder.problem()}.`);
+    return builder.plan();
+}
+
+// Saving and progress: video.persist saves the live data and reports the phase from real cut state; cuts 1 and 2
+// (every cut when there are two or fewer) decide when playback can start, so the learner rarely waits at the first
+// join; saving needs every cut playable. video.onDrawing reports set piece drawing.
+function progress(video, deps) {
+    const { plan, artifact, signal, data } = video,
+        count = plan.cuts.length;
+    let writtenCuts = 0,
+        narratedCuts = 0,
+        playableStage = false,
+        live,
+        drawing;
+    const report = () => {
+        // Per-cut rows and set piece drawing ride along with every phase report.
+        const say = (phase, progress, detail) =>
+            deps.onPhase(phase, progress, {
+                ...detail,
+                cutRows: cutRows(live.cuts, plan),
+                ...(live.pieces === null && drawing && { drawing }),
+            });
+        const ready = live.cuts.filter(playable).length;
+        if (live.pieces === null) return say('pieces');
+        const waiting = live.cuts.slice(0, 2).find((c) => !playable(c));
+        const phase = waiting && CUT_STATES[cutState(waiting)].phase;
+        if (phase === 'writing')
+            return say(phase, undefined, {
+                cut: live.cuts.filter((c) => c.code).length,
+                cuts: count,
+            });
+        if (phase === 'auditing')
+            return say(phase, undefined, {
+                cut: live.cuts.filter((c) => c.audited).length,
+                cuts: count,
+            });
+        // A failed cut reports no phase; its rows still update.
+        if (waiting) return say(phase);
+        if (!playableStage) deps.onStage('playable', { cut: ready, cuts: count });
+        playableStage = true;
+        say('playable', undefined, { cut: ready, cuts: count });
+    };
+    video.onDrawing = (value) => {
+        drawing = value;
+        if (live) report();
+    };
+    video.persist = () => {
+        signal.throwIfAborted();
+        const written = data.cuts.filter((c) => c.status === 'written').length;
+        if (written > writtenCuts) deps.onStage('cuts written', { cut: written, cuts: count });
+        writtenCuts = Math.max(writtenCuts, written);
+        const narrated = data.cuts.filter((c) => c.timing).length;
+        if (narrated > narratedCuts) deps.onStage('narration', { cut: narrated, cuts: count });
+        narratedCuts = Math.max(narratedCuts, narrated);
+        if (!deps.store.videoData(artifact.conversation, artifact.id, artifact.attempt, data))
+            throw new Error('Video job no longer owns this output.');
+        live = data;
+        report();
+    };
+}
+
+// The saved video is its playable cuts; an MP4 is rendered only when the learner exports it.
+function finish({ plan, artifact, signal, cuts }, { store, onPhase }) {
+    onPhase('saving');
+    const owner = store.artifact(artifact.conversation, artifact.id);
+    if (owner?.attempt !== artifact.attempt || owner.status !== 'pending' || signal.aborted)
+        throw new Error('Video job no longer owns this output.');
+    let ready;
+    try {
+        ready = store.finishVideo(artifact.conversation, artifact.id, artifact.attempt, {
+            title: plan.title,
+            description: plan.description,
+            duration: cuts.reduce((n, c) => n + c.timing.durationInFrames, 0) / 30,
+        });
+    } catch {}
+    if (ready?.status !== 'ready') throw new Error('Video could not be saved.');
+    return ready;
 }

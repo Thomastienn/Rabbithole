@@ -4,10 +4,17 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
-import { generateVideo } from '../../server/media/videos.mjs';
+import { generateVideo, videoEngines } from '../../server/media/videos.mjs';
 import { planBuilder } from '../../server/media/plan-calls.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
-import { planFor, planCalls, complete, composition, noSnapshot } from '../support/video-kit.mjs';
+import {
+    planFor,
+    planCalls,
+    complete,
+    composition,
+    noSnapshot,
+    models,
+} from '../support/video-kit.mjs';
 
 // A planner that calls tools natively: each attempt's calls go through tree.runTool, whose errors it reads back.
 async function plan(attempts) {
@@ -25,29 +32,30 @@ async function plan(attempts) {
     );
     const plans = [],
         results = [];
-    const error = await generateVideo({
-        provider: {
-            generate: async (t, _text, emit) => {
-                if (t.stage !== 'plan') return complete(emit, composition);
-                plans.push(t);
-                for (const [name, input = {}] of attempts[plans.length - 1] ?? [])
-                    try {
-                        results.push(await t.runTool(name, input));
-                    } catch (e) {
-                        results.push(`Error: ${e.message}`);
-                    }
-                complete(emit, '');
-            },
+    const error = await generateVideo(
+        { dir, artifact, signal: new AbortController().signal },
+        {
+            ...models(
+                {
+                    generate: async (t, _text, emit) => {
+                        if (t.stage !== 'plan') return complete(emit, composition);
+                        plans.push(t);
+                        for (const [name, input = {}] of attempts[plans.length - 1] ?? [])
+                            try {
+                                results.push(await t.runTool(name, input));
+                            } catch (e) {
+                                results.push(`Error: ${e.message}`);
+                            }
+                        complete(emit, '');
+                    },
+                },
+                { capable: true },
+            ),
+            store,
+            engines: videoEngines({ snapshot: noSnapshot }),
+            narrate: fakeNarration,
         },
-        selection: {},
-        store,
-        dir,
-        artifact,
-        signal: new AbortController().signal,
-        snapshot: noSnapshot,
-        narrate: fakeNarration,
-        capable: true,
-    }).then(
+    ).then(
         () => null,
         (e) => e.message,
     );

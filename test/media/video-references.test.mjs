@@ -4,9 +4,17 @@ import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
-import { generateVideo } from '../../server/media/videos.mjs';
+import { generateVideo, videoEngines } from '../../server/media/videos.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
-import { planFor, planText, complete, fakeRender, audit, pass } from '../support/video-kit.mjs';
+import {
+    planFor,
+    planText,
+    complete,
+    fakeRender,
+    audit,
+    pass,
+    models,
+} from '../support/video-kit.mjs';
 
 const png = Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]),
@@ -51,60 +59,61 @@ async function run({ photo = true, readsImages = true } = {}) {
         searches = [],
         staged = [],
         warnings = [];
-    const result = await generateVideo({
-        provider: {
-            generate: async (t, text, emit) => {
-                const call = {
-                    stage: t.stage,
-                    input: JSON.parse(text),
-                    images: t.images,
-                };
-                calls.push(call);
-                if (t.stage === 'plan') return complete(emit, planText(plan));
-                if (t.stage === 'pieces') return complete(emit, pieces);
-                if (t.stage === 'audit') {
-                    call.photos = (t.images ?? [])
-                        .filter((i) => i.type === 'image/png')
-                        .map((i) => readFileSync(i.path));
-                    return audit(t, emit, pass);
-                }
-                complete(
-                    emit,
-                    cutDrawing(call.input.cut.purpose === 'Step 1' ? 'Winner' : 'Trophy'),
-                );
+    const result = await generateVideo(
+        { dir, artifact, signal: new AbortController().signal },
+        {
+            ...models({
+                generate: async (t, text, emit) => {
+                    const call = {
+                        stage: t.stage,
+                        input: JSON.parse(text),
+                        images: t.images,
+                    };
+                    calls.push(call);
+                    if (t.stage === 'plan') return complete(emit, planText(plan));
+                    if (t.stage === 'pieces') return complete(emit, pieces);
+                    if (t.stage === 'audit') {
+                        call.photos = (t.images ?? [])
+                            .filter((i) => i.type === 'image/png')
+                            .map((i) => readFileSync(i.path));
+                        return audit(t, emit, pass);
+                    }
+                    complete(
+                        emit,
+                        cutDrawing(call.input.cut.purpose === 'Step 1' ? 'Winner' : 'Trophy'),
+                    );
+                },
+            }),
+            store,
+            render: async (workspace, output, ...rest) => {
+                if (existsSync(join(workspace, 'stock.json')))
+                    staged.push(readFileSync(join(workspace, 'stock.json'), 'utf8'));
+                return fakeRender(workspace, output, ...rest);
             },
+            engines: videoEngines({
+                snapshot: async (_dir, list) => {
+                    for (const { file } of list) writeFileSync(file, 'jpeg');
+                },
+            }),
+            narrate: fakeNarration,
+            onWarning: (w) => warnings.push(w),
+            search: { ready: async () => true },
+            exhibit: async (p) => {
+                searches.push(p);
+                if (!photo) throw new Error('no search results for "Saturn V rocket"');
+                return {
+                    kind: 'image',
+                    url: 'https://nasa.example/saturn.png',
+                    title: 'Saturn V',
+                    site: 'nasa.example',
+                    bytes: png,
+                    type: 'image/png',
+                };
+            },
+            clips: () => ({ ready: false }),
+            readsImages,
         },
-        selection: {},
-        store,
-        dir,
-        artifact,
-        signal: new AbortController().signal,
-        render: async (workspace, output, ...rest) => {
-            if (existsSync(join(workspace, 'stock.json')))
-                staged.push(readFileSync(join(workspace, 'stock.json'), 'utf8'));
-            return fakeRender(workspace, output, ...rest);
-        },
-        snapshot: async (_dir, list) => {
-            for (const { file } of list) writeFileSync(file, 'jpeg');
-        },
-        narrate: fakeNarration,
-        onWarning: (w) => warnings.push(w),
-        search: { ready: async () => true },
-        exhibit: async (p) => {
-            searches.push(p);
-            if (!photo) throw new Error('no search results for "Saturn V rocket"');
-            return {
-                kind: 'image',
-                url: 'https://nasa.example/saturn.png',
-                title: 'Saturn V',
-                site: 'nasa.example',
-                bytes: png,
-                type: 'image/png',
-            };
-        },
-        clips: () => ({ ready: false }),
-        readsImages,
-    }).then(
+    ).then(
         () => null,
         (error) => error.message,
     );
