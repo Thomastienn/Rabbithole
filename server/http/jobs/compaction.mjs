@@ -185,7 +185,8 @@ export function compactionJobs(ctx) {
             parent,
             parent,
             (job) => compact(prompt, quick, job.controller),
-            { keep: true },
+            // It waits for the learner's form, so settled() does not wait for it.
+            { keep: true, settle: false },
         );
         Object.assign(job, { input: JSON.stringify([prompt, quick]), passage });
         job.done.catch(() => {
