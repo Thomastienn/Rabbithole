@@ -242,6 +242,24 @@ test('tool turns keep running across model rounds until the model answers', asyn
     assert.equal(env.store.tree(id).messages.at(-1).tools.length, 12);
 });
 
+test('a model that never stops calling tools ends with an error after the round limit, keeping streamed text', async (t) => {
+    const env = await launch(t);
+    env.fake.reply = (req, res) =>
+        streamToolCalls(
+            res,
+            [{ name: 'read_page', input: { url: `${env.site}/heaps` } }],
+            'Reading again. ',
+        );
+    const { id, stream } = await env.ask('tooled');
+    const text = await new Response(stream).text();
+    assert.match(text, /still calling tools after 30 rounds/);
+    assert.match(text, /"status":"failed"/);
+    assert.equal(env.chats().length, 30);
+    const reply = env.store.tree(id).messages.at(-1);
+    assert.equal(reply.tools.length, 30);
+    assert.match(reply.text, /^Reading again\./);
+});
+
 test('a truncated tool call is never executed', async (t) => {
     const env = await launch(t);
     env.fake.reply = (req, res, body) =>

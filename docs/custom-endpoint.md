@@ -63,9 +63,10 @@ runs and hides; no result goes back.
 
 Streamed `tool_calls` deltas are joined per index. After a round with calls,
 the adapter appends the assistant message with its calls and one `tool`
-message per result, then calls the model again. The loop has no call cap: it
-ends when the model answers without calls, when a quick thinking tool answer
-is accepted, or on Stop. Each model call stops after five silent minutes and the
+message per result, then calls the model again. The loop ends when the model
+answers without calls, when a quick thinking tool answer is accepted, or on
+Stop. After 30 model calls in one reply it fails with an error and keeps the
+text streamed so far. Each model call stops after five silent minutes and the
 reply's usage sums every call's report.
 
 ## Settings and credential boundary

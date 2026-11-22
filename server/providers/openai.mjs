@@ -30,6 +30,9 @@ import {
 
 export { EndpointError };
 
+// Model calls in one reply before the tool loop gives up.
+const TOOL_ROUNDS = 30;
+
 // The list of saved custom endpoints; each entry is registered as its own provider.
 export class OpenAI {
     #list = [];
@@ -340,11 +343,16 @@ class Endpoint {
             const reply = roundText(output);
             // Every request asks for usage; tool turns sum each model call's report.
             const total = { input: 0, output: 0, cacheRead: 0 };
-            // No call cap: the loop ends when the model answers without tool calls or with only end-of-reply app calls, or on Stop.
-            while (true) {
+            // The loop ends when the model answers without tool calls or with only end-of-reply app calls, on Stop,
+            // or after TOOL_ROUNDS model calls, so a model that repeats a tool call cannot keep charging unwatched.
+            for (let rounds = 0; ; rounds++) {
                 // The server may end the run here once the reply's end section is in (ADR 0016).
                 emit({ type: 'response' });
                 if (signal.reason === ENDED) break;
+                if (rounds === TOOL_ROUNDS)
+                    throw new EndpointError(
+                        `Custom endpoint was still calling tools after ${TOOL_ROUNDS} rounds, so the reply was stopped. Partial reply saved; try again or choose another model.`,
+                    );
                 call = idleLimit(signal);
                 const response = await this.#fetch(saved, '/chat/completions', call, {
                     model,
