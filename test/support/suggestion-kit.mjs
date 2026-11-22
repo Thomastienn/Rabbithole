@@ -88,6 +88,7 @@ export async function start(dir, suggestions = true, connected = { claude: true,
     return {
         store,
         app,
+        claude,
         release: () => children.forEach((c) => c.release()),
         get,
         post,
