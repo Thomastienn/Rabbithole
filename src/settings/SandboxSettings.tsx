@@ -8,18 +8,17 @@ import { request as api } from '../serverAccess';
 
 type Sandbox = { windows: boolean; ready: boolean };
 
-// Windows only: the sandbox's one-time setup, behind one UAC prompt, from first-run setup or Settings.
-export default function SandboxSettings({ firstRun = false }: { firstRun?: boolean }) {
+// The code sandbox's status (bwrap, or the Windows sandbox) and the Windows one-time setup behind one UAC prompt.
+export function useSandbox() {
     const [sandbox, setSandbox] = useState<Sandbox>(),
         [pending, setPending] = useState(false),
         [declined, setDeclined] = useState(false),
         [error, setError] = useState('');
-    useEffect(() => {
+    const check = () =>
         void api('/api/setup/sandbox')
             .then((s) => setSandbox(s as Sandbox))
             .catch(() => {});
-    }, []);
-    if (!sandbox?.windows) return null;
+    useEffect(check, []);
     async function enable() {
         setPending(true);
         setError('');
@@ -33,9 +32,15 @@ export default function SandboxSettings({ firstRun = false }: { firstRun?: boole
             setPending(false);
         }
     }
+    return { sandbox, pending, declined, error, check, enable };
+}
+
+// Windows only: the sandbox's one-time setup in first-run setup.
+export default function SandboxSettings() {
+    const { sandbox, pending, declined, error, enable } = useSandbox();
+    if (!sandbox?.windows) return null;
     return (
         <>
-            {!firstRun && <Divider />}
             <Section
                 title="Video sandbox"
                 description="Videos and Python run model-written code in a Windows sandbox. Turning it on asks once for administrator rights."
@@ -45,16 +50,16 @@ export default function SandboxSettings({ firstRun = false }: { firstRun?: boole
                 ) : (
                     <Text type="supporting" role="status">
                         {declined
-                            ? `The sandbox was not enabled. Video making stays off until it is enabled${firstRun ? '; you can try again from Settings' : ''}.`
+                            ? 'The sandbox was not enabled. Video making stays off until it is enabled; you can try again from Settings.'
                             : pending
                               ? 'Waiting for the administrator prompt…'
                               : 'The sandbox is off, so video making is unavailable.'}
                     </Text>
                 )}
-                {!sandbox.ready && !(firstRun && declined) && (
+                {!sandbox.ready && !declined && (
                     <HStack>
                         <Button
-                            label={declined ? 'Try again' : 'Enable sandbox'}
+                            label="Enable sandbox"
                             variant="secondary"
                             size="sm"
                             isLoading={pending}
@@ -69,7 +74,7 @@ export default function SandboxSettings({ firstRun = false }: { firstRun?: boole
                     </Text>
                 )}
             </Section>
-            {firstRun && <Divider />}
+            <Divider />
         </>
     );
 }

@@ -335,3 +335,79 @@
         display: none;
     }
 }
+/* Add-ons page (mockup Rabbithole-aon.2): tile, name with state, what it enables, size, one action. */
+.addons {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.addon {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 0 14px;
+    align-items: start;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+.addon:first-child {
+    padding-top: 4px;
+}
+.addon__tile {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-element);
+    background: var(--color-background-muted);
+    color: var(--color-accent);
+    display: grid;
+    place-items: center;
+}
+.addon[data-sandbox] .addon__tile {
+    background: transparent;
+    border: 1.5px solid var(--color-border-emphasized);
+}
+.addon__name {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: baseline;
+}
+.addon__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+.addon__meta span + span::before {
+    content: '·';
+    margin-right: 6px;
+}
+.addon__bar {
+    max-width: 360px;
+    margin-top: 6px;
+}
+.addon__act {
+    align-self: center;
+    display: flex;
+    gap: 8px;
+}
+/* Text and icon, never colour alone. */
+.addon__state {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+.addon__state[data-state='ok'] {
+    color: var(--color-text-primary);
+}
+.addon__state[data-state='err'] {
+    color: var(--color-text-error);
+}
+.addon__state[data-state='live'] {
+    color: var(--color-text-accent);
+}

@@ -143,16 +143,20 @@ export function sandboxMissing({
     return 'Video making needs the Windows sandbox. Enable it in Settings, then ask again.';
 }
 
-// The Windows sandbox's one-time setup, from first-run setup or Settings; `--setup` shows the one UAC prompt.
+// The code sandbox's status, and the Windows sandbox's one-time setup from first-run setup or Settings; `--setup` shows the one UAC prompt.
 export function windowsSandbox({
     platform = process.platform,
     launcher = process.env.RABBITHOLE_SANDBOX,
     probe = spawnSync,
     run = spawn,
 } = {}) {
+    // Elsewhere the sandbox is bwrap, ready once it is installed.
     const status = () => ({
         windows: platform === 'win32',
-        ready: !sandboxMissing({ platform, launcher, probe }),
+        ready:
+            platform === 'win32'
+                ? !sandboxMissing({ platform, launcher, probe })
+                : probe('bwrap', ['--version'], { timeout: 10000 }).status === 0,
     });
     const enable = () =>
         new Promise((done) => {
