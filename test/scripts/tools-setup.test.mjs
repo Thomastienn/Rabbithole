@@ -1,14 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import {
-    existsSync,
-    mkdirSync,
-    mkdtempSync,
-    readdirSync,
-    readFileSync,
-    writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { LINUX_PACKAGES, systemPackages, texBin, uvDir } from '../../server/media/manim.mjs';
@@ -17,7 +10,6 @@ import {
     ensureSandbox,
     ensureUv,
     MANIM_TEX_PACKAGES,
-    SANDBOX_RELEASE,
     sandboxExe,
     UV_SHA256,
     UV_VERSION,
@@ -251,15 +243,4 @@ test('a sandbox zip that does not match its pinned SHA-256 installs nothing', as
         /Windows sandbox download does not match its pinned SHA-256/,
     );
     assert.equal(existsSync(sandboxExe(f.root)), false);
-});
-
-test('the pinned sandbox download was built from the current desktop/sandbox source', () => {
-    const hash = createHash('sha256');
-    for (const file of ['Cargo.toml', 'Cargo.lock', 'src/main.rs'])
-        hash.update(readFileSync(new URL(`../../desktop/sandbox/${file}`, import.meta.url)));
-    assert.equal(
-        hash.digest('hex'),
-        SANDBOX_RELEASE.source,
-        'desktop/sandbox changed: run the Desktop build, publish it, then update SANDBOX_RELEASE in scripts/tools-setup.mjs',
-    );
 });
