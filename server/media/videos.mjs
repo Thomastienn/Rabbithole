@@ -167,6 +167,8 @@ export async function generateVideo({ dir, artifact, previous, signal }, given) 
         signal: controller.signal,
         stop: (error) => controller.abort(error),
         wait,
+        // Read once per job, so a Retry takes the mode set when it starts.
+        saving: deps.store.videoMode() === 'saving',
     };
     let published = false;
     try {
@@ -197,7 +199,8 @@ export async function generateVideo({ dir, artifact, previous, signal }, given) 
                 plan,
                 prior,
                 from: prior?.plan && attemptWork(dir, artifact.id, previous.attempt),
-                searching,
+                // Saving mode fetches no reference photos; exhibits stay.
+                searching: searching && !video.saving,
                 pictures: video.engines.some((e) => e.pictures),
                 fetch: (planned) =>
                     deps.exhibit(planned, {
@@ -213,6 +216,8 @@ export async function generateVideo({ dir, artifact, previous, signal }, given) 
                 credit: (resource) => deps.store.addResource(artifact.conversation, resource),
             }),
         );
+        // Nor shows the ones a Retry would keep.
+        if (video.saving) video.references = [];
         deps.onStage('cuts', { cuts: plan.cuts.length });
         video.names = video.engines.some((e) => e.pictures) ? pieceNames(plan) : [];
         video.data = {

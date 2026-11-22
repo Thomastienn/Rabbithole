@@ -261,7 +261,8 @@ async function audit(video, index, deps) {
     }
     const before = { code: cut.code, emphasis: cut.emphasis };
     // An audit only improves a cut: no frames, an unusable answer or a fix that will not render keeps the cut as it was.
-    if (own?.length && !cut.audited)
+    // Saving mode only shoots the cut, so a crash still goes to its repair.
+    if (own?.length && !cut.audited && !video.saving)
         try {
             const previous = index ? await video.lastFrames[index - 1].promise : null;
             signal.throwIfAborted();

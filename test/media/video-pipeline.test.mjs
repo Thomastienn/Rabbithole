@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
@@ -11,10 +11,14 @@ import { planFor, planCalls, composition, fixerTask, patchOf } from '../support/
 
 const broken = "import fs from 'node:fs';\n" + composition;
 const fixed = composition.replace('PRIVATE_SOURCE_MARKER', 'FIXED');
+const crash = 'TypeError: Cannot interpolate an input which is not a number';
 
-test('the pipeline runs from plan to saved video on a fake model call and a fake engine', async () => {
+// One video in the given Video mode, switched to later once planned: cut 2 is first written broken, and cut 1's
+// audit flags it.
+async function run(mode, later) {
     const dir = mkdtempSync(join(tmpdir(), 'tt-pipeline-'));
     const store = new Store(join(dir, 'trees.sqlite'));
+    if (mode) store.saveVideoMode(mode);
     const tree = store.create('Video', 'codex');
     const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
     const artifact = store.pendingArtifact(
@@ -26,18 +30,24 @@ test('the pipeline runs from plan to saved video on a fake model call and a fake
         '{"request":"Make a video."}',
     );
     const asked = [];
-    // One fake model call answers both roles by stage: cut 2 is first written broken, and cut 1's audit flags it.
+    // One fake model call answers both roles by stage.
     const model = async (_instructions, input, { stage, cut, tools }) => {
         asked.push(cut ? `${stage} ${cut}` : stage);
         if (stage === 'plan') {
+            if (later) store.saveVideoMode(later);
             for (const [name, args = {}] of planCalls(planFor(composition, 2)))
                 await tools.runTool(name, args);
             return '';
         }
         if (stage === 'cut') return cut === 2 ? broken : composition;
         if (stage === 'repair') {
-            assert.match(fixerTask(input).validationError, /import/i);
-            return patchOf(fixerTask(input).failedCode, composition);
+            const { validationError, failedCode } = fixerTask(input);
+            if (cut === 1) {
+                assert.equal(validationError, crash);
+                return patchOf(failedCode, fixed);
+            }
+            assert.match(validationError, /import/i);
+            return patchOf(failedCode, composition);
         }
         if (stage === 'audit') {
             await tools.runTool(
@@ -59,7 +69,14 @@ test('the pipeline runs from plan to saved video on a fake model call and a fake
         ready() {},
         async check() {},
         play: async () => null,
-        async stills(_dir, stills) {
+        async stills(dir, stills) {
+            // In Saving mode cut 1 crashes in the page until it is repaired.
+            if (
+                mode === 'saving' &&
+                dir.endsWith('cut-0') &&
+                !readFileSync(join(dir, 'Video.tsx'), 'utf8').includes('FIXED')
+            )
+                throw Object.assign(new Error(crash), { crashed: true });
             for (const { file } of stills) writeFileSync(file, 'jpeg');
         },
     };
@@ -75,6 +92,13 @@ test('the pipeline runs from plan to saved video on a fake model call and a fake
             onStage: (name) => stages.push(name),
         },
     );
+    const { cuts } = JSON.parse(store.artifact(tree.id, artifact.id).source);
+    store.close();
+    return { ready, asked, cuts, stages };
+}
+
+test('the pipeline runs from plan to saved video on a fake model call and a fake engine; switching to Saving mid-video changes nothing', async () => {
+    const { ready, asked, cuts, stages } = await run('quality', 'saving');
     assert.equal(ready.status, 'ready');
     assert.equal(asked[0], 'plan');
     assert.deepEqual(
@@ -83,7 +107,6 @@ test('the pipeline runs from plan to saved video on a fake model call and a fake
         'a repair is also its cut audit; the audit issue is fixed',
     );
     assert.ok(asked.indexOf('fix 1') > asked.indexOf('audit 1'));
-    const { cuts } = JSON.parse(store.artifact(tree.id, artifact.id).source);
     assert.deepEqual(
         cuts.map((c) => [c.status, c.audited, c.code]),
         [
@@ -92,4 +115,19 @@ test('the pipeline runs from plan to saved video on a fake model call and a fake
         ],
     );
     assert.ok(stages.includes('playable') && stages.indexOf('playable') < stages.indexOf('saved'));
+});
+
+test('a video started in Saving mode makes no audit, fix or piece improvement, still repairs a cut that fails to render and is saved', async () => {
+    const { ready, asked, cuts, stages } = await run('saving');
+    assert.equal(ready.status, 'ready');
+    assert.equal(asked[0], 'plan');
+    assert.deepEqual(asked.slice(1).sort(), ['cut 1', 'cut 2', 'repair 1', 'repair 2']);
+    assert.deepEqual(
+        cuts.map((c) => [c.status, c.code]),
+        [
+            ['written', fixed.trim()],
+            ['written', composition.trim()],
+        ],
+    );
+    assert.ok(stages.includes('saved'));
 });

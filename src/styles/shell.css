@@ -191,6 +191,55 @@ html[data-interface-font='system'] [data-astryx-theme] {
     border-block-start: thin solid var(--color-border);
     background: var(--color-background-muted);
 }
+/* The update card sits above Downloads and Settings; its height stays steady between states. */
+.update-card {
+    display: grid;
+    gap: var(--rabbithole-module);
+    margin-block-end: var(--rabbithole-module);
+    padding: calc(1.5 * var(--rabbithole-module));
+    border: 1.5px solid var(--color-border-emphasized);
+    border-radius: var(--radius-element);
+    background: var(--color-background-surface);
+}
+.update-card > button {
+    justify-self: start;
+}
+.update-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--rabbithole-module);
+}
+.update-head > svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-block-start: 2px;
+}
+.update-head > :nth-child(2) {
+    flex: 1;
+}
+.update-head > button {
+    margin: -6px -6px 0 0;
+}
+.update-head > .update-failed {
+    color: var(--color-text-error);
+}
+.update-dot {
+    position: relative;
+    display: flex;
+}
+.update-dot::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-background-muted);
+    pointer-events: none;
+}
 .sidebar .band-save {
     height: auto;
     flex-wrap: wrap;

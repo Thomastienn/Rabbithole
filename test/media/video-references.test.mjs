@@ -32,9 +32,10 @@ const cutDrawing = (name) => `import { AbsoluteFill } from 'remotion';
 import { ${name} } from './pieces';
 export default function Video() { return <AbsoluteFill><${name} x={800} y={400} /></AbsoluteFill>; }`;
 
-async function run({ photo = true, readsImages = true } = {}) {
+async function run({ photo = true, readsImages = true, mode } = {}) {
     const dir = mkdtempSync(join(tmpdir(), 'tt-video-references-'));
     const store = new Store(join(dir, 'trees.sqlite'));
+    if (mode) store.saveVideoMode(mode);
     const tree = store.create('Video', 'codex');
     const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
     const artifact = store.pendingArtifact(
@@ -171,4 +172,15 @@ test('a failed or empty reference search lets the video continue without a photo
     assert.ok(warnings.some((w) => w.includes('reference photo skipped')));
     assert.ok(calls.every((c) => c.input.referencePhotos === undefined));
     assert.deepEqual(store.resources(tree.id), []);
+});
+
+test('Saving mode fetches no reference photo and shows none to the set piece writer', async () => {
+    const { result, calls, searches, row } = await run({ mode: 'saving' });
+    assert.equal(result, null);
+    assert.equal(row.status, 'ready');
+    assert.deepEqual(searches, []);
+    const writer = calls.find((c) => c.stage === 'pieces');
+    assert.equal(writer.images, undefined);
+    assert.equal(writer.input.referencePhotos, undefined);
+    assert.ok(calls.every((c) => c.stage !== 'audit' && c.stage !== 'improve'));
 });

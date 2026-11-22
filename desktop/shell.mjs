@@ -39,3 +39,42 @@ export function saveLayout(run, ms = 3000) {
 // so the app never writes into its own, read-only folder and an app update keeps them.
 export const toolsDir = (cwd, env, dataDir) =>
     join(resolve(cwd, env.RABBITHOLE_DATA_DIR ?? dataDir()), 'tools');
+
+// The update banner's state: null (nothing to show), then available, downloading, ready or failed, and restarting.
+// A failed check stays null, so being offline shows nothing; only a failed download is shown, with its reason.
+export function updateState(state, event) {
+    switch (event.type) {
+        case 'available':
+            return { stage: 'available', version: event.version, current: event.current };
+        case 'install':
+            return state?.stage === 'available' || state?.stage === 'failed'
+                ? { ...state, stage: 'downloading', percent: 0, transferred: 0, total: 0 }
+                : state;
+        case 'progress':
+            return state?.stage === 'downloading'
+                ? {
+                      ...state,
+                      percent: Math.floor(event.percent),
+                      transferred: event.transferred,
+                      total: event.total,
+                  }
+                : state;
+        case 'downloaded':
+            return state && { ...state, stage: 'ready' };
+        case 'restart':
+            return state?.stage === 'ready' ? { ...state, stage: 'restarting' } : state;
+        case 'error':
+            return state?.stage === 'downloading'
+                ? { ...state, stage: 'failed', reason: updateFailure(event.message) }
+                : state;
+        default:
+            return state;
+    }
+}
+
+// electron-updater's errors carry URLs and stack-like detail; the banner shows one short sentence.
+function updateFailure(message = '') {
+    return /net::|ENOTFOUND|ECONN|ETIMEDOUT|EAI_AGAIN|socket|network/i.test(message)
+        ? 'The connection dropped. Check it, then retry.'
+        : 'Something went wrong while downloading. Try again.';
+}

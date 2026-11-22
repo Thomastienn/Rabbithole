@@ -131,6 +131,14 @@ export const media = {
             .run(randomUUID(), conversation, id);
         return result.changes ? this.artifact(conversation, id) : null;
     },
+    // Videos that failed only because their tools were not installed or still downloading.
+    waitingVideos() {
+        return this.db
+            .prepare(
+                "SELECT conversation,id FROM artifacts WHERE kind='video' AND status='failed' AND error LIKE 'Video tools %'",
+            )
+            .all();
+    },
     // Retry reruns from the stored task; rows saved before tasks were stored stay failed.
     retryArtifact(conversation, id) {
         const result = this.db

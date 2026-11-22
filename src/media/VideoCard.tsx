@@ -50,7 +50,7 @@ const FAILURE_REASON =
     /^(?:Video provider failed: [^\n]+|Video request could not be read: [^\n]+\.|Tutor reply did not complete\.|Video (?:rendering (?:failed|timed out)|renderer could not start|narration timed out|narration failed\. Check your connection and Retry|could not be saved|generation ran over two hours|composition (?:timed out|did not complete|exceeds 64 KiB|is missing its (?:description|narration)|uses a disallowed import or resource)|provider failed to generate a composition|narration(?: timing)? is (?:missing|unreadable))\.|Rendered video is unreadable\.)$/;
 
 const DOWNLOADING =
-    /^(?:Video tools are still downloading \(\d{1,3}%\)|Video making needs the Windows sandbox\. Enable it in Settings, then ask again)\.$/;
+    /^(?:Video tools are still downloading \(\d{1,3}%\)|Video tools aren't installed \(about \d+ MB\)|Video making needs the Windows sandbox\. Enable it in Settings, then ask again)\.$/;
 
 // Rough storyboard panels drawn once in ink behind the progress (spec decision 9). Hand-set wobble keeps them sketched.
 const SKETCH = [
@@ -96,7 +96,7 @@ export default function VideoCard({
         | 'drawing'
     > & { error?: string | null };
     inline?: boolean;
-    onAction?: (action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
+    onAction?: (action: 'cancel' | 'retry' | 'regenerate' | 'install') => Promise<void>;
     media?: string;
     cuts?: string;
     actions?: ReactNode;
@@ -107,11 +107,12 @@ export default function VideoCard({
 }) {
     const id = useId();
     const [enlarged, setEnlarged] = useState(false);
-    // A request made while its tools still download, or before the Windows sandbox is set up, is saved as failed and shown unavailable with that reason.
+    // A request made without its tools, or before the Windows sandbox is set up, is saved as failed and shown unavailable with that reason.
     const downloading =
         artifact.status === 'failed' && DOWNLOADING.test(artifact.error ?? '')
             ? artifact.error
             : null;
+    const missing = downloading?.startsWith('Video tools aren');
     const state =
         (artifact.status === 'ready' && artifact.available === false) || downloading
             ? 'unavailable'
@@ -309,9 +310,11 @@ export default function VideoCard({
                                         ? 'Open large'
                                         : state === 'pending'
                                           ? 'Cancel video'
-                                          : state === 'unavailable' && !downloading
-                                            ? 'Regenerate video'
-                                            : 'Retry video'
+                                          : missing
+                                            ? 'Install video tools'
+                                            : state === 'unavailable' && !downloading
+                                              ? 'Regenerate video'
+                                              : 'Retry video'
                                 }
                                 variant={
                                     state === 'failed' || state === 'unavailable'
@@ -322,7 +325,13 @@ export default function VideoCard({
                                 clickAction={() =>
                                     state === 'ready'
                                         ? enlarge()
-                                        : onAction?.(state === 'pending' ? 'cancel' : 'retry')
+                                        : onAction?.(
+                                              state === 'pending'
+                                                  ? 'cancel'
+                                                  : missing
+                                                    ? 'install'
+                                                    : 'retry',
+                                          )
                                 }
                             />
                         )}

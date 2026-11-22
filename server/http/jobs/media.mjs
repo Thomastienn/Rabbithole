@@ -48,6 +48,9 @@ export function mediaJobs(ctx) {
         }
         if (a.kind !== 'video') return a;
         delete a.source;
+        // A video waiting for its tools shows how they are now, not when it was asked for.
+        if (a.status === 'failed' && a.error?.startsWith('Video tools '))
+            return { ...a, error: ctx.downloads?.videoWaiting() ?? a.error };
         if (a.status === 'pending' && a.conversation) {
             const job = jobs.get('video', a.id);
             return {
@@ -108,7 +111,7 @@ export function mediaJobs(ctx) {
         stage('plan');
         running.done = Promise.resolve()
             .then(async () => {
-                // Nothing starts by itself once the tools or the Windows sandbox are ready; the learner asks again.
+                // A video waiting for its tools renders once they are ready (resume); after the Windows sandbox, the learner asks again.
                 const waiting = sandboxMissing() ?? ctx.downloads?.videoWaiting();
                 if (waiting) throw new Error(waiting);
                 const resolve = async (choice, role, check = true) => {
@@ -400,5 +403,13 @@ export function mediaJobs(ctx) {
             });
         return running.done;
     };
+    const resume = () => {
+        if (ctx.stopping || ctx.downloads.videoWaiting()) return;
+        for (const { conversation, id } of store.waitingVideos()) {
+            const job = store.retryVideo(conversation, id);
+            if (job) startVideo(job);
+        }
+    };
+    ctx.downloads?.subscribe(resume);
     return { live, startVideo, startDrawing, startExport };
 }

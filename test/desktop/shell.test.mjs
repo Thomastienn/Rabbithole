@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import test from 'node:test';
 import { dataDir } from '../../server/desktop.mjs';
-import { navigation, saveLayout, serverUrl, startError, toolsDir } from '../../desktop/shell.mjs';
+import {
+    navigation,
+    saveLayout,
+    serverUrl,
+    startError,
+    toolsDir,
+    updateState,
+} from '../../desktop/shell.mjs';
 
 test('closing the window waits for the page layout save, but not for a hung or broken page', async () => {
     const order = [];
@@ -76,4 +83,51 @@ test('add-ons install into a tools folder inside the data folder the server uses
         toolsDir('/app', { RABBITHOLE_DATA_DIR: 'data' }, home({})),
         resolve('/app/data/tools'),
     );
+});
+
+test('the update banner appears only for a newer release, downloads on Install and quietly ignores a failed check', () => {
+    const run = (...events) => events.reduce(updateState, null);
+    const available = { type: 'available', version: '1.0.214', current: '1.0.198' };
+    assert.equal(run({ type: 'error', message: 'net::ERR_INTERNET_DISCONNECTED' }), null);
+    assert.equal(run({ type: 'not-available' }), null);
+    assert.deepEqual(run(available), {
+        stage: 'available',
+        version: '1.0.214',
+        current: '1.0.198',
+    });
+    assert.equal(run(available, { type: 'error', message: 'x' }).stage, 'available');
+    // Progress and a finished download count only after Install.
+    assert.equal(run(available, { type: 'progress', percent: 10 }).stage, 'available');
+    assert.equal(run(available, { type: 'restart' }).stage, 'available');
+    const progress = { type: 'progress', percent: 46.7, transferred: 58e6, total: 126e6 };
+    assert.deepEqual(run(available, { type: 'install' }, progress), {
+        stage: 'downloading',
+        version: '1.0.214',
+        current: '1.0.198',
+        percent: 46,
+        transferred: 58e6,
+        total: 126e6,
+    });
+    const downloaded = run(available, { type: 'install' }, progress, { type: 'downloaded' });
+    assert.equal(downloaded.stage, 'ready');
+    assert.equal(updateState(downloaded, { type: 'restart' }).stage, 'restarting');
+});
+
+test('a failed update download gives a short reason and Install retries it', () => {
+    const downloading = [
+        null,
+        { type: 'available', version: '1.0.214', current: '1.0.198' },
+        { type: 'install' },
+    ].reduce(updateState);
+    const offline = updateState(downloading, {
+        type: 'error',
+        message: 'net::ERR_CONNECTION_RESET at https://github.com/.../Rabbithole.AppImage',
+    });
+    const broken = updateState(downloading, { type: 'error', message: 'sha512 checksum mismatch' });
+    assert.equal(offline.stage, 'failed');
+    assert.notEqual(offline.reason, broken.reason, 'a dropped connection reads differently');
+    assert.doesNotMatch(offline.reason + broken.reason, /github|sha512/);
+    const retried = updateState(offline, { type: 'install' });
+    assert.equal(retried.stage, 'downloading');
+    assert.equal(retried.percent, 0);
 });
