@@ -226,3 +226,38 @@ test('cancel during smart capability lookup prevents inference, including a late
         env.close();
     }
 });
+
+test('deleting a conversation waits for a canceled video attempt that a retry replaced', async () => {
+    const releases = [];
+    const env = await open({
+        // Each lookup ignores the abort, like a provider call that answers late.
+        models: () =>
+            new Promise((r) => releases.push(() => r([{ model: 'smart-model', isDefault: true }]))),
+        generate: async (tree, text, emit) => complete(emit, 'Here.' + directive),
+    });
+    try {
+        env.store.saveSmartSettings({
+            model: { provider: 'codex', model: 'smart-model' },
+            followEffort: false,
+            effort: null,
+        });
+        const tree = env.store.create('Cancel, retry, delete', 'codex', 'chat-model');
+        await (await env.post(`/api/trees/${tree.id}/messages`, { text: 'Make a video.' })).text();
+        await until(() => releases.length === 1);
+        const job = env.store.tree(tree.id).artifacts[0];
+        await env.post(`/api/trees/${tree.id}/artifacts/${job.id}/cancel`);
+        await env.post(`/api/trees/${tree.id}/artifacts/${job.id}/retry`);
+        await until(() => releases.length === 2);
+        let deleted = false;
+        const deleting = env
+            .post(`/api/trees/${tree.id}/delete`, { conversation: tree.id })
+            .then((res) => ((deleted = true), res));
+        releases[1]();
+        await new Promise((r) => setTimeout(r, 200));
+        assert.equal(deleted, false, 'the canceled attempt is still running');
+        releases[0]();
+        assert.equal((await deleting).status, 200);
+    } finally {
+        env.close();
+    }
+});

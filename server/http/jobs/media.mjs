@@ -75,14 +75,18 @@ export function mediaJobs(ctx) {
         };
     };
     // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
-    const startVideo = (job, parentSignal, previous) =>
-        jobs.start(
+    const startVideo = (job, parentSignal, previous) => {
+        // A canceled attempt may still be winding down when Retry replaces it; delete and stop wait for both.
+        const replaced = jobs.get('video', job.id)?.done;
+        return jobs.start(
             'video',
             job.id,
             job.conversation,
-            (running) => runVideo(running, job, parentSignal, previous),
+            (running) =>
+                Promise.allSettled([replaced, runVideo(running, job, parentSignal, previous)]),
             { files: true },
         );
+    };
     const runVideo = (running, job, parentSignal, previous) => {
         Object.assign(running, {
             phase: 'planning',
