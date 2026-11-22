@@ -27,7 +27,7 @@ test('Downloads icon shows progress, lists name, size, progress and Retry, and h
     assert.equal(source.url, '/api/downloads');
     const push = (list) => act(async () => source.onmessage({ data: JSON.stringify(list) }));
     assert.equal(container.querySelector('button'), null, 'hidden with nothing to show');
-    await push([
+    const downloads = [
         {
             id: 'manim',
             name: 'Manim',
@@ -44,9 +44,9 @@ test('Downloads icon shows progress, lists name, size, progress and Retry, and h
             bytes: 5e7,
             total: 1e8,
             percent: 50,
-            update: true,
         },
-    ]);
+    ];
+    await push(downloads);
     const icon = container.querySelector('.downloads-button button');
     assert.equal(name(icon), 'Downloads: a download failed');
     assert.equal(
@@ -57,6 +57,8 @@ test('Downloads icon shows progress, lists name, size, progress and Retry, and h
     const list = document.querySelector('.downloads-list');
     assert.ok(list, 'clicking opens the list');
     assert.match(list.textContent, /Manim.*Failed: Network down\./);
+    assert.match(list.textContent, /Video browser100 MB.*Downloading, 50%/);
+    await push([downloads[0], { ...downloads[1], update: true }]);
     assert.match(list.textContent, /Video browser100 MB.*Updating, 50%/);
     await act(async () => button(list, 'Retry Manim').click());
     assert.deepEqual(posts(), [['/api/downloads/manim/retry', 'POST']]);
