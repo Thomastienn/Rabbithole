@@ -28,7 +28,7 @@ export function detectClips({
             python,
             error: `Clip exhibits unavailable: ffmpeg is missing. Run: ${ffmpegInstall(platform)}, then npm start; videos have no clips until then.`,
         };
-    if (!ok(python, ['-m', 'yt_dlp', '--version']))
+    if (!ok(python, ['-B', '-m', 'yt_dlp', '--version']))
         return {
             ready: false,
             python,
@@ -41,14 +41,16 @@ export function detectClips({
 // a clip with sound whose source has no audio.
 export async function downloadClip(
     { url, start, end, sound = false },
-    { clips, signal, run = promisify(execFile) },
+    { clips, signal, run = promisify(execFile), tmp = tmpdir() },
 ) {
-    const work = await mkdtemp(join(tmpdir(), 'rabbithole-clip-'));
+    // The job passes its workspace's tmp, so nothing lands outside the data folder.
+    const work = await mkdtemp(join(tmp, 'rabbithole-clip-'));
     try {
         const options = { signal, timeout: 300000, maxBuffer: 1024 * 1024 };
         await run(
             clips.python,
             [
+                '-B',
                 '-m',
                 'yt_dlp',
                 '--ignore-config',

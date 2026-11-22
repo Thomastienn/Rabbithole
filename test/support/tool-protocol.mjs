@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { readFileSync } from 'node:fs';
 
 // Protocol peers use the real HTTP transport; the runner/model responses stay synthetic.
 export async function appTool(config) {
@@ -27,14 +28,27 @@ export async function appTool(config) {
     }
 }
 
-export function codexMcp(argv) {
+// Codex names the environment variable that holds the tool token; the token itself is not in argv.
+export function codexMcp(argv, env = process.env) {
     const config = argv.find((s) => s.startsWith('mcp_servers.rabbithole='));
     return config
         ? {
               url: /url="([^"]+)"/.exec(config)[1],
-              headers: { Authorization: /Authorization="([^"]+)"/.exec(config)[1] },
+              headers: { Authorization: env[/Authorization="([^"]+)"/.exec(config)[1]] },
           }
         : null;
+}
+
+// Claude reads its prompt and tool config from turn files that are gone once the turn ends; call this at launch.
+export function inlineArgs(args) {
+    return args.flatMap((arg, i) =>
+        arg === '--system-prompt-file'
+            ? ['--system-prompt']
+            : args[i - 1] === '--system-prompt-file' ||
+                (args[i - 1] === '--mcp-config' && !arg.startsWith('{'))
+              ? [readFileSync(arg, 'utf8')]
+              : [arg],
+    );
 }
 
 export function claudeSearch(send) {

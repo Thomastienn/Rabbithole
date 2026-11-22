@@ -349,14 +349,13 @@ test('a suggestion opened while its reply streams gets its brief explanation at 
     };
     const chat = {
         generate: async (tree, text, emit) => {
-            emit({ type: 'delta', item: 'answer', text: 'A ' });
-            emit({ type: 'delta', item: 'answer', text: '**[[mutex]]** guards' });
+            emit({ type: 'delta', item: 'answer', text: 'A **[[mutex]]** guards' });
             await gate;
             emit({ type: 'delta', item: 'answer', text: ' the shared counter.\n[[end]]' });
             emit({ type: 'status', status: 'completed' });
         },
     };
-    // saveEvery is long: after the first delta only the suggestion's arrival saves the streamed text.
+    // saveEvery is long: only the first delta saves the streamed text, and the suggestion's brief reads it.
     const app = createApp({
         store,
         providers: { codex: chat, claude: quick },

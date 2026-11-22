@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { themeChoices } from '../../src/shell/appearance.ts';
 import { task, block, source, complete, deferred, until, open } from '../support/visual-kit.mjs';
 import { TEST_PROVIDER } from '../support/test-provider.mjs';
+import { inlineArgs } from '../support/tool-protocol.mjs';
 import { VISUAL_SKILL, HOUSE_STYLE_SKILL, ANALOGY_SKILL } from '../../server/media/skills.mjs';
 
 test('visual prompts receive the requested theme palette in light and dark, with a safe legacy fallback', async () => {
@@ -171,7 +172,7 @@ for (const name of [TEST_PROVIDER])
         const launches = [],
             dir = mkdtempSync(join(tmpdir(), 'tt-visual-adapter-'));
         const launch = (command, args, options) => {
-            const call = { args, env: options.env, input: [] };
+            const call = { args: inlineArgs(args), env: options.env, input: [] };
             launches.push(call);
             const child = spawn(
                 process.execPath,

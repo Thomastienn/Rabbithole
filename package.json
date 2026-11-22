@@ -10,7 +10,7 @@
         "build": "tsc --noEmit && vite build && node scripts/build-state.mjs",
         "start": "node scripts/start.mjs",
         "serve": "node scripts/start.mjs --no-open",
-        "desktop:build": "node scripts/desktop-stage.mjs && cd desktop && tauri build",
+        "desktop:build": "node scripts/desktop-stage.mjs && cd desktop && npm ci --no-audit --no-fund && npm run build",
         "test": "node scripts/check-size.mjs && tsc --noEmit && node scripts/limited.mjs node --import ./test/support/tsx.mjs --test --test-concurrency=2 --test-force-exit --test-timeout=120000 \"test/**/*.test.mjs\"",
         "test:slow": "node scripts/limited.mjs node --import ./test/support/tsx.mjs --test --test-concurrency=2 --test-force-exit --test-timeout=120000 \"test/**/*.slow.mjs\"",
         "test:affected": "node scripts/test-affected.mjs",
@@ -66,7 +66,6 @@
     },
     "devDependencies": {
         "@astryxdesign/cli": "0.7.11",
-        "@tauri-apps/cli": "^2.12.6",
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
         "prettier": "3.10.1",

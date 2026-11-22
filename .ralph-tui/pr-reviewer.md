@@ -23,6 +23,12 @@ the worker's worktree, so you work on a detached HEAD.
    below that the skill does not cover. Confirm each finding in the code
    before acting on it: read the callers, run the one test file that proves
    it. Drop a finding you cannot confirm.
+   Before fixing anything, post the review with
+   `gh pr comment <pr> --body-file -`: each confirmed finding with its file
+   and line, why it is wrong and the fix you will make, then a verdict on each
+   test the diff adds or changes (does it prove its criterion, and why). With
+   no findings, say so and why the PR is ready to merge. Write it so the owner
+   can follow it later without the diff open.
 4. **Fix** every confirmed finding yourself (the skill's Must fix and Should
    fix, and checklist gaps), commit, and push with
    `git push origin HEAD:<branch>`. Run only the test files covering your
@@ -55,7 +61,13 @@ with a note and the PR has a comment saying why.
   Middle Man (call the real target), Refused Bequest (composition over
   inheritance).
 - **Tests**: changed behaviour has a test at the cheapest level
-  (`docs/agents/testing.md`).
+  (`docs/agents/testing.md`). Delete tests the diff adds or leaves behind that
+  the "Banned tests" list forbids, that copy an existing test, or that no
+  longer reach the code they claim to cover.
+  A passing test proves nothing by itself: read each test the diff adds or
+  changes and check it asserts the criterion's observable outcome, not a mock
+  of the code under test or its internals. Rewrite a test that would stay
+  green without the change.
 - **Mockup**: a `new-ui` task matches the design its `Mockup:` line links
   under `docs/mockups/`.
 - **Secrets**: the diff carries no credentials, tokens, keys or personal data.

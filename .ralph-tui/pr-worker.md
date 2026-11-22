@@ -14,12 +14,26 @@ pushes to your branch and Beads updates are authorized (AGENTS.md).
    checks and the task notes, and continue from there.
 2. **Implement** every acceptance criterion. For routine decisions choose the
    simplest default consistent with `PRD.md` and record it with
-   `bd note <task> "..."`.
-3. **Check cheaply.** Read the code you changed and its callers. Run only the
-   test files you wrote or changed (`npm run test:file -- test/<file>`) and
-   `npx prettier --write` on the files you changed. CI runs the full fast
-   suite, format check and secret scan, so leave `npm test`,
-   `npm run test:affected`, `npm run test:slow` and `npm run verify` to it.
+   `bd note <task> "..."`. Behaviour a learner or caller would notice when it
+   breaks gets a test at the cheapest level, committed with the code: extend
+   the existing test of that behaviour before adding a file, and follow
+   "Writing a test" and "Banned tests" in `docs/agents/testing.md`. Refactors,
+   constants, copy, config and docs need no new test; when a change makes a
+   test obsolete, delete or rewrite it in the same commit. A criterion no test
+   can prove gets cited from the code in the PR body instead.
+3. **Check cheaply.** The owner's machine also runs the other workers, so keep
+   local runs small and let CI do the rest. Read the code you changed and its
+   callers. Run only the test files you wrote or changed, named one by one
+   (`npm run test:file -- test/<file>`), never a folder or glob, and
+   `npx prettier --write` on the files you changed. Leave `npm test`,
+   `npm run test:affected` and `tsc` to CI, which runs the full fast suite,
+   type check, format check and secret scan on every push. Do not build the
+   app, start the server, stage installs or write throwaway end-to-end scripts
+   to prove a criterion. When the acceptance
+   names the slow suite, run it on GitHub with
+   `gh workflow run slow-tests.yml --ref <branch>` and cite that run. Run
+   `npm run verify` or a `scripts/verify/` script only when the acceptance
+   names it, once, after the tests pass.
 4. **Commit** on your branch, as many commits as help, staging files by path.
    `.beads/issues.jsonl` stays out of every commit: the shared Beads database
    is the source of truth.

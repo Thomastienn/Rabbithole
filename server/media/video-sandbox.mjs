@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, lstatSync, readlinkSync } from 'node:fs';
 import { lstat, realpath } from 'node:fs/promises';
 import { join, basename, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
@@ -8,20 +8,41 @@ import { videoBrowser } from './manim.mjs';
 
 export const REPO = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
 
+// The only host folders model-written code sees besides its own binds: programs, libraries and their config, read-only.
+// The rest of the disk (/run with Docker and D-Bus sockets, /media, /mnt, /home) is absent; a distro's /bin or /lib that
+// links into /usr stays a link. Debian's TeX Live keeps its formats in /var/lib/texmf, and Homebrew on Linux installs
+// Node with its own loader and libraries under /home/linuxbrew.
+export const SYSTEM_DIRS = [
+    '/usr',
+    '/etc',
+    '/bin',
+    '/sbin',
+    '/lib',
+    '/lib32',
+    '/lib64',
+    '/var/lib/texmf',
+    '/var/cache/fontconfig',
+    '/home/linuxbrew/.linuxbrew',
+];
+export const systemBinds = () =>
+    SYSTEM_DIRS.flatMap((dir) => {
+        const entry = lstatSync(dir, { throwIfNoEntry: false });
+        if (!entry) return [];
+        return entry.isSymbolicLink()
+            ? ['--symlink', readlinkSync(dir), dir]
+            : ['--ro-bind', dir, dir];
+    });
+
 // Bundling and Chromium run generated code: no network, an empty home, read-only system, and only this workspace writable.
 // The learner's home and app-data directory are hidden; attempts are grouped by their owning artifact.
 export const SANDBOX = (workspace) => [
-    '--ro-bind',
-    '/',
-    '/',
+    ...systemBinds(),
     '--tmpfs',
     homedir(),
     '--tmpfs',
     resolve(workspace, /^cut-\d+$/.test(basename(workspace)) ? '../../../..' : '../../..'),
     '--tmpfs',
     '/tmp',
-    '--tmpfs',
-    '/run/user',
     '--ro-bind',
     join(REPO, 'node_modules'),
     join(REPO, 'node_modules'),
@@ -63,12 +84,17 @@ export const SANDBOX = (workspace) => [
     '--setenv',
     'TMPDIR',
     join(workspace, 'tmp'),
+    // LaTeX's font and format caches; TinyTeX would otherwise write them into its own read-only folder.
+    '--setenv',
+    'TEXMFVAR',
+    join(workspace, 'tmp', 'texmf-var'),
 ];
 
 // bwrap flags and how many values follow each; the first other word starts the command.
 const BWRAP = {
     '--ro-bind': 2,
     '--bind': 2,
+    '--symlink': 2,
     '--setenv': 2,
     '--tmpfs': 1,
     '--chdir': 1,
@@ -81,14 +107,15 @@ const BWRAP = {
 };
 
 // The Windows launcher reads the same rules: read binds become --read and the one writable bind the workspace.
-// Hidden mounts need nothing, as the sandbox account cannot see the learner's home or app data; PATH holds POSIX folders.
+// Hidden mounts and the POSIX system folders need nothing, as the sandbox account cannot see the learner's home or app data
+// and reads Windows' own system; PATH holds POSIX folders.
 export function launcherArgs(args) {
     const out = [];
     let i = 0;
     for (; i < args.length && args[i] in BWRAP; i += 1 + BWRAP[args[i]]) {
         const [flag, a, b] = args.slice(i, i + 3);
         if (flag === '--bind') out.push('--workspace', a);
-        else if (flag === '--ro-bind' && a !== '/') out.push('--read', a);
+        else if (flag === '--ro-bind' && !SYSTEM_DIRS.includes(a)) out.push('--read', a);
         else if (flag === '--setenv' && a !== 'PATH') out.push('--env', `${a}=${b}`);
     }
     return [...out, '--', ...args.slice(i)];

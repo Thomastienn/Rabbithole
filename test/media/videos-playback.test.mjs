@@ -103,7 +103,7 @@ test('inline video exposes its phase and position, keeps inputs private, then se
 const repo = fileURLToPath(new URL('../..', import.meta.url));
 
 test(
-    'render sandbox hides home and app data, blocks network and confines writes to the workspace',
+    'render sandbox hides home, app data, /run, /media and /mnt, blocks network and sockets, confines writes to the workspace',
     { skip: !sandboxed && 'bwrap or Remotion browser missing' },
     () => {
         const dir = mkdtempSync(join(tmpdir(), 'tt-sandbox-'));
@@ -119,12 +119,14 @@ test(
     tryIt('home', () => fs.readdirSync(${JSON.stringify(join(homedir(), '.claude'))}));
     tryIt('repo', () => fs.readFileSync(${JSON.stringify(join(repo, 'package.json'))}));
     tryIt('writeOutside', () => fs.writeFileSync('/usr/x', ''));
+    r.hostFolders = ['/run', '/media', '/mnt'].filter((d) => fs.existsSync(d));
     tryIt('writeWorkspace', () => fs.writeFileSync('ok', ''));
     r.audio = fs.readFileSync('public/narration.mp3', 'utf8');
     tryIt('mutateAudio', () => fs.writeFileSync('public/narration.mp3', 'changed'));
     tryIt('mutateTiming', () => fs.writeFileSync('narration.json', 'changed'));
     r.env = Object.keys(process.env).sort().join(',');
-    require('net').connect(443, '1.1.1.1').on('connect', () => { r.network = 'allowed'; done(); }).on('error', () => { r.network = 'denied'; done(); });
+    require('net').connect('/run/docker.sock').on('connect', () => { r.docker = 'allowed'; net(); }).on('error', () => { r.docker = 'denied'; net(); });
+    const net = () => require('net').connect(443, '1.1.1.1').on('connect', () => { r.network = 'allowed'; done(); }).on('error', () => { r.network = 'denied'; done(); });
     function done() { console.log(JSON.stringify(r)); process.exit(0); }`;
         const run = spawnSync('bwrap', [...SANDBOX(workspace), process.execPath, '-e', probe], {
             encoding: 'utf8',
@@ -135,11 +137,13 @@ test(
             home: 'denied',
             repo: 'denied',
             writeOutside: 'denied',
+            hostFolders: [],
             writeWorkspace: 'allowed',
             audio: 'OWNED AUDIO',
             mutateAudio: 'denied',
             mutateTiming: 'denied',
-            env: 'HOME,PATH,PWD,TMPDIR',
+            env: 'HOME,PATH,PWD,TEXMFVAR,TMPDIR',
+            docker: 'denied',
             network: 'denied',
         });
     },

@@ -67,7 +67,15 @@ async function publicHost(url, lookup, isPublic) {
 // detected downloader and clip the function that downloads and trims (a fake in tests).
 export async function fetchExhibit(
     planned,
-    { search, signal, clips, clip = downloadClip, lookup = dnsLookup, isPublic = publicAddress },
+    {
+        search,
+        signal,
+        clips,
+        tmp,
+        clip = downloadClip,
+        lookup = dnsLookup,
+        isPublic = publicAddress,
+    },
 ) {
     const category = { image: 'images', clip: 'videos' }[planned.kind];
     const { results } = JSON.parse(
@@ -105,7 +113,7 @@ export async function fetchExhibit(
                     ...(sound && { sound, sentence: planned.sentence }),
                     bytes: await clip(
                         { url: r.url, start, end, ...(sound && { sound }) },
-                        { clips, signal },
+                        { clips, signal, tmp },
                     ),
                     type: 'video/mp4',
                 };
