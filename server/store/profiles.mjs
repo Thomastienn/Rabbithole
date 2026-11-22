@@ -234,6 +234,17 @@ export const profiles = {
             )
             .run(url);
     },
+    videoMode() {
+        return this.db.prepare('SELECT mode FROM video_mode WHERE id=1').get()?.mode ?? 'quality';
+    },
+    saveVideoMode(mode) {
+        this.db
+            .prepare(
+                'INSERT INTO video_mode(id,mode) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET mode=excluded.mode',
+            )
+            .run(mode);
+        return this.videoMode();
+    },
     saveTutorStyle(text) {
         this.db
             .prepare(

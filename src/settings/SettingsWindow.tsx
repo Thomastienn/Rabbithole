@@ -15,7 +15,7 @@ import {
 import EndpointSettings from './EndpointSettings';
 import SuggestionSettings, { AutomaticSuggestions } from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
-import SmartSettings from './SmartSettings';
+import SmartSettings, { VideoMode } from './SmartSettings';
 import ModelProfiles from './ModelProfiles';
 import TutorStyleSettings from './TutorStyleSettings';
 import MemoryNoteSettings from './MemoryNoteSettings';
@@ -213,6 +213,10 @@ export default function SettingsWindow({
                                 onSaved={() => setRolesVersion((v) => v + 1)}
                             />
                         </ModelProfiles>
+                        <Divider />
+                        <Section title="Videos">
+                            <VideoMode />
+                        </Section>
                         <Divider />
                         <Section title="Suggestions">
                             <AutomaticSuggestions />

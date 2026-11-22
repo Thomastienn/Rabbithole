@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
 import ModelPicker from './ModelPicker';
@@ -243,5 +244,51 @@ export default function SmartSettings({
                 </div>
             </div>
         </>
+    );
+}
+
+type VideoModeValue = 'quality' | 'saving';
+
+// How much smart model work a video gets; app-wide, read when a video starts or is retried.
+export function VideoMode() {
+    const [mode, setMode] = useState<VideoModeValue>(),
+        [pending, setPending] = useState(false),
+        [error, setError] = useState('');
+    useEffect(() => {
+        api('/api/settings/video-mode').then(
+            (s) => setMode(s.mode),
+            (e) => setError((e as Error).message),
+        );
+    }, []);
+    async function save(next: VideoModeValue) {
+        setPending(true);
+        setError('');
+        try {
+            setMode((await api('/api/settings/video-mode', { mode: next })).mode);
+        } catch (e) {
+            setError((e as Error).message);
+        } finally {
+            setPending(false);
+        }
+    }
+    return (
+        <VStack gap={2}>
+            <Selector
+                label="Video mode"
+                value={mode ?? 'quality'}
+                isDisabled={mode === undefined || pending}
+                options={[
+                    { value: 'quality', label: 'Quality' },
+                    { value: 'saving', label: 'Saving' },
+                ]}
+                onChange={(value) => void save(value as VideoModeValue)}
+                description="Saving skips cut audits, piece improvements and reference photos to spend fewer tokens. Applies to every profile, from the next video or Retry."
+            />
+            {error && (
+                <Text type="supporting" role="alert">
+                    {error}
+                </Text>
+            )}
+        </VStack>
     );
 }
