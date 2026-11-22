@@ -5,7 +5,7 @@ import type { Preview, Source } from '../map/TreeOverview';
 import type { Turn } from './turn';
 import type { BranchState } from './branch';
 import type { State, Tree } from './types';
-import { conversationAddresses } from '../map/treeList';
+import { conversationAddresses, subtreeIds } from '../map/treeList';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
 import { session } from '../media/ExportButton';
 
@@ -97,14 +97,8 @@ export function useChatState() {
         return () => clearTimeout(timer);
     }, [today]);
 
-    const visibleIds = (() => {
-        if (!root || !state) return [];
-        const ids = [root];
-        for (let i = 0; i < ids.length; i++)
-            for (const child of state.trees)
-                if (child.parent === ids[i] && !ids.includes(child.id)) ids.push(child.id);
-        return ids;
-    })();
+    const trees = state?.trees;
+    const visibleIds = useMemo(() => (root && trees ? subtreeIds(root, trees) : []), [root, trees]);
     function changeView(showOverview: boolean, id?: string) {
         // Snapshotting thousands of preview rows stalls large maps; their viewport still animates.
         if (

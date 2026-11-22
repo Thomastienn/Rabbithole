@@ -154,6 +154,11 @@ test('deleting a conversation removes it and every descendant, never its parent 
     assert.deepEqual(subtreeIds('child', trees), ['child', 'grand', 'great']);
     assert.deepEqual(subtreeIds('root', trees), ['root', 'child', 'sibling', 'grand', 'great']);
     assert.deepEqual(subtreeIds('sibling', trees), ['sibling']);
+    const cycle = [
+        { id: 'a', parent: 'b' },
+        { id: 'b', parent: 'a' },
+    ];
+    assert.deepEqual(subtreeIds('a', cycle), ['a', 'b'], 'a parent cycle ends');
 });
 
 test('delete confirmation names the kind, counts every conversation and appends a failure', () => {
