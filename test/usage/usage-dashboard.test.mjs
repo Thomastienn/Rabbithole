@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: UsageDashboard } = await import('../../src/usage/UsageDashboard.tsx');
 
 const now = new Date(2026, 2, 15, 12);
@@ -55,7 +56,8 @@ const serve = (list, hold) => async (path) => {
 
 async function mount(t, api) {
     let dom;
-    const view = await render(h(UsageDashboard, { api, providers }), (w) => {
+    fakeServer(t, api);
+    const view = await render(h(UsageDashboard, { providers }), (w) => {
         dom = ui(w);
     });
     t.after(view.cleanup);

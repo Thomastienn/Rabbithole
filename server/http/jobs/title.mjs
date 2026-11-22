@@ -58,7 +58,7 @@ export const cleanTitle = (text) => {
 
 // Detached quick thinking call; any failure keeps the placeholder and only logs a warning.
 export function titleJobs(ctx) {
-    const { store, compactions } = ctx;
+    const { store } = ctx;
     const startTitle = (conversation, question) => {
         const warn = (error) =>
             ctx.log(
@@ -73,7 +73,7 @@ export function titleJobs(ctx) {
             (async () => {
                 const quick = await ctx.quickModel(store.tree(conversation));
                 // A child's inherited context is ready once its compaction settles.
-                await compactions.get(conversation)?.done;
+                await ctx.jobs.get('compaction', conversation)?.done;
                 const tree = store.tree(conversation);
                 if (!tree || ctx.stopping) return;
                 // Suggestion and groundwork branches already explore a concept; only the others look one up.

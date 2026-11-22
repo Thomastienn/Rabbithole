@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { effortSupported, effortWasReset, type Model } from '../settings/models';
 import type { ModelSelection, Providers } from './types';
 import type { ChatState } from './useChatState';
+import { request as api } from '../serverAccess';
 
 // Chat model choice: the model list, the composer's menu and the saved selection per conversation.
 export function useChatModel(c: ChatState) {
-    const { state, tree, setTree, selected, setError, api } = c;
+    const { state, tree, setTree, selected, setError } = c;
     const [firstModel, setFirstModel] = useState<ModelSelection>();
     const [models, setModels] = useState<Model[]>();
     const [providers, setProviders] = useState<Providers>();

@@ -7,11 +7,12 @@ import { treeSearchSource } from '../shell/treeSearchSource';
 import { withTurn } from './turn';
 import type { State, Tree } from './types';
 import type { ChatState } from './useChatState';
+import { request as api } from '../serverAccess';
 import type { LayoutSaving } from '../map/useLayoutSaving';
 
 // Learning tree loading: state refresh, map previews, conversation selection and status polling.
 export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
-    const { state, setState, setTree, setPreviews, setDrafts, setError, setLoading, api } = c;
+    const { state, setState, setTree, setPreviews, setDrafts, setError, setLoading } = c;
     const { selected, request, checkpoints, turns, removed, renamed, overviewOrigin } = c;
 
     async function refresh() {
@@ -113,7 +114,7 @@ export function useLearningTrees(c: ChatState, layout: LayoutSaving) {
             .catch((e) => setError(e.message));
     }
     useEffect(loadInitial, []);
-    const titleSearch = useMemo(() => treeSearchSource(api, setError), []);
+    const titleSearch = useMemo(() => treeSearchSource(setError), []);
     async function openConversation(
         id: string,
         source?: Source,

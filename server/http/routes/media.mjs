@@ -5,7 +5,15 @@ import ts from 'typescript';
 import { mediaPath } from '../../media/videos.mjs';
 import { playable } from '../../media/cut-state.mjs';
 import { withParts } from '../../media/video-pieces.mjs';
-import { readable, savedCuts } from '../jobs/media.mjs';
+import { readable } from '../jobs/media.mjs';
+import {
+    videoWork,
+    attemptWork,
+    cutWork,
+    cutAudio,
+    cutClip,
+    readSaved,
+} from '../../media/video-workspace.mjs';
 import { formatLog, errorCause } from '../../log.mjs';
 
 // Validated cut TSX becomes a CommonJS function body; the player sandbox supplies require() for the kit and libraries.
@@ -53,8 +61,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                     .map((v) =>
                         readable(mediaPath(dir, v.id))
                             ? { ...v, exported: true }
-                            : savedCuts(store.libraryCuts(v.id).source) &&
-                                existsSync(join(dir, 'video-work', v.id))
+                            : readSaved(store.libraryCuts(v.id).source) &&
+                                existsSync(videoWork(dir, v.id))
                               ? { ...v, exported: false }
                               : { ...v, exported: false, available: false },
                     ),
@@ -187,13 +195,11 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                 artifact = conversation
                     ? store.artifact(conversation, id)
                     : saved && { kind: 'video', status: 'ready', id, ...saved };
-            let data = null;
-            try {
-                if (artifact?.kind === 'video' && ['pending', 'ready'].includes(artifact.status))
-                    data = JSON.parse(artifact.source);
-            } catch {}
-            if (!Array.isArray(data?.cuts))
-                return json(res, 404, { error: 'Live video not available.' });
+            const data =
+                artifact?.kind === 'video' &&
+                ['pending', 'ready'].includes(artifact.status) &&
+                readSaved(artifact.source);
+            if (!data) return json(res, 404, { error: 'Live video not available.' });
             if (!file)
                 return json(res, 200, {
                     paletteRoles: data.plan.styleBrief.paletteRoles,
@@ -219,11 +225,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                     exhibit?.file &&
                     (await readFile(
                         join(
-                            dir,
-                            'video-work',
-                            artifact.id,
-                            artifact.attempt,
-                            `cut-${exhibit.cut}`,
+                            cutWork(attemptWork(dir, artifact.id, artifact.attempt), exhibit.cut),
                             exhibit.file,
                         ),
                     ).catch(() => null));
@@ -235,15 +237,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             const cut = data.cuts[Number(index)];
             if (!cut || !playable(cut) || (file === 'clip' && cut.engine !== 'manim'))
                 return json(res, 404, { error: 'Cut not available.' });
-            const path = join(
-                dir,
-                'video-work',
-                artifact.id,
-                artifact.attempt,
-                `cut-${Number(index)}`,
-                'public',
-                file === 'clip' ? 'manim.mp4' : 'narration.mp3',
-            );
+            const cutDir = cutWork(attemptWork(dir, artifact.id, artifact.attempt), Number(index));
+            const path = file === 'clip' ? cutClip(cutDir) : cutAudio(cutDir);
             const bytes = await readFile(path).catch(() => null);
             if (!bytes) return json(res, 404, { error: 'Cut not available.' });
             res.writeHead(200, { 'Content-Type': file === 'clip' ? 'video/mp4' : 'audio/mpeg' });
@@ -269,10 +264,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         if (!store.libraryVideo(id))
             return json(res, 404, { error: 'Video not found in the library.' });
         if (!readable(mediaPath(dir, id))) {
-            if (
-                !savedCuts(store.libraryCuts(id).source) ||
-                !existsSync(join(dir, 'video-work', id))
-            )
+            if (!readSaved(store.libraryCuts(id).source) || !existsSync(videoWork(dir, id)))
                 return json(res, 409, {
                     error: 'This video’s saved work is missing, so it cannot be exported.',
                 });
@@ -319,7 +311,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         store.removeLibraryVideo(id);
         ctx.exports.get(id)?.controller.abort(new Error('Video moved to trash.'));
         // Production work is private app data, so it is deleted rather than trashed.
-        await rm(join(dir, 'video-work', id), { recursive: true, force: true });
+        await rm(videoWork(dir, id), { recursive: true, force: true });
         return json(res, 200, { trashed: !!info, missing: !info });
     }
     const jobMatch = url.pathname.match(
@@ -349,7 +341,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             ctx.startDrawing(
                 job,
                 tree.messages.find((m) => m.id === job.message)?.status === 'streaming'
-                    ? ctx.active.get(id)?.signal
+                    ? ctx.jobs.get('reply', id)?.controller.signal
                     : undefined,
             );
         return json(res, 200, live(job));
@@ -359,7 +351,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         const label = artifact.kind === 'visual' ? 'visual' : 'diagram';
         const job =
             artifact.status === 'failed' &&
-            !ctx.active.has(id) &&
+            !ctx.jobs.get('reply', id) &&
             !videos.has(artifactId) &&
             store.retryArtifact(id, artifactId);
         if (!job)

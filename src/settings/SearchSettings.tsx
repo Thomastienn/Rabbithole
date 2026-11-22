@@ -4,6 +4,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Done, Section } from './InterfaceSettings';
+import { request as api } from '../serverAccess';
 
 type SearchStatus = {
     url: string | null;
@@ -13,11 +14,7 @@ type SearchStatus = {
     error: string | null;
 };
 
-export default function SearchSettings({
-    api,
-}: {
-    api: (path: string, body?: unknown) => Promise<SearchStatus>;
-}) {
+export default function SearchSettings() {
     const [saved, setSaved] = useState<SearchStatus>(),
         [url, setUrl] = useState(''),
         [pending, setPending] = useState(true),

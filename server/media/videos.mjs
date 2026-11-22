@@ -21,6 +21,7 @@ import { improvePiece } from './video-pieces.mjs';
 import { sandboxProcess, sandboxOutput, REPO } from './video-sandbox.mjs';
 import { detectManim, videoBrowser } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
+import { attemptWork, cutWork, cutAudio, cutClip, readSaved } from './video-workspace.mjs';
 
 const MAX_MEDIA = 1024 * 1024 * 1024;
 export const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
@@ -137,7 +138,7 @@ export async function generateVideo({
     writerCapable = false,
     mcp,
 }) {
-    const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
+    const workspace = attemptWork(dir, artifact.id, artifact.attempt);
     const controller = new AbortController();
     const cancel = () => controller.abort(signal.reason);
     signal.addEventListener('abort', cancel, { once: true });
@@ -172,17 +173,17 @@ export async function generateVideo({
         controller.signal.throwIfAborted();
         await mkdir(join(workspace, 'out'), { recursive: true, mode: 0o700 });
         await mkdir(join(workspace, 'tmp'), { recursive: true, mode: 0o700 });
-        const prior = previous?.source ? JSON.parse(previous.source) : null;
+        const prior = previous?.source ? readSaved(previous.source) : null;
         const kept = [];
         if (prior?.plan)
             for (const [i, cut] of prior.cuts.entries()) {
-                const from = join(dir, 'video-work', artifact.id, previous.attempt, `cut-${i}`),
-                    to = join(workspace, `cut-${i}`);
+                const from = cutWork(attemptWork(dir, artifact.id, previous.attempt), i),
+                    to = cutWork(workspace, i);
                 // Copy, never share, the old cut folder; timing counts only if its audio came along.
                 const timing =
                     cut.timing &&
                     (await cp(from, to, { recursive: true })
-                        .then(() => access(join(to, 'public', 'narration.mp3')))
+                        .then(() => access(cutAudio(to)))
                         .then(
                             () => cut.timing,
                             () => rm(to, { recursive: true, force: true }).then(() => null),
@@ -237,7 +238,7 @@ export async function generateVideo({
         const { exhibits, references } = await videoMedia({
             plan,
             prior,
-            from: prior?.plan && join(dir, 'video-work', artifact.id, previous.attempt),
+            from: prior?.plan && attemptWork(dir, artifact.id, previous.attempt),
             searching,
             fetch: (planned) =>
                 exhibit(planned, {
@@ -327,7 +328,7 @@ export async function generateVideo({
                     if (error.manimUnavailable) onWarning(`WARN video ${error.message}`);
                     throw error;
                 }
-                await copyFile(clip, join(cutDir, 'public', 'manim.mp4'));
+                await copyFile(clip, cutClip(cutDir));
             },
             signal: controller.signal,
             wait,
@@ -452,17 +453,15 @@ export async function generateVideo({
         // Keep private code and timing; discard bundles, temporary clips, and audio of canceled or stopped attempts.
         // A failed attempt keeps its audio so Retry can reuse the narration.
         await Promise.all(
-            [
-                workspace,
-                ...Array.from({ length: count }, (_, i) => join(workspace, `cut-${i}`)),
-            ].flatMap((folder) =>
-                [
-                    'bundle',
-                    'tmp',
-                    'out',
-                    ...(!published && signal.aborted ? ['public', 'narration.json'] : []),
-                    '.remotion',
-                ].map((name) => rm(join(folder, name), { recursive: true, force: true })),
+            [workspace, ...Array.from({ length: count }, (_, i) => cutWork(workspace, i))].flatMap(
+                (folder) =>
+                    [
+                        'bundle',
+                        'tmp',
+                        'out',
+                        ...(!published && signal.aborted ? ['public', 'narration.json'] : []),
+                        '.remotion',
+                    ].map((name) => rm(join(folder, name), { recursive: true, force: true })),
             ),
         );
     }

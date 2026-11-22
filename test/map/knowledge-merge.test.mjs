@@ -5,6 +5,7 @@ import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { button } from '../support/ui.mjs';
 import { initial, setup, KnowledgeFixture as KnowledgePage } from '../support/knowledge-kit.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 
 test('knowledge merge keeps the selected concept, restores focus and retains the duplicate after a failed write', async (t) => {
     let graph = {
@@ -29,12 +30,10 @@ test('knowledge merge keeps the selected concept, restores focus and retains the
         }
         return graph;
     };
-    const { container, act, cleanup } = await render(
-        h(KnowledgePage, { api, activity: '' }),
-        (w) => {
-            dom = setup(w);
-        },
-    );
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(KnowledgePage, { activity: '' }), (w) => {
+        dom = setup(w);
+    });
     t.after(cleanup);
     const click = async (label, root = container) => {
         const b = button(root, label);

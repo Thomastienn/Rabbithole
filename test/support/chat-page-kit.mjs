@@ -1,7 +1,8 @@
-// Shared mount for ChatPage composition tests: the whole page over a fake fetch.
+// Shared mount for ChatPage composition tests: the whole page over a fake server.
 import { createElement as h } from 'react';
 import { render } from './render.mjs';
 import { ui } from './ui.mjs';
+import { fakeServer } from './fake-server.mjs';
 
 const models = {
     models: [{ provider: 'claude', model: 'opus', label: 'Opus', isDefault: true, efforts: [] }],
@@ -28,8 +29,7 @@ export async function mount(
 ) {
     const calls = [];
     const scrolls = [];
-    const saved = globalThis.fetch;
-    globalThis.fetch = async (path, options) => {
+    fakeServer(t, async (path, _body, options) => {
         calls.push(path);
         const response = await respond?.(path, options);
         if (response) return response;
@@ -56,7 +56,7 @@ export async function mount(
                             ? { t1: [{ ...tree.messages[1], artifacts }] }
                             : {};
         return { ok: true, json: async () => body };
-    };
+    });
     const { default: ChatPage } = await import('../../src/shell/ChatPage.tsx');
     let stubs;
     const page = await render(
@@ -80,7 +80,6 @@ export async function mount(
     );
     t.after(async () => {
         await page.cleanup();
-        globalThis.fetch = saved;
     });
     const settle = () =>
         page.act(async () => {

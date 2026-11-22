@@ -4,14 +4,11 @@ import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Section } from './InterfaceSettings';
+import { request as api } from '../serverAccess';
 
 type TutorStyle = { style: string | null; default: string };
 
-export default function TutorStyleSettings({
-    api,
-}: {
-    api: (path: string, body?: unknown) => Promise<TutorStyle>;
-}) {
+export default function TutorStyleSettings() {
     const [loaded, setLoaded] = useState(false),
         [text, setText] = useState(''),
         [pending, setPending] = useState(false),

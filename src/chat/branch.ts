@@ -2,6 +2,7 @@ import type { Source } from '../map/TreeOverview.tsx';
 import type { Point } from '../map/canvas.ts';
 import type { Message } from './turn.ts';
 import type { PartPicker } from '../media/VisualFrame.tsx';
+import { request } from '../serverAccess.ts';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
 export type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
@@ -41,13 +42,9 @@ export function branchRequest({ at: _at, ...anchor }: Anchor, question?: string)
     return { ...anchor, ...(question !== undefined && { question }) };
 }
 
-export function prepareBranch(
-    parent: string,
-    anchor: ReturnType<typeof branchRequest>,
-    api: (path: string, body?: unknown) => Promise<unknown>,
-) {
-    api(`/api/trees/${parent}/prepare`, anchor).catch(() => {}); // submit reports any failure
+export function prepareBranch(parent: string, anchor: ReturnType<typeof branchRequest>) {
+    request(`/api/trees/${parent}/prepare`, anchor).catch(() => {}); // submit reports any failure
     return () => {
-        api(`/api/trees/${parent}/unprepare`, anchor).catch(() => {});
+        request(`/api/trees/${parent}/unprepare`, anchor).catch(() => {});
     };
 }

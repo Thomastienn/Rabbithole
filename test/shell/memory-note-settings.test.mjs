@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: MemoryNoteSettings } = await import('../../src/settings/MemoryNoteSettings.tsx');
 
 test('memory note section shows the saved note, saves edits and reports status', async (t) => {
@@ -14,7 +15,8 @@ test('memory note section shows the saved note, saves edits and reports status',
         if (body) writes.push((saved = body));
         return saved;
     };
-    const { container, act, cleanup } = await render(h(MemoryNoteSettings, { api }), (w) => ui(w));
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(MemoryNoteSettings), (w) => ui(w));
     t.after(cleanup);
     await act(async () => {});
     const box = container.querySelector('textarea');

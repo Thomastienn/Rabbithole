@@ -146,17 +146,11 @@ export function createApp({
         search,
         stopping: false,
         csrf: randomBytes(32).toString('hex'),
-        active: new Map(),
-        discussing: new Map(),
         videos: new Map(),
         videoJobs: new Set(),
         // Video id -> running or failed export { controller, progress, done, error? }.
         exports: new Map(),
-        // Branch-first: child id -> background compaction { controller, done, settled, error }; kept after failure, removed on success.
-        compactions: new Map(),
-        // Parent id -> compaction started when the branch form opened { key, controller, run }; submit reuses it while the key matches.
-        prepared: new Map(),
-        // Title, verdict, suggestion and brief explanation jobs.
+        // Title, verdict, suggestion, brief explanation, compaction, discussion and reply jobs.
         jobs: backgroundJobs(),
         json: (res, status, body) => {
             res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -193,7 +187,7 @@ export function createApp({
         verdictJobs(ctx),
         briefJobs(ctx),
     );
-    const { active, videoJobs, compactions, prepared, json } = ctx;
+    const { videoJobs, json } = ctx;
     let stopped;
     recoverStaged(store, dir);
     const server = http.createServer(async (req, res) => {
@@ -304,15 +298,16 @@ export function createApp({
     });
     return {
         server,
-        active,
+        jobs: ctx.jobs,
         // Await the existing background jobs without polling their persisted state.
         settled: (artifact) =>
             Promise.allSettled(
                 [
                     ...videoJobs,
-                    ...ctx.jobs.list(),
-                    ...compactions.values(),
-                    ...ctx.discussing.values(),
+                    // A reply ends with its request and a form-open compaction waits for its form.
+                    ...ctx.jobs
+                        .list()
+                        .filter((job) => !['reply', 'prepared-compaction'].includes(job.kind)),
                 ]
                     .filter((v) => !artifact || v.artifact === artifact)
                     .map((v) => v.done),
@@ -320,15 +315,11 @@ export function createApp({
         stop: () => {
             if (stopped) return stopped;
             ctx.stopping = true;
-            for (const controller of active.values()) controller.abort();
-            for (const job of ctx.discussing.values()) job.controller.abort();
-            for (const v of videoJobs) v.controller.abort(STOPPED);
             for (const job of ctx.jobs.list()) job.controller.abort();
-            for (const c of compactions.values()) c.controller.abort();
+            for (const v of videoJobs) v.controller.abort(STOPPED);
             ctx.pieceStills.stop();
             downloads?.stop();
             for (const stream of ctx.downloadStreams) stream.end();
-            for (const parent of [...prepared.keys()]) ctx.unprepare(parent);
             store.interrupt();
             for (const p of new Set(Object.values(providers))) p?.close?.();
             // Let final interrupted events drain before closing sockets; bound shutdown for a stuck client or job.
@@ -344,8 +335,14 @@ export function createApp({
                     ctx.mcp.close(),
                     recognize.stop?.(),
                     ...[...videoJobs].map((v) => v.done),
-                    ...[...ctx.discussing.values()].map((v) => v.done),
-                    ...[...compactions.values()].map((v) => v.done),
+                    ...ctx.jobs
+                        .list()
+                        .filter((job) =>
+                            ['discussion', 'compaction', 'discussion-compaction'].includes(
+                                job.kind,
+                            ),
+                        )
+                        .map((job) => job.done),
                 ]).then(() => {
                     clearTimeout(timer);
                     resolve();

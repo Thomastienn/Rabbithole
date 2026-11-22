@@ -7,6 +7,7 @@ import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import { CUSTOM_EFFORT, effortOptions, effortSupported, type Model } from './models';
 import CustomEffort from './CustomEffort';
+import { request as api } from '../serverAccess';
 
 type Settings = {
     enabled: boolean;
@@ -18,12 +19,10 @@ const key = (model: Settings['model']) =>
 
 // Quick thinking role only; the automatic suggestions switch is global and lives beside the role table.
 export default function SuggestionSettings({
-    api,
     models,
     providers,
     onSaved,
 }: {
-    api: (path: string, body?: unknown) => Promise<Settings>;
     models?: Model[];
     providers?: Record<string, { label: string; connected: boolean }>;
     onSaved?: () => void;
@@ -188,11 +187,7 @@ export default function SuggestionSettings({
 }
 
 // Global on/off, outside every profile.
-export function AutomaticSuggestions({
-    api,
-}: {
-    api: (path: string, body?: unknown) => Promise<{ enabled: boolean }>;
-}) {
+export function AutomaticSuggestions() {
     const [enabled, setEnabled] = useState<boolean>(),
         [pending, setPending] = useState(false),
         [error, setError] = useState('');

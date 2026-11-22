@@ -5,6 +5,7 @@ import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { button } from '../support/ui.mjs';
 import { initial, setup } from '../support/knowledge-kit.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: KnowledgePage } = await import('../../src/knowledge/KnowledgePage.tsx');
 
 test('knowledge points, relations, zoom labels retain accessible state', async (t) => {
@@ -14,10 +15,8 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
         calls.push([path, body]);
         return graph;
     };
-    const { container, act, cleanup } = await render(
-        h(KnowledgePage, { api, activity: '' }),
-        setup,
-    );
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(KnowledgePage, { activity: '' }), setup);
     t.after(cleanup);
     const click = async (label, root = container) => {
         const b = button(root, label);

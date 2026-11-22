@@ -6,6 +6,7 @@ import type { Artifact } from '../media/artifacts';
 import { firstQuestion as startFirstQuestion } from './firstQuestion';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
+import { request as api } from '../serverAccess';
 import type { LayoutSaving } from '../map/useLayoutSaving';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
@@ -19,7 +20,7 @@ export function useTreeActions(
     { firstModel, currentModel }: ChatModel,
     { send }: ReplyStream,
 ) {
-    const { state, setState, setTree, setDrafts, setPreviews, setError, busy, setBusy, api } = c;
+    const { state, setState, setTree, setDrafts, setPreviews, setError, busy, setBusy } = c;
     const { pendingFiles, setPendingFiles } = c;
     const { root, setRoot, setTab, setOverview, setExpanded, setLoading, renaming, setRenaming } =
         c;
@@ -103,7 +104,6 @@ export function useTreeActions(
                 question,
                 firstModel && currentModel ? { ...firstModel, model: currentModel.model } : {},
                 {
-                    api,
                     refresh,
                     send: (question, next) => send(question, next, false, files),
                     open: async (next) => {

@@ -47,7 +47,7 @@ test('Stop and deadline abort diagram workers, bound uncooperative providers and
             assert.equal(saved.artifacts[0].source, null);
             assert.equal(saved.messages.at(-1).status, stop ? 'interrupted' : 'completed');
             assert.equal(saved.thread, null);
-            assert.equal(env.app.active.size, 0);
+            assert.equal(env.app.jobs.list('reply').length, 0);
             complete(lateEmit, source);
             release();
             await new Promise((resolve) => setImmediate(resolve));
@@ -231,7 +231,7 @@ test('a stopped job cannot publish late results into another conversation runnin
             (await env.get(`/api/trees/${a.id}/artifacts/${savedB.artifacts[0].id}`)).status,
             404,
         );
-        assert.equal(env.app.active.size, 0);
+        assert.equal(env.app.jobs.list('reply').length, 0);
     } finally {
         for (const w of workers.values()) w.resolve();
         env.close();

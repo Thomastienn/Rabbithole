@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: TutorToolsSettings } = await import('../../src/settings/TutorToolsSettings.tsx');
 
 test('tutor tools section shows one switch per tool and saves each switch', async (t) => {
@@ -20,7 +21,8 @@ test('tutor tools section shows one switch per tool and saves each switch', asyn
         }
         return tools;
     };
-    const { container, act, cleanup } = await render(h(TutorToolsSettings, { api }), (w) => ui(w));
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(TutorToolsSettings), (w) => ui(w));
     t.after(cleanup);
     await act(async () => {});
     const switches = () => [...container.querySelectorAll('[role=switch]')];
