@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { navigation, serverUrl, startError } from '../../desktop/shell.mjs';
+import { navigation, saveLayout, serverUrl, startError } from '../../desktop/shell.mjs';
+
+test('closing the window waits for the page layout save, but not for a hung or broken page', async () => {
+    const order = [];
+    await saveLayout(async (code) => {
+        assert.equal(code, 'globalThis.rabbitholeSaveLayout?.()');
+        await new Promise((done) => setTimeout(done, 5));
+        order.push('saved');
+    });
+    order.push('closed');
+    assert.deepEqual(order, ['saved', 'closed']);
+    await saveLayout(() => new Promise(() => {}), 5);
+    await saveLayout(() => Promise.reject(new Error('Script failed to execute')));
+});
 
 test('the shell reads the server address only from its Rabbithole line', () => {
     assert.equal(serverUrl('Rabbithole: http://127.0.0.1:43117'), 'http://127.0.0.1:43117');

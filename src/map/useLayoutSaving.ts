@@ -11,15 +11,34 @@ export function useLayoutSaving(c: ChatState) {
     const [layoutFailed, setLayoutFailed] = useState(false);
     const saver = useRef<ReturnType<typeof layoutSaver<Layout>>>(undefined);
     const writeLayout = useRef<(root: string, batch: Batch<Layout>) => Promise<unknown>>(undefined);
+    const leaving = useRef(false);
     writeLayout.current = (id, batch) =>
-        api(`/api/trees/${id}/layout`, { ...batch.layout, positions: batch.positions });
+        api(
+            `/api/trees/${id}/layout`,
+            { ...batch.layout, positions: batch.positions },
+            leaving.current,
+        );
     useEffect(() => {
         const s = layoutSaver<Layout>(
             (id, batch) => writeLayout.current!(id, batch),
             setLayoutFailed,
         );
         saver.current = s;
-        return s.dispose;
+        // Closing or reloading the page writes pending layout with requests that outlive it; flush starts every write synchronously.
+        // shortcut: keepalive bodies share a 64 KB cap, so a huge unsaved layout fails on close; split batches if that ever happens.
+        const leave = () => {
+            leaving.current = true;
+            void s.flush();
+            leaving.current = false;
+        };
+        addEventListener('pagehide', leave);
+        // The desktop shell awaits this before it closes the window and stops the server (desktop/main.mjs).
+        Object.assign(window, { rabbitholeSaveLayout: s.flush });
+        return () => {
+            removeEventListener('pagehide', leave);
+            Reflect.deleteProperty(window, 'rabbitholeSaveLayout');
+            s.dispose();
+        };
     }, []);
 
     // Trees show unsaved layout immediately; the saver writes it in one batch per minute.

@@ -24,3 +24,11 @@ export function startError(output, code, signal) {
         `Rabbithole's server stopped before it started (${signal ?? `exit code ${code}`}).`
     );
 }
+
+// Asks the page to write its pending map layout, waiting at most `ms` for a hung page.
+export function saveLayout(run, ms = 3000) {
+    return Promise.race([
+        run('globalThis.rabbitholeSaveLayout?.()').catch(() => {}),
+        new Promise((done) => setTimeout(done, ms).unref()),
+    ]);
+}

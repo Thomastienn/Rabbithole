@@ -144,13 +144,15 @@ export function useChatState() {
         changeView(true, overviewOrigin.current?.id);
     }
 
-    async function api(path: string, body?: unknown) {
+    // keepalive lets a write outlive the page that sends it, for saves while the page closes.
+    async function api(path: string, body?: unknown, keepalive = false) {
         const response = await fetch(
             path,
             body === undefined
                 ? undefined
                 : {
                       method: 'POST',
+                      keepalive,
                       headers: {
                           'Content-Type': 'application/json',
                           'X-Rabbithole-CSRF': state?.csrf ?? '',
