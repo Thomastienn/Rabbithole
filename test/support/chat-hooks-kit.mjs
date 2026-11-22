@@ -1,4 +1,5 @@
-// Shared mount for chat hook tests: the ChatPage hook composition over a fake server.
+// Shared mounts for chat hook tests: one hook with fakes for the owners it takes, or the
+// ChatPage hook composition over a fake server.
 import { createElement as h } from 'react';
 import { render } from './render.mjs';
 import { ui } from './ui.mjs';
@@ -103,5 +104,22 @@ export async function mount(t, intercept = () => {}) {
         calls,
         data,
         state,
+    };
+}
+
+// Mount one hook: `use` calls it with fakes for the owners it takes; `current` is its latest result.
+export async function mountHook(t, use) {
+    let current;
+    function Fixture() {
+        current = use();
+        return null;
+    }
+    const page = await render(h(Fixture), ui);
+    t.after(page.cleanup);
+    return {
+        ...page,
+        get current() {
+            return current;
+        },
     };
 }

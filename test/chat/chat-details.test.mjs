@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
+import { threadProps } from '../support/thread-props.mjs';
 const { InheritedContext, TokenStats, TokenStatsToggle, ReplyFeedback, NextQuestions, Groundwork } =
     await import('../../src/chat/ChatDetails.tsx');
 
@@ -191,41 +192,40 @@ test('the reply line renders task usage while media runs, including when the rep
     const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
     const counts = { input: 10, output: 2, cacheRead: 1 };
     const { container, cleanup } = await render(
-        h(ChatThread, {
-            tree: {
-                id: 'a',
-                artifacts: [],
-                suggestions: [{ message: 'r', usage: counts }],
-                messages: [
-                    {
-                        id: 'r',
-                        role: 'assistant',
-                        status: 'completed',
-                        text: 'Answer',
-                        usage: counts,
-                        mediaUsage: [
-                            { task: 'diagram', ...counts },
-                            { task: 'video', ...counts },
-                        ],
-                    },
-                    {
-                        id: 's',
-                        role: 'assistant',
-                        status: 'streaming',
-                        text: 'More',
-                        usage: null,
-                        mediaUsage: [{ task: 'video', input: null, output: null, cacheRead: null }],
-                    },
-                ],
-            },
-            c: { overview: false, setSelectingMessage() {} },
-            model: { modelLabel: () => 'Fixture' },
-            trees: { openConversation() {}, addresses: new Map(), state: { trees: [] } },
-            stream: { send() {} },
-            branchForm: { visualBranches: {}, groundworkBranches: {} },
-            actions: { videoAction() {} },
-            active: true,
-        }),
+        h(
+            ChatThread,
+            threadProps({
+                tree: {
+                    id: 'a',
+                    artifacts: [],
+                    suggestions: [{ message: 'r', usage: counts }],
+                    messages: [
+                        {
+                            id: 'r',
+                            role: 'assistant',
+                            status: 'completed',
+                            text: 'Answer',
+                            usage: counts,
+                            mediaUsage: [
+                                { task: 'diagram', ...counts },
+                                { task: 'video', ...counts },
+                            ],
+                        },
+                        {
+                            id: 's',
+                            role: 'assistant',
+                            status: 'streaming',
+                            text: 'More',
+                            usage: null,
+                            mediaUsage: [
+                                { task: 'video', input: null, output: null, cacheRead: null },
+                            ],
+                        },
+                    ],
+                },
+                active: true,
+            }),
+        ),
         ui,
     );
     t.after(cleanup);
@@ -268,35 +268,30 @@ test('free branches end their own reply as address chips in family ink, open the
     function Fixture() {
         const [trees, set] = useState(all);
         setTrees = set;
-        return h(ChatThread, {
-            tree: {
-                id: 'root',
-                artifacts: [],
-                messages: [
-                    { id: 'q1', role: 'user', status: 'completed', text: 'What are hyphae?' },
-                    { id: 'a1', role: 'assistant', status: 'completed', text: 'Thin threads.' },
-                    { id: 'q2', role: 'user', status: 'completed', text: 'How do they grow?' },
-                    {
-                        id: 'a2',
-                        role: 'assistant',
-                        status: 'completed',
-                        text: 'At the tip.',
-                        questions: ['What sets the pressure?'],
-                    },
-                ],
-            },
-            c: { overview: false, setSelectingMessage() {} },
-            model: { modelLabel: () => 'Fixture' },
-            trees: {
+        return h(
+            ChatThread,
+            threadProps({
+                tree: {
+                    id: 'root',
+                    artifacts: [],
+                    messages: [
+                        { id: 'q1', role: 'user', status: 'completed', text: 'What are hyphae?' },
+                        { id: 'a1', role: 'assistant', status: 'completed', text: 'Thin threads.' },
+                        { id: 'q2', role: 'user', status: 'completed', text: 'How do they grow?' },
+                        {
+                            id: 'a2',
+                            role: 'assistant',
+                            status: 'completed',
+                            text: 'At the tip.',
+                            questions: ['What sets the pressure?'],
+                        },
+                    ],
+                },
                 openConversation: (id) => opened.push(id),
                 addresses: conversationAddresses(trees),
-                state: { trees },
-            },
-            stream: { send() {} },
-            branchForm: { visualBranches: {}, groundworkBranches: {} },
-            actions: { videoAction() {} },
-            active: false,
-        });
+                trees,
+            }),
+        );
     }
     const { container, act, cleanup } = await render(h(Fixture), ui);
     t.after(cleanup);

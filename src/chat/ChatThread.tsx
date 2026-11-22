@@ -14,8 +14,8 @@ import { FreeBranches, Groundwork, NextQuestions, ReplyFeedback } from './ChatDe
 import Passage from './Passage';
 import Reply from './Reply';
 import BranchForm from './BranchForm';
+import type { Summary } from '../map/TreeOverview';
 import type { Tree } from './types';
-import type { ChatState } from './useChatState';
 import type { ChatModel } from './useChatModel';
 import type { LearningTrees } from './useLearningTrees';
 import type { ReplyStream } from './useReplyStream';
@@ -23,36 +23,68 @@ import type { BranchFormState } from './useBranchForm';
 import { MessageAttachments } from './Attachments';
 import type { TreeActions } from './useTreeActions';
 
+// The values the thread reads besides its conversation, its source passage and whether it replies.
+export type ThreadProps = Pick<ChatModel, 'modelLabel'> &
+    Pick<LearningTrees, 'openConversation' | 'addresses'> &
+    Pick<ReplyStream, 'send' | 'replyDiscussion'> &
+    Pick<
+        BranchFormState,
+        | 'branch'
+        | 'setQuestion'
+        | 'selectingMessage'
+        | 'setSelectingMessage'
+        | 'branching'
+        | 'submitBranch'
+        | 'closeBranch'
+        | 'openVisualPart'
+        | 'visualBranches'
+        | 'widenPart'
+        | 'discussionBranches'
+        | 'groundworkBranches'
+        | 'chooseGroundwork'
+        | 'explainBrief'
+        | 'pickPart'
+        | 'startBranch'
+    > &
+    Pick<TreeActions, 'videoAction'> & { trees: Summary[] };
+
 // The focused chat's questions and replies, with their figures, branch form and feedback.
 export default function ChatThread({
     tree,
-    c,
-    model: { modelLabel },
-    trees: { openConversation, addresses, state },
-    stream: { send, replyDiscussion },
-    branchForm,
-    actions: { videoAction },
+    overview,
     active,
     source,
     validSource,
-}: {
+    modelLabel,
+    openConversation,
+    addresses,
+    trees,
+    send,
+    replyDiscussion,
+    videoAction,
+    branch,
+    setQuestion,
+    selectingMessage,
+    setSelectingMessage,
+    branching,
+    submitBranch,
+    closeBranch,
+    openVisualPart,
+    visualBranches,
+    widenPart,
+    discussionBranches,
+    groundworkBranches,
+    chooseGroundwork,
+    explainBrief,
+    pickPart,
+    startBranch,
+}: ThreadProps & {
     tree: Tree;
-    c: ChatState;
-    model: ChatModel;
-    trees: LearningTrees;
-    stream: ReplyStream;
-    branchForm: BranchFormState;
-    actions: TreeActions;
+    overview: boolean;
     active: boolean;
     source?: Source;
     validSource?: boolean;
 }) {
-    const { overview } = c;
-    const { branch, setQuestion, selectingMessage, setSelectingMessage } = branchForm;
-    const { branching, submitBranch, closeBranch, openVisualPart, visualBranches, widenPart } =
-        branchForm;
-    const { discussionBranches, groundworkBranches, chooseGroundwork, explainBrief } = branchForm;
-    const { pickPart } = branchForm;
     return tree.messages.map((message) => {
         const suggestions = tree.suggestions?.find((s) => s.message === message.id),
             index =
@@ -137,26 +169,24 @@ export default function ChatThread({
                                           a.position != null,
                                   )
                         }
-                        branched={
-                            state?.trees.flatMap((t) =>
-                                t.parent === tree.id &&
-                                t.messageId === message.id &&
-                                !t.artifactId &&
-                                t.start !== null &&
-                                t.end !== null &&
-                                t.passage !== null
-                                    ? [
-                                          {
-                                              start: t.start,
-                                              end: t.end,
-                                              text: t.passage,
-                                              child: t.id,
-                                              title: t.title,
-                                          },
-                                      ]
-                                    : [],
-                            ) ?? []
-                        }
+                        branched={trees.flatMap((t) =>
+                            t.parent === tree.id &&
+                            t.messageId === message.id &&
+                            !t.artifactId &&
+                            t.start !== null &&
+                            t.end !== null &&
+                            t.passage !== null
+                                ? [
+                                      {
+                                          start: t.start,
+                                          end: t.end,
+                                          text: t.passage,
+                                          child: t.id,
+                                          title: t.title,
+                                      },
+                                  ]
+                                : [],
+                        )}
                         index={index}
                         reveal={
                             validSource && source?.messageId === message.id ? source : undefined
@@ -206,9 +236,7 @@ export default function ChatThread({
                         selecting={selectingMessage === message.id}
                         openSelection={() => setSelectingMessage(message.id)}
                         closeSelection={() => setSelectingMessage(undefined)}
-                        onBranch={(anchor, origin) =>
-                            branchForm.startBranch(tree.id, anchor, origin)
-                        }
+                        onBranch={(anchor, origin) => startBranch(tree.id, anchor, origin)}
                     />
                 ) : (
                     <>
@@ -285,7 +313,7 @@ export default function ChatThread({
                 />
                 {/* An empty passage marks a free branch; its row sits between the reply and its next questions. */}
                 <FreeBranches
-                    branches={(state?.trees ?? [])
+                    branches={trees
                         .filter(
                             (t) =>
                                 t.parent === tree.id &&

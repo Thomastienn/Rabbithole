@@ -19,19 +19,26 @@ import type { TreeActions } from '../chat/useTreeActions';
 
 // The Library tab: every learning tree as shelf volumes or a list, with search.
 export default function LibraryPanel({
-    c,
+    tab,
+    error,
+    root,
+    renaming,
+    setRenaming,
+    today,
     busy,
-    trees: { openTree, state },
-    actions: { newChat, rename, finishRename, askDelete },
+    openTree,
+    state,
+    newChat,
+    rename,
+    finishRename,
+    askDelete,
     firstQuestion,
 }: {
-    c: ChatState;
     busy: boolean;
-    trees: LearningTrees;
-    actions: TreeActions;
     firstQuestion: React.ReactNode;
-}) {
-    const { tab, error, root, renaming, setRenaming, today } = c;
+} & Pick<ChatState, 'tab' | 'error' | 'root' | 'renaming' | 'setRenaming' | 'today'> &
+    Pick<LearningTrees, 'openTree' | 'state'> &
+    Pick<TreeActions, 'newChat' | 'rename' | 'finishRename' | 'askDelete'>) {
     const [libraryQuery, setLibraryQuery] = useState('');
     const scrollQuiet = useRef<ReturnType<typeof setTimeout>>(undefined);
     const [libraryLayout, setLibraryLayout] = useState(savedLibraryLayout);

@@ -6,7 +6,7 @@ import type { Tree } from './types';
 
 // Targets on opening a chat: the composer, a passage to reveal, a figure picked in Contents or a bubble picked on the map.
 // useLearningTrees calls it with the open conversation it owns.
-export function useChatTargets({ overview }: ChatState, tree: Tree | undefined) {
+export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: Tree | undefined) {
     const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
     const [figureTarget, setFigureTarget] = useState<{ conversation: string; artifact: string }>();
     const [messageTarget, setMessageTarget] = useState<{ conversation: string; message: string }>();

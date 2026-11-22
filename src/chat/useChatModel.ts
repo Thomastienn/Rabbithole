@@ -6,7 +6,10 @@ import type { LearningTrees } from './useLearningTrees';
 import { request as api } from '../serverAccess';
 
 // Chat model choice: the model list, the composer's menu and the saved selection per conversation.
-export function useChatModel(c: ChatState, { state, tree, openId, change }: LearningTrees) {
+export function useChatModel(
+    c: Pick<ChatState, 'setError' | 'tab'>,
+    { state, tree, openId, change }: Pick<LearningTrees, 'state' | 'tree' | 'openId' | 'change'>,
+) {
     const { setError } = c;
     const [firstModel, setFirstModel] = useState<ModelSelection>();
     const [models, setModels] = useState<Model[]>();

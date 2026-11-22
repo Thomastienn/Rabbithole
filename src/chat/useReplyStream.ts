@@ -5,6 +5,7 @@ import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
+import type { ChatTargets } from './useChatTargets';
 import { mergeArtifact, type DiscussionReply } from '../media/artifacts';
 import { firstQuestion as startFirstQuestion } from './firstQuestion';
 import { replyStream, request as api } from '../serverAccess';
@@ -12,9 +13,33 @@ import { replyStream, request as api } from '../serverAccess';
 // Reply stream: sends a question or retry, applies SSE events live, then reloads the saved tree.
 // It owns the live turns, running streams, the first question's busy flag, drafts and pending files.
 export function useReplyStream(
-    c: ChatState,
-    trees: LearningTrees,
-    { savingModel, firstModel, currentModel }: ChatModel,
+    c: Pick<
+        ChatState,
+        'setError' | 'overviewOrigin' | 'setRoot' | 'setTab' | 'setOverview' | 'setExpanded'
+    >,
+    trees: Pick<
+        LearningTrees,
+        | 'refresh'
+        | 'activeKey'
+        | 'tree'
+        | 'state'
+        | 'setState'
+        | 'setTree'
+        | 'setPreviews'
+        | 'openId'
+        | 'reload'
+        | 'change'
+        | 'retitle'
+        | 'isRemoved'
+        | 'select'
+        | 'leave'
+        | 'live'
+    > & { targets: Pick<ChatTargets, 'focusNext' | 'composer'> },
+    {
+        savingModel,
+        firstModel,
+        currentModel,
+    }: Pick<ChatModel, 'savingModel' | 'firstModel' | 'currentModel'>,
     theme: { name: string; mode: string },
 ) {
     const { setError, overviewOrigin } = c;
@@ -26,8 +51,7 @@ export function useReplyStream(
     const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
     const [busy, setBusy] = useState(false);
     const streams = useRef(new Map<string, AbortController>());
-    const turns = useRef(new Map<string, Turn>());
-    trees.live.current = turns.current;
+    const turns = trees.live;
     const setDraft = (id: string, value: string) => setDrafts((d) => ({ ...d, [id]: value }));
     const setFiles = (id: string, files: File[]) => setPendingFiles((p) => ({ ...p, [id]: files }));
     const isLive = (id: string) => turns.current.has(id);
