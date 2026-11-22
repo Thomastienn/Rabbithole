@@ -45,6 +45,8 @@ export function downloadManager(tools, { file = null } = {}) {
         listeners = new Set(),
         controller = new AbortController(),
         installed = new Set(file ? remembered(file) : []),
+        // Add-ons installed before this launch: what they download again is an update.
+        previous = new Set(installed),
         found = new Set();
     let chain = Promise.resolve(),
         queuing = Promise.resolve(),
@@ -56,6 +58,7 @@ export function downloadManager(tools, { file = null } = {}) {
         bytes: item.bytes,
         total: item.total,
         percent: item.percent,
+        ...(item.update && { update: true }),
         ...(item.error && { error: item.error }),
     });
     // A ready download stays listed until the learner has opened the list once.
@@ -96,19 +99,19 @@ export function downloadManager(tools, { file = null } = {}) {
         addon.tools.map((id) => tools.find((t) => t.id === id)).filter(Boolean);
     const ready = (tool) => tool.ready().catch(() => false);
     // Queues the add-on's dependency first, then each of its tools a check finds not ready; tools found ready never list.
-    const queueNow = async (addon) => {
-        if (addon.dependency) await queueNow(byId(addon.dependency));
+    const queueNow = async (addon, update = false) => {
+        if (addon.dependency) await queueNow(byId(addon.dependency), update);
         for (const tool of toolsOf(addon)) {
             const item = items.get(tool.id);
             if (item && item.state !== 'failed') continue;
             const isReady = await ready(tool);
             if (controller.signal.aborted) return;
             if (isReady) found.add(tool.id);
-            else enqueue(item ?? { id: tool.id, name: tool.name, tool });
+            else enqueue(item ?? { id: tool.id, name: tool.name, tool, update });
         }
     };
     // One at a time: a second install must see what the first one listed.
-    const queue = (addon) => (queuing = queuing.then(() => queueNow(addon)));
+    const queue = (addon, update) => (queuing = queuing.then(() => queueNow(addon, update)));
     const remember = (addon) => {
         if (addon.dependency) remember(byId(addon.dependency));
         if (installed.has(addon.id)) return;
@@ -123,15 +126,18 @@ export function downloadManager(tools, { file = null } = {}) {
             found.has(t.id) ? { state: 'ready' } : (items.get(t.id) ?? { state: 'missing' }),
         );
         const failed = parts.find((p) => p.state === 'failed');
+        const active = parts.filter((p) => p.state === 'queued' || p.state === 'running');
         const state = failed
             ? 'failed'
-            : parts.some((p) => p.state === 'queued' || p.state === 'running')
-              ? 'downloading'
+            : active.length
+              ? active.some((p) => p.update)
+                  ? 'updating'
+                  : 'downloading'
               : parts.every((p) => p.state === 'ready')
                 ? 'installed'
                 : 'not-installed';
         const percent =
-            state === 'downloading'
+            active.length && !failed
                 ? Math.round(
                       parts.reduce(
                           (sum, p) => sum + (p.state === 'ready' ? 100 : (p.percent ?? 0)),
@@ -162,7 +168,7 @@ export function downloadManager(tools, { file = null } = {}) {
         start() {
             return (started ??= (async () => {
                 for (const addon of ADDONS) {
-                    if (requested(addon)) await queue(addon);
+                    if (requested(addon)) await queue(addon, previous.has(addon.id));
                     // A quiet look that never queues, so tools already in the tool root count as installed.
                     else if (!toolsOf(addon).some((t) => t.requested))
                         for (const tool of toolsOf(addon))
