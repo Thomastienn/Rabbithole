@@ -5,7 +5,7 @@ import { buildIsCurrent } from './build-state.mjs';
 import { ensureManim } from './manim-setup.mjs';
 import { ensurePython } from './python-setup.mjs';
 import { ensureClips } from './clips-setup.mjs';
-import { ensureLatex, ensureUv } from './tools-setup.mjs';
+import { ensureLatex, ensureSandbox, ensureUv, sandboxExe } from './tools-setup.mjs';
 
 if (Number(process.versions.node.split('.')[0]) < 24) {
     console.error(
@@ -52,6 +52,13 @@ try {
     await ensureLatex({ run });
     await ensureManim({ run });
     await ensureClips({ run });
+    try {
+        await ensureSandbox({ run });
+    } catch (error) {
+        console.warn(`${error.message} Videos and offline Python stay off until then.`);
+    }
+    // Model-written code on Windows runs through the downloaded launcher, as the desktop app's bundled one.
+    if (process.platform === 'win32') process.env.RABBITHOLE_SANDBOX ??= sandboxExe();
     await ensurePython({ run });
     // Import after npm installation so a fresh checkout can provision its dependencies.
     const { ensureBrowser } = await import('@remotion/renderer');

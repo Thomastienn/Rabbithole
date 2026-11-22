@@ -83,6 +83,18 @@ jobs:
           name: windows
           path: desktop/dist/*-setup.exe
           if-no-files-found: error
+      # npm start on Windows downloads this zip (SANDBOX_RELEASE in scripts/tools-setup.mjs); the log prints its SHA-256.
+      - name: Zip the sandbox launcher for npm start
+        shell: pwsh
+        run: |
+          $bins = 'rabbithole-sandbox', 'codex-command-runner', 'codex-windows-sandbox-setup' | ForEach-Object { "desktop/sandbox/target/release/$_.exe" }
+          Compress-Archive -Path $bins -DestinationPath rabbithole-sandbox-windows-x64.zip
+          (Get-FileHash rabbithole-sandbox-windows-x64.zip -Algorithm SHA256).Hash.ToLower()
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-sandbox
+          path: rabbithole-sandbox-windows-x64.zip
+          if-no-files-found: error
 
   release:
     needs: [linux, windows]

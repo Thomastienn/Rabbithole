@@ -87,7 +87,7 @@ try {
     console.log(`Rabbithole: ${url}`);
     // Set by npm start in an interactive terminal; a missing opener only leaves the printed address.
     if (process.env.RABBITHOLE_OPEN === '1')
-        spawn(process.platform === 'darwin' ? 'open' : 'xdg-open', [url], {
+        spawn({ darwin: 'open', win32: 'explorer.exe' }[process.platform] ?? 'xdg-open', [url], {
             stdio: 'ignore',
             detached: true,
         })

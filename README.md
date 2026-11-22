@@ -40,7 +40,7 @@ npm run serve                # start without opening a browser
 npm start -- --port 4318     # use another port (or set RABBITHOLE_PORT)
 ```
 
-Startup checks for system libraries such as Cairo and Pango and prints the install command for anything missing. Video rendering needs Linux with bubblewrap.
+Startup checks for system libraries such as Cairo and Pango and prints the install command for anything missing. Videos and offline Python run in a sandbox: bubblewrap on Linux, and on Windows a launcher that startup downloads and first-run setup turns on with one admin prompt.
 
 ## Connect a model
 
@@ -65,7 +65,7 @@ Both keep your data in the same folder as `npm start`. To build it yourself, `np
 
 ## Data and privacy
 
-Trees, messages and videos are stored in `~/.local/share/rabbithole` (or `$XDG_DATA_HOME/rabbithole`). Set `RABBITHOLE_DATA_DIR` to use another folder. The files are not encrypted, so back the folder up before you upgrade.
+Trees, messages and videos are stored in `~/.local/share/rabbithole` (or `$XDG_DATA_HOME/rabbithole`), and in `%APPDATA%\rabbithole` on Windows. Set `RABBITHOLE_DATA_DIR` to use another folder. The files are not encrypted, so back the folder up before you upgrade.
 
 The server only listens on `127.0.0.1`, and the app has no telemetry. Your questions and their branch context go to the provider you choose. Video narration goes to Microsoft's Edge TTS service.
 

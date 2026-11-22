@@ -7,8 +7,10 @@ import { dirname, join } from 'node:path';
 import { LINUX_PACKAGES, systemPackages, texBin, uvDir } from '../../server/media/manim.mjs';
 import {
     ensureLatex,
+    ensureSandbox,
     ensureUv,
     MANIM_TEX_PACKAGES,
+    sandboxExe,
     UV_SHA256,
     UV_VERSION,
 } from '../../scripts/tools-setup.mjs';
@@ -213,4 +215,32 @@ test('with bundled tools the Linux line asks only for bwrap, never pkg-config or
     assert.equal(linux(['pkg-config']), null);
     assert.deepEqual(linux(['bwrap', 'pkg-config']), { command: 'sudo apt install bubblewrap' });
     assert.deepEqual(linux(['bwrap'], 'ID=fedora\n'), { words: 'bubblewrap' });
+});
+
+test('npm start on Windows downloads the pinned sandbox zip into .tools/sandbox; other systems skip it', async (t) => {
+    const exes = [
+        'rabbithole-sandbox.exe',
+        'codex-command-runner.exe',
+        'codex-windows-sandbox-setup.exe',
+    ];
+    const f = fixture(t, exes);
+    const release = { tag: 'desktop-build-9', sha256: f.hashes['x86_64-pc-windows-msvc'] };
+    await ensureSandbox({ ...f, platform: 'linux', arch: 'x64', release, run: assert.fail });
+    await ensureSandbox({ ...f, platform: 'win32', arch: 'x64', release, log: () => {} });
+    assert.deepEqual(f.fetched, [
+        'https://github.com/Thomastienn/Rabbithole/releases/download/desktop-build-9/rabbithole-sandbox-windows-x64.zip',
+    ]);
+    assert.deepEqual(readdirSync(dirname(sandboxExe(f.root))).sort(), [...exes].sort());
+    // Already downloaded means no second download.
+    await ensureSandbox({ ...f, platform: 'win32', arch: 'x64', release, run: assert.fail });
+    assert.equal(f.fetched.length, 1);
+});
+
+test('a sandbox zip that does not match its pinned SHA-256 installs nothing', async (t) => {
+    const f = fixture(t, ['rabbithole-sandbox.exe']);
+    await assert.rejects(
+        ensureSandbox({ ...f, platform: 'win32', arch: 'x64', log: () => {} }),
+        /Windows sandbox download does not match its pinned SHA-256/,
+    );
+    assert.equal(existsSync(sandboxExe(f.root)), false);
 });

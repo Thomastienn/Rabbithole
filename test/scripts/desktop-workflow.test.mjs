@@ -46,6 +46,15 @@ test('each build job smoke-tests its own installer output before uploading it', 
     assert.match(job('linux'), /apt-get install -y bubblewrap/);
 });
 
+test('the Windows build also uploads the sandbox zip that npm start downloads', () => {
+    const steps = job('windows');
+    assert.match(
+        steps,
+        /Compress-Archive -Path \$bins -DestinationPath rabbithole-sandbox-windows-x64\.zip/,
+    );
+    assert.match(steps, /path: rabbithole-sandbox-windows-x64\.zip/);
+});
+
 test('both installers go to one draft release', () => {
     const release = job('release');
     assert.match(release, /needs: \[linux, windows\]/);

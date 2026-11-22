@@ -97,6 +97,12 @@ async function unpack(url, dir, { report, signal, name, extract, inner = '', sha
     return size;
 }
 
+// The Windows sandbox launcher and its Codex helpers (desktop/sandbox), zipped by the desktop build's release.
+// shortcut: placeholder until the owner publishes a desktop build with the zip; then set its tag and the SHA-256 its Windows job prints.
+export const SANDBOX_RELEASE = { tag: 'desktop-build-4', sha256: '0'.repeat(64) };
+export const sandboxExe = (root = toolRoot) =>
+    join(root, '.tools', 'sandbox', 'rabbithole-sandbox.exe');
+
 const untar = (run, strip) => (archive, part) =>
     run('tar', ['-xf', archive, '-C', part, ...(strip ? ['--strip-components', '1'] : [])]);
 
@@ -203,4 +209,33 @@ export async function ensureLatex({
         !['latex', 'dvisvgm'].every((tool) => existsSync(join(bin, windows ? `${tool}.exe` : tool)))
     )
         throw new Error('LaTeX install is incomplete. Retry the download.');
+}
+
+// The Windows sandbox for npm start, into .tools/sandbox; the desktop app bundles its own.
+export async function ensureSandbox({
+    run,
+    root = toolRoot,
+    platform = process.platform,
+    arch = process.arch,
+    report = () => {},
+    signal,
+    log = console.log,
+    release = SANDBOX_RELEASE,
+}) {
+    if (platform !== 'win32' || existsSync(sandboxExe(root))) return;
+    if (arch !== 'x64') throw new Error('The Windows sandbox download supports x64 only.');
+    log('Downloading the Windows sandbox. Internet access is needed.');
+    const dir = dirname(sandboxExe(root));
+    mkdirSync(dirname(dir), { recursive: true });
+    await unpack(
+        `https://github.com/Thomastienn/Rabbithole/releases/download/${release.tag}/rabbithole-sandbox-windows-x64.zip`,
+        dir,
+        {
+            report,
+            signal,
+            name: 'Windows sandbox',
+            extract: untar(run, false),
+            sha256: release.sha256,
+        },
+    );
 }
