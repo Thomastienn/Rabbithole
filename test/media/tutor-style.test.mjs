@@ -6,9 +6,9 @@ import {
     TUTOR_RULES,
     VERDICT_RULE,
     TUTOR_SKILLS,
-    diagramReply,
     tutorSystem,
-} from '../../server/media/diagrams.mjs';
+} from '../../server/media/tutor-instructions.mjs';
+import { diagramReply } from '../../server/media/reply-parser.mjs';
 import { TEACHING_SKILL, HUMANIZER_SKILL } from '../../server/media/skills.mjs';
 import { DISCUSSION_RULE } from '../../server/media/discussions.mjs';
 import { NOTES_RULE } from '../../server/suggestions.mjs';

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { open } from '../support/diagram-kit.mjs';
-import { tutorSystem, VERDICT_RULE } from '../../server/media/diagrams.mjs';
+import { tutorSystem, VERDICT_RULE } from '../../server/media/tutor-instructions.mjs';
 import { verdictPrompt } from '../../server/http/jobs/verdicts.mjs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';

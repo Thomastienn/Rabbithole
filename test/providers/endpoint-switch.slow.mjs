@@ -11,7 +11,7 @@ import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
-import { tutorSystem } from '../../server/media/diagrams.mjs';
+import { tutorSystem } from '../../server/media/tutor-instructions.mjs';
 import { APP_TOOLS } from '../../server/http/app-calls.mjs';
 import { inlineArgs } from '../support/tool-protocol.mjs';
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
-import { diagramReply } from '../../server/media/diagrams.mjs';
+import { diagramReply } from '../../server/media/reply-parser.mjs';
 import { renderMarkdown } from '../../src/markdown/markdown.ts';
 
 const call = `<tool_call>${JSON.stringify({ name: 'show_visual', arguments: { title: 'T' } })}</tool_call>`;

@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { discussionText } from '../../server/media/discussion-context.mjs';
 import { conceptNeighbourhood } from '../../server/neighbourhood.mjs';
-import { compactionMessages, tutorContext } from '../../server/media/diagrams.mjs';
+import { compactionMessages } from '../../server/media/compaction-messages.mjs';
+import { tutorContext } from '../../server/media/tutor-context.mjs';
 import { discussion } from '../fixtures/discussion.mjs';
 
 test('concept neighbourhood uses whole names and aliases, nearest hops, guesses and unknowns with bounds', () => {

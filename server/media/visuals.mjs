@@ -10,7 +10,7 @@ import {
     MOTION_DESIGN_SKILL,
     GSAP_SKILL,
 } from './skills.mjs';
-import { readCall } from './reply-requests.mjs';
+import { readCall } from './reply-parser.mjs';
 import { mediaCall, raced } from './media-call.mjs';
 import { patched, withSource } from './patches.mjs';
 import { DIFF } from './video-cut.mjs';

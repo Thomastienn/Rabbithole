@@ -1,4 +1,4 @@
-import { compactionMessages } from '../../media/diagrams.mjs';
+import { compactionMessages } from '../../media/compaction-messages.mjs';
 import { anchored } from '../../suggestions.mjs';
 import { partTrail, visualMessage, visualPassage } from '../../../src/media/artifacts.ts';
 

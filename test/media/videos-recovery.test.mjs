@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { tutorContext } from '../../server/media/diagrams.mjs';
+import { tutorContext } from '../../server/media/tutor-context.mjs';
 import { mediaPath } from '../../server/media/videos.mjs';
 import {
     directive,

@@ -1,4 +1,4 @@
-import { readCall } from '../media/reply-requests.mjs';
+import { readCall } from '../media/reply-parser.mjs';
 import { PLAN_TEXT_TOOLS } from '../media/plan-calls.mjs';
 
 // The quick thinking model's structured answers (ADR 0013): one plain tool call each, checked by the server.

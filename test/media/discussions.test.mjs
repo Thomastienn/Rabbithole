@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { diagramReply } from '../../server/media/diagrams.mjs';
+import { diagramReply } from '../../server/media/reply-parser.mjs';
 import { discussion, discussionBlock } from '../fixtures/discussion.mjs';
 
 test('discussion blocks stay hidden at every stream boundary and keep their reply position', () => {

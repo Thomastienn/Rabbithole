@@ -15,7 +15,7 @@ import {
     planText,
 } from '../support/video-kit.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
-import { tutorContext } from '../../server/media/diagrams.mjs';
+import { tutorContext } from '../../server/media/tutor-context.mjs';
 import {
     REMOTION_SKILL,
     REMOTION_3D_SKILL,

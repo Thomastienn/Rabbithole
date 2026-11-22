@@ -111,7 +111,7 @@ Keep the existing CopilotKit/OpenIntelligentUI base (MIT, 4,240 stars, commit `8
 - The contrast floor also fits (≥4.5:1 body text, ≥3:1 large text).
 - Exclusions: rendered-result "Verify" loops (no screenshots); theming browser surfaces such as scrollbars and selection (the app owns them); "source and self-host a face"; picking light or dark; the design-hook references; and the rest of the skill (live mode, critique, document). Its references are page- and product-design oriented.
 
-## Slot 4: Teaching like a good human teacher (`TUTOR_RULES` in `server/media/diagrams.mjs`)
+## Slot 4: Teaching like a good human teacher (`TUTOR_RULES` in `server/media/tutor-instructions.mjs`)
 
 **1. nweii/agent-stuff, `teach-me` (recommended)**
 

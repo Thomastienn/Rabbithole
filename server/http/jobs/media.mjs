@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { formatLog, errorCause, privateValues } from '../../log.mjs';
 import { accessSync, constants, existsSync, renameSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { generateDiagram } from '../../media/diagrams.mjs';
+import { generateDiagram } from '../../media/diagram-generator.mjs';
 import { generateVisual } from '../../media/visuals.mjs';
 import { generateVideo, mediaPath } from '../../media/videos.mjs';
 import { exportVideo } from '../../media/video-export.mjs';

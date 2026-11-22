@@ -4,7 +4,7 @@ import { createInterface } from 'node:readline';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { tutorSystem } from '../media/diagrams.mjs';
+import { tutorSystem } from '../media/tutor-instructions.mjs';
 import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
 import { ENDED, STALLED } from './chatStream.mjs';

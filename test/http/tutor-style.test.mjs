@@ -6,7 +6,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { DEFAULT_TUTOR_STYLE, TUTOR_SKILLS, tutorSystem } from '../../server/media/diagrams.mjs';
+import {
+    DEFAULT_TUTOR_STYLE,
+    TUTOR_SKILLS,
+    tutorSystem,
+} from '../../server/media/tutor-instructions.mjs';
 
 test('tutor style saves, normalizes empty or default text to null, restores and reaches the next message', async (t) => {
     const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-style-')), 'trees.sqlite'));

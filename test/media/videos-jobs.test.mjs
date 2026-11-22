@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
-import { tutorContext } from '../../server/media/diagrams.mjs';
+import { tutorContext } from '../../server/media/tutor-context.mjs';
 import { CUT_3D } from '../../server/media/video-cut.mjs';
 import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';

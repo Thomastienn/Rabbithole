@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateDiagram } from '../../server/media/diagrams.mjs';
+import { generateDiagram } from '../../server/media/diagram-generator.mjs';
 import { parseDiagram } from '../../server/media/mermaid-parse.mjs';
 
 const invalidSyntax = ['not Mermaid at all', 'flowchart TD\n A[unfinished'];

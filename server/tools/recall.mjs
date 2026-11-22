@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { cosine } from '../store/embeddings.mjs';
 import { lookUpConcept } from '../neighbourhood.mjs';
-import { compactionMessages } from '../media/diagrams.mjs';
+import { compactionMessages } from '../media/compaction-messages.mjs';
 import { conversationAddresses } from '../../src/map/treeList.ts';
 import { plainText } from '../../src/markdown/markdownText.ts';
 

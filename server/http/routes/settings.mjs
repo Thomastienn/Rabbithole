@@ -1,6 +1,6 @@
 import { TUTOR_TOOLS } from '../../tools/runner.mjs';
 import { EndpointError } from '../../providers/openai.mjs';
-import { DEFAULT_TUTOR_STYLE } from '../../media/diagrams.mjs';
+import { DEFAULT_TUTOR_STYLE } from '../../media/tutor-instructions.mjs';
 import { systemPackages } from '../../media/manim.mjs';
 import { MEMORY_NOTE_LIMIT, tooLong } from '../../tools/memoryNote.mjs';
 

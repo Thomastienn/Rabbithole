@@ -1,4 +1,4 @@
-import { diagramReply } from '../../server/media/diagrams.mjs';
+import { diagramReply } from '../../server/media/reply-parser.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';

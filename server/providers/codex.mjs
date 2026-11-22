@@ -3,7 +3,7 @@ import { launchArgs } from './findCli.mjs';
 import { createInterface } from 'node:readline';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tutorSystem } from '../media/diagrams.mjs';
+import { tutorSystem } from '../media/tutor-instructions.mjs';
 import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
 import { ENDED, STALLED } from './chatStream.mjs';

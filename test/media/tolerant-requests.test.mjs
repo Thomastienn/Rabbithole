@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { diagramReply } from '../../server/media/diagrams.mjs';
+import { diagramReply } from '../../server/media/reply-parser.mjs';
 
 const request = { title: 'T', description: 'D', intent: 'I', excerpt: 'E', shows: 'S' };
 const json = JSON.stringify(request);

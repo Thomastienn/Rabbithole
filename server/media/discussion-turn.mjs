@@ -1,4 +1,5 @@
-import { diagramReply, VERDICT_RULE } from './diagrams.mjs';
+import { diagramReply } from './reply-parser.mjs';
+import { VERDICT_RULE } from './tutor-instructions.mjs';
 import { NEIGHBOURHOOD_RULE } from '../neighbourhood.mjs';
 
 export const DISCUSSION_TURN_RULE =
