@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { generateVideo } from '../../server/media/videos.mjs';
-import { AUDIT_INSTRUCTIONS, SUBMIT_NOTE } from '../../server/media/video-cut.mjs';
+import { SUBMIT_NOTE } from '../../server/media/video-cut.mjs';
 import { CUT_ATTEMPTS, CUT_CHECKS } from '../../server/media/video-plan.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import {
@@ -40,9 +40,8 @@ async function video(submissions) {
     const error = await generateVideo({
         provider: {
             generate: async (t, text, emit) => {
-                if (t.instructions.startsWith('You plan'))
-                    return complete(emit, planText(planFor()));
-                if (t.instructions.startsWith(AUDIT_INSTRUCTIONS)) return audit(t, emit, pass);
+                if (t.stage === 'plan') return complete(emit, planText(planFor()));
+                if (t.stage === 'audit') return audit(t, emit, pass);
                 writers.push({ tree: t, task: fixerTask(text) });
                 for (const s of submissions)
                     try {

@@ -94,7 +94,7 @@ async function run({
         provider: {
             generate: async (t, text, emit) => {
                 calls.push({ instructions: t.instructions, input: JSON.parse(text) });
-                complete(emit, t.instructions.startsWith('You plan') ? planText(plan) : cut);
+                complete(emit, t.stage === 'plan' ? planText(plan) : cut);
             },
         },
         selection: {},

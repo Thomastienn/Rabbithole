@@ -9,17 +9,13 @@ import {
     complete,
     until,
     open,
+    asksPatch,
     fixerTask,
     patchOf,
     audit,
     pass,
     planText,
 } from '../support/video-kit.mjs';
-import {
-    AUDIT_INSTRUCTIONS,
-    PIECE_IMPROVE_INSTRUCTIONS,
-    PIECE_PATCH_NOTE,
-} from '../../server/media/video-cut.mjs';
 import { improvePiece } from '../../server/media/video-pieces.mjs';
 import { REMOTION_SKILL, HOUSE_STYLE_SKILL } from '../../server/media/skills.mjs';
 
@@ -49,17 +45,16 @@ async function run(t, rewrite, why = 'No crown on top') {
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
-                if (tree.instructions.startsWith('You write the set pieces'))
-                    return complete(emit, pieces);
-                if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
+                if (tree.stage === 'pieces') return complete(emit, pieces);
+                if (tree.stage === 'audit') {
                     calls.audit.push(JSON.parse(text));
                     return audit(tree, emit, pass, [
                         'flag_poor_piece',
                         { piece: 'Winner', reason: why },
                     ]);
                 }
-                if (tree.instructions.startsWith(PIECE_IMPROVE_INSTRUCTIONS)) {
+                if (tree.stage === 'improve') {
                     assert.ok(tree.instructions.includes(REMOTION_SKILL));
                     assert.ok(tree.instructions.includes(HOUSE_STYLE_SKILL));
                     const input = fixerTask(text);
@@ -67,9 +62,7 @@ async function run(t, rewrite, why = 'No crown on top') {
                     // The smart model answers a patch of the saved source.
                     return complete(
                         emit,
-                        tree.instructions.includes(PIECE_PATCH_NOTE)
-                            ? patchOf(input.source, rewrite)
-                            : rewrite,
+                        asksPatch(text) ? patchOf(input.source, rewrite) : rewrite,
                     );
                 }
                 complete(emit, usesPieces);
@@ -209,8 +202,8 @@ test('a piece patch that does not apply gets exactly one whole-source rewrite wi
     const entry = await improvePiece({
         piece,
         why: 'x',
-        call: async (rules, text) => {
-            calls.push(rules.includes(PIECE_PATCH_NOTE) ? 'patch' : JSON.parse(text));
+        call: async (_, text) => {
+            calls.push(asksPatch(text) ? 'patch' : JSON.parse(text));
             return calls.length === 1
                 ? patchOf('unrelated\nlines\n', 'other\n')
                 : `${better}\nexport function Winner3D() { return <group />; }`;

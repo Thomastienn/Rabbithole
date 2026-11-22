@@ -51,7 +51,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
                 emit({ type: 'usage', usage: { input: 10, output: 5, cacheRead: 2 } });
-                if (tree.instructions.startsWith('You plan')) {
+                if (tree.stage === 'plan') {
                     planning++;
                     return complete(emit, planText(plan));
                 }
@@ -166,7 +166,7 @@ for (const failure of ['brief', 'exhausted'])
                 generate: async (tree, text, emit) => {
                     if (tree.id) return complete(emit, 'Watch.' + directive);
                     emit({ type: 'usage', usage: { input: 2, output: 3, cacheRead: 0 } });
-                    if (tree.instructions.startsWith('You plan')) {
+                    if (tree.stage === 'plan') {
                         plans++;
                         return complete(emit, planText(plan));
                     }
@@ -238,7 +238,7 @@ test('Retry after a failed cut rewrites only that cut, keeps the rest and publis
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) {
+                if (tree.stage === 'plan') {
                     plans++;
                     return complete(emit, planText(plan));
                 }
@@ -358,7 +358,7 @@ test('a provider failure while writing a cut keeps its own wording', async (t) =
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
                 throw new Error(
                     'Model gpt-x is not in the catalog for Bearer tok-123 at /home/u/secret\nstack',
                 );

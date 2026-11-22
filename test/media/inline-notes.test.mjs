@@ -112,7 +112,7 @@ test('notes reach the learner while the reply streams, and quick thinking writes
     const env = await open(
         {
             generate: async (tree, text, emit) => {
-                if (tree.instructions?.startsWith('You mark passages')) {
+                if (tree.role === 'suggestions') {
                     quick.push(text);
                     // The hidden notes for a reply that ended; the fallback for one that did not.
                     return complete(
@@ -122,7 +122,7 @@ test('notes reach the learner while the reply streams, and quick thinking writes
                             : '{"suggestions":[{"text":"semaphore"}],"groundwork":["Counting"],"next_questions":["Why count permits?"]}',
                     );
                 }
-                if (tree.instructions?.startsWith('You judge')) {
+                if (tree.role === 'verdict') {
                     quick.push('verdicts');
                     return complete(emit, '[{"concept":"Mutex","level":1,"confidence":"low"}]');
                 }

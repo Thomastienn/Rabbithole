@@ -9,18 +9,13 @@ import {
     complete,
     until,
     open,
+    asksPatch,
     fixerTask,
     patchOf,
     audit,
     pass,
     planText,
 } from '../support/video-kit.mjs';
-import {
-    AUDIT_INSTRUCTIONS,
-    PIECES_INSTRUCTIONS,
-    REPAIR_NOTE,
-    REPAIR_PATCH_NOTE,
-} from '../../server/media/video-cut.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top.';
 const pieces = `import { colors, palette } from './kit';
@@ -44,16 +39,15 @@ test('a failed cut gets one repair with the failed code, set pieces and the prev
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
-                if (tree.instructions.startsWith(PIECES_INSTRUCTIONS))
-                    return complete(emit, pieces);
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
+                if (tree.stage === 'pieces') return complete(emit, pieces);
                 const input = fixerTask(text),
                     i = plan.cuts.findIndex((c) => c.purpose === input.cut.purpose);
-                if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
+                if (tree.stage === 'audit') {
                     audits.push({ i, images: tree.images });
                     return audit(tree, emit, pass);
                 }
-                if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+                if (tree.stage === 'repair' && asksPatch(text)) {
                     repairs.push({ i, input, images: tree.images });
                     return complete(emit, patchOf(input.failedCode, repaired));
                 }
@@ -110,12 +104,12 @@ test('adjacent repaired cuts share the repaired last frame; the first cut needs 
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
-                if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
+                if (tree.stage === 'audit') {
                     audits++;
                     return audit(tree, emit, pass);
                 }
-                if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+                if (tree.stage === 'repair' && asksPatch(text)) {
                     repairs.push({ input: fixerTask(text), images: tree.images });
                     return complete(emit, patchOf(fixerTask(text).failedCode, repaired));
                 }
@@ -165,15 +159,14 @@ test('a repair patch that does not apply gets one whole-source call in the same 
             {
                 generate: async (tree, text, emit) => {
                     if (tree.id) return complete(emit, 'Watch.' + directive);
-                    if (tree.instructions.startsWith('You plan'))
+                    if (tree.stage === 'plan')
                         return complete(emit, planText(planFor(composition, 1)));
-                    if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
-                        return audit(tree, emit, pass);
-                    if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+                    if (tree.stage === 'audit') return audit(tree, emit, pass);
+                    if (tree.stage === 'repair' && asksPatch(text)) {
                         calls.push(['patch', fixerTask(text).failedCode]);
                         return complete(emit, answer);
                     }
-                    if (tree.instructions.endsWith(REPAIR_NOTE)) {
+                    if (tree.stage === 'repair' && !asksPatch(text)) {
                         calls.push(['whole', JSON.parse(text).failedCode]);
                         return complete(emit, outcome === 'ready' ? repaired : broken);
                     }
@@ -225,13 +218,13 @@ test('a Remotion cut whose audit stills throw in the page spends the repair; a r
             {
                 generate: async (tree, text, emit) => {
                     if (tree.id) return complete(emit, 'Watch.' + directive);
-                    if (tree.instructions.startsWith('You plan'))
+                    if (tree.stage === 'plan')
                         return complete(emit, planText(planFor(composition, 1)));
-                    if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
+                    if (tree.stage === 'audit') {
                         audits++;
                         return audit(tree, emit, pass);
                     }
-                    if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+                    if (tree.stage === 'repair' && asksPatch(text)) {
                         repairs.push(fixerTask(text));
                         return complete(emit, patchOf(fixerTask(text).failedCode, fix));
                     }

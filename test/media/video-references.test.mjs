@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { generateVideo } from '../../server/media/videos.mjs';
-import { AUDIT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { planFor, planText, complete, fakeRender, audit, pass } from '../support/video-kit.mjs';
 
@@ -56,15 +55,14 @@ async function run({ photo = true, readsImages = true } = {}) {
         provider: {
             generate: async (t, text, emit) => {
                 const call = {
-                    instructions: t.instructions,
+                    stage: t.stage,
                     input: JSON.parse(text),
                     images: t.images,
                 };
                 calls.push(call);
-                if (t.instructions.startsWith('You plan')) return complete(emit, planText(plan));
-                if (t.instructions.startsWith('You write the set pieces'))
-                    return complete(emit, pieces);
-                if (t.instructions.startsWith(AUDIT_INSTRUCTIONS)) {
+                if (t.stage === 'plan') return complete(emit, planText(plan));
+                if (t.stage === 'pieces') return complete(emit, pieces);
+                if (t.stage === 'audit') {
                     call.photos = (t.images ?? [])
                         .filter((i) => i.type === 'image/png')
                         .map((i) => readFileSync(i.path));
@@ -127,11 +125,11 @@ test('a reference query fetches one photo before set pieces are drawn; the piece
     assert.equal(result, null);
     assert.equal(row.status, 'ready');
     assert.deepEqual(searches, [{ kind: 'image', query: 'Saturn V rocket' }]);
-    const writer = calls.find((c) => c.instructions.startsWith('You write the set pieces'));
+    const writer = calls.find((c) => c.stage === 'pieces');
     assert.deepEqual(writer.input.referencePhotos, ['Winner']);
     assert.equal(writer.images.length, 1);
     assert.deepEqual(readFileSync(writer.images[0].path), png);
-    const audits = calls.filter((c) => c.instructions.startsWith(AUDIT_INSTRUCTIONS));
+    const audits = calls.filter((c) => c.stage === 'audit');
     const winner = audits.find((a) => a.input.cut.purpose === 'Step 1'),
         trophy = audits.find((a) => a.input.cut.purpose === 'Step 2');
     assert.deepEqual(winner.input.referencePhotos, ['Winner']);
@@ -144,22 +142,16 @@ test('a reference query fetches one photo before set pieces are drawn; the piece
     );
     // No cut's host data carries the photo, and no cut writer is handed it.
     assert.ok(staged.every((s) => !s.includes('saturn')));
-    assert.ok(
-        calls
-            .filter((c) => c.input.cut && !c.instructions.startsWith(AUDIT_INSTRUCTIONS))
-            .every((c) => !c.images),
-    );
+    assert.ok(calls.filter((c) => c.input.cut && c.stage !== 'audit').every((c) => !c.images));
 });
 
 test('a set piece writer that cannot read images gets no photo, while the audit still does', async () => {
     const { result, calls } = await run({ readsImages: false });
     assert.equal(result, null);
-    const writer = calls.find((c) => c.instructions.startsWith('You write the set pieces'));
+    const writer = calls.find((c) => c.stage === 'pieces');
     assert.equal(writer.images, undefined);
     assert.equal(writer.input.referencePhotos, undefined);
-    const audit = calls.find(
-        (c) => c.instructions.startsWith(AUDIT_INSTRUCTIONS) && c.input.cut.purpose === 'Step 1',
-    );
+    const audit = calls.find((c) => c.stage === 'audit' && c.input.cut.purpose === 'Step 1');
     assert.deepEqual(audit.photos, [png]);
 });
 

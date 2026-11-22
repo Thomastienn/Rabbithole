@@ -11,6 +11,7 @@ import {
     open,
     job,
     fakeRender,
+    asksPatch,
     fixerTask,
     patchOf,
     repairAnswer,
@@ -19,12 +20,6 @@ import {
     problems,
     planText,
 } from '../support/video-kit.mjs';
-import {
-    AUDIT_INSTRUCTIONS,
-    FIX_NOTE,
-    REPAIR_NOTE,
-    REPAIR_PATCH_NOTE,
-} from '../../server/media/video-cut.mjs';
 import { auditFix, auditReport } from '../../server/media/audit-answers.mjs';
 import { ENGINES } from '../../server/media/cut-engines.mjs';
 
@@ -71,9 +66,9 @@ test('audits start together, see code, stills and the previous last frame; issue
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
                 const i = cutOf(plan, text);
-                if (tree.instructions.endsWith(FIX_NOTE)) {
+                if (tree.stage === 'fix') {
                     fixes.push({ i, tree, text, input: fixerTask(text) });
                     const row = env.store.tree(chat.id).artifacts[0];
                     rowsDuringFix = (
@@ -84,8 +79,7 @@ test('audits start together, see code, stills and the previous last frame; issue
                         JSON.stringify({ patch: patchOf(written(i), fixed), emphasis: moved }),
                     );
                 }
-                if (!tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
-                    return complete(emit, written(i));
+                if (tree.stage !== 'audit') return complete(emit, written(i));
                 audits.push({ i, input: JSON.parse(text), images: tree.images });
                 // Both audits are in flight at once; sequential audits would never get here.
                 await until(() => audits.length === 2);
@@ -197,13 +191,11 @@ test('a fix that breaks the check goes to a repair carrying the issues; one that
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
                 const i = cutOf(plan, text);
-                if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
-                    return audit(tree, emit, ...problems(issues));
-                if (tree.instructions.endsWith(REPAIR_PATCH_NOTE))
-                    repairs.push([i, fixerTask(text)]);
-                if (!tree.instructions.endsWith(FIX_NOTE))
+                if (tree.stage === 'audit') return audit(tree, emit, ...problems(issues));
+                if (tree.stage === 'repair' && asksPatch(text)) repairs.push([i, fixerTask(text)]);
+                if (tree.stage !== 'fix')
                     return complete(emit, repairAnswer(tree, text, written(i)));
                 fixCalls++;
                 complete(
@@ -261,11 +253,10 @@ test('a fix patch that does not parse or apply goes to the repair attempts carry
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
                 const i = cutOf(plan, text);
-                if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
-                    return audit(tree, emit, ...problems(issues));
-                if (tree.instructions.endsWith(FIX_NOTE)) {
+                if (tree.stage === 'audit') return audit(tree, emit, ...problems(issues));
+                if (tree.stage === 'fix') {
                     calls.push([i, 'fix']);
                     // Cut 0 answers a hunk whose context is not in the cut; cut 1 answers no diff at all.
                     return complete(
@@ -275,7 +266,7 @@ test('a fix patch that does not parse or apply goes to the repair attempts carry
                         }),
                     );
                 }
-                if (tree.instructions.endsWith(REPAIR_PATCH_NOTE)) {
+                if (tree.stage === 'repair' && asksPatch(text)) {
                     const task = fixerTask(text);
                     calls.push([
                         i,
@@ -285,7 +276,7 @@ test('a fix patch that does not parse or apply goes to the repair attempts carry
                     ]);
                     return complete(emit, repairAnswer(tree, text, repaired(i)));
                 }
-                if (tree.instructions.endsWith(REPAIR_NOTE)) calls.push([i, 'whole']);
+                if (tree.stage === 'repair' && !asksPatch(text)) calls.push([i, 'whole']);
                 complete(emit, written(i));
             },
         },
@@ -320,22 +311,16 @@ test('a failed fix patch on a cut out of repairs fails the cut', async (t) => {
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
                 const i = cutOf(plan, text);
-                if (tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
+                if (tree.stage === 'audit')
                     return audit(tree, emit, ...(i ? [pass] : problems(issues)));
-                if (tree.instructions.endsWith(FIX_NOTE)) {
+                if (tree.stage === 'fix') {
                     fixes++;
                     return complete(emit, JSON.stringify({ patch: 'move the label' }));
                 }
                 // Cut 0's repairs never validate.
-                complete(
-                    emit,
-                    tree.instructions.endsWith(REPAIR_NOTE) ||
-                        tree.instructions.endsWith(REPAIR_PATCH_NOTE)
-                        ? invalid
-                        : written(i),
-                );
+                complete(emit, tree.stage === 'repair' ? invalid : written(i));
             },
         },
         { videoSnapshot: stills([]) },
@@ -361,10 +346,8 @@ test('cancel stops a running snapshot and a running audit', async (t) => {
             {
                 generate: async (tree, text, emit, _, signal) => {
                     if (tree.id) return complete(emit, 'Watch.' + directive);
-                    if (tree.instructions.startsWith('You plan'))
-                        return complete(emit, planText(plan));
-                    if (!tree.instructions.startsWith(AUDIT_INSTRUCTIONS))
-                        return complete(emit, written(cutOf(plan, text)));
+                    if (tree.stage === 'plan') return complete(emit, planText(plan));
+                    if (tree.stage !== 'audit') return complete(emit, written(cutOf(plan, text)));
                     audits++;
                     holding = true;
                     await aborted(signal);

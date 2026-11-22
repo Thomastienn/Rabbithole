@@ -50,11 +50,11 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
     const provider = {
         generate: async (tree, text, emit) => {
             generations++;
-            if (tree.instructions?.startsWith('You plan')) {
+            if (tree.stage === 'plan') {
                 await gate('plan');
                 return complete(emit, planText(plan));
             }
-            if (tree.instructions?.startsWith('You write one Remotion cut')) {
+            if (tree.stage === 'cut') {
                 const step = JSON.parse(text).cut.purpose;
                 await gate({ 'Step 1': 'first', 'Step 2': 'second' }[step] ?? 'third');
                 return complete(emit, composition);

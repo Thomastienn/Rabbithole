@@ -402,7 +402,7 @@ test('branch compaction keeps passage detail and sees a visual only as one title
     const env = await open(
         {
             generate: async (tree, text, emit, save) => {
-                if (text.startsWith('Compact')) {
+                if (tree.role === 'compaction') {
                     compactions.push(text);
                     return complete(emit, 'Rounds summary.');
                 }

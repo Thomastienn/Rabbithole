@@ -42,7 +42,7 @@ async function saved(options = {}) {
                 emit,
                 tree.id
                     ? 'Sure.' + directive
-                    : tree.instructions.startsWith('You plan')
+                    : tree.stage === 'plan'
                       ? planText(planFor(composition, 2))
                       : composition,
             ),

@@ -66,7 +66,7 @@ test('make_video plans from the conversation; other media beside it gets a plain
         {
             generate: async (tree, text, emit, _save, signal) => {
                 if (!tree.id) {
-                    if (tree.instructions.startsWith('You plan')) plans.push(JSON.parse(text));
+                    if (tree.stage === 'plan') plans.push(JSON.parse(text));
                     return complete(emit, videoResponse(tree));
                 }
                 emit({ type: 'item', item: 'a', text: lead });
