@@ -38,7 +38,7 @@ const remembered = (file) => {
 };
 
 // Tool downloads run one at a time. State lives only in memory, so a tool that is not ready queues again on the next launch.
-// tools: [{ id, name, video?, requested?: () => boolean, ready: () => Promise<boolean>, run: ({ report, signal }) => Promise<void> }]
+// tools: [{ id, name, requested?: () => boolean, ready: () => Promise<boolean>, run: ({ report, signal }) => Promise<void> }]
 // file: where the data folder remembers which add-ons the learner installed.
 export function downloadManager(tools, { file = null } = {}) {
     const items = new Map(),
@@ -169,6 +169,8 @@ export function downloadManager(tools, { file = null } = {}) {
                             if (await ready(tool)) found.add(tool.id);
                     if (controller.signal.aborted) return;
                 }
+                // Tools found ready here may free a video waiting for them.
+                changed();
                 await chain;
             })());
         },
@@ -194,12 +196,12 @@ export function downloadManager(tools, { file = null } = {}) {
         },
         // The unavailable reason for a video while one of its tools is not ready, else null.
         videoWaiting() {
-            const needed = tools.filter((t) => t.video && items.has(t.id));
-            if (needed.every((t) => items.get(t.id).state === 'ready')) return null;
-            const percent = Math.round(
-                needed.reduce((sum, t) => sum + (items.get(t.id).percent ?? 0), 0) / needed.length,
-            );
-            return `Video tools are still downloading (${percent}%).`;
+            const video = byId('video-tools'),
+                { state, size, percent } = addonView(video);
+            if (state === 'installed') return null;
+            if (state === 'not-installed' && !requested(video))
+                return `Video tools aren't installed (about ${Math.round(size / 1e6)} MB).`;
+            return `Video tools are still downloading (${percent ?? 0}%).`;
         },
         idle: () => chain,
         stop: () => controller.abort(),

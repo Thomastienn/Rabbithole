@@ -69,7 +69,7 @@ export function useTreeActions(
     async function videoAction(
         id: string,
         artifactId: string,
-        action: 'cancel' | 'retry' | 'regenerate',
+        action: 'cancel' | 'retry' | 'regenerate' | 'install',
     ) {
         setError('');
         try {

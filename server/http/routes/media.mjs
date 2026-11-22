@@ -317,7 +317,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         return json(res, 200, { trashed: !!info, missing: !info });
     }
     const jobMatch = url.pathname.match(
-        /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry|regenerate)$/,
+        /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry|regenerate|install)$/,
     );
     if (!jobMatch) return false;
     const [, id, artifactId, action] = jobMatch,
@@ -379,6 +379,13 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     }
     if (!tree || artifact?.kind !== 'video')
         return json(res, 404, { error: 'Video not found in this conversation.' });
+    // Install video tools from a waiting card; the video renders once they are ready.
+    if (action === 'install') {
+        if (!ctx.downloads)
+            return json(res, 404, { error: 'Downloads are not managed by this server.' });
+        await ctx.downloads.install('video-tools');
+        return json(res, 200, live(artifact));
+    }
     if (action === 'cancel') {
         if (artifact.status !== 'pending')
             return json(res, 409, { error: 'This video is no longer generating.' });

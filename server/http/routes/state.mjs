@@ -15,9 +15,14 @@ export async function stateRoutes(req, res, url, ctx) {
             usage: store.usageSince(new Date().setHours(0, 0, 0, 0)),
             videos: [
                 ...new Set(
-                    [...ctx.jobs.list('video'), ...ctx.jobs.list('drawing')].map(
-                        (v) => v.conversation,
-                    ),
+                    [
+                        ...ctx.jobs.list('video'),
+                        ...ctx.jobs.list('drawing'),
+                        // Waiting cards poll while their tools download, so they render without asking again.
+                        ...(ctx.downloads?.addons()[0].state === 'downloading'
+                            ? store.waitingVideos()
+                            : []),
+                    ].map((v) => v.conversation),
                 ),
             ],
             suggesting: [...new Set(ctx.jobs.list('suggestion').map((s) => s.conversation))],

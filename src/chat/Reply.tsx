@@ -48,7 +48,10 @@ const Reply = memo(function Reply({
     discussionBranches?: Record<string, DiscussionBranch[]>;
     onOpenChild?: (id: string) => void;
     resources?: Resource[];
-    onArtifactAction?: (id: string, action: 'cancel' | 'retry' | 'regenerate') => Promise<void>;
+    onArtifactAction?: (
+        id: string,
+        action: 'cancel' | 'retry' | 'regenerate' | 'install',
+    ) => Promise<void>;
     onDiscussionReply?: DiscussionReply;
 }) {
     useEffect(ensureHighlightStyles, []);
