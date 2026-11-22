@@ -73,11 +73,10 @@ export async function writeCuts({
     readsImages = false,
     // Set piece drawing progress while their module streams: { drawing: names, drawn, total }.
     onDrawing = () => {},
-    // Whether the smart model calls tools natively, and the MCP server Claude and Codex reach them through.
-    capable = false,
+    // The MCP server Claude and Codex reach tools through.
+    mcp,
     // Whether the chat model, which writes the cuts, calls tools natively.
     writerCapable = false,
-    mcp,
 }) {
     // Retry keeps code from cuts not marked failed and timing whose audio was copied; the rest is written again.
     const cuts = plan.cuts.map((c, i) => ({
@@ -333,8 +332,7 @@ export async function writeCuts({
                 const report = auditReport(offered);
                 const answer = await call(
                     (cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS) +
-                        (plan.cuts[index].dimension === '3d' ? AUDIT_3D : '') +
-                        (capable ? '' : report.textTools),
+                        (plan.cuts[index].dimension === '3d' ? AUDIT_3D : ''),
                     JSON.stringify({
                         ...audited,
                         ...(offered.length && { libraryPieces: offered }),
@@ -344,7 +342,7 @@ export async function writeCuts({
                     undefined,
                     [...own, ...(previous ? [previous] : []), ...photos.map(photo)],
                     index + 1,
-                    capable && { tools: report.tools, mcp, runTool: report.run },
+                    { tools: report.tools, textTools: report.textTools, mcp, runTool: report.run },
                 );
                 report.read(answer);
                 // The video keeps the pieces it started with; a flagged piece is improved in the library alongside.

@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OpenAI } from '../../server/providers/openai.mjs';
-import { videoCall } from '../../server/media/video-call.mjs';
+import { mediaCall } from '../../server/media/media-call.mjs';
 import { fakeOpenAI, streamReply, streamToolCalls } from '../support/fake-openai.mjs';
 
 const FINISH = { name: 'finish_video', description: 'Finish.', parameters: { type: 'object' } };
@@ -31,16 +31,21 @@ async function silentAfterTool(t) {
 test('a video call that reports through tools may end with no text', async (t) => {
     const endpoint = await silentAfterTool(t),
         ran = [];
-    const answer = await videoCall(
+    const answer = await mediaCall(
         endpoint,
         { model: 'local-tutor' },
-        'Plan through tools.',
-        '{}',
-        new AbortController().signal,
-        undefined,
-        undefined,
-        undefined,
-        { tools: [FINISH], runTool: (name) => (ran.push(name), 'Video plan finished.') },
+        { role: 'video', bytes: 64 * 1024, incomplete: 'Incomplete.', failed: (reason) => reason },
+        {
+            instructions: 'Plan through tools.',
+            input: '{}',
+            signal: new AbortController().signal,
+            tools: {
+                capable: true,
+                reportsByTools: true,
+                tools: [FINISH],
+                runTool: (name) => (ran.push(name), 'Video plan finished.'),
+            },
+        },
     );
     assert.equal(answer, '');
     assert.deepEqual(ran, ['finish_video']);

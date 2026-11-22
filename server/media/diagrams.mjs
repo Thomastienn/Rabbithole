@@ -1,4 +1,4 @@
-import { collectText } from '../providers/chatStream.mjs';
+import { mediaCall, raced } from './media-call.mjs';
 import { DISCUSSION_RULE, readDiscussion } from './discussions.mjs';
 import { discussionText } from './discussion-context.mjs';
 import { NEIGHBOURHOOD_RULE } from '../neighbourhood.mjs';
@@ -17,6 +17,14 @@ import {
 } from './reply-requests.mjs';
 
 const MAX_SOURCE = 16 * 1024;
+const DIAGRAM_CALL = {
+    role: 'diagram',
+    bytes: MAX_SOURCE,
+    overflow: 'Diagram output exceeds 16 KiB.',
+    tooManyItems: 'Diagram output exceeds 32 message items.',
+    incomplete: 'Diagram generation did not complete.',
+    failed: () => 'Diagram provider failed to generate a result.',
+};
 // Resource bound on worker calls per reply, not a node limit inside a diagram.
 const MAX_DIAGRAMS = 6;
 export const LIMITS = { title: 120, description: 280, intent: 600, excerpt: 1200 };
@@ -448,51 +456,22 @@ export async function generateDiagram(
 ) {
     const controller = new AbortController();
     const cancel = () => controller.abort(new Error('Diagram generation cancelled.'));
-    const timer = setTimeout(
-        () => controller.abort(new Error('Diagram generation timed out.')),
-        timeout,
-    );
     parentSignal.addEventListener('abort', cancel, { once: true });
     if (parentSignal.aborted) cancel();
-    let parser, rejectAbort;
-    const aborted = new Promise((_, reject) => {
-        rejectAbort = () => reject(controller.signal.reason);
-        controller.signal.addEventListener('abort', rejectAbort, { once: true });
-        if (controller.signal.aborted) rejectAbort();
-    });
+    let parser;
     const run = async () => {
-        const streamed = collectText();
-        const { items } = streamed;
         if (controller.signal.aborted) throw controller.signal.reason;
-        try {
-            await provider.generate(
-                {
-                    provider: selection.provider,
-                    model: selection.model,
-                    thread: null,
-                    instructions: WORKER_INSTRUCTIONS,
-                },
-                JSON.stringify(task),
-                (event) => {
-                    if (controller.signal.aborted || !streamed.onEvent(event)) return;
-                    if (items.size > 32)
-                        controller.abort(new Error('Diagram output exceeds 32 message items.'));
-                    else if (
-                        [...items.values()].reduce((n, value) => n + Buffer.byteLength(value), 0) >
-                        MAX_SOURCE
-                    )
-                        controller.abort(new Error('Diagram output exceeds 16 KiB.'));
-                },
-                () => {},
-                controller.signal,
-            );
-        } catch {
-            throw new Error('Diagram provider failed to generate a result.');
-        }
-        if (controller.signal.aborted) throw controller.signal.reason;
-        if (streamed.status !== 'completed')
-            throw new Error('Diagram generation did not complete.');
-        const source = safeDiagramSource(streamed.text('\n\n'));
+        const answer = await mediaCall(
+            provider,
+            { provider: selection.provider, model: selection.model },
+            DIAGRAM_CALL,
+            {
+                instructions: WORKER_INSTRUCTIONS,
+                input: JSON.stringify(task),
+                signal: controller.signal,
+            },
+        );
+        const source = safeDiagramSource(answer);
         if (parse) {
             if (!(await parse(source))) throw new Error('Invalid Mermaid syntax.');
             return source;
@@ -513,11 +492,9 @@ export async function generateDiagram(
         return source;
     };
     try {
-        return await Promise.race([aborted, run()]);
+        return await raced(controller, run(), timeout, 'Diagram generation timed out.');
     } finally {
-        clearTimeout(timer);
         parentSignal.removeEventListener('abort', cancel);
-        controller.signal.removeEventListener('abort', rejectAbort);
         if (parser) await parser.terminate();
     }
 }

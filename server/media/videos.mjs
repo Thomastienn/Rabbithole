@@ -3,11 +3,17 @@ import { readFileSync } from 'node:fs';
 import { mkdir, open, rm, copyFile, cp, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { edgeNarration } from './narration.mjs';
-import { libraryPieces, PLAN_INSTRUCTIONS, EXHIBITS_NOTE, CLIPS_NOTE } from './video-plan.mjs';
+import {
+    libraryPieces,
+    PLAN_INSTRUCTIONS,
+    EXHIBITS_NOTE,
+    CLIPS_NOTE,
+    MAX_SOURCE,
+} from './video-plan.mjs';
 import { fetchExhibit, videoMedia } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
 import { writeCuts, playable, cutRows } from './video-cuts.mjs';
-import { videoCall } from './video-call.mjs';
+import { mediaCall, raced } from './media-call.mjs';
 import { planBuilder } from './plan-calls.mjs';
 
 export { playable };
@@ -89,6 +95,13 @@ export async function validateOutput(workspace, output) {
 }
 
 const OVERRUN = 'Video generation ran over two hours.';
+const VIDEO_CALL = {
+    role: 'video',
+    bytes: MAX_SOURCE,
+    overflow: 'Video composition exceeds 64 KiB.',
+    incomplete: 'Video composition did not complete.',
+    failed: (reason) => `Video provider failed: ${reason}`,
+};
 
 export const mediaPath = (dir, id) => join(dir, 'videos', `${id}.mp4`);
 
@@ -131,41 +144,26 @@ export async function generateVideo({
     const cancel = () => controller.abort(signal.reason);
     signal.addEventListener('abort', cancel, { once: true });
     if (signal.aborted) cancel();
-    let rejectAbort;
-    const aborted = new Promise((_, reject) => {
-        rejectAbort = () => reject(controller.signal.reason);
-        controller.signal.addEventListener('abort', rejectAbort, { once: true });
-        if (controller.signal.aborted) rejectAbort();
-    });
-    aborted.catch(() => {});
-    const wait = async (promise, budget, message) => {
-        const timer = setTimeout(() => controller.abort(new Error(message)), budget);
-        try {
-            return await Promise.race([promise, aborted]);
-        } finally {
-            clearTimeout(timer);
-        }
-    };
+    const wait = (promise, budget, message) => raced(controller, promise, budget, message);
     // Calls stop only when the model stalls (the providers' idle limit); this guards against a runaway loop.
     const deadline = Date.now() + (timeout ?? 7200000);
-    const caller = (base, choice) => (instructions, input, onText, images, cut, tools) =>
+    // tools: { tools, mcp, runTool, textTools } for a call that reports through tool calls.
+    const caller = (base, choice, capable) => (instructions, input, onText, images, cut, tools) =>
         wait(
-            videoCall(
-                base,
-                choice,
+            mediaCall(base, choice, VIDEO_CALL, {
                 instructions,
                 input,
-                controller.signal,
+                signal: controller.signal,
                 onText,
                 images,
                 cut,
-                tools,
-            ),
+                tools: tools && { ...tools, capable, reportsByTools: true },
+            }),
             Math.max(1, deadline - Date.now()),
             OVERRUN,
         );
-    const call = caller(provider, selection),
-        write = caller(chat.provider, chat.selection);
+    const call = caller(provider, selection, capable),
+        write = caller(chat.provider, chat.selection, writerCapable);
     let published = false,
         count = 0;
     try {
@@ -206,14 +204,14 @@ export async function generateVideo({
                     (JSON.parse(artifact.input).differentVersion
                         ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
                         : '') +
-                    note +
-                    (capable ? '' : builder.textTools),
+                    note,
                 artifact.input,
                 (bytes) => onPhase('planning', undefined, { characters: bytes }),
                 undefined,
                 undefined,
-                capable && {
+                {
                     tools: builder.tools,
+                    textTools: builder.textTools,
                     mcp,
                     runTool: (name, input) => {
                         const result = builder.run(name, input);
@@ -334,7 +332,6 @@ export async function generateVideo({
             exhibits,
             references,
             readsImages,
-            capable,
             writerCapable,
             mcp,
             pieces: prior?.pieces,
@@ -448,7 +445,6 @@ export async function generateVideo({
         throw error.code ? new Error('Video could not be generated.') : error;
     } finally {
         signal.removeEventListener('abort', cancel);
-        controller.signal.removeEventListener('abort', rejectAbort);
         // Keep private code and timing; discard bundles, temporary clips, and audio of canceled or stopped attempts.
         // A failed attempt keeps its audio so Retry can reuse the narration.
         await Promise.all(

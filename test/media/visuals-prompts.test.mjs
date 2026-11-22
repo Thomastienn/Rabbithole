@@ -67,7 +67,9 @@ test('visual prompts receive the requested theme palette in light and dark, with
             ).text();
             await until(() => calls.length === 1);
             const instructions = calls.pop(),
-                palette = JSON.parse(instructions.split('\nCurrent theme palette: ')[1]);
+                palette = JSON.parse(
+                    instructions.split('\nCurrent theme palette: ')[1].split('\n')[0],
+                );
             assert.equal(palette.name, 'platform');
             assert.equal(palette.mode, 'dark');
             assert.doesNotMatch(instructions, /PRIVATE/);
