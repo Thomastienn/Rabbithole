@@ -287,7 +287,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
             store.finishModel(id, status === 'completed');
         // The verdict judges the learner message, so a retried reply replaces that message's observations.
         if ((status === 'completed' || output.verdicts) && store.live(id)) {
-            ctx.verdicting.get(user)?.controller.abort();
+            ctx.jobs.get('verdict', user)?.controller.abort();
             store.observe(user, output.verdicts ?? []);
         }
         // No readable block: the quick thinking model judges the learner message in the background.

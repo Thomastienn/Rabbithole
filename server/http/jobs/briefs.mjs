@@ -35,29 +35,29 @@ function readBriefs(input) {
 
 // Quick thinking writes a brief explanation whole; concurrent requests for one passage share the call.
 export function briefJobs(ctx) {
-    const { store, briefing } = ctx;
+    const { store } = ctx;
     const writeBrief = (conversation, reply, passage) => {
         const key = keyOf(passage);
-        if (briefing.has(key)) return briefing.get(key).done;
-        const running = { controller: new AbortController(), conversation };
-        briefing.set(key, running);
-        running.done = (async () => {
-            const quick = await ctx.quickModel(store.tree(conversation));
-            const explanation = await ctx.askQuick('brief', quick, {
-                detail: { message: passage.message },
-                instructions: INSTRUCTIONS,
-                prompt: briefPrompt(plainText(reply), termOf(passage)),
-                read: (text) => text.trim(),
-                separator: '\n',
-                signal: running.controller.signal,
-                missing: 'Quick thinking returned no explanation.',
-            });
-            if (ctx.stopping || !store.tree(conversation)) throw new Error('Conversation closed.');
-            // shortcut: a visual part's brief is not saved (briefs are keyed by reply offsets); add a key if reopening must skip the call.
-            if (passage.start !== undefined) store.saveBrief(passage, explanation);
-            return explanation;
-        })()
-            .catch((error) => {
+        const shared = ctx.jobs.get('brief', key);
+        if (shared) return shared.done;
+        return ctx.jobs.start('brief', key, conversation, (running) =>
+            (async () => {
+                const quick = await ctx.quickModel(store.tree(conversation));
+                const explanation = await ctx.askQuick('brief', quick, {
+                    detail: { message: passage.message },
+                    instructions: INSTRUCTIONS,
+                    prompt: briefPrompt(plainText(reply), termOf(passage)),
+                    read: (text) => text.trim(),
+                    separator: '\n',
+                    signal: running.controller.signal,
+                    missing: 'Quick thinking returned no explanation.',
+                });
+                if (ctx.stopping || !store.tree(conversation))
+                    throw new Error('Conversation closed.');
+                // shortcut: a visual part's brief is not saved (briefs are keyed by reply offsets); add a key if reopening must skip the call.
+                if (passage.start !== undefined) store.saveBrief(passage, explanation);
+                return explanation;
+            })().catch((error) => {
                 if (!ctx.stopping)
                     ctx.log(
                         formatLog('warn', 'brief', 'saved nothing', {
@@ -67,9 +67,8 @@ export function briefJobs(ctx) {
                         }),
                     );
                 throw error;
-            })
-            .finally(() => briefing.delete(key));
-        return running.done;
+            }),
+        ).done;
     };
     // One detached call per reply once its suggestions are final: every unsaved suggestion's brief, saved ahead of opening (spec: Ready brief explanations).
     // It records no familiarity and never replaces a saved brief or one being written on demand; on failure opening writes one as before.
@@ -83,30 +82,28 @@ export function briefJobs(ctx) {
             .map((p) => ({ ...p, message }))
             .filter((p) => !store.brief(message, p.start, p.end));
         if (!ctx.briefs || !reply || !passages.length) return;
-        const running = { controller: new AbortController(), conversation };
-        const key = `batch:${message}`;
-        briefing.set(key, running);
-        running.done = (async () => {
-            const quick = await ctx.quickModel(tree);
-            const briefs = await ctx.askQuick('brief', quick, {
-                detail: { message },
-                instructions:
-                    'You explain terms briefly. Never request or generate media. Do not access files or execute code.',
-                prompt: briefsPrompt(plainText(reply), [...new Set(passages.map(termOf))]),
-                tool: { spec: WRITE_BRIEFS, read: readBriefs },
-                read: () => null,
-                separator: '',
-                signal: running.controller.signal,
-                missing: 'Quick thinking returned no explanations.',
-            });
-            if (ctx.stopping || !store.tree(conversation)) throw new Error('Conversation closed.');
-            for (const passage of passages) {
-                const explanation = briefs.get(termOf(passage).trim());
-                if (explanation && !briefing.has(keyOf(passage)))
-                    store.saveBrief(passage, explanation);
-            }
-        })()
-            .catch((error) => {
+        ctx.jobs.start('brief', `batch:${message}`, conversation, (running) =>
+            (async () => {
+                const quick = await ctx.quickModel(tree);
+                const briefs = await ctx.askQuick('brief', quick, {
+                    detail: { message },
+                    instructions:
+                        'You explain terms briefly. Never request or generate media. Do not access files or execute code.',
+                    prompt: briefsPrompt(plainText(reply), [...new Set(passages.map(termOf))]),
+                    tool: { spec: WRITE_BRIEFS, read: readBriefs },
+                    read: () => null,
+                    separator: '',
+                    signal: running.controller.signal,
+                    missing: 'Quick thinking returned no explanations.',
+                });
+                if (ctx.stopping || !store.tree(conversation))
+                    throw new Error('Conversation closed.');
+                for (const passage of passages) {
+                    const explanation = briefs.get(termOf(passage).trim());
+                    if (explanation && !ctx.jobs.get('brief', keyOf(passage)))
+                        store.saveBrief(passage, explanation);
+                }
+            })().catch((error) => {
                 if (!ctx.stopping)
                     ctx.log(
                         formatLog('warn', 'brief', 'saved nothing ahead', {
@@ -115,8 +112,8 @@ export function briefJobs(ctx) {
                             cause: errorCause(error, [reply]),
                         }),
                     );
-            })
-            .finally(() => briefing.delete(key));
+            }),
+        );
     };
     return { writeBrief, startBriefs };
 }
