@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
@@ -11,6 +11,7 @@ import { planFor, planCalls, composition, fixerTask, patchOf } from '../support/
 
 const broken = "import fs from 'node:fs';\n" + composition;
 const fixed = composition.replace('PRIVATE_SOURCE_MARKER', 'FIXED');
+const crash = 'TypeError: Cannot interpolate an input which is not a number';
 
 // One video in the given Video mode, switched to later once planned: cut 2 is first written broken, and cut 1's
 // audit flags it.
@@ -40,8 +41,13 @@ async function run(mode, later) {
         }
         if (stage === 'cut') return cut === 2 ? broken : composition;
         if (stage === 'repair') {
-            assert.match(fixerTask(input).validationError, /import/i);
-            return patchOf(fixerTask(input).failedCode, composition);
+            const { validationError, failedCode } = fixerTask(input);
+            if (cut === 1) {
+                assert.equal(validationError, crash);
+                return patchOf(failedCode, fixed);
+            }
+            assert.match(validationError, /import/i);
+            return patchOf(failedCode, composition);
         }
         if (stage === 'audit') {
             await tools.runTool(
@@ -63,7 +69,14 @@ async function run(mode, later) {
         ready() {},
         async check() {},
         play: async () => null,
-        async stills(_dir, stills) {
+        async stills(dir, stills) {
+            // In Saving mode cut 1 crashes in the page until it is repaired.
+            if (
+                mode === 'saving' &&
+                dir.endsWith('cut-0') &&
+                !readFileSync(join(dir, 'Video.tsx'), 'utf8').includes('FIXED')
+            )
+                throw Object.assign(new Error(crash), { crashed: true });
             for (const { file } of stills) writeFileSync(file, 'jpeg');
         },
     };
@@ -104,15 +117,15 @@ test('the pipeline runs from plan to saved video on a fake model call and a fake
     assert.ok(stages.includes('playable') && stages.indexOf('playable') < stages.indexOf('saved'));
 });
 
-test('a video started in Saving mode makes no audit, fix or piece improvement, still repairs a broken cut and is saved', async () => {
+test('a video started in Saving mode makes no audit, fix or piece improvement, still repairs a cut that fails to render and is saved', async () => {
     const { ready, asked, cuts, stages } = await run('saving');
     assert.equal(ready.status, 'ready');
     assert.equal(asked[0], 'plan');
-    assert.deepEqual(asked.slice(1).sort(), ['cut 1', 'cut 2', 'repair 2']);
+    assert.deepEqual(asked.slice(1).sort(), ['cut 1', 'cut 2', 'repair 1', 'repair 2']);
     assert.deepEqual(
         cuts.map((c) => [c.status, c.code]),
         [
-            ['written', composition.trim()],
+            ['written', fixed.trim()],
             ['written', composition.trim()],
         ],
     );
