@@ -28,7 +28,10 @@ export function checkSize(root) {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     const problems = checkSize(process.cwd());
     if (problems.length) {
-        console.error(`Files over ${LIMIT} lines:\n${problems.join('\n')}`);
+        console.error(
+            `Files over ${LIMIT} lines:\n${problems.join('\n')}\n` +
+                'Deepen a module or split by concept: see "File size cap" in docs/agents/testing.md.',
+        );
         process.exit(1);
     }
 }
