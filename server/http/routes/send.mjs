@@ -10,7 +10,6 @@ import { withAttachments } from '../../attachments.mjs';
 import { attachmentParts, prepareUploads, prepareRetry, savePrepared } from '../attachments.mjs';
 import { join } from 'node:path';
 
-const PROMPT_RESOURCES = 50; // The prompt lists only the newest resources so a large tree keeps it bounded.
 // Conversation send and Retry: streams one tutor reply as server-sent events and starts its media jobs.
 export async function sendRoute(res, ctx, id, tree, action, body, controller) {
     const { store, json, active, compactions, pick, selectionError, live } = ctx;
@@ -414,7 +413,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                 neighbourhood,
                 resources: store
                     .resources(id)
-                    .slice(-PROMPT_RESOURCES)
+                    // The prompt lists only the newest resources so a large tree keeps it bounded.
+                    .slice(-50)
                     .reverse()
                     .map(({ number, title, site }) => ({ number, title, site })),
                 ...(images.length && { images }),
