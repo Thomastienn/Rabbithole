@@ -124,10 +124,13 @@ test('only signed-in subscription models can be pinned; stale pins fail without 
     t.after(async () => {
         await env.close();
     });
-    await env.post('/api/settings/endpoint', {
-        baseUrl: fake.baseUrl,
-        apiKey: 'suggestions-key-fixture',
-    });
+    const [{ id }] = JSON.parse(
+        await env.post('/api/settings/endpoints', {
+            name: 'Custom endpoint',
+            baseUrl: fake.baseUrl,
+            apiKey: 'suggestions-key-fixture',
+        }),
+    );
     const offered = await env.get('/api/models');
     assert.equal(offered.providers.claude.connected, false);
     assert.ok(!offered.models.some((m) => m.provider === 'claude'));
@@ -166,6 +169,8 @@ test('only signed-in subscription models can be pinned; stale pins fail without 
     connected.claude = true;
     await env.post('/api/settings/suggestions', { model: { provider: 'claude', model: 'sonnet' } });
     connected.claude = false;
+    // Signing out reaches the app on its next sign-in check; models() reuses a signed-in answer for 30 s.
+    await env.claude.status();
     const tree = JSON.parse(await env.post('/api/trees'));
     await env.post(`/api/trees/${tree.id}/model`, { provider: 'codex', model: 'fixture-model' });
     await env.post(`/api/trees/${tree.id}/messages`, { text: 'Stale Claude pin' });
@@ -177,7 +182,7 @@ test('only signed-in subscription models can be pinned; stale pins fail without 
     assert.equal((await env.request('/api/settings/suggestions', { enabled: false })).status, 200);
     assert.equal((await env.request('/api/settings/suggestions', { model: null })).status, 200);
     await env.post('/api/settings/suggestions', { enabled: true });
-    await env.post(`/api/trees/${tree.id}/model`, { provider: 'openai', model: 'local-tutor' });
+    await env.post(`/api/trees/${tree.id}/model`, { provider: id, model: 'local-tutor' });
     await env.post(`/api/trees/${tree.id}/messages`, { text: 'Custom endpoint conversation' });
     await env.settled();
     assert.equal((await env.get(`/api/trees/${tree.id}`)).suggestions.at(-1).status, 'failed');
@@ -212,10 +217,13 @@ test('quick thinking routes suggestions to its own provider, model and effort, i
     t.after(async () => {
         await env.close();
     });
-    await env.post('/api/settings/endpoint', {
-        baseUrl: fake.baseUrl,
-        apiKey: 'quick-key-fixture',
-    });
+    const [{ id }] = JSON.parse(
+        await env.post('/api/settings/endpoints', {
+            name: 'Custom endpoint',
+            baseUrl: fake.baseUrl,
+            apiKey: 'quick-key-fixture',
+        }),
+    );
     const tree = JSON.parse(await env.post('/api/trees'));
     await env.post(`/api/trees/${tree.id}/model`, {
         provider: 'claude',
@@ -257,11 +265,11 @@ test('quick thinking routes suggestions to its own provider, model and effort, i
     assert.deepEqual(
         JSON.parse(
             await env.post('/api/settings/suggestions', {
-                model: { provider: 'openai', model: 'local-tutor' },
+                model: { provider: id, model: 'local-tutor' },
                 effort: 'high',
             }),
         ),
-        { enabled: true, model: { provider: 'openai', model: 'local-tutor' }, effort: 'high' },
+        { enabled: true, model: { provider: id, model: 'local-tutor' }, effort: 'high' },
     );
     assert.equal(
         (await env.request('/api/settings/suggestions', { effort: 'max level!' })).status,
@@ -274,11 +282,11 @@ test('quick thinking routes suggestions to its own provider, model and effort, i
     env = await start(dir);
     assert.deepEqual(await env.get('/api/settings/suggestions'), {
         enabled: true,
-        model: { provider: 'openai', model: 'local-tutor' },
+        model: { provider: id, model: 'local-tutor' },
         effort: 'high',
     });
     const custom = JSON.parse(await env.post('/api/trees'));
-    await env.post(`/api/trees/${custom.id}/model`, { provider: 'openai', model: 'second-model' });
+    await env.post(`/api/trees/${custom.id}/model`, { provider: id, model: 'second-model' });
     await env.post(`/api/trees/${custom.id}/messages`, { text: 'Custom endpoint conversation' });
     await env.settled();
     assert.deepEqual(

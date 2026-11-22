@@ -24,8 +24,6 @@ export async function settingsRoutes(req, res, url, ctx, body) {
         if (url.pathname === '/api/settings/tutor-tools') return json(res, 200, await tutorTools());
         if (url.pathname === '/api/settings/searxng')
             return json(res, 200, await ctx.search.status());
-        if (url.pathname === '/api/settings/endpoint' && endpoint)
-            return json(res, 200, endpoint.status());
         if (url.pathname === '/api/settings/endpoints' && endpoint)
             return json(res, 200, endpoint.list());
         if (url.pathname === '/api/settings/suggestions')
@@ -205,36 +203,6 @@ export async function settingsRoutes(req, res, url, ctx, body) {
         });
         ctx.readyQuick();
         return json(res, 200, saved);
-    }
-    if (
-        endpoint &&
-        [
-            '/api/settings/endpoint',
-            '/api/settings/endpoint/test',
-            '/api/settings/endpoint/clear',
-        ].includes(url.pathname)
-    ) {
-        if (url.pathname.endsWith('/test')) {
-            try {
-                await endpoint.models();
-                return json(res, 200, endpoint.status());
-            } catch (error) {
-                return json(res, 502, { error: error.message });
-            }
-        }
-        try {
-            const status = url.pathname.endsWith('/clear') ? endpoint.clear() : endpoint.save(body);
-            if (url.pathname.endsWith('/clear')) {
-                store.forgetEfforts('openai');
-                store.forgetModels('openai');
-            }
-            ctx.syncEndpoints();
-            return json(res, 200, status);
-        } catch {
-            return json(res, 400, {
-                error: 'Endpoint settings could not be saved. Check the HTTP(S) base URL, API key and local data-directory write access.',
-            });
-        }
     }
     // Retest re-runs the tool support probe and saves the result as the model's tool flag.
     if (endpoint && url.pathname === '/api/settings/endpoints/model/retest') {

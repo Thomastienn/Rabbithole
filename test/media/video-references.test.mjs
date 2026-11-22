@@ -91,7 +91,7 @@ async function run({ photo = true, readsImages = true } = {}) {
         },
         narrate: fakeNarration,
         onWarning: (w) => warnings.push(w),
-        search: { status: async () => ({ ready: true }) },
+        search: { ready: async () => true },
         exhibit: async (p) => {
             searches.push(p);
             if (!photo) throw new Error('no search results for "Saturn V rocket"');

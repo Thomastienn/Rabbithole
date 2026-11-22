@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,7 +50,7 @@ test('all six provider switches preserve root and nested history/context, inheri
             store,
             dir,
             endpoint,
-            providers: { claude, codex, ...(endpoint.status().configured && { openai: endpoint }) },
+            providers: { claude, codex },
             defaultProvider: 'claude',
             auth: { status: () => ({ connected: true }) },
         });
@@ -88,11 +88,20 @@ test('all six provider switches preserve root and nested history/context, inheri
     t.after(async () => {
         await env?.close();
     });
+    // The endpoint migrated from the single-endpoint setting keeps provider id openai.
+    writeFileSync(
+        join(dir, 'openai-endpoints.json'),
+        JSON.stringify([
+            {
+                id: 'openai',
+                name: 'Custom endpoint',
+                baseUrl: fake.baseUrl,
+                apiKey: 'three-provider-fixture-secret',
+            },
+        ]),
+        { mode: 0o600 },
+    );
     env = await start();
-    await env.post('/api/settings/endpoint', {
-        baseUrl: fake.baseUrl,
-        apiKey: 'three-provider-fixture-secret',
-    });
     fake.reply = (req, res) => streamReply(res, ['Peterson uses two flags.']);
     const root = JSON.parse(await env.post('/api/trees'));
     assert.equal(root.provider, 'claude');
@@ -128,10 +137,10 @@ test('all six provider switches preserve root and nested history/context, inheri
             );
             await env.close();
             env = await start();
-            assert.deepEqual(await env.get('/api/settings/endpoint'), {
-                configured: true,
-                baseUrl: fake.baseUrl,
-            });
+            assert.deepEqual(
+                (await env.get('/api/settings/endpoints')).map((e) => [e.id, e.baseUrl]),
+                [['openai', fake.baseUrl]],
+            );
             for (const saved of prior)
                 assert.deepEqual(await env.get(`/api/trees/${saved.id}`), saved);
         }

@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { buildIsCurrent } from './build-state.mjs';
 import { ensureLatex, ensureUv } from './tools-setup.mjs';
 import { MANIM_VERSION, pythonIn, texBin, uvDir, videoBrowser } from '../server/media/manim.mjs';
-import { PYTHON_PACKAGES } from '../server/tools/python.mjs';
+import { PYTHON_PACKAGES, pythonVenv } from '../server/tools/python.mjs';
 
 // Stages the desktop resources in desktop/stage, run in place by the shell with no copy and no tool download:
 // node (the official Node 24), app (the built app with production dependencies) and tools (the tool root).
@@ -39,10 +39,11 @@ const windows = process.platform === 'win32';
 // Windows needs a shell to run npm.cmd; its arguments here are fixed words.
 const run = (command, args, cwd = root) =>
     execFileSync(command, args, { cwd, stdio: 'inherit', shell: windows && command === 'npm' });
-// The tools-setup form: resolves to the exit code.
-const runCode = async (command, args) => spawnSync(command, args, { stdio: 'inherit' }).status ?? 1;
 // Windows' own bsdtar reads zips and C:\ paths; a Git-for-Windows GNU tar earlier on PATH does neither.
 const tar = windows ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+// The tools-setup form: resolves to the exit code. Its tar unpacks uv's Windows zip, so it gets the same bsdtar.
+const runCode = async (command, args) =>
+    spawnSync(command === 'tar' ? tar : command, args, { stdio: 'inherit' }).status ?? 1;
 
 // Every regular file below dir; readdirSync's recursive mode would also walk the .venv-python link.
 const files = (dir) =>
@@ -95,11 +96,8 @@ function missingTools(dir) {
         !ok(join(texBin(dir), 'dvisvgm'), ['--version']) && 'dvisvgm',
         manim.stdout?.trim() !== MANIM_VERSION && `Manim ${MANIM_VERSION}`,
         !ok(pythonIn(join(dir, '.venv')), ['-I', '-m', 'yt_dlp', '--version']) && 'yt-dlp',
-        !ok(pythonIn(join(dir, '.venv-python')), [
-            '-I',
-            '-c',
-            'import numpy, scipy, sympy, pandas',
-        ]) && 'offline Python packages',
+        !ok(pythonIn(pythonVenv(dir)), ['-I', '-c', 'import numpy, scipy, sympy, pandas']) &&
+            'offline Python packages',
         !existsSync(videoBrowser(dir)) && 'video browser',
     ].filter(Boolean);
 }
@@ -144,7 +142,8 @@ async function stageTools() {
         '--break-system-packages',
         'pip',
     ]);
-    symlinkSync('.venv', join(tools, '.venv-python'), 'dir');
+    // NSIS carries no links; the Windows server finds the shared Python without one (pythonVenv).
+    if (!windows) symlinkSync('.venv', join(tools, '.venv-python'), 'dir');
     // Remotion downloads into node_modules beside the nearest package.json.
     writeFileSync(join(tools, 'package.json'), '{}\n');
     run(process.execPath, [join(root, 'scripts', 'browser-setup.mjs')], tools);

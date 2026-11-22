@@ -105,7 +105,7 @@ async function run({
         snapshot: noSnapshot,
         narrate,
         onWarning: (w) => warnings.push(w),
-        search: { status: async () => ({ ready }) },
+        search: { ready: async () => ready },
         exhibit: async (p, options) => {
             if (p.kind === 'clip') assert.equal(options.clips.ready, true);
             if (!fetched[p.query]) throw new Error('image returned HTTP 404');

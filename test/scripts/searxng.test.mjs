@@ -309,3 +309,24 @@ test('web search is not downloaded until asked; an installed copy starts without
     assert.equal(await relaunched.tool.ready(), true, 'the next launch starts the installed copy');
     assert.deepEqual(downloads, ['searxng']);
 });
+
+test('a managed SearXNG that exits after startup reports why, and the next launch starts a new process', async () => {
+    const started = [];
+    const manage = (dir, { signal }) => {
+        const { child, options } = runtime();
+        started.push(child);
+        child.stdout.write(`RABBITHOLE_SEARXNG=${41000 + started.length}\n`);
+        return managedSearxng(dir, { ...options, signal });
+    };
+    const search = searxngDownload(directory(), { manage });
+    assert.equal(await search.tool.ready(), true);
+    started[0].stderr.write('engine crashed');
+    started[0].exitCode = 3;
+    started[0].emit('close', 3, null);
+    assert.equal(search.status().ready, false);
+    assert.match(search.status().error, /engine crashed/);
+    assert.equal(await search.tool.ready(), true);
+    assert.equal(started.length, 2);
+    assert.equal(search.status().url, 'http://127.0.0.1:41002');
+    await search.stop();
+});

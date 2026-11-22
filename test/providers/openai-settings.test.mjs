@@ -1,13 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, statSync, existsSync, writeFileSync, chmodSync, symlinkSync } from 'node:fs';
+import {
+    readFileSync,
+    statSync,
+    existsSync,
+    writeFileSync,
+    chmodSync,
+    symlinkSync,
+    rmSync,
+} from 'node:fs';
 import http from 'node:http';
 import { join } from 'node:path';
 import { OpenAI } from '../../server/providers/openai.mjs';
 import { fakeOpenAI } from '../support/fake-openai.mjs';
 import { open } from '../support/openai-kit.mjs';
 
-test('settings enforce CSRF, loopback and URL boundaries; clear unregisters without fallback and restores from an owner-only file', async (t) => {
+test('settings enforce CSRF, loopback and URL boundaries; remove unregisters without fallback and restores from an owner-only file', async (t) => {
     const fake = await fakeOpenAI(t);
     let nativeCalls = 0;
     const claude = {
@@ -17,11 +25,16 @@ test('settings enforce CSRF, loopback and URL boundaries; clear unregisters with
         },
     };
     const { get, post, store, dir, endpoint, origin } = await open(t, { claude });
-    const saved = { baseUrl: fake.baseUrl, apiKey: 'settings-fixture-secret' };
+    const saved = {
+        name: 'Custom endpoint',
+        baseUrl: fake.baseUrl,
+        apiKey: 'settings-fixture-secret',
+    };
     for (const path of [
-        '/api/settings/endpoint',
-        '/api/settings/endpoint/test',
-        '/api/settings/endpoint/clear',
+        '/api/settings/endpoints',
+        '/api/settings/endpoints/edit',
+        '/api/settings/endpoints/test',
+        '/api/settings/endpoints/remove',
     ]) {
         for (const headers of [
             { 'X-Rabbithole-CSRF': '' },
@@ -61,72 +74,81 @@ test('settings enforce CSRF, loopback and URL boundaries; clear unregisters with
         { ...saved, apiKey: '' },
         { ...saved, apiKey: 'invalid\nkey' },
     ])
-        assert.equal((await post('/api/settings/endpoint', body)).status, 400);
+        assert.equal((await post('/api/settings/endpoints', body)).status, 400);
+    assert.equal((await post('/api/settings/endpoints/test', { id: 'openai' })).status, 400);
     assert.equal(fake.calls.length, 0, 'rejected settings never contact a host');
-    assert.equal((await post('/api/settings/endpoint/test')).status, 502);
-    assert.equal((await post('/api/settings/endpoint', saved)).status, 200);
+    const add = async () => (await (await post('/api/settings/endpoints', saved)).json()).at(-1).id;
+    const id = await add();
     const path = join(dir, 'openai-endpoints.json');
     chmodSync(path, 0o644);
-    assert.deepEqual(new OpenAI(dir).status(), { configured: true, baseUrl: fake.baseUrl });
+    assert.deepEqual(
+        new OpenAI(dir).list().map((e) => [e.id, e.baseUrl]),
+        [[id, fake.baseUrl]],
+    );
     assert.equal(statSync(path).mode & 0o777, 0o600, 'restart repairs permissive credential mode');
     const root = await (await post('/api/trees')).json();
     assert.equal(root.provider, 'claude', 'saving an endpoint leaves default unchanged');
     assert.equal(
-        (await post(`/api/trees/${root.id}/model`, { provider: 'openai', model: 'local-tutor' }))
-            .status,
+        (await post(`/api/trees/${root.id}/model`, { provider: id, model: 'local-tutor' })).status,
         200,
     );
     await (await post(`/api/trees/${root.id}/messages`, { text: 'First' })).text();
-    assert.deepEqual(await (await post('/api/settings/endpoint/clear')).json(), {
-        configured: false,
-        baseUrl: null,
-    });
+    assert.deepEqual(await (await post('/api/settings/endpoints/remove', { id })).json(), []);
     assert.equal(existsSync(path), false);
-    assert.deepEqual(new OpenAI(dir).status(), { configured: false, baseUrl: null });
+    assert.deepEqual(new OpenAI(dir).list(), []);
     const body = await (
-        await post(`/api/trees/${root.id}/messages`, { text: 'After clear' })
+        await post(`/api/trees/${root.id}/messages`, { text: 'After remove' })
     ).text();
     assert.match(body, /Selected provider is unavailable/);
     assert.match(body, /"status":"failed"/);
-    assert.equal(nativeCalls, 0, 'no fallback to Claude after clearing');
-    assert.equal(store.tree(root.id).provider, 'openai');
+    assert.equal(nativeCalls, 0, 'no fallback to Claude after removing');
+    assert.equal(store.tree(root.id).provider, id);
     assert.deepEqual(
         (await (await get('/api/models')).json()).models.map((m) => m.provider),
         ['claude'],
     );
-    assert.equal((await post('/api/settings/endpoint', saved)).status, 200);
+    const again = await add();
+    await post(`/api/trees/${root.id}/model`, { provider: again, model: 'local-tutor' });
     assert.match(
         await (await post(`/api/trees/${root.id}/messages`, { text: 'Reconfigured' })).text(),
         /"status":"completed"/,
     );
     assert.equal(
-        (await post('/api/settings/endpoint', { ...saved, apiKey: 'replacement-fixture-secret' }))
-            .status,
+        (
+            await post('/api/settings/endpoints/edit', {
+                ...saved,
+                id: again,
+                apiKey: 'replacement-fixture-secret',
+            })
+        ).status,
         200,
     );
     assert.equal(statSync(path).mode & 0o777, 0o600);
     assert.doesNotMatch(readFileSync(path, 'utf8'), /settings-fixture-secret/);
-    assert.equal((await post('/api/settings/endpoint/clear')).status, 200);
+    assert.equal((await post('/api/settings/endpoints/remove', { id: again })).status, 200);
     writeFileSync(path, '{invalid', { mode: 0o600 });
-    assert.equal(new OpenAI(dir).status().configured, false);
-    await post('/api/settings/endpoint/clear');
+    assert.deepEqual(new OpenAI(dir).list(), []);
+    rmSync(path);
     const target = join(dir, 'unrelated');
-    writeFileSync(target, JSON.stringify(saved));
+    writeFileSync(target, JSON.stringify([{ id: 'openai', ...saved }]));
     symlinkSync(target, path);
-    assert.equal(new OpenAI(dir).status().configured, false, 'credential loader refuses symlinks');
-    endpoint.clear();
-    assert.equal(existsSync(target), true, 'clear removes the link, preserving unrelated targets');
+    assert.deepEqual(new OpenAI(dir).list(), [], 'credential loader refuses symlinks');
+    endpoint.remove(endpoint.add(saved).at(-1).id);
+    assert.equal(
+        existsSync(target),
+        true,
+        'saving replaces the link, preserving unrelated targets',
+    );
 });
 
 test('catalogue validation, model-change failure and refused redirects preserve settings and send no credential to another host', async (t) => {
     const fake = await fakeOpenAI(t),
         other = await fakeOpenAI(t),
-        { get, post, store } = await open(t);
-    await post('/api/settings/endpoint', {
-        baseUrl: fake.baseUrl,
-        apiKey: 'catalogue-fixture-secret',
-    });
-    const tree = store.create('Catalogue', 'openai');
+        { get, post, store, addEndpoint } = await open(t);
+    const id = await addEndpoint(fake.baseUrl, 'catalogue-fixture-secret');
+    const failedTest = async () =>
+        (await (await post('/api/settings/endpoints/test', { id })).json())[0].lastTest.ok;
+    const tree = store.create('Catalogue', id);
     store.model(tree.id, 'local-tutor');
     for (const catalogue of [
         {},
@@ -136,10 +158,9 @@ test('catalogue validation, model-change failure and refused redirects preserve 
     ]) {
         fake.catalogue = catalogue;
         assert.equal((await get('/api/models')).status, 502);
-        assert.equal((await post('/api/settings/endpoint/test')).status, 502);
+        assert.equal(await failedTest(), false);
         assert.equal(
-            (await post(`/api/trees/${tree.id}/model`, { provider: 'openai', model: 'other' }))
-                .status,
+            (await post(`/api/trees/${tree.id}/model`, { provider: id, model: 'other' })).status,
             502,
         );
         assert.equal(store.tree(tree.id).model, 'local-tutor');
@@ -153,7 +174,7 @@ test('catalogue validation, model-change failure and refused redirects preserve 
     assert.equal((await (await get('/api/models')).json()).models.length, 2);
     fake.modelStatus = 302;
     fake.modelHeaders = { Location: other.baseUrl + '/models' };
-    assert.equal((await post('/api/settings/endpoint/test')).status, 502);
+    assert.equal(await failedTest(), false);
     fake.reply = (req, res) => {
         res.writeHead(307, { Location: other.baseUrl + '/chat/completions' });
         res.end();
@@ -167,20 +188,17 @@ test('catalogue validation, model-change failure and refused redirects preserve 
         0,
         'no Authorization or inference is sent to a redirected host',
     );
-    assert.deepEqual(await (await get('/api/settings/endpoint')).json(), {
-        configured: true,
-        baseUrl: fake.baseUrl,
-    });
+    assert.deepEqual(
+        (await (await get('/api/settings/endpoints')).json()).map((e) => e.baseUrl),
+        [fake.baseUrl],
+    );
 });
 
-test('clearing settings interrupts in-flight generations; timeout releases resources', async (t) => {
+test('removing an endpoint interrupts in-flight generations; timeout releases resources', async (t) => {
     const fake = await fakeOpenAI(t),
-        { post, store, endpoint } = await open(t);
-    await post('/api/settings/endpoint', {
-        baseUrl: fake.baseUrl,
-        apiKey: 'lifecycle-fixture-secret',
-    });
-    const tree = store.create('Lifecycle', 'openai');
+        { post, store, endpoint, addEndpoint } = await open(t);
+    const id = await addEndpoint(fake.baseUrl, 'lifecycle-fixture-secret');
+    const tree = store.create('Lifecycle', id);
     store.model(tree.id, 'local-tutor');
     const started = Promise.withResolvers(),
         closed = Promise.withResolvers();
@@ -190,18 +208,15 @@ test('clearing settings interrupts in-flight generations; timeout releases resou
         res.on('close', closed.resolve);
         started.resolve();
     };
-    const response = await post(`/api/trees/${tree.id}/messages`, { text: 'Clear while running' });
+    const response = await post(`/api/trees/${tree.id}/messages`, { text: 'Remove while running' });
     await started.promise;
-    await post('/api/settings/endpoint/clear');
+    await post('/api/settings/endpoints/remove', { id });
     assert.match(await response.text(), /"status":"interrupted"/);
     await closed.promise;
-    await post('/api/settings/endpoint', {
-        baseUrl: fake.baseUrl,
-        apiKey: 'lifecycle-fixture-secret',
-    });
+    const again = await addEndpoint(fake.baseUrl, 'lifecycle-fixture-secret');
     const events = [];
     await assert.rejects(
-        endpoint.generate(
+        endpoint.providers()[again].generate(
             { model: 'local-tutor' },
             'Timeout',
             (e) => events.push(e),
@@ -213,11 +228,11 @@ test('clearing settings interrupts in-flight generations; timeout releases resou
     assert.deepEqual(events, [{ type: 'response' }, { type: 'status', status: 'failed' }]);
 });
 
-test('a saved video retry fails cleanly when its selected endpoint has been cleared', async (t) => {
+test('a saved video retry fails cleanly when its selected endpoint has been removed', async (t) => {
     const fake = await fakeOpenAI(t),
-        { post, get, store } = await open(t);
-    await post('/api/settings/endpoint', { baseUrl: fake.baseUrl, apiKey: 'video-fixture-secret' });
-    const tree = store.create('Saved video', 'openai');
+        { post, get, store, addEndpoint } = await open(t);
+    const id = await addEndpoint(fake.baseUrl, 'video-fixture-secret');
+    const tree = store.create('Saved video', id);
     const message = store.message(tree.id, 'assistant', 'Requested video', 'completed');
     const job = store.pendingArtifact(
         tree.id,
@@ -228,7 +243,7 @@ test('a saved video retry fails cleanly when its selected endpoint has been clea
         '{}',
     );
     store.cancelVideo(tree.id, job.id);
-    await post('/api/settings/endpoint/clear');
+    await post('/api/settings/endpoints/remove', { id });
     assert.equal((await post(`/api/trees/${tree.id}/artifacts/${job.id}/retry`)).status, 200);
     const artifact = await (await get(`/api/trees/${tree.id}/artifacts/${job.id}`)).json();
     assert.equal(artifact.status, 'failed');

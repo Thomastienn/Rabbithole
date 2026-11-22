@@ -120,16 +120,29 @@ export function searxngSearch({ store, managed }) {
             customUrl = store.searxngUrl();
         return { ...own, url: customUrl ?? own.url, customUrl, managedUrl: own.url };
     };
+    let probed = null;
     return {
+        // Deciding which tools to offer makes no outside request: the managed instance knows its own
+        // state, and a typed address reuses its last probe (Settings checks included) for a minute.
+        async ready({ signal } = {}) {
+            const state = config();
+            if (!state.customUrl) return state.ready;
+            if (probed?.url !== state.url || Date.now() - probed.at > 60000)
+                await this.status({ signal });
+            return probed.ready;
+        },
         async status({ url, signal } = {}) {
             const state = config();
             if (url !== undefined) state.url = searxngUrl(url) ?? state.managedUrl;
             if (!state.url) return { ...state, ready: false };
+            const record = (ready) => (probed = { url: state.url, ready, at: Date.now() });
             try {
                 const results = await search(state.url, 'Rabbithole', false, signal);
+                record(true);
                 return { ...state, ready: true, error: null, results: results.length };
             } catch (error) {
                 signal?.throwIfAborted();
+                record(false);
                 return { ...state, ready: false, error: error.message };
             }
         },

@@ -56,7 +56,7 @@ test('run_python reaches the launcher with its runtime, venv and stdin command',
     assert.deepEqual(flagValues(args, '--read'), [join(root, 'runtime'), join(root, 'venv')]);
 });
 
-test('the server picks bwrap on Linux and the launcher on Windows', () => {
+test('the server picks bwrap on Linux and the launcher on Windows, which reads its install folder', () => {
     const before = process.env.RABBITHOLE_SANDBOX;
     process.env.RABBITHOLE_SANDBOX = 'C:\\Rabbithole\\rabbithole-sandbox.exe';
     try {
@@ -64,7 +64,16 @@ test('the server picks bwrap on Linux and the launcher on Windows', () => {
         assert.deepEqual(sandboxCommand(rules, 'linux'), ['bwrap', rules, {}]);
         const [program, args, env] = sandboxCommand(rules, 'win32');
         assert.equal(program, 'C:\\Rabbithole\\rabbithole-sandbox.exe');
-        assert.deepEqual(args, ['--workspace', '/w', '--', '/node', '-e', '1']);
+        assert.deepEqual(args, [
+            '--read',
+            'C:\\Rabbithole',
+            '--workspace',
+            '/w',
+            '--',
+            '/node',
+            '-e',
+            '1',
+        ]);
         assert.equal(env, process.env);
     } finally {
         if (before === undefined) delete process.env.RABBITHOLE_SANDBOX;

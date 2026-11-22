@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -34,13 +34,24 @@ test('HTTP settings and conversation effort reach real Claude/Codex adapters and
         }
         return child;
     };
+    // The endpoint migrated from the single-endpoint setting keeps provider id openai.
+    writeFileSync(
+        join(dir, 'openai-endpoints.json'),
+        JSON.stringify([
+            {
+                id: 'openai',
+                name: 'Custom endpoint',
+                baseUrl: fake.baseUrl,
+                apiKey: 'effort-fixture-key',
+            },
+        ]),
+        { mode: 0o600 },
+    );
     const store = new Store(join(dir, 'trees.sqlite')),
         endpoint = new OpenAI(dir);
-    endpoint.save({ baseUrl: fake.baseUrl, apiKey: 'effort-fixture-key' });
     const providers = {
         claude: new Claude(dir, launch, (cmd, args, opts, cb) => cb(null, '{"loggedIn":true}')),
         codex: new Codex({ token: async () => 'fixture-token' }, dir, launch),
-        openai: endpoint,
     };
     const app = createApp({
         store,

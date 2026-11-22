@@ -206,39 +206,6 @@ export class OpenAI {
         this.#set(this.#list.filter((e) => e.id !== id));
         return this.list();
     }
-    // shortcut: the single-endpoint routes act on the migrated "openai" entry; drop once no caller uses them.
-    status() {
-        const e = this.#list.find((e) => e.id === 'openai');
-        return { configured: !!e, baseUrl: e?.baseUrl ?? null };
-    }
-    save(body) {
-        const saved = settings(body),
-            old = this.#list.find((e) => e.id === 'openai'),
-            entry = {
-                id: 'openai',
-                name: old?.name ?? 'Custom endpoint',
-                ...saved,
-                ...(old?.acceptsImages && { acceptsImages: true }),
-            };
-        this.#set(old ? this.#list.map((e) => (e === old ? entry : e)) : [entry, ...this.#list]);
-        return this.status();
-    }
-    clear() {
-        this.#set(this.#list.filter((e) => e.id !== 'openai'));
-        return this.status();
-    }
-    #legacy() {
-        return this.#adapters.get('openai') ?? new Endpoint(null);
-    }
-    models(signal) {
-        return this.#legacy().models(signal);
-    }
-    model(tree, signal) {
-        return this.#legacy().model(tree, signal);
-    }
-    generate(...args) {
-        return this.#legacy().generate(...args);
-    }
     close() {
         for (const adapter of this.#adapters.values()) adapter.close();
     }
@@ -249,13 +216,11 @@ class Endpoint {
     #requests = new Set();
     constructor(saved) {
         this.#saved = saved;
-        this.label = saved?.name;
+        this.label = saved.name;
         // The old endpoint-wide Accepts images flag: only the fallback for models that report no vision.
-        this.acceptsImages = !!saved?.acceptsImages;
+        this.acceptsImages = !!saved.acceptsImages;
     }
     async #fetch(saved, path, signal, body) {
-        if (!saved)
-            throw new EndpointError('Configure a custom endpoint in settings before using it.');
         const response = await fetch(saved.baseUrl + path, {
             method: body ? 'POST' : 'GET',
             redirect: 'error',

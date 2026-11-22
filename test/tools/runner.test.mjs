@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { nativeTools, toolRunner } from '../../server/tools/runner.mjs';
 
 const ready = { status: async () => ({ ready: true }) };
-const runner = toolRunner({ search: ready, python: ready });
+const runner = toolRunner({ search: { ready: async () => true }, python: ready });
 const names = async (provider, settings, capable = true) =>
     (await runner.tools({ provider, capable, settings })).map((t) => t.name);
 

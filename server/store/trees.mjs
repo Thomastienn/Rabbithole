@@ -147,8 +147,11 @@ export const trees = {
             return { deleted, parent };
         });
     },
-    tree(id) {
-        const { layout, ...tree } = this.db.prepare('SELECT * FROM trees WHERE id=?').get(id) ?? {};
+    // A conversation's own row without its messages, for reading one field during a reply.
+    header(id) {
+        return this.db.prepare('SELECT * FROM trees WHERE id=?').get(id);
+    },
+    branchOf(id) {
         const savedBranch = this.db
             .prepare(
                 'SELECT parent,messageId,start,end,text,question,snapshot,artifactId,label,explanation,trail,step,line,speaker,discussion FROM branches WHERE child=?',
@@ -165,18 +168,22 @@ export const trees = {
             discussion,
             ...branch
         } = savedBranch ?? {};
+        return savedBranch
+            ? {
+                  ...branch,
+                  ...(artifactId &&
+                      (line !== null
+                          ? { artifactId, line, speaker, discussion }
+                          : { artifactId, label, explanation, ...picked(trail, step) })),
+              }
+            : null;
+    },
+    tree(id) {
+        const { layout, ...tree } = this.header(id) ?? {};
         return (
             tree.id && {
                 ...tree,
-                branch: savedBranch
-                    ? {
-                          ...branch,
-                          ...(artifactId &&
-                              (line !== null
-                                  ? { artifactId, line, speaker, discussion }
-                                  : { artifactId, label, explanation, ...picked(trail, step) })),
-                      }
-                    : null,
+                branch: this.branchOf(id),
                 messages: this.db
                     .prepare(
                         'SELECT id,role,text,status,stopped,usage,questions FROM messages WHERE tree=? ORDER BY seq',

@@ -17,9 +17,12 @@ const MODELS = [
     { model: 'haiku', label: 'Claude Haiku', isDefault: false },
 ].map((m) => ({ ...m, efforts: ['low', 'medium', 'high', 'xhigh', 'max'] }));
 
+const SIGN_IN_REUSE = 30_000;
+
 // Runs the user-installed Claude Code CLI with its own native sign-in. Never reads or stores Claude credentials.
 export class Claude {
     readsImages = true;
+    signedInUntil = 0;
     constructor(dir, launch = spawn, run = execFile, bin = () => 'claude') {
         this.cwd = join(dir, 'claude-workspace');
         this.launch = launch;
@@ -72,7 +75,9 @@ export class Claude {
         if (!bin) throw new Error('Claude Code is not installed. Install it, then check again.');
         return bin;
     }
+    // Every check asks the CLI and replaces the answer models() reuses.
     async status() {
+        this.signedInUntil = 0;
         const bin = this.bin();
         if (!bin) return { connected: false, email: null };
         const out = await new Promise((resolve) =>
@@ -84,13 +89,16 @@ export class Claude {
         );
         try {
             const s = JSON.parse(out);
+            if (s.loggedIn) this.signedInUntil = Date.now() + SIGN_IN_REUSE;
             return { connected: !!s.loggedIn, email: s.email ?? null };
         } catch {
             return { connected: false, email: null };
         }
     }
+    // A signed-in answer is reused briefly; a signed-out one is not, so signing in shows on the next check.
     async models() {
-        if (!(await this.status()).connected) throw new Error('Claude is not signed in.');
+        if (Date.now() >= this.signedInUntil && !(await this.status()).connected)
+            throw new Error('Claude is not signed in.');
         return MODELS;
     }
     async model(tree) {
