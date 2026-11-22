@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: VideoCard } = await import('../../src/media/VideoCard.tsx');
 const { default: LiveVideo, liveDuration } = await import('../../src/media/liveVideo.tsx');
 const { Thumbnail } = await import('@remotion/player');
@@ -181,7 +182,7 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
     const requests = [],
         posted = [];
     const delivered = Promise.withResolvers();
-    const fetch = async (url) => {
+    fakeServer(t, (url) => {
         requests.push(url);
         if (url.endsWith('/cuts'))
             return {
@@ -203,7 +204,7 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
                 }),
             };
         return { ok: true, blob: async () => new Blob(['audio'], { type: 'audio/mpeg' }) };
-    };
+    });
     let set;
     function Card() {
         const [artifact, setArtifact] = useState({
@@ -219,16 +220,8 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
         set = setArtifact;
         return h(VideoCard, { artifact, inline: true, onAction: async () => {} });
     }
-    const realFetch = globalThis.fetch;
-    const { container, act, cleanup } = await render(h(Card), (w) => {
-        ui(w);
-        w.fetch = fetch;
-        globalThis.fetch = fetch;
-    });
-    t.after(async () => {
-        await cleanup();
-        globalThis.fetch = realFetch;
-    });
+    const { container, act, cleanup } = await render(h(Card), ui);
+    t.after(cleanup);
     const card = container.querySelector('[data-artifact=v1]');
     const frame = card.querySelector('iframe');
     // Opaque origin: scripts only, never same-origin, forms, popups or top navigation.
@@ -269,7 +262,7 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
 
 test('the library shows a pending video live, with no file actions until its MP4 is saved', async (t) => {
     const { default: VideoLibrary } = await import('../../src/media/VideoLibrary.tsx');
-    const api = async () => [
+    fakeServer(t, () => [
         {
             id: 'v1',
             title: 'Winners',
@@ -278,8 +271,8 @@ test('the library shows a pending video live, with no file actions until its MP4
             created: 2,
             live: 'root',
         },
-    ];
-    const { container, act, cleanup } = await render(h(VideoLibrary, { api, activity: '' }), ui);
+    ]);
+    const { container, act, cleanup } = await render(h(VideoLibrary, { activity: '' }), ui);
     t.after(cleanup);
     await act(async () => {});
     const card = container.querySelector('.video-library [data-artifact=v1]');

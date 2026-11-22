@@ -68,8 +68,8 @@ test('stop freezes only its branch; stale callbacks cannot alter a stopped or ne
         assert.equal(old.signal.aborted, true);
         assert.equal(sibling.signal.aborted, false);
         assert.equal(env.store.tree(a.id).messages.at(-1).status, 'interrupted');
-        assert.equal(env.app.active.has(a.id), false);
-        assert.equal(env.app.active.has(b.id), true);
+        assert.equal(!!env.app.jobs.get('reply', a.id), false);
+        assert.equal(!!env.app.jobs.get('reply', b.id), true);
         assert.match(await ar.text(), /"status":"interrupted"/);
         const retry = await env.post(a.id, 'messages', { text: 'A retry' });
         assert.equal(retry.status, 200);
@@ -80,7 +80,7 @@ test('stop freezes only its branch; stale callbacks cannot alter a stopped or ne
         await new Promise((resolve) => setImmediate(resolve));
         // The provider gets the turn's signal combined with its end-of-reply signal, so compare liveness.
         assert.equal(
-            env.app.active.get(a.id).signal.aborted,
+            env.app.jobs.get('reply', a.id).controller.signal.aborted,
             false,
             'the retry still owns the branch',
         );
@@ -119,7 +119,7 @@ test('one failed branch preserves partial history while sibling completes and bo
         env.turns[0].emit({ type: 'delta', item: 'answer', text: 'Late failed text' });
         env.turns[0].save('failed-thread');
         assert.deepEqual(env.store.tree(a.id), before);
-        assert.equal(env.app.active.has(b.id), true);
+        assert.equal(!!env.app.jobs.get('reply', b.id), true);
         env.turns[1].emit({ type: 'status', status: 'completed' });
         env.turns[1].resolve();
         assert.match(await br.text(), /"status":"completed"/);
@@ -166,7 +166,7 @@ test('shutdown freezes two active branch checkpoints before storage closes; rest
             assert.deepEqual(saved.branch, branch.branch);
         }
         assert.equal(recovered.turns.length, 0);
-        assert.equal(recovered.app.active.size, 0);
+        assert.equal(recovered.app.jobs.list('reply').length, 0);
         for (const turn of env.turns) {
             assert.equal(turn.signal.aborted, true);
             turn.emit({ type: 'item', item: 'answer', text: 'After shutdown' });
@@ -241,7 +241,7 @@ test('process crash during two branch turns recovers persisted partials without 
         const recovered = await fixture(path);
         try {
             assert.equal(recovered.turns.length, 0);
-            assert.equal(recovered.app.active.size, 0);
+            assert.equal(recovered.app.jobs.list('reply').length, 0);
             for (const branch of [a, b]) {
                 const saved = recovered.store.tree(branch.id);
                 assert.equal(saved.thread, `crash-thread-${branch.id}`);

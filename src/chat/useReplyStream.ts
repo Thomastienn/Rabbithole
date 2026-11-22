@@ -6,45 +6,30 @@ import type { ChatState } from './useChatState';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
 import { mergeArtifact, type DiscussionReply } from '../media/artifacts';
-import { replyStream } from '../serverAccess';
+import { replyStream, request as api } from '../serverAccess';
 
 // Reply stream: sends a question or retry, applies SSE events live, then reloads the saved tree.
 export function useReplyStream(
     c: ChatState,
-    { refresh, activeKey }: LearningTrees,
+    trees: LearningTrees,
     { savingModel }: ChatModel,
     theme: { name: string; mode: string },
 ) {
-    const {
-        tree,
-        state,
-        setState,
-        setTree,
-        setPreviews,
-        setDrafts,
-        setPendingFiles,
-        setError,
-        api,
-    } = c;
-    const { turns, streams, checkpoints, removed, renamed, selected, request } = c;
+    const { setDrafts, setPendingFiles, setError, turns, streams } = c;
+    const { refresh, activeKey, tree, state, setState, setTree, setPreviews } = trees;
+    const { openId, reload, change, retitle, isRemoved } = trees;
     // Reopening a page during a turn recovers saved checkpoints without tying work to focus.
     useEffect(() => {
         if (!activeKey) return;
         const timer = setInterval(() => {
             void refresh()
-                .then(async () => {
-                    const id = selected.current;
-                    if (!id) return;
-                    const version = request.current,
-                        checkpoint = checkpoints.current;
-                    const next: Tree = await api(`/api/trees/${id}`);
-                    if (
-                        selected.current === id &&
-                        request.current === version &&
-                        checkpoints.current === checkpoint
-                    )
-                        setTree(withTurn(next, turns.current.get(id)));
-                })
+                .then(() =>
+                    reload(
+                        openId(),
+                        (next) => setTree(withTurn(next, turns.current.get(next.id))),
+                        true,
+                    ),
+                )
                 .catch((e) => setError(e.message));
         }, 1500);
         return () => clearInterval(timer);
@@ -73,7 +58,7 @@ export function useReplyStream(
         streams.current.set(id, controller);
         const turn: Turn = {};
         turns.current.set(id, turn);
-        ++checkpoints.current;
+        change();
         setError('');
         setState((s) => s && { ...s, active: [...s.active, id] });
         try {
@@ -89,52 +74,37 @@ export function useReplyStream(
                 body: multipart ? form : JSON.stringify({ ...(!retry && { text }), theme }),
                 signal: controller.signal,
             });
-            if (removed.current.has(id)) return;
+            if (isRemoved(id)) return;
             if (!retry) {
                 setDrafts((d) => ({ ...d, [id]: '' }));
                 setPendingFiles((p) => ({ ...p, [id]: [] }));
             }
             for await (const event of events) {
-                if (removed.current.has(id)) continue;
-                if (event.type === 'error' && selected.current === id) setError(event.error);
-                if (event.type === 'saved') {
-                    const title: string = renamed.current.get(id) ?? event.title;
-                    setTree((t) => (t?.id === id ? { ...t, title } : t));
-                    setState(
-                        (s) =>
-                            s && {
-                                ...s,
-                                trees: s.trees.map((t) => (t.id === id ? { ...t, title } : t)),
-                            },
-                    );
-                }
+                if (isRemoved(id)) continue;
+                if (event.type === 'error' && openId() === id) setError(event.error);
+                if (event.type === 'saved') retitle(id, event.title);
                 if (applyStreamEvent(turn, event, id)) {
                     setTree((t) => (t?.id === id ? withTurn(t, turn) : t));
                     setPreviews((p) => ({ ...p, [id]: withLiveTurn(p[id], turn) }));
                 }
             }
         } catch (e) {
-            if (removed.current.has(id)) return;
+            if (isRemoved(id)) return;
             // The composer clears itself on submit; give back a question the server never saved.
             if (!turn.user && !retry) setDrafts((d) => ({ ...d, [id]: d[id] || text }));
-            if (selected.current === id) setError((e as Error).message);
+            if (openId() === id) setError((e as Error).message);
         } finally {
             streams.current.delete(id);
-            if (removed.current.has(id)) return;
-            const version = request.current;
+            if (isRemoved(id)) return;
             try {
-                const saved = await api(`/api/trees/${id}`);
-                if (selected.current === id && request.current === version) {
-                    ++checkpoints.current;
-                    setTree(saved);
-                }
+                await reload(id, (saved) => change(saved));
             } catch {
-                if (selected.current === id && !removed.current.has(id))
+                if (openId() === id && !isRemoved(id))
                     setError('Connection lost. Reload to recover saved messages.');
             } finally {
                 turns.current.delete(id);
                 await refresh().catch(() => {
-                    if (selected.current === id)
+                    if (openId() === id)
                         setError('Connection lost. Reload to recover saved messages.');
                 });
             }
@@ -151,9 +121,8 @@ export function useReplyStream(
         });
         try {
             for await (const event of events) {
-                if (event.type !== 'artifact' || removed.current.has(id)) continue;
-                ++checkpoints.current;
-                setTree((t) =>
+                if (event.type !== 'artifact' || isRemoved(id)) continue;
+                change((t) =>
                     t?.id === id
                         ? withTurn(
                               {
@@ -171,16 +140,13 @@ export function useReplyStream(
                 );
             }
         } finally {
-            const version = request.current,
-                checkpoint = checkpoints.current;
-            const saved = await api(`/api/trees/${id}`);
-            if (
-                !removed.current.has(id) &&
-                selected.current === id &&
-                request.current === version &&
-                checkpoints.current === checkpoint
-            )
-                setTree(withTurn(saved, turns.current.get(id)));
+            await reload(
+                id,
+                (saved) => {
+                    if (!isRemoved(id)) setTree(withTurn(saved, turns.current.get(id)));
+                },
+                true,
+            );
             await refresh();
         }
     };

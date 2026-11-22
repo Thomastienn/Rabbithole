@@ -6,7 +6,7 @@ import type { Artifact } from '../media/artifacts';
 import { firstQuestion as startFirstQuestion } from './firstQuestion';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
-import type { LayoutSaving } from '../map/useLayoutSaving';
+import { request as api } from '../serverAccess';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
 import type { ReplyStream } from './useReplyStream';
@@ -14,16 +14,16 @@ import type { ReplyStream } from './useReplyStream';
 // Tree management: new chat, first question, rename, delete and artifact actions.
 export function useTreeActions(
     c: ChatState,
-    { saver, setLayoutFailed }: LayoutSaving,
-    { refresh, select, openTree }: LearningTrees,
+    trees: LearningTrees,
     { firstModel, currentModel }: ChatModel,
     { send }: ReplyStream,
 ) {
-    const { state, setState, setTree, setDrafts, setPreviews, setError, busy, setBusy, api } = c;
-    const { pendingFiles, setPendingFiles } = c;
-    const { root, setRoot, setTab, setOverview, setExpanded, setLoading, renaming, setRenaming } =
-        c;
-    const { selected, request, checkpoints, turns, streams, removed, renamed } = c;
+    const { setDrafts, setError, busy, setBusy, pendingFiles, setPendingFiles } = c;
+    const { root, setRoot, setTab, setOverview, setExpanded, renaming, setRenaming } = c;
+    const { turns, streams } = c;
+    const { state, setState, setTree, setPreviews, refresh, select, openTree } = trees;
+    const { openId, reload, leave, retitle, forget } = trees;
+    const { saver, setLayoutFailed } = trees.layout;
     const { overviewOrigin, focusComposer, composer, setFolds, setBranch, setReveal } = c;
     const { setSelectingMessage, tab } = c;
     const [deletion, setDeletion] = useState<{
@@ -68,25 +68,20 @@ export function useTreeActions(
                             ?.focus();
                 });
             // A job that settled before this refresh never starts polling, so load its result once.
-            if (!(await refresh()).videos.includes(id) && !turns.current.has(id)) {
-                const saved: Tree = await api(`/api/trees/${id}`);
-                if (selected.current === id && !turns.current.has(id))
-                    setTree((t) => (t?.id === id ? saved : t));
-            }
+            if (!(await refresh()).videos.includes(id) && !turns.current.has(id))
+                await reload(id, (saved) => {
+                    if (!turns.current.has(id)) setTree((t) => (t?.id === id ? saved : t));
+                });
         } catch (e) {
             setError((e as Error).message);
         }
     }
     // New chat saves nothing: it shows the blank first-question composer; create() saves the tree on the first send.
     function newChat() {
-        ++request.current;
-        selected.current = undefined;
-        setTree(undefined);
-        setRoot(undefined);
+        leave();
         setTab('learning');
         setOverview(false);
         setExpanded(false);
-        setLoading(false);
         setError('');
         requestAnimationFrame(() =>
             document.querySelector<HTMLElement>('.first-question [role=textbox]')?.focus(),
@@ -103,7 +98,6 @@ export function useTreeActions(
                 question,
                 firstModel && currentModel ? { ...firstModel, model: currentModel.model } : {},
                 {
-                    api,
                     refresh,
                     send: (question, next) => send(question, next, false, files),
                     open: async (next) => {
@@ -121,16 +115,13 @@ export function useTreeActions(
             );
             if (result.empty) {
                 // Keep send's error on screen; only drop the selection so the blank composer returns.
-                ++request.current;
-                selected.current = undefined;
-                setTree(undefined);
-                setRoot(undefined);
+                leave();
                 setDrafts((d) => ({ ...d, first: question }));
                 setPendingFiles((p) => ({ ...p, first: files }));
                 return;
             }
             requestAnimationFrame(() => {
-                if (selected.current === result.id) composer.current?.focus();
+                if (openId() === result.id) composer.current?.focus();
             });
         } catch (e) {
             setError((e as Error).message);
@@ -155,16 +146,7 @@ export function useTreeActions(
     }
     async function rename(id: string, title: string) {
         const saved = await api(`/api/trees/${id}/rename`, { title });
-        renamed.current.set(id, saved.title);
-        ++checkpoints.current;
-        setTree((t) => (t?.id === id ? { ...t, title: saved.title } : t));
-        setState(
-            (s) =>
-                s && {
-                    ...s,
-                    trees: s.trees.map((t) => (t.id === id ? { ...t, title: saved.title } : t)),
-                },
-        );
+        retitle(id, saved.title, true);
         finishRename();
     }
     function askDelete(id: string, origin: HTMLElement | null) {
@@ -197,13 +179,11 @@ export function useTreeActions(
             );
             const ids = new Set(result.deleted),
                 pending = saver.current?.pending().get(deletion.root);
+            forget(ids);
             for (const id of ids) {
-                removed.current.add(id);
                 streams.current.get(id)?.abort();
                 turns.current.delete(id);
-                renamed.current.delete(id);
             }
-            ++checkpoints.current;
             saver.current?.discard(deletion.root);
             const cleanLayout = (layout: Layout): Layout => ({
                 ...layout,
@@ -243,7 +223,8 @@ export function useTreeActions(
             setRenaming((r) => (r && ids.has(r.id) ? undefined : r));
             setBranch((b) => (b && ids.has(b.parent) ? undefined : b));
             setReveal((r) => (r && ids.has(r.tree) ? undefined : r));
-            if (selected.current && ids.has(selected.current)) setSelectingMessage(undefined);
+            const open = openId();
+            if (open && ids.has(open)) setSelectingMessage(undefined);
             setError('');
             setLayoutFailed(false);
             setDeletion(undefined);
@@ -264,14 +245,10 @@ export function useTreeActions(
                     focusComposer.current = true;
                     openTree(next.id, trees);
                 } else {
-                    ++request.current;
-                    selected.current = undefined;
-                    setTree(undefined);
-                    setRoot(undefined);
+                    leave();
                     if (tab !== 'library') setTab('learning');
                     setOverview(true);
                     setExpanded(false);
-                    setLoading(false);
                 }
                 if (!next || (next.layout?.panel !== 'beside' && next.layout?.panel !== 'expanded'))
                     requestAnimationFrame(() =>

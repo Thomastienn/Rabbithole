@@ -18,6 +18,7 @@ import {
     TrashIcon,
 } from '@heroicons/react/24/outline';
 import type { Model, ChatSelection } from './models';
+import { request as api } from '../serverAccess';
 
 type Pin = Pick<Model, 'provider' | 'model'> | null;
 type Profile = {
@@ -30,7 +31,6 @@ type Profile = {
 
 // Profile picker above the role table; swapping remounts the role rows so each reloads from the newly active profile.
 export default function ModelProfiles({
-    api,
     models,
     providers,
     modelError,
@@ -40,7 +40,6 @@ export default function ModelProfiles({
     onActivated,
     children,
 }: {
-    api: (path: string, body?: unknown) => Promise<any>;
     models?: Model[];
     providers?: Record<string, { label: string; connected: boolean }>;
     modelError: string;

@@ -15,7 +15,7 @@ import { savedGhostTrees, savePreference } from '../shell/preferences';
 export default function MapView({
     c,
     layout: { savePositions, saveViewport, saveGhost },
-    trees: { openConversation, openGhost },
+    trees,
     stream: { retryFromMap },
     branchForm: { askFromMap, branching },
     vim,
@@ -29,9 +29,10 @@ export default function MapView({
     vim: boolean;
     menu: (actions?: MapActions) => React.ReactNode;
 }) {
-    const { root, state, tree, overview, expanded, mobile, previews, transitionBox } = c;
+    const { root, overview, expanded, mobile, transitionBox } = c;
     const { shownMapWidth, workspaceWidth, workspace, setMapWidth, overviewOrigin } = c;
-    const { focusComposer, changeView, setFolds, ghostMarks } = c;
+    const { focusComposer, setFolds, ghostMarks } = c;
+    const { state, tree, previews, changeView, openConversation, openGhost } = trees;
     const marks = ghostMarks?.root === root ? ghostMarks : undefined;
     const [ghostsShown, setGhostsShown] = useState(savedGhostTrees);
     return (

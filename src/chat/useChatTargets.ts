@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect } from 'react';
 import type { ChatState } from './useChatState';
+import type { Tree } from './types';
 
 // Focus targets on opening a chat: the composer, a figure picked in Contents or a bubble picked on the map.
-export function useChatTargets(c: ChatState) {
-    const { tree, overview, composer, focusComposer, figureTarget, setFigureTarget } = c;
+export function useChatTargets(c: ChatState, tree: Tree | undefined) {
+    const { overview, composer, focusComposer, figureTarget, setFigureTarget } = c;
     const { messageTarget, setMessageTarget } = c;
     useEffect(() => {
         if (!overview && tree && focusComposer.current) {

@@ -65,7 +65,6 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
 export default function SettingsWindow({
     request,
     close,
-    api,
     models,
     providers,
     modelError,
@@ -82,7 +81,6 @@ export default function SettingsWindow({
 }: {
     request?: SettingsRequest;
     close: () => void;
-    api: (path: string, body?: unknown) => Promise<any>;
     models?: Model[];
     providers?: Record<string, { label: string; connected: boolean }>;
     modelError: string;
@@ -169,7 +167,7 @@ export default function SettingsWindow({
     // One page at a time (mockup Settings); the nav picks the page.
     const panel = (
         <VStack gap={8} className="settings-panel">
-            {tab === 'usage' && group('usage', <UsageDashboard api={api} providers={providers} />)}
+            {tab === 'usage' && group('usage', <UsageDashboard providers={providers} />)}
             {tab === 'interface' &&
                 group(
                     'interface',
@@ -187,7 +185,6 @@ export default function SettingsWindow({
                     'models',
                     <>
                         <ModelProfiles
-                            api={api}
                             models={models}
                             providers={providers}
                             modelError={modelError}
@@ -197,7 +194,6 @@ export default function SettingsWindow({
                             onActivated={profileActivated}
                         >
                             <ChatSettings
-                                api={api}
                                 models={models}
                                 providers={providers}
                                 onSaved={() => {
@@ -206,14 +202,12 @@ export default function SettingsWindow({
                                 }}
                             />
                             <SmartSettings
-                                api={api}
                                 models={models}
                                 providers={providers}
                                 chatVersion={chatVersion}
                                 onSaved={() => setRolesVersion((v) => v + 1)}
                             />
                             <SuggestionSettings
-                                api={api}
                                 models={models}
                                 providers={providers}
                                 onSaved={() => setRolesVersion((v) => v + 1)}
@@ -221,15 +215,15 @@ export default function SettingsWindow({
                         </ModelProfiles>
                         <Divider />
                         <Section title="Suggestions">
-                            <AutomaticSuggestions api={api} />
+                            <AutomaticSuggestions />
                         </Section>
                         <Divider />
-                        <TutorToolsSettings api={api} />
-                        <SandboxSettings api={api} />
+                        <TutorToolsSettings />
+                        <SandboxSettings />
                         <Divider />
-                        <TutorStyleSettings api={api} />
+                        <TutorStyleSettings />
                         <Divider />
-                        <MemoryNoteSettings api={api} />
+                        <MemoryNoteSettings />
                     </>,
                 )}
             {tab === 'connections' &&
@@ -297,9 +291,9 @@ export default function SettingsWindow({
                             )}
                         </Section>
                         <Divider />
-                        <EndpointSettings api={api} models={models} changed={loadModels} />
+                        <EndpointSettings models={models} changed={loadModels} />
                         <Divider />
-                        <SearchSettings api={api} />
+                        <SearchSettings />
                     </>,
                 )}
         </VStack>

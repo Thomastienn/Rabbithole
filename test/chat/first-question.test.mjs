@@ -1,27 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { firstQuestion } from '../../src/chat/firstQuestion.ts';
+import { fakeServer } from '../support/fake-server.mjs';
 
-test('first question saves selected model once, opens before streaming, and keeps a saved reply', async () => {
+test('first question saves selected model once, opens before streaming, and keeps a saved reply', async (t) => {
     const calls = [],
         tree = { id: 'root' };
     const selection = { provider: 'claude', model: 'second', effort: null };
+    fakeServer(t, (path, body) => {
+        calls.push([path, body]);
+        return path === '/api/trees'
+            ? tree
+            : { messages: [{ role: 'user' }, { role: 'assistant' }] };
+    });
     const result = await firstQuestion('How do fungi trade?', selection, {
-        api: async (path, body) => {
-            calls.push([path, body]);
-            return path === '/api/trees'
-                ? tree
-                : { messages: [{ role: 'user' }, { role: 'assistant' }] };
-        },
         refresh: async () => {
             calls.push('refresh');
         },
         open: async (next) => {
-            assert.equal(next, tree);
+            assert.deepEqual(next, tree);
             calls.push('open');
         },
         send: async (text, next) => {
-            assert.equal(next, tree);
+            assert.deepEqual(next, tree);
             calls.push(['send', text]);
         },
     });
@@ -36,18 +37,18 @@ test('first question saves selected model once, opens before streaming, and keep
     assert.deepEqual(selection, { provider: 'claude', model: 'second', effort: null });
 });
 
-test('failed create never opens/sends; retry creates once; unsaved first send removes only its empty tree', async () => {
+test('failed create never opens/sends; retry creates once; unsaved first send removes only its empty tree', async (t) => {
     const calls = [];
     let fail = true;
+    fakeServer(t, (path, body) => {
+        calls.push([path, body]);
+        if (path === '/api/trees') {
+            if (fail) throw new Error('Create failed');
+            return { id: 'empty' };
+        }
+        return { messages: [] };
+    });
     const services = {
-        api: async (path, body) => {
-            calls.push([path, body]);
-            if (path === '/api/trees') {
-                if (fail) throw new Error('Create failed');
-                return { id: 'empty' };
-            }
-            return { messages: [] };
-        },
         refresh: async () => {
             calls.push('refresh');
         },

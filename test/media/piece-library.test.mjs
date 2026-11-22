@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: PieceLibrary } = await import('../../src/media/PieceLibrary.tsx');
 
 const settle = (act, ms = 5) => act(async () => new Promise((r) => setTimeout(r, ms)));
@@ -23,7 +24,8 @@ test('the Pieces view searches and pages, with a no-results message', async (t) 
             pieces: Array.from({ length: offset ? 6 : 24 }, (_, i) => row(offset + i)),
         };
     };
-    const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
     t.after(cleanup);
     await settle(act);
     assert.equal(calls[0], '/api/pieces?offset=0&limit=24');
@@ -80,7 +82,8 @@ test('the Pieces view searches and pages, with a no-results message', async (t) 
 
 test('an empty Pieces view says how pieces get there', async (t) => {
     const api = async () => ({ total: 0, pieces: [] });
-    const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
     t.after(cleanup);
     await settle(act);
     assert.equal(container.querySelector('h2').textContent, 'No saved pieces yet');
@@ -112,7 +115,8 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
             };
         assert.fail(path);
     };
-    const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
     t.after(cleanup);
     await settle(act);
     const cards = [...container.querySelectorAll('.piece-library h3')].map((e) =>
@@ -178,7 +182,8 @@ test('opening a piece with a 3D form sends both forms to the isolated player fra
             };
         assert.fail(path);
     };
-    const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
     t.after(cleanup);
     await settle(act);
     await act(async () => container.querySelector('[aria-label="Open Winner"]').click());
@@ -234,7 +239,8 @@ test('cards show the 2D and 3D stills as images, a 2D only note, or a pending st
                   ],
               }
             : assert.fail(path);
-    const { container, act, cleanup } = await render(h(PieceLibrary, { api }), ui);
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
     t.after(cleanup);
     await settle(act);
     const card = (name) =>

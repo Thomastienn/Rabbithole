@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { request, body, publicAddress } from '../tools/readPage.mjs';
 import { downloadClip } from './clips.mjs';
 import { pieceNames } from './video-plan.mjs';
+import { cutWork } from './video-workspace.mjs';
 
 const MAX_IMAGE = 3 * 1024 * 1024,
     TRIES = 3;
@@ -165,11 +166,11 @@ export async function fetchExhibits(
             id = `exhibit${n + 1}`;
         const file = bytes && `exhibits/${id}`;
         if (bytes) {
-            await mkdir(join(workspace, `cut-${cut}`, 'exhibits'), {
+            await mkdir(join(cutWork(workspace, cut), 'exhibits'), {
                 recursive: true,
                 mode: 0o700,
             });
-            await writeFile(join(workspace, `cut-${cut}`, file), bytes);
+            await writeFile(join(cutWork(workspace, cut), file), bytes);
         }
         exhibits.push({ id, cut, ...meta, ...(show && { show }), ...(file && { file }) });
         onExhibit(exhibits.at(-1));

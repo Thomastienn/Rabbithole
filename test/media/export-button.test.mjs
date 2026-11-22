@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: ExportButton } = await import('../../src/media/ExportButton.tsx');
 const { setCsrf } = await import('../../src/serverAccess.ts');
 const { default: VideoCard } = await import('../../src/media/VideoCard.tsx');
@@ -12,15 +13,13 @@ const { default: VideoCard } = await import('../../src/media/VideoCard.tsx');
 async function mount(t, answers, element) {
     const calls = [],
         downloads = [];
-    const fetch = globalThis.fetch;
-    globalThis.fetch = async (url, init) => {
+    fakeServer(t, (url, _body, init) => {
         calls.push(
             `${init?.method ?? 'GET'} ${url}${init ? ` ${init.headers['X-Rabbithole-CSRF']}` : ''}`,
         );
         const [status, body] = answers.shift();
         return { ok: status < 400, json: async () => body };
-    };
-    t.after(() => (globalThis.fetch = fetch));
+    });
     setCsrf('token');
     const view = await render(element, (w) => {
         ui(w);

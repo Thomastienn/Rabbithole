@@ -8,21 +8,13 @@ import { auditReport, auditFix } from './audit-answers.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths, sandboxOutput } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
-import { ENGINES } from './cut-engines.mjs';
 import { stageCut } from './video-stage.mjs';
+import { cutState } from './cut-state.mjs';
+import { cutWork } from './video-workspace.mjs';
 
-// A cut plays live once its code and measured narration exist, its audit settled and its engine has what it plays.
-export const playable = (cut) =>
-    !!(cut.code && cut.timing && cut.audited && ENGINES[cut.engine].playable(cut));
 // Live rows: a row's state may move back (ready to repairing) while the job phase only moves forward.
 export const cutRows = (cuts, plan) =>
-    cuts.map((c, i) => ({
-        cut: i + 1,
-        title: plan.cuts[i].purpose,
-        state:
-            c.step ??
-            (playable(c) ? 'ready' : !c.code ? 'writing' : !c.timing ? 'narrating' : 'auditing'),
-    }));
+    cuts.map((c, i) => ({ cut: i + 1, title: plan.cuts[i].purpose, state: cutState(c) }));
 
 // A cut's final validation or render failure; provider, sign-in and runtime errors keep their own wording.
 export const cutError = (reason, index, count) =>
@@ -255,7 +247,7 @@ export async function writeCuts({
         throw cutError(error.message, index, plan.cuts.length);
     };
     const stage = async (index) => {
-        const dir = join(workspace, `cut-${index}`);
+        const dir = cutWork(workspace, index);
         await mkdir(dir, { recursive: true, mode: 0o700 });
         return stageCut({
             dir,
@@ -412,7 +404,7 @@ export async function writeCuts({
         persist();
     };
     const writing = cuts.map(async (cut, index) => {
-        const dir = join(workspace, `cut-${index}`);
+        const dir = cutWork(workspace, index);
         cut.status = 'writing';
         persist();
         const operations = [

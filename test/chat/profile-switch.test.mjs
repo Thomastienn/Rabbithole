@@ -19,7 +19,7 @@ test('activating a profile sets the open conversation to its chat model, even a 
     await page.act(async () => page.current.model.profileActivated(deep));
     assert.deepEqual(modelSaves(page).at(-1).body, deep);
     assert.equal(modelSaves(page).at(-1).path, '/api/trees/a/model');
-    const { provider, model, effort } = page.current.c.tree;
+    const { provider, model, effort } = page.current.trees.tree;
     assert.deepEqual({ provider, model, effort }, deep);
     assert.equal(
         page.current.model.currentModel.model,
@@ -31,7 +31,7 @@ test('activating a profile sets the open conversation to its chat model, even a 
 
 test('with no conversation open, activating a profile changes no conversation', async (t) => {
     const page = await mount(t, saveModel);
-    await page.act(async () => page.current.c.setTree(undefined));
+    await page.act(async () => page.current.trees.setTree(undefined));
     await page.act(async () => page.current.model.profileActivated(deep));
     assert.equal(modelSaves(page).length, 0);
 });
@@ -42,7 +42,7 @@ test('a reply streaming during a profile switch finishes on its old model; the s
             ctx.state.active = ['a'];
         return saveModel(call, ctx);
     });
-    assert.deepEqual(page.current.c.state.active, ['a']);
+    assert.deepEqual(page.current.trees.state.active, ['a']);
     await page.act(async () => page.current.model.profileActivated(deep));
     assert.equal(modelSaves(page).length, 0, 'no model change while the reply streams');
     page.data.set('a', {
@@ -54,10 +54,10 @@ test('a reply streaming during a profile switch finishes on its old model; the s
     page.state.active = [];
     await page.act(async () => t.mock.timers.tick(1500));
     await page.act(async () => {});
-    assert.equal(page.current.c.tree.messages[0].text, 'Old model reply');
+    assert.equal(page.current.trees.tree.messages[0].text, 'Old model reply');
     assert.deepEqual(
         modelSaves(page).map((c) => c.body),
         [deep],
     );
-    assert.equal(page.current.c.tree.provider, 'codex');
+    assert.equal(page.current.trees.tree.provider, 'codex');
 });

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { mediaPath } from '../../media/videos.mjs';
+import { videoWork, legacyWork } from '../../media/video-workspace.mjs';
 import { pythonWorkspace } from '../../tools/python.mjs';
 import { LABELS, isEndpoint } from '../roles.mjs';
 import { anchorOf, compactionPrompt, freeAnchorOf } from '../jobs/compaction.mjs';
@@ -9,7 +10,7 @@ import { IMAGE_TYPES } from '../../attachments.mjs';
 
 // Learning trees: create, read, rename, delete, layout, model changes and branching; send and retry live in send.mjs.
 export async function treeRoutes(req, res, url, ctx, body) {
-    const { store, json, providers, active, compactions, prepared, pick, selectionError } = ctx;
+    const { store, json, providers, jobs, pick, selectionError } = ctx;
     if (req.method === 'GET') {
         // A saved attachment, scoped to its conversation; served as inert text or a download, never as app content.
         const file = url.pathname.match(/^\/api\/trees\/([^/]+)\/attachments\/([^/]+)$/);
@@ -37,7 +38,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
         if (!treeMatch) return false;
         const tree = store.tree(treeMatch[1]);
         // A child still waiting for inherited context reports why: running, failed (with reason) or lost on restart.
-        const compaction = tree?.branch && !tree.branch.snapshot && compactions.get(tree.id);
+        const compaction = tree?.branch && !tree.branch.snapshot && jobs.get('compaction', tree.id);
         const preparing = tree?.branch &&
             !tree.branch.snapshot && {
                 compaction: !compaction
@@ -144,8 +145,8 @@ export async function treeRoutes(req, res, url, ctx, body) {
                     for (const path of [
                         ...(store.libraryVideo(a.id)
                             ? []
-                            : [mediaPath(dir, a.id), join(dir, 'video-work', a.id)]),
-                        ...(a.attempt ? [join(dir, 'video-work', a.attempt)] : []),
+                            : [mediaPath(dir, a.id), videoWork(dir, a.id)]),
+                        ...(a.attempt ? [legacyWork(dir, a.attempt)] : []),
                     ]) {
                         files.push(path);
                         // Live jobs can have filesystem operations in flight; stop and remove those after commit.
@@ -165,18 +166,20 @@ export async function treeRoutes(req, res, url, ctx, body) {
             throw error;
         }
         for (const conversation of result.deleted) {
-            for (const job of ctx.discussing.values())
-                if (job.conversation === conversation) job.controller.abort();
-            for (const [key, job] of compactions)
-                if (key.startsWith('discussion:') && job.conversation === conversation) {
+            for (const job of ctx.jobs.list())
+                if (
+                    job.conversation === conversation &&
+                    [
+                        'discussion',
+                        'discussion-compaction',
+                        'reply',
+                        'compaction',
+                        'prepared-compaction',
+                    ].includes(job.kind)
+                ) {
                     job.controller.abort();
-                    compactions.delete(key);
+                    ctx.jobs.remove(job);
                 }
-            active.get(conversation)?.abort();
-            active.delete(conversation);
-            compactions.get(conversation)?.controller.abort();
-            compactions.delete(conversation);
-            ctx.unprepare(conversation);
         }
         const jobs = [...videoJobs].filter((v) => result.deleted.includes(v.conversation));
         for (const job of jobs) job.controller.abort(new Error('Conversation deleted.'));
@@ -265,7 +268,8 @@ export async function treeRoutes(req, res, url, ctx, body) {
     // Opening the branch form compacts in the background (it never sees the question); closing cancels.
     // Only the passage being closed is cancelled, so a close racing the next form's prepare never cancels that one.
     if (action === 'unprepare') {
-        if (prepared.get(id)?.passage === anchorOf(tree, body)?.text) ctx.unprepare(id);
+        if (jobs.get('prepared-compaction', id)?.passage === anchorOf(tree, body)?.text)
+            ctx.unprepare(id);
         return json(res, 200, {});
     }
     if (action === 'prepare') {
@@ -279,21 +283,9 @@ export async function treeRoutes(req, res, url, ctx, body) {
         const { quick, status, error } = await ctx.quickFor(parent);
         if (error) return json(res, status, { error });
         const prompt = compactionPrompt(tree, anchor.text),
-            key = JSON.stringify([prompt, quick]);
-        if (prepared.get(id)?.key !== key || prepared.get(id).failed) {
-            ctx.unprepare(id);
-            const controller = new AbortController(),
-                entry = {
-                    key,
-                    passage: anchor.text,
-                    controller,
-                    run: ctx.compact(prompt, quick, controller),
-                };
-            prepared.set(id, entry);
-            entry.run.catch(() => {
-                entry.failed = true;
-            }); // reopening the form or submitting after a failure runs again
-        }
+            prepared = jobs.get('prepared-compaction', id);
+        if (prepared?.input !== JSON.stringify([prompt, quick]) || prepared.failed)
+            ctx.prepare(id, prompt, quick, anchor.text);
         return json(res, 202, {});
     }
     // A brief explanation of a tutor reply passage or a visual part: saved one at once, else one quick thinking call, returned whole.
@@ -335,43 +327,41 @@ export async function treeRoutes(req, res, url, ctx, body) {
         }
     }
     if (action === 'stop') {
-        active.get(id)?.abort();
+        jobs.get('reply', id)?.controller.abort();
         return json(res, 200, {});
     }
-    if (active.has(id))
+    if (jobs.get('reply', id))
         return json(res, 409, { error: 'This tree is already responding. Stop it or wait.' });
-    if (action === 'model') {
-        const controller = new AbortController();
-        active.set(id, controller);
-        try {
-            const target = body?.provider ?? tree.provider;
-            const model = Object.hasOwn(body ?? {}, 'model') ? body.model : tree.model;
-            const effort = Object.hasOwn(body ?? {}, 'effort')
-                ? body.effort
-                : target === tree.provider && model === tree.model
-                  ? tree.effort
-                  : null;
-            const invalid = await selectionError({ provider: target, model, effort });
-            if (invalid) return json(res, invalid.status, { error: invalid.error });
-            if (controller.signal.aborted)
-                return json(res, 409, {
-                    error: 'Model change cancelled. Your previous selection is saved.',
+    // A model change and a branch hold the reply slot like a reply in flight.
+    if (action === 'model')
+        return jobs.start('reply', id, id, async ({ controller }) => {
+            try {
+                const target = body?.provider ?? tree.provider;
+                const model = Object.hasOwn(body ?? {}, 'model') ? body.model : tree.model;
+                const effort = Object.hasOwn(body ?? {}, 'effort')
+                    ? body.effort
+                    : target === tree.provider && model === tree.model
+                      ? tree.effort
+                      : null;
+                const invalid = await selectionError({ provider: target, model, effort });
+                if (invalid) return json(res, invalid.status, { error: invalid.error });
+                if (controller.signal.aborted)
+                    return json(res, 409, {
+                        error: 'Model change cancelled. Your previous selection is saved.',
+                    });
+                // A provider switch starts a fresh session that receives the saved discussion on the next reply.
+                if (target !== tree.provider) store.switchProvider(id, target, model, effort);
+                else store.model(id, model, effort);
+                return json(res, 200, { provider: target, model, effort });
+            } catch {
+                const next = isEndpoint(body.provider ?? tree.provider)
+                    ? 'Check custom endpoint settings or retry.'
+                    : `Sign in to ${LABELS[body.provider ?? tree.provider] ?? 'the provider'} or retry.`;
+                return json(res, 502, {
+                    error: `Model change failed. Your previous selection is saved. ${next}`,
                 });
-            // A provider switch starts a fresh session that receives the saved discussion on the next reply.
-            if (target !== tree.provider) store.switchProvider(id, target, model, effort);
-            else store.model(id, model, effort);
-            return json(res, 200, { provider: target, model, effort });
-        } catch {
-            const next = isEndpoint(body.provider ?? tree.provider)
-                ? 'Check custom endpoint settings or retry.'
-                : `Sign in to ${LABELS[body.provider ?? tree.provider] ?? 'the provider'} or retry.`;
-            return json(res, 502, {
-                error: `Model change failed. Your previous selection is saved. ${next}`,
-            });
-        } finally {
-            active.delete(id);
-        }
-    }
+            }
+        }).done;
     if (action === 'branches') {
         const anchor = body && 'free' in body ? freeAnchorOf(tree, body) : anchorOf(tree, body);
         if (anchor?.error) return json(res, 400, anchor);
@@ -379,10 +369,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
             return json(res, 400, {
                 error: 'Select a completed tutor passage and enter a question.',
             });
-        const controller = new AbortController();
-        active.set(id, controller);
-        let child;
-        try {
+        return jobs.start('reply', id, id, async () => {
             const parent = {
                 ...tree,
                 model: tree.model ?? (await pick(tree).model?.(tree)) ?? null,
@@ -396,25 +383,18 @@ export async function treeRoutes(req, res, url, ctx, body) {
             // The child is saved with an empty snapshot that compaction fills once.
             const prompt = compactionPrompt(tree, anchor.text);
             // Reuse the form-open compaction only if the parent, passage and quick model are unchanged.
+            const prepared = jobs.get('prepared-compaction', id);
             const ready =
-                prepared.get(id)?.key === JSON.stringify([prompt, quick]) &&
-                !prepared.get(id).failed
-                    ? prepared.get(id)
+                prepared?.input === JSON.stringify([prompt, quick]) && !prepared.failed
+                    ? prepared
                     : null;
-            if (ready) prepared.delete(id);
+            if (ready) jobs.remove(ready);
             else ctx.unprepare(id);
-            child = store.branch(parent, anchor, '');
+            const child = store.branch(parent, anchor, '');
             ctx.startCompaction(child.id, prompt, quick, ready);
-        } finally {
-            active.delete(id);
-        }
-        return json(res, 201, child);
+            return json(res, 201, child);
+        }).done;
     }
-    const controller = new AbortController();
-    active.set(id, controller);
-    try {
-        return await sendRoute(res, ctx, id, tree, action, body, controller);
-    } finally {
-        if (active.get(id) === controller) active.delete(id);
-    }
+    return jobs.start('reply', id, id, (job) => sendRoute(res, ctx, id, tree, action, body, job))
+        .done;
 }

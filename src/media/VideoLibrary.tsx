@@ -6,6 +6,7 @@ import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { ArrowPathIcon, FolderOpenIcon, TrashIcon } from '@heroicons/react/24/outline';
 import VideoCard from './VideoCard';
+import { request as api } from '../serverAccess';
 
 // Library rows carry no conversation, discussion text or production details.
 export type LibraryVideo = {
@@ -22,13 +23,7 @@ export type LibraryVideo = {
     live?: string;
 };
 
-export default function VideoLibrary({
-    api,
-    activity,
-}: {
-    api: (path: string, body?: unknown) => Promise<any>;
-    activity: string;
-}) {
+export default function VideoLibrary({ activity }: { activity: string }) {
     const [videos, setVideos] = useState<LibraryVideo[]>();
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button, inputValue } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: SearchSettings } = await import('../../src/settings/SearchSettings.tsx');
 
 const managed = {
@@ -32,7 +33,8 @@ test('Search Settings shows managed URL, tests draft, reports JSON-disabled and 
         saved = body.url ? { ...managed, url: body.url, customUrl: body.url } : { ...managed };
         return saved;
     };
-    const { container, act, cleanup } = await render(h(SearchSettings, { api }), ui);
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(SearchSettings), ui);
     t.after(cleanup);
     const input = container.querySelector('input');
     assert.ok(input.labels[0], 'the field is labelled');
@@ -76,18 +78,14 @@ test('Search Settings shows managed URL, tests draft, reports JSON-disabled and 
 });
 
 test('managed startup failure remains readable while a learner can save their own instance', async (t) => {
-    const { container, cleanup } = await render(
-        h(SearchSettings, {
-            api: async () => ({
-                ...managed,
-                url: null,
-                managedUrl: null,
-                ready: false,
-                error: 'SearXNG install failed: uv was not found.',
-            }),
-        }),
-        ui,
-    );
+    fakeServer(t, async () => ({
+        ...managed,
+        url: null,
+        managedUrl: null,
+        ready: false,
+        error: 'SearXNG install failed: uv was not found.',
+    }));
+    const { container, cleanup } = await render(h(SearchSettings), ui);
     t.after(cleanup);
     assert.match(container.querySelector('[role=alert]').textContent, /uv was not found/);
     assert.equal(container.querySelector('input').disabled, false);
@@ -100,7 +98,8 @@ test('Settings can retry a failed initial load without reopening the page', asyn
         if (++attempts === 1) throw new Error('Settings connection lost.');
         return managed;
     };
-    const { container, act, cleanup } = await render(h(SearchSettings, { api }), ui);
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(SearchSettings), ui);
     t.after(cleanup);
     assert.match(container.querySelector('[role=alert]').textContent, /connection lost/);
     await act(async () => button(container, 'Retry search settings').click());

@@ -15,6 +15,7 @@ import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS, MANIM_COMPONENT } from '.
 import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL, MOTION_DESIGN_SKILL } from './skills.mjs';
 import { videoPalette, roleColor } from './video-colors.mjs';
 import { withoutPaths, validateOutput } from './video-sandbox.mjs';
+import { cutClip } from './video-workspace.mjs';
 
 const MANIM_KIT = readFileSync(new URL('./manim-kit.py', import.meta.url), 'utf8');
 
@@ -169,7 +170,7 @@ export function cutEngines({ snapshot, manim, signal, stop, onWarning }) {
                     if (error.manimUnavailable) unavailable(error);
                     throw error;
                 }
-                await copyFile(clip, join(dir, 'public', 'manim.mp4'));
+                await copyFile(clip, cutClip(dir));
                 return 'public/manim.mp4';
             },
             stills: (dir, stills) => snapshot(dir, stills, signal),

@@ -11,7 +11,8 @@ import {
 } from './video-plan.mjs';
 import { fetchExhibit, videoMedia } from './exhibits.mjs';
 import { detectClips } from './clips.mjs';
-import { writeCuts, playable, cutRows } from './video-cuts.mjs';
+import { writeCuts, cutRows } from './video-cuts.mjs';
+import { CUT_STATES, cutState, playable } from './cut-state.mjs';
 import { mediaCall, raced } from './media-call.mjs';
 import { planBuilder } from './plan-calls.mjs';
 
@@ -20,6 +21,7 @@ import { sandboxProcess, REPO } from './video-sandbox.mjs';
 import { detectManim, videoBrowser } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
 import { cutEngines } from './cut-engines.mjs';
+import { attemptWork, cutWork, cutAudio, readSaved } from './video-workspace.mjs';
 
 export const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
 // The learner must name a video; the tutor's block alone never starts one.
@@ -120,7 +122,7 @@ export async function generateVideo({
     writerCapable = false,
     mcp,
 }) {
-    const workspace = join(dir, 'video-work', artifact.id, artifact.attempt);
+    const workspace = attemptWork(dir, artifact.id, artifact.attempt);
     const controller = new AbortController();
     const cancel = () => controller.abort(signal.reason);
     signal.addEventListener('abort', cancel, { once: true });
@@ -155,17 +157,17 @@ export async function generateVideo({
         controller.signal.throwIfAborted();
         await mkdir(join(workspace, 'out'), { recursive: true, mode: 0o700 });
         await mkdir(join(workspace, 'tmp'), { recursive: true, mode: 0o700 });
-        const prior = previous?.source ? JSON.parse(previous.source) : null;
+        const prior = previous?.source ? readSaved(previous.source) : null;
         const kept = [];
         if (prior?.plan)
             for (const [i, cut] of prior.cuts.entries()) {
-                const from = join(dir, 'video-work', artifact.id, previous.attempt, `cut-${i}`),
-                    to = join(workspace, `cut-${i}`);
+                const from = cutWork(attemptWork(dir, artifact.id, previous.attempt), i),
+                    to = cutWork(workspace, i);
                 // Copy, never share, the old cut folder; timing counts only if its audio came along.
                 const timing =
                     cut.timing &&
                     (await cp(from, to, { recursive: true })
-                        .then(() => access(join(to, 'public', 'narration.mp3')))
+                        .then(() => access(cutAudio(to)))
                         .then(
                             () => cut.timing,
                             () => rm(to, { recursive: true, force: true }).then(() => null),
@@ -233,7 +235,7 @@ export async function generateVideo({
         const { exhibits, references } = await videoMedia({
             plan,
             prior,
-            from: prior?.plan && join(dir, 'video-work', artifact.id, previous.attempt),
+            from: prior?.plan && attemptWork(dir, artifact.id, previous.attempt),
             searching,
             pictures: cutEngine.some((e) => e.pictures),
             fetch: (planned) =>
@@ -271,18 +273,19 @@ export async function generateVideo({
             const ready = live.cuts.filter(playable).length;
             if (live.pieces === null) return say('pieces');
             const waiting = live.cuts.slice(0, 2).find((c) => !playable(c));
-            if (waiting)
-                return !waiting.code
-                    ? say('writing', undefined, {
-                          cut: live.cuts.filter((c) => c.code).length,
-                          cuts: count,
-                      })
-                    : !waiting.timing
-                      ? say('narrating')
-                      : say('auditing', undefined, {
-                            cut: live.cuts.filter((c) => c.audited).length,
-                            cuts: count,
-                        });
+            const phase = waiting && CUT_STATES[cutState(waiting)].phase;
+            if (phase === 'writing')
+                return say(phase, undefined, {
+                    cut: live.cuts.filter((c) => c.code).length,
+                    cuts: count,
+                });
+            if (phase === 'auditing')
+                return say(phase, undefined, {
+                    cut: live.cuts.filter((c) => c.audited).length,
+                    cuts: count,
+                });
+            // A failed cut reports no phase; its rows still update.
+            if (waiting) return say(phase);
             if (!playableStage) onStage('playable', { cut: ready, cuts: count });
             playableStage = true;
             say('playable', undefined, { cut: ready, cuts: count });
@@ -418,17 +421,15 @@ export async function generateVideo({
         // Keep private code and timing; discard bundles, temporary clips, and audio of canceled or stopped attempts.
         // A failed attempt keeps its audio so Retry can reuse the narration.
         await Promise.all(
-            [
-                workspace,
-                ...Array.from({ length: count }, (_, i) => join(workspace, `cut-${i}`)),
-            ].flatMap((folder) =>
-                [
-                    'bundle',
-                    'tmp',
-                    'out',
-                    ...(!published && signal.aborted ? ['public', 'narration.json'] : []),
-                    '.remotion',
-                ].map((name) => rm(join(folder, name), { recursive: true, force: true })),
+            [workspace, ...Array.from({ length: count }, (_, i) => cutWork(workspace, i))].flatMap(
+                (folder) =>
+                    [
+                        'bundle',
+                        'tmp',
+                        'out',
+                        ...(!published && signal.aborted ? ['public', 'narration.json'] : []),
+                        '.remotion',
+                    ].map((name) => rm(join(folder, name), { recursive: true, force: true })),
             ),
         );
     }

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button, inputValue } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: ModelProfiles } = await import('../../src/settings/ModelProfiles.tsx');
 const { default: ChatSettings } = await import('../../src/settings/ChatSettings.tsx');
 const { default: SmartSettings } = await import('../../src/settings/SmartSettings.tsx');
@@ -81,13 +82,12 @@ function server() {
     return { api, state, active };
 }
 
-function Roles({ api, onActivated = () => {} }) {
+function Roles({ onActivated = () => {} }) {
     const [chatVersion, setChat] = useState(0),
         [rolesVersion, setRoles] = useState(0);
     return h(
         ModelProfiles,
         {
-            api,
             models,
             providers,
             modelError: '',
@@ -97,7 +97,6 @@ function Roles({ api, onActivated = () => {} }) {
             onActivated,
         },
         h(ChatSettings, {
-            api,
             models,
             providers,
             onSaved: () => {
@@ -106,13 +105,12 @@ function Roles({ api, onActivated = () => {} }) {
             },
         }),
         h(SmartSettings, {
-            api,
             models,
             providers,
             chatVersion,
             onSaved: () => setRoles((v) => v + 1),
         }),
-        h(SuggestionSettings, { api, models, providers, onSaved: () => setRoles((v) => v + 1) }),
+        h(SuggestionSettings, { models, providers, onSaved: () => setRoles((v) => v + 1) }),
     );
 }
 
@@ -137,12 +135,10 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
     let dom;
     const activated = [];
     const onActivated = (chat) => activated.push(chat);
-    const { container, act, cleanup } = await render(
-        h(Roles, { api: fake.api, onActivated }),
-        (w) => {
-            dom = ui(w);
-        },
-    );
+    fakeServer(t, fake.api);
+    const { container, act, cleanup } = await render(h(Roles, { onActivated }), (w) => {
+        dom = ui(w);
+    });
     t.after(cleanup);
     const settle = () => act(async () => dom.frames());
     await settle();

@@ -63,7 +63,7 @@ test('server shutdown ends concurrent reply streams as interrupted and saves pen
         await env.app.stop();
         for (const response of [ar, br])
             assert.match(await response.text(), /"type":"done","status":"interrupted"/);
-        assert.equal(env.app.active.size, 0);
+        assert.equal(env.app.jobs.list('reply').length, 0);
         assert.equal(env.store.artifact(a.id, job.id).status, 'interrupted');
         for (const [tree, partial] of [
             [a, 'first'],
@@ -281,7 +281,7 @@ test('concurrent trees remain usable; stop targets only one active tree', async 
         assert.equal((await fetch(`${env.origin}/api/state`)).status, 200);
         await env.post(`/api/trees/${a.id}/stop`, {});
         assert.match(await ar.text(), /interrupted/);
-        assert.equal(env.app.active.has(b.id), true);
+        assert.equal(!!env.app.jobs.get('reply', b.id), true);
         started.get(b.id)();
         assert.match(await br.text(), /completed/);
         assert.equal(env.store.tree(a.id).messages[1].text, 'A only');
