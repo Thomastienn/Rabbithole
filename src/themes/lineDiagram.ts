@@ -1,5 +1,6 @@
 // Line Diagram: the roles every theme shares. Each theme source passes only its name and palette.
 // Every colour is a [light, dark] tuple; dark is the default.
+import type { DefineThemeInput } from '@astryxdesign/core/theme';
 import { neutralTheme } from '@astryxdesign/theme-neutral';
 import { lineDiagramIcons } from './icons';
 
@@ -47,7 +48,9 @@ export const lineDiagramBase = {
 const alpha = ([l, d]: Pair, a: string, b = a): Pair => [`${l}${a}`, `${d}${b}`];
 const soft = (p: Pair) => alpha(p, '24', '2e');
 
-export const lineDiagramRoles = (p: Palette) => {
+export const lineDiagramRoles = (
+    p: Palette,
+): Pick<DefineThemeInput, 'components' | 'localTokens' | 'tokens'> => {
     const {
         ground,
         deep,
