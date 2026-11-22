@@ -1,3 +1,5 @@
+import { join, resolve } from 'node:path';
+
 // The shell's decisions, free of Electron so node --test checks them without opening a window.
 
 // The server prints `Rabbithole: <url>` once it listens on loopback.
@@ -32,6 +34,11 @@ export function saveLayout(run, ms = 3000) {
         new Promise((done) => setTimeout(done, ms).unref()),
     ]);
 }
+
+// Add-ons install into a tools folder in the server's data folder (server/main.mjs, resolved from the server's cwd),
+// so the app never writes into its own, read-only folder and an app update keeps them.
+export const toolsDir = (cwd, env, dataDir) =>
+    join(resolve(cwd, env.RABBITHOLE_DATA_DIR ?? dataDir()), 'tools');
 
 // The update banner's state: null (nothing to show), then available, downloading, ready or failed, and restarting.
 // A failed check stays null, so being offline shows nothing; only a failed download is shown, with its reason.

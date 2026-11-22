@@ -32,9 +32,6 @@ jobs:
             ~/.cache/electron-builder
           key: electron-${{ runner.os }}-${{ hashFiles('desktop/package-lock.json') }}
           restore-keys: electron-${{ runner.os }}-
-      # The stage builds pycairo and manimpango against Cairo and Pango.
-      - name: Install the stage's Linux prerequisites
-        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libpango1.0-dev pkg-config
       - run: npm ci
       # The updater compares versions, so every build gets a newer one without a hand bump.
       - name: Stamp the version
@@ -44,7 +41,7 @@ jobs:
       # Opens the AppImage's own output without FUSE or a display; bubblewrap is the sandbox the learner installs.
       - name: Smoke-test the AppImage
         run: |
-          sudo apt-get install -y bubblewrap
+          sudo apt-get update && sudo apt-get install -y bubblewrap
           (cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE"/desktop/dist/*.AppImage --appimage-extract > /dev/null)
           node scripts/desktop-smoke.mjs "$RUNNER_TEMP/squashfs-root/resources"
       - uses: actions/upload-artifact@v4

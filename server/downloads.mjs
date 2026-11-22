@@ -17,7 +17,8 @@ const ADDONS = [
             'Lets the tutor run Python on this computer to calculate, check its work and draw charts. Videos use it too.',
         size: 50e6,
         dependency: null,
-        tools: ['python'],
+        // Its setup makes the venv with uv, so uv comes first; video tools share it.
+        tools: ['uv', 'python'],
     },
     {
         id: 'web-search',

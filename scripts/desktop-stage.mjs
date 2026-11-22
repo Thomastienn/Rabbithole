@@ -1,34 +1,26 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
     closeSync,
     cpSync,
-    existsSync,
     mkdirSync,
     openSync,
     readdirSync,
     readFileSync,
     readSync,
-    renameSync,
     rmSync,
     statSync,
-    symlinkSync,
-    writeFileSync,
 } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildIsCurrent } from './build-state.mjs';
-import { ensureLatex, ensureUv } from './tools-setup.mjs';
-import { MANIM_VERSION, pythonIn, texBin, uvDir, videoBrowser } from '../server/media/manim.mjs';
-import { PYTHON_PACKAGES, pythonVenv } from '../server/tools/python.mjs';
 
 // Stages the desktop resources in desktop/stage, run in place by the shell with no copy and no tool download:
-// node (the official Node 24), app (the built app with production dependencies) and tools (the tool root).
-// On Windows it also builds the sandbox launcher and its Codex helpers into desktop/stage.
+// node (the official Node 24) and app (the built app with production dependencies). No tools: add-ons install on
+// request into the data folder (ADR 0020). On Windows it also builds the sandbox launcher and its Codex helpers.
 const root = fileURLToPath(new URL('..', import.meta.url));
 const stage = join(root, 'desktop', 'stage');
-const app = join(stage, 'app'),
-    tools = join(stage, 'tools');
+const app = join(stage, 'app');
 // Pinned official build; a distro or Homebrew node may link shared libraries the learner lacks.
 const NODE = {
     version: '24.22.3',
@@ -41,11 +33,8 @@ const run = (command, args, cwd = root) =>
     execFileSync(command, args, { cwd, stdio: 'inherit', shell: windows && command === 'npm' });
 // Windows' own bsdtar reads zips and C:\ paths; a Git-for-Windows GNU tar earlier on PATH does neither.
 const tar = windows ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
-// The tools-setup form: resolves to the exit code. Its tar unpacks uv's Windows zip, so it gets the same bsdtar.
-const runCode = async (command, args, env) =>
-    spawnSync(command === 'tar' ? tar : command, args, { stdio: 'inherit', env }).status ?? 1;
 
-// Every regular file below dir; readdirSync's recursive mode would also walk the .venv-python link.
+// Every regular file below dir; readdirSync's recursive mode would also follow links.
 const files = (dir) =>
     readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
         const path = join(dir, entry.name);
@@ -79,75 +68,6 @@ export function foreignBinaries(dir, platform = process.platform, arch = process
         if (kind && kind !== platform) found.push(relative(dir, file));
     }
     return found;
-}
-
-// Every bundled tool, probed by its own path in the tool root, so a tool on this machine's PATH cannot pass for it.
-function missingTools(dir) {
-    const ok = (command, args) =>
-        spawnSync(command, args, { encoding: 'utf8', timeout: 60000 }).status === 0;
-    const manim = spawnSync(
-        pythonIn(join(dir, '.venv')),
-        ['-I', '-c', 'import manim; print(manim.__version__)'],
-        { encoding: 'utf8', timeout: 60000 },
-    );
-    return [
-        !ok(join(uvDir(dir), windows ? 'uv.exe' : 'uv'), ['--version']) && 'uv',
-        !ok(join(texBin(dir), 'latex'), ['--version']) && 'latex',
-        !ok(join(texBin(dir), 'dvisvgm'), ['--version']) && 'dvisvgm',
-        manim.stdout?.trim() !== MANIM_VERSION && `Manim ${MANIM_VERSION}`,
-        !ok(pythonIn(join(dir, '.venv')), ['-I', '-m', 'yt_dlp', '--version']) && 'yt-dlp',
-        !ok(pythonIn(pythonVenv(dir)), ['-I', '-c', 'import numpy, scipy, sympy, pandas']) &&
-            'offline Python packages',
-        !existsSync(videoBrowser(dir)) && 'video browser',
-    ].filter(Boolean);
-}
-
-// The tool root with the project folder's layout (server/media/manim.mjs), every tool installed at build time.
-async function stageTools() {
-    mkdirSync(tools, { recursive: true });
-    // Only tools probed by their path count, so both setups install their own copy even when this machine has uv or LaTeX on PATH.
-    const probe = (command, ...rest) =>
-        /[\\/]/.test(command) ? spawnSync(command, ...rest) : { status: 1 };
-    await ensureUv({ run: runCode, root: tools, probe });
-    await ensureLatex({ run: runCode, root: tools, probe });
-    const uv = join(uvDir(tools), windows ? 'uv.exe' : 'uv');
-    // A venv records absolute paths and the AppImage mount moves each launch, so install a relocatable standalone Python.
-    const pythons = join(stage, 'pythons');
-    run(uv, ['python', 'install', '3.12', '--install-dir', pythons, '--no-bin']);
-    // uv also links the minor version (cpython-3.12-…) to the build folder; move the folder itself.
-    const [build] = readdirSync(pythons, { withFileTypes: true }).filter(
-        (entry) => entry.isDirectory() && entry.name.startsWith('cpython-'),
-    );
-    renameSync(join(pythons, build.name), join(tools, '.venv'));
-    rmSync(pythons, { recursive: true, force: true });
-    // Manim's and the offline Python's pins resolve together, so one Python serves both tool folders.
-    // pycairo and manimpango have no Linux wheels: they build here against Cairo and Pango and link their runtime libraries.
-    run(uv, [
-        'pip',
-        'install',
-        '--python',
-        pythonIn(join(tools, '.venv')),
-        '--break-system-packages',
-        '--compile-bytecode',
-        `manim==${MANIM_VERSION}`,
-        'yt-dlp',
-        ...PYTHON_PACKAGES,
-    ]);
-    // pip is unused (uv installs) and carries distlib's Windows launchers.
-    run(uv, [
-        'pip',
-        'uninstall',
-        '--python',
-        pythonIn(join(tools, '.venv')),
-        '--break-system-packages',
-        'pip',
-    ]);
-    // NSIS carries no links; the Windows server finds the shared Python without one (pythonVenv).
-    if (!windows) symlinkSync('.venv', join(tools, '.venv-python'), 'dir');
-    // Remotion downloads into node_modules beside the nearest package.json.
-    writeFileSync(join(tools, 'package.json'), '{}\n');
-    run(process.execPath, [join(root, 'scripts', 'browser-setup.mjs')], tools);
-    rmSync(join(tools, 'package.json'));
 }
 
 // Imported by its test for foreignBinaries; run as a script, it stages.
@@ -200,7 +120,6 @@ if (import.meta.main) {
         for (const bin of bins)
             cpSync(join(sandbox, 'target', 'release', `${bin}.exe`), join(stage, `${bin}.exe`));
     }
-    await stageTools();
     // onnxruntime-node ships every OS's runtime, and GPU providers the CPU-only embedder never loads: most of its 548 MB.
     // The check below catches other packages that ship other OSes' binaries.
     const onnx = join(app, 'node_modules', 'onnxruntime-node', 'bin');
@@ -218,9 +137,6 @@ if (import.meta.main) {
         throw new Error(
             `The stage holds other OSes' native binaries; prune them in scripts/desktop-stage.mjs:\n${foreign.join('\n')}`,
         );
-    const missing = missingTools(tools);
-    if (missing.length)
-        throw new Error(`The stage is missing bundled tools: ${missing.join(', ')}.`);
     const bytes = files(stage).reduce((sum, file) => sum + statSync(file).size, 0);
     console.log(`Staged ${stage}: ${(bytes / 2 ** 20).toFixed(0)} MiB.`);
 }

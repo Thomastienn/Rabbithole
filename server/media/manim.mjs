@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 export const MANIM_VERSION = '0.22.1';
 export const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
-// Every video tool sits in the tool root with the project folder's layout; the desktop app points it at its bundled tools.
+// Every video tool sits in the tool root with the project folder's layout; the desktop app points it at <data>/tools.
 export const toolRoot = process.env.RABBITHOLE_TOOLS_DIR || projectRoot;
 // Downloaded uv and TinyTeX live in the tool root's .tools; bin names follow each archive's layout.
 export const uvDir = (root = toolRoot) => join(root, '.tools', 'uv');

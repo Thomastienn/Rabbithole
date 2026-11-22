@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { detectManim, projectRoot, toolRoot, videoBrowser } from './manim.mjs';
@@ -21,9 +21,13 @@ const runner = (signal) => (command, args, env) =>
         child.once('exit', (code) => resolve(code ?? 1));
     });
 
-// Remotion downloads into the node_modules beside the nearest package.json from its working folder.
+// Remotion downloads into the node_modules beside the nearest package.json from its working folder, so a tool root
+// without one (the desktop app's, in the data folder) gets an empty one, as videoBrowser expects.
 const browser = (root, onLine, signal) =>
     new Promise((resolve, reject) => {
+        mkdirSync(root, { recursive: true });
+        if (!existsSync(join(root, 'package.json')))
+            writeFileSync(join(root, 'package.json'), '{}\n');
         const child = spawn(process.execPath, [join(projectRoot, 'scripts/browser-setup.mjs')], {
             cwd: root,
             stdio: ['ignore', 'pipe', 'inherit'],

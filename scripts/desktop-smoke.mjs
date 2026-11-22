@@ -1,14 +1,14 @@
 // The release workflow's smoke test of one desktop build: node scripts/desktop-smoke.mjs <resources>, where
-// <resources> holds node, app and tools (desktop/stage, an extracted AppImage's or the installed Windows app's).
-// Fixture data only: no model, no account and no network. Any failed check exits non-zero.
+// <resources> holds node and app (desktop/stage, an extracted AppImage's or the installed Windows app's).
+// Fixture data only: no model and no account. The network serves only the add-on downloads. Any failed check exits non-zero.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
-import { serverUrl } from '../desktop/shell.mjs';
+import { serverUrl, toolsDir } from '../desktop/shell.mjs';
 
 const resources = resolve(process.argv[2] ?? 'desktop/stage');
 const windows = process.platform === 'win32';
@@ -17,7 +17,7 @@ const data = mkdtempSync(join(tmpdir(), 'rabbithole-smoke-'));
 // The environment the shell gives the server (desktop/main.mjs), set before the build's modules read it.
 Object.assign(process.env, {
     RABBITHOLE_DATA_DIR: data,
-    RABBITHOLE_TOOLS_DIR: join(resources, 'tools'),
+    RABBITHOLE_TOOLS_DIR: toolsDir(app, { RABBITHOLE_DATA_DIR: data }),
     // The server prints a sandboxed render's whole error output, not only "Video rendering failed."
     RABBITHOLE_SANDBOX_STDERR: '1',
     ...(windows && { RABBITHOLE_SANDBOX: join(resources, 'rabbithole-sandbox.exe') }),
@@ -58,6 +58,7 @@ copyFileSync(
 writeFileSync(join(cut, 'narration.json'), JSON.stringify(timing));
 
 step('start the bundled server on an empty data folder');
+assert.ok(!existsSync(join(resources, 'tools')), 'the build bundles no tools');
 const server = spawn(
     join(resources, windows ? 'node.exe' : 'node'),
     [join(app, 'server', 'main.mjs'), '--port', '0'],
@@ -94,11 +95,40 @@ try {
         headers: { 'content-type': 'application/json', 'x-rabbithole-csrf': csrf },
     };
 
+    const addons = async () => await (await fetch(origin + '/api/downloads/addons')).json();
+    assert.deepEqual(
+        (await addons()).map((a) => a.state),
+        ['not-installed', 'not-installed', 'not-installed'],
+        'a fresh install has no add-on',
+    );
+
+    // Offline Python checks the sandbox it runs in, so Windows sets it up first.
     if (windows) {
         step('run the Windows sandbox setup');
         const setup = await fetch(origin + '/api/setup/sandbox', post);
         assert.deepEqual(await setup.json(), { windows: true, ready: true });
     }
+
+    step('install video tools, which install offline Python first');
+    await fetch(origin + '/api/downloads/addons/video-tools', post);
+    let list = await addons();
+    for (const deadline = Date.now() + 1800000; Date.now() < deadline;) {
+        if (list[0].state === 'installed' || list.some((a) => a.state === 'failed')) break;
+        await new Promise((done) => setTimeout(done, 5000));
+        list = await addons();
+    }
+    assert.deepEqual(
+        list.map((a) => [a.id, a.state, a.error]),
+        [
+            ['video-tools', 'installed', undefined],
+            ['offline-python', 'installed', undefined],
+            ['web-search', 'not-installed', undefined],
+        ],
+    );
+    assert.ok(
+        existsSync(join(data, 'tools', 'node_modules', '.remotion')),
+        'add-ons install into the data folder',
+    );
 
     step('render the fixture cut through the video sandbox');
     const exporting = `${origin}/api/videos/${video.id}/export`;
