@@ -13,6 +13,7 @@ import { resolve, join } from 'node:path';
 import { desktop as systemDesktop } from './desktop.mjs';
 import { secure } from './http/security.mjs';
 import { roles } from './http/roles.mjs';
+import { quickCalls } from './http/quick.mjs';
 import { compactionJobs } from './http/jobs/compaction.mjs';
 import { discussionJobs } from './http/jobs/discussions.mjs';
 import { discussionRoutes } from './http/routes/discussions.mjs';
@@ -182,6 +183,7 @@ export function createApp({
           })
         : { fill: () => {}, stop: () => {} };
     Object.assign(ctx, roles(ctx));
+    Object.assign(ctx, quickCalls(ctx));
     ctx.syncEndpoints();
     ctx.readyQuick();
     Object.assign(

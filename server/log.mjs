@@ -100,8 +100,8 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
                 model: tree.model ?? selection.model,
                 ...detail,
             };
-        // Tool definitions are app text; their short schema words would redact ordinary causes.
-        const { tools, textTools, ...data } = tree;
+        // Tool definitions and the role are app text; their short words would redact ordinary causes.
+        const { tools, textTools, role, ...data } = tree;
         const privateText = [...privateValues(data), ...privateValues(text)];
         const streamed = collectText();
         let usage = null,

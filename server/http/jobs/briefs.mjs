@@ -1,8 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { collectText } from '../../providers/chatStream.mjs';
 import { errorCause, formatLog } from '../../log.mjs';
 import { plainText } from '../../../src/markdown/markdownText.ts';
-import { WRITE_BRIEFS, quickTool } from '../../tools/quickTools.mjs';
+import { WRITE_BRIEFS } from '../../tools/quickTools.mjs';
 
 const STYLE =
     ' one paragraph of about two or three short sentences that a learner reading that reply can skim at a glance; that length is a target, not a hard limit. Say what it is or why it holds in this reply. Write in the language of "reply". Use bold, italics, inline code and inline math ($...$) where a key word or formula needs it; no headings, lists or links.';
@@ -37,36 +35,23 @@ function readBriefs(input) {
 
 // Quick thinking writes a brief explanation whole; concurrent requests for one passage share the call.
 export function briefJobs(ctx) {
-    const { store, pick, metered, briefing } = ctx;
+    const { store, briefing } = ctx;
     const writeBrief = (conversation, reply, passage) => {
         const key = keyOf(passage);
         if (briefing.has(key)) return briefing.get(key).done;
         const running = { controller: new AbortController(), conversation };
         briefing.set(key, running);
         running.done = (async () => {
-            const { quick, error } = await ctx.quickFor(store.tree(conversation));
-            if (error) throw new Error(error);
-            if (!quick.model) throw new Error('Quick thinking model is not set.');
-            const streamed = collectText();
-            await metered(pick(quick), 'brief', randomUUID(), quick, {
-                message: passage.message,
-            }).generate(
-                {
-                    provider: quick.provider,
-                    model: quick.model,
-                    effort: quick.effort,
-                    thread: null,
-                    quick: true,
-                    instructions: INSTRUCTIONS,
-                },
-                briefPrompt(plainText(reply), termOf(passage)),
-                streamed.onEvent,
-                () => {},
-                running.controller.signal,
-            );
-            const explanation = streamed.text('\n').trim();
-            if (streamed.status !== 'completed' || !explanation)
-                throw new Error('Quick thinking returned no explanation.');
+            const quick = await ctx.quickModel(store.tree(conversation));
+            const explanation = await ctx.askQuick('brief', quick, {
+                detail: { message: passage.message },
+                instructions: INSTRUCTIONS,
+                prompt: briefPrompt(plainText(reply), termOf(passage)),
+                read: (text) => text.trim(),
+                separator: '\n',
+                signal: running.controller.signal,
+                missing: 'Quick thinking returned no explanation.',
+            });
             if (ctx.stopping || !store.tree(conversation)) throw new Error('Conversation closed.');
             // shortcut: a visual part's brief is not saved (briefs are keyed by reply offsets); add a key if reopening must skip the call.
             if (passage.start !== undefined) store.saveBrief(passage, explanation);
@@ -102,36 +87,18 @@ export function briefJobs(ctx) {
         const key = `batch:${message}`;
         briefing.set(key, running);
         running.done = (async () => {
-            const { quick, error } = await ctx.quickFor(tree);
-            if (error) throw new Error(error);
-            if (!quick.model) throw new Error('Quick thinking model is not set.');
-            const call = quickTool(
-                WRITE_BRIEFS,
-                readBriefs,
-                await ctx.toolCapable(quick).catch(() => false),
-                ctx.mcp,
-            );
-            const streamed = collectText();
-            await metered(pick(quick), 'brief', randomUUID(), quick, { message }).generate(
-                {
-                    provider: quick.provider,
-                    model: quick.model,
-                    effort: quick.effort,
-                    thread: null,
-                    quick: true,
-                    instructions:
-                        'You explain terms briefly. Never request or generate media. Do not access files or execute code.' +
-                        call.instructions,
-                    ...call.request,
-                },
-                briefsPrompt(plainText(reply), [...new Set(passages.map(termOf))]),
-                streamed.onEvent,
-                () => {},
-                running.controller.signal,
-            );
-            const briefs = call.answer(streamed.text(''), () => null);
-            if (streamed.status !== 'completed' || !briefs)
-                throw new Error('Quick thinking returned no explanations.');
+            const quick = await ctx.quickModel(tree);
+            const briefs = await ctx.askQuick('brief', quick, {
+                detail: { message },
+                instructions:
+                    'You explain terms briefly. Never request or generate media. Do not access files or execute code.',
+                prompt: briefsPrompt(plainText(reply), [...new Set(passages.map(termOf))]),
+                tool: { spec: WRITE_BRIEFS, read: readBriefs },
+                read: () => null,
+                separator: '',
+                signal: running.controller.signal,
+                missing: 'Quick thinking returned no explanations.',
+            });
             if (ctx.stopping || !store.tree(conversation)) throw new Error('Conversation closed.');
             for (const passage of passages) {
                 const explanation = briefs.get(termOf(passage).trim());

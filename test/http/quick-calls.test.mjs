@@ -42,7 +42,8 @@ test('a quick tool answers natively, through <tool_call> text, or through the pl
 
 test('title, verdicts and suggestions arrive through native tool calls; a bad call gets a plain error', async (t) => {
     const store = new Store(join(mkdtempSync(join(tmpdir(), 'rabbithole-quick-')), 'trees.sqlite'));
-    const errors = {};
+    const errors = {},
+        roles = [];
     const calls = {
         name_conversation: [{}, { title: '**Heaps**.', concept: 'Binary heap' }],
         record_verdicts: [
@@ -65,6 +66,7 @@ test('title, verdicts and suggestions arrive through native tool calls; a bad ca
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
+            roles.push(tree.role);
             assert.equal(tree.tools.length, 1);
             assert.doesNotMatch(tree.instructions, /<tool_call>/);
             const name = tree.tools[0].name;
@@ -113,6 +115,8 @@ test('title, verdicts and suggestions arrive through native tool calls; a bad ca
     await (await post(`/${id}/messages`, { text: 'A heap keeps the smallest on top?' })).text();
     await app.settled();
 
+    // Each call names its role on the request.
+    assert.deepEqual(roles.sort(), ['suggestions', 'title', 'verdict']);
     assert.deepEqual(errors, {
         name_conversation: 'title must be a short plain title.',
         record_verdicts:
