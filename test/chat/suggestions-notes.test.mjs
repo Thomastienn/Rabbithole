@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { diagramReply } from '../../server/media/diagrams.mjs';
 import { markerNotes } from '../../server/media/markers.mjs';
 import { suggestionJobs } from '../../server/http/jobs/suggestions.mjs';
+import { backgroundJobs } from '../../server/http/jobs/background.mjs';
 import { start } from '../support/suggestion-kit.mjs';
 // The conversation data a quick thinking call sends after its task line.
 const data = (call) => JSON.parse(call.input.slice(call.input.lastIndexOf('\n') + 1));
@@ -28,7 +29,7 @@ test('a stopped reply keeps its marks; a completed reply calls quick thinking on
     const { noteSuggestions } = suggestionJobs({
         store,
         suggestions: true,
-        suggesting: new Map(),
+        jobs: backgroundJobs(),
         neighbourhood: async () => (calls.push(['quick']), { concepts: [] }),
         startBriefs: (...args) => calls.push(['briefs', ...args]),
     });
@@ -133,11 +134,11 @@ test('a completed reply without [[end]] starts its briefs once quick thinking ha
             emit({ type: 'status', status: 'completed' });
         },
     };
-    const suggesting = new Map();
+    const jobs = backgroundJobs();
     const { noteSuggestions } = suggestionJobs({
         store,
         suggestions: true,
-        suggesting,
+        jobs,
         neighbourhood: async () => ({ concepts: [] }),
         pick: () => quick,
         logged: (provider) => provider,
@@ -146,7 +147,7 @@ test('a completed reply without [[end]] starts its briefs once quick thinking ha
         startBriefs: (...args) => calls.push(['briefs', ...args]),
     });
     noteSuggestions('c', 'r', 'completed', notesOf('Use shared state'), 'Q', 'Use shared state');
-    await suggesting.get('r').done;
+    await jobs.get('suggestion', 'r').done;
     assert.deepEqual(calls, [
         ['finish', 'c', 'r', [{ start: 4, end: 16, text: 'shared state', concept: 'State' }]],
         ['briefs', 'c', 'r'],

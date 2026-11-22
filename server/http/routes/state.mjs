@@ -14,8 +14,8 @@ export async function stateRoutes(req, res, url, ctx) {
             discussing: [...new Set([...ctx.discussing.values()].map((j) => j.conversation))],
             usage: store.usageSince(new Date().setHours(0, 0, 0, 0)),
             videos: [...new Set([...ctx.videos.values()].map((v) => v.conversation))],
-            suggesting: [...new Set([...ctx.suggesting.values()].map((s) => s.conversation))],
-            titling: [...ctx.titling.keys()],
+            suggesting: [...new Set(ctx.jobs.list('suggestion').map((s) => s.conversation))],
+            titling: ctx.jobs.list('title').map((t) => t.conversation),
             compacting: [...ctx.compactions].filter(([, c]) => !c.settled).map(([child]) => child),
         });
     if (url.pathname === '/api/usage')

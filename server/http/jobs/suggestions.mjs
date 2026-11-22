@@ -2,78 +2,77 @@ import { knownConcepts, suggest } from '../../suggestions.mjs';
 
 // One quick thinking call after a completed reply (ADR 0016): the hidden notes for the tutor's marks, or every note for a reply that never ended. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
 export function suggestionJobs(ctx) {
-    const { store, pick, suggesting } = ctx;
+    const { store, pick } = ctx;
     // marked: the tutor's saved passages and groundwork, so the call only names concepts and writes the graph.
     const startSuggestions = (conversation, message, question, answer, marked = null) => {
         const settings = store.suggestionSettings();
         if (!ctx.suggestions || !settings.enabled) return;
         if (!marked && !store.pendingSuggestions(conversation, message)) return;
-        const tree = store.tree(conversation),
-            running = { controller: new AbortController(), conversation };
-        suggesting.set(message, running);
-        running.done = (async () => {
-            const inheritedContext = tree.branch
-                ? {
-                      snapshot: tree.branch.snapshot,
-                      selectedPassage: tree.branch.text,
-                      question: tree.branch.question,
-                  }
-                : null;
-            const text = [tree.branch?.text, question, answer].filter(Boolean).join('\n');
-            const familiarity = store.mentioned(text);
-            // Only the reply's concept neighbourhood is sent for matching, under every known topic.
-            const { concepts } = await ctx.neighbourhood(text, running.controller.signal);
-            const known = knownConcepts({ topics: store.graph().topics, concepts });
-            const selection = settings.model
-                ? { ...settings.model, effort: settings.effort }
-                : tree;
-            // Without a quick thinking model the cheap default needs a subscription conversation; a pinned model may be any connected provider.
-            if (!settings.model && !['claude', 'codex'].includes(tree.provider))
-                throw new Error('Suggestions require a signed-in subscription provider.');
-            const result = await suggest(
-                ctx.logged(pick(selection), 'suggestions', message, selection),
-                await ctx.quickModel(tree, true),
-                { inheritedContext, question, answer, knownConcepts: known, familiarity },
-                running.controller.signal,
-                ctx.suggestionTimeout,
-                {
-                    capable: await ctx.toolCapable(selection).catch(() => false),
-                    mcp: ctx.mcp,
-                    marked,
-                },
-            );
-            store.addGraph(result.graph, message);
-            if (marked)
-                return store.nameSuggestions(
+        const tree = store.tree(conversation);
+        ctx.jobs.start('suggestion', message, conversation, (running) =>
+            (async () => {
+                const inheritedContext = tree.branch
+                    ? {
+                          snapshot: tree.branch.snapshot,
+                          selectedPassage: tree.branch.text,
+                          question: tree.branch.question,
+                      }
+                    : null;
+                const text = [tree.branch?.text, question, answer].filter(Boolean).join('\n');
+                const familiarity = store.mentioned(text);
+                // Only the reply's concept neighbourhood is sent for matching, under every known topic.
+                const { concepts } = await ctx.neighbourhood(text, running.controller.signal);
+                const known = knownConcepts({ topics: store.graph().topics, concepts });
+                const selection = settings.model
+                    ? { ...settings.model, effort: settings.effort }
+                    : tree;
+                // Without a quick thinking model the cheap default needs a subscription conversation; a pinned model may be any connected provider.
+                if (!settings.model && !['claude', 'codex'].includes(tree.provider))
+                    throw new Error('Suggestions require a signed-in subscription provider.');
+                const result = await suggest(
+                    ctx.logged(pick(selection), 'suggestions', message, selection),
+                    await ctx.quickModel(tree, true),
+                    { inheritedContext, question, answer, knownConcepts: known, familiarity },
+                    running.controller.signal,
+                    ctx.suggestionTimeout,
+                    {
+                        capable: await ctx.toolCapable(selection).catch(() => false),
+                        mcp: ctx.mcp,
+                        marked,
+                    },
+                );
+                store.addGraph(result.graph, message);
+                if (marked)
+                    return store.nameSuggestions(
+                        conversation,
+                        message,
+                        result.passages,
+                        result.usage,
+                        selection,
+                    );
+                if (result.questions.length) store.nextQuestions(message, result.questions);
+                store.finishSuggestions(
                     conversation,
                     message,
                     result.passages,
                     result.usage,
                     selection,
+                    result.groundwork,
                 );
-            if (result.questions.length) store.nextQuestions(message, result.questions);
-            store.finishSuggestions(
-                conversation,
-                message,
-                result.passages,
-                result.usage,
-                selection,
-                result.groundwork,
-            );
-            ctx.startBriefs(conversation, message);
-        })()
-            .catch((error) => {
-                if (!ctx.stopping && !marked)
-                    store.finishSuggestions(
-                        conversation,
-                        message,
-                        null,
-                        error.usage ?? null,
-                        settings.model ?? tree,
-                    );
-            })
-            .catch(() => {})
-            .finally(() => suggesting.delete(message));
+                ctx.startBriefs(conversation, message);
+            })()
+                .catch((error) => {
+                    if (!ctx.stopping && !marked)
+                        store.finishSuggestions(
+                            conversation,
+                            message,
+                            null,
+                            error.usage ?? null,
+                            settings.model ?? tree,
+                        );
+                })
+                .catch(() => {}),
+        );
     };
     // The tutor's marks are ready once the reply ends; a stopped reply keeps the marks that arrived.
     const noteSuggestions = (conversation, message, status, notes, question, answer) => {

@@ -58,7 +58,7 @@ export const cleanTitle = (text) => {
 
 // Detached quick thinking call; any failure keeps the placeholder and only logs a warning.
 export function titleJobs(ctx) {
-    const { store, compactions, titling } = ctx;
+    const { store, compactions } = ctx;
     const startTitle = (conversation, question) => {
         const warn = (error) =>
             ctx.log(
@@ -69,54 +69,52 @@ export function titleJobs(ctx) {
                 }),
             );
         if (!store.suggestionSettings().model) return warn('Quick thinking model is not set.');
-        const running = { controller: new AbortController(), conversation };
-        titling.set(conversation, running);
-        running.done = (async () => {
-            const quick = await ctx.quickModel(store.tree(conversation));
-            // A child's inherited context is ready once its compaction settles.
-            await compactions.get(conversation)?.done;
-            const tree = store.tree(conversation);
-            if (!tree || ctx.stopping) return;
-            // Suggestion and groundwork branches already explore a concept; only the others look one up.
-            const nearest =
-                tree.concept === null
-                    ? (
-                          await lookUpConcept(
-                              store,
-                              ctx.videoEmbed,
-                              question,
-                              running.controller.signal,
-                          )
-                      ).concepts.map((c) => c.name)
-                    : [];
-            const { title, concept } = await ctx.askQuick('title', quick, {
-                instructions:
-                    'You name conversations. Never answer questions, request or generate media. Do not access files or execute code.',
-                prompt: titlePrompt(tree, question, nearest),
-                tool: {
-                    spec: NAME_CONVERSATION,
-                    read: (input) => {
-                        const named = titleCall(input);
-                        if (!named.title) throw new Error('title must be a short plain title.');
-                        return named;
+        ctx.jobs.start('title', conversation, conversation, (running) =>
+            (async () => {
+                const quick = await ctx.quickModel(store.tree(conversation));
+                // A child's inherited context is ready once its compaction settles.
+                await compactions.get(conversation)?.done;
+                const tree = store.tree(conversation);
+                if (!tree || ctx.stopping) return;
+                // Suggestion and groundwork branches already explore a concept; only the others look one up.
+                const nearest =
+                    tree.concept === null
+                        ? (
+                              await lookUpConcept(
+                                  store,
+                                  ctx.videoEmbed,
+                                  question,
+                                  running.controller.signal,
+                              )
+                          ).concepts.map((c) => c.name)
+                        : [];
+                const { title, concept } = await ctx.askQuick('title', quick, {
+                    instructions:
+                        'You name conversations. Never answer questions, request or generate media. Do not access files or execute code.',
+                    prompt: titlePrompt(tree, question, nearest),
+                    tool: {
+                        spec: NAME_CONVERSATION,
+                        read: (input) => {
+                            const named = titleCall(input);
+                            if (!named.title) throw new Error('title must be a short plain title.');
+                            return named;
+                        },
                     },
-                },
-                read: (text) => {
-                    const named = readTitle(text);
-                    return named.title ? named : null;
-                },
-                separator: ' ',
-                signal: running.controller.signal,
-                missing: 'Quick thinking returned no title.',
-            });
-            if (ctx.stopping) return;
-            store.retitle(conversation, title);
-            if (concept && tree.concept === null) store.explore(conversation, concept);
-        })()
-            .catch((error) => {
+                    read: (text) => {
+                        const named = readTitle(text);
+                        return named.title ? named : null;
+                    },
+                    separator: ' ',
+                    signal: running.controller.signal,
+                    missing: 'Quick thinking returned no title.',
+                });
+                if (ctx.stopping) return;
+                store.retitle(conversation, title);
+                if (concept && tree.concept === null) store.explore(conversation, concept);
+            })().catch((error) => {
                 if (!ctx.stopping) warn(error);
-            })
-            .finally(() => titling.delete(conversation));
+            }),
+        );
     };
     return { startTitle };
 }

@@ -22,6 +22,7 @@ import { suggestionJobs } from './http/jobs/suggestions.mjs';
 import { titleJobs } from './http/jobs/title.mjs';
 import { verdictJobs } from './http/jobs/verdicts.mjs';
 import { briefJobs } from './http/jobs/briefs.mjs';
+import { backgroundJobs } from './http/jobs/background.mjs';
 import { stateRoutes } from './http/routes/state.mjs';
 import { settingsRoutes } from './http/routes/settings.mjs';
 import { knowledgeRoutes } from './http/routes/knowledge.mjs';
@@ -155,12 +156,8 @@ export function createApp({
         compactions: new Map(),
         // Parent id -> compaction started when the branch form opened { key, controller, run }; submit reuses it while the key matches.
         prepared: new Map(),
-        suggesting: new Map(),
-        titling: new Map(),
-        // Learner message id -> verdict fallback job.
-        verdicting: new Map(),
-        // Passage key -> brief explanation call shared by concurrent requests.
-        briefing: new Map(),
+        // Title, verdict, suggestion and brief explanation jobs.
+        jobs: backgroundJobs(),
         json: (res, status, body) => {
             res.writeHead(status, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(body));
@@ -196,7 +193,7 @@ export function createApp({
         verdictJobs(ctx),
         briefJobs(ctx),
     );
-    const { active, videoJobs, suggesting, titling, compactions, prepared, json } = ctx;
+    const { active, videoJobs, compactions, prepared, json } = ctx;
     let stopped;
     recoverStaged(store, dir);
     const server = http.createServer(async (req, res) => {
@@ -313,10 +310,7 @@ export function createApp({
             Promise.allSettled(
                 [
                     ...videoJobs,
-                    ...suggesting.values(),
-                    ...titling.values(),
-                    ...ctx.verdicting.values(),
-                    ...ctx.briefing.values(),
+                    ...ctx.jobs.list(),
                     ...compactions.values(),
                     ...ctx.discussing.values(),
                 ]
@@ -329,10 +323,7 @@ export function createApp({
             for (const controller of active.values()) controller.abort();
             for (const job of ctx.discussing.values()) job.controller.abort();
             for (const v of videoJobs) v.controller.abort(STOPPED);
-            for (const s of suggesting.values()) s.controller.abort();
-            for (const t of titling.values()) t.controller.abort();
-            for (const v of ctx.verdicting.values()) v.controller.abort();
-            for (const b of ctx.briefing.values()) b.controller.abort();
+            for (const job of ctx.jobs.list()) job.controller.abort();
             for (const c of compactions.values()) c.controller.abort();
             ctx.pieceStills.stop();
             downloads?.stop();
