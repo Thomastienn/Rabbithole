@@ -6,7 +6,7 @@ import type { GhostTree } from '../map/ghostTrees';
 import { conversationAddresses, subtreeIds } from '../map/treeList';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../map/previews';
 import { treeSearchSource } from '../shell/treeSearchSource';
-import { withTurn } from './turn';
+import { withTurn, type Turn } from './turn';
 import type { State, Tree } from './types';
 import type { ChatState } from './useChatState';
 import { request as api, setCsrf } from '../serverAccess';
@@ -17,7 +17,7 @@ type TreeUpdate = Tree | undefined | ((t: Tree | undefined) => Tree | undefined)
 // Learning tree data and loading: app state, the open conversation, map previews, conversation
 // selection, status polling, and the counters that tell whether a server answer is still current.
 export function useLearningTrees(c: ChatState) {
-    const { setDrafts, setError, turns, overviewOrigin } = c;
+    const { setError, overviewOrigin } = c;
     const [state, setState] = useState<State>();
     setCsrf(state?.csrf ?? '');
     const [tree, setTree] = useState<Tree>();
@@ -31,6 +31,8 @@ export function useLearningTrees(c: ChatState) {
     const selected = useRef<string | undefined>(undefined);
     const request = useRef(0);
     const checkpoints = useRef(0);
+    // The reply stream's live turns, read here only: the reply stream is built after this hook.
+    const turns = useRef<ReadonlyMap<string, Turn>>(new Map());
     const layout = useLayoutSaving(c, { state, setState, tree });
 
     // The one stale-answer check: an answer for `id` started now stays current while `id` is still
@@ -173,11 +175,7 @@ export function useLearningTrees(c: ChatState) {
         try {
             let next: Tree = await api(`/api/trees/${id}`);
             if (current() && !current(true)) next = await api(`/api/trees/${id}`);
-            if (current()) {
-                setTree(withTurn(next, turns.current.get(id)));
-                if (next.branch && !next.messages.length)
-                    setDrafts((d) => ({ ...d, [id]: d[id] ?? next.branch!.question }));
-            }
+            if (current()) setTree(withTurn(next, turns.current.get(id)));
         } catch (e) {
             if (current()) setError((e as Error).message);
         } finally {
@@ -265,6 +263,7 @@ export function useLearningTrees(c: ChatState) {
         loading,
         visibleIds,
         layout,
+        live: turns,
         openId,
         reload,
         change,

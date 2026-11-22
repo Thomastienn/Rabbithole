@@ -11,7 +11,10 @@ test('slow selections cannot replace the current conversation and drafts stay pe
     );
     const { act } = page;
     assert.equal(page.current.trees.tree.id, 'a');
-    await act(async () => page.current.c.setDrafts({ a: 'Draft A', b: 'Draft B' }));
+    await act(async () => {
+        page.current.stream.setDraft('a', 'Draft A');
+        page.current.stream.setDraft('b', 'Draft B');
+    });
     delay = true;
     let selecting;
     await act(async () => {
@@ -25,7 +28,19 @@ test('slow selections cannot replace the current conversation and drafts stay pe
     assert.equal(page.current.trees.tree.id, 'b');
     assert.equal(page.current.trees.loading, false);
     assert.equal(page.current.c.overview, false);
-    assert.deepEqual(page.current.c.drafts, { a: 'Draft A', b: 'Draft B' });
+    assert.deepEqual(page.current.stream.drafts, { a: 'Draft A', b: 'Draft B' });
+});
+
+test('a branch reopened before its reply offers its question once, keeping an edited draft', async (t) => {
+    const page = await mount(t, (_, { data }) => {
+        data.get('b').branch = { parent: 'a', question: 'Why?', snapshot: '' };
+    });
+    await page.act(async () => page.current.trees.select('b'));
+    assert.equal(page.current.stream.drafts.b, 'Why?');
+    await page.act(async () => page.current.stream.setDraft('b', ''));
+    await page.act(async () => page.current.trees.select('a'));
+    await page.act(async () => page.current.trees.select('b'));
+    assert.equal(page.current.stream.drafts.b, '', 'the cleared draft is not refilled');
 });
 
 test('model saving never replaces a newly selected conversation', async (t) => {
@@ -121,7 +136,7 @@ test('interleaved replies update their own previews and retry preserves the comp
         await Promise.all(replies);
     });
     assert.deepEqual(page.current.trees.state.active, []);
-    await page.act(async () => page.current.c.setDrafts({ b: 'Keep this draft' }));
+    await page.act(async () => page.current.stream.setDraft('b', 'Keep this draft'));
     let retry;
     await page.act(async () => {
         retry = page.current.stream.retryFromMap('b');
@@ -133,7 +148,7 @@ test('interleaved replies update their own previews and retry preserves the comp
         streams.get('b').close();
         await retry;
     });
-    assert.equal(page.current.c.drafts.b, 'Keep this draft');
+    assert.equal(page.current.stream.drafts.b, 'Keep this draft');
 });
 
 test('layout changes survive stale refreshes and batch into one write with the latest CSRF', async (t) => {
@@ -215,7 +230,7 @@ test('a failed send restores the unsaved question and reports its error', async 
         path.endsWith('/messages') ? json({ error: 'Provider unavailable' }, false) : undefined,
     );
     await page.act(async () => page.current.stream.send('Keep my question'));
-    assert.equal(page.current.c.drafts.a, 'Keep my question');
+    assert.equal(page.current.stream.drafts.a, 'Keep my question');
     assert.equal(page.current.c.error, 'Provider unavailable');
     assert.deepEqual(page.current.trees.tree.messages, []);
     assert.deepEqual(page.current.trees.state.active, []);
@@ -228,15 +243,19 @@ test('a send the server refuses keeps the pending files and the question for ano
         path.endsWith('/messages') ? json({ error: reason }, false) : undefined,
     );
     const sheet = new File(['x'], 'worksheet.png', { type: 'image/png' });
-    await page.act(async () => page.current.c.setPendingFiles({ a: [sheet] }));
+    await page.act(async () => page.current.stream.setFiles('a', [sheet]));
     await page.act(async () =>
         page.current.stream.send('Is trial 3 right?', page.current.trees.tree, false, [sheet]),
     );
     const sent = page.calls.find((call) => call.path.endsWith('/messages'));
     assert.ok(sent.body instanceof FormData, 'files go as multipart');
     assert.equal(page.current.c.error, reason, 'the refusal reason reaches the failure banner');
-    assert.deepEqual(page.current.c.pendingFiles.a, [sheet], 'the files stay in the tray');
-    assert.equal(page.current.c.drafts.a, 'Is trial 3 right?', 'the question stays in the field');
+    assert.deepEqual(page.current.stream.pendingFiles.a, [sheet], 'the files stay in the tray');
+    assert.equal(
+        page.current.stream.drafts.a,
+        'Is trial 3 right?',
+        'the question stays in the field',
+    );
 });
 
 test('branch preparation excludes the question and the saved child opens before its reply finishes', async (t) => {
@@ -324,7 +343,8 @@ test("the map's + asks on the side of another node and opens the child from the 
     assert.equal(page.current.trees.tree.id, 'a');
     await page.act(async () => {
         page.current.c.setOverview(true);
-        page.current.c.setDrafts({ a: 'Keep this draft', b: 'And this one' });
+        page.current.stream.setDraft('a', 'Keep this draft');
+        page.current.stream.setDraft('b', 'And this one');
     });
     let created = 0,
         asked;
@@ -338,8 +358,12 @@ test("the map's + asks on the side of another node and opens the child from the 
     assert.equal(created, 1);
     assert.equal(page.current.trees.tree.id, 'child');
     assert.equal(page.current.c.overview, false, "the child's focused chat opens");
-    assert.equal(page.current.c.drafts.a, 'Keep this draft');
-    assert.equal(page.current.c.drafts.b, 'And this one', "the parent's draft is not the question");
+    assert.equal(page.current.stream.drafts.a, 'Keep this draft');
+    assert.equal(
+        page.current.stream.drafts.b,
+        'And this one',
+        "the parent's draft is not the question",
+    );
     await page.act(async () => {
         controller.close();
         await asked;
@@ -414,7 +438,9 @@ test('deleting the open learning tree discards pending layout and opens the next
     });
     await page.act(async () => {
         page.current.layout.savePositions({ a: { x: 1, y: 2 } });
-        page.current.c.setDrafts({ a: 'Delete me', b: 'Keep me' });
+        page.current.stream.setDraft('a', 'Delete me');
+        page.current.stream.setDraft('b', 'Keep me');
+        page.current.stream.setFiles('a', [new File(['x'], 'gone.png')]);
         page.current.actions.askDelete('a', null);
     });
     await page.act(async () => page.current.actions.deleteConversation());
@@ -422,7 +448,8 @@ test('deleting the open learning tree discards pending layout and opens the next
     assert.equal(page.current.c.root, 'b');
     assert.equal(page.current.c.focusComposer.current, true);
     assert.equal(page.current.layout.saver.current.pending().has('a'), false);
-    assert.deepEqual(page.current.c.drafts, { b: 'Keep me' });
+    assert.deepEqual(page.current.stream.drafts, { b: 'Keep me' });
+    assert.deepEqual(page.current.stream.pendingFiles, {}, 'its pending files go too');
     assert.deepEqual(
         page.current.trees.state.trees.map((t) => t.id),
         ['b'],

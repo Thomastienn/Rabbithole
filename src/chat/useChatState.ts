@@ -2,23 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import type { Source } from '../map/TreeOverview';
-import type { Turn } from './turn';
 import type { BranchState } from './branch';
 import { DEFAULT_MAP_WIDTH, clampMapWidth, remPx, savedMapWidth } from '../map/mapWidth';
 
-// View state and refs shared by the ChatPage hooks and regions; learning tree data lives in useLearningTrees.
+// View state and refs shared by the ChatPage hooks and regions; learning tree data lives in useLearningTrees,
+// live turns, drafts and pending files in useReplyStream.
 export function useChatState() {
-    const [drafts, setDrafts] = useState<Record<string, string>>({});
-    // Pending composer files, keyed like drafts: a conversation id, or 'first' for the first question.
-    const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
     const [error, setError] = useState('');
-    const [busy, setBusy] = useState(false);
     const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 48rem)').matches);
     const [today, setToday] = useState(() => new Date());
     const [tab, setTab] = useState('learning');
     const [drawer, setDrawer] = useState(false);
     const [renaming, setRenaming] = useState<{ id: string; place: 'header' | 'library' }>();
-    const streams = useRef(new Map<string, AbortController>());
     const [mapWidth, setMapWidth] = useState(() => {
         try {
             return savedMapWidth(localStorage.getItem('rabbithole.map-width'));
@@ -59,7 +54,6 @@ export function useChatState() {
     const branchOrigin = useRef<React.RefObject<HTMLElement | null>>(undefined);
     const composer = useRef<ChatComposerInputHandle>(null);
     const focusComposer = useRef(false);
-    const turns = useRef(new Map<string, Turn>());
     useEffect(() => {
         const media = window.matchMedia('(max-width: 48rem)');
         const resize = () => {
@@ -95,14 +89,8 @@ export function useChatState() {
             });
     }
     return {
-        drafts,
-        setDrafts,
-        pendingFiles,
-        setPendingFiles,
         error,
         setError,
-        busy,
-        setBusy,
         mobile,
         today,
         tab,
@@ -111,7 +99,6 @@ export function useChatState() {
         setDrawer,
         renaming,
         setRenaming,
-        streams,
         setMapWidth,
         workspaceWidth,
         workspace,
@@ -145,7 +132,6 @@ export function useChatState() {
         branchOrigin,
         composer,
         focusComposer,
-        turns,
         toggleExpanded,
     };
 }

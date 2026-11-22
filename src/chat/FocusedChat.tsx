@@ -46,11 +46,12 @@ export default function FocusedChat(props: {
     modelMenu: React.ReactNode;
 }) {
     const { tree, c, model, trees, stream, actions, active, modelMenu } = props;
-    const { overview, reveal, drafts, setDrafts, renaming, setRenaming } = c;
+    const { overview, reveal, renaming, setRenaming } = c;
     const { expanded, toggleExpanded, statsOpen, setStatsOpen, statsPanel } = c;
-    const { mobile, transitionBox, composer, setMessageTarget, pendingFiles, setPendingFiles } = c;
+    const { mobile, transitionBox, composer, setMessageTarget } = c;
+    const { drafts, setDraft, pendingFiles } = stream;
     const files = pendingFiles[tree.id] ?? [];
-    const setFiles = (next: File[]) => setPendingFiles((p) => ({ ...p, [tree.id]: next }));
+    const setFiles = (next: File[]) => stream.setFiles(tree.id, next);
     const { modelNotice, unavailableSelection, codexFallback, modelError, models, loadModels } =
         model;
     const attach = useAttach(files, setFiles, active || (!!models && !models.length));
@@ -241,7 +242,7 @@ export default function FocusedChat(props: {
                             </>
                         }
                         value={drafts[tree.id] ?? ''}
-                        onChange={(value) => setDrafts((d) => ({ ...d, [tree.id]: value }))}
+                        onChange={(value) => setDraft(tree.id, value)}
                         onSubmit={(text) => {
                             if (models && !models.length) return;
                             attach.clear();
@@ -264,9 +265,7 @@ export default function FocusedChat(props: {
                                     label="Your question"
                                     maxRows={4}
                                     value={drafts[tree.id] ?? ''}
-                                    onChange={(value) =>
-                                        setDrafts((d) => ({ ...d, [tree.id]: value }))
-                                    }
+                                    onChange={(value) => setDraft(tree.id, value)}
                                     isDisabled={active || (!!models && !models.length)}
                                     placeholder={
                                         models && !models.length
