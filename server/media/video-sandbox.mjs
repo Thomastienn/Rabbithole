@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readlinkSync } from 'node:fs';
-import { lstat, realpath } from 'node:fs/promises';
+import { lstat, realpath, open } from 'node:fs/promises';
 import { join, basename, dirname, resolve, win32 } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -230,6 +230,24 @@ export async function sandboxOutput(workspace, file) {
     const stat = await lstat(file).catch(() => null);
     const expected = join(await realpath(workspace), 'out', basename(file));
     return stat?.isFile() && (await realpath(file).catch(() => null)) === expected ? stat : null;
+}
+
+const MAX_MEDIA = 1024 * 1024 * 1024;
+
+// Accept only the server-chosen file inside this attempt's private output, as a regular readable MP4.
+export async function validateOutput(workspace, output) {
+    const stat = await sandboxOutput(workspace, output);
+    if (!stat) throw new Error('Rendered video is outside its workspace.');
+    if (stat.size < 1024 || stat.size > MAX_MEDIA) throw new Error('Rendered video is unreadable.');
+    const file = await open(output, 'r');
+    try {
+        const head = Buffer.alloc(12);
+        await file.read(head, 0, 12, 0);
+        if (head.toString('latin1', 4, 8) !== 'ftyp')
+            throw new Error('Rendered video is unreadable.');
+    } finally {
+        await file.close();
+    }
 }
 
 // Absolute paths (and file:// URLs) name private directories; the line and column after them stay.

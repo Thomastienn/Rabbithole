@@ -7,6 +7,7 @@ import { render } from '../support/render.mjs';
 import { ui } from '../support/ui.mjs';
 import { planBuilder } from '../../server/media/plan-calls.mjs';
 import { auditFix } from '../../server/media/audit-answers.mjs';
+import { ENGINES } from '../../server/media/cut-engines.mjs';
 import { patchOf } from '../support/video-kit.mjs';
 const { screenAt, targetMarksAt, Marks, Sketch, Cursor } =
     await import('../../server/media/video-kit.tsx');
@@ -65,9 +66,9 @@ test('an audit fix of a 3D cut takes target marks', () => {
         patch: patchOf(source, 'b\n'),
         emphasis: [{ tool: 'cursor', sentence: 0, target: 'Rocket' }],
     };
-    assert.throws(() => auditFix(JSON.stringify(marks), {}, 1, 'manim', source));
+    assert.throws(() => auditFix(JSON.stringify(marks), {}, 1, ENGINES.manim, source));
     assert.deepEqual(
-        auditFix(JSON.stringify(marks), {}, 1, 'manim', source, '3d').emphasis,
+        auditFix(JSON.stringify(marks), {}, 1, ENGINES.manim, source, '3d').emphasis,
         marks.emphasis,
     );
 });

@@ -1,4 +1,4 @@
-import { cutSource, emphasisMark } from './video-plan.mjs';
+import { emphasisMark } from './video-plan.mjs';
 import { patched } from './patches.mjs';
 import { readCall } from './reply-parser.mjs';
 
@@ -96,6 +96,7 @@ export function auditReport(offered) {
 }
 
 // A fix answers {"patch", "emphasis"?} against source; an answer that does not parse, apply or read throws.
+// engine is the cut's engine, which keeps the patched code as its source.
 export function auditFix(raw, brief, sentences, engine, source, dimension = '2d') {
     const answer = JSON.parse(unfenced(raw));
     const code = typeof answer?.patch === 'string' ? patched(source, answer.patch) : null;
@@ -110,7 +111,7 @@ export function auditFix(raw, brief, sentences, engine, source, dimension = '2d'
     )
         throw new Error('Fix returned unreadable emphasis.');
     return {
-        code: engine === 'manim' ? code.trim() : cutSource(code, brief),
+        code: engine.source(code, brief),
         ...(answer.emphasis && { emphasis: answer.emphasis }),
     };
 }

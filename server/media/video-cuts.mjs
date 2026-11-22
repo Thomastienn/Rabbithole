@@ -1,34 +1,13 @@
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import {
-    CUT_INSTRUCTIONS,
-    CUT_3D,
-    EXHIBIT_NOTE,
-    AUDIT_INSTRUCTIONS,
-    AUDIT_3D,
-    REPAIR_NOTE,
-    REPAIR_PATCH_NOTE,
-    FIX_NOTE,
-    SUBMIT_NOTE,
-    SUBMIT_CUT,
-} from './video-cut.mjs';
-import {
-    cutJoin,
-    cutSource,
-    pieceNames,
-    CUT_ATTEMPTS,
-    CUT_CHECKS,
-    CUT_PAUSE_FRAMES,
-} from './video-plan.mjs';
+import { REPAIR_NOTE, REPAIR_PATCH_NOTE, FIX_NOTE, SUBMIT_NOTE, SUBMIT_CUT } from './video-cut.mjs';
+import { cutJoin, pieceNames, CUT_ATTEMPTS, CUT_CHECKS, CUT_PAUSE_FRAMES } from './video-plan.mjs';
 import { patched, withSource } from './patches.mjs';
-import { unfenced, auditReport, auditFix } from './audit-answers.mjs';
-import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from './manim-cut.mjs';
-import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL, MOTION_DESIGN_SKILL } from './skills.mjs';
+import { auditReport, auditFix } from './audit-answers.mjs';
 import { stageNarration } from './narration.mjs';
 import { withoutPaths, sandboxOutput } from './video-sandbox.mjs';
 import { writeSetPieces } from './video-pieces.mjs';
-
 import { stageCut } from './video-stage.mjs';
 import { cutState } from './cut-state.mjs';
 import { cutWork } from './video-workspace.mjs';
@@ -46,13 +25,12 @@ export const cutError = (reason, index, count) =>
 // A tool-calling writer submits through submit_cut until one submission validates; each error goes back to it.
 // validate(code) checks a submission and returns the accepted cut code; failed is this attempt's failed code.
 function cutSubmission(validate, failed, mcp) {
-    const submission = { accepted: null, rejected: null, fatal: null };
+    const submission = { accepted: null, rejected: null };
     let checks = 0;
     submission.tool = {
         tools: [SUBMIT_CUT],
         mcp,
         runTool: async (_name, input) => {
-            if (submission.fatal) throw submission.fatal;
             if (submission.accepted !== null) return 'The cut is already accepted; end your turn.';
             if (checks >= CUT_CHECKS) throw new Error('No checks left; end your turn.');
             const diff = typeof input?.patch === 'string',
@@ -68,7 +46,6 @@ function cutSubmission(validate, failed, mcp) {
             try {
                 submission.accepted = await validate(code);
             } catch (e) {
-                if (e.manimUnavailable) submission.fatal = e;
                 submission.rejected = { error: e, code };
                 throw e;
             }
@@ -82,13 +59,11 @@ export async function writeCuts({
     plan,
     workspace,
     kit,
-    manimKit,
+    // Each cut's engine (cutEngines), chosen once by the caller.
+    engines,
     call,
     write = call,
     narrate,
-    snapshot,
-    check,
-    clip,
     signal,
     save,
     wait,
@@ -126,7 +101,7 @@ export async function writeCuts({
                 ...(kept[i].emphasis && { emphasis: kept[i].emphasis }),
             }),
     }));
-    const names = plan.cuts.some((c) => c.engine === 'remotion') ? pieceNames(plan) : [];
+    const names = engines.some((e) => e.pictures) ? pieceNames(plan) : [];
     const data = {
         plan,
         cuts,
@@ -145,7 +120,7 @@ export async function writeCuts({
             // A 3D cut's writer always gets a camera note; the default orbit when the plan gave none.
             cut: cut.dimension === '3d' ? { camera: 'slow orbit around the focus', ...cut } : cut,
             previousEndState: index ? plan.cuts[index - 1].endState : null,
-            ...(data.pieces && cuts[index].engine !== 'manim' && { setPieces: data.pieces }),
+            ...(data.pieces && engines[index].pictures && { setPieces: data.pieces }),
             ...(shown.length && { exhibits: shown }),
         };
     };
@@ -182,34 +157,14 @@ export async function writeCuts({
     // Narration depends only on the plan, never on a cut writer or a neighbouring cut finishing.
     const attempts = cuts.map(() => 0);
     const writerInstructions = (index) =>
-        cuts[index].engine === 'manim'
-            ? MANIM_INSTRUCTIONS + '\n\n' + MANIM_SKILL
-            : CUT_INSTRUCTIONS +
-              '\n\n' +
-              REMOTION_SKILL +
-              '\n\n' +
-              MOTION_DESIGN_SKILL +
-              (plan.cuts[index].dimension === '3d' ? CUT_3D + '\n\n' + REMOTION_3D_SKILL : '') +
-              (exhibitsOf(index).length ? EXHIBIT_NOTE : '');
-    // The cut source rules, then for a Manim cut the render sandbox, before narration or render.
+        engines[index].instructions({
+            dimension: plan.cuts[index].dimension,
+            exhibits: exhibitsOf(index).length > 0,
+        });
+    // The cut source rules, then the engine's check of the staged cut, before narration or render.
     const validate = async (index, raw) => {
-        cuts[index].code =
-            cuts[index].engine === 'manim' ? unfenced(raw) : cutSource(raw, plan.styleBrief);
-        if (cuts[index].engine === 'manim' && check)
-            try {
-                await mkdir(cutWork(workspace, index), { recursive: true, mode: 0o700 });
-                await check(await stage(index));
-            } catch (e) {
-                signal.throwIfAborted();
-                if (e.manimUnavailable) throw e;
-                throw new Error(
-                    withoutPaths(
-                        e.message === 'Video rendering failed.'
-                            ? (e.diagnostic ?? e.message)
-                            : e.message,
-                    ),
-                );
-            }
+        cuts[index].code = engines[index].source(raw, plan.styleBrief);
+        await engines[index].check(() => stage(index));
     };
     const rewrite = async (index, reason) => {
         let error = reason && new Error(reason),
@@ -263,13 +218,11 @@ export async function writeCuts({
                     JSON.stringify({ ...input, ...(error && failed && { failedCode: failed }) }),
                 );
             } catch (e) {
-                if (submission.fatal) throw submission.fatal;
                 if (!e.invalidOutput) throw e;
                 error = e;
                 failed = null;
                 continue;
             }
-            if (submission.fatal) throw submission.fatal;
             if (submission.accepted === null && submission.rejected) {
                 ({ error, code: failed } = submission.rejected);
                 continue;
@@ -280,12 +233,11 @@ export async function writeCuts({
                 try {
                     await validate(index, raw);
                 } catch (e) {
-                    if (e.manimUnavailable) throw e;
                     error = e;
                     continue;
                 }
             }
-            // New code makes any earlier Manim clip stale.
+            // New code makes any earlier clip stale.
             delete cuts[index].clip;
             delete cuts[index].step;
             if (error) cuts[index].audited = true;
@@ -294,22 +246,30 @@ export async function writeCuts({
         }
         throw cutError(error.message, index, plan.cuts.length);
     };
-    const stage = (index) =>
-        stageCut({
-            dir: cutWork(workspace, index),
+    const stage = async (index) => {
+        const dir = cutWork(workspace, index);
+        await mkdir(dir, { recursive: true, mode: 0o700 });
+        return stageCut({
+            dir,
             cut: cuts[index],
             plan,
             pieces: data.pieces,
             kit,
-            manimKit,
             emphasis: cuts[index].emphasis ?? plan.cuts[index].emphasis ?? [],
             exhibits: exhibitsOf(index),
+            engine: engines[index],
         });
-    // A Manim clip is rendered into the staged cut's public folder, where its wrapper and snapshots read it.
-    const clipOf = async (index) => {
-        await clip(await stage(index), cuts[index].timing.durationInFrames);
-        cuts[index].clip = `cut-${index}/public/manim.mp4`;
+    };
+    // What the engine plays beyond the code, such as a rendered clip; whether it made one.
+    const play = async (index) => {
+        const clip = await engines[index].play(
+            () => stage(index),
+            cuts[index].timing.durationInFrames,
+        );
+        if (!clip) return false;
+        cuts[index].clip = `cut-${index}/${clip}`;
         persist();
+        return true;
     };
     // The contact sheet, then stills at each sentence end and the narration's last frame, rendered from the staged cut.
     const shoot = async (index) => {
@@ -324,7 +284,7 @@ export async function writeCuts({
                 file: join(dir, 'out', randomUUID() + '.jpg'),
             }),
         );
-        await snapshot(dir, stills, signal);
+        await engines[index].stills(dir, stills);
         signal.throwIfAborted();
         for (const { file } of stills) {
             const stat = await sandboxOutput(dir, file);
@@ -340,9 +300,8 @@ export async function writeCuts({
             own = await shoot(index);
         } catch (e) {
             signal.throwIfAborted();
-            // Remotion cut code that throws in the page renders no frame, live or final; its writer repairs it.
-            if (cut.engine !== 'manim' && /^SymbolicateableError\b/.test(e.diagnostic ?? ''))
-                throw Object.assign(new Error(e.diagnostic), { crashed: true });
+            // Cut code that crashed renders no frame, live or final; its writer repairs it.
+            if (e.crashed) throw e;
         } finally {
             lastFrames[index].resolve(own?.at(-1) ?? null);
         }
@@ -359,14 +318,13 @@ export async function writeCuts({
                     previousLastFrame: !!previous,
                 };
                 const draws = (name) =>
-                    cut.engine !== 'manim' &&
+                    engines[index].pictures &&
                     new RegExp(`\\b${RegExp.escape(name)}(?:3D)?\\b`).test(cut.code);
                 const offered = Object.keys(library).filter(draws);
                 const photos = references.filter((r) => draws(r.name));
                 const report = auditReport(offered);
                 const answer = await call(
-                    (cut.engine === 'manim' ? MANIM_AUDIT_INSTRUCTIONS : AUDIT_INSTRUCTIONS) +
-                        (plan.cuts[index].dimension === '3d' ? AUDIT_3D : ''),
+                    engines[index].audit(plan.cuts[index].dimension),
                     JSON.stringify({
                         ...audited,
                         ...(offered.length && { libraryPieces: offered }),
@@ -415,15 +373,14 @@ export async function writeCuts({
                                 answer,
                                 plan.styleBrief,
                                 cut.timing.sentences.length,
-                                cut.engine,
+                                engines[index],
                                 code,
                                 plan.cuts[index].dimension,
                             ),
                         );
-                        if (cut.engine === 'manim' && check) await check(await stage(index));
+                        await engines[index].check(() => stage(index));
                     } catch (e) {
                         signal.throwIfAborted();
-                        if (e.manimUnavailable) throw e;
                         const found = issues.map((i) => `${i.where}: ${i.what}`).join('; ');
                         throw Object.assign(
                             new Error(
@@ -432,9 +389,9 @@ export async function writeCuts({
                             { repair: true },
                         );
                     }
-                    // A Manim fix is checked and rendered to a new clip; the old clip is replaced only on success.
-                    if (cut.engine !== 'manim') await shoot(index);
-                    else await clipOf(index);
+                    // A fix must still render: a new clip where the engine plays one, replacing the old only on
+                    // success, else new stills.
+                    if (!(await play(index))) await shoot(index);
                 }
             } catch (e) {
                 signal.throwIfAborted();
@@ -491,15 +448,15 @@ export async function writeCuts({
         ];
         try {
             await Promise.all(operations);
-            // A Manim cut renders before its audit, which sees frames of the clip; a failed render spends the repair.
-            // A crashed cut or a failed audit fix is repaired, then shot again.
+            // A cut whose engine plays a clip renders it before its audit, which sees frames of the clip; a failed
+            // render spends the repair. A crashed cut or a failed audit fix is repaired, then shot again.
             for (;;) {
-                while (cut.engine === 'manim' && !cut.clip)
+                while (!engines[index].playable(cut))
                     try {
-                        await clipOf(index);
+                        await play(index);
                     } catch (e) {
                         signal.throwIfAborted();
-                        if (e.manimUnavailable || e.code) throw e;
+                        if (e.code) throw e;
                         const reason = withoutPaths(e.diagnostic ?? e.message);
                         if (attempts[index] >= CUT_ATTEMPTS)
                             throw cutError(reason, index, plan.cuts.length);
@@ -538,5 +495,5 @@ export async function writeCuts({
         // Siblings fail with AbortError once one cut stops the job; report the first real cause.
         throw signal.reason ?? error;
     }
-    return { data, attempts, rewrite, stage, persist, clip: clipOf, improving };
+    return { data, attempts, rewrite, stage, persist, play, improving };
 }

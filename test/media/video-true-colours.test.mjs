@@ -51,7 +51,6 @@ export default () => <div style={{background:palette.ground,color:colors.earth}}
             cut: { engine, code: 'x' },
             plan: good,
             kit: '',
-            manimKit: '',
             emphasis: [],
             exhibits: [],
         });

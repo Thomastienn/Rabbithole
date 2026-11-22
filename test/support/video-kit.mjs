@@ -234,6 +234,7 @@ export async function job(render, mutate, source = composition, count = 1, optio
         narrate: fakeNarration,
         onPhase: (...p) => phases.push(p),
         manim: options.manim,
+        engines: options.engines,
         search: options.search,
         exhibit: options.exhibit,
         clips: options.clips,
