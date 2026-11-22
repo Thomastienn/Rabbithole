@@ -3,14 +3,11 @@ import { Switch } from '@astryxdesign/core/Switch';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { Section } from './InterfaceSettings';
+import { request as api } from '../serverAccess';
 
 type Tool = { name: string; label: string; enabled: boolean; setup?: string };
 
-export default function TutorToolsSettings({
-    api,
-}: {
-    api: (path: string, body?: unknown) => Promise<Tool[]>;
-}) {
+export default function TutorToolsSettings() {
     const [tools, setTools] = useState<Tool[]>(),
         [pending, setPending] = useState('loading'),
         [error, setError] = useState('');

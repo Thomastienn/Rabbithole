@@ -4,10 +4,11 @@ import { layoutSaver, type Batch } from './layoutSave';
 import type { Point, Viewport } from './canvas';
 import { rootOf } from './mapState';
 import type { ChatState } from '../chat/useChatState';
+import { request as api } from '../serverAccess';
 
 // Map layout saving for ChatPage: pending batches, snapshots and drag or viewport saves.
 export function useLayoutSaving(c: ChatState) {
-    const { state, setState, tree, root, overview, expanded, folds, api } = c;
+    const { state, setState, tree, root, overview, expanded, folds } = c;
     const [layoutFailed, setLayoutFailed] = useState(false);
     const saver = useRef<ReturnType<typeof layoutSaver<Layout>>>(undefined);
     const writeLayout = useRef<(root: string, batch: Batch<Layout>) => Promise<unknown>>(undefined);

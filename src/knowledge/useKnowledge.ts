@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Graph } from './knowledge';
-type Api = (path: string, body?: unknown) => Promise<Graph>;
+import { request as api } from '../serverAccess';
 
-export function useKnowledge({ api, activity }: { api: Api; activity: string }) {
+export function useKnowledge({ activity }: { activity: string }) {
     const [graph, setGraph] = useState<Graph>();
     const [error, setError] = useState(''),
         [status, setStatus] = useState('');

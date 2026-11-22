@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { passageAnchor, branchRequest, prepareBranch } from '../../src/chat/branch.ts';
+import { fakeServer } from '../support/fake-server.mjs';
 
 test('passage anchors keep exact UTF-16 offsets, including repeated emoji and raw Markdown', () => {
     const message = { id: 'reply', text: 'repeat 😀 repeat 😀 **bold**' };
@@ -48,7 +49,7 @@ test('branch and preparation bodies omit popup coordinates, retain exact passage
     }
 });
 
-test('form preparation and cancellation use the same passage without a question and defer errors to submit', async () => {
+test('form preparation and cancellation use the same passage without a question and defer errors to submit', async (t) => {
     const calls = [],
         anchor = branchRequest({
             messageId: 'm',
@@ -57,10 +58,11 @@ test('form preparation and cancellation use the same passage without a question 
             text: 'Roots',
             at: { x: 1, y: 2 },
         });
-    const cancel = prepareBranch('parent', anchor, async (path, body) => {
+    fakeServer(t, (path, body) => {
         calls.push([path, body]);
         throw new Error('Compaction unavailable');
     });
+    const cancel = prepareBranch('parent', anchor);
     assert.deepEqual(calls, [['/api/trees/parent/prepare', anchor]]);
     cancel();
     await Promise.resolve();

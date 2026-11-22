@@ -10,6 +10,7 @@ import { CheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import SandboxSettings from '../settings/SandboxSettings';
 import type { Model } from '../settings/models';
 import type { ModelSelection, Providers } from '../chat/types';
+import { request as api } from '../serverAccess';
 
 // Official installers; the app never installs or bundles either CLI.
 const INSTALL = {
@@ -46,7 +47,7 @@ function Install({ cli, check }: { cli: keyof typeof INSTALL; check: () => void 
 type SystemPackages = { command?: string; words?: string };
 
 // Linux only: system packages video making needs; chat, visuals and diagrams work without them.
-function VideoPackages({ api }: { api: (path: string) => Promise<unknown> }) {
+function VideoPackages() {
     const [system, setSystem] = useState<SystemPackages>({});
     const check = () =>
         void api('/api/setup/system')
@@ -111,7 +112,6 @@ const key = (m: Pick<Model, 'provider' | 'model'>) => `${m.provider}\n${m.model}
 
 // First-run setup: sign in through the existing flows, confirm a prefilled chat model, or leave it for later.
 export default function FirstRunSetup({
-    api,
     models,
     providers,
     modelError,
@@ -120,7 +120,6 @@ export default function FirstRunSetup({
     signIn,
     done,
 }: {
-    api: (path: string, body?: unknown) => Promise<unknown>;
     models?: Model[];
     providers?: Providers;
     modelError: string;
@@ -217,8 +216,8 @@ export default function FirstRunSetup({
                 )}
             </VStack>
             <Divider />
-            <VideoPackages api={api} />
-            <SandboxSettings api={api} firstRun />
+            <VideoPackages />
+            <SandboxSettings firstRun />
             <VStack gap={2}>
                 <Heading level={3}>Chat model</Heading>
                 {chosen ? (

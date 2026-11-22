@@ -17,6 +17,7 @@ import { foldHierarchy } from '../../src/map/canvas.ts';
 import { conversationAddresses, inkStyle, markLibraryScrolling } from '../../src/map/treeList.ts';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../../src/map/previews.ts';
 import { treeSearchSource } from '../../src/shell/treeSearchSource.ts';
+import { fakeServer } from '../support/fake-server.mjs';
 
 const tree = (id, parent = null, created = 0) => ({
     id,
@@ -421,19 +422,19 @@ test('live previews keep earlier messages, replace retried replies and use bound
     assert.equal(saved.length, 2);
 });
 
-test('title search maps ordered saved results, encodes queries and surfaces failure without bootstrap/model calls', async () => {
+test('title search maps ordered saved results, encodes queries and surfaces failure without bootstrap/model calls', async (t) => {
     const calls = [],
         errors = [];
-    const source = treeSearchSource(
-        async (path) => {
-            calls.push(path);
-            return [
-                { root: 'new', title: 'Roman roads' },
-                { root: 'old', title: 'Photosynthesis' },
-            ];
-        },
-        (e) => errors.push(e),
-    );
+    let fail = false;
+    fakeServer(t, (path) => {
+        calls.push(path);
+        if (fail) throw new Error('Unavailable');
+        return [
+            { root: 'new', title: 'Roman roads' },
+            { root: 'old', title: 'Photosynthesis' },
+        ];
+    });
+    const source = treeSearchSource((e) => errors.push(e));
     assert.deepEqual(source.bootstrap(), []);
     assert.deepEqual(calls, []);
     assert.deepEqual(await source.search('O & ?'), [
@@ -441,13 +442,8 @@ test('title search maps ordered saved results, encodes queries and surfaces fail
         { id: 'old', label: 'Photosynthesis' },
     ]);
     assert.deepEqual(calls, ['/api/search?q=O%20%26%20%3F']);
-    const failed = treeSearchSource(
-        async () => {
-            throw new Error('Unavailable');
-        },
-        (e) => errors.push(e),
-    );
-    assert.deepEqual(await failed.search('photo'), []);
+    fail = true;
+    assert.deepEqual(await source.search('photo'), []);
     assert.deepEqual(errors, ['Unavailable']);
 });
 

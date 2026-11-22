@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button, name } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: VideoCard } = await import('../../src/media/VideoCard.tsx');
 const { default: VideoLibrary } = await import('../../src/media/VideoLibrary.tsx');
 
@@ -143,7 +144,8 @@ test('library cards lead with the frame; missing files offer only removal; trash
         }
         assert.fail(`unexpected ${path} ${JSON.stringify(body)}`);
     };
-    const { container, act, cleanup } = await render(h(VideoLibrary, { api, activity: '' }), ui);
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(VideoLibrary, { activity: '' }), ui);
     t.after(cleanup);
     const card = (id) => container.querySelector(`.video-library [data-artifact=${id}]`);
     const kept = card('kept');
@@ -213,10 +215,8 @@ test('library cards lead with the frame; missing files offer only removal; trash
 });
 
 test('an empty library says how videos get there', async (t) => {
-    const { container, act, cleanup } = await render(
-        h(VideoLibrary, { api: async () => [], activity: '' }),
-        ui,
-    );
+    fakeServer(t, () => []);
+    const { container, act, cleanup } = await render(h(VideoLibrary, { activity: '' }), ui);
     t.after(cleanup);
     await act(async () => {});
     assert.equal(container.querySelector('h2').textContent, 'No videos yet');
@@ -253,8 +253,7 @@ test('a pending video lists a row per cut and the set pieces being drawn in a po
 
 test('a finished inline video hides its token breakdown until the ⋯ button opens it', async (t) => {
     const urls = [];
-    const fetch = globalThis.fetch;
-    globalThis.fetch = async (url) => {
+    fakeServer(t, (url) => {
         urls.push(url);
         const row = (
             stage,
@@ -281,8 +280,7 @@ test('a finished inline video hides its token breakdown until the ⋯ button ope
             row('fix', 'chat', 1, 0, 0, 0, 0),
             row(null, 'chat', 3, 3, 9, 9, 9),
         ]);
-    };
-    t.after(() => (globalThis.fetch = fetch));
+    });
     const { container, act, cleanup } = await render(
         h(VideoCard, { artifact: video('done', 'ready'), inline: true }),
         ui,

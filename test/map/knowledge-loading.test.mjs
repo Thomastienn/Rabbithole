@@ -5,6 +5,7 @@ import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { button } from '../support/ui.mjs';
 import { initial, setup, KnowledgeFixture as KnowledgePage } from '../support/knowledge-kit.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 
 test('knowledge loading, empty/error states and refresh ignore stale activity responses', async (t) => {
     const loads = [],
@@ -13,16 +14,14 @@ test('knowledge loading, empty/error states and refresh ignore stale activity re
     function Fixture() {
         const [activity, set] = useState('first');
         update = set;
-        return h(KnowledgePage, {
-            activity,
-            api: (path, body) => {
-                calls.push([path, body]);
-                const p = Promise.withResolvers();
-                loads.push(p);
-                return p.promise;
-            },
-        });
+        return h(KnowledgePage, { activity });
     }
+    fakeServer(t, (path, body) => {
+        calls.push([path, body]);
+        const p = Promise.withResolvers();
+        loads.push(p);
+        return p.promise;
+    });
     let dom;
     const { container, act, cleanup } = await render(h(Fixture), (w) => {
         dom = setup(w);

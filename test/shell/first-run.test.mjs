@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 
 // A fresh install: no trees unless `tree`, no chat model, nothing signed in until `signedIn`.
 async function mount(
@@ -18,8 +19,7 @@ async function mount(
     } = {},
 ) {
     const posts = [];
-    const saved = globalThis.fetch;
-    globalThis.fetch = async (path, options) => {
+    fakeServer(t, (path, _body, options) => {
         if (options?.method === 'POST') posts.push([path, JSON.parse(options.body)]);
         const body =
             path === '/api/state'
@@ -76,7 +76,7 @@ async function mount(
                             ? sandbox
                             : {};
         return { ok: true, json: async () => body };
-    };
+    });
     const { default: ChatPage } = await import('../../src/shell/ChatPage.tsx');
     let stubs;
     const page = await render(
@@ -90,7 +90,6 @@ async function mount(
     );
     t.after(async () => {
         await page.cleanup();
-        globalThis.fetch = saved;
     });
     const settle = () => page.act(async () => stubs.frames());
     await settle();

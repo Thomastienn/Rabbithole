@@ -4,14 +4,11 @@ import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Section } from './InterfaceSettings';
+import { request as api } from '../serverAccess';
 
 type MemoryNote = { note: string };
 
-export default function MemoryNoteSettings({
-    api,
-}: {
-    api: (path: string, body?: unknown) => Promise<MemoryNote>;
-}) {
+export default function MemoryNoteSettings() {
     const [loaded, setLoaded] = useState(false),
         [text, setText] = useState(''),
         [pending, setPending] = useState(false),

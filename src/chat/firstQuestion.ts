@@ -1,14 +1,14 @@
+import { request as api } from '../serverAccess';
+
 // Open before sending so the first reply is shown while it streams.
 export async function firstQuestion<T extends { id: string }>(
     question: string,
     selection: object,
     {
-        api,
         refresh,
         open,
         send,
     }: {
-        api: (path: string, body?: unknown) => Promise<any>;
         refresh: () => Promise<unknown>;
         open: (tree: T) => Promise<void>;
         send: (question: string, tree: T) => Promise<void>;

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button, inputValue } from '../support/ui.mjs';
+import { fakeServer } from '../support/fake-server.mjs';
 const { default: EndpointSettings } = await import('../../src/settings/EndpointSettings.tsx');
 
 test('endpoint settings add, reject duplicates, show failed tests, guard URL edits and confirm removal', async (t) => {
@@ -54,8 +55,9 @@ test('endpoint settings add, reject duplicates, show failed tests, guard URL edi
         return list;
     };
     let changed = 0;
+    fakeServer(t, api);
     const { container, act, cleanup } = await render(
-        h(EndpointSettings, { api, changed: () => changed++ }),
+        h(EndpointSettings, { changed: () => changed++ }),
         ui,
     );
     t.after(cleanup);
@@ -206,8 +208,9 @@ test('each endpoint lists its models; search filters hundreds and Reads images s
     function Harness() {
         const [shown, setShown] = useState(models);
         reload = async () => setShown(models);
-        return h(EndpointSettings, { api, models: shown, changed: () => reload() });
+        return h(EndpointSettings, { models: shown, changed: () => reload() });
     }
+    fakeServer(t, api);
     const { container, act, cleanup } = await render(h(Harness), ui);
     t.after(cleanup);
     await act(async () => {});
@@ -268,10 +271,8 @@ async function addGateway(t, search) {
             list = [{ id: 'openai:gw', name: body.name, baseUrl: body.baseUrl, lastTest: null }];
         return list;
     };
-    const { container, act, cleanup } = await render(
-        h(EndpointSettings, { api, changed() {} }),
-        ui,
-    );
+    fakeServer(t, api);
+    const { container, act, cleanup } = await render(h(EndpointSettings, { changed() {} }), ui);
     t.after(cleanup);
     await act(async () => {});
     await act(async () => button(container, 'Add endpoint').click());

@@ -5,6 +5,7 @@ import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import type { DiscussionBranch } from '../media/DiscussionCard';
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
+import { request as api } from '../serverAccess';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
 import type { ReplyStream } from './useReplyStream';
@@ -16,7 +17,7 @@ export function useBranchForm(
     { savingModel }: ChatModel,
     { send }: ReplyStream,
 ) {
-    const { tree, state, branch, setBranch, branchOrigin, selected, setError, api } = c;
+    const { tree, state, branch, setBranch, branchOrigin, selected, setError } = c;
     const { overview, setOverview, overviewOrigin, focusComposer, request, setTree, setLoading } =
         c;
     const { setDrafts } = c;
@@ -43,7 +44,7 @@ export function useBranchForm(
     useEffect(() => {
         if (!prepareKey) return;
         const [parent, anchor] = JSON.parse(prepareKey);
-        return prepareBranch(parent, anchor, api);
+        return prepareBranch(parent, anchor);
     }, [prepareKey]);
     async function submitBranch(e: React.FormEvent) {
         e.preventDefault();

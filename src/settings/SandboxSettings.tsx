@@ -4,17 +4,12 @@ import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Done, Section } from './InterfaceSettings';
+import { request as api } from '../serverAccess';
 
 type Sandbox = { windows: boolean; ready: boolean };
 
 // Windows only: the sandbox's one-time setup, behind one UAC prompt, from first-run setup or Settings.
-export default function SandboxSettings({
-    api,
-    firstRun = false,
-}: {
-    api: (path: string, body?: unknown) => Promise<unknown>;
-    firstRun?: boolean;
-}) {
+export default function SandboxSettings({ firstRun = false }: { firstRun?: boolean }) {
     const [sandbox, setSandbox] = useState<Sandbox>(),
         [pending, setPending] = useState(false),
         [declined, setDeclined] = useState(false),
