@@ -56,9 +56,12 @@ Claude and Codex use your plan's sign-in. Rabbithole has no API-key fallback for
 
 ## Desktop app
 
-The download buttons are at the top of this page. The installers are unsigned, so Windows SmartScreen shows a warning on first run. On Linux, run `chmod +x Rabbithole-linux-x86_64.AppImage` before you open it.
+The download buttons are at the top of this page. Both installers bundle Node, Python, Manim, LaTeX and the video browser, so videos work from the first launch without other downloads. The installers are unsigned.
 
-To build it yourself, `npm run desktop:build` builds a Linux AppImage with Electron and the bundled video tools. See [Setup](docs/guide/setup.md#linux-desktop-app).
+- **Linux:** download the AppImage, run `chmod +x Rabbithole-linux-x86_64.AppImage`, then open it. It runs in place and installs nothing. First-run setup asks for `sudo apt install bubblewrap` if bubblewrap is missing, since videos and offline Python run inside it.
+- **Windows:** run `Rabbithole-windows-x64-setup.exe`. SmartScreen warns about an unrecognised app: choose **More info → Run anyway**. It installs for your user only, into `%LOCALAPPDATA%\Programs`, with no admin rights. On first run, setup turns on the video sandbox with one admin prompt; if you decline, videos and offline Python stay off until you enable the sandbox in Settings.
+
+Both keep your data in the same folder as `npm start`. To build it yourself, `npm run desktop:build` builds the installer for the OS it runs on with Electron and the bundled video tools. See [Setup](docs/guide/setup.md#linux-desktop-app).
 
 ## Data and privacy
 

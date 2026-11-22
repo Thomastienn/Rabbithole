@@ -29,6 +29,23 @@ test('each build job restores npm and Electron caches and uploads its installer'
     assert.match(job('windows'), /workspaces: desktop\/sandbox -> target/);
 });
 
+test('each build job smoke-tests its own installer output before uploading it', () => {
+    for (const [name, opens] of [
+        ['linux', /desktop\/dist\/\*\.AppImage --appimage-extract/],
+        ['windows', /desktop\/dist\/\*-setup\.exe\)\.FullName -ArgumentList '\/S'/],
+    ]) {
+        const steps = job(name);
+        assert.match(steps, opens);
+        const smoke = steps.indexOf('node scripts/desktop-smoke.mjs');
+        assert.ok(
+            steps.indexOf('npm run desktop:build') < smoke,
+            `${name} smoke-tests after building`,
+        );
+        assert.ok(smoke < steps.indexOf('upload-artifact'), `${name} uploads only a passing build`);
+    }
+    assert.match(job('linux'), /apt-get install -y bubblewrap/);
+});
+
 test('both installers go to one draft release', () => {
     const release = job('release');
     assert.match(release, /needs: \[linux, windows\]/);

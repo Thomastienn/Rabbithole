@@ -1,4 +1,4 @@
-# Builds the unsigned desktop installers. Manual trigger only: the owner runs it (AGENTS.md).
+# Builds the unsigned desktop installers and smoke-tests each. Manual trigger only: the owner runs it (AGENTS.md).
 name: Desktop build
 
 on:
@@ -33,6 +33,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libpango1.0-dev pkg-config
       - run: npm ci
       - run: npm run desktop:build
+      # Opens the AppImage's own output without FUSE or a display; bubblewrap is the sandbox the learner installs.
+      - name: Smoke-test the AppImage
+        run: |
+          sudo apt-get install -y bubblewrap
+          (cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE"/desktop/dist/*.AppImage --appimage-extract > /dev/null)
+          node scripts/desktop-smoke.mjs "$RUNNER_TEMP/squashfs-root/resources"
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -66,6 +72,12 @@ jobs:
       - run: git config --global core.longpaths true
       - run: npm ci
       - run: npm run desktop:build
+      # Installs per user as a learner would; runners have admin rights, so the sandbox setup's UAC prompt passes.
+      - name: Smoke-test the installer
+        shell: pwsh
+        run: |
+          Start-Process -FilePath (Get-Item desktop/dist/*-setup.exe).FullName -ArgumentList '/S' -Wait
+          node scripts/desktop-smoke.mjs (Get-Item "$env:LOCALAPPDATA/Programs/*/resources/node.exe").DirectoryName
       - uses: actions/upload-artifact@v4
         with:
           name: windows
