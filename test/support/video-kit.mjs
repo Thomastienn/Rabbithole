@@ -13,15 +13,17 @@ import { spawnSync } from 'node:child_process';
 import { createPatch } from 'diff';
 import { planBuilder } from '../../server/media/plan-calls.mjs';
 
+// Where a task's raw source starts: a blank line, its field name and a colon, after the JSON.
+const RAW_SOURCE = /\n\n\w+:\n/;
 // The JSON task a fixer receives, with the raw source that follows it restored under its field.
 export const fixerTask = (text) => {
-    const at = text.search(/\n\n\w+:\n/);
+    const at = text.search(RAW_SOURCE);
     if (at < 0) return JSON.parse(text);
     const field = text.slice(at + 2, text.indexOf(':', at));
     return { ...JSON.parse(text.slice(0, at)), [field]: text.slice(at + field.length + 4) };
 };
 // Whether a task carries its source as raw text after the JSON, as a request for a patch does.
-export const asksPatch = (text) => /\n\n\w+:\n/.test(text);
+export const asksPatch = (text) => RAW_SOURCE.test(text);
 // A unified diff from one source to another, as a fixer answers.
 export const patchOf = (from, to) => createPatch('source', from, to);
 // A writer's answer: a repair of failed code answers the source as a patch of it; an unchanged source
