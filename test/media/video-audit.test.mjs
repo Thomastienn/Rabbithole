@@ -25,7 +25,7 @@ import {
     REPAIR_NOTE,
     REPAIR_PATCH_NOTE,
 } from '../../server/media/video-cut.mjs';
-import { auditFix, auditReport } from '../../server/media/video-cuts.mjs';
+import { auditFix, auditReport } from '../../server/media/audit-answers.mjs';
 
 const twoCuts = () => {
     const plan = planFor(composition, 2);
