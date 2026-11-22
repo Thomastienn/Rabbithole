@@ -27,11 +27,12 @@ export const withLiveTurn = (preview: Preview = [], turn?: Turn): Preview =>
         },
     ).messages;
 
+// 300 UUIDs make a ~12 KB address, under Node's 16 KB header limit with browser headers.
 export function previewRequests(ids: string[]) {
     const requests: string[] = [];
-    for (let i = 0; i < ids.length; i += 500) {
+    for (let i = 0; i < ids.length; i += 300) {
         const params = new URLSearchParams();
-        ids.slice(i, i + 500).forEach((id) => params.append('id', id));
+        ids.slice(i, i + 300).forEach((id) => params.append('id', id));
         requests.push(`/api/previews?${params}`);
     }
     return requests;
