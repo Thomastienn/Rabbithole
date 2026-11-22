@@ -21,6 +21,7 @@ import SettingsWindow, { type SettingsRequest, type SettingsTab } from '../setti
 import { FirstQuestion, TreeLoading, TreeLoadFailure } from '../chat/ChatStates';
 import Contents from '../chat/Contents';
 import FocusedChat from '../chat/FocusedChat';
+import type { ThreadProps } from '../chat/ChatThread';
 import DeleteDialog from '../chat/DeleteDialog';
 import ModelMenu from '../chat/ModelMenu';
 import { useChatState } from '../chat/useChatState';
@@ -183,13 +184,49 @@ export default function ChatPage({
     );
     const modelMenu = (
         <ModelMenu
-            model={model}
+            composition={model.composition}
+            modelMenuOpen={model.modelMenuOpen}
+            openModels={model.openModels}
+            openingModels={model.openingModels}
+            savingModel={model.savingModel}
+            modelLabel={model.modelLabel}
+            providers={providers}
+            models={models}
+            chooseModel={model.chooseModel}
+            signIn={signIn}
+            loadModels={loadModels}
+            currentModel={currentModel}
             active={active}
             busy={busy}
             openSettings={openSettings}
             setError={setError}
         />
     );
+    const thread: ThreadProps = {
+        modelLabel: model.modelLabel,
+        openConversation,
+        addresses,
+        trees: state?.trees ?? [],
+        send: stream.send,
+        replyDiscussion: stream.replyDiscussion,
+        videoAction: actions.videoAction,
+        branch,
+        setQuestion: branchForm.setQuestion,
+        selectingMessage: branchForm.selectingMessage,
+        setSelectingMessage: branchForm.setSelectingMessage,
+        branching: branchForm.branching,
+        submitBranch: branchForm.submitBranch,
+        closeBranch: branchForm.closeBranch,
+        openVisualPart: branchForm.openVisualPart,
+        visualBranches: branchForm.visualBranches,
+        widenPart: branchForm.widenPart,
+        discussionBranches: branchForm.discussionBranches,
+        groundworkBranches: branchForm.groundworkBranches,
+        chooseGroundwork: branchForm.chooseGroundwork,
+        explainBrief: branchForm.explainBrief,
+        pickPart: branchForm.pickPart,
+        startBranch: branchForm.startBranch,
+    };
     const firstQuestion = (
         <FirstQuestion
             draft={drafts.first ?? ''}
@@ -288,14 +325,37 @@ export default function ChatPage({
                                     {tree ? (
                                         <FocusedChat
                                             tree={tree}
-                                            c={c}
-                                            model={model}
-                                            trees={trees}
-                                            stream={stream}
-                                            branchForm={branchForm}
-                                            actions={actions}
                                             active={active}
                                             modelMenu={modelMenu}
+                                            thread={thread}
+                                            overview={overview}
+                                            renaming={c.renaming}
+                                            setRenaming={c.setRenaming}
+                                            expanded={expanded}
+                                            toggleExpanded={c.toggleExpanded}
+                                            statsOpen={c.statsOpen}
+                                            setStatsOpen={c.setStatsOpen}
+                                            statsPanel={c.statsPanel}
+                                            mobile={mobile}
+                                            transitionBox={c.transitionBox}
+                                            drafts={drafts}
+                                            setDraft={setDraft}
+                                            pendingFiles={pendingFiles}
+                                            setFiles={setFiles}
+                                            stop={stream.stop}
+                                            modelNotice={model.modelNotice}
+                                            unavailableSelection={model.unavailableSelection}
+                                            codexFallback={model.codexFallback}
+                                            modelError={modelError}
+                                            models={models}
+                                            loadModels={loadModels}
+                                            returnToTree={returnToTree}
+                                            reveal={trees.targets.reveal}
+                                            composer={trees.targets.composer}
+                                            jump={trees.targets.jump}
+                                            rename={actions.rename}
+                                            finishRename={actions.finishRename}
+                                            askOnSide={branchForm.askOnSide}
                                         />
                                     ) : (
                                         <VStack gap={0} className="overview">
@@ -355,11 +415,32 @@ export default function ChatPage({
                                     )}
                                 </section>
                                 <MapView
-                                    c={c}
-                                    layout={layout}
-                                    trees={trees}
-                                    stream={stream}
-                                    branchForm={branchForm}
+                                    root={root}
+                                    overview={overview}
+                                    expanded={expanded}
+                                    mobile={mobile}
+                                    transitionBox={c.transitionBox}
+                                    workspaceWidth={c.workspaceWidth}
+                                    workspace={workspace}
+                                    overviewOrigin={c.overviewOrigin}
+                                    state={state}
+                                    tree={tree}
+                                    previews={previews}
+                                    changeView={changeView}
+                                    openConversation={openConversation}
+                                    openGhost={trees.openGhost}
+                                    folded={trees.map.folded}
+                                    setFolded={trees.map.setFolded}
+                                    ghostMarks={trees.map.ghostMarks}
+                                    shownMapWidth={shownMapWidth}
+                                    setMapWidth={trees.map.setMapWidth}
+                                    focusNext={focusNext}
+                                    savePositions={layout.savePositions}
+                                    saveViewport={layout.saveViewport}
+                                    saveGhost={layout.saveGhost}
+                                    retryFromMap={stream.retryFromMap}
+                                    askFromMap={branchForm.askFromMap}
+                                    branching={branchForm.branching}
                                     vim={vim}
                                     menu={menu}
                                 />
@@ -367,10 +448,19 @@ export default function ChatPage({
                         </section>
                     </main>
                     <LibraryPanel
-                        c={c}
+                        tab={tab}
+                        error={error}
+                        root={root}
+                        renaming={c.renaming}
+                        setRenaming={c.setRenaming}
+                        today={c.today}
                         busy={busy}
-                        trees={trees}
-                        actions={actions}
+                        openTree={openTree}
+                        state={state}
+                        newChat={newChat}
+                        rename={actions.rename}
+                        finishRename={actions.finishRename}
+                        askDelete={askDelete}
                         firstQuestion={firstQuestion}
                     />
                     <ReturnPanel
@@ -422,7 +512,13 @@ export default function ChatPage({
                     />
                 </HStack>
             </HStack>
-            <DeleteDialog actions={actions} />
+            <DeleteDialog
+                deletion={actions.deletion}
+                deleting={actions.deleting}
+                deleteError={actions.deleteError}
+                cancelDelete={cancelDelete}
+                deleteConversation={actions.deleteConversation}
+            />
         </VStack>
     );
 }

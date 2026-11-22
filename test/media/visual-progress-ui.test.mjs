@@ -5,6 +5,7 @@ import { createElement as h, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
+import { threadProps } from '../support/thread-props.mjs';
 const { default: VisualFrame } = await import('../../src/media/VisualFrame.tsx');
 const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
 const { Conversation } = await import('../../src/map/Conversation.tsx');
@@ -80,20 +81,17 @@ test('the visual badge, dimming, input lock and live announcements follow its st
 
 test('reply footer and conversation node show "n of m visuals ready" until every visual finishes', async (t) => {
     const thread = (artifacts) =>
-        h(ChatThread, {
-            tree: {
-                id: 'a',
-                artifacts,
-                messages: [{ id: 'r', role: 'assistant', status: 'completed', text: 'Answer' }],
-            },
-            c: { overview: false, setSelectingMessage() {} },
-            model: { modelLabel: () => 'Fixture' },
-            trees: { openConversation() {}, addresses: new Map(), state: { trees: [] } },
-            stream: { send() {} },
-            branchForm: { visualBranches: {}, groundworkBranches: {} },
-            actions: { videoAction() {} },
-            active: true,
-        });
+        h(
+            ChatThread,
+            threadProps({
+                tree: {
+                    id: 'a',
+                    artifacts,
+                    messages: [{ id: 'r', role: 'assistant', status: 'completed', text: 'Answer' }],
+                },
+                active: true,
+            }),
+        );
     const node = (artifacts) =>
         h(
             ReactFlowProvider,

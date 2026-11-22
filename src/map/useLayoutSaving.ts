@@ -10,7 +10,7 @@ import { request as api } from '../serverAccess';
 // Map layout saving for ChatPage: pending batches, snapshots and drag or viewport saves.
 // useLearningTrees calls it with the learning tree data it owns and the map's folds.
 export function useLayoutSaving(
-    c: ChatState,
+    view: Pick<ChatState, 'root' | 'overview' | 'expanded'>,
     {
         state,
         setState,
@@ -23,7 +23,7 @@ export function useLayoutSaving(
         folded: Set<string>;
     },
 ) {
-    const { root, overview, expanded } = c;
+    const { root, overview, expanded } = view;
     const [layoutFailed, setLayoutFailed] = useState(false);
     const saver = useRef<ReturnType<typeof layoutSaver<Layout>>>(undefined);
     const writeLayout = useRef<(root: string, batch: Batch<Layout>) => Promise<unknown>>(undefined);

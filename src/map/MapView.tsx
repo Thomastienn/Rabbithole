@@ -9,31 +9,63 @@ import type { LayoutSaving } from './useLayoutSaving';
 import type { LearningTrees } from '../chat/useLearningTrees';
 import type { ReplyStream } from '../chat/useReplyStream';
 import type { BranchFormState } from '../chat/useBranchForm';
+import type { MapViewState } from './useMapViewState';
+import type { ChatTargets } from '../chat/useChatTargets';
 import { savedGhostTrees, savePreference } from '../shell/preferences';
 
 // The learning tree map beside or instead of the focused chat, with its resize divider.
 export default function MapView({
-    c,
-    layout: { savePositions, saveViewport, saveGhost },
-    trees,
-    stream: { retryFromMap },
-    branchForm: { askFromMap, branching },
+    root,
+    overview,
+    expanded,
+    mobile,
+    transitionBox,
+    workspaceWidth,
+    workspace,
+    overviewOrigin,
+    state,
+    tree,
+    previews,
+    changeView,
+    openConversation,
+    openGhost,
+    folded,
+    setFolded,
+    ghostMarks,
+    shownMapWidth,
+    setMapWidth,
+    focusNext,
+    savePositions,
+    saveViewport,
+    saveGhost,
+    retryFromMap,
+    askFromMap,
+    branching,
     vim,
     menu,
 }: {
-    c: ChatState;
-    layout: LayoutSaving;
-    trees: LearningTrees;
-    stream: ReplyStream;
-    branchForm: BranchFormState;
     vim: boolean;
     menu: (actions?: MapActions) => React.ReactNode;
-}) {
-    const { root, overview, expanded, mobile, transitionBox } = c;
-    const { workspaceWidth, workspace, overviewOrigin } = c;
-    const { state, tree, previews, changeView, openConversation, openGhost } = trees;
-    const { folded, setFolded, ghostMarks, shownMapWidth, setMapWidth } = trees.map;
-    const { focusNext } = trees.targets;
+} & Pick<
+    ChatState,
+    | 'root'
+    | 'overview'
+    | 'expanded'
+    | 'mobile'
+    | 'transitionBox'
+    | 'workspaceWidth'
+    | 'workspace'
+    | 'overviewOrigin'
+> &
+    Pick<
+        LearningTrees,
+        'state' | 'tree' | 'previews' | 'changeView' | 'openConversation' | 'openGhost'
+    > &
+    Pick<MapViewState, 'folded' | 'setFolded' | 'ghostMarks' | 'shownMapWidth' | 'setMapWidth'> &
+    Pick<ChatTargets, 'focusNext'> &
+    Pick<LayoutSaving, 'savePositions' | 'saveViewport' | 'saveGhost'> &
+    Pick<ReplyStream, 'retryFromMap'> &
+    Pick<BranchFormState, 'askFromMap' | 'branching'>) {
     const marks = ghostMarks?.root === root ? ghostMarks : undefined;
     const [ghostsShown, setGhostsShown] = useState(savedGhostTrees);
     return (

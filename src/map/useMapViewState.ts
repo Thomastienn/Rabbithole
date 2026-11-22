@@ -5,7 +5,10 @@ import type { State } from '../chat/types';
 
 // Map view state: the open map's folds, ghost tree marks and the docked map width.
 // useLearningTrees calls it with the app state it owns.
-export function useMapViewState({ root, overview, workspaceWidth }: ChatState, state?: State) {
+export function useMapViewState(
+    { root, overview, workspaceWidth }: Pick<ChatState, 'root' | 'overview' | 'workspaceWidth'>,
+    state?: State,
+) {
     // Folds the learner changed on map `root`; until then a map shows the folds saved in its layout.
     const [changed, setChanged] = useState<{ root: string; ids: Set<string> }>();
     const saved = state?.trees.find((t) => t.id === root)?.layout?.folded;

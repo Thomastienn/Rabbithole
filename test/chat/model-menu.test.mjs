@@ -48,7 +48,7 @@ async function mount(t, props) {
 
 test('effort dropdown shows the effort, offers model efforts and chooses one in a click', async (t) => {
     const calls = [];
-    const { container, act, dom } = await mount(t, { model: model(calls) });
+    const { container, act, dom } = await mount(t, model(calls));
     const models = button(container, 'Model for next reply');
     assert.match(models.textContent, /Claude · Opus/);
     assert.deepEqual(
@@ -75,7 +75,7 @@ test('custom endpoints also offer Custom…', async (t) => {
         ...model([], { provider: 'openai:x', model: 'opus', effort: null }),
         currentModel: custom,
     };
-    const { container, act, dom } = await mount(t, { model: m });
+    const { container, act, dom } = await mount(t, m);
     const effort = button(container, 'Effort for next reply');
     await act(async () => effort.click());
     await act(async () => dom.frames());
@@ -86,7 +86,7 @@ test('custom endpoints also offer Custom…', async (t) => {
 });
 
 test('a streaming reply disables the effort dropdown', async (t) => {
-    const { container } = await mount(t, { model: model([]), active: true });
+    const { container } = await mount(t, { ...model([]), active: true });
     assert.equal(button(container, 'Effort for next reply').getAttribute('aria-disabled'), 'true');
 });
 
@@ -108,7 +108,7 @@ test('the model menu searches its models fuzzily and draws at most 50', async (t
             ...many,
         ],
     };
-    const { container, act, dom } = await mount(t, { model: m });
+    const { container, act, dom } = await mount(t, m);
     const models = button(container, 'Model for next reply');
     await act(async () => models.click());
     await act(async () => dom.frames());

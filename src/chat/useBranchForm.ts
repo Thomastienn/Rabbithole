@@ -9,13 +9,24 @@ import { request as api } from '../serverAccess';
 import type { LearningTrees } from './useLearningTrees';
 import type { ChatModel } from './useChatModel';
 import type { ReplyStream } from './useReplyStream';
+import type { ChatTargets } from './useChatTargets';
 
 // Branch form: opening it from a passage or a visual's Ask button, inherited context preparation and submit.
 export function useBranchForm(
-    c: ChatState,
-    trees: LearningTrees,
-    { savingModel }: ChatModel,
-    { send, setDraft }: ReplyStream,
+    c: Pick<ChatState, 'setError' | 'overview' | 'setOverview' | 'overviewOrigin'>,
+    trees: Pick<
+        LearningTrees,
+        | 'tree'
+        | 'state'
+        | 'addresses'
+        | 'setTree'
+        | 'refresh'
+        | 'openConversation'
+        | 'openId'
+        | 'show'
+    > & { targets: Pick<ChatTargets, 'focusNext'> },
+    { savingModel }: Pick<ChatModel, 'savingModel'>,
+    { send, setDraft }: Pick<ReplyStream, 'send' | 'setDraft'>,
 ) {
     const { setError, overview, setOverview, overviewOrigin } = c;
     const { focusNext } = trees.targets;

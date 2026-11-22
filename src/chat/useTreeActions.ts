@@ -8,13 +8,44 @@ import { request as api } from '../serverAccess';
 import type { LearningTrees } from './useLearningTrees';
 import type { ReplyStream } from './useReplyStream';
 import type { BranchFormState } from './useBranchForm';
+import type { ChatTargets } from './useChatTargets';
+import type { LayoutSaving } from '../map/useLayoutSaving';
+import type { MapViewState } from '../map/useMapViewState';
 
 // Tree management: new chat, rename, delete and artifact actions.
 export function useTreeActions(
-    c: ChatState,
-    trees: LearningTrees,
-    { isLive, drop }: ReplyStream,
-    branchForm: BranchFormState,
+    c: Pick<
+        ChatState,
+        | 'setError'
+        | 'root'
+        | 'tab'
+        | 'setTab'
+        | 'setOverview'
+        | 'setExpanded'
+        | 'renaming'
+        | 'setRenaming'
+        | 'overviewOrigin'
+    >,
+    trees: Pick<
+        LearningTrees,
+        | 'state'
+        | 'setState'
+        | 'setTree'
+        | 'setPreviews'
+        | 'refresh'
+        | 'select'
+        | 'openTree'
+        | 'reload'
+        | 'leave'
+        | 'retitle'
+        | 'forget'
+    > & {
+        layout: Pick<LayoutSaving, 'saver' | 'setLayoutFailed'>;
+        targets: Pick<ChatTargets, 'focusNext' | 'drop'>;
+        map: Pick<MapViewState, 'drop'>;
+    },
+    { isLive, drop }: Pick<ReplyStream, 'isLive' | 'drop'>,
+    branchForm: Pick<BranchFormState, 'drop'>,
 ) {
     const { setError, root, setTab, setOverview, setExpanded, renaming, setRenaming } = c;
     const { state, setState, setTree, setPreviews, refresh, select, openTree } = trees;

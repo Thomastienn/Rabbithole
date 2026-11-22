@@ -15,10 +15,24 @@ import { useMapViewState } from '../map/useMapViewState';
 import { useChatTargets } from './useChatTargets';
 
 type TreeUpdate = Tree | undefined | ((t: Tree | undefined) => Tree | undefined);
+type View = Pick<
+    ChatState,
+    | 'setError'
+    | 'overviewOrigin'
+    | 'root'
+    | 'setRoot'
+    | 'overview'
+    | 'setOverview'
+    | 'expanded'
+    | 'setExpanded'
+    | 'setTab'
+    | 'setTransitionBox'
+    | 'workspaceWidth'
+>;
 
 // Learning tree data and loading: app state, the open conversation, map previews, conversation
 // selection, status polling, and the counters that tell whether a server answer is still current.
-export function useLearningTrees(c: ChatState) {
+export function useLearningTrees(c: View) {
     const { setError, overviewOrigin } = c;
     const [state, setState] = useState<State>();
     setCsrf(state?.csrf ?? '');
@@ -33,8 +47,8 @@ export function useLearningTrees(c: ChatState) {
     const selected = useRef<string | undefined>(undefined);
     const request = useRef(0);
     const checkpoints = useRef(0);
-    // The reply stream's live turns, read here only: the reply stream is built after this hook.
-    const turns = useRef<ReadonlyMap<string, Turn>>(new Map());
+    // Live turns: the reply stream, built after this hook, writes them; this hook only reads them.
+    const turns = useRef(new Map<string, Turn>());
     const map = useMapViewState(c, state);
     const layout = useLayoutSaving(c, { state, setState, tree, folded: map.folded });
     const targets = useChatTargets(c, tree);

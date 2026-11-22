@@ -17,7 +17,7 @@ import { inkStyle } from '../map/treeList';
 import OriginStrip from './OriginStrip';
 import TitleEditor from './TitleEditor';
 import ChatHeadingRow from './ChatHeader';
-import ChatThread from './ChatThread';
+import ChatThread, { type ThreadProps } from './ChatThread';
 import {
     AttachButton,
     PendingAttachments,
@@ -32,31 +32,79 @@ import type { LearningTrees } from './useLearningTrees';
 import type { ReplyStream } from './useReplyStream';
 import type { BranchFormState } from './useBranchForm';
 import type { TreeActions } from './useTreeActions';
+import type { ChatTargets } from './useChatTargets';
 
 // The open conversation: header notices, composer, title, details, the thread and the turn rail.
-export default function FocusedChat(props: {
+export default function FocusedChat({
+    tree,
+    active,
+    modelMenu,
+    thread,
+    overview,
+    renaming,
+    setRenaming,
+    expanded,
+    toggleExpanded,
+    statsOpen,
+    setStatsOpen,
+    statsPanel,
+    mobile,
+    transitionBox,
+    drafts,
+    setDraft,
+    pendingFiles,
+    setFiles: setPending,
+    stop,
+    modelNotice,
+    unavailableSelection,
+    codexFallback,
+    modelError,
+    models,
+    loadModels,
+    returnToTree,
+    reveal,
+    composer,
+    jump,
+    rename,
+    finishRename,
+    askOnSide,
+}: {
     tree: Tree;
-    c: ChatState;
-    model: ChatModel;
-    trees: LearningTrees;
-    stream: ReplyStream;
-    branchForm: BranchFormState;
-    actions: TreeActions;
     active: boolean;
     modelMenu: React.ReactNode;
-}) {
-    const { tree, c, model, trees, stream, actions, active, modelMenu } = props;
-    const { overview, renaming, setRenaming } = c;
-    const { expanded, toggleExpanded, statsOpen, setStatsOpen, statsPanel } = c;
-    const { mobile, transitionBox } = c;
-    const { drafts, setDraft, pendingFiles } = stream;
+    // Passed on to the thread; the header and composer read its conversations and send too.
+    thread: ThreadProps;
+} & Pick<
+    ChatState,
+    | 'overview'
+    | 'renaming'
+    | 'setRenaming'
+    | 'expanded'
+    | 'toggleExpanded'
+    | 'statsOpen'
+    | 'setStatsOpen'
+    | 'statsPanel'
+    | 'mobile'
+    | 'transitionBox'
+> &
+    Pick<ReplyStream, 'drafts' | 'setDraft' | 'pendingFiles' | 'setFiles' | 'stop'> &
+    Pick<
+        ChatModel,
+        | 'modelNotice'
+        | 'unavailableSelection'
+        | 'codexFallback'
+        | 'modelError'
+        | 'models'
+        | 'loadModels'
+    > &
+    Pick<LearningTrees, 'returnToTree'> &
+    Pick<ChatTargets, 'reveal' | 'composer' | 'jump'> &
+    Pick<TreeActions, 'rename' | 'finishRename'> &
+    Pick<BranchFormState, 'askOnSide'>) {
+    const { openConversation, addresses, send, branching, trees } = thread;
     const files = pendingFiles[tree.id] ?? [];
-    const setFiles = (next: File[]) => stream.setFiles(tree.id, next);
-    const { modelNotice, unavailableSelection, codexFallback, modelError, models, loadModels } =
-        model;
+    const setFiles = (next: File[]) => setPending(tree.id, next);
     const attach = useAttach(files, setFiles, active || (!!models && !models.length));
-    const { openConversation, state, addresses, returnToTree } = trees;
-    const { reveal, composer, jump } = trees.targets;
     useEffect(() => {
         if (!statsOpen) return;
         const frame = requestAnimationFrame(() =>
@@ -64,11 +112,9 @@ export default function FocusedChat(props: {
         );
         return () => cancelAnimationFrame(frame);
     }, [statsOpen, tree.id]);
-    const { send } = stream;
-    const { rename, finishRename } = actions;
     const ancestors: Summary[] = [];
     for (let id = tree?.branch?.parent; id;) {
-        const parent = state?.trees.find((t) => t.id === id);
+        const parent = trees.find((t) => t.id === id);
         if (!parent) break;
         ancestors.unshift(parent);
         id = parent.parent ?? undefined;
@@ -125,7 +171,7 @@ export default function FocusedChat(props: {
                     <ChatHeadingRow
                         parentTitle={
                             tree.branch
-                                ? (state?.trees.find((t) => t.id === tree.branch!.parent)?.title ??
+                                ? (trees.find((t) => t.id === tree.branch!.parent)?.title ??
                                   'parent conversation')
                                 : undefined
                         }
@@ -228,8 +274,8 @@ export default function FocusedChat(props: {
                                         sideBlocked ??
                                         'Opens a new branch with this question, keeping this conversation clean'
                                     }
-                                    isDisabled={!!sideBlocked || props.branchForm.branching}
-                                    onClick={() => void props.branchForm.askOnSide(draft)}
+                                    isDisabled={!!sideBlocked || branching}
+                                    onClick={() => void askOnSide(draft)}
                                 />
                             )
                         }
@@ -250,7 +296,7 @@ export default function FocusedChat(props: {
                             void send(text, tree, false, files);
                         }}
                         isStopShown={active}
-                        onStop={() => stream.stop(tree.id)}
+                        onStop={() => stop(tree.id)}
                         input={
                             // Tray and notices go in the input slot so they sit inside the composer's frame.
                             <>
@@ -336,7 +382,7 @@ export default function FocusedChat(props: {
                             }
                             parentAddress={addresses.get(tree.branch.parent)?.address ?? ''}
                             parentTitle={
-                                state?.trees.find((t) => t.id === tree.branch!.parent)?.title ??
+                                trees.find((t) => t.id === tree.branch!.parent)?.title ??
                                 'parent conversation'
                             }
                             openParent={(source) =>
@@ -347,7 +393,7 @@ export default function FocusedChat(props: {
                     <InheritedContext
                         branch={tree.branch}
                         parentTitle={
-                            state?.trees.find((t) => t.id === tree.branch?.parent)?.title ??
+                            trees.find((t) => t.id === tree.branch?.parent)?.title ??
                             'parent conversation'
                         }
                     />
@@ -361,13 +407,9 @@ export default function FocusedChat(props: {
                         </VStack>
                     )}
                     <ChatThread
+                        {...thread}
                         tree={tree}
-                        c={c}
-                        model={model}
-                        trees={trees}
-                        stream={stream}
-                        branchForm={props.branchForm}
-                        actions={actions}
+                        overview={overview}
                         active={active}
                         source={source}
                         validSource={validSource}

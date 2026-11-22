@@ -23,21 +23,42 @@ import type { ChatModel } from './useChatModel';
 
 // The composer's model menu and, beside it, the effort menu for the next reply.
 export default function ModelMenu({
-    model,
+    composition,
+    modelMenuOpen,
+    openModels,
+    openingModels,
+    savingModel,
+    modelLabel,
+    providers,
+    models,
+    chooseModel,
+    signIn,
+    loadModels,
+    currentModel,
     active,
     busy,
     openSettings,
     setError,
-}: {
-    model: ChatModel;
+}: Pick<
+    ChatModel,
+    | 'composition'
+    | 'modelMenuOpen'
+    | 'openModels'
+    | 'openingModels'
+    | 'savingModel'
+    | 'modelLabel'
+    | 'providers'
+    | 'models'
+    | 'chooseModel'
+    | 'signIn'
+    | 'loadModels'
+    | 'currentModel'
+> & {
     active: boolean;
     busy: boolean;
     openSettings: (section?: SettingsTab, focus?: string, opener?: HTMLElement | null) => void;
     setError: (error: string) => void;
 }) {
-    const { composition, modelMenuOpen, openModels, openingModels, savingModel, modelLabel } =
-        model;
-    const { providers, models, chooseModel, signIn, loadModels, currentModel } = model;
     const [typing, setTyping] = useState(false),
         [query, setQuery] = useState('');
     if (!composition) return null;
