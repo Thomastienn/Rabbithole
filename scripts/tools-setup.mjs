@@ -99,8 +99,10 @@ async function unpack(url, dir, { report, signal, name, extract, inner = '', sha
 }
 
 // The Windows sandbox launcher and its Codex helpers (desktop/sandbox), zipped by the desktop build's release.
-// shortcut: placeholder until the owner publishes a desktop build with the zip; then set its tag and the SHA-256 its Windows job prints.
-export const SANDBOX_RELEASE = { tag: 'desktop-build-4', sha256: '0'.repeat(64) };
+export const SANDBOX_RELEASE = {
+    tag: 'desktop-build-9',
+    sha256: '2b0f5b4f4e0d29624e8330e2bbb0ca847d0383f3b49094bd4c50007136b4544b',
+};
 export const sandboxExe = (root = toolRoot) =>
     join(root, '.tools', 'sandbox', 'rabbithole-sandbox.exe');
 
