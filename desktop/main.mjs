@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, shell } from 'electron';
-import { navigation, serverUrl, startError } from './shell.mjs';
+import { navigation, saveLayout, serverUrl, startError } from './shell.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The staged resources (scripts/desktop-stage.mjs), run in place: the AppImage mount is read-only and nothing is copied.
@@ -84,6 +84,19 @@ app.whenReady().then(() => {
         event.preventDefault();
         if (decision === 'external') void shell.openExternal(event.url);
     };
+    // The page saves its pending map layout before the window closes, while the server still runs.
+    let saving = false,
+        saved = false;
+    window.on('close', (event) => {
+        if (saved) return;
+        event.preventDefault();
+        if (saving) return;
+        saving = true;
+        void saveLayout((code) => window.webContents.executeJavaScript(code)).then(() => {
+            saved = true;
+            if (!window.isDestroyed()) window.close();
+        });
+    });
     window.webContents.on('will-navigate', guard);
     window.webContents.on('will-redirect', guard);
     // New windows, such as sign-in pages, are refused; with no origin allowed, their http(s) links go to the default browser.
@@ -103,6 +116,9 @@ app.on('window-all-closed', () => app.quit());
 app.on('before-quit', (event) => {
     if (!running()) return;
     event.preventDefault();
+    // A menu quit or Cmd+Q closes the window first so its page saves; window-all-closed then quits again.
+    const open = BrowserWindow.getAllWindows();
+    if (open.length) return open.forEach((w) => w.close());
     server.once('close', () => app.quit());
     // shortcut: Windows has no SIGTERM, so kill() ends the server at once and its lock goes stale after 10 s; add a stop request if reopening quickly matters.
     server.kill('SIGTERM');
