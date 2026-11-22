@@ -15,7 +15,7 @@ There are two entry points:
 - **Ask on the side** sits beside Send in the focused chat's question box. It sends what the learner typed as a free branch and opens the child, like any other branch. It is always visible while they type, so they find it without being told.
 - A subtle **+** appears on a conversation node on the learning tree map. It opens the branch question box beside that node, with no passage. Sending creates the free branch and opens the child.
 
-A free branch hangs off the parent's latest completed tutor reply at the moment it is created. In the parent's focused chat, its address chip sits at the bottom of that reply, in its family's ink. Several free branches from the same reply share one row in address order, and the row wraps. On the map, the branch line attaches at that reply, like other branch lines.
+A free branch hangs off the parent's latest completed tutor reply at the moment it is created. In the parent's focused chat, its address chip, in its family's ink, and its title sit at the bottom of that reply. Several free branches from the same reply share one row in address order, and the row wraps. On the map, the branch line attaches at that reply, like other branch lines.
 
 **Interactive visuals.** The visual guidance changes from a rule-like preference to a general principle. A visual is something the learner plays with. When what it shows depends on values the learner could vary, the visual:
 
@@ -36,7 +36,7 @@ It stays static when nothing meaningful varies.
 6. As a learner, I want to return from a free branch to its parent in one click, as from any branch, so that I can resume the main line.
 7. As a learner, I want "Ask on the side" to be unavailable until the conversation has a completed tutor reply, so that I ask my first question in the conversation itself.
 8. As a learner, I want "Ask on the side" to be unavailable while the conversation is responding, as Send is, so that the branch inherits a finished reply.
-9. As a learner, I want a free branch's address chip at the bottom of the reply I branched after, so that I can see where in the conversation the side question came from.
+9. As a learner, I want a free branch's address chip and title at the bottom of the reply I branched after, so that I can see where in the conversation the side question came from.
 10. As a learner, I want several free branches from the same reply shown together in one row, in address order, so that I can find each one.
 11. As a learner, I want that row to wrap when it is full, so that many free branches stay readable on a narrow screen.
 12. As a learner, I want free branches made after different replies to sit under their own replies, so that the chips follow the order of my thinking.
@@ -72,7 +72,7 @@ It stays static when nothing meaningful varies.
   - It is enabled only when the conversation has a completed tutor reply, is not responding, and the question box has text.
   - It is unavailable while the question has attachments, since a branch question carries none.
   - Using it creates the free branch and opens the child's focused chat, as passage branches do.
-- **Free-branch chips.** The parent's focused chat shows a row of address chips at the bottom of each reply that free branches hang off. The chips are in address order, in family ink, and the row wraps. Choosing a chip opens that child. They reuse the existing address chip look, as explored groundwork chips do. Where the reply is the latest one, the row sits between the reply and its next questions. The mockup confirms the exact placement.
+- **Free-branch chips.** The parent's focused chat shows a row at the bottom of each reply that free branches hang off. Each entry is the branch's address chip in family ink followed by its title. Entries are in address order and the row wraps. A long title truncates; the chip never does, and the full title stays in the entry's label. Choosing a chip opens that child. They reuse the existing address chip look, as explored groundwork chips do. Where the reply is the latest one, the row sits between the reply and its next questions. The mockup confirms the exact placement.
 - **Map.** Branch lines already attach by message, so a free branch's line attaches at its reply without new layout work. A conversation node shows a subtle "+" on hover and on keyboard focus, and only when that conversation has a completed tutor reply. The "+" opens the existing branch question box beside the node, with no passage. Sending creates the free branch and opens the child.
 - **Visual guidance.** In the visual prompt, the sentences that make interaction the default when an idea has a meaningful variable are replaced with this principle: "Treat a visual as something the learner plays with, not a picture to look at. When what it shows depends on values the learner could vary, start from a sensible example, let them change those values, typing their own where that makes sense, and show the result follow. Make plain what they can change. Leave it static when nothing meaningful varies." The surrounding input-validation and control rules stay.
 - **No host change for visuals.** Visual controls are already never visual parts, and a click that ends a drag never picks a part. Typing in or dragging a visual's controls therefore cannot open the Ask popup.
