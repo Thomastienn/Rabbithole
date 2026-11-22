@@ -28,6 +28,7 @@ import {
 import { savedFocusMode, savePreference } from './preferences';
 import { Logo } from './Logo';
 import Downloads from './Downloads';
+import UpdateBanner, { useDesktopUpdate } from './UpdateBanner';
 
 export const viewTab = (
     label: string,
@@ -93,6 +94,7 @@ export default function ShellBand({
 }) {
     const [focusMode, setFocusMode] = useState(savedFocusMode);
     const [revealed, setRevealed] = useState(false);
+    const [update, act] = useDesktopUpdate();
     const focusToggle = useRef<HTMLButtonElement>(null);
     const toggleFocusMode = useCallback(() => {
         const restoreFocus = document.activeElement === focusToggle.current;
@@ -280,8 +282,23 @@ export default function ShellBand({
             </VStack>
             {!rail && contents}
             <div className="sidebar-foot">
+                {!rail && update && <UpdateBanner update={update} act={act} />}
                 <Downloads rail={rail} />
-                {item(viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings))}
+                {/* The rail has no room for the card; a dot on Settings marks the update. */}
+                {rail && update ? (
+                    <span className="update-dot">
+                        {item(
+                            viewTab(
+                                `Settings. Rabbithole ${update.version} is available`,
+                                <Cog6ToothIcon />,
+                                tab === 'settings',
+                                settings,
+                            ),
+                        )}
+                    </span>
+                ) : (
+                    item(viewTab('Settings', <Cog6ToothIcon />, tab === 'settings', settings))
+                )}
             </div>
         </nav>
     );

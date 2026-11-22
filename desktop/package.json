@@ -18,6 +18,7 @@
         "files": [
             "main.mjs",
             "shell.mjs",
+            "preload.cjs",
             "starting.html",
             "icons/icon.png"
         ],
@@ -51,5 +52,8 @@
             "perMachine": false,
             "artifactName": "Rabbithole-windows-x64-setup.${ext}"
         }
+    },
+    "dependencies": {
+        "electron-updater": "6.8.11"
     }
 }
