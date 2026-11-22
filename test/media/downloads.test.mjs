@@ -9,7 +9,7 @@ import { MANIM_VERSION, videoBrowser } from '../../server/media/manim.mjs';
 import { open } from '../support/video-kit.mjs';
 
 // A fake tool: ready() answers from `installed`; run() waits for the test to settle it.
-function fakeTools(installed = {}) {
+function fakeTools(installed = {}, { uv = false } = {}) {
     const runs = [],
         pending = {};
     const tool = (id, video) => ({
@@ -25,7 +25,13 @@ function fakeTools(installed = {}) {
     });
     const search = { ...tool('searxng'), requested: () => Boolean(installed.requested) };
     return {
-        tools: [tool('manim', true), tool('browser', true), tool('python'), search],
+        tools: [
+            ...(uv ? [tool('uv', true)] : []),
+            tool('manim', true),
+            tool('browser', true),
+            tool('python'),
+            search,
+        ],
         runs,
         pending,
     };
@@ -281,4 +287,19 @@ test('installs asked for at the same time queue each tool once', async () => {
     pending.manim.resolve();
     await tick();
     assert.deepEqual(runs, ['manim']);
+});
+
+test('offline Python installs uv first, which video tools then share', async () => {
+    const { tools, runs, pending } = fakeTools({}, { uv: true });
+    const manager = downloadManager(tools);
+    await manager.install('offline-python');
+    await tick();
+    assert.deepEqual(states(manager), ['uv:running', 'python:queued']);
+    pending.uv.resolve();
+    await tick();
+    pending.python.resolve();
+    await manager.idle();
+    await manager.install('video-tools');
+    await tick();
+    assert.deepEqual(runs, ['uv', 'python', 'manim'], 'uv is not downloaded twice');
 });

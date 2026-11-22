@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
 import test from 'node:test';
-import { navigation, saveLayout, serverUrl, startError } from '../../desktop/shell.mjs';
+import { dataDir } from '../../server/desktop.mjs';
+import { navigation, saveLayout, serverUrl, startError, toolsDir } from '../../desktop/shell.mjs';
 
 test('closing the window waits for the page layout save, but not for a hung or broken page', async () => {
     const order = [];
@@ -59,5 +61,19 @@ test('an early server exit shows its output, or how it stopped when it printed n
     assert.equal(
         startError('', null, 'SIGKILL'),
         "Rabbithole's server stopped before it started (SIGKILL).",
+    );
+});
+
+test('add-ons install into a tools folder inside the data folder the server uses', () => {
+    const home = (env) => () => dataDir(env, 'linux', '/home/l');
+    assert.equal(toolsDir('/app', {}, home({})), resolve('/home/l/.local/share/rabbithole/tools'));
+    assert.equal(
+        toolsDir('/app', { RABBITHOLE_DATA_DIR: '/d' }, home({ XDG_DATA_HOME: '/x' })),
+        resolve('/d/tools'),
+    );
+    // A relative data folder resolves from the server's working folder, as server/main.mjs resolves it.
+    assert.equal(
+        toolsDir('/app', { RABBITHOLE_DATA_DIR: 'data' }, home({})),
+        resolve('/app/data/tools'),
     );
 });

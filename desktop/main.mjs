@@ -2,15 +2,19 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, nativeTheme, shell } from 'electron';
-import { navigation, saveLayout, serverUrl, startError } from './shell.mjs';
+import { navigation, saveLayout, serverUrl, startError, toolsDir } from './shell.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The staged resources (scripts/desktop-stage.mjs), run in place: the AppImage mount is read-only and nothing is copied.
 const resources = app.isPackaged ? process.resourcesPath : join(here, 'stage');
 const windows = process.platform === 'win32';
 const SETPRIV = '/usr/bin/setpriv';
+// The server's own data-folder rule, from the staged app, so the shell and the server agree on it.
+const { dataDir } = await import(
+    pathToFileURL(join(resources, 'app', 'server', 'desktop.mjs')).href
+);
 let server,
     origin = null;
 
@@ -32,11 +36,12 @@ function startServer(window, loaded) {
         process.platform === 'linux' && existsSync(SETPRIV)
             ? [SETPRIV, ['--pdeathsig', 'SIGTERM', node, ...args]]
             : [node, args];
+    const cwd = join(resources, 'app');
     server = spawn(command, argv, {
-        cwd: join(resources, 'app'),
+        cwd,
         env: {
             ...process.env,
-            RABBITHOLE_TOOLS_DIR: join(resources, 'tools'),
+            RABBITHOLE_TOOLS_DIR: toolsDir(cwd, process.env, dataDir),
             // Model-written code runs through the bundled launcher (desktop/sandbox) beside the Codex helpers.
             ...(windows && { RABBITHOLE_SANDBOX: join(resources, 'rabbithole-sandbox.exe') }),
         },
