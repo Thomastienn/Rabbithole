@@ -15,7 +15,7 @@ node_modules
 dist/
 .impeccable/review/
 desktop/stage/
-desktop/target/
+desktop/dist/
 desktop/sandbox/target/
 
 # Ralph run state and logs; keep workflow configuration and checks tracked.

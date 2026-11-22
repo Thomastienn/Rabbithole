@@ -28,11 +28,11 @@ Stop with **Ctrl+C** and wait for the terminal command to exit. Active replies e
 
 ## Linux desktop app
 
-`npm run desktop:build` builds `desktop/target/release/bundle/appimage/Rabbithole_1.0.0_amd64.AppImage`. It needs Rust and Tauri's [Linux prerequisites](https://v2.tauri.app/start/prerequisites/#linux) (`sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf gstreamer1.0-plugins-good gstreamer1.0-libav`; the AppImage bundles the build machine's GStreamer plugins so video plays). The AppImage contains this Node runtime, the built app and its production dependencies. Opening it needs no terminal: on the first launch of each build it unpacks the app into `~/.local/share/rabbithole-app` (video tools downloaded there survive updates), starts the server on a free loopback port and shows it in a window. It uses the same data folder as `npm start`, so stop one before opening the other. Closing the window stops the server. Downloads such as an exported MP4 ask where to save. Video making still needs the system `bwrap` and the packages first-run setup lists.
+`npm run desktop:build` stages the desktop resources and builds an AppImage in `desktop/dist/` with Electron and `electron-builder`, which live in `desktop/package.json` so `npm ci` in a clone never downloads them. Staging needs Cairo and Pango headers for Manim (`sudo apt install libcairo2-dev libpango1.0-dev pkg-config`). The AppImage holds Node 24, the built app with its production dependencies and every video tool, and runs them in place from its mount: nothing is copied on launch. Opening it needs no terminal: it starts the server on a free loopback port and shows it in a window. It uses the same data folder as `npm start`, so stop one before opening the other; a second copy shows the already-running message. Closing the window stops the server. Links to other sites open in your browser. Downloads such as an exported MP4 ask where to save. Video making still needs the system `bwrap`.
 
 ## Windows desktop app
 
-On Windows, the same `npm run desktop:build` builds the unsigned NSIS installer `desktop/target/release/bundle/nsis/Rabbithole_1.0.0_x64-setup.exe`, with the sandbox launcher and its Codex helpers beside the app. It needs Rust and Tauri's [Windows prerequisites](https://v2.tauri.app/start/prerequisites/#windows). The app unpacks into `%LOCALAPPDATA%\rabbithole-app` and keeps its data in `%APPDATA%\rabbithole`.
+On Windows, `npm run desktop:build` stages Node, the app and the sandbox launcher with its Codex helpers (it needs Rust for the launcher); the Windows installer is not built yet. The app keeps its data in `%APPDATA%\rabbithole`.
 
 ## Downloads
 
