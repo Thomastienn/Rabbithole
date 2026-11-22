@@ -108,7 +108,7 @@ test('app marks a failed job failed without a playable result', async () => {
                 emit,
                 tree.id
                     ? 'Sure.' + directive
-                    : tree.instructions.startsWith('You plan')
+                    : tree.stage === 'plan'
                       ? videoResponse(tree)
                       : repairAnswer(tree, text, invalid),
             ),

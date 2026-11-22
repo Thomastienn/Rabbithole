@@ -40,7 +40,7 @@ for (const repair of [false, true])
                 generate: async (tree, text, emit) => {
                     if (tree.id) return complete(emit, 'Watch.' + directive);
                     emit({ type: 'usage', usage: { input: 3, output: 5, cacheRead: 0 } });
-                    if (tree.instructions.startsWith('You plan')) {
+                    if (tree.stage === 'plan') {
                         return complete(emit, planText(plan));
                     }
                     const input = fixerTask(text),
@@ -144,9 +144,8 @@ for (const broken of ['detect', 'runtime'])
                                   ? visualBlock()
                                   : 'Chat still works.',
                         );
-                    if (tree.instructions.startsWith('You plan'))
-                        return complete(emit, planText(plan));
-                    if (tree.instructions.includes('Python source')) {
+                    if (tree.stage === 'plan') return complete(emit, planText(plan));
+                    if (tree.role === 'video') {
                         calls++;
                         return complete(emit, manimCut);
                     }
@@ -212,10 +211,8 @@ for (const invalid of [false, true])
             {
                 generate: async (tree, text, emit) => {
                     if (tree.id) return complete(emit, 'Watch.' + directive);
-                    if (tree.instructions.startsWith('You plan'))
-                        return complete(emit, planText(plan));
-                    if (!tree.instructions.includes('Python source'))
-                        return complete(emit, composition);
+                    if (tree.stage === 'plan') return complete(emit, planText(plan));
+                    if (fixerTask(text).cut.engine !== 'manim') return complete(emit, composition);
                     inputs.push(fixerTask(text));
                     complete(
                         emit,

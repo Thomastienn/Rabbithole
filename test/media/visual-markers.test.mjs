@@ -180,8 +180,7 @@ test('a model without tool calling gets no show_visual text tool and its visual 
     const env = await open(
         {
             generate: async (tree, text, emit) => {
-                if (tree.instructions?.startsWith('You create one self-contained visual'))
-                    return writer(tree, text, emit);
+                if (tree.role === 'visual') return writer(tree, text, emit);
                 offered = { tools: tree.tools, text: tree.textTools?.map((t) => t.name) };
                 // A show_visual call written as text is hidden and refused.
                 const call = `<tool_call>${JSON.stringify({ name: 'show_visual', arguments: { title: 'Old', shows: 'S', alt: 'A', name: 'old' } })}</tool_call>`;

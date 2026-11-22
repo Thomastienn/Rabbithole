@@ -18,8 +18,6 @@ import {
     pass,
     planText,
 } from '../support/video-kit.mjs';
-import { MANIM_AUDIT_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
-import { FIX_NOTE } from '../../server/media/video-cut.mjs';
 
 const original = manimCut.trim();
 const fixes = {
@@ -42,17 +40,15 @@ for (const [name, fix] of Object.entries(fixes))
             {
                 generate: async (tree, text, emit) => {
                     if (tree.id) return complete(emit, 'Watch.' + directive);
-                    if (tree.instructions.startsWith('You plan'))
-                        return complete(emit, planText(plan));
-                    if (tree.instructions.endsWith(FIX_NOTE)) {
+                    if (tree.stage === 'plan') return complete(emit, planText(plan));
+                    if (tree.stage === 'fix') {
                         fixes.push(fixerTask(text));
                         return complete(
                             emit,
                             JSON.stringify({ patch: patchOf(fixes.at(-1).code, fix) }),
                         );
                     }
-                    if (!tree.instructions.startsWith(MANIM_AUDIT_INSTRUCTIONS))
-                        return complete(emit, manimCut);
+                    if (tree.stage !== 'audit') return complete(emit, manimCut);
                     audits.push({ input: JSON.parse(text), images: tree.images });
                     return fix
                         ? audit(tree, emit, [

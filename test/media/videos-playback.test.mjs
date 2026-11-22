@@ -25,7 +25,7 @@ test('inline video exposes its phase and position, keeps inputs private, then se
     });
     const provider = {
         generate: async (tree, text, emit) => {
-            if (tree.instructions?.includes('Remotion')) {
+            if (tree.role === 'video') {
                 await composing;
                 return complete(emit, videoResponse(tree));
             }

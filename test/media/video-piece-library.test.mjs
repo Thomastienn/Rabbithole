@@ -51,8 +51,8 @@ export function Note({ x, y }) { return <div style={{ left: x, top: y, backgroun
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
-                if (tree.instructions.startsWith('You write the set pieces')) {
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
+                if (tree.stage === 'pieces') {
                     input = JSON.parse(text);
                     const id = (n) =>
                         input.library.flatMap((l) => l.matches).find((m) => m.name === n).id;
@@ -307,8 +307,8 @@ export function Stadium({ x, y }) { return <div style={{ left: x, top: y, backgr
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
-                if (tree.instructions.startsWith('You write the set pieces')) {
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
+                if (tree.stage === 'pieces') {
                     inputs.push(JSON.parse(text));
                     rules.push(tree.instructions);
                     if (inputs.length === 1)

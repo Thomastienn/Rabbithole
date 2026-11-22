@@ -17,7 +17,7 @@ test('a malformed video block the learner asked for becomes a visible failed vid
     const provider = {
         generate: async (tree, text, emit) => {
             if (!tree.id) {
-                if (tree.instructions.startsWith('You plan')) workers.push(JSON.parse(text));
+                if (tree.stage === 'plan') workers.push(JSON.parse(text));
                 return complete(emit, videoResponse(tree));
             }
             complete(emit, 'Sure.\n```rabbithole-video\n' + block);
@@ -223,9 +223,9 @@ test('Try a different version gives a ready video a new job; the chat shows only
         held = false;
     const env = await open({
         generate: async (tree, text, emit) => {
-            if (tree.instructions?.includes('Remotion')) {
-                if (tree.instructions.startsWith('You plan')) workers.push({ tree, text });
-                if (held && tree.instructions.startsWith('You plan'))
+            if (tree.role === 'video') {
+                if (tree.stage === 'plan') workers.push({ tree, text });
+                if (held && tree.stage === 'plan')
                     await new Promise((r) => {
                         release = r;
                     });

@@ -101,12 +101,12 @@ test('one set-piece call runs before any cut; Remotion cuts get the module stage
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) {
+                if (tree.stage === 'plan') {
                     calls.push('plan');
                     return complete(emit, planText(plan));
                 }
                 const input = fixerTask(text);
-                if (tree.instructions.startsWith('You write the set pieces')) {
+                if (tree.stage === 'pieces') {
                     calls.push('pieces');
                     inputs.pieces = input;
                     inputs.piecesInstructions = tree.instructions;
@@ -214,9 +214,8 @@ test('a new video embeds each accepted set piece look and saves it to the piece 
         {
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                if (tree.instructions.startsWith('You plan')) return complete(emit, planText(plan));
-                if (tree.instructions.startsWith('You write the set pieces'))
-                    return complete(emit, pieces);
+                if (tree.stage === 'plan') return complete(emit, planText(plan));
+                if (tree.stage === 'pieces') return complete(emit, pieces);
                 complete(emit, usesPieces);
             },
         },
@@ -306,12 +305,12 @@ test('set pieces get three tries and fail by name; Retry keeps the plan, then ke
     const env = await open({
         generate: async (tree, text, emit) => {
             if (tree.id) return complete(emit, 'Watch.' + directive);
-            if (tree.instructions.startsWith('You plan')) {
+            if (tree.stage === 'plan') {
                 plans++;
                 return complete(emit, planText(plan));
             }
             const input = fixerTask(text);
-            if (tree.instructions.startsWith('You write the set pieces')) {
+            if (tree.stage === 'pieces') {
                 pieceCalls++;
                 errors.push(input.validationError);
                 const module = piecesOk

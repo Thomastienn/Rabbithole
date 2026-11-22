@@ -30,16 +30,16 @@ test('explicit video request creates one job with frozen input, publishes owned 
         suggestions = [];
     const provider = {
         generate: async (tree, text, emit) => {
-            if (tree.instructions?.includes('Remotion')) {
+            if (tree.role === 'video') {
                 workers.push({ tree, text });
                 return complete(emit, videoResponse(tree));
             }
-            if (text.startsWith('Mark every term')) {
+            if (tree.role === 'suggestions') {
                 suggestions.push(text);
                 return complete(emit, '{"suggestions":[]}');
             }
             tutor.push({ tree, text });
-            if (text.startsWith('Compact')) return complete(emit, 'Compact summary.');
+            if (tree.role === 'compaction') return complete(emit, 'Compact summary.');
             complete(
                 emit,
                 text.startsWith('Thanks') ? 'Continuing.' : 'Here is the idea.' + directive,
@@ -396,7 +396,7 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
     const tutor = {
         models: async () => [{ model: 'chat-model', isDefault: true, efforts: ['low', 'high'] }],
         generate: async (tree, text, emit) => {
-            assert.ok(!tree.instructions?.startsWith('You plan'), 'the chat provider never plans');
+            assert.ok(tree.stage !== 'plan', 'the chat provider never plans');
             if (!tree.id) {
                 chatWorkers.push(tree);
                 return complete(emit, composition);
@@ -406,7 +406,8 @@ test('custom smart worker freezes inputs across Settings changes and explicit Re
     };
     let release, upstream;
     fake.reply = (_req, res, body) => {
-        if (body.messages[0].content.startsWith('You plan')) {
+        // The wire carries no role: the planner is the call given the frozen video request.
+        if (JSON.parse(body.messages[1].content).request) {
             upstream = body;
             release = () => streamReply(res, [planText(planFor())]);
         } else streamReply(res, [composition]);

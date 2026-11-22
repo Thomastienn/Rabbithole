@@ -230,7 +230,7 @@ test('provider switches and branch compaction receive ready metadata only, with 
             if (!tree.id)
                 complete(
                     emit,
-                    text.startsWith('Compact') ? 'The tournament diagram shows rounds.' : source,
+                    tree.role === 'compaction' ? 'The tournament diagram shows rounds.' : source,
                 );
             else {
                 save(name + '-tutor-thread', name + '-model');

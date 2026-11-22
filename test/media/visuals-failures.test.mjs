@@ -234,8 +234,7 @@ test('Retry draws a failed visual with the conversation’s current chat model',
     const env = await open(
         {
             generate: async (tree, text, emit) => {
-                if (!tree.instructions?.startsWith('You create one self-contained visual'))
-                    return complete(emit, 'Look.' + block());
+                if (tree.role !== 'visual') return complete(emit, 'Look.' + block());
                 drawnBy.push('openai');
                 complete(emit, visualAnswer(text, source));
             },

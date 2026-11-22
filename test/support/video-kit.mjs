@@ -11,7 +11,6 @@ import { videoBrowser } from '../../server/media/manim.mjs';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createPatch } from 'diff';
-import { REPAIR_PATCH_NOTE } from '../../server/media/video-cut.mjs';
 import { planBuilder } from '../../server/media/plan-calls.mjs';
 
 // The JSON task a fixer receives, with the raw source that follows it restored under its field.
@@ -21,12 +20,14 @@ export const fixerTask = (text) => {
     const field = text.slice(at + 2, text.indexOf(':', at));
     return { ...JSON.parse(text.slice(0, at)), [field]: text.slice(at + field.length + 4) };
 };
+// Whether a task carries its source as raw text after the JSON, as a request for a patch does.
+export const asksPatch = (text) => /\n\n\w+:\n/.test(text);
 // A unified diff from one source to another, as a fixer answers.
 export const patchOf = (from, to) => createPatch('source', from, to);
 // A writer's answer: a repair of failed code answers the source as a patch of it; an unchanged source
 // gains a trailing newline, which validation trims, so the patch has a hunk.
 export const repairAnswer = (tree, text, source) => {
-    if (!tree.instructions.endsWith(REPAIR_PATCH_NOTE)) return source;
+    if (tree.stage !== 'repair' || !asksPatch(text)) return source;
     const { failedCode } = fixerTask(text);
     return patchOf(failedCode, source === failedCode ? source + '\n' : source);
 };
@@ -136,7 +137,7 @@ export const planThrough = (plan, options) => {
     return builder.plan();
 };
 export const videoResponse = (tree, source = composition) =>
-    tree.instructions?.startsWith('You plan') && source.startsWith('// Description:')
+    tree.stage === 'plan' && source.startsWith('// Description:')
         ? planText(planFor(source))
         : source;
 export const complete = (emit, text) => {
@@ -211,8 +212,7 @@ export async function job(render, mutate, source = composition, count = 1, optio
             await options.slow?.();
             complete(
                 emit,
-                t.instructions.startsWith('You plan') &&
-                    (options.plan || source.startsWith('// Description:'))
+                t.stage === 'plan' && (options.plan || source.startsWith('// Description:'))
                     ? planText(options.plan ?? planFor(source, count))
                     : options.plan?.cuts.find((c) => c.purpose === JSON.parse(text).cut.purpose)
                             ?.engine === 'manim'

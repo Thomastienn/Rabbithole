@@ -29,11 +29,11 @@ async function open(visual, options = {}) {
     const claude = {
         models,
         generate: async (tree, text, emit, _save, signal) => {
-            if (tree.instructions?.startsWith('You mark')) {
+            if (tree.role === 'suggestions') {
                 calls.suggest.push(text);
                 return complete(emit, '{"passages":[]}');
             }
-            if (text.startsWith('{"request"')) return visual(emit, signal);
+            if (tree.role === 'visual') return visual(emit, signal);
             calls.chat.push(text);
             return complete(
                 emit,

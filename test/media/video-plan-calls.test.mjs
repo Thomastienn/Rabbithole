@@ -28,7 +28,7 @@ async function plan(attempts) {
     const error = await generateVideo({
         provider: {
             generate: async (t, _text, emit) => {
-                if (!t.instructions.startsWith('You plan')) return complete(emit, composition);
+                if (t.stage !== 'plan') return complete(emit, composition);
                 plans.push(t);
                 for (const [name, input = {}] of attempts[plans.length - 1] ?? [])
                     try {

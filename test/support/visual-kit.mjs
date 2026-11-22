@@ -53,7 +53,7 @@ export async function open(chat, smart, options = {}) {
     // visual calls reach the `smart` fixture and whose tutor calls reach the `chat` fixture.
     const visual = smart.generate;
     smart.generate = function (tree, ...rest) {
-        return tree.instructions?.startsWith('You create one self-contained visual')
+        return tree.role === 'visual'
             ? visual.call(this, tree, ...rest)
             : chat.generate(tree, ...rest);
     };

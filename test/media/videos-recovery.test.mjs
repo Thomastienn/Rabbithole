@@ -29,7 +29,7 @@ test('cancel stops only its own job, late output cannot publish, and retry reuse
     const provider = {
         generate: async (tree, text, emit) => {
             if (!tree.id) {
-                if (tree.instructions.startsWith('You plan')) workers.push(text);
+                if (tree.stage === 'plan') workers.push(text);
                 return complete(emit, videoResponse(tree));
             }
             complete(emit, /video/.test(text) ? 'Sure.' + directive : 'Answer in another chat.');
@@ -136,7 +136,7 @@ test('narration, composition and save failures stay honest and retry the same re
     const provider = {
         generate: async (tree, text, emit) => {
             if (tree.id) return complete(emit, 'Sure.' + directive);
-            if (tree.instructions.startsWith('You plan')) compose++;
+            if (tree.stage === 'plan') compose++;
             // Both plan attempts answer no calls, so the plan fails after its one retry.
             complete(emit, compose <= 2 ? 'not a composition' : videoResponse(tree));
         },
