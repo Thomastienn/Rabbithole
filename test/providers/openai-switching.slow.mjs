@@ -40,12 +40,9 @@ for (const name of [TEST_PROVIDER])
             name === 'claude'
                 ? new Claude(dir, launch, (cmd, args, opts, cb) => cb(null, '{"loggedIn":true}'))
                 : new Codex({ token: async () => 'fixture-subscription-token' }, dir, launch);
-        const { app, post, store, origin } = await open(t, { [name]: native });
-        await post('/api/settings/endpoint', {
-            baseUrl: fake.baseUrl,
-            apiKey: 'switch-fixture-secret',
-        });
-        const root = store.create('Root', 'openai');
+        const { app, post, store, origin, addEndpoint } = await open(t, { [name]: native });
+        const id = await addEndpoint(fake.baseUrl, 'switch-fixture-secret');
+        const root = store.create('Root', id);
         store.model(root.id, 'local-tutor');
         await (await post(`/api/trees/${root.id}/messages`, { text: 'Root fact' })).text();
         const rootBefore = store.tree(root.id),
@@ -80,7 +77,7 @@ for (const name of [TEST_PROVIDER])
         assert.match(compact.messages[0].content, /^You write the background/);
         assert.match(compact.messages[1].content, /Root fact/);
         assert.equal(child.branch.snapshot, 'Frozen compaction fact');
-        assert.equal(child.provider, 'openai');
+        assert.equal(child.provider, id);
         assert.deepEqual(
             store.tree(root.id),
             rootBefore,
@@ -112,7 +109,7 @@ for (const name of [TEST_PROVIDER])
         assert.equal(
             (
                 await post(`/api/trees/${child.id}/model`, {
-                    provider: 'openai',
+                    provider: id,
                     model: 'second-model',
                 })
             ).status,
@@ -155,7 +152,7 @@ for (const name of [TEST_PROVIDER])
         const nestedPrompt = fake.calls.at(-1).body.messages[1].content;
         assert.match(nestedPrompt, /Frozen compaction fact/);
         assert.match(nestedPrompt, /Native child fact/);
-        assert.equal(nested.provider, 'openai');
+        assert.equal(nested.provider, id);
         assert.equal(nested.model, 'second-model');
         assert.equal(store.tree(child.id).branch.snapshot, 'Frozen compaction fact');
         assert.equal(
@@ -167,7 +164,7 @@ for (const name of [TEST_PROVIDER])
         await post(`/api/trees/${child.id}/model`, { provider: name, model: nativeModel });
         await (await post(`/api/trees/${child.id}/messages`, { text: 'Native again' })).text();
         const working = store.tree(child.id);
-        await post(`/api/trees/${child.id}/model`, { provider: 'openai', model: 'local-tutor' });
+        await post(`/api/trees/${child.id}/model`, { provider: id, model: 'local-tutor' });
         fake.reply = (req, res) => {
             res.writeHead(401);
             res.end('switch-fixture-secret');

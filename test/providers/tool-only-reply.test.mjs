@@ -25,7 +25,7 @@ async function silentAfterTool(t) {
         ]),
         { mode: 0o600 },
     );
-    return new OpenAI(dir);
+    return new OpenAI(dir).providers().openai;
 }
 
 test('a video call that reports through tools may end with no text', async (t) => {

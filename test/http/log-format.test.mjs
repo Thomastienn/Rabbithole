@@ -197,7 +197,6 @@ test('a timed-out model call logs an actionable failure rather than a learner st
 test('request paths retain route actions and UUIDs while masking arbitrary content', () => {
     const id = '00000000-0000-4000-8000-000000000001';
     for (const path of [
-        '/api/settings/endpoint/clear',
         '/api/settings/endpoints/edit',
         '/api/settings/endpoints/remove',
         '/api/profiles/active',

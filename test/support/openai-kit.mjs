@@ -32,5 +32,8 @@ export async function open(t, providers = {}, options = {}) {
             headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf, ...headers },
             body: JSON.stringify(body),
         });
-    return { dir, store, endpoint, app, origin, get, post };
+    // Adds a custom endpoint the way Settings does and returns its provider id.
+    const addEndpoint = async (baseUrl, apiKey, name = 'Custom endpoint') =>
+        (await (await post('/api/settings/endpoints', { name, baseUrl, apiKey })).json()).at(-1).id;
+    return { dir, store, endpoint, app, origin, get, post, addEndpoint };
 }
