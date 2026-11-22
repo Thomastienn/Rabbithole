@@ -1,17 +1,12 @@
 import { spawn as spawnProcess } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { projectRoot, pythonEnv, pythonIn, pythonRuntime, toolRoot } from '../media/manim.mjs';
+import { pythonEnv, pythonIn, pythonRuntime, toolRoot } from '../media/manim.mjs';
 import { sandboxCommand, systemBinds } from '../media/video-sandbox.mjs';
 
 export const PYTHON_PACKAGES = ['numpy==2.5.4', 'scipy==1.18.1', 'sympy==1.14.0', 'pandas==3.1.1'];
-// The Windows desktop bundle has no .venv-python link (NSIS carries no links), so its one standalone Python serves both.
-export function pythonVenv(root = toolRoot) {
-    const venv = join(root, '.venv-python'),
-        shared = join(root, '.venv');
-    return root !== projectRoot && !existsSync(venv) && existsSync(shared) ? shared : venv;
-}
+export const pythonVenv = (root = toolRoot) => join(root, '.venv-python');
 export const OUTPUT_LIMIT = 20000;
 export const pythonWorkspace = (dir, conversation) => join(dir, 'python', String(conversation));
 

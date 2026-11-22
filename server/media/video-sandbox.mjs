@@ -123,7 +123,7 @@ export function launcherArgs(args) {
 
 // Every model-written code run: bwrap on Linux, the desktop app's codex-windows-sandbox launcher on Windows.
 // The trusted launcher keeps the server's environment for its own state; the command gets only the --env values.
-// The launcher sits in the install folder beside Node, the server and the tools, which the sandbox account must read:
+// The launcher sits in the install folder beside Node and the server, which the sandbox account must read:
 // it lies under the learner's %LOCALAPPDATA%, which that account cannot otherwise see.
 export function sandboxCommand(args, platform = process.platform) {
     const launcher = process.env.RABBITHOLE_SANDBOX;
