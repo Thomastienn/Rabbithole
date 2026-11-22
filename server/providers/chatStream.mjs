@@ -7,6 +7,27 @@ export const STALLED =
 // The abort reason when the server ends a run at the reply's end section (ADR 0016); the adapter reports the reply completed.
 export const ENDED = 'The reply ended at its end section.';
 
+// Collects a model call's text per item: an item event replaces the item's text, a delta adds to it. onEvent returns true when the text changed.
+export function collectText() {
+    const streamed = {
+        items: new Map(),
+        status: undefined,
+        onEvent(event) {
+            if (event.type === 'status') streamed.status = event.status;
+            if (event.type !== 'delta' && event.type !== 'item') return false;
+            streamed.items.set(
+                event.item,
+                event.type === 'item'
+                    ? event.text
+                    : (streamed.items.get(event.item) ?? '') + event.text,
+            );
+            return true;
+        },
+        text: (separator) => [...streamed.items.values()].join(separator),
+    };
+    return streamed;
+}
+
 // Each model call stops after ms without a streamed event, never at a fixed time; tool runs between calls keep their own limits.
 export function idleLimit(signal, ms = 300000) {
     const idle = new AbortController();

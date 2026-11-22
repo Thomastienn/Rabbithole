@@ -1,3 +1,4 @@
+import { collectText } from '../providers/chatStream.mjs';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { savedTheme, themeChoices } from '../../src/shell/appearance.ts';
@@ -237,8 +238,9 @@ export async function generateVisual(
             };
             // One writer call; returns its answer with any text tool calls, or overflow when it outgrew the limit.
             const ask = async (note, text, stream) => {
-                const items = new Map();
-                let status, overflow;
+                const streamed = collectText();
+                const { items } = streamed;
+                let overflow;
                 if (stream) onPartial('');
                 try {
                     await provider.generate(
@@ -271,34 +273,27 @@ export async function generateVisual(
                         },
                         text,
                         (event) => {
-                            if (controller.signal.aborted) return;
-                            if ((event.type === 'delta' || event.type === 'item') && !overflow) {
-                                items.set(
-                                    event.item,
-                                    event.type === 'item'
-                                        ? event.text
-                                        : (items.get(event.item) ?? '') + event.text,
-                                );
-                                if (
-                                    items.size > 32 ||
-                                    [...items.values()].reduce(
-                                        (n, text) => n + Buffer.byteLength(text),
-                                        0,
-                                    ) > MAX_SOURCE
-                                ) {
-                                    overflow =
-                                        'Visual output is invalid: the fragment exceeds its size limit.';
-                                    items.clear();
-                                }
-                                if (stream)
-                                    onPartial(
-                                        visualMarkup(
-                                            [...items.values()].join('\n\n').replace(CALLS, ''),
-                                            document,
-                                        ),
-                                    );
+                            if (controller.signal.aborted || !streamed.onEvent(event)) return;
+                            // Past the limit nothing is kept.
+                            if (overflow) return items.clear();
+                            if (
+                                items.size > 32 ||
+                                [...items.values()].reduce(
+                                    (n, text) => n + Buffer.byteLength(text),
+                                    0,
+                                ) > MAX_SOURCE
+                            ) {
+                                overflow =
+                                    'Visual output is invalid: the fragment exceeds its size limit.';
+                                items.clear();
                             }
-                            if (event.type === 'status') status = event.status;
+                            if (stream)
+                                onPartial(
+                                    visualMarkup(
+                                        streamed.text('\n\n').replace(CALLS, ''),
+                                        document,
+                                    ),
+                                );
                         },
                         () => {},
                         controller.signal,
@@ -309,9 +304,9 @@ export async function generateVisual(
                     );
                 }
                 if (controller.signal.aborted) throw controller.signal.reason;
-                if (status !== 'completed')
+                if (streamed.status !== 'completed')
                     throw new Error('Visual generation did not complete. Retry to try again.');
-                return { answer: [...items.values()].join('\n\n'), overflow };
+                return { answer: streamed.text('\n\n'), overflow };
             };
             // A retry of a written fragment answers a patch; when it does not apply, one whole fragment, as cut repairs do.
             const fix = previous

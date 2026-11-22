@@ -1,3 +1,4 @@
+import { collectText } from '../providers/chatStream.mjs';
 import { MAX_SOURCE } from './video-plan.mjs';
 import { providerError } from '../log.mjs';
 
@@ -14,8 +15,9 @@ export async function videoCall(
     // { tools, mcp, runTool } for a call that reports through tool calls.
     tools,
 ) {
-    const items = new Map();
-    let status, overflow;
+    const streamed = collectText();
+    const { items } = streamed;
+    let overflow;
     try {
         await provider.generate(
             {
@@ -27,21 +29,14 @@ export async function videoCall(
             },
             input,
             (event) => {
-                if (signal.aborted) return;
-                if ((event.type === 'delta' || event.type === 'item') && !overflow) {
-                    items.set(
-                        event.item,
-                        event.type === 'item'
-                            ? event.text
-                            : (items.get(event.item) ?? '') + event.text,
-                    );
-                    const bytes = [...items.values()].reduce((n, v) => n + Buffer.byteLength(v), 0);
-                    if (items.size > 32 || bytes > MAX_SOURCE) {
-                        overflow = true;
-                        items.clear();
-                    } else onText?.(bytes, [...items.values()].join('\n\n'));
-                }
-                if (event.type === 'status') status = event.status;
+                if (signal.aborted || !streamed.onEvent(event)) return;
+                // Past the limit nothing is kept.
+                if (overflow) return items.clear();
+                const bytes = [...items.values()].reduce((n, v) => n + Buffer.byteLength(v), 0);
+                if (items.size > 32 || bytes > MAX_SOURCE) {
+                    overflow = true;
+                    items.clear();
+                } else onText?.(bytes, streamed.text('\n\n'));
             },
             () => {},
             signal,
@@ -52,10 +47,10 @@ export async function videoCall(
         throw new Error(`Video provider failed: ${providerError(error)}`);
     }
     signal.throwIfAborted();
-    if (status !== 'completed') throw new Error('Video composition did not complete.');
+    if (streamed.status !== 'completed') throw new Error('Video composition did not complete.');
     if (overflow)
         throw Object.assign(new Error('Video composition exceeds 64 KiB.'), {
             invalidOutput: true,
         });
-    return [...items.values()].join('\n\n');
+    return streamed.text('\n\n');
 }

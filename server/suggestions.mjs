@@ -1,3 +1,4 @@
+import { collectText } from './providers/chatStream.mjs';
 import { isEndpoint } from './http/roles.mjs';
 import { MARK_SUGGESTIONS, quickTool } from './tools/quickTools.mjs';
 import { noteName as name } from './media/markers.mjs';
@@ -167,10 +168,9 @@ export async function suggest(
     pinnedModel = null,
     { capable = false, mcp, marked = null } = {},
 ) {
-    const items = new Map(),
+    const streamed = collectText(),
         bounded = AbortSignal.any([signal, AbortSignal.timeout(timeout)]);
-    let status,
-        usage = null;
+    let usage = null;
     // Without a quick thinking model the cheap default needs a subscription conversation; a pinned model may be any connected provider.
     if (!pinnedModel && !['claude', 'codex'].includes(tree.provider))
         throw new Error('Suggestions require a signed-in subscription provider.');
@@ -213,12 +213,7 @@ export async function suggest(
             ? NAMING + JSON.stringify({ ...input, suggestions: marked.passages.map((p) => p.text) })
             : PROMPT + JSON.stringify(input),
         (event) => {
-            if (event.type === 'delta' || event.type === 'item')
-                items.set(
-                    event.item,
-                    event.type === 'item' ? event.text : (items.get(event.item) ?? '') + event.text,
-                );
-            if (event.type === 'status') status = event.status;
+            streamed.onEvent(event);
             if (
                 event.type === 'usage' &&
                 ['input', 'output', 'cacheRead'].every(
@@ -235,11 +230,11 @@ export async function suggest(
         () => {},
         bounded,
     );
-    if (bounded.aborted || status !== 'completed')
+    if (bounded.aborted || streamed.status !== 'completed')
         throw Object.assign(new Error('Suggestions did not complete.'), { usage });
     try {
         // A model that answered in text: the JSON object it wrote.
-        const result = call.answer([...items.values()].join('\n\n'), (text) =>
+        const result = call.answer(streamed.text('\n\n'), (text) =>
             marked ? named(json(text), marked) : parse(text, input.answer),
         );
         return { ...result, usage };

@@ -1,5 +1,6 @@
 import { DISCUSSION_TURN_RULE, discussionTurn } from '../../media/discussion-turn.mjs';
 import { tutorContext } from '../../media/diagrams.mjs';
+import { collectText } from '../../providers/chatStream.mjs';
 
 export async function discussionRoutes(req, res, url, ctx, body) {
     const match = url.pathname.match(/^\/api\/trees\/([^/]+)\/discussions\/([^/]+)\/replies$/);
@@ -30,7 +31,7 @@ export async function discussionRoutes(req, res, url, ctx, body) {
         pending = null,
         // An error from the trailing save; thrown where the provider's errors fail the turn, not out of the timer.
         late = null;
-    const items = new Map();
+    const streamed = collectText();
     const send = (data) => {
         if (!res.destroyed && !res.writableEnded) res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
@@ -39,7 +40,7 @@ export async function discussionRoutes(req, res, url, ctx, body) {
         clearTimeout(pending);
         pending = null;
         if (finished) return;
-        raw = [...items.values()].join('\n');
+        raw = streamed.text('\n');
         const output = discussionTurn(raw, data.classmates);
         lines = output.lines;
         saved = performance.now();
@@ -57,8 +58,8 @@ export async function discussionRoutes(req, res, url, ctx, body) {
         clearInterval(heartbeat);
         controller.signal.removeEventListener('abort', interrupt);
         if (turn) {
-            // Tokens since the last save are in items only.
-            raw = [...items.values()].join('\n');
+            // Tokens since the last save are only in streamed.
+            raw = streamed.text('\n');
             lines = discussionTurn(raw, data.classmates).lines;
             const output = discussionTurn(raw, data.classmates, status === 'completed');
             if (output.error) error ??= output.error;
@@ -122,13 +123,7 @@ export async function discussionRoutes(req, res, url, ctx, body) {
                 (event) => {
                     if (finished) return;
                     if (late) throw late;
-                    if (event.type === 'delta' || event.type === 'item') {
-                        items.set(
-                            event.item,
-                            event.type === 'item'
-                                ? event.text
-                                : (items.get(event.item) ?? '') + event.text,
-                        );
+                    if (streamed.onEvent(event)) {
                         const wait = ctx.saveEvery - (performance.now() - saved);
                         if (wait <= 0) flush();
                         else
