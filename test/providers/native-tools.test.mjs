@@ -8,7 +8,7 @@ import { Codex } from '../../server/providers/codex.mjs';
 import { toolMcp } from '../../server/tools/mcp.mjs';
 import { toolRunner } from '../../server/tools/runner.mjs';
 import { fixtureLaunch } from '../support/fixture-launch.mjs';
-import { codexMcp } from '../support/tool-protocol.mjs';
+import { codexMcp, inlineArgs } from '../support/tool-protocol.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { TEST_PROVIDER } from '../support/test-provider.mjs';
@@ -18,7 +18,7 @@ const auth = { token: async () => 'synthetic-token', status: () => ({ connected:
 function adapters(dir, launches) {
     const launch = (command, args, options) => {
         const child = fixtureLaunch(command, args, options);
-        launches.push({ command, args, options, child });
+        launches.push({ command, args: inlineArgs(args), options, child });
         return child;
     };
     return {
@@ -30,7 +30,7 @@ function adapters(dir, launches) {
 }
 const configFor = (call) =>
     call.command === 'codex'
-        ? codexMcp(call.args)
+        ? codexMcp(call.args, call.options.env)
         : JSON.parse(call.args[call.args.indexOf('--mcp-config') + 1]).mcpServers.rabbithole;
 
 for (const provider of [TEST_PROVIDER]) {
@@ -38,8 +38,8 @@ for (const provider of [TEST_PROVIDER]) {
         const mcp = toolMcp();
         t.after(() => mcp.close());
         let config;
-        const launch = (command, args) => {
-            config = configFor({ command, args });
+        const launch = (command, args, options) => {
+            config = configFor({ command, args: inlineArgs(args), options });
             throw new Error('CLI startup failed');
         };
         const dir = mkdtempSync(join(tmpdir(), 'tt-native-startup-'));

@@ -10,6 +10,7 @@ import { Claude } from '../../server/providers/claude.mjs';
 import { Codex } from '../../server/providers/codex.mjs';
 import { task, directive, source, complete, open, invalidSyntax } from '../support/diagram-kit.mjs';
 import { TEST_PROVIDER } from '../support/test-provider.mjs';
+import { inlineArgs } from '../support/tool-protocol.mjs';
 
 test('diagram request saves an owned artifact and keeps directive, worker prompt and source out of tutor history', async () => {
     const calls = [];
@@ -120,7 +121,7 @@ for (const name of [TEST_PROVIDER])
         const dir = mkdtempSync(join(tmpdir(), 'tt-media-adapter-'));
         const calls = [];
         const launch = (command, args, options) => {
-            const call = { command, args, options, input: [] };
+            const call = { command, args: inlineArgs(args), options, input: [] };
             // The quick thinking runner started ahead of time is not one of the reply's sessions.
             if (!args.includes('--input-format') || args.includes('--session-id')) calls.push(call);
             const fixture = fileURLToPath(

@@ -59,3 +59,46 @@ test('the chat prompt lists the tree resources and a reply citing one shows as i
         [{ number: 1, ...resource, conversations: [tree.id] }],
     );
 });
+
+test('the chat prompt lists only the newest 50 resources, newest first', async (t) => {
+    const store = new Store(
+        join(mkdtempSync(join(tmpdir(), 'tt-resources-limit-')), 'trees.sqlite'),
+    );
+    let listed;
+    const app = createApp({
+        store,
+        auth: { status: () => ({ connected: false }) },
+        provider: observeProvider({
+            generate: async (tree, text, emit) => {
+                listed = tree.resources.map((r) => r.number);
+                emit({ type: 'status', status: 'completed' });
+            },
+        }),
+    });
+    await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+    t.after(async () => {
+        await app.stop();
+        store.close();
+    });
+    const origin = `http://127.0.0.1:${app.server.address().port}`;
+    const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+    const post = (path, body) =>
+        fetch(origin + path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
+            body: JSON.stringify(body),
+        });
+    const tree = await (await post('/api/trees', {})).json();
+    for (let i = 1; i <= 60; i++)
+        store.addResource(tree.id, {
+            url: `https://example.com/${i}`,
+            title: `Page ${i}`,
+            site: 'example.com',
+            kind: 'page',
+        });
+    await (await post(`/api/trees/${tree.id}/messages`, { text: 'q' })).text();
+    assert.deepEqual(
+        listed,
+        Array.from({ length: 50 }, (_, i) => 60 - i),
+    );
+});

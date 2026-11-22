@@ -1,7 +1,7 @@
 import { spawn, execFile } from 'node:child_process';
 import { launchArgs } from './findCli.mjs';
 import { createInterface } from 'node:readline';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tutorSystem } from '../media/diagrams.mjs';
@@ -102,19 +102,28 @@ export class Claude {
             return;
         }
         const turn = tree.tools?.length ? await tree.mcp.open(tree, emit, signal) : null;
+        let files;
         try {
-            return await this.reply(tree, text, emit, saveThread, signal, turn);
+            mkdirSync(this.cwd, { recursive: true, mode: 0o700 });
+            // The prompt and the tool token stay off the command line: its length is capped and other accounts can read it.
+            files = mkdtempSync(join(this.cwd, 'turn-'));
+            return await this.reply(tree, text, emit, saveThread, signal, turn, files);
         } finally {
             turn?.close();
+            if (files) rmSync(files, { recursive: true, force: true });
         }
     }
-    async reply(tree, text, emit, saveThread, signal, turn) {
+    async reply(tree, text, emit, saveThread, signal, turn, files) {
+        const write = (name, data) => {
+            const path = join(files, name);
+            writeFileSync(path, data, { mode: 0o600 });
+            return path;
+        };
         const native = (tree.nativeTools ?? []).map((name) =>
             name === 'web_search' ? 'WebSearch' : 'WebFetch',
         );
         const toolsOn = native.length || tree.tools?.length;
         const selectedModel = await this.model(tree);
-        mkdirSync(this.cwd, { recursive: true, mode: 0o700 });
         const session = tree.thread ?? randomUUID();
         const system = tutorSystem(tree);
         const history = (tree.messages ?? [])
@@ -148,16 +157,21 @@ export class Claude {
                 : []),
             '--strict-mcp-config',
             '--mcp-config',
-            JSON.stringify({
-                mcpServers: turn
-                    ? { rabbithole: { type: 'http', url: turn.url, headers: turn.headers } }
-                    : {},
-            }),
+            turn
+                ? write(
+                      'mcp.json',
+                      JSON.stringify({
+                          mcpServers: {
+                              rabbithole: { type: 'http', url: turn.url, headers: turn.headers },
+                          },
+                      }),
+                  )
+                : JSON.stringify({ mcpServers: {} }),
             '--setting-sources',
             '',
             '--disable-slash-commands',
-            '--system-prompt',
-            system,
+            '--system-prompt-file',
+            write('system.md', system),
             '--model',
             selectedModel,
             ...(tree.effort != null ? ['--effort', tree.effort] : []),
