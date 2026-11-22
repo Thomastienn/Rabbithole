@@ -107,10 +107,10 @@ export default function SettingsWindow({
     const [authError, setAuthError] = useState('');
     const [chatVersion, setChatVersion] = useState(0),
         [rolesVersion, setRolesVersion] = useState(0);
-    // Scroll to a section (or a control inside it) and focus it; no section means the page title.
-    function reveal(target: string) {
+    // Focus a section (or a control inside it); scroll only for requests, never for a nav switch.
+    function reveal(target: string, scroll = true) {
         const el = document.querySelector<HTMLElement>(target);
-        el?.scrollIntoView({ block: 'start' });
+        if (scroll) el?.scrollIntoView({ block: 'start' });
         el?.focus({ preventScroll: true });
     }
     // Switch page during render so the focus effect below finds the requested page already mounted.
@@ -140,7 +140,7 @@ export default function SettingsWindow({
     }, [request]);
     function showTab(next: SettingsTab) {
         setTab(next);
-        requestAnimationFrame(() => reveal(`#settings-section-${next}`));
+        requestAnimationFrame(() => reveal(`#settings-section-${next}`, false));
     }
     async function connect() {
         setAuthError('');
