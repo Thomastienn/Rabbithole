@@ -111,7 +111,7 @@ export function replyArtifacts(
                         {},
                         request.error,
                     );
-                    ctx.videos.get(artifact.id)?.controller.abort(new Error(request.error));
+                    ctx.jobs.get('video', artifact.id)?.controller.abort(new Error(request.error));
                     artifacts.set(index, failed);
                     send({ type: 'artifact', artifact: live(failed) });
                 }

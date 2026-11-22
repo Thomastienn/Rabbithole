@@ -20,7 +20,7 @@ const compileCut = (code) =>
     }).outputText;
 
 const exportState = (ctx, id) => {
-    const job = ctx.exports.get(id);
+    const job = ctx.jobs.get('export', id);
     if (job?.error) return { exported: false, error: job.error };
     if (job) return { exported: false, exporting: true, progress: job.progress };
     return { exported: readable(mediaPath(ctx.dir, id)) };
@@ -28,15 +28,16 @@ const exportState = (ctx, id) => {
 
 // The video library, media playback, artifact reads and artifact job actions.
 export async function mediaRoutes(req, res, url, ctx, body) {
-    const { store, json, dir, live, videos } = ctx;
+    const { store, json, dir, live, jobs } = ctx;
     if (req.method === 'GET') {
         // The library owns ready videos, independent of any conversation; playback never calls a provider.
         // A playable video joins the library live until its MP4 is saved; `live` names its conversation for the cut routes.
         if (url.pathname === '/api/videos')
             return json(res, 200, [
-                ...[...videos.values()]
+                ...jobs
+                    .list('video')
                     .filter((job) => ['playable', 'saving'].includes(job.phase))
-                    .map((job) => store.artifact(job.conversation, job.artifact))
+                    .map((job) => store.artifact(job.conversation, job.key))
                     .filter((a) => a?.kind === 'video' && a.status === 'pending')
                     .map(({ id, title, description, created, conversation }) => ({
                         id,
@@ -317,7 +318,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                 });
             }
         store.removeLibraryVideo(id);
-        ctx.exports.get(id)?.controller.abort(new Error('Video moved to trash.'));
+        jobs.get('export', id)?.controller.abort(new Error('Video moved to trash.'));
         // Production work is private app data, so it is deleted rather than trashed.
         await rm(join(dir, 'video-work', id), { recursive: true, force: true });
         return json(res, 200, { trashed: !!info, missing: !info });
@@ -333,7 +334,10 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         if (!tree || !['visual', 'video'].includes(artifact?.kind))
             return json(res, 404, { error: 'Visual or video not found in this conversation.' });
         // A published video's remaining work is cleanup; its new version gets a different id.
-        if (videos.has(artifactId) && !(artifact.kind === 'video' && artifact.status === 'ready'))
+        if (
+            (jobs.get('video', artifactId) || jobs.get('drawing', artifactId)) &&
+            !(artifact.kind === 'video' && artifact.status === 'ready')
+        )
             return json(res, 409, {
                 error: 'Wait for the current generation to finish, then try a different version.',
             });
@@ -360,7 +364,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         const job =
             artifact.status === 'failed' &&
             !ctx.jobs.get('reply', id) &&
-            !videos.has(artifactId) &&
+            !jobs.get('drawing', artifactId) &&
             store.retryArtifact(id, artifactId);
         if (!job)
             return json(res, 409, {
@@ -386,7 +390,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         if (artifact.status !== 'pending')
             return json(res, 409, { error: 'This video is no longer generating.' });
         const canceled = store.cancelVideo(id, artifactId);
-        videos.get(artifactId)?.controller.abort(new Error('Video generation canceled.'));
+        jobs.get('video', artifactId)?.controller.abort(new Error('Video generation canceled.'));
         return json(res, 200, live(canceled));
     }
     // Retry reuses the saved request and frozen input; no learner message is added.

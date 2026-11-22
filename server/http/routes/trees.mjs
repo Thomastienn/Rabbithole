@@ -132,7 +132,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
             return json(res, 409, {
                 error: 'This chat changed since confirmation. Cancel and try again to review the current conversations.',
             });
-        const { dir, videoJobs } = ctx;
+        const { dir } = ctx;
         const staged = [],
             files = [];
         let result;
@@ -150,7 +150,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
                         files.push(path);
                         // Live jobs can have filesystem operations in flight; stop and remove those after commit.
                         if (
-                            [...videoJobs].some((job) => job.artifact === a.id) ||
+                            ['video', 'export'].some((kind) => jobs.get(kind, a.id)) ||
                             !existsSync(path)
                         )
                             continue;
@@ -164,25 +164,8 @@ export async function treeRoutes(req, res, url, ctx, body) {
             for (const [path, moved] of staged.reverse()) renameSync(moved, path);
             throw error;
         }
-        for (const conversation of result.deleted) {
-            for (const job of ctx.jobs.list())
-                if (
-                    job.conversation === conversation &&
-                    [
-                        'discussion',
-                        'discussion-compaction',
-                        'reply',
-                        'compaction',
-                        'prepared-compaction',
-                    ].includes(job.kind)
-                ) {
-                    job.controller.abort();
-                    ctx.jobs.remove(job);
-                }
-        }
-        const jobs = [...videoJobs].filter((v) => result.deleted.includes(v.conversation));
-        for (const job of jobs) job.controller.abort(new Error('Conversation deleted.'));
-        await Promise.all(jobs.map((job) => job.done));
+        // Every job of a deleted conversation ends before its files go.
+        await jobs.stop(result.deleted);
         // A job may have been finishing a filesystem operation while its directory was moved.
         for (const path of files) rmSync(path, { recursive: true, force: true });
         for (const [, moved] of staged) rmSync(moved, { recursive: true, force: true });
@@ -331,9 +314,11 @@ export async function treeRoutes(req, res, url, ctx, body) {
     }
     if (jobs.get('reply', id))
         return json(res, 409, { error: 'This tree is already responding. Stop it or wait.' });
+    // A reply ends with its request, so settled() does not wait for it.
+    const reply = (run) => jobs.start('reply', id, id, run, { settle: false });
     // A model change and a branch hold the reply slot like a reply in flight.
     if (action === 'model')
-        return jobs.start('reply', id, id, async ({ controller }) => {
+        return reply(async ({ controller }) => {
             try {
                 const target = body?.provider ?? tree.provider;
                 const model = Object.hasOwn(body ?? {}, 'model') ? body.model : tree.model;
@@ -368,7 +353,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
             return json(res, 400, {
                 error: 'Select a completed tutor passage and enter a question.',
             });
-        return jobs.start('reply', id, id, async () => {
+        return reply(async () => {
             const parent = {
                 ...tree,
                 model: tree.model ?? (await pick(tree).model?.(tree)) ?? null,
@@ -394,6 +379,5 @@ export async function treeRoutes(req, res, url, ctx, body) {
             return json(res, 201, child);
         }).done;
     }
-    return jobs.start('reply', id, id, (job) => sendRoute(res, ctx, id, tree, action, body, job))
-        .done;
+    return reply((job) => sendRoute(res, ctx, id, tree, action, body, job)).done;
 }

@@ -9,7 +9,6 @@ import { generateVideo, mediaPath } from '../../media/videos.mjs';
 import { exportVideo } from '../../media/video-export.mjs';
 import { sandboxMissing } from '../../media/video-sandbox.mjs';
 
-export const STOPPED = new Error('Rabbithole stopped.');
 const PHASES = ['planning', 'pieces', 'writing', 'narrating', 'auditing', 'playable', 'saving'];
 
 // A crash before commit restores staged files; a crash after commit finishes removing them.
@@ -46,19 +45,19 @@ export const readable = (path) => {
 
 // Video jobs and visual and diagram runs; reads ctx.stopping when a job fails.
 export function mediaJobs(ctx) {
-    const { store, dir, videos, videoJobs, pick, selectionError, smart, metered } = ctx;
+    const { store, dir, jobs, pick, selectionError, smart, metered } = ctx;
     // Frozen inputs stay server-side for every kind; explicit worker actions reuse them.
     const live = (artifact) => {
         const { input, attempt, ...a } = artifact;
         if (a.kind === 'discussion') return discussionArtifact(a);
         if (a.kind === 'visual' && a.status === 'pending') {
-            const job = videos.get(a.id);
+            const job = jobs.get('drawing', a.id);
             return { ...a, source: job?.source ?? null, ...(job && { startedAt: job.startedAt }) };
         }
         if (a.kind !== 'video') return a;
         delete a.source;
         if (a.status === 'pending' && a.conversation) {
-            const job = videos.get(a.id);
+            const job = jobs.get('video', a.id);
             return {
                 ...a,
                 phase: job?.phase ?? 'planning',
@@ -84,16 +83,17 @@ export function mediaJobs(ctx) {
         };
     };
     // One job per attempt; it runs detached from any reply stream and only its own attempt can publish.
-    const startVideo = (job, parentSignal, previous) => {
-        const running = {
-            controller: new AbortController(),
-            conversation: job.conversation,
-            artifact: job.id,
+    const startVideo = (job, parentSignal, previous) =>
+        jobs.start('video', job.id, job.conversation, (running) =>
+            runVideo(running, job, parentSignal, previous),
+        );
+    const runVideo = (running, job, parentSignal, previous) => {
+        Object.assign(running, {
             phase: 'planning',
             progress: undefined,
             startedAt: Date.now(),
             phaseStartedAt: Date.now(),
-        };
+        });
         const cancel = () => running.controller.abort(parentSignal.reason);
         parentSignal?.addEventListener('abort', cancel, { once: true });
         if (parentSignal?.aborted) cancel();
@@ -101,8 +101,6 @@ export function mediaJobs(ctx) {
             selection = input.selection ?? smart().resolved,
             // Jobs frozen before ADR 0004 hold one selection, which keeps both roles.
             chat = input.chat ? { ...input.chat } : selection;
-        videos.set(job.id, running);
-        videoJobs.add(running);
         const fields = { id: job.id, task: 'video' };
         const stage = (name, detail = {}) =>
             ctx.log(formatLog('info', 'media', name, { ...fields, ...detail }));
@@ -179,7 +177,10 @@ export function mediaJobs(ctx) {
                         ),
                     onStage: stage,
                     onPhase: (phase, progress, detail = {}) => {
-                        if (videos.get(job.id) !== running || running.controller.signal.aborted)
+                        if (
+                            jobs.get('video', job.id) !== running ||
+                            running.controller.signal.aborted
+                        )
                             return;
                         // Cut rows may move back (ready to repairing) even when the phase cannot.
                         if (detail.cutRows) running.cutRows = detail.cutRows;
@@ -221,15 +222,11 @@ export function mediaJobs(ctx) {
                         }),
                     }),
                 );
-                if (!ctx.stopping && running.controller.signal.reason !== STOPPED)
+                if (!ctx.stopping)
                     store.finishVideo(job.conversation, job.id, job.attempt, {}, error.message);
             })
-            .finally(() => {
-                parentSignal?.removeEventListener('abort', cancel);
-                videoJobs.delete(running);
-                if (videos.get(job.id) === running) videos.delete(job.id);
-            });
-        return running;
+            .finally(() => parentSignal?.removeEventListener('abort', cancel));
+        return running.done;
     };
     const runVisual = async (artifact, signal, onPartial) => {
         const input = JSON.parse(artifact.input),
@@ -274,17 +271,14 @@ export function mediaJobs(ctx) {
         });
     };
     // Explicit Retry runs detached like a video job, with the same stop/delete/polling lifecycle.
-    const startDrawing = (artifact, parentSignal, onUpdate = () => {}) => {
-        const running = {
-            controller: new AbortController(),
-            conversation: artifact.conversation,
-            artifact: artifact.id,
-            startedAt: Date.now(),
-        };
+    const startDrawing = (artifact, parentSignal, onUpdate) =>
+        jobs.start('drawing', artifact.id, artifact.conversation, (running) =>
+            runDrawing(running, artifact, parentSignal, onUpdate),
+        );
+    const runDrawing = (running, artifact, parentSignal, onUpdate = () => {}) => {
+        running.startedAt = Date.now();
         const cancel = () => running.controller.abort(parentSignal.reason);
         parentSignal?.addEventListener('abort', cancel, { once: true });
-        videos.set(artifact.id, running);
-        videoJobs.add(running);
         ctx.log(formatLog('info', 'media', 'started', { id: artifact.id, task: artifact.kind }));
         running.done = (async () => {
             const tree = store.tree(artifact.conversation),
@@ -293,7 +287,7 @@ export function mediaJobs(ctx) {
                 artifact.kind === 'visual'
                     ? await runVisual(artifact, running.controller.signal, (source) => {
                           if (
-                              videos.get(artifact.id) !== running ||
+                              jobs.get('drawing', artifact.id) !== running ||
                               running.controller.signal.aborted
                           )
                               return;
@@ -341,26 +335,24 @@ export function mediaJobs(ctx) {
                         }),
                     }),
                 );
-                if (!ctx.stopping && running.controller.signal.reason !== STOPPED)
+                if (!ctx.stopping)
                     store.finishArtifact(artifact.conversation, artifact.id, null, error.message);
             })
-            .finally(() => {
-                parentSignal?.removeEventListener('abort', cancel);
-                videoJobs.delete(running);
-                if (videos.get(artifact.id) === running) videos.delete(artifact.id);
-            });
-        return running;
+            .finally(() => parentSignal?.removeEventListener('abort', cancel));
+        return running.done;
     };
     // One export per video, keyed by its library id; a failed one stays listed until the next press retries it.
+    // A library video belongs to no conversation, so deleting one never stops its export.
     const startExport = (id) => {
-        const current = ctx.exports.get(id);
+        const current = jobs.get('export', id);
         if (current && !current.error) return current;
+        return jobs.start('export', id, null, (running) => runExport(running, id), { keep: true });
+    };
+    const runExport = (running, id) => {
         const saved = store.libraryCuts(id);
-        const running = { controller: new AbortController(), artifact: id, progress: 0 };
+        running.progress = 0;
         const fields = { id, task: 'export' };
         let step = 0;
-        ctx.exports.set(id, running);
-        videoJobs.add(running);
         ctx.log(formatLog('info', 'media', 'export', fields));
         running.done = exportVideo({
             dir,
@@ -379,7 +371,7 @@ export function mediaJobs(ctx) {
         })
             .then(() => {
                 ctx.log(formatLog('info', 'media', 'exported', fields));
-                if (ctx.exports.get(id) === running) ctx.exports.delete(id);
+                jobs.remove(running);
             })
             .catch((error) => {
                 const stopped = running.controller.signal.aborted;
@@ -393,10 +385,9 @@ export function mediaJobs(ctx) {
                     }),
                 );
                 if (!stopped) running.error = error.message;
-                else if (ctx.exports.get(id) === running) ctx.exports.delete(id);
-            })
-            .finally(() => videoJobs.delete(running));
-        return running;
+                else jobs.remove(running);
+            });
+        return running.done;
     };
     return { live, startVideo, startDrawing, startExport };
 }

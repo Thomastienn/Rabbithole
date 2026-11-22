@@ -17,7 +17,7 @@ import { quickCalls } from './http/quick.mjs';
 import { compactionJobs } from './http/jobs/compaction.mjs';
 import { discussionJobs } from './http/jobs/discussions.mjs';
 import { discussionRoutes } from './http/routes/discussions.mjs';
-import { mediaJobs, recoverStaged, STOPPED } from './http/jobs/media.mjs';
+import { mediaJobs, recoverStaged } from './http/jobs/media.mjs';
 import { suggestionJobs } from './http/jobs/suggestions.mjs';
 import { titleJobs } from './http/jobs/title.mjs';
 import { verdictJobs } from './http/jobs/verdicts.mjs';
@@ -146,11 +146,7 @@ export function createApp({
         search,
         stopping: false,
         csrf: randomBytes(32).toString('hex'),
-        videos: new Map(),
-        videoJobs: new Set(),
-        // Video id -> running or failed export { controller, progress, done, error? }.
-        exports: new Map(),
-        // Title, verdict, suggestion, brief explanation, compaction, discussion and reply jobs.
+        // Every kind of background work: titles, verdicts, suggestions, briefs, compactions, discussions, replies, media.
         jobs: backgroundJobs(),
         json: (res, status, body) => {
             res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -187,7 +183,7 @@ export function createApp({
         verdictJobs(ctx),
         briefJobs(ctx),
     );
-    const { videoJobs, json } = ctx;
+    const { json } = ctx;
     let stopped;
     recoverStaged(store, dir);
     const server = http.createServer(async (req, res) => {
@@ -300,23 +296,11 @@ export function createApp({
         server,
         jobs: ctx.jobs,
         // Await the existing background jobs without polling their persisted state.
-        settled: (artifact) =>
-            Promise.allSettled(
-                [
-                    ...videoJobs,
-                    // A reply ends with its request and a form-open compaction waits for its form.
-                    ...ctx.jobs
-                        .list()
-                        .filter((job) => !['reply', 'prepared-compaction'].includes(job.kind)),
-                ]
-                    .filter((v) => !artifact || v.artifact === artifact)
-                    .map((v) => v.done),
-            ),
+        settled: ctx.jobs.settled,
         stop: () => {
             if (stopped) return stopped;
             ctx.stopping = true;
-            for (const job of ctx.jobs.list()) job.controller.abort();
-            for (const v of videoJobs) v.controller.abort(STOPPED);
+            const ended = ctx.jobs.stop();
             ctx.pieceStills.stop();
             downloads?.stop();
             for (const stream of ctx.downloadStreams) stream.end();
@@ -330,23 +314,12 @@ export function createApp({
                 }, 5000).unref();
                 const closed = new Promise((done) => server.close(done));
                 server.closeIdleConnections();
-                Promise.allSettled([
-                    closed,
-                    ctx.mcp.close(),
-                    recognize.stop?.(),
-                    ...[...videoJobs].map((v) => v.done),
-                    ...ctx.jobs
-                        .list()
-                        .filter((job) =>
-                            ['discussion', 'compaction', 'discussion-compaction'].includes(
-                                job.kind,
-                            ),
-                        )
-                        .map((job) => job.done),
-                ]).then(() => {
-                    clearTimeout(timer);
-                    resolve();
-                });
+                Promise.allSettled([closed, ctx.mcp.close(), recognize.stop?.(), ended]).then(
+                    () => {
+                        clearTimeout(timer);
+                        resolve();
+                    },
+                );
             });
             return stopped;
         },
