@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, writeFile, rename } from 'node:fs/promises';
 import { join } from 'node:path';
+import { cutAudio } from './video-workspace.mjs';
 
 const run = promisify(execFile);
 export async function edgeNarration(script, signal, client) {
@@ -30,7 +31,7 @@ export async function stageNarration(workspace, result, signal, pause) {
         throw new Error('Video narration is unreadable.');
     const assets = join(workspace, 'public');
     await mkdir(assets, { mode: 0o700 });
-    const audio = join(assets, 'narration.mp3');
+    const audio = cutAudio(workspace);
     await writeFile(audio, result.audio, { mode: 0o600 });
     // Measure the actual file, not word count or the client's bitrate estimate. Remotion ships ffprobe and ffmpeg.
     const { RenderInternals } = await import('@remotion/renderer');

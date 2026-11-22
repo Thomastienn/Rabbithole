@@ -42,6 +42,7 @@ const CUT_STATE = {
     fixing: 'Fixing',
     repairing: 'Repairing',
     ready: 'Ready',
+    failed: 'Failed',
 };
 
 // Only known server-authored reasons reach the learner; arbitrary worker errors may contain private output.
