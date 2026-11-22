@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readlinkSync } from 'node:fs';
 import { lstat, realpath } from 'node:fs/promises';
-import { join, basename, dirname, resolve } from 'node:path';
+import { join, basename, dirname, resolve, win32 } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { videoBrowser } from './manim.mjs';
@@ -123,10 +123,14 @@ export function launcherArgs(args) {
 
 // Every model-written code run: bwrap on Linux, the desktop app's codex-windows-sandbox launcher on Windows.
 // The trusted launcher keeps the server's environment for its own state; the command gets only the --env values.
-export const sandboxCommand = (args, platform = process.platform) =>
-    platform === 'win32'
-        ? [process.env.RABBITHOLE_SANDBOX, launcherArgs(args), process.env]
+// The launcher sits in the install folder beside Node, the server and the tools, which the sandbox account must read:
+// it lies under the learner's %LOCALAPPDATA%, which that account cannot otherwise see.
+export function sandboxCommand(args, platform = process.platform) {
+    const launcher = process.env.RABBITHOLE_SANDBOX;
+    return platform === 'win32'
+        ? [launcher, ['--read', win32.dirname(launcher), ...launcherArgs(args)], process.env]
         : ['bwrap', args, {}];
+}
 
 // Null when model-written code can run; on Windows the launcher must exist and its one-time setup be done.
 export function sandboxMissing({

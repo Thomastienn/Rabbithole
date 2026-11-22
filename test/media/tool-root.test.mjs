@@ -116,4 +116,16 @@ test('a standalone Python with no venv runs Manim, clips and run_python', async 
     const sandbox = pythonSandbox(join(root, 'work'), offline, join(root, 'data'));
     assert.ok(sandbox.includes(join(root, '.venv-python')));
     assert.deepEqual(sandbox.slice(-4), [offline, '-I', '-B', '-']);
+
+    // The Windows bundle ships one standalone Python and no .venv-python link: run_python uses it too.
+    const windows = mkdtempSync(join(tmpdir(), 'rabbithole-tools-win-'));
+    mkdirSync(join(windows, '.venv'));
+    writeFileSync(join(windows, '.venv', 'python.exe'), '');
+    const shared = await detectPython({
+        root: windows,
+        check: async () => true,
+        platform: 'win32',
+        launcher: 'l.exe',
+    });
+    assert.deepEqual(shared, { ready: true, python: join(windows, '.venv', 'python.exe') });
 });
