@@ -23,20 +23,46 @@ export async function discussionRoutes(req, res, url, ctx, body) {
         finished = false,
         status = 'streaming',
         raw = '',
-        lines = [];
+        lines = [],
+        // shortcut: a crash mid-turn loses up to ctx.saveEvery ms of streamed lines, like the main reply.
+        saved = -Infinity,
+        // The trailing save for tokens that arrived inside the current interval.
+        pending = null,
+        // An error from the trailing save; thrown where the provider's errors fail the turn, not out of the timer.
+        late = null;
     const items = new Map();
     const send = (data) => {
         if (!res.destroyed && !res.writableEnded) res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
+    // Parses the text so far and saves and sends the turn, at most once per ctx.saveEvery ms while tokens arrive.
+    const flush = () => {
+        clearTimeout(pending);
+        pending = null;
+        if (finished) return;
+        raw = [...items.values()].join('\n');
+        const output = discussionTurn(raw, data.classmates);
+        lines = output.lines;
+        saved = performance.now();
+        const row = store.updateDiscussion(conversation, id, turn.id, lines);
+        if (row) send({ type: 'artifact', artifact: ctx.live(row) });
+        if (output.error || raw.length > 100000) {
+            finish(output.error ?? 'The discussion reply was too long.');
+            controller.abort();
+        }
+    };
     const finish = (error = null) => {
         if (finished) return;
         finished = true;
+        clearTimeout(pending);
         clearInterval(heartbeat);
         controller.signal.removeEventListener('abort', interrupt);
         if (turn) {
+            // Tokens since the last save are in items only.
+            raw = [...items.values()].join('\n');
+            lines = discussionTurn(raw, data.classmates).lines;
             const output = discussionTurn(raw, data.classmates, status === 'completed');
             if (output.error) error ??= output.error;
-            const saved = store.updateDiscussion(
+            const row = store.updateDiscussion(
                 conversation,
                 id,
                 turn.id,
@@ -44,9 +70,9 @@ export async function discussionRoutes(req, res, url, ctx, body) {
                 error ? 'failed' : 'completed',
                 error,
             );
-            if (saved) {
+            if (row) {
                 if (output.verdicts) store.observe(turn.id, output.verdicts);
-                send({ type: 'artifact', artifact: ctx.live(saved) });
+                send({ type: 'artifact', artifact: ctx.live(row) });
             }
         }
         if (!res.headersSent)
@@ -95,6 +121,7 @@ export async function discussionRoutes(req, res, url, ctx, body) {
                 prompt,
                 (event) => {
                     if (finished) return;
+                    if (late) throw late;
                     if (event.type === 'delta' || event.type === 'item') {
                         items.set(
                             event.item,
@@ -102,21 +129,23 @@ export async function discussionRoutes(req, res, url, ctx, body) {
                                 ? event.text
                                 : (items.get(event.item) ?? '') + event.text,
                         );
-                        raw = [...items.values()].join('\n');
-                        const output = discussionTurn(raw, current.classmates);
-                        lines = output.lines;
-                        const saved = store.updateDiscussion(conversation, id, turn.id, lines);
-                        if (saved) send({ type: 'artifact', artifact: ctx.live(saved) });
-                        if (output.error || raw.length > 100000) {
-                            finish(output.error ?? 'The discussion reply was too long.');
-                            controller.abort();
-                        }
+                        const wait = ctx.saveEvery - (performance.now() - saved);
+                        if (wait <= 0) flush();
+                        else
+                            pending ??= setTimeout(() => {
+                                try {
+                                    flush();
+                                } catch (error) {
+                                    late = error;
+                                }
+                            }, wait);
                     }
                     if (event.type === 'status') status = event.status;
                 },
                 () => {},
                 controller.signal,
             );
+            if (late) throw late;
             if (!finished) {
                 if (status === 'streaming') status = 'completed';
                 finish(status === 'completed' ? null : 'The discussion turn did not complete.');
