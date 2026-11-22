@@ -100,16 +100,6 @@ test('one start command builds absent or changed assets and reuses a current bui
     } finally {
         await failed.stop();
     }
-    // Missing headers, not LaTeX: a missing LaTeX would download TinyTeX, which this offline test avoids.
-    writeFileSync(join(data, 'pkg-config'), '#!/bin/sh\nexit 1\n', { mode: 0o700 });
-    const missingHeaders = launch(data, 0, env, checkout, ['scripts/start.mjs']);
-    try {
-        assert.equal(await missingHeaders.exited, 1);
-        assert.match(missingHeaders.output(), /sudo apt install .*libcairo2-dev/);
-        assert.doesNotMatch(missingHeaders.output(), /Building|Rabbithole: http/);
-    } finally {
-        await missingHeaders.stop();
-    }
 });
 
 test('unsupported Node gives an actionable requirement before trying to load the app', async () => {

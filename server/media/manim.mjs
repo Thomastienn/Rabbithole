@@ -67,9 +67,6 @@ export function videoBrowser(root = toolRoot, platform = process.platform, arch 
     );
 }
 
-export const LINUX_PACKAGES =
-    'sudo apt install bubblewrap libcairo2-dev libpango1.0-dev pkg-config python3-dev build-essential';
-
 function osRelease() {
     try {
         return readFileSync('/etc/os-release', 'utf8');
@@ -78,45 +75,30 @@ function osRelease() {
     }
 }
 
-// First-run setup's Linux line: null when bwrap, pkg-config and the Cairo/Pango headers are present.
-// Bundled tools ship a built Manim, so they need only bwrap at runtime.
+// First-run setup's Linux line: null when bwrap is present. Manim installs from wheels, so no headers are needed.
 export function systemPackages({
     platform = process.platform,
     probe = spawnSync,
     release = osRelease(),
-    bundled = toolRoot !== projectRoot,
 } = {}) {
-    if (platform !== 'linux') return null;
-    const ok = (command, args) => probe(command, args, { timeout: 10000 }).status === 0;
-    if (
-        ok('bwrap', ['--version']) &&
-        (bundled || ok('pkg-config', ['--exists', 'cairo', 'pangocairo']))
-    )
+    if (platform !== 'linux' || probe('bwrap', ['--version'], { timeout: 10000 }).status === 0)
         return null;
-    const debian = /^ID(_LIKE)?=.*\b(debian|ubuntu)\b/m.test(release);
-    if (bundled)
-        return debian ? { command: 'sudo apt install bubblewrap' } : { words: 'bubblewrap' };
-    return debian
-        ? { command: LINUX_PACKAGES }
-        : {
-              words: 'bubblewrap, pkg-config, the Cairo and Pango development headers, the Python 3 development headers and the C build tools',
-          };
+    return /^ID(_LIKE)?=.*\b(debian|ubuntu)\b/m.test(release)
+        ? { command: 'sudo apt install bubblewrap' }
+        : { words: 'bubblewrap' };
 }
 
 export function checkManimDependencies({ platform = process.platform, probe = spawnSync } = {}) {
     if (!['linux', 'darwin', 'win32'].includes(platform))
         throw new Error('Manim setup supports Linux, macOS and Windows.');
     const missing = [];
-    // Windows installs pycairo and manimpango from wheels, so it needs no system headers.
+    // Windows installs pycairo and manimpango from PyPI's wheels and Linux from the project's (scripts/manim-setup.mjs), so only macOS needs system headers.
     if (
-        platform !== 'win32' &&
+        platform === 'darwin' &&
         probe('pkg-config', ['--exists', 'cairo', 'pangocairo'], { timeout: 10000 }).status !== 0
     )
         missing.push(
-            'Cairo/Pango development headers or pkg-config are missing. Run: ' +
-                (platform === 'darwin'
-                    ? 'brew install pkg-config cairo pango'
-                    : 'sudo apt install build-essential python3-dev pkg-config libcairo2-dev libpango1.0-dev'),
+            'Cairo/Pango development headers or pkg-config are missing. Run: brew install pkg-config cairo pango',
         );
     if (
         ['latex', 'dvisvgm'].some(
