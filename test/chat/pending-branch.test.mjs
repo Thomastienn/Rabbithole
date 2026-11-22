@@ -15,9 +15,9 @@ async function waiting(t, intercept) {
         );
     await streaming('streaming');
     await page.act(async () => page.current.branch.startBranch('a', anchor, { current: null }));
-    await page.act(async () => page.current.c.setBranch((b) => ({ ...b, question: 'Why?' })));
+    await page.act(async () => page.current.branch.setQuestion('Why?'));
     await page.act(async () => page.current.branch.submitBranch({ preventDefault() {} }));
-    assert.equal(page.current.c.branch.pending, true, 'the question waits in the box');
+    assert.equal(page.current.branch.branch.pending, true, 'the question waits in the box');
     assert.equal(page.calls.filter((c) => /\/(branches|prepare)$/.test(c.path)).length, 0);
     return { page, streaming };
 }
@@ -49,7 +49,7 @@ test('a question sent while the reply streams creates its branch once the reply 
         question: 'Why?',
     });
     assert.equal(page.current.trees.tree.id, 'child');
-    assert.equal(page.current.c.branch, undefined);
+    assert.equal(page.current.branch.branch, undefined);
     await page.act(async () => controller.close());
 });
 
@@ -60,8 +60,8 @@ test('a waiting question the server refuses once the reply completes stays in th
     });
     await streaming('completed');
     assert.equal(page.current.c.error, 'Quick thinking is off.');
-    assert.equal(page.current.c.branch.question, 'Why?');
-    assert.equal(page.current.c.branch.pending, false);
+    assert.equal(page.current.branch.branch.question, 'Why?');
+    assert.equal(page.current.branch.branch.pending, false);
 });
 
 for (const status of ['interrupted', 'failed'])
@@ -69,6 +69,6 @@ for (const status of ['interrupted', 'failed'])
         const { page, streaming } = await waiting(t);
         await streaming(status);
         assert.equal(page.calls.filter((c) => c.path.endsWith('/branches')).length, 0);
-        assert.equal(page.current.c.branch.question, 'Why?');
-        assert.equal(page.current.c.branch.pending, false, 'the learner can send it again');
+        assert.equal(page.current.branch.branch.question, 'Why?');
+        assert.equal(page.current.branch.branch.pending, false, 'the learner can send it again');
     });

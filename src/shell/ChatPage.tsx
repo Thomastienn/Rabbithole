@@ -58,13 +58,13 @@ export default function ChatPage({
     const model = useChatModel(c, trees);
     useChatTargets(c, tree);
     const stream = useReplyStream(c, trees, model, { name: theme, mode });
-    const actions = useTreeActions(c, trees, stream);
     const branchForm = useBranchForm(c, trees, model, stream);
+    const actions = useTreeActions(c, trees, stream, branchForm);
     const { visibleIds, addresses, previews } = trees;
     const { shownMapWidth, workspace } = c;
     const { drafts, setDraft, pendingFiles, setFiles, busy, create } = stream;
     const visibleSet = new Set(visibleIds);
-    const { branch } = c;
+    const { branch } = branchForm;
     const { openTree, openConversation, loadInitial, select, titleSearch, activeKey } = trees;
     const opened = trees.openId();
     const { models, providers, modelError, loadModels, signIn, currentModel } = model;

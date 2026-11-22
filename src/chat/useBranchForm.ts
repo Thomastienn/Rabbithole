@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { branchRequest, prepareBranch, type Anchor } from './branch';
+import { useEffect, useRef, useState } from 'react';
+import { branchRequest, prepareBranch, type Anchor, type BranchState } from './branch';
 import { partTrail, visualPassage } from '../media/artifacts';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import type { DiscussionBranch } from '../media/DiscussionCard';
@@ -17,9 +17,12 @@ export function useBranchForm(
     { savingModel }: ChatModel,
     { send, setDraft }: ReplyStream,
 ) {
-    const { branch, setBranch, branchOrigin, setError } = c;
-    const { overview, setOverview, overviewOrigin, focusComposer } = c;
+    const { setError, overview, setOverview, overviewOrigin, focusComposer } = c;
     const { tree, state, addresses, setTree, refresh, openConversation, openId, show } = trees;
+    const [branch, setBranch] = useState<BranchState>();
+    const [selectingMessage, setSelectingMessage] = useState<string>();
+    // The ask button remounts after the branch form closes, so keep its ref, not the element.
+    const branchOrigin = useRef<React.RefObject<HTMLElement | null>>(undefined);
     const [branching, setBranching] = useState(false);
     // Escape returns focus to the passage or underline that opened the popup; an outside click keeps focus where it lands.
     function closeBranch(refocus: boolean) {
@@ -28,6 +31,13 @@ export function useBranchForm(
             if (refocus || !document.activeElement || document.activeElement === document.body)
                 branchOrigin.current?.current?.focus({ preventScroll: !refocus });
         });
+    }
+    const setQuestion = (question: string) => setBranch((b) => b && { ...b, question });
+    // Deleted conversations take their open form and the open one's passage selection with them.
+    function drop(ids: Set<string>) {
+        setBranch((b) => (b && ids.has(b.parent) ? undefined : b));
+        const open = openId();
+        if (open && ids.has(open)) setSelectingMessage(undefined);
     }
     // The status of the reply the open form asks about; a streaming one holds the question until it ends.
     const replyStatus =
@@ -241,6 +251,11 @@ export function useBranchForm(
             },
         );
     return {
+        branch,
+        setQuestion,
+        selectingMessage,
+        setSelectingMessage,
+        drop,
         explainBrief,
         branching,
         closeBranch,

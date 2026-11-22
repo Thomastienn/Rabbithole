@@ -47,7 +47,8 @@ export default function ChatThread({
     source?: Source;
     validSource?: boolean;
 }) {
-    const { overview, branch, setBranch, selectingMessage, setSelectingMessage } = c;
+    const { overview } = c;
+    const { branch, setQuestion, selectingMessage, setSelectingMessage } = branchForm;
     const { branching, submitBranch, closeBranch, openVisualPart, visualBranches, widenPart } =
         branchForm;
     const { discussionBranches, groundworkBranches, chooseGroundwork, explainBrief } = branchForm;
@@ -172,9 +173,7 @@ export default function ChatThread({
                                               active={active && message.status !== 'streaming'}
                                               submit={submitBranch}
                                               close={closeBranch}
-                                              setQuestion={(question) =>
-                                                  setBranch((b) => b && { ...b, question })
-                                              }
+                                              setQuestion={setQuestion}
                                               explain={(anchor) =>
                                                   explainBrief(branch.parent, anchor)
                                               }
