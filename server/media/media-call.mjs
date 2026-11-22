@@ -21,12 +21,12 @@ export async function raced(controller, promise, budget, timedOut) {
 // One visual, diagram or video model call. kind: { role, bytes, overflow, tooManyItems?, overflowFirst?, incomplete, failed(reason) }.
 // overflowFirst: the overflow message outranks an unfinished stream (diagrams, which used to abort at the overflow).
 // tools: { capable, textTools, ...native fields }; a model without native tool calls gets textTools in its instructions.
-// cut: the 1-based cut a call serves, passed past the provider's signal for the usage meter only.
+// stage and cut: a video call's stage and the 1-based cut it serves; they ride on the request for the usage meter.
 export async function mediaCall(
     provider,
     selection,
     kind,
-    { instructions, input, signal, onText, images, cut, tools },
+    { instructions, input, signal, onText, images, stage, cut, tools },
 ) {
     const { capable, textTools = '', ...native } = tools || {};
     const streamed = collectText();
@@ -37,6 +37,8 @@ export async function mediaCall(
             {
                 ...selection,
                 role: kind.role,
+                ...(stage && { stage }),
+                ...(cut && { cut }),
                 thread: null,
                 instructions: instructions + (tools && !capable ? textTools : ''),
                 ...(images && { images }),
@@ -56,7 +58,6 @@ export async function mediaCall(
             },
             () => {},
             signal,
-            cut,
         );
     } catch (error) {
         signal.throwIfAborted();

@@ -16,12 +16,6 @@ import {
     planText,
 } from '../support/video-kit.mjs';
 import {
-    AUDIT_INSTRUCTIONS,
-    REPAIR_NOTE,
-    REPAIR_PATCH_NOTE,
-    FIX_NOTE,
-} from '../../server/media/video-cut.mjs';
-import {
     TEACHING_SKILL,
     HUMANIZER_SKILL,
     MANIM_TEACHING_SKILL,
@@ -40,18 +34,6 @@ plan.styleBrief = {
     recurringObjects: [{ ...plan.styleBrief.recurringObjects[0], look }],
 };
 const smart = { provider: 'codex', model: 'smart-model', effort: 'high' };
-const stageOf = (instructions) =>
-    instructions.startsWith('You plan')
-        ? 'plan'
-        : instructions.startsWith('You write the set pieces')
-          ? 'pieces'
-          : instructions.startsWith(AUDIT_INSTRUCTIONS)
-            ? 'audit'
-            : instructions.endsWith(REPAIR_NOTE) || instructions.endsWith(REPAIR_PATCH_NOTE)
-              ? 'repair'
-              : instructions.endsWith(FIX_NOTE)
-                ? 'fix'
-                : 'cut';
 
 test('a video freezes smart and chat selections: smart plans and audits, chat writes pieces, cuts, repairs and fixes; Retry keeps both; legacy jobs use one for both; usage follows each call', async (t) => {
     const calls = [],
@@ -67,7 +49,7 @@ test('a video freezes smart and chat selections: smart plans and audits, chat wr
             ],
             generate: async (tree, text, emit) => {
                 if (tree.id) return complete(emit, 'Watch.' + directive);
-                const stage = stageOf(tree.instructions);
+                const { stage } = tree;
                 calls.push([stage, tree.model, tree.effort]);
                 skills[stage] = [TEACHING_SKILL, HUMANIZER_SKILL, MANIM_TEACHING_SKILL].map(
                     (skill) => tree.instructions.includes(skill),

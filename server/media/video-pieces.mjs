@@ -212,18 +212,16 @@ export async function writeSetPieces({
                     await write(
                         instructions + PIECES_PATCH_NOTE,
                         withSource(input, 'failedCode', retry.code),
-                        undefined,
-                        images,
+                        { stage: 'pieces', images },
                     ),
                 );
                 if (code !== null) raw = retry.wrap(code);
             }
-            raw ??= await write(
-                instructions,
-                JSON.stringify(input),
-                (_, text) => onDrawing(piecesDrawn(text, names)),
+            raw ??= await write(instructions, JSON.stringify(input), {
+                stage: 'pieces',
+                onText: (_, text) => onDrawing(piecesDrawn(text, names)),
                 images,
-            );
+            });
         } catch (e) {
             if (!e.invalidOutput) throw e;
             error = e;
@@ -331,11 +329,13 @@ export async function improvePiece({ piece, why, call }) {
             await call(
                 PIECE_IMPROVE_INSTRUCTIONS + PIECE_PATCH_NOTE + '\n\n' + REMOTION_SKILL,
                 withSource({ ...task, ...(source3d && { source3d: true }) }, 'source', module),
+                { stage: 'improve' },
             ),
         ) ??
         (await call(
             PIECE_IMPROVE_INSTRUCTIONS + '\n\n' + REMOTION_SKILL,
             JSON.stringify({ ...task, source, ...(source3d && { source3d }) }),
+            { stage: 'improve' },
         ));
     // The saved true colours stay as they were; the rewrite draws through the same roles.
     return { ...libraryPieces(cutSource(raw, brief, names), brief, [name])[0], trueColors };
