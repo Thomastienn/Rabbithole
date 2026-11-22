@@ -413,8 +413,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                 neighbourhood,
                 resources: store
                     .resources(id)
-                    // The prompt lists only the newest resources so a large tree keeps it bounded.
-                    .slice(-50)
+                    .slice(-50) // only the newest resources, so a large tree keeps the prompt bounded
                     .reverse()
                     .map(({ number, title, site }) => ({ number, title, site })),
                 ...(images.length && { images }),
@@ -490,10 +489,8 @@ export async function sendRoute(res, ctx, id, tree, action, body, controller) {
                         formatLog('info', 'media', 'started', { id: artifact.id, task: 'diagram' }),
                     );
                     try {
-                        const selection = {
-                            provider: tree.provider,
-                            model: store.header(id).model,
-                        };
+                        const { model } = store.header(id);
+                        const selection = { provider: tree.provider, model };
                         const source = await generateDiagram(
                             ctx.metered(pick(tree), 'diagram', artifact.id, selection, {
                                 message: artifact.message,
