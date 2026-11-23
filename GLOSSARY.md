@@ -60,6 +60,10 @@ _Avoid_: Candidate, Explore further item
 About two or three short sentences about a term or passage of a tutor reply, read at a glance and free to bold or italicise a key word, shown above the branch question box so the learner can understand it without branching. It appears on its own when the learner opens an unexplored suggestion, and only on request for a passage they selected themselves. It explains whatever the term needs in context, such as what it is or why it holds. It is kept and shows again when the learner points at that suggestion, even after it has been branched; a branched suggestion without one shows the start of its child's first reply instead. It is not part of the conversation and the tutor never sees it. Opening one for a suggestion counts as weak evidence that the learner has seen the concept: it lifts an unknown concept a little and dips a well-known one a little.
 _Avoid_: Peek, tooltip, definition, summary
 
+**Brief batch**:
+The brief explanations the quick thinking model writes ahead for every suggestion of one reply, once its suggestions are final, so opening a suggestion shows its brief without waiting. Each brief is kept as soon as it is written.
+_Avoid_: Suggestion batch, ready briefs
+
 **Groundwork**:
 A concept that a tutor reply relies on without naming, which the learner may need first, offered as a choice above the reply as soon as the reply begins, before its text: at most three, often none, chosen by the tutor from what it knows of the learner's familiarity. Choosing one at once creates a child conversation that asks what it is. It is never a gate: the learner can ignore it.
 _Avoid_: Prerequisite, suggestion, requirement

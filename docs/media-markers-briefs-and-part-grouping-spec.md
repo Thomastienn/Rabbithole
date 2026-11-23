@@ -91,6 +91,7 @@ The page itself never scrolls: whatever moved it is fixed at its source, and eac
 - A failed batch is logged; suggestions fall back to on-demand briefs. Old replies are not backfilled.
 - Batch calls are metered as brief usage, like on-demand briefs.
 - Briefs for selected passages and visual parts stay on demand and unchanged.
+- Later refined by the [brief batch markers spec](brief-batch-markers-spec.md) (ADR 0021): the batch streams `[[brief: term]]` text instead of one tool call, saves each brief as it closes, and retries missing terms once.
 
 ### Visual part grouping
 
