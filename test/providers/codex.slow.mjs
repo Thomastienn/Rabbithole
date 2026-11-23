@@ -283,42 +283,55 @@ test('aborted generation starts no inference; interrupt releases a stalled turn 
     }
 });
 
-test('refreshed token restarts the CLI only after running turns finish', async () => {
-    const launched = [];
-    let token = 'synthetic-token-one',
-        started;
-    const turn = new Promise((resolve) => {
-        started = resolve;
+// A client whose token the test swaps: records the token of each launch and resolves `turn` when a turn starts.
+const refreshable = () => {
+    const state = { launched: [], token: 'synthetic-token-one' };
+    state.turn = new Promise((resolve) => {
+        state.started = resolve;
     });
-    const client = new Codex(
-        { token: async () => token },
+    state.client = new Codex(
+        { token: async () => state.token },
         mkdtempSync(join(tmpdir(), 'rabbithole-codex-')),
         (_command, _args, options) => {
-            launched.push(options.env.ACCESS_TOKEN);
+            state.launched.push(options.env.ACCESS_TOKEN);
             const child = spawn(process.execPath, ['test/support/protocol-fixture.mjs'], {
                 ...options,
                 cwd: process.cwd(),
             });
             const write = child.stdin.write.bind(child.stdin);
             child.stdin.write = (data) => {
-                if (JSON.parse(data).method === 'turn/start') started();
+                if (JSON.parse(data).method === 'turn/start') state.started();
                 return write(data);
             };
             return child;
         },
     );
+    return state;
+};
+const hold = (client, tree) => {
+    const controller = new AbortController();
+    const events = [];
+    const running = client.generate(
+        tree,
+        'hold',
+        (event) => events.push(event),
+        () => {},
+        controller.signal,
+    );
+    return { controller, events, running };
+};
+
+test('refreshed token restarts the CLI only after running turns finish', async (t) => {
+    const state = refreshable();
+    const { client, launched } = state;
     try {
-        const controller = new AbortController();
-        const events = [];
-        const running = client.generate(
-            {},
-            'hold',
-            (event) => events.push(event),
-            () => {},
-            controller.signal,
-        );
-        await turn;
-        token = 'synthetic-token-two';
+        await client.models();
+        // The turn starts on a CLI that has run for a while, as a refresh usually finds it.
+        const now = Date.now;
+        t.mock.method(Date, 'now', () => now() + 40 * 60000);
+        const { controller, events, running } = hold(client, {});
+        await state.turn;
+        state.token = 'synthetic-token-two';
         await client.models();
         assert.deepEqual(launched, ['synthetic-token-one']);
         controller.abort();
@@ -327,6 +340,28 @@ test('refreshed token restarts the CLI only after running turns finish', async (
         while (client.pending.size) await new Promise((resolve) => setTimeout(resolve, 10));
         await client.models();
         assert.deepEqual(launched, ['synthetic-token-one', 'synthetic-token-two']);
+    } finally {
+        client.close();
+    }
+});
+
+test('refreshed token restarts an idle CLI without ending tool turns on their own CLI', async () => {
+    const state = refreshable();
+    const { client, launched } = state;
+    try {
+        await client.models();
+        const { controller, events, running } = hold(client, { nativeTools: ['web_search'] });
+        await state.turn;
+        state.token = 'synthetic-token-two';
+        await client.models();
+        assert.deepEqual(launched, [
+            'synthetic-token-one',
+            'synthetic-token-one',
+            'synthetic-token-two',
+        ]);
+        controller.abort();
+        await running;
+        assert.equal(events.at(-1).status, 'interrupted');
     } finally {
         client.close();
     }

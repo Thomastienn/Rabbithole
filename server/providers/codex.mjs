@@ -24,10 +24,13 @@ export class Codex {
     }
     async ready() {
         const token = await this.auth.token();
+        if (this.process && this.token === token) {
+            this.keepUntil = Date.now() + FRESH_FOR - 60000;
+            return this.initialized;
+        }
         // A refreshed token waits for running work instead of killing it; the old token is still valid until keepUntil.
         const busy = this.listeners.size || this.pending.size;
-        if (this.process && (this.token === token || (busy && Date.now() < this.keepUntil)))
-            return this.initialized;
+        if (this.process && busy && Date.now() < this.keepUntil) return this.initialized;
         if (this.starting) return this.starting;
         this.starting = this.start(token).finally(() => {
             this.starting = null;
@@ -38,7 +41,7 @@ export class Codex {
         return !!this.bin();
     }
     async start(token) {
-        this.close();
+        this.stop();
         const bin = this.bin();
         if (!bin) throw new Error('Codex is not installed. Install it, then check again.');
         const cwd = join(this.dir, 'workspace'),
@@ -116,7 +119,7 @@ export class Codex {
         });
         this.process = child;
         this.token = token;
-        // shortcut: a turn still running this long after a refresh is cut off; move to per-token CLIs if turns get that long.
+        // shortcut: a refresh cuts off a turn that began longer ago than this; move to per-token CLIs if turns get that long.
         this.keepUntil = Date.now() + FRESH_FOR - 60000;
         // Never forward CLI stderr: diagnostics can include provider request details.
         child.stderr.resume();
@@ -465,6 +468,10 @@ export class Codex {
     close() {
         for (const worker of this.workers) worker.close();
         this.workers.clear();
+        this.stop();
+    }
+    // Ends this CLI only: a worker runs its turn on its own CLI and token.
+    stop() {
         const child = this.process;
         if (child) {
             child.kill();
