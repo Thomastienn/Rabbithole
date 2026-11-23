@@ -90,29 +90,7 @@ export const MARK_SUGGESTIONS = {
         required: ['suggestions'],
     },
 };
-export const WRITE_BRIEFS = {
-    name: 'write_briefs',
-    description: 'Record the brief explanation of every term. Call it exactly once.',
-    parameters: {
-        type: 'object',
-        properties: {
-            briefs: {
-                type: 'array',
-                description: 'One entry per term.',
-                items: {
-                    type: 'object',
-                    properties: {
-                        term: { type: 'string', description: 'The term exactly as given.' },
-                        explanation: { type: 'string' },
-                    },
-                    required: ['term', 'explanation'],
-                },
-            },
-        },
-        required: ['briefs'],
-    },
-};
-export const QUICK_TOOLS = [NAME_CONVERSATION, RECORD_VERDICTS, MARK_SUGGESTIONS, WRITE_BRIEFS].map(
+export const QUICK_TOOLS = [NAME_CONVERSATION, RECORD_VERDICTS, MARK_SUGGESTIONS].map(
     (t) => t.name,
 );
 

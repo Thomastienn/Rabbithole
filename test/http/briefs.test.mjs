@@ -5,11 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { briefPrompt, briefsPrompt } from '../../server/http/jobs/briefs.mjs';
+import { briefPrompt } from '../../server/http/jobs/briefs.mjs';
 import { taskOf } from '../support/model-task.mjs';
 
 const PREFIX = briefPrompt('', '').split('{')[0];
-const BATCH = briefsPrompt('', []).split('{')[0];
 const REPLY = 'A **[[mutex]]** guards the shared counter.\n[[end]]';
 // Quick thinking names the concept of the tutor's marked suggestion.
 const named = JSON.stringify({
@@ -90,8 +89,8 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
     const briefEvents = () => store.usageEvents().events.filter((e) => e.task === 'brief');
     assert.equal(mutex().familiarity, 0.3);
 
-    // The batch failed: it is logged, saved nothing, and opening falls back to an on-demand brief.
-    assert.ok(logs.some((l) => /brief/.test(l) && /saved nothing ahead/.test(l)));
+    // The batch and its retry failed: it is logged, saved nothing, and opening falls back to an on-demand brief.
+    assert.ok(logs.some((l) => /brief/.test(l) && /left briefs unsaved/.test(l)));
     assert.equal(store.brief(reply.id, passage.start, passage.end), undefined);
 
     // A failed call stores nothing, records nothing and returns an error.
@@ -137,7 +136,11 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         reply: 'A mutex guards the shared counter.',
         term: 'mutex',
     });
-    assert.equal(briefEvents().length, 3, 'the failed batch, the failed and the written call');
+    assert.equal(
+        briefEvents().length,
+        4,
+        'the failed batch and its retry, the failed and the written call',
+    );
     assert.ok(briefEvents().every((e) => e.model === 'quick-model'));
     assert.deepEqual(mutex().observations, [0, 0, 1, 0, 0, 0]);
     assert.equal(mutex().familiarity, 0.35);
@@ -208,32 +211,47 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
     assert.equal(total(), before + 1);
 });
 
-test('every suggestion gets its brief ahead of time; an early open is written on demand and kept', async (t) => {
+test('a brief batch saves each brief as its marker text streams, retries missed terms once, and leaves the rest on demand', async (t) => {
     const store = new Store(
         join(mkdtempSync(join(tmpdir(), 'rabbithole-briefs-ahead-')), 'trees.sqlite'),
     );
     const prompts = [],
-        batches = [];
+        batches = [],
+        logs = [];
     let release;
     const gate = new Promise((resolve) => (release = resolve));
+    const delta = (emit, text) => emit({ type: 'delta', item: 'a', text });
+    const completed = (emit) => emit({ type: 'status', status: 'completed' });
+    // Each batch call plays the next script: the first reply's batch and retry, then the second's.
+    const scripts = [
+        async (emit) => {
+            delta(emit, 'Here are the briefs.\n[[brief: mutex]]\nAhead mutex.\n');
+            delta(emit, '[[brief: shared counter]]\n');
+            await gate;
+            delta(emit, 'Ahead counter.\n[[brief: unknown]]\nNot asked.\n[[brief: lock]]\nCut');
+            throw new Error('Fixture batch cut off');
+        },
+        async (emit) => {
+            delta(emit, '[[brief: lock]]\nAhead lock.');
+            completed(emit);
+        },
+        async (emit) => {
+            delta(emit, '[[brief: shared counter]]\n\n[[brief: mutex]]\nSecond mutex.');
+            completed(emit);
+        },
+        async (emit) => {
+            delta(emit, '[[brief: shared counter]]\nRetry counter.\n');
+            completed(emit);
+        },
+    ];
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
             if (tree.role === 'brief' && taskOf(text).terms) {
-                batches.push(text);
-                await gate;
-                assert.deepEqual(
-                    tree.tools.map((tool) => tool.name),
-                    ['write_briefs'],
-                );
-                await assert.rejects(async () => tree.runTool('write_briefs', {}), /briefs must/);
-                await tree.runTool('write_briefs', {
-                    briefs: [
-                        { term: 'mutex', explanation: 'Ahead mutex.' },
-                        { term: 'shared counter', explanation: 'Ahead counter.' },
-                    ],
-                });
-                return emit({ type: 'status', status: 'completed' });
+                batches.push(taskOf(text).terms);
+                assert.equal(taskOf(text).reply, 'A mutex guards the shared counter with a lock.');
+                assert.equal(tree.tools, undefined, 'the batch is a plain text call');
+                return scripts.shift()(emit);
             }
             if (tree.role === 'suggestions') {
                 emit({
@@ -243,19 +261,20 @@ test('every suggestion gets its brief ahead of time; an early open is written on
                         suggestions: [
                             { text: 'mutex', concept: 'Mutex' },
                             { text: 'shared counter', concept: 'Shared state' },
+                            { text: 'lock', concept: 'Lock' },
                         ],
-                        concepts: [
-                            { name: 'Mutex', topics: ['Concurrency'] },
-                            { name: 'Shared state', topics: ['Concurrency'] },
-                        ],
+                        concepts: ['Mutex', 'Shared state', 'Lock'].map((name) => ({
+                            name,
+                            topics: ['Concurrency'],
+                        })),
                     }),
                 });
-                return emit({ type: 'status', status: 'completed' });
+                return completed(emit);
             }
             if (tree.role !== 'brief') return;
             prompts.push(text);
-            emit({ type: 'item', item: 'a', text: 'On demand mutex.' });
-            emit({ type: 'status', status: 'completed' });
+            emit({ type: 'item', item: 'a', text: `On demand ${taskOf(text).term}.` });
+            completed(emit);
         },
     };
     const chat = {
@@ -263,16 +282,16 @@ test('every suggestion gets its brief ahead of time; an early open is written on
             emit({
                 type: 'item',
                 item: 'answer',
-                text: 'A **[[mutex]]** guards the **[[shared counter]]**.\n[[end]]',
+                text: 'A **[[mutex]]** guards the **[[shared counter]]** with a [[lock]].\n[[end]]',
             });
-            emit({ type: 'status', status: 'completed' });
+            completed(emit);
         },
     };
     const app = createApp({
         store,
         providers: { codex: chat, claude: quick },
         auth: { status: () => ({ connected: true }) },
-        log: () => {},
+        log: (line) => logs.push(line),
         suggestions: true,
         briefs: true,
     });
@@ -297,18 +316,16 @@ test('every suggestion gets its brief ahead of time; an early open is written on
         });
     const id = (await (await post('', {})).json()).id;
     await (await post(`/${id}/messages`, { text: 'How do threads share a counter?' })).text();
-    // The batch waits on the gate; naming the concepts finishes meanwhile.
-    while (!batches.length || store.tree(id).suggestions[0].passages.some((p) => !p.concept))
-        await new Promise((resolve) => setTimeout(resolve, 5));
-    assert.deepEqual(JSON.parse(batches[0].slice(BATCH.length)), {
-        reply: 'A mutex guards the shared counter.',
-        terms: ['mutex', 'shared counter'],
-    });
     const reply = store.tree(id).messages.at(-1);
-    const [mutex, counter] = store.tree(id).suggestions[0].passages;
-    const open = (p) =>
+    const [mutex, counter, lock] = store.tree(id).suggestions[0].passages;
+    const saved = (p, message = reply.id) => store.brief(message, p.start, p.end);
+    // The batch waits on the gate with its first brief closed by the next marker.
+    while (!saved(mutex)) await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.equal(saved(mutex), 'Ahead mutex.');
+    assert.equal(saved(counter), undefined, 'an open brief waits for the next marker');
+    const open = (p, message = reply.id) =>
         post(`/${id}/brief`, {
-            messageId: reply.id,
+            messageId: message,
             start: p.start,
             end: p.end,
             text: p.text,
@@ -316,21 +333,40 @@ test('every suggestion gets its brief ahead of time; an early open is written on
         }).then((r) => r.json());
     const observations = () => store.db.prepare('SELECT COUNT(*) AS n FROM observations').get().n;
 
-    // Opened before the batch answers: written on demand, and the batch keeps it.
-    assert.equal((await open(mutex)).explanation, 'On demand mutex.');
+    // Opened while the batch runs: written on demand, and the batch keeps it.
+    assert.equal((await open(counter)).explanation, 'On demand shared counter.');
     release();
     await app.settled();
-    assert.equal(store.brief(reply.id, mutex.start, mutex.end), 'On demand mutex.');
-    assert.equal(store.brief(reply.id, counter.start, counter.end), 'Ahead counter.');
-    assert.equal(batches.length, 1);
+    assert.equal(saved(counter), 'On demand shared counter.');
+    // The cut-off call kept what it closed; the retry asked for only the missing term.
+    assert.deepEqual(batches, [['mutex', 'shared counter', 'lock'], ['lock']]);
+    assert.equal(saved(lock), 'Ahead lock.');
     assert.equal(observations(), 1, 'the batch records no familiarity evidence');
+    assert.ok(!logs.some((l) => /left briefs unsaved/.test(l)));
 
     // A brief saved ahead opens with no model call and counts once.
-    assert.equal((await open(counter)).explanation, 'Ahead counter.');
+    assert.equal((await open(mutex)).explanation, 'Ahead mutex.');
     assert.equal(prompts.length, 1);
     assert.equal(observations(), 2);
+
+    // A completed call that skips terms retries once; a term still missing is logged and written on demand.
+    await (await post(`/${id}/messages`, { text: 'And with two counters?' })).text();
+    await app.settled();
+    const second = store.tree(id).messages.at(-1).id;
+    const [mutex2, counter2, lock2] = store
+        .tree(id)
+        .suggestions.find((s) => s.message === second).passages;
+    assert.deepEqual(batches.slice(2), [
+        ['mutex', 'shared counter', 'lock'],
+        ['shared counter', 'lock'],
+    ]);
+    assert.equal(saved(mutex2, second), 'Second mutex.');
+    assert.equal(saved(counter2, second), 'Retry counter.');
+    assert.equal(saved(lock2, second), undefined);
+    assert.ok(logs.some((l) => /brief/.test(l) && /left briefs unsaved/.test(l)));
+    assert.equal((await open(lock2, second)).explanation, 'On demand lock.');
     const briefs = store.usageEvents().events.filter((e) => e.task === 'brief');
-    assert.equal(briefs.length, 2, 'the batch and the on-demand call');
+    assert.equal(briefs.length, 6, 'four batch calls and two on-demand calls');
 });
 
 test('a suggestion opened while its reply streams gets its brief explanation at once', async (t) => {
