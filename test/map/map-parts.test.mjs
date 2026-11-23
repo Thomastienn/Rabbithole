@@ -171,6 +171,50 @@ test('clamped conversation rows show no hover text and keep their accessible nam
     assert.deepEqual(opens.at(-1), ['root', undefined, 'answer']);
 });
 
+test('depth stops show one ring per level under the address chip, the last filled, hidden from assistive technology', async (t) => {
+    const data = {
+        conversation: summary('root'),
+        sources: [],
+        preview: [],
+        open: () => {},
+        retry: () => {},
+        toggle: () => {},
+        active: false,
+        focused: false,
+        focus: false,
+        childCount: 0,
+        address: '1',
+        ink: 0,
+        stubs: [],
+        folded: false,
+    };
+    let update;
+    function Fixture() {
+        const [value, set] = useState(data);
+        update = set;
+        return h(ReactFlowProvider, null, h(Conversation, { id: 'root', data: value }));
+    }
+    const { container, act, cleanup } = await render(h(Fixture));
+    t.after(cleanup);
+    assert.equal(container.querySelector('.depth-stops'), null, 'the trunk shows no stops');
+    for (const [address, depth] of [
+        ['1.2', 1],
+        ['1.2.1.3.1.1.4.1.2.1', 9],
+    ]) {
+        await act(async () => update({ ...data, address }));
+        const row = container.querySelector('.node-band .depth-stops');
+        assert.equal(row.getAttribute('aria-hidden'), 'true');
+        const rings = [...row.querySelectorAll('circle')];
+        assert.equal(rings.length, depth, address);
+        assert.deepEqual(
+            rings.map((r) => r.classList.contains('here')),
+            rings.map((_, k) => k === depth - 1),
+        );
+        assert.equal(row.querySelectorAll('line').length, depth > 1 ? 1 : 0);
+        assert.doesNotMatch(row.textContent, /\d/, 'no number');
+    }
+});
+
 test('fold stubs, source reveal and latest-failed-only Retry use distinct controls and preserve focus', async (t) => {
     const opens = [],
         toggles = [],

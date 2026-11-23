@@ -139,9 +139,12 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
             )}
             <Handle id="ghost" type="source" position={Position.Right} className="ghost-handle" />
             <HStack gap={1} vAlign="center" className="node-band">
-                <Text className="node-address" hasTabularNumbers>
-                    {data.address}
-                </Text>
+                <span className="node-lead">
+                    <Text className="node-address" hasTabularNumbers>
+                        {data.address}
+                    </Text>
+                    <DepthStops depth={data.address.split('.').length - 1} />
+                </span>
                 <Text
                     className="activity-dot"
                     role={data.active ? 'status' : undefined}
@@ -451,6 +454,33 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
         </VStack>
     );
 });
+
+// Depth stops: one porcelain ring per level below the trunk, joined by a line, the last filled.
+function DepthStops({ depth }: { depth: number }) {
+    if (!depth) return null;
+    const x = (k: number) => 3.75 + k * 11;
+    const width = 7.5 + (depth - 1) * 11;
+    return (
+        <svg
+            className="depth-stops"
+            width={width}
+            height={9}
+            viewBox={`0 0 ${width} 9`}
+            aria-hidden="true"
+        >
+            {depth > 1 && <line x1={x(0)} y1={4.5} x2={x(depth - 1)} y2={4.5} />}
+            {Array.from({ length: depth }, (_, k) => (
+                <circle
+                    key={k}
+                    cx={x(k)}
+                    cy={4.5}
+                    r={3}
+                    className={k === depth - 1 ? 'here' : undefined}
+                />
+            ))}
+        </svg>
+    );
+}
 
 // Batch handle measurements so loading 200 transcripts schedules one React Flow update.
 export function MeasureHandles({ nodes }: { nodes: ConversationNode[] }) {
