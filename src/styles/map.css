@@ -37,6 +37,31 @@
     letter-spacing: 0.02em;
     white-space: nowrap;
 }
+/* Depth stops hang under the chip out of flow, so they never widen or heighten the band. */
+.node-lead {
+    position: relative;
+    flex: none;
+    display: flex;
+}
+.depth-stops {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 0;
+    overflow: visible;
+}
+.depth-stops line {
+    stroke: var(--rabbithole-paper);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+}
+.depth-stops circle {
+    fill: var(--color-background-surface);
+    stroke: var(--rabbithole-paper);
+    stroke-width: 1.5;
+}
+.depth-stops circle.here {
+    fill: var(--rabbithole-paper);
+}
 .conversation-box .node-title {
     flex: 1 1 auto;
     min-width: 0;
