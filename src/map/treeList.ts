@@ -8,25 +8,15 @@ export function treeGroups<T extends LearningTree>(trees: readonly T[], now = ne
         label,
         trees: [] as { tree: T; branches: number; spine: number[] }[],
     }));
-    const children = new Map<string, T[]>();
-    for (const tree of trees)
-        if (tree.parent) {
-            if (!children.has(tree.parent)) children.set(tree.parent, []);
-            children.get(tree.parent)!.push(tree);
-        }
+    // Spine: one tick per conversation in its branch ink; conversationAddresses yields each tree trunk first, then address order.
+    const spines = new Map<string, number[]>();
+    let ticks: number[] = [];
+    for (const [id, { address, ink }] of conversationAddresses(trees)) {
+        if (address === '1') spines.set(id, (ticks = []));
+        ticks.push(ink);
+    }
     for (const tree of trees.filter((t) => !t.parent).sort((a, b) => b.created - a.created)) {
-        // Spine: one tick per conversation in its conversationAddresses ink, trunk (0) first, then each first-level family breadth-first.
-        const spine = [0];
-        const kids = (id: string, ink: number) =>
-            [...(children.get(id) ?? [])]
-                .sort((a, b) => a.created - b.created || (a.id < b.id ? -1 : 1))
-                .map((child, i, all) => ({ child, ink: forkInk(ink, i, all.length) }));
-        for (const first of kids(tree.id, 0)) {
-            const family = [first];
-            for (let j = 0; j < family.length; j++)
-                family.push(...kids(family[j].child.id, family[j].ink));
-            for (const { ink } of family) spine.push(ink);
-        }
+        const spine = spines.get(tree.id)!;
         const age = localDay(now) - localDay(new Date(tree.created));
         groups[age <= 0 ? 0 : age === 1 ? 1 : age <= 7 ? 2 : 3].trees.push({
             tree,
@@ -61,18 +51,22 @@ export function conversationAddresses(trees: readonly LearningTree[]) {
         children.set(tree.parent, [...(children.get(tree.parent) ?? []), tree]);
     const known = new Set(trees.map((t) => t.id)),
         out = new Map<string, { address: string; ink: number }>();
-    const walk = (parent: string, address: string, ink: number) =>
-        (children.get(parent) ?? [])
-            .sort((a, b) => a.created - b.created || (a.id < b.id ? -1 : 1))
-            .forEach((child, i, all) => {
-                const next = { address: `${address}.${i + 1}`, ink: forkInk(ink, i, all.length) };
-                out.set(child.id, next);
-                walk(child.id, next.address, next.ink);
-            });
     // A conversation whose parent is not in the list is treated as a trunk.
     for (const root of trees.filter((t) => !t.parent || !known.has(t.parent))) {
-        out.set(root.id, { address: '1', ink: 0 });
-        walk(root.id, '1', 0);
+        // A stack, not recursion: deep chains must not overflow. Popping visits parents first, siblings in address order.
+        const stack = [{ id: root.id, address: '1', ink: 0 }];
+        for (let at = stack.pop(); at; at = stack.pop()) {
+            const { id, address, ink } = at;
+            out.set(id, { address, ink });
+            const next = (children.get(id) ?? [])
+                .sort((a, b) => a.created - b.created || (a.id < b.id ? -1 : 1))
+                .map((child, i, all) => ({
+                    id: child.id,
+                    address: `${address}.${i + 1}`,
+                    ink: forkInk(ink, i, all.length),
+                }));
+            stack.push(...next.reverse());
+        }
     }
     return out;
 }

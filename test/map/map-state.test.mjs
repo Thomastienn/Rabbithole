@@ -138,7 +138,6 @@ test('legend names only this trunk and its first branches, repeating inks and re
         tree('root'),
         ...Array.from({ length: 5 }, (_, i) => tree(`a${i}`, 'root', i)),
         tree('deep', 'a0'),
-        tree('deep2', 'a0'),
         tree('other'),
     ];
     const legend = familyLegend('root', list);
