@@ -234,8 +234,8 @@ export function routeLine(source: Point, target: Point, from: Box, to: Box, lane
 // Room for a 7px line plus a 5px gap.
 export const LANE = 12;
 
-// Sibling lines whose vertical runs (routed with lane 0) would touch spread into lanes LANE apart around their
-// mean run. Lanes follow child ring height so lines never cross: the run to the farther child lies farther from
+// Sibling lines whose vertical runs (routed with lane 0) lie in each other's gutter and overlap in height spread
+// into lanes LANE apart around their mean run. Lanes follow child ring height so lines never cross: the run to the farther child lies farther from
 // the child cards, clear of the nearer child's way in.
 // shortcut: lanes are not squeezed to fit, so many siblings in a narrow gutter can reach the cards; fit them if that shows up.
 export function branchLanes(lines: { id: string; parent: string; points: Point[] }[]) {
@@ -250,13 +250,17 @@ export function branchLanes(lines: { id: string; parent: string; points: Point[]
         // Sorting by key sorts lanes left to right.
         const key = (end.x > x ? -1 : 1) * (down ? 1 : -1) * end.y;
         const [top, bottom] = [points[i - 1].y, points[i].y].sort((a, b) => a - b);
-        return [{ id, parent, x, top, bottom, key }];
+        const xs = points.map((p) => p.x);
+        return [{ id, parent, x, top, bottom, key, left: Math.min(...xs), right: Math.max(...xs) }];
     });
     type Run = (typeof runs)[number];
+    // Cards out of line still share a gutter; a child in a farther column does not.
+    const within = (run: Run, x: number) => x > run.left - LANE && x < run.right + LANE;
     const touches = (a: Run, b: Run) =>
         a !== b &&
         a.parent === b.parent &&
-        Math.abs(a.x - b.x) < LANE &&
+        within(a, b.x) &&
+        within(b, a.x) &&
         a.top < b.bottom + LANE &&
         b.top < a.bottom + LANE;
     const lanes: Record<string, number> = {};

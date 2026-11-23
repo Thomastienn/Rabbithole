@@ -115,6 +115,21 @@ test('dragging a child past its sibling swaps their lanes', () => {
     assert.deepEqual(after, [...before].reverse());
 });
 
+test('siblings whose cards are out of line still take ordered lanes that never touch', () => {
+    const [upper, lower] = siblings([card(352, 900), card(392, 1300)]);
+    assert.ok(
+        upper - lower >= LANE,
+        'the lower child runs nearer the parent, clear of the upper way in',
+    );
+    const runs = siblings([card(352, 900), card(352, 1300), card(352, 1700), card(380, 2100)]);
+    assert.deepEqual(
+        runs.toSorted((a, b) => b - a),
+        runs,
+        'lower children nearer the parent',
+    );
+    runs.slice(1).forEach((x, i) => assert.ok(runs[i] - x >= LANE));
+});
+
 test('children above take lanes so their lines never cross', () => {
     const [higher, lower] = siblings([card(352, -1300), card(352, -900)]);
     assert.ok(lower - higher >= LANE, 'the higher child runs nearer the parent');
