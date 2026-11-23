@@ -15,16 +15,18 @@ export function treeGroups<T extends LearningTree>(trees: readonly T[], now = ne
             children.get(tree.parent)!.push(tree);
         }
     for (const tree of trees.filter((t) => !t.parent).sort((a, b) => b.created - a.created)) {
-        // Spine: one ink per conversation, trunk (0) first, then each first-level family in conversationAddresses order.
+        // Spine: one tick per conversation in its conversationAddresses ink, trunk (0) first, then each first-level family breadth-first.
         const spine = [0];
-        [...(children.get(tree.id) ?? [])]
-            .sort((a, b) => a.created - b.created || (a.id < b.id ? -1 : 1))
-            .forEach((child, i) => {
-                const family = [child];
-                for (let j = 0; j < family.length; j++)
-                    family.push(...(children.get(family[j].id) ?? []));
-                for (const _ of family) spine.push((i % 4) + 1);
-            });
+        const kids = (id: string, ink: number) =>
+            [...(children.get(id) ?? [])]
+                .sort((a, b) => a.created - b.created || (a.id < b.id ? -1 : 1))
+                .map((child, i, all) => ({ child, ink: forkInk(ink, i, all.length) }));
+        for (const first of kids(tree.id, 0)) {
+            const family = [first];
+            for (let j = 0; j < family.length; j++)
+                family.push(...kids(family[j].child.id, family[j].ink));
+            for (const { ink } of family) spine.push(ink);
+        }
         const age = localDay(now) - localDay(new Date(tree.created));
         groups[age <= 0 ? 0 : age === 1 ? 1 : age <= 7 ? 2 : 3].trees.push({
             tree,
@@ -46,8 +48,13 @@ export function librarySearch<T extends { parent: string | null; title: string }
 export const volumeCounts = (branches: number) =>
     `${branches + 1} ${branches ? 'conversations' : 'conversation'} · ${branches} ${branches === 1 ? 'branch' : 'branches'}`;
 
+// Ink of sibling i of n under a parent on ink p: the trunk's children take 1–4 repeating; an only child keeps p;
+// other siblings take the three inks other than p in ascending order, then p, repeating.
+const forkInk = (p: number, i: number, n: number) =>
+    !p ? (i % 4) + 1 : n === 1 ? p : [1, 2, 3, 4].filter((ink) => ink !== p).concat(p)[i % 4];
+
 // Addresses: trunk 1, children 1.1, 1.2 … in creation order (ties by id), so a later sibling never renumbers earlier ones.
-// Ink: each first-level family takes series ink 1–4 in that order, repeating; descendants keep it; the trunk is 0 (paper).
+// Ink: the trunk is 0 (paper); see forkInk for its descendants.
 export function conversationAddresses(trees: readonly LearningTree[]) {
     const children = new Map<string | null, LearningTree[]>();
     for (const tree of trees)
@@ -57,8 +64,8 @@ export function conversationAddresses(trees: readonly LearningTree[]) {
     const walk = (parent: string, address: string, ink: number) =>
         (children.get(parent) ?? [])
             .sort((a, b) => a.created - b.created || (a.id < b.id ? -1 : 1))
-            .forEach((child, i) => {
-                const next = { address: `${address}.${i + 1}`, ink: ink || (i % 4) + 1 };
+            .forEach((child, i, all) => {
+                const next = { address: `${address}.${i + 1}`, ink: forkInk(ink, i, all.length) };
                 out.set(child.id, next);
                 walk(child.id, next.address, next.ink);
             });

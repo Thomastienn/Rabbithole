@@ -133,11 +133,12 @@ test('tree restore selects only its own saved conversation and panel; legacy def
     });
 });
 
-test('legend names only this trunk and its first-level families, repeating inks and reflecting rename/delete', () => {
+test('legend names only this trunk and its first branches, repeating inks and reflecting rename/delete', () => {
     const list = [
         tree('root'),
         ...Array.from({ length: 5 }, (_, i) => tree(`a${i}`, 'root', i)),
         tree('deep', 'a0'),
+        tree('deep2', 'a0'),
         tree('other'),
     ];
     const legend = familyLegend('root', list);

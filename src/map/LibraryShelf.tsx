@@ -106,7 +106,7 @@ export default function LibraryShelf({
                                             <span
                                                 className="volume-spine"
                                                 aria-hidden
-                                                title="One tick per conversation, in its branch family's ink"
+                                                title="One tick per conversation, in its branch ink"
                                             >
                                                 {spine.map((ink, i) => (
                                                     <i key={i} style={inkStyle(ink)} />

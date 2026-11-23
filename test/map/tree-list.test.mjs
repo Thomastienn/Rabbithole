@@ -80,7 +80,7 @@ test('branch counts include every descendant, exclude roots and stay separate ac
     );
 });
 
-test('conversation addresses number siblings by creation and each first-level family keeps one repeating series ink', async () => {
+test("conversation addresses number siblings by creation; siblings at every fork take their own ink, an only child keeps its parent's", async () => {
     const { conversationAddresses } = await import('../../src/map/treeList.ts');
     const t = (id, parent, created) => ({ id, parent, created });
     const trees = [
@@ -105,9 +105,9 @@ test('conversation addresses number siblings by creation and each first-level fa
         b3: '1.3:3',
         b4: '1.4:4',
         b5: '1.5:1',
-        b1a: '1.1.1:1',
-        b1b: '1.1.2:1',
-        b1a1: '1.1.1.1:1',
+        b1a: '1.1.1:2',
+        b1b: '1.1.2:3',
+        b1a1: '1.1.1.1:2',
         b5a: '1.5.1:1',
     });
     // A sibling added later takes the next number; nobody before it moves.
@@ -119,16 +119,33 @@ test('conversation addresses number siblings by creation and each first-level fa
         { ...before, b6: undefined, b1c: undefined },
     );
     assert.equal(after.b6, '1.6:2');
-    assert.equal(after.b1c, '1.1.3:1');
+    assert.equal(after.b1c, '1.1.3:4');
+    // An only child is re-inked once its parent forks.
+    assert.equal(view(conversationAddresses([...trees, t('b5b', 'b5', 95)])).b5a, '1.5.1:2');
+    const fork = (parentInk, n) =>
+        [
+            ...conversationAddresses([
+                t('r', null, 0),
+                ...[1, 2, 3, 4].map((k) => t(`p${k}`, 'r', k)),
+                ...Array.from({ length: n }, (_, i) => t(`c${i}`, `p${parentInk}`, 10 + i)),
+            ]),
+        ]
+            .filter(([id]) => id.startsWith('c'))
+            .map(([, v]) => v.ink);
+    assert.deepEqual(fork(2, 3), [1, 3, 4]);
+    assert.deepEqual(fork(3, 4), [1, 2, 4, 3]);
+    assert.deepEqual(fork(4, 5), [1, 2, 3, 4, 1], 'a fifth sibling repeats the order');
 });
 
-test('library spine has one tick per conversation in its family ink, matching conversation addresses', async () => {
+test('library spine has one tick per conversation in its ink, matching conversation addresses', async () => {
     const { conversationAddresses } = await import('../../src/map/treeList.ts');
     const trees = [
         { id: 'root', parent: null, created: 0 },
         ...['a', 'b', 'c', 'd', 'e'].map((id, i) => ({ id, parent: 'root', created: 10 - i })),
         { id: 'a1', parent: 'a', created: 20 },
         { id: 'a2', parent: 'a1', created: 21 },
+        { id: 'b1', parent: 'b', created: 22 },
+        { id: 'b2', parent: 'b', created: 23 },
     ];
     const [{ spine, branches }] = treeGroups(trees, new Date(0))[0].trees;
     assert.equal(spine.length, trees.length);
@@ -139,7 +156,7 @@ test('library spine has one tick per conversation in its family ink, matching co
         [...inks.values()].map((v) => v.ink).sort(),
         'same inks as the map and contents',
     );
-    assert.deepEqual(spine, [0, 1, 2, 3, 4, 1, 1, 1], 'families contiguous in address order');
+    assert.deepEqual(spine, [0, 1, 2, 3, 4, 1, 2, 1, 1, 1], 'families contiguous in address order');
 });
 
 test('deleting a conversation removes it and every descendant, never its parent or siblings', () => {
