@@ -76,8 +76,8 @@ export function briefJobs(ctx) {
             }),
         ).done;
     };
-    // One detached call per reply once its suggestions are final: every unsaved suggestion's brief, saved ahead of opening (spec: Ready brief explanations).
-    // It records no familiarity and never replaces a saved brief or one being written on demand; on failure opening writes one as before.
+    // One detached job per reply once its suggestions are final: every unsaved suggestion's brief, saved ahead of opening (spec: Ready brief explanations).
+    // It records no familiarity and never replaces a saved brief or one being written on demand; a brief still missing after its retry is written when opened.
     const startBriefs = (conversation, message) => {
         const tree = store.tree(conversation),
             reply = tree?.messages.find((m) => m.id === message)?.text;
